@@ -94,22 +94,28 @@ func (l *Loader) Load(tx *Tx, n int) {
 	if l.closed || l.w == nil {
 		return
 	}
-	for i := 0; i < n; i++ {
+	queueLen := len(l.loadQueue)
+	loaded := 0
+	processed := 0
+	for loaded < n && processed < queueLen {
 		if len(l.loadQueue) == 0 {
 			break
 		}
-
 		pos := l.loadQueue[0]
-		c := tx.w.chunk(pos)
+		l.loadQueue = l.loadQueue[1:]
+		processed++
+
+		c, ok := tx.w.chunkIfReady(pos)
+		if !ok {
+			l.loadQueue = append(l.loadQueue, pos)
+			continue
+		}
 
 		l.viewer.ViewChunk(pos, l.w.Dimension(), c.BlockEntities, c.Chunk)
 		l.w.addViewer(tx, c, l)
 
 		l.loaded[pos] = c
-
-		// Shift the first element from the load queue off so that we can take a new one during the next
-		// iteration.
-		l.loadQueue = l.loadQueue[1:]
+		loaded++
 	}
 }
 

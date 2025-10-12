@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"iter"
 	"maps"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"sync"
@@ -57,6 +58,8 @@ type World struct {
 	entities map[*EntityHandle]ChunkPos
 
 	r *rand.Rand
+
+	tps atomic.Uint64
 
 	// scheduledUpdates is a map of tick time values indexed by the block
 	// position at which an update is scheduled. If the current tick exceeds the
@@ -105,6 +108,24 @@ func (w *World) Dimension() Dimension {
 // equivalent to calling World.Dimension().Range().
 func (w *World) Range() cube.Range {
 	return w.ra
+}
+
+// TPS returns the current average ticks per second of the world. The value is
+// averaged over the last tpsSampleSize ticks and may be zero if no samples have
+// been recorded yet.
+func (w *World) TPS() float64 {
+	return math.Float64frombits(w.tps.Load())
+}
+
+// LoadedChunkCount returns the number of chunks currently kept in memory by the
+// world.
+func (w *World) LoadedChunkCount() int {
+	return len(w.chunks)
+}
+
+// EntityCount returns the number of entities tracked by the world.
+func (w *World) EntityCount() int {
+	return len(w.entities)
 }
 
 // ExecFunc is a function that performs a synchronised transaction on a World.
@@ -1115,16 +1136,40 @@ func showEntity(e Entity, viewer Viewer) {
 func (w *World) chunk(pos ChunkPos) *Column {
 	c, ok := w.chunks[pos]
 	if ok {
+		c.waitReady()
+		c.ensureLight(w, pos)
 		return c
 	}
 	c, err := w.loadChunk(pos)
-	chunk.LightArea([]*chunk.Chunk{c.Chunk}, int(pos[0]), int(pos[1])).Fill()
+	if !c.Ready() {
+		c.waitReady()
+	}
+	c.ensureLight(w, pos)
 	if err != nil {
 		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
-		return c
 	}
-	w.calculateLight(pos)
 	return c
+}
+
+// chunkIfReady attempts to return a chunk from the position passed. If the chunk is not yet generated, the bool
+// returned will be false and the chunk will be generated asynchronously.
+func (w *World) chunkIfReady(pos ChunkPos) (*Column, bool) {
+	if c, ok := w.chunks[pos]; ok {
+		if !c.Ready() {
+			return c, false
+		}
+		c.ensureLight(w, pos)
+		return c, true
+	}
+	c, err := w.loadChunk(pos)
+	if !c.Ready() {
+		return c, false
+	}
+	c.ensureLight(w, pos)
+	if err != nil {
+		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+	}
+	return c, true
 }
 
 // loadChunk attempts to load a chunk from the provider, or generates a chunk
@@ -1144,12 +1189,25 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// The provider doesn't have a chunk saved at this position, so we generate a new one.
 		col := newColumn(chunk.New(airRID, w.Range()))
 		w.chunks[pos] = col
-
-		w.conf.Generator.GenerateChunk(pos, col.Chunk)
+		w.generateChunkAsync(pos, col)
 		return col, nil
 	default:
-		return newColumn(chunk.New(airRID, w.Range())), err
+		col := newColumn(chunk.New(airRID, w.Range()))
+		col.markReady()
+		return col, err
 	}
+}
+
+func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				w.conf.Log.Error("generate chunk: panic", "error", fmt.Sprint(r), "X", pos[0], "Z", pos[1])
+			}
+			col.markReady()
+		}()
+		w.conf.Generator.GenerateChunk(pos, col.Chunk)
+	}()
 }
 
 // calculateLight calculates the light in the chunk passed and spreads the
@@ -1212,13 +1270,24 @@ func (w *World) autoSave() {
 	}
 }
 
+// CollectGarbage closes chunks that have no viewers and returns the number of
+// chunks, entities and block entities that were removed as a result.
+func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, blockEntitiesCollected int) {
+	for pos, c := range w.chunks {
+		if len(c.viewers) != 0 {
+			continue
+		}
+		chunksCollected++
+		entitiesCollected += len(c.Entities)
+		blockEntitiesCollected += len(c.BlockEntities)
+		w.closeChunk(tx, pos, c)
+	}
+	return
+}
+
 // closeUnusedChunk is called every 5 minutes by autoSave.
 func (w *World) closeUnusedChunks(tx *Tx) {
-	for pos, c := range w.chunks {
-		if len(c.viewers) == 0 {
-			w.closeChunk(tx, pos, c)
-		}
-	}
+	w.CollectGarbage(tx)
 }
 
 // Column represents the data of a chunk including the (block) entities and
@@ -1232,11 +1301,48 @@ type Column struct {
 
 	viewers []Viewer
 	loaders []*Loader
+
+	ready     atomic.Bool
+	readyCh   chan struct{}
+	lightOnce sync.Once
 }
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
 func newColumn(c *chunk.Chunk) *Column {
-	return &Column{Chunk: c, BlockEntities: map[cube.Pos]Block{}}
+	return &Column{
+		Chunk:         c,
+		BlockEntities: map[cube.Pos]Block{},
+		readyCh:       make(chan struct{}),
+	}
+}
+
+// Ready reports whether the Column has finished generating.
+func (c *Column) Ready() bool {
+	return c.ready.Load()
+}
+
+// waitReady blocks until the Column is marked ready.
+func (c *Column) waitReady() {
+	if c.ready.Load() {
+		return
+	}
+	<-c.readyCh
+}
+
+// markReady marks the Column as generated and unblocks any waiters.
+func (c *Column) markReady() {
+	if c.ready.Swap(true) {
+		return
+	}
+	close(c.readyCh)
+}
+
+// ensureLight fills and spreads light for the Column once.
+func (c *Column) ensureLight(w *World, pos ChunkPos) {
+	c.lightOnce.Do(func() {
+		chunk.LightArea([]*chunk.Chunk{c.Chunk}, int(pos[0]), int(pos[1])).Fill()
+		w.calculateLight(pos)
+	})
 }
 
 // columnTo converts a Column to a chunk.Column so that it can be written to
@@ -1268,11 +1374,9 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 // columnFrom converts a chunk.Column to a Column after reading it from a
 // provider.
 func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
-	col := &Column{
-		Chunk:         c.Chunk,
-		Entities:      make([]*EntityHandle, 0, len(c.Entities)),
-		BlockEntities: make(map[cube.Pos]Block, len(c.BlockEntities)),
-	}
+	col := newColumn(c.Chunk)
+	col.Entities = make([]*EntityHandle, 0, len(c.Entities))
+	col.BlockEntities = make(map[cube.Pos]Block, len(c.BlockEntities))
 	for _, e := range c.Entities {
 		eid, ok := e.Data["identifier"].(string)
 		if !ok {
@@ -1306,5 +1410,6 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 		scheduled = append(scheduled, scheduledTick{pos: t.Pos, b: bl, bhash: BlockHash(bl), t: w.scheduledUpdates.currentTick + (t.Tick - savedTick)})
 	}
 	w.scheduledUpdates.add(scheduled)
+	col.markReady()
 	return col
 }

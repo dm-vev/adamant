@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"maps"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"time"
@@ -44,6 +45,7 @@ func (t ticker) tickLoop(w *World) {
 					avg := durationSum / time.Duration(ticksCount)
 					if avg > 0 {
 						tps := 1.0 / avg.Seconds()
+						w.tps.Store(math.Float64bits(tps))
 						if tps < tpsWarningThreshold {
 							if !warned {
 								w.conf.Log.Warn("TPS dropped below threshold.", "tps", tps)
@@ -52,6 +54,8 @@ func (t ticker) tickLoop(w *World) {
 						} else if warned {
 							warned = false
 						}
+					} else {
+						w.tps.Store(math.Float64bits(0))
 					}
 					durationSum = 0
 					ticksCount = 0
