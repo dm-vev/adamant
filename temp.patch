@@ -1,0 +1,20 @@
+*** Begin Patch
+*** Update File: server/block/hash.go
+@@
+ func (l Lever) Hash() (uint64, uint64) {
+     state := uint64(l.Face) | uint64(l.Axis)<<3 | uint64(boolByte(l.Powered))<<5
+     return hashLever, state
+ }
++
++func (d RedstoneDust) Hash() (uint64, uint64) {
++    return hashRedstoneDust, uint64(d.Power)
++}
++
++func (l RedstoneLamp) Hash() (uint64, uint64) {
++    return hashRedstoneLamp, uint64(boolByte(l.Lit))
++}
+ 
+ func (l Light) Hash() (uint64, uint64) {
+     return hashLight, uint64(l.Level)
+ }
+*** End Patch

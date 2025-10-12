@@ -1,0 +1,31 @@
+*** Begin Patch
+*** Update File: server/block/hash.go
+@@
+ func (l Lever) Hash() (uint64, uint64) {
+-    state := uint64(l.Face) | uint64(l.Axis)<<3 | uint64(boolByte(l.Powered))<<5
+-    return hashLever, state
++    var dir uint64
++    switch l.directionProperty() {
++    case "down_east_west":
++        dir = 0
++    case "east":
++        dir = 1
++    case "west":
++        dir = 2
++    case "south":
++        dir = 3
++    case "north":
++        dir = 4
++    case "up_north_south":
++        dir = 5
++    case "up_east_west":
++        dir = 6
++    case "down_north_south":
++        dir = 7
++    default:
++        dir = 7
++    }
++    state := dir | (uint64(boolByte(l.Powered)) << 3)
++    return hashLever, state
+ }
+*** End Patch
