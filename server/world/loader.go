@@ -199,7 +199,7 @@ func (l *Loader) populateLoadQueue() {
 	}
 
 	l.loadQueue = l.loadQueue[:0]
-	for i := int32(0); i < r; i++ {
+	for i := int32(0); i <= r; i++ {
 		l.loadQueue = append(l.loadQueue, queue[i]...)
 	}
 }
