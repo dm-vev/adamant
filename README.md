@@ -38,6 +38,10 @@ go run main.go
 Dragonfly features a well-documented codebase with an easy-to-use API. Documentation may be found
 [here](https://pkg.go.dev/github.com/df-mc/dragonfly/server) and in the subpackages found by clicking *Directories*.
 
+## Project status
+
+- The redstone subsystem is currently disabled while it is reworked. It is marked as **WIP** and **needs help**—contributions are welcome!
+
 Publishing your project on GitHub? Consider adding the **[#df-mc](https://github.com/topic/df-mc)** topic to your
 repository and opening a pull request at [df-wiki](https://github.com/df-mc/wiki) adding your project as a Community
 Project to improve its visibility.

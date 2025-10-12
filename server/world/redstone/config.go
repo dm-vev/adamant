@@ -18,6 +18,9 @@ type Config struct {
 }
 
 func (c Config) withDefaults() Config {
+	if !c.Enabled {
+		return c
+	}
 	if c.InboxSize <= 0 {
 		c.InboxSize = 4096
 	}
@@ -27,35 +30,11 @@ func (c Config) withDefaults() Config {
 	if c.ProcessorFactory == nil {
 		c.ProcessorFactory = ProcessorFactoryFunc(func(_ ChunkID) Processor { return NewGraphProcessor() })
 	}
-	// Default to enabled unless explicitly disabled.
-	if !c.Enabled {
-		c.Enabled = true
-	}
 	return c
 }
 
 // NewSystem builds a System using the configuration and the logger derived from the world.
 func (c Config) NewSystem(log *slog.Logger) *System {
-	if !c.Enabled {
-		return nil
-	}
-	cfg := c.withDefaults()
-	metrics := NewMetrics()
-	router := NewRouter(RouterConfig{
-		Logger:  log,
-		Metrics: metrics,
-	})
-	scheduler := NewScheduler(SchedulerConfig{
-		Logger:           log,
-		Router:           router,
-		InboxSize:        cfg.InboxSize,
-		BudgetPerTick:    cfg.BudgetPerTick,
-		ProcessorFactory: cfg.ProcessorFactory,
-		Metrics:          metrics,
-	})
-	return &System{
-		router:    router,
-		scheduler: scheduler,
-		metrics:   metrics,
-	}
+	log.Warn("redstone subsystem disabled", "status", "WIP", "help", "needed")
+	return nil
 }
