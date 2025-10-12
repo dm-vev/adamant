@@ -1,0 +1,7 @@
+# JetBrains
+.idea/
+
+# Dragonfly
+/world/
+/players/
+/resources/
