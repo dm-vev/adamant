@@ -1115,16 +1115,40 @@ func showEntity(e Entity, viewer Viewer) {
 func (w *World) chunk(pos ChunkPos) *Column {
 	c, ok := w.chunks[pos]
 	if ok {
+		c.waitReady()
+		c.ensureLight(w, pos)
 		return c
 	}
 	c, err := w.loadChunk(pos)
-	chunk.LightArea([]*chunk.Chunk{c.Chunk}, int(pos[0]), int(pos[1])).Fill()
+	if !c.Ready() {
+		c.waitReady()
+	}
+	c.ensureLight(w, pos)
 	if err != nil {
 		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
-		return c
 	}
-	w.calculateLight(pos)
 	return c
+}
+
+// chunkIfReady attempts to return a chunk from the position passed. If the chunk is not yet generated, the bool
+// returned will be false and the chunk will be generated asynchronously.
+func (w *World) chunkIfReady(pos ChunkPos) (*Column, bool) {
+	if c, ok := w.chunks[pos]; ok {
+		if !c.Ready() {
+			return c, false
+		}
+		c.ensureLight(w, pos)
+		return c, true
+	}
+	c, err := w.loadChunk(pos)
+	if !c.Ready() {
+		return c, false
+	}
+	c.ensureLight(w, pos)
+	if err != nil {
+		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+	}
+	return c, true
 }
 
 // loadChunk attempts to load a chunk from the provider, or generates a chunk
@@ -1135,6 +1159,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	case err == nil:
 		col := w.columnFrom(column, pos)
 		w.chunks[pos] = col
+		col.markReady()
 		for _, e := range col.Entities {
 			w.entities[e] = pos
 			e.w = w
@@ -1144,12 +1169,25 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// The provider doesn't have a chunk saved at this position, so we generate a new one.
 		col := newColumn(chunk.New(airRID, w.Range()))
 		w.chunks[pos] = col
-
-		w.conf.Generator.GenerateChunk(pos, col.Chunk)
+		w.generateChunkAsync(pos, col)
 		return col, nil
 	default:
-		return newColumn(chunk.New(airRID, w.Range())), err
+		col := newColumn(chunk.New(airRID, w.Range()))
+		col.markReady()
+		return col, err
 	}
+}
+
+func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				w.conf.Log.Error("generate chunk: panic", "error", fmt.Sprint(r), "X", pos[0], "Z", pos[1])
+			}
+			col.markReady()
+		}()
+		w.conf.Generator.GenerateChunk(pos, col.Chunk)
+	}()
 }
 
 // calculateLight calculates the light in the chunk passed and spreads the
@@ -1176,9 +1214,15 @@ func (w *World) spreadLight(pos ChunkPos) {
 	c := make([]*chunk.Chunk, 0, 9)
 	for z := int32(-1); z <= 1; z++ {
 		for x := int32(-1); x <= 1; x++ {
-			neighbour, ok := w.chunks[ChunkPos{pos[0] + x, pos[1] + z}]
+			neighbourPos := ChunkPos{pos[0] + x, pos[1] + z}
+			neighbour, ok := w.chunks[neighbourPos]
 			if !ok {
 				// Not all surrounding chunks existed: Stop spreading light.
+				return
+			}
+			if !neighbour.Ready() || !neighbour.lightReady.Load() {
+				// The neighbour chunk hasn't finished generating yet or its light hasn't been initialised
+				// yet. We'll spread the light once all chunks involved are ready.
 				return
 			}
 			c = append(c, neighbour.Chunk)
@@ -1232,11 +1276,50 @@ type Column struct {
 
 	viewers []Viewer
 	loaders []*Loader
+
+	ready      atomic.Bool
+	readyCh    chan struct{}
+	lightOnce  sync.Once
+	lightReady atomic.Bool
 }
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
 func newColumn(c *chunk.Chunk) *Column {
-	return &Column{Chunk: c, BlockEntities: map[cube.Pos]Block{}}
+	return &Column{
+		Chunk:         c,
+		BlockEntities: map[cube.Pos]Block{},
+		readyCh:       make(chan struct{}),
+	}
+}
+
+// Ready reports whether the Column has finished generating.
+func (c *Column) Ready() bool {
+	return c.ready.Load()
+}
+
+// waitReady blocks until the Column is marked ready.
+func (c *Column) waitReady() {
+	if c.ready.Load() {
+		return
+	}
+	<-c.readyCh
+}
+
+// markReady marks the Column as generated and unblocks any waiters.
+func (c *Column) markReady() {
+	if c.ready.Swap(true) {
+		return
+	}
+	close(c.readyCh)
+}
+
+// ensureLight fills and spreads light for the Column once.
+func (c *Column) ensureLight(w *World, pos ChunkPos) {
+	c.lightOnce.Do(func() {
+		chunk.LightArea([]*chunk.Chunk{c.Chunk}, int(pos[0]), int(pos[1])).Fill()
+		c.lightReady.Store(true)
+		w.calculateLight(pos)
+	})
 }
 
 // columnTo converts a Column to a chunk.Column so that it can be written to
@@ -1268,11 +1351,9 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 // columnFrom converts a chunk.Column to a Column after reading it from a
 // provider.
 func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
-	col := &Column{
-		Chunk:         c.Chunk,
-		Entities:      make([]*EntityHandle, 0, len(c.Entities)),
-		BlockEntities: make(map[cube.Pos]Block, len(c.BlockEntities)),
-	}
+	col := newColumn(c.Chunk)
+	col.Entities = make([]*EntityHandle, 0, len(c.Entities))
+	col.BlockEntities = make(map[cube.Pos]Block, len(c.BlockEntities))
 	for _, e := range c.Entities {
 		eid, ok := e.Data["identifier"].(string)
 		if !ok {
@@ -1306,5 +1387,6 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 		scheduled = append(scheduled, scheduledTick{pos: t.Pos, b: bl, bhash: BlockHash(bl), t: w.scheduledUpdates.currentTick + (t.Tick - savedTick)})
 	}
 	w.scheduledUpdates.add(scheduled)
+	col.markReady()
 	return col
 }
