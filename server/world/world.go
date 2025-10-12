@@ -4,13 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/goleveldb/leveldb"
-	"github.com/go-gl/mathgl/mgl64"
-	"github.com/google/uuid"
 	"iter"
 	"maps"
 	"math"
@@ -19,6 +12,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/event"
+	"github.com/df-mc/dragonfly/server/internal/sliceutil"
+	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // World implements a Minecraft world. It manages all aspects of what players
@@ -1180,6 +1181,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	case err == nil:
 		col := w.columnFrom(column, pos)
 		w.chunks[pos] = col
+		col.markReady()
 		for _, e := range col.Entities {
 			w.entities[e] = pos
 			e.w = w
@@ -1234,9 +1236,15 @@ func (w *World) spreadLight(pos ChunkPos) {
 	c := make([]*chunk.Chunk, 0, 9)
 	for z := int32(-1); z <= 1; z++ {
 		for x := int32(-1); x <= 1; x++ {
-			neighbour, ok := w.chunks[ChunkPos{pos[0] + x, pos[1] + z}]
+			neighbourPos := ChunkPos{pos[0] + x, pos[1] + z}
+			neighbour, ok := w.chunks[neighbourPos]
 			if !ok {
 				// Not all surrounding chunks existed: Stop spreading light.
+				return
+			}
+			if !neighbour.Ready() || !neighbour.lightReady.Load() {
+				// The neighbour chunk hasn't finished generating yet or its light hasn't been initialised
+				// yet. We'll spread the light once all chunks involved are ready.
 				return
 			}
 			c = append(c, neighbour.Chunk)
@@ -1302,9 +1310,10 @@ type Column struct {
 	viewers []Viewer
 	loaders []*Loader
 
-	ready     atomic.Bool
-	readyCh   chan struct{}
-	lightOnce sync.Once
+	ready      atomic.Bool
+	readyCh    chan struct{}
+	lightOnce  sync.Once
+	lightReady atomic.Bool
 }
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
@@ -1341,6 +1350,7 @@ func (c *Column) markReady() {
 func (c *Column) ensureLight(w *World, pos ChunkPos) {
 	c.lightOnce.Do(func() {
 		chunk.LightArea([]*chunk.Chunk{c.Chunk}, int(pos[0]), int(pos[1])).Fill()
+		c.lightReady.Store(true)
 		w.calculateLight(pos)
 	})
 }
