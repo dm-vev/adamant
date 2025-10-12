@@ -68,12 +68,19 @@ var (
 	cpuSampleLastUsed float64
 )
 
+const (
+	cpuMetricNew = "/cpu/classes/total:cpu-seconds"
+	cpuMetricOld = "/sched/cpu_seconds_total"
+)
+
 func sampleAverageCPULoad() (float64, bool) {
-	samples := []metrics.Sample{
-		{Name: "/sched/cpu_seconds_total"},
+	total, ok := readRuntimeMetric(cpuMetricNew)
+	if !ok {
+		total, ok = readRuntimeMetric(cpuMetricOld)
 	}
-	metrics.Read(samples)
-	total := samples[0].Value.Float64()
+	if !ok {
+		return 0, false
+	}
 	now := time.Now()
 
 	cpuSampleMu.Lock()
@@ -98,6 +105,21 @@ func sampleAverageCPULoad() (float64, bool) {
 		usage = 100
 	}
 	return usage, true
+}
+
+func readRuntimeMetric(name string) (float64, bool) {
+	samples := []metrics.Sample{{Name: name}}
+	metrics.Read(samples)
+	sample := samples[0]
+
+	switch sample.Value.Kind() {
+	case metrics.KindFloat64:
+		return sample.Value.Float64(), true
+	case metrics.KindUint64:
+		return float64(sample.Value.Uint64()), true
+	default:
+		return 0, false
+	}
 }
 
 func bytesToMiB(v uint64) float64 {
