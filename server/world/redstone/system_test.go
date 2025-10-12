@@ -131,6 +131,203 @@ func TestSchedulerWatchdogPenalisesChunk(t *testing.T) {
 	}
 }
 
+func TestGraphProcessorSourceWireLamp(t *testing.T) {
+	router := NewRouter(RouterConfig{})
+	worker := NewChunkWorker(WorkerConfig{
+		Router:    router,
+		Chunk:     ChunkID{X: 0, Z: 0},
+		InboxSize: 16,
+		Processor: NewGraphProcessor(),
+	})
+	t.Cleanup(worker.Stop)
+
+	graph := Graph{
+		Gen: 1,
+		Palette: []Node{
+			{ID: 0, Kind: NodePowerSource, Data: sourceLever, Pos: cube.Pos{0, 64, 0}},
+			{ID: 1, Kind: NodeWire, Pos: cube.Pos{1, 64, 0}},
+			{ID: 2, Kind: NodeLamp, Pos: cube.Pos{2, 64, 0}},
+		},
+		Offsets:   []uint32{0, 1, 2, 2},
+		Adjacency: []NodeID{1, 2},
+	}
+	graph.Reindex()
+	worker.UpdateGraph(graph)
+
+	worker.EnqueueLocal(Event{
+		Kind:  EventSignalRise,
+		Pos:   graph.Palette[0].Pos,
+		Power: 15,
+		Tick:  1,
+		Node:  graph.Palette[0].ID,
+	})
+
+	res := worker.Step(context.Background(), StepRequest{
+		Tick:   1,
+		Budget: 16,
+	})
+
+	if len(worker.graph.States) < 3 {
+		t.Fatalf("expected 3 node states, got %d", len(worker.graph.States))
+	}
+	if power := worker.graph.States[0].Power; power != 15 {
+		t.Fatalf("expected source power 15, got %d", power)
+	}
+	if power := worker.graph.States[1].Power; power != 14 {
+		t.Fatalf("expected wire power 14, got %d", power)
+	}
+	if power := worker.graph.States[2].Power; power != 14 {
+		t.Fatalf("expected lamp power 14, got %d", power)
+	}
+	if len(res.Outputs) != 1 {
+		t.Fatalf("expected one output event, got %d", len(res.Outputs))
+	}
+	output := res.Outputs[0]
+	if output.Kind != EventOutput {
+		t.Fatalf("expected output event kind EventOutput, got %v", output.Kind)
+	}
+	if output.Meta != 1 {
+		t.Fatalf("expected lamp to be active, meta=1, got %d", output.Meta)
+	}
+}
+
+func TestButtonAutoRelease(t *testing.T) {
+	router := NewRouter(RouterConfig{})
+	worker := NewChunkWorker(WorkerConfig{
+		Router:    router,
+		Chunk:     ChunkID{X: 0, Z: 0},
+		InboxSize: 16,
+		Processor: NewGraphProcessor(),
+	})
+	t.Cleanup(worker.Stop)
+
+	graph := Graph{
+		Gen: 1,
+		Palette: []Node{
+			{ID: 0, Kind: NodePowerSource, Data: sourceButton, Pos: cube.Pos{0, 64, 0}},
+			{ID: 1, Kind: NodeLamp, Pos: cube.Pos{1, 64, 0}},
+		},
+		Offsets:   []uint32{0, 1, 1},
+		Adjacency: []NodeID{1},
+	}
+	graph.Reindex()
+	worker.UpdateGraph(graph)
+
+	worker.EnqueueLocal(Event{
+		Kind:  EventSignalRise,
+		Pos:   graph.Palette[0].Pos,
+		Power: 15,
+		Tick:  1,
+		Node:  graph.Palette[0].ID,
+		Meta:  2,
+	})
+
+	res1 := worker.Step(context.Background(), StepRequest{
+		Tick:   1,
+		Budget: 16,
+	})
+	if len(res1.Outputs) == 0 {
+		t.Fatalf("expected output event when button pressed")
+	}
+	if res1.Outputs[0].Meta != 1 {
+		t.Fatalf("expected lamp output meta=1 on press, got %d", res1.Outputs[0].Meta)
+	}
+
+	worker.Step(context.Background(), StepRequest{
+		Tick:   2,
+		Budget: 16,
+	})
+
+	res3 := worker.Step(context.Background(), StepRequest{
+		Tick:   3,
+		Budget: 16,
+	})
+	if res3.Outputs == nil || len(res3.Outputs) == 0 {
+		t.Fatalf("expected output event when button released")
+	}
+	if res3.Outputs[0].Meta != 0 {
+		t.Fatalf("expected lamp output meta=0 on release, got %d", res3.Outputs[0].Meta)
+	}
+	if power := worker.graph.States[0].Power; power != 0 {
+		t.Fatalf("expected button power 0 after release, got %d", power)
+	}
+}
+
+func TestTorchInversion(t *testing.T) {
+	router := NewRouter(RouterConfig{})
+	worker := NewChunkWorker(WorkerConfig{
+		Router:    router,
+		Chunk:     ChunkID{X: 0, Z: 0},
+		InboxSize: 16,
+		Processor: NewGraphProcessor(),
+	})
+	t.Cleanup(worker.Stop)
+
+	graph := Graph{
+		Gen: 1,
+		Palette: []Node{
+			{ID: 0, Kind: NodePowerSource, Data: sourceTorch, Pos: cube.Pos{0, 64, 0}},
+			{ID: 1, Kind: NodeWire, Pos: cube.Pos{1, 64, 0}},
+		},
+		Offsets:   []uint32{0, 1, 1},
+		Adjacency: []NodeID{1},
+	}
+	graph.Reindex()
+	worker.UpdateGraph(graph)
+
+	worker.EnqueueLocal(Event{
+		Kind:  EventSignalRise,
+		Pos:   graph.Palette[0].Pos,
+		Power: 15,
+		Tick:  1,
+		Node:  graph.Palette[0].ID,
+	})
+	worker.Step(context.Background(), StepRequest{
+		Tick:   1,
+		Budget: 16,
+	})
+
+	if power := worker.graph.States[0].Power; power != 15 {
+		t.Fatalf("expected torch power 15, got %d", power)
+	}
+
+	worker.EnqueueLocal(Event{
+		Kind:  EventPowerChange,
+		Pos:   graph.Palette[0].Pos,
+		Power: 15,
+		Tick:  2,
+		Node:  graph.Palette[0].ID,
+	})
+	worker.Step(context.Background(), StepRequest{
+		Tick:   2,
+		Budget: 16,
+	})
+	if power := worker.graph.States[0].Power; power != 0 {
+		t.Fatalf("expected torch to invert off when powered, got %d", power)
+	}
+	if power := worker.graph.States[1].Power; power != 0 {
+		t.Fatalf("expected connected wire to be off, got %d", power)
+	}
+
+	worker.EnqueueLocal(Event{
+		Kind:  EventPowerChange,
+		Pos:   graph.Palette[0].Pos,
+		Power: 0,
+		Tick:  3,
+		Node:  graph.Palette[0].ID,
+	})
+	worker.Step(context.Background(), StepRequest{
+		Tick:   3,
+		Budget: 16,
+	})
+	if power := worker.graph.States[0].Power; power != 15 {
+		t.Fatalf("expected torch to relight, got %d", power)
+	}
+	if power := worker.graph.States[1].Power; power != 14 {
+		t.Fatalf("expected wire to receive power 14, got %d", power)
+	}
+}
+
 type recordingFactory struct {
 	mu sync.Mutex
 

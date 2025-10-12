@@ -34,7 +34,7 @@ func (graphProcessor) HandleEvent(_ ChunkID, g *Graph, ev Event, emit Emitter) {
 }
 
 func locateNode(g *Graph, ev Event) (int, *Node, *NodeState) {
-	if ev.Node != 0 {
+	if ev.Kind == EventTick || ev.Node != 0 {
 		if idx, node, state, ok := g.nodeByID(ev.Node); ok {
 			return idx, node, state
 		}
@@ -219,12 +219,12 @@ func handleConsumer(_ *Graph, _ int, node *Node, state *NodeState, ev Event, emi
 		state.Active = active
 		state.Power = newPower
 		emit.Output(Event{
-			Kind: EventOutput,
-			Pos:  node.Pos,
+			Kind:  EventOutput,
+			Pos:   node.Pos,
 			Power: newPower,
-			Tick: ev.Tick,
-			Node: node.ID,
-			Meta: boolToMeta(active),
+			Tick:  ev.Tick,
+			Node:  node.ID,
+			Meta:  boolToMeta(active),
 		})
 	}
 }
@@ -268,7 +268,7 @@ func handleObserver(g *Graph, idx int, node *Node, state *NodeState, ev Event, e
 func propagatePower(g *Graph, idx int, node *Node, power uint8, tick int64, emit Emitter) {
 	neighbours := g.neighbours(idx)
 	for _, nbID := range neighbours {
-		nbIdx, nbNode, _, ok := g.nodeByID(nbID)
+		_, nbNode, _, ok := g.nodeByID(nbID)
 		if !ok || nbNode == nil {
 			continue
 		}

@@ -91,6 +91,7 @@ type StepResult struct {
 	Hot      bool
 	Coalesce int
 	QueueLen int
+	Outputs  []Event
 	Err      error
 }
 

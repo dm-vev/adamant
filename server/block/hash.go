@@ -105,6 +105,7 @@ const (
 	hashLava
 	hashLeaves
 	hashLectern
+	hashLever
 	hashLight
 	hashLilyPad
 	hashLitPumpkin
@@ -598,6 +599,11 @@ func (l Leaves) Hash() (uint64, uint64) {
 
 func (l Lectern) Hash() (uint64, uint64) {
 	return hashLectern, uint64(l.Facing)
+}
+
+func (l Lever) Hash() (uint64, uint64) {
+	state := uint64(l.Face) | uint64(l.Axis)<<3 | uint64(boolByte(l.Powered))<<5
+	return hashLever, state
 }
 
 func (l Light) Hash() (uint64, uint64) {

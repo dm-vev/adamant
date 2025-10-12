@@ -25,7 +25,7 @@ func (c Config) withDefaults() Config {
 		c.BudgetPerTick = 8192
 	}
 	if c.ProcessorFactory == nil {
-		c.ProcessorFactory = ProcessorFactoryFunc(func(_ ChunkID) Processor { return NopProcessor{} })
+		c.ProcessorFactory = ProcessorFactoryFunc(func(_ ChunkID) Processor { return NewGraphProcessor() })
 	}
 	// Default to enabled unless explicitly disabled.
 	if !c.Enabled {

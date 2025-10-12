@@ -106,6 +106,29 @@ func (w *World) buildRedstoneGraph(_ ChunkPos, _ *Column) redstone.Graph {
 	return redstone.Graph{Gen: gen}
 }
 
+func (w *World) currentTick() int64 {
+	if w == nil || w.set == nil {
+		return 0
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	return w.set.CurrentTick
+}
+
+func (w *World) queueRedstoneEvent(pos cube.Pos, kind redstone.EventKind, power uint8, meta uint32) {
+	if w == nil || w.redstone == nil {
+		return
+	}
+	ev := redstone.Event{
+		Pos:   pos,
+		Kind:  kind,
+		Power: power,
+		Meta:  meta,
+		Tick:  w.currentTick(),
+	}
+	w.redstone.QueueLocal(redstoneChunkID(chunkPosFromBlockPos(pos)), ev)
+}
+
 // New creates a new initialised world. The world may be used right away, but
 // it will not be saved or loaded from files until it has been given a
 // different provider than the default. (NopProvider) By default, the name of
@@ -163,7 +186,16 @@ type ExecFunc func(tx *Tx)
 // that is closed once the transaction is complete.
 func (w *World) Exec(f ExecFunc) <-chan struct{} {
 	c := make(chan struct{})
-	w.queue <- normalTransaction{c: c, f: f}
+	w.queue <- normalTransaction{c: c, f: f, allowChunkGen: true}
+	return c
+}
+
+// ExecNoChunkGen performs a synchronised transaction on a World without allowing
+// the transaction to cause new chunk generation. Existing chunks may still be
+// modified safely.
+func (w *World) ExecNoChunkGen(f ExecFunc) <-chan struct{} {
+	c := make(chan struct{})
+	w.queue <- normalTransaction{c: c, f: f, allowChunkGen: false}
 	return c
 }
 

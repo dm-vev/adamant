@@ -6,6 +6,7 @@ import "context"
 type System struct {
 	router    *Router
 	scheduler *Scheduler
+	metrics   *Metrics
 }
 
 func (s *System) Enabled() bool {
