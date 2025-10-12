@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/rand/v2"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/world/redstone"
 )
 
 // Config may be used to create a new World. It holds a variety of fields that
@@ -56,6 +58,8 @@ type Config struct {
 	// Entities is an EntityRegistry with all Entity types registered that may
 	// be added to the World.
 	Entities EntityRegistry
+	// Redstone configures the chunk-level redstone execution subsystem.
+	Redstone redstone.Config
 }
 
 // New creates a new World using the Config conf. The World returned will start
@@ -102,6 +106,8 @@ func (conf Config) New() *World {
 	var h Handler = NopHandler{}
 	w.handler.Store(&h)
 	w.tps.Store(math.Float64bits(20))
+
+	w.redstone = conf.Redstone.NewSystem(conf.Log.With("component", "redstone"))
 
 	w.queueing.Add(1)
 	w.running.Add(2)

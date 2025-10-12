@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"maps"
@@ -112,6 +113,10 @@ func (t ticker) tick(tx *Tx) {
 	}
 	if thunder {
 		w.tickLightning(tx)
+	}
+
+	if w.redstone != nil && w.redstone.Enabled() {
+		w.redstone.Step(context.Background(), tick)
 	}
 
 	t.tickEntities(tx, tick)

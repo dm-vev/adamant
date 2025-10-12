@@ -17,6 +17,7 @@ import (
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/df-mc/dragonfly/server/world/redstone"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -69,6 +70,9 @@ type World struct {
 	scheduledUpdates *scheduledTickQueue
 	neighbourUpdates []neighbourUpdate
 
+	redstone    *redstone.System
+	redstoneGen atomic.Uint64
+
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
 }
@@ -77,6 +81,29 @@ type World struct {
 // Its Run method is called when the transaction is taken out of the queue.
 type transaction interface {
 	Run(w *World)
+}
+
+func redstoneChunkID(pos ChunkPos) redstone.ChunkID {
+	return redstone.ChunkID{X: pos[0], Z: pos[1]}
+}
+
+func (w *World) initRedstoneChunk(pos ChunkPos, col *Column) {
+	if w == nil || w.redstone == nil {
+		return
+	}
+	w.redstone.RegisterChunk(redstoneChunkID(pos), w.buildRedstoneGraph(pos, col))
+}
+
+func (w *World) refreshRedstoneGraph(pos ChunkPos, col *Column) {
+	if w == nil || w.redstone == nil {
+		return
+	}
+	w.redstone.UpdateGraph(redstoneChunkID(pos), w.buildRedstoneGraph(pos, col))
+}
+
+func (w *World) buildRedstoneGraph(_ ChunkPos, _ *Column) redstone.Graph {
+	gen := w.redstoneGen.Add(1)
+	return redstone.Graph{Gen: gen}
 }
 
 // New creates a new initialised world. The world may be used right away, but
@@ -1009,6 +1036,9 @@ func (w *World) saveChunk(_ *Tx, pos ChunkPos, c *Column) {
 func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 	w.saveChunk(tx, pos, c)
 	w.scheduledUpdates.removeChunk(pos)
+	if w.redstone != nil {
+		w.redstone.UnregisterChunk(redstoneChunkID(pos))
+	}
 	// Note: We close c.Entities here because some entities may remove
 	// themselves from the world in their Close method, which can lead to
 	// unexpected conditions.
@@ -1182,6 +1212,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		col := w.columnFrom(column, pos)
 		w.chunks[pos] = col
 		col.markReady()
+		w.initRedstoneChunk(pos, col)
 		for _, e := range col.Entities {
 			w.entities[e] = pos
 			e.w = w
@@ -1191,6 +1222,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// The provider doesn't have a chunk saved at this position, so we generate a new one.
 		col := newColumn(chunk.New(airRID, w.Range()))
 		w.chunks[pos] = col
+		w.initRedstoneChunk(pos, col)
 		w.generateChunkAsync(pos, col)
 		return col, nil
 	default:
@@ -1207,6 +1239,15 @@ func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 				w.conf.Log.Error("generate chunk: panic", "error", fmt.Sprint(r), "X", pos[0], "Z", pos[1])
 			}
 			col.markReady()
+			if w.redstone != nil {
+				done := w.Exec(func(tx *Tx) {
+					w.refreshRedstoneGraph(pos, col)
+				})
+				select {
+				case <-done:
+				case <-w.closing:
+				}
+			}
 		}()
 		w.conf.Generator.GenerateChunk(pos, col.Chunk)
 	}()
