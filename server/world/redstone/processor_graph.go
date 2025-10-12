@@ -57,6 +57,15 @@ const (
 	sourceDaylight
 )
 
+const (
+	// SourceSubtypeGeneric represents a source without specialised behaviour.
+	SourceSubtypeGeneric = sourceGeneric
+	// SourceSubtypeLever represents a lever source.
+	SourceSubtypeLever = sourceLever
+	// SourceSubtypeTorch represents a redstone torch source.
+	SourceSubtypeTorch = sourceTorch
+)
+
 func handleSource(g *Graph, idx int, node *Node, state *NodeState, ev Event, emit Emitter) {
 	subtype := node.Data & 0x7
 	switch subtype {
@@ -147,6 +156,14 @@ func handleWire(g *Graph, idx int, node *Node, state *NodeState, ev Event, emit 
 		}
 		state.Power = newPower
 		state.Active = newPower > 0
+		emit.Output(Event{
+			Kind:  EventOutput,
+			Pos:   node.Pos,
+			Power: newPower,
+			Tick:  ev.Tick,
+			Node:  node.ID,
+			Meta:  uint32(newPower),
+		})
 		propagatePower(g, idx, node, newPower, ev.Tick, emit)
 	}
 }

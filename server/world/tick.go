@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
+	"github.com/df-mc/dragonfly/server/world/redstone"
 	"maps"
 	"math"
 	"math/rand/v2"
@@ -116,7 +117,10 @@ func (t ticker) tick(tx *Tx) {
 	}
 
 	if w.redstone != nil && w.redstone.Enabled() {
-		w.redstone.Step(context.Background(), tick)
+		outputs := w.redstone.Step(context.Background(), tick)
+		if len(outputs) > 0 {
+			w.applyRedstoneOutputs(tx, outputs)
+		}
 	}
 
 	t.tickEntities(tx, tick)
@@ -142,6 +146,49 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 			}
 		}
 	}
+}
+
+func (w *World) applyRedstoneOutputs(tx *Tx, outputs []redstone.Event) {
+	for _, out := range outputs {
+		blk := tx.Block(out.Pos)
+		name, props := blk.EncodeBlock()
+		switch name {
+		case "minecraft:redstone_lamp", "minecraft:lit_redstone_lamp":
+			active := out.Meta != 0 || out.Power > 0
+			target := "minecraft:redstone_lamp"
+			if active {
+				target = "minecraft:lit_redstone_lamp"
+			}
+			if name == target {
+				continue
+			}
+			if block, ok := BlockByName(target, nil); ok {
+				tx.SetBlock(out.Pos, block, &SetOpts{DisableBlockUpdates: true})
+			}
+		case "minecraft:redstone_wire":
+			newPower := clampUint8(int(out.Power))
+			current := extractIntProperty(props, "redstone_signal")
+			if current == newPower {
+				continue
+			}
+			newProps := cloneProperties(props)
+			newProps["redstone_signal"] = int32(newPower)
+			if block, ok := BlockByName("minecraft:redstone_wire", newProps); ok {
+				tx.SetBlock(out.Pos, block, &SetOpts{DisableBlockUpdates: true})
+			}
+		}
+	}
+}
+
+func cloneProperties(props map[string]any) map[string]any {
+	if props == nil {
+		return map[string]any{}
+	}
+	cloned := make(map[string]any, len(props))
+	for k, v := range props {
+		cloned[k] = v
+	}
+	return cloned
 }
 
 // tickBlocksRandomly executes random block ticks in each sub chunk in the world that has at least one viewer

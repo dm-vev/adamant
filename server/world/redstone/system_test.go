@@ -32,7 +32,7 @@ func TestSchedulerRoutesCrossChunkEvents(t *testing.T) {
 
 	sched.QueueLocal(chunkA, Event{Kind: EventSignalRise, Tick: 1})
 
-	sched.Step(ctx, 1)
+	_ = sched.Step(ctx, 1)
 
 	if got := len(factory.Events(chunkA)); got != 1 {
 		t.Fatalf("expected chunk A to process 1 event, got %d", got)
@@ -41,7 +41,7 @@ func TestSchedulerRoutesCrossChunkEvents(t *testing.T) {
 		t.Fatalf("expected chunk B to have no events on tick 1, got %d", got)
 	}
 
-	sched.Step(ctx, 2)
+	_ = sched.Step(ctx, 2)
 
 	eventsB := factory.Events(chunkB)
 	if len(eventsB) != 1 {
@@ -119,7 +119,7 @@ func TestSchedulerWatchdogPenalisesChunk(t *testing.T) {
 
 	penalised := false
 	for tick := int64(1); tick <= 6; tick++ {
-		sched.Step(context.Background(), tick)
+		_ = sched.Step(context.Background(), tick)
 		if sched.penalty[id] > 0 {
 			penalised = true
 			break

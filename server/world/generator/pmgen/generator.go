@@ -1,7 +1,6 @@
 package pmgen
 
 import (
-	"runtime"
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -14,10 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/pmgen/rand"
 )
 
-const (
-	SmoothSize          = 2
-	populationQueueSize = 1024
-)
+const SmoothSize = 2
 
 var gaussianKernel = [5][5]float64{
 	{
@@ -63,8 +59,7 @@ type Generator struct {
 	noise       *simplex
 	selector    *biomeSelector
 
-	world           atomic.Pointer[world.World]
-	populationQueue chan PopulationEntry
+	world atomic.Pointer[world.World]
 
 	// cached runtime IDs initialised after the block registry is finalised
 	bedrockRID uint32
@@ -77,13 +72,6 @@ type Generator struct {
 // world block registry is finalised during server construction. We cache
 // them per-generator in New once the world is bound.
 
-type PopulationEntry struct {
-	ChunkPos  world.ChunkPos
-	Chunk     *chunk.Chunk
-	Populator populate.Populator
-	Random    *rand.Random
-}
-
 // New creates a pm-gen generator independent of a world. Population is
 // started when BindWorld is called.
 func New(seed int64) *Generator {
@@ -94,10 +82,9 @@ func New(seed int64) *Generator {
 	selector.recalculate()
 
 	g := &Generator{
-		seed:            seed,
-		noise:           noise,
-		selector:        selector,
-		populationQueue: make(chan PopulationEntry, populationQueueSize),
+		seed:     seed,
+		noise:    noise,
+		selector: selector,
 	}
 
 	// Resolve and cache commonly used runtime IDs now that the registry
@@ -107,8 +94,6 @@ func New(seed int64) *Generator {
 	g.airRID = world.BlockRuntimeID(block.Air{})
 	g.waterRID = world.BlockRuntimeID(block.Water{Depth: 8, Still: true})
 
-	go g.populate()
-
 	return g
 }
 
@@ -116,22 +101,6 @@ func New(seed int64) *Generator {
 // call multiple times; population starts only once.
 func (g *Generator) BindWorld(w *world.World) {
 	g.world.Store(w)
-}
-
-func (g *Generator) waitWorld() *world.World {
-	for {
-		if w := g.world.Load(); w != nil {
-			return w
-		}
-		runtime.Gosched()
-	}
-}
-
-func (g *Generator) populate() {
-	for entry := range g.populationQueue {
-		w := g.waitWorld()
-		entry.Populator.Populate(w, entry.ChunkPos, entry.Chunk, entry.Random)
-	}
 }
 
 func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
@@ -231,17 +200,19 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	}
 
 	centreBiome := biomeCols[7][7]
-	for _, populator := range append([]populate.Populator{populate.Ore{Types: []populate.OreType{
-		{block.CoalOre{}, block.Stone{}, 20, 16, 0, 128},
-		{block.IronOre{}, block.Stone{}, 20, 8, 0, 64},
-		//{ block.RedstoneOre{}, block.Stone{}, 8, 7, 0, 16 }, // TODO
-		{block.LapisOre{}, block.Stone{}, 1, 6, 0, 32},
-		{block.GoldOre{}, block.Stone{}, 2, 8, 0, 32},
-		{block.DiamondOre{}, block.Stone{}, 1, 7, 0, 16},
-		{block.Dirt{}, block.Stone{}, 20, 32, 0, 128},
-		{block.Gravel{}, block.Stone{}, 10, 16, 0, 128},
-	}}}, centreBiome.Populators()...) {
-		g.populationQueue <- PopulationEntry{ChunkPos: pos, Chunk: c, Populator: populator, Random: r}
+	if w := g.world.Load(); w != nil {
+		for _, populator := range append([]populate.Populator{populate.Ore{Types: []populate.OreType{
+			{block.CoalOre{}, block.Stone{}, 20, 16, 0, 128},
+			{block.IronOre{}, block.Stone{}, 20, 8, 0, 64},
+			//{ block.RedstoneOre{}, block.Stone{}, 8, 7, 0, 16 }, // TODO
+			{block.LapisOre{}, block.Stone{}, 1, 6, 0, 32},
+			{block.GoldOre{}, block.Stone{}, 2, 8, 0, 32},
+			{block.DiamondOre{}, block.Stone{}, 1, 7, 0, 16},
+			{block.Dirt{}, block.Stone{}, 20, 32, 0, 128},
+			{block.Gravel{}, block.Stone{}, 10, 16, 0, 128},
+		}}}, centreBiome.Populators()...) {
+			populator.Populate(w, pos, c, r)
+		}
 	}
 }
 

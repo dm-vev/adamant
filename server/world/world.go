@@ -101,9 +101,163 @@ func (w *World) refreshRedstoneGraph(pos ChunkPos, col *Column) {
 	w.redstone.UpdateGraph(redstoneChunkID(pos), w.buildRedstoneGraph(pos, col))
 }
 
-func (w *World) buildRedstoneGraph(_ ChunkPos, _ *Column) redstone.Graph {
+func (w *World) buildRedstoneGraph(pos ChunkPos, col *Column) redstone.Graph {
 	gen := w.redstoneGen.Add(1)
-	return redstone.Graph{Gen: gen}
+	if col == nil {
+		return redstone.Graph{Gen: gen}
+	}
+
+	baseX := int(pos[0] << 4)
+	baseZ := int(pos[1] << 4)
+	r := w.Range()
+	minY, maxY := int(r[0]), int(r[1])
+
+	nodes := make([]redstone.Node, 0, 32)
+	states := make([]redstone.NodeState, 0, 32)
+	posIndex := make(map[cube.Pos]int)
+
+	addNode := func(kind redstone.NodeKind, bp cube.Pos, data uint16, state redstone.NodeState) {
+		node := redstone.Node{
+			ID:   redstone.NodeID(len(nodes)),
+			Kind: kind,
+			Data: data,
+			Pos:  bp,
+		}
+		nodes = append(nodes, node)
+		states = append(states, state)
+		posIndex[bp] = len(nodes) - 1
+	}
+
+	for x := 0; x < 16; x++ {
+		for z := 0; z < 16; z++ {
+			for y := minY; y <= maxY; y++ {
+				bp := cube.Pos{baseX + x, y, baseZ + z}
+				blk := w.blockInChunk(col, bp)
+				name, props := blk.EncodeBlock()
+				switch name {
+				case "minecraft:lever":
+					powered := extractBoolProperty(props, "open_bit")
+					addNode(redstone.NodePowerSource, bp, redstone.SourceSubtypeLever, redstone.NodeState{
+						Power:  boolToPower(powered),
+						Active: powered,
+					})
+				case "minecraft:redstone_wire":
+					power := extractIntProperty(props, "redstone_signal")
+					addNode(redstone.NodeWire, bp, 0, redstone.NodeState{
+						Power: power,
+					})
+				case "minecraft:redstone_lamp", "minecraft:lit_redstone_lamp":
+					lit := name == "minecraft:lit_redstone_lamp"
+					addNode(redstone.NodeLamp, bp, 0, redstone.NodeState{
+						Power:  boolToPower(lit),
+						Active: lit,
+					})
+				}
+			}
+		}
+	}
+
+	if len(nodes) == 0 {
+		return redstone.Graph{Gen: gen}
+	}
+
+	adjacency := make([][]redstone.NodeID, len(nodes))
+	directions := []cube.Pos{
+		{1, 0, 0},
+		{-1, 0, 0},
+		{0, 0, 1},
+		{0, 0, -1},
+	}
+
+	for idx, node := range nodes {
+		for _, delta := range directions {
+			np := cube.Pos{node.Pos[0] + delta[0], node.Pos[1] + delta[1], node.Pos[2] + delta[2]}
+			if j, ok := posIndex[np]; ok {
+				adjacency[idx] = append(adjacency[idx], nodes[j].ID)
+			}
+		}
+	}
+
+	offsets := make([]uint32, len(nodes)+1)
+	total := 0
+	flatAdj := make([]redstone.NodeID, 0, len(nodes)*4)
+	for i := range nodes {
+		offsets[i] = uint32(total)
+		flatAdj = append(flatAdj, adjacency[i]...)
+		total += len(adjacency[i])
+	}
+	offsets[len(nodes)] = uint32(total)
+
+	graph := redstone.Graph{
+		Gen:       gen,
+		Palette:   nodes,
+		Offsets:   offsets,
+		Adjacency: flatAdj,
+		States:    states,
+	}
+	graph.Reindex()
+	return graph
+}
+
+func boolToPower(active bool) uint8 {
+	if active {
+		return 15
+	}
+	return 0
+}
+
+func extractBoolProperty(props map[string]any, key string) bool {
+	if props == nil {
+		return false
+	}
+	if v, ok := props[key]; ok {
+		switch value := v.(type) {
+		case bool:
+			return value
+		case int:
+			return value != 0
+		case int32:
+			return value != 0
+		case int64:
+			return value != 0
+		case uint8:
+			return value != 0
+		case uint32:
+			return value != 0
+		}
+	}
+	return false
+}
+
+func extractIntProperty(props map[string]any, key string) uint8 {
+	if props == nil {
+		return 0
+	}
+	if v, ok := props[key]; ok {
+		switch value := v.(type) {
+		case int:
+			return clampUint8(value)
+		case int32:
+			return clampUint8(int(value))
+		case int64:
+			return clampUint8(int(value))
+		case uint8:
+			return clampUint8(int(value))
+		case uint32:
+			return clampUint8(int(value))
+		}
+	}
+	return 0
+}
+
+func clampUint8(v int) uint8 {
+	if v < 0 {
+		return 0
+	}
+	if v > 15 {
+		return 15
+	}
+	return uint8(v)
 }
 
 func (w *World) currentTick() int64 {
@@ -186,16 +340,7 @@ type ExecFunc func(tx *Tx)
 // that is closed once the transaction is complete.
 func (w *World) Exec(f ExecFunc) <-chan struct{} {
 	c := make(chan struct{})
-	w.queue <- normalTransaction{c: c, f: f, allowChunkGen: true}
-	return c
-}
-
-// ExecNoChunkGen performs a synchronised transaction on a World without allowing
-// the transaction to cause new chunk generation. Existing chunks may still be
-// modified safely.
-func (w *World) ExecNoChunkGen(f ExecFunc) <-chan struct{} {
-	c := make(chan struct{})
-	w.queue <- normalTransaction{c: c, f: f, allowChunkGen: false}
+	w.queue <- normalTransaction{c: c, f: f}
 	return c
 }
 
@@ -394,6 +539,10 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 
 	if !opts.DisableBlockUpdates {
 		w.doBlockUpdatesAround(pos)
+	}
+
+	if w.redstone != nil {
+		w.refreshRedstoneGraph(chunkPosFromBlockPos(pos), c)
 	}
 }
 

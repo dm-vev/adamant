@@ -41,11 +41,11 @@ func (s *System) QueueLocal(id ChunkID, ev Event) {
 	s.scheduler.QueueLocal(id, ev)
 }
 
-func (s *System) Step(ctx context.Context, tick int64) {
+func (s *System) Step(ctx context.Context, tick int64) []Event {
 	if s == nil || s.scheduler == nil {
-		return
+		return nil
 	}
-	s.scheduler.Step(ctx, tick)
+	return s.scheduler.Step(ctx, tick)
 }
 
 func (s *System) Metrics() *Metrics {

@@ -16,7 +16,7 @@ type Tree struct {
 
 func (t Tree) Populate(w *world.World, pos world.ChunkPos, _ *chunk.Chunk, r *rand.Random) {
 	amount := r.Int31n(2) + int32(t.BaseAmount)
-	<-w.ExecNoChunkGen(func(tx *world.Tx) {
+	<-w.Exec(func(tx *world.Tx) {
 		for i := int32(0); i < amount; i++ {
 			x := int(r.Range(pos[0]*16, pos[0]*16+15))
 			z := int(r.Range(pos[1]*16, pos[1]*16+15))

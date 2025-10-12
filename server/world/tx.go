@@ -16,8 +16,6 @@ import (
 type Tx struct {
 	w      *World
 	closed bool
-
-	allowChunkGen bool
 }
 
 // Range returns the lower and upper bounds of the World that the Tx is
@@ -41,14 +39,6 @@ func (tx *Tx) Range() cube.Range {
 // needing to set a lot of blocks to the world. BuildStructure may be used
 // instead.
 func (tx *Tx) SetBlock(pos cube.Pos, b Block, opts *SetOpts) {
-	if !tx.allowChunkGen {
-		if pos.OutOfBounds(tx.Range()) {
-			return
-		}
-		if _, ok := tx.w.chunks[chunkPosFromBlockPos(pos)]; !ok {
-			return
-		}
-	}
 	tx.World().setBlock(pos, b, opts)
 }
 
@@ -56,19 +46,6 @@ func (tx *Tx) SetBlock(pos cube.Pos, b Block, opts *SetOpts) {
 // at that position, the chunk is loaded, or generated if it could not be found
 // in the world save, and the block returned.
 func (tx *Tx) Block(pos cube.Pos) Block {
-	if !tx.allowChunkGen {
-		if pos.OutOfBounds(tx.Range()) {
-			return air()
-		}
-		chPos := chunkPosFromBlockPos(pos)
-		c, ok := tx.w.chunks[chPos]
-		if !ok {
-			return air()
-		}
-		c.waitReady()
-		c.ensureLight(tx.w, chPos)
-		return tx.w.blockInChunk(c, pos)
-	}
 	return tx.World().block(pos)
 }
 
@@ -263,14 +240,12 @@ func (tx *Tx) close() {
 type normalTransaction struct {
 	c chan struct{}
 	f func(tx *Tx)
-
-	allowChunkGen bool
 }
 
 // Run creates a *Tx, calls ntx.f, closes the transaction and finally closes
 // ntx.c.
 func (ntx normalTransaction) Run(w *World) {
-	tx := &Tx{w: w, allowChunkGen: ntx.allowChunkGen}
+	tx := &Tx{w: w}
 	ntx.f(tx)
 	tx.close()
 	close(ntx.c)
@@ -291,7 +266,7 @@ type weakTransaction struct {
 func (wtx weakTransaction) Run(w *World) {
 	valid := !wtx.invalid.Load()
 	if valid {
-		tx := &Tx{w: w, allowChunkGen: true}
+		tx := &Tx{w: w}
 		wtx.f(tx)
 		tx.close()
 	}

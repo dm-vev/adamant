@@ -121,9 +121,9 @@ func (s *Scheduler) QueueLocal(id ChunkID, ev Event) {
 }
 
 // Step advances all registered workers for the tick, respecting determinism.
-func (s *Scheduler) Step(ctx context.Context, tick int64) {
+func (s *Scheduler) Step(ctx context.Context, tick int64) []Event {
 	if len(s.chunks) == 0 {
-		return
+		return nil
 	}
 	if s.dirty {
 		s.rebuildOrder()
@@ -132,6 +132,7 @@ func (s *Scheduler) Step(ctx context.Context, tick int64) {
 	for _, id := range s.router.SnapshotHot() {
 		hot[id] = struct{}{}
 	}
+	outputs := make([]Event, 0, len(s.chunks))
 	for _, id := range s.order {
 		worker := s.chunks[id]
 		if worker == nil {
@@ -158,12 +159,16 @@ func (s *Scheduler) Step(ctx context.Context, tick int64) {
 		} else {
 			delete(hot, id)
 		}
+		if len(res.Outputs) > 0 {
+			outputs = append(outputs, res.Outputs...)
+		}
 		if s.metrics != nil {
 			s.metrics.AddOps(id, uint64(res.Ops))
 			s.metrics.SetQueueSize(id, res.QueueLen)
 		}
 		s.updateWatchdog(id, res.Ops, budget)
 	}
+	return outputs
 }
 
 func (s *Scheduler) rebuildOrder() {
