@@ -63,41 +63,53 @@ func (s statusCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 }
 
 var (
-	cpuSampleMu       sync.Mutex
-	cpuSampleLastTime time.Time
-	cpuSampleLastUsed float64
+    cpuSampleMu       sync.Mutex
+    cpuSampleLastTime time.Time
+    cpuSampleLastTotal float64
+    cpuSampleLastIdle  float64
 )
 
 func sampleAverageCPULoad() (float64, bool) {
-	samples := []metrics.Sample{
-		{Name: "/sched/cpu_seconds_total"},
-	}
-	metrics.Read(samples)
-	total := samples[0].Value.Float64()
-	now := time.Now()
+    samples := []metrics.Sample{
+        {Name: "/cpu/classes/total:cpu-seconds"},
+        {Name: "/cpu/classes/idle:cpu-seconds"},
+    }
+    metrics.Read(samples)
 
-	cpuSampleMu.Lock()
-	defer cpuSampleMu.Unlock()
+    // Guard against unexpected value kinds to prevent panics on Float64().
+    if samples[0].Value.Kind() != metrics.KindFloat64 || samples[1].Value.Kind() != metrics.KindFloat64 {
+        return 0, false
+    }
 
-	ready := !cpuSampleLastTime.IsZero()
-	deltaTime := now.Sub(cpuSampleLastTime).Seconds()
-	deltaUsed := total - cpuSampleLastUsed
+    total := samples[0].Value.Float64()
+    idle := samples[1].Value.Float64()
+    now := time.Now()
 
-	cpuSampleLastTime = now
-	cpuSampleLastUsed = total
+    cpuSampleMu.Lock()
+    defer cpuSampleMu.Unlock()
 
-	if !ready || deltaTime <= 0 || deltaUsed < 0 {
-		return 0, false
-	}
+    ready := !cpuSampleLastTime.IsZero()
+    deltaTime := now.Sub(cpuSampleLastTime).Seconds()
+    deltaTotal := total - cpuSampleLastTotal
+    deltaIdle := idle - cpuSampleLastIdle
 
-	usage := (deltaUsed / deltaTime / float64(runtime.NumCPU())) * 100
-	if usage < 0 {
-		usage = 0
-	}
-	if usage > 100 {
-		usage = 100
-	}
-	return usage, true
+    cpuSampleLastTime = now
+    cpuSampleLastTotal = total
+    cpuSampleLastIdle = idle
+
+    if !ready || deltaTime <= 0 || deltaTotal <= 0 || deltaIdle < 0 {
+        return 0, false
+    }
+
+    // Utilization is the fraction of total CPU time that was not idle.
+    usage := ((deltaTotal - deltaIdle) / deltaTotal) * 100
+    if usage < 0 {
+        usage = 0
+    }
+    if usage > 100 {
+        usage = 100
+    }
+    return usage, true
 }
 
 func bytesToMiB(v uint64) float64 {
