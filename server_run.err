@@ -1,0 +1,13 @@
+2025/10/12 16:31:07 pprof on :6060
+2025/10/12 16:31:07 INFO Listener running. addr=[::]:19132
+2025/10/12 16:31:07 DEBUG Loading dimension... dimension=overworld
+2025/10/12 16:31:07 INFO Opened dimension. dimension=overworld name=World
+2025/10/12 16:31:07 DEBUG Loading dimension... dimension=nether
+2025/10/12 16:31:07 INFO Opened dimension. dimension=nether name=World
+2025/10/12 16:31:07 DEBUG Loading dimension... dimension=end
+2025/10/12 16:31:07 INFO Opened dimension. dimension=end name=World
+2025/10/12 16:31:07 INFO Dragonfly server started. mc-version=1.21.111 go-version=go1.25.2 commit=""
+2025/10/12 16:33:21 DEBUG entity runtime ID not found name=gigfighter uuid=aecfa243-ac87-3244-a867-034cfb18441a raddr=127.0.0.1:59153 UUID=00000000-0000-0000-86c4-fdab3bcac1ee
+2025/10/12 16:33:21 DEBUG entity runtime ID not found name=gigfighter uuid=aecfa243-ac87-3244-a867-034cfb18441a raddr=127.0.0.1:59153 UUID=00000000-0000-0000-86c4-fdab3bcac1ee
+2025/10/12 16:33:24 DEBUG entity runtime ID not found name=gigfighter uuid=aecfa243-ac87-3244-a867-034cfb18441a raddr=127.0.0.1:59153 UUID=00000000-0000-0000-bdc1-1e184115bd83
+2025/10/12 16:33:24 DEBUG entity runtime ID not found name=gigfighter uuid=aecfa243-ac87-3244-a867-034cfb18441a raddr=127.0.0.1:59153 UUID=00000000-0000-0000-bdc1-1e184115bd83

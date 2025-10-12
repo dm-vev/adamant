@@ -1234,11 +1234,16 @@ func (w *World) spreadLight(pos ChunkPos) {
 	c := make([]*chunk.Chunk, 0, 9)
 	for z := int32(-1); z <= 1; z++ {
 		for x := int32(-1); x <= 1; x++ {
-			neighbour, ok := w.chunks[ChunkPos{pos[0] + x, pos[1] + z}]
+			neighbourPos := ChunkPos{pos[0] + x, pos[1] + z}
+			neighbour, ok := w.chunks[neighbourPos]
 			if !ok {
 				// Not all surrounding chunks existed: Stop spreading light.
 				return
 			}
+			// Ensure the neighbouring chunk has its light initialised before spreading
+			// light into it. Without this, accessing light data may panic when the
+			// chunk's light slices haven't been prepared yet.
+			neighbour.ensureLight(w, neighbourPos)
 			c = append(c, neighbour.Chunk)
 		}
 	}
