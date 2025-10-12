@@ -106,8 +106,6 @@ const (
 	hashLeaves
 	hashLectern
 	hashLever
-	hashRedstoneDust
-	hashRedstoneLamp
 	hashLight
 	hashLilyPad
 	hashLitPumpkin
@@ -608,14 +606,6 @@ func (l Lever) Hash() (uint64, uint64) {
 	return hashLever, state
 }
 
-func (d RedstoneDust) Hash() (uint64, uint64) {
-	return hashRedstoneDust, uint64(d.Power)
-}
-
-func (l RedstoneLamp) Hash() (uint64, uint64) {
-	return hashRedstoneLamp, uint64(boolByte(l.Lit))
-}
-
 func (l Light) Hash() (uint64, uint64) {
 	return hashLight, uint64(l.Level)
 }
@@ -947,7 +937,3 @@ func (t WoodTrapdoor) Hash() (uint64, uint64) {
 func (w Wool) Hash() (uint64, uint64) {
 	return hashWool, uint64(w.Colour.Uint8())
 }
-
-
-
-

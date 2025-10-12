@@ -40,3 +40,6 @@ func allRedstoneLamps() []world.Block {
 		RedstoneLamp{Lit: true},
 	}
 }
+
+// Hash implements world.Block. Returning zeros forces slow-path by name/properties.
+func (RedstoneLamp) Hash() (uint64, uint64) { return 0, 0 }

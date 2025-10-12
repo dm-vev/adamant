@@ -73,3 +73,6 @@ func allRedstoneDust() []world.Block {
 	}
 	return blocks
 }
+
+// Hash implements world.Block. Returning zeros forces slow-path by name/properties.
+func (RedstoneDust) Hash() (uint64, uint64) { return 0, 0 }
