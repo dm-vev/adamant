@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"iter"
 	"maps"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"sync"
@@ -57,6 +58,8 @@ type World struct {
 	entities map[*EntityHandle]ChunkPos
 
 	r *rand.Rand
+
+	tps atomic.Uint64
 
 	// scheduledUpdates is a map of tick time values indexed by the block
 	// position at which an update is scheduled. If the current tick exceeds the
@@ -105,6 +108,24 @@ func (w *World) Dimension() Dimension {
 // equivalent to calling World.Dimension().Range().
 func (w *World) Range() cube.Range {
 	return w.ra
+}
+
+// TPS returns the current average ticks per second of the world. The value is
+// averaged over the last tpsSampleSize ticks and may be zero if no samples have
+// been recorded yet.
+func (w *World) TPS() float64 {
+	return math.Float64frombits(w.tps.Load())
+}
+
+// LoadedChunkCount returns the number of chunks currently kept in memory by the
+// world.
+func (w *World) LoadedChunkCount() int {
+	return len(w.chunks)
+}
+
+// EntityCount returns the number of entities tracked by the world.
+func (w *World) EntityCount() int {
+	return len(w.entities)
 }
 
 // ExecFunc is a function that performs a synchronised transaction on a World.
@@ -1256,13 +1277,24 @@ func (w *World) autoSave() {
 	}
 }
 
+// CollectGarbage closes chunks that have no viewers and returns the number of
+// chunks, entities and block entities that were removed as a result.
+func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, blockEntitiesCollected int) {
+	for pos, c := range w.chunks {
+		if len(c.viewers) != 0 {
+			continue
+		}
+		chunksCollected++
+		entitiesCollected += len(c.Entities)
+		blockEntitiesCollected += len(c.BlockEntities)
+		w.closeChunk(tx, pos, c)
+	}
+	return
+}
+
 // closeUnusedChunk is called every 5 minutes by autoSave.
 func (w *World) closeUnusedChunks(tx *Tx) {
-	for pos, c := range w.chunks {
-		if len(c.viewers) == 0 {
-			w.closeChunk(tx, pos, c)
-		}
-	}
+	w.CollectGarbage(tx)
 }
 
 // Column represents the data of a chunk including the (block) entities and
@@ -1280,7 +1312,10 @@ type Column struct {
 	ready      atomic.Bool
 	readyCh    chan struct{}
 	lightOnce  sync.Once
-	lightReady atomic.Bool
+	ready     atomic.Bool
+	readyCh   chan struct{}
+	lightOnce sync.Once
+  lightReady atomic.Bool
 }
 
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
