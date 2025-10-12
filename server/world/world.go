@@ -1109,8 +1109,14 @@ func (w *World) removeViewer(tx *Tx, pos ChunkPos, loader *Loader) {
 	}
 
 	// Hide all entities in the chunk from the viewer.
-	for _, entity := range c.Entities {
-		loader.viewer.HideEntity(entity.mustEntity(tx))
+	if loader.viewer != nil {
+		for _, entity := range c.Entities {
+			loader.viewer.HideEntity(entity.mustEntity(tx))
+		}
+	}
+
+	if len(c.viewers) == 0 && len(c.loaders) == 0 {
+		w.closeChunk(tx, pos, c)
 	}
 }
 
