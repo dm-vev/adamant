@@ -160,6 +160,14 @@ func (srv *Server) World() *world.World {
 	return srv.world
 }
 
+// StartTime returns the time the server started listening for connections.
+func (srv *Server) StartTime() time.Time {
+	if t := srv.started.Load(); t != nil {
+		return *t
+	}
+	return time.Time{}
+}
+
 // Nether returns the nether world of the server. Players are transported to it
 // when entering a nether portal in the world returned by the World method.
 func (srv *Server) Nether() *world.World {
@@ -393,9 +401,9 @@ func (srv *Server) makeBlockEntries() {
 // registered custom items. It allows item components to be created only once
 // at startup
 func (srv *Server) makeItemComponents() {
-    custom := world.CustomItems()
-    // Preallocate capacity but start with zero length to avoid unused zero entries.
-    srv.customItems = make([]protocol.ItemEntry, 0, len(custom))
+	custom := world.CustomItems()
+	// Preallocate capacity but start with zero length to avoid unused zero entries.
+	srv.customItems = make([]protocol.ItemEntry, 0, len(custom))
 
 	for _, it := range custom {
 		name, _ := it.EncodeItem()

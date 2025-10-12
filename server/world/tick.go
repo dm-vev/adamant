@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"maps"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"time"
@@ -14,15 +15,52 @@ type ticker struct {
 	interval time.Duration
 }
 
+const (
+	tpsSampleSize       = 20
+	tpsWarningThreshold = 19.0
+)
+
 // tickLoop starts ticking the World 20 times every second, updating all
 // entities, blocks and other features such as the time and weather of the
 // world, as required.
 func (t ticker) tickLoop(w *World) {
 	tc := time.NewTicker(t.interval)
 	defer tc.Stop()
+	lastTick := time.Now()
+	var (
+		durationSum time.Duration
+		ticksCount  int
+		warned      bool
+	)
 	for {
 		select {
 		case <-tc.C:
+			tickStart := time.Now()
+			duration := tickStart.Sub(lastTick)
+			lastTick = tickStart
+			if duration > 0 {
+				durationSum += duration
+				ticksCount++
+				if ticksCount >= tpsSampleSize {
+					avg := durationSum / time.Duration(ticksCount)
+					if avg > 0 {
+						tps := 1.0 / avg.Seconds()
+						w.tps.Store(math.Float64bits(tps))
+						if tps < tpsWarningThreshold {
+							if !warned {
+								w.conf.Log.Warn("TPS dropped below threshold.", "tps", tps)
+								warned = true
+							}
+						} else if warned {
+							warned = false
+						}
+					} else {
+						w.tps.Store(math.Float64bits(0))
+					}
+					durationSum = 0
+					ticksCount = 0
+				}
+			}
 			<-w.Exec(t.tick)
 		case <-w.closing:
 			// World is being closed: Stop ticking and get rid of a task.
@@ -338,14 +376,14 @@ func (queue *scheduledTickQueue) fromChunk(pos ChunkPos) []scheduledTick {
 
 // removeChunk removes all scheduled ticks positioned within a ChunkPos.
 func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
-    queue.ticks = slices.DeleteFunc(queue.ticks, func(tick scheduledTick) bool {
-        return chunkPosFromBlockPos(tick.pos) == pos
-    })
-    // Also remove any furthest tick entries that belong to this chunk to avoid
-    // retaining references after the chunk is closed.
-    maps.DeleteFunc(queue.furthestTicks, func(index scheduledTickIndex, _ int64) bool {
-        return chunkPosFromBlockPos(index.pos) == pos
-    })
+	queue.ticks = slices.DeleteFunc(queue.ticks, func(tick scheduledTick) bool {
+		return chunkPosFromBlockPos(tick.pos) == pos
+	})
+	// Also remove any furthest tick entries that belong to this chunk to avoid
+	// retaining references after the chunk is closed.
+	maps.DeleteFunc(queue.furthestTicks, func(index scheduledTickIndex, _ int64) bool {
+		return chunkPosFromBlockPos(index.pos) == pos
+	})
 }
 
 // add adds a slice of scheduled ticks to the queue. It assumes no duplicate

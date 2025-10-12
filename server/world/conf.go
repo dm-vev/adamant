@@ -2,6 +2,7 @@ package world
 
 import (
 	"log/slog"
+	"math"
 	"math/rand/v2"
 	"time"
 )
@@ -100,6 +101,7 @@ func (conf Config) New() *World {
 	w.weather = weather{w: w}
 	var h Handler = NopHandler{}
 	w.handler.Store(&h)
+	w.tps.Store(math.Float64bits(20))
 
 	w.queueing.Add(1)
 	w.running.Add(2)
