@@ -338,9 +338,14 @@ func (queue *scheduledTickQueue) fromChunk(pos ChunkPos) []scheduledTick {
 
 // removeChunk removes all scheduled ticks positioned within a ChunkPos.
 func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
-	queue.ticks = slices.DeleteFunc(queue.ticks, func(tick scheduledTick) bool {
-		return chunkPosFromBlockPos(tick.pos) == pos
-	})
+    queue.ticks = slices.DeleteFunc(queue.ticks, func(tick scheduledTick) bool {
+        return chunkPosFromBlockPos(tick.pos) == pos
+    })
+    // Also remove any furthest tick entries that belong to this chunk to avoid
+    // retaining references after the chunk is closed.
+    maps.DeleteFunc(queue.furthestTicks, func(index scheduledTickIndex, _ int64) bool {
+        return chunkPosFromBlockPos(index.pos) == pos
+    })
 }
 
 // add adds a slice of scheduled ticks to the queue. It assumes no duplicate

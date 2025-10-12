@@ -5,3 +5,10 @@
 /world/
 /players/
 /resources/
+
+/Lumi-master
+/pm-gen-master
+
+dragonfly.exe
+heap*
+goroutines.txt

@@ -1,12 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"log/slog"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+
 	"github.com/df-mc/dragonfly/server"
+	"github.com/df-mc/dragonfly/server/cmd/builtin"
+	"github.com/df-mc/dragonfly/server/console"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/pelletier/go-toml"
-	"log/slog"
-	"os"
 )
 
 func main() {
@@ -16,9 +23,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	go func() {
+		log.Println("pprof on :6060")
+		_ = http.ListenAndServe(":6060", nil)
+	}()
 
 	srv := conf.New()
+	builtin.Register(srv)
 	srv.CloseOnProgramEnd()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go console.New(srv, conf.Log).Run(ctx)
 
 	srv.Listen()
 	for p := range srv.Accept() {

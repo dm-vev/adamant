@@ -17,6 +17,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/generator"
+	"github.com/df-mc/dragonfly/server/world/generator/pmgen"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -95,6 +96,10 @@ type Config struct {
 	// of the dimensions (with netherrack and end stone for nether/end
 	// respectively).
 	Generator func(dim world.Dimension) world.Generator
+	// OverworldSeed is the seed used by the default overworld generator when
+	// Generator is not supplied. A value of 0 is valid and results in a fixed
+	// world layout identical to Java's seed 0.
+	OverworldSeed int64
 	// RandomTickSpeed specifies the rate at which blocks should be ticked in
 	// the default worlds. Setting this value to -1 or lower will stop random
 	// ticking altogether, while setting it higher results in faster ticking. If
@@ -133,7 +138,7 @@ func (conf Config) New() *Server {
 		conf.WorldProvider = world.NopProvider{}
 	}
 	if conf.Generator == nil {
-		conf.Generator = loadGenerator
+		conf.Generator = defaultGeneratorProvider(conf.OverworldSeed)
 	}
 	if conf.MaxChunkRadius == 0 {
 		conf.MaxChunkRadius = 12
@@ -211,6 +216,10 @@ type UserConfig struct {
 		SaveData bool
 		// Folder is the folder that the data of the world resides in.
 		Folder string
+		// Seed controls the procedural generation of the overworld when no custom
+		// generator is provided. This value is passed directly to the pm-gen terrain
+		// generator.
+		Seed int64
 	}
 	Players struct {
 		// MaxCount is the maximum amount of players allowed to join the server
@@ -258,6 +267,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		MaxPlayers:              uc.Players.MaxCount,
 		MaxChunkRadius:          uc.Players.MaximumChunkRadius,
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
+		OverworldSeed:           uc.World.Seed,
 	}
 	if !uc.Server.DisableJoinQuitMessages {
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
@@ -300,19 +310,20 @@ func loadResources(dir string) ([]*resource.Pack, error) {
 	return packs, nil
 }
 
-// loadGenerator loads a standard world.Generator for a world.Dimension. The
-// generators returned are flat generators with grass/dirt, netherrack or end
-// stone depending on the dimension passed.
-func loadGenerator(dim world.Dimension) world.Generator {
-	switch dim {
-	case world.Overworld:
-		return generator.NewFlat(biome.Plains{}, []world.Block{block.Grass{}, block.Dirt{}, block.Dirt{}, block.Bedrock{}})
-	case world.Nether:
-		return generator.NewFlat(biome.NetherWastes{}, []world.Block{block.Netherrack{}, block.Netherrack{}, block.Netherrack{}, block.Bedrock{}})
-	case world.End:
-		return generator.NewFlat(biome.End{}, []world.Block{block.EndStone{}, block.EndStone{}, block.EndStone{}, block.Bedrock{}})
+// defaultGeneratorProvider returns the generator function to use when none is supplied by the user configuration.
+// The overworld utilises pm-gen, while the other dimensions remain flat generators for now.
+func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Generator {
+	return func(dim world.Dimension) world.Generator {
+		switch dim {
+		case world.Overworld:
+			return pmgen.NewOverworld(seed)
+		case world.Nether:
+			return generator.NewFlat(biome.NetherWastes{}, []world.Block{block.Netherrack{}, block.Netherrack{}, block.Netherrack{}, block.Bedrock{}})
+		case world.End:
+			return generator.NewFlat(biome.End{}, []world.Block{block.EndStone{}, block.EndStone{}, block.EndStone{}, block.Bedrock{}})
+		}
+		panic("should never happen")
 	}
-	panic("should never happen")
 }
 
 // DefaultConfig returns a configuration with the default values filled out.
@@ -323,6 +334,7 @@ func DefaultConfig() UserConfig {
 	c.Server.AuthEnabled = true
 	c.World.SaveData = true
 	c.World.Folder = "world"
+	c.World.Seed = 0
 	c.Players.MaximumChunkRadius = 32
 	c.Players.SaveData = true
 	c.Players.Folder = "players"

@@ -102,6 +102,8 @@ type playerData struct {
 	once sync.Once
 
 	prevWorld *world.World
+
+	fishingHook *world.EntityHandle
 }
 
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players
@@ -332,25 +334,13 @@ func (p *Player) ExecuteCommand(commandLine string) {
 	if p.Dead() {
 		return
 	}
-	args := strings.Split(commandLine, " ")
-
-	name, ok := strings.CutPrefix(args[0], "/")
-	if !ok {
-		return
-	}
-
-	command, ok := cmd.ByAlias(name)
-	if !ok {
-		o := &cmd.Output{}
-		o.Errort(cmd.MessageUnknown, name)
-		p.SendCommandOutput(o)
-		return
-	}
-	ctx := event.C(p)
-	if p.Handler().HandleCommandExecution(ctx, command, args[1:]); ctx.Cancelled() {
-		return
-	}
-	command.Execute(strings.Join(args[1:], " "), p, p.tx)
+	cmd.ExecuteLine(p, commandLine, p.tx, func(command cmd.Command, args []string) bool {
+		ctx := event.C(p)
+		if p.Handler().HandleCommandExecution(ctx, command, args); ctx.Cancelled() {
+			return false
+		}
+		return true
+	})
 }
 
 // Transfer transfers the player to a server at the address passed. If the address could not be resolved, an
@@ -847,6 +837,8 @@ func (p *Player) kill(src world.DamageSource) {
 	}
 
 	p.addHealth(-p.MaxHealth())
+
+	p.StopFishing(p.tx, false)
 
 	keepInv := false
 	p.Handler().HandleDeath(p, src, &keepInv)
@@ -1368,6 +1360,87 @@ func (p *Player) SetCooldown(item world.Item, cooldown time.Duration) {
 	name, _ := item.EncodeItem()
 	p.cooldowns[name] = time.Now().Add(cooldown)
 	p.session().ViewItemCooldown(item, cooldown)
+}
+
+// IsFishing reports if the player currently has an active fishing hook.
+func (p *Player) IsFishing() bool {
+	if p.fishingHook == nil {
+		return false
+	}
+	if _, ok := p.fishingHook.Entity(p.tx); !ok {
+		p.fishingHook = nil
+		return false
+	}
+	return true
+}
+
+// StartFishing casts a new fishing hook if possible.
+func (p *Player) StartFishing(tx *world.Tx, rod item.Stack) bool {
+	if p.fishingHook != nil {
+		if _, ok := p.fishingHook.Entity(tx); ok {
+			return false
+		}
+		p.fishingHook = nil
+	}
+	create := tx.World().EntityRegistry().Config().FishingHook
+	if create == nil {
+		return false
+	}
+	pos := p.Position().Add(mgl64.Vec3{0, p.EyeHeight(), 0})
+	velocity := p.Rotation().Vec3().Mul(1.5)
+	handle := create(world.EntitySpawnOpts{Position: pos, Velocity: velocity}, p, rod)
+	tx.AddEntity(handle)
+	p.fishingHook = handle
+	return true
+}
+
+// StopFishing stops fishing for the player and optionally reels in the hook.
+func (p *Player) StopFishing(tx *world.Tx, reel bool) bool {
+	if p.fishingHook == nil {
+		return false
+	}
+	handle := p.fishingHook
+	p.fishingHook = nil
+	ent, ok := handle.Entity(tx)
+	if !ok {
+		_ = handle.Close()
+		return false
+	}
+	hook, ok := ent.(*entity.Ent)
+	if !ok {
+		_ = ent.Close()
+		return false
+	}
+	behaviour, ok := hook.Behaviour().(*entity.FishingHookBehaviour)
+	if !ok {
+		_ = hook.Close()
+		return false
+	}
+	damage := false
+	if reel {
+		loot, xp, pulled := behaviour.Reel(hook, tx)
+		hookPos := hook.Position()
+		if !loot.Empty() {
+			dropPos := hookPos
+			dropPos[1] = behaviour.SurfaceHeight(tx, cube.PosFromVec3(hookPos))
+			motion := behaviour.PullVelocity(p, dropPos)
+			tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: dropPos, Velocity: motion}, loot))
+			if xp > 0 {
+				for _, orb := range entity.NewExperienceOrbs(dropPos, xp) {
+					tx.AddEntity(orb)
+				}
+			}
+			damage = true
+		}
+		if pulled != nil {
+			if setter, ok := pulled.(interface{ SetVelocity(mgl64.Vec3) }); ok {
+				setter.SetVelocity(behaviour.PullVelocity(p, hookPos))
+				damage = true
+			}
+		}
+	}
+	_ = hook.Close()
+	return damage
 }
 
 // UseItem uses the item currently held in the player's main hand in the air. Generally, nothing happens,
@@ -2060,6 +2133,7 @@ func (p *Player) Teleport(pos mgl64.Vec3) {
 	if p.Handler().HandleTeleport(ctx, pos); ctx.Cancelled() {
 		return
 	}
+	p.StopFishing(p.tx, false)
 	p.teleport(pos)
 }
 
@@ -2997,6 +3071,7 @@ func (p *Player) close(msg string) {
 }
 
 func (p *Player) quit(msg string) {
+	p.StopFishing(p.tx, false)
 	p.h.HandleQuit(p)
 	p.h = NopHandler{}
 

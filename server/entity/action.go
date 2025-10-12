@@ -51,6 +51,15 @@ type FireworkExplosionAction struct{ action }
 // TotemUseAction is a world.EntityAction that displays the totem use particles and animation.
 type TotemUseAction struct{ action }
 
+// FishHookBubbleAction triggers the bubbling animation for a fishing hook.
+type FishHookBubbleAction struct{ action }
+
+// FishHookBiteAction triggers the hook time animation indicating a bite occurred.
+type FishHookBiteAction struct{ action }
+
+// FishHookTeaseAction triggers the tease animation when a fish is attracted to the hook.
+type FishHookTeaseAction struct{ action }
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}

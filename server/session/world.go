@@ -1029,6 +1029,21 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventTalismanActivate,
 		})
+	case entity.FishHookBubbleAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventFishhookBubble,
+		})
+	case entity.FishHookBiteAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventFishhookHookTime,
+		})
+	case entity.FishHookTeaseAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventFishhookTease,
+		})
 	}
 }
 

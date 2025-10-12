@@ -176,6 +176,18 @@ type User interface {
 	UseItem()
 }
 
+// FishingUser represents an item.User that has fishing state.
+type FishingUser interface {
+	User
+	// IsFishing reports whether the user currently has an active fishing hook.
+	IsFishing() bool
+	// StartFishing attempts to spawn and cast a fishing hook using the provided rod stack.
+	StartFishing(tx *world.Tx, rod Stack) bool
+	// StopFishing stops fishing for this user. If reel is true, the user actively reeled in the hook.
+	// The returned bool indicates if the fishing rod should take durability damage.
+	StopFishing(tx *world.Tx, reel bool) bool
+}
+
 // Carrier represents an entity that is able to carry an item.
 type Carrier interface {
 	world.Entity

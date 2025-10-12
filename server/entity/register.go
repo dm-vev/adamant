@@ -14,6 +14,7 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	ArrowType,
 	BottleOfEnchantingType,
 	EggType,
+	FishingHookType,
 	EnderPearlType,
 	ExperienceOrbType,
 	FallingBlockType,
@@ -57,5 +58,12 @@ var conf = world.EntityRegistryConfig{
 		}
 		conf.Critical = critical
 		return opts.New(ArrowType, conf)
+	},
+	FishingHook: func(opts world.EntitySpawnOpts, owner world.Entity, rod any) *world.EntityHandle {
+		stack, ok := rod.(item.Stack)
+		if !ok {
+			panic("world.EntityRegistryConfig.FishingHook: rod must be item.Stack")
+		}
+		return opts.New(FishingHookType, FishingHookConfig{Owner: owner.H(), Rod: stack})
 	},
 }

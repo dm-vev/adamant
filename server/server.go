@@ -393,8 +393,9 @@ func (srv *Server) makeBlockEntries() {
 // registered custom items. It allows item components to be created only once
 // at startup
 func (srv *Server) makeItemComponents() {
-	custom := world.CustomItems()
-	srv.customItems = make([]protocol.ItemEntry, len(custom))
+    custom := world.CustomItems()
+    // Preallocate capacity but start with zero length to avoid unused zero entries.
+    srv.customItems = make([]protocol.ItemEntry, 0, len(custom))
 
 	for _, it := range custom {
 		name, _ := it.EncodeItem()
@@ -572,11 +573,12 @@ func (srv *Server) createWorld(dim world.Dimension, nether, end **world.World) *
 	logger := srv.conf.Log.With("dimension", strings.ToLower(fmt.Sprint(dim)))
 	logger.Debug("Loading dimension...")
 
+	gen := srv.conf.Generator(dim)
 	conf := world.Config{
 		Log:             logger,
 		Dim:             dim,
 		Provider:        srv.conf.WorldProvider,
-		Generator:       srv.conf.Generator(dim),
+		Generator:       gen,
 		RandomTickSpeed: srv.conf.RandomTickSpeed,
 		ReadOnly:        srv.conf.ReadOnlyWorld,
 		Entities:        srv.conf.Entities,
@@ -590,6 +592,9 @@ func (srv *Server) createWorld(dim world.Dimension, nether, end **world.World) *
 		},
 	}
 	w := conf.New()
+	if binder, ok := gen.(interface{ BindWorld(*world.World) }); ok {
+		binder.BindWorld(w)
+	}
 	logger.Info("Opened dimension.", "name", w.Name())
 	return w
 }
