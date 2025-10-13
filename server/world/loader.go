@@ -158,10 +158,10 @@ func (l *Loader) world(new *World) {
 // evictUnused gets rid of chunks in the loaded map which are no longer within the chunk radius of the loader,
 // and should therefore be removed.
 func (l *Loader) evictUnused(tx *Tx) {
+	maxDistanceSquared := int64(l.r * l.r)
 	for pos := range l.loaded {
-		diffX, diffZ := pos[0]-l.pos[0], pos[1]-l.pos[1]
-		dist := math.Sqrt(float64(diffX*diffX) + float64(diffZ*diffZ))
-		if int(dist) > l.r {
+		diffX, diffZ := int64(pos[0]-l.pos[0]), int64(pos[1]-l.pos[1])
+		if diffX*diffX+diffZ*diffZ > maxDistanceSquared {
 			delete(l.loaded, pos)
 			l.w.removeViewer(tx, pos, l)
 		}
@@ -199,7 +199,7 @@ func (l *Loader) populateLoadQueue() {
 	}
 
 	l.loadQueue = l.loadQueue[:0]
-	for i := int32(0); i < r; i++ {
+	for i := int32(0); i <= r; i++ {
 		l.loadQueue = append(l.loadQueue, queue[i]...)
 	}
 }
