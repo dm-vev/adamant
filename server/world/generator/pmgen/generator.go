@@ -118,38 +118,45 @@ func (g *Generator) BindWorld(w *world.World) {
 }
 
 func (g *Generator) populate() {
+jobLoop:
 	for job := range g.populationQueue {
 		w := g.world.Load()
 		for w == nil {
 			runtime.Gosched()
 			w = g.world.Load()
 		}
-		var (
-			skip  bool
-			ready bool
-		)
-		<-w.Exec(func(tx *world.Tx) {
-			loaded, chunkReady := tx.ChunkState(job.pos)
-			if !loaded {
-				skip = true
-				return
+
+		for {
+			var (
+				skip  bool
+				ready bool
+				wait  <-chan struct{}
+			)
+			<-w.Exec(func(tx *world.Tx) {
+				loaded, chunkReady := tx.ChunkState(job.pos)
+				if !loaded {
+					skip = true
+					return
+				}
+				if chunkReady {
+					ready = true
+					return
+				}
+				wait, _ = tx.ChunkReadySignal(job.pos)
+			})
+			if skip {
+				continue jobLoop
 			}
-			ready = chunkReady
-		})
-		if skip {
-			continue
-		}
-		if !ready {
-			select {
-			case g.populationQueue <- job:
-			default:
-				go func(j populationJob) {
-					g.populationQueue <- j
-				}(job)
+			if ready {
+				break
 			}
-			runtime.Gosched()
-			continue
+			if wait != nil {
+				<-wait
+			} else {
+				runtime.Gosched()
+			}
 		}
+
 		r := job.random
 		for _, populator := range job.populators {
 			populator.Populate(w, job.pos, nil, &r)
