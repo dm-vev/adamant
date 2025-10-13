@@ -199,6 +199,10 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 
 	centreBiome := biomeCols[7][7]
 	if w := g.world.Load(); w != nil {
+		// Execute population asynchronously once the chunk is marked ready so
+		// that populators may access the world without blocking chunk
+		// generation waiting on itself.
+		rr := *r
 		populators := append([]populate.Populator{populate.Ore{Types: []populate.OreType{
 			{block.CoalOre{}, block.Stone{}, 20, 16, 0, 128},
 			{block.IronOre{}, block.Stone{}, 20, 8, 0, 64},
@@ -209,9 +213,11 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 			{block.Dirt{}, block.Stone{}, 20, 32, 0, 128},
 			{block.Gravel{}, block.Stone{}, 10, 16, 0, 128},
 		}}}, centreBiome.Populators()...)
-		for _, populator := range populators {
-			populator.Populate(w, pos, c, r)
-		}
+		go func(r rand.Random, populators []populate.Populator) {
+			for _, populator := range populators {
+				populator.Populate(w, pos, nil, &r)
+			}
+		}(rr, populators)
 	}
 }
 
