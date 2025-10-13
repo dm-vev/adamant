@@ -1,16 +1,16 @@
 package pmgen
 
 import (
-    "sync"
+	"sync/atomic"
 
-    "github.com/df-mc/dragonfly/server/block"
-    "github.com/df-mc/dragonfly/server/block/model"
-    "github.com/df-mc/dragonfly/server/world"
-    dfbiome "github.com/df-mc/dragonfly/server/world/biome"
-    "github.com/df-mc/dragonfly/server/world/chunk"
-    pmBiome "github.com/df-mc/dragonfly/server/world/generator/pmgen/biome"
-    "github.com/df-mc/dragonfly/server/world/generator/pmgen/populate"
-    "github.com/df-mc/dragonfly/server/world/generator/pmgen/rand"
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/world"
+	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
+	"github.com/df-mc/dragonfly/server/world/chunk"
+	pmBiome "github.com/df-mc/dragonfly/server/world/generator/pmgen/biome"
+	"github.com/df-mc/dragonfly/server/world/generator/pmgen/populate"
+	"github.com/df-mc/dragonfly/server/world/generator/pmgen/rand"
 )
 
 const SmoothSize = 2
@@ -54,68 +54,50 @@ var gaussianKernel = [5][5]float64{
 }
 
 type Generator struct {
-    seed        int64
-    waterHeight int
-    noise       *simplex
-    selector    *biomeSelector
+	seed        int64
+	waterHeight int
+	noise       *simplex
+	selector    *biomeSelector
 
-    populationQueue chan PopulationEntry
+	// cached runtime IDs initialised after the block registry is finalised
+	bedrockRID uint32
+	stoneRID   uint32
+	airRID     uint32
+	waterRID   uint32
 
-    // cached runtime IDs initialised after the block registry is finalised
-    bedrockRID uint32
-    stoneRID   uint32
-    airRID     uint32
-    waterRID   uint32
-
-    popOnce sync.Once
-}
-
-// Runtime IDs must not be resolved at package init time because the
-// world block registry is finalised during server construction. We cache
-// them per-generator in New once the world is bound.
-
-type PopulationEntry struct {
-	ChunkPos  world.ChunkPos
-	Chunk     *chunk.Chunk
-	Populator populate.Populator
-	Random    *rand.Random
+	world atomic.Pointer[world.World]
 }
 
 // New creates a pm-gen generator independent of a world. Population is
 // started when BindWorld is called.
 func New(seed int64) *Generator {
-    r := rand.NewRandom(seed)
-    noise := newSimplex(r, 4, 1.0/4, 1.0/32)
-    r.SetSeed(seed)
-    selector := newBiomeSelector(r)
-    selector.recalculate()
+	r := rand.NewRandom(seed)
+	noise := newSimplex(r, 4, 1.0/4, 1.0/32)
+	r.SetSeed(seed)
+	selector := newBiomeSelector(r)
+	selector.recalculate()
 
-    g := &Generator{
-        seed:            seed,
-        noise:           noise,
-        selector:        selector,
-        populationQueue: make(chan PopulationEntry, 99999),
-    }
+	g := &Generator{
+		seed:     seed,
+		noise:    noise,
+		selector: selector,
+	}
 
-    // Resolve and cache commonly used runtime IDs now that the registry
-    // has been finalised by the server initialisation.
-    g.bedrockRID = world.BlockRuntimeID(block.Bedrock{})
-    g.stoneRID = world.BlockRuntimeID(block.Stone{})
-    g.airRID = world.BlockRuntimeID(block.Air{})
-    g.waterRID = world.BlockRuntimeID(block.Water{Depth: 8, Still: true})
+	// Resolve and cache commonly used runtime IDs now that the registry
+	// has been finalised by the server initialisation.
+	g.bedrockRID = world.BlockRuntimeID(block.Bedrock{})
+	g.stoneRID = world.BlockRuntimeID(block.Stone{})
+	g.airRID = world.BlockRuntimeID(block.Air{})
+	g.waterRID = world.BlockRuntimeID(block.Water{Depth: 8, Still: true})
 
-    return g
+	return g
 }
 
-// BindWorld starts population routines bound to the provided world. Safe to
-// call multiple times; population starts only once.
+// BindWorld provides the world handle used during chunk population. It is safe
+// to call multiple times; the latest non-nil world is stored.
 func (g *Generator) BindWorld(w *world.World) {
-    g.popOnce.Do(func() { go g.populate(w) })
-}
-
-func (g *Generator) populate(w *world.World) {
-	for populator := range g.populationQueue {
-		populator.Populator.Populate(w, populator.ChunkPos, populator.Chunk, populator.Random)
+	if w != nil {
+		g.world.Store(w)
 	}
 }
 
@@ -167,18 +149,18 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 			smoothHeight := (maxSum - minSum) / 2
 
 			for y := 0; y < 128; y++ {
-                if y == 0 {
-                    c.SetBlock(uint8(x), int16(y), uint8(z), 0, g.bedrockRID)
-                    continue
-                }
-                const waterHeight = 62
+				if y == 0 {
+					c.SetBlock(uint8(x), int16(y), uint8(z), 0, g.bedrockRID)
+					continue
+				}
+				const waterHeight = 62
 
-                noiseValue := noise[x][z][y] - 1.0/smoothHeight*(float64(y)-smoothHeight-minSum)
-                if noiseValue > 0 {
-                    c.SetBlock(uint8(x), int16(y), uint8(z), 0, g.stoneRID)
-                } else if y <= waterHeight {
-                    c.SetBlock(uint8(x), int16(y), uint8(z), 0, g.waterRID)
-                }
+				noiseValue := noise[x][z][y] - 1.0/smoothHeight*(float64(y)-smoothHeight-minSum)
+				if noiseValue > 0 {
+					c.SetBlock(uint8(x), int16(y), uint8(z), 0, g.stoneRID)
+				} else if y <= waterHeight {
+					c.SetBlock(uint8(x), int16(y), uint8(z), 0, g.waterRID)
+				}
 			}
 		}
 	}
@@ -197,36 +179,39 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 				end := start - int16(len(cov))
 				for y := start; y > end && y >= 0; y-- {
 					blockDef := cov[start-y]
-                current := c.Block(x, y, z, 0)
-                if current == g.airRID && (blockDef.Model() == model.Solid{}) {
-                    break
-                }
-                if _, ok := blockDef.(block.LiquidRemovable); ok {
-                    bl, _ := world.BlockByRuntimeID(current)
-                    if _, ok = bl.(world.Liquid); ok {
-                        continue
-                    }
-                }
+					current := c.Block(x, y, z, 0)
+					if current == g.airRID && (blockDef.Model() == model.Solid{}) {
+						break
+					}
+					if _, ok := blockDef.(block.LiquidRemovable); ok {
+						bl, _ := world.BlockByRuntimeID(current)
+						if _, ok = bl.(world.Liquid); ok {
+							continue
+						}
+					}
 
-                rid := world.BlockRuntimeID(blockDef)
-                c.SetBlock(x, y, z, 0, rid)
+					rid := world.BlockRuntimeID(blockDef)
+					c.SetBlock(x, y, z, 0, rid)
 				}
 			}
 		}
 	}
 
 	centreBiome := biomeCols[7][7]
-	for _, populator := range append([]populate.Populator{populate.Ore{Types: []populate.OreType{
-		{block.CoalOre{}, block.Stone{}, 20, 16, 0, 128},
-		{block.IronOre{}, block.Stone{}, 20, 8, 0, 64},
-		//{ block.RedstoneOre{}, block.Stone{}, 8, 7, 0, 16 }, // TODO
-		{block.LapisOre{}, block.Stone{}, 1, 6, 0, 32},
-		{block.GoldOre{}, block.Stone{}, 2, 8, 0, 32},
-		{block.DiamondOre{}, block.Stone{}, 1, 7, 0, 16},
-		{block.Dirt{}, block.Stone{}, 20, 32, 0, 128},
-		{block.Gravel{}, block.Stone{}, 10, 16, 0, 128},
-	}}}, centreBiome.Populators()...) {
-		g.populationQueue <- PopulationEntry{ChunkPos: pos, Chunk: c, Populator: populator, Random: r}
+	if w := g.world.Load(); w != nil {
+		populators := append([]populate.Populator{populate.Ore{Types: []populate.OreType{
+			{block.CoalOre{}, block.Stone{}, 20, 16, 0, 128},
+			{block.IronOre{}, block.Stone{}, 20, 8, 0, 64},
+			//{ block.RedstoneOre{}, block.Stone{}, 8, 7, 0, 16 }, // TODO
+			{block.LapisOre{}, block.Stone{}, 1, 6, 0, 32},
+			{block.GoldOre{}, block.Stone{}, 2, 8, 0, 32},
+			{block.DiamondOre{}, block.Stone{}, 1, 7, 0, 16},
+			{block.Dirt{}, block.Stone{}, 20, 32, 0, 128},
+			{block.Gravel{}, block.Stone{}, 10, 16, 0, 128},
+		}}}, centreBiome.Populators()...)
+		for _, populator := range populators {
+			populator.Populate(w, pos, c, r)
+		}
 	}
 }
 
