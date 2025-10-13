@@ -42,7 +42,18 @@ func (tx *Tx) SetBlock(pos cube.Pos, b Block, opts *SetOpts) {
 }
 
 func (tx *Tx) ChunkLoaded(pos ChunkPos) bool {
-	return tx.w.chunkLoaded(pos)
+	_, ready := tx.ChunkState(pos)
+	return ready
+}
+
+// ChunkState reports whether a chunk at the given position is currently tracked by the world and whether it has
+// finished generation. The second value is only meaningful if the first is true.
+func (tx *Tx) ChunkState(pos ChunkPos) (loaded bool, ready bool) {
+	c, ok := tx.w.chunks[pos]
+	if !ok {
+		return false, false
+	}
+	return true, c.Ready()
 }
 
 // Block reads a block from the position passed. If a chunk is not yet loaded
