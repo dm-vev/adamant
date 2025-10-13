@@ -124,6 +124,15 @@ func (g *Generator) populate() {
 			runtime.Gosched()
 			w = g.world.Load()
 		}
+		skip := false
+		<-w.Exec(func(tx *world.Tx) {
+			if !tx.ChunkLoaded(job.pos) {
+				skip = true
+			}
+		})
+		if skip {
+			continue
+		}
 		r := job.random
 		for _, populator := range job.populators {
 			populator.Populate(w, job.pos, nil, &r)

@@ -1179,6 +1179,13 @@ func (w *World) chunkIfReady(pos ChunkPos) (*Column, bool) {
 	return c, true
 }
 
+func (w *World) chunkLoaded(pos ChunkPos) bool {
+	if c, ok := w.chunks[pos]; ok {
+		return c.Ready()
+	}
+	return false
+}
+
 // loadChunk attempts to load a chunk from the provider, or generates a chunk
 // if one doesn't currently exist.
 func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
