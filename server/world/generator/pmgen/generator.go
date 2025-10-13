@@ -124,13 +124,30 @@ func (g *Generator) populate() {
 			runtime.Gosched()
 			w = g.world.Load()
 		}
-		skip := false
+		var (
+			skip  bool
+			ready bool
+		)
 		<-w.Exec(func(tx *world.Tx) {
-			if !tx.ChunkLoaded(job.pos) {
+			loaded, chunkReady := tx.ChunkState(job.pos)
+			if !loaded {
 				skip = true
+				return
 			}
+			ready = chunkReady
 		})
 		if skip {
+			continue
+		}
+		if !ready {
+			select {
+			case g.populationQueue <- job:
+			default:
+				go func(j populationJob) {
+					g.populationQueue <- j
+				}(job)
+			}
+			runtime.Gosched()
 			continue
 		}
 		r := job.random
