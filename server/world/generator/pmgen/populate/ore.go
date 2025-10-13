@@ -16,6 +16,9 @@ type Ore struct {
 
 func (o Ore) Populate(w *world.World, pos world.ChunkPos, _ *chunk.Chunk, r *rand.Random) {
 	<-w.Exec(func(tx *world.Tx) {
+		if !tx.ChunkLoaded(pos) {
+			return
+		}
 		for _, ore := range o.Types {
 			for i := 0; i < ore.ClusterCount; i++ {
 				p := cube.Pos{
