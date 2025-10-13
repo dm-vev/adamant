@@ -46,6 +46,16 @@ func (tx *Tx) ChunkLoaded(pos ChunkPos) bool {
 	return ready
 }
 
+// ChunkReadySignal returns a channel that is closed once the chunk at the given position finishes generation. The
+// second return value is false if the chunk is not currently tracked by the world.
+func (tx *Tx) ChunkReadySignal(pos ChunkPos) (<-chan struct{}, bool) {
+	c, ok := tx.w.chunks[pos]
+	if !ok {
+		return nil, false
+	}
+	return (<-chan struct{})(c.readyCh), true
+}
+
 // ChunkState reports whether a chunk at the given position is currently tracked by the world and whether it has
 // finished generation. The second value is only meaningful if the first is true.
 func (tx *Tx) ChunkState(pos ChunkPos) (loaded bool, ready bool) {
