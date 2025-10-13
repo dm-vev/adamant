@@ -1,6 +1,8 @@
 package pmgen
 
 import (
+	"runtime"
+	"sync"
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -59,6 +61,9 @@ type Generator struct {
 	noise       *simplex
 	selector    *biomeSelector
 
+	populationQueue chan populationJob
+	popOnce         sync.Once
+
 	// cached runtime IDs initialised after the block registry is finalised
 	bedrockRID uint32
 	stoneRID   uint32
@@ -66,6 +71,12 @@ type Generator struct {
 	waterRID   uint32
 
 	world atomic.Pointer[world.World]
+}
+
+type populationJob struct {
+	pos        world.ChunkPos
+	populators []populate.Populator
+	random     rand.Random
 }
 
 // New creates a pm-gen generator independent of a world. Population is
@@ -78,9 +89,10 @@ func New(seed int64) *Generator {
 	selector.recalculate()
 
 	g := &Generator{
-		seed:     seed,
-		noise:    noise,
-		selector: selector,
+		seed:            seed,
+		noise:           noise,
+		selector:        selector,
+		populationQueue: make(chan populationJob, 65536),
 	}
 
 	// Resolve and cache commonly used runtime IDs now that the registry
@@ -96,8 +108,26 @@ func New(seed int64) *Generator {
 // BindWorld provides the world handle used during chunk population. It is safe
 // to call multiple times; the latest non-nil world is stored.
 func (g *Generator) BindWorld(w *world.World) {
-	if w != nil {
-		g.world.Store(w)
+	if w == nil {
+		return
+	}
+	g.world.Store(w)
+	g.popOnce.Do(func() {
+		go g.populate()
+	})
+}
+
+func (g *Generator) populate() {
+	for job := range g.populationQueue {
+		w := g.world.Load()
+		for w == nil {
+			runtime.Gosched()
+			w = g.world.Load()
+		}
+		r := job.random
+		for _, populator := range job.populators {
+			populator.Populate(w, job.pos, nil, &r)
+		}
 	}
 }
 
@@ -198,12 +228,9 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	}
 
 	centreBiome := biomeCols[7][7]
-	if w := g.world.Load(); w != nil {
-		// Execute population asynchronously once the chunk is marked ready so
-		// that populators may access the world without blocking chunk
-		// generation waiting on itself.
-		rr := *r
-		populators := append([]populate.Populator{populate.Ore{Types: []populate.OreType{
+	job := populationJob{
+		pos: pos,
+		populators: append([]populate.Populator{populate.Ore{Types: []populate.OreType{
 			{block.CoalOre{}, block.Stone{}, 20, 16, 0, 128},
 			{block.IronOre{}, block.Stone{}, 20, 8, 0, 64},
 			//{ block.RedstoneOre{}, block.Stone{}, 8, 7, 0, 16 }, // TODO
@@ -212,13 +239,10 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 			{block.DiamondOre{}, block.Stone{}, 1, 7, 0, 16},
 			{block.Dirt{}, block.Stone{}, 20, 32, 0, 128},
 			{block.Gravel{}, block.Stone{}, 10, 16, 0, 128},
-		}}}, centreBiome.Populators()...)
-		go func(r rand.Random, populators []populate.Populator) {
-			for _, populator := range populators {
-				populator.Populate(w, pos, nil, &r)
-			}
-		}(rr, populators)
+		}}}, centreBiome.Populators()...),
+		random: *r,
 	}
+	g.populationQueue <- job
 }
 
 func (g *Generator) applyBiomeColumn(c *chunk.Chunk, x, z uint8, b pmBiome.Biome) {
