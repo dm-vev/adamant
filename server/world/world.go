@@ -953,6 +953,7 @@ func (w *World) Handle(h Handler) {
 	if h == nil {
 		h = NopHandler{}
 	}
+	h = wrapWorldHandler(w, h)
 	w.handler.Store(&h)
 }
 

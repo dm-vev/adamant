@@ -45,7 +45,9 @@ func New(size int, f SlotFunc) *Inventory {
 	if f == nil {
 		f = func(slot int, before, after item.Stack) {}
 	}
-	return &Inventory{h: NopHandler{}, slots: make([]item.Stack, size), f: f, validator: func(s item.Stack, slot int) bool { return true }}
+	inv := &Inventory{h: NopHandler{}, slots: make([]item.Stack, size), f: f, validator: func(s item.Stack, slot int) bool { return true }}
+	inv.Handle(inv.h)
+	return inv
 }
 
 // Clone copies an Inventory and returns it, calling the SlotFunc passed for any
@@ -54,7 +56,9 @@ func (inv *Inventory) Clone(f SlotFunc) *Inventory {
 	if f == nil {
 		f = func(slot int, before, after item.Stack) {}
 	}
-	return &Inventory{h: NopHandler{}, slots: inv.Slots(), f: f, validator: func(s item.Stack, slot int) bool { return true }}
+	inv2 := &Inventory{h: NopHandler{}, slots: inv.Slots(), f: f, validator: func(s item.Stack, slot int) bool { return true }}
+	inv2.Handle(inv2.h)
+	return inv2
 }
 
 // SlotFunc changes the function called when a slot in the inventory is changed.
@@ -351,7 +355,7 @@ func (inv *Inventory) Handle(h Handler) {
 	if h == nil {
 		h = NopHandler{}
 	}
-	inv.h = h
+	inv.h = wrapInventoryHandler(inv, h)
 }
 
 // Handler returns the Handler currently assigned to the Inventory. This is the NopHandler by default.
