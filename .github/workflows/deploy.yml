@@ -48,7 +48,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "dragonfly-server"
-          target: "/home/dragonfly/server/dragonfly-server.new"
+          target: "/home/dragonfly/server/"
+          strip_components: 0
           overwrite: true
 
       - name: Replace and restart
@@ -59,7 +60,8 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             echo "Replacing binary..."
-            mv -f /home/dragonfly/server/dragonfly-server.new /home/dragonfly/server/dragonfly-server
+            mv -f /home/dragonfly/server/dragonfly-server /home/dragonfly/server/dragonfly-server.old 2>/dev/null || true
+            mv -f /home/dragonfly/server/dragonfly-server /home/dragonfly/server/dragonfly-server.new 2>/dev/null || true
             chmod +x /home/dragonfly/server/dragonfly-server
             echo "Starting service..."
             sudo -n systemctl restart dragonfly.service
