@@ -32,7 +32,7 @@ func (t TallGrass) Populate(w *world.World, pos world.ChunkPos, _ *chunk.Chunk, 
 				if !inChunk(p, pos) {
 					continue
 				}
-				tx.SetBlock(p, tallGrass, nil)
+				tx.SetBlock(p, tallGrass, setOpts)
 			}
 		}
 	})

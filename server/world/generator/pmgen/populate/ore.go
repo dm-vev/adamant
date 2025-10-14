@@ -84,7 +84,7 @@ func (o OreType) Place(tx *world.Tx, chunkPos world.ChunkPos, pos cube.Pos, r *r
 							}
 
 							if (sizeX+sizeY+sizeZ) < 1 && tx.Block(target) == o.Replaces {
-								tx.SetBlock(target, o.Material, nil)
+								tx.SetBlock(target, o.Material, setOpts)
 							}
 						}
 					}
