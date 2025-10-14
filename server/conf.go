@@ -24,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
+	"strings"
 )
 
 // Config contains options for starting a Minecraft server.
