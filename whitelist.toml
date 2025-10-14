@@ -1,0 +1,2 @@
+# List of player names allowed to join the server when the whitelist is enabled.
+players = []

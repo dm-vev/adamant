@@ -53,6 +53,8 @@ type Server struct {
 	customBlocks []protocol.BlockEntry
 	customItems  []protocol.ItemEntry
 
+	whitelist *Whitelist
+
 	listeners []Listener
 	incoming  chan incoming
 
@@ -198,6 +200,38 @@ func (srv *Server) PlayerCount() int {
 	srv.pmu.RLock()
 	defer srv.pmu.RUnlock()
 	return len(srv.p)
+}
+
+// WhitelistEnabled reports if the whitelist is currently enforced on the server.
+func (srv *Server) WhitelistEnabled() bool {
+	if srv.whitelist == nil {
+		return false
+	}
+	return srv.whitelist.Enabled()
+}
+
+// WhitelistAdd adds a player name to the whitelist.
+func (srv *Server) WhitelistAdd(name string) (bool, error) {
+	if srv.whitelist == nil {
+		return false, ErrWhitelistUnavailable
+	}
+	return srv.whitelist.Add(name)
+}
+
+// WhitelistRemove removes a player name from the whitelist.
+func (srv *Server) WhitelistRemove(name string) (bool, error) {
+	if srv.whitelist == nil {
+		return false, ErrWhitelistUnavailable
+	}
+	return srv.whitelist.Remove(name)
+}
+
+// WhitelistEntries returns the list of names currently present in the whitelist.
+func (srv *Server) WhitelistEntries() ([]string, error) {
+	if srv.whitelist == nil {
+		return nil, ErrWhitelistUnavailable
+	}
+	return srv.whitelist.Players(), nil
 }
 
 // Players returns an iterator that yields players currently online. If Players
