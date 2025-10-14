@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/resource"
+	"strings"
 )
 
 // Config contains options for starting a Minecraft server.
@@ -171,6 +172,9 @@ func (conf Config) New() *Server {
 		p:        make(map[uuid.UUID]*onlinePlayer),
 		world:    &world.World{}, nether: &world.World{}, end: &world.World{},
 	}
+	if wl, ok := conf.Allower.(*Whitelist); ok {
+		srv.whitelist = wl
+	}
 	for _, lf := range conf.Listeners {
 		l, err := lf(conf)
 		if err != nil {
@@ -271,6 +275,12 @@ type UserConfig struct {
 		// on join. If they do not accept, they'll have to leave the server.
 		Required bool
 	}
+	Whitelist struct {
+		// Enabled controls if the whitelist should be enforced for players attempting to join.
+		Enabled bool
+		// File is the path to the whitelist TOML file that stores player names.
+		File string
+	}
 }
 
 // Config converts a UserConfig to a Config, so that it may be used for creating
@@ -291,6 +301,10 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		GeneratorWorkers:        uc.World.GeneratorWorkers,
 		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
 	}
+	whitelistFile := strings.TrimSpace(uc.Whitelist.File)
+	if whitelistFile == "" {
+		whitelistFile = "whitelist.toml"
+	}
 	if !uc.Server.DisableJoinQuitMessages {
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
 	}
@@ -304,6 +318,12 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	if err != nil {
 		return conf, fmt.Errorf("load resources: %w", err)
 	}
+	wl, err := LoadWhitelist(whitelistFile)
+	if err != nil {
+		return conf, fmt.Errorf("load whitelist: %w", err)
+	}
+	wl.SetEnabled(uc.Whitelist.Enabled)
+	conf.Allower = wl
 	if uc.Players.SaveData {
 		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
 		if err != nil {
@@ -363,6 +383,7 @@ func DefaultConfig() UserConfig {
 	c.Resources.AutoBuildPack = true
 	c.Resources.Folder = "resources"
 	c.Resources.Required = false
+	c.Whitelist.File = "whitelist.toml"
 	return c
 }
 
