@@ -216,7 +216,7 @@ func (p *Player) Handle(h Handler) {
 	if h == nil {
 		h = NopHandler{}
 	}
-	p.h = h
+	p.h = wrapPlayerHandler(p, h)
 }
 
 // Message sends a formatted message to the player. The message is formatted following the rules of

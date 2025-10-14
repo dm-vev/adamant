@@ -54,3 +54,15 @@
   Folder = "resources"
   # Required configures whether the server will require players to have a resource pack to join.
   Required = true
+
+[Plugins]
+  # Enabled toggles the dynamic plugin subsystem entirely.
+  Enabled = true
+  # Folder configures the directory from which plugins are discovered and loaded.
+  Folder = "plugins"
+  # DataFolder controls where plugin-specific state and configuration files are stored.
+  DataFolder = "plugin_data"
+  # Autoload controls automatic discovery of all shared libraries in the folder above.
+  Autoload = true
+  # Files allows loading additional plugins; entries without an absolute path are resolved against Folder.
+  Files = []

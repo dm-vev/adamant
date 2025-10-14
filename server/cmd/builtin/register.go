@@ -10,6 +10,7 @@ func Register(srv serverAdapter) {
 	cmd.Register(newHelpCommand())
 	cmd.Register(newListCommand(srv))
 	cmd.Register(newStatusCommand(srv))
+	cmd.Register(newPluginCommand(srv))
 	cmd.Register(newSayCommand())
 	cmd.Register(newMeCommand())
 	cmd.Register(newStopCommand(srv))

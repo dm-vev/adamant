@@ -134,5 +134,6 @@ func (conf Config) New() *World {
 	go w.handleTransactions()
 
 	<-w.Exec(t.tick)
+	w.Handle(w.Handler())
 	return w
 }

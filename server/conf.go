@@ -11,9 +11,11 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/internal/packbuilder"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
+	"github.com/df-mc/dragonfly/server/plugin"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/generator"
@@ -118,6 +120,8 @@ type Config struct {
 	// may be added to the Server's worlds. If no entity types are registered,
 	// Entities will be set to entity.DefaultRegistry.
 	Entities world.EntityRegistry
+	// Plugins describes how dynamic plugins should be loaded when the server starts.
+	Plugins plugin.Config
 }
 
 // New creates a Server using fields of conf. The Server's worlds are created
@@ -157,6 +161,13 @@ func (conf Config) New() *Server {
 	if len(conf.Entities.Types()) == 0 {
 		conf.Entities = entity.DefaultRegistry
 	}
+	if conf.Plugins.Directory == "" {
+		conf.Plugins.Directory = "plugins"
+	}
+	if conf.Plugins.Enabled && !conf.Plugins.Autoload && len(conf.Plugins.Files) == 0 {
+		conf.Plugins.Autoload = true
+	}
+	conf.Plugins.Files = slices.Clone(conf.Plugins.Files)
 	if !conf.DisableResourceBuilding {
 		if pack, ok := packbuilder.BuildResourcePack(); ok {
 			conf.Resources = append(conf.Resources, pack)
@@ -171,6 +182,10 @@ func (conf Config) New() *Server {
 		p:        make(map[uuid.UUID]*onlinePlayer),
 		world:    &world.World{}, nether: &world.World{}, end: &world.World{},
 	}
+	srv.plugins = plugin.NewManager(newPluginHost(srv), conf.Plugins)
+	player.SetHandlerWrap(srv.plugins.PlayerHandlerWrap)
+	world.SetHandlerWrap(srv.plugins.WorldHandlerWrap)
+	inventory.SetHandlerWrap(srv.plugins.InventoryHandlerWrap)
 	for _, lf := range conf.Listeners {
 		l, err := lf(conf)
 		if err != nil {
@@ -271,6 +286,20 @@ type UserConfig struct {
 		// on join. If they do not accept, they'll have to leave the server.
 		Required bool
 	}
+	Plugins struct {
+		// Enabled toggles the plugin subsystem entirely.
+		Enabled bool
+		// Folder controls the base directory that will be scanned for
+		// plugins when Autoload is enabled.
+		Folder string
+		// DataFolder controls where plugin data directories should be stored.
+		DataFolder string
+		// Autoload enables automatic discovery of all .so files in Folder.
+		Autoload bool
+		// Files enumerates additional plugin files to load relative to Folder
+		// unless an absolute path is supplied.
+		Files []string
+	}
 }
 
 // Config converts a UserConfig to a Config, so that it may be used for creating
@@ -311,6 +340,13 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		}
 	}
 	conf.Listeners = append(conf.Listeners, uc.listenerFunc)
+	conf.Plugins = plugin.Config{
+		Enabled:       uc.Plugins.Enabled,
+		Directory:     uc.Plugins.Folder,
+		DataDirectory: uc.Plugins.DataFolder,
+		Autoload:      uc.Plugins.Autoload,
+		Files:         slices.Clone(uc.Plugins.Files),
+	}
 	return conf, nil
 }
 
@@ -363,6 +399,9 @@ func DefaultConfig() UserConfig {
 	c.Resources.AutoBuildPack = true
 	c.Resources.Folder = "resources"
 	c.Resources.Required = false
+	c.Plugins.Enabled = true
+	c.Plugins.Folder = "plugins"
+	c.Plugins.Autoload = true
 	return c
 }
 

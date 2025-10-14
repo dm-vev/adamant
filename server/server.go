@@ -27,6 +27,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/skin"
+	"github.com/df-mc/dragonfly/server/plugin"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl32"
@@ -55,6 +56,8 @@ type Server struct {
 
 	listeners []Listener
 	incoming  chan incoming
+
+	plugins *plugin.Manager[*Server, Config]
 
 	pmu sync.RWMutex
 	// p holds a map of all players currently connected to the server. When they
@@ -95,6 +98,8 @@ func New() *Server {
 // until the listeners are closed using a call to Close. Once Listen is called,
 // players may be accepted using Server.Accept().
 func (srv *Server) Listen() {
+	srv.LoadPlugins()
+
 	t := time.Now()
 	if !srv.started.CompareAndSwap(nil, &t) {
 		panic("start server: already started")
@@ -314,6 +319,9 @@ func (srv *Server) close() {
 	}
 	srv.pwg.Wait()
 
+	srv.conf.Log.Debug("Disabling plugins...")
+	srv.disablePlugins()
+
 	srv.conf.Log.Debug("Closing player provider...")
 	if err := srv.conf.PlayerProvider.Close(); err != nil {
 		srv.conf.Log.Error("Close player provider: " + err.Error())
@@ -332,6 +340,69 @@ func (srv *Server) close() {
 			srv.conf.Log.Error("Close listener: " + err.Error())
 		}
 	}
+}
+
+// LoadPlugins initialises the plugin system and enables plugins based on the configuration.
+func (srv *Server) LoadPlugins() {
+	if srv.plugins == nil {
+		return
+	}
+	srv.plugins.LoadConfigured()
+}
+
+// PluginsEnabled reports whether the plugin subsystem is configured to run.
+func (srv *Server) PluginsEnabled() bool {
+	if srv.plugins == nil {
+		return false
+	}
+	return srv.plugins.Enabled()
+}
+
+// Plugins returns metadata for all loaded plugins.
+func (srv *Server) Plugins() []PluginInfo {
+	if srv.plugins == nil {
+		return nil
+	}
+	return srv.plugins.Infos()
+}
+
+// PluginByName returns a plugin by its name, performing a case-insensitive comparison.
+func (srv *Server) PluginByName(name string) (Plugin, bool) {
+	if srv.plugins == nil {
+		return nil, false
+	}
+	return srv.plugins.Plugin(name)
+}
+
+// EnablePlugin loads a plugin from the provided path and returns its metadata.
+func (srv *Server) EnablePlugin(path string) (PluginInfo, error) {
+	if srv.plugins == nil {
+		return PluginInfo{}, ErrPluginsDisabled
+	}
+	return srv.plugins.Enable(path)
+}
+
+// DisablePlugin disables a plugin by its case-insensitive name and returns its metadata.
+func (srv *Server) DisablePlugin(name string) (PluginInfo, error) {
+	if srv.plugins == nil {
+		return PluginInfo{}, ErrPluginsDisabled
+	}
+	return srv.plugins.Disable(name)
+}
+
+// ReloadPlugin disables and then re-enables a plugin by name, returning the reloaded metadata.
+func (srv *Server) ReloadPlugin(name string) (PluginInfo, error) {
+	if srv.plugins == nil {
+		return PluginInfo{}, ErrPluginsDisabled
+	}
+	return srv.plugins.Reload(name)
+}
+
+func (srv *Server) disablePlugins() {
+	if srv.plugins == nil {
+		return
+	}
+	srv.plugins.Shutdown()
 }
 
 // listen makes the Server listen for new connections from the Listener passed.
