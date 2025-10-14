@@ -412,10 +412,27 @@ func (m *Manager[S, C]) ensureDirectory() error {
 }
 
 func (m *Manager[S, C]) resolvePath(path string) string {
-	if filepath.IsAbs(path) {
-		return filepath.Clean(path)
+	if path == "" {
+		return ""
 	}
-	return filepath.Clean(filepath.Join(m.directory(), path))
+
+	cleaned := filepath.Clean(path)
+	if filepath.IsAbs(cleaned) {
+		return cleaned
+	}
+
+	dir := filepath.Clean(m.directory())
+	if cleaned == dir {
+		return dir
+	}
+
+	// Avoid double-joining the plugin directory when the caller already provided a
+	// path relative to it (for example "plugins/demo.so").
+	if rel, err := filepath.Rel(dir, cleaned); err == nil && rel != ".." && !strings.HasPrefix(rel, fmt.Sprintf("..%c", filepath.Separator)) {
+		return cleaned
+	}
+
+	return filepath.Clean(filepath.Join(dir, cleaned))
 }
 
 func (m *Manager[S, C]) dataRoot() string {

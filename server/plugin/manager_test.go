@@ -181,6 +181,28 @@ func TestManagerDirectoryResolution(t *testing.T) {
 	}
 }
 
+func TestManagerResolvePathExistingPrefix(t *testing.T) {
+	t.Parallel()
+
+	manager := NewManager[testServer, testConfig](testHost{}, Config{Enabled: true, Directory: "plugins"})
+
+	withPrefix := filepath.Join("plugins", "demo.so")
+	if got := manager.ResolvePath(withPrefix); got != withPrefix {
+		t.Fatalf("ResolvePath with prefix = %q, want %q", got, withPrefix)
+	}
+
+	nested := filepath.Join("plugins", "sub", "demo.so")
+	if got := manager.ResolvePath(nested); got != nested {
+		t.Fatalf("ResolvePath nested prefix = %q, want %q", got, nested)
+	}
+
+	withoutPrefix := "demo.so"
+	want := filepath.Join("plugins", withoutPrefix)
+	if got := manager.ResolvePath(withoutPrefix); got != want {
+		t.Fatalf("ResolvePath without prefix = %q, want %q", got, want)
+	}
+}
+
 type closingPlugin struct {
 	name   string
 	closed chan struct{}
