@@ -171,6 +171,7 @@ func (conf Config) New() *Server {
 		p:        make(map[uuid.UUID]*onlinePlayer),
 		world:    &world.World{}, nether: &world.World{}, end: &world.World{},
 	}
+	registerQueryServer(srv)
 	for _, lf := range conf.Listeners {
 		l, err := lf(conf)
 		if err != nil {
