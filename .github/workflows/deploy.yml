@@ -17,12 +17,22 @@ jobs:
         with:
           go-version: '1.25'
 
-      - name: Build
+      - name: Build binary
         run: |
           go mod tidy
           GOOS=linux GOARCH=amd64 go build -o dragonfly-server
 
-      - name: Upload binary to server
+      - name: Stop Dragonfly service
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            echo "Stopping dragonfly.service..."
+            sudo -n systemctl stop dragonfly.service || true
+
+      - name: Upload new binary
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -32,12 +42,16 @@ jobs:
           target: "/home/dragonfly/server/"
           overwrite: true
 
-      - name: Restart service remotely
+      - name: Restart and show status
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            sudo systemctl restart dragonfly.service
-            sudo systemctl status dragonfly.service --no-pager
+            echo "Starting dragonfly.service..."
+            sudo -n systemctl restart dragonfly.service
+            echo "Service status:"
+            sudo -n systemctl status dragonfly.service --no-pager
+            echo "Last 10 log lines:"
+            sudo journalctl -u dragonfly.service -n 10 --no-pager
