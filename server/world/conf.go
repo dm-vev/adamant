@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"math"
 	"math/rand/v2"
+	"runtime"
 	"time"
 )
 
@@ -30,6 +31,14 @@ type Config struct {
 	// the World. If set to nil, the Generator used will be NopGenerator, which
 	// generates completely empty chunks.
 	Generator Generator
+	// GeneratorWorkers specifies the number of background workers used to run
+	// chunk generation. If set to 0 or lower, a worker count matching the
+	// number of logical CPUs is used.
+	GeneratorWorkers int
+	// GeneratorQueueSize specifies the amount of chunk generation tasks that
+	// may be queued waiting for a worker. If set to 0 or lower, a queue size
+	// proportional to the worker count will be selected automatically.
+	GeneratorQueueSize int
 	// ReadOnly specifies if the World should be read-only, meaning no new data
 	// will be written to the Provider.
 	ReadOnly bool
@@ -76,6 +85,15 @@ func (conf Config) New() *World {
 	if conf.Generator == nil {
 		conf.Generator = NopGenerator{}
 	}
+	if conf.GeneratorWorkers <= 0 {
+		conf.GeneratorWorkers = runtime.NumCPU()
+	}
+	if conf.GeneratorWorkers <= 0 {
+		conf.GeneratorWorkers = 1
+	}
+	if conf.GeneratorQueueSize <= 0 {
+		conf.GeneratorQueueSize = conf.GeneratorWorkers * 4
+	}
 	if conf.RandomTickSpeed == 0 {
 		conf.RandomTickSpeed = 3
 	}
@@ -92,6 +110,7 @@ func (conf Config) New() *World {
 		queueClosing:     make(chan struct{}),
 		closing:          make(chan struct{}),
 		queue:            make(chan transaction, 128),
+		generatorQueue:   make(chan generationTask, conf.GeneratorQueueSize),
 		r:                rand.New(conf.RandSource),
 		advance:          s.ref.Add(1) == 1,
 		conf:             conf,
@@ -104,11 +123,14 @@ func (conf Config) New() *World {
 	w.tps.Store(math.Float64bits(20))
 
 	w.queueing.Add(1)
-	w.running.Add(2)
+	w.running.Add(conf.GeneratorWorkers + 2)
 
 	t := ticker{interval: time.Second / 20}
 	go t.tickLoop(w)
 	go w.autoSave()
+	for i := 0; i < conf.GeneratorWorkers; i++ {
+		go w.generatorWorker()
+	}
 	go w.handleTransactions()
 
 	<-w.Exec(t.tick)
