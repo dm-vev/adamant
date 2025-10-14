@@ -45,7 +45,7 @@ func (s statusCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	}
 
 	if cpuLoad, ready := sampleAverageCPULoad(); ready {
-		o.Printf("CPU load (per core): %.2f%% across %d cores", cpuLoad, runtime.NumCPU())
+		o.Printf("CPU load (per core): %.2f%% across %d cores", cpuLoad, runtime.GOMAXPROCS(0))
 	} else {
 		o.Print("CPU load: collecting baseline, try again shortly.")
 	}
@@ -63,41 +63,84 @@ func (s statusCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 }
 
 var (
-	cpuSampleMu       sync.Mutex
-	cpuSampleLastTime time.Time
-	cpuSampleLastUsed float64
+	cpuSampleMu          sync.Mutex
+	cpuSampleLastTime    time.Time
+	cpuSampleLastTotal   float64
+	cpuSampleLastIdle    float64
+	cpuSampleLastUsed    float64
+	cpuSampleCurrentMode cpuSampleMode
+)
+
+type cpuSampleMode int
+
+const (
+	cpuSampleModeUnknown cpuSampleMode = iota
+	cpuSampleModeClasses
+	cpuSampleModeLegacy
 )
 
 const (
-	cpuMetricNew = "/cpu/classes/total:cpu-seconds"
-	cpuMetricOld = "/sched/cpu_seconds_total"
+	cpuMetricTotal  = "/cpu/classes/total:cpu-seconds"
+	cpuMetricIdle   = "/cpu/classes/idle:cpu-seconds"
+	cpuMetricLegacy = "/sched/cpu_seconds_total"
 )
 
 func sampleAverageCPULoad() (float64, bool) {
-	total, ok := readRuntimeMetric(cpuMetricNew)
-	if !ok {
-		total, ok = readRuntimeMetric(cpuMetricOld)
-	}
-	if !ok {
-		return 0, false
-	}
+	total, totalOK := readRuntimeMetric(cpuMetricTotal)
+	idle, idleOK := readRuntimeMetric(cpuMetricIdle)
 	now := time.Now()
 
 	cpuSampleMu.Lock()
 	defer cpuSampleMu.Unlock()
 
-	ready := !cpuSampleLastTime.IsZero()
-	deltaTime := now.Sub(cpuSampleLastTime).Seconds()
-	deltaUsed := total - cpuSampleLastUsed
+	if totalOK && idleOK {
+		ready := cpuSampleCurrentMode == cpuSampleModeClasses && !cpuSampleLastTime.IsZero()
+		deltaTime := now.Sub(cpuSampleLastTime).Seconds()
+		deltaTotal := total - cpuSampleLastTotal
+		deltaIdle := idle - cpuSampleLastIdle
 
+		cpuSampleCurrentMode = cpuSampleModeClasses
+		cpuSampleLastTime = now
+		cpuSampleLastTotal = total
+		cpuSampleLastIdle = idle
+
+		if !ready || deltaTime <= 0 || deltaTotal <= 0 || deltaIdle < 0 {
+			return 0, false
+		}
+
+		used := deltaTotal - deltaIdle
+		if used < 0 {
+			used = 0
+		}
+
+		usage := (used / deltaTime / float64(runtime.GOMAXPROCS(0))) * 100
+		if usage < 0 {
+			usage = 0
+		}
+		if usage > 100 {
+			usage = 100
+		}
+		return usage, true
+	}
+
+	used, ok := readRuntimeMetric(cpuMetricLegacy)
+	if !ok {
+		return 0, false
+	}
+
+	ready := cpuSampleCurrentMode == cpuSampleModeLegacy && !cpuSampleLastTime.IsZero()
+	deltaTime := now.Sub(cpuSampleLastTime).Seconds()
+	deltaUsed := used - cpuSampleLastUsed
+
+	cpuSampleCurrentMode = cpuSampleModeLegacy
 	cpuSampleLastTime = now
-	cpuSampleLastUsed = total
+	cpuSampleLastUsed = used
 
 	if !ready || deltaTime <= 0 || deltaUsed < 0 {
 		return 0, false
 	}
 
-	usage := (deltaUsed / deltaTime / float64(runtime.NumCPU())) * 100
+	usage := (deltaUsed / deltaTime / float64(runtime.GOMAXPROCS(0))) * 100
 	if usage < 0 {
 		usage = 0
 	}
