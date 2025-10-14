@@ -1380,6 +1380,13 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		Tick:            w.scheduledUpdates.currentTick,
 	}
 	for _, e := range col.Entities {
+		if e.t.EncodeEntity() == "minecraft:player" {
+			// Player entities are persisted separately from chunk data and should not be stored in the
+			// chunk provider. Keeping them out of the provider avoids stale player entities being read
+			// back after a restart.
+			continue
+		}
+
 		data := e.encodeNBT()
 		maps.Copy(data, e.t.EncodeNBT(&e.data))
 		data["identifier"] = e.t.EncodeEntity()
@@ -1404,6 +1411,11 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 		eid, ok := e.Data["identifier"].(string)
 		if !ok {
 			w.conf.Log.Error("read column: entity without identifier field", "ID", e.ID)
+			continue
+		}
+		if eid == "minecraft:player" {
+			// Players are managed separately from chunk entities, so ignore persisted player entries that
+			// may have been saved by older versions.
 			continue
 		}
 		t, ok := w.conf.Entities.Lookup(eid)
