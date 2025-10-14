@@ -1,49 +1,59 @@
 <!--suppress ALL -->
-<img height="310" alt="image" src="https://user-images.githubusercontent.com/16114089/121805566-0cd81280-cc4c-11eb-9b7d-b5f8a6db4f8d.png" align="right">
 
-# Adamant is df-mc fork
-# Dragonfly
+# Adamant
 
-Dragonfly is a heavily asynchronous server software for Minecraft: Bedrock Edition written in Go. It was written with scalability
-and simplicity in mind and aims to make the process of setting up a server and modifying it easy. Unlike other
-Minecraft server software, Dragonfly is generally used as a library to extend.
+Adamant is a Go-based Minecraft: Bedrock Edition server, forked from df-mc/dragonfly. The goal is to reach feature parity with PocketMine‑MP (PMMP) while keeping Dragonfly’s performance and developer‑friendly design.
 
-[![Discord Banner 2](https://discordapp.com/api/guilds/623638955262345216/widget.png?style=banner2)](https://discord.gg/U4kFWHhTNR)
+Upstream: https://github.com/df-mc/dragonfly
 
-## Getting started
-Running Dragonfly requires at least **Go 1.23**. After starting the server through one of the methods below,
-**ctrl+c** may be used to shut down the server. Also check out the [wiki](https://github.com/df-mc/dragonfly/wiki) for
-more detailed info.
+## What’s New in Adamant
+- **Fully asynchronous world generator:** generation tasks now run in parallel across worker goroutines, drastically improving chunk generation speed and reducing main-thread load.
+- **PM‑style world generation**: pmgen overworld with biomes (e.g., Swamp) and ore population; configurable seed, worker count and queue size.
+- **Built‑in admin commands + server CLI**: `help`, `list`, `kick`, `gamemode`, `time`, `chat`, `gc`, `status`, `stop`, `about`, `whitelist`.
+- **Bedrock Query support**: server status, players, MOTD and plugins exposed to query clients (integrated via `server/query_adapter.go`).
+- **Whitelist system**: TOML‑backed whitelist with built‑in commands to add/remove/list entries; toggle enforcement via config (`[Whitelist]`).
+- **New items and vanilla features**: early stage of implementing core Bedrock mechanics — starting with fishing rods and Nether portals.
 
-#### Installation as library
+## Project Goal
+Achieve a PMMP‑like feature list, prioritising gameplay parity and admin ergonomics while keeping clean Go APIs for plugin and feature work.
+
+## Getting Started
+Requirements: **Go 1.23+**
+
+Run from source:
 ```shell
-go mod init github.com/user/module
-go get github.com/df-mc/dragonfly
+git clone https://github.com/dm-vev/adamant
+cd adamant
+go run .
 ```
 
-![SetupLibrary](https://user-images.githubusercontent.com/16114089/121804512-0f843900-cc47-11eb-9320-d195393b5a1f.gif)
+Stop the server with `Ctrl+C`.
 
-#### Installation of the latest commit
-```shell
-git clone https://github.com/df-mc/dragonfly
-cd dragonfly
-go run main.go
-```
+### Configuration
+Server settings are in `config.toml`.
+- `Network.Address`: listen address and port (default `:19132`).
+- `Server.Name`: server name in the list; `AuthEnabled`, `DisableJoinQuitMessages`, `MuteEmoteChat`.
+- `World`: `Seed`, `SaveData`, `GeneratorWorkers`, `GeneratorQueueSize`, `Folder`.
+- `Players`: `MaxCount`, `MaximumChunkRadius`, `SaveData`, `Folder`.
+- `Resources`: `AutoBuildPack`, `Folder`, `Required`.
+- `Whitelist`: `Enabled`, `File` (default `whitelist.toml`).
 
-![SetupClone](https://user-images.githubusercontent.com/16114089/121804495-ff6c5980-cc46-11eb-8e31-df4d94782e5b.gif)
+### Whitelist Management
+- Enable/disable via `config.toml` → `[Whitelist].Enabled`.
+- Manage entries in‑game/console:
+  - `whitelist add <player>`
+  - `whitelist remove <player>`
+  - `whitelist list`
 
-## Developer info
-[![Go Reference](https://pkg.go.dev/badge/github.com/df-mc/dragonfly/server.svg)](https://pkg.go.dev/github.com/df-mc/dragonfly/server)
+### Query Support
+The Bedrock Query adapter publishes live status, player names, and MOTD to query clients. No extra setup needed.
 
-Dragonfly features a well-documented codebase with an easy-to-use API. Documentation may be found
-[here](https://pkg.go.dev/github.com/df-mc/dragonfly/server) and in the subpackages found by clicking *Directories*.
+## Development
+Adamant tracks Dragonfly upstream and focuses on PMMP parity on top. The codebase keeps Dragonfly’s structure and API conventions to make contributing straightforward.
 
-Publishing your project on GitHub? Consider adding the **[#df-mc](https://github.com/topic/df-mc)** topic to your
-repository and opening a pull request at [df-wiki](https://github.com/df-mc/wiki) adding your project as a Community
-Project to improve its visibility.
+Upstream docs: https://pkg.go.dev/github.com/df-mc/dragonfly/server
 
 ## Contributing
-Contributions are very welcome! Issues, pull requests and feature requests are highly appreciated. Opening a pull
-request? Consider joining our [Discord server](https://discord.gg/U4kFWHhTNR) to discuss your changes! Also have a read through the
-[CONTRIBUTING.md](https://github.com/df-mc/dragonfly/blob/master/.github/CONTRIBUTING.md) for more info.
-# adamant
+Contributions are welcome! Please open issues/PRs with focused changes. If you’re proposing PMMP‑parity features, include examples and behaviour references. 
+
+Thanks to the df‑mc maintainers and community for the excellent base.
