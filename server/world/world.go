@@ -71,6 +71,13 @@ type World struct {
 
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
+
+	generatorQueue chan generationTask
+}
+
+type generationTask struct {
+	pos ChunkPos
+	col *Column
 }
 
 // transaction is a type that may be added to the transaction queue of a World.
@@ -1214,15 +1221,54 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 }
 
 func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				w.conf.Log.Error("generate chunk: panic", "error", fmt.Sprint(r), "X", pos[0], "Z", pos[1])
-			}
-			col.markReady()
-		}()
-		w.conf.Generator.GenerateChunk(pos, col.Chunk)
+	task := generationTask{pos: pos, col: col}
+	select {
+	case w.generatorQueue <- task:
+	default:
+		go w.enqueueGeneration(task)
+	}
+}
+
+func (w *World) enqueueGeneration(task generationTask) {
+	select {
+	case <-w.closing:
+		task.col.markReady()
+	case w.generatorQueue <- task:
+	}
+}
+
+func (w *World) generatorWorker() {
+	defer w.running.Done()
+	for {
+		select {
+		case task := <-w.generatorQueue:
+			w.runGenerationTask(task)
+		case <-w.closing:
+			w.drainGenerationQueue()
+			return
+		}
+	}
+}
+
+func (w *World) runGenerationTask(task generationTask) {
+	defer func() {
+		if r := recover(); r != nil {
+			w.conf.Log.Error("generate chunk: panic", "error", fmt.Sprint(r), "X", task.pos[0], "Z", task.pos[1])
+		}
+		task.col.markReady()
 	}()
+	w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
+}
+
+func (w *World) drainGenerationQueue() {
+	for {
+		select {
+		case task := <-w.generatorQueue:
+			task.col.markReady()
+		default:
+			return
+		}
+	}
 }
 
 // calculateLight calculates the light in the chunk passed and spreads the

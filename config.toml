@@ -25,6 +25,12 @@
   # default LevelDB data provider and if false, an empty provider will be used. To use your
   # own provider, turn this value to false, as you will still be able to pass your own provider.
   SaveData = true
+  # GeneratorWorkers controls how many background workers are dedicated to generating chunks.
+  # Set this to 0 to automatically use the number of logical CPU cores available.
+  GeneratorWorkers = 0
+  # GeneratorQueueSize limits how many chunk generation jobs may wait for a worker.
+  # Set this to 0 to use an automatically chosen size based on the worker count.
+  GeneratorQueueSize = 0
 
 [Players]
   # The maximum amount of players accepted into the server. If set to 0, there is no player limit. The max
