@@ -16,6 +16,9 @@ type Ore struct {
 
 func (o Ore) Populate(w *world.World, pos world.ChunkPos, _ *chunk.Chunk, r *rand.Random) {
 	<-w.Exec(func(tx *world.Tx) {
+		if !tx.ChunkLoaded(pos) {
+			return
+		}
 		for _, ore := range o.Types {
 			for i := 0; i < ore.ClusterCount; i++ {
 				p := cube.Pos{
@@ -23,8 +26,11 @@ func (o Ore) Populate(w *world.World, pos world.ChunkPos, _ *chunk.Chunk, r *ran
 					int(r.Range(int32(ore.MinHeight), int32(ore.MaxHeight))),
 					int(r.Range(pos[1]<<4, (pos[1]<<4)+15)),
 				}
+				if !inChunk(p, pos) {
+					continue
+				}
 				if tx.Block(p) == ore.Replaces {
-					ore.Place(tx, p, r)
+					ore.Place(tx, pos, p, r)
 				}
 			}
 		}
@@ -37,7 +43,7 @@ type OreType struct {
 	MinHeight, MaxHeight      int
 }
 
-func (o OreType) Place(tx *world.Tx, pos cube.Pos, r *rand.Random) {
+func (o OreType) Place(tx *world.Tx, chunkPos world.ChunkPos, pos cube.Pos, r *rand.Random) {
 	clusterSize := float64(o.ClusterSize)
 	vec := pos.Vec3()
 	angle := r.Float64() * math.Pi
@@ -73,9 +79,12 @@ func (o OreType) Place(tx *world.Tx, pos cube.Pos, r *rand.Random) {
 							sizeZ *= sizeZ
 
 							target := cube.Pos{int(xx), int(yy), int(zz)}
+							if !inChunk(target, chunkPos) {
+								continue
+							}
 
 							if (sizeX+sizeY+sizeZ) < 1 && tx.Block(target) == o.Replaces {
-								tx.SetBlock(target, o.Material, nil)
+								tx.SetBlock(target, o.Material, setOpts)
 							}
 						}
 					}

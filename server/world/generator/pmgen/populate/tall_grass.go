@@ -21,24 +21,39 @@ var (
 func (t TallGrass) Populate(w *world.World, pos world.ChunkPos, _ *chunk.Chunk, r *rand.Random) {
 	amount := r.Int31n(2) + int32(t.Amount)
 	<-w.Exec(func(tx *world.Tx) {
+		if !tx.ChunkLoaded(pos) {
+			return
+		}
 		for i := int32(0); i < amount; i++ {
 			x := int(r.Range(pos[0]*16, pos[0]*16+15))
 			z := int(r.Range(pos[1]*16, pos[1]*16+15))
-			if y, ok := t.highestWorkableBlock(tx, x, z); ok {
-				tx.SetBlock(cube.Pos{x, y, z}, tallGrass, nil)
+			if y, ok := t.highestWorkableBlock(tx, pos, x, z); ok {
+				p := cube.Pos{x, y, z}
+				if !inChunk(p, pos) {
+					continue
+				}
+				tx.SetBlock(p, tallGrass, setOpts)
 			}
 		}
 	})
 }
 
-func (t TallGrass) highestWorkableBlock(tx *world.Tx, x, z int) (int, bool) {
+func (t TallGrass) highestWorkableBlock(tx *world.Tx, chunkPos world.ChunkPos, x, z int) (int, bool) {
 	var next world.Block
 	for y := 127; y >= 0; y-- {
+		pos := cube.Pos{x, y, z}
+		if !inChunk(pos, chunkPos) {
+			continue
+		}
 		b := next
 		if b == nil {
-			b = tx.Block(cube.Pos{x, y, z})
+			b = tx.Block(pos)
 		}
-		next = tx.Block(cube.Pos{x, y - 1, z})
+		nextPos := cube.Pos{x, y - 1, z}
+		if !inChunk(nextPos, chunkPos) {
+			continue
+		}
+		next = tx.Block(nextPos)
 		if b == air && next == grass {
 			return y, true
 		}
