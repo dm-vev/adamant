@@ -10,5 +10,6 @@
 /pm-gen-master
 
 dragonfly.exe
+upx.exe
 heap*
 goroutines.txt
