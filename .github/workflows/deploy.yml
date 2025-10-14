@@ -31,6 +31,17 @@ jobs:
           script: |
             echo "Stopping dragonfly.service..."
             sudo -n systemctl stop dragonfly.service || true
+            echo "Waiting for process to fully exit..."
+            for i in {1..10}; do
+              if pgrep -x "dragonfly-server" > /dev/null; then
+                echo "Still running... ($i)"
+                sleep 1
+              else
+                echo "Process stopped."
+                break
+              fi
+            done
+            echo "Continuing deployment."
 
       - name: Upload new binary
         uses: appleboy/scp-action@v0.1.7
@@ -39,19 +50,20 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "dragonfly-server"
-          target: "/home/dragonfly/server/"
+          target: "/home/dragonfly/server/dragonfly-server.new"
           overwrite: true
 
-      - name: Restart and show status
+      - name: Replace and restart
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            echo "Starting dragonfly.service..."
+            echo "Replacing binary..."
+            mv -f /home/dragonfly/server/dragonfly-server.new /home/dragonfly/server/dragonfly-server
             sudo -n systemctl restart dragonfly.service
-            echo "Service status:"
+            echo "Service restarted successfully."
             sudo -n systemctl status dragonfly.service --no-pager
-            echo "Last 10 log lines:"
+            echo "Last log lines:"
             sudo journalctl -u dragonfly.service -n 10 --no-pager
