@@ -14,4 +14,8 @@ type serverAdapter interface {
 	Close() error
 	World() *world.World
 	StartTime() time.Time
+	WhitelistEnabled() bool
+	WhitelistEntries() ([]string, error)
+	WhitelistAdd(name string) (bool, error)
+	WhitelistRemove(name string) (bool, error)
 }
