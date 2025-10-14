@@ -71,6 +71,13 @@ type World struct {
 
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
+
+	generatorQueue chan generationTask
+}
+
+type generationTask struct {
+	pos ChunkPos
+	col *Column
 }
 
 // transaction is a type that may be added to the transaction queue of a World.
@@ -1186,43 +1193,166 @@ func (w *World) chunkLoaded(pos ChunkPos) bool {
 	return false
 }
 
-// loadChunk attempts to load a chunk from the provider, or generates a chunk
-// if one doesn't currently exist.
+// loadChunk loads or generates a chunk (column) for the given position.
+//
+// Behavior summary:
+//  1. If the chunk exists in persistent storage, load it and mark as ready.
+//  2. If not found, create a new column and generate it asynchronously.
+//  3. If an unexpected error occurs, return an empty ready column to prevent blocking.
+//
+// This function guarantees that the returned *Column will eventually become ready,
+// even if generation is canceled due to shutdown.
 func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
+	// Attempt to load the column from the persistent provider (e.g. LevelDB).
 	column, err := w.conf.Provider.LoadColumn(pos, w.conf.Dim)
+
 	switch {
 	case err == nil:
+		// Case 1: Column successfully loaded from persistent storage.
 		col := w.columnFrom(column, pos)
 		w.chunks[pos] = col
+
+		// Mark the column ready immediately.
 		col.markReady()
+
+		// Register all entities contained in this column into the world.
 		for _, e := range col.Entities {
 			w.entities[e] = pos
 			e.w = w
 		}
+
 		return col, nil
+
 	case errors.Is(err, leveldb.ErrNotFound):
-		// The provider doesn't have a chunk saved at this position, so we generate a new one.
+		// Case 2: Column not found in storage — needs generation.
+		// Create a new empty column filled with air.
 		col := newColumn(chunk.New(airRID, w.Range()))
 		w.chunks[pos] = col
+
+		// Schedule asynchronous generation.
+		// generateChunkAsync is shutdown-safe and will mark ready if closing.
 		w.generateChunkAsync(pos, col)
+
 		return col, nil
+
 	default:
+		// Case 3: Unexpected error occurred (I/O failure, corruption, etc.)
+		// To avoid deadlocks, return a ready empty column and the error.
 		col := newColumn(chunk.New(airRID, w.Range()))
 		col.markReady()
 		return col, err
 	}
 }
 
+// generateChunkAsync schedules an asynchronous chunk generation task for the given position.
+// It ensures that no new tasks are enqueued once the world begins shutting down (w.closing is closed).
+// If shutdown is in progress, the column is immediately marked as ready to avoid deadlocks.
+//
+// This prevents chunks from being stuck in a "not ready" state during shutdown,
+// which could otherwise cause Close() or c.waitReady() to block forever.
 func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				w.conf.Log.Error("generate chunk: panic", "error", fmt.Sprint(r), "X", pos[0], "Z", pos[1])
-			}
-			col.markReady()
-		}()
-		w.conf.Generator.GenerateChunk(pos, col.Chunk)
+	task := generationTask{pos: pos, col: col}
+
+	select {
+	case <-w.closing:
+		// The world is closing — do not enqueue any new generation tasks.
+		// Mark the column as ready immediately, ensuring waiters do not block.
+		col.markReady()
+
+	case w.generatorQueue <- task:
+		// Successfully enqueued the generation task in the worker queue.
+		// A generator worker will pick it up and process it.
+
+	default:
+		// The queue is full — fall back to asynchronous enqueue.
+		// This allows us to avoid blocking the main thread while still handling
+		// backpressure. enqueueGeneration itself respects shutdown signals.
+		go w.enqueueGeneration(task)
+	}
+}
+
+// enqueueGeneration tries to enqueue a chunk generation task asynchronously.
+// If the world is already shutting down, the column is immediately marked as ready
+// so that no goroutine waiting on it will hang indefinitely.
+func (w *World) enqueueGeneration(task generationTask) {
+	select {
+	case <-w.closing:
+		// World is closing — skip enqueue, mark column ready.
+		task.col.markReady()
+	case w.generatorQueue <- task:
+		// Successfully enqueued after waiting for space in the queue.
+	}
+}
+
+// generatorWorker continuously processes generation tasks from the generator queue.
+// Each worker runs in its own goroutine and terminates gracefully when w.closing is closed.
+//
+// Behavior:
+//   - Processes tasks received from w.generatorQueue by invoking runGenerationTask.
+//   - On shutdown, drains any remaining tasks in the queue to ensure that all
+//     columns are marked ready and no goroutine remains blocked waiting for generation.
+func (w *World) generatorWorker() {
+	defer w.running.Done()
+
+	for {
+		select {
+		case task := <-w.generatorQueue:
+			// A new generation task is available — process it immediately.
+			w.runGenerationTask(task)
+
+		case <-w.closing:
+			// Shutdown signal received — mark all remaining queued columns as ready.
+			w.drainGenerationQueue()
+			return
+		}
+	}
+}
+
+// runGenerationTask executes the chunk generation logic for a given task.
+// It ensures that the associated column is always marked as ready, even if
+// the generation panics or fails unexpectedly.
+//
+// This design guarantees that no waiting goroutine (e.g., loadChunk callers)
+// will hang indefinitely due to an unmarked column.
+func (w *World) runGenerationTask(task generationTask) {
+	defer func() {
+		// Always recover from panics during generation to prevent worker termination.
+		if r := recover(); r != nil {
+			w.conf.Log.Error(
+				"generate chunk: panic",
+				"error", fmt.Sprint(r),
+				"X", task.pos[0],
+				"Z", task.pos[1],
+			)
+		}
+
+		// Mark the column as ready regardless of success or failure.
+		task.col.markReady()
 	}()
+
+	// Perform the actual chunk generation.
+	// The generator implementation is responsible for populating the chunk’s data.
+	w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
+}
+
+// drainGenerationQueue flushes any remaining tasks in the generator queue.
+// It is called during shutdown to ensure that every column waiting for
+// generation is marked as ready, preventing potential deadlocks.
+//
+// This function runs until the queue is empty.
+func (w *World) drainGenerationQueue() {
+	for {
+		select {
+		case task := <-w.generatorQueue:
+			// Mark the column as ready without performing generation,
+			// since the world is shutting down and workers will not continue.
+			task.col.markReady()
+
+		default:
+			// Queue is empty — exit the draining loop.
+			return
+		}
+	}
 }
 
 // calculateLight calculates the light in the chunk passed and spreads the

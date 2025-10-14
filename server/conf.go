@@ -96,6 +96,14 @@ type Config struct {
 	// of the dimensions (with netherrack and end stone for nether/end
 	// respectively).
 	Generator func(dim world.Dimension) world.Generator
+	// GeneratorWorkers controls the number of asynchronous workers dedicated
+	// to generating chunks. If set to 0 or lower, the worker count will be
+	// derived from the host's available CPUs.
+	GeneratorWorkers int
+	// GeneratorQueueSize limits how many chunk generation jobs may wait for a
+	// worker. If set to 0 or lower, a queue size proportional to the worker
+	// count will be chosen automatically.
+	GeneratorQueueSize int
 	// OverworldSeed is the seed used by the default overworld generator when
 	// Generator is not supplied. A value of 0 is valid and results in a fixed
 	// world layout identical to Java's seed 0.
@@ -225,6 +233,13 @@ type UserConfig struct {
 		// generator is provided. This value is passed directly to the pm-gen terrain
 		// generator.
 		Seed int64
+		// GeneratorWorkers is the number of background workers that should be
+		// dedicated to generating chunks. Set to 0 to automatically select a
+		// reasonable default based on the host's CPU count.
+		GeneratorWorkers int
+		// GeneratorQueueSize determines how many chunk generation jobs can wait
+		// for a worker. Set to 0 to use an automatically chosen size.
+		GeneratorQueueSize int
 	}
 	Players struct {
 		// MaxCount is the maximum amount of players allowed to join the server
@@ -273,6 +288,8 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		MaxChunkRadius:          uc.Players.MaximumChunkRadius,
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
 		OverworldSeed:           uc.World.Seed,
+		GeneratorWorkers:        uc.World.GeneratorWorkers,
+		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
 	}
 	if !uc.Server.DisableJoinQuitMessages {
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
