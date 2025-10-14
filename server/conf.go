@@ -175,6 +175,7 @@ func (conf Config) New() *Server {
 	if wl, ok := conf.Allower.(*Whitelist); ok {
 		srv.whitelist = wl
 	}
+	registerQueryServer(srv)
 	for _, lf := range conf.Listeners {
 		l, err := lf(conf)
 		if err != nil {
