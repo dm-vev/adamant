@@ -63,12 +63,12 @@ func (s statusCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 }
 
 var (
-	cpuSampleMu        sync.Mutex
-	cpuSampleLastTime  time.Time
-	cpuSampleLastTotal float64
-	cpuSampleLastIdle  float64
-	cpuSampleLastUsed  float64
-	cpuSampleMode      cpuSampleMode
+	cpuSampleMu          sync.Mutex
+	cpuSampleLastTime    time.Time
+	cpuSampleLastTotal   float64
+	cpuSampleLastIdle    float64
+	cpuSampleLastUsed    float64
+	cpuSampleCurrentMode cpuSampleMode
 )
 
 type cpuSampleMode int
@@ -94,12 +94,12 @@ func sampleAverageCPULoad() (float64, bool) {
 	defer cpuSampleMu.Unlock()
 
 	if totalOK && idleOK {
-		ready := cpuSampleMode == cpuSampleModeClasses && !cpuSampleLastTime.IsZero()
+		ready := cpuSampleCurrentMode == cpuSampleModeClasses && !cpuSampleLastTime.IsZero()
 		deltaTime := now.Sub(cpuSampleLastTime).Seconds()
 		deltaTotal := total - cpuSampleLastTotal
 		deltaIdle := idle - cpuSampleLastIdle
 
-		cpuSampleMode = cpuSampleModeClasses
+		cpuSampleCurrentMode = cpuSampleModeClasses
 		cpuSampleLastTime = now
 		cpuSampleLastTotal = total
 		cpuSampleLastIdle = idle
@@ -128,11 +128,11 @@ func sampleAverageCPULoad() (float64, bool) {
 		return 0, false
 	}
 
-	ready := cpuSampleMode == cpuSampleModeLegacy && !cpuSampleLastTime.IsZero()
+	ready := cpuSampleCurrentMode == cpuSampleModeLegacy && !cpuSampleLastTime.IsZero()
 	deltaTime := now.Sub(cpuSampleLastTime).Seconds()
 	deltaUsed := used - cpuSampleLastUsed
 
-	cpuSampleMode = cpuSampleModeLegacy
+	cpuSampleCurrentMode = cpuSampleModeLegacy
 	cpuSampleLastTime = now
 	cpuSampleLastUsed = used
 
