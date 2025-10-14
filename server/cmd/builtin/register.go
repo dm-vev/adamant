@@ -17,4 +17,5 @@ func Register(srv serverAdapter) {
 	cmd.Register(newGamemodeCommand())
 	cmd.Register(newTimeCommand())
 	cmd.Register(newGCCommand(srv))
+	cmd.Register(newWhitelistCommand(srv))
 }

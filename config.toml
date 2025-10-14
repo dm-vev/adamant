@@ -54,3 +54,9 @@
   Folder = "resources"
   # Required configures whether the server will require players to have a resource pack to join.
   Required = true
+
+[Whitelist]
+  # Enabled controls if only players listed in the whitelist file are allowed to join.
+  Enabled = false
+  # File is the path to the whitelist TOML file that stores player names.
+  File = "whitelist.toml"
