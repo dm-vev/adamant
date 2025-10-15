@@ -45,16 +45,16 @@ jobs:
               fi
             done
 
-      - name: Upload new binary
+      - name: Upload binary to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "${{ github.workspace }}/dragonfly-server"
-          target: "/home/dragonfly/server/dragonfly-server"
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: ./***-server
+          target: /home/***/server/
           overwrite: true
-
+          
       - name: Verify and restart
         uses: appleboy/ssh-action@v1.1.0
         with:
