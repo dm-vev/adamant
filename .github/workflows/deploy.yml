@@ -48,9 +48,9 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "dragonfly-server"
-          target: "/home/dragonfly/server/"
-          strip_components: 0
+          target: "/home/dragonfly/server/dragonfly-server"
           overwrite: true
+          strip_components: 0
 
       - name: Replace and restart
         uses: appleboy/ssh-action@v1.1.0
