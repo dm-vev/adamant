@@ -63,10 +63,14 @@ func (c *packetConn) handleQuery(b []byte, addr net.Addr) bool {
 		c.writeHandshake(addr, sequence, token)
 		return true
 	case queryTypeInformation:
-		if len(b) < 15 {
+		if len(b) <= 7 {
 			return true
 		}
-		if !c.validateToken(addr.String(), int32(binary.BigEndian.Uint32(b[7:11]))) {
+		token, ok := parseTokenValue(b[7:])
+		if !ok {
+			return true
+		}
+		if !c.validateToken(addr.String(), token) {
 			return true
 		}
 		c.writeInfo(addr, sequence)
@@ -159,4 +163,23 @@ func (c *packetConn) writeInfo(addr net.Addr, sequence int32) {
 	if _, err := c.PacketConn.WriteTo(buf.Bytes(), addr); err != nil {
 		c.log.Debug("query info write failed", "err", err, "raddr", addr.String())
 	}
+}
+
+func parseTokenValue(payload []byte) (int32, bool) {
+	trimmed := payload
+	if len(trimmed) >= 4 {
+		if i := bytes.Index(trimmed, []byte{0xff, 0xff, 0xff, 0x01}); i >= 0 {
+			trimmed = trimmed[:i]
+		}
+	}
+	trimmed = bytes.TrimRight(trimmed, "\x00")
+	if len(trimmed) > 0 {
+		if value, err := strconv.ParseInt(string(trimmed), 10, 32); err == nil {
+			return int32(value), true
+		}
+	}
+	if len(payload) >= 4 {
+		return int32(binary.BigEndian.Uint32(payload[:4])), true
+	}
+	return 0, false
 }
