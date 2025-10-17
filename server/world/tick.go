@@ -391,7 +391,11 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	}
 	state.lastTick = tick
 	state.nextPassiveTick = tick + passiveMaintenanceInterval
-	if !state.tickerChecked {
+	if !state.tickerChecked || state.isTicker {
+		// We must rebind the entity to the current transaction whenever it is about to tick. The bound
+		// Tx expires at the end of each frame, so behaviours that capture the Tx (fire, name tags, etc.) rely
+		// on bindTx being invoked every time we service the entity. The previous implementation called
+		// state.entity each tick; keep that contract so that helpers never observe a stale, closed Tx.
 		loadEntity()
 	}
 	if state.isTicker && state.ticker != nil {
