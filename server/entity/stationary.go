@@ -46,7 +46,7 @@ type StationaryBehaviour struct {
 // behaviour the entity might require.
 func (s *StationaryBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if s.close {
-		_ = e.Close()
+    _ = e.CloseIn(tx)
 		return nil
 	}
 

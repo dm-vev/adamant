@@ -89,11 +89,11 @@ func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			tx.AddEntity(NewItem(opts, i.Item().Grow(-addedCount)))
 		}
 
-		_ = e.Close()
-		bl.CollectCooldown = 8
-		tx.SetBlock(blockPos, bl, nil)
-	}
-	return i.passive.Tick(e, tx)
+        _ = e.CloseIn(tx)
+        bl.CollectCooldown = 8
+        tx.SetBlock(blockPos, bl, nil)
+    }
+    return i.passive.Tick(e, tx)
 }
 
 // tick checks if the item can be picked up or merged with nearby item stacks.
@@ -146,9 +146,9 @@ func (i *ItemBehaviour) merge(e *Ent, other *Ent, tx *world.Tx) bool {
 	if !b.Empty() {
 		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos, Velocity: e.Velocity()}, b))
 	}
-	_ = e.Close()
-	_ = other.Close()
-	return true
+    _ = e.CloseIn(tx)
+    _ = other.CloseIn(tx)
+    return true
 }
 
 // collect makes a collector collect the item (or at least part of it).
@@ -162,15 +162,15 @@ func (i *ItemBehaviour) collect(e *Ent, collector Collector, tx *world.Tx) {
 		viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
 	}
 
-	if n == i.i.Count() {
-		// The collector picked up the entire stack.
-		_ = e.Close()
-		return
-	}
+    if n == i.i.Count() {
+        // The collector picked up the entire stack.
+        _ = e.CloseIn(tx)
+        return
+    }
 	// Create a new item entity and shrink it by the amount of items that the
 	// collector collected.
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, i.i.Grow(-n)))
-	_ = e.Close()
+    _ = e.CloseIn(tx)
 }
 
 // Collector represents an entity in the world that is able to collect an item, typically an entity such as

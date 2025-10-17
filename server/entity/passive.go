@@ -73,10 +73,10 @@ func (p *PassiveBehaviour) Fuse() time.Duration {
 // Tick implements the behaviour for a passive entity. It performs movement and
 // updates its state.
 func (p *PassiveBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if p.close {
-		_ = e.Close()
-		return nil
-	}
+    if p.close {
+        _ = e.CloseIn(tx)
+        return nil
+    }
 
 	m := p.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, tx)
 	e.data.Pos, e.data.Vel = m.pos, m.vel

@@ -139,7 +139,7 @@ func (lt *ProjectileBehaviour) Critical() bool {
 // of a projectile.
 func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if lt.close {
-		_ = e.Close()
+        _ = e.CloseIn(tx)
 		return nil
 	}
 
