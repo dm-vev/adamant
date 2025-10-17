@@ -136,6 +136,8 @@ func init() {
 	registerAll(allCampfires())
 	registerAll(allCarpet())
 	registerAll(allCarrots())
+	registerAll(allCopperBulbs())
+	registerAll(allCopperChains())
 	registerAll(allIronChains())
 	registerAll(allChests())
 	registerAll(allCocoaBeans())
@@ -165,6 +167,7 @@ func init() {
 	registerAll(allKelp())
 	registerAll(allLadders())
 	registerAll(allLanterns())
+	registerAll(allCopperLanterns())
 	registerAll(allLava())
 	registerAll(allLeaves())
 	registerAll(allLecterns())
@@ -469,6 +472,8 @@ func init() {
 		world.RegisterItem(CopperGrate{Oxidation: o, Waxed: true})
 		world.RegisterItem(CopperTrapdoor{Oxidation: o})
 		world.RegisterItem(CopperTrapdoor{Oxidation: o, Waxed: true})
+		world.RegisterItem(CopperLantern{Oxidation: o})
+		world.RegisterItem(CopperLantern{Oxidation: o, Waxed: true})
 
 		for _, c := range CopperTypes() {
 			world.RegisterItem(Copper{Type: c, Oxidation: o})
