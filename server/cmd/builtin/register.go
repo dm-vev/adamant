@@ -18,4 +18,5 @@ func Register(srv serverAdapter) {
 	cmd.Register(newTimeCommand())
 	cmd.Register(newGCCommand(srv))
 	cmd.Register(newWhitelistCommand(srv))
+	cmd.Register(newClearCommand())
 }
