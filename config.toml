@@ -26,10 +26,14 @@
   # own provider, turn this value to false, as you will still be able to pass your own provider.
   SaveData = true
   # GeneratorWorkers controls how many background workers are dedicated to generating chunks.
-  # Set this to 0 to automatically use the number of logical CPU cores available.
+  # Set this to 0 to automatically use the number of logical CPU cores available. Under heavy
+  # world generation load you may need to increase both this value and GeneratorQueueSize to avoid
+  # backpressure; profile first if chunk generation is bottlenecked by LevelDB or other I/O.
   GeneratorWorkers = 0
   # GeneratorQueueSize limits how many chunk generation jobs may wait for a worker.
-  # Set this to 0 to use an automatically chosen size based on the worker count.
+  # Set this to 0 to use an automatically chosen size based on the worker count. Increase this together
+  # with GeneratorWorkers when large preloads saturate the queue; keep an eye on storage pressure if the
+  # generator relies on external services like LevelDB.
   GeneratorQueueSize = 0
 
 [Players]

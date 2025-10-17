@@ -100,11 +100,14 @@ type Config struct {
 	Generator func(dim world.Dimension) world.Generator
 	// GeneratorWorkers controls the number of asynchronous workers dedicated
 	// to generating chunks. If set to 0 or lower, the worker count will be
-	// derived from the host's available CPUs.
+	// derived from the host's available CPUs. Consider raising this when
+	// pre-generating terrain heavily, but profile if the generator is limited
+	// by I/O (for example LevelDB operations).
 	GeneratorWorkers int
 	// GeneratorQueueSize limits how many chunk generation jobs may wait for a
 	// worker. If set to 0 or lower, a queue size proportional to the worker
-	// count will be chosen automatically.
+	// count will be chosen automatically. Increase it alongside
+	// GeneratorWorkers if the logs report generator queue saturation.
 	GeneratorQueueSize int
 	// OverworldSeed is the seed used by the default overworld generator when
 	// Generator is not supplied. A value of 0 is valid and results in a fixed
