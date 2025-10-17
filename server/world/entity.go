@@ -343,6 +343,16 @@ type DamageSource interface {
 	IgnoreTotem() bool
 }
 
+// ArmourEffectivenessReducer exposes a multiplier that scales how much armour reduces
+// incoming damage for a specific world.DamageSource.
+type ArmourEffectivenessReducer interface {
+	DamageSource
+	// ArmourEffectivenessMultiplier returns a multiplier in the range [0, 1]
+	// that scales the armour damage reduction. Values close to 0 drastically
+	// reduce armour effectiveness, while 1 keeps vanilla behaviour.
+	ArmourEffectivenessMultiplier() float64
+}
+
 // HealingSource represents a source of healing for an Entity. This source may
 // be passed to the Heal() method of a living Entity.
 type HealingSource interface {
