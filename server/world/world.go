@@ -79,12 +79,12 @@ type World struct {
 }
 
 type entityState struct {
-    pos      ChunkPos
-    ent      Entity
-    lastTick int64
-    // isItem caches whether the entity type is a dropped item (minecraft:item).
-    // This avoids calling EncodeEntity() for every entity on every tick.
-    isItem bool
+	pos      ChunkPos
+	ent      Entity
+	lastTick int64
+	// isItem caches whether the entity type is a dropped item (minecraft:item).
+	// This avoids calling EncodeEntity() for every entity on every tick.
+	isItem bool
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -222,7 +222,7 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 		// stored NBT yet. We add it here and update the block.
 		nbtB := blockByRuntimeIDOrAir(rid).(NBTer).DecodeNBT(map[string]any{}).(Block)
 		c.BlockEntities[pos] = nbtB
-		for _, v := range c.viewers {
+		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, nbtB, 0)
 		}
 		return nbtB
@@ -329,7 +329,7 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		delete(c.BlockEntities, pos)
 	}
 
-	viewers := slices.Clone(c.viewers)
+	viewers := c.viewerList()
 
 	if !opts.DisableLiquidDisplacement {
 		var secondLayer Block
@@ -462,7 +462,7 @@ func (w *World) buildStructure(pos cube.Pos, s Structure) {
 
 			// After setting all blocks of the structure within a single chunk,
 			// we show the new chunk to all viewers once.
-			for _, viewer := range c.viewers {
+			for viewer := range c.viewers {
 				viewer.ViewChunk(chunkPos, w.Dimension(), c.BlockEntities, c.Chunk)
 			}
 		}
@@ -527,12 +527,12 @@ func (w *World) setLiquid(pos cube.Pos, b Liquid) {
 	rid := BlockRuntimeID(b)
 	if w.removeLiquids(c, pos) {
 		c.SetBlock(x, y, z, 0, rid)
-		for _, v := range c.viewers {
+		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, b, 0)
 		}
 	} else {
 		c.SetBlock(x, y, z, 1, rid)
-		for _, v := range c.viewers {
+		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, b, 1)
 		}
 	}
@@ -550,14 +550,14 @@ func (w *World) removeLiquids(c *Column, pos cube.Pos) bool {
 	noneLeft := false
 	if noLeft, changed := w.removeLiquidOnLayer(c.Chunk, x, y, z, 0); noLeft {
 		if changed {
-			for _, v := range c.viewers {
+			for v := range c.viewers {
 				v.ViewBlockUpdate(pos, air(), 0)
 			}
 		}
 		noneLeft = true
 	}
 	if _, changed := w.removeLiquidOnLayer(c.Chunk, x, y, z, 1); changed {
-		for _, v := range c.viewers {
+		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, air(), 1)
 		}
 	}
@@ -722,19 +722,19 @@ func (w *World) playSound(tx *Tx, pos mgl64.Vec3, s Sound) {
 // loaded. addEntity panics if the EntityHandle is already in a world.
 // addEntity returns the Entity created by the EntityHandle.
 func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
-    handle.setAndUnlockWorld(w)
-    pos := chunkPosFromVec3(handle.data.Pos)
-    w.set.Lock()
-    currentTick := w.set.CurrentTick
-    w.set.Unlock()
-    state := &entityState{pos: pos, lastTick: currentTick, isItem: handle.t.EncodeEntity() == "minecraft:item"}
-    w.entities[handle] = state
+	handle.setAndUnlockWorld(w)
+	pos := chunkPosFromVec3(handle.data.Pos)
+	w.set.Lock()
+	currentTick := w.set.CurrentTick
+	w.set.Unlock()
+	state := &entityState{pos: pos, lastTick: currentTick, isItem: handle.t.EncodeEntity() == "minecraft:item"}
+	w.entities[handle] = state
 
 	c := w.chunk(pos)
 	c.Entities, c.modified = append(c.Entities, handle), true
 
 	e := state.entity(tx, handle)
-	for _, v := range c.viewers {
+	for v := range c.viewers {
 		// Show the entity to all viewers in the chunk of the entity.
 		showEntity(e, v)
 	}
@@ -759,7 +759,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	c := w.chunk(pos)
 	c.Entities, c.modified = sliceutil.DeleteVal(c.Entities, handle), true
 
-	for _, v := range c.viewers {
+	for v := range c.viewers {
 		v.HideEntity(e)
 	}
 	delete(w.entities, handle)
@@ -1000,7 +1000,7 @@ func (w *World) viewersOf(pos mgl64.Vec3) []Viewer {
 	if !ok {
 		return nil
 	}
-	return c.viewers
+	return c.viewerList()
 }
 
 // PortalDestination returns the destination World for a portal of a specific
@@ -1129,7 +1129,9 @@ func (w *World) addWorldViewer(l *Loader) {
 // happen in the chunk at that position, such as block and entity changes, will
 // be sent to the viewer.
 func (w *World) addViewer(tx *Tx, c *Column, loader *Loader) {
-	c.viewers = append(c.viewers, loader.viewer)
+	if loader.viewer != nil {
+		c.viewers[loader.viewer] = struct{}{}
+	}
 	c.loaders = append(c.loaders, loader)
 
 	for _, entity := range c.Entities {
@@ -1149,11 +1151,11 @@ func (w *World) removeViewer(tx *Tx, pos ChunkPos, loader *Loader) {
 		return
 	}
 	if i := slices.Index(c.loaders, loader); i != -1 {
-		c.viewers = slices.Delete(c.viewers, i, i+1)
 		c.loaders = slices.Delete(c.loaders, i, i+1)
 	}
 
 	// Hide all entities in the chunk from the viewer.
+	delete(c.viewers, loader.viewer)
 	if loader.viewer != nil {
 		for _, entity := range c.Entities {
 			loader.viewer.HideEntity(entity.mustEntity(tx))
@@ -1466,7 +1468,7 @@ func (w *World) autoSave() {
 // chunks, entities and block entities that were removed as a result.
 func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, blockEntitiesCollected int) {
 	for pos, c := range w.chunks {
-		if len(c.viewers) != 0 {
+		if len(c.viewers) != 0 || len(c.loaders) != 0 {
 			continue
 		}
 		chunksCollected++
@@ -1491,7 +1493,7 @@ type Column struct {
 	Entities      []*EntityHandle
 	BlockEntities map[cube.Pos]Block
 
-	viewers []Viewer
+	viewers map[Viewer]struct{}
 	loaders []*Loader
 
 	ready      atomic.Bool
@@ -1506,7 +1508,20 @@ func newColumn(c *chunk.Chunk) *Column {
 		Chunk:         c,
 		BlockEntities: map[cube.Pos]Block{},
 		readyCh:       make(chan struct{}),
+		viewers:       make(map[Viewer]struct{}),
 	}
+}
+
+// viewerList returns a slice containing all viewers of the column.
+func (c *Column) viewerList() []Viewer {
+	if len(c.viewers) == 0 {
+		return nil
+	}
+	viewers := make([]Viewer, 0, len(c.viewers))
+	for v := range c.viewers {
+		viewers = append(viewers, v)
+	}
+	return viewers
 }
 
 // Ready reports whether the Column has finished generating.

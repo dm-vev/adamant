@@ -252,7 +252,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 			state.pos = chunkPos
 			c.Entities = append(c.Entities, handle)
 
-			var viewers []Viewer
+			var viewers map[Viewer]struct{}
 			if old, ok := w.chunks[oldPos]; ok {
 				old.Entities = sliceutil.DeleteVal(old.Entities, handle)
 				viewers = old.viewers
@@ -260,22 +260,13 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 
 			if len(viewers) > 0 || len(c.viewers) > 0 {
 				ent := loadEntity()
-				oldSet := make(map[Viewer]struct{}, len(viewers))
-				for _, v := range viewers {
-					oldSet[v] = struct{}{}
-				}
-				newSet := make(map[Viewer]struct{}, len(c.viewers))
-				for _, v := range c.viewers {
-					newSet[v] = struct{}{}
-				}
-
-				for v := range oldSet {
-					if _, ok := newSet[v]; !ok {
+				for v := range viewers {
+					if _, ok := c.viewers[v]; !ok {
 						v.HideEntity(ent)
 					}
 				}
-				for v := range newSet {
-					if _, ok := oldSet[v]; !ok {
+				for v := range c.viewers {
+					if _, ok := viewers[v]; !ok {
 						showEntity(ent, v)
 					}
 				}
