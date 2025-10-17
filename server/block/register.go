@@ -133,6 +133,8 @@ func init() {
 	registerAll(allBrewingStands())
 	registerAll(allCactus())
 	registerAll(allCake())
+	registerAll(allCandles())
+	registerAll(allCandleCakes())
 	registerAll(allCampfires())
 	registerAll(allCarpet())
 	registerAll(allCarrots())
@@ -428,6 +430,9 @@ func init() {
 		world.RegisterItem(Lantern{Type: f})
 		world.RegisterItem(Torch{Type: f})
 		world.RegisterItem(Campfire{Type: f})
+	}
+	for _, variant := range candleVariants() {
+		world.RegisterItem(Candle{Colour: variant.Colour, Coloured: variant.Coloured})
 	}
 	for _, f := range FlowerTypes() {
 		world.RegisterItem(Flower{Type: f})
