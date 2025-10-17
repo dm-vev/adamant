@@ -201,21 +201,20 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 	} else {
 		blockBBoxs = blockBBoxs[:0]
 	}
-	// bboxCache memoises block model bounding boxes within this scan. Adjacent blocks often share the same
-	// runtime model (e.g. stone, air), so caching by block hash avoids repeatedly invoking Model().BBox for the
-	// same shapes while the entity sweeps through uniform volumes.
-	bboxCache := make(map[uint64][]cube.BBox)
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
 			for z := minZ; z <= maxZ; z++ {
 				pos := cube.Pos{x, y, z}
 				block := tx.Block(pos)
-				hash := world.BlockHash(block)
-				boxes, ok := bboxCache[hash]
-				if !ok {
-					boxes = block.Model().BBox(pos, tx)
-					bboxCache[hash] = boxes
-				}
+				// We deliberately avoid caching bounding boxes across different positions. Many
+				// block models (for example fences, walls, or trapdoors) inspect neighbouring
+				// blocks through the BlockSource passed to BBox in order to decide which collision
+				// shape to expose. Two blocks with the same runtime hash can therefore still
+				// produce different shapes when their surroundings diverge, so memoising purely by
+				// BlockHash would leak the first configuration into subsequent checks within the
+				// same sweep. The extra allocations here are negligible compared to the correctness
+				// issues introduced by reusing the wrong shape.
+				boxes := block.Model().BBox(pos, tx)
 				if len(boxes) == 0 {
 					continue
 				}
