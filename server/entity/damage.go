@@ -15,6 +15,13 @@ type (
 		Attacker world.Entity
 	}
 
+	// MaceSmashDamageSource is used for mace smash attacks that scale armour
+	// effectiveness based on the Breach enchantment.
+	MaceSmashDamageSource struct {
+		AttackDamageSource
+		ArmourMultiplier float64
+	}
+
 	// VoidDamageSource is used for damage caused by an entity being in the
 	// void.
 	VoidDamageSource struct{}
@@ -93,3 +100,11 @@ func (ExplosionDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool 
 	return e == enchantment.BlastProtection
 }
 func (ExplosionDamageSource) IgnoreTotem() bool { return false }
+
+// ArmourEffectivenessMultiplier returns the armour scaling applied for the smash attack.
+func (s MaceSmashDamageSource) ArmourEffectivenessMultiplier() float64 {
+	if s.ArmourMultiplier <= 0 {
+		return 0
+	}
+	return s.ArmourMultiplier
+}
