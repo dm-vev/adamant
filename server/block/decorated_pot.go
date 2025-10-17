@@ -87,9 +87,11 @@ func (p DecoratedPot) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 
 // wobble ...
 func (p DecoratedPot) wobble(pos cube.Pos, tx *world.Tx, success bool) {
-	for _, v := range tx.Viewers(pos.Vec3Centre()) {
+	viewers := tx.Viewers(pos.Vec3Centre())
+	for _, v := range viewers {
 		v.ViewBlockAction(pos, DecoratedPotWobbleAction{DecoratedPot: p, Success: success})
 	}
+	tx.ReleaseViewers(viewers)
 
 	if success {
 		tx.AddParticle(pos.Vec3Middle().Add(mgl64.Vec3{0, 1.2}), particle.DustPlume{})

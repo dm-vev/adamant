@@ -5,6 +5,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
+	"sync"
 )
 
 // MovementComputer is used to compute movement of an entity. When constructed, the Gravity of the entity
@@ -16,11 +17,18 @@ type MovementComputer struct {
 	onGround bool
 }
 
+var blockBBoxPool = sync.Pool{
+	New: func() any {
+		return make([]cube.BBox, 0, 16)
+	},
+}
+
 // Movement represents the movement of a world.Entity as a result of a call to MovementComputer.TickMovement. The
 // resulting position and velocity can be obtained by calling Position and Velocity. These can be sent to viewers by
 // calling Send.
 type Movement struct {
 	v                    []world.Viewer
+	release              func()
 	e                    world.Entity
 	pos, vel, dpos, dvel mgl64.Vec3
 	rot                  cube.Rotation
@@ -40,6 +48,10 @@ func (m *Movement) Send() {
 		if velChanged {
 			v.ViewEntityVelocity(m.e, m.vel)
 		}
+	}
+	if m.release != nil {
+		m.release()
+		m.release = nil
 	}
 }
 
@@ -69,7 +81,7 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 	vel = c.applyHorizontalForces(tx, pos, c.applyVerticalForces(vel))
 	dPos, vel := c.checkCollision(tx, e, pos, vel)
 
-	return &Movement{v: viewers, e: e,
+	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
 		pos: pos.Add(dPos), vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),
 		rot: rot, onGround: c.onGround,
 	}
@@ -165,6 +177,7 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 	if !mgl64.FloatEqual(deltaZ, vel[2]) {
 		vel[2] = 0
 	}
+	blockBBoxPool.Put(blocks[:0])
 	return mgl64.Vec3{deltaX, deltaY, deltaZ}, vel
 }
 
@@ -177,14 +190,32 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 	maxX, maxY, maxZ := int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))
 
 	// A prediction of one BBox per block, plus an additional 2, in case
-	blockBBoxs := make([]cube.BBox, 0, (maxX-minX)*(maxY-minY)*(maxZ-minZ)+2)
+	blockBBoxs := blockBBoxPool.Get().([]cube.BBox)
+	required := (maxX - minX) * (maxY - minY) * (maxZ - minZ)
+	if cap(blockBBoxs) < required+2 {
+		blockBBoxPool.Put(blockBBoxs[:0])
+		blockBBoxs = make([]cube.BBox, 0, required+2)
+	} else {
+		blockBBoxs = blockBBoxs[:0]
+	}
+	bboxCache := make(map[uint64][]cube.BBox)
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
 			for z := minZ; z <= maxZ; z++ {
 				pos := cube.Pos{x, y, z}
-				boxes := tx.Block(pos).Model().BBox(pos, tx)
+				block := tx.Block(pos)
+				hash := world.BlockHash(block)
+				boxes, ok := bboxCache[hash]
+				if !ok {
+					boxes = block.Model().BBox(pos, tx)
+					bboxCache[hash] = boxes
+				}
+				if len(boxes) == 0 {
+					continue
+				}
+				offset := mgl64.Vec3{float64(x), float64(y), float64(z)}
 				for _, box := range boxes {
-					blockBBoxs = append(blockBBoxs, box.Translate(mgl64.Vec3{float64(x), float64(y), float64(z)}))
+					blockBBoxs = append(blockBBoxs, box.Translate(offset))
 				}
 			}
 		}

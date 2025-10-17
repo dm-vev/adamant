@@ -111,9 +111,11 @@ func (m *EffectManager) Tick(entity Living, tx *world.Tx) {
 	}
 
 	if update {
-		for _, v := range tx.Viewers(entity.Position()) {
+		viewers := tx.Viewers(entity.Position())
+		for _, v := range viewers {
 			v.ViewEntityState(entity)
 		}
+		tx.ReleaseViewers(viewers)
 	}
 }
 

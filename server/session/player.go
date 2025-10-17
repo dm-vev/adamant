@@ -610,9 +610,11 @@ func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, 
 func (s *Session) broadcastInvFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
 		if slot == int(*s.heldSlot) {
-			for _, viewer := range tx.Viewers(c.Position()) {
+			viewers := tx.Viewers(c.Position())
+			for _, viewer := range viewers {
 				viewer.ViewEntityItems(c)
 			}
+			tx.ReleaseViewers(viewers)
 		}
 		if !s.inTransaction.Load() {
 			s.sendItem(after, slot, protocol.WindowIDInventory)
@@ -632,9 +634,11 @@ func (s *Session) broadcastEnderChestFunc(tx *world.Tx, _ Controllable) inventor
 
 func (s *Session) broadcastOffHandFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
-		for _, viewer := range tx.Viewers(c.Position()) {
+		viewers := tx.Viewers(c.Position())
+		for _, viewer := range viewers {
 			viewer.ViewEntityItems(c)
 		}
+		tx.ReleaseViewers(viewers)
 		if !s.inTransaction.Load() {
 			i, _ := s.offHand.Item(0)
 			s.writePacket(&packet.InventoryContent{
@@ -654,9 +658,11 @@ func (s *Session) broadcastArmourFunc(tx *world.Tx, c Controllable) inventory.Sl
 			// Only send armour if the item type actually changed.
 			return
 		}
-		for _, viewer := range tx.Viewers(c.Position()) {
+		viewers := tx.Viewers(c.Position())
+		for _, viewer := range viewers {
 			viewer.ViewEntityArmour(c)
 		}
+		tx.ReleaseViewers(viewers)
 	}
 }
 
