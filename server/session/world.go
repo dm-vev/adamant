@@ -1273,6 +1273,21 @@ func (s *Session) ViewWorldSpawn(pos cube.Pos) {
 	})
 }
 
+// SetPlayerSpawn updates the player's personal respawn location.
+func (s *Session) SetPlayerSpawn(pos cube.Pos, dim world.Dimension) {
+	if s == nil {
+		return
+	}
+	id, _ := world.DimensionID(dim)
+	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	s.writePacket(&packet.SetSpawnPosition{
+		SpawnType:     packet.SpawnTypePlayer,
+		Position:      blockPos,
+		Dimension:     int32(id),
+		SpawnPosition: blockPos,
+	})
+}
+
 // ViewWeather ...
 func (s *Session) ViewWeather(raining, thunder bool) {
 	pk := &packet.LevelEvent{

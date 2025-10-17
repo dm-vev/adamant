@@ -271,6 +271,14 @@ func (p *Player) SendToast(title, message string) {
 	p.session().SendToast(title, message)
 }
 
+// SetRespawnPosition updates the client's personal respawn location.
+func (p *Player) SetRespawnPosition(pos cube.Pos, dim world.Dimension) {
+	if p.session() == session.Nop {
+		return
+	}
+	p.session().SetPlayerSpawn(pos, dim)
+}
+
 // ResetFallDistance resets the player's fall distance.
 func (p *Player) ResetFallDistance() {
 	p.fallDistance = 0
@@ -940,10 +948,107 @@ func (p *Player) respawn(f func(p *Player)) {
 	if !p.Dead() || p.session() == session.Nop {
 		return
 	}
-	// We can use the principle here that returning through a portal of a specific dimension inside that dimension will
-	// always bring us back to the overworld.
-	w := p.tx.World().PortalDestination(p.tx.World().Dimension())
-	pos := w.PlayerSpawn(p.UUID()).Vec3Middle()
+	currentWorld := p.tx.World()
+	defaultWorld := currentWorld.PortalDestination(currentWorld.Dimension())
+
+	spawnPositions := map[*world.World]cube.Pos{}
+	var candidates []*world.World
+	addCandidate := func(w *world.World) {
+		if w == nil {
+			return
+		}
+		if _, ok := spawnPositions[w]; ok {
+			return
+		}
+		spawnPositions[w] = w.PlayerSpawn(p.UUID())
+		candidates = append(candidates, w)
+	}
+
+	addCandidate(currentWorld)
+	addCandidate(defaultWorld)
+	for _, dim := range []world.Dimension{world.Nether, world.Overworld, world.End} {
+		addCandidate(currentWorld.PortalDestination(dim))
+	}
+	for _, dim := range []world.Dimension{world.Nether, world.Overworld, world.End} {
+		addCandidate(defaultWorld.PortalDestination(dim))
+	}
+
+	respawnWorld := defaultWorld
+	respawnPos := spawnPositions[defaultWorld]
+	respawnVec := respawnPos.Vec3Middle()
+
+	var (
+		anchorWorld *world.World
+		anchorPos   cube.Pos
+		anchorBlock block.RespawnAnchor
+	)
+	for _, w := range candidates {
+		pos := spawnPositions[w]
+		var blk world.Block
+		if w == currentWorld {
+			blk = p.tx.Block(pos)
+		} else {
+			<-w.Exec(func(tx *world.Tx) {
+				blk = tx.Block(pos)
+			})
+		}
+		if anchor, ok := blk.(block.RespawnAnchor); ok {
+			anchorWorld = w
+			anchorPos = pos
+			anchorBlock = anchor
+			break
+		}
+	}
+
+	anchorObstructed := false
+	anchorDepleted := false
+
+	if anchorWorld != nil {
+		if anchorWorld.Dimension() != world.Nether || anchorBlock.Charge == 0 {
+			anchorObstructed = true
+		} else if anchorWorld == currentWorld {
+			if safePos, ok := anchorBlock.SpawnPosition(anchorPos, p.tx); ok {
+				anchorBlock.Charge--
+				p.tx.SetBlock(anchorPos, anchorBlock, nil)
+				if anchorBlock.Charge == 0 {
+					anchorDepleted = true
+					anchorWorld.SetPlayerSpawn(p.UUID(), anchorWorld.Spawn())
+				}
+				respawnWorld = anchorWorld
+				respawnPos = safePos
+				respawnVec = safePos.Vec3Middle()
+			} else {
+				anchorObstructed = true
+			}
+		} else {
+			var (
+				safePos cube.Pos
+				ok      bool
+			)
+			<-anchorWorld.Exec(func(tx *world.Tx) {
+				safePos, ok = anchorBlock.SpawnPosition(anchorPos, tx)
+				if ok {
+					anchorBlock.Charge--
+					tx.SetBlock(anchorPos, anchorBlock, nil)
+					if anchorBlock.Charge == 0 {
+						anchorDepleted = true
+						tx.World().SetPlayerSpawn(p.UUID(), tx.World().Spawn())
+					}
+				}
+			})
+			if ok {
+				respawnWorld = anchorWorld
+				respawnPos = safePos
+				respawnVec = safePos.Vec3Middle()
+			} else {
+				anchorObstructed = true
+			}
+		}
+	}
+
+	if respawnWorld == defaultWorld && respawnPos == defaultWorld.Spawn() && anchorWorld == nil {
+		anchorObstructed = true
+	}
 
 	p.addHealth(p.MaxHealth())
 	p.hunger.Reset()
@@ -951,13 +1056,29 @@ func (p *Player) respawn(f func(p *Player)) {
 	p.Extinguish()
 	p.ResetFallDistance()
 
-	p.Handler().HandleRespawn(p, &pos, &w)
+	p.Handler().HandleRespawn(p, &respawnVec, &respawnWorld)
+
+	if anchorObstructed {
+		p.Message("You have no home bed or respawn anchor, or it was obstructed")
+	}
+	if anchorDepleted {
+		p.Message("Respawn anchor depleted")
+	}
+
+	displaySpawn := respawnPos
+	displayDim := respawnWorld.Dimension()
+	if anchorDepleted && anchorWorld != nil {
+		displaySpawn = anchorWorld.Spawn()
+		displayDim = anchorWorld.Dimension()
+	}
+
+	p.SetRespawnPosition(displaySpawn, displayDim)
 
 	handle := p.tx.RemoveEntity(p)
-	w.Exec(func(tx *world.Tx) {
+	respawnWorld.Exec(func(tx *world.Tx) {
 		np := tx.AddEntity(handle).(*Player)
-		np.Teleport(pos)
-		np.session().SendRespawn(pos, p)
+		np.Teleport(respawnVec)
+		np.session().SendRespawn(respawnVec, p)
 		np.SetVisible()
 		if f != nil {
 			f(np)
