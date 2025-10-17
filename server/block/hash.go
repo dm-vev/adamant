@@ -28,6 +28,8 @@ const (
 	hashCake
 	hashCalcite
 	hashCampfire
+	hashCandle
+	hashCandleCake
 	hashCarpet
 	hashCarrot
 	hashChest
@@ -293,6 +295,14 @@ func (Calcite) Hash() (uint64, uint64) {
 
 func (c Campfire) Hash() (uint64, uint64) {
 	return hashCampfire, uint64(c.Facing) | uint64(boolByte(c.Extinguished))<<2 | uint64(c.Type.Uint8())<<3
+}
+
+func (c Candle) Hash() (uint64, uint64) {
+	return hashCandle, uint64(c.AdditionalCandles) | uint64(boolByte(c.Lit))<<8 | uint64(c.Colour.Uint8())<<9 | uint64(boolByte(c.Coloured))<<13
+}
+
+func (c CandleCake) Hash() (uint64, uint64) {
+	return hashCandleCake, uint64(c.Colour.Uint8()) | uint64(boolByte(c.Coloured))<<4 | uint64(boolByte(c.Lit))<<5
 }
 
 func (c Carpet) Hash() (uint64, uint64) {
