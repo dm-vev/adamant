@@ -229,6 +229,13 @@ func (t ticker) anyWithinDistance(pos ChunkPos, loaded []ChunkPos, r int32) bool
 
 // tickEntities ticks all entities in the world, making sure they are still located in the correct chunks and
 // updating where necessary.
+//
+// The implementation purposefully separates entities into "active" (chunks with at least one viewer) and
+// "sleeping" (chunks currently unseen) cohorts. Only the active cohort is processed every tick. Sleeping
+// chunks are serviced on a coarse cadence to avoid spending CPU time on areas of the world that no player can
+// currently interact with. This mirrors the behaviour of the vanilla server simulation distance and greatly
+// reduces per-tick iteration costs on large worlds while still keeping important counters such as entity age and
+// fire timers consistent.
 func (t ticker) tickEntities(tx *Tx, tick int64) {
 	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
@@ -240,6 +247,10 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 	activeChunks := make(map[*EntityHandle]entityChunkRef)
 	sleeping := make([]*EntityHandle, 0)
 	sleepingChunks := make(map[*EntityHandle]entityChunkRef)
+
+	// We perform a single pass over the chunk map to partition entity handles. The maps keep track of the
+	// originating column so that we can update viewer lists or perform removals without having to search for the
+	// owning chunk again later in the tick.
 
 	for pos, col := range w.chunks {
 		if len(col.Entities) == 0 {
@@ -286,6 +297,8 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		entityLoaded bool
 	)
 	loadEntity := func() Entity {
+		// Entity handles lazily open their backing implementation. We memoise the first load so repeated
+		// viewers or ticker calls reuse the same pointer and avoid repeated provider work each tick.
 		if !entityLoaded {
 			entity = state.entity(tx, handle)
 			entityLoaded = true
@@ -331,6 +344,10 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	}
 
 	if !active {
+		// Sleeping entities are only maintained intermittently. Rather than ticking behavioural logic
+		// every frame we only advance bookkeeping values (age, fire) and run clean-up such as despawning
+		// expired items. This keeps dormant areas cheap to maintain while ensuring that, once a viewer
+		// arrives, the entity state can immediately catch up from the persisted counters.
 		if state.nextPassiveTick == 0 {
 			state.nextPassiveTick = tick + passiveMaintenanceInterval
 		}
@@ -359,6 +376,9 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	}
 
 	if delta := tick - state.lastTick; delta > 1 {
+		// We collapsed multiple ticks: apply the same accounting vanilla would have done each frame so
+		// behaviours that rely on entity age or fire duration stay in sync even if an entity temporarily left
+		// the active area.
 		inc := time.Duration(delta-1) * (time.Second / 20)
 		handle.data.Age += inc
 		if handle.data.FireDuration > 0 {

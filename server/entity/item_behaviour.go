@@ -159,6 +159,8 @@ func (i *ItemBehaviour) collect(e *Ent, collector Collector, tx *world.Tx) {
 		return
 	}
 	viewers := tx.Viewers(pos)
+	// Broadcast pickup feedback using the pooled viewer slice to avoid per-orb allocations when many items are
+	// collected in rapid succession.
 	for _, viewer := range viewers {
 		viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
 	}

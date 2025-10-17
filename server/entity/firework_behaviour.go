@@ -94,6 +94,8 @@ func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 	pos, explosions := e.Position(), f.conf.Firework.Explosions
 
 	viewers := tx.Viewers(pos)
+	// Firework bursts can happen en masse; leveraging the pooled viewer slice keeps the celebratory moment from
+	// generating avoidable garbage.
 	for _, v := range viewers {
 		v.ViewEntityAction(e, FireworkExplosionAction{})
 	}

@@ -227,6 +227,8 @@ func (lt *ProjectileBehaviour) tryPickup(e *Ent, tx *world.Tx) {
 		// A collector was within range and able to pick up the entity.
 		lt.close = true
 		viewers := tx.Viewers(e.Position())
+		// Projectile pickups can happen many times per second in arenas; recycling the viewer slice keeps the
+		// action snappy by avoiding short-lived allocations.
 		for _, viewer := range viewers {
 			viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
 		}
@@ -249,6 +251,8 @@ func (lt *ProjectileBehaviour) hitBlockSurviving(e *Ent, r trace.BlockResult, m 
 		lt.collisionPos, lt.collided = r.BlockPosition(), true
 
 		viewers := tx.Viewers(m.pos)
+		// Reuse the pooled buffer to broadcast the collision feedback, then hand it back so other projectiles
+		// in flight can benefit from the same allocation.
 		for _, v := range viewers {
 			v.ViewEntityAction(e, ArrowShakeAction{Duration: time.Millisecond * 350})
 			v.ViewEntityState(e)

@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// experienceOrbSearchInterval defines how many world ticks we wait between target acquisition scans. Using the world
+// tick counter keeps the behaviour deterministic even if the server wall clock is jittery under load.
 const experienceOrbSearchInterval int64 = 20
 
 // ExperienceOrbBehaviourConfig holds optional parameters for the creation of
@@ -53,6 +55,9 @@ type ExperienceOrbBehaviour struct {
 
 	passive *PassiveBehaviour
 
+	// lastSearchTick tracks when we last performed a collector search using the world's logical tick counter.
+	// Relying on ticks instead of time.Now() avoids jitter when the server slows down and ensures orbs wake up
+	// immediately once the simulation resumes at full speed.
 	lastSearchTick int64
 	target         *world.EntityHandle
 }
@@ -78,6 +83,8 @@ func (exp *ExperienceOrbBehaviour) tick(e *Ent, tx *world.Tx) {
 	pos := e.Position()
 	hasTarget := ok && !target.Dead() && pos.Sub(target.Position()).Len() <= 8
 	currentTick := tx.World().CurrentTick()
+	// The world tick counter advances even if the main loop momentarily stalls. Anchoring the search cadence to
+	// it keeps orb pursuit smooth under load and matches how other behaviours pace themselves.
 	if !hasTarget {
 		if currentTick-exp.lastSearchTick >= experienceOrbSearchInterval {
 			exp.findTarget(tx, pos, currentTick)
