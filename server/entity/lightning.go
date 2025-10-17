@@ -48,7 +48,7 @@ func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 
 	if s.state--; s.state < 0 {
 		if s.lifetime == 0 {
-			_ = e.Close()
+                _ = e.CloseIn(tx)
 		} else if s.state < -rand.IntN(10) {
 			s.lifetime--
 			s.state = 1

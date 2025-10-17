@@ -93,7 +93,7 @@ func (b *FishingHookBehaviour) Reel(e *Ent, tx *world.Tx) (loot item.Stack, expe
 func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.owner != nil {
 		if _, ok := b.owner.Entity(tx); !ok {
-			_ = e.Close()
+            _ = e.CloseIn(tx)
 			return nil
 		}
 	}
@@ -103,7 +103,7 @@ func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 
 	if b.lifeTicks > fishingHookLifetime {
-		_ = e.Close()
+    _ = e.CloseIn(tx)
 		return nil
 	}
 	b.lifeTicks++

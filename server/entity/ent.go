@@ -21,10 +21,10 @@ type Behaviour interface {
 // share a lot of code. It is currently under development and is prone to
 // (breaking) changes.
 type Ent struct {
-	tx     *world.Tx
-	handle *world.EntityHandle
-	data   *world.EntityData
-	once   sync.Once
+    tx     *world.Tx
+    handle *world.EntityHandle
+    data   *world.EntityData
+    once   sync.Once
 }
 
 // Open converts a world.EntityHandle to an Ent in a world.Tx.
@@ -118,12 +118,12 @@ func (e *Ent) SetNameTag(s string) {
 // Tick ticks Ent, progressing its lifetime and closing the entity if it is
 // in the void.
 func (e *Ent) Tick(tx *world.Tx, current int64) {
-	y := e.data.Pos[1]
-	if y < float64(tx.Range()[0]) && current%10 == 0 {
-		_ = e.Close()
-		return
-	}
-	e.SetOnFire(e.OnFireDuration() - time.Second/20)
+    y := e.data.Pos[1]
+    if y < float64(tx.Range()[0]) && current%10 == 0 {
+        _ = e.CloseIn(tx)
+        return
+    }
+    e.SetOnFire(e.OnFireDuration() - time.Second/20)
 
 	if m := e.Behaviour().Tick(e, tx); m != nil {
 		m.Send()
@@ -133,13 +133,23 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 
 // Close closes the Ent and removes the associated entity from the world.
 func (e *Ent) Close() error {
-	e.once.Do(func() {
-		e.tx.RemoveEntity(e)
-		_ = e.handle.Close()
-	})
-	return nil
+    e.once.Do(func() {
+        e.tx.RemoveEntity(e)
+        _ = e.handle.Close()
+    })
+    return nil
 }
 
 func (e *Ent) bindTx(tx *world.Tx) {
-	e.tx = tx
+    e.tx = tx
+}
+
+// CloseIn closes the Ent using the provided transaction and removes the associated entity from the world.
+// This should be used from within world transactions (e.g., during ticks) to ensure a valid, active Tx is used.
+func (e *Ent) CloseIn(tx *world.Tx) error {
+    e.once.Do(func() {
+        tx.RemoveEntity(e)
+        _ = e.handle.Close()
+    })
+    return nil
 }
