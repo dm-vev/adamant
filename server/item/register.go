@@ -130,6 +130,7 @@ func init() {
 	world.RegisterItem(Totem{})
 	world.RegisterItem(TropicalFish{})
 	world.RegisterItem(TurtleShell{})
+	world.RegisterItem(Trident{})
 	world.RegisterItem(WarpedFungusOnAStick{})
 	world.RegisterItem(Wheat{})
 	world.RegisterItem(WrittenBook{})

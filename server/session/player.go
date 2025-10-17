@@ -594,96 +594,111 @@ func (s *Session) EnableInstantRespawn(enable bool) {
 // HandleInventories starts handling the inventories of the Controllable entity of the session. It sends packets when
 // slots in the inventory are changed.
 func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, enderChest, ui *inventory.Inventory, armour *inventory.Armour, heldSlot *uint32) {
-	s.inv = inv
-	s.inv.SlotFunc(s.broadcastInvFunc(tx, c))
-	s.offHand = offHand
-	s.offHand.SlotFunc(s.broadcastOffHandFunc(tx, c))
-	s.enderChest = enderChest
-	s.enderChest.SlotFunc(s.broadcastEnderChestFunc(tx, c))
-	s.armour = armour
-	s.armour.Inventory().SlotFunc(s.broadcastArmourFunc(tx, c))
-	s.ui = ui
-	s.ui.SlotFunc(s.uiInventoryFunc(tx, c))
-	s.heldSlot = heldSlot
+    s.inv = inv
+    // Use tx-less broadcast functions that schedule work on the entity's world transaction.
+    s.inv.SlotFunc(s.broadcastInvFunc(c))
+    s.offHand = offHand
+    s.offHand.SlotFunc(s.broadcastOffHandFunc(c))
+    s.enderChest = enderChest
+    s.enderChest.SlotFunc(s.broadcastEnderChestFunc(c))
+    s.armour = armour
+    s.armour.Inventory().SlotFunc(s.broadcastArmourFunc(c))
+    s.ui = ui
+    s.ui.SlotFunc(s.uiInventoryFunc(c))
+    s.heldSlot = heldSlot
 }
 
-func (s *Session) broadcastInvFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
-	return func(slot int, _, after item.Stack) {
-		if slot == int(*s.heldSlot) {
-			viewers := tx.Viewers(c.Position())
-			// Equipment updates are extremely frequent; using the pooled slice keeps hotbar spam from
-			// producing unnecessary garbage.
-			for _, viewer := range viewers {
-				viewer.ViewEntityItems(c)
-			}
-			tx.ReleaseViewers(viewers)
-		}
-		if !s.inTransaction.Load() {
-			s.sendItem(after, slot, protocol.WindowIDInventory)
-		}
-	}
+func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
+    return func(slot int, _, after item.Stack) {
+        if slot == int(*s.heldSlot) {
+            // Acquire viewers within a fresh transaction to avoid using a stale tx.
+            c.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+                viewers := tx.Viewers(e.Position())
+                // Equipment updates are extremely frequent; using the pooled slice keeps hotbar spam from
+                // producing unnecessary garbage.
+                for _, viewer := range viewers {
+                    viewer.ViewEntityItems(e)
+                }
+                tx.ReleaseViewers(viewers)
+            })
+        }
+        if !s.inTransaction.Load() {
+            s.sendItem(after, slot, protocol.WindowIDInventory)
+        }
+    }
 }
 
-func (s *Session) broadcastEnderChestFunc(tx *world.Tx, _ Controllable) inventory.SlotFunc {
-	return func(slot int, _, after item.Stack) {
-		if !s.inTransaction.Load() {
-			if _, ok := tx.Block(*s.openedPos.Load()).(block.EnderChest); ok {
-				s.ViewSlotChange(slot, after)
-			}
-		}
-	}
+func (s *Session) broadcastEnderChestFunc(c Controllable) inventory.SlotFunc {
+    return func(slot int, _, after item.Stack) {
+        if !s.inTransaction.Load() {
+            // Determine if an ender chest is open within a valid transaction.
+            c.H().ExecWorld(func(tx *world.Tx, _ world.Entity) {
+                if _, ok := tx.Block(*s.openedPos.Load()).(block.EnderChest); ok {
+                    s.ViewSlotChange(slot, after)
+                }
+            })
+        }
+    }
 }
 
-func (s *Session) broadcastOffHandFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
-	return func(slot int, _, after item.Stack) {
-		viewers := tx.Viewers(c.Position())
-		// Off-hand sync leverages the same pooled viewer slice so rapidly switching totems or shields remains
-		// allocation free.
-		for _, viewer := range viewers {
-			viewer.ViewEntityItems(c)
-		}
-		tx.ReleaseViewers(viewers)
-		if !s.inTransaction.Load() {
-			i, _ := s.offHand.Item(0)
-			s.writePacket(&packet.InventoryContent{
-				WindowID: protocol.WindowIDOffHand,
-				Content:  []protocol.ItemInstance{instanceFromItem(i)},
-			})
-		}
-	}
+func (s *Session) broadcastOffHandFunc(c Controllable) inventory.SlotFunc {
+    return func(slot int, _, after item.Stack) {
+        // Broadcast off-hand changes within a valid transaction.
+        c.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+            viewers := tx.Viewers(e.Position())
+            // Off-hand sync leverages the same pooled viewer slice so rapidly switching totems or shields remains
+            // allocation free.
+            for _, viewer := range viewers {
+                viewer.ViewEntityItems(e)
+            }
+            tx.ReleaseViewers(viewers)
+        })
+        if !s.inTransaction.Load() {
+            i, _ := s.offHand.Item(0)
+            s.writePacket(&packet.InventoryContent{
+                WindowID: protocol.WindowIDOffHand,
+                Content:  []protocol.ItemInstance{instanceFromItem(i)},
+            })
+        }
+    }
 }
 
-func (s *Session) broadcastArmourFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
-	return func(slot int, before, after item.Stack) {
-		if !s.inTransaction.Load() {
-			s.sendItem(after, slot, protocol.WindowIDArmour)
-		}
-		if before.Comparable(after) && before.Empty() == after.Empty() {
-			// Only send armour if the item type actually changed.
-			return
-		}
-		viewers := tx.Viewers(c.Position())
-		// Armour broadcasts also borrow the pooled buffer. Players often spam armour swaps in PvP; the pool keeps
-		// the resulting updates cheap.
-		for _, viewer := range viewers {
-			viewer.ViewEntityArmour(c)
-		}
-		tx.ReleaseViewers(viewers)
-	}
+func (s *Session) broadcastArmourFunc(c Controllable) inventory.SlotFunc {
+    return func(slot int, before, after item.Stack) {
+        if !s.inTransaction.Load() {
+            s.sendItem(after, slot, protocol.WindowIDArmour)
+        }
+        if before.Comparable(after) && before.Empty() == after.Empty() {
+            // Only send armour if the item type actually changed.
+            return
+        }
+        // Broadcast armour changes within a valid transaction.
+        c.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+            viewers := tx.Viewers(e.Position())
+            // Armour broadcasts also borrow the pooled buffer. Players often spam armour swaps in PvP; the pool keeps
+            // the resulting updates cheap.
+            for _, viewer := range viewers {
+                viewer.ViewEntityArmour(e)
+            }
+            tx.ReleaseViewers(viewers)
+        })
+    }
 }
 
 // uiInventoryFunc handles an update to the UI inventory, used for updating enchantment options and possibly more
 // in the future.
-func (s *Session) uiInventoryFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
-	return func(slot int, _, after item.Stack) {
-		if slot == enchantingInputSlot && s.containerOpened.Load() {
-			pos := *s.openedPos.Load()
-			if _, enchanting := tx.Block(pos).(block.EnchantingTable); enchanting {
-				s.sendEnchantmentOptions(tx, c, pos, after)
-			}
-		}
-		s.sendInv(s.ui, protocol.WindowIDUI)
-	}
+func (s *Session) uiInventoryFunc(c Controllable) inventory.SlotFunc {
+    return func(slot int, _, after item.Stack) {
+        if slot == enchantingInputSlot && s.containerOpened.Load() {
+            pos := *s.openedPos.Load()
+            c.H().ExecWorld(func(tx *world.Tx, _ world.Entity) {
+                if _, enchanting := tx.Block(pos).(block.EnchantingTable); enchanting {
+                    s.sendEnchantmentOptions(tx, c, pos, after)
+                }
+            })
+        }
+        s.sendInv(s.ui, protocol.WindowIDUI)
+    }
 }
 
 // SendHeldSlot sends the currently held hotbar slot.
