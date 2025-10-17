@@ -223,51 +223,84 @@ func (t ticker) anyWithinDistance(pos ChunkPos, loaded []ChunkPos, r int32) bool
 // tickEntities ticks all entities in the world, making sure they are still located in the correct chunks and
 // updating where necessary.
 func (t ticker) tickEntities(tx *Tx, tick int64) {
-	for handle, lastPos := range tx.World().entities {
-		e := handle.mustEntity(tx)
+	w := tx.World()
+	for handle, state := range w.entities {
 		chunkPos := chunkPosFromVec3(handle.data.Pos)
 
-		c, ok := tx.World().chunks[chunkPos]
+		c, ok := w.chunks[chunkPos]
 		if !ok {
 			continue
 		}
 
-		if lastPos != chunkPos {
-			// The entity was stored using an outdated chunk position. We update it and make sure it is ready
-			// for loaders to view it.
-			tx.World().entities[handle] = chunkPos
+		var (
+			entity       Entity
+			entityLoaded bool
+		)
+		loadEntity := func() Entity {
+			if !entityLoaded {
+				entity = state.entity(tx, handle)
+				entityLoaded = true
+			}
+			return entity
+		}
+
+		if state.lastTick == 0 {
+			state.lastTick = tick
+		}
+		if state.pos != chunkPos {
+			oldPos := state.pos
+			state.pos = chunkPos
 			c.Entities = append(c.Entities, handle)
 
 			var viewers []Viewer
-
-			// When changing an entity's world, then teleporting it immediately, we could end up in a situation
-			// where the old chunk of the entity was not loaded. In this case, it should be safe simply to ignore
-			// the loaders from the old chunk. We can assume they never saw the entity in the first place.
-			if old, ok := tx.World().chunks[lastPos]; ok {
+			if old, ok := w.chunks[oldPos]; ok {
 				old.Entities = sliceutil.DeleteVal(old.Entities, handle)
 				viewers = old.viewers
 			}
 
-			for _, viewer := range viewers {
-				if slices.Index(c.viewers, viewer) == -1 {
-					// First we hide the entity from all loaders that were previously viewing it, but no
-					// longer are.
-					viewer.HideEntity(e)
+			if len(viewers) > 0 {
+				ent := loadEntity()
+				for _, viewer := range viewers {
+					if slices.Index(c.viewers, viewer) == -1 {
+						viewer.HideEntity(ent)
+					}
 				}
 			}
-			for _, viewer := range c.viewers {
-				if slices.Index(viewers, viewer) == -1 {
-					// Then we show the entity to all loaders that are now viewing the entity in the new
-					// chunk.
-					showEntity(e, viewer)
+			if len(c.viewers) > 0 {
+				ent := loadEntity()
+				for _, viewer := range c.viewers {
+					if slices.Index(viewers, viewer) == -1 {
+						showEntity(ent, viewer)
+					}
 				}
 			}
 		}
 
-		if len(c.viewers) > 0 {
-			if te, ok := e.(TickerEntity); ok {
-				te.Tick(tx, tick)
+		viewCount := len(c.viewers)
+		if viewCount == 0 {
+			if delta := tick - state.lastTick; delta > 0 {
+				inc := time.Duration(delta) * (time.Second / 20)
+				handle.data.Age += inc
+				if handle.data.FireDuration > 0 {
+					if inc >= handle.data.FireDuration {
+						handle.data.FireDuration = 0
+					} else {
+						handle.data.FireDuration -= inc
+					}
+				}
+				state.lastTick = tick
 			}
+			if handle.t.EncodeEntity() == "minecraft:item" && handle.data.Age >= 5*time.Minute {
+				if ent := loadEntity(); ent != nil {
+					_ = ent.Close()
+				}
+			}
+			continue
+		}
+
+		state.lastTick = tick
+		if te, ok := loadEntity().(TickerEntity); ok {
+			te.Tick(tx, tick)
 		}
 	}
 }

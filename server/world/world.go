@@ -53,10 +53,13 @@ type World struct {
 	// from this map after some time of not being used.
 	chunks map[ChunkPos]*Column
 
-	// entities holds a map of entities currently loaded and the last ChunkPos
-	// that the Entity was in. These are tracked so that a call to RemoveEntity
-	// can find the correct Entity.
-	entities map[*EntityHandle]ChunkPos
+	// entities holds a map of entities currently loaded and metadata associated
+	// with them, such as the last chunk position they were located in and a
+	// cached instance of the opened entity. The cached entity instance allows us
+	// to reuse the same Go object across ticks instead of re-opening it each
+	// iteration, which significantly reduces pressure on the garbage collector
+	// and CPU usage during the entity pipeline.
+	entities map[*EntityHandle]*entityState
 
 	r *rand.Rand
 
@@ -73,6 +76,25 @@ type World struct {
 	viewers  map[*Loader]Viewer
 
 	generatorQueue chan generationTask
+}
+
+type entityState struct {
+	pos      ChunkPos
+	ent      Entity
+	lastTick int64
+}
+
+func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
+	if s == nil {
+		return nil
+	}
+	if s.ent == nil {
+		s.ent = handle.mustEntity(tx)
+	}
+	if binder, ok := s.ent.(interface{ bindTx(*Tx) }); ok {
+		binder.bindTx(tx)
+	}
+	return s.ent
 }
 
 type generationTask struct {
@@ -699,12 +721,16 @@ func (w *World) playSound(tx *Tx, pos mgl64.Vec3, s Sound) {
 func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	handle.setAndUnlockWorld(w)
 	pos := chunkPosFromVec3(handle.data.Pos)
-	w.entities[handle] = pos
+	w.set.Lock()
+	currentTick := w.set.CurrentTick
+	w.set.Unlock()
+	state := &entityState{pos: pos, lastTick: currentTick}
+	w.entities[handle] = state
 
 	c := w.chunk(pos)
 	c.Entities, c.modified = append(c.Entities, handle), true
 
-	e := handle.mustEntity(tx)
+	e := state.entity(tx, handle)
 	for _, v := range c.viewers {
 		// Show the entity to all viewers in the chunk of the entity.
 		showEntity(e, v)
@@ -719,11 +745,12 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 // from the World, the Entity is no longer usable.
 func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	handle := e.H()
-	pos, found := w.entities[handle]
+	state, found := w.entities[handle]
 	if !found {
 		// The entity currently isn't in this world.
 		return nil
 	}
+	pos := state.pos
 	w.Handler().HandleEntityDespawn(tx, e)
 
 	c := w.chunk(pos)
@@ -754,7 +781,11 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 					if !box.Vec3Within(handle.data.Pos) {
 						continue
 					}
-					if !yield(handle.mustEntity(tx)) {
+					state := w.entities[handle]
+					if state == nil {
+						continue
+					}
+					if !yield(state.entity(tx, handle)) {
 						return
 					}
 				}
@@ -766,9 +797,11 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 // allEntities returns an iterator that yields all entities in the World.
 func (w *World) allEntities(tx *Tx) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
-		for e := range w.entities {
-			if ent := e.mustEntity(tx); !yield(ent) {
-				return
+		for handle, state := range w.entities {
+			if ent := state.entity(tx, handle); ent != nil {
+				if !yield(ent) {
+					return
+				}
 			}
 		}
 	}
@@ -777,10 +810,12 @@ func (w *World) allEntities(tx *Tx) iter.Seq[Entity] {
 // allPlayers returns an iterator that yields all player entities in the World.
 func (w *World) allPlayers(tx *Tx) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
-		for e := range w.entities {
-			if e.t.EncodeEntity() == "minecraft:player" {
-				if ent := e.mustEntity(tx); !yield(ent) {
-					return
+		for handle, state := range w.entities {
+			if handle.t.EncodeEntity() == "minecraft:player" {
+				if ent := state.entity(tx, handle); ent != nil {
+					if !yield(ent) {
+						return
+					}
 				}
 			}
 		}
@@ -1216,8 +1251,11 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		col.markReady()
 
 		// Register all entities contained in this column into the world.
+		w.set.Lock()
+		currentTick := w.set.CurrentTick
+		w.set.Unlock()
 		for _, e := range col.Entities {
-			w.entities[e] = pos
+			w.entities[e] = &entityState{pos: pos, lastTick: currentTick}
 			e.w = w
 		}
 
