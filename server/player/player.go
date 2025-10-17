@@ -1753,10 +1753,10 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	smashBonus := 0.0
 	smashReady := false
 	windLevel := 0
-	armourMultiplier := 1.0
+	breachLevel := 0
 	if maceHeld {
 		if b, ok := i.Enchantment(enchantment.Breach); ok {
-			armourMultiplier = enchantment.Breach.ArmourMultiplier(b.Level())
+			breachLevel = b.Level()
 		}
 		if w, ok := i.Enchantment(enchantment.WindBurst); ok {
 			windLevel = w.Level()
@@ -1794,8 +1794,10 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 
 	src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
-	if maceHeld && armourMultiplier != 1 {
-		src = entity.MaceSmashDamageSource{AttackDamageSource: entity.AttackDamageSource{Attacker: p}, ArmourMultiplier: armourMultiplier}
+	if smashReady && breachLevel > 0 {
+		if armourMultiplier := enchantment.Breach.ArmourMultiplier(breachLevel); armourMultiplier != 1 {
+			src = world.DamageSource(entity.MaceSmashDamageSource{AttackDamageSource: entity.AttackDamageSource{Attacker: p}, ArmourMultiplier: armourMultiplier})
+		}
 	}
 	n, vulnerable := living.Hurt(dmg, src)
 	i, left := p.HeldItems()
