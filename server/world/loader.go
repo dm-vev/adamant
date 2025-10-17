@@ -20,6 +20,9 @@ type Loader struct {
 	loadQueue []ChunkPos
 	loaded    map[ChunkPos]*Column
 
+	activeRadius   int32
+	activeRadiusSq int64
+
 	closed bool
 }
 
@@ -112,7 +115,7 @@ func (l *Loader) Load(tx *Tx, n int) {
 		}
 
 		l.viewer.ViewChunk(pos, l.w.Dimension(), c.BlockEntities, c.Chunk)
-		l.w.addViewer(tx, c, l)
+		l.w.addViewer(tx, pos, c, l)
 
 		l.loaded[pos] = c
 		loaded++
@@ -202,4 +205,22 @@ func (l *Loader) populateLoadQueue() {
 	for i := int32(0); i <= r; i++ {
 		l.loadQueue = append(l.loadQueue, queue[i]...)
 	}
+}
+
+func (l *Loader) activeArea(simRadius int32) loaderActiveArea {
+	l.mu.Lock()
+	target := simRadius
+	if target < 0 {
+		target = 0
+	}
+	if lr := int32(l.r); lr >= 0 && lr < target {
+		target = lr
+	}
+	if l.activeRadius != target {
+		l.activeRadius = target
+		l.activeRadiusSq = int64(target) * int64(target)
+	}
+	area := loaderActiveArea{pos: l.pos, radius: l.activeRadius, radiusSq: l.activeRadiusSq}
+	l.mu.Unlock()
+	return area
 }

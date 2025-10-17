@@ -33,11 +33,15 @@ type Config struct {
 	Generator Generator
 	// GeneratorWorkers specifies the number of background workers used to run
 	// chunk generation. If set to 0 or lower, a worker count matching the
-	// number of logical CPUs is used.
+	// number of logical CPUs is used. Large terrain preloads may benefit from a
+	// higher worker count, but profiling is recommended when the generator is
+	// constrained by external I/O (for example LevelDB access).
 	GeneratorWorkers int
 	// GeneratorQueueSize specifies the amount of chunk generation tasks that
 	// may be queued waiting for a worker. If set to 0 or lower, a queue size
-	// proportional to the worker count will be selected automatically.
+	// proportional to the worker count will be selected automatically. Under
+	// sustained heavy load you may want to raise the queue size together with
+	// GeneratorWorkers to avoid backpressure warnings.
 	GeneratorQueueSize int
 	// ReadOnly specifies if the World should be read-only, meaning no new data
 	// will be written to the Provider.
@@ -103,19 +107,23 @@ func (conf Config) New() *World {
 	}
 	s := conf.Provider.Settings()
 	w := &World{
-		scheduledUpdates: newScheduledTickQueue(s.CurrentTick),
-		entities:         make(map[*EntityHandle]*entityState),
-		viewers:          make(map[*Loader]Viewer),
-		chunks:           make(map[ChunkPos]*Column),
-		queueClosing:     make(chan struct{}),
-		closing:          make(chan struct{}),
-		queue:            make(chan transaction, 128),
-		generatorQueue:   make(chan generationTask, conf.GeneratorQueueSize),
-		r:                rand.New(conf.RandSource),
-		advance:          s.ref.Add(1) == 1,
-		conf:             conf,
-		ra:               conf.Dim.Range(),
-		set:              s,
+		scheduledUpdates:    newScheduledTickQueue(s.CurrentTick),
+		entities:            make(map[*EntityHandle]*entityState),
+		viewers:             make(map[*Loader]Viewer),
+		chunks:              make(map[ChunkPos]*Column),
+		queueClosing:        make(chan struct{}),
+		closing:             make(chan struct{}),
+		queue:               make(chan transaction, 128),
+		generatorQueue:      make(chan generationTask, conf.GeneratorQueueSize),
+		r:                   rand.New(conf.RandSource),
+		advance:             s.ref.Add(1) == 1,
+		conf:                conf,
+		ra:                  conf.Dim.Range(),
+		set:                 s,
+		activeColumnIndex:   make(map[ChunkPos]int),
+		entityColumnIndex:   make(map[ChunkPos]int),
+		scratchActiveRefs:   make(map[*EntityHandle]entityChunkRef),
+		scratchSleepingRefs: make(map[*EntityHandle]entityChunkRef),
 	}
 	w.weather = weather{w: w}
 	var h Handler = NopHandler{}

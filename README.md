@@ -34,6 +34,11 @@ Server settings are in `config.toml`.
 - `Network.Address`: listen address and port (default `:19132`).
 - `Server.Name`: server name in the list; `AuthEnabled`, `DisableJoinQuitMessages`, `MuteEmoteChat`.
 - `World`: `Seed`, `SaveData`, `GeneratorWorkers`, `GeneratorQueueSize`, `Folder`.
+
+  The asynchronous generator defaults to `GeneratorQueueSize = GeneratorWorkers * 4`. Under
+  extreme preloading you may need to raise both values to keep the queue from saturating; watch
+  the server logs for `world generator queue saturated` warnings. Profile the generator first if
+  it is limited by LevelDB or other I/O to ensure additional workers do not become the bottleneck.
 - `Players`: `MaxCount`, `MaximumChunkRadius`, `SaveData`, `Folder`.
 - `Resources`: `AutoBuildPack`, `Folder`, `Required`.
 - `Whitelist`: `Enabled`, `File` (default `whitelist.toml`).

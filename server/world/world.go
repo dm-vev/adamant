@@ -27,6 +27,17 @@ import (
 // synchronised state: All entities, blocks and players usually operate in this
 // world, so World ensures that all its methods will always be safe for
 // simultaneous calls. A nil *World is safe to use but not functional.
+type columnRef struct {
+	pos ChunkPos
+	col *Column
+}
+
+type loaderActiveArea struct {
+	pos      ChunkPos
+	radius   int32
+	radiusSq int64
+}
+
 type World struct {
 	conf Config
 	ra   cube.Range
@@ -72,10 +83,28 @@ type World struct {
 	scheduledUpdates *scheduledTickQueue
 	neighbourUpdates []neighbourUpdate
 
+	scratchRandom           []cube.Pos
+	scratchBlockEntities    []cube.Pos
+	scratchLoaderAreas      []loaderActiveArea
+	scratchActiveEntities   []*EntityHandle
+	scratchSleepingEntities []*EntityHandle
+	scratchActiveRefs       map[*EntityHandle]entityChunkRef
+	scratchSleepingRefs     map[*EntityHandle]entityChunkRef
+
+	activeColumns     []columnRef
+	activeColumnIndex map[ChunkPos]int
+	entityColumns     []columnRef
+	entityColumnIndex map[ChunkPos]int
+
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
 
 	generatorQueue chan generationTask
+	// generatorQueueSaturation counts how often chunk generation tasks had to be
+	// enqueued asynchronously because the worker queue was full. We use this to
+	// rate-limit backpressure warnings so operators can tune queue/worker sizes.
+	generatorQueueSaturation atomic.Uint64
+	lastQueueSaturationLog   atomic.Uint64
 }
 
 type entityState struct {
@@ -764,6 +793,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 
 	c := w.chunk(pos)
 	c.Entities, c.modified = append(c.Entities, handle), true
+	w.addEntityColumn(pos, c)
 
 	e := state.entity(tx, handle)
 	for v := range c.viewers {
@@ -790,6 +820,9 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 
 	c := w.chunk(pos)
 	c.Entities, c.modified = sliceutil.DeleteVal(c.Entities, handle), true
+	if len(c.Entities) == 0 {
+		w.removeEntityColumn(pos)
+	}
 
 	for v := range c.viewers {
 		v.HideEntity(e)
@@ -1111,6 +1144,8 @@ func (w *World) saveChunk(_ *Tx, pos ChunkPos, c *Column) {
 func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 	w.saveChunk(tx, pos, c)
 	w.scheduledUpdates.removeChunk(pos)
+	w.removeActiveColumn(pos)
+	w.removeEntityColumn(pos)
 	// Note: We close c.Entities here because some entities may remove
 	// themselves from the world in their Close method, which can lead to
 	// unexpected conditions.
@@ -1192,11 +1227,13 @@ func (w *World) addWorldViewer(l *Loader) {
 // addViewer adds a viewer to the World at a given position. Any events that
 // happen in the chunk at that position, such as block and entity changes, will
 // be sent to the viewer.
-func (w *World) addViewer(tx *Tx, c *Column, loader *Loader) {
+func (w *World) addViewer(tx *Tx, pos ChunkPos, c *Column, loader *Loader) {
 	if loader.viewer != nil {
 		c.viewers[loader.viewer] = struct{}{}
 	}
 	c.loaders = append(c.loaders, loader)
+
+	w.addActiveColumn(pos, c)
 
 	for _, entity := range c.Entities {
 		showEntity(entity.mustEntity(tx), loader.viewer)
@@ -1216,6 +1253,10 @@ func (w *World) removeViewer(tx *Tx, pos ChunkPos, loader *Loader) {
 	}
 	if i := slices.Index(c.loaders, loader); i != -1 {
 		c.loaders = slices.Delete(c.loaders, i, i+1)
+	}
+
+	if len(c.loaders) == 0 {
+		w.removeActiveColumn(pos)
 	}
 
 	// Hide all entities in the chunk from the viewer.
@@ -1332,6 +1373,10 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			e.w = w
 		}
 
+		if len(col.Entities) > 0 {
+			w.addEntityColumn(pos, col)
+		}
+
 		return col, nil
 
 	case errors.Is(err, leveldb.ErrNotFound):
@@ -1379,6 +1424,7 @@ func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 		// This allows us to avoid blocking the main thread while still handling
 		// backpressure. enqueueGeneration itself respects shutdown signals.
 		go w.enqueueGeneration(task)
+		w.handleGeneratorBackpressure()
 	}
 }
 
@@ -1464,6 +1510,29 @@ func (w *World) drainGenerationQueue() {
 			return
 		}
 	}
+}
+
+// handleGeneratorBackpressure increments backpressure counters and emits a throttled
+// warning when the generator queue saturates. This gives operators concrete guidance on
+// adjusting parallelism or profiling I/O bottlenecks under heavy terrain generation load.
+func (w *World) handleGeneratorBackpressure() {
+	count := w.generatorQueueSaturation.Add(1)
+	now := uint64(time.Now().UnixNano())
+	last := w.lastQueueSaturationLog.Load()
+
+	if last != 0 && time.Duration(now-last) < time.Minute {
+		return
+	}
+	if !w.lastQueueSaturationLog.CompareAndSwap(last, now) {
+		return
+	}
+
+	w.conf.Log.Warn(
+		"world generator queue saturated: chunk generation backlog detected.",
+		"queued_tasks", count,
+		"queue_size", cap(w.generatorQueue),
+		"workers", w.conf.GeneratorWorkers,
+	)
 }
 
 // calculateLight calculates the light in the chunk passed and spreads the
@@ -1568,6 +1637,68 @@ type Column struct {
 	readyCh    chan struct{}
 	lightOnce  sync.Once
 	lightReady atomic.Bool
+}
+
+func (w *World) addActiveColumn(pos ChunkPos, col *Column) {
+	if w.activeColumnIndex == nil {
+		w.activeColumnIndex = make(map[ChunkPos]int)
+	}
+	if idx, ok := w.activeColumnIndex[pos]; ok {
+		w.activeColumns[idx].col = col
+		return
+	}
+	w.activeColumns = append(w.activeColumns, columnRef{pos: pos, col: col})
+	w.activeColumnIndex[pos] = len(w.activeColumns) - 1
+}
+
+func (w *World) removeActiveColumn(pos ChunkPos) {
+	if len(w.activeColumns) == 0 {
+		return
+	}
+	idx, ok := w.activeColumnIndex[pos]
+	if !ok {
+		return
+	}
+	last := len(w.activeColumns) - 1
+	if idx != last {
+		w.activeColumns[idx] = w.activeColumns[last]
+		w.activeColumnIndex[w.activeColumns[idx].pos] = idx
+	}
+	w.activeColumns = w.activeColumns[:last]
+	delete(w.activeColumnIndex, pos)
+}
+
+func (w *World) addEntityColumn(pos ChunkPos, col *Column) {
+	if col == nil || len(col.Entities) == 0 {
+		w.removeEntityColumn(pos)
+		return
+	}
+	if w.entityColumnIndex == nil {
+		w.entityColumnIndex = make(map[ChunkPos]int)
+	}
+	if idx, ok := w.entityColumnIndex[pos]; ok {
+		w.entityColumns[idx].col = col
+		return
+	}
+	w.entityColumns = append(w.entityColumns, columnRef{pos: pos, col: col})
+	w.entityColumnIndex[pos] = len(w.entityColumns) - 1
+}
+
+func (w *World) removeEntityColumn(pos ChunkPos) {
+	if len(w.entityColumns) == 0 {
+		return
+	}
+	idx, ok := w.entityColumnIndex[pos]
+	if !ok {
+		return
+	}
+	last := len(w.entityColumns) - 1
+	if idx != last {
+		w.entityColumns[idx] = w.entityColumns[last]
+		w.entityColumnIndex[w.entityColumns[idx].pos] = idx
+	}
+	w.entityColumns = w.entityColumns[:last]
+	delete(w.entityColumnIndex, pos)
 }
 
 // viewerSlicePool recycles temporary []Viewer buffers created while broadcasting world state to reduce GC churn.
