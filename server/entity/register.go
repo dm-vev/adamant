@@ -23,6 +23,7 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	LightningType,
 	LingeringPotionType,
 	SnowballType,
+	TridentType,
 	SplashPotionType,
 	TNTType,
 	TextType,
@@ -58,6 +59,13 @@ var conf = world.EntityRegistryConfig{
 		}
 		conf.Critical = critical
 		return opts.New(ArrowType, conf)
+	},
+	Trident: func(opts world.EntitySpawnOpts, owner world.Entity, stack any, loyalty, impaling int, channeling bool) *world.EntityHandle {
+		s, ok := stack.(item.Stack)
+		if !ok {
+			panic("world.EntityRegistryConfig.Trident: stack must be item.Stack")
+		}
+		return NewTrident(opts, owner, s, loyalty, impaling, channeling)
 	},
 	FishingHook: func(opts world.EntitySpawnOpts, owner world.Entity, rod any) *world.EntityHandle {
 		stack, ok := rod.(item.Stack)

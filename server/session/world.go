@@ -744,6 +744,23 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventCrossbowShoot
 	case sound.ArrowHit:
 		pk.SoundType = packet.SoundEventBowHit
+	case sound.TridentThrow:
+		pk.SoundType = packet.SoundEventTridentThrow
+	case sound.TridentHit:
+		pk.SoundType = packet.SoundEventTridentHit
+	case sound.TridentReturn:
+		pk.SoundType = packet.SoundEventTridentReturn
+	case sound.TridentChanneling:
+		pk.SoundType = packet.SoundEventTridentThunder
+	case sound.TridentRiptide:
+		switch so.Level {
+		case 3:
+			pk.SoundType = packet.SoundEventTridentRiptide3
+		case 2:
+			pk.SoundType = packet.SoundEventTridentRiptide2
+		default:
+			pk.SoundType = packet.SoundEventTridentRiptide1
+		}
 	case sound.ItemThrow:
 		pk.SoundType, pk.EntityType = packet.SoundEventThrow, "minecraft:player"
 	case sound.LevelUp:

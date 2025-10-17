@@ -1811,6 +1811,11 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		}
 		p.tx.ReleaseViewers(viewers)
 	}
+	if imp, ok := i.Enchantment(enchantment.Impaling); ok {
+		if bonus := enchantment.Impaling.Damage(imp.Level(), living, p.tx); bonus > 0 {
+			dmg += bonus
+		}
+	}
 	if critical {
 		dmg *= 1.5
 	}

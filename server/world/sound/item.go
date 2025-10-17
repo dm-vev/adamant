@@ -73,6 +73,26 @@ const (
 // ArrowHit is a sound played when an arrow hits ground.
 type ArrowHit struct{ sound }
 
+// TridentThrow is a sound played when a trident is thrown.
+type TridentThrow struct{ sound }
+
+// TridentHit is a sound played when a trident hits a target.
+type TridentHit struct{ sound }
+
+// TridentReturn is a sound played when a trident returns to its owner.
+type TridentReturn struct{ sound }
+
+// TridentChanneling is a sound played when channeling summons lightning.
+type TridentChanneling struct{ sound }
+
+// TridentRiptide is a sound played when a riptide launch is triggered.
+type TridentRiptide struct {
+	// Level is the level of the riptide enchantment.
+	Level int
+
+	sound
+}
+
 // Teleport is a sound played upon teleportation of an enderman, or teleportation of a player by an ender pearl or a chorus fruit.
 type Teleport struct{ sound }
 
