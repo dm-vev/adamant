@@ -662,7 +662,7 @@ func (p *Player) applyTotemEffects() {
 
 	p.tx.PlaySound(p.Position(), sound.Totem{})
 
-	viewers = p.viewers()
+	viewers := p.viewers()
 	for _, viewer := range viewers {
 		viewer.ViewEntityAction(p, entity.TotemUseAction{})
 	}
