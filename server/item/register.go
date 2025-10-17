@@ -46,6 +46,7 @@ func init() {
 	world.RegisterItem(Diamond{})
 	world.RegisterItem(DiscFragment{})
 	world.RegisterItem(DragonBreath{})
+	world.RegisterItem(EndCrystal{})
 	world.RegisterItem(DriedKelp{})
 	world.RegisterItem(EchoShard{})
 	world.RegisterItem(Egg{})

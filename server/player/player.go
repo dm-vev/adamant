@@ -1874,15 +1874,30 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		critical       = !p.Sprinting() && !p.Flying() && p.FallDistance() > 0 && !slowFalling && !blind
 	)
 
+	destructible, isDestructible := e.(entity.Destructible)
+
 	ctx := event.C(p)
 	if p.Handler().HandleAttackEntity(ctx, e, &force, &height, &critical); ctx.Cancelled() {
 		return false
 	}
+	if !isLiving && !isDestructible {
+		p.SwingArm()
+		return false
+	}
+
 	p.SwingArm()
 
-	i, _ := p.HeldItems()
+	i, left := p.HeldItems()
 	if !isLiving {
-		return false
+		src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
+		if !destructible.Destroy(p.tx, src, p) {
+			return false
+		}
+		if durable, ok := i.Item().(item.Durable); ok {
+			p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
+		}
+		p.Exhaust(0.1)
+		return true
 	}
 
 	dmg := i.AttackDamage()
@@ -1948,7 +1963,7 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		}
 	}
 	n, vulnerable := living.Hurt(dmg, src)
-	i, left := p.HeldItems()
+	i, left = p.HeldItems()
 
 	p.tx.PlaySound(entity.EyePosition(e), sound.Attack{Damage: !mgl64.FloatEqual(n, 0)})
 	if smashReady && vulnerable && !mgl64.FloatEqual(n, 0) {
