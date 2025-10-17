@@ -19,8 +19,12 @@ jobs:
 
       - name: Build binary
         run: |
+          echo "=== Building Dragonfly binary ==="
           go mod tidy
           GOOS=linux GOARCH=amd64 go build -o dragonfly-server
+          echo "=== Build result ==="
+          ls -lh
+          file dragonfly-server || true
 
       - name: Stop Dragonfly service
         uses: appleboy/ssh-action@v1.1.0
@@ -41,31 +45,38 @@ jobs:
               fi
             done
 
-      - name: Upload new binary
+      - name: Upload binary to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "dragonfly-server"
-          target: "/home/dragonfly/server/"
-          strip_components: 0
+          source: ./***-server
+          target: /home/***/server/
           overwrite: true
-
-      - name: Replace and restart
+          
+      - name: Verify and restart
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            echo "Replacing binary..."
-            mv -f /home/dragonfly/server/dragonfly-server /home/dragonfly/server/dragonfly-server.old 2>/dev/null || true
-            mv -f /home/dragonfly/server/dragonfly-server /home/dragonfly/server/dragonfly-server.new 2>/dev/null || true
+            echo "=== Checking uploaded binary ==="
+            if [ ! -f /home/dragonfly/server/dragonfly-server ]; then
+              echo "❌ ERROR: binary not found!"
+              exit 1
+            fi
+            ls -lh /home/dragonfly/server/dragonfly-server
+            file /home/dragonfly/server/dragonfly-server || true
             chmod +x /home/dragonfly/server/dragonfly-server
-            echo "Starting service..."
+            echo "✅ Binary exists and is executable."
+
+            echo "=== Restarting service ==="
             sudo -n systemctl restart dragonfly.service
-            echo "Service status:"
-            sudo -n systemctl status dragonfly.service --no-pager
-            echo "Recent logs:"
-            sudo -n journalctl -u dragonfly.service -n 10 --no-pager
+
+            echo "=== Checking service status ==="
+            sudo -n systemctl status dragonfly.service --no-pager || true
+
+            echo "=== Last 15 log lines ==="
+            sudo -n journalctl -u dragonfly.service -n 15 --no-pager || true
