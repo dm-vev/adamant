@@ -610,9 +610,13 @@ func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, 
 func (s *Session) broadcastInvFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
 		if slot == int(*s.heldSlot) {
-			for _, viewer := range tx.Viewers(c.Position()) {
+			viewers := tx.Viewers(c.Position())
+			// Equipment updates are extremely frequent; using the pooled slice keeps hotbar spam from
+			// producing unnecessary garbage.
+			for _, viewer := range viewers {
 				viewer.ViewEntityItems(c)
 			}
+			tx.ReleaseViewers(viewers)
 		}
 		if !s.inTransaction.Load() {
 			s.sendItem(after, slot, protocol.WindowIDInventory)
@@ -632,9 +636,13 @@ func (s *Session) broadcastEnderChestFunc(tx *world.Tx, _ Controllable) inventor
 
 func (s *Session) broadcastOffHandFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
-		for _, viewer := range tx.Viewers(c.Position()) {
+		viewers := tx.Viewers(c.Position())
+		// Off-hand sync leverages the same pooled viewer slice so rapidly switching totems or shields remains
+		// allocation free.
+		for _, viewer := range viewers {
 			viewer.ViewEntityItems(c)
 		}
+		tx.ReleaseViewers(viewers)
 		if !s.inTransaction.Load() {
 			i, _ := s.offHand.Item(0)
 			s.writePacket(&packet.InventoryContent{
@@ -654,9 +662,13 @@ func (s *Session) broadcastArmourFunc(tx *world.Tx, c Controllable) inventory.Sl
 			// Only send armour if the item type actually changed.
 			return
 		}
-		for _, viewer := range tx.Viewers(c.Position()) {
+		viewers := tx.Viewers(c.Position())
+		// Armour broadcasts also borrow the pooled buffer. Players often spam armour swaps in PvP; the pool keeps
+		// the resulting updates cheap.
+		for _, viewer := range viewers {
 			viewer.ViewEntityArmour(c)
 		}
+		tx.ReleaseViewers(viewers)
 	}
 }
 

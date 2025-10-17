@@ -203,9 +203,13 @@ func (p *Player) SetSkin(skin skin.Skin) {
 		return
 	}
 	p.skin = skin
-	for _, v := range p.viewers() {
+	viewers := p.viewers()
+	// viewer() returns a pooled slice sourced from the world; recycling it after the broadcast keeps rapid skin
+	// changes (e.g. via plugins) from allocating new memory every time.
+	for _, v := range viewers {
 		v.ViewSkin(p)
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // Locale returns the language and locale of the Player, as selected in the Player's settings.
@@ -627,9 +631,11 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	}
 
 	pos := p.Position()
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	for _, viewer := range viewers {
 		viewer.ViewEntityAction(p, entity.HurtAction{})
 	}
+	p.tx.ReleaseViewers(viewers)
 	if src.Fire() {
 		p.tx.PlaySound(pos, sound.Burning{})
 	} else if _, ok := src.(entity.DrowningDamageSource); ok {
@@ -656,9 +662,11 @@ func (p *Player) applyTotemEffects() {
 
 	p.tx.PlaySound(p.Position(), sound.Totem{})
 
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	for _, viewer := range viewers {
 		viewer.ViewEntityAction(p, entity.TotemUseAction{})
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // FinalDamageFrom resolves the final damage received by the player if it is attacked by the source passed
@@ -836,9 +844,11 @@ func (p *Player) DeathPosition() (mgl64.Vec3, world.Dimension, bool) {
 
 // kill kills the player, clearing its inventories and resetting it to its base state.
 func (p *Player) kill(src world.DamageSource) {
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	for _, viewer := range viewers {
 		viewer.ViewEntityAction(p, entity.DeathAction{})
 	}
+	p.tx.ReleaseViewers(viewers)
 
 	p.addHealth(-p.MaxHealth())
 
@@ -1294,9 +1304,11 @@ func (p *Player) SetHeldSlot(to int) error {
 	*p.heldSlot = uint32(to)
 	p.usingItem = false
 
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	for _, viewer := range viewers {
 		viewer.ViewEntityItems(p)
 	}
+	p.tx.ReleaseViewers(viewers)
 	p.session().SendHeldSlot(to, p, false)
 	return nil
 }
@@ -1323,9 +1335,11 @@ func (p *Player) SetGameMode(mode world.GameMode) {
 	}
 
 	p.session().SendGameMode(p)
-	for _, v := range p.viewers() {
+	viewers := p.viewers()
+	for _, v := range viewers {
 		v.ViewEntityGameMode(p)
 	}
+	p.tx.ReleaseViewers(viewers)
 	if mode.AllowsTakingDamage() {
 		p.session().SendHealth(p.Health(), p.MaxHealth(), p.absorptionHealth)
 	}
@@ -1789,9 +1803,13 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 	if s, ok := i.Enchantment(enchantment.Sharpness); ok {
 		dmg += enchantment.Sharpness.Addend(s.Level())
-		for _, v := range p.tx.Viewers(living.Position()) {
+		viewers := p.tx.Viewers(living.Position())
+		// Enchanted hit particles trigger frequently; reuse the pooled buffer so melee combat stays allocation
+		// free even when multiple players swing simultaneously.
+		for _, v := range viewers {
 			v.ViewEntityAction(living, entity.EnchantedHitAction{})
 		}
+		p.tx.ReleaseViewers(viewers)
 	}
 	if critical {
 		dmg *= 1.5
@@ -1824,9 +1842,13 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		return true
 	}
 	if critical {
-		for _, v := range p.tx.Viewers(living.Position()) {
+		viewers := p.tx.Viewers(living.Position())
+		// Critical hit notifications follow the same pooling strategy to avoid churning slices during sustained
+		// fights.
+		for _, v := range viewers {
 			v.ViewEntityAction(living, entity.CriticalHitAction{})
 		}
+		p.tx.ReleaseViewers(viewers)
 	}
 
 	p.Exhaust(0.1)
@@ -1898,9 +1920,11 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 		return
 	}
 	p.lastBreakDuration = p.breakTime(pos)
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	for _, viewer := range viewers {
 		viewer.ViewBlockAction(pos, block.StartCrackAction{BreakTime: p.lastBreakDuration})
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // breakTime returns the time needed to break a block at the position passed, taking into account the item
@@ -1948,9 +1972,11 @@ func (p *Player) AbortBreaking() {
 		return
 	}
 	p.breaking, p.breakCounter = false, 0
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	for _, viewer := range viewers {
 		viewer.ViewBlockAction(p.breakingPos, block.StopCrackAction{})
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // ContinueBreaking makes the player continue breaking the block it started breaking after a call to
@@ -1972,9 +1998,11 @@ func (p *Player) ContinueBreaking(face cube.Face) {
 		p.tx.PlaySound(pos.Vec3(), sound.BlockBreaking{Block: b})
 	}
 	if breakTime := p.breakTime(pos); breakTime != p.lastBreakDuration {
-		for _, viewer := range p.viewers() {
+		viewers := p.viewers()
+		for _, viewer := range viewers {
 			viewer.ViewBlockAction(pos, block.ContinueCrackAction{BreakTime: breakTime})
 		}
+		p.tx.ReleaseViewers(viewers)
 		p.lastBreakDuration = breakTime
 	}
 }
@@ -2193,9 +2221,11 @@ func (p *Player) Teleport(pos mgl64.Vec3) {
 // teleport teleports the player to a target position in the world. It does not call the Handler of the
 // player.
 func (p *Player) teleport(pos mgl64.Vec3) {
-	for _, v := range p.viewers() {
+	viewers := p.viewers()
+	for _, v := range viewers {
 		v.ViewEntityTeleport(p, pos)
 	}
+	p.tx.ReleaseViewers(viewers)
 	p.data.Pos = pos
 	p.data.Vel = mgl64.Vec3{}
 	p.ResetFallDistance()
@@ -2229,9 +2259,11 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		}
 		return
 	}
-	for _, v := range p.viewers() {
+	viewers := p.viewers()
+	for _, v := range viewers {
 		v.ViewEntityMovement(p, res, resRot, p.OnGround())
 	}
+	p.tx.ReleaseViewers(viewers)
 
 	p.data.Pos = res
 	p.data.Rot = resRot
@@ -2291,9 +2323,11 @@ func (p *Player) SetVelocity(velocity mgl64.Vec3) {
 		p.data.Vel = velocity
 		return
 	}
-	for _, v := range p.viewers() {
+	viewers := p.viewers()
+	for _, v := range viewers {
 		v.ViewEntityVelocity(p, velocity)
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // Rotation returns the yaw and pitch of the player in degrees. Yaw is horizontal rotation (rotation around the
@@ -2550,9 +2584,11 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	if current%4 == 0 && p.usingItem {
 		if _, ok := held.Item().(item.Consumable); ok {
 			// Eating particles seem to happen roughly every 4 ticks.
-			for _, v := range p.viewers() {
+			viewers := p.viewers()
+			for _, v := range viewers {
 				v.ViewEntityAction(p, entity.EatAction{})
 			}
+			p.tx.ReleaseViewers(viewers)
 		}
 	}
 
@@ -2954,9 +2990,11 @@ func (p *Player) TurnLecternPage(pos cube.Pos, page int) error {
 
 // updateState updates the state of the player to all viewers of the player.
 func (p *Player) updateState() {
-	for _, v := range p.viewers() {
+	viewers := p.viewers()
+	for _, v := range viewers {
 		v.ViewEntityState(p)
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // Breathing checks if the player is currently able to breathe. If it's underwater and the player does not
@@ -2974,9 +3012,11 @@ func (p *Player) SwingArm() {
 	if p.Dead() {
 		return
 	}
-	for _, v := range p.viewers() {
+	viewers := p.viewers()
+	for _, v := range viewers {
 		v.ViewEntityAction(p, entity.SwingArmAction{})
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // PunchAir makes the player punch the air and plays the sound for attacking with no damage.
@@ -3237,9 +3277,13 @@ func (p *Player) Handler() Handler {
 
 // broadcastItems broadcasts the items held to viewers.
 func (p *Player) broadcastItems(int, item.Stack, item.Stack) {
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	// broadcastItems is called for every hotbar mutation. Recycling the borrowed viewer slice avoids flooding the
+	// garbage collector during inventory spam.
+	for _, viewer := range viewers {
 		viewer.ViewEntityItems(p)
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // broadcastArmour broadcasts the armour equipped to viewers.
@@ -3248,14 +3292,20 @@ func (p *Player) broadcastArmour(_ int, before, after item.Stack) {
 		// Only send armour if the type of the armour changed.
 		return
 	}
-	for _, viewer := range p.viewers() {
+	viewers := p.viewers()
+	// Armour changes are similarly noisy in PvP encounters; reusing the pooled slice keeps repeated swaps cheap.
+	for _, viewer := range viewers {
 		viewer.ViewEntityArmour(p)
 	}
+	p.tx.ReleaseViewers(viewers)
 }
 
 // viewers returns a list of all viewers of the Player.
 func (p *Player) viewers() []world.Viewer {
 	viewers := p.tx.Viewers(p.Position())
+	// viewers() centralises acquisition of the pooled slice so every broadcast path can share the same reuse logic.
+	// We append the session lazily if needed, but crucially we still return the borrowed slice so callers can hand it
+	// back to the pool once done.
 	var s world.Viewer = p.session()
 	if slices.Index(viewers, s) == -1 && p.s != nil {
 		return append(viewers, p.s)

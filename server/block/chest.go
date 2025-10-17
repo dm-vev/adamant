@@ -95,23 +95,27 @@ func (Chest) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 
 // open opens the chest, displaying the animation and playing a sound.
 func (c Chest) open(tx *world.Tx, pos cube.Pos) {
-	for _, v := range tx.Viewers(pos.Vec3()) {
+	viewers := tx.Viewers(pos.Vec3())
+	for _, v := range viewers {
 		if c.paired {
 			v.ViewBlockAction(c.pairPos(pos), OpenAction{})
 		}
 		v.ViewBlockAction(pos, OpenAction{})
 	}
+	tx.ReleaseViewers(viewers)
 	tx.PlaySound(pos.Vec3Centre(), sound.ChestOpen{})
 }
 
 // close closes the chest, displaying the animation and playing a sound.
 func (c Chest) close(tx *world.Tx, pos cube.Pos) {
-	for _, v := range tx.Viewers(pos.Vec3()) {
+	viewers := tx.Viewers(pos.Vec3())
+	for _, v := range viewers {
 		if c.paired {
 			v.ViewBlockAction(c.pairPos(pos), CloseAction{})
 		}
 		v.ViewBlockAction(pos, CloseAction{})
 	}
+	tx.ReleaseViewers(viewers)
 	tx.PlaySound(pos.Vec3Centre(), sound.ChestClose{})
 }
 

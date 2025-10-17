@@ -191,9 +191,14 @@ func (tx *Tx) AddParticle(pos mgl64.Vec3, p Particle) {
 // PlayEntityAnimation plays an animation on an entity in the World. The animation is played for all viewers
 // of the entity.
 func (tx *Tx) PlayEntityAnimation(e Entity, a EntityAnimation) {
-	for _, viewer := range tx.World().viewersOf(e.Position()) {
+	viewers := tx.World().viewersOf(e.Position())
+	// We deliberately iterate using the pooled slice returned by viewersOf and hand it back afterwards. Animation
+	// fan-out happens frequently (movement, swings, etc.), so minimising transient allocations has a noticeable
+	// impact on GC pauses during crowded gameplay sessions.
+	for _, viewer := range viewers {
 		viewer.ViewEntityAnimation(e, a)
 	}
+	tx.World().releaseViewers(viewers)
 }
 
 // PlaySound plays a sound at a specific position in the World. Viewers of that
@@ -235,9 +240,15 @@ func (tx *Tx) Players() iter.Seq[Entity] {
 	return tx.World().allPlayers(tx)
 }
 
-// Viewers returns all viewers viewing the position passed.
+// Viewers returns all viewers viewing the position passed. The returned slice is pooled and must be released
+// by calling ReleaseViewers once it is no longer needed.
 func (tx *Tx) Viewers(pos mgl64.Vec3) []Viewer {
 	return tx.World().viewersOf(pos)
+}
+
+// ReleaseViewers returns a slice previously obtained from Viewers back to the internal pool.
+func (tx *Tx) ReleaseViewers(viewers []Viewer) {
+	tx.World().releaseViewers(viewers)
 }
 
 // World returns the World of the Tx. It panics if the transaction was already

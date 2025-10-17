@@ -15,9 +15,15 @@ type ticker struct {
 	interval time.Duration
 }
 
+type entityChunkRef struct {
+	col *Column
+	pos ChunkPos
+}
+
 const (
-	tpsSampleSize       = 20
-	tpsWarningThreshold = 19.0
+	tpsSampleSize              = 20
+	tpsWarningThreshold        = 19.0
+	passiveMaintenanceInterval = 80
 )
 
 // tickLoop starts ticking the World 20 times every second, updating all
@@ -75,6 +81,7 @@ func (t ticker) tickLoop(w *World) {
 func (t ticker) tick(tx *Tx) {
 	viewers, loaders := tx.World().allViewers()
 	w := tx.World()
+	defer w.releaseViewers(viewers)
 
 	w.set.Lock()
 	if s := w.set.Spawn; s[1] > tx.Range()[1] {
@@ -222,83 +229,177 @@ func (t ticker) anyWithinDistance(pos ChunkPos, loaded []ChunkPos, r int32) bool
 
 // tickEntities ticks all entities in the world, making sure they are still located in the correct chunks and
 // updating where necessary.
+//
+// The implementation purposefully separates entities into "active" (chunks with at least one viewer) and
+// "sleeping" (chunks currently unseen) cohorts. Only the active cohort is processed every tick. Sleeping
+// chunks are serviced on a coarse cadence to avoid spending CPU time on areas of the world that no player can
+// currently interact with. This mirrors the behaviour of the vanilla server simulation distance and greatly
+// reduces per-tick iteration costs on large worlds while still keeping important counters such as entity age and
+// fire timers consistent.
 func (t ticker) tickEntities(tx *Tx, tick int64) {
-	w := tx.World()
-	for handle, state := range w.entities {
-		chunkPos := chunkPosFromVec3(handle.data.Pos)
+	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
-		c, ok := w.chunks[chunkPos]
-		if !ok {
+	w := tx.World()
+
+	lazyMaintenance := tick%sleepMaintenanceInterval == 0
+
+	active := make([]*EntityHandle, 0)
+	activeChunks := make(map[*EntityHandle]entityChunkRef)
+	sleeping := make([]*EntityHandle, 0)
+	sleepingChunks := make(map[*EntityHandle]entityChunkRef)
+
+	// We perform a single pass over the chunk map to partition entity handles. The maps keep track of the
+	// originating column so that we can update viewer lists or perform removals without having to search for the
+	// owning chunk again later in the tick.
+
+	for pos, col := range w.chunks {
+		if len(col.Entities) == 0 {
 			continue
 		}
-
-		var (
-			entity       Entity
-			entityLoaded bool
-		)
-		loadEntity := func() Entity {
-			if !entityLoaded {
-				entity = state.entity(tx, handle)
-				entityLoaded = true
+		if len(col.viewers) > 0 {
+			for _, handle := range col.Entities {
+				active = append(active, handle)
+				activeChunks[handle] = entityChunkRef{col: col, pos: pos}
 			}
-			return entity
+			continue
+		}
+		if !lazyMaintenance {
+			continue
+		}
+		for _, handle := range col.Entities {
+			sleeping = append(sleeping, handle)
+			sleepingChunks[handle] = entityChunkRef{col: col, pos: pos}
+		}
+	}
+
+	for _, handle := range active {
+		t.tickEntityHandle(tx, tick, handle, activeChunks[handle], true)
+	}
+	if !lazyMaintenance {
+		return
+	}
+	for _, handle := range sleeping {
+		t.tickEntityHandle(tx, tick, handle, sleepingChunks[handle], false)
+	}
+}
+
+func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref entityChunkRef, active bool) {
+	w := tx.World()
+	state := w.entities[handle]
+	if state == nil {
+		return
+	}
+
+	chunkPos := chunkPosFromVec3(handle.data.Pos)
+
+	var (
+		entity       Entity
+		entityLoaded bool
+	)
+	loadEntity := func() Entity {
+		// Entity handles lazily open their backing implementation. We memoise the first load so repeated
+		// viewers or ticker calls reuse the same pointer and avoid repeated provider work each tick.
+		if !entityLoaded {
+			entity = state.entity(tx, handle)
+			entityLoaded = true
+		}
+		return entity
+	}
+
+	if state.lastTick == 0 {
+		state.lastTick = tick
+	}
+	if state.pos != chunkPos {
+		oldPos := state.pos
+		state.pos = chunkPos
+
+		newChunk := w.chunk(chunkPos)
+		newChunk.Entities = append(newChunk.Entities, handle)
+		newChunk.modified = true
+
+		var viewers map[Viewer]struct{}
+		if oldPos == ref.pos && ref.col != nil {
+			ref.col.Entities = sliceutil.DeleteVal(ref.col.Entities, handle)
+			ref.col.modified = true
+			viewers = ref.col.viewers
+		} else if old, ok := w.chunks[oldPos]; ok {
+			old.Entities = sliceutil.DeleteVal(old.Entities, handle)
+			old.modified = true
+			viewers = old.viewers
 		}
 
-		if state.lastTick == 0 {
+		if len(viewers) > 0 || len(newChunk.viewers) > 0 {
+			ent := loadEntity()
+			for v := range viewers {
+				if _, ok := newChunk.viewers[v]; !ok {
+					v.HideEntity(ent)
+				}
+			}
+			for v := range newChunk.viewers {
+				if _, ok := viewers[v]; !ok {
+					showEntity(ent, v)
+				}
+			}
+		}
+	}
+
+	if !active {
+		// Sleeping entities are only maintained intermittently. Rather than ticking behavioural logic
+		// every frame we only advance bookkeeping values (age, fire) and run clean-up such as despawning
+		// expired items. This keeps dormant areas cheap to maintain while ensuring that, once a viewer
+		// arrives, the entity state can immediately catch up from the persisted counters.
+		if state.nextPassiveTick == 0 {
+			state.nextPassiveTick = tick + passiveMaintenanceInterval
+		}
+		if tick < state.nextPassiveTick {
+			return
+		}
+		if delta := tick - state.lastTick; delta > 0 {
+			inc := time.Duration(delta) * (time.Second / 20)
+			handle.data.Age += inc
+			if handle.data.FireDuration > 0 {
+				if inc >= handle.data.FireDuration {
+					handle.data.FireDuration = 0
+				} else {
+					handle.data.FireDuration -= inc
+				}
+			}
 			state.lastTick = tick
 		}
-		if state.pos != chunkPos {
-			oldPos := state.pos
-			state.pos = chunkPos
-			c.Entities = append(c.Entities, handle)
-
-			var viewers map[Viewer]struct{}
-			if old, ok := w.chunks[oldPos]; ok {
-				old.Entities = sliceutil.DeleteVal(old.Entities, handle)
-				viewers = old.viewers
-			}
-
-			if len(viewers) > 0 || len(c.viewers) > 0 {
-				ent := loadEntity()
-				for v := range viewers {
-					if _, ok := c.viewers[v]; !ok {
-						v.HideEntity(ent)
-					}
-				}
-				for v := range c.viewers {
-					if _, ok := viewers[v]; !ok {
-						showEntity(ent, v)
-					}
-				}
+		state.nextPassiveTick = tick + passiveMaintenanceInterval
+		if state.isItem && handle.data.Age >= 5*time.Minute {
+			if ent := loadEntity(); ent != nil {
+				_ = ent.Close()
 			}
 		}
+		return
+	}
 
-		viewCount := len(c.viewers)
-		if viewCount == 0 {
-			if delta := tick - state.lastTick; delta > 0 {
-				inc := time.Duration(delta) * (time.Second / 20)
-				handle.data.Age += inc
-				if handle.data.FireDuration > 0 {
-					if inc >= handle.data.FireDuration {
-						handle.data.FireDuration = 0
-					} else {
-						handle.data.FireDuration -= inc
-					}
-				}
-				state.lastTick = tick
+	if delta := tick - state.lastTick; delta > 1 {
+		// We collapsed multiple ticks: apply the same accounting vanilla would have done each frame so
+		// behaviours that rely on entity age or fire duration stay in sync even if an entity temporarily left
+		// the active area.
+		inc := time.Duration(delta-1) * (time.Second / 20)
+		handle.data.Age += inc
+		if handle.data.FireDuration > 0 {
+			if inc >= handle.data.FireDuration {
+				handle.data.FireDuration = 0
+			} else {
+				handle.data.FireDuration -= inc
 			}
-			if state.isItem && handle.data.Age >= 5*time.Minute {
-				if ent := loadEntity(); ent != nil {
-					_ = ent.Close()
-				}
-			}
-			continue
 		}
-
-		state.lastTick = tick
-		if te, ok := loadEntity().(TickerEntity); ok {
-			te.Tick(tx, tick)
-		}
+	}
+	state.lastTick = tick
+	state.nextPassiveTick = tick + passiveMaintenanceInterval
+	if !state.tickerChecked || state.isTicker {
+		// We must rebind the entity to the current transaction whenever it is about to tick. The bound
+		// Tx expires at the end of each frame, so behaviours that capture the Tx (fire, name tags, etc.) rely
+		// on bindTx being invoked every time we service the entity. The previous implementation called
+		// state.entity each tick; keep that contract so that helpers never observe a stale, closed Tx.
+		loadEntity()
+	}
+	if state.isTicker && state.ticker != nil {
+		state.ticker.Tick(tx, tick)
 	}
 }
 
