@@ -11,11 +11,12 @@ type EndCrystal struct{}
 
 // UseOnBlock places the end crystal entity above the clicked block if possible.
 func (EndCrystal) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
-	if face != cube.FaceUp {
+	if face == cube.FaceDown {
 		return false
 	}
 
-	base := tx.Block(pos)
+	basePos := pos
+	base := tx.Block(basePos)
 	name, _ := base.EncodeBlock()
 	showBase := true
 	switch name {
@@ -27,7 +28,7 @@ func (EndCrystal) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 		return false
 	}
 
-	above := pos.Side(face)
+	above := basePos.Side(cube.FaceUp)
 	aboveName, _ := tx.Block(above).EncodeBlock()
 	if aboveName != "minecraft:air" {
 		return false

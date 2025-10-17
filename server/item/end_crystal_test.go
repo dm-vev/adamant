@@ -70,6 +70,44 @@ func TestEndCrystalUseOnBlockReturns(t *testing.T) {
 	timer.Stop()
 }
 
+func TestEndCrystalUseOnBlockAllowsSideFace(t *testing.T) {
+	w := world.Config{Entities: entity.DefaultRegistry}.New()
+	defer w.Close()
+
+	loader := world.NewLoader(2, w, world.NopViewer{})
+	defer func() {
+		<-w.Exec(func(tx *world.Tx) {
+			loader.Close(tx)
+		})
+	}()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		<-w.Exec(func(tx *world.Tx) {
+			base := cube.Pos{0, 64, 0}
+			tx.SetBlock(base, block.Obsidian{}, nil)
+
+			loader.Move(tx, base.Vec3Centre())
+			loader.Load(tx, 1)
+
+			ctx := item.UseContext{}
+			if !(item.EndCrystal{}).UseOnBlock(base, cube.FaceNorth, mgl64.Vec3{}, tx, nil, &ctx) {
+				t.Errorf("use on block with side face failed")
+			}
+		})
+	}()
+
+	timer := time.AfterFunc(2*time.Second, func() {
+		buf := make([]byte, 1<<16)
+		n := runtime.Stack(buf, true)
+		panic("end crystal placement transaction timed out:\n" + string(buf[:n]))
+	})
+
+	<-done
+	timer.Stop()
+}
+
 func TestEndCrystalPlacementByPlayer(t *testing.T) {
 	w := world.Config{Entities: entity.DefaultRegistry}.New()
 	defer w.Close()
