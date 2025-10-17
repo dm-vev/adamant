@@ -72,6 +72,10 @@ type World struct {
 	scheduledUpdates *scheduledTickQueue
 	neighbourUpdates []neighbourUpdate
 
+	scratchLoaded        []ChunkPos
+	scratchRandom        []cube.Pos
+	scratchBlockEntities []cube.Pos
+
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
 
