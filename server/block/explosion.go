@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/event"
+	"github.com/df-mc/dragonfly/server/internal/txguard"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
@@ -71,112 +72,116 @@ func init() {
 
 // Explode performs the explosion as specified by the configuration.
 func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
-	if c.Sound == nil {
-		c.Sound = sound.Explosion{}
-	}
-	if c.Particle == nil {
-		c.Particle = particle.HugeExplosion{}
-	}
-	if c.RandSource == nil {
-		t := uint64(time.Now().UnixNano())
-		c.RandSource = rand.NewPCG(t, t)
-	}
-	if c.Size == 0 {
-		c.Size = 4
-	}
-	if c.ItemDropChance == 0 {
-		c.ItemDropChance = 1.0 / c.Size
-	}
-
-	r, d := rand.New(c.RandSource), c.Size*2
-	box := cube.Box(
-		math.Floor(explosionPos[0]-d-1),
-		math.Floor(explosionPos[1]-d-1),
-		math.Floor(explosionPos[2]-d-1),
-		math.Ceil(explosionPos[0]+d+1),
-		math.Ceil(explosionPos[1]+d+1),
-		math.Ceil(explosionPos[2]+d+1),
-	)
-
-	affectedEntities := make([]world.Entity, 0, 32)
-	for e := range tx.EntitiesWithin(box.Grow(2)) {
-		pos := e.Position()
-		dist := pos.Sub(explosionPos).Len()
-		if dist > d || dist == 0 {
-			continue
+	if !txguard.Run(tx, func() {
+		if c.Sound == nil {
+			c.Sound = sound.Explosion{}
+		}
+		if c.Particle == nil {
+			c.Particle = particle.HugeExplosion{}
+		}
+		if c.RandSource == nil {
+			t := uint64(time.Now().UnixNano())
+			c.RandSource = rand.NewPCG(t, t)
+		}
+		if c.Size == 0 {
+			c.Size = 4
+		}
+		if c.ItemDropChance == 0 {
+			c.ItemDropChance = 1.0 / c.Size
 		}
 
-		affectedEntities = append(affectedEntities, e)
-	}
+		r, d := rand.New(c.RandSource), c.Size*2
+		box := cube.Box(
+			math.Floor(explosionPos[0]-d-1),
+			math.Floor(explosionPos[1]-d-1),
+			math.Floor(explosionPos[2]-d-1),
+			math.Ceil(explosionPos[0]+d+1),
+			math.Ceil(explosionPos[1]+d+1),
+			math.Ceil(explosionPos[2]+d+1),
+		)
 
-	affectedBlocks := make([]cube.Pos, 0, 32)
-	for _, ray := range rays {
-		pos := explosionPos
-		for blastForce := c.Size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
-			current := cube.PosFromVec3(pos)
-			currentBlock := tx.Block(current)
-
-			resistance := 0.0
-			if l, ok := tx.Liquid(current); ok {
-				resistance = l.BlastResistance()
-			} else if i, ok := currentBlock.(Breakable); ok {
-				resistance = i.BreakInfo().BlastResistance
-			} else if _, ok = currentBlock.(Air); !ok {
-				// Completely stop the ray if the current block is not air and unbreakable.
-				break
+		affectedEntities := make([]world.Entity, 0, 32)
+		for e := range tx.EntitiesWithin(box.Grow(2)) {
+			pos := e.Position()
+			dist := pos.Sub(explosionPos).Len()
+			if dist > d || dist == 0 {
+				continue
 			}
 
-			pos = pos.Add(ray)
-			if blastForce -= (resistance/5 + 0.3) * 0.3; blastForce > 0 {
-				affectedBlocks = append(affectedBlocks, current)
+			affectedEntities = append(affectedEntities, e)
+		}
+
+		affectedBlocks := make([]cube.Pos, 0, 32)
+		for _, ray := range rays {
+			pos := explosionPos
+			for blastForce := c.Size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
+				current := cube.PosFromVec3(pos)
+				currentBlock := tx.Block(current)
+
+				resistance := 0.0
+				if l, ok := tx.Liquid(current); ok {
+					resistance = l.BlastResistance()
+				} else if i, ok := currentBlock.(Breakable); ok {
+					resistance = i.BreakInfo().BlastResistance
+				} else if _, ok = currentBlock.(Air); !ok {
+					// Completely stop the ray if the current block is not air and unbreakable.
+					break
+				}
+
+				pos = pos.Add(ray)
+				if blastForce -= (resistance/5 + 0.3) * 0.3; blastForce > 0 {
+					affectedBlocks = append(affectedBlocks, current)
+				}
 			}
 		}
-	}
 
-	ctx := event.C(tx)
-	spawnFire := c.SpawnFire
-	itemDropChance := c.ItemDropChance
-	if tx.World().Handler().HandleExplosion(ctx, explosionPos, &affectedEntities, &affectedBlocks, &itemDropChance, &spawnFire); ctx.Cancelled() {
+		ctx := event.C(tx)
+		spawnFire := c.SpawnFire
+		itemDropChance := c.ItemDropChance
+		if tx.World().Handler().HandleExplosion(ctx, explosionPos, &affectedEntities, &affectedBlocks, &itemDropChance, &spawnFire); ctx.Cancelled() {
+			return
+		}
+
+		for _, pos := range affectedBlocks {
+			bl := tx.Block(pos)
+			if explodable, ok := bl.(Explodable); ok {
+				explodable.Explode(explosionPos, pos, tx, c)
+			} else if breakable, ok := bl.(Breakable); ok {
+				breakHandler := breakable.BreakInfo().BreakHandler
+				if breakHandler != nil {
+					breakHandler(pos, tx, nil)
+				}
+				tx.SetBlock(pos, nil, nil)
+				if itemDropChance > r.Float64() {
+					for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
+						dropItem(tx, drop, pos.Vec3Centre())
+					}
+				}
+			}
+		}
+
+		for _, e := range affectedEntities {
+			if explodable, ok := e.(ExplodableEntity); ok {
+				impact := (1 - e.Position().Sub(explosionPos).Len()/d) * exposure(tx, explosionPos, e)
+				explodable.Explode(explosionPos, impact, c)
+			}
+		}
+
+		if spawnFire {
+			for _, pos := range affectedBlocks {
+				if r.IntN(3) == 0 {
+					if _, ok := tx.Block(pos).(Air); ok && tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos, cube.FaceUp, tx) {
+						Fire{}.Start(tx, pos)
+					}
+				}
+			}
+		}
+
+		tx.AddParticle(explosionPos, c.Particle)
+		tx.PlaySound(explosionPos, c.Sound)
+	}) {
 		return
 	}
-
-	for _, pos := range affectedBlocks {
-		bl := tx.Block(pos)
-		if explodable, ok := bl.(Explodable); ok {
-			explodable.Explode(explosionPos, pos, tx, c)
-		} else if breakable, ok := bl.(Breakable); ok {
-			breakHandler := breakable.BreakInfo().BreakHandler
-			if breakHandler != nil {
-				breakHandler(pos, tx, nil)
-			}
-			tx.SetBlock(pos, nil, nil)
-			if itemDropChance > r.Float64() {
-				for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
-					dropItem(tx, drop, pos.Vec3Centre())
-				}
-			}
-		}
-	}
-
-	for _, e := range affectedEntities {
-		if explodable, ok := e.(ExplodableEntity); ok {
-			impact := (1 - e.Position().Sub(explosionPos).Len()/d) * exposure(tx, explosionPos, e)
-			explodable.Explode(explosionPos, impact, c)
-		}
-	}
-
-	if spawnFire {
-		for _, pos := range affectedBlocks {
-			if r.IntN(3) == 0 {
-				if _, ok := tx.Block(pos).(Air); ok && tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos, cube.FaceUp, tx) {
-					Fire{}.Start(tx, pos)
-				}
-			}
-		}
-	}
-
-	tx.AddParticle(explosionPos, c.Particle)
-	tx.PlaySound(explosionPos, c.Sound)
 }
 
 // exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.
