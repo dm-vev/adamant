@@ -258,19 +258,25 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 				viewers = old.viewers
 			}
 
-			if len(viewers) > 0 {
+			if len(viewers) > 0 || len(c.viewers) > 0 {
 				ent := loadEntity()
-				for _, viewer := range viewers {
-					if slices.Index(c.viewers, viewer) == -1 {
-						viewer.HideEntity(ent)
+				oldSet := make(map[Viewer]struct{}, len(viewers))
+				for _, v := range viewers {
+					oldSet[v] = struct{}{}
+				}
+				newSet := make(map[Viewer]struct{}, len(c.viewers))
+				for _, v := range c.viewers {
+					newSet[v] = struct{}{}
+				}
+
+				for v := range oldSet {
+					if _, ok := newSet[v]; !ok {
+						v.HideEntity(ent)
 					}
 				}
-			}
-			if len(c.viewers) > 0 {
-				ent := loadEntity()
-				for _, viewer := range c.viewers {
-					if slices.Index(viewers, viewer) == -1 {
-						showEntity(ent, viewer)
+				for v := range newSet {
+					if _, ok := oldSet[v]; !ok {
+						showEntity(ent, v)
 					}
 				}
 			}
@@ -290,7 +296,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 				}
 				state.lastTick = tick
 			}
-			if handle.t.EncodeEntity() == "minecraft:item" && handle.data.Age >= 5*time.Minute {
+			if state.isItem && handle.data.Age >= 5*time.Minute {
 				if ent := loadEntity(); ent != nil {
 					_ = ent.Close()
 				}

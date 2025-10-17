@@ -79,9 +79,12 @@ type World struct {
 }
 
 type entityState struct {
-	pos      ChunkPos
-	ent      Entity
-	lastTick int64
+    pos      ChunkPos
+    ent      Entity
+    lastTick int64
+    // isItem caches whether the entity type is a dropped item (minecraft:item).
+    // This avoids calling EncodeEntity() for every entity on every tick.
+    isItem bool
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -719,13 +722,13 @@ func (w *World) playSound(tx *Tx, pos mgl64.Vec3, s Sound) {
 // loaded. addEntity panics if the EntityHandle is already in a world.
 // addEntity returns the Entity created by the EntityHandle.
 func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
-	handle.setAndUnlockWorld(w)
-	pos := chunkPosFromVec3(handle.data.Pos)
-	w.set.Lock()
-	currentTick := w.set.CurrentTick
-	w.set.Unlock()
-	state := &entityState{pos: pos, lastTick: currentTick}
-	w.entities[handle] = state
+    handle.setAndUnlockWorld(w)
+    pos := chunkPosFromVec3(handle.data.Pos)
+    w.set.Lock()
+    currentTick := w.set.CurrentTick
+    w.set.Unlock()
+    state := &entityState{pos: pos, lastTick: currentTick, isItem: handle.t.EncodeEntity() == "minecraft:item"}
+    w.entities[handle] = state
 
 	c := w.chunk(pos)
 	c.Entities, c.modified = append(c.Entities, handle), true
