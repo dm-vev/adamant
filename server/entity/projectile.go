@@ -170,6 +170,10 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	case trace.EntityResult:
 		if l, ok := r.Entity().(Living); ok && lt.conf.Damage >= 0 {
 			lt.hitEntity(l, e, vel)
+		} else if d, ok := r.Entity().(Destructible); ok {
+			owner, _ := lt.conf.Owner.Entity(tx)
+			src := ProjectileDamageSource{Projectile: e, Owner: owner}
+			d.Destroy(tx, src, owner)
 		}
 	case trace.BlockResult:
 		bpos := r.BlockPosition()
@@ -338,7 +342,8 @@ func (lt *ProjectileBehaviour) ignores(e *Ent) trace.EntityFilter {
 			for other := range seq {
 				g, ok := other.(interface{ GameMode() world.GameMode })
 				_, living := other.(Living)
-				if (ok && !g.GameMode().HasCollision()) || e.H() == other.H() || !living || (e.data.Age < time.Second/4 && lt.conf.Owner == other.H()) {
+				_, destructible := other.(Destructible)
+				if (ok && !g.GameMode().HasCollision()) || e.H() == other.H() || (!living && !destructible) || (e.data.Age < time.Second/4 && lt.conf.Owner == other.H()) {
 					continue
 				}
 				if !yield(other) {

@@ -21,6 +21,7 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	FireworkType,
 	ItemType,
 	LightningType,
+	EndCrystalType,
 	LingeringPotionType,
 	SnowballType,
 	TridentType,
@@ -37,6 +38,11 @@ var conf = world.EntityRegistryConfig{
 	EnderPearl:         NewEnderPearl,
 	FallingBlock:       NewFallingBlock,
 	Lightning:          NewLightning,
+	EndCrystal: func(opts world.EntitySpawnOpts, showBase bool) *world.EntityHandle {
+		conf := endCrystalConf
+		conf.ShowBase = showBase
+		return opts.New(EndCrystalType, conf)
+	},
 	Firework: func(opts world.EntitySpawnOpts, firework world.Item, owner world.Entity, sidewaysVelocityMultiplier, upwardsAcceleration float64, attached bool) *world.EntityHandle {
 		return newFirework(opts, firework.(item.Firework), owner, sidewaysVelocityMultiplier, upwardsAcceleration, attached)
 	},

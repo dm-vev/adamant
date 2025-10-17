@@ -35,8 +35,8 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagLingering)
 	}
 	s.addSpecificMetadata(e, m)
-	if ent, ok := e.(*entity.Ent); ok {
-		s.addSpecificMetadata(ent.Behaviour(), m)
+	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
+		s.addSpecificMetadata(beh.Behaviour(), m)
 	}
 	return m
 }
@@ -101,6 +101,16 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if t, ok := e.(tnt); ok {
 		m[protocol.EntityDataKeyFuseTime] = int32(t.Fuse().Milliseconds() / 50)
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagIgnited)
+	}
+	if ec, ok := e.(endCrystalMeta); ok {
+		if ec.ShowBase() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShowBottom)
+		}
+		if target, ok := ec.BeamTarget(); ok {
+			m[protocol.EntityDataKeyTargetA] = int32(math.Floor(target[0]))
+			m[protocol.EntityDataKeyTargetB] = int32(math.Floor(target[1]))
+			m[protocol.EntityDataKeyTargetC] = int32(math.Floor(target[2]))
+		}
 	}
 	if n, ok := e.(named); ok {
 		m[protocol.EntityDataKeyName] = n.NameTag()
@@ -275,4 +285,9 @@ type variable interface {
 
 type markVariable interface {
 	MarkVariant() int32
+}
+
+type endCrystalMeta interface {
+	ShowBase() bool
+	BeamTarget() (mgl64.Vec3, bool)
 }
