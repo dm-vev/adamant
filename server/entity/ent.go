@@ -139,3 +139,7 @@ func (e *Ent) Close() error {
 	})
 	return nil
 }
+
+func (e *Ent) bindTx(tx *world.Tx) {
+	e.tx = tx
+}
