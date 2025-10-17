@@ -1751,6 +1751,36 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 
 	dmg := i.AttackDamage()
+	mace, maceHeld := i.Item().(item.Mace)
+	fallDistance := p.FallDistance()
+	smashDistance := 0.0
+	smashBonus := 0.0
+	smashReady := false
+	windLevel := 0
+	breachLevel := 0
+	if maceHeld {
+		if b, ok := i.Enchantment(enchantment.Breach); ok {
+			breachLevel = b.Level()
+		}
+		if w, ok := i.Enchantment(enchantment.WindBurst); ok {
+			windLevel = w.Level()
+		}
+		effective := mace.EffectiveFallDistance(fallDistance)
+		if effective >= mace.SmashThreshold() {
+			smashDistance = effective
+			smashBonus = mace.SmashBonus(smashDistance)
+			if dens, ok := i.Enchantment(enchantment.Density); ok {
+				smashBonus += enchantment.Density.AdditionalDamage(dens.Level(), smashDistance)
+			}
+			if smashBonus > 0 {
+				smashReady = true
+			}
+		}
+	}
+
+	if smashReady {
+		dmg += smashBonus
+	}
 	if strength, ok := p.Effect(effect.Strength); ok {
 		dmg += dmg * effect.Strength.Multiplier(strength.Level())
 	}
@@ -1767,10 +1797,29 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		dmg *= 1.5
 	}
 
-	n, vulnerable := living.Hurt(dmg, entity.AttackDamageSource{Attacker: p})
+	src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
+	if smashReady && breachLevel > 0 {
+		if armourMultiplier := enchantment.Breach.ArmourMultiplier(breachLevel); armourMultiplier != 1 {
+			src = world.DamageSource(entity.MaceSmashDamageSource{AttackDamageSource: entity.AttackDamageSource{Attacker: p}, ArmourMultiplier: armourMultiplier})
+		}
+	}
+	n, vulnerable := living.Hurt(dmg, src)
 	i, left := p.HeldItems()
 
 	p.tx.PlaySound(entity.EyePosition(e), sound.Attack{Damage: !mgl64.FloatEqual(n, 0)})
+	if smashReady && vulnerable && !mgl64.FloatEqual(n, 0) {
+		p.ResetFallDistance()
+		velocity := p.Velocity()
+		velocity[1] = 0
+		if windLevel > 0 {
+			const gravity = 0.08
+			heightGain := enchantment.WindBurst.LaunchHeight(windLevel)
+			if heightGain > 0 {
+				velocity[1] = math.Sqrt(2 * gravity * heightGain)
+			}
+		}
+		p.SetVelocity(velocity)
+	}
 	if !vulnerable {
 		return true
 	}
