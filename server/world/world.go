@@ -82,9 +82,18 @@ type entityState struct {
 	pos      ChunkPos
 	ent      Entity
 	lastTick int64
+	// nextPassiveTick is the next scheduled tick at which the entity should receive
+	// maintenance updates such as ageing and fire decay while it is outside of the
+	// active simulation range.
+	nextPassiveTick int64
 	// isItem caches whether the entity type is a dropped item (minecraft:item).
 	// This avoids calling EncodeEntity() for every entity on every tick.
 	isItem bool
+	// isTicker caches whether the entity implements TickerEntity so we can avoid
+	// repeating expensive type assertions in the hot tick path.
+	isTicker      bool
+	tickerChecked bool
+	ticker        TickerEntity
 }
 
 func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
@@ -93,6 +102,16 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 	}
 	if s.ent == nil {
 		s.ent = handle.mustEntity(tx)
+	}
+	if !s.tickerChecked {
+		if ticker, ok := s.ent.(TickerEntity); ok {
+			s.ticker = ticker
+			s.isTicker = true
+		} else {
+			s.ticker = nil
+			s.isTicker = false
+		}
+		s.tickerChecked = true
 	}
 	if binder, ok := s.ent.(interface{ bindTx(*Tx) }); ok {
 		binder.bindTx(tx)
@@ -141,6 +160,16 @@ func (w *World) Dimension() Dimension {
 // equivalent to calling World.Dimension().Range().
 func (w *World) Range() cube.Range {
 	return w.ra
+}
+
+// CurrentTick returns the current tick counter of the world.
+func (w *World) CurrentTick() int64 {
+	if w == nil {
+		return 0
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	return w.set.CurrentTick
 }
 
 // TPS returns the current average ticks per second of the world. The value is
@@ -329,8 +358,6 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		delete(c.BlockEntities, pos)
 	}
 
-	viewers := c.viewerList()
-
 	if !opts.DisableLiquidDisplacement {
 		var secondLayer Block
 
@@ -355,15 +382,15 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		}
 
 		if secondLayer != nil {
-			for _, viewer := range viewers {
+			c.forEachViewer(func(viewer Viewer) {
 				viewer.ViewBlockUpdate(pos, secondLayer, 1)
-			}
+			})
 		}
 	}
 
-	for _, viewer := range viewers {
+	c.forEachViewer(func(viewer Viewer) {
 		viewer.ViewBlockUpdate(pos, b, 0)
-	}
+	})
 
 	if !opts.DisableBlockUpdates {
 		w.doBlockUpdatesAround(pos)
@@ -657,6 +684,7 @@ func (w *World) SetTime(new int) {
 	for _, viewer := range viewers {
 		viewer.ViewTime(new)
 	}
+	w.releaseViewers(viewers)
 }
 
 // StopTime stops the time in the world. When called, the time will no longer
@@ -698,9 +726,11 @@ func (w *World) temperature(pos cube.Pos) float64 {
 // are viewing the chunk will be shown the particle.
 func (w *World) addParticle(pos mgl64.Vec3, p Particle) {
 	p.Spawn(w, pos)
-	for _, viewer := range w.viewersOf(pos) {
+	viewers := w.viewersOf(pos)
+	for _, viewer := range viewers {
 		viewer.ViewParticle(pos, p)
 	}
+	w.releaseViewers(viewers)
 }
 
 // playSound plays a sound at a specific position in the World. Viewers of that
@@ -711,9 +741,11 @@ func (w *World) playSound(tx *Tx, pos mgl64.Vec3, s Sound) {
 		return
 	}
 	s.Play(w, pos)
-	for _, viewer := range w.viewersOf(pos) {
+	viewers := w.viewersOf(pos)
+	for _, viewer := range viewers {
 		viewer.ViewSound(pos, s)
 	}
+	w.releaseViewers(viewers)
 }
 
 // addEntity adds an EntityHandle to a World. The Entity will be visible to all
@@ -850,6 +882,7 @@ func (w *World) SetSpawn(pos cube.Pos) {
 	for _, viewer := range viewers {
 		viewer.ViewWorldSpawn(pos)
 	}
+	w.releaseViewers(viewers)
 }
 
 // PlayerSpawn returns the spawn position of a player with a UUID in this World.
@@ -995,12 +1028,36 @@ func (w *World) Handle(h Handler) {
 }
 
 // viewersOf returns all viewers viewing the position passed.
+//
+// The method deliberately borrows a slice from viewerSlicePool so the caller can iterate without allocating. The
+// caller must eventually hand the slice back through releaseViewers to maintain the pool's effectiveness. We have to
+// pay special attention to reusing buffers here because these lookups happen every time entities broadcast state or
+// packets are fanned out to observers.
 func (w *World) viewersOf(pos mgl64.Vec3) []Viewer {
 	c, ok := w.chunks[chunkPosFromVec3(pos)]
-	if !ok {
+	if !ok || len(c.viewers) == 0 {
 		return nil
 	}
-	return c.viewerList()
+	viewers := viewerSlicePool.Get().([]Viewer)
+	if cap(viewers) < len(c.viewers)+1 {
+		viewerSlicePool.Put(viewers[:0])
+		viewers = make([]Viewer, 0, len(c.viewers)+1)
+	} else {
+		viewers = viewers[:0]
+	}
+	for v := range c.viewers {
+		viewers = append(viewers, v)
+	}
+	return viewers
+}
+
+// releaseViewers returns pooled viewer slices to viewerSlicePool. Forgetting to release will degrade the pool and
+// reintroduce the very allocations this optimisation was meant to avoid.
+func (w *World) releaseViewers(viewers []Viewer) {
+	if viewers == nil {
+		return
+	}
+	viewerSlicePool.Put(viewers[:0])
 }
 
 // PortalDestination returns the destination World for a portal of a specific
@@ -1102,7 +1159,14 @@ func (w *World) allViewers() ([]Viewer, []*Loader) {
 	w.viewerMu.Lock()
 	defer w.viewerMu.Unlock()
 
-	viewers, loaders := make([]Viewer, 0, len(w.viewers)), make([]*Loader, 0, len(w.viewers))
+	viewers := viewerSlicePool.Get().([]Viewer)
+	if cap(viewers) < len(w.viewers) {
+		viewerSlicePool.Put(viewers[:0])
+		viewers = make([]Viewer, 0, len(w.viewers))
+	} else {
+		viewers = viewers[:0]
+	}
+	loaders := make([]*Loader, 0, len(w.viewers))
 	for k, v := range w.viewers {
 		viewers = append(viewers, v)
 		loaders = append(loaders, k)
@@ -1260,7 +1324,11 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		currentTick := w.set.CurrentTick
 		w.set.Unlock()
 		for _, e := range col.Entities {
-			w.entities[e] = &entityState{pos: pos, lastTick: currentTick}
+			w.entities[e] = &entityState{
+				pos:      pos,
+				lastTick: currentTick,
+				isItem:   e.t.EncodeEntity() == "minecraft:item",
+			}
 			e.w = w
 		}
 
@@ -1502,6 +1570,15 @@ type Column struct {
 	lightReady atomic.Bool
 }
 
+// viewerSlicePool recycles temporary []Viewer buffers created while broadcasting world state to reduce GC churn.
+// The default capacity is intentionally small: most columns have just a handful of viewers, yet larger slices are
+// returned to the pool so hot paths can still reuse previously grown allocations instead of re-allocating.
+var viewerSlicePool = sync.Pool{
+	New: func() any {
+		return make([]Viewer, 0, 8)
+	},
+}
+
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
 func newColumn(c *chunk.Chunk) *Column {
 	return &Column{
@@ -1512,16 +1589,14 @@ func newColumn(c *chunk.Chunk) *Column {
 	}
 }
 
-// viewerList returns a slice containing all viewers of the column.
-func (c *Column) viewerList() []Viewer {
+// forEachViewer calls the function passed for each viewer in the column.
+func (c *Column) forEachViewer(fn func(Viewer)) {
 	if len(c.viewers) == 0 {
-		return nil
+		return
 	}
-	viewers := make([]Viewer, 0, len(c.viewers))
 	for v := range c.viewers {
-		viewers = append(viewers, v)
+		fn(v)
 	}
-	return viewers
 }
 
 // Ready reports whether the Column has finished generating.

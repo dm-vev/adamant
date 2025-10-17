@@ -87,9 +87,13 @@ func (a *AreaEffectCloudBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 	pos := e.Position()
 	if a.subtractTickRadius() {
-		for _, v := range tx.Viewers(pos) {
+		viewers := tx.Viewers(pos)
+		// Update radius/colour changes using the pooled viewer buffer so frequent cloud pulses do not flood the
+		// allocator during large fights.
+		for _, v := range viewers {
 			v.ViewEntityState(e)
 		}
+		tx.ReleaseViewers(viewers)
 	}
 
 	if int16(e.Age()/(time.Second*20))%10 != 0 {
@@ -103,9 +107,13 @@ func (a *AreaEffectCloudBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	if a.applyEffects(pos, e, a.filter(tx.EntitiesWithin(e.H().Type().BBox(e).Translate(pos)))) {
-		for _, v := range tx.Viewers(pos) {
+		viewers := tx.Viewers(pos)
+		// Releasing the borrowed viewer slice after broadcasting ensures the sync.Pool stays populated even
+		// when multiple clouds update simultaneously.
+		for _, v := range viewers {
 			v.ViewEntityState(e)
 		}
+		tx.ReleaseViewers(viewers)
 	}
 	return nil
 }

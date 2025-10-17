@@ -93,7 +93,7 @@ func (b *FishingHookBehaviour) Reel(e *Ent, tx *world.Tx) (loot item.Stack, expe
 func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.owner != nil {
 		if _, ok := b.owner.Entity(tx); !ok {
-            _ = e.CloseIn(tx)
+			_ = e.CloseIn(tx)
 			return nil
 		}
 	}
@@ -103,7 +103,7 @@ func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 
 	if b.lifeTicks > fishingHookLifetime {
-    _ = e.CloseIn(tx)
+		_ = e.CloseIn(tx)
 		return nil
 	}
 	b.lifeTicks++
@@ -164,10 +164,14 @@ func (b *FishingHookBehaviour) followTarget(e *Ent, tx *world.Tx) bool {
 
 	e.data.Pos = newPos
 	e.data.Vel = mgl64.Vec3{}
-	for _, viewer := range tx.Viewers(oldPos) {
+	viewers := tx.Viewers(oldPos)
+	// Borrow and recycle the viewer slice so repeated teleport updates while the hook follows a target remain
+	// allocation-free even when many players fish simultaneously.
+	for _, viewer := range viewers {
 		viewer.ViewEntityTeleport(e, newPos)
 		viewer.ViewEntityVelocity(e, mgl64.Vec3{})
 	}
+	tx.ReleaseViewers(viewers)
 	return true
 }
 
@@ -211,6 +215,7 @@ func (b *FishingHookBehaviour) triggerBite(e *Ent, tx *world.Tx) {
 		v.ViewEntityAction(e, FishHookBiteAction{})
 		v.ViewEntityAction(e, FishHookTeaseAction{})
 	}
+	tx.ReleaseViewers(viewers)
 }
 
 func (b *FishingHookBehaviour) resetBiteTimer() {

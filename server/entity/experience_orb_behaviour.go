@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+// experienceOrbSearchInterval defines how many world ticks we wait between target acquisition scans. Using the world
+// tick counter keeps the behaviour deterministic even if the server wall clock is jittery under load.
+const experienceOrbSearchInterval int64 = 20
+
 // ExperienceOrbBehaviourConfig holds optional parameters for the creation of
 // an ExperienceOrbBehaviour.
 type ExperienceOrbBehaviourConfig struct {
@@ -35,7 +39,7 @@ func (conf ExperienceOrbBehaviourConfig) New() *ExperienceOrbBehaviour {
 	if conf.ExistenceDuration == 0 {
 		conf.ExistenceDuration = time.Minute * 5
 	}
-	b := &ExperienceOrbBehaviour{conf: conf, lastSearch: time.Now()}
+	b := &ExperienceOrbBehaviour{conf: conf, lastSearchTick: -experienceOrbSearchInterval}
 	b.passive = PassiveBehaviourConfig{
 		Gravity:           conf.Gravity,
 		Drag:              conf.Drag,
@@ -51,8 +55,11 @@ type ExperienceOrbBehaviour struct {
 
 	passive *PassiveBehaviour
 
-	lastSearch time.Time
-	target     *world.EntityHandle
+	// lastSearchTick tracks when we last performed a collector search using the world's logical tick counter.
+	// Relying on ticks instead of time.Now() avoids jitter when the server slows down and ensures orbs wake up
+	// immediately once the simulation resumes at full speed.
+	lastSearchTick int64
+	target         *world.EntityHandle
 }
 
 // Experience returns the amount of experience the orb carries.
@@ -75,15 +82,20 @@ func (exp *ExperienceOrbBehaviour) tick(e *Ent, tx *world.Tx) {
 
 	pos := e.Position()
 	hasTarget := ok && !target.Dead() && pos.Sub(target.Position()).Len() <= 8
-	if !hasTarget && time.Since(exp.lastSearch) >= time.Second {
-		exp.findTarget(tx, pos)
-    } else if hasTarget {
-        exp.moveToTarget(e, target, tx)
-    }
+	currentTick := tx.World().CurrentTick()
+	// The world tick counter advances even if the main loop momentarily stalls. Anchoring the search cadence to
+	// it keeps orb pursuit smooth under load and matches how other behaviours pace themselves.
+	if !hasTarget {
+		if currentTick-exp.lastSearchTick >= experienceOrbSearchInterval {
+			exp.findTarget(tx, pos, currentTick)
+		}
+	} else {
+		exp.moveToTarget(e, target, tx)
+	}
 }
 
 // findTarget attempts to find a target for an experience orb in w around pos.
-func (exp *ExperienceOrbBehaviour) findTarget(tx *world.Tx, pos mgl64.Vec3) {
+func (exp *ExperienceOrbBehaviour) findTarget(tx *world.Tx, pos mgl64.Vec3, currentTick int64) {
 	exp.target = nil
 	for o := range tx.EntitiesWithin(followBox.Translate(pos)) {
 		if _, ok := o.(experienceCollector); ok {
@@ -91,7 +103,7 @@ func (exp *ExperienceOrbBehaviour) findTarget(tx *world.Tx, pos mgl64.Vec3) {
 			break
 		}
 	}
-	exp.lastSearch = time.Now()
+	exp.lastSearchTick = currentTick
 }
 
 // moveToTarget applies velocity to the experience orb so that it moves towards
@@ -106,9 +118,9 @@ func (exp *ExperienceOrbBehaviour) moveToTarget(e *Ent, target experienceCollect
 		e.SetVelocity(e.Velocity().Add(diff.Normalize().Mul(0.2 * math.Pow(1-math.Sqrt(dist), 2))))
 	}
 
-    if e.H().Type().BBox(e).Translate(pos).IntersectsWith(target.H().Type().BBox(target).Translate(target.Position())) && target.CollectExperience(exp.conf.Experience) {
-        _ = e.CloseIn(tx)
-    }
+	if e.H().Type().BBox(e).Translate(pos).IntersectsWith(target.H().Type().BBox(target).Translate(target.Position())) && target.CollectExperience(exp.conf.Experience) {
+		_ = e.CloseIn(tx)
+	}
 }
 
 // experienceCollector represents an entity that can collect experience orbs.

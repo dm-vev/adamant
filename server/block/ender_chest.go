@@ -92,17 +92,21 @@ func (c EnderChest) RemoveViewer(tx *world.Tx, pos cube.Pos) {
 
 // open opens the ender chest, displaying the animation and playing a sound.
 func (c EnderChest) open(tx *world.Tx, pos cube.Pos) {
-	for _, v := range tx.Viewers(pos.Vec3()) {
+	viewers := tx.Viewers(pos.Vec3())
+	for _, v := range viewers {
 		v.ViewBlockAction(pos, OpenAction{})
 	}
+	tx.ReleaseViewers(viewers)
 	tx.PlaySound(pos.Vec3Centre(), sound.EnderChestOpen{})
 }
 
 // close closes the ender chest, displaying the animation and playing a sound.
 func (c EnderChest) close(tx *world.Tx, pos cube.Pos) {
-	for _, v := range tx.Viewers(pos.Vec3()) {
+	viewers := tx.Viewers(pos.Vec3())
+	for _, v := range viewers {
 		v.ViewBlockAction(pos, CloseAction{})
 	}
+	tx.ReleaseViewers(viewers)
 	tx.PlaySound(pos.Vec3Centre(), sound.EnderChestClose{})
 }
 

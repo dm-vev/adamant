@@ -93,9 +93,13 @@ func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 	owner, _ := f.conf.Owner.Entity(tx)
 	pos, explosions := e.Position(), f.conf.Firework.Explosions
 
-	for _, v := range tx.Viewers(pos) {
+	viewers := tx.Viewers(pos)
+	// Firework bursts can happen en masse; leveraging the pooled viewer slice keeps the celebratory moment from
+	// generating avoidable garbage.
+	for _, v := range viewers {
 		v.ViewEntityAction(e, FireworkExplosionAction{})
 	}
+	tx.ReleaseViewers(viewers)
 	for _, explosion := range explosions {
 		if explosion.Shape == item.FireworkShapeHugeSphere() {
 			tx.PlaySound(pos, sound.FireworkHugeBlast{})
