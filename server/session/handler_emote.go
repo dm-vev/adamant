@@ -27,8 +27,10 @@ func (h *EmoteHandler) Handle(p packet.Packet, _ *Session, tx *world.Tx, c Contr
 	if err != nil {
 		return err
 	}
-	for _, viewer := range tx.Viewers(c.Position()) {
+	viewers := tx.Viewers(c.Position())
+	for _, viewer := range viewers {
 		viewer.ViewEmote(c, emote)
 	}
+	tx.ReleaseViewers(viewers)
 	return nil
 }

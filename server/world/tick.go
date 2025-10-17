@@ -15,9 +15,15 @@ type ticker struct {
 	interval time.Duration
 }
 
+type entityChunkRef struct {
+	col *Column
+	pos ChunkPos
+}
+
 const (
-	tpsSampleSize       = 20
-	tpsWarningThreshold = 19.0
+	tpsSampleSize              = 20
+	tpsWarningThreshold        = 19.0
+	passiveMaintenanceInterval = 80
 )
 
 // tickLoop starts ticking the World 20 times every second, updating all
@@ -75,6 +81,7 @@ func (t ticker) tickLoop(w *World) {
 func (t ticker) tick(tx *Tx) {
 	viewers, loaders := tx.World().allViewers()
 	w := tx.World()
+	defer w.releaseViewers(viewers)
 
 	w.set.Lock()
 	if s := w.set.Spawn; s[1] > tx.Range()[1] {
@@ -223,82 +230,152 @@ func (t ticker) anyWithinDistance(pos ChunkPos, loaded []ChunkPos, r int32) bool
 // tickEntities ticks all entities in the world, making sure they are still located in the correct chunks and
 // updating where necessary.
 func (t ticker) tickEntities(tx *Tx, tick int64) {
-	w := tx.World()
-	for handle, state := range w.entities {
-		chunkPos := chunkPosFromVec3(handle.data.Pos)
+	const sleepMaintenanceInterval = 40 // ~2 seconds between maintenance passes for sleeping chunks.
 
-		c, ok := w.chunks[chunkPos]
-		if !ok {
+	w := tx.World()
+
+	lazyMaintenance := tick%sleepMaintenanceInterval == 0
+
+	active := make([]*EntityHandle, 0)
+	activeChunks := make(map[*EntityHandle]entityChunkRef)
+	sleeping := make([]*EntityHandle, 0)
+	sleepingChunks := make(map[*EntityHandle]entityChunkRef)
+
+	for pos, col := range w.chunks {
+		if len(col.Entities) == 0 {
 			continue
 		}
-
-		var (
-			entity       Entity
-			entityLoaded bool
-		)
-		loadEntity := func() Entity {
-			if !entityLoaded {
-				entity = state.entity(tx, handle)
-				entityLoaded = true
+		if len(col.viewers) > 0 {
+			for _, handle := range col.Entities {
+				active = append(active, handle)
+				activeChunks[handle] = entityChunkRef{col: col, pos: pos}
 			}
-			return entity
+			continue
+		}
+		if !lazyMaintenance {
+			continue
+		}
+		for _, handle := range col.Entities {
+			sleeping = append(sleeping, handle)
+			sleepingChunks[handle] = entityChunkRef{col: col, pos: pos}
+		}
+	}
+
+	for _, handle := range active {
+		t.tickEntityHandle(tx, tick, handle, activeChunks[handle], true)
+	}
+	if !lazyMaintenance {
+		return
+	}
+	for _, handle := range sleeping {
+		t.tickEntityHandle(tx, tick, handle, sleepingChunks[handle], false)
+	}
+}
+
+func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref entityChunkRef, active bool) {
+	w := tx.World()
+	state := w.entities[handle]
+	if state == nil {
+		return
+	}
+
+	chunkPos := chunkPosFromVec3(handle.data.Pos)
+
+	var (
+		entity       Entity
+		entityLoaded bool
+	)
+	loadEntity := func() Entity {
+		if !entityLoaded {
+			entity = state.entity(tx, handle)
+			entityLoaded = true
+		}
+		return entity
+	}
+
+	if state.lastTick == 0 {
+		state.lastTick = tick
+	}
+	if state.pos != chunkPos {
+		oldPos := state.pos
+		state.pos = chunkPos
+
+		newChunk := w.chunk(chunkPos)
+		newChunk.Entities = append(newChunk.Entities, handle)
+		newChunk.modified = true
+
+		var viewers map[Viewer]struct{}
+		if oldPos == ref.pos && ref.col != nil {
+			ref.col.Entities = sliceutil.DeleteVal(ref.col.Entities, handle)
+			ref.col.modified = true
+			viewers = ref.col.viewers
+		} else if old, ok := w.chunks[oldPos]; ok {
+			old.Entities = sliceutil.DeleteVal(old.Entities, handle)
+			old.modified = true
+			viewers = old.viewers
 		}
 
-		if state.lastTick == 0 {
+		if len(viewers) > 0 || len(newChunk.viewers) > 0 {
+			ent := loadEntity()
+			for v := range viewers {
+				if _, ok := newChunk.viewers[v]; !ok {
+					v.HideEntity(ent)
+				}
+			}
+			for v := range newChunk.viewers {
+				if _, ok := viewers[v]; !ok {
+					showEntity(ent, v)
+				}
+			}
+		}
+	}
+
+	if !active {
+		if state.nextPassiveTick == 0 {
+			state.nextPassiveTick = tick + passiveMaintenanceInterval
+		}
+		if tick < state.nextPassiveTick {
+			return
+		}
+		if delta := tick - state.lastTick; delta > 0 {
+			inc := time.Duration(delta) * (time.Second / 20)
+			handle.data.Age += inc
+			if handle.data.FireDuration > 0 {
+				if inc >= handle.data.FireDuration {
+					handle.data.FireDuration = 0
+				} else {
+					handle.data.FireDuration -= inc
+				}
+			}
 			state.lastTick = tick
 		}
-		if state.pos != chunkPos {
-			oldPos := state.pos
-			state.pos = chunkPos
-			c.Entities = append(c.Entities, handle)
-
-			var viewers map[Viewer]struct{}
-			if old, ok := w.chunks[oldPos]; ok {
-				old.Entities = sliceutil.DeleteVal(old.Entities, handle)
-				viewers = old.viewers
-			}
-
-			if len(viewers) > 0 || len(c.viewers) > 0 {
-				ent := loadEntity()
-				for v := range viewers {
-					if _, ok := c.viewers[v]; !ok {
-						v.HideEntity(ent)
-					}
-				}
-				for v := range c.viewers {
-					if _, ok := viewers[v]; !ok {
-						showEntity(ent, v)
-					}
-				}
+		state.nextPassiveTick = tick + passiveMaintenanceInterval
+		if state.isItem && handle.data.Age >= 5*time.Minute {
+			if ent := loadEntity(); ent != nil {
+				_ = ent.Close()
 			}
 		}
+		return
+	}
 
-		viewCount := len(c.viewers)
-		if viewCount == 0 {
-			if delta := tick - state.lastTick; delta > 0 {
-				inc := time.Duration(delta) * (time.Second / 20)
-				handle.data.Age += inc
-				if handle.data.FireDuration > 0 {
-					if inc >= handle.data.FireDuration {
-						handle.data.FireDuration = 0
-					} else {
-						handle.data.FireDuration -= inc
-					}
-				}
-				state.lastTick = tick
+	if delta := tick - state.lastTick; delta > 1 {
+		inc := time.Duration(delta-1) * (time.Second / 20)
+		handle.data.Age += inc
+		if handle.data.FireDuration > 0 {
+			if inc >= handle.data.FireDuration {
+				handle.data.FireDuration = 0
+			} else {
+				handle.data.FireDuration -= inc
 			}
-			if state.isItem && handle.data.Age >= 5*time.Minute {
-				if ent := loadEntity(); ent != nil {
-					_ = ent.Close()
-				}
-			}
-			continue
 		}
-
-		state.lastTick = tick
-		if te, ok := loadEntity().(TickerEntity); ok {
-			te.Tick(tx, tick)
-		}
+	}
+	state.lastTick = tick
+	state.nextPassiveTick = tick + passiveMaintenanceInterval
+	if !state.tickerChecked {
+		loadEntity()
+	}
+	if state.isTicker && state.ticker != nil {
+		state.ticker.Tick(tx, tick)
 	}
 }
 

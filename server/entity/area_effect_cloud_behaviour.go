@@ -87,9 +87,11 @@ func (a *AreaEffectCloudBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 	pos := e.Position()
 	if a.subtractTickRadius() {
-		for _, v := range tx.Viewers(pos) {
+		viewers := tx.Viewers(pos)
+		for _, v := range viewers {
 			v.ViewEntityState(e)
 		}
+		tx.ReleaseViewers(viewers)
 	}
 
 	if int16(e.Age()/(time.Second*20))%10 != 0 {
@@ -103,9 +105,11 @@ func (a *AreaEffectCloudBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	if a.applyEffects(pos, e, a.filter(tx.EntitiesWithin(e.H().Type().BBox(e).Translate(pos)))) {
-		for _, v := range tx.Viewers(pos) {
+		viewers := tx.Viewers(pos)
+		for _, v := range viewers {
 			v.ViewEntityState(e)
 		}
+		tx.ReleaseViewers(viewers)
 	}
 	return nil
 }
