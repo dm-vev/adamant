@@ -17,6 +17,9 @@ type MovementComputer struct {
 	onGround bool
 }
 
+// blockBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
+// resolution. The collider path runs every tick for every moving entity, so eliminating these temporary allocations
+// materially reduces GC churn in crowded areas.
 var blockBBoxPool = sync.Pool{
 	New: func() any {
 		return make([]cube.BBox, 0, 16)
@@ -198,6 +201,9 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 	} else {
 		blockBBoxs = blockBBoxs[:0]
 	}
+	// bboxCache memoises block model bounding boxes within this scan. Adjacent blocks often share the same
+	// runtime model (e.g. stone, air), so caching by block hash avoids repeatedly invoking Model().BBox for the
+	// same shapes while the entity sweeps through uniform volumes.
 	bboxCache := make(map[uint64][]cube.BBox)
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {

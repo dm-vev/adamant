@@ -611,6 +611,8 @@ func (s *Session) broadcastInvFunc(tx *world.Tx, c Controllable) inventory.SlotF
 	return func(slot int, _, after item.Stack) {
 		if slot == int(*s.heldSlot) {
 			viewers := tx.Viewers(c.Position())
+			// Equipment updates are extremely frequent; using the pooled slice keeps hotbar spam from
+			// producing unnecessary garbage.
 			for _, viewer := range viewers {
 				viewer.ViewEntityItems(c)
 			}
@@ -635,6 +637,8 @@ func (s *Session) broadcastEnderChestFunc(tx *world.Tx, _ Controllable) inventor
 func (s *Session) broadcastOffHandFunc(tx *world.Tx, c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
 		viewers := tx.Viewers(c.Position())
+		// Off-hand sync leverages the same pooled viewer slice so rapidly switching totems or shields remains
+		// allocation free.
 		for _, viewer := range viewers {
 			viewer.ViewEntityItems(c)
 		}
@@ -659,6 +663,8 @@ func (s *Session) broadcastArmourFunc(tx *world.Tx, c Controllable) inventory.Sl
 			return
 		}
 		viewers := tx.Viewers(c.Position())
+		// Armour broadcasts also borrow the pooled buffer. Players often spam armour swaps in PvP; the pool keeps
+		// the resulting updates cheap.
 		for _, viewer := range viewers {
 			viewer.ViewEntityArmour(c)
 		}

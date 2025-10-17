@@ -204,6 +204,8 @@ func (p *Player) SetSkin(skin skin.Skin) {
 	}
 	p.skin = skin
 	viewers := p.viewers()
+	// viewer() returns a pooled slice sourced from the world; recycling it after the broadcast keeps rapid skin
+	// changes (e.g. via plugins) from allocating new memory every time.
 	for _, v := range viewers {
 		v.ViewSkin(p)
 	}
@@ -1802,6 +1804,8 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	if s, ok := i.Enchantment(enchantment.Sharpness); ok {
 		dmg += enchantment.Sharpness.Addend(s.Level())
 		viewers := p.tx.Viewers(living.Position())
+		// Enchanted hit particles trigger frequently; reuse the pooled buffer so melee combat stays allocation
+		// free even when multiple players swing simultaneously.
 		for _, v := range viewers {
 			v.ViewEntityAction(living, entity.EnchantedHitAction{})
 		}
@@ -1839,6 +1843,8 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 	if critical {
 		viewers := p.tx.Viewers(living.Position())
+		// Critical hit notifications follow the same pooling strategy to avoid churning slices during sustained
+		// fights.
 		for _, v := range viewers {
 			v.ViewEntityAction(living, entity.CriticalHitAction{})
 		}
@@ -3272,6 +3278,8 @@ func (p *Player) Handler() Handler {
 // broadcastItems broadcasts the items held to viewers.
 func (p *Player) broadcastItems(int, item.Stack, item.Stack) {
 	viewers := p.viewers()
+	// broadcastItems is called for every hotbar mutation. Recycling the borrowed viewer slice avoids flooding the
+	// garbage collector during inventory spam.
 	for _, viewer := range viewers {
 		viewer.ViewEntityItems(p)
 	}
@@ -3285,6 +3293,7 @@ func (p *Player) broadcastArmour(_ int, before, after item.Stack) {
 		return
 	}
 	viewers := p.viewers()
+	// Armour changes are similarly noisy in PvP encounters; reusing the pooled slice keeps repeated swaps cheap.
 	for _, viewer := range viewers {
 		viewer.ViewEntityArmour(p)
 	}
@@ -3294,6 +3303,9 @@ func (p *Player) broadcastArmour(_ int, before, after item.Stack) {
 // viewers returns a list of all viewers of the Player.
 func (p *Player) viewers() []world.Viewer {
 	viewers := p.tx.Viewers(p.Position())
+	// viewers() centralises acquisition of the pooled slice so every broadcast path can share the same reuse logic.
+	// We append the session lazily if needed, but crucially we still return the borrowed slice so callers can hand it
+	// back to the pool once done.
 	var s world.Viewer = p.session()
 	if slices.Index(viewers, s) == -1 && p.s != nil {
 		return append(viewers, p.s)

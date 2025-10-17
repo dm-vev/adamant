@@ -90,6 +90,8 @@ func (e *Ent) SetOnFire(duration time.Duration) {
 	e.data.FireDuration = duration
 	if stateChanged {
 		viewers := e.tx.Viewers(e.data.Pos)
+		// The viewer list comes from a pooled buffer; releasing it after notifying observers keeps the hot path
+		// allocation-free while toggling fire particles on and off.
 		for _, v := range viewers {
 			v.ViewEntityState(e)
 		}
@@ -113,6 +115,8 @@ func (e *Ent) NameTag() string {
 func (e *Ent) SetNameTag(s string) {
 	e.data.Name = s
 	viewers := e.tx.Viewers(e.Position())
+	// As with other broadcast helpers, we intentionally recycle the viewer slice once the update is sent to
+	// minimise GC churn when name tags are toggled rapidly (e.g. scoreboard updates).
 	for _, v := range viewers {
 		v.ViewEntityState(e)
 	}

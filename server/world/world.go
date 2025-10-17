@@ -1028,6 +1028,11 @@ func (w *World) Handle(h Handler) {
 }
 
 // viewersOf returns all viewers viewing the position passed.
+//
+// The method deliberately borrows a slice from viewerSlicePool so the caller can iterate without allocating. The
+// caller must eventually hand the slice back through releaseViewers to maintain the pool's effectiveness. We have to
+// pay special attention to reusing buffers here because these lookups happen every time entities broadcast state or
+// packets are fanned out to observers.
 func (w *World) viewersOf(pos mgl64.Vec3) []Viewer {
 	c, ok := w.chunks[chunkPosFromVec3(pos)]
 	if !ok || len(c.viewers) == 0 {
@@ -1046,6 +1051,8 @@ func (w *World) viewersOf(pos mgl64.Vec3) []Viewer {
 	return viewers
 }
 
+// releaseViewers returns pooled viewer slices to viewerSlicePool. Forgetting to release will degrade the pool and
+// reintroduce the very allocations this optimisation was meant to avoid.
 func (w *World) releaseViewers(viewers []Viewer) {
 	if viewers == nil {
 		return
@@ -1563,6 +1570,9 @@ type Column struct {
 	lightReady atomic.Bool
 }
 
+// viewerSlicePool recycles temporary []Viewer buffers created while broadcasting world state to reduce GC churn.
+// The default capacity is intentionally small: most columns have just a handful of viewers, yet larger slices are
+// returned to the pool so hot paths can still reuse previously grown allocations instead of re-allocating.
 var viewerSlicePool = sync.Pool{
 	New: func() any {
 		return make([]Viewer, 0, 8)
