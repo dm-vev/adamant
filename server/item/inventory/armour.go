@@ -128,7 +128,11 @@ func (a *Armour) DamageReduction(dmg float64, src world.DamageSource) float64 {
 		// armour point decreases as damage increases, with 1 point lost for every 2 HP of damage. The defense
 		// reduction is decreased by the toughness armor value. Effective armour points will at minimum be 20% of
 		// armour points.
-		dmg -= dmg * 0.04 * math.Max(defencePoints*0.2, defencePoints-dmg/(2+toughness/4))
+		reduction := dmg * 0.04 * math.Max(defencePoints*0.2, defencePoints-dmg/(2+toughness/4))
+		if scaler, ok := src.(world.ArmourEffectivenessReducer); ok {
+			reduction *= scaler.ArmourEffectivenessMultiplier()
+		}
+		dmg -= reduction
 	}
 	return original - dmg
 }
