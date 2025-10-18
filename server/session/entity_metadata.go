@@ -3,6 +3,7 @@ package session
 import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
@@ -81,6 +82,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlockedUsingShield)
 		if cur, max, ok := sh.ShieldDurability(); ok && max > 0 && cur*2 <= max {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlockedUsingDamagedShield)
+		}
+	}
+	if sl, ok := e.(sleeper); ok && sl.Sleeping() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSleeping)
+		if pos, ok := sl.BedPosition(); ok {
+			m[protocol.EntityDataKeyBedPosition] = protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 		}
 	}
 	if c, ok := e.(arrow); ok && c.Critical() {
@@ -263,6 +270,11 @@ type using interface {
 type shieldBearer interface {
 	Shielding() bool
 	ShieldDurability() (current, max int, ok bool)
+}
+
+type sleeper interface {
+	Sleeping() bool
+	BedPosition() (cube.Pos, bool)
 }
 
 type arrow interface {

@@ -197,8 +197,9 @@ const (
 	hashWoodFence
 	hashWoodFenceGate
 	hashWoodTrapdoor
-	hashWool
-	hashCustomBlockBase
+    hashWool
+    hashBed
+    hashCustomBlockBase
 )
 
 // customBlockBase represents the base hash for all custom blocks.
@@ -275,7 +276,12 @@ func (b Bone) Hash() (uint64, uint64) {
 }
 
 func (Bookshelf) Hash() (uint64, uint64) {
-	return hashBookshelf, 0
+    return hashBookshelf, 0
+}
+
+func (b Bed) Hash() (uint64, uint64) {
+    // Pack: colour(4) | facing(2) | part(1) | occupied(1)
+    return hashBed, uint64(b.Colour.Uint8()) | uint64(b.Facing)<<4 | uint64(b.Part)<<6 | uint64(boolByte(b.Occupied))<<7
 }
 
 func (b BrewingStand) Hash() (uint64, uint64) {

@@ -94,6 +94,10 @@ type Controllable interface {
 	Gliding() bool
 	StopGliding()
 	Jump()
+	Sleep(pos cube.Pos, tx *world.Tx) bool
+	StopSleeping(tx *world.Tx)
+	Sleeping() bool
+	BedPosition() (cube.Pos, bool)
 
 	StartBreaking(pos cube.Pos, face cube.Face)
 	ContinueBreaking(face cube.Face)
