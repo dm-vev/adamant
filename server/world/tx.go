@@ -1,6 +1,8 @@
 package world
 
 import (
+	"log/slog"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"iter"
@@ -249,6 +251,15 @@ func (tx *Tx) Viewers(pos mgl64.Vec3) []Viewer {
 // ReleaseViewers returns a slice previously obtained from Viewers back to the internal pool.
 func (tx *Tx) ReleaseViewers(viewers []Viewer) {
 	tx.World().releaseViewers(viewers)
+}
+
+// Log returns the logger configured for the world backing this transaction.
+// It may return nil if the world was constructed without a logger.
+func (tx *Tx) Log() *slog.Logger {
+	if tx == nil || tx.w == nil {
+		return nil
+	}
+	return tx.w.conf.Log
 }
 
 // World returns the World of the Tx. It panics if the transaction was already

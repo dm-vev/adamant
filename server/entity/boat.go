@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"context"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -11,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"log/slog"
 )
 
 // VehiclePassenger represents an entity that may ride another entity and expects to receive positional updates
@@ -92,11 +94,21 @@ func (b *BoatBehaviour) Inventory() *inventory.Inventory { return b.inventory }
 
 // SetInput sets the input state of the boat, typically coming from the rider.
 func (b *BoatBehaviour) SetInput(forward float64, left, right bool, vehicleYaw float64, hasYaw bool) {
-	if hasYaw && !math.IsNaN(vehicleYaw) && !math.IsInf(vehicleYaw, 1) && !math.IsInf(vehicleYaw, -1) {
-		b.lastVehicleYaw = vehicleYaw
+	validYaw := hasYaw && !math.IsNaN(vehicleYaw) && !math.IsInf(vehicleYaw, 1) && !math.IsInf(vehicleYaw, -1)
+	var yaw float64
+	if validYaw {
+		yaw = wrapDegrees(vehicleYaw)
+		b.lastVehicleYaw = yaw
 		b.haveVehicleYaw = true
+	} else {
+		if !hasYaw {
+			b.haveVehicleYaw = false
+		}
+		if b.haveVehicleYaw {
+			yaw = b.lastVehicleYaw
+		}
 	}
-	b.input = forwardInput{forward: forward, left: left, right: right, vehicleYaw: vehicleYaw, hasYaw: hasYaw}
+	b.input = forwardInput{forward: forward, left: left, right: right, vehicleYaw: yaw, hasYaw: validYaw}
 }
 
 // AddPassenger attempts to add a passenger to the boat. It returns the seat index assigned to the passenger and
@@ -121,13 +133,27 @@ func (b *BoatBehaviour) RemovePassenger(e *world.EntityHandle) {
 	b.passengerLock.Lock()
 	defer b.passengerLock.Unlock()
 
+	cleared := false
 	for i, p := range b.passengers {
 		if p == e {
 			b.passengers = append(b.passengers[:i], b.passengers[i+1:]...)
 			b.passengerCount.Store(int32(len(b.passengers)))
+			cleared = i == 0
 			break
 		}
 	}
+	if cleared || len(b.passengers) == 0 {
+		b.resetInputLocked()
+	}
+}
+
+func (b *BoatBehaviour) resetInputLocked() {
+	b.input = forwardInput{}
+	b.haveVehicleYaw = false
+	b.lastVehicleYaw = 0
+	b.leftPaddle = 0
+	b.rightPaddle = 0
+	b.velocity = mgl64.Vec3{}
 }
 
 // PassengerSeat attempts to find the seat index the passenger occupies.
@@ -210,8 +236,10 @@ func (b *BoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	pos := e.Position()
 	vel := e.Velocity()
 
-	vel = b.applyInput(vel, e, tx)
+	var yawDeg float64
+	vel, yawDeg = b.applyInput(vel, e, tx)
 	vel = b.applyBuoyancy(pos, vel, tx)
+	b.velocity = vel
 
 	m := b.mc.TickMovement(e, pos, vel, e.Rotation(), tx)
 	e.data.Pos, e.data.Vel = m.pos, m.vel
@@ -240,13 +268,46 @@ func (b *BoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 	b.updatePassengers(e, tx)
 
+	b.debugTick(tx, e, yawDeg, vel)
+
 	return m
 }
 
-func (b *BoatBehaviour) applyInput(vel mgl64.Vec3, e *Ent, tx *world.Tx) mgl64.Vec3 {
+func (b *BoatBehaviour) debugTick(tx *world.Tx, e *Ent, yawDeg float64, vel mgl64.Vec3) {
+	if tx == nil {
+		return
+	}
+	logger := tx.Log()
+	if logger == nil || !logger.Enabled(context.Background(), slog.LevelDebug) {
+		return
+	}
+	variant := b.conf.Variant.Name()
+	if variant == "" {
+		variant = "unknown"
+	}
+	attrs := []slog.Attr{
+		slog.String("variant", variant),
+		slog.Bool("chest", b.conf.Chest),
+		slog.Float64("input_forward", b.input.forward),
+		slog.Bool("input_left", b.input.left),
+		slog.Bool("input_right", b.input.right),
+		slog.Float64("yaw", yawDeg),
+		slog.Float64("stored_yaw", b.lastVehicleYaw),
+		slog.Float64("pos_x", e.data.Pos[0]),
+		slog.Float64("pos_y", e.data.Pos[1]),
+		slog.Float64("pos_z", e.data.Pos[2]),
+		slog.Float64("vel_x", vel[0]),
+		slog.Float64("vel_y", vel[1]),
+		slog.Float64("vel_z", vel[2]),
+		slog.Int("passengers", int(b.passengerCount.Load())),
+	}
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "boat tick", attrs...)
+}
+
+func (b *BoatBehaviour) applyInput(vel mgl64.Vec3, e *Ent, tx *world.Tx) (mgl64.Vec3, float64) {
 	rot := e.Rotation()
 	yaw := rot.Yaw()
-	if b.input.hasYaw && !math.IsNaN(b.input.vehicleYaw) && !math.IsInf(b.input.vehicleYaw, 1) && !math.IsInf(b.input.vehicleYaw, -1) {
+	if b.input.hasYaw {
 		yaw = b.input.vehicleYaw
 		b.lastVehicleYaw = yaw
 		b.haveVehicleYaw = true
@@ -254,6 +315,7 @@ func (b *BoatBehaviour) applyInput(vel mgl64.Vec3, e *Ent, tx *world.Tx) mgl64.V
 		yaw = b.lastVehicleYaw
 	}
 
+	yaw = wrapDegrees(yaw)
 	yawRad := yaw * (math.Pi / 180)
 
 	if b.input.left {
@@ -263,7 +325,11 @@ func (b *BoatBehaviour) applyInput(vel mgl64.Vec3, e *Ent, tx *world.Tx) mgl64.V
 		yawRad += 0.05
 	}
 
-	yawDeg := yawRad * (180 / math.Pi)
+	yawDeg := wrapDegrees(yawRad * (180 / math.Pi))
+	b.lastVehicleYaw = yawDeg
+	b.haveVehicleYaw = true
+	b.input.vehicleYaw = yawDeg
+	b.input.hasYaw = b.haveVehicleYaw
 	e.data.Rot = cube.Rotation{yawDeg, rot.Pitch()}
 
 	forward := b.input.forward
@@ -280,7 +346,7 @@ func (b *BoatBehaviour) applyInput(vel mgl64.Vec3, e *Ent, tx *world.Tx) mgl64.V
 	vel[0] *= 0.96
 	vel[2] *= 0.96
 
-	return vel
+	return vel, yawDeg
 }
 
 func (b *BoatBehaviour) applyBuoyancy(pos, vel mgl64.Vec3, tx *world.Tx) mgl64.Vec3 {
@@ -338,11 +404,11 @@ func (b *BoatBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
 }
 
 func (b *BoatBehaviour) passengerOffsets() []mgl64.Vec3 {
-	const seatHeight = 0.8
+	const seatHeight = 1.05
 	if b.conf.Chest {
-		return []mgl64.Vec3{{0, seatHeight, 0}}
+		return []mgl64.Vec3{{0, seatHeight, -0.1}}
 	}
-	return []mgl64.Vec3{{0, seatHeight, -0.35}, {0, seatHeight, 0.35}}
+	return []mgl64.Vec3{{0, seatHeight, -0.25}, {0, seatHeight, 0.25}}
 }
 
 // SeatOffset returns the relative offset of a given seat index.
@@ -369,18 +435,18 @@ func rotateOffset(offset mgl64.Vec3, yaw float64) mgl64.Vec3 {
 func (b *BoatBehaviour) applyLiquidBuoyancy(current, posY, baseY float64, liquid world.Liquid, strength float64) float64 {
 	surface := liquidSurfaceHeight(baseY, liquid)
 
-	fullDraft := 0.035
-	shallowDraft := 0.02
+	fullDraft := 0.024
+	shallowDraft := 0.012
 
 	if b.conf.Chest {
-		fullDraft += 0.006
-		shallowDraft += 0.004
+		fullDraft += 0.008
+		shallowDraft += 0.006
 	}
 
 	if count := int(b.passengerCount.Load()); count > 0 {
-		extra := 0.0045 * float64(count)
+		extra := 0.0035 * float64(count)
 		fullDraft += extra
-		shallowDraft += extra * 0.75
+		shallowDraft += extra * 0.6
 	}
 
 	target := surface - fullDraft
@@ -397,8 +463,8 @@ func (b *BoatBehaviour) applyLiquidBuoyancy(current, posY, baseY float64, liquid
 		strength = 1
 	}
 
-	upLimit := 0.45 * strength
-	downLimit := 0.3 * strength
+	upLimit := 0.32 * strength
+	downLimit := 0.22 * strength
 	accel := clampFloat64(delta*0.8, -downLimit, upLimit)
 
 	if delta > 0 {
@@ -421,6 +487,17 @@ func clampFloat64(v, minVal, maxVal float64) float64 {
 	}
 	if v > maxVal {
 		return maxVal
+	}
+	return v
+}
+
+func wrapDegrees(v float64) float64 {
+	v = math.Mod(v, 360)
+	if v >= 180 {
+		v -= 360
+	}
+	if v < -180 {
+		v += 360
 	}
 	return v
 }

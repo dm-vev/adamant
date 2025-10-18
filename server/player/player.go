@@ -1,6 +1,7 @@
 package player
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/rand/v2"
@@ -41,6 +42,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
+	"log/slog"
 )
 
 type playerData struct {
@@ -2119,6 +2121,7 @@ func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, v
 			}
 		}
 
+		p.logBoatInput(moveVec, forward, left, right, vehicleYaw, flags)
 		boat.SetInput(forward, left, right, vehicleYaw, true)
 
 		current := p.Rotation()
@@ -2132,6 +2135,27 @@ func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, v
 	offset := rotateSeatOffset(boat.SeatOffset(seat), boatEnt.Rotation().Yaw())
 	p.UpdatePassengerPosition(boatEnt, seat, boatEnt.Position().Add(offset), boatEnt.Rotation())
 	return true
+}
+
+func (p *Player) logBoatInput(moveVec mgl32.Vec2, forward float64, left, right bool, vehicleYaw float64, flags protocol.Bitset) {
+	if p.tx == nil {
+		return
+	}
+	logger := p.tx.Log()
+	if logger == nil || !logger.Enabled(context.Background(), slog.LevelDebug) {
+		return
+	}
+	attrs := []slog.Attr{
+		slog.Float64("move_x", float64(moveVec[0])),
+		slog.Float64("move_y", float64(moveVec[1])),
+		slog.Float64("forward", forward),
+		slog.Bool("left", left),
+		slog.Bool("right", right),
+		slog.Float64("vehicle_yaw", wrapDegrees(vehicleYaw)),
+		slog.Int("seat", p.vehicleSeat),
+		slog.Bool("predicted", flags.Load(packet.InputFlagClientPredictedVehicle)),
+	}
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "boat input", attrs...)
 }
 
 func (p *Player) rotateWhileRiding(deltaYaw, deltaPitch float64) {
