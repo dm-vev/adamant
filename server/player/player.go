@@ -2094,11 +2094,14 @@ func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, v
 			}
 		}
 
-		yaw := float64(vehicleRot[1])
-		useYaw := true
-		if math.IsNaN(yaw) || math.IsInf(yaw, 1) || math.IsInf(yaw, -1) {
-			yaw = p.Rotation().Yaw()
-			useYaw = false
+		yaw := p.Rotation().Yaw()
+		useYaw := flags.Load(packet.InputFlagClientPredictedVehicle)
+		if useYaw {
+			yaw = float64(vehicleRot[0])
+			if math.IsNaN(yaw) || math.IsInf(yaw, 1) || math.IsInf(yaw, -1) {
+				yaw = p.Rotation().Yaw()
+				useYaw = false
+			}
 		}
 		boat.SetInput(forward, left, right, yaw, useYaw)
 	}
