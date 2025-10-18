@@ -77,6 +77,7 @@ type Session struct {
 	openedContainerID              atomic.Uint32
 	openedWindow                   atomic.Pointer[inventory.Inventory]
 	openedPos                      atomic.Pointer[cube.Pos]
+	openedEntity                   atomic.Pointer[world.EntityHandle]
 	swingingArm                    atomic.Bool
 	changingSlot                   atomic.Bool
 	changingDimension              atomic.Bool
@@ -260,7 +261,10 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 		chat.Global.Writet(s.conf.JoinMessage, s.conn.IdentityData().DisplayName)
 	}
 
-	go s.background()
+	runnable := s.sendAvailableCommands(c)
+	enums, enumValues := s.enums(c)
+
+	go s.background(runnable, enums, enumValues)
 	go s.handlePackets()
 }
 
@@ -363,20 +367,11 @@ func (s *Session) handlePackets() {
 
 // background performs background tasks of the Session. This includes chunk sending and automatic command updating.
 // background returns when the Session's connection is closed using CloseConnection.
-func (s *Session) background() {
+func (s *Session) background(r map[string]map[int]cmd.Runnable, enums map[string]cmd.Enum, enumValues map[string][]string) {
 	var (
-		r          map[string]map[int]cmd.Runnable
-		enums      map[string]cmd.Enum
-		enumValues map[string][]string
-		ok         bool
-		i          int
+		ok bool
+		i  int
 	)
-
-	s.ent.ExecWorld(func(tx *world.Tx, e world.Entity) {
-		co := e.(Controllable)
-		r = s.sendAvailableCommands(co)
-		enums, enumValues = s.enums(co)
-	})
 
 	t := time.NewTicker(time.Second / 20)
 	defer t.Stop()
