@@ -39,6 +39,14 @@ type Enum interface {
 	Options(source Source) []string
 }
 
+// DynamicEnum is an optional extension of Enum that marks an enum as dynamic, meaning it should be encoded as a
+// soft enum so that its values may change after the initial AvailableCommands packet. If not implemented, enums
+// are treated as static, mirroring the behaviour of vanilla command metadata.
+type DynamicEnum interface {
+	Enum
+	Dynamic() bool
+}
+
 // SubCommand represents a subcommand that may be added as a static value that must be written. Adding
 // multiple Runnable implementations to the command in New with different SubCommand fields as the
 // first parameter allows for commands with subcommands.

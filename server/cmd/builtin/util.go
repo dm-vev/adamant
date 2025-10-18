@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"reflect"
 	"slices"
 	"strings"
 
@@ -58,10 +59,25 @@ func joinNames(players []*player.Player) string {
 // gameModeValue exposes the vanilla GameMode enum so the client can show rich command hints.
 type gameModeValue string
 
+var gameModeOptions = []string{"survival", "creative", "adventure", "spectator"}
+
 func (gameModeValue) Type() string { return "GameMode" }
 
+func (gameModeValue) Parse(line *cmd.Line, v reflect.Value) error {
+	arg, ok := line.Next()
+	if !ok {
+		return line.UsageError()
+	}
+	_, alias, ok := parseGameMode(arg)
+	if !ok {
+		return cmd.MessageParameterInvalid.F(arg)
+	}
+	v.SetString(alias)
+	return nil
+}
+
 func (gameModeValue) Options(cmd.Source) []string {
-	return []string{"survival", "creative", "adventure", "spectator", "0", "1", "2", "3", "s", "c", "a", "sp", "spectate"}
+	return gameModeOptions
 }
 
 // timeSetPreset is an enum backing the `time set` presets shown in the vanilla client.
@@ -69,6 +85,8 @@ type timeSetPreset string
 
 func (timeSetPreset) Type() string { return "TimeSpec" }
 
+var timeSetPresets = []string{"day", "noon", "night", "midnight"}
+
 func (timeSetPreset) Options(cmd.Source) []string {
-	return []string{"day", "noon", "night", "midnight"}
+	return timeSetPresets
 }

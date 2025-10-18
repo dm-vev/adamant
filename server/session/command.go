@@ -193,11 +193,14 @@ func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum comman
 		}
 	}
 	if enum, ok := i.Value.(cmd.Enum); ok {
-		return 0, commandEnum{
+		ce := commandEnum{
 			Type:    enum.Type(),
 			Options: enum.Options(source),
-			Dynamic: true,
 		}
+		if dyn, ok := enum.(cmd.DynamicEnum); ok && dyn.Dynamic() {
+			ce.Dynamic = true
+		}
+		return 0, ce
 	}
 	return protocol.CommandArgTypeValue, enum
 }

@@ -67,7 +67,7 @@ func (t timeSetPresetCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("world unavailable")
 		return
 	}
-	ticks, ok := presetTimeTicks[string(t.Value)]
+	ticks, ok := presetTimeTicks[t.Value]
 	if !ok {
 		o.Errort(cmd.MessageParameterInvalid, string(t.Value))
 		return
@@ -108,7 +108,7 @@ func (t timeQueryCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	}
 }
 
-var presetTimeTicks = map[string]int{
+var presetTimeTicks = map[timeSetPreset]int{
 	"day":      1000,
 	"noon":     6000,
 	"night":    13000,
