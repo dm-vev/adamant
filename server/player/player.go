@@ -138,14 +138,8 @@ type playerData struct {
 
 	sleeping   bool
 	sleepBed   cube.Pos
-    sleepSpawn cube.Pos
-    sleepDim   world.Dimension
-
-    // Nether portal state.
-    inPortal       bool
-    portalAxis     cube.Axis
-    portalTicks    int
-    portalCooldown int
+	sleepSpawn cube.Pos
+	sleepDim   world.Dimension
 }
 
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players
