@@ -14,10 +14,12 @@ import (
 )
 
 const (
-	windChargeRadius     = 4.0
-	windChargeBaseForce  = 2.1
-	windChargeBaseHeight = 0.98
-	windChargeBaseDamage = 1
+	windChargeRadius         = 4.0
+	windChargeBaseForce      = 0.65
+	windChargeBaseHeight     = 0.6
+	windChargeBaseDamage     = 1
+	selfBoostHorizontalLimit = 0.75
+	selfBoostMinHeight       = 1.0
 )
 
 // NewWindCharge spawns a wind charge projectile owned by the entity passed.
@@ -102,7 +104,21 @@ func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
 
 			force := windChargeBaseForce * scale
 			height := windChargeBaseHeight * scale
-			living.KnockBack(origin, force, height)
+
+			knockBackOrigin := origin
+
+			if owner != nil && owner.H() == other.H() {
+				horizontalOffset := pos.Sub(origin)
+				horizontalOffset[1] = 0
+				if horizontalOffset.Len() < selfBoostHorizontalLimit {
+					knockBackOrigin = mgl64.Vec3{pos[0], origin[1], pos[2]}
+					if height < selfBoostMinHeight {
+						height = selfBoostMinHeight
+					}
+				}
+			}
+
+			living.KnockBack(knockBackOrigin, force, height)
 
 			if owner == nil || owner.H() != other.H() {
 				living.Hurt(windChargeBaseDamage, WindChargeDamageSource{})
