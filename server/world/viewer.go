@@ -46,11 +46,15 @@ type Viewer interface {
 	// ViewEntityAction views an action performed by an Entity. Available actions may be found in the `action`
 	// package, and include things such as swinging an arm.
 	ViewEntityAction(e Entity, a EntityAction)
-	// ViewEntityState views the current state of an Entity. It is called whenever an Entity changes its
-	// physical appearance, for example when sprinting.
-	ViewEntityState(e Entity)
-	// ViewEntityAnimation starts viewing an animation performed by an Entity.
-	ViewEntityAnimation(e Entity, a EntityAnimation)
+        // ViewEntityState views the current state of an Entity. It is called whenever an Entity changes its
+        // physical appearance, for example when sprinting.
+        ViewEntityState(e Entity)
+        // ViewEntityLink notifies viewers that one entity has started riding another.
+        ViewEntityLink(ridden, rider Entity, linkType byte)
+        // ViewEntityUnlink notifies viewers that one entity has stopped riding another.
+        ViewEntityUnlink(ridden, rider Entity)
+        // ViewEntityAnimation starts viewing an animation performed by an Entity.
+        ViewEntityAnimation(e Entity, a EntityAnimation)
 	// ViewParticle views a particle spawned at a given position in the world. It is called when a particle,
 	// for example a block breaking particle, is spawned near the player.
 	ViewParticle(pos mgl64.Vec3, p Particle)
@@ -91,6 +95,8 @@ func (NopViewer) ViewEntityItems(Entity)                                        
 func (NopViewer) ViewEntityArmour(Entity)                                                    {}
 func (NopViewer) ViewEntityAction(Entity, EntityAction)                                      {}
 func (NopViewer) ViewEntityState(Entity)                                                     {}
+func (NopViewer) ViewEntityLink(Entity, Entity, byte)                                       {}
+func (NopViewer) ViewEntityUnlink(Entity, Entity)                                           {}
 func (NopViewer) ViewEntityAnimation(Entity, EntityAnimation)                                {}
 func (NopViewer) ViewParticle(mgl64.Vec3, Particle)                                          {}
 func (NopViewer) ViewSound(mgl64.Vec3, Sound)                                                {}

@@ -44,6 +44,14 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 
 	pk.Position = pk.Position.Sub(mgl32.Vec3{0, 1.62}) // Sub the base offset of players from the pos.
 
+	if veh, ok := c.(interface {
+		HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, vehicleRot mgl32.Vec2, bodyYaw, headYaw, pitch float32) bool
+	}); ok {
+		if veh.HandleVehicleInput(pk.MoveVector, pk.InputData, pk.VehicleRotation, pk.Yaw, pk.HeadYaw, pk.Pitch) {
+			return nil
+		}
+	}
+
 	newPos := vec32To64(pk.Position)
 	deltaPos, deltaYaw, deltaPitch := newPos.Sub(pos), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
 	if mgl64.FloatEqual(deltaPos.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0) {
@@ -105,6 +113,9 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.Bitset, s *Sessi
 		c.StopSprinting()
 	}
 	if flags.Load(packet.InputFlagStartSneaking) {
+		if rider, ok := c.(interface{ HandleVehicleSneak() bool }); ok {
+			rider.HandleVehicleSneak()
+		}
 		c.StartSneaking()
 	}
 	if flags.Load(packet.InputFlagStopSneaking) {

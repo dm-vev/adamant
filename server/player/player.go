@@ -1,6 +1,7 @@
 package player
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"math"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/hud"
+
+	"log/slog"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -36,8 +39,11 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
 )
 
@@ -129,6 +135,9 @@ type playerData struct {
 	prevWorld *world.World
 
 	fishingHook *world.EntityHandle
+
+	vehicle     *world.EntityHandle
+	vehicleSeat int
 }
 
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players
@@ -890,6 +899,7 @@ func (p *Player) kill(src world.DamageSource) {
 	p.addHealth(-p.MaxHealth())
 
 	p.StopFishing(p.tx, false)
+	p.DismountVehicle()
 
 	keepInv := false
 	p.Handler().HandleDeath(p, src, &keepInv)
@@ -1922,6 +1932,9 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 		return false
 	}
 	i, left := p.HeldItems()
+	if p.tryInteractBoat(e) {
+		return true
+	}
 	usable, ok := i.Item().(item.UsableOnEntity)
 	if !ok {
 		return true
@@ -1934,6 +1947,327 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 	p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 	p.addNewItem(useCtx)
 	return true
+}
+
+func (p *Player) tryInteractBoat(e world.Entity) bool {
+	ent, ok := e.(*entity.Ent)
+	if !ok {
+		return false
+	}
+	boat, ok := ent.Behaviour().(*entity.BoatBehaviour)
+	if !ok {
+		return false
+	}
+	if boat.HasChest() && p.Sneaking() {
+		p.openBoatContainer(ent, boat)
+		return true
+	}
+	seat, ok := boat.AddPassenger(p.H())
+	if !ok {
+		return true
+	}
+	p.mountBoat(ent, boat, seat)
+	return true
+}
+
+func (p *Player) openBoatContainer(ent *entity.Ent, boat *entity.BoatBehaviour) {
+	if p.session() == session.Nop {
+		return
+	}
+	inv := boat.Inventory()
+	if inv == nil {
+		return
+	}
+	boat.AddViewer(p.session())
+	p.session().OpenEntityContainer(p.tx, ent, inv, protocol.ContainerTypeChestBoat)
+}
+
+func (p *Player) mountBoat(ent *entity.Ent, boat *entity.BoatBehaviour, seat int) {
+	if seat < 0 {
+		return
+	}
+	if p.vehicle != nil && p.vehicle != ent.H() {
+		p.dismountVehicle(true)
+	}
+	p.vehicle = ent.H()
+	p.vehicleSeat = seat
+	p.broadcastVehicleLink(ent, seat)
+
+	offset := rotateSeatOffset(boat.SeatOffset(seat), ent.Rotation().Yaw())
+	p.UpdatePassengerPosition(ent, seat, ent.Position().Add(offset), ent.Rotation())
+}
+
+func (p *Player) broadcastVehicleLink(ridden world.Entity, seat int) {
+	linkType := byte(protocol.EntityLinkRider)
+	if seat > 0 {
+		linkType = byte(protocol.EntityLinkPassenger)
+	}
+	p.dispatchVehicleLink(ridden, linkType, false)
+}
+
+func (p *Player) broadcastVehicleUnlink(ridden world.Entity) {
+	p.dispatchVehicleLink(ridden, byte(protocol.EntityLinkRemove), true)
+}
+
+func (p *Player) dispatchVehicleLink(ridden world.Entity, linkType byte, unlink bool) {
+	if p.tx == nil {
+		return
+	}
+	viewers, borrowed := borrowViewers(p.tx, ridden.Position())
+	if !borrowed {
+		viewers = make([]world.Viewer, 0, 1)
+	}
+	if sess := p.session(); sess != session.Nop {
+		if !containsViewer(viewers, sess) {
+			viewers = append(viewers, sess)
+		}
+	}
+	for _, v := range viewers {
+		if unlink {
+			v.ViewEntityUnlink(ridden, p)
+		} else {
+			v.ViewEntityLink(ridden, p, linkType)
+		}
+	}
+	releaseBorrowedViewers(p.tx, viewers, borrowed)
+}
+
+func containsViewer(viewers []world.Viewer, target world.Viewer) bool {
+	for _, viewer := range viewers {
+		if viewer == target {
+			return true
+		}
+	}
+	return false
+}
+
+// DismountVehicle forcibly dismounts the player from any vehicle it is currently riding.
+func (p *Player) DismountVehicle() {
+	p.dismountVehicle(false)
+}
+
+func (p *Player) dismountVehicle(immediate bool) {
+	if p.vehicle == nil || p.tx == nil {
+		return
+	}
+	handle := p.vehicle
+	seat := p.vehicleSeat
+	p.vehicle = nil
+	p.vehicleSeat = 0
+
+	ent, ok := handle.Entity(p.tx)
+	if !ok {
+		return
+	}
+	boatEnt, ok := ent.(*entity.Ent)
+	if !ok {
+		return
+	}
+	if boat, ok := boatEnt.Behaviour().(*entity.BoatBehaviour); ok {
+		boat.RemovePassenger(p.H())
+		if !immediate {
+			p.placeAfterDismount(boatEnt, seat)
+		}
+	}
+	p.broadcastVehicleUnlink(boatEnt)
+}
+
+func (p *Player) placeAfterDismount(ent *entity.Ent, seat int) {
+	yaw := ent.Rotation().Yaw() * (math.Pi / 180)
+	sin, cos := math.Sincos(yaw)
+	right := mgl64.Vec3{cos, 0, sin}
+	forward := mgl64.Vec3{-sin, 0, cos}
+	sideways := 1.2
+	if seat > 0 {
+		sideways = -1.2
+	}
+	offset := right.Mul(sideways).Add(forward.Mul(0.35))
+	offset[1] = 0.25
+	target := ent.Position().Add(offset)
+	p.Move(target.Sub(p.Position()), 0, 0)
+}
+
+// HandleVehicleSneak attempts to dismount the player when sneaking while riding.
+func (p *Player) HandleVehicleSneak() bool {
+	if p.vehicle == nil {
+		return false
+	}
+	p.DismountVehicle()
+	return true
+}
+
+// UpdatePassengerPosition implements entity.VehiclePassenger and keeps the player's transform aligned to the
+// vehicle it is riding. It returns false when the player is no longer riding the given vehicle.
+func (p *Player) UpdatePassengerPosition(ridden world.Entity, seat int, pos mgl64.Vec3, rot cube.Rotation) bool {
+	if p.vehicle == nil || p.vehicle != ridden.H() {
+		return false
+	}
+	p.vehicleSeat = seat
+	aligned := cube.Rotation{rot.Yaw(), p.Rotation().Pitch()}
+	p.moveAsPassenger(pos, aligned)
+	return true
+}
+
+func (p *Player) moveAsPassenger(pos mgl64.Vec3, rot cube.Rotation) {
+	if p.tx == nil {
+		return
+	}
+	viewers, release := p.viewers()
+	for _, v := range viewers {
+		v.ViewEntityMovement(p, pos, rot, false)
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
+
+	p.data.Pos = pos
+	p.data.Rot = rot
+	p.data.Vel = mgl64.Vec3{}
+	p.onGround = false
+}
+
+func rotateSeatOffset(offset mgl64.Vec3, yawDeg float64) mgl64.Vec3 {
+	yaw := yawDeg * (math.Pi / 180)
+	sin, cos := math.Sincos(yaw)
+	return mgl64.Vec3{
+		offset[0]*cos - offset[2]*sin,
+		offset[1],
+		offset[2]*cos + offset[0]*sin,
+	}
+}
+
+func clampFloat64(v, minVal, maxVal float64) float64 {
+	if v < minVal {
+		return minVal
+	}
+	if v > maxVal {
+		return maxVal
+	}
+	return v
+}
+
+func wrapDegrees(v float64) float64 {
+	v = math.Mod(v, 360)
+	if v >= 180 {
+		v -= 360
+	}
+	if v < -180 {
+		v += 360
+	}
+	return v
+}
+
+// HandleVehicleInput processes vehicle specific movement input when the player is riding an entity.
+func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, vehicleRot mgl32.Vec2, bodyYaw, headYaw, pitch float32) bool {
+	if p.vehicle == nil || p.tx == nil {
+		return false
+	}
+	ent, ok := p.vehicle.Entity(p.tx)
+	if !ok {
+		p.vehicle = nil
+		return false
+	}
+	boatEnt, ok := ent.(*entity.Ent)
+	if !ok {
+		return false
+	}
+	boat, ok := boatEnt.Behaviour().(*entity.BoatBehaviour)
+	if !ok {
+		return false
+	}
+	seat, ok := boat.PassengerSeat(p.H())
+	if !ok {
+		return false
+	}
+	p.vehicleSeat = seat
+	if seat == 0 {
+		forward := clampFloat64(float64(moveVec[1]), -1, 1)
+		left := flags.Load(packet.InputFlagPaddlingLeft)
+		right := flags.Load(packet.InputFlagPaddlingRight)
+		if !left && !right {
+			if moveVec[0] < -0.01 {
+				left = true
+			} else if moveVec[0] > 0.01 {
+				right = true
+			}
+		}
+
+		bodyYaw64 := float64(bodyYaw)
+		vehicleYaw := bodyYaw64
+		if flags.Load(packet.InputFlagClientPredictedVehicle) {
+			predicted := float64(vehicleRot[0])
+			if !math.IsNaN(predicted) && !math.IsInf(predicted, 1) && !math.IsInf(predicted, -1) {
+				vehicleYaw = wrapDegrees(bodyYaw64 + predicted)
+			}
+		} else {
+			head := float64(headYaw)
+
+			if !math.IsNaN(head) && !math.IsInf(head, 1) && !math.IsInf(head, -1) {
+				vehicleYaw = head
+			}
+		}
+
+		p.logBoatInput(moveVec, forward, left, right, vehicleYaw, flags)
+		boat.SetInput(forward, left, right, vehicleYaw, true)
+
+		current := p.Rotation()
+		deltaYaw := wrapDegrees(bodyYaw64 - current.Yaw())
+		deltaPitch := float64(pitch) - current.Pitch()
+		if !math.IsNaN(deltaYaw) && !math.IsNaN(deltaPitch) {
+			p.rotateWhileRiding(deltaYaw, deltaPitch)
+		}
+	}
+
+	offset := rotateSeatOffset(boat.SeatOffset(seat), boatEnt.Rotation().Yaw())
+	p.UpdatePassengerPosition(boatEnt, seat, boatEnt.Position().Add(offset), boatEnt.Rotation())
+	return true
+}
+
+func (p *Player) logBoatInput(moveVec mgl32.Vec2, forward float64, left, right bool, vehicleYaw float64, flags protocol.Bitset) {
+	if p.tx == nil {
+		return
+	}
+	logger := p.tx.Log()
+	if logger == nil || !logger.Enabled(context.Background(), slog.LevelDebug) {
+		return
+	}
+	attrs := []slog.Attr{
+		slog.Float64("move_x", float64(moveVec[0])),
+		slog.Float64("move_y", float64(moveVec[1])),
+		slog.Float64("forward", forward),
+		slog.Bool("left", left),
+		slog.Bool("right", right),
+		slog.Float64("vehicle_yaw", wrapDegrees(vehicleYaw)),
+		slog.Int("seat", p.vehicleSeat),
+		slog.Bool("predicted", flags.Load(packet.InputFlagClientPredictedVehicle)),
+	}
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "boat input", attrs...)
+}
+
+func (p *Player) rotateWhileRiding(deltaYaw, deltaPitch float64) {
+	if p.tx == nil {
+		return
+	}
+	newRot := p.Rotation().Add(cube.Rotation{deltaYaw, deltaPitch})
+	viewers, release := p.viewers()
+	for _, v := range viewers {
+		v.ViewEntityMovement(p, p.Position(), newRot, false)
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
+	p.data.Rot = newRot
+}
+
+// Riding reports if the player is currently mounted on a vehicle.
+func (p *Player) Riding() bool {
+	return p.vehicle != nil
+}
+
+// VehicleHandle returns the handle of the vehicle the player is currently mounted on.
+func (p *Player) VehicleHandle() *world.EntityHandle {
+	return p.vehicle
+}
+
+// VehicleSeat returns the seat index the player occupies on its current vehicle.
+func (p *Player) VehicleSeat() int {
+	return p.vehicleSeat
 }
 
 // AttackEntity uses the item held in the main hand of the player to attack the entity passed, provided it is
@@ -2461,6 +2795,12 @@ func (p *Player) teleport(pos mgl64.Vec3) {
 // Move also rotates the player, adding deltaYaw and deltaPitch to the respective values.
 func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	if p.Dead() || (deltaPos.ApproxEqual(mgl64.Vec3{}) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0)) {
+		return
+	}
+	if p.vehicle != nil {
+		if !mgl64.FloatEqual(deltaYaw, 0) || !mgl64.FloatEqual(deltaPitch, 0) {
+			p.rotateWhileRiding(deltaYaw, deltaPitch)
+		}
 		return
 	}
 	if p.immobile {
@@ -3018,6 +3358,25 @@ func (p *Player) checkBlockCollisions(vel mgl64.Vec3) {
 					blocks = append(blocks, box.Translate(pos.Vec3()))
 				}
 			}
+		}
+	}
+
+	if p.tx != nil {
+		for other := range p.tx.EntitiesWithin(grown) {
+			if other == p {
+				continue
+			}
+			if p.vehicle != nil && other.H() == p.vehicle {
+				continue
+			}
+			boatEnt, ok := other.(*entity.Ent)
+			if !ok {
+				continue
+			}
+			if _, ok := boatEnt.Behaviour().(*entity.BoatBehaviour); !ok {
+				continue
+			}
+			blocks = append(blocks, boatEnt.H().Type().BBox(boatEnt).Translate(boatEnt.Position()))
 		}
 	}
 
@@ -3624,6 +3983,7 @@ func (p *Player) close(msg string) {
 
 func (p *Player) quit(msg string) {
 	p.StopFishing(p.tx, false)
+	p.DismountVehicle()
 	p.h.HandleQuit(p)
 	p.h = NopHandler{}
 

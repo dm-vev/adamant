@@ -13,6 +13,8 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	AreaEffectCloudType,
 	ArrowType,
 	BottleOfEnchantingType,
+	BoatType,
+	ChestBoatType,
 	EggType,
 	FishingHookType,
 	EnderPearlType,
@@ -32,6 +34,16 @@ var DefaultRegistry = conf.New([]world.EntityType{
 })
 
 var conf = world.EntityRegistryConfig{
+	Boat: func(opts world.EntitySpawnOpts, variant string, chest bool) *world.EntityHandle {
+		v, ok := BoatVariantByName(variant)
+		if !ok {
+			panic("world.EntityRegistryConfig.Boat: unknown boat variant " + variant)
+		}
+		if chest {
+			return opts.New(ChestBoatType, BoatBehaviourConfig{Variant: v, Chest: true})
+		}
+		return opts.New(BoatType, BoatBehaviourConfig{Variant: v})
+	},
 	TNT:                NewTNT,
 	Egg:                NewEgg,
 	Snowball:           NewSnowball,
