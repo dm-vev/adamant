@@ -76,6 +76,13 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if u, ok := e.(using); ok && u.UsingItem() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagUsingItem)
 	}
+	if sh, ok := e.(shieldBearer); ok && sh.Shielding() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlocking)
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlockedUsingShield)
+		if cur, max, ok := sh.ShieldDurability(); ok && max > 0 && cur*2 <= max {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlockedUsingDamagedShield)
+		}
+	}
 	if c, ok := e.(arrow); ok && c.Critical() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCritical)
 	}
@@ -251,6 +258,11 @@ type effectBearer interface {
 
 type using interface {
 	UsingItem() bool
+}
+
+type shieldBearer interface {
+	Shielding() bool
+	ShieldDurability() (current, max int, ok bool)
 }
 
 type arrow interface {

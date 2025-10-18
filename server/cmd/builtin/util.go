@@ -54,3 +54,21 @@ func joinNames(players []*player.Player) string {
 	slices.Sort(names)
 	return strings.Join(names, ", ")
 }
+
+// gameModeValue exposes the vanilla GameMode enum so the client can show rich command hints.
+type gameModeValue string
+
+func (gameModeValue) Type() string { return "GameMode" }
+
+func (gameModeValue) Options(cmd.Source) []string {
+	return []string{"survival", "creative", "adventure", "spectator", "0", "1", "2", "3", "s", "c", "a", "sp", "spectate"}
+}
+
+// timeSetPreset is an enum backing the `time set` presets shown in the vanilla client.
+type timeSetPreset string
+
+func (timeSetPreset) Type() string { return "TimeSpec" }
+
+func (timeSetPreset) Options(cmd.Source) []string {
+	return []string{"day", "noon", "night", "midnight"}
+}

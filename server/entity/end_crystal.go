@@ -17,7 +17,11 @@ func (endCrystalType) Open(tx *world.Tx, handle *world.EntityHandle, data *world
 	return &EndCrystal{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 
-func (endCrystalType) EncodeEntity() string { return "minecraft:end_crystal" }
+func (endCrystalType) EncodeEntity() string { return "minecraft:ender_crystal" }
+
+// NetworkEncodeEntity returns the Bedrock network identifier for the end crystal.
+// Older builds used "minecraft:crystal", but Bedrock currently expects "minecraft:ender_crystal".
+func (endCrystalType) NetworkEncodeEntity() string { return "minecraft:ender_crystal" }
 
 func (endCrystalType) BBox(world.Entity) cube.BBox {
 	return cube.Box(-0.5, 0, -0.5, 0.5, 2, 0.5)

@@ -1,16 +1,20 @@
 package builtin
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-type timeSetCommand struct {
+type timeSetValueCommand struct {
 	Set   cmd.SubCommand `cmd:"set"`
-	Value string         `cmd:"value"`
+	Value int            `cmd:"value"`
+}
+
+type timeSetPresetCommand struct {
+	Set   cmd.SubCommand `cmd:"set"`
+	Value timeSetPreset  `cmd:"value"`
 }
 
 type timeAddCommand struct {
@@ -36,25 +40,40 @@ func newTimeCommand() cmd.Command {
 		"time",
 		"Adjusts or queries the world time.",
 		nil,
-		timeSetCommand{},
+		timeSetValueCommand{},
+		timeSetPresetCommand{},
 		timeAddCommand{},
 		timeQueryCommand{},
 	)
 }
 
-func (t timeSetCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+func (t timeSetValueCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	w := tx.World()
 	if w == nil {
 		o.Error("world unavailable")
 		return
 	}
-	val, ok := parseTimeValue(t.Value)
-	if !ok {
-		o.Errort(cmd.MessageParameterInvalid, t.Value)
+	val := t.Value % 24000
+	if val < 0 {
+		val += 24000
+	}
+	w.SetTime(val)
+	o.Printf("Set time to %d.", val)
+}
+
+func (t timeSetPresetCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+	w := tx.World()
+	if w == nil {
+		o.Error("world unavailable")
 		return
 	}
-	w.SetTime(val % 24000)
-	o.Printf("Set time to %d.", val%24000)
+	ticks, ok := presetTimeTicks[string(t.Value)]
+	if !ok {
+		o.Errort(cmd.MessageParameterInvalid, string(t.Value))
+		return
+	}
+	w.SetTime(ticks)
+	o.Printf("Set time to %d.", ticks)
 }
 
 func (t timeAddCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
@@ -89,19 +108,9 @@ func (t timeQueryCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	}
 }
 
-func parseTimeValue(value string) (int, bool) {
-	switch strings.ToLower(value) {
-	case "day":
-		return 1000, true
-	case "night":
-		return 13000, true
-	case "noon":
-		return 6000, true
-	case "midnight":
-		return 18000, true
-	}
-	if v, err := strconv.Atoi(value); err == nil {
-		return v, true
-	}
-	return 0, false
+var presetTimeTicks = map[string]int{
+	"day":      1000,
+	"noon":     6000,
+	"night":    13000,
+	"midnight": 18000,
 }
