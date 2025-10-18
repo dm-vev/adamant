@@ -3,6 +3,7 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -15,6 +16,7 @@ type Bed struct {
 	sourceWaterDisplacer
 
 	// Colour specifies the colour of the bed.
+	//blockhash:ignore
 	Colour item.Colour
 	// Facing is the direction from the foot of the bed towards the head.
 	Facing cube.Direction
@@ -46,16 +48,34 @@ func (Bed) Model() world.BlockModel {
 
 // EncodeItem ...
 func (b Bed) EncodeItem() (name string, meta int16) {
-	return "minecraft:" + b.Colour.String() + "_bed", 0
+	return "minecraft:bed", int16(b.Colour.Uint8())
 }
 
 // EncodeBlock ...
 func (b Bed) EncodeBlock() (string, map[string]any) {
-	return "minecraft:" + b.Colour.String() + "_bed", map[string]any{
+	return "minecraft:bed", map[string]any{
 		"direction":      int32(horizontalDirection(b.Facing)),
 		"head_piece_bit": b.Part == BedHead,
 		"occupied_bit":   b.Occupied,
 	}
+}
+
+// EncodeNBT stores additional bed data such as its colour.
+func (b Bed) EncodeNBT() map[string]any {
+	return map[string]any{
+		"id":    "Bed",
+		"color": int32(b.Colour.Uint8()),
+	}
+}
+
+// DecodeNBT decodes the colour of the bed from block entity data.
+func (b Bed) DecodeNBT(data map[string]any) any {
+	if colours := item.Colours(); len(colours) > 0 {
+		if id := nbtconv.Uint8(data, "color"); int(id) < len(colours) {
+			b.Colour = colours[id]
+		}
+	}
+	return b
 }
 
 // UseOnBlock handles placing beds in the world, setting both the head and foot at once.
@@ -155,9 +175,9 @@ func (b Bed) BreakInfo() BreakInfo {
 		}
 
 		headPos := footPos.Side(bed.Facing.Face())
-    if _, ok := tx.Block(headPos).(Bed); ok {
-        tx.SetBlock(headPos, nil, nil)
-    }
+		if _, ok := tx.Block(headPos).(Bed); ok {
+			tx.SetBlock(headPos, nil, nil)
+		}
 		if footPos != pos {
 			tx.SetBlock(footPos, nil, nil)
 		}
@@ -245,20 +265,23 @@ func bedSpawnOffsets(facing cube.Direction) []cube.Pos {
 	right := directionOffset(facing.RotateRight())
 	left := directionOffset(facing.RotateLeft())
 
-    offsets := []cube.Pos{
-        forward,
-        forward.Add(left),
-        forward.Add(right),
-        left,
-        right,
-        cube.Pos{},
-        forward.Add(forward),
-        forward.Add(forward).Add(left),
-        forward.Add(forward).Add(right),
-        posMul(forward, -1),
-        posMul(forward, -1).Add(left),
-        posMul(forward, -1).Add(right),
-    }
+	doubleForward := scalePos(forward, 2)
+	backward := scalePos(forward, -1)
+
+	offsets := []cube.Pos{
+		forward,
+		forward.Add(left),
+		forward.Add(right),
+		left,
+		right,
+		cube.Pos{},
+		doubleForward,
+		doubleForward.Add(left),
+		doubleForward.Add(right),
+		backward,
+		backward.Add(left),
+		backward.Add(right),
+	}
 	unique := make([]cube.Pos, 0, len(offsets))
 	seen := make(map[[3]int]struct{}, len(offsets))
 	for _, off := range offsets {
@@ -299,19 +322,16 @@ func bedSafe(pos cube.Pos, tx *world.Tx) bool {
 	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
 }
 
-// posMul multiplies a cube.Pos by a scalar.
-func posMul(p cube.Pos, factor int) cube.Pos {
-    return cube.Pos{p[0] * factor, p[1] * factor, p[2] * factor}
+func scalePos(p cube.Pos, factor int) cube.Pos {
+	return cube.Pos{p[0] * factor, p[1] * factor, p[2] * factor}
 }
 
 func allBeds() (blocks []world.Block) {
-	for _, colour := range item.Colours() {
-		for _, dir := range cube.Directions() {
-			blocks = append(blocks, Bed{Colour: colour, Facing: dir, Part: BedFoot})
-			blocks = append(blocks, Bed{Colour: colour, Facing: dir, Part: BedHead})
-			blocks = append(blocks, Bed{Colour: colour, Facing: dir, Part: BedFoot, Occupied: true})
-			blocks = append(blocks, Bed{Colour: colour, Facing: dir, Part: BedHead, Occupied: true})
-		}
+	for _, dir := range cube.Directions() {
+		blocks = append(blocks, Bed{Facing: dir, Part: BedFoot})
+		blocks = append(blocks, Bed{Facing: dir, Part: BedHead})
+		blocks = append(blocks, Bed{Facing: dir, Part: BedFoot, Occupied: true})
+		blocks = append(blocks, Bed{Facing: dir, Part: BedHead, Occupied: true})
 	}
 	return
 }
