@@ -338,7 +338,7 @@ func (b *BoatBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
 }
 
 func (b *BoatBehaviour) passengerOffsets() []mgl64.Vec3 {
-	const seatHeight = 0.6
+	const seatHeight = 0.8
 	if b.conf.Chest {
 		return []mgl64.Vec3{{0, seatHeight, 0}}
 	}
@@ -369,17 +369,18 @@ func rotateOffset(offset mgl64.Vec3, yaw float64) mgl64.Vec3 {
 func (b *BoatBehaviour) applyLiquidBuoyancy(current, posY, baseY float64, liquid world.Liquid, strength float64) float64 {
 	surface := liquidSurfaceHeight(baseY, liquid)
 
-	fullDraft := 0.048
-	shallowDraft := 0.028
+	fullDraft := 0.035
+	shallowDraft := 0.02
 
 	if b.conf.Chest {
-		fullDraft += 0.012
-		shallowDraft += 0.0075
+		fullDraft += 0.006
+		shallowDraft += 0.004
 	}
 
 	if count := int(b.passengerCount.Load()); count > 0 {
-		fullDraft += 0.01 * float64(count)
-		shallowDraft += 0.0065 * float64(count)
+		extra := 0.0045 * float64(count)
+		fullDraft += extra
+		shallowDraft += extra * 0.75
 	}
 
 	target := surface - fullDraft

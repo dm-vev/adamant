@@ -2059,8 +2059,19 @@ func clampFloat64(v, minVal, maxVal float64) float64 {
 	return v
 }
 
+func wrapDegrees(v float64) float64 {
+	v = math.Mod(v, 360)
+	if v >= 180 {
+		v -= 360
+	}
+	if v < -180 {
+		v += 360
+	}
+	return v
+}
+
 // HandleVehicleInput processes vehicle specific movement input when the player is riding an entity.
-func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, vehicleRot mgl32.Vec2) bool {
+func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, vehicleRot mgl32.Vec2, bodyYaw, headYaw, pitch float32) bool {
 	if p.vehicle == nil || p.tx == nil {
 		return false
 	}
@@ -2094,16 +2105,28 @@ func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, v
 			}
 		}
 
-		yaw := p.Rotation().Yaw()
-		useYaw := flags.Load(packet.InputFlagClientPredictedVehicle)
-		if useYaw {
-			yaw = float64(vehicleRot[0])
-			if math.IsNaN(yaw) || math.IsInf(yaw, 1) || math.IsInf(yaw, -1) {
-				yaw = p.Rotation().Yaw()
-				useYaw = false
+		bodyYaw64 := float64(bodyYaw)
+		vehicleYaw := bodyYaw64
+		if flags.Load(packet.InputFlagClientPredictedVehicle) {
+			predicted := float64(vehicleRot[0])
+			if !math.IsNaN(predicted) && !math.IsInf(predicted, 1) && !math.IsInf(predicted, -1) {
+				vehicleYaw = predicted
+			}
+		} else {
+			head := float64(headYaw)
+			if !math.IsNaN(head) && !math.IsInf(head, 1) && !math.IsInf(head, -1) {
+				vehicleYaw = head
 			}
 		}
-		boat.SetInput(forward, left, right, yaw, useYaw)
+
+		boat.SetInput(forward, left, right, vehicleYaw, true)
+
+		current := p.Rotation()
+		deltaYaw := wrapDegrees(bodyYaw64 - current.Yaw())
+		deltaPitch := float64(pitch) - current.Pitch()
+		if !math.IsNaN(deltaYaw) && !math.IsNaN(deltaPitch) {
+			p.rotateWhileRiding(deltaYaw, deltaPitch)
+		}
 	}
 
 	offset := rotateSeatOffset(boat.SeatOffset(seat), boatEnt.Rotation().Yaw())
