@@ -74,11 +74,11 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 			return err
 		}
 	}
-	if pk.InputData.Load(packet.InputFlagPerformBlockActions) {
-		if err := h.handleBlockActions(pk.BlockActions, s, c); err != nil {
-			return err
-		}
-	}
+    if pk.InputData.Load(packet.InputFlagPerformBlockActions) {
+        if err := h.handleBlockActions(pk.BlockActions, s, tx, c); err != nil {
+            return err
+        }
+    }
 	h.handleInputFlags(pk.InputData, s, c)
 
 	if pk.InputData.Load(packet.InputFlagPerformItemStackRequest) {
@@ -172,11 +172,11 @@ func (h PlayerAuthInputHandler) handleUseItemData(data protocol.UseItemTransacti
 }
 
 // handleBlockActions handles a slice of protocol.PlayerBlockAction present in a PlayerAuthInput packet.
-func (h PlayerAuthInputHandler) handleBlockActions(a []protocol.PlayerBlockAction, s *Session, c Controllable) error {
-	for _, action := range a {
-		if err := handlePlayerAction(action.Action, action.Face, action.BlockPos, selfEntityRuntimeID, s, c); err != nil {
-			return err
-		}
-	}
-	return nil
+func (h PlayerAuthInputHandler) handleBlockActions(a []protocol.PlayerBlockAction, s *Session, tx *world.Tx, c Controllable) error {
+    for _, action := range a {
+        if err := handlePlayerAction(action.Action, action.Face, action.BlockPos, selfEntityRuntimeID, s, tx, c); err != nil {
+            return err
+        }
+    }
+    return nil
 }

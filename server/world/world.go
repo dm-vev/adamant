@@ -96,6 +96,9 @@ type World struct {
 	entityColumns     []columnRef
 	entityColumnIndex map[ChunkPos]int
 
+	sleepMu         sync.Mutex
+	sleepingPlayers map[uuid.UUID]cube.Pos
+
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
 
@@ -740,6 +743,19 @@ func (w *World) enableTimeCycle(v bool) {
 	w.set.TimeCycle = v
 }
 
+// PlayersSleepingPercentage returns the configured percentage of players required to sleep before the night is skipped.
+func (w *World) PlayersSleepingPercentage() int32 {
+	if w == nil {
+		return 100
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	if w.set.PlayersSleepingPercentage <= 0 {
+		return 100
+	}
+	return w.set.PlayersSleepingPercentage
+}
+
 // temperature returns the temperature in the World at a specific position.
 // Higher altitudes and different biomes influence the temperature returned.
 func (w *World) temperature(pos cube.Pos) float64 {
@@ -802,6 +818,47 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	}
 	w.Handler().HandleEntitySpawn(tx, e)
 	return e
+}
+
+// AddSleepingPlayer registers a player as sleeping at the given bed position.
+func (w *World) AddSleepingPlayer(id uuid.UUID, pos cube.Pos) {
+	w.sleepMu.Lock()
+	if w.sleepingPlayers == nil {
+		w.sleepingPlayers = make(map[uuid.UUID]cube.Pos)
+	}
+	w.sleepingPlayers[id] = pos
+	w.sleepMu.Unlock()
+}
+
+// RemoveSleepingPlayer removes a sleeping player entry.
+func (w *World) RemoveSleepingPlayer(id uuid.UUID) {
+	w.sleepMu.Lock()
+	if w.sleepingPlayers != nil {
+		delete(w.sleepingPlayers, id)
+	}
+	w.sleepMu.Unlock()
+}
+
+// SleepingPlayers returns a snapshot of all players currently sleeping in the world.
+func (w *World) SleepingPlayers() map[uuid.UUID]cube.Pos {
+	w.sleepMu.Lock()
+	defer w.sleepMu.Unlock()
+	if len(w.sleepingPlayers) == 0 {
+		return nil
+	}
+	snapshot := make(map[uuid.UUID]cube.Pos, len(w.sleepingPlayers))
+	for id, pos := range w.sleepingPlayers {
+		snapshot[id] = pos
+	}
+	return snapshot
+}
+
+// SleepingPlayerCount returns the amount of players currently sleeping.
+func (w *World) SleepingPlayerCount() int {
+	w.sleepMu.Lock()
+	count := len(w.sleepingPlayers)
+	w.sleepMu.Unlock()
+	return count
 }
 
 // removeEntity removes an Entity from the World that is currently present in

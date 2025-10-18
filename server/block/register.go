@@ -138,6 +138,7 @@ func init() {
 	registerAll(allCandleCakes())
 	registerAll(allCampfires())
 	registerAll(allCarpet())
+	registerAll(allBeds())
 	registerAll(allCarrots())
 	registerAll(allCopperBulbs())
 	registerAll(allCopperChains())
@@ -399,6 +400,7 @@ func init() {
 		world.RegisterItem(Anvil{Type: t})
 	}
 	for _, c := range item.Colours() {
+		world.RegisterItem(Bed{Colour: c})
 		world.RegisterItem(Banner{Colour: c})
 		world.RegisterItem(Carpet{Colour: c})
 		world.RegisterItem(ConcretePowder{Colour: c})
