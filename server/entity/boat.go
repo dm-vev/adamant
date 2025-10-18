@@ -338,7 +338,7 @@ func (b *BoatBehaviour) updatePassengers(e *Ent, tx *world.Tx) {
 }
 
 func (b *BoatBehaviour) passengerOffsets() []mgl64.Vec3 {
-	const seatHeight = 1.6
+	const seatHeight = 0.6
 	if b.conf.Chest {
 		return []mgl64.Vec3{{0, seatHeight, 0}}
 	}

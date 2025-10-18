@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -84,20 +85,24 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagHasCollision)
 		}
 	}
-        if boat, ok := e.(interface{ HasChest() bool }); ok && boat.HasChest() {
-                m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagChested)
-        }
-        if boat, ok := e.(interface{ PaddleTimes() (float32, float32) }); ok {
-                left, right := boat.PaddleTimes()
-                m[protocol.EntityDataKeyRowTimeLeft] = left
-                m[protocol.EntityDataKeyRowTimeRight] = right
-        }
-        if controller, ok := e.(interface{ ControllingSeat() int32 }); ok {
-                m[protocol.EntityDataKeyControllingSeatIndex] = controller.ControllingSeat()
-        }
-        if o, ok := e.(orb); ok {
-                m[protocol.EntityDataKeyValue] = int32(o.Experience())
-        }
+	if boat, ok := e.(interface{ HasChest() bool }); ok && boat.HasChest() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagChested)
+	}
+	if boat, ok := e.(interface{ PaddleTimes() (float32, float32) }); ok {
+		left, right := boat.PaddleTimes()
+		m[protocol.EntityDataKeyRowTimeLeft] = left
+		m[protocol.EntityDataKeyRowTimeRight] = right
+	}
+	if controller, ok := e.(interface{ ControllingSeat() int32 }); ok {
+		m[protocol.EntityDataKeyControllingSeatIndex] = controller.ControllingSeat()
+	}
+	if seat, ok := e.(interface{ SeatOffset(seat int) mgl64.Vec3 }); ok {
+		offset := seat.SeatOffset(0)
+		m[protocol.EntityDataKeySeatOffset] = mgl32.Vec3{float32(offset[0]), float32(offset[1]), float32(offset[2])}
+	}
+	if o, ok := e.(orb); ok {
+		m[protocol.EntityDataKeyValue] = int32(o.Experience())
+	}
 	if f, ok := e.(firework); ok {
 		m[protocol.EntityDataKeyDisplayTileRuntimeID] = nbtconv.WriteItem(item.NewStack(f.Firework(), 1), false)
 		if o, ok := e.(owned); ok && f.Attached() && o.Owner() != nil {
