@@ -14,6 +14,8 @@ import (
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/hud"
 
+	"log/slog"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -42,7 +44,6 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
-	"log/slog"
 )
 
 type playerData struct {
@@ -2112,10 +2113,11 @@ func (p *Player) HandleVehicleInput(moveVec mgl32.Vec2, flags protocol.Bitset, v
 		if flags.Load(packet.InputFlagClientPredictedVehicle) {
 			predicted := float64(vehicleRot[0])
 			if !math.IsNaN(predicted) && !math.IsInf(predicted, 1) && !math.IsInf(predicted, -1) {
-				vehicleYaw = predicted
+				vehicleYaw = wrapDegrees(bodyYaw64 + predicted)
 			}
 		} else {
 			head := float64(headYaw)
+
 			if !math.IsNaN(head) && !math.IsInf(head, 1) && !math.IsInf(head, -1) {
 				vehicleYaw = head
 			}
