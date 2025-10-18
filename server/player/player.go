@@ -2,6 +2,7 @@ package player
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"math/rand/v2"
 	"net"
@@ -40,6 +41,25 @@ import (
 	"golang.org/x/text/language"
 )
 
+type shieldHand uint8
+
+const (
+	shieldHandNone shieldHand = iota
+	shieldHandMain
+	shieldHandOff
+)
+
+func (h shieldHand) String() string {
+	switch h {
+	case shieldHandMain:
+		return "main"
+	case shieldHandOff:
+		return "off"
+	default:
+		return "none"
+	}
+}
+
 type playerData struct {
 	xuid              string
 	locale            language.Tag
@@ -57,8 +77,11 @@ type playerData struct {
 	heldSlot                     *uint32
 
 	sneaking, sprinting, swimming, gliding, crawling, flying,
-	invisible, immobile, onGround, usingItem bool
-	usingSince time.Time
+	invisible, immobile, onGround, usingItem, shielding bool
+	shieldHand          shieldHand
+	shieldDisabledUntil time.Time
+	usingSince          time.Time
+	shieldSyntheticHand shieldHand
 
 	glideTicks   int64
 	fireTicks    int64
@@ -586,6 +609,9 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if _, ok := p.Effect(effect.FireResistance); (ok && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
 	}
+	if p.tryBlockDamage(dmg, src) {
+		return 0, false
+	}
 	totalDamage := p.FinalDamageFrom(dmg, src)
 	damageLeft := totalDamage
 
@@ -854,6 +880,7 @@ func (p *Player) DeathPosition() (mgl64.Vec3, world.Dimension, bool) {
 
 // kill kills the player, clearing its inventories and resetting it to its base state.
 func (p *Player) kill(src world.DamageSource) {
+	p.stopShielding()
 	viewers, release := p.viewers()
 	for _, viewer := range viewers {
 		viewer.ViewEntityAction(p, entity.DeathAction{})
@@ -1129,17 +1156,21 @@ func (p *Player) StopSprinting() {
 // If the player is sprinting while StartSneaking is called, the sprinting is stopped.
 func (p *Player) StartSneaking() {
 	if p.sneaking {
+		slog.Default().Debug("shield: StartSneaking ignored (already sneaking)", "player", p.Name())
 		return
 	}
 	ctx := event.C(p)
 	if p.Handler().HandleToggleSneak(ctx, true); ctx.Cancelled() {
+		slog.Default().Debug("shield: StartSneaking cancelled by handler", "player", p.Name())
 		return
 	}
 	if !p.Flying() {
 		p.StopSprinting()
 	}
 	p.sneaking = true
+	slog.Default().Debug("shield: StartSneaking", "player", p.Name())
 	p.updateState()
+	p.updateAutoShield()
 }
 
 // Sneaking checks if the player is currently sneaking.
@@ -1151,14 +1182,18 @@ func (p *Player) Sneaking() bool {
 // will not do anything.
 func (p *Player) StopSneaking() {
 	if !p.sneaking {
+		slog.Default().Debug("shield: StopSneaking ignored (already not sneaking)", "player", p.Name())
 		return
 	}
 	ctx := event.C(p)
 	if p.Handler().HandleToggleSneak(ctx, false); ctx.Cancelled() {
+		slog.Default().Debug("shield: StopSneaking cancelled by handler", "player", p.Name())
 		return
 	}
 	p.sneaking = false
+	slog.Default().Debug("shield: StopSneaking", "player", p.Name())
 	p.updateState()
+	p.updateAutoShield()
 }
 
 // StartSwimming makes the player start swimming if it is not currently doing so. If the player is sneaking
@@ -1401,6 +1436,14 @@ func (p *Player) HeldItems() (mainHand, offHand item.Stack) {
 func (p *Player) SetHeldItems(mainHand, offHand item.Stack) {
 	_ = p.inv.SetItem(int(*p.heldSlot), mainHand)
 	_ = p.offHand.SetItem(0, offHand)
+	if p.shielding {
+		if _, ok := p.shieldStack(); !ok {
+			p.stopShielding()
+		}
+	}
+	if p.sneaking || p.shieldSyntheticHand != shieldHandNone {
+		p.updateAutoShield()
+	}
 }
 
 // SetHeldSlot updates the held slot of the player to the slot provided. The
@@ -1426,6 +1469,9 @@ func (p *Player) SetHeldSlot(to int) error {
 	}
 	*p.heldSlot = uint32(to)
 	p.usingItem = false
+	if p.shielding && p.shieldHand == shieldHandMain {
+		p.stopShielding()
+	}
 
 	viewers, release := p.viewers()
 	for _, viewer := range viewers {
@@ -1611,6 +1657,13 @@ func (p *Player) UseItem() {
 		}
 		p.usingSince, p.usingItem = time.Now(), true
 		p.updateState()
+		if _, shield := it.(item.Shield); shield {
+			if !p.startShielding(false) {
+				p.usingItem = false
+				p.updateState()
+			}
+			return
+		}
 	}
 	switch usable := it.(type) {
 	case item.Chargeable:
@@ -1698,6 +1751,9 @@ func (p *Player) ReleaseItem() {
 		return
 	}
 	i.Item().(item.Releasable).Release(p, p.tx, useCtx, dur)
+	if _, shield := i.Item().(item.Shield); shield {
+		p.stopShielding()
+	}
 	p.handleUseContext(useCtx)
 	p.updateState()
 }
@@ -1762,6 +1818,32 @@ func (p *Player) useDuration() time.Duration {
 // item or using it over a longer duration such as when using a bow.
 func (p *Player) UsingItem() bool {
 	return p.usingItem
+}
+
+// Shielding reports if the player currently has an active shield raised.
+func (p *Player) Shielding() bool {
+	if !p.shielding || !p.shieldReady() {
+		return false
+	}
+	_, ok := p.shieldStack()
+	if !ok {
+		return false
+	}
+	return true
+}
+
+// ShieldDurability returns the current and maximum durability of the active shield.
+func (p *Player) ShieldDurability() (current, max int, ok bool) {
+	stack, ok := p.shieldStack()
+	if !ok {
+		return 0, 0, false
+	}
+	durability := stack.Durability()
+	max = stack.MaxDurability()
+	if durability < 0 || max <= 0 {
+		return 0, 0, false
+	}
+	return durability, max, true
 }
 
 // UseItemOnBlock uses the item held in the main hand of the player on a block at the position passed. The
@@ -2744,6 +2826,8 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		p.ContinueBreaking(p.breakingFace)
 	}
 
+	p.updateAutoShield()
+
 	for it, ti := range p.cooldowns {
 		if time.Now().After(ti) {
 			delete(p.cooldowns, it)
@@ -3264,6 +3348,237 @@ func (p *Player) addNewItem(ctx *item.UseContext) {
 	if p.Dead() {
 		p.dropItems()
 	}
+}
+
+func (p *Player) shieldReady() bool {
+	return !time.Now().Before(p.shieldDisabledUntil)
+}
+
+func (p *Player) startShielding(offHand bool) bool {
+	if !p.shieldReady() {
+		slog.Default().Debug("shield: startShielding blocked by cooldown", "player", p.Name(), "offHand", offHand, "readyAt", p.shieldDisabledUntil)
+		return false
+	}
+	main, off := p.HeldItems()
+	hand := shieldHandMain
+	if offHand {
+		if _, ok := off.Item().(item.Shield); !ok {
+			slog.Default().Debug("shield: startShielding off-hand has no shield", "player", p.Name(), "item", off.Item())
+			return false
+		}
+		hand = shieldHandOff
+	} else {
+		if _, ok := main.Item().(item.Shield); !ok {
+			slog.Default().Debug("shield: startShielding main hand has no shield", "player", p.Name(), "item", main.Item())
+			return false
+		}
+	}
+	if p.shielding && p.shieldHand == hand {
+		slog.Default().Debug("shield: startShielding skipped, already shielding", "player", p.Name(), "hand", hand.String())
+		return true
+	}
+	p.shieldSyntheticHand = shieldHandNone
+	slog.Default().Debug("shield: startShielding", "player", p.Name(), "hand", hand.String(), "offHand", offHand, "sneaking", p.sneaking, "usingItem", p.usingItem)
+	p.shielding = true
+	p.shieldHand = hand
+	p.updateState()
+	return true
+}
+
+func (p *Player) stopShielding() {
+	if !p.shielding && p.shieldHand == shieldHandNone {
+		return
+	}
+	currentHand := p.shieldHand
+	synthetic := p.shieldSyntheticHand
+	slog.Default().Debug("shield: stopShielding", "player", p.Name(), "hand", currentHand.String(), "synthetic", synthetic.String(), "sneaking", p.sneaking, "usingItem", p.usingItem)
+	if p.shieldHand == shieldHandMain || p.shieldSyntheticHand != shieldHandNone {
+		p.usingItem = false
+	}
+	p.shielding = false
+	p.shieldHand = shieldHandNone
+	p.shieldSyntheticHand = shieldHandNone
+	if synthetic != shieldHandNone {
+		p.session().StopUsingItem()
+	}
+	p.updateState()
+}
+
+func (p *Player) disableShield(d time.Duration) {
+	p.shieldDisabledUntil = time.Now().Add(d)
+	p.stopShielding()
+}
+
+func (p *Player) updateAutoShield() {
+	desired := shieldHandNone
+	logger := slog.Default()
+	if p.sneaking && p.shieldReady() {
+		main, off := p.HeldItems()
+		if _, ok := off.Item().(item.Shield); ok {
+			desired = shieldHandOff
+		} else if _, ok := main.Item().(item.Shield); ok {
+			desired = shieldHandMain
+		}
+	}
+
+	if desired == shieldHandNone {
+		if p.shieldSyntheticHand != shieldHandNone {
+			logger.Debug("shield: auto release (no desired hand)", "player", p.Name(), "currentHand", p.shieldHand.String(), "synthetic", p.shieldSyntheticHand.String(), "sneaking", p.sneaking)
+			p.stopShielding()
+		}
+		return
+	}
+
+	if p.shieldSyntheticHand != shieldHandNone && p.shieldHand != desired {
+		logger.Debug("shield: auto hand mismatch, stopping", "player", p.Name(), "currentHand", p.shieldHand.String(), "synthetic", p.shieldSyntheticHand.String(), "desired", desired.String())
+		p.stopShielding()
+	}
+
+	if p.shielding {
+		if p.shieldHand == desired {
+			if p.shieldSyntheticHand == desired && !p.usingItem {
+				p.usingItem, p.usingSince = true, time.Now()
+				p.updateState()
+			}
+			return
+		}
+		if p.shieldSyntheticHand == shieldHandNone {
+			return
+		}
+		logger.Debug("shield: auto stop for retarget", "player", p.Name(), "currentHand", p.shieldHand.String(), "desired", desired.String())
+		p.stopShielding()
+	}
+
+	prevUsing := p.usingItem
+	prevSince := p.usingSince
+	if !p.usingItem {
+		p.usingItem = true
+		p.usingSince = time.Now()
+	}
+
+	logger.Debug("shield: auto start attempt", "player", p.Name(), "desired", desired.String(), "usingItem", p.usingItem, "prevUsing", prevUsing, "sneaking", p.sneaking)
+	if p.startShielding(desired == shieldHandOff) {
+		if !prevUsing {
+			p.session().StartUsingItem()
+		}
+		logger.Debug("shield: auto start success", "player", p.Name(), "hand", desired.String())
+		p.shieldSyntheticHand = desired
+		return
+	}
+
+	logger.Debug("shield: auto start failed", "player", p.Name(), "desired", desired.String(), "prevUsing", prevUsing, "hasShield", p.shielding)
+	if !prevUsing {
+		p.usingItem = false
+		p.usingSince = prevSince
+	}
+}
+
+func (p *Player) shieldStack() (item.Stack, bool) {
+	main, off := p.HeldItems()
+	switch p.shieldHand {
+	case shieldHandMain:
+		if _, ok := main.Item().(item.Shield); ok {
+			return main, true
+		}
+	case shieldHandOff:
+		if _, ok := off.Item().(item.Shield); ok {
+			return off, true
+		}
+	}
+	return item.Stack{}, false
+}
+
+func (p *Player) applyShieldDamage(amount int) {
+	if amount <= 0 {
+		return
+	}
+	main, off := p.HeldItems()
+	switch p.shieldHand {
+	case shieldHandMain:
+		main = p.damageItem(main, amount)
+	case shieldHandOff:
+		off = p.damageItem(off, amount)
+	default:
+		return
+	}
+	p.SetHeldItems(main, off)
+}
+
+func (p *Player) tryBlockDamage(dmg float64, src world.DamageSource) bool {
+	if !p.Shielding() {
+		return false
+	}
+	if _, ok := p.shieldStack(); !ok {
+		p.stopShielding()
+		return false
+	}
+
+	var (
+		origin    mgl64.Vec3
+		hasOrigin bool
+	)
+
+	switch s := src.(type) {
+	case entity.AttackDamageSource:
+		if s.Attacker == nil {
+			break
+		}
+		origin = s.Attacker.Position()
+		hasOrigin = true
+	case entity.ProjectileDamageSource:
+		if s.Projectile == nil {
+			break
+		}
+		origin = s.Projectile.Position()
+		hasOrigin = true
+	default:
+		return false
+	}
+
+	if hasOrigin && !p.shieldFacing(origin) {
+		return false
+	}
+
+	shieldDamage := int(math.Max(1, math.Ceil(dmg/2)))
+	p.applyShieldDamage(shieldDamage)
+	if _, ok := p.shieldStack(); !ok {
+		p.stopShielding()
+	}
+	if hasOrigin {
+		p.knockBack(origin, 0.35, 0.1)
+	}
+	p.tx.PlaySound(p.Position(), sound.ShieldBlock{})
+
+	if attackSrc, ok := src.(entity.AttackDamageSource); ok && attackSrc.Attacker != nil {
+		if living, ok := attackSrc.Attacker.(entity.Living); ok {
+			living.KnockBack(p.Position(), 0.4, 0.2)
+		}
+		if other, ok := attackSrc.Attacker.(*Player); ok {
+			held, _ := other.HeldItems()
+			if _, axe := held.Item().(item.Axe); axe {
+				p.disableShield(5 * time.Second)
+			}
+		}
+	}
+	return true
+}
+
+func (p *Player) shieldFacing(source mgl64.Vec3) bool {
+	forward := p.Rotation().Vec3()
+	forward[1] = 0
+	if forward.Len() == 0 {
+		return true
+	}
+	forward = forward.Normalize()
+
+	dir := source.Sub(p.Position())
+	dir[1] = 0
+	if dir.Len() == 0 {
+		return true
+	}
+	dir = dir.Normalize()
+
+	return forward.Dot(dir) > 0
 }
 
 // canReach checks if a player can reach a position with its current range. The range depends on if the player

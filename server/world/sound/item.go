@@ -47,6 +47,9 @@ type BucketEmpty struct {
 // BowShoot is a sound played when a bow is shot.
 type BowShoot struct{ sound }
 
+// ShieldBlock is a sound played when a shield successfully blocks an attack.
+type ShieldBlock struct{ sound }
+
 // CrossbowLoad is a sound when a crossbow is being loaded.
 type CrossbowLoad struct {
 	// Stage is the stage of the crossbow.

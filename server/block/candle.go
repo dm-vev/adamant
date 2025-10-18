@@ -122,6 +122,9 @@ func (c Candle) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _
 
 // Ignite ...
 func (c Candle) Ignite(pos cube.Pos, tx *world.Tx, _ world.Entity) bool {
+	if existing, ok := tx.Block(pos).(Candle); ok {
+		c = existing
+	}
 	if c.Lit {
 		return false
 	}
@@ -137,6 +140,9 @@ func (c Candle) Ignite(pos cube.Pos, tx *world.Tx, _ world.Entity) bool {
 
 // Splash ...
 func (c Candle) Splash(tx *world.Tx, pos cube.Pos) {
+	if existing, ok := tx.Block(pos).(Candle); ok {
+		c = existing
+	}
 	if !c.Lit {
 		return
 	}

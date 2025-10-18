@@ -9,7 +9,7 @@ import (
 )
 
 type gamemodeCommand struct {
-	Mode    string                     `cmd:"mode"`
+	Mode    gameModeValue              `cmd:"mode"`
 	Targets cmd.Optional[[]cmd.Target] `cmd:"target"`
 }
 
@@ -18,7 +18,7 @@ func newGamemodeCommand() cmd.Command {
 }
 
 func (g gamemodeCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
-	mode, alias, ok := parseGameMode(g.Mode)
+	mode, alias, ok := parseGameMode(string(g.Mode))
 	if !ok {
 		o.Errort(cmd.MessageParameterInvalid, g.Mode)
 		return
