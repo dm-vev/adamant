@@ -14,6 +14,9 @@ type SnowballPoof struct{ particle }
 // EggSmash is a particle shown when an egg smashes on something.
 type EggSmash struct{ particle }
 
+// WindBurst is a particle shown when a wind charge detonates.
+type WindBurst struct{ particle }
+
 // Splash is a particle that shows up when a splash potion is splashed.
 type Splash struct {
 	particle

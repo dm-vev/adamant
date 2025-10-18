@@ -53,6 +53,8 @@ type (
 
 	// ExplosionDamageSource is used for damage caused by an explosion.
 	ExplosionDamageSource struct{}
+	// WindChargeDamageSource is used for damage caused by a wind charge burst.
+	WindChargeDamageSource struct{}
 )
 
 func (FallDamageSource) ReducedByArmour() bool     { return false }
@@ -100,6 +102,14 @@ func (ExplosionDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool 
 	return e == enchantment.BlastProtection
 }
 func (ExplosionDamageSource) IgnoreTotem() bool { return false }
+
+func (WindChargeDamageSource) ReducedByResistance() bool { return true }
+func (WindChargeDamageSource) ReducedByArmour() bool     { return true }
+func (WindChargeDamageSource) Fire() bool                { return false }
+func (WindChargeDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool {
+	return e == enchantment.BlastProtection
+}
+func (WindChargeDamageSource) IgnoreTotem() bool { return false }
 
 // ArmourEffectivenessMultiplier returns the armour scaling applied for the smash attack.
 func (s MaceSmashDamageSource) ArmourEffectivenessMultiplier() float64 {
