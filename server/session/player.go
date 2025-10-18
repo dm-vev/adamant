@@ -577,7 +577,7 @@ func (s *Session) SendEffectRemoval(e effect.Type) {
 func (s *Session) StartUsingItem() {
 	s.writePacket(&packet.PlayerAction{
 		EntityRuntimeID: selfEntityRuntimeID,
-		ActionType:      protocol.PlayerActionStartUsingItem,
+		ActionType:      protocol.PlayerActionStartItemUseOn,
 	})
 }
 

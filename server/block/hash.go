@@ -49,6 +49,7 @@ const (
 	hashCopperGrate
 	hashCopperLantern
 	hashCopperOre
+	hashCopperTorch
 	hashCopperTrapdoor
 	hashCoral
 	hashCoralBlock
@@ -380,6 +381,10 @@ func (l CopperLantern) Hash() (uint64, uint64) {
 
 func (c CopperOre) Hash() (uint64, uint64) {
 	return hashCopperOre, uint64(c.Type.Uint8())
+}
+
+func (t CopperTorch) Hash() (uint64, uint64) {
+	return hashCopperTorch, uint64(t.Facing)
 }
 
 func (t CopperTrapdoor) Hash() (uint64, uint64) {
