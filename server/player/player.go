@@ -79,9 +79,9 @@ type playerData struct {
 	sneaking, sprinting, swimming, gliding, crawling, flying,
 	invisible, immobile, onGround, usingItem, shielding bool
 	shieldHand          shieldHand
+	autoShielding       bool
 	shieldDisabledUntil time.Time
 	usingSince          time.Time
-	shieldSyntheticHand shieldHand
 
 	glideTicks   int64
 	fireTicks    int64
@@ -1441,7 +1441,7 @@ func (p *Player) SetHeldItems(mainHand, offHand item.Stack) {
 			p.stopShielding()
 		}
 	}
-	if p.sneaking || p.shieldSyntheticHand != shieldHandNone {
+	if p.sneaking || p.shielding {
 		p.updateAutoShield()
 	}
 }
@@ -3355,6 +3355,7 @@ func (p *Player) shieldReady() bool {
 }
 
 func (p *Player) startShielding(offHand bool) bool {
+	p.autoShielding = false
 	if !p.shieldReady() {
 		slog.Default().Debug("shield: startShielding blocked by cooldown", "player", p.Name(), "offHand", offHand, "readyAt", p.shieldDisabledUntil)
 		return false
@@ -3377,7 +3378,6 @@ func (p *Player) startShielding(offHand bool) bool {
 		slog.Default().Debug("shield: startShielding skipped, already shielding", "player", p.Name(), "hand", hand.String())
 		return true
 	}
-	p.shieldSyntheticHand = shieldHandNone
 	slog.Default().Debug("shield: startShielding", "player", p.Name(), "hand", hand.String(), "offHand", offHand, "sneaking", p.sneaking, "usingItem", p.usingItem)
 	p.shielding = true
 	p.shieldHand = hand
@@ -3390,17 +3390,13 @@ func (p *Player) stopShielding() {
 		return
 	}
 	currentHand := p.shieldHand
-	synthetic := p.shieldSyntheticHand
-	slog.Default().Debug("shield: stopShielding", "player", p.Name(), "hand", currentHand.String(), "synthetic", synthetic.String(), "sneaking", p.sneaking, "usingItem", p.usingItem)
-	if p.shieldHand == shieldHandMain || p.shieldSyntheticHand != shieldHandNone {
+	slog.Default().Debug("shield: stopShielding", "player", p.Name(), "hand", currentHand.String(), "sneaking", p.sneaking, "usingItem", p.usingItem)
+	if p.shieldHand == shieldHandMain {
 		p.usingItem = false
 	}
 	p.shielding = false
 	p.shieldHand = shieldHandNone
-	p.shieldSyntheticHand = shieldHandNone
-	if synthetic != shieldHandNone {
-		p.session().StopUsingItem()
-	}
+	p.autoShielding = false
 	p.updateState()
 }
 
@@ -3410,67 +3406,50 @@ func (p *Player) disableShield(d time.Duration) {
 }
 
 func (p *Player) updateAutoShield() {
-	desired := shieldHandNone
-	logger := slog.Default()
-	if p.sneaking && p.shieldReady() {
-		main, off := p.HeldItems()
-		if _, ok := off.Item().(item.Shield); ok {
-			desired = shieldHandOff
-		} else if _, ok := main.Item().(item.Shield); ok {
-			desired = shieldHandMain
-		}
-	}
-
-	if desired == shieldHandNone {
-		if p.shieldSyntheticHand != shieldHandNone {
-			logger.Debug("shield: auto release (no desired hand)", "player", p.Name(), "currentHand", p.shieldHand.String(), "synthetic", p.shieldSyntheticHand.String(), "sneaking", p.sneaking)
+	if !p.sneaking {
+		if p.autoShielding {
+			slog.Default().Debug("shield: auto release (stopped sneaking)", "player", p.Name(), "hand", p.shieldHand.String())
 			p.stopShielding()
 		}
 		return
 	}
 
-	if p.shieldSyntheticHand != shieldHandNone && p.shieldHand != desired {
-		logger.Debug("shield: auto hand mismatch, stopping", "player", p.Name(), "currentHand", p.shieldHand.String(), "synthetic", p.shieldSyntheticHand.String(), "desired", desired.String())
-		p.stopShielding()
-	}
-
-	if p.shielding {
-		if p.shieldHand == desired {
-			if p.shieldSyntheticHand == desired && !p.usingItem {
-				p.usingItem, p.usingSince = true, time.Now()
-				p.updateState()
-			}
-			return
+	hand, ok := p.autoShieldHand()
+	if !ok || !p.shieldReady() {
+		if p.autoShielding {
+			slog.Default().Debug("shield: auto release (no shield)", "player", p.Name(), "hand", p.shieldHand.String())
+			p.stopShielding()
 		}
-		if p.shieldSyntheticHand == shieldHandNone {
-			return
-		}
-		logger.Debug("shield: auto stop for retarget", "player", p.Name(), "currentHand", p.shieldHand.String(), "desired", desired.String())
-		p.stopShielding()
-	}
-
-	prevUsing := p.usingItem
-	prevSince := p.usingSince
-	if !p.usingItem {
-		p.usingItem = true
-		p.usingSince = time.Now()
-	}
-
-	logger.Debug("shield: auto start attempt", "player", p.Name(), "desired", desired.String(), "usingItem", p.usingItem, "prevUsing", prevUsing, "sneaking", p.sneaking)
-	if p.startShielding(desired == shieldHandOff) {
-		if !prevUsing {
-			p.session().StartUsingItem()
-		}
-		logger.Debug("shield: auto start success", "player", p.Name(), "hand", desired.String())
-		p.shieldSyntheticHand = desired
 		return
 	}
 
-	logger.Debug("shield: auto start failed", "player", p.Name(), "desired", desired.String(), "prevUsing", prevUsing, "hasShield", p.shielding)
-	if !prevUsing {
-		p.usingItem = false
-		p.usingSince = prevSince
+	if p.shielding {
+		if p.shieldHand == hand {
+			p.autoShielding = true
+			return
+		}
+		// Manual block is active: don't override unless auto already owned it.
+		if !p.autoShielding {
+			return
+		}
 	}
+
+	slog.Default().Debug("shield: auto start", "player", p.Name(), "hand", hand.String())
+	p.shielding = true
+	p.shieldHand = hand
+	p.autoShielding = true
+	p.updateState()
+}
+
+func (p *Player) autoShieldHand() (shieldHand, bool) {
+	main, off := p.HeldItems()
+	if _, ok := off.Item().(item.Shield); ok {
+		return shieldHandOff, true
+	}
+	if _, ok := main.Item().(item.Shield); ok {
+		return shieldHandMain, true
+	}
+	return shieldHandNone, false
 }
 
 func (p *Player) shieldStack() (item.Stack, bool) {
