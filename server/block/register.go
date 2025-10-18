@@ -182,6 +182,7 @@ func init() {
 	registerAll(allMelonStems())
 	registerAll(allMuddyMangroveRoots())
 	registerAll(allNetherBricks())
+	registerAll(allNetherPortals())
 	registerAll(allNetherWart())
 	registerAll(allPinkPetals())
 	registerAll(allPlanks())

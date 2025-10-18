@@ -37,6 +37,9 @@ func (f FlintAndSteel) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 	if l, ok := tx.Block(pos).(ignitable); ok && l.Ignite(pos, tx, user) {
 		return true
 	} else if s := pos.Side(face); tx.Block(s) == air() {
+		if world.TryCreateNetherPortal(tx, s) {
+			return true
+		}
 		tx.PlaySound(s.Vec3Centre(), sound.Ignite{})
 
 		flame := fire()

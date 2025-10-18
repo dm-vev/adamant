@@ -49,6 +49,12 @@ const (
 	shieldHandOff
 )
 
+const (
+	portalWarmupTicks   = 80
+	portalCooldownTicks = 100
+	portalSearchRadius  = 96
+)
+
 func (h shieldHand) String() string {
 	switch h {
 	case shieldHandMain:
@@ -129,6 +135,11 @@ type playerData struct {
 	prevWorld *world.World
 
 	fishingHook *world.EntityHandle
+
+	portalTicks    int
+	portalCooldown int
+	inPortal       bool
+	portalAxis     cube.Axis
 }
 
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players
@@ -2721,6 +2732,99 @@ func (p *Player) Drop(s item.Stack) int {
 	return s.Count()
 }
 
+// EnterNetherPortal marks the player as standing inside an activated nether portal.
+func (p *Player) EnterNetherPortal(_ cube.Pos, axis cube.Axis) {
+	if p.Dead() {
+		return
+	}
+	p.inPortal = true
+	p.portalAxis = axis
+}
+
+func (p *Player) tickPortal(tx *world.Tx) {
+	if p.portalCooldown > 0 {
+		p.portalCooldown--
+	}
+	if p.inPortal {
+		if p.portalCooldown == 0 {
+			p.portalTicks++
+			if p.portalTicks >= portalWarmupTicks {
+				p.portalTicks = 0
+				p.portalCooldown = portalCooldownTicks
+				p.travelThroughNetherPortal()
+			}
+		}
+	} else if p.portalTicks > 0 {
+		if p.portalTicks > 4 {
+			p.portalTicks -= 4
+		} else {
+			p.portalTicks = 0
+		}
+	}
+	p.inPortal = false
+}
+
+func (p *Player) travelThroughNetherPortal() {
+	currentWorld := p.tx.World()
+	if currentWorld == nil {
+		return
+	}
+
+	var targetDim world.Dimension = world.Nether
+	if currentWorld.Dimension() == world.Nether {
+		targetDim = world.Overworld
+	}
+
+	destination := currentWorld.PortalDestination(targetDim)
+	if destination == nil || destination == currentWorld {
+		return
+	}
+
+	pos := p.Position()
+	scale := 1.0
+	if currentWorld.Dimension() == world.Nether && destination.Dimension() != world.Nether {
+		scale = 8
+	} else if currentWorld.Dimension() != world.Nether && destination.Dimension() == world.Nether {
+		scale = 0.125
+	}
+
+	target := mgl64.Vec3{pos[0] * scale, pos[1], pos[2] * scale}
+	targetBlock := cube.Pos{int(math.Round(target[0])), int(math.Round(target[1])), int(math.Round(target[2]))}
+	axis := p.portalAxis
+	if axis != cube.X && axis != cube.Z {
+		axis = cube.Z
+	}
+
+	var (
+		frame world.NetherPortalFrame
+		ok    bool
+		exit  mgl64.Vec3
+	)
+
+	destination.Exec(func(tx *world.Tx) {
+		frame, ok = world.FindNearestNetherPortal(tx, targetBlock, portalSearchRadius)
+		if !ok {
+			frame = world.BuildNetherPortal(tx, targetBlock, axis)
+			ok = true
+		}
+		exit = frame.Center()
+	})
+	if !ok {
+		return
+	}
+
+	handle := p.tx.RemoveEntity(p)
+	destination.Exec(func(tx *world.Tx) {
+		np := tx.AddEntity(handle).(*Player)
+		np.Teleport(exit)
+		np.portalCooldown = portalCooldownTicks
+		np.portalTicks = 0
+		np.inPortal = false
+		np.portalAxis = frame.Axis()
+		np.AddEffect(effect.New(effect.Nausea, 1, time.Second*10))
+	})
+}
+
 // OpenBlockContainer opens a block container, such as a chest, at the position passed. If no container was
 // present at that location, OpenBlockContainer does nothing.
 // OpenBlockContainer will also do nothing if the player has no session connected to it.
@@ -2763,6 +2867,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	if p.Dead() {
 		return
 	}
+	p.tickPortal(tx)
 	if _, ok := p.tx.Liquid(cube.PosFromVec3(p.Position())); !ok {
 		p.StopSwimming()
 		if _, ok := p.Armour().Helmet().Item().(item.TurtleShell); ok {
