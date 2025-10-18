@@ -84,9 +84,20 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagHasCollision)
 		}
 	}
-	if o, ok := e.(orb); ok {
-		m[protocol.EntityDataKeyValue] = int32(o.Experience())
-	}
+        if boat, ok := e.(interface{ HasChest() bool }); ok && boat.HasChest() {
+                m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagChested)
+        }
+        if boat, ok := e.(interface{ PaddleTimes() (float32, float32) }); ok {
+                left, right := boat.PaddleTimes()
+                m[protocol.EntityDataKeyRowTimeLeft] = left
+                m[protocol.EntityDataKeyRowTimeRight] = right
+        }
+        if controller, ok := e.(interface{ ControllingSeat() int32 }); ok {
+                m[protocol.EntityDataKeyControllingSeatIndex] = controller.ControllingSeat()
+        }
+        if o, ok := e.(orb); ok {
+                m[protocol.EntityDataKeyValue] = int32(o.Experience())
+        }
 	if f, ok := e.(firework); ok {
 		m[protocol.EntityDataKeyDisplayTileRuntimeID] = nbtconv.WriteItem(item.NewStack(f.Firework(), 1), false)
 		if o, ok := e.(owned); ok && f.Attached() && o.Owner() != nil {

@@ -3,6 +3,7 @@ package creative
 import (
 	_ "embed"
 	"fmt"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	// The following four imports are essential for this package: They make sure this package is loaded after
@@ -40,6 +41,7 @@ type Group struct {
 // Groups returns a list with all groups that have been registered as a creative group. These groups will be
 // accessible by players in-game who have creative mode enabled.
 func Groups() []Group {
+	ensureBoatsVisible()
 	return creativeGroups
 }
 
@@ -52,6 +54,7 @@ func RegisterGroup(group Group) {
 // Items returns a list with all items that have been registered as a creative item. These items will
 // be accessible by players in-game who have creative mode enabled.
 func Items() []Item {
+	ensureBoatsVisible()
 	return creativeItemStacks
 }
 
@@ -120,6 +123,52 @@ func registerCreativeItems() {
 		}
 		RegisterItem(Item{st, creativeGroups[data.GroupIndex].Name})
 	}
+
+	ensureBoatsVisible()
+}
+
+var ensureBoatEntries sync.Once
+
+func ensureBoatsVisible() {
+	ensureBoatEntries.Do(func() {
+		ensureGroup := func(name string, category Category, icon item.Stack) Group {
+			for _, group := range creativeGroups {
+				if group.Name == name {
+					return group
+				}
+			}
+			g := Group{Category: category, Name: name, Icon: icon}
+			RegisterGroup(g)
+			return g
+		}
+
+		knownItems := make(map[string]struct{}, len(creativeItemStacks))
+		for _, it := range creativeItemStacks {
+			if stackItem := it.Stack.Item(); stackItem != nil {
+				name, _ := stackItem.EncodeItem()
+				knownItems[name] = struct{}{}
+			}
+		}
+
+		icon := item.NewStack(item.Boat{Variant: "oak"}, 1)
+		group := ensureGroup("itemGroup.name.boats", EquipmentCategory(), icon)
+
+		registerBoat := func(stack item.Stack) {
+			if stackItem := stack.Item(); stackItem != nil {
+				name, _ := stackItem.EncodeItem()
+				if _, exists := knownItems[name]; exists {
+					return
+				}
+				RegisterItem(Item{Stack: stack, Group: group.Name})
+				knownItems[name] = struct{}{}
+			}
+		}
+
+		for _, variant := range item.BoatVariants() {
+			registerBoat(item.NewStack(item.Boat{Variant: variant}, 1))
+			registerBoat(item.NewStack(item.Boat{Variant: variant, Chest: true}, 1))
+		}
+	})
 }
 
 func itemStackFromEntry(data creativeItemEntry) (item.Stack, bool) {

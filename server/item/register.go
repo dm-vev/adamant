@@ -24,6 +24,10 @@ func init() {
 	world.RegisterItem(BookAndQuill{})
 	world.RegisterItem(Book{})
 	world.RegisterItem(BottleOfEnchanting{})
+	for _, variant := range BoatVariants() {
+		world.RegisterItem(Boat{Variant: variant})
+		world.RegisterItem(Boat{Variant: variant, Chest: true})
+	}
 	world.RegisterItem(Bowl{})
 	world.RegisterItem(Bow{})
 	world.RegisterItem(Bread{})

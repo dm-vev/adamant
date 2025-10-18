@@ -1,7 +1,6 @@
 package session
 
 import (
-	"fmt"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -35,8 +34,12 @@ func (h *InteractHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, c Con
 				int32(pos[2]),
 			},
 		})
+	case packet.InteractActionLeaveVehicle:
+		if rider, ok := c.(interface{ HandleVehicleSneak() bool }); ok {
+			rider.HandleVehicleSneak()
+		}
 	default:
-		return fmt.Errorf("unexpected interact packet action %v", pk.ActionType)
+		s.conf.Log.Debug("process packet: Interact: unexpected action", "action", pk.ActionType)
 	}
 	return nil
 }

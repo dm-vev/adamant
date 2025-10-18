@@ -71,13 +71,14 @@ func (s *Session) ViewEntity(e world.Entity) {
 	}
 	s.entityMutex.Unlock()
 
-	yaw, pitch := e.Rotation().Elem()
-	metadata := s.parseEntityMetadata(e)
+        yaw, pitch := e.Rotation().Elem()
+        metadata := s.parseEntityMetadata(e)
+        links := s.entityLinks(e)
 
-	id := e.H().Type().EncodeEntity()
-	switch v := e.(type) {
-	case Controllable:
-		_, actualPlayer := sessions.Lookup(v.UUID())
+        id := e.H().Type().EncodeEntity()
+        switch v := e.(type) {
+        case Controllable:
+                _, actualPlayer := sessions.Lookup(v.UUID())
 		if !actualPlayer {
 			s.writePacket(&packet.PlayerList{ActionType: packet.PlayerListActionAdd, Entries: []protocol.PlayerListEntry{{
 				UUID:           v.UUID(),
@@ -87,15 +88,16 @@ func (s *Session) ViewEntity(e world.Entity) {
 			}}})
 		}
 
-		s.writePacket(&packet.AddPlayer{
-			EntityMetadata:  metadata,
-			EntityRuntimeID: runtimeID,
-			GameType:        gameTypeFromMode(v.GameMode()),
-			HeadYaw:         float32(yaw),
-			Pitch:           float32(pitch),
-			Position:        vec64To32(e.Position()),
-			UUID:            v.UUID(),
-			Username:        v.Name(),
+                s.writePacket(&packet.AddPlayer{
+                        EntityMetadata:  metadata,
+                        EntityRuntimeID: runtimeID,
+                        GameType:        gameTypeFromMode(v.GameMode()),
+                        EntityLinks:     links,
+                        HeadYaw:         float32(yaw),
+                        Pitch:           float32(pitch),
+                        Position:        vec64To32(e.Position()),
+                        UUID:            v.UUID(),
+                        Username:        v.Name(),
 			Yaw:             float32(yaw),
 			AbilityData: protocol.AbilityData{
 				EntityUniqueID: int64(runtimeID),
@@ -140,17 +142,78 @@ func (s *Session) ViewEntity(e world.Entity) {
 		vel = v.Velocity()
 	}
 
-	s.writePacket(&packet.AddActor{
-		EntityUniqueID:  int64(runtimeID),
-		EntityRuntimeID: runtimeID,
-		EntityType:      id,
-		EntityMetadata:  metadata,
-		Position:        vec64To32(e.Position()),
-		Velocity:        vec64To32(vel),
-		Pitch:           float32(pitch),
-		Yaw:             float32(yaw),
-		HeadYaw:         float32(yaw),
+        s.writePacket(&packet.AddActor{
+                EntityUniqueID:  int64(runtimeID),
+                EntityRuntimeID: runtimeID,
+                EntityType:      id,
+                EntityMetadata:  metadata,
+                EntityLinks:     links,
+                Position:        vec64To32(e.Position()),
+                Velocity:        vec64To32(vel),
+                Pitch:           float32(pitch),
+                Yaw:             float32(yaw),
+                HeadYaw:         float32(yaw),
 	})
+}
+
+func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
+        if boatEnt, ok := e.(*entity.Ent); ok {
+                if boat, ok := boatEnt.Behaviour().(*entity.BoatBehaviour); ok {
+                        riddenID := s.entityRuntimeID(boatEnt)
+                        if riddenID == 0 {
+                                return nil
+                        }
+                        passengers := boat.Passengers()
+                        links := make([]protocol.EntityLink, 0, len(passengers))
+                        for seat, handle := range passengers {
+                                if handle == nil {
+                                        continue
+                                }
+                                riderID := s.handleRuntimeID(handle)
+                                if riderID == 0 {
+                                        continue
+                                }
+                                linkType := byte(protocol.EntityLinkPassenger)
+                                if seat == 0 {
+                                        linkType = byte(protocol.EntityLinkRider)
+                                }
+                                links = append(links, protocol.EntityLink{
+                                        RiddenEntityUniqueID: int64(riddenID),
+                                        RiderEntityUniqueID:  int64(riderID),
+                                        Type:                 linkType,
+                                        RiderInitiated:       true,
+                                })
+                        }
+                        if len(links) > 0 {
+                                return links
+                        }
+                }
+        }
+        if rider, ok := e.(interface {
+                VehicleHandle() *world.EntityHandle
+                VehicleSeat() int
+        }); ok {
+                handle := rider.VehicleHandle()
+                if handle == nil {
+                        return nil
+                }
+                riddenID := s.handleRuntimeID(handle)
+                riderID := s.entityRuntimeID(e)
+                if riddenID == 0 || riderID == 0 {
+                        return nil
+                }
+                linkType := byte(protocol.EntityLinkRider)
+                if rider.VehicleSeat() > 0 {
+                        linkType = byte(protocol.EntityLinkPassenger)
+                }
+                return []protocol.EntityLink{{
+                        RiddenEntityUniqueID: int64(riddenID),
+                        RiderEntityUniqueID:  int64(riderID),
+                        Type:                 linkType,
+                        RiderInitiated:       true,
+                }}
+        }
+        return nil
 }
 
 // ViewEntityGameMode ...
@@ -1066,17 +1129,54 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 
 // ViewEntityState ...
 func (s *Session) ViewEntityState(e world.Entity) {
-	s.writePacket(&packet.SetActorData{
-		EntityRuntimeID: s.entityRuntimeID(e),
-		EntityMetadata:  s.parseEntityMetadata(e),
-	})
+        s.writePacket(&packet.SetActorData{
+                EntityRuntimeID: s.entityRuntimeID(e),
+                EntityMetadata:  s.parseEntityMetadata(e),
+        })
+}
+
+// ViewEntityLink notifies the session of a new rider link between two entities.
+func (s *Session) ViewEntityLink(ridden, rider world.Entity, linkType byte) {
+        if s.entityHidden(ridden) || s.entityHidden(rider) {
+                return
+        }
+        riddenID := s.entityRuntimeID(ridden)
+        riderID := s.entityRuntimeID(rider)
+        if riddenID == 0 || riderID == 0 {
+                return
+        }
+        s.writePacket(&packet.SetActorLink{EntityLink: protocol.EntityLink{
+                RiddenEntityUniqueID: int64(riddenID),
+                RiderEntityUniqueID: int64(riderID),
+                Type:                 linkType,
+                RiderInitiated:       true,
+        }})
+}
+
+// ViewEntityUnlink notifies the session that a rider dismounted from its vehicle.
+func (s *Session) ViewEntityUnlink(ridden, rider world.Entity) {
+        if s.entityHidden(ridden) || s.entityHidden(rider) {
+                return
+        }
+        riddenID := s.entityRuntimeID(ridden)
+        riderID := s.entityRuntimeID(rider)
+        if riddenID == 0 || riderID == 0 {
+                return
+        }
+        s.writePacket(&packet.SetActorLink{EntityLink: protocol.EntityLink{
+                RiddenEntityUniqueID: int64(riddenID),
+                RiderEntityUniqueID: int64(riderID),
+                Type:                 byte(protocol.EntityLinkRemove),
+                Immediate:            true,
+                RiderInitiated:       true,
+        }})
 }
 
 // ViewEntityAnimation ...
 func (s *Session) ViewEntityAnimation(e world.Entity, a world.EntityAnimation) {
-	s.writePacket(&packet.AnimateEntity{
-		Animation:     a.Name(),
-		NextState:     a.NextState(),
+        s.writePacket(&packet.AnimateEntity{
+                Animation:     a.Name(),
+                NextState:     a.NextState(),
 		StopCondition: a.StopCondition(),
 		Controller:    a.Controller(),
 		EntityRuntimeIDs: []uint64{
@@ -1176,6 +1276,27 @@ func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world
 		ContainerEntityUniqueID: -1,
 	})
 	s.sendInv(b.Inventory(tx, pos), uint32(nextID))
+}
+
+// OpenEntityContainer opens a container backed by an entity such as a chest boat.
+func (s *Session) OpenEntityContainer(tx *world.Tx, e world.Entity, inv *inventory.Inventory, containerType byte) {
+	s.closeCurrentContainer(tx)
+
+	s.containerOpened.Store(true)
+	s.openedWindow.Store(inv)
+	s.openedEntity.Store(e.H())
+	s.openedPos.Store(&cube.Pos{})
+
+	id := s.nextWindowID()
+	s.openedContainerID.Store(uint32(containerType))
+
+	s.writePacket(&packet.ContainerOpen{
+		WindowID:                id,
+		ContainerType:           containerType,
+		ContainerPosition:       protocol.BlockPos{},
+		ContainerEntityUniqueID: int64(s.entityRuntimeID(e)),
+	})
+	s.sendInv(inv, uint32(id))
 }
 
 // ViewSlotChange ...
