@@ -382,6 +382,7 @@ type EntityRegistryConfig struct {
 	Firework           func(opts EntitySpawnOpts, firework Item, owner Entity, sidewaysVelocityMultiplier, upwardsAcceleration float64, attached bool) *EntityHandle
 	LingeringPotion    func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Snowball           func(opts EntitySpawnOpts, owner Entity) *EntityHandle
+	WindCharge         func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	SplashPotion       func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Lightning          func(opts EntitySpawnOpts) *EntityHandle
 	EndCrystal         func(opts EntitySpawnOpts, showBase bool) *EntityHandle
