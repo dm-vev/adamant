@@ -119,6 +119,12 @@ type playerData struct {
 
 	mc *entity.MovementComputer
 
+	// Nether portal state
+	inPortal       bool
+	portalAxis     cube.Axis
+	portalCooldown int
+	portalTicks    int
+
 	collidedVertically, collidedHorizontally bool
 
 	breaking          bool

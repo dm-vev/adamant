@@ -15,7 +15,6 @@ const (
 	hashBarrier
 	hashBasalt
 	hashBeacon
-	hashBed
 	hashBedrock
 	hashBeetrootSeeds
 	hashBlackstone
@@ -198,9 +197,9 @@ const (
 	hashWoodFence
 	hashWoodFenceGate
 	hashWoodTrapdoor
-    hashWool
-    hashBed
-    hashCustomBlockBase
+	hashWool
+	hashBed
+	hashCustomBlockBase
 )
 
 // customBlockBase represents the base hash for all custom blocks.
@@ -252,10 +251,6 @@ func (Beacon) Hash() (uint64, uint64) {
 	return hashBeacon, 0
 }
 
-func (b Bed) Hash() (uint64, uint64) {
-	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Part == BedHead))<<2 | uint64(boolByte(b.Occupied))<<3
-}
-
 func (b Bedrock) Hash() (uint64, uint64) {
 	return hashBedrock, uint64(boolByte(b.InfiniteBurning))
 }
@@ -281,12 +276,12 @@ func (b Bone) Hash() (uint64, uint64) {
 }
 
 func (Bookshelf) Hash() (uint64, uint64) {
-    return hashBookshelf, 0
+	return hashBookshelf, 0
 }
 
 func (b Bed) Hash() (uint64, uint64) {
-    // Pack: colour(4) | facing(2) | part(1) | occupied(1)
-    return hashBed, uint64(b.Colour.Uint8()) | uint64(b.Facing)<<4 | uint64(b.Part)<<6 | uint64(boolByte(b.Occupied))<<7
+	// Pack: colour(4) | facing(2) | part(1) | occupied(1)
+	return hashBed, uint64(b.Colour.Uint8()) | uint64(b.Facing)<<4 | uint64(b.Part)<<6 | uint64(boolByte(b.Occupied))<<7
 }
 
 func (b BrewingStand) Hash() (uint64, uint64) {
