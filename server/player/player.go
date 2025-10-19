@@ -2671,9 +2671,13 @@ func (p *Player) PickBlock(pos cube.Pos) {
 	if pi, ok := b.(block.Pickable); ok {
 		pickedItem = pi.Pick()
 	} else if i, ok := b.(world.Item); ok {
-		it, _ := world.ItemByName(i.EncodeItem())
-		pickedItem = item.NewStack(it, 1)
+		if it, ok := world.ItemByName(i.EncodeItem()); ok {
+			pickedItem = item.NewStack(it, 1)
+		}
 	} else {
+		return
+	}
+	if pickedItem.Empty() {
 		return
 	}
 
