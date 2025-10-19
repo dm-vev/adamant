@@ -35,6 +35,13 @@
   # with GeneratorWorkers when large preloads saturate the queue; keep an eye on storage pressure if the
   # generator relies on external services like LevelDB.
   GeneratorQueueSize = 0
+  # DisableNether disables the Nether dimension entirely. Nether portals can still be created but won't teleport entities.
+  DisableNether = false
+  # DisableEnd disables the End dimension entirely. End portals can still be created but won't teleport entities.
+  DisableEnd = false
+  # PortalDisabledMessage is sent to players that try to enter a portal leading to a disabled dimension.
+  # If the string contains a formatting verb such as %s, it will be replaced with the dimension name.
+  PortalDisabledMessage = "<red>The %s is disabled on this server.</red>"
 
 [Players]
   # The maximum amount of players accepted into the server. If set to 0, there is no player limit. The max

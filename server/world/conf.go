@@ -26,6 +26,9 @@ type Config struct {
 	// function. If the function returns a nil world for a Dimension, only
 	// portals of that specific Dimension type will not function.
 	PortalDestination func(dim Dimension) *World
+	// PortalDisabledMessage should return the message to broadcast when portals to a
+	// specific dimension are disabled. Returning an empty string suppresses the message.
+	PortalDisabledMessage func(dim Dimension) string
 	// Provider is the Provider implementation used to read and write World
 	// data. If set to nil, the Provider used will be NopProvider, which does
 	// not store any data to disk.

@@ -355,6 +355,9 @@ func (srv *Server) close() {
 
 	srv.conf.Log.Debug("Closing worlds...")
 	for _, w := range []*world.World{srv.end, srv.nether, srv.world} {
+		if w == nil {
+			continue
+		}
 		if err := w.Close(); err != nil {
 			srv.conf.Log.Error(fmt.Sprintf("Close dimension %v: ", w.Dimension()) + err.Error())
 		}
@@ -540,10 +543,15 @@ func (srv *Server) dimension(dimension world.Dimension) *world.World {
 	default:
 		return srv.world
 	case world.Nether:
-		return srv.nether
+		if srv.nether != nil {
+			return srv.nether
+		}
 	case world.End:
-		return srv.end
+		if srv.end != nil {
+			return srv.end
+		}
 	}
+	return srv.world
 }
 
 // checkNetIsolation checks if a loopback exempt is in place to allow the
@@ -627,12 +635,33 @@ func (srv *Server) createWorld(dim world.Dimension, nether, end **world.World) *
 		ReadOnly:           srv.conf.ReadOnlyWorld,
 		Entities:           srv.conf.Entities,
 		PortalDestination: func(dim world.Dimension) *world.World {
-			if dim == world.Nether {
+			switch dim {
+			case world.Nether:
+				if srv.conf.DisableNether || nether == nil || *nether == nil {
+					return nil
+				}
 				return *nether
-			} else if dim == world.End {
+			case world.End:
+				if srv.conf.DisableEnd || end == nil || *end == nil {
+					return nil
+				}
 				return *end
+			default:
+				return nil
 			}
-			return nil
+		},
+		PortalDisabledMessage: func(dim world.Dimension) string {
+			switch dim {
+			case world.Nether:
+				if srv.conf.DisableNether {
+					return srv.conf.portalDisabledMessage(world.Nether)
+				}
+			case world.End:
+				if srv.conf.DisableEnd {
+					return srv.conf.portalDisabledMessage(world.End)
+				}
+			}
+			return ""
 		},
 	}
 	w := conf.New()

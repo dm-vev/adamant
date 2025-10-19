@@ -49,6 +49,11 @@ func (EndPortal) EntityInside(_ cube.Pos, tx *world.Tx, e world.Entity) {
 
 	dest := current.PortalDestination(targetDim)
 	if dest == nil || dest == current {
+		if msg := current.PortalDisabledMessage(targetDim); msg != "" {
+			if m, ok := e.(interface{ Message(...any) }); ok {
+				m.Message(msg)
+			}
+		}
 		return
 	}
 
