@@ -114,6 +114,49 @@ func TestRespawnAnchorSafeSpawnSkipsHazards(t *testing.T) {
 	}
 }
 
+func TestRespawnAnchorActivationRequiresSafeSpawn(t *testing.T) {
+	conf := world.Config{Dim: world.Nether}
+	w := conf.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	pos := cube.Pos{8, 0, 8}
+	anchor := RespawnAnchor{Charge: 1}
+	sleeper := &fakeRespawnSleeper{}
+
+	var (
+		activated   bool
+		spawnBefore cube.Pos
+		spawnAfter  cube.Pos
+		remaining   world.Block
+	)
+
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(pos, anchor, nil)
+		spawnBefore = tx.World().PlayerSpawn(sleeper.UUID())
+
+		for _, offset := range respawnAnchorOffsets {
+			tx.SetBlock(pos.Add(offset), Stone{}, nil)
+		}
+
+		activated = anchor.Activate(pos, cube.FaceUp, tx, sleeper, &item.UseContext{})
+		spawnAfter = tx.World().PlayerSpawn(sleeper.UUID())
+		remaining = tx.Block(pos)
+	})
+
+	if !activated {
+		t.Fatalf("expected activation to succeed")
+	}
+	if len(sleeper.msg) == 0 || sleeper.msg[0] != chat.MessageRespawnAnchorNotValid {
+		t.Fatalf("expected obstructed message, got %v", sleeper.msg)
+	}
+	if spawnAfter != spawnBefore {
+		t.Fatalf("expected spawn to remain %v, got %v", spawnBefore, spawnAfter)
+	}
+	if rem, ok := remaining.(RespawnAnchor); !ok || rem.Charge != anchor.Charge {
+		t.Fatalf("expected anchor to remain charged, got %#v", remaining)
+	}
+}
+
 type fakeRespawnSleeper struct {
 	main item.Stack
 	msg  []chat.Translation
