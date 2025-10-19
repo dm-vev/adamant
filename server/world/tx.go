@@ -268,17 +268,19 @@ func (tx *Tx) close() {
 // normalTransaction is added to the transaction queue for transactions created
 // using World.Exec().
 type normalTransaction struct {
-	c chan struct{}
-	f func(tx *Tx)
+        c chan struct{}
+        f func(tx *Tx)
 }
 
 // Run creates a *Tx, calls ntx.f, closes the transaction and finally closes
 // ntx.c.
 func (ntx normalTransaction) Run(w *World) {
-	tx := &Tx{w: w}
-	ntx.f(tx)
-	tx.close()
-	close(ntx.c)
+        tx := &Tx{w: w}
+        defer func() {
+                tx.close()
+                close(ntx.c)
+        }()
+        ntx.f(tx)
 }
 
 // weakTransaction is a transaction that may be cancelled by setting its invalid
@@ -294,18 +296,29 @@ type weakTransaction struct {
 // creating a *Tx if so. Afterwards, a bool indicating if the transaction was
 // run is added to wtx.c. Finally, wtx.cond.Broadcast() is called.
 func (wtx weakTransaction) Run(w *World) {
-	valid := !wtx.invalid.Load()
-	if valid {
-		tx := &Tx{w: w}
-		wtx.f(tx)
-		tx.close()
-	}
-	// We have to acquire a lock on wtx.cond.L here to make sure cond.Wait()
-	// has been called before we call cond.Broadcast(). If not, we might
-	// broadcast before cond.Wait() and cause a permanent suspension.
-	wtx.cond.L.Lock()
-	defer wtx.cond.L.Unlock()
+        valid := !wtx.invalid.Load()
+        var panicErr any
+        if valid {
+                tx := &Tx{w: w}
+                func() {
+                        defer func() {
+                                tx.close()
+                                if r := recover(); r != nil {
+                                        panicErr = r
+                                }
+                        }()
+                        wtx.f(tx)
+                }()
+        }
+        // We have to acquire a lock on wtx.cond.L here to make sure cond.Wait()
+        // has been called before we call cond.Broadcast(). If not, we might
+        // broadcast before cond.Wait() and cause a permanent suspension.
+        wtx.cond.L.Lock()
+        defer wtx.cond.L.Unlock()
 
-	wtx.c <- valid
-	wtx.cond.Broadcast()
+        wtx.c <- valid && panicErr == nil
+        wtx.cond.Broadcast()
+        if panicErr != nil {
+                panic(panicErr)
+        }
 }
