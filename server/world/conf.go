@@ -29,6 +29,10 @@ type Config struct {
 	// PortalDisabledMessage should return the message to broadcast when portals to a
 	// specific dimension are disabled. Returning an empty string suppresses the message.
 	PortalDisabledMessage func(dim Dimension) string
+	// DefaultWorld should return the primary world that players fall back to when no other
+	// dimension is available. If left nil or returning nil, the World itself is treated as the
+	// default for any lookups.
+	DefaultWorld func() *World
 	// Provider is the Provider implementation used to read and write World
 	// data. If set to nil, the Provider used will be NopProvider, which does
 	// not store any data to disk.
