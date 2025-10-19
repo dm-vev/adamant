@@ -127,7 +127,7 @@ const (
 	hashNetherBrickFence
 	hashNetherBricks
 	hashNetherGoldOre
-	hashNetherPortal
+	hashPortal
 	hashNetherQuartzOre
 	hashNetherSprouts
 	hashNetherWart
@@ -704,8 +704,8 @@ func (NetherGoldOre) Hash() (uint64, uint64) {
 	return hashNetherGoldOre, 0
 }
 
-func (p NetherPortal) Hash() (uint64, uint64) {
-	return hashNetherPortal, uint64(p.Axis)
+func (p Portal) Hash() (uint64, uint64) {
+	return hashPortal, uint64(p.Axis)
 }
 
 func (NetherQuartzOre) Hash() (uint64, uint64) {

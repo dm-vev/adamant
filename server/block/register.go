@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -38,6 +39,8 @@ func init() {
 	world.RegisterBlock(DirtPath{})
 	world.RegisterBlock(Dirt{Coarse: true})
 	world.RegisterBlock(Dirt{})
+	world.RegisterBlock(Portal{Axis: cube.X})
+	world.RegisterBlock(Portal{Axis: cube.Z})
 	world.RegisterBlock(DragonEgg{})
 	world.RegisterBlock(DriedKelp{})
 	world.RegisterBlock(Dripstone{})
@@ -183,7 +186,6 @@ func init() {
 	registerAll(allMelonStems())
 	registerAll(allMuddyMangroveRoots())
 	registerAll(allNetherBricks())
-	registerAll(allNetherPortals())
 	registerAll(allNetherWart())
 	registerAll(allPinkPetals())
 	registerAll(allPlanks())
