@@ -396,7 +396,7 @@ type UserConfig struct {
 // resources failed.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	var err error
-	defaultDim := world.Overworld
+	defaultDim := world.Dimension(world.Overworld)
 	if name := strings.TrimSpace(uc.World.DefaultDimension); name != "" {
 		if parsed, ok := parseDimension(name); ok {
 			defaultDim = parsed
