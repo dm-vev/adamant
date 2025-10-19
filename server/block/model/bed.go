@@ -5,16 +5,15 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// Bed is a model used by bed blocks.
+// Bed is a model used for beds. This model works for both parts of the bed.
 type Bed struct{}
 
-// BBox returns the bounding box of a bed block.
-func (Bed) BBox(cube.Pos, world.BlockSource) []cube.BBox {
-	return []cube.BBox{cube.Box(0, 0, 0, 1, 9.0/16.0, 1)}
+// BBox ...
+func (b Bed) BBox(cube.Pos, world.BlockSource) []cube.BBox {
+	return []cube.BBox{cube.Box(0, 0, 0, 1, 0.5625, 1)}
 }
 
-// FaceSolid returns whether a given face of the bed is solid.
-// Only the top face of a bed is considered solid so entities may stand on it.
-func (Bed) FaceSolid(_ cube.Pos, face cube.Face, _ world.BlockSource) bool {
-	return face == cube.FaceUp
+// FaceSolid ...
+func (Bed) FaceSolid(cube.Pos, cube.Face, world.BlockSource) bool {
+	return false
 }
