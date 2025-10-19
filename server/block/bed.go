@@ -281,11 +281,44 @@ var bedOffsets = map[cube.Face][]cube.Pos{
 // SafeSpawn ...
 func (b Bed) SafeSpawn(p cube.Pos, tx *world.Tx) (cube.Pos, bool) {
 	for _, offset := range bedOffsets[b.Facing.Face()] {
-		if _, ok := tx.Block(p.Add(offset)).(Air); ok {
-			return p.Add(offset), true
+		candidate := p.Add(offset)
+		if bedSpawnSafe(candidate, tx) {
+			return candidate, true
 		}
 	}
 	return cube.Pos{}, false
+}
+
+func bedSpawnSafe(pos cube.Pos, tx *world.Tx) bool {
+	if pos.OutOfBounds(tx.Range()) {
+		return false
+	}
+
+	head := pos.Add(cube.Pos{0, 1})
+	if head.OutOfBounds(tx.Range()) {
+		return false
+	}
+
+	if len(tx.Block(pos).Model().BBox(pos, tx)) != 0 {
+		return false
+	}
+	if len(tx.Block(head).Model().BBox(head, tx)) != 0 {
+		return false
+	}
+
+	if _, ok := tx.Liquid(pos); ok {
+		return false
+	}
+	if _, ok := tx.Liquid(head); ok {
+		return false
+	}
+
+	below := pos.Side(cube.FaceDown)
+	if below.OutOfBounds(tx.Range()) {
+		return false
+	}
+
+	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
 }
 
 // RespawnOn ...
