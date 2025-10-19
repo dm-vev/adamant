@@ -1006,6 +1006,18 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			ActionType:      packet.AnimateActionMagicCriticalHit,
 			EntityRuntimeID: s.entityRuntimeID(e),
 		})
+	case entity.SleepAction:
+		pos := act.Position
+		s.writePacket(&packet.PlayerAction{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			ActionType:      protocol.PlayerActionStartSleeping,
+			BlockPosition:   protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+		})
+	case entity.StopSleepAction:
+		s.writePacket(&packet.PlayerAction{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			ActionType:      protocol.PlayerActionStopSleeping,
+		})
 	case entity.DeathAction:
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),

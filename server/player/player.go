@@ -1488,6 +1488,7 @@ func (p *Player) Sleep(pos cube.Pos, tx *world.Tx) bool {
 	p.Message("Respawn point set")
 
 	p.teleport(bedSleepPosition(pos, bed.Facing))
+	p.broadcastSleepStart(headPos)
 	p.tryAdvanceNight(tx)
 	p.updateState()
 	return true
@@ -1523,6 +1524,7 @@ func (p *Player) StopSleeping(tx *world.Tx) {
 	p.sleepBed = cube.Pos{}
 	p.sleepSpawn = cube.Pos{}
 	p.sleepDim = nil
+	p.broadcastSleepStop()
 	p.SetMobile()
 	p.teleport(spawn.Vec3Middle())
 	p.updateState()
@@ -1610,6 +1612,22 @@ func bedSleepPosition(pos cube.Pos, facing cube.Direction) mgl64.Vec3 {
 	centre := pos.Vec3Centre().Add(head.Vec3Centre()).Mul(0.5)
 	centre[1] = float64(pos[1]) + 0.4
 	return centre
+}
+
+func (p *Player) broadcastSleepStart(headPos cube.Pos) {
+	viewers, release := p.viewers()
+	for _, viewer := range viewers {
+		viewer.ViewEntityAction(p, entity.SleepAction{Position: headPos})
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
+}
+
+func (p *Player) broadcastSleepStop() {
+	viewers, release := p.viewers()
+	for _, viewer := range viewers {
+		viewer.ViewEntityAction(p, entity.StopSleepAction{})
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
 }
 
 // SetInvisible sets the player invisible, so that other players will not be able to see it.
@@ -1862,51 +1880,75 @@ func (p *Player) StartFishing(tx *world.Tx, rod item.Stack) bool {
 
 // StopFishing stops fishing for the player and optionally reels in the hook.
 func (p *Player) StopFishing(tx *world.Tx, reel bool) bool {
-	if p.fishingHook == nil {
-		return false
-	}
 	handle := p.fishingHook
-	p.fishingHook = nil
-	ent, ok := handle.Entity(tx)
-	if !ok {
-		_ = handle.Close()
+	if handle == nil {
 		return false
 	}
-	hook, ok := ent.(*entity.Ent)
-	if !ok {
-		_ = ent.Close()
-		return false
+	if damage, ok := p.stopFishingWithTx(tx, handle, reel); ok {
+		return damage
 	}
-	behaviour, ok := hook.Behaviour().(*entity.FishingHookBehaviour)
-	if !ok {
-		_ = hook.Close()
-		return false
+	var (
+		damage bool
+		ran    bool
+	)
+	if p.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+		damage = e.(*Player).StopFishing(tx, reel)
+		ran = true
+	}) && ran {
+		return damage
 	}
-	damage := false
-	if reel {
-		loot, xp, pulled := behaviour.Reel(hook, tx)
-		hookPos := hook.Position()
-		if !loot.Empty() {
-			dropPos := hookPos
-			dropPos[1] = behaviour.SurfaceHeight(tx, cube.PosFromVec3(hookPos))
-			motion := behaviour.PullVelocity(p, dropPos)
-			tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: dropPos, Velocity: motion}, loot))
-			if xp > 0 {
-				for _, orb := range entity.NewExperienceOrbs(dropPos, xp) {
-					tx.AddEntity(orb)
-				}
-			}
-			damage = true
+	return false
+}
+
+func (p *Player) stopFishingWithTx(tx *world.Tx, handle *world.EntityHandle, reel bool) (damage bool, ok bool) {
+	if tx == nil {
+		return false, false
+	}
+	ok = txguard.Run(tx, func() {
+		ent, found := handle.Entity(tx)
+		if !found {
+			_ = handle.Close()
+			p.fishingHook = nil
+			return
 		}
-		if pulled != nil {
-			if setter, ok := pulled.(interface{ SetVelocity(mgl64.Vec3) }); ok {
-				setter.SetVelocity(behaviour.PullVelocity(p, hookPos))
+		hook, found := ent.(*entity.Ent)
+		if !found {
+			_ = ent.Close()
+			p.fishingHook = nil
+			return
+		}
+		behaviour, found := hook.Behaviour().(*entity.FishingHookBehaviour)
+		if !found {
+			_ = hook.Close()
+			p.fishingHook = nil
+			return
+		}
+		if reel {
+			loot, xp, pulled := behaviour.Reel(hook, tx)
+			hookPos := hook.Position()
+			if !loot.Empty() {
+				dropPos := hookPos
+				dropPos[1] = behaviour.SurfaceHeight(tx, cube.PosFromVec3(hookPos))
+				motion := behaviour.PullVelocity(p, dropPos)
+				tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: dropPos, Velocity: motion}, loot))
+				if xp > 0 {
+					for _, orb := range entity.NewExperienceOrbs(dropPos, xp) {
+						tx.AddEntity(orb)
+					}
+				}
 				damage = true
 			}
+			if pulled != nil {
+				if setter, ok := pulled.(interface{ SetVelocity(mgl64.Vec3) }); ok {
+					setter.SetVelocity(behaviour.PullVelocity(p, hookPos))
+					damage = true
+				}
+			}
 		}
-	}
-	_ = hook.Close()
-	return damage
+		_ = hook.Close()
+		p.fishingHook = nil
+	})
+	return
 }
 
 // UseItem uses the item currently held in the player's main hand in the air. Generally, nothing happens,
@@ -2791,8 +2833,8 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		}
 	}
 
-	_, submergedBefore := p.tx.Liquid(cube.PosFromVec3(pos.Add(mgl64.Vec3{0, p.EyeHeight()})))
-	_, submergedAfter := p.tx.Liquid(cube.PosFromVec3(res.Add(mgl64.Vec3{0, p.EyeHeight()})))
+	_, submergedBefore := p.liquid(cube.PosFromVec3(pos.Add(mgl64.Vec3{0, p.EyeHeight()})))
+	_, submergedAfter := p.liquid(cube.PosFromVec3(res.Add(mgl64.Vec3{0, p.EyeHeight()})))
 	if submergedBefore != submergedAfter {
 		// Player wasn't either breathing before and no longer isn't, or wasn't breathing before and now is,
 		// so send the updated metadata.
@@ -3136,7 +3178,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		return
 	}
 	p.tickPortal(tx)
-	if _, ok := p.tx.Liquid(cube.PosFromVec3(p.Position())); !ok {
+	if _, ok := p.liquid(cube.PosFromVec3(p.Position())); !ok {
 		p.StopSwimming()
 		if _, ok := p.Armour().Helmet().Item().(item.TurtleShell); ok {
 			p.AddEffect(effect.New(effect.WaterBreathing, 1, time.Second*10).WithoutParticles())
@@ -3333,7 +3375,7 @@ const breathingDistanceBelowEyes = 0.11111111
 // insideOfWater returns true if the player is currently underwater.
 func (p *Player) insideOfWater() bool {
 	pos := cube.PosFromVec3(entity.EyePosition(p))
-	if l, ok := p.tx.Liquid(pos); ok {
+	if l, ok := p.liquid(pos); ok {
 		if _, ok := l.(block.Water); ok {
 			d := float64(l.SpreadDecay()) + 1
 			if l.LiquidFalling() {
@@ -3439,7 +3481,7 @@ func (p *Player) checkEntityInsiders(entityBBox cube.BBox) {
 					}
 				}
 
-				if l, ok := p.tx.Liquid(blockPos); ok {
+				if l, ok := p.liquid(blockPos); ok {
 					if collide, ok := l.(block.EntityInsider); ok {
 						collide.EntityInside(blockPos, p.tx, p)
 					}
@@ -3603,7 +3645,7 @@ func (p *Player) updateState() {
 func (p *Player) Breathing() bool {
 	_, breathing := p.Effect(effect.WaterBreathing)
 	_, conduitPower := p.Effect(effect.ConduitPower)
-	_, submerged := p.tx.Liquid(cube.PosFromVec3(entity.EyePosition(p)))
+	_, submerged := p.liquid(cube.PosFromVec3(entity.EyePosition(p)))
 	return !p.GameMode().AllowsTakingDamage() || !submerged || breathing || conduitPower
 }
 
@@ -3975,7 +4017,11 @@ func (p *Player) close(msg string) {
 }
 
 func (p *Player) quit(msg string) {
-	p.StopFishing(p.tx, false)
+	p.handle.ExecWorld(func(tx *world.Tx, e world.Entity) {
+		if pl, ok := e.(*Player); ok {
+			pl.StopFishing(tx, false)
+		}
+	})
 	p.h.HandleQuit(p)
 	p.h = NopHandler{}
 
@@ -3986,7 +4032,9 @@ func (p *Player) quit(msg string) {
 	}
 	// Only remove the player from the world if it's not attached to a session. If it is attached to a session, the
 	// session will remove the player once ready.
-	p.tx.RemoveEntity(p)
+	p.handle.ExecWorld(func(tx *world.Tx, e world.Entity) {
+		tx.RemoveEntity(e)
+	})
 	_ = p.handle.Close()
 }
 
@@ -4144,6 +4192,19 @@ func releaseBorrowedViewers(tx *world.Tx, viewers []world.Viewer, ok bool) {
 	})
 }
 
+func (p *Player) liquid(pos cube.Pos) (world.Liquid, bool) {
+	var (
+		liq   world.Liquid
+		found bool
+	)
+	if !txguard.Run(p.tx, func() {
+		liq, found = p.tx.Liquid(pos)
+	}) {
+		return nil, false
+	}
+	return liq, found
+}
+
 // resendBlocks resends blocks in a world.World at the cube.Pos passed and the block next to it at the cube.Face passed.
 func (p *Player) resendBlocks(pos cube.Pos, faces ...cube.Face) {
 	if p.session() == session.Nop {
@@ -4160,7 +4221,7 @@ func (p *Player) resendBlock(pos cube.Pos) {
 	b := p.tx.Block(pos)
 	p.session().ViewBlockUpdate(pos, b, 0)
 	if _, ok := b.(world.LiquidDisplacer); ok {
-		liq, _ := p.tx.Liquid(pos)
+		liq, _ := p.liquid(pos)
 		p.session().ViewBlockUpdate(pos, liq, 1)
 	}
 }

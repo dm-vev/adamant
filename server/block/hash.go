@@ -280,8 +280,9 @@ func (Bookshelf) Hash() (uint64, uint64) {
 }
 
 func (b Bed) Hash() (uint64, uint64) {
-	// Pack: colour(4) | facing(2) | part(1) | occupied(1)
-	return hashBed, uint64(b.Colour.Uint8()) | uint64(b.Facing)<<4 | uint64(b.Part)<<6 | uint64(boolByte(b.Occupied))<<7
+	// The bed colour is stored on the block entity, so the runtime ID only depends on
+	// the facing, part and occupied properties.
+	return hashBed, uint64(b.Facing) | uint64(b.Part)<<2 | uint64(boolByte(b.Occupied))<<3
 }
 
 func (b BrewingStand) Hash() (uint64, uint64) {

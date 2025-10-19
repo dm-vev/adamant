@@ -51,6 +51,12 @@ func (b Bed) EncodeItem() (name string, meta int16) {
 	return "minecraft:bed", int16(b.Colour.Uint8())
 }
 
+// MaxCount returns the maximum amount of beds that may be stacked together. Beds are limited to a single
+// item per stack in vanilla behaviour.
+func (Bed) MaxCount() int {
+	return 1
+}
+
 // EncodeBlock ...
 func (b Bed) EncodeBlock() (string, map[string]any) {
 	return "minecraft:bed", map[string]any{
