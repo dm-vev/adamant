@@ -1174,6 +1174,18 @@ func (w *World) PortalDisabledMessage(dim Dimension) string {
 	return w.conf.PortalDisabledMessage(dim)
 }
 
+// DefaultWorld returns the primary world configured for this server. If no explicit default
+// callback is provided, the world itself is returned so respawn logic always has a destination.
+func (w *World) DefaultWorld() *World {
+	if w.conf.DefaultWorld == nil {
+		return w
+	}
+	if def := w.conf.DefaultWorld(); def != nil {
+		return def
+	}
+	return w
+}
+
 // Save saves the World to the provider.
 func (w *World) Save() {
 	<-w.Exec(w.save(w.saveChunk))

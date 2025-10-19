@@ -984,7 +984,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		return
 	}
 	currentWorld := p.tx.World()
-	defaultWorld := currentWorld.PortalDestination(currentWorld.Dimension())
+	defaultWorld := currentWorld.DefaultWorld()
 
 	spawnPositions := map[*world.World]cube.Pos{}
 	var candidates []*world.World
