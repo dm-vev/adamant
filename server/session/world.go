@@ -614,6 +614,15 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventUseSpyglass
 	case sound.StopUsingSpyglass:
 		pk.SoundType = packet.SoundEventStopUsingSpyglass
+	case sound.RespawnAnchorAmbient:
+		pk.SoundType = packet.SoundEventRespawnAnchorAmbient
+		pk.ExtraData = int32(so.Charge)
+	case sound.RespawnAnchorCharge:
+		pk.SoundType = packet.SoundEventRespawnAnchorCharge
+		pk.ExtraData = int32(so.Charge)
+	case sound.RespawnAnchorDeplete:
+		pk.SoundType = packet.SoundEventRespawnAnchorDeplete
+		pk.ExtraData = int32(so.Charge)
 	case sound.GoatHorn:
 		switch so.Horn {
 		case sound.Ponder():
