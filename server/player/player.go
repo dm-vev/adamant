@@ -1006,7 +1006,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		return
 	}
 	currentWorld := p.tx.World()
-	defaultWorld := currentWorld.PortalDestination(currentWorld.Dimension())
+	defaultWorld := currentWorld.DefaultWorld()
 
 	spawnPositions := map[*world.World]cube.Pos{}
 	var candidates []*world.World
@@ -1053,7 +1053,7 @@ func (p *Player) respawn(f func(p *Player)) {
 			})
 		}
 		if bed, ok := blk.(block.Bed); ok {
-			if bed.Part == block.BedHead {
+			if bed.Head {
 				footPos := pos.Side(bed.Facing.Opposite().Face())
 				if w == currentWorld {
 					if foot, ok := p.tx.Block(footPos).(block.Bed); ok {
@@ -1101,7 +1101,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		if anchorWorld.Dimension() != world.Nether || anchorBlock.Charge == 0 {
 			anchorObstructed = true
 		} else if anchorWorld == currentWorld {
-			if safePos, ok := anchorBlock.SpawnPosition(anchorPos, p.tx); ok {
+			if safePos, ok := anchorBlock.SafeSpawn(anchorPos, p.tx); ok {
 				anchorBlock.Charge--
 				p.tx.SetBlock(anchorPos, anchorBlock, nil)
 				if anchorBlock.Charge == 0 {
@@ -1120,7 +1120,7 @@ func (p *Player) respawn(f func(p *Player)) {
 				ok      bool
 			)
 			<-anchorWorld.Exec(func(tx *world.Tx) {
-				safePos, ok = anchorBlock.SpawnPosition(anchorPos, tx)
+				safePos, ok = anchorBlock.SafeSpawn(anchorPos, tx)
 				if ok {
 					anchorBlock.Charge--
 					tx.SetBlock(anchorPos, anchorBlock, nil)
@@ -1148,7 +1148,7 @@ func (p *Player) respawn(f func(p *Player)) {
 		if bedWorld.Dimension() != world.Overworld {
 			bedObstructed = true
 		} else if bedWorld == currentWorld {
-			if safePos, ok := bedBlock.SpawnPosition(bedPos, p.tx); ok {
+			if safePos, ok := bedBlock.SafeSpawn(bedPos, p.tx); ok {
 				respawnWorld = bedWorld
 				respawnPos = safePos
 				respawnVec = safePos.Vec3Middle()
@@ -1161,7 +1161,7 @@ func (p *Player) respawn(f func(p *Player)) {
 				ok      bool
 			)
 			<-bedWorld.Exec(func(tx *world.Tx) {
-				safePos, ok = bedBlock.SpawnPosition(bedPos, tx)
+				safePos, ok = bedBlock.SafeSpawn(bedPos, tx)
 			})
 			if ok {
 				respawnWorld = bedWorld
@@ -1426,52 +1426,47 @@ func (p *Player) Jump() {
 	}
 }
 
-// Sleep attempts to make the player sleep at the bed located at the foot position passed.
+// Sleep attempts to make the player sleep at the bed located at the head position passed.
 func (p *Player) Sleep(pos cube.Pos, tx *world.Tx) bool {
 	if tx == nil || tx.World().Dimension() != world.Overworld {
 		return false
 	}
-	if p.Dead() || p.sleeping {
-		if p.sleeping && p.sleepBed == pos {
-			return true
-		}
+	if p.Dead() {
 		return false
 	}
+	if p.sleeping {
+		return true
+	}
 
-	bed, ok := tx.Block(pos).(block.Bed)
+	head, ok := tx.Block(pos).(block.Bed)
 	if !ok {
 		return false
 	}
-	if bed.Part == block.BedHead {
-		pos = pos.Side(bed.Facing.Opposite().Face())
-		if foot, ok := tx.Block(pos).(block.Bed); ok {
-			bed = foot
-		} else {
+	if !head.Head {
+		head, pos, ok = head.HeadPos(pos, tx)
+		if !ok {
 			return false
 		}
 	}
-	headPos := pos.Side(bed.Facing.Face())
-	head, ok := tx.Block(headPos).(block.Bed)
+	if head.Sleeper != nil {
+		return false
+	}
+
+	foot, footPos, ok := head.FootPos(pos, tx)
 	if !ok {
 		return false
 	}
-	if bed.Occupied || head.Occupied {
-		p.Message("This bed is occupied")
+	if !p.canSleepAt(tx, footPos) {
 		return true
 	}
-	if !p.canSleepAt(tx, pos) {
-		return true
-	}
-	spawnPos, ok := bed.SpawnPosition(pos, tx)
+	spawnPos, ok := foot.SafeSpawn(footPos, tx)
 	if !ok {
-		p.Message("You may not rest now; the bed is obstructed")
+		p.Messaget(chat.MessageBedNotValid)
 		return true
 	}
 
-	bed.Occupied = true
-	head.Occupied = true
-	tx.SetBlock(pos, bed, nil)
-	tx.SetBlock(headPos, head, nil)
+	head.Sleeper = p.H()
+	tx.SetBlock(pos, head, nil)
 
 	p.StopSneaking()
 	p.StopSprinting()
@@ -1481,14 +1476,15 @@ func (p *Player) Sleep(pos cube.Pos, tx *world.Tx) bool {
 	p.SetImmobile()
 
 	p.sleeping = true
-	p.sleepBed = pos
+	p.sleepBed = footPos
 	p.sleepSpawn = spawnPos
 	p.sleepDim = tx.World().Dimension()
 
-	tx.World().AddSleepingPlayer(p.UUID(), pos)
-	tx.World().SetPlayerSpawn(p.UUID(), pos)
-	p.SetRespawnPosition(spawnPos, tx.World().Dimension())
-	p.Message("Respawn point set")
+	world := tx.World()
+	world.AddSleepingPlayer(p.UUID(), footPos)
+	world.SetPlayerSpawn(p.UUID(), footPos)
+	p.SetRespawnPosition(spawnPos, world.Dimension())
+	p.Messaget(chat.MessageRespawnPointSet)
 
 	p.teleport(bedSleepPosition(pos, bed.Facing))
 	p.broadcastSleepStart(headPos)
@@ -1510,14 +1506,12 @@ func (p *Player) StopSleeping(tx *world.Tx) {
 	spawn := p.sleepSpawn
 	if tx != nil {
 		if bed, ok := tx.Block(footPos).(block.Bed); ok {
-			bed.Occupied = false
-			tx.SetBlock(footPos, bed, nil)
-			headPos := footPos.Side(bed.Facing.Face())
-			if head, ok := tx.Block(headPos).(block.Bed); ok {
-				head.Occupied = false
+			head, headPos, ok := bed.HeadPos(footPos, tx)
+			if ok {
+				head.Sleeper = nil
 				tx.SetBlock(headPos, head, nil)
 			}
-			if safe, ok := bed.SpawnPosition(footPos, tx); ok {
+			if safe, ok := bed.SafeSpawn(footPos, tx); ok {
 				spawn = safe
 			}
 		}
@@ -1547,17 +1541,17 @@ func (p *Player) BedPosition() (cube.Pos, bool) {
 }
 
 func (p *Player) canSleepAt(tx *world.Tx, pos cube.Pos) bool {
-	timeOfDay := tx.World().Time() % 24000
-	if timeOfDay < 0 {
-		timeOfDay += 24000
-	}
 	if tx.ThunderingAt(pos) {
 		return true
 	}
-	if timeOfDay >= 12541 && timeOfDay <= 23458 {
+	timeOfDay := tx.World().Time() % world.TimeFull
+	if timeOfDay < 0 {
+		timeOfDay += world.TimeFull
+	}
+	if timeOfDay >= world.TimeSleepWithRain && timeOfDay <= world.TimeWakeWithRain {
 		return true
 	}
-	p.Message("You can only sleep at night or during thunderstorms")
+	p.Messaget(chat.MessageNoSleep)
 	return false
 }
 
@@ -1586,8 +1580,7 @@ func (p *Player) tryAdvanceNight(tx *world.Tx) {
 		return
 	}
 	current := tx.World().Time()
-	const dayLength = 24000
-	next := ((current/dayLength)+1)*dayLength + 1000
+	next := ((current/world.TimeFull)+1)*world.TimeFull + 1000
 	if next < 0 {
 		next = 1000
 	}
@@ -1606,6 +1599,23 @@ func (p *Player) tryAdvanceNight(tx *world.Tx) {
 		if _, sleeping := sleepers[pl.UUID()]; sleeping {
 			pl.StopSleeping(tx)
 		}
+		return true
+	})
+}
+
+func (p *Player) broadcastSleepingReminder(tx *world.Tx) {
+	required := p.requiredSleepers(tx)
+	sleeping := tx.World().SleepingPlayerCount()
+	remaining := required - sleeping
+	if remaining <= 0 {
+		return
+	}
+	tx.Players()(func(e world.Entity) bool {
+		pl, ok := e.(*Player)
+		if !ok || pl.sleeping {
+			return true
+		}
+		pl.Messaget(chat.MessageSleeping, p.Name(), remaining)
 		return true
 	})
 }
@@ -2705,9 +2715,13 @@ func (p *Player) PickBlock(pos cube.Pos) {
 	if pi, ok := b.(block.Pickable); ok {
 		pickedItem = pi.Pick()
 	} else if i, ok := b.(world.Item); ok {
-		it, _ := world.ItemByName(i.EncodeItem())
-		pickedItem = item.NewStack(it, 1)
+		if it, ok := world.ItemByName(i.EncodeItem()); ok {
+			pickedItem = item.NewStack(it, 1)
+		}
 	} else {
+		return
+	}
+	if pickedItem.Empty() {
 		return
 	}
 

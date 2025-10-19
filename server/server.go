@@ -48,7 +48,10 @@ type Server struct {
 	once    sync.Once
 	started atomic.Pointer[time.Time]
 
-	world, nether, end *world.World
+	world *world.World
+	// dimensions holds the loaded dimensions keyed by their identifiers.
+	dimensions       map[world.Dimension]*world.World
+	defaultDimension world.Dimension
 
 	customBlocks []protocol.BlockEntry
 	customItems  []protocol.ItemEntry
@@ -155,9 +158,9 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 	}
 }
 
-// World returns the overworld of the server. Players will be spawned in this
+// World returns the server's standard world. Players will be spawned in this
 // world and this world will be read from and written to when the world is
-// edited.
+// edited. The default world may be configured to any supported dimension.
 func (srv *Server) World() *world.World {
 	return srv.world
 }
@@ -173,13 +176,13 @@ func (srv *Server) StartTime() time.Time {
 // Nether returns the nether world of the server. Players are transported to it
 // when entering a nether portal in the world returned by the World method.
 func (srv *Server) Nether() *world.World {
-	return srv.nether
+	return srv.dimensions[world.Nether]
 }
 
 // End returns the end world of the server. Players are transported to it when
 // entering an end portal in the world returned by the World method.
 func (srv *Server) End() *world.World {
-	return srv.end
+	return srv.dimensions[world.End]
 }
 
 // MaxPlayerCount returns the maximum amount of players that are allowed to
@@ -354,10 +357,18 @@ func (srv *Server) close() {
 	}
 
 	srv.conf.Log.Debug("Closing worlds...")
-	for _, w := range []*world.World{srv.end, srv.nether, srv.world} {
+	closed := make(map[*world.World]struct{})
+	for _, w := range srv.dimensions {
+		if w == nil {
+			continue
+		}
+		if _, ok := closed[w]; ok {
+			continue
+		}
 		if err := w.Close(); err != nil {
 			srv.conf.Log.Error(fmt.Sprintf("Close dimension %v: ", w.Dimension()) + err.Error())
 		}
+		closed[w] = struct{}{}
 	}
 
 	srv.conf.Log.Debug("Closing listeners...")
@@ -471,11 +482,31 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 	id := uuid.MustParse(conn.IdentityData().Identity)
 	data := srv.defaultGameData()
 
-	d, w, err := srv.conf.PlayerProvider.Load(id, srv.dimension)
+	var (
+		fallback  bool
+		requested world.Dimension
+	)
+	d, w, err := srv.conf.PlayerProvider.Load(id, func(dim world.Dimension) *world.World {
+		requested = dim
+		dest := srv.dimension(dim)
+		if dest == nil {
+			return srv.world
+		}
+		if dest.Dimension() != dim {
+			fallback = true
+		}
+		return dest
+	})
 	if err != nil {
 		w = srv.world
 		d.Position = w.Spawn().Vec3Centre()
 		d.GameMode = w.DefaultGameMode()
+	} else if fallback {
+		w = srv.world
+		d.Position = w.Spawn().Vec3Centre()
+		d.GameMode = w.DefaultGameMode()
+		d.Velocity = mgl64.Vec3{}
+		srv.conf.Log.Info("Relocating player from disabled dimension.", "requested", fmt.Sprint(requested), "target", fmt.Sprint(w.Dimension()))
 	}
 
 	data.PlayerPosition = vec64To32(d.Position).Add(mgl32.Vec3{0, 1.62})
@@ -536,14 +567,10 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 
 // dimension returns a world by a dimension passed.
 func (srv *Server) dimension(dimension world.Dimension) *world.World {
-	switch dimension {
-	default:
-		return srv.world
-	case world.Nether:
-		return srv.nether
-	case world.End:
-		return srv.end
+	if w := srv.dimensions[dimension]; w != nil {
+		return w
 	}
+	return srv.world
 }
 
 // checkNetIsolation checks if a loopback exempt is in place to allow the
@@ -611,11 +638,12 @@ func (srv *Server) createPlayer(id uuid.UUID, conn session.Conn, conf player.Con
 // createWorld loads a world with a specific dimension using the provider set
 // in the Config. The nether and end dimensions point to the worlds that players
 // are moved to when passing through the respective portals.
-func (srv *Server) createWorld(dim world.Dimension, nether, end **world.World) *world.World {
+func (srv *Server) createWorld(dim world.Dimension) *world.World {
 	logger := srv.conf.Log.With("dimension", strings.ToLower(fmt.Sprint(dim)))
 	logger.Debug("Loading dimension...")
 
 	gen := srv.conf.Generator(dim)
+	sourceDim := dim
 	conf := world.Config{
 		Log:                logger,
 		Dim:                dim,
@@ -626,13 +654,34 @@ func (srv *Server) createWorld(dim world.Dimension, nether, end **world.World) *
 		RandomTickSpeed:    srv.conf.RandomTickSpeed,
 		ReadOnly:           srv.conf.ReadOnlyWorld,
 		Entities:           srv.conf.Entities,
-		PortalDestination: func(dim world.Dimension) *world.World {
-			if dim == world.Nether {
-				return *nether
-			} else if dim == world.End {
-				return *end
+		PortalDestination: func(target world.Dimension) *world.World {
+			resolved := target
+			if target == world.Nether && sourceDim == world.Nether {
+				resolved = world.Overworld
+			}
+			if srv.conf.dimensionDisabled(resolved) {
+				return nil
+			}
+			if dest, ok := srv.dimensions[resolved]; ok && dest != nil {
+				return dest
+			}
+			if srv.world != nil && srv.world.Dimension() == resolved {
+				return srv.world
 			}
 			return nil
+		},
+		PortalDisabledMessage: func(target world.Dimension) string {
+			resolved := target
+			if target == world.Nether && sourceDim == world.Nether {
+				resolved = world.Overworld
+			}
+			if srv.conf.dimensionDisabled(resolved) {
+				return srv.conf.portalDisabledMessage(resolved)
+			}
+			return ""
+		},
+		DefaultWorld: func() *world.World {
+			return srv.world
 		},
 	}
 	w := conf.New()
@@ -641,6 +690,13 @@ func (srv *Server) createWorld(dim world.Dimension, nether, end **world.World) *
 	}
 	logger.Info("Opened dimension.", "name", w.Name())
 	return w
+}
+
+func (srv *Server) registerWorld(dim world.Dimension, w *world.World) {
+	if w == nil {
+		return
+	}
+	srv.dimensions[dim] = w
 }
 
 // parseSkin parses a skin from the login.ClientData and returns it.

@@ -123,6 +123,23 @@ type Config struct {
 	// may be added to the Server's worlds. If no entity types are registered,
 	// Entities will be set to entity.DefaultRegistry.
 	Entities world.EntityRegistry
+	// DisableOverworld disables creation of the overworld entirely. Nether and End portals that
+	// target the overworld will still form, but they won't teleport entities while it is disabled.
+	DisableOverworld bool
+	// DisableNether disables creation of the Nether world and prevents Nether portals
+	// from transporting players. The portal blocks can still be lit.
+	DisableNether bool
+	// DisableEnd disables creation of the End world and prevents End portals from
+	// transporting players. The portal blocks can still be lit.
+	DisableEnd bool
+	// DefaultDimension controls which dimension new players spawn in and which world acts as the
+	// server's standard dimension. If set to nil, the overworld is used.
+	DefaultDimension world.Dimension
+	// PortalDisabledMessage controls the chat message players receive when they try to
+	// enter a portal that leads to a disabled dimension. If the string contains a
+	// formatting directive such as %s, the name of the target dimension is passed as the
+	// first argument. Set this to an empty string to disable the notification entirely.
+	PortalDisabledMessage string
 }
 
 // New creates a Server using fields of conf. The Server's worlds are created
@@ -171,10 +188,10 @@ func (conf Config) New() *Server {
 	conf.Resources = slices.Clone(conf.Resources)
 
 	srv := &Server{
-		conf:     conf,
-		incoming: make(chan incoming),
-		p:        make(map[uuid.UUID]*onlinePlayer),
-		world:    &world.World{}, nether: &world.World{}, end: &world.World{},
+		conf:       conf,
+		incoming:   make(chan incoming),
+		p:          make(map[uuid.UUID]*onlinePlayer),
+		dimensions: make(map[world.Dimension]*world.World),
 	}
 	if wl, ok := conf.Allower.(*Whitelist); ok {
 		srv.whitelist = wl
@@ -197,13 +214,83 @@ func (conf Config) New() *Server {
 	world_finaliseBlockRegistry()
 	recipe_registerVanilla()
 
-	srv.world = srv.createWorld(world.Overworld, &srv.nether, &srv.end)
-	srv.nether = srv.createWorld(world.Nether, &srv.world, &srv.end)
-	srv.end = srv.createWorld(world.End, &srv.nether, &srv.world)
+	defaultDim := conf.DefaultDimension
+	if defaultDim == nil {
+		defaultDim = world.Overworld
+	}
+	if conf.dimensionDisabled(defaultDim) {
+		if fallback, ok := conf.firstEnabledDimension(); ok {
+			conf.Log.Warn("Default dimension disabled, falling back.", "default", strings.ToLower(fmt.Sprint(defaultDim)), "fallback", strings.ToLower(fmt.Sprint(fallback)))
+			defaultDim = fallback
+		} else {
+			panic("config: at least one dimension must remain enabled")
+		}
+	}
+
+	srv.defaultDimension = defaultDim
+
+	srv.world = srv.createWorld(defaultDim)
+	srv.registerWorld(defaultDim, srv.world)
+
+	for _, dim := range []world.Dimension{world.Overworld, world.Nether, world.End} {
+		if dim == defaultDim {
+			continue
+		}
+		if conf.dimensionDisabled(dim) {
+			conf.Log.Info("Skipping dimension load: dimension disabled", "dimension", strings.ToLower(fmt.Sprint(dim)))
+			continue
+		}
+		w := srv.createWorld(dim)
+		srv.registerWorld(dim, w)
+	}
 
 	srv.checkNetIsolation()
 
 	return srv
+}
+
+func (conf Config) portalDisabledMessage(dim world.Dimension) string {
+	if conf.PortalDisabledMessage == "" {
+		return ""
+	}
+	name := fmt.Sprint(dim)
+	if strings.Contains(conf.PortalDisabledMessage, "%") {
+		return fmt.Sprintf(conf.PortalDisabledMessage, name)
+	}
+	return fmt.Sprintf("%s (%s)", conf.PortalDisabledMessage, name)
+}
+
+func (conf Config) dimensionDisabled(dim world.Dimension) bool {
+	switch dim {
+	case world.Overworld:
+		return conf.DisableOverworld
+	case world.Nether:
+		return conf.DisableNether
+	case world.End:
+		return conf.DisableEnd
+	}
+	return false
+}
+
+func (conf Config) firstEnabledDimension() (world.Dimension, bool) {
+	for _, dim := range []world.Dimension{world.Overworld, world.Nether, world.End} {
+		if !conf.dimensionDisabled(dim) {
+			return dim, true
+		}
+	}
+	return nil, false
+}
+
+func parseDimension(name string) (world.Dimension, bool) {
+	switch strings.ToLower(name) {
+	case "", "overworld", "world", "default":
+		return world.Overworld, true
+	case "nether", "hell":
+		return world.Nether, true
+	case "end", "the_end", "end_dimension":
+		return world.End, true
+	}
+	return nil, false
 }
 
 // UserConfig is the user configuration for a Dragonfly server. It holds
@@ -249,6 +336,22 @@ type UserConfig struct {
 		// GeneratorQueueSize determines how many chunk generation jobs can wait
 		// for a worker. Set to 0 to use an automatically chosen size.
 		GeneratorQueueSize int
+		// DisableOverworld disables the overworld dimension entirely. Nether and End portals can still be activated,
+		// but will not teleport entities to the overworld while it is disabled.
+		DisableOverworld bool
+		// DisableNether disables the Nether dimension entirely. Nether portals can still be activated
+		// but will not teleport entities.
+		DisableNether bool
+		// DisableEnd disables the End dimension entirely. End portals can still be activated but will
+		// not teleport entities.
+		DisableEnd bool
+		// DefaultDimension controls which dimension new players spawn in. Valid values are "overworld",
+		// "nether" and "end". Defaults to "overworld".
+		DefaultDimension string
+		// PortalDisabledMessage controls the chat message that is sent when a player enters a portal
+		// leading to a disabled dimension. The dimension name is passed as the first formatting argument.
+		// Leave empty to suppress the notification entirely.
+		PortalDisabledMessage string
 	}
 	Players struct {
 		// MaxCount is the maximum amount of players allowed to join the server
@@ -293,6 +396,15 @@ type UserConfig struct {
 // resources failed.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	var err error
+	defaultDim := world.Dimension(world.Overworld)
+	if name := strings.TrimSpace(uc.World.DefaultDimension); name != "" {
+		if parsed, ok := parseDimension(name); ok {
+			defaultDim = parsed
+		} else if log != nil {
+			log.Warn("Unknown default dimension, using overworld.", "value", name)
+		}
+	}
+
 	conf := Config{
 		Log:                     log,
 		Name:                    uc.Server.Name,
@@ -305,6 +417,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		OverworldSeed:           uc.World.Seed,
 		GeneratorWorkers:        uc.World.GeneratorWorkers,
 		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
+		DisableOverworld:        uc.World.DisableOverworld,
+		DisableNether:           uc.World.DisableNether,
+		DisableEnd:              uc.World.DisableEnd,
+		DefaultDimension:        defaultDim,
+		PortalDisabledMessage:   uc.World.PortalDisabledMessage,
 	}
 	whitelistFile := strings.TrimSpace(uc.Whitelist.File)
 	if whitelistFile == "" {
@@ -382,6 +499,11 @@ func DefaultConfig() UserConfig {
 	c.World.SaveData = true
 	c.World.Folder = "world"
 	c.World.Seed = 0
+	c.World.DisableOverworld = false
+	c.World.DisableNether = false
+	c.World.DisableEnd = false
+	c.World.DefaultDimension = "overworld"
+	c.World.PortalDisabledMessage = "The %s dimension is disabled on this server."
 	c.Players.MaximumChunkRadius = 32
 	c.Players.SaveData = true
 	c.Players.Folder = "players"
