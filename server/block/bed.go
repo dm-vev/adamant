@@ -327,11 +327,15 @@ func scalePos(p cube.Pos, factor int) cube.Pos {
 }
 
 func allBeds() (blocks []world.Block) {
-	for _, dir := range cube.Directions() {
-		blocks = append(blocks, Bed{Facing: dir, Part: BedFoot})
-		blocks = append(blocks, Bed{Facing: dir, Part: BedHead})
-		blocks = append(blocks, Bed{Facing: dir, Part: BedFoot, Occupied: true})
-		blocks = append(blocks, Bed{Facing: dir, Part: BedHead, Occupied: true})
+	for _, colour := range item.Colours() {
+		for _, dir := range cube.Directions() {
+			blocks = append(blocks,
+				Bed{Colour: colour, Facing: dir, Part: BedFoot},
+				Bed{Colour: colour, Facing: dir, Part: BedHead},
+				Bed{Colour: colour, Facing: dir, Part: BedFoot, Occupied: true},
+				Bed{Colour: colour, Facing: dir, Part: BedHead, Occupied: true},
+			)
+		}
 	}
 	return
 }
