@@ -89,7 +89,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 	pdata.hunger.foodLevel, pdata.hunger.foodTick, pdata.hunger.exhaustionLevel, pdata.hunger.saturationLevel = conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation
 	pdata.experience.Add(conf.Experience)
 	pdata.tc.Instantaneous = func() bool {
-		return pdata.gameMode == world.GameModeCreative
+		return pdata.gameMode != nil && pdata.gameMode.CreativeInventory()
 	}
 	data.Data = pdata
 }
