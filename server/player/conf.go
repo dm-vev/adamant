@@ -68,6 +68,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		locale:              conf.Locale,
 		cooldowns:           make(map[string]time.Time),
 		mc:                  &entity.MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
+		tc:                  &entity.TravelComputer{Instantaneous: func() bool { return cfg.GameMode == world.GameModeCreative }},
 		heldSlot:            &slot,
 		gameMode:            conf.GameMode,
 		skin:                conf.Skin,
