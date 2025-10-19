@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/portal"
 	"math/rand/v2"
 	"time"
 )
@@ -187,6 +188,7 @@ func (f Fire) spread(from, to cube.Pos, tx *world.Tx, r *rand.Rand) {
 	spread := Fire{Type: f.Type, Age: min(15, f.Age+r.IntN(5)/4)}
 	tx.SetBlock(to, spread, nil)
 	tx.ScheduleBlockUpdate(to, spread, time.Duration(30+r.IntN(10))*time.Second/20)
+	portal.TryActivateNetherPortal(tx, to)
 }
 
 // EntityInside ...
@@ -268,8 +270,17 @@ func (f Fire) Start(tx *world.Tx, pos cube.Pos) {
 			f := Fire{}
 			tx.SetBlock(pos, f, nil)
 			tx.ScheduleBlockUpdate(pos, f, time.Duration(30+rand.IntN(10))*time.Second/20)
+			portal.TryActivateNetherPortal(tx, pos)
 		}
 	}
+}
+
+// Place ...
+func (Fire) Place(pos cube.Pos, w *world.World) bool {
+	w.Exec(func(tx *world.Tx) {
+		portal.TryActivateNetherPortal(tx, pos)
+	})
+	return true
 }
 
 // allFire ...
