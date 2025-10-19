@@ -277,9 +277,20 @@ func (f Fire) Start(tx *world.Tx, pos cube.Pos) {
 
 // Place ...
 func (Fire) Place(pos cube.Pos, w *world.World) bool {
-	w.Exec(func(tx *world.Tx) {
-		portal.TryActivateNetherPortal(tx, pos)
-	})
+	portalActivated := false
+	for _, f := range cube.Faces() {
+		if portalActivated {
+			break
+		}
+		w.Exec(func(tx *world.Tx) {
+			if o, ok := tx.Block(pos.Side(f)).(Obsidian); ok && !o.Crying {
+				if p, ok := portal.NetherPortalFromPos(tx, pos); ok && p.Framed() && !p.Activated() {
+					p.Activate()
+					portalActivated = true
+				}
+			}
+		})
+	}
 	return true
 }
 

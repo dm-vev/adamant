@@ -2,7 +2,6 @@ package player
 
 import (
 	"fmt"
-	"log/slog"
 	"math"
 	"math/rand/v2"
 	"net"
@@ -41,25 +40,6 @@ import (
 	"golang.org/x/text/language"
 )
 
-type shieldHand uint8
-
-const (
-	shieldHandNone shieldHand = iota
-	shieldHandMain
-	shieldHandOff
-)
-
-func (h shieldHand) String() string {
-	switch h {
-	case shieldHandMain:
-		return "main"
-	case shieldHandOff:
-		return "off"
-	default:
-		return "none"
-	}
-}
-
 type playerData struct {
 	xuid              string
 	locale            language.Tag
@@ -77,11 +57,9 @@ type playerData struct {
 	heldSlot                     *uint32
 
 	sneaking, sprinting, swimming, gliding, crawling, flying,
-	invisible, immobile, onGround, usingItem, shielding bool
-	shieldHand          shieldHand
-	autoShielding       bool
-	shieldDisabledUntil time.Time
-	usingSince          time.Time
+	invisible, immobile, onGround, usingItem bool
+	blockingDelayTicks int
+	usingSince         time.Time
 
 	glideTicks   int64
 	fireTicks    int64
@@ -615,9 +593,6 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if _, ok := p.Effect(effect.FireResistance); (ok && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
 	}
-	if p.tryBlockDamage(dmg, src) {
-		return 0, false
-	}
 	totalDamage := p.FinalDamageFrom(dmg, src)
 	damageLeft := totalDamage
 
@@ -634,6 +609,13 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	p.setAttackImmunity(immunity, totalDamage)
+
+	finalDamage := damageLeft
+	if holding, _ := p.Blocking(); holding && src.ReducedByArmour() {
+		if p.tryShieldBlock(dmg, finalDamage, src) {
+			return 0, false
+		}
+	}
 
 	if a := p.Absorption(); a > 0 {
 		p.SetAbsorption(a - damageLeft)
@@ -688,6 +670,47 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 		p.kill(src)
 	}
 	return totalDamage, true
+}
+
+// tryShieldBlock attempts to block incoming damage using the player's shield.
+func (p *Player) tryShieldBlock(dmg float64, totalDamage float64, src world.DamageSource) bool {
+	if p.BlockingDelay() > 0 || !p.sneaking || p.usingItem {
+		return false
+	}
+	pos := p.Position()
+	if attack, ok := src.(entity.AttackDamageSource); ok && attack.Attacker != nil {
+		diff := pos.Sub(attack.Attacker.Position())
+		diff[1] = 0
+		if diff.Dot(p.Rotation().Vec3()) >= 0 {
+			return false
+		}
+	}
+	if p.tx != nil {
+		p.tx.PlaySound(pos, sound.ShieldBlock{})
+	}
+	p.SetBlockingDelay(250 * time.Millisecond)
+
+	if attack, ok := src.(entity.AttackDamageSource); ok && attack.Attacker != nil {
+		if living, ok := attack.Attacker.(entity.Living); ok {
+			living.KnockBack(pos, 0.5, 0.4)
+		}
+		if other, ok := attack.Attacker.(*Player); ok {
+			held, _ := other.HeldItems()
+			if _, axe := held.Item().(item.Axe); axe {
+				p.SetBlockingDelay(5 * time.Second)
+			}
+		}
+	}
+	if dmg >= 3 {
+		damage := int(math.Ceil(totalDamage))
+		main, off := p.HeldItems()
+		if _, ok := main.Item().(item.Shield); ok {
+			p.SetHeldItems(p.damageItem(main, damage), off)
+		} else {
+			p.SetHeldItems(main, p.damageItem(off, damage))
+		}
+	}
+	return true
 }
 
 // applyTotemEffects is an unexported function that is used to handle totem effects.
@@ -886,7 +909,6 @@ func (p *Player) DeathPosition() (mgl64.Vec3, world.Dimension, bool) {
 
 // kill kills the player, clearing its inventories and resetting it to its base state.
 func (p *Player) kill(src world.DamageSource) {
-	p.stopShielding()
 	viewers, release := p.viewers()
 	for _, viewer := range viewers {
 		viewer.ViewEntityAction(p, entity.DeathAction{})
@@ -1234,22 +1256,18 @@ func (p *Player) StopSprinting() {
 // anything.
 // If the player is sprinting while StartSneaking is called, the sprinting is stopped.
 func (p *Player) StartSneaking() {
-	if p.sneaking {
-		slog.Default().Debug("shield: StartSneaking ignored (already sneaking)", "player", p.Name())
-		return
-	}
 	ctx := event.C(p)
 	if p.Handler().HandleToggleSneak(ctx, true); ctx.Cancelled() {
-		slog.Default().Debug("shield: StartSneaking cancelled by handler", "player", p.Name())
+		return
+	}
+	if p.sneaking {
 		return
 	}
 	if !p.Flying() {
 		p.StopSprinting()
 	}
 	p.sneaking = true
-	slog.Default().Debug("shield: StartSneaking", "player", p.Name())
 	p.updateState()
-	p.updateAutoShield()
 }
 
 // Sneaking checks if the player is currently sneaking.
@@ -1260,19 +1278,15 @@ func (p *Player) Sneaking() bool {
 // StopSneaking makes a player stop sneaking if it currently is. If the player is not sneaking, StopSneaking
 // will not do anything.
 func (p *Player) StopSneaking() {
-	if !p.sneaking {
-		slog.Default().Debug("shield: StopSneaking ignored (already not sneaking)", "player", p.Name())
-		return
-	}
 	ctx := event.C(p)
 	if p.Handler().HandleToggleSneak(ctx, false); ctx.Cancelled() {
-		slog.Default().Debug("shield: StopSneaking cancelled by handler", "player", p.Name())
+		return
+	}
+	if !p.sneaking {
 		return
 	}
 	p.sneaking = false
-	slog.Default().Debug("shield: StopSneaking", "player", p.Name())
 	p.updateState()
-	p.updateAutoShield()
 }
 
 // StartSwimming makes the player start swimming if it is not currently doing so. If the player is sneaking
@@ -1472,8 +1486,8 @@ func (p *Player) Sleep(pos cube.Pos, tx *world.Tx) bool {
 	p.SetRespawnPosition(spawnPos, world.Dimension())
 	p.Messaget(chat.MessageRespawnPointSet)
 
-	p.teleport(bedSleepPosition(footPos, foot.Facing))
-	p.broadcastSleepingReminder(tx)
+	p.teleport(bedSleepPosition(pos, bed.Facing))
+	p.broadcastSleepStart(headPos)
 	p.tryAdvanceNight(tx)
 	p.updateState()
 	return true
@@ -1507,6 +1521,7 @@ func (p *Player) StopSleeping(tx *world.Tx) {
 	p.sleepBed = cube.Pos{}
 	p.sleepSpawn = cube.Pos{}
 	p.sleepDim = nil
+	p.broadcastSleepStop()
 	p.SetMobile()
 	p.teleport(spawn.Vec3Middle())
 	p.updateState()
@@ -1612,6 +1627,22 @@ func bedSleepPosition(pos cube.Pos, facing cube.Direction) mgl64.Vec3 {
 	return centre
 }
 
+func (p *Player) broadcastSleepStart(headPos cube.Pos) {
+	viewers, release := p.viewers()
+	for _, viewer := range viewers {
+		viewer.ViewEntityAction(p, entity.SleepAction{Position: headPos})
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
+}
+
+func (p *Player) broadcastSleepStop() {
+	viewers, release := p.viewers()
+	for _, viewer := range viewers {
+		viewer.ViewEntityAction(p, entity.StopSleepAction{})
+	}
+	releaseBorrowedViewers(p.tx, viewers, release)
+}
+
 // SetInvisible sets the player invisible, so that other players will not be able to see it.
 func (p *Player) SetInvisible() {
 	if p.Invisible() {
@@ -1715,14 +1746,6 @@ func (p *Player) HeldItems() (mainHand, offHand item.Stack) {
 func (p *Player) SetHeldItems(mainHand, offHand item.Stack) {
 	_ = p.inv.SetItem(int(*p.heldSlot), mainHand)
 	_ = p.offHand.SetItem(0, offHand)
-	if p.shielding {
-		if _, ok := p.shieldStack(); !ok {
-			p.stopShielding()
-		}
-	}
-	if p.sneaking || p.shielding {
-		p.updateAutoShield()
-	}
 }
 
 // SetHeldSlot updates the held slot of the player to the slot provided. The
@@ -1748,9 +1771,6 @@ func (p *Player) SetHeldSlot(to int) error {
 	}
 	*p.heldSlot = uint32(to)
 	p.usingItem = false
-	if p.shielding && p.shieldHand == shieldHandMain {
-		p.stopShielding()
-	}
 
 	viewers, release := p.viewers()
 	for _, viewer := range viewers {
@@ -1862,51 +1882,75 @@ func (p *Player) StartFishing(tx *world.Tx, rod item.Stack) bool {
 
 // StopFishing stops fishing for the player and optionally reels in the hook.
 func (p *Player) StopFishing(tx *world.Tx, reel bool) bool {
-	if p.fishingHook == nil {
-		return false
-	}
 	handle := p.fishingHook
-	p.fishingHook = nil
-	ent, ok := handle.Entity(tx)
-	if !ok {
-		_ = handle.Close()
+	if handle == nil {
 		return false
 	}
-	hook, ok := ent.(*entity.Ent)
-	if !ok {
-		_ = ent.Close()
-		return false
+	if damage, ok := p.stopFishingWithTx(tx, handle, reel); ok {
+		return damage
 	}
-	behaviour, ok := hook.Behaviour().(*entity.FishingHookBehaviour)
-	if !ok {
-		_ = hook.Close()
-		return false
+	var (
+		damage bool
+		ran    bool
+	)
+	if p.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+		damage = e.(*Player).StopFishing(tx, reel)
+		ran = true
+	}) && ran {
+		return damage
 	}
-	damage := false
-	if reel {
-		loot, xp, pulled := behaviour.Reel(hook, tx)
-		hookPos := hook.Position()
-		if !loot.Empty() {
-			dropPos := hookPos
-			dropPos[1] = behaviour.SurfaceHeight(tx, cube.PosFromVec3(hookPos))
-			motion := behaviour.PullVelocity(p, dropPos)
-			tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: dropPos, Velocity: motion}, loot))
-			if xp > 0 {
-				for _, orb := range entity.NewExperienceOrbs(dropPos, xp) {
-					tx.AddEntity(orb)
-				}
-			}
-			damage = true
+	return false
+}
+
+func (p *Player) stopFishingWithTx(tx *world.Tx, handle *world.EntityHandle, reel bool) (damage bool, ok bool) {
+	if tx == nil {
+		return false, false
+	}
+	ok = txguard.Run(tx, func() {
+		ent, found := handle.Entity(tx)
+		if !found {
+			_ = handle.Close()
+			p.fishingHook = nil
+			return
 		}
-		if pulled != nil {
-			if setter, ok := pulled.(interface{ SetVelocity(mgl64.Vec3) }); ok {
-				setter.SetVelocity(behaviour.PullVelocity(p, hookPos))
+		hook, found := ent.(*entity.Ent)
+		if !found {
+			_ = ent.Close()
+			p.fishingHook = nil
+			return
+		}
+		behaviour, found := hook.Behaviour().(*entity.FishingHookBehaviour)
+		if !found {
+			_ = hook.Close()
+			p.fishingHook = nil
+			return
+		}
+		if reel {
+			loot, xp, pulled := behaviour.Reel(hook, tx)
+			hookPos := hook.Position()
+			if !loot.Empty() {
+				dropPos := hookPos
+				dropPos[1] = behaviour.SurfaceHeight(tx, cube.PosFromVec3(hookPos))
+				motion := behaviour.PullVelocity(p, dropPos)
+				tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: dropPos, Velocity: motion}, loot))
+				if xp > 0 {
+					for _, orb := range entity.NewExperienceOrbs(dropPos, xp) {
+						tx.AddEntity(orb)
+					}
+				}
 				damage = true
 			}
+			if pulled != nil {
+				if setter, ok := pulled.(interface{ SetVelocity(mgl64.Vec3) }); ok {
+					setter.SetVelocity(behaviour.PullVelocity(p, hookPos))
+					damage = true
+				}
+			}
 		}
-	}
-	_ = hook.Close()
-	return damage
+		_ = hook.Close()
+		p.fishingHook = nil
+	})
+	return
 }
 
 // UseItem uses the item currently held in the player's main hand in the air. Generally, nothing happens,
@@ -1936,13 +1980,6 @@ func (p *Player) UseItem() {
 		}
 		p.usingSince, p.usingItem = time.Now(), true
 		p.updateState()
-		if _, shield := it.(item.Shield); shield {
-			if !p.startShielding(false) {
-				p.usingItem = false
-				p.updateState()
-			}
-			return
-		}
 	}
 	switch usable := it.(type) {
 	case item.Chargeable:
@@ -2030,9 +2067,6 @@ func (p *Player) ReleaseItem() {
 		return
 	}
 	i.Item().(item.Releasable).Release(p, p.tx, useCtx, dur)
-	if _, shield := i.Item().(item.Shield); shield {
-		p.stopShielding()
-	}
 	p.handleUseContext(useCtx)
 	p.updateState()
 }
@@ -2099,30 +2133,40 @@ func (p *Player) UsingItem() bool {
 	return p.usingItem
 }
 
-// Shielding reports if the player currently has an active shield raised.
-func (p *Player) Shielding() bool {
-	if !p.shielding || !p.shieldReady() {
-		return false
+// Blocking returns true if the player is currently holding a shield, and reports if it is actively being used.
+func (p *Player) Blocking() (holding bool, using bool) {
+	main, off := p.HeldItems()
+	_, mainShield := main.Item().(item.Shield)
+	_, offShield := off.Item().(item.Shield)
+	holding = mainShield || offShield
+	if !holding {
+		return false, false
 	}
-	_, ok := p.shieldStack()
-	if !ok {
-		return false
+	if p.BlockingDelay() > 0 || !p.sneaking || p.usingItem {
+		return true, false
 	}
-	return true
+	return true, true
 }
 
-// ShieldDurability returns the current and maximum durability of the active shield.
-func (p *Player) ShieldDurability() (current, max int, ok bool) {
-	stack, ok := p.shieldStack()
-	if !ok {
-		return 0, 0, false
+// BlockingDelay returns the remaining duration before the player can block again.
+func (p *Player) BlockingDelay() time.Duration {
+	if p.blockingDelayTicks <= 0 {
+		return 0
 	}
-	durability := stack.Durability()
-	max = stack.MaxDurability()
-	if durability < 0 || max <= 0 {
-		return 0, 0, false
+	return time.Duration(p.blockingDelayTicks) * time.Second / 20
+}
+
+// SetBlockingDelay updates the shielding cooldown. When a shield is disabled, metadata is refreshed for viewers.
+func (p *Player) SetBlockingDelay(duration time.Duration) {
+	holding, _ := p.Blocking()
+	ticks := int(math.Round(duration.Seconds() * 20))
+	if ticks < 0 {
+		ticks = 0
 	}
-	return durability, max, true
+	p.blockingDelayTicks = ticks
+	if holding {
+		p.updateState()
+	}
 }
 
 // UseItemOnBlock uses the item held in the main hand of the player on a block at the position passed. The
@@ -2795,8 +2839,8 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		}
 	}
 
-	_, submergedBefore := p.tx.Liquid(cube.PosFromVec3(pos.Add(mgl64.Vec3{0, p.EyeHeight()})))
-	_, submergedAfter := p.tx.Liquid(cube.PosFromVec3(res.Add(mgl64.Vec3{0, p.EyeHeight()})))
+	_, submergedBefore := p.liquid(cube.PosFromVec3(pos.Add(mgl64.Vec3{0, p.EyeHeight()})))
+	_, submergedAfter := p.liquid(cube.PosFromVec3(res.Add(mgl64.Vec3{0, p.EyeHeight()})))
 	if submergedBefore != submergedAfter {
 		// Player wasn't either breathing before and no longer isn't, or wasn't breathing before and now is,
 		// so send the updated metadata.
@@ -3091,6 +3135,12 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 			p.Hurt(1, block.FireDamageSource{})
 		}
 	}
+	if p.blockingDelayTicks > 0 {
+		p.blockingDelayTicks--
+		if p.blockingDelayTicks <= 0 {
+			p.SetBlockingDelay(0)
+		}
+	}
 
 	held, _ := p.HeldItems()
 	if current%4 == 0 && p.usingItem {
@@ -3112,8 +3162,6 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	if p.breaking {
 		p.ContinueBreaking(p.breakingFace)
 	}
-
-	p.updateAutoShield()
 
 	for it, ti := range p.cooldowns {
 		if time.Now().After(ti) {
@@ -3247,7 +3295,7 @@ const breathingDistanceBelowEyes = 0.11111111
 // insideOfWater returns true if the player is currently underwater.
 func (p *Player) insideOfWater() bool {
 	pos := cube.PosFromVec3(entity.EyePosition(p))
-	if l, ok := p.tx.Liquid(pos); ok {
+	if l, ok := p.liquid(pos); ok {
 		if _, ok := l.(block.Water); ok {
 			d := float64(l.SpreadDecay()) + 1
 			if l.LiquidFalling() {
@@ -3353,7 +3401,7 @@ func (p *Player) checkEntityInsiders(entityBBox cube.BBox) {
 					}
 				}
 
-				if l, ok := p.tx.Liquid(blockPos); ok {
+				if l, ok := p.liquid(blockPos); ok {
 					if collide, ok := l.(block.EntityInsider); ok {
 						collide.EntityInside(blockPos, p.tx, p)
 					}
@@ -3515,16 +3563,10 @@ func (p *Player) updateState() {
 // have the water breathing or conduit power effect, this returns false.
 // If the player is in creative or spectator mode, Breathing always returns true.
 func (p *Player) Breathing() bool {
-	if !p.GameMode().AllowsTakingDamage() {
-		return true
-	}
-	if _, ok := p.Effect(effect.WaterBreathing); ok {
-		return true
-	}
-	if _, ok := p.Effect(effect.ConduitPower); ok {
-		return true
-	}
-	return p.breathing
+	_, breathing := p.Effect(effect.WaterBreathing)
+	_, conduitPower := p.Effect(effect.ConduitPower)
+	_, submerged := p.liquid(cube.PosFromVec3(entity.EyePosition(p)))
+	return !p.GameMode().AllowsTakingDamage() || !submerged || breathing || conduitPower
 }
 
 // SwingArm makes the player swing its arm.
@@ -3643,216 +3685,6 @@ func (p *Player) addNewItem(ctx *item.UseContext) {
 	}
 }
 
-func (p *Player) shieldReady() bool {
-	return !time.Now().Before(p.shieldDisabledUntil)
-}
-
-func (p *Player) startShielding(offHand bool) bool {
-	p.autoShielding = false
-	if !p.shieldReady() {
-		slog.Default().Debug("shield: startShielding blocked by cooldown", "player", p.Name(), "offHand", offHand, "readyAt", p.shieldDisabledUntil)
-		return false
-	}
-	main, off := p.HeldItems()
-	hand := shieldHandMain
-	if offHand {
-		if _, ok := off.Item().(item.Shield); !ok {
-			slog.Default().Debug("shield: startShielding off-hand has no shield", "player", p.Name(), "item", off.Item())
-			return false
-		}
-		hand = shieldHandOff
-	} else {
-		if _, ok := main.Item().(item.Shield); !ok {
-			slog.Default().Debug("shield: startShielding main hand has no shield", "player", p.Name(), "item", main.Item())
-			return false
-		}
-	}
-	if p.shielding && p.shieldHand == hand {
-		slog.Default().Debug("shield: startShielding skipped, already shielding", "player", p.Name(), "hand", hand.String())
-		return true
-	}
-	slog.Default().Debug("shield: startShielding", "player", p.Name(), "hand", hand.String(), "offHand", offHand, "sneaking", p.sneaking, "usingItem", p.usingItem)
-	p.shielding = true
-	p.shieldHand = hand
-	p.updateState()
-	return true
-}
-
-func (p *Player) stopShielding() {
-	if !p.shielding && p.shieldHand == shieldHandNone {
-		return
-	}
-	currentHand := p.shieldHand
-	slog.Default().Debug("shield: stopShielding", "player", p.Name(), "hand", currentHand.String(), "sneaking", p.sneaking, "usingItem", p.usingItem)
-	if p.shieldHand == shieldHandMain {
-		p.usingItem = false
-	}
-	p.shielding = false
-	p.shieldHand = shieldHandNone
-	p.autoShielding = false
-	p.updateState()
-}
-
-func (p *Player) disableShield(d time.Duration) {
-	p.shieldDisabledUntil = time.Now().Add(d)
-	p.stopShielding()
-}
-
-func (p *Player) updateAutoShield() {
-	if !p.sneaking {
-		if p.autoShielding {
-			slog.Default().Debug("shield: auto release (stopped sneaking)", "player", p.Name(), "hand", p.shieldHand.String())
-			p.stopShielding()
-		}
-		return
-	}
-
-	hand, ok := p.autoShieldHand()
-	if !ok || !p.shieldReady() {
-		if p.autoShielding {
-			slog.Default().Debug("shield: auto release (no shield)", "player", p.Name(), "hand", p.shieldHand.String())
-			p.stopShielding()
-		}
-		return
-	}
-
-	if p.shielding {
-		if p.shieldHand == hand {
-			p.autoShielding = true
-			return
-		}
-		// Manual block is active: don't override unless auto already owned it.
-		if !p.autoShielding {
-			return
-		}
-	}
-
-	slog.Default().Debug("shield: auto start", "player", p.Name(), "hand", hand.String())
-	p.shielding = true
-	p.shieldHand = hand
-	p.autoShielding = true
-	p.updateState()
-}
-
-func (p *Player) autoShieldHand() (shieldHand, bool) {
-	main, off := p.HeldItems()
-	if _, ok := off.Item().(item.Shield); ok {
-		return shieldHandOff, true
-	}
-	if _, ok := main.Item().(item.Shield); ok {
-		return shieldHandMain, true
-	}
-	return shieldHandNone, false
-}
-
-func (p *Player) shieldStack() (item.Stack, bool) {
-	main, off := p.HeldItems()
-	switch p.shieldHand {
-	case shieldHandMain:
-		if _, ok := main.Item().(item.Shield); ok {
-			return main, true
-		}
-	case shieldHandOff:
-		if _, ok := off.Item().(item.Shield); ok {
-			return off, true
-		}
-	}
-	return item.Stack{}, false
-}
-
-func (p *Player) applyShieldDamage(amount int) {
-	if amount <= 0 {
-		return
-	}
-	main, off := p.HeldItems()
-	switch p.shieldHand {
-	case shieldHandMain:
-		main = p.damageItem(main, amount)
-	case shieldHandOff:
-		off = p.damageItem(off, amount)
-	default:
-		return
-	}
-	p.SetHeldItems(main, off)
-}
-
-func (p *Player) tryBlockDamage(dmg float64, src world.DamageSource) bool {
-	if !p.Shielding() {
-		return false
-	}
-	if _, ok := p.shieldStack(); !ok {
-		p.stopShielding()
-		return false
-	}
-
-	var (
-		origin    mgl64.Vec3
-		hasOrigin bool
-	)
-
-	switch s := src.(type) {
-	case entity.AttackDamageSource:
-		if s.Attacker == nil {
-			break
-		}
-		origin = s.Attacker.Position()
-		hasOrigin = true
-	case entity.ProjectileDamageSource:
-		if s.Projectile == nil {
-			break
-		}
-		origin = s.Projectile.Position()
-		hasOrigin = true
-	default:
-		return false
-	}
-
-	if hasOrigin && !p.shieldFacing(origin) {
-		return false
-	}
-
-	shieldDamage := int(math.Max(1, math.Ceil(dmg/2)))
-	p.applyShieldDamage(shieldDamage)
-	if _, ok := p.shieldStack(); !ok {
-		p.stopShielding()
-	}
-	if hasOrigin {
-		p.knockBack(origin, 0.35, 0.1)
-	}
-	p.tx.PlaySound(p.Position(), sound.ShieldBlock{})
-
-	if attackSrc, ok := src.(entity.AttackDamageSource); ok && attackSrc.Attacker != nil {
-		if living, ok := attackSrc.Attacker.(entity.Living); ok {
-			living.KnockBack(p.Position(), 0.4, 0.2)
-		}
-		if other, ok := attackSrc.Attacker.(*Player); ok {
-			held, _ := other.HeldItems()
-			if _, axe := held.Item().(item.Axe); axe {
-				p.disableShield(5 * time.Second)
-			}
-		}
-	}
-	return true
-}
-
-func (p *Player) shieldFacing(source mgl64.Vec3) bool {
-	forward := p.Rotation().Vec3()
-	forward[1] = 0
-	if forward.Len() == 0 {
-		return true
-	}
-	forward = forward.Normalize()
-
-	dir := source.Sub(p.Position())
-	dir[1] = 0
-	if dir.Len() == 0 {
-		return true
-	}
-	dir = dir.Normalize()
-
-	return forward.Dot(dir) > 0
-}
-
 // canReach checks if a player can reach a position with its current range. The range depends on if the player
 // is either survival or creative mode.
 func (p *Player) canReach(pos mgl64.Vec3) bool {
@@ -3895,7 +3727,11 @@ func (p *Player) close(msg string) {
 }
 
 func (p *Player) quit(msg string) {
-	p.StopFishing(p.tx, false)
+	p.handle.ExecWorld(func(tx *world.Tx, e world.Entity) {
+		if pl, ok := e.(*Player); ok {
+			pl.StopFishing(tx, false)
+		}
+	})
 	p.h.HandleQuit(p)
 	p.h = NopHandler{}
 
@@ -3906,7 +3742,9 @@ func (p *Player) quit(msg string) {
 	}
 	// Only remove the player from the world if it's not attached to a session. If it is attached to a session, the
 	// session will remove the player once ready.
-	p.tx.RemoveEntity(p)
+	p.handle.ExecWorld(func(tx *world.Tx, e world.Entity) {
+		tx.RemoveEntity(e)
+	})
 	_ = p.handle.Close()
 }
 
@@ -4064,6 +3902,19 @@ func releaseBorrowedViewers(tx *world.Tx, viewers []world.Viewer, ok bool) {
 	})
 }
 
+func (p *Player) liquid(pos cube.Pos) (world.Liquid, bool) {
+	var (
+		liq   world.Liquid
+		found bool
+	)
+	if !txguard.Run(p.tx, func() {
+		liq, found = p.tx.Liquid(pos)
+	}) {
+		return nil, false
+	}
+	return liq, found
+}
+
 // resendBlocks resends blocks in a world.World at the cube.Pos passed and the block next to it at the cube.Face passed.
 func (p *Player) resendBlocks(pos cube.Pos, faces ...cube.Face) {
 	if p.session() == session.Nop {
@@ -4080,7 +3931,7 @@ func (p *Player) resendBlock(pos cube.Pos) {
 	b := p.tx.Block(pos)
 	p.session().ViewBlockUpdate(pos, b, 0)
 	if _, ok := b.(world.LiquidDisplacer); ok {
-		liq, _ := p.tx.Liquid(pos)
+		liq, _ := p.liquid(pos)
 		p.session().ViewBlockUpdate(pos, liq, 1)
 	}
 }
