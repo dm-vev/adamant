@@ -68,7 +68,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		locale:              conf.Locale,
 		cooldowns:           make(map[string]time.Time),
 		mc:                  &entity.MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
-		tc:                  &entity.TravelComputer{Instantaneous: func() bool { return cfg.GameMode == world.GameModeCreative }},
+		tc:                  &entity.TravelComputer{},
 		heldSlot:            &slot,
 		gameMode:            conf.GameMode,
 		skin:                conf.Skin,
@@ -88,6 +88,9 @@ func (cfg Config) Apply(data *world.EntityData) {
 	}
 	pdata.hunger.foodLevel, pdata.hunger.foodTick, pdata.hunger.exhaustionLevel, pdata.hunger.saturationLevel = conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation
 	pdata.experience.Add(conf.Experience)
+	pdata.tc.Instantaneous = func() bool {
+		return pdata.gameMode == world.GameModeCreative
+	}
 	data.Data = pdata
 }
 
