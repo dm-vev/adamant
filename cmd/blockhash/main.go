@@ -260,6 +260,8 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ")", 2
 	case "Face":
 		return "uint64(" + s + ")", 3
+	case "BedPart":
+		return "uint64(boolByte(" + s + " == BedHead))", 1
 	default:
 		log.Println("Found unhandled field type", "'"+name+"'", "in block", structName+".", "Assuming this field is not included in block states. Please make sure this is correct or add the type to cmd/blockhash.")
 	}

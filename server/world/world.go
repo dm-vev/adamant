@@ -1151,41 +1151,16 @@ func (w *World) releaseViewers(viewers []Viewer) {
 }
 
 // PortalDestination returns the destination World for a portal of a specific
-// Dimension. Calling PortalDestination(Nether) on an Overworld World returns
+// Dimension. If no destination World could be found, the current World is
+// returned. Calling PortalDestination(Nether) on an Overworld World returns
 // Nether, while calling PortalDestination(Nether) on a Nether World will
-// return the Overworld, for instance. If no destination World is available,
-// nil is returned.
+// return the Overworld, for instance.
 func (w *World) PortalDestination(dim Dimension) *World {
 	if w.conf.PortalDestination == nil {
-		return nil
-	}
-	dest := w.conf.PortalDestination(dim)
-	if dest == w {
-		if fallback := w.DefaultWorld(); fallback != w {
-			return fallback
-		}
-		return nil
-	}
-	return dest
-}
-
-// PortalDisabledMessage resolves the message to display when a portal targeting the
-// provided Dimension is disabled. An empty string suppresses any feedback.
-func (w *World) PortalDisabledMessage(dim Dimension) string {
-	if w.conf.PortalDisabledMessage == nil {
-		return ""
-	}
-	return w.conf.PortalDisabledMessage(dim)
-}
-
-// DefaultWorld returns the primary world configured for this server. If no explicit default
-// callback is provided, the world itself is returned so respawn logic always has a destination.
-func (w *World) DefaultWorld() *World {
-	if w.conf.DefaultWorld == nil {
 		return w
 	}
-	if def := w.conf.DefaultWorld(); def != nil {
-		return def
+	if res := w.conf.PortalDestination(dim); res != nil {
+		return res
 	}
 	return w
 }

@@ -6,11 +6,13 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/customblock"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/segmentio/fasthash/fnv1"
 	"image"
 	"math"
 	"math/bits"
 	"math/rand/v2"
 	"slices"
+	"sort"
 )
 
 // Block is a block that may be placed or found in a world. In addition, the block may also be added to an
@@ -118,6 +120,11 @@ func finaliseBlockRegistry() {
 		return
 	}
 	bitSize = bits.Len64(uint64(len(blocks)))
+	sort.SliceStable(blocks, func(i, j int) bool {
+		nameOne, _ := blocks[i].EncodeBlock()
+		nameTwo, _ := blocks[j].EncodeBlock()
+		return nameOne != nameTwo && fnv1.HashString64(nameOne) < fnv1.HashString64(nameTwo)
+	})
 	for rid, b := range blocks {
 		finaliseBlock(uint32(rid), b)
 		if _, hash := b.Hash(); hash != math.MaxUint64 {

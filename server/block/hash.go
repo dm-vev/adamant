@@ -15,7 +15,6 @@ const (
 	hashBarrier
 	hashBasalt
 	hashBeacon
-	hashBed
 	hashBedrock
 	hashBeetrootSeeds
 	hashBlackstone
@@ -128,6 +127,7 @@ const (
 	hashNetherBrickFence
 	hashNetherBricks
 	hashNetherGoldOre
+	hashPortal
 	hashNetherQuartzOre
 	hashNetherSprouts
 	hashNetherWart
@@ -143,7 +143,6 @@ const (
 	hashPodzol
 	hashPolishedBlackstoneBrick
 	hashPolishedTuff
-	hashPortal
 	hashPotato
 	hashPrismarine
 	hashPumpkin
@@ -199,6 +198,7 @@ const (
 	hashWoodFenceGate
 	hashWoodTrapdoor
 	hashWool
+	hashBed
 	hashCustomBlockBase
 )
 
@@ -249,10 +249,6 @@ func (b Basalt) Hash() (uint64, uint64) {
 
 func (Beacon) Hash() (uint64, uint64) {
 	return hashBeacon, 0
-}
-
-func (b Bed) Hash() (uint64, uint64) {
-	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Head))<<2
 }
 
 func (b Bedrock) Hash() (uint64, uint64) {
@@ -498,7 +494,7 @@ func (EndPortal) Hash() (uint64, uint64) {
 }
 
 func (f EndPortalFrame) Hash() (uint64, uint64) {
-	return hashEndPortalFrame, uint64(f.Facing) | uint64(boolByte(f.Eye))<<2
+	return hashEndPortalFrame, uint64(boolByte(f.Eye)) | uint64(f.Facing)<<1
 }
 
 func (e EndRod) Hash() (uint64, uint64) {
@@ -773,10 +769,6 @@ func (PolishedTuff) Hash() (uint64, uint64) {
 	return hashPolishedTuff, 0
 }
 
-func (p Portal) Hash() (uint64, uint64) {
-	return hashPortal, uint64(p.Axis)
-}
-
 func (p Potato) Hash() (uint64, uint64) {
 	return hashPotato, uint64(p.Growth)
 }
@@ -837,8 +829,8 @@ func (r ResinBricks) Hash() (uint64, uint64) {
 	return hashResinBricks, uint64(boolByte(r.Chiseled))
 }
 
-func (r RespawnAnchor) Hash() (uint64, uint64) {
-	return hashRespawnAnchor, uint64(r.Charge)
+func (a RespawnAnchor) Hash() (uint64, uint64) {
+	return hashRespawnAnchor, uint64(a.Charge)
 }
 
 func (s Sand) Hash() (uint64, uint64) {

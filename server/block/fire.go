@@ -188,7 +188,6 @@ func (f Fire) spread(from, to cube.Pos, tx *world.Tx, r *rand.Rand) {
 	spread := Fire{Type: f.Type, Age: min(15, f.Age+r.IntN(5)/4)}
 	tx.SetBlock(to, spread, nil)
 	tx.ScheduleBlockUpdate(to, spread, time.Duration(30+r.IntN(10))*time.Second/20)
-	portal.TryActivateNetherPortal(tx, to)
 }
 
 // EntityInside ...
@@ -270,7 +269,6 @@ func (f Fire) Start(tx *world.Tx, pos cube.Pos) {
 			f := Fire{}
 			tx.SetBlock(pos, f, nil)
 			tx.ScheduleBlockUpdate(pos, f, time.Duration(30+rand.IntN(10))*time.Second/20)
-			portal.TryActivateNetherPortal(tx, pos)
 		}
 	}
 }

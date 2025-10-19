@@ -76,10 +76,6 @@ func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	pos := cube.PosFromVec3(e.Position())
 	blockPos := pos.Side(cube.FaceDown)
 
-	if i.burnsInHazard(e, tx, pos, blockPos) {
-		return nil
-	}
-
 	bl, ok := tx.Block(blockPos).(block.Hopper)
 	if ok && !bl.Powered && bl.CollectCooldown <= 0 {
 		addedCount, err := bl.Inventory(tx, blockPos).AddItem(i.i)
@@ -179,38 +175,6 @@ func (i *ItemBehaviour) collect(e *Ent, collector Collector, tx *world.Tx) {
 	// collector collected.
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, i.i.Grow(-n)))
 	_ = e.CloseIn(tx)
-}
-
-func (i *ItemBehaviour) burnsInHazard(e *Ent, tx *world.Tx, positions ...cube.Pos) bool {
-	for _, p := range positions {
-		if hazardConsumesItems(tx.Block(p), nil) {
-			_ = e.CloseIn(tx)
-			return true
-		}
-		if liquid, ok := tx.Liquid(p); ok && hazardConsumesItems(nil, liquid) {
-			_ = e.CloseIn(tx)
-			return true
-		}
-	}
-	return false
-}
-
-func hazardConsumesItems(bl world.Block, liquid world.Liquid) bool {
-	switch bl.(type) {
-	case block.Fire:
-		return true
-	case block.Lava:
-		return true
-	}
-	if liquid != nil {
-		if _, ok := liquid.(block.Lava); ok {
-			return true
-		}
-		if liquid.LiquidType() == "lava" {
-			return true
-		}
-	}
-	return false
 }
 
 // Collector represents an entity in the world that is able to collect an item, typically an entity such as
