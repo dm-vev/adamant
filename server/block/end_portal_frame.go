@@ -25,7 +25,7 @@ func (f EndPortalFrame) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, t
 		return false
 	}
 
-	f.Facing = user.Rotation().Direction()
+	f.Facing = user.Rotation().Direction().Opposite()
 	place(tx, pos, f, user, ctx)
 	return placed(ctx)
 }
@@ -95,13 +95,33 @@ func tryCreateEndPortal(tx *world.Tx, placed cube.Pos) {
 
 func endPortalRingComplete(tx *world.Tx, origin cube.Pos, dirX, dirZ cube.Direction, axisX, axisZ cube.Pos) bool {
 	rng := tx.Range()
+	orientationSet := false
+	inverted := false
 	for _, offset := range endPortalFrameOffsets {
 		pos := origin.Add(applyEndPortalOffset(offset, axisX, axisZ))
 		if pos.OutOfBounds(rng) {
 			return false
 		}
 		frame, ok := tx.Block(pos).(EndPortalFrame)
-		if !ok || !frame.Eye || frame.Facing != facingForOffset(offset, dirX, dirZ) {
+		if !ok || !frame.Eye {
+			return false
+		}
+		expected := facingForOffset(offset, dirX, dirZ)
+		if !orientationSet {
+			switch frame.Facing {
+			case expected:
+				orientationSet = true
+			case expected.Opposite():
+				orientationSet, inverted = true, true
+			default:
+				return false
+			}
+		}
+		if inverted {
+			if frame.Facing != expected.Opposite() {
+				return false
+			}
+		} else if frame.Facing != expected {
 			return false
 		}
 	}
