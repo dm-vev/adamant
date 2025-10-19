@@ -49,15 +49,26 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 	if !ok {
 		return false
 	}
-	if r.Charge < 4 && usingGlowstone {
-		r.Charge++
-		tx.SetBlock(pos, r, nil)
-		ctx.SubtractFromCount(1)
-		tx.PlaySound(pos.Vec3Centre(), sound.RespawnAnchorCharge{Charge: r.Charge})
-		return true
+	w := tx.World()
+	if usingGlowstone {
+		if w.Dimension() != world.Nether {
+			ctx.SubtractFromCount(1)
+			tx.SetBlock(pos, nil, nil)
+			ExplosionConfig{
+				Size:      5,
+				SpawnFire: true,
+			}.Explode(tx, pos.Vec3Centre())
+			return true
+		}
+		if r.Charge < 4 {
+			r.Charge++
+			tx.SetBlock(pos, r, nil)
+			ctx.SubtractFromCount(1)
+			tx.PlaySound(pos.Vec3Centre(), sound.RespawnAnchorCharge{Charge: r.Charge})
+			return true
+		}
 	}
 
-	w := tx.World()
 	if r.Charge > 0 {
 		if w.Dimension() == world.Nether {
 			previousSpawn := w.PlayerSpawn(sleeper.UUID())
