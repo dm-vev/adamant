@@ -53,7 +53,7 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 		r.Charge++
 		tx.SetBlock(pos, r, nil)
 		ctx.SubtractFromCount(1)
-		tx.PlaySound(pos.Vec3Centre(), sound.BlockPlace{Block: Glowstone{}})
+		tx.PlaySound(pos.Vec3Centre(), sound.RespawnAnchorCharge{Charge: r.Charge})
 		return true
 	}
 
@@ -116,7 +116,7 @@ func (r RespawnAnchor) SafeSpawn(p cube.Pos, tx *world.Tx) (cube.Pos, bool) {
 // RespawnOn ...
 func (r RespawnAnchor) RespawnOn(pos cube.Pos, u item.User, w *world.Tx) {
 	w.SetBlock(pos, RespawnAnchor{Charge: r.Charge - 1}, nil)
-	w.PlaySound(pos.Vec3(), sound.BlockBreaking{Block: Glowstone{}})
+	w.PlaySound(pos.Vec3(), sound.RespawnAnchorDeplete{Charge: r.Charge - 1})
 }
 
 // respawnSleeper represents a user able to interact with respawn anchors.
