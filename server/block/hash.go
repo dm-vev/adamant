@@ -283,6 +283,12 @@ func (Bookshelf) Hash() (uint64, uint64) {
 	return hashBookshelf, 0
 }
 
+func (b Bed) Hash() (uint64, uint64) {
+	// The bed colour is stored on the block entity, so the runtime ID only depends on
+	// the facing, part and occupied properties.
+	return hashBed, uint64(b.Facing) | uint64(b.Part)<<2 | uint64(boolByte(b.Occupied))<<3
+}
+
 func (b BrewingStand) Hash() (uint64, uint64) {
 	return hashBrewingStand, uint64(boolByte(b.LeftSlot)) | uint64(boolByte(b.MiddleSlot))<<1 | uint64(boolByte(b.RightSlot))<<2
 }
@@ -701,6 +707,10 @@ func (n NetherBricks) Hash() (uint64, uint64) {
 
 func (NetherGoldOre) Hash() (uint64, uint64) {
 	return hashNetherGoldOre, 0
+}
+
+func (p Portal) Hash() (uint64, uint64) {
+	return hashPortal, uint64(p.Axis)
 }
 
 func (NetherQuartzOre) Hash() (uint64, uint64) {

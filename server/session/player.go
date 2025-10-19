@@ -1000,25 +1000,48 @@ func stackFromItem(it item.Stack) protocol.ItemStack {
 
 // stackToItem converts a network ItemStack representation back to an item.Stack.
 func stackToItem(it protocol.ItemStack) item.Stack {
-	t, ok := world.ItemByRuntimeID(it.NetworkID, int16(it.MetadataValue))
-	if !ok {
-		t = block.Air{}
-	}
-	if it.BlockRuntimeID > 0 {
-		// It shouldn't matter if it (for whatever reason) wasn't able to get the block runtime ID,
-		// since on the next line, we assert that the block is an item. If it didn't succeed, it'll
-		// return air anyway.
-		b, _ := world.BlockByRuntimeID(uint32(it.BlockRuntimeID))
-		if t, ok = b.(world.Item); !ok {
-			t = block.Air{}
+    t, ok := world.ItemByRuntimeID(it.NetworkID, int16(it.MetadataValue))
+    if !ok {
+        t = block.Air{}
+    }
+    if it.BlockRuntimeID > 0 {
+        // It shouldn't matter if it (for whatever reason) wasn't able to get the block runtime ID,
+        // since on the next line, we assert that the block is an item. If it didn't succeed, it'll
+        // return air anyway.
+        b, _ := world.BlockByRuntimeID(uint32(it.BlockRuntimeID))
+        if t, ok = b.(world.Item); !ok {
+            t = block.Air{}
+        } else {
+            // Preserve the original item metadata (e.g. coloured beds) by resolving the
+            // item by its name together with the network-provided metadata value.
+            // Some items (like beds) encode colour in the item meta rather than block state/NBT.
+            if name, _ := t.EncodeItem(); it.MetadataValue != 0 {
+                if withMeta, ok := world.ItemByName(name, int16(it.MetadataValue)); ok {
+                    t = withMeta
+                }
+            }
+        }
+    }
+	data := it.NBTData
+	if tag, ok := data["tag"].(map[string]any); ok {
+		merged := make(map[string]any, len(tag)+len(data)-1)
+		for k, v := range tag {
+			merged[k] = v
 		}
+		for k, v := range data {
+			if k == "tag" {
+				continue
+			}
+			merged[k] = v
+		}
+		data = merged
 	}
 	//noinspection SpellCheckingInspection
-	if nbter, ok := t.(world.NBTer); ok && len(it.NBTData) != 0 {
-		t = nbter.DecodeNBT(it.NBTData).(world.Item)
+	if nbter, ok := t.(world.NBTer); ok && len(data) != 0 {
+		t = nbter.DecodeNBT(data).(world.Item)
 	}
 	s := item.NewStack(t, int(it.Count))
-	return nbtconv.Item(it.NBTData, &s)
+	return nbtconv.Item(data, &s)
 }
 
 // instanceFromItem converts an item.Stack to its network ItemInstance representation.

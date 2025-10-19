@@ -1,9 +1,9 @@
 package session
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
@@ -45,6 +45,11 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if sn, ok := e.(sneaker); ok && sn.Sneaking() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSneaking)
+		if b, ok := e.(blocker); ok {
+			if _, using := b.Blocking(); using {
+				m.SetFlag(protocol.EntityDataKeyFlagsTwo, protocol.EntityDataFlagBlocking%64)
+			}
+		}
 	}
 	if sp, ok := e.(sprinter); ok && sp.Sprinting() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSprinting)
@@ -76,13 +81,6 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	}
 	if u, ok := e.(using); ok && u.UsingItem() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagUsingItem)
-	}
-	if sh, ok := e.(shieldBearer); ok && sh.Shielding() {
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlocking)
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlockedUsingShield)
-		if cur, max, ok := sh.ShieldDurability(); ok && max > 0 && cur*2 <= max {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBlockedUsingDamagedShield)
-		}
 	}
 	if sl, ok := e.(sleeper); ok && sl.Sleeping() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSleeping)
@@ -212,6 +210,10 @@ type glider interface {
 	Gliding() bool
 }
 
+type blocker interface {
+	Blocking() (bool, bool)
+}
+
 type breather interface {
 	Breathing() bool
 	AirSupply() time.Duration
@@ -265,11 +267,6 @@ type effectBearer interface {
 
 type using interface {
 	UsingItem() bool
-}
-
-type shieldBearer interface {
-	Shielding() bool
-	ShieldDurability() (current, max int, ok bool)
 }
 
 type sleeper interface {

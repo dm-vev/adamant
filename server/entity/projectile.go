@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"iter"
 	"math"
@@ -111,6 +112,10 @@ type ProjectileBehaviour struct {
 	collided     bool
 }
 
+type blocker interface {
+	Blocking() (bool, bool)
+}
+
 // Owner returns the owner of the projectile.
 func (lt *ProjectileBehaviour) Owner() *world.EntityHandle {
 	return lt.conf.Owner
@@ -168,8 +173,19 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 	switch r := result.(type) {
 	case trace.EntityResult:
-		if l, ok := r.Entity().(Living); ok && lt.conf.Damage >= 0 {
-			lt.hitEntity(l, e, vel)
+		if l, ok := r.Entity().(Living); ok {
+			if blocker, ok := l.(blocker); ok {
+				if holding, using := blocker.Blocking(); holding && using {
+					tx.PlaySound(l.Position(), sound.ShieldBlock{})
+					m.vel = vel.Mul(-0.25)
+					m.dvel = m.vel.Sub(vel)
+					lt.close = false
+					return m
+				}
+			}
+			if lt.conf.Damage >= 0 {
+				lt.hitEntity(l, e, vel)
+			}
 		} else if d, ok := r.Entity().(Destructible); ok {
 			owner, _ := lt.conf.Owner.Entity(tx)
 			src := ProjectileDamageSource{Projectile: e, Owner: owner}

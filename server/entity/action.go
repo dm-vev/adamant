@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"time"
 )
@@ -59,6 +60,17 @@ type FishHookBiteAction struct{ action }
 
 // FishHookTeaseAction triggers the tease animation when a fish is attracted to the hook.
 type FishHookTeaseAction struct{ action }
+
+// SleepAction notifies viewers that an entity started sleeping at the given bed position.
+type SleepAction struct {
+	// Position is the position of the bed block the entity is lying in.
+	Position cube.Pos
+
+	action
+}
+
+// StopSleepAction notifies viewers that an entity stopped sleeping.
+type StopSleepAction struct{ action }
 
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.

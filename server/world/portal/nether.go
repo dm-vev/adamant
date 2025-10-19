@@ -61,23 +61,6 @@ func FindOrCreateNetherPortal(tx *world.Tx, pos cube.Pos, radius int) (Nether, b
 	return CreateNetherPortal(tx, pos)
 }
 
-// TryActivateNetherPortal attempts to activate a Nether portal using the block at the provided position as the
-// starting point. It returns true if a portal was successfully activated.
-func TryActivateNetherPortal(tx *world.Tx, pos cube.Pos) bool {
-	for _, face := range cube.Faces() {
-		name, _ := tx.Block(pos.Side(face)).EncodeBlock()
-		if name == "minecraft:obsidian" {
-			if portal, ok := NetherPortalFromPos(tx, pos); ok && portal.Framed() {
-				if !portal.Activated() {
-					portal.Activate()
-				}
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // portalBlock represents a block that can be used as a portal to travel between dimensions.
 type portalBlock interface {
 	// Portal returns the dimension that the portal leads to.
