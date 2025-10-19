@@ -3511,10 +3511,16 @@ func (p *Player) updateState() {
 // have the water breathing or conduit power effect, this returns false.
 // If the player is in creative or spectator mode, Breathing always returns true.
 func (p *Player) Breathing() bool {
-	_, breathing := p.Effect(effect.WaterBreathing)
-	_, conduitPower := p.Effect(effect.ConduitPower)
-	_, submerged := p.tx.Liquid(cube.PosFromVec3(entity.EyePosition(p)))
-	return !p.GameMode().AllowsTakingDamage() || !submerged || breathing || conduitPower
+	if !p.GameMode().AllowsTakingDamage() {
+		return true
+	}
+	if _, ok := p.Effect(effect.WaterBreathing); ok {
+		return true
+	}
+	if _, ok := p.Effect(effect.ConduitPower); ok {
+		return true
+	}
+	return p.breathing
 }
 
 // SwingArm makes the player swing its arm.
