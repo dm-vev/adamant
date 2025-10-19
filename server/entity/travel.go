@@ -110,9 +110,9 @@ func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *w
 	sourceDimension, targetDimension := source.Dimension(), destination.Dimension()
 	pos := cube.PosFromVec3(e.Position())
 	if sourceDimension == world.Overworld {
-		pos = cube.Pos{pos.X() / 8, pos.Y() + sourceDimension.Range().Min(), pos.Z() / 8}
+		pos = cube.Pos{pos.X() / 8, pos.Y(), pos.Z() / 8}
 	} else if sourceDimension == world.Nether {
-		pos = cube.Pos{pos.X() * 8, pos.Y() - targetDimension.Range().Min(), pos.Z() * 8}
+		pos = cube.Pos{pos.X() * 8, pos.Y(), pos.Z() * 8}
 	}
 
 	t.mu.Lock()
