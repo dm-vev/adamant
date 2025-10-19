@@ -107,7 +107,7 @@ func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *w
 	if destination == nil {
 		return
 	}
-	sourceDimension, targetDimension := source.Dimension(), destination.Dimension()
+	sourceDimension := source.Dimension()
 	pos := cube.PosFromVec3(e.Position())
 	if sourceDimension == world.Overworld {
 		pos = cube.Pos{pos.X() / 8, pos.Y(), pos.Z() / 8}
