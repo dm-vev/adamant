@@ -123,6 +123,17 @@ type Config struct {
 	// may be added to the Server's worlds. If no entity types are registered,
 	// Entities will be set to entity.DefaultRegistry.
 	Entities world.EntityRegistry
+	// DisableNether disables creation of the Nether world and prevents Nether portals
+	// from transporting players. The portal blocks can still be lit.
+	DisableNether bool
+	// DisableEnd disables creation of the End world and prevents End portals from
+	// transporting players. The portal blocks can still be lit.
+	DisableEnd bool
+	// PortalDisabledMessage controls the chat message players receive when they try to
+	// enter a portal that leads to a disabled dimension. If the string contains a
+	// formatting directive such as %s, the name of the target dimension is passed as the
+	// first argument.
+	PortalDisabledMessage string
 }
 
 // New creates a Server using fields of conf. The Server's worlds are created
@@ -198,12 +209,31 @@ func (conf Config) New() *Server {
 	recipe_registerVanilla()
 
 	srv.world = srv.createWorld(world.Overworld, &srv.nether, &srv.end)
-	srv.nether = srv.createWorld(world.Nether, &srv.world, &srv.end)
-	srv.end = srv.createWorld(world.End, &srv.nether, &srv.world)
+	if !conf.DisableNether {
+		srv.nether = srv.createWorld(world.Nether, &srv.world, &srv.end)
+	} else {
+		conf.Log.Info("Skipping Nether load: dimension disabled")
+	}
+	if !conf.DisableEnd {
+		srv.end = srv.createWorld(world.End, &srv.nether, &srv.world)
+	} else {
+		conf.Log.Info("Skipping End load: dimension disabled")
+	}
 
 	srv.checkNetIsolation()
 
 	return srv
+}
+
+func (conf Config) portalDisabledMessage(dim world.Dimension) string {
+	if conf.PortalDisabledMessage == "" {
+		return ""
+	}
+	name := fmt.Sprint(dim)
+	if strings.Contains(conf.PortalDisabledMessage, "%") {
+		return fmt.Sprintf(conf.PortalDisabledMessage, name)
+	}
+	return fmt.Sprintf("%s (%s)", conf.PortalDisabledMessage, name)
 }
 
 // UserConfig is the user configuration for a Dragonfly server. It holds
@@ -249,6 +279,15 @@ type UserConfig struct {
 		// GeneratorQueueSize determines how many chunk generation jobs can wait
 		// for a worker. Set to 0 to use an automatically chosen size.
 		GeneratorQueueSize int
+		// DisableNether disables the Nether dimension entirely. Nether portals can still be activated
+		// but will not teleport entities.
+		DisableNether bool
+		// DisableEnd disables the End dimension entirely. End portals can still be activated but will
+		// not teleport entities.
+		DisableEnd bool
+		// PortalDisabledMessage controls the chat message that is sent when a player enters a portal
+		// leading to a disabled dimension. The dimension name is passed as the first formatting argument.
+		PortalDisabledMessage string
 	}
 	Players struct {
 		// MaxCount is the maximum amount of players allowed to join the server
@@ -305,6 +344,9 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		OverworldSeed:           uc.World.Seed,
 		GeneratorWorkers:        uc.World.GeneratorWorkers,
 		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
+		DisableNether:           uc.World.DisableNether,
+		DisableEnd:              uc.World.DisableEnd,
+		PortalDisabledMessage:   uc.World.PortalDisabledMessage,
 	}
 	whitelistFile := strings.TrimSpace(uc.Whitelist.File)
 	if whitelistFile == "" {
@@ -382,6 +424,9 @@ func DefaultConfig() UserConfig {
 	c.World.SaveData = true
 	c.World.Folder = "world"
 	c.World.Seed = 0
+	c.World.DisableNether = false
+	c.World.DisableEnd = false
+	c.World.PortalDisabledMessage = "<red>The %s is disabled on this server.</red>"
 	c.Players.MaximumChunkRadius = 32
 	c.Players.SaveData = true
 	c.Players.Folder = "players"

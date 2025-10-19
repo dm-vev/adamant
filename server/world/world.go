@@ -1156,13 +1156,22 @@ func (w *World) releaseViewers(viewers []Viewer) {
 // Nether, while calling PortalDestination(Nether) on a Nether World will
 // return the Overworld, for instance.
 func (w *World) PortalDestination(dim Dimension) *World {
-	if w.conf.PortalDestination == nil {
+	if dim == w.conf.Dim {
 		return w
 	}
-	if res := w.conf.PortalDestination(dim); res != nil {
-		return res
+	if w.conf.PortalDestination == nil {
+		return nil
 	}
-	return w
+	return w.conf.PortalDestination(dim)
+}
+
+// PortalDisabledMessage resolves the message to display when a portal targeting the
+// provided Dimension is disabled. An empty string suppresses any feedback.
+func (w *World) PortalDisabledMessage(dim Dimension) string {
+	if w.conf.PortalDisabledMessage == nil {
+		return ""
+	}
+	return w.conf.PortalDisabledMessage(dim)
 }
 
 // Save saves the World to the provider.

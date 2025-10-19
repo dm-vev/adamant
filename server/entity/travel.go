@@ -21,6 +21,8 @@ type TravelComputer struct {
 	awaitingTravel bool
 	travelling     bool
 	timedOut       bool
+	deniedDim      world.Dimension
+	deniedActive   bool
 }
 
 // Traveller represents a world.Entity that can travel between dimensions.
@@ -72,6 +74,7 @@ func (t *TravelComputer) TickTravelling(travel Traveller, tx *world.Tx) {
 			return
 		}
 		t.timedOut, t.awaitingTravel = false, false
+		t.deniedActive = false
 		return
 	}
 
@@ -81,9 +84,16 @@ func (t *TravelComputer) TickTravelling(travel Traveller, tx *world.Tx) {
 			// Timed out, we can't travel through Nether portals.
 			return
 		}
+		dest := tx.World().PortalDestination(world.Nether)
+		if dest == nil {
+			t.notifyDenied(travel, tx, world.Nether)
+			t.awaitingTravel = false
+			return
+		}
+		t.deniedActive = false
 		if t.Instantaneous() || (t.awaitingTravel && time.Since(t.start) >= time.Second*4) {
 			t.mu.Unlock()
-			t.Travel(travel, tx.World(), tx.World().PortalDestination(world.Nether))
+			t.Travel(travel, tx.World(), dest)
 			t.mu.Lock()
 		} else if !t.awaitingTravel {
 			t.start, t.awaitingTravel = time.Now(), true
@@ -94,6 +104,9 @@ func (t *TravelComputer) TickTravelling(travel Traveller, tx *world.Tx) {
 // Travel moves the player to the given Nether or Overworld world and translates the player's current position based
 // on the source world.
 func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *world.World) {
+	if destination == nil {
+		return
+	}
 	sourceDimension, targetDimension := source.Dimension(), destination.Dimension()
 	pos := cube.PosFromVec3(e.Position())
 	if sourceDimension == world.Overworld {
@@ -105,6 +118,7 @@ func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *w
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.travelling, t.timedOut, t.awaitingTravel = true, true, false
+	t.deniedActive = false
 
 	go func() {
 		spawn := pos.Vec3Middle()
@@ -128,4 +142,15 @@ func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *w
 		defer t.mu.Unlock()
 		t.travelling = false
 	}()
+}
+
+func (t *TravelComputer) notifyDenied(travel Traveller, tx *world.Tx, dim world.Dimension) {
+	if msg := tx.World().PortalDisabledMessage(dim); msg != "" {
+		if m, ok := travel.(interface{ Message(...any) }); ok {
+			if !t.deniedActive || t.deniedDim != dim {
+				t.deniedActive, t.deniedDim = true, dim
+				m.Message(msg)
+			}
+		}
+	}
 }
