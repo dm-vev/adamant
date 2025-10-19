@@ -1151,14 +1151,11 @@ func (w *World) releaseViewers(viewers []Viewer) {
 }
 
 // PortalDestination returns the destination World for a portal of a specific
-// Dimension. If no destination World could be found, the current World is
-// returned. Calling PortalDestination(Nether) on an Overworld World returns
+// Dimension. Calling PortalDestination(Nether) on an Overworld World returns
 // Nether, while calling PortalDestination(Nether) on a Nether World will
-// return the Overworld, for instance.
+// return the Overworld, for instance. If no destination World is available,
+// nil is returned.
 func (w *World) PortalDestination(dim Dimension) *World {
-	if dim == w.conf.Dim {
-		return w
-	}
 	if w.conf.PortalDestination == nil {
 		return nil
 	}
