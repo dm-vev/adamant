@@ -8,6 +8,17 @@ import (
 	"log/slog"
 )
 
+func closeWorlds(tb testing.TB, srv *Server) {
+	tb.Helper()
+	tb.Cleanup(func() {
+		for _, w := range srv.dimensions {
+			if w != nil {
+				_ = w.Close()
+			}
+		}
+	})
+}
+
 func TestServerDefaultDimensionFallback(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	conf := Config{
@@ -19,13 +30,7 @@ func TestServerDefaultDimensionFallback(t *testing.T) {
 	}
 
 	srv := conf.New()
-	t.Cleanup(func() {
-		for _, w := range srv.dimensions {
-			if w != nil {
-				_ = w.Close()
-			}
-		}
-	})
+	closeWorlds(t, srv)
 
 	if got := srv.World().Dimension(); got != world.Nether {
 		t.Fatalf("expected default dimension nether, got %v", got)
@@ -44,4 +49,48 @@ func TestServerDefaultDimensionFallback(t *testing.T) {
 	if got := srv.dimension(world.End); got.Dimension() != world.Nether {
 		t.Fatalf("expected end lookup to fall back to nether, got %v", got.Dimension())
 	}
+}
+
+func TestNetherPortalDestinationOverworld(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	conf := Config{
+		Log:                     log,
+		DisableResourceBuilding: true,
+	}
+
+	srv := conf.New()
+	closeWorlds(t, srv)
+
+	if srv.Nether() == nil {
+		t.Fatalf("expected nether dimension to load")
+	}
+	if dest := srv.Nether().PortalDestination(world.Nether); dest == nil || dest.Dimension() != world.Overworld {
+		t.Fatalf("expected nether portal to lead to overworld, got %v", dimensionName(dest))
+	}
+}
+
+func TestNetherPortalDestinationDisabledOverworld(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	conf := Config{
+		Log:                     log,
+		DisableResourceBuilding: true,
+		DisableOverworld:        true,
+	}
+
+	srv := conf.New()
+	closeWorlds(t, srv)
+
+	if srv.Nether() == nil {
+		t.Fatalf("expected nether dimension to load")
+	}
+	if dest := srv.Nether().PortalDestination(world.Nether); dest != nil {
+		t.Fatalf("expected nether portal destination to be nil when overworld disabled, got %v", dimensionName(dest))
+	}
+}
+
+func dimensionName(w *world.World) any {
+	if w == nil {
+		return nil
+	}
+	return w.Dimension()
 }

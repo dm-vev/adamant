@@ -643,6 +643,7 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 	logger.Debug("Loading dimension...")
 
 	gen := srv.conf.Generator(dim)
+	sourceDim := dim
 	conf := world.Config{
 		Log:                logger,
 		Dim:                dim,
@@ -654,17 +655,28 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 		ReadOnly:           srv.conf.ReadOnlyWorld,
 		Entities:           srv.conf.Entities,
 		PortalDestination: func(target world.Dimension) *world.World {
-			if srv.conf.dimensionDisabled(target) {
+			resolved := target
+			if target == world.Nether && sourceDim == world.Nether {
+				resolved = world.Overworld
+			}
+			if srv.conf.dimensionDisabled(resolved) {
 				return nil
 			}
-			if dest, ok := srv.dimensions[target]; ok && dest != nil {
+			if dest, ok := srv.dimensions[resolved]; ok && dest != nil {
 				return dest
+			}
+			if srv.world != nil && srv.world.Dimension() == resolved {
+				return srv.world
 			}
 			return nil
 		},
 		PortalDisabledMessage: func(target world.Dimension) string {
-			if srv.conf.dimensionDisabled(target) {
-				return srv.conf.portalDisabledMessage(target)
+			resolved := target
+			if target == world.Nether && sourceDim == world.Nether {
+				resolved = world.Overworld
+			}
+			if srv.conf.dimensionDisabled(resolved) {
+				return srv.conf.portalDisabledMessage(resolved)
 			}
 			return ""
 		},
