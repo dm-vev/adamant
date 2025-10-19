@@ -1159,7 +1159,14 @@ func (w *World) PortalDestination(dim Dimension) *World {
 	if w.conf.PortalDestination == nil {
 		return nil
 	}
-	return w.conf.PortalDestination(dim)
+	dest := w.conf.PortalDestination(dim)
+	if dest == w {
+		if fallback := w.DefaultWorld(); fallback != w {
+			return fallback
+		}
+		return nil
+	}
+	return dest
 }
 
 // PortalDisabledMessage resolves the message to display when a portal targeting the
