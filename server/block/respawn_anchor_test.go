@@ -85,6 +85,35 @@ func TestRespawnAnchorChargesInNether(t *testing.T) {
 	}
 }
 
+func TestRespawnAnchorSafeSpawnSkipsHazards(t *testing.T) {
+	conf := world.Config{Dim: world.Nether}
+	w := conf.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	var (
+		spawn cube.Pos
+		ok    bool
+	)
+
+	base := cube.Pos{}
+	anchor := RespawnAnchor{Charge: 1}
+
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(base, anchor, nil)
+		tx.SetLiquid(base.Add(cube.Pos{0, 1, 0}), Lava{}.WithDepth(8, false))
+		tx.SetBlock(base.Add(cube.Pos{-1, 0, 0}), Stone{}, nil)
+
+		spawn, ok = anchor.SafeSpawn(base, tx)
+	})
+
+	if !ok {
+		t.Fatalf("expected to find a safe spawn position")
+	}
+	if spawn != (cube.Pos{-1, 1, 0}) {
+		t.Fatalf("expected safe spawn at {-1,1,0}, got %v", spawn)
+	}
+}
+
 type fakeRespawnSleeper struct {
 	main item.Stack
 	msg  []chat.Translation

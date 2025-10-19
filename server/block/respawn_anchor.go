@@ -105,23 +105,54 @@ func (r RespawnAnchor) CanRespawnOn() bool {
 
 // SafeSpawn ...
 func (r RespawnAnchor) SafeSpawn(p cube.Pos, tx *world.Tx) (cube.Pos, bool) {
-	xOffset := []cube.Pos{{0, 0, -1}, {-1, 0, 0}, {1, 0, 0}, {0, 0, 1}, {-1, 0, -1}, {1, 0, -1}, {-1, 0, 1}, {1, 0, 1}}
-	yOffset := []cube.Pos{{0, -1, 0}, {0, 0, 0}, {0, 1, 0}}
-
-	for _, y := range yOffset {
-		for _, x := range xOffset {
-			newOffset := y.Add(x)
-			if _, ok := tx.Block(p.Add(newOffset)).(Air); ok {
-				return p.Add(newOffset), true
-			}
+	for _, offset := range respawnAnchorOffsets {
+		candidate := p.Add(offset)
+		if respawnAnchorSafe(candidate, tx) {
+			return candidate, true
 		}
 	}
 
-	if _, ok := tx.Block(p.Add(cube.Pos{0, 1, 0})).(Air); ok {
-		return p.Add(cube.Pos{0, 1, 0}), true
+	return cube.Pos{}, false
+}
+
+var respawnAnchorOffsets = []cube.Pos{
+	{0, 1, 0},
+	{-1, 1, 0}, {1, 1, 0}, {0, 1, -1}, {0, 1, 1},
+	{-1, 1, -1}, {1, 1, -1}, {-1, 1, 1}, {1, 1, 1},
+	{-1, 0, 0}, {1, 0, 0}, {0, 0, -1}, {0, 0, 1},
+	{-1, 0, -1}, {1, 0, -1}, {-1, 0, 1}, {1, 0, 1},
+}
+
+func respawnAnchorSafe(pos cube.Pos, tx *world.Tx) bool {
+	if pos.OutOfBounds(tx.Range()) {
+		return false
 	}
 
-	return cube.Pos{}, false
+	head := pos.Add(cube.Pos{0, 1, 0})
+	if head.OutOfBounds(tx.Range()) {
+		return false
+	}
+
+	if len(tx.Block(pos).Model().BBox(pos, tx)) != 0 {
+		return false
+	}
+	if len(tx.Block(head).Model().BBox(head, tx)) != 0 {
+		return false
+	}
+
+	if _, ok := tx.Liquid(pos); ok {
+		return false
+	}
+	if _, ok := tx.Liquid(head); ok {
+		return false
+	}
+
+	below := pos.Side(cube.FaceDown)
+	if below.OutOfBounds(tx.Range()) {
+		return false
+	}
+
+	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
 }
 
 // RespawnOn ...
