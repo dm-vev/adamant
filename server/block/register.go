@@ -159,6 +159,7 @@ func init() {
 	registerAll(allDoubleTallGrass())
 	registerAll(allEndRods())
 	registerAll(allEnderChests())
+	registerAll(allShulkerBoxes())
 	registerAll(allEndPortalFrames())
 	registerAll(allFarmland())
 	registerAll(allFence())
@@ -279,6 +280,9 @@ func init() {
 	world.RegisterItem(EndRod{})
 	world.RegisterItem(EndStone{})
 	world.RegisterItem(EnderChest{})
+	for _, t := range ShulkerBoxTypes() {
+		world.RegisterItem(ShulkerBox{Type: t})
+	}
 	world.RegisterItem(Farmland{})
 	world.RegisterItem(FletchingTable{})
 	world.RegisterItem(Furnace{})
