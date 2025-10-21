@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	stateClosed = iota
-	stateOpening
-	stateOpened
-	stateClosing
+	StateClosed = iota
+	StateOpening
+	StateOpened
+	StateClosing
 )
 
 // ShulkerBox is a dye-able block that stores items. Unlike other blocks, it keeps its contents when broken.
@@ -38,9 +38,9 @@ type ShulkerBox struct {
 	inventory *inventory.Inventory
 	viewerMu  *sync.RWMutex
 	viewers   map[ContainerViewer]struct{}
-	// progress is the openness of the shulker box opening or closing. It is an integer between 0 and 10.
+	// progress is the openness of the shulker box opening or closing. It is a float between 0 and 1.
 	progress *atomic.Int32
-	// animationStatus is the current openness state of the shulker box (whether it's opened, closing, etc.).
+	// animationStatus is the current openness state of the shulker box (whether its opened, closing, etc.).
 	animationStatus *atomic.Int32
 }
 
@@ -67,13 +67,9 @@ func NewShulkerBox() ShulkerBox {
 	return s
 }
 
-// Model returns the block model of the shulker box.
+// Model ...
 func (s ShulkerBox) Model() world.BlockModel {
-	var progress int32
-	if s.progress != nil {
-		progress = s.progress.Load()
-	}
-	return model.Shulker{Facing: s.Facing, Progress: progress}
+	return model.Shulker{Facing: s.Facing, Progress: s.progress.Load()}
 }
 
 // WithName returns the shulker box after applying a specific name to the block.
@@ -82,36 +78,8 @@ func (s ShulkerBox) WithName(a ...any) world.Item {
 	return s
 }
 
-// ensureInit ensures the shulker box has its runtime fields initialised and, if not, replaces the block in the world with an
-// initialised version and returns it.
-func (s ShulkerBox) ensureInit(tx *world.Tx, pos cube.Pos) ShulkerBox {
-	if s.inventory != nil && s.viewerMu != nil && s.viewers != nil && s.progress != nil && s.animationStatus != nil {
-		return s
-	}
-
-	ns := NewShulkerBox()
-	ns.Type, ns.Facing, ns.CustomName = s.Type, s.Facing, s.CustomName
-
-	if s.inventory != nil {
-		for slot, stack := range s.inventory.Slots() {
-			_ = ns.inventory.SetItem(slot, stack)
-		}
-	}
-	if s.progress != nil {
-		ns.progress.Store(s.progress.Load())
-	}
-	if s.animationStatus != nil {
-		ns.animationStatus.Store(s.animationStatus.Load())
-	}
-
-	tx.SetBlock(pos, ns, nil)
-	return ns
-}
-
 // AddViewer adds a viewer to the shulker box, so that it is updated whenever the inventory of the shulker box is changed.
 func (s ShulkerBox) AddViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
-	s = s.ensureInit(tx, pos)
-
 	s.viewerMu.Lock()
 	defer s.viewerMu.Unlock()
 	if len(s.viewers) == 0 {
@@ -123,8 +91,6 @@ func (s ShulkerBox) AddViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
 
 // RemoveViewer removes a viewer from the shulker box, so that slot updates in the inventory are no longer sent to it.
 func (s ShulkerBox) RemoveViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
-	s = s.ensureInit(tx, pos)
-
 	s.viewerMu.Lock()
 	defer s.viewerMu.Unlock()
 	if len(s.viewers) == 0 {
@@ -137,43 +103,34 @@ func (s ShulkerBox) RemoveViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) 
 }
 
 // Inventory returns the inventory of the shulker box.
-func (s ShulkerBox) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
-	s = s.ensureInit(tx, pos)
+func (s ShulkerBox) Inventory(*world.Tx, cube.Pos) *inventory.Inventory {
 	return s.inventory
 }
 
-// Activate activates the shulker box, opening its inventory if possible.
+// Activate ...
 func (s ShulkerBox) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
-	s = s.ensureInit(tx, pos)
 	if opener, ok := u.(ContainerOpener); ok {
 		if d, ok := tx.Block(pos.Side(s.Facing)).(LightDiffuser); ok && d.LightDiffusionLevel() <= 2 {
 			opener.OpenBlockContainer(pos, tx)
 		}
 		return true
 	}
+
 	return false
 }
 
-// UseOnBlock handles placing the shulker box in the world.
+// UseOnBlock ...
 func (s ShulkerBox) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) (used bool) {
 	pos, _, used = firstReplaceable(tx, pos, face, s)
 	if !used {
 		return
 	}
 
-	if s.inventory == nil || s.viewerMu == nil || s.viewers == nil || s.progress == nil || s.animationStatus == nil {
+	if s.inventory == nil {
 		typ, customName := s.Type, s.CustomName
-		var oldInv *inventory.Inventory
-		if s.inventory != nil {
-			oldInv = s.inventory
-		}
+		//noinspection GoAssignmentToReceiver
 		s = NewShulkerBox()
 		s.Type, s.CustomName = typ, customName
-		if oldInv != nil {
-			for slot, stack := range oldInv.Slots() {
-				_ = s.inventory.SetItem(slot, stack)
-			}
-		}
 	}
 
 	s.Facing = face
@@ -188,56 +145,48 @@ func (s ShulkerBox) open(tx *world.Tx, pos cube.Pos) {
 		v.ViewBlockAction(pos, OpenAction{})
 	}
 	tx.ReleaseViewers(viewers)
-
-	if s.animationStatus != nil {
-		s.animationStatus.Store(stateOpening)
-	}
+	s.animationStatus.Store(StateOpening)
 	tx.PlaySound(pos.Vec3Centre(), sound.ShulkerBoxOpen{})
 	tx.ScheduleBlockUpdate(pos, s, 0)
 }
 
-// close closes the shulker box, displaying the animation and playing a sound once the animation finishes.
+// close closes the shulker box, displaying the animation and playing a sound.
 func (s ShulkerBox) close(tx *world.Tx, pos cube.Pos) {
 	viewers := tx.Viewers(pos.Vec3())
 	for _, v := range viewers {
 		v.ViewBlockAction(pos, CloseAction{})
 	}
 	tx.ReleaseViewers(viewers)
-
-	if s.animationStatus != nil {
-		s.animationStatus.Store(stateClosing)
-	}
+	s.animationStatus.Store(StateClosing)
 	tx.ScheduleBlockUpdate(pos, s, 0)
 }
 
-// ScheduledTick progresses the shulker box animation and plays the closing sound when finished.
+// ScheduledTick ...
 func (s ShulkerBox) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	s = s.ensureInit(tx, pos)
-
 	switch s.animationStatus.Load() {
-	case stateClosed:
+	case StateClosed:
 		s.progress.Store(0)
-	case stateOpening:
-		if s.progress.Add(1) >= 10 {
+	case StateOpening:
+		s.progress.Add(1)
+		if s.progress.Load() >= 10 {
 			s.progress.Store(10)
-			s.animationStatus.Store(stateOpened)
-		} else {
-			tx.ScheduleBlockUpdate(pos, s, 0)
+			s.animationStatus.Store(StateOpened)
 		}
-	case stateOpened:
+		tx.ScheduleBlockUpdate(pos, s, 0)
+	case StateOpened:
 		s.progress.Store(10)
-	case stateClosing:
-		if s.progress.Add(-1) <= 0 {
-			s.progress.Store(0)
-			s.animationStatus.Store(stateClosed)
+	case StateClosing:
+		s.progress.Add(-1)
+		if s.progress.Load() <= 0 {
 			tx.PlaySound(pos.Vec3Centre(), sound.ShulkerBoxClose{})
-		} else {
-			tx.ScheduleBlockUpdate(pos, s, 0)
+			s.progress.Store(0)
+			s.animationStatus.Store(StateClosed)
 		}
+		tx.ScheduleBlockUpdate(pos, s, 0)
 	}
 }
 
-// BreakInfo returns the information on how the shulker box breaks.
+// BreakInfo ...
 func (s ShulkerBox) BreakInfo() BreakInfo {
 	return newBreakInfo(2, alwaysHarvestable, pickaxeEffective, oneOf(s))
 }
@@ -247,17 +196,17 @@ func (s ShulkerBox) MaxCount() int {
 	return 1
 }
 
-// EncodeBlock returns the block state encoding for the shulker box.
+// EncodeBlock ...
 func (s ShulkerBox) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + s.Type.String(), nil
 }
 
-// EncodeItem returns the item ID of the shulker box.
+// EncodeItem ...
 func (s ShulkerBox) EncodeItem() (id string, meta int16) {
 	return "minecraft:" + s.Type.String(), 0
 }
 
-// DecodeNBT decodes NBT data into the shulker box.
+// DecodeNBT ...
 func (s ShulkerBox) DecodeNBT(data map[string]any) any {
 	typ := s.Type
 	//noinspection GoAssignmentToReceiver
@@ -269,9 +218,9 @@ func (s ShulkerBox) DecodeNBT(data map[string]any) any {
 	return s
 }
 
-// EncodeNBT encodes the shulker box to NBT.
+// EncodeNBT ..
 func (s ShulkerBox) EncodeNBT() map[string]any {
-	if s.inventory == nil || s.viewerMu == nil || s.viewers == nil || s.progress == nil || s.animationStatus == nil {
+	if s.inventory == nil {
 		typ, facing, customName := s.Type, s.Facing, s.CustomName
 		//noinspection GoAssignmentToReceiver
 		s = NewShulkerBox()
@@ -283,16 +232,18 @@ func (s ShulkerBox) EncodeNBT() map[string]any {
 		"id":     "ShulkerBox",
 		"facing": uint8(s.Facing),
 	}
+
 	if s.CustomName != "" {
 		m["CustomName"] = s.CustomName
 	}
 	return m
 }
 
-// allShulkerBoxes returns all shulker box states for registration.
-func allShulkerBoxes() (shulkerBoxes []world.Block) {
+// allShulkerBoxes ...e
+func allShulkerBoxes() (shulkerboxes []world.Block) {
 	for _, t := range ShulkerBoxTypes() {
-		shulkerBoxes = append(shulkerBoxes, ShulkerBox{Type: t})
+		shulkerboxes = append(shulkerboxes, ShulkerBox{Type: t})
 	}
+
 	return
 }

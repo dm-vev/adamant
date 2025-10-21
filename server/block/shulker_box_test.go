@@ -21,50 +21,23 @@ func (v *containerViewerStub) ViewSlotChange(slot int, _ item.Stack) {
 	v.slots = append(v.slots, slot)
 }
 
-func TestShulkerBoxEnsureInitInitialisesRuntimeFields(t *testing.T) {
-	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
-	defer w.Close()
-
-	pos := cube.Pos{0, 64, 0}
-
-	done := w.Exec(func(tx *world.Tx) {
-		tx.SetBlock(pos, ShulkerBox{Type: NormalShulkerBox()}, nil)
-
-		blk, ok := tx.Block(pos).(ShulkerBox)
-		if !ok {
-			t.Fatalf("expected shulker box at %v, got %T", pos, tx.Block(pos))
-		}
-		if blk.inventory != nil || blk.viewerMu != nil || blk.viewers != nil || blk.progress != nil || blk.animationStatus != nil {
-			t.Fatalf("expected zero-value shulker box runtime fields to be nil")
-		}
-
-		inv := blk.Inventory(tx, pos)
-		if inv == nil {
-			t.Fatalf("expected Inventory to return an initialised inventory")
-		}
-
-		blkAfter := tx.Block(pos).(ShulkerBox)
-		if blkAfter.inventory == nil {
-			t.Fatalf("expected inventory to be initialised")
-		}
-		if blkAfter.viewerMu == nil {
-			t.Fatalf("expected viewer mutex to be initialised")
-		}
-		if blkAfter.viewers == nil {
-			t.Fatalf("expected viewers map to be initialised")
-		}
-		if blkAfter.progress == nil {
-			t.Fatalf("expected progress tracker to be initialised")
-		}
-		if blkAfter.animationStatus == nil {
-			t.Fatalf("expected animation status tracker to be initialised")
-		}
-		if inv != blkAfter.inventory {
-			t.Fatalf("inventory returned by Inventory() should match stored inventory pointer")
-		}
-	})
-
-	<-done
+func TestNewShulkerBoxInitialisesRuntimeFields(t *testing.T) {
+	box := NewShulkerBox()
+	if box.inventory == nil {
+		t.Fatalf("expected inventory to be initialised")
+	}
+	if box.viewerMu == nil {
+		t.Fatalf("expected viewer mutex to be initialised")
+	}
+	if box.viewers == nil {
+		t.Fatalf("expected viewers map to be initialised")
+	}
+	if box.progress == nil {
+		t.Fatalf("expected progress tracker to be initialised")
+	}
+	if box.animationStatus == nil {
+		t.Fatalf("expected animation status tracker to be initialised")
+	}
 }
 
 func TestShulkerBoxEncodeNBTInitialisesInventory(t *testing.T) {
@@ -122,5 +95,45 @@ func TestShulkerBoxInventoryRejectsNestedBoxes(t *testing.T) {
 	}
 	if len(viewer.slots) != 1 || viewer.slots[0] != 1 {
 		t.Fatalf("expected a single slot change notification for non-shulker items, got %v", viewer.slots)
+	}
+}
+
+func TestShulkerBoxBreakDropsPreserveInventory(t *testing.T) {
+	box := NewShulkerBox()
+	box.Type = PurpleShulkerBox()
+	box.CustomName = "Treasure"
+
+	loot := item.NewStack(item.Diamond{}, 2)
+	if err := box.inventory.SetItem(5, loot); err != nil {
+		t.Fatalf("unexpected error populating inventory: %v", err)
+	}
+
+	drops := box.BreakInfo().Drops(item.ToolNone{}, nil)
+	if len(drops) != 1 {
+		t.Fatalf("expected a single drop stack, got %d", len(drops))
+	}
+
+	dropBox, ok := drops[0].Item().(ShulkerBox)
+	if !ok {
+		t.Fatalf("expected drop item to be a shulker box, got %T", drops[0].Item())
+	}
+	if dropBox.inventory == nil {
+		t.Fatalf("expected dropped shulker box to have an inventory")
+	}
+	got, err := dropBox.inventory.Item(5)
+	if err != nil {
+		t.Fatalf("unexpected error reading dropped inventory: %v", err)
+	}
+	if !got.Equal(loot) {
+		t.Fatalf("expected drop inventory to contain %v, got %v", loot, got)
+	}
+	if dropBox.CustomName != box.CustomName {
+		t.Fatalf("expected custom name to be preserved, got %q", dropBox.CustomName)
+	}
+	if dropBox.Type != box.Type {
+		t.Fatalf("expected shulker box type %v to be preserved, got %v", box.Type, dropBox.Type)
+	}
+	if items, ok := dropBox.EncodeNBT()["Items"].([]map[string]any); !ok || len(items) != 1 {
+		t.Fatalf("expected encoded NBT to contain one item entry, got %v", dropBox.EncodeNBT()["Items"])
 	}
 }
