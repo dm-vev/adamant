@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/google/uuid"
 )
 
 // Bed is a block, allowing players to sleep to set their spawns and skip the night.
@@ -19,11 +18,11 @@ type Bed struct {
 	// Colour is the colour of the bed.
 	//blockhash:ignore
 	Colour item.Colour
-	// Facing is the direction that the bed is facing.
+	// Facing is the direction that the bed is Facing.
 	Facing cube.Direction
 	// Head is true if the bed is the head side.
 	Head bool
-	// Sleeper is the user that is using the bed. It is only set for the head part of the bed.
+	// Sleeper is the user that is using the bed. It is only set for the Head part of the bed.
 	//blockhash:ignore
 	Sleeper *world.EntityHandle
 }
@@ -51,18 +50,16 @@ func (b Bed) BreakInfo() BreakInfo {
 			return
 		}
 
-		s := headSide.Sleeper
-		if s == nil {
-			return
-		}
+		sleeper := headSide.Sleeper
+		if sleeper != nil {
 
-		ent, ok := s.Entity(tx)
-		if !ok {
-			return
-		}
-
-		if sleeper, ok := ent.(interface{ StopSleeping(*world.Tx) }); ok {
-			sleeper.StopSleeping(tx)
+			ent, ok := sleeper.Entity(tx)
+			if ok {
+				sleeper, ok := ent.(world.Sleeper)
+				if ok {
+					sleeper.Wake()
+				}
+			}
 		}
 	})
 }
@@ -84,6 +81,7 @@ func (b Bed) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx
 	if !replaceableWith(tx, sidePos, side) {
 		return
 	}
+
 	if !supportedFromBelow(sidePos, tx) {
 		return
 	}
@@ -96,18 +94,30 @@ func (b Bed) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx
 
 // Activate ...
 func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
-	sleeper, ok := u.(bedSleeper)
+	s, ok := u.(world.Sleeper)
 	if !ok {
 		return false
 	}
 
 	w := tx.World()
+
 	if w.Dimension() != world.Overworld {
 		tx.SetBlock(pos, nil, nil)
 		ExplosionConfig{
 			Size:      5,
 			SpawnFire: true,
 		}.Explode(tx, pos.Vec3Centre())
+		return true
+	}
+
+	_, sidePos, ok := b.side(pos, tx)
+	if !ok {
+		return false
+	}
+
+	userPos := s.Position()
+	if sidePos.Vec3Middle().Sub(userPos).Len() > 4 && pos.Vec3Middle().Sub(userPos).Len() > 4 {
+		s.Messaget(chat.MessageBedTooFar)
 		return true
 	}
 
@@ -119,40 +129,24 @@ func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *i
 		return false
 	}
 
-	_, footPos, ok := b.foot(pos, tx)
-	if !ok {
-		return false
-	}
-
-	userPos := sleeper.Position()
-	if headPos.Vec3Middle().Sub(userPos).Len() > 4 && footPos.Vec3Middle().Sub(userPos).Len() > 4 {
-		sleeper.Messaget(chat.MessageBedTooFar)
-		return true
-	}
-
-	previousSpawn := w.PlayerSpawn(sleeper.UUID())
-	if previousSpawn != footPos && previousSpawn != headPos {
-		w.SetPlayerSpawn(sleeper.UUID(), footPos)
-		sleeper.Messaget(chat.MessageRespawnPointSet)
+	previousSpawn := w.PlayerSpawn(s.UUID())
+	if previousSpawn != pos && previousSpawn != sidePos {
+		w.SetPlayerSpawn(s.UUID(), pos)
+		s.Messaget(chat.MessageRespawnPointSet)
 	}
 
 	time := w.Time() % world.TimeFull
-	if !tx.ThunderingAt(pos) {
-		if time <= world.TimeSleep || time >= world.TimeWake {
-			sleeper.Messaget(chat.MessageNoSleep)
-			return true
-		}
-		if !tx.RainingAt(pos) && (time <= world.TimeSleepWithRain || time >= world.TimeWakeWithRain) {
-			sleeper.Messaget(chat.MessageNoSleep)
-			return true
-		}
+	if (time < world.TimeNight || time >= world.TimeSunrise) && !tx.ThunderingAt(pos) {
+		s.Messaget(chat.MessageNoSleep)
+		return true
 	}
 	if headSide.Sleeper != nil {
-		sleeper.Messaget(chat.MessageBedIsOccupied)
+		s.Messaget(chat.MessageBedIsOccupied)
 		return true
 	}
 
-	return sleeper.Sleep(headPos, tx)
+	s.Sleep(headPos)
+	return true
 }
 
 // EntityLand ...
@@ -190,9 +184,9 @@ func (b Bed) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:bed", map[string]interface{}{
-		"direction":      int32(horizontalDirection(b.Facing)),
-		"occupied_bit":   boolByte(b.Sleeper != nil),
-		"head_piece_bit": boolByte(b.Head),
+		"direction":    int32(horizontalDirection(b.Facing)),
+		"occupied_bit": boolByte(b.Sleeper != nil),
+		"head_bit":     boolByte(b.Head),
 	}
 }
 
@@ -222,28 +216,6 @@ func (b Bed) head(pos cube.Pos, tx *world.Tx) (Bed, cube.Pos, bool) {
 	return headSide, headPos, true
 }
 
-// HeadPos exposes the head side of the bed.
-func (b Bed) HeadPos(pos cube.Pos, tx *world.Tx) (Bed, cube.Pos, bool) {
-	return b.head(pos, tx)
-}
-
-// foot returns the foot side of the bed. If neither side is a foot side, the third return value is false.
-func (b Bed) foot(pos cube.Pos, tx *world.Tx) (Bed, cube.Pos, bool) {
-	side, sidePos, ok := b.side(pos, tx)
-	if !ok {
-		return Bed{}, cube.Pos{}, false
-	}
-	if !b.Head {
-		return b, pos, true
-	}
-	return side, sidePos, !side.Head
-}
-
-// FootPos exposes the foot side of the bed.
-func (b Bed) FootPos(pos cube.Pos, tx *world.Tx) (Bed, cube.Pos, bool) {
-	return b.foot(pos, tx)
-}
-
 // side returns the other side of the bed. If the other side is not a bed, the third return value is false.
 func (b Bed) side(pos cube.Pos, tx *world.Tx) (Bed, cube.Pos, bool) {
 	face := b.Facing.Face()
@@ -265,63 +237,10 @@ func allBeds() (beds []world.Block) {
 	return
 }
 
-// CanRespawnOn ...
 func (Bed) CanRespawnOn() bool {
 	return true
 }
 
-// bedOffsets is a map of offsets for each face of the bed. The offsets are relative to the heel side of the bed.
-var bedOffsets = map[cube.Face][]cube.Pos{
-	cube.FaceNorth: {{-1, 0, 0}, {-1, 0, 1}, {0, 0, 1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {1, 0, -2}, {0, 0, -2}, {-1, 0, -2}, {-1, 0, -1}, {0, 1, -1}, {0, 1, 0}},
-	cube.FaceEast:  {{0, 0, -1}, {-1, 0, -1}, {-1, 0, 0}, {-1, 0, 1}, {-1, 0, 1}, {0, 0, 1}, {1, 0, 1}, {2, 0, 1}, {2, 0, 0}, {2, 0, -1}, {1, 0, -1}, {1, 1, 0}, {0, 1, 0}},
-	cube.FaceSouth: {{1, 0, 0}, {1, 0, -1}, {0, 0, -1}, {-1, 0, -1}, {-1, 0, 0}, {-1, 0, 1}, {-1, 0, 2}, {0, 0, 2}, {1, 0, 2}, {1, 0, 1}, {0, 1, 1}, {0, 1, 0}},
-	cube.FaceWest:  {{0, 0, 1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {1, 0, -1}, {0, 0, -1}, {-1, 0, -1}, {-2, 0, -1}, {-2, 0, 0}, {-2, 0, 1}, {-1, 0, 1}, {-1, 1, 0}, {0, 1, 0}},
-}
-
-// SafeSpawn ...
-func (b Bed) SafeSpawn(p cube.Pos, tx *world.Tx) (cube.Pos, bool) {
-	for _, offset := range bedOffsets[b.Facing.Face()] {
-		candidate := p.Add(offset)
-		if bedSpawnSafe(candidate, tx) {
-			return candidate, true
-		}
-	}
-	return cube.Pos{}, false
-}
-
-func bedSpawnSafe(pos cube.Pos, tx *world.Tx) bool {
-	if pos.OutOfBounds(tx.Range()) {
-		return false
-	}
-
-	head := pos.Add(cube.Pos{0, 1})
-	if head.OutOfBounds(tx.Range()) {
-		return false
-	}
-
-	if len(tx.Block(pos).Model().BBox(pos, tx)) != 0 {
-		return false
-	}
-	if len(tx.Block(head).Model().BBox(head, tx)) != 0 {
-		return false
-	}
-
-	if _, ok := tx.Liquid(pos); ok {
-		return false
-	}
-	if _, ok := tx.Liquid(head); ok {
-		return false
-	}
-
-	below := pos.Side(cube.FaceDown)
-	if below.OutOfBounds(tx.Range()) {
-		return false
-	}
-
-	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
-}
-
-// RespawnOn ...
 func (Bed) RespawnOn(pos cube.Pos, u item.User, tx *world.Tx) {}
 
 // RespawnBlock represents a block using which player can set his spawn point.
@@ -330,21 +249,10 @@ type RespawnBlock interface {
 	CanRespawnOn() bool
 	// RespawnOn is called when a player decides to respawn using this block.
 	RespawnOn(pos cube.Pos, u item.User, tx *world.Tx)
-	// SafeSpawn returns a safe spawn position for the block. If no safe spawn position is found, it returns an empty position.
-	SafeSpawn(p cube.Pos, tx *world.Tx) (cube.Pos, bool)
 }
 
 // supportedFromBelow ...
 func supportedFromBelow(pos cube.Pos, tx *world.Tx) bool {
 	below := pos.Side(cube.FaceDown)
 	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
-}
-
-// bedSleeper represents a user that can sleep in a bed.
-type bedSleeper interface {
-	item.User
-	Position() mgl64.Vec3
-	Messaget(chat.Translation, ...any)
-	UUID() uuid.UUID
-	Sleep(pos cube.Pos, tx *world.Tx) bool
 }

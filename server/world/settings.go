@@ -43,6 +43,8 @@ type Settings struct {
 	TickRange int32
 	// PlayersSleepingPercentage determines the percentage of players that must sleep to skip the night.
 	PlayersSleepingPercentage int32
+	// RequiredSleepTicks is the number of ticks that players must sleep for in order for the time to change to day.
+	RequiredSleepTicks int64
 }
 
 // defaultSettings returns the default Settings for a new World.

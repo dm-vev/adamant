@@ -82,10 +82,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if u, ok := e.(using); ok && u.UsingItem() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagUsingItem)
 	}
-	if sl, ok := e.(sleeper); ok && sl.Sleeping() {
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSleeping)
-		if pos, ok := sl.BedPosition(); ok {
+	if sl, ok := e.(sleeper); ok {
+		if pos, ok := sl.Sleeping(); ok {
 			m[protocol.EntityDataKeyBedPosition] = protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+
+			// For some reason there is no such flag in gophertunnel.
+			m.SetFlag(protocol.EntityDataKeyPlayerFlags, 1)
 		}
 	}
 	if c, ok := e.(arrow); ok && c.Critical() {
@@ -270,8 +272,7 @@ type using interface {
 }
 
 type sleeper interface {
-	Sleeping() bool
-	BedPosition() (cube.Pos, bool)
+	Sleeping() (cube.Pos, bool)
 }
 
 type arrow interface {

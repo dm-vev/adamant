@@ -12,27 +12,22 @@ import (
 type PlayerActionHandler struct{}
 
 // Handle ...
-func (*PlayerActionHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
+func (*PlayerActionHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, c Controllable) error {
 	pk := p.(*packet.PlayerAction)
 
-	return handlePlayerAction(pk.ActionType, pk.BlockFace, pk.BlockPosition, pk.EntityRuntimeID, s, tx, c)
+	return handlePlayerAction(pk.ActionType, pk.BlockFace, pk.BlockPosition, pk.EntityRuntimeID, s, c)
 }
 
 // handlePlayerAction handles an action performed by a player, found in packet.PlayerAction and packet.PlayerAuthInput.
-func handlePlayerAction(action int32, face int32, pos protocol.BlockPos, entityRuntimeID uint64, s *Session, tx *world.Tx, c Controllable) error {
+func handlePlayerAction(action int32, face int32, pos protocol.BlockPos, entityRuntimeID uint64, s *Session, c Controllable) error {
 	if entityRuntimeID != selfEntityRuntimeID {
 		return errSelfRuntimeID
 	}
 	switch action {
-	case protocol.PlayerActionRespawn, protocol.PlayerActionDimensionChangeDone:
+	case protocol.PlayerActionStartSleeping, protocol.PlayerActionRespawn, protocol.PlayerActionDimensionChangeDone:
 		// Don't do anything for these actions.
 	case protocol.PlayerActionStopSleeping:
-		if mode := c.GameMode(); !mode.Visible() && !mode.HasCollision() {
-			// As of v1.19.50, the client sends this packet when switching to spectator mode... even if it wasn't
-			// sleeping in the first place. This accounts for that.
-			return nil
-		}
-		c.StopSleeping(tx)
+		c.Wake()
 	case protocol.PlayerActionStartBreak, protocol.PlayerActionContinueDestroyBlock:
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)

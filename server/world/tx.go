@@ -2,6 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/go-gl/mathgl/mgl64"
 	"iter"
 	"sync"
@@ -246,6 +247,51 @@ func (tx *Tx) Viewers(pos mgl64.Vec3) []Viewer {
 	return tx.World().viewersOf(pos)
 }
 
+// Sleepers returns an iterator that yields all sleeping entities currently added to the World.
+func (tx *Tx) Sleepers() iter.Seq[Sleeper] {
+	ent := tx.Entities()
+	return func(yield func(Sleeper) bool) {
+		for e := range ent {
+			if sleeper, ok := e.(Sleeper); ok {
+				if !yield(sleeper) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// BroadcastSleepingIndicator broadcasts a sleeping indicator to all sleepers in the world.
+func (tx *Tx) BroadcastSleepingIndicator() {
+	sleepers := tx.Sleepers()
+
+	sleeping, allSleepers := 0, 0
+
+	for s := range sleepers {
+		allSleepers++
+		if _, ok := s.Sleeping(); ok {
+			sleeping++
+		}
+	}
+
+	for s := range sleepers {
+		s.SendSleepingIndicator(sleeping, allSleepers)
+	}
+}
+
+// BroadcastSleepingReminder broadcasts a sleeping reminder message to all sleepers in the world, excluding the sleeper
+// passed.
+func (tx *Tx) BroadcastSleepingReminder(sleeper Sleeper) {
+	notSleeping := new(int)
+
+	for s := range tx.Sleepers() {
+		if _, ok := s.Sleeping(); !ok {
+			*notSleeping++
+			defer s.Messaget(chat.MessageSleeping, sleeper.Name(), *notSleeping)
+		}
+	}
+}
+
 // ReleaseViewers returns a slice previously obtained from Viewers back to the internal pool.
 func (tx *Tx) ReleaseViewers(viewers []Viewer) {
 	tx.World().releaseViewers(viewers)
@@ -268,19 +314,19 @@ func (tx *Tx) close() {
 // normalTransaction is added to the transaction queue for transactions created
 // using World.Exec().
 type normalTransaction struct {
-        c chan struct{}
-        f func(tx *Tx)
+	c chan struct{}
+	f func(tx *Tx)
 }
 
 // Run creates a *Tx, calls ntx.f, closes the transaction and finally closes
 // ntx.c.
 func (ntx normalTransaction) Run(w *World) {
-        tx := &Tx{w: w}
-        defer func() {
-                tx.close()
-                close(ntx.c)
-        }()
-        ntx.f(tx)
+	tx := &Tx{w: w}
+	defer func() {
+		tx.close()
+		close(ntx.c)
+	}()
+	ntx.f(tx)
 }
 
 // weakTransaction is a transaction that may be cancelled by setting its invalid
@@ -296,29 +342,29 @@ type weakTransaction struct {
 // creating a *Tx if so. Afterwards, a bool indicating if the transaction was
 // run is added to wtx.c. Finally, wtx.cond.Broadcast() is called.
 func (wtx weakTransaction) Run(w *World) {
-        valid := !wtx.invalid.Load()
-        var panicErr any
-        if valid {
-                tx := &Tx{w: w}
-                func() {
-                        defer func() {
-                                tx.close()
-                                if r := recover(); r != nil {
-                                        panicErr = r
-                                }
-                        }()
-                        wtx.f(tx)
-                }()
-        }
-        // We have to acquire a lock on wtx.cond.L here to make sure cond.Wait()
-        // has been called before we call cond.Broadcast(). If not, we might
-        // broadcast before cond.Wait() and cause a permanent suspension.
-        wtx.cond.L.Lock()
-        defer wtx.cond.L.Unlock()
+	valid := !wtx.invalid.Load()
+	var panicErr any
+	if valid {
+		tx := &Tx{w: w}
+		func() {
+			defer func() {
+				tx.close()
+				if r := recover(); r != nil {
+					panicErr = r
+				}
+			}()
+			wtx.f(tx)
+		}()
+	}
+	// We have to acquire a lock on wtx.cond.L here to make sure cond.Wait()
+	// has been called before we call cond.Broadcast(). If not, we might
+	// broadcast before cond.Wait() and cause a permanent suspension.
+	wtx.cond.L.Lock()
+	defer wtx.cond.L.Unlock()
 
-        wtx.c <- valid && panicErr == nil
-        wtx.cond.Broadcast()
-        if panicErr != nil {
-                panic(panicErr)
-        }
+	wtx.c <- valid && panicErr == nil
+	wtx.cond.Broadcast()
+	if panicErr != nil {
+		panic(panicErr)
+	}
 }
