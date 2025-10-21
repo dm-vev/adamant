@@ -2349,14 +2349,23 @@ func (p *Player) drops(held item.Stack, b world.Block) []item.Stack {
 		t = item.ToolNone{}
 	}
 	var drops []item.Stack
-	if breakable, ok := b.(block.Breakable); ok && !p.GameMode().CreativeInventory() {
-		if breakable.BreakInfo().Harvestable(t) {
+	if breakable, ok := b.(block.Breakable); ok && breakable.BreakInfo().Harvestable(t) {
+		if !p.GameMode().CreativeInventory() || dropsInCreative(b) {
 			drops = breakable.BreakInfo().Drops(t, held.Enchantments())
 		}
 	} else if it, ok := b.(world.Item); ok && !p.GameMode().CreativeInventory() {
 		drops = []item.Stack{item.NewStack(it, 1)}
 	}
 	return drops
+}
+
+func dropsInCreative(b world.Block) bool {
+	switch b.(type) {
+	case block.ShulkerBox:
+		return true
+	default:
+		return false
+	}
 }
 
 // PickBlock makes the player pick a block in the world at a position passed. If the player is unable to
