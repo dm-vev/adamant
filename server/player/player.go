@@ -1226,15 +1226,28 @@ func (p *Player) Jump() {
 // Sleep makes the player sleep at the given position. If the position does not map to a bed (specifically the head side),
 // the player will not sleep.
 func (p *Player) Sleep(pos cube.Pos) {
-
 	if p.sleeping {
 		// The player is already sleeping.
 		return
 	}
 
-	tx := p.tx
-	b, ok := tx.Block(pos).(block.Bed)
+	if ok := txguard.Run(p.tx, func() {
+		p.sleepInTx(p.tx, pos)
+	}); ok {
+		return
+	}
 
+	p.handle.ExecWorld(func(tx *world.Tx, e world.Entity) {
+		sleeper, ok := e.(*Player)
+		if !ok || sleeper.sleeping {
+			return
+		}
+		sleeper.sleepInTx(tx, pos)
+	})
+}
+
+func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
+	b, ok := tx.Block(pos).(block.Bed)
 	if !ok || b.Sleeper != nil {
 		// The player cannot sleep here.
 		return
@@ -1267,16 +1280,35 @@ func (p *Player) Wake() {
 	if !p.sleeping {
 		return
 	}
+
+	if ok := txguard.Run(p.tx, func() {
+		p.wakeInTx(p.tx)
+	}); ok {
+		return
+	}
+
+	p.handle.ExecWorld(func(tx *world.Tx, e world.Entity) {
+		sleeper, ok := e.(*Player)
+		if !ok || !sleeper.sleeping {
+			return
+		}
+		sleeper.wakeInTx(tx)
+	})
+}
+
+func (p *Player) wakeInTx(tx *world.Tx) {
+	if !p.sleeping {
+		return
+	}
 	p.sleeping = false
 
-	tx := p.tx
 	tx.BroadcastSleepingIndicator()
 
 	viewers, release := p.viewers()
 	for _, v := range viewers {
 		v.ViewEntityWake(p)
 	}
-	releaseBorrowedViewers(p.tx, viewers, release)
+	releaseBorrowedViewers(tx, viewers, release)
 	p.updateState()
 
 	pos := p.sleepPos
