@@ -1,13 +1,14 @@
 package world
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/go-gl/mathgl/mgl64"
 	"iter"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/player/chat"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // Tx represents a synchronised transaction performed on a World. Most
@@ -263,32 +264,42 @@ func (tx *Tx) Sleepers() iter.Seq[Sleeper] {
 
 // BroadcastSleepingIndicator broadcasts a sleeping indicator to all sleepers in the world.
 func (tx *Tx) BroadcastSleepingIndicator() {
-	sleepers := tx.Sleepers()
+	sleepers := make([]Sleeper, 0)
+	sleeping := 0
 
-	sleeping, allSleepers := 0, 0
-
-	for s := range sleepers {
-		allSleepers++
+	for s := range tx.Sleepers() {
+		sleepers = append(sleepers, s)
 		if _, ok := s.Sleeping(); ok {
 			sleeping++
 		}
 	}
 
-	for s := range sleepers {
-		s.SendSleepingIndicator(sleeping, allSleepers)
+	total := len(sleepers)
+	if total == 0 {
+		return
+	}
+	for _, s := range sleepers {
+		s.SendSleepingIndicator(sleeping, total)
 	}
 }
 
 // BroadcastSleepingReminder broadcasts a sleeping reminder message to all sleepers in the world, excluding the sleeper
 // passed.
 func (tx *Tx) BroadcastSleepingReminder(sleeper Sleeper) {
-	notSleeping := new(int)
+	pending := make([]Sleeper, 0)
 
 	for s := range tx.Sleepers() {
 		if _, ok := s.Sleeping(); !ok {
-			*notSleeping++
-			defer s.Messaget(chat.MessageSleeping, sleeper.Name(), *notSleeping)
+			pending = append(pending, s)
 		}
+	}
+
+	remaining := len(pending)
+	if remaining == 0 {
+		return
+	}
+	for _, s := range pending {
+		s.Messaget(chat.MessageSleeping, sleeper.Name(), remaining)
 	}
 }
 
