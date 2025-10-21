@@ -1328,6 +1328,22 @@ func (s *Session) ViewWeather(raining, thunder bool) {
 	s.writePacket(pk)
 }
 
+// ViewSleepingPlayers ...
+func (s *Session) ViewSleepingPlayers(sleeping, max int) {
+	s.writePacket(&packet.LevelEvent{
+		EventType: packet.LevelEventSleepingPlayers,
+		EventData: int32((max << 16) | sleeping),
+	})
+}
+
+// ViewEntityWake ...
+func (s *Session) ViewEntityWake(e world.Entity) {
+	s.writePacket(&packet.Animate{
+		EntityRuntimeID: s.entityRuntimeID(e),
+		ActionType:      packet.AnimateActionStopSleep,
+	})
+}
+
 // nextWindowID produces the next window ID for a new window. It is an int of 1-99.
 func (s *Session) nextWindowID() byte {
 	if s.openedWindowID.CompareAndSwap(99, 1) {

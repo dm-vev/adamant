@@ -33,6 +33,8 @@ type Handler interface {
 	// HandleToggleSneak handles when the player starts or stops sneaking.
 	// After is true if the player is sneaking after toggling (changing their sneaking state).
 	HandleToggleSneak(ctx *Context, after bool)
+	// HandleSleep handles the player starting to sleep. ctx.Cancel() may be called to cancel the sleep.
+	HandleSleep(ctx *Context, sendReminder *bool)
 	// HandleChat handles a message sent in the chat by a player. ctx.Cancel() may be called to cancel the
 	// message being sent in chat.
 	// The message may be changed by assigning to *message.
@@ -169,6 +171,7 @@ func (NopHandler) HandleTeleport(*Context, mgl64.Vec3)                          
 func (NopHandler) HandleChangeWorld(*Player, *world.World, *world.World)                   {}
 func (NopHandler) HandleToggleSprint(*Context, bool)                                       {}
 func (NopHandler) HandleToggleSneak(*Context, bool)                                        {}
+func (NopHandler) HandleSleep(*Context, *bool)                                             {}
 func (NopHandler) HandleCommandExecution(*Context, cmd.Command, []string)                  {}
 func (NopHandler) HandleTransfer(*Context, *net.UDPAddr)                                   {}
 func (NopHandler) HandleChat(*Context, *string)                                            {}

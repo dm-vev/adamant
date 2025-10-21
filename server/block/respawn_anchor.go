@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/google/uuid"
 )
 
 // RespawnAnchor is a block that allows the player to set their spawn point in the Nether.
@@ -45,10 +44,11 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 	held, _ := u.HeldItems()
 	_, usingGlowstone := held.Item().(Glowstone)
 
-	sleeper, ok := u.(respawnSleeper)
+	sleeper, ok := u.(world.Sleeper)
 	if !ok {
 		return false
 	}
+
 	if r.Charge < 4 && usingGlowstone {
 		r.Charge++
 		tx.SetBlock(pos, r, nil)
@@ -58,13 +58,9 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 	}
 
 	w := tx.World()
+
 	if r.Charge > 0 {
 		if w.Dimension() == world.Nether {
-			if _, ok := r.SafeSpawn(pos, tx); !ok {
-				sleeper.Messaget(chat.MessageRespawnAnchorNotValid)
-				return true
-			}
-
 			previousSpawn := w.PlayerSpawn(sleeper.UUID())
 			if previousSpawn == pos {
 				return false
@@ -92,41 +88,11 @@ func allRespawnAnchors() []world.Block {
 	return all
 }
 
-// CanRespawnOn ...
 func (r RespawnAnchor) CanRespawnOn() bool {
 	return r.Charge > 0
 }
 
-// SafeSpawn ...
-func (r RespawnAnchor) SafeSpawn(p cube.Pos, tx *world.Tx) (cube.Pos, bool) {
-	xOffset := []cube.Pos{{0, 0, -1}, {-1, 0, 0}, {1, 0, 0}, {0, 0, 1}, {-1, 0, -1}, {1, 0, -1}, {-1, 0, 1}, {1, 0, 1}}
-	yOffset := []cube.Pos{{0, -1, 0}, {0, 0, 0}, {0, 1, 0}}
-
-	for _, y := range yOffset {
-		for _, x := range xOffset {
-			newOffset := y.Add(x)
-			if _, ok := tx.Block(p.Add(newOffset)).(Air); ok {
-				return p.Add(newOffset), true
-			}
-		}
-	}
-
-	if _, ok := tx.Block(p.Add(cube.Pos{0, 1, 0})).(Air); ok {
-		return p.Add(cube.Pos{0, 1, 0}), true
-	}
-
-	return cube.Pos{}, false
-}
-
-// RespawnOn ...
 func (r RespawnAnchor) RespawnOn(pos cube.Pos, u item.User, w *world.Tx) {
 	w.SetBlock(pos, RespawnAnchor{Charge: r.Charge - 1}, nil)
 	w.PlaySound(pos.Vec3(), sound.RespawnAnchorDeplete{Charge: r.Charge - 1})
-}
-
-// respawnSleeper represents a user able to interact with respawn anchors.
-type respawnSleeper interface {
-	item.User
-	Messaget(chat.Translation, ...any)
-	UUID() uuid.UUID
 }

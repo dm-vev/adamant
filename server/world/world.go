@@ -96,9 +96,6 @@ type World struct {
 	entityColumns     []columnRef
 	entityColumnIndex map[ChunkPos]int
 
-	sleepMu         sync.Mutex
-	sleepingPlayers map[uuid.UUID]cube.Pos
-
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
 
@@ -109,6 +106,16 @@ type World struct {
 	generatorQueueSaturation atomic.Uint64
 	lastQueueSaturationLog   atomic.Uint64
 }
+
+const (
+	TimeDay      = 1000
+	TimeNoon     = 6000
+	TimeSunset   = 12000
+	TimeNight    = 13000
+	TimeMidnight = 18000
+	TimeSunrise  = 23000
+	TimeFull     = 24000
+)
 
 type entityState struct {
 	pos      ChunkPos
@@ -820,47 +827,6 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	return e
 }
 
-// AddSleepingPlayer registers a player as sleeping at the given bed position.
-func (w *World) AddSleepingPlayer(id uuid.UUID, pos cube.Pos) {
-	w.sleepMu.Lock()
-	if w.sleepingPlayers == nil {
-		w.sleepingPlayers = make(map[uuid.UUID]cube.Pos)
-	}
-	w.sleepingPlayers[id] = pos
-	w.sleepMu.Unlock()
-}
-
-// RemoveSleepingPlayer removes a sleeping player entry.
-func (w *World) RemoveSleepingPlayer(id uuid.UUID) {
-	w.sleepMu.Lock()
-	if w.sleepingPlayers != nil {
-		delete(w.sleepingPlayers, id)
-	}
-	w.sleepMu.Unlock()
-}
-
-// SleepingPlayers returns a snapshot of all players currently sleeping in the world.
-func (w *World) SleepingPlayers() map[uuid.UUID]cube.Pos {
-	w.sleepMu.Lock()
-	defer w.sleepMu.Unlock()
-	if len(w.sleepingPlayers) == 0 {
-		return nil
-	}
-	snapshot := make(map[uuid.UUID]cube.Pos, len(w.sleepingPlayers))
-	for id, pos := range w.sleepingPlayers {
-		snapshot[id] = pos
-	}
-	return snapshot
-}
-
-// SleepingPlayerCount returns the amount of players currently sleeping.
-func (w *World) SleepingPlayerCount() int {
-	w.sleepMu.Lock()
-	count := len(w.sleepingPlayers)
-	w.sleepMu.Unlock()
-	return count
-}
-
 // removeEntity removes an Entity from the World that is currently present in
 // it. Any viewers of the Entity will no longer be able to see it.
 // removeEntity returns the EntityHandle of the Entity. After removing an Entity
@@ -1001,6 +967,17 @@ func (w *World) SetPlayerSpawn(id uuid.UUID, pos cube.Pos) {
 	if err := w.conf.Provider.SavePlayerSpawnPosition(id, pos); err != nil {
 		w.conf.Log.Error("save player spawn: "+err.Error(), "ID", id)
 	}
+}
+
+// SetRequiredSleepDuration sets the duration of time players in the world must sleep for, in order to advance to the
+// next day.
+func (w *World) SetRequiredSleepDuration(duration time.Duration) {
+	if w == nil {
+		return
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	w.set.RequiredSleepTicks = duration.Milliseconds() / 50
 }
 
 // DefaultGameMode returns the default game mode of the world. When players

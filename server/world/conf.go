@@ -6,9 +6,6 @@ import (
 	"math/rand/v2"
 	"runtime"
 	"time"
-
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/google/uuid"
 )
 
 // Config may be used to create a new World. It holds a variety of fields that
@@ -134,7 +131,6 @@ func (conf Config) New() *World {
 		entityColumnIndex:   make(map[ChunkPos]int),
 		scratchActiveRefs:   make(map[*EntityHandle]entityChunkRef),
 		scratchSleepingRefs: make(map[*EntityHandle]entityChunkRef),
-		sleepingPlayers:     make(map[uuid.UUID]cube.Pos),
 	}
 	w.weather = weather{w: w}
 	var h Handler = NopHandler{}
