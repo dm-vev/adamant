@@ -188,7 +188,28 @@ func (s ShulkerBox) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 
 // BreakInfo ...
 func (s ShulkerBox) BreakInfo() BreakInfo {
-	return newBreakInfo(2, alwaysHarvestable, pickaxeEffective, oneOf(s))
+	return newBreakInfo(2, alwaysHarvestable, pickaxeEffective, func(item.Tool, []item.Enchantment) []item.Stack {
+		return []item.Stack{s.itemStackForDrop()}
+	})
+}
+
+// itemStackForDrop returns an item stack representing the shulker box when it is
+// dropped. The inventory contents are copied so that the resulting stack does not
+// share the same inventory instance as the block in the world.
+func (s ShulkerBox) itemStackForDrop() item.Stack {
+	drop := NewShulkerBox()
+	drop.Type, drop.Facing, drop.CustomName = s.Type, s.Facing, s.CustomName
+
+	if s.inventory != nil {
+		for slot, it := range s.inventory.Slots() {
+			if it.Empty() {
+				continue
+			}
+			_ = drop.inventory.SetItem(slot, it)
+		}
+	}
+
+	return item.NewStack(drop, 1)
 }
 
 // MaxCount always returns 1.

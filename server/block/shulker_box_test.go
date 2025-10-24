@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -135,5 +136,63 @@ func TestShulkerBoxBreakDropsPreserveInventory(t *testing.T) {
 	}
 	if items, ok := dropBox.EncodeNBT()["Items"].([]map[string]any); !ok || len(items) != 1 {
 		t.Fatalf("expected encoded NBT to contain one item entry, got %v", dropBox.EncodeNBT()["Items"])
+	}
+}
+
+func TestShulkerBoxBreakDropsCloneInventory(t *testing.T) {
+	box := NewShulkerBox()
+
+	loot := item.NewStack(item.Diamond{}, 2)
+	if err := box.inventory.SetItem(5, loot); err != nil {
+		t.Fatalf("unexpected error populating inventory: %v", err)
+	}
+
+	drops := box.BreakInfo().Drops(item.ToolNone{}, nil)
+	if len(drops) != 1 {
+		t.Fatalf("expected a single drop stack, got %d", len(drops))
+	}
+
+	dropBox, ok := drops[0].Item().(ShulkerBox)
+	if !ok {
+		t.Fatalf("expected drop item to be a shulker box, got %T", drops[0].Item())
+	}
+
+	replacement := item.NewStack(item.GoldIngot{}, 1)
+	if err := dropBox.inventory.SetItem(5, replacement); err != nil {
+		t.Fatalf("unexpected error mutating drop inventory: %v", err)
+	}
+
+	got, err := box.inventory.Item(5)
+	if err != nil {
+		t.Fatalf("unexpected error reading original inventory: %v", err)
+	}
+	if !got.Equal(loot) {
+		t.Fatalf("expected original inventory to remain %v, got %v", loot, got)
+	}
+}
+
+func TestShulkerBoxDropRoundTripNBT(t *testing.T) {
+	box := NewShulkerBox()
+
+	loot := item.NewStack(item.Diamond{}, 3)
+	if err := box.inventory.SetItem(1, loot); err != nil {
+		t.Fatalf("unexpected error populating inventory: %v", err)
+	}
+
+	drop := box.itemStackForDrop()
+	data := nbtconv.WriteItem(drop, true)
+	restored := nbtconv.Item(data, nil)
+
+	restoredBox, ok := restored.Item().(ShulkerBox)
+	if !ok {
+		t.Fatalf("expected restored stack item to be a shulker box, got %T", restored.Item())
+	}
+
+	got, err := restoredBox.inventory.Item(1)
+	if err != nil {
+		t.Fatalf("unexpected error reading restored inventory: %v", err)
+	}
+	if !got.Equal(loot) {
+		t.Fatalf("expected restored inventory to contain %v, got %v", loot, got)
 	}
 }

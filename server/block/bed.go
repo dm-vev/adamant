@@ -145,6 +145,10 @@ func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *i
 		return true
 	}
 
+	if binder, ok := s.(interface{ BindTransaction(*world.Tx) }); ok {
+		binder.BindTransaction(tx)
+	}
+
 	s.Sleep(headPos)
 	return true
 }
