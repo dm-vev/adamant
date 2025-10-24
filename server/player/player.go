@@ -134,6 +134,15 @@ func (p *Player) bindTx(tx *world.Tx) {
 	p.tx = tx
 }
 
+// BindTransaction allows external callers operating inside a world transaction to
+// synchronise the player with that transaction before invoking sleeper-specific
+// operations such as Sleep or Wake. This prevents those methods from falling back
+// to asynchronously reacquiring a transaction when the caller already has one
+// open.
+func (p *Player) BindTransaction(tx *world.Tx) {
+	p.bindTx(tx)
+}
+
 // Name returns the username of the player. If the player is controlled by a client, it is the username of
 // the client. (Typically the XBOX Live name)
 func (p *Player) Name() string {
