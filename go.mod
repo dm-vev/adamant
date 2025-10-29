@@ -14,11 +14,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml v1.9.5
 	github.com/sandertv/go-raknet v1.14.3-0.20250305181847-6af3e95113d6
-	github.com/sandertv/gophertunnel v1.51.1
+	github.com/sandertv/gophertunnel v1.51.0
 	github.com/segmentio/fasthash v1.0.3
 	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329
 	golang.org/x/mod v0.22.0
-	golang.org/x/text v0.22.0
+	golang.org/x/text v0.23.0
 	golang.org/x/tools v0.28.0
 )
 
@@ -32,9 +32,9 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/oauth2 v0.25.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/term v0.38.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
