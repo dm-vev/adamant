@@ -1,11 +1,9 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/potion"
-	"github.com/df-mc/dragonfly/server/painting"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -30,7 +28,6 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	TridentType,
 	SplashPotionType,
 	TNTType,
-	PaintingType,
 	TextType,
 })
 
@@ -53,13 +50,6 @@ var conf = world.EntityRegistryConfig{
 	},
 	Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
 		return NewItem(opts, it.(item.Stack))
-	},
-	Painting: func(opts world.EntitySpawnOpts, motive any, direction cube.Direction) *world.EntityHandle {
-		m, ok := motive.(painting.Motive)
-		if !ok {
-			panic("world.EntityRegistryConfig.Painting: motive must be painting.Motive")
-		}
-		return NewPainting(opts, m, direction)
 	},
 	LingeringPotion: func(opts world.EntitySpawnOpts, t any, owner world.Entity) *world.EntityHandle {
 		return NewLingeringPotion(opts, t.(potion.Potion), owner)
