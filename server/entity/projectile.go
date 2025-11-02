@@ -169,7 +169,7 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	switch r := result.(type) {
 	case trace.EntityResult:
 		if l, ok := r.Entity().(Living); ok && lt.conf.Damage >= 0 {
-			lt.hitEntity(l, e, vel)
+			lt.hitEntity(l, e, vel, tx)
 		} else if d, ok := r.Entity().(Destructible); ok {
 			owner, _ := lt.conf.Owner.Entity(tx)
 			src := ProjectileDamageSource{Projectile: e, Owner: owner}
@@ -269,8 +269,8 @@ func (lt *ProjectileBehaviour) hitBlockSurviving(e *Ent, r trace.BlockResult, m 
 // hitEntity is called when a projectile hits a Living. It deals damage to the
 // entity and knocks it back. Additionally, it applies any potion effects and
 // fire if applicable.
-func (lt *ProjectileBehaviour) hitEntity(l Living, e *Ent, vel mgl64.Vec3) {
-	owner, _ := lt.conf.Owner.Entity(e.tx)
+func (lt *ProjectileBehaviour) hitEntity(l Living, e *Ent, vel mgl64.Vec3, tx *world.Tx) {
+	owner, _ := lt.conf.Owner.Entity(tx)
 	src := ProjectileDamageSource{Projectile: e, Owner: owner}
 	dmg := math.Ceil(lt.conf.Damage * vel.Len())
 	if lt.conf.Critical {

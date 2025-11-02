@@ -375,6 +375,7 @@ type EntityRegistryConfig struct {
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration) *EntityHandle
 	BottleOfEnchanting func(opts EntitySpawnOpts, owner Entity) *EntityHandle
+	Painting           func(opts EntitySpawnOpts, motive any, direction cube.Direction) *EntityHandle
 	Arrow              func(opts EntitySpawnOpts, damage float64, owner Entity, critical, disallowPickup, obtainArrowOnPickup bool, punchLevel int, tip any) *EntityHandle
 	Trident            func(opts EntitySpawnOpts, owner Entity, stack any, loyalty, impaling int, channeling bool) *EntityHandle
 	Egg                func(opts EntitySpawnOpts, owner Entity) *EntityHandle

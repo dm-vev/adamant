@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"slices"
 )
 
 // NetworkEncodeableEntity is a world.EntityType where the save ID and network
@@ -112,6 +113,15 @@ func (s *Session) ViewEntity(e world.Entity) {
 		} else {
 			s.ViewSkin(e)
 		}
+		return
+	case *entity.Painting:
+		s.writePacket(&packet.AddPainting{
+			EntityUniqueID:  int64(runtimeID),
+			EntityRuntimeID: runtimeID,
+			Position:        vec64To32(v.Position()),
+			Direction:       int32(slices.Index(cube.Directions(), v.Direction())),
+			Title:           v.Motive().String(),
+		})
 		return
 	case *entity.Ent:
 		switch e.H().Type() {
