@@ -2850,6 +2850,10 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 
 	if p.prevWorld != tx.World() && p.prevWorld != nil {
 		p.Handler().HandleChangeWorld(p, p.prevWorld, tx.World())
+		// Ensure the session is registered as a viewer in the new world (Nether/End included)
+		if s := p.session(); s != session.Nop {
+			s.EnsureWorldViewer(tx, p)
+		}
 	}
 	p.prevWorld = tx.World()
 

@@ -80,6 +80,8 @@ func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return nil
 	}
 
+	i.checkEntityInsiders(e, tx)
+
 	bl, ok := tx.Block(blockPos).(block.Hopper)
 	if ok && !bl.Powered && bl.CollectCooldown <= 0 {
 		addedCount, err := bl.Inventory(tx, blockPos).AddItem(i.i)
@@ -179,6 +181,33 @@ func (i *ItemBehaviour) collect(e *Ent, collector Collector, tx *world.Tx) {
 	// collector collected.
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, i.i.Grow(-n)))
 	_ = e.CloseIn(tx)
+}
+
+// checkEntityInsiders checks if the item entity is colliding with any EntityInsider blocks.
+func (i *ItemBehaviour) checkEntityInsiders(e *Ent, tx *world.Tx) {
+	box := e.H().Type().BBox(e).Translate(e.Position()).Grow(-0.0001)
+	min, max := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+
+	for y := min[1]; y <= max[1]; y++ {
+		for x := min[0]; x <= max[0]; x++ {
+			for z := min[2]; z <= max[2]; z++ {
+				blockPos := cube.Pos{x, y, z}
+				b := tx.Block(blockPos)
+				if collide, ok := b.(block.EntityInsider); ok {
+					collide.EntityInside(blockPos, tx, e)
+					if _, liquid := b.(world.Liquid); liquid {
+						continue
+					}
+				}
+
+				if l, ok := tx.Liquid(blockPos); ok {
+					if collide, ok := l.(block.EntityInsider); ok {
+						collide.EntityInside(blockPos, tx, e)
+					}
+				}
+			}
+		}
+	}
 }
 
 func (i *ItemBehaviour) burnsInHazard(e *Ent, tx *world.Tx, positions ...cube.Pos) bool {

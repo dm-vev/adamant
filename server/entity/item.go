@@ -64,3 +64,19 @@ func (itemType) EncodeNBT(data *world.EntityData) map[string]any {
 		"Item":        nbtconv.WriteItem(b.Item(), true),
 	}
 }
+
+func (itemType) EntityEject(e world.Entity, pos cube.Pos, _ *world.Tx) {
+	ent, ok := e.(*Ent)
+	if !ok {
+		return
+	}
+	delta := e.Position().Sub(pos.Vec3Centre())
+	if delta.Len() <= epsilon {
+		return
+	}
+	vel := delta.Normalize().Mul(0.4)
+	if vel[1] < 0.15 {
+		vel[1] = 0.15
+	}
+	ent.SetVelocity(vel)
+}

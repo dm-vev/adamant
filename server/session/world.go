@@ -497,6 +497,10 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		DisableRelativeVolume: disableRelative,
 	}
 	switch so := t.(type) {
+	case sound.WindChargeShoot:
+		pk.SoundType = packet.SoundEventThrow
+	case sound.WindChargeImpact:
+		pk.SoundType = packet.SoundEventWindChargeBurst
 	case sound.EquipItem:
 		switch i := so.Item.(type) {
 		case item.Helmet:
@@ -608,6 +612,8 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventBlastFurnaceUse
 	case sound.SmokerCrackle:
 		pk.SoundType = packet.SoundEventSmokerUse
+	case sound.BellRing:
+		pk.SoundType = packet.SoundEventBell
 	case sound.PotionBrewed:
 		pk.SoundType = packet.SoundEventPotionBrewed
 	case sound.UseSpyglass:
@@ -1247,6 +1253,27 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 			EventType: packet.LevelEventUpdateBlockCracking,
 			Position:  vec64To32(pos.Vec3()),
 			EventData: int32(65535 / (t.BreakTime.Seconds() * 20)),
+		})
+	case block.BellRing:
+		d := int32(0)
+		switch t.Face.Direction() {
+		case cube.West:
+			d = 1
+		case cube.North:
+			d = 2
+		case cube.East:
+			d = 3
+		}
+		s.writePacket(&packet.BlockActorData{
+			Position: blockPos,
+			NBTData: map[string]any{
+				"Direction": d,
+				"Ringing":   uint8(1),
+				"id":        "Bell",
+				"x":         blockPos.X(),
+				"y":         blockPos.Y(),
+				"z":         blockPos.Z(),
+			},
 		})
 	case block.DecoratedPotWobbleAction:
 		nbt := t.DecoratedPot.EncodeNBT()

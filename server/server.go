@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"iter"
 	"maps"
@@ -384,34 +385,44 @@ func (srv *Server) close() {
 // the maximum player count of additional Listeners added is not enforced
 // automatically. The limit must be enforced by the Listener.
 func (srv *Server) listen(l Listener) {
-	wg := new(sync.WaitGroup)
-	ctx, cancel := context.WithCancel(context.Background())
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			// Cancel the context so that any call to StartGameContext is
-			// cancelled rapidly.
-			cancel()
-			// First wait until all connections that are being handled are done
-			// inserting the player into the channel. Afterwards, when we're
-			// sure no more values will be inserted in the players channel, we
-			// can return so the player channel can be closed.
-			wg.Wait()
-			srv.wg.Done()
-			return
-		}
+    wg := new(sync.WaitGroup)
+    ctx, cancel := context.WithCancel(context.Background())
+    for {
+        c, err := l.Accept()
+        if err != nil {
+            // Cancel the context so that any call to StartGameContext is
+            // cancelled rapidly.
+            cancel()
+            // First wait until all connections that are being handled are done
+            // inserting the player into the channel. Afterwards, when we're
+            // sure no more values will be inserted in the players channel, we
+            // can return so the player channel can be closed.
+            wg.Wait()
+            srv.wg.Done()
+            return
+        }
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if msg, ok := srv.conf.Allower.Allow(c.RemoteAddr(), c.IdentityData(), c.ClientData()); !ok {
-				_ = c.WritePacket(&packet.Disconnect{HideDisconnectionScreen: msg == "", Message: msg})
-				_ = c.Close()
-				return
-			}
-			srv.finaliseConn(ctx, c, l)
-		}()
-	}
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            if msg, ok := srv.conf.Allower.Allow(c.RemoteAddr(), c.IdentityData(), c.ClientData()); !ok {
+                _ = c.WritePacket(&packet.Disconnect{HideDisconnectionScreen: msg == "", Message: msg})
+                _ = c.Close()
+                return
+            }
+            // Validate SkinResourcePatch early and disconnect with a clear reason
+            // if it is invalid or corrupted (e.g. invalid base64/JSON).
+            if !validSkinResourcePatch(c.ClientData().SkinResourcePatch) {
+                _ = c.WritePacket(&packet.Disconnect{
+                    HideDisconnectionScreen: false,
+                    Message:                  "Недопустимый или поврежденный скин. Измените скин вашего персонажа в настройках игры",
+                })
+                _ = c.Close()
+                return
+            }
+            srv.finaliseConn(ctx, c, l)
+        }()
+    }
 }
 
 // startListening starts making the EncodeBlock listener listen, accepting new
@@ -701,9 +712,9 @@ func (srv *Server) registerWorld(dim world.Dimension, w *world.World) {
 
 // parseSkin parses a skin from the login.ClientData and returns it.
 func (srv *Server) parseSkin(data login.ClientData) skin.Skin {
-	// Gophertunnel guarantees the following values are valid data and are of
-	// the correct size.
-	skinResourcePatch, _ := base64.StdEncoding.DecodeString(data.SkinResourcePatch)
+    // Gophertunnel guarantees the following values are valid data and are of
+    // the correct size.
+    skinResourcePatch, _ := base64.StdEncoding.DecodeString(data.SkinResourcePatch)
 
 	playerSkin := skin.New(data.SkinImageWidth, data.SkinImageHeight)
 	playerSkin.Persona = data.PersonaSkin
@@ -734,7 +745,29 @@ func (srv *Server) parseSkin(data login.ClientData) skin.Skin {
 		playerSkin.Animations = append(playerSkin.Animations, anim)
 	}
 
-	return playerSkin
+    return playerSkin
+}
+
+// validSkinResourcePatch reports whether the SkinResourcePatch field is valid base64
+// and contains a valid JSON object when decoded. Some clients may send corrupted
+// data which should result in a friendly disconnect reason.
+func validSkinResourcePatch(patch string) bool {
+    if patch == "" {
+        // Empty is treated as invalid for our purposes, to avoid JSON EOF issues.
+        return false
+    }
+    b, err := base64.StdEncoding.DecodeString(patch)
+    if err != nil {
+        return false
+    }
+    if len(b) == 0 {
+        return false
+    }
+    var v any
+    if err := json.Unmarshal(b, &v); err != nil {
+        return false
+    }
+    return true
 }
 
 // vec64To32 converts a mgl64.Vec3 to a mgl32.Vec3.

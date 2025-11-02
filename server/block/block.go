@@ -79,6 +79,12 @@ type ProjectileHitter interface {
 	ProjectileHit(pos cube.Pos, tx *world.Tx, e world.Entity, face cube.Face)
 }
 
+// EntityEjector represents a block that ejects entities when they are inside it.
+type EntityEjector interface {
+	// EntityEject is called when an entity is inside the block's 1x1x1 axis aligned bounding box.
+	EntityEject(e world.Entity, pos cube.Pos, tx *world.Tx)
+}
+
 // Frictional represents a block that may have a custom friction value. Friction is used for entity drag when the
 // entity is on ground. If a block does not implement this interface, it should be assumed that its friction is 0.6.
 type Frictional interface {

@@ -440,6 +440,37 @@ func (s *Session) handleWorldSwitch(w *world.World, tx *world.Tx, c Controllable
 	s.chunkLoader.ChangeWorld(tx, w)
 }
 
+// EnsureWorldViewer ensures the session's chunk loader is registered as a viewer for the
+// world provided by the transaction. If the player switched dimensions (e.g., to Nether/End),
+// this proactively updates the client and moves the loader to the new world so chunks keep loading.
+func (s *Session) EnsureWorldViewer(tx *world.Tx, c Controllable) {
+    w := tx.World()
+    if w == nil {
+        return
+    }
+    if s.chunkLoader == nil {
+        s.chunkLoader = world.NewLoader(int(s.chunkRadius), w, s)
+    }
+    if s.chunkLoader.World() == w {
+        return
+    }
+
+    if s.conn.ClientCacheEnabled() {
+        s.blobMu.Lock()
+        s.blobs = map[uint64][]byte{}
+        s.openChunkTransactions = nil
+        s.blobMu.Unlock()
+    }
+
+    dim, _ := world.DimensionID(w.Dimension())
+    same := s.chunkLoader.World() != nil && w.Dimension() == s.chunkLoader.World().Dimension()
+    if !same {
+        s.changeDimension(int32(dim), false, c)
+    }
+    s.ViewEntityTeleport(c, c.Position())
+    s.chunkLoader.ChangeWorld(tx, w)
+}
+
 // changeDimension changes the dimension of the client. If silent is set to true, the portal noise will be stopped
 // immediately.
 func (s *Session) changeDimension(dim int32, silent bool, c Controllable) {

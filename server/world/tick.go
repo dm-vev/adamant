@@ -96,11 +96,13 @@ func (t ticker) tick(tx *Tx) {
 		// the player should spawn at the highest position in the world.
 		w.set.Spawn[1] = w.highestObstructingBlock(s[0], s[2]) + 1
 	}
-	if len(viewers) == 0 && w.set.CurrentTick != 0 {
-		// Don't continue ticking if no viewers are in the world.
-		w.set.Unlock()
-		return
-	}
+    if len(viewers) == 0 && w.set.CurrentTick != 0 && len(w.entities) == 0 {
+        // Don't continue ticking if the world has no viewers and no active entities.
+        // This allows dimensions like the End to keep updating (e.g. liquid flow)
+        // while a player entity is present even if a viewer wasn't registered.
+        w.set.Unlock()
+        return
+    }
 	if w.advance {
 		w.set.CurrentTick++
 		if w.set.TimeCycle {
