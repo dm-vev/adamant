@@ -120,7 +120,6 @@ func registerCreativeItems() {
 		}
 		RegisterItem(Item{st, creativeGroups[data.GroupIndex].Name})
 	}
-	ensurePaintingCreativeEntry()
 }
 
 func itemStackFromEntry(data creativeItemEntry) (item.Stack, bool) {
@@ -174,35 +173,4 @@ func itemStackFromEntry(data creativeItemEntry) (item.Stack, bool) {
 		}
 	}
 	return st, true
-}
-
-func ensurePaintingCreativeEntry() {
-	const paintingName = "minecraft:painting"
-	for _, entry := range creativeItemStacks {
-		if id, _ := entry.Stack.Item().EncodeItem(); id == paintingName {
-			return
-		}
-	}
-
-	const preferredGroup = "itemGroup.name.banner"
-	groupName := ""
-	for _, group := range creativeGroups {
-		if group.Name == preferredGroup {
-			groupName = group.Name
-			break
-		}
-	}
-	if groupName == "" {
-		for _, group := range creativeGroups {
-			if group.Name != "" {
-				groupName = group.Name
-				break
-			}
-		}
-	}
-	if groupName == "" {
-		return
-	}
-
-	RegisterItem(Item{Stack: item.NewStack(item.Painting{}, 1), Group: groupName})
 }
