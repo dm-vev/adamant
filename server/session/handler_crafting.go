@@ -319,3 +319,74 @@ func (h *ItemStackRequestHandler) tryDynamicCraft(s *Session, tx *world.Tx, time
 
 	return fmt.Errorf("no matching recipe found for crafting grid")
 }
+
+// tryDynamicCraft attempts to match the items in the crafting grid with any registered dynamic recipes.
+func (h *ItemStackRequestHandler) tryDynamicCraft(s *Session, tx *world.Tx, timesCrafted int) error {
+	if timesCrafted < 1 {
+		return fmt.Errorf("times crafted must be at least 1")
+	}
+
+	size := s.craftingSize()
+	offset := s.craftingOffset()
+
+	// Collect all items from the crafting grid
+	input := make([]recipe.Item, size)
+	for i := uint32(0); i < size; i++ {
+		slot := offset + i
+		it, _ := s.ui.Item(int(slot))
+		if it.Empty() {
+			input[i] = item.Stack{}
+		} else {
+			input[i] = it
+		}
+	}
+
+	// Try to match with any dynamic recipe
+	for _, dynamicRecipe := range recipe.DynamicRecipes() {
+		if dynamicRecipe.Block() != "crafting_table" {
+			continue
+		}
+
+		output, ok := dynamicRecipe.Match(input)
+		if !ok {
+			continue
+		}
+
+		// Found a matching dynamic recipe! Now validate ingredient counts and consume the items
+		// For dynamic recipes, we consume all non-empty slots, but we need to ensure each slot
+		// has enough items to craft timesCrafted times.
+		minStackCount := math.MaxInt
+		for i := uint32(0); i < size; i++ {
+			slot := offset + i
+			it, _ := s.ui.Item(int(slot))
+			if !it.Empty() {
+				if it.Count() < minStackCount {
+					minStackCount = it.Count()
+				}
+			}
+		}
+
+		// Cap timesCrafted to the minimum available stack count to prevent item duplication
+		if minStackCount < timesCrafted {
+			timesCrafted = minStackCount
+		}
+
+		// Now consume the validated amount from each non-empty slot
+		for i := uint32(0); i < size; i++ {
+			slot := offset + i
+			it, _ := s.ui.Item(int(slot))
+			if !it.Empty() {
+				// Consume one item from this slot per craft
+				st := it.Grow(-1 * timesCrafted)
+				h.setItemInSlot(protocol.StackRequestSlotInfo{
+					Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+					Slot:      byte(slot),
+				}, st, s, tx)
+			}
+		}
+
+		return h.createResults(s, tx, repeatStacks(output, timesCrafted)...)
+	}
+
+	return fmt.Errorf("no matching recipe found for crafting grid")
+}
