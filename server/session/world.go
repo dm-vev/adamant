@@ -1041,10 +1041,10 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventHurt,
 		})
-	case entity.CriticalHitAction:
-		if act.Count <= 0 {
-			act.Count = 55
-		}
+		case entity.CriticalHitAction:
+			if act.Count <= 0 {
+				act.Count = 55
+			}
 			s.writePacket(&packet.Animate{
 				ActionType:      packet.AnimateActionCriticalHit,
 				EntityRuntimeID: s.entityRuntimeID(e),
@@ -1053,7 +1053,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		case entity.EnchantedHitAction:
 			if act.Count <= 0 {
 				act.Count = 15
-		}
+			}
 			s.writePacket(&packet.Animate{
 				ActionType:      packet.AnimateActionMagicCriticalHit,
 				EntityRuntimeID: s.entityRuntimeID(e),
@@ -1062,8 +1062,8 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		case entity.DeathAction:
 			s.writePacket(&packet.ActorEvent{
 				EntityRuntimeID: s.entityRuntimeID(e),
-			EventType:       packet.ActorEventDeath,
-		})
+				EventType:       packet.ActorEventDeath,
+			})
 	case entity.PickedUpAction:
 		s.writePacket(&packet.TakeItemActor{
 			ItemEntityRuntimeID:  s.entityRuntimeID(e),
