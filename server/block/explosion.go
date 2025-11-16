@@ -200,13 +200,13 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 
 		tx.AddParticle(explosionPos, c.Particle)
 		tx.PlaySound(explosionPos, c.Sound)
-	}) {
-		return
+		}) {
+			return
+		}
 	}
-}
 
-// exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.
-func exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
+	// exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.
+	func exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
 	pos := e.Position()
 	box := e.H().Type().BBox(e).Translate(pos)
 
