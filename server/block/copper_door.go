@@ -1,13 +1,14 @@
 package block
 
 import (
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
 )
 
 // CopperDoor is a block that can be used as an openable 1x2 barrier.
@@ -200,26 +201,12 @@ func (d CopperDoor) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 
 // EncodeItem ...
 func (d CopperDoor) EncodeItem() (name string, meta int16) {
-	name = "copper_door"
-	if d.Oxidation != UnoxidisedOxidation() {
-		name = d.Oxidation.String() + "_" + name
-	}
-	if d.Waxed {
-		name = "waxed_" + name
-	}
-	return "minecraft:" + name, 0
+	return copperBlockName("copper_door", d.Oxidation, d.Waxed), 0
 }
 
 // EncodeBlock ...
 func (d CopperDoor) EncodeBlock() (name string, properties map[string]any) {
-	name = "copper_door"
-	if d.Oxidation != UnoxidisedOxidation() {
-		name = d.Oxidation.String() + "_" + name
-	}
-	if d.Waxed {
-		name = "waxed_" + name
-	}
-	return "minecraft:" + name, map[string]any{"minecraft:cardinal_direction": d.Facing.RotateRight().String(), "door_hinge_bit": d.Right, "open_bit": d.Open, "upper_block_bit": d.Top}
+	return copperBlockName("copper_door", d.Oxidation, d.Waxed), map[string]any{"minecraft:cardinal_direction": d.Facing.RotateRight().String(), "door_hinge_bit": d.Right, "open_bit": d.Open, "upper_block_bit": d.Top}
 }
 
 // RedstoneConnectsTo ...

@@ -58,9 +58,11 @@ const (
 	hashConcrete
 	hashConcretePowder
 	hashCopper
+	hashCopperBars
 	hashCopperBulb
 	hashCopperChain
 	hashCopperDoor
+	hashCopperGolemStatue
 	hashCopperGrate
 	hashCopperLantern
 	hashCopperOre
@@ -495,6 +497,10 @@ func (c Copper) Hash() (uint64, uint64) {
 	return hashCopper, uint64(c.Type.Uint8()) | uint64(c.Oxidation.Uint8())<<2 | uint64(boolByte(c.Waxed))<<4
 }
 
+func (c CopperBars) Hash() (uint64, uint64) {
+	return hashCopperBars, uint64(c.Oxidation.Uint8()) | uint64(boolByte(c.Waxed))<<2
+}
+
 func (b CopperBulb) Hash() (uint64, uint64) {
 	return hashCopperBulb, uint64(b.Oxidation.Uint8()) | uint64(boolByte(b.Waxed))<<2 | uint64(boolByte(b.Lit))<<3 | uint64(boolByte(b.Powered))<<4
 }
@@ -505,6 +511,10 @@ func (c CopperChain) Hash() (uint64, uint64) {
 
 func (d CopperDoor) Hash() (uint64, uint64) {
 	return hashCopperDoor, uint64(d.Oxidation.Uint8()) | uint64(boolByte(d.Waxed))<<2 | uint64(d.Facing)<<3 | uint64(boolByte(d.Open))<<5 | uint64(boolByte(d.Top))<<6 | uint64(boolByte(d.Right))<<7
+}
+
+func (c CopperGolemStatue) Hash() (uint64, uint64) {
+	return hashCopperGolemStatue, uint64(c.Facing) | uint64(c.Oxidation.Uint8())<<2 | uint64(boolByte(c.Waxed))<<4
 }
 
 func (c CopperGrate) Hash() (uint64, uint64) {
