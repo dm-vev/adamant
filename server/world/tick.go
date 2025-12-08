@@ -119,7 +119,6 @@ func (t ticker) tick(tx *Tx) {
 		w.set.RequiredSleepTicks--
 		tryAdvanceDay = w.set.RequiredSleepTicks <= 0
 	}
-
 	w.set.Unlock()
 
 	if tryAdvanceDay {
@@ -128,7 +127,7 @@ func (t ticker) tick(tx *Tx) {
 
 	if tick%20 == 0 {
 		for _, viewer := range viewers {
-			if w.Dimension().TimeCycle() {
+			if w.Dimension().TimeCycle() && timeCycle {
 				viewer.ViewTime(tim)
 			}
 			if w.Dimension().WeatherCycle() {

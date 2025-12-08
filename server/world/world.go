@@ -790,6 +790,16 @@ func (w *World) StartTime() {
 	w.enableTimeCycle(true)
 }
 
+// TimeCycle returns whether time cycle is enabled.
+func (w *World) TimeCycle() bool {
+	if w == nil {
+		return false
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	return w.set.TimeCycle
+}
+
 // enableTimeCycle enables or disables the time cycling of the World.
 func (w *World) enableTimeCycle(v bool) {
 	if w == nil {
@@ -798,6 +808,10 @@ func (w *World) enableTimeCycle(v bool) {
 	w.set.Lock()
 	defer w.set.Unlock()
 	w.set.TimeCycle = v
+	viewers, _ := w.allViewers()
+	for _, viewer := range viewers {
+		viewer.ViewTimeCycle(v)
+	}
 }
 
 // PlayersSleepingPercentage returns the configured percentage of players required to sleep before the night is skipped.
@@ -1389,6 +1403,7 @@ func (w *World) addWorldViewer(l *Loader) {
 	w.viewerMu.Unlock()
 
 	l.viewer.ViewTime(w.Time())
+	l.viewer.ViewTimeCycle(w.TimeCycle())
 	w.set.Lock()
 	raining, thundering := w.set.Raining, w.set.Raining && w.set.Thundering
 	w.set.Unlock()
