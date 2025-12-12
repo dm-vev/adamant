@@ -3379,7 +3379,7 @@ func (p *Player) damageItem(s item.Stack, d int) item.Stack {
 		return s
 	}
 	ctx := event.C(p)
-	if p.Handler().HandleItemDamage(ctx, s, d); ctx.Cancelled() {
+	if p.Handler().HandleItemDamage(ctx, s, &d); ctx.Cancelled() || d <= 0 {
 		return s
 	}
 	if e, ok := s.Enchantment(enchantment.Unbreaking); ok {
