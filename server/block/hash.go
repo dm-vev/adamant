@@ -35,6 +35,8 @@ const (
 	hashCarrot
 	hashChest
 	hashChiseledQuartz
+	hashChorusFlower
+	hashChorusPlant
 	hashClay
 	hashCoal
 	hashCoalOre
@@ -330,6 +332,14 @@ func (c Chest) Hash() (uint64, uint64) {
 
 func (ChiseledQuartz) Hash() (uint64, uint64) {
 	return hashChiseledQuartz, 0
+}
+
+func (c ChorusFlower) Hash() (uint64, uint64) {
+	return hashChorusFlower, uint64(c.Age)
+}
+
+func (ChorusPlant) Hash() (uint64, uint64) {
+	return hashChorusPlant, 0
 }
 
 func (Clay) Hash() (uint64, uint64) {

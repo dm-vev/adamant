@@ -19,6 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/generator"
+	"github.com/df-mc/dragonfly/server/world/generator/mc112"
 	"github.com/df-mc/dragonfly/server/world/generator/pmgen"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/google/uuid"
@@ -475,7 +476,7 @@ func loadResources(dir string) ([]*resource.Pack, error) {
 }
 
 // defaultGeneratorProvider returns the generator function to use when none is supplied by the user configuration.
-// The overworld utilises pm-gen, while the other dimensions remain flat generators for now.
+// The overworld utilises pm-gen, the nether remains flat, and the end uses a Java 1.12 style generator.
 func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Generator {
 	return func(dim world.Dimension) world.Generator {
 		switch dim {
@@ -484,7 +485,7 @@ func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Genera
 		case world.Nether:
 			return generator.NewFlat(biome.NetherWastes{}, []world.Block{block.Netherrack{}, block.Netherrack{}, block.Netherrack{}, block.Bedrock{}})
 		case world.End:
-			return generator.NewFlat(biome.End{}, []world.Block{block.EndStone{}, block.EndStone{}, block.EndStone{}, block.Bedrock{}})
+			return mc112.NewEnd(seed)
 		}
 		panic("should never happen")
 	}
