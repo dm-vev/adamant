@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -27,10 +28,27 @@ type End struct {
 	airRID      uint32
 	biomeID     uint32
 
+	bedrockRID    uint32
+	obsidianRID   uint32
+	ironBarsRID   uint32
+	endPortalRID  uint32
+	endGatewayRID uint32
+
 	chorusPlantRID    uint32
 	chorusFlowerRID   uint32
 	chorusFlowerDead  uint32
 	chorusMaxDistance int
+
+	podiumOnce sync.Once
+	podiumY    int
+
+	spikesOnce sync.Once
+	spikes     []endSpike
+
+	endCityRandOnce sync.Once
+	endCityRandJ    int64
+	endCityRandK    int64
+	endCityCache    sync.Map // world.ChunkPos -> *endCityStructure (nil when absent)
 
 	pool sync.Pool
 }
@@ -57,6 +75,11 @@ func NewEnd(seed int64) *End {
 		endStoneRID:   world.BlockRuntimeID(block.EndStone{}),
 		airRID:        world.BlockRuntimeID(block.Air{}),
 		biomeID:       uint32(dfbiome.End{}.EncodeBiome()),
+		bedrockRID:    world.BlockRuntimeID(block.Bedrock{}),
+		obsidianRID:   world.BlockRuntimeID(block.Obsidian{}),
+		ironBarsRID:   world.BlockRuntimeID(block.IronBars{}),
+		endPortalRID:  world.BlockRuntimeID(block.EndPortal{}),
+		endGatewayRID: world.BlockRuntimeID(block.EndGateway{}),
 		// Use runtime IDs directly: chorus flowers require specific state IDs (age), and this avoids per-block allocations.
 		chorusPlantRID:    mustStateRID("minecraft:chorus_plant", nil),
 		chorusFlowerRID:   mustStateRID("minecraft:chorus_flower", nil),
@@ -85,6 +108,13 @@ func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 
 	chunkX, chunkZ := int(pos[0]), int(pos[1])
 	r := newJavaRand(int64(chunkX)*341873128712 + int64(chunkZ)*132897987541)
+	g.generateTerrain(chunkX, chunkZ, c, s)
+
+	g.generateCentralStructures(chunkX, chunkZ, c)
+	g.populate(chunkX, chunkZ, c, r)
+}
+
+func (g *End) generateTerrain(chunkX, chunkZ int, c *chunk.Chunk, s *endScratch) {
 	heights := g.getHeights(s, chunkX*2, 0, chunkZ*2, 3, 33, 3)
 
 	baseY := int16(c.Range().Min())
@@ -133,8 +163,276 @@ func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 			}
 		}
 	}
+}
 
-	g.populate(chunkX, chunkZ, c, r)
+type endSpike struct {
+	x       int
+	z       int
+	radius  int
+	height  int
+	guarded bool
+}
+
+func (g *End) generateCentralStructures(chunkX, chunkZ int, c *chunk.Chunk) {
+	// Central End features are limited to a small area around (0, 0).
+	if abs(chunkX) > 8 || abs(chunkZ) > 8 {
+		return
+	}
+	g.generateExitPodium(chunkX, chunkZ, c)
+	g.generateObsidianSpikes(chunkX, chunkZ, c)
+	g.generateSpawnPlatform(chunkX, chunkZ, c)
+}
+
+func (g *End) generateSpawnPlatform(chunkX, chunkZ int, c *chunk.Chunk) {
+	// Matches the platform created by Teleporter.placeInPortal when entering the End in Java 1.12.
+	const (
+		spawnX = 100
+		spawnY = 50
+		spawnZ = 0
+	)
+
+	// Teleporter uses j = floor(posY)-1 with posY=spawnY.
+	baseY := spawnY - 2 // obsidian layer at y = j-1
+	for dx := -2; dx <= 2; dx++ {
+		for dz := -2; dz <= 2; dz++ {
+			wx := spawnX + dx
+			wz := spawnZ + dz
+			setBlockWorld(c, chunkX, chunkZ, wx, baseY, wz, g.obsidianRID)
+			for wy := baseY + 1; wy <= baseY+3; wy++ {
+				setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.airRID)
+			}
+		}
+	}
+}
+
+func (g *End) generateExitPodium(chunkX, chunkZ int, c *chunk.Chunk) {
+	y := g.exitPodiumY()
+	minY, maxY := c.Range().Min(), c.Range().Max()
+	if y < minY || y > maxY {
+		return
+	}
+
+	const (
+		rOuterSq = 3.5 * 3.5
+		rInnerSq = 2.5 * 2.5
+	)
+
+	for wx := -4; wx <= 4; wx++ {
+		for wz := -4; wz <= 4; wz++ {
+			dx := float64(wx)
+			dz := float64(wz)
+			distSq := dx*dx + dz*dz
+			if distSq > rOuterSq {
+				continue
+			}
+
+			for wy := y - 1; wy <= y+32; wy++ {
+				if wy < minY || wy > maxY {
+					continue
+				}
+
+				switch {
+				case wy < y:
+					if distSq <= rInnerSq {
+						setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.bedrockRID)
+					} else {
+						setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.endStoneRID)
+					}
+				case wy > y:
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.airRID)
+				default:
+					if distSq > rInnerSq {
+						setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.bedrockRID)
+					} else {
+						setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.endPortalRID)
+					}
+				}
+			}
+		}
+	}
+
+	for i := 0; i < 4; i++ {
+		setBlockWorld(c, chunkX, chunkZ, 0, y+i, 0, g.bedrockRID)
+	}
+
+	centreY := y + 2
+	for _, dir := range cube.Directions() {
+		offset := directionOffset(dir)
+		torch := block.Torch{Type: block.NormalFire(), Facing: dir.Opposite().Face()}
+		setBlockWorld(c, chunkX, chunkZ, offset[0], centreY, offset[2], world.BlockRuntimeID(torch))
+	}
+}
+
+func (g *End) exitPodiumY() int {
+	g.podiumOnce.Do(func() {
+		// Match DragonFightManager's selection of the exit portal location:
+		// find the top solid block at (0, 0) and place the podium one block below.
+		s := g.pool.Get().(*endScratch)
+		defer g.pool.Put(s)
+
+		heights := g.getHeights(s, 0, 0, 0, 3, 33, 3)
+		top := 0
+
+		for k1 := 0; k1 < 32; k1++ {
+			d1 := heights[(0*3+0)*33+k1+0]
+			d5 := (heights[(0*3+0)*33+k1+1] - d1) * 0.25
+
+			for l1 := 0; l1 < 4; l1++ {
+				if d1 > 0.0 {
+					y := l1 + k1*4
+					if y > top {
+						top = y
+					}
+				}
+				d1 += d5
+			}
+		}
+
+		if top > 0 {
+			g.podiumY = top - 1
+		}
+	})
+	return g.podiumY
+}
+
+func (g *End) generateObsidianSpikes(chunkX, chunkZ int, c *chunk.Chunk) {
+	for _, spike := range g.spikeList() {
+		g.generateSpike(chunkX, chunkZ, c, spike)
+	}
+}
+
+func (g *End) spikeList() []endSpike {
+	g.spikesOnce.Do(func() {
+		// BiomeEndDecorator.getSpikesForWorld, Java 1.12:
+		// Random(worldSeed).nextLong() & 65535, used as seed for shuffling [0..9].
+		r0 := newJavaRand(g.seed)
+		seed := uint64(r0.Long()) & 65535
+
+		perm := make([]int, 10)
+		for i := range perm {
+			perm[i] = i
+		}
+		r := newJavaRand(int64(seed))
+		shuffleInts(r, perm)
+
+		spikes := make([]endSpike, 0, 10)
+		for i := 0; i < 10; i++ {
+			angle := 2.0 * (-math.Pi + (math.Pi/10.0)*float64(i))
+			x := int(42.0 * math.Cos(angle))
+			z := int(42.0 * math.Sin(angle))
+
+			l := perm[i]
+			radius := 2 + l/3
+			height := 76 + l*3
+			guarded := l == 1 || l == 2
+			spikes = append(spikes, endSpike{x: x, z: z, radius: radius, height: height, guarded: guarded})
+		}
+		g.spikes = spikes
+	})
+	return g.spikes
+}
+
+func (g *End) generateSpike(chunkX, chunkZ int, c *chunk.Chunk, spike endSpike) {
+	wxMin, wxMax := spike.x-spike.radius, spike.x+spike.radius
+	wzMin, wzMax := spike.z-spike.radius, spike.z+spike.radius
+
+	chunkWXMin := chunkX << 4
+	chunkWZMin := chunkZ << 4
+	chunkWXMax := chunkWXMin + 15
+	chunkWZMax := chunkWZMin + 15
+
+	if wxMax < chunkWXMin || wxMin > chunkWXMax || wzMax < chunkWZMin || wzMin > chunkWZMax {
+		return
+	}
+
+	minY, maxY := c.Range().Min(), c.Range().Max()
+	yMax := min(maxY, spike.height+10)
+
+	rSq := spike.radius*spike.radius + 1
+	for wx := max(wxMin, chunkWXMin); wx <= min(wxMax, chunkWXMax); wx++ {
+		dx := wx - spike.x
+		for wz := max(wzMin, chunkWZMin); wz <= min(wzMax, chunkWZMax); wz++ {
+			dz := wz - spike.z
+			distSq := dx*dx + dz*dz
+
+			for wy := 0; wy <= yMax; wy++ {
+				if wy < minY || wy > maxY {
+					continue
+				}
+				if distSq <= rSq && wy < spike.height {
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.obsidianRID)
+				} else if wy > 65 {
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.airRID)
+				}
+			}
+		}
+	}
+
+	if spike.height < minY || spike.height > maxY {
+		return
+	}
+
+	if spike.guarded {
+		for dx := -2; dx <= 2; dx++ {
+			for dz := -2; dz <= 2; dz++ {
+				x := spike.x + dx
+				z := spike.z + dz
+				if abs(dx) == 2 || abs(dz) == 2 {
+					setBlockWorld(c, chunkX, chunkZ, x, spike.height, z, g.ironBarsRID)
+					setBlockWorld(c, chunkX, chunkZ, x, spike.height+1, z, g.ironBarsRID)
+					setBlockWorld(c, chunkX, chunkZ, x, spike.height+2, z, g.ironBarsRID)
+				}
+				setBlockWorld(c, chunkX, chunkZ, x, spike.height+3, z, g.ironBarsRID)
+			}
+		}
+	}
+
+	setBlockWorld(c, chunkX, chunkZ, spike.x, spike.height, spike.z, g.bedrockRID)
+}
+
+func shuffleInts(r *javaRand, list []int) {
+	for i := len(list); i > 1; i-- {
+		j := int(r.Intn(int32(i)))
+		list[i-1], list[j] = list[j], list[i-1]
+	}
+}
+
+func directionOffset(d cube.Direction) cube.Pos {
+	switch d {
+	case cube.North:
+		return cube.Pos{0, 0, -1}
+	case cube.South:
+		return cube.Pos{0, 0, 1}
+	case cube.West:
+		return cube.Pos{-1, 0, 0}
+	case cube.East:
+		return cube.Pos{1, 0, 0}
+	}
+	panic("invalid direction")
+}
+
+func setBlockWorld(c *chunk.Chunk, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32) {
+	if worldX>>4 != chunkX || worldZ>>4 != chunkZ {
+		return
+	}
+	if int16(worldY) < int16(c.Range().Min()) || int16(worldY) > int16(c.Range().Max()) {
+		return
+	}
+	c.SetBlock(uint8(worldX&15), int16(worldY), uint8(worldZ&15), 0, rid)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func (g *End) fillBiomes(c *chunk.Chunk) {
@@ -263,6 +561,8 @@ func (g *End) populate(chunkX, chunkZ int, c *chunk.Chunk, r *javaRand) {
 		return
 	}
 
+	g.applyEndCityStructures(chunkX, chunkZ, c)
+
 	f := g.islandHeightValue(chunkX, chunkZ, 1, 1)
 	if f < -20.0 && r.Intn(14) == 0 {
 		g.generateEndIsland(c, int(r.Intn(16)), 55+int(r.Intn(16)), int(r.Intn(16)), r)
@@ -294,6 +594,54 @@ func (g *End) populate(chunkX, chunkZ int, c *chunk.Chunk, r *javaRand) {
 			continue
 		}
 		g.generateChorusPlant(c, int(x), int(top+1), int(z), r, g.chorusMaxDistance)
+	}
+
+	// Random End gateways between islands.
+	// In Java 1.12 this is placed with a 1/700 chance per populated chunk in the outer islands.
+	if r.Intn(700) == 0 {
+		x := uint8(r.Intn(16))
+		z := uint8(r.Intn(16))
+
+		top := c.HighestBlock(x, z)
+		if top <= 0 {
+			return
+		}
+		y := int(top) + 4 + int(r.Intn(7))
+		if int16(y) < int16(c.Range().Min()) || int16(y) > int16(c.Range().Max()) {
+			return
+		}
+
+		worldX := (chunkX << 4) + int(x)
+		worldZ := (chunkZ << 4) + int(z)
+		g.generateEndGatewayStructure(chunkX, chunkZ, c, worldX, y, worldZ)
+	}
+}
+
+// generateEndGatewayStructure places the 3x5x3 bedrock frame with an end gateway in the centre, matching
+// WorldGenEndGateway in Minecraft Java Edition 1.12.
+func (g *End) generateEndGatewayStructure(chunkX, chunkZ int, c *chunk.Chunk, worldX, worldY, worldZ int) {
+	for wx := worldX - 1; wx <= worldX+1; wx++ {
+		for wy := worldY - 2; wy <= worldY+2; wy++ {
+			for wz := worldZ - 1; wz <= worldZ+1; wz++ {
+				flagX := wx == worldX
+				flagY := wy == worldY
+				flagZ := wz == worldZ
+				flagY2 := abs(wy-worldY) == 2
+
+				switch {
+				case flagX && flagY && flagZ:
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.endGatewayRID)
+				case flagY:
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.airRID)
+				case flagY2 && flagX && flagZ:
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.bedrockRID)
+				case (flagX || flagZ) && !flagY2:
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.bedrockRID)
+				default:
+					setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, g.airRID)
+				}
+			}
+		}
 	}
 }
 

@@ -1549,6 +1549,80 @@ func (w *World) runGenerationTask(task generationTask) {
 	// Perform the actual chunk generation.
 	// The generator implementation is responsible for populating the chunk’s data.
 	w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
+	w.initialiseGeneratedBlockEntities(task.pos, task.col)
+	task.col.modified = true
+}
+
+// initialiseGeneratedBlockEntities initialises default block entity data for any blocks that require it in a newly
+// generated chunk. This ensures clients receive the correct block entity NBT (for example for beacons or end
+// gateways) immediately when the chunk is sent.
+func (w *World) initialiseGeneratedBlockEntities(pos ChunkPos, col *Column) {
+	if col == nil || col.Chunk == nil {
+		return
+	}
+	if col.BlockEntities == nil {
+		col.BlockEntities = map[cube.Pos]Block{}
+	}
+
+	c := col.Chunk
+	baseX, baseZ := int(pos[0]<<4), int(pos[1]<<4)
+
+	for subIndex, sub := range c.Sub() {
+		if sub.Empty() || len(sub.Layers()) == 0 {
+			continue
+		}
+		storage := sub.Layers()[0]
+
+		// Fast-path: Skip sub chunks whose palette doesn't contain any NBT blocks.
+		paletteHasNBT := false
+		pal := storage.Palette()
+		for i := 0; i < pal.Len(); i++ {
+			rid := pal.Value(uint16(i))
+			if rid < uint32(len(nbtBlocks)) && nbtBlocks[rid] {
+				paletteHasNBT = true
+				break
+			}
+		}
+		if !paletteHasNBT {
+			continue
+		}
+
+		subY := int(c.SubY(int16(subIndex)))
+		for x := byte(0); x < 16; x++ {
+			for z := byte(0); z < 16; z++ {
+				for y := byte(0); y < 16; y++ {
+					rid := storage.At(x, y, z)
+					if rid >= uint32(len(nbtBlocks)) || !nbtBlocks[rid] {
+						continue
+					}
+					worldPos := cube.Pos{baseX + int(x), subY + int(y), baseZ + int(z)}
+					if _, ok := col.BlockEntities[worldPos]; ok {
+						continue
+					}
+					nbt := map[string]any{}
+					if w.conf.Dim == End {
+						if name, _, ok := chunk.RuntimeIDToState(rid); ok && name == "minecraft:end_gateway" {
+							nbt = map[string]any{
+								"ExitPortal": map[string]any{
+									"X": int32(100),
+									"Y": int32(50),
+									"Z": int32(0),
+								},
+								"ExactTeleport": uint8(1),
+							}
+						} else if name == "minecraft:wall_banner" {
+							// End Cities use purple wall banners (base colour only).
+							nbt = map[string]any{
+								"Base": int32(5),
+							}
+						}
+					}
+					nbtB := blockByRuntimeIDOrAir(rid).(NBTer).DecodeNBT(nbt).(Block)
+					col.BlockEntities[worldPos] = nbtB
+				}
+			}
+		}
+	}
 }
 
 // drainGenerationQueue flushes any remaining tasks in the generator queue.

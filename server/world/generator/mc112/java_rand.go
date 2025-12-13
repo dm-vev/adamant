@@ -49,9 +49,32 @@ func (r *javaRand) Intn(bound int32) int32 {
 	}
 }
 
+// Int32 returns a value matching java.util.Random.nextInt() with no bound.
+func (r *javaRand) Int32() int32 {
+	return r.next(32)
+}
+
+// Bool returns a value matching java.util.Random.nextBoolean().
+func (r *javaRand) Bool() bool {
+	return r.next(1) != 0
+}
+
 func (r *javaRand) Float64() float64 {
 	// nextDouble(): (((long)next(26) << 27) + next(27)) / (double)(1L << 53)
 	hi := int64(r.next(26))
 	lo := int64(r.next(27))
 	return float64((hi<<27)+lo) / float64(int64(1)<<53)
+}
+
+// Float32 returns a float32 matching java.util.Random.nextFloat().
+func (r *javaRand) Float32() float32 {
+	// nextFloat(): next(24) / (float)(1<<24)
+	return float32(r.next(24)) / float32(int32(1)<<24)
+}
+
+// Long returns an int64 matching java.util.Random.nextLong().
+func (r *javaRand) Long() int64 {
+	hi := int64(r.next(32))
+	lo := int64(r.next(32))
+	return (hi << 32) + lo
 }

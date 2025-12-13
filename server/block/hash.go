@@ -76,6 +76,7 @@ const (
 	hashEmeraldOre
 	hashEnchantingTable
 	hashEndBricks
+	hashEndGateway
 	hashEndPortal
 	hashEndPortalFrame
 	hashEndRod
@@ -496,6 +497,10 @@ func (EnchantingTable) Hash() (uint64, uint64) {
 
 func (EndBricks) Hash() (uint64, uint64) {
 	return hashEndBricks, 0
+}
+
+func (EndGateway) Hash() (uint64, uint64) {
+	return hashEndGateway, 0
 }
 
 func (EndPortal) Hash() (uint64, uint64) {
