@@ -1973,6 +1973,13 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		critical       = !p.Sprinting() && !p.Flying() && p.FallDistance() > 0 && !slowFalling && !blind
 	)
 
+	held, _ := p.HeldItems()
+	if k, ok := held.Enchantment(enchantment.Knockback); ok {
+		inc := enchantment.Knockback.Force(k.Level())
+		force += inc
+		height += inc
+	}
+
 	destructible, isDestructible := e.(entity.Destructible)
 
 	ctx := event.C(p)
@@ -2093,11 +2100,6 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 
 	p.Exhaust(0.1)
 
-	if k, ok := i.Enchantment(enchantment.Knockback); ok {
-		inc := enchantment.Knockback.Force(k.Level())
-		force += inc
-		height += inc
-	}
 	living.KnockBack(p.Position(), force, height)
 
 	if f, ok := i.Enchantment(enchantment.FireAspect); ok {
