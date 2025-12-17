@@ -36,7 +36,7 @@ func init() {
 	item.RegisterEnchantment(30, Riptide)
 	item.RegisterEnchantment(31, Loyalty)
 	item.RegisterEnchantment(32, Channeling)
-	// TODO: (33) Multishot.
+	item.RegisterEnchantment(33, Multishot)
 	// TODO: (34) Piercing.
 	item.RegisterEnchantment(35, QuickCharge)
 	item.RegisterEnchantment(36, SoulSpeed)
