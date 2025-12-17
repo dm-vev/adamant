@@ -34,6 +34,9 @@ type Overworld struct {
 
 	biomeWeights [25]float64
 
+	mapGenJ int64
+	mapGenK int64
+
 	// cached runtime IDs
 	airRID          uint32
 	stoneRID        uint32
@@ -43,12 +46,15 @@ type Overworld struct {
 	podzolRID       uint32
 	bedrockRID      uint32
 	waterRID        uint32
+	lavaRID         uint32
 	gravelRID       uint32
 	sandRID         uint32
 	redSandRID      uint32
 	sandstoneRID    uint32
 	redSandstoneRID uint32
 	terracottaRID   uint32
+
+	carvable map[uint32]struct{}
 
 	biomes [256]biomeDef
 
@@ -90,6 +96,8 @@ func New(seed int64) *Overworld {
 func NewOverworld(seed int64) *Overworld {
 	r := mc112.NewRand(seed)
 
+	mapGenRand := mc112.NewRand(seed)
+
 	g := &Overworld{
 		seed:                seed,
 		minLimitPerlinNoise: mc112.NewNoiseOctaves(r, 16),
@@ -100,6 +108,9 @@ func NewOverworld(seed int64) *Overworld {
 		depthNoise:          mc112.NewNoiseOctaves(r, 16),
 		forestNoise:         mc112.NewNoiseOctaves(r, 8),
 
+		mapGenJ: mapGenRand.Long(),
+		mapGenK: mapGenRand.Long(),
+
 		airRID:          world.BlockRuntimeID(block.Air{}),
 		stoneRID:        world.BlockRuntimeID(block.Stone{}),
 		dirtRID:         world.BlockRuntimeID(block.Dirt{}),
@@ -108,6 +119,7 @@ func NewOverworld(seed int64) *Overworld {
 		podzolRID:       world.BlockRuntimeID(block.Podzol{}),
 		bedrockRID:      world.BlockRuntimeID(block.Bedrock{}),
 		waterRID:        world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
+		lavaRID:         world.BlockRuntimeID(block.Lava{Depth: 8, Still: false}),
 		gravelRID:       world.BlockRuntimeID(block.Gravel{}),
 		sandRID:         world.BlockRuntimeID(block.Sand{}),
 		redSandRID:      world.BlockRuntimeID(block.Sand{Red: true}),
@@ -126,6 +138,7 @@ func NewOverworld(seed int64) *Overworld {
 	}
 
 	g.initBiomeDefs()
+	g.initCarving()
 	g.biomeProvider = newBiomeProvider(seed)
 
 	g.pool.New = func() any {
@@ -163,7 +176,7 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.setBlocksInChunk(chunkX, chunkZ, c, biomesForGeneration[:], s)
 	r := mc112.NewRand(int64(chunkX)*341873128712 + int64(chunkZ)*132897987541)
 	g.replaceBiomeBlocks(chunkX, chunkZ, c, biomes[:], r, s)
-	g.carve(chunkX, chunkZ, c)
+	g.carve(chunkX, chunkZ, c, biomes[:])
 	g.generateStructures(chunkX, chunkZ, c)
 	g.fillBiomes(c, biomes[:])
 	g.enqueuePopulation(pos)
