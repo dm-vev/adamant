@@ -106,15 +106,15 @@ func (c CandleCake) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 
 // EncodeBlock ...
 func (c CandleCake) EncodeBlock() (name string, properties map[string]any) {
-    if c.Coloured {
-        name = "minecraft:" + c.Colour.String() + "_candle_cake"
-    } else {
-        name = "minecraft:candle_cake"
-    }
-    properties = map[string]any{
-        "lit": c.Lit,
-    }
-    return
+	if c.Coloured {
+		name = "minecraft:" + c.Colour.String() + "_candle_cake"
+	} else {
+		name = "minecraft:candle_cake"
+	}
+	properties = map[string]any{
+		"lit": c.Lit,
+	}
+	return
 }
 
 // Model ...

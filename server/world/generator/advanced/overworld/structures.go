@@ -8,6 +8,7 @@ func (g *Overworld) carve(chunkX, chunkZ int, c *chunk.Chunk, biomes []*biomeDef
 }
 
 func (g *Overworld) generateStructures(chunkX, chunkZ int, c *chunk.Chunk) {
-	// TODO: Port 1.12 structure starts (mineshafts, villages, strongholds, temples, monuments, mansions, ...)
-	// and apply intersecting pieces deterministically per chunk (EndCity-style).
+	g.applyScatteredStructures(chunkX, chunkZ, c)
+
+	// TODO: Port remaining 1.12 structure starts (mineshafts, villages, strongholds, temples, monuments, mansions, ...).
 }

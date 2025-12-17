@@ -15,7 +15,7 @@ type EndGateway struct {
 	transparent
 	empty
 
-	age             *atomic.Int64
+	age              *atomic.Int64
 	teleportCooldown *atomic.Int32
 
 	exitPortal    cube.Pos
@@ -26,7 +26,7 @@ type EndGateway struct {
 // NewEndGateway creates a new initialised EndGateway.
 func NewEndGateway() EndGateway {
 	return EndGateway{
-		age:             &atomic.Int64{},
+		age:              &atomic.Int64{},
 		teleportCooldown: &atomic.Int32{},
 	}
 }

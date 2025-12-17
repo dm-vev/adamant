@@ -64,6 +64,8 @@ type Overworld struct {
 	popOnce         sync.Once
 	world           worldPointer
 
+	scatteredCache sync.Map // world.ChunkPos -> *scatteredStructure (nil when absent)
+
 	pool sync.Pool
 }
 

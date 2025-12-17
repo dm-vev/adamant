@@ -15,6 +15,8 @@ type populationJob struct {
 	pos world.ChunkPos
 }
 
+var populationSetOpts = &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true}
+
 // BindWorld provides the world handle used during chunk population.
 func (g *Overworld) BindWorld(w *world.World) {
 	if w == nil {
@@ -80,6 +82,10 @@ func (g *Overworld) runPopulationJob(job populationJob) {
 		}
 	}
 
-	// TODO: Port 1.12 biome decoration + population settings (ores, vegetation, lakes, dungeons, snow/ice, ...)
-	// using a world transaction, matching Minecraft's PopulateChunk stage.
+	<-w.Exec(func(tx *world.Tx) {
+		if !tx.ChunkLoaded(job.pos) {
+			return
+		}
+		g.populateChunk(tx, job.pos)
+	})
 }

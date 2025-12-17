@@ -142,14 +142,14 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 			return
 		}
 
-	for _, e := range affectedEntities {
-		if explodable, ok := e.(ExplodableEntity); ok {
-			impact := (1 - e.Position().Sub(explosionPos).Len()/d) * exposure(tx, explosionPos, e)
-			explodable.Explode(explosionPos, impact, c)
+		for _, e := range affectedEntities {
+			if explodable, ok := e.(ExplodableEntity); ok {
+				impact := (1 - e.Position().Sub(explosionPos).Len()/d) * exposure(tx, explosionPos, e)
+				explodable.Explode(explosionPos, impact, c)
+			}
 		}
-	}
 
-	for _, pos := range affectedBlocks {
+		for _, pos := range affectedBlocks {
 			bl := tx.Block(pos)
 			if explodable, ok := bl.(Explodable); ok {
 				explodable.Explode(explosionPos, pos, tx, c)
@@ -167,8 +167,8 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 			}
 		}
 
-	if spawnFire {
-		for _, pos := range affectedBlocks {
+		if spawnFire {
+			for _, pos := range affectedBlocks {
 				if r.IntN(3) == 0 {
 					if _, ok := tx.Block(pos).(Air); ok && tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos, cube.FaceUp, tx) {
 						Fire{}.Start(tx, pos)
