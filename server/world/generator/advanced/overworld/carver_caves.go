@@ -149,6 +149,16 @@ func (g *Overworld) carveCaveTunnel(seed int64, chunkX, chunkZ int, c *chunk.Chu
 				if yEnd > 248 {
 					yEnd = 248
 				}
+				ryMin, ryMax := int(c.Range().Min()), int(c.Range().Max())
+				if yStart < ryMin {
+					yStart = ryMin
+				}
+				if yEnd > ryMax {
+					yEnd = ryMax
+				}
+				if yEnd < yStart {
+					continue
+				}
 
 				if g.caveHitsWater(c, xStart, xEnd, yStart, yEnd, zStart, zEnd) {
 					continue
