@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
@@ -53,6 +54,35 @@ type Overworld struct {
 	sandstoneRID    uint32
 	redSandstoneRID uint32
 	terracottaRID   uint32
+
+	// decoration runtime IDs
+	shortGrassRID           uint32
+	doubleTallGrassLowerRID uint32
+	doubleTallGrassUpperRID uint32
+	sunflowerLowerRID       uint32
+	sunflowerUpperRID       uint32
+
+	dandelionRID  uint32
+	poppyRID      uint32
+	blueOrchidRID uint32
+
+	deadBushRID   uint32
+	cactusRID     uint32
+	sugarCaneRID  uint32
+
+	oakLogRID     uint32
+	spruceLogRID  uint32
+	birchLogRID   uint32
+	jungleLogRID  uint32
+	acaciaLogRID  uint32
+	darkOakLogRID uint32
+
+	oakLeavesRID     uint32
+	spruceLeavesRID  uint32
+	birchLeavesRID   uint32
+	jungleLeavesRID  uint32
+	acaciaLeavesRID  uint32
+	darkOakLeavesRID uint32
 
 	carvable map[uint32]struct{}
 
@@ -129,6 +159,34 @@ func NewOverworld(seed int64) *Overworld {
 		redSandstoneRID: world.BlockRuntimeID(block.Sandstone{Red: true}),
 		terracottaRID:   world.BlockRuntimeID(block.Terracotta{}),
 
+		shortGrassRID:           world.BlockRuntimeID(block.ShortGrass{}),
+		doubleTallGrassLowerRID: world.BlockRuntimeID(block.DoubleTallGrass{Type: block.NormalDoubleTallGrass()}),
+		doubleTallGrassUpperRID: world.BlockRuntimeID(block.DoubleTallGrass{Type: block.NormalDoubleTallGrass(), UpperPart: true}),
+		sunflowerLowerRID:       world.BlockRuntimeID(block.DoubleFlower{Type: block.Sunflower()}),
+		sunflowerUpperRID:       world.BlockRuntimeID(block.DoubleFlower{Type: block.Sunflower(), UpperPart: true}),
+
+		dandelionRID:  world.BlockRuntimeID(block.Flower{Type: block.Dandelion()}),
+		poppyRID:      world.BlockRuntimeID(block.Flower{Type: block.Poppy()}),
+		blueOrchidRID: world.BlockRuntimeID(block.Flower{Type: block.BlueOrchid()}),
+
+		deadBushRID:  world.BlockRuntimeID(block.DeadBush{}),
+		cactusRID:    world.BlockRuntimeID(block.Cactus{}),
+		sugarCaneRID: world.BlockRuntimeID(block.SugarCane{}),
+
+		oakLogRID:     world.BlockRuntimeID(block.Log{Wood: block.OakWood(), Axis: cube.Y}),
+		spruceLogRID:  world.BlockRuntimeID(block.Log{Wood: block.SpruceWood(), Axis: cube.Y}),
+		birchLogRID:   world.BlockRuntimeID(block.Log{Wood: block.BirchWood(), Axis: cube.Y}),
+		jungleLogRID:  world.BlockRuntimeID(block.Log{Wood: block.JungleWood(), Axis: cube.Y}),
+		acaciaLogRID:  world.BlockRuntimeID(block.Log{Wood: block.AcaciaWood(), Axis: cube.Y}),
+		darkOakLogRID: world.BlockRuntimeID(block.Log{Wood: block.DarkOakWood(), Axis: cube.Y}),
+
+		oakLeavesRID:     world.BlockRuntimeID(block.Leaves{Wood: block.OakWood(), ShouldUpdate: true}),
+		spruceLeavesRID:  world.BlockRuntimeID(block.Leaves{Wood: block.SpruceWood(), ShouldUpdate: true}),
+		birchLeavesRID:   world.BlockRuntimeID(block.Leaves{Wood: block.BirchWood(), ShouldUpdate: true}),
+		jungleLeavesRID:  world.BlockRuntimeID(block.Leaves{Wood: block.JungleWood(), ShouldUpdate: true}),
+		acaciaLeavesRID:  world.BlockRuntimeID(block.Leaves{Wood: block.AcaciaWood(), ShouldUpdate: true}),
+		darkOakLeavesRID: world.BlockRuntimeID(block.Leaves{Wood: block.DarkOakWood(), ShouldUpdate: true}),
+
 		populationQueue: make(chan populationJob, 65536),
 	}
 
@@ -180,6 +238,8 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.replaceBiomeBlocks(chunkX, chunkZ, c, biomes[:], r, s)
 	g.carve(chunkX, chunkZ, c, biomes[:])
 	g.generateStructures(chunkX, chunkZ, c)
+	g.populateOresInChunk(chunkX, chunkZ, c)
+	g.decorate(chunkX, chunkZ, c)
 	g.fillBiomes(c, biomes[:])
 }
 

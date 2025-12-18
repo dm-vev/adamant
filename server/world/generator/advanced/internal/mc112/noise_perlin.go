@@ -40,10 +40,15 @@ func (n *NoisePerlin) GetRegion(dst []float64, xOffset, yOffset float64, xSize, 
 		}
 	}
 
+	// Matches NoiseGeneratorPerlin.getRegion in Minecraft Java 1.12:
+	// d0 is multiplied by the 'noiseScale' parameter each octave, while d1 is halved (0.5) each octave.
+	// The simplex amplitude is fixed to 0.55/d1.
+	d1 := 1.0
 	d0 := 1.0
 	for _, level := range n.levels {
-		level.Add(dst, xOffset, yOffset, xSize, ySize, xScale*d0, yScale*d0, amplitude/d0)
-		d0 /= 2.0
+		level.Add(dst, xOffset, yOffset, xSize, ySize, xScale*d0*d1, yScale*d0*d1, 0.55/d1)
+		d0 *= amplitude
+		d1 *= 0.5
 	}
 	return dst
 }
