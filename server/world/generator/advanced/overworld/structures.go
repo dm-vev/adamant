@@ -16,6 +16,7 @@ func (g *Overworld) carve(chunkX, chunkZ int, c *chunk.Chunk, biomes []*biomeDef
 // The returned bool indicates whether a village was generated (vanilla uses this to suppress some lakes).
 func (g *Overworld) generateStructures(chunkX, chunkZ int, c *chunk.Chunk, r *mc112.Rand) (villageGenerated bool) {
 	_ = r
+	g.applyMineshafts(chunkX, chunkZ, c)
 	g.applyScatteredStructures(chunkX, chunkZ, c)
 
 	// TODO: Port remaining 1.12 structure starts (mineshafts, villages, strongholds, monuments, mansions, ...).

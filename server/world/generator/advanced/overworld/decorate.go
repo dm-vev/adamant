@@ -184,30 +184,13 @@ func (g *Overworld) decorateOrigin(
 			continue
 		}
 		startY := baseY + 1
-		kind := g.pickTreeKind(biomeID, r)
+		spec := g.pickVanillaTree(biomeID, r)
 
 		// We must keep random consumption identical across chunks when simulating the same origin chunk,
 		// otherwise cross-chunk decorations diverge and get clipped. Tree shape randomness is consumed
 		// inside the gen* functions (height, etc), even when apply=false.
-		apply := intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ, wx, wz, g.treeMaxRadius(kind))
-		switch kind {
-		case treeOak:
-			if r.Intn(10) == 0 {
-				g.genBigOak(c, preview, chunkX, chunkZ, wx, startY, wz, r, apply)
-			} else {
-				g.genSimpleTree(c, preview, chunkX, chunkZ, wx, startY, wz, r, g.oakLogRID, g.oakLeavesRID, apply)
-			}
-		case treeBirch:
-			g.genSimpleTree(c, preview, chunkX, chunkZ, wx, startY, wz, r, g.birchLogRID, g.birchLeavesRID, apply)
-		case treeSpruce:
-			g.genSpruce(c, preview, chunkX, chunkZ, wx, startY, wz, r, apply)
-		case treeJungle:
-			g.genJungle(c, preview, chunkX, chunkZ, wx, startY, wz, r, apply)
-		case treeAcacia:
-			g.genAcacia(c, preview, chunkX, chunkZ, wx, startY, wz, r, apply)
-		case treeDarkOak:
-			g.genDarkOak(c, preview, chunkX, chunkZ, wx, startY, wz, r, apply)
-		}
+		apply := intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ, wx, wz, g.vanillaTreeMaxRadius(spec))
+		_ = g.generateVanillaTree(c, preview, chunkX, chunkZ, wx, startY, wz, r, spec, apply)
 	}
 
 	// Patches: sand, clay, gravel (vanilla uses getTopSolidOrLiquidBlock + checks WATER at the returned position).

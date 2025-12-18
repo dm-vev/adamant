@@ -12,7 +12,7 @@ const (
 	javaLavaLakeChance  = 80
 )
 
-func (g *Overworld) populateLakes(chunkX, chunkZ int, c *chunk.Chunk) {
+func (g *Overworld) populateLakes(chunkX, chunkZ int, c *chunk.Chunk, villageGenerated bool) {
 	// Lakes in vanilla spill over chunk borders because the origin position is picked with rand.nextInt(16)+8.
 	// We simulate the same 2x2 origin-chunk area used for decoration and only apply edits that land inside this chunk.
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
@@ -27,7 +27,7 @@ func (g *Overworld) populateLakes(chunkX, chunkZ int, c *chunk.Chunk) {
 
 			// Vanilla: biome = world.getBiome(blockpos.add(16, 0, 16)).
 			biomeID := g.biomeProvider.biomes(originChunkX*16+16, originChunkZ*16+16, 1, 1)[0]
-			flagVillage := false // TODO: Set when villages are implemented.
+			flagVillage := villageGenerated && originChunkX == chunkX && originChunkZ == chunkZ
 
 			if mcbiome.ID(biomeID) != mcbiome.Desert && mcbiome.ID(biomeID) != mcbiome.DesertHills &&
 				!flagVillage && r.Intn(javaWaterLakeChance) == 0 {

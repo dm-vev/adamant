@@ -6,6 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
@@ -29,7 +30,9 @@ type Overworld struct {
 	maxLimitPerlinNoise *mc112.NoiseOctaves
 	mainPerlinNoise     *mc112.NoiseOctaves
 	surfaceNoise        *mc112.NoisePerlin
+	temperatureNoise    *mc112.NoisePerlin
 	grassColorNoise     *mc112.NoisePerlin
+	mesaBandNoise       *mc112.NoisePerlin
 	scaleNoise          *mc112.NoiseOctaves // Unused for now (kept to match RNG consumption).
 	depthNoise          *mc112.NoiseOctaves
 	forestNoise         *mc112.NoiseOctaves // Unused for now (kept to match RNG consumption).
@@ -46,6 +49,8 @@ type Overworld struct {
 	grassRID        uint32
 	myceliumRID     uint32
 	podzolRID       uint32
+	coarseDirtRID   uint32
+	farmlandRID     uint32
 	bedrockRID      uint32
 	waterRID        uint32
 	lavaRID         uint32
@@ -55,6 +60,8 @@ type Overworld struct {
 	sandstoneRID    uint32
 	redSandstoneRID uint32
 	terracottaRID   uint32
+	stainedTerracottaRIDs [16]uint32
+	mesaBands             [64]uint32
 
 	// decoration runtime IDs
 	shortGrassRID           uint32
@@ -69,6 +76,9 @@ type Overworld struct {
 
 	lilyPadRID uint32
 	clayRID    uint32
+
+	iceRID       uint32
+	snowLayerRID uint32
 
 	deadBushRID   uint32
 	cactusRID     uint32
@@ -88,6 +98,15 @@ type Overworld struct {
 	acaciaLeavesRID  uint32
 	darkOakLeavesRID uint32
 
+	// structure runtime IDs (best-effort, used for vanilla structure ports)
+	oakPlanksRID     uint32
+	darkOakPlanksRID uint32
+	oakFenceRID      uint32
+	darkOakFenceRID  uint32
+	railRID          uint32
+	webRID           uint32
+	torchRID         uint32
+
 	carvable map[uint32]struct{}
 
 	biomes [256]biomeDef
@@ -99,6 +118,7 @@ type Overworld struct {
 	world           worldPointer
 
 	scatteredCache sync.Map // world.ChunkPos -> *scatteredStructure (nil when absent)
+	mineshaftCache sync.Map // world.ChunkPos -> *mineshaftStructure (nil when absent)
 
 	pool sync.Pool
 }
@@ -110,6 +130,7 @@ type biomeDef struct {
 	topRID    uint32
 	fillerRID uint32
 	biomeID   uint32
+	mcID      mcbiome.ID
 }
 
 type scratch struct {
@@ -134,13 +155,19 @@ func NewOverworld(seed int64) *Overworld {
 
 	mapGenRand := mc112.NewRand(seed)
 
+	railRID, _ := chunk.StateToRuntimeID("minecraft:rail", nil)
+	webRID, _ := chunk.StateToRuntimeID("minecraft:web", nil)
+	torchRID, _ := chunk.StateToRuntimeID("minecraft:torch", nil)
+
 	g := &Overworld{
 		seed:                seed,
 		minLimitPerlinNoise: mc112.NewNoiseOctaves(r, 16),
 		maxLimitPerlinNoise: mc112.NewNoiseOctaves(r, 16),
 		mainPerlinNoise:     mc112.NewNoiseOctaves(r, 8),
 		surfaceNoise:        mc112.NewNoisePerlin(r, 4),
+		temperatureNoise:    mc112.NewNoisePerlin(mc112.NewRand(1234), 1),
 		grassColorNoise:     mc112.NewNoisePerlin(mc112.NewRand(2345), 1),
+		mesaBandNoise:       mc112.NewNoisePerlin(mc112.NewRand(seed), 1),
 		scaleNoise:          mc112.NewNoiseOctaves(r, 10),
 		depthNoise:          mc112.NewNoiseOctaves(r, 16),
 		forestNoise:         mc112.NewNoiseOctaves(r, 8),
@@ -154,6 +181,8 @@ func NewOverworld(seed int64) *Overworld {
 		grassRID:        world.BlockRuntimeID(block.Grass{}),
 		myceliumRID:     world.BlockRuntimeID(block.Mycelium{}),
 		podzolRID:       world.BlockRuntimeID(block.Podzol{}),
+		coarseDirtRID:   world.BlockRuntimeID(block.Dirt{Coarse: true}),
+		farmlandRID:     world.BlockRuntimeID(block.Farmland{}),
 		bedrockRID:      world.BlockRuntimeID(block.Bedrock{}),
 		waterRID:        world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
 		lavaRID:         world.BlockRuntimeID(block.Lava{Depth: 8, Still: false}),
@@ -177,6 +206,9 @@ func NewOverworld(seed int64) *Overworld {
 		lilyPadRID: world.BlockRuntimeID(block.LilyPad{}),
 		clayRID:    world.BlockRuntimeID(block.Clay{}),
 
+		iceRID:       world.BlockRuntimeID(block.Ice{}),
+		snowLayerRID: world.BlockRuntimeID(block.SnowLayer{Layers: 1}),
+
 		deadBushRID:  world.BlockRuntimeID(block.DeadBush{}),
 		cactusRID:    world.BlockRuntimeID(block.Cactus{}),
 		sugarCaneRID: world.BlockRuntimeID(block.SugarCane{}),
@@ -195,8 +227,21 @@ func NewOverworld(seed int64) *Overworld {
 		acaciaLeavesRID:  world.BlockRuntimeID(block.Leaves{Wood: block.AcaciaWood(), ShouldUpdate: true}),
 		darkOakLeavesRID: world.BlockRuntimeID(block.Leaves{Wood: block.DarkOakWood(), ShouldUpdate: true}),
 
+		oakPlanksRID:     world.BlockRuntimeID(block.Planks{Wood: block.OakWood()}),
+		darkOakPlanksRID: world.BlockRuntimeID(block.Planks{Wood: block.DarkOakWood()}),
+		oakFenceRID:      world.BlockRuntimeID(block.WoodFence{Wood: block.OakWood()}),
+		darkOakFenceRID:  world.BlockRuntimeID(block.WoodFence{Wood: block.DarkOakWood()}),
+		railRID:          railRID,
+		webRID:           webRID,
+		torchRID:         torchRID,
+
 		populationQueue: make(chan populationJob, 65536),
 	}
+
+	for i, c := range item.Colours() {
+		g.stainedTerracottaRIDs[i] = world.BlockRuntimeID(block.StainedTerracotta{Colour: c})
+	}
+	g.initMesaBands()
 
 	for x := -2; x <= 2; x++ {
 		for z := -2; z <= 2; z++ {
@@ -248,10 +293,10 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.carve(chunkX, chunkZ, c, biomes[:])
 	popRand := g.chunkPopulationRand(chunkX, chunkZ)
 	villageGenerated := g.generateStructures(chunkX, chunkZ, c, popRand)
-	_ = villageGenerated // TODO: Use when villages are implemented.
-	g.populateLakes(chunkX, chunkZ, c)
+	g.populateLakes(chunkX, chunkZ, c, villageGenerated)
 	g.populateOresInChunk(chunkX, chunkZ, c)
 	g.decorate(chunkX, chunkZ, c)
+	g.freezeAndSnow(chunkX, chunkZ, c, biomeIDs)
 	g.fillBiomes(c, biomes[:])
 }
 
@@ -502,64 +547,103 @@ func (g *Overworld) replaceBiomeBlocks(chunkX, chunkZ int, c *chunk.Chunk, biome
 
 			// NoisePerlin.GetRegion outputs x + z*16.
 			noiseVal := s.surfaceBuf[int(x)+int(z)*16]
-			thickness := int32(noiseVal/3.0 + 3.0 + r.Float64()*0.25)
+			id := b.mcID
+			if isMesaBiome(id) {
+				worldX := chunkX*16 + int(x)
+				worldZ := chunkZ*16 + int(z)
+				g.generateMesaTerrainColumn(c, id, x, z, worldX, worldZ, noiseVal, r, minY, maxY)
+				continue
+			}
 
 			top := b.topRID
 			filler := b.fillerRID
 
-			layer := int32(-1)
-
-			for y := maxY; y >= minY; y-- {
-				if y <= int16(r.Intn(5)) {
-					c.SetBlock(x, y, z, 0, g.bedrockRID)
-					continue
+			switch id {
+			case mcbiome.Mountains, mcbiome.WoodedMountains, mcbiome.MountainEdge, mcbiome.GravellyMountains, mcbiome.ModifiedGravellyMountains:
+				// BiomeHills.genTerrainBlocks: stone/gravel surface based on surface noise (Java 1.12).
+				if noiseVal > 1.0 {
+					top, filler = g.stoneRID, g.stoneRID
+				} else if noiseVal > -1.0 {
+					top, filler = g.gravelRID, g.gravelRID
 				}
 
-				current := c.Block(x, y, z, 0)
-				if current == g.airRID {
-					layer = -1
-					continue
+			case mcbiome.GiantTreeTaiga, mcbiome.GiantTreeTaigaHills, mcbiome.GiantSpruceTaiga, mcbiome.GiantSpruceTaigaHills:
+				// BiomeTaiga (MEGA/MEGA_SPRUCE) surface patches: podzol/coarse dirt (Java 1.12).
+				// (In Java 1.12 podzol is a dirt variant; in Bedrock we map it to `block.Podzol{}`.)
+				if noiseVal > 1.75 {
+					top, filler = g.coarseDirtRID, g.coarseDirtRID
+				} else if noiseVal > -0.95 {
+					top, filler = g.podzolRID, g.dirtRID
+				} else {
+					top, filler = g.grassRID, g.dirtRID
 				}
-				if current != g.stoneRID {
-					continue
-				}
+			}
 
-				if layer == -1 {
-					if thickness <= 0 {
-						top = g.airRID
-						filler = g.stoneRID
-					} else if int(y) >= javaSeaLevel-4 && int(y) <= javaSeaLevel+1 {
-						top = b.topRID
-						filler = b.fillerRID
-					}
-					if int(y) < javaSeaLevel && top == g.airRID {
-						top = g.waterRID
-					}
-					layer = thickness
+			g.generateBiomeTerrainColumn(c, x, z, top, filler, noiseVal, r, minY, maxY)
+		}
+	}
+}
 
-					if int(y) >= javaSeaLevel-1 {
-						c.SetBlock(x, y, z, 0, top)
-					} else if int(y) < javaSeaLevel-7-int(thickness) {
-						c.SetBlock(x, y, z, 0, g.gravelRID)
-					} else {
-						c.SetBlock(x, y, z, 0, filler)
-					}
-					continue
-				}
+func (g *Overworld) generateBiomeTerrainColumn(c *chunk.Chunk, x, z uint8, top, filler uint32, noiseVal float64, r *mc112.Rand, minY, maxY int16) {
+	thickness := int32(noiseVal/3.0 + 3.0 + r.Float64()*0.25)
+	layer := int32(-1)
+	topBlock := top
+	fillerBlock := filler
 
-				if layer > 0 {
-					layer--
-					c.SetBlock(x, y, z, 0, filler)
+	for y := maxY; y >= minY; y-- {
+		if y <= int16(r.Intn(5)) {
+			c.SetBlock(x, y, z, 0, g.bedrockRID)
+			continue
+		}
 
-					if layer == 0 && thickness > 1 {
-						if filler == g.sandRID {
-							layer = int32(r.Intn(4) + int32(max(0, int(y)-(javaSeaLevel-1))))
-							filler = g.sandstoneRID
-						} else if filler == g.redSandRID {
-							layer = int32(r.Intn(4) + int32(max(0, int(y)-(javaSeaLevel-1))))
-							filler = g.redSandstoneRID
-						}
-					}
+		current := c.Block(x, y, z, 0)
+		if current == g.airRID {
+			layer = -1
+			continue
+		}
+		if current != g.stoneRID {
+			continue
+		}
+
+		if layer == -1 {
+			topBlock = top
+			fillerBlock = filler
+
+			if thickness <= 0 {
+				topBlock = g.airRID
+				fillerBlock = g.stoneRID
+			} else if int(y) >= javaSeaLevel-4 && int(y) <= javaSeaLevel+1 {
+				topBlock = top
+				fillerBlock = filler
+			}
+
+			if int(y) < javaSeaLevel && topBlock == g.airRID {
+				topBlock = g.waterRID
+			}
+
+			layer = thickness
+
+			if int(y) >= javaSeaLevel-1 {
+				c.SetBlock(x, y, z, 0, topBlock)
+			} else if int(y) < javaSeaLevel-7-int(thickness) {
+				c.SetBlock(x, y, z, 0, g.gravelRID)
+			} else {
+				c.SetBlock(x, y, z, 0, fillerBlock)
+			}
+			continue
+		}
+
+		if layer > 0 {
+			layer--
+			c.SetBlock(x, y, z, 0, fillerBlock)
+
+			if layer == 0 && thickness > 1 {
+				if fillerBlock == g.sandRID {
+					layer = int32(r.Intn(4) + int32(max(0, int(y)-(javaSeaLevel-1))))
+					fillerBlock = g.sandstoneRID
+				} else if fillerBlock == g.redSandRID {
+					layer = int32(r.Intn(4) + int32(max(0, int(y)-(javaSeaLevel-1))))
+					fillerBlock = g.redSandstoneRID
 				}
 			}
 		}

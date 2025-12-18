@@ -2,6 +2,8 @@ package world
 
 import (
 	"encoding/binary"
+	"math"
+	"sort"
 
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
@@ -42,8 +44,18 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 		return index
 	}
 
-	encodedBiomes := make([]protocol.BiomeDefinition, 0, len(biomes))
-	for _, b := range biomes {
+	// The order of biomes in this packet must be deterministic across server runs.
+	// Clients use biome IDs in chunk data for things like grass/foliage colouring. If biome definitions are
+	// generated in a random order (as iterating maps does), clients may interpret biome IDs incorrectly.
+	ids := make([]int, 0, len(biomes))
+	for id := range biomes {
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
+
+	encodedBiomes := make([]protocol.BiomeDefinition, 0, len(ids))
+	for _, id := range ids {
+		b := biomes[id]
 		nameIndex := intern(b.String())
 
 		tags := b.Tags()
@@ -52,9 +64,10 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 			tagIndices[i] = uint16(intern(tag))
 		}
 
-		var biomeID int16 = -1
-		id := b.EncodeBiome()
-		if id > maxVanillaBiomeID {
+		// Always set BiomeID explicitly. The ID is what is referenced in chunk biome data and must match what
+		// the client expects, otherwise biome-dependent colouring won't apply correctly.
+		biomeID := int16(-1)
+		if id >= 0 && id <= math.MaxInt16 {
 			biomeID = int16(id)
 		}
 

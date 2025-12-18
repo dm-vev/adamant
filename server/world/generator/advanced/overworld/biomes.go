@@ -13,6 +13,7 @@ func (g *Overworld) initBiomeDefs() {
 		topRID:          g.grassRID,
 		fillerRID:       g.dirtRID,
 		biomeID:         uint32(dfbiome.Plains{}.EncodeBiome()),
+		mcID:            mcbiome.Plains,
 	}
 	for i := range g.biomes {
 		g.biomes[i] = def
@@ -92,6 +93,7 @@ func (g *Overworld) initBiomeDefs() {
 			topRID:          top,
 			fillerRID:       filler,
 			biomeID:         bid,
+			mcID:            e.id,
 		}
 	}
 }
@@ -104,12 +106,15 @@ func (g *Overworld) surfaceForBiome(id mcbiome.ID) (top, filler uint32) {
 		return g.stoneRID, g.stoneRID
 	case mcbiome.Desert, mcbiome.DesertHills, mcbiome.DesertM:
 		return g.sandRID, g.sandRID
-	case mcbiome.Badlands, mcbiome.WoodedBadlandsPlateau, mcbiome.BadlandsPlateau, mcbiome.ErodedBadlands, mcbiome.ModifiedWoodedBadlandsPlateau, mcbiome.ModifiedBadlandsPlateau:
+	case mcbiome.Badlands, mcbiome.ErodedBadlands:
 		return g.redSandRID, g.terracottaRID
+	case mcbiome.BadlandsPlateau, mcbiome.WoodedBadlandsPlateau, mcbiome.ModifiedBadlandsPlateau, mcbiome.ModifiedWoodedBadlandsPlateau:
+		return g.grassRID, g.dirtRID
 	case mcbiome.MushroomFields, mcbiome.MushroomFieldShore:
 		return g.myceliumRID, g.dirtRID
 	case mcbiome.GiantTreeTaiga, mcbiome.GiantTreeTaigaHills, mcbiome.GiantSpruceTaiga, mcbiome.GiantSpruceTaigaHills:
-		return g.podzolRID, g.dirtRID
+		// In Java 1.12 these biomes are grass/dirt with podzol/coarse-dirt patches in genTerrainBlocks.
+		return g.grassRID, g.dirtRID
 	case mcbiome.GravellyMountains, mcbiome.ModifiedGravellyMountains:
 		return g.gravelRID, g.stoneRID
 	default:
