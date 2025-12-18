@@ -29,6 +29,7 @@ type Overworld struct {
 	maxLimitPerlinNoise *mc112.NoiseOctaves
 	mainPerlinNoise     *mc112.NoiseOctaves
 	surfaceNoise        *mc112.NoisePerlin
+	grassColorNoise     *mc112.NoisePerlin
 	scaleNoise          *mc112.NoiseOctaves // Unused for now (kept to match RNG consumption).
 	depthNoise          *mc112.NoiseOctaves
 	forestNoise         *mc112.NoiseOctaves // Unused for now (kept to match RNG consumption).
@@ -65,6 +66,9 @@ type Overworld struct {
 	dandelionRID  uint32
 	poppyRID      uint32
 	blueOrchidRID uint32
+
+	lilyPadRID uint32
+	clayRID    uint32
 
 	deadBushRID   uint32
 	cactusRID     uint32
@@ -136,6 +140,7 @@ func NewOverworld(seed int64) *Overworld {
 		maxLimitPerlinNoise: mc112.NewNoiseOctaves(r, 16),
 		mainPerlinNoise:     mc112.NewNoiseOctaves(r, 8),
 		surfaceNoise:        mc112.NewNoisePerlin(r, 4),
+		grassColorNoise:     mc112.NewNoisePerlin(mc112.NewRand(2345), 1),
 		scaleNoise:          mc112.NewNoiseOctaves(r, 10),
 		depthNoise:          mc112.NewNoiseOctaves(r, 16),
 		forestNoise:         mc112.NewNoiseOctaves(r, 8),
@@ -168,6 +173,9 @@ func NewOverworld(seed int64) *Overworld {
 		dandelionRID:  world.BlockRuntimeID(block.Flower{Type: block.Dandelion()}),
 		poppyRID:      world.BlockRuntimeID(block.Flower{Type: block.Poppy()}),
 		blueOrchidRID: world.BlockRuntimeID(block.Flower{Type: block.BlueOrchid()}),
+
+		lilyPadRID: world.BlockRuntimeID(block.LilyPad{}),
+		clayRID:    world.BlockRuntimeID(block.Clay{}),
 
 		deadBushRID:  world.BlockRuntimeID(block.DeadBush{}),
 		cactusRID:    world.BlockRuntimeID(block.Cactus{}),
@@ -236,18 +244,58 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.setBlocksInChunk(chunkX, chunkZ, c, biomesForGeneration[:], s)
 	r := mc112.NewRand(int64(chunkX)*341873128712 + int64(chunkZ)*132897987541)
 	g.replaceBiomeBlocks(chunkX, chunkZ, c, biomes[:], r, s)
+	g.applySwampWaterlilies(chunkX, chunkZ, c, biomeIDs)
 	g.carve(chunkX, chunkZ, c, biomes[:])
-	g.generateStructures(chunkX, chunkZ, c)
+	popRand := g.chunkPopulationRand(chunkX, chunkZ)
+	villageGenerated := g.generateStructures(chunkX, chunkZ, c, popRand)
+	_ = villageGenerated // TODO: Use when villages are implemented.
+	g.populateLakes(chunkX, chunkZ, c)
 	g.populateOresInChunk(chunkX, chunkZ, c)
 	g.decorate(chunkX, chunkZ, c)
 	g.fillBiomes(c, biomes[:])
+}
+
+func (g *Overworld) applySwampWaterlilies(chunkX, chunkZ int, c *chunk.Chunk, biomeIDs []int) {
+	// Matches the extra swamp terrain logic in BiomeSwamp.genTerrainBlocks (Java 1.12).
+	// It fills local depressions at y=62 with water and sometimes places a waterlily at y=63.
+	if len(biomeIDs) != 16*16 {
+		return
+	}
+	chunkBaseX, chunkBaseZ := chunkX<<4, chunkZ<<4
+	for x := 0; x < 16; x++ {
+		for z := 0; z < 16; z++ {
+			id := biomeIDs[x+z*16]
+			if mcbiome.ID(id) != mcbiome.Swamp && mcbiome.ID(id) != mcbiome.SwampHills {
+				continue
+			}
+			wx := chunkBaseX + x
+			wz := chunkBaseZ + z
+			d0 := g.grassColorNoise.GetValue(float64(wx)*0.25, float64(wz)*0.25)
+			if d0 <= 0.0 {
+				continue
+			}
+
+			top := int(c.HighestBlock(uint8(x), uint8(z)))
+			if top != 62 {
+				continue
+			}
+			if c.Block(uint8(x), int16(62), uint8(z), 0) == g.waterRID {
+				continue
+			}
+			c.SetBlock(uint8(x), int16(62), uint8(z), 0, g.waterRID)
+			if d0 < 0.12 && c.Block(uint8(x), int16(63), uint8(z), 0) == g.airRID {
+				c.SetBlock(uint8(x), int16(63), uint8(z), 0, g.lilyPadRID)
+			}
+		}
+	}
 }
 
 func (g *Overworld) fillBiomes(c *chunk.Chunk, biomes []*biomeDef) {
 	minY, maxY := int16(c.Range().Min()), int16(c.Range().Max())
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
-			biomeID := biomes[int(z)+int(x)*16].biomeID
+			// biomes[] is indexed as x + z*16.
+			biomeID := biomes[int(x)+int(z)*16].biomeID
 			for y := minY; y <= maxY; y++ {
 				c.SetBiome(x, y, z, biomeID)
 			}
@@ -336,8 +384,8 @@ func (g *Overworld) getHeights(s *scratch, xOffset, yOffset, zOffset, xSize, ySi
 	s.minNoise = g.minLimitPerlinNoise.GenerateNoiseOctaves(s.minNoise, xOffset, yOffset, zOffset, xSize, ySize, zSize, d0, d0, d0)
 	s.maxNoise = g.maxLimitPerlinNoise.GenerateNoiseOctaves(s.maxNoise, xOffset, yOffset, zOffset, xSize, ySize, zSize, d0, d0, d0)
 
-	// Depth noise is 2D (ySize = 1).
-	s.depth = g.depthNoise.GenerateNoiseOctaves(s.depth, xOffset, 0, zOffset, xSize, 1, zSize, 200.0, 0.5, 200.0)
+	// Depth noise is 2D in vanilla. Java uses the 2D overload which hardcodes yOffset=10 and yScale=1.0.
+	s.depth = g.depthNoise.GenerateNoiseOctaves(s.depth, xOffset, 10, zOffset, xSize, 1, zSize, 200.0, 1.0, 200.0)
 
 	k := 0
 	for x := 0; x < xSize; x++ {
@@ -371,7 +419,8 @@ func (g *Overworld) getHeights(s *scratch, xOffset, yOffset, zOffset, xSize, ySi
 			variation = variation*0.9 + 0.1
 			baseHeight = (baseHeight*4.0 - 1.0) / 8.0
 
-			depthVal := s.depth[x+z*xSize] / 8000.0
+			// NoiseOctaves with ySize=1 writes indices as x*zSize + z.
+			depthVal := s.depth[z+x*zSize] / 8000.0
 			if depthVal < 0.0 {
 				depthVal = -depthVal * 0.3
 			}
@@ -448,9 +497,11 @@ func (g *Overworld) replaceBiomeBlocks(chunkX, chunkZ int, c *chunk.Chunk, biome
 
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
-			b := biomes[int(z)+int(x)*16]
+			// biomes[] is indexed as x + z*16.
+			b := biomes[int(x)+int(z)*16]
 
-			noiseVal := s.surfaceBuf[int(z)+int(x)*16]
+			// NoisePerlin.GetRegion outputs x + z*16.
+			noiseVal := s.surfaceBuf[int(x)+int(z)*16]
 			thickness := int32(noiseVal/3.0 + 3.0 + r.Float64()*0.25)
 
 			top := b.topRID
