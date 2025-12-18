@@ -181,7 +181,6 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.carve(chunkX, chunkZ, c, biomes[:])
 	g.generateStructures(chunkX, chunkZ, c)
 	g.fillBiomes(c, biomes[:])
-	g.enqueuePopulation(pos)
 }
 
 func (g *Overworld) fillBiomes(c *chunk.Chunk, biomes []*biomeDef) {

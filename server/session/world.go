@@ -1258,6 +1258,9 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 		})
 	case block.DecoratedPotWobbleAction:
 		nbt := t.DecoratedPot.EncodeNBT()
+		if nbt == nil {
+			nbt = map[string]any{}
+		}
 		nbt["x"], nbt["y"], nbt["z"] = blockPos.X(), blockPos.Y(), blockPos.Z()
 		nbt["animation"] = boolByte(t.Success) + 1
 		s.writePacket(&packet.BlockActorData{
