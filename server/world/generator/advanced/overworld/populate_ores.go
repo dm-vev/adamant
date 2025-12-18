@@ -10,35 +10,35 @@ import (
 	mcbiome "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/biome"
 )
 
-func (g *Overworld) populateOres(tx *world.Tx, r *mc112.Rand, origin cube.Pos, biomeID int) {
+func (g *Overworld) populateOres(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, origin cube.Pos, biomeID int) {
 	// Default Java 1.12 ore generation settings.
-	g.genStandardOre1(tx, r, origin, 20, 33, 0, 256, block.Dirt{})
-	g.genStandardOre1(tx, r, origin, 10, 33, 0, 256, block.Gravel{})
-	g.genStandardOre1(tx, r, origin, 10, 33, 0, 80, block.Granite{})
-	g.genStandardOre1(tx, r, origin, 10, 33, 0, 80, block.Diorite{})
-	g.genStandardOre1(tx, r, origin, 10, 33, 0, 80, block.Andesite{})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 20, 33, 0, 256, block.Dirt{})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 10, 33, 0, 256, block.Gravel{})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 10, 33, 0, 80, block.Granite{})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 10, 33, 0, 80, block.Diorite{})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 10, 33, 0, 80, block.Andesite{})
 
-	g.genStandardOre1(tx, r, origin, 20, 17, 0, 128, block.CoalOre{Type: block.StoneOre()})
-	g.genStandardOre1(tx, r, origin, 20, 9, 0, 64, block.IronOre{Type: block.StoneOre()})
-	g.genStandardOre1(tx, r, origin, 2, 9, 0, 32, block.GoldOre{Type: block.StoneOre()})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 20, 17, 0, 128, block.CoalOre{Type: block.StoneOre()})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 20, 9, 0, 64, block.IronOre{Type: block.StoneOre()})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 2, 9, 0, 32, block.GoldOre{Type: block.StoneOre()})
 
 	// Redstone ore isn't implemented as a block type yet, but we can still place its state.
 	if b, ok := world.BlockByName("minecraft:redstone_ore", nil); ok {
-		g.genStandardOre1(tx, r, origin, 8, 8, 0, 16, b)
+		g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 8, 8, 0, 16, b)
 	}
 
-	g.genStandardOre1(tx, r, origin, 1, 8, 0, 16, block.DiamondOre{Type: block.StoneOre()})
-	g.genStandardOre2(tx, r, origin, 1, 7, 16, 16, block.LapisOre{Type: block.StoneOre()})
+	g.genStandardOre1(tx, r, chunkX, chunkZ, origin, 1, 8, 0, 16, block.DiamondOre{Type: block.StoneOre()})
+	g.genStandardOre2(tx, r, chunkX, chunkZ, origin, 1, 7, 16, 16, block.LapisOre{Type: block.StoneOre()})
 
 	switch mcbiome.CategoryOf(biomeID) {
 	case mcbiome.CategoryMountains:
-		g.generateEmeraldOre(tx, r, origin)
+		g.generateEmeraldOre(tx, r, chunkX, chunkZ, origin)
 	case mcbiome.CategoryMesa:
-		g.generateExtraGold(tx, r, origin)
+		g.generateExtraGold(tx, r, chunkX, chunkZ, origin)
 	}
 }
 
-func (g *Overworld) genStandardOre1(tx *world.Tx, r *mc112.Rand, origin cube.Pos, count, size, minY, maxY int, ore world.Block) {
+func (g *Overworld) genStandardOre1(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, origin cube.Pos, count, size, minY, maxY int, ore world.Block) {
 	if maxY <= minY {
 		return
 	}
@@ -46,11 +46,11 @@ func (g *Overworld) genStandardOre1(tx *world.Tx, r *mc112.Rand, origin cube.Pos
 		x := origin[0] + int(r.Intn(16))
 		y := minY + int(r.Intn(int32(maxY-minY)))
 		z := origin[2] + int(r.Intn(16))
-		g.generateMinable(tx, r, cube.Pos{x, y, z}, size, ore)
+		g.generateMinable(tx, r, chunkX, chunkZ, cube.Pos{x, y, z}, size, ore)
 	}
 }
 
-func (g *Overworld) genStandardOre2(tx *world.Tx, r *mc112.Rand, origin cube.Pos, count, size, centerY, spread int, ore world.Block) {
+func (g *Overworld) genStandardOre2(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, origin cube.Pos, count, size, centerY, spread int, ore world.Block) {
 	if spread <= 0 {
 		return
 	}
@@ -58,17 +58,20 @@ func (g *Overworld) genStandardOre2(tx *world.Tx, r *mc112.Rand, origin cube.Pos
 		x := origin[0] + int(r.Intn(16))
 		y := int(r.Intn(int32(spread))) + int(r.Intn(int32(spread))) + centerY - spread
 		z := origin[2] + int(r.Intn(16))
-		g.generateMinable(tx, r, cube.Pos{x, y, z}, size, ore)
+		g.generateMinable(tx, r, chunkX, chunkZ, cube.Pos{x, y, z}, size, ore)
 	}
 }
 
-func (g *Overworld) generateEmeraldOre(tx *world.Tx, r *mc112.Rand, origin cube.Pos) {
+func (g *Overworld) generateEmeraldOre(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, origin cube.Pos) {
 	for i := 0; i < 3+int(r.Intn(6)); i++ {
 		x := origin[0] + int(r.Intn(16))
 		y := 4 + int(r.Intn(28))
 		z := origin[2] + int(r.Intn(16))
 		pos := cube.Pos{x, y, z}
 		if pos.OutOfBounds(tx.Range()) {
+			continue
+		}
+		if pos[0]>>4 != chunkX || pos[2]>>4 != chunkZ {
 			continue
 		}
 		if world.BlockRuntimeID(tx.Block(pos)) != g.stoneRID {
@@ -78,17 +81,20 @@ func (g *Overworld) generateEmeraldOre(tx *world.Tx, r *mc112.Rand, origin cube.
 	}
 }
 
-func (g *Overworld) generateExtraGold(tx *world.Tx, r *mc112.Rand, origin cube.Pos) {
+func (g *Overworld) generateExtraGold(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, origin cube.Pos) {
 	for i := 0; i < 20; i++ {
 		x := origin[0] + int(r.Intn(16))
 		y := 32 + int(r.Intn(48))
 		z := origin[2] + int(r.Intn(16))
-		g.generateMinable(tx, r, cube.Pos{x, y, z}, 9, block.GoldOre{Type: block.StoneOre()})
+		g.generateMinable(tx, r, chunkX, chunkZ, cube.Pos{x, y, z}, 9, block.GoldOre{Type: block.StoneOre()})
 	}
 }
 
-func (g *Overworld) generateMinable(tx *world.Tx, r *mc112.Rand, start cube.Pos, size int, ore world.Block) {
+func (g *Overworld) generateMinable(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, start cube.Pos, size int, ore world.Block) {
 	if size <= 0 {
+		return
+	}
+	if start[0]>>4 != chunkX || start[2]>>4 != chunkZ {
 		return
 	}
 
@@ -148,6 +154,9 @@ func (g *Overworld) generateMinable(tx *world.Tx, r *mc112.Rand, start cube.Pos,
 					}
 					pos := cube.Pos{x, y, z}
 					if pos.OutOfBounds(tx.Range()) {
+						continue
+					}
+					if pos[0]>>4 != chunkX || pos[2]>>4 != chunkZ {
 						continue
 					}
 					if world.BlockRuntimeID(tx.Block(pos)) != g.stoneRID {

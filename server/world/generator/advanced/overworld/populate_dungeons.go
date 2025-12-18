@@ -8,20 +8,23 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 )
 
-func (g *Overworld) populateDungeons(tx *world.Tx, r *mc112.Rand, origin cube.Pos) {
+func (g *Overworld) populateDungeons(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, origin cube.Pos) {
 	// Matches the default dungeonChance setting used by ChunkGeneratorSettings in Java 1.12.
 	const dungeonChance = 8
 
 	for i := 0; i < dungeonChance; i++ {
-		x := origin[0] + int(r.Intn(16)) + 8
+		x := origin[0] + int(r.Intn(16))
 		y := int(r.Intn(256))
-		z := origin[2] + int(r.Intn(16)) + 8
-		g.generateDungeon(tx, r, cube.Pos{x, y, z})
+		z := origin[2] + int(r.Intn(16))
+		g.generateDungeon(tx, r, chunkX, chunkZ, cube.Pos{x, y, z})
 	}
 }
 
-func (g *Overworld) generateDungeon(tx *world.Tx, r *mc112.Rand, pos cube.Pos) bool {
+func (g *Overworld) generateDungeon(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ int, pos cube.Pos) bool {
 	if pos.OutOfBounds(tx.Range()) {
+		return false
+	}
+	if pos[0]>>4 != chunkX || pos[2]>>4 != chunkZ {
 		return false
 	}
 	roomX := int(r.Intn(2)) + 2
@@ -29,6 +32,9 @@ func (g *Overworld) generateDungeon(tx *world.Tx, r *mc112.Rand, pos cube.Pos) b
 
 	minX, maxX := pos[0]-roomX-1, pos[0]+roomX+1
 	minZ, maxZ := pos[2]-roomZ-1, pos[2]+roomZ+1
+	if minX>>4 != chunkX || maxX>>4 != chunkX || minZ>>4 != chunkZ || maxZ>>4 != chunkZ {
+		return false
+	}
 
 	var openings int
 	for x := minX; x <= maxX; x++ {
@@ -70,6 +76,9 @@ func (g *Overworld) generateDungeon(tx *world.Tx, r *mc112.Rand, pos cube.Pos) b
 			for z := minZ; z <= maxZ; z++ {
 				p := cube.Pos{x, y, z}
 				if p.OutOfBounds(tx.Range()) {
+					continue
+				}
+				if p[0]>>4 != chunkX || p[2]>>4 != chunkZ {
 					continue
 				}
 
@@ -116,6 +125,9 @@ func (g *Overworld) generateDungeon(tx *world.Tx, r *mc112.Rand, pos cube.Pos) b
 			z := pos[2] + int(r.Intn(int32(roomZ*2+1))) - roomZ
 			p := cube.Pos{x, y, z}
 			if p.OutOfBounds(tx.Range()) {
+				continue
+			}
+			if p[0]>>4 != chunkX || p[2]>>4 != chunkZ {
 				continue
 			}
 			if !dungeonAir(world.BlockRuntimeID(tx.Block(p))) {

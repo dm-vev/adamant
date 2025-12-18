@@ -40,7 +40,8 @@ func (g *Overworld) enqueuePopulation(pos world.ChunkPos) {
 
 func (g *Overworld) populate() {
 	for job := range g.populationQueue {
-		go g.runPopulationJob(job)
+		// Run inline to keep population concurrency bounded.
+		g.runPopulationJob(job)
 	}
 }
 

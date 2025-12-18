@@ -433,8 +433,12 @@ func (db *DB) storeBlockEntities(batch *leveldb.Batch, k dbKey, blockEntities []
 	buf := bytes.NewBuffer(nil)
 	enc := nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian)
 	for _, b := range blockEntities {
-		b.Data["x"], b.Data["y"], b.Data["z"] = int32(b.Pos[0]), int32(b.Pos[1]), int32(b.Pos[2])
-		if err := enc.Encode(b.Data); err != nil {
+		data := b.Data
+		if data == nil {
+			data = map[string]any{}
+		}
+		data["x"], data["y"], data["z"] = int32(b.Pos[0]), int32(b.Pos[1]), int32(b.Pos[2])
+		if err := enc.Encode(data); err != nil {
 			db.conf.Log.Error("store block entities: encode nbt: " + err.Error())
 		}
 	}
