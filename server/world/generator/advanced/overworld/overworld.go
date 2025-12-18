@@ -17,8 +17,8 @@ const (
 
 // Overworld generates terrain for the overworld using the Minecraft Java Edition 1.12 algorithm.
 //
-// Note: This is an incremental port. Terrain noise + surface replacement are implemented, but structures and
-// full biome pipeline are not yet implemented.
+// Note: This is an incremental port. Terrain noise, surface replacement, carving, the biome pipeline, and initial
+// population/structures are implemented, but many structures and decorations are still missing.
 //
 // The implementation is concurrency-safe and may be called from multiple generator workers.
 type Overworld struct {
