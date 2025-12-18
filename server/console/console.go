@@ -17,6 +17,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"golang.org/x/term"
 )
 
 const (
@@ -59,6 +60,10 @@ func (c *Console) WithReader(r io.Reader) *Console {
 // is cancelled or the underlying reader reaches EOF.
 func (c *Console) Run(ctx context.Context) {
 	if c.reader != os.Stdin {
+		c.runScanner(ctx)
+		return
+	}
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		c.runScanner(ctx)
 		return
 	}
