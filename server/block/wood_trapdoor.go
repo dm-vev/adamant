@@ -116,6 +116,11 @@ func (t WoodTrapdoor) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + t.Wood.String() + "_trapdoor", map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
 }
 
+// RedstoneConnectsTo ...
+func (WoodTrapdoor) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // allTrapdoors returns a list of all trapdoor types
 func allTrapdoors() (trapdoors []world.Block) {
 	for _, w := range WoodTypes() {

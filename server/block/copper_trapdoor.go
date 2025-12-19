@@ -147,6 +147,11 @@ func (t CopperTrapdoor) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + name, map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
 }
 
+// RedstoneConnectsTo ...
+func (CopperTrapdoor) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // allCopperTrapdoors returns a list of all copper trapdoor types
 func allCopperTrapdoors() (trapdoors []world.Block) {
 	f := func(waxed bool) {

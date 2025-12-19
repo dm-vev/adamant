@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
+	"math"
 	"math/rand/v2"
 	"time"
 )
@@ -105,8 +106,9 @@ var unknownDirection = cube.Direction(len(cube.Directions()))
 
 func calculateFace(user item.User, placePos cube.Pos) cube.Face {
 	userPos := user.Position()
-	pos := cube.PosFromVec3(userPos)
-	if abs(pos[0]-placePos[0]) < 2 && abs(pos[2]-placePos[2]) < 2 {
+	dx := math.Abs(userPos[0] - (float64(placePos[0]) + 0.5))
+	dz := math.Abs(userPos[2] - (float64(placePos[2]) + 0.5))
+	if dx < 2.0 && dz < 2.0 {
 		y := userPos[1]
 		if eyed, ok := user.(interface{ EyeHeight() float64 }); ok {
 			y += eyed.EyeHeight()

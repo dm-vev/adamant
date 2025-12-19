@@ -222,6 +222,11 @@ func (d CopperDoor) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + name, map[string]any{"minecraft:cardinal_direction": d.Facing.RotateRight().String(), "door_hinge_bit": d.Right, "open_bit": d.Open, "upper_block_bit": d.Top}
 }
 
+// RedstoneConnectsTo ...
+func (CopperDoor) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // allCopperDoors returns a list of all copper door types
 func allCopperDoors() (doors []world.Block) {
 	f := func(waxed bool) {

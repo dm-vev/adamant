@@ -246,6 +246,7 @@ func init() {
 	registerAll(allLevers())
 	registerAll(allPistons())
 	registerAll(allPistonHeads())
+	registerAll(allMovingBlocks())
 }
 
 func init() {

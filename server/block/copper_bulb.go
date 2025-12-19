@@ -136,6 +136,11 @@ func (b CopperBulb) EncodeBlock() (string, map[string]any) {
 	return "minecraft:" + name, map[string]any{"lit": b.Lit, "powered_bit": b.Powered}
 }
 
+// RedstoneConnectsTo ...
+func (CopperBulb) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // allCopperBulbs returns all possible copper bulb states.
 func allCopperBulbs() (bulbs []world.Block) {
 	for _, waxed := range []bool{false, true} {

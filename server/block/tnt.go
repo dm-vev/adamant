@@ -72,6 +72,11 @@ func (t TNT) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:tnt", map[string]interface{}{"explode_bit": false}
 }
 
+// RedstoneConnectsTo ...
+func (TNT) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // spawnTnt creates a new TNT entity at the given position with the given fuse duration.
 func spawnTnt(pos cube.Pos, tx *world.Tx, fuse time.Duration) {
 	tx.PlaySound(pos.Vec3Centre(), sound.TNT{})

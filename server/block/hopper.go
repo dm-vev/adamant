@@ -249,6 +249,11 @@ func (h Hopper) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// RedstoneConnectsTo ...
+func (Hopper) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // EncodeNBT ...
 func (h Hopper) EncodeNBT() map[string]any {
 	if h.inventory == nil {

@@ -94,3 +94,8 @@ func (n Note) EncodeItem() (name string, meta int16) {
 func (n Note) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:noteblock", nil
 }
+
+// RedstoneConnectsTo ...
+func (Note) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}

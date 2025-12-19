@@ -129,6 +129,7 @@ const (
 	hashMelonSeeds
 	hashMobSpawner
 	hashMossCarpet
+	hashMovingBlock
 	hashMud
 	hashMudBricks
 	hashMuddyMangroveRoots
@@ -725,6 +726,10 @@ func (MobSpawner) Hash() (uint64, uint64) {
 
 func (MossCarpet) Hash() (uint64, uint64) {
 	return hashMossCarpet, 0
+}
+
+func (MovingBlock) Hash() (uint64, uint64) {
+	return hashMovingBlock, 0
 }
 
 func (Mud) Hash() (uint64, uint64) {

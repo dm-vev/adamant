@@ -61,6 +61,11 @@ func (l RedstoneLamp) EncodeBlock() (string, map[string]any) {
 	return "minecraft:redstone_lamp", nil
 }
 
+// RedstoneConnectsTo ...
+func (RedstoneLamp) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 func allRedstoneLamps() (lamps []world.Block) {
 	return []world.Block{RedstoneLamp{Lit: false}, RedstoneLamp{Lit: true}}
 }

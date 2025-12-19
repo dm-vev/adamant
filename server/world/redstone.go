@@ -32,10 +32,15 @@ type RedstoneDiode interface {
 	RedstoneDiodeFacing() cube.Direction
 }
 
+// RedstoneConnectable marks a block that redstone wire can connect to.
+type RedstoneConnectable interface {
+	RedstoneConnectsTo(face cube.Face) bool
+}
+
 // RedstonePowerAt returns the redstone power level emitted from the block at pos towards the neighbour on face.
 func RedstonePowerAt(src BlockSource, pos cube.Pos, face cube.Face) uint8 {
 	if isNormalBlock(src, pos) {
-		return redstoneStrongPowerAt(src, pos, face)
+		return redstoneStrongPowerFromNeighbours(src, pos)
 	}
 	return redstoneWeakPowerAt(src, pos, face)
 }
@@ -61,14 +66,34 @@ func redstoneWeakPowerAt(src BlockSource, pos cube.Pos, face cube.Face) uint8 {
 }
 
 func redstoneStrongPowerAt(src BlockSource, pos cube.Pos, face cube.Face) uint8 {
+	if wire, ok := src.Block(pos).(RedstoneWire); ok {
+		return wire.RedstoneWirePowerTo(pos, face, src)
+	}
 	if source, ok := src.Block(pos).(RedstonePowerSource); ok {
 		return source.RedstoneStrongPower(face)
 	}
 	return 0
 }
 
+func redstoneStrongPowerFromNeighbours(src BlockSource, pos cube.Pos) uint8 {
+	var power uint8
+	for _, face := range cube.Faces() {
+		blockPower := redstoneStrongPowerAt(src, pos.Side(face), face.Opposite())
+		if blockPower >= 15 {
+			return 15
+		}
+		if blockPower > power {
+			power = blockPower
+		}
+	}
+	return power
+}
+
 func isNormalBlock(src BlockSource, pos cube.Pos) bool {
 	b := src.Block(pos)
+	if _, ok := b.(RedstonePowerSource); ok {
+		return false
+	}
 	for _, face := range cube.Faces() {
 		if !b.Model().FaceSolid(pos, face, src) {
 			return false

@@ -172,6 +172,11 @@ func (d WoodDoor) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + d.Wood.String() + "_door", map[string]any{"minecraft:cardinal_direction": d.Facing.RotateRight().String(), "door_hinge_bit": d.Right, "open_bit": d.Open, "upper_block_bit": d.Top}
 }
 
+// RedstoneConnectsTo ...
+func (WoodDoor) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // allDoors returns a list of all door types
 func allDoors() (doors []world.Block) {
 	for _, w := range WoodTypes() {

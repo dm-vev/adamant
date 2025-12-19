@@ -130,6 +130,11 @@ func (f WoodFenceGate) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + f.Wood.String() + "_fence_gate", map[string]any{"minecraft:cardinal_direction": f.Facing.String(), "open_bit": f.Open, "in_wall_bit": f.Lowered}
 }
 
+// RedstoneConnectsTo ...
+func (WoodFenceGate) RedstoneConnectsTo(cube.Face) bool {
+	return true
+}
+
 // Model ...
 func (f WoodFenceGate) Model() world.BlockModel {
 	return model.FenceGate{Facing: f.Facing, Open: f.Open}
