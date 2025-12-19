@@ -67,6 +67,21 @@ func (t WoodTrapdoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.U
 	return true
 }
 
+// NeighbourUpdateTick ...
+func (t WoodTrapdoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	powered := redstonePowered(pos, tx)
+	if powered == t.Open {
+		return
+	}
+	t.Open = powered
+	tx.SetBlock(pos, t, nil)
+	if t.Open {
+		tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorOpen{Block: t})
+		return
+	}
+	tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorClose{Block: t})
+}
+
 // BreakInfo ...
 func (t WoodTrapdoor) BreakInfo() BreakInfo {
 	return newBreakInfo(3, alwaysHarvestable, axeEffective, oneOf(t))

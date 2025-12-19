@@ -231,6 +231,21 @@ func init() {
 	registerAll(allCopperDoors())
 	registerAll(allCopperGrates())
 	registerAll(allCopperTrapdoors())
+	registerAll(allRedstoneWires())
+	registerAll(allRedstoneTorches())
+	registerAll(allRepeaters())
+	registerAll(allRedstoneComparators())
+	registerAll(allObservers())
+	registerAll(allRedstoneLamps())
+	registerAll(allRedstoneBlocks())
+	registerAll(allPressurePlates())
+	registerAll(allDaylightDetectors())
+	registerAll(allTripwireHooks())
+	registerAll(allTripwires())
+	registerAll(allButtons())
+	registerAll(allLevers())
+	registerAll(allPistons())
+	registerAll(allPistonHeads())
 }
 
 func init() {
@@ -394,6 +409,23 @@ func init() {
 	world.RegisterItem(DecoratedPot{})
 	world.RegisterItem(ShortGrass{})
 	world.RegisterItem(Fern{})
+	world.RegisterItem(RedstoneWire{})
+	world.RegisterItem(RedstoneTorch{})
+	world.RegisterItem(RedstoneRepeater{})
+	world.RegisterItem(RedstoneComparator{})
+	world.RegisterItem(RedstoneLamp{})
+	world.RegisterItem(RedstoneBlock{})
+	world.RegisterItem(Observer{})
+	world.RegisterItem(DaylightDetector{})
+	for _, t := range PressurePlateTypes() {
+		world.RegisterItem(PressurePlate{Type: t})
+	}
+	for _, t := range ButtonTypes() {
+		world.RegisterItem(Button{Type: t})
+	}
+	world.RegisterItem(Lever{})
+	world.RegisterItem(Piston{Sticky: false})
+	world.RegisterItem(Piston{Sticky: true})
 	world.RegisterItem(item.Bucket{Content: item.LiquidBucketContent(Lava{})})
 	world.RegisterItem(item.Bucket{Content: item.LiquidBucketContent(Water{})})
 	world.RegisterItem(item.Bucket{Content: item.MilkBucketContent()})

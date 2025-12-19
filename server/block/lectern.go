@@ -2,6 +2,9 @@ package block
 
 import (
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -9,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // Lectern is a librarian's job site block found in villages. It is used to hold books for multiple players to read in
@@ -156,8 +158,35 @@ func (Lectern) EncodeItem() (name string, meta int16) {
 func (l Lectern) EncodeBlock() (string, map[string]any) {
 	return "minecraft:lectern", map[string]any{
 		"minecraft:cardinal_direction": l.Facing.String(),
-		"powered_bit":                  uint8(0), // We don't support redstone, anyway.
+		"powered_bit":                  boolByte(!l.Book.Empty()),
 	}
+}
+
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (l Lectern) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	if l.Book.Empty() {
+		return 0
+	}
+	totalPages := 1
+	if r, ok := l.Book.Item().(readableBook); ok {
+		totalPages = r.TotalPages()
+	}
+	if totalPages <= 1 {
+		return 1
+	}
+	page := l.Page
+	if page < 0 {
+		page = 0
+	} else if page >= totalPages {
+		page = totalPages - 1
+	}
+	signal := int(math.Floor(float64(page) / float64(totalPages-1) * 14))
+	if signal < 0 {
+		signal = 0
+	} else if signal > 14 {
+		signal = 14
+	}
+	return uint8(signal + 1)
 }
 
 // allLecterns ...

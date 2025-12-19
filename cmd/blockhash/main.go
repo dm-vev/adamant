@@ -45,6 +45,7 @@ func procPackage(pkg *packages.Package, w io.Writer) {
 		aliases:     make(map[string]string),
 		handled:     map[string]struct{}{},
 		funcs:       map[string]*ast.FuncDecl{},
+		hashFuncs:   map[string]*ast.FuncDecl{},
 		blockFields: map[string][]*ast.Field{},
 	}
 	b.readStructFields(pkg)
@@ -68,6 +69,7 @@ type hashBuilder struct {
 	pkg         *packages.Package
 	fields      map[string][]*ast.Field
 	funcs       map[string]*ast.FuncDecl
+	hashFuncs   map[string]*ast.FuncDecl
 	aliases     map[string]string
 	handled     map[string]struct{}
 	blockFields map[string][]*ast.Field
@@ -249,7 +251,11 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 	case "WoodType", "FlowerType", "DoubleFlowerType", "Colour":
 		// Assuming these were all based on metadata, it should be safe to assume a bit size of 4 for this.
 		return "uint64(" + s + ".Uint8())", 4
+	case "ButtonType", "PressurePlateType":
+		return "uint64(" + s + ".Uint8())", 4
 	case "CoralType", "SkullType":
+		return "uint64(" + s + ".Uint8())", 3
+	case "LeverOrientation":
 		return "uint64(" + s + ".Uint8())", 3
 	case "AnvilType", "SandstoneType", "PrismarineType", "StoneBricksType", "NetherBricksType", "FroglightType",
 		"WallConnectionType", "BlackstoneType", "DeepslateType", "TallGrassType", "CopperType", "OxidationType":
@@ -271,13 +277,19 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 func (b *hashBuilder) resolveBlocks() {
 	for bl, fields := range b.fields {
 		if _, ok := b.funcs[bl]; ok {
+			if _, hasHash := b.hashFuncs[bl]; hasHash {
+				continue
+			}
 			b.blockFields[bl] = fields
 		}
 	}
 }
 
 func (b *hashBuilder) readFuncs(pkg *packages.Package) {
-	for _, f := range pkg.Syntax {
+	for i, f := range pkg.Syntax {
+		if i < len(pkg.GoFiles) && strings.HasSuffix(pkg.GoFiles[i], "hash.go") {
+			continue
+		}
 		ast.Inspect(f, b.readFuncDecls)
 	}
 }
@@ -288,6 +300,9 @@ func (b *hashBuilder) readFuncDecls(node ast.Node) bool {
 		// is an implementation of the world.Block interface.
 		if fun.Name.Name == "EncodeBlock" && fun.Recv != nil {
 			b.funcs[fun.Recv.List[0].Type.(*ast.Ident).Name] = fun
+		}
+		if fun.Name.Name == "Hash" && fun.Recv != nil {
+			b.hashFuncs[fun.Recv.List[0].Type.(*ast.Ident).Name] = fun
 		}
 	}
 	return true

@@ -142,6 +142,9 @@ func (t ticker) tick(tx *Tx) {
 
 	t.tickEntities(tx, tick)
 	w.scheduledUpdates.tick(tx, tick)
+	if w.redstone != nil {
+		w.redstone.Apply(tx)
+	}
 	t.tickBlocksRandomly(tx, loaders, tick)
 	t.performNeighbourUpdates(tx)
 }

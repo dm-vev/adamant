@@ -70,28 +70,61 @@ func (d CopperDoor) WithOxidationLevel(o OxidationType) Oxidisable {
 }
 
 // NeighbourUpdateTick ...
-func (d CopperDoor) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) {
-	if pos == changedNeighbour {
-		return
-	}
+func (d CopperDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	updated := false
+	openChanged := false
+
 	if d.Top {
 		if b, ok := tx.Block(pos.Side(cube.FaceDown)).(CopperDoor); !ok {
 			breakBlockNoDrops(d, pos, tx)
+			return
 		} else if d.Oxidation != b.Oxidation || d.Waxed != b.Waxed {
 			d.Oxidation = b.Oxidation
 			d.Waxed = b.Waxed
-			tx.SetBlock(pos, d, nil)
+			updated = true
 		}
 	} else if solid := tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx); !solid {
 		// CopperDoor is pickaxeHarvestable, so don't use breakBlock() here.
 		breakBlockNoDrops(d, pos, tx)
 		dropItem(tx, item.NewStack(d, 1), pos.Vec3Centre())
+		return
 	} else if b, ok := tx.Block(pos.Side(cube.FaceUp)).(CopperDoor); !ok {
 		breakBlockNoDrops(d, pos, tx)
+		return
 	} else if d.Oxidation != b.Oxidation || d.Waxed != b.Waxed {
 		d.Oxidation = b.Oxidation
 		d.Waxed = b.Waxed
-		tx.SetBlock(pos, d, nil)
+		updated = true
+	}
+
+	powered := redstonePowered(pos, tx)
+	if d.Top {
+		powered = powered || redstonePowered(pos.Side(cube.FaceDown), tx)
+	} else {
+		powered = powered || redstonePowered(pos.Side(cube.FaceUp), tx)
+	}
+	if powered != d.Open {
+		d.Open = powered
+		openChanged = true
+		updated = true
+	}
+
+	if !updated {
+		return
+	}
+	tx.SetBlock(pos, d, nil)
+	if openChanged {
+		otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
+		other := tx.Block(otherPos)
+		if door, ok := other.(CopperDoor); ok {
+			door.Open = d.Open
+			tx.SetBlock(otherPos, door, nil)
+		}
+		if d.Open {
+			tx.PlaySound(pos.Vec3Centre(), sound.DoorOpen{Block: d})
+			return
+		}
+		tx.PlaySound(pos.Vec3Centre(), sound.DoorClose{Block: d})
 	}
 }
 

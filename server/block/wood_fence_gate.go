@@ -63,9 +63,26 @@ func (f WoodFenceGate) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 
 // NeighbourUpdateTick ...
 func (f WoodFenceGate) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if f.shouldBeLowered(pos, tx) != f.Lowered {
-		f.Lowered = !f.Lowered
-		tx.SetBlock(pos, f, nil)
+	lowered := f.shouldBeLowered(pos, tx)
+	loweredChanged := lowered != f.Lowered
+	if loweredChanged {
+		f.Lowered = lowered
+	}
+	powered := redstonePowered(pos, tx)
+	openChanged := powered != f.Open
+	if openChanged {
+		f.Open = powered
+	}
+	if !loweredChanged && !openChanged {
+		return
+	}
+	tx.SetBlock(pos, f, nil)
+	if openChanged {
+		if f.Open {
+			tx.PlaySound(pos.Vec3Centre(), sound.FenceGateOpen{Block: f})
+			return
+		}
+		tx.PlaySound(pos.Vec3Centre(), sound.FenceGateClose{Block: f})
 	}
 }
 

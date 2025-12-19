@@ -146,6 +146,18 @@ func (i ItemFrame) Pick() item.Stack {
 	return i.Item.Grow(-i.Item.Count() + 1)
 }
 
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (i ItemFrame) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	if i.Item.Empty() {
+		return 0
+	}
+	rot := i.Rotations % 8
+	if rot < 0 {
+		rot += 8
+	}
+	return uint8(rot + 1)
+}
+
 // SideClosed ...
 func (ItemFrame) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 	return false

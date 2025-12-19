@@ -34,6 +34,13 @@ func (t TNT) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx 
 	return false
 }
 
+// NeighbourUpdateTick ...
+func (t TNT) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if redstonePowered(pos, tx) {
+		t.Ignite(pos, tx, nil)
+	}
+}
+
 // Ignite ...
 func (t TNT) Ignite(pos cube.Pos, tx *world.Tx, _ world.Entity) bool {
 	spawnTnt(pos, tx, time.Second*4)

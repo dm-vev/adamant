@@ -56,12 +56,39 @@ func (d WoodDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	if d.Top {
 		if _, ok := tx.Block(pos.Side(cube.FaceDown)).(WoodDoor); !ok {
 			breakBlockNoDrops(d, pos, tx)
+			return
 		}
 	} else if solid := tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx); !solid {
 		breakBlock(d, pos, tx)
+		return
 	} else if _, ok := tx.Block(pos.Side(cube.FaceUp)).(WoodDoor); !ok {
 		breakBlockNoDrops(d, pos, tx)
+		return
 	}
+
+	powered := redstonePowered(pos, tx)
+	if d.Top {
+		powered = powered || redstonePowered(pos.Side(cube.FaceDown), tx)
+	} else {
+		powered = powered || redstonePowered(pos.Side(cube.FaceUp), tx)
+	}
+	if powered == d.Open {
+		return
+	}
+	d.Open = powered
+	tx.SetBlock(pos, d, nil)
+
+	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
+	other := tx.Block(otherPos)
+	if door, ok := other.(WoodDoor); ok {
+		door.Open = d.Open
+		tx.SetBlock(otherPos, door, nil)
+	}
+	if d.Open {
+		tx.PlaySound(pos.Vec3Centre(), sound.DoorOpen{Block: d})
+		return
+	}
+	tx.PlaySound(pos.Vec3Centre(), sound.DoorClose{Block: d})
 }
 
 // UseOnBlock handles the directional placing of doors

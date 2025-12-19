@@ -46,11 +46,22 @@ func (b CopperBulb) LightEmissionLevel() uint8 {
 // Activate toggles the bulb between its lit and unlit states.
 func (b CopperBulb) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	b.Lit = !b.Lit
-	if !b.Lit {
-		b.Powered = false
-	}
+	b.Powered = redstonePowered(pos, tx)
 	tx.SetBlock(pos, b, nil)
 	return true
+}
+
+// NeighbourUpdateTick ...
+func (b CopperBulb) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	powered := redstonePowered(pos, tx)
+	if powered == b.Powered {
+		return
+	}
+	if powered {
+		b.Lit = !b.Lit
+	}
+	b.Powered = powered
+	tx.SetBlock(pos, b, nil)
 }
 
 // Wax waxes the bulb to stop it from oxidising further.

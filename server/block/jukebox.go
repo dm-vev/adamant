@@ -105,6 +105,14 @@ func (j Jukebox) Disc() (sound.DiscType, bool) {
 	return sound.DiscType{}, false
 }
 
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (j Jukebox) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	if _, ok := j.Disc(); ok {
+		return 15
+	}
+	return 0
+}
+
 // EncodeNBT ...
 func (j Jukebox) EncodeNBT() map[string]any {
 	m := map[string]any{"id": "Jukebox"}

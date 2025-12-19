@@ -76,6 +76,16 @@ func (h Hopper) BreakInfo() BreakInfo {
 	})
 }
 
+// NeighbourUpdateTick ...
+func (h Hopper) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	powered := redstonePowered(pos, tx)
+	if powered == h.Powered {
+		return
+	}
+	h.Powered = powered
+	tx.SetBlock(pos, h, nil)
+}
+
 // Inventory returns the inventory of the hopper.
 func (h Hopper) Inventory(*world.Tx, cube.Pos) *inventory.Inventory {
 	return h.inventory

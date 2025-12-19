@@ -82,6 +82,7 @@ type World struct {
 	// be removed from the map.
 	scheduledUpdates *scheduledTickQueue
 	neighbourUpdates []neighbourUpdate
+	redstone         *redstoneEngine
 
 	scratchRandom           []cube.Pos
 	scratchBlockEntities    []cube.Pos
@@ -1067,6 +1068,13 @@ func (w *World) doBlockUpdatesAround(pos cube.Pos) {
 	pos.Neighbours(func(pos cube.Pos) {
 		w.updateNeighbour(pos, changed)
 	}, w.Range())
+
+	if w.redstone != nil {
+		w.redstone.QueueUpdate(changed)
+		changed.Neighbours(func(pos cube.Pos) {
+			w.redstone.QueueUpdate(pos)
+		}, w.Range())
+	}
 }
 
 // neighbourUpdate represents a position that needs to be updated because of a
@@ -1253,6 +1261,10 @@ func (w *World) close() {
 
 		w.save(w.closeChunk)(tx)
 	})
+
+	if w.redstone != nil {
+		w.redstone.Close()
+	}
 
 	close(w.closing)
 	w.running.Wait()

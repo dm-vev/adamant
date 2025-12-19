@@ -92,6 +92,21 @@ func (t CopperTrapdoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item
 	return true
 }
 
+// NeighbourUpdateTick ...
+func (t CopperTrapdoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	powered := redstonePowered(pos, tx)
+	if powered == t.Open {
+		return
+	}
+	t.Open = powered
+	tx.SetBlock(pos, t, nil)
+	if t.Open {
+		tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorOpen{Block: t})
+		return
+	}
+	tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorClose{Block: t})
+}
+
 func (t CopperTrapdoor) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	attemptOxidation(pos, tx, r, t)
 }

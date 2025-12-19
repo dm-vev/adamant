@@ -17,6 +17,8 @@ type Note struct {
 
 	// Pitch is the current pitch the note block is set to. Value ranges from 0-24.
 	Pitch int
+	// Powered is whether the note block is currently receiving redstone power.
+	Powered bool
 }
 
 // playNote ...
@@ -38,12 +40,13 @@ func (n Note) instrument(pos cube.Pos, tx *world.Tx) sound.Instrument {
 // DecodeNBT ...
 func (n Note) DecodeNBT(data map[string]any) any {
 	n.Pitch = int(nbtconv.Uint8(data, "note"))
+	n.Powered = nbtconv.Bool(data, "powered")
 	return n
 }
 
 // EncodeNBT ...
 func (n Note) EncodeNBT() map[string]any {
-	return map[string]any{"note": byte(n.Pitch)}
+	return map[string]any{"note": byte(n.Pitch), "powered": boolByte(n.Powered)}
 }
 
 // Activate ...
@@ -55,6 +58,21 @@ func (n Note) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *
 	n.playNote(pos, tx)
 	tx.SetBlock(pos, n, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 	return true
+}
+
+// NeighbourUpdateTick ...
+func (n Note) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	powered := redstonePowered(pos, tx)
+	if powered == n.Powered {
+		return
+	}
+	n.Powered = powered
+	if powered {
+		if _, ok := tx.Block(pos.Side(cube.FaceUp)).(Air); ok {
+			n.playNote(pos, tx)
+		}
+	}
+	tx.SetBlock(pos, n, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 }
 
 // BreakInfo ...
