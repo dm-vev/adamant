@@ -133,7 +133,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	}
 	e.SetOnFire(e.OnFireDuration() - time.Second/20)
 
-	if m := e.Behaviour().Tick(e, tx); m != nil {
+	m := e.Behaviour().Tick(e, tx)
+	checkEntityInsiders(tx, e)
+	if m != nil {
 		m.Send()
 	}
 	e.data.Age += time.Second / 20

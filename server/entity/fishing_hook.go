@@ -109,7 +109,7 @@ func (b *FishingHookBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	b.lifeTicks++
 
 	pos := e.Position()
-	movement := b.mc.TickMovement(e, pos, e.Velocity(), e.Rotation(), tx)
+	movement := b.mc.TickMovement(e, pos, e.Velocity(), e.Rotation(), e.Rotation(), tx)
 	e.data.Pos, e.data.Vel, e.data.Rot = movement.Position(), movement.Velocity(), movement.Rotation()
 	movement.Send()
 

@@ -51,6 +51,7 @@ func init() {
 	world.RegisterBlock(EndBricks{})
 	world.RegisterBlock(EndPortal{})
 	world.RegisterBlock(EndGateway{})
+	world.RegisterBlock(MobSpawner{})
 	world.RegisterBlock(EndStone{})
 	world.RegisterBlock(FletchingTable{})
 	world.RegisterBlock(GlassPane{})
@@ -288,6 +289,7 @@ func init() {
 	world.RegisterItem(EndBricks{})
 	world.RegisterItem(EndRod{})
 	world.RegisterItem(EndStone{})
+	world.RegisterItem(MobSpawner{})
 	world.RegisterItem(EnderChest{})
 	for _, t := range ShulkerBoxTypes() {
 		world.RegisterItem(ShulkerBox{Type: t})

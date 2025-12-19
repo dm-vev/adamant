@@ -77,6 +77,7 @@ const (
 	hashEnchantingTable
 	hashEndBricks
 	hashEndGateway
+	hashMobSpawner
 	hashEndPortal
 	hashEndPortalFrame
 	hashEndRod
@@ -501,6 +502,9 @@ func (EndBricks) Hash() (uint64, uint64) {
 
 func (EndGateway) Hash() (uint64, uint64) {
 	return hashEndGateway, 0
+}
+func (MobSpawner) Hash() (uint64, uint64) {
+	return hashMobSpawner, 0
 }
 
 func (EndPortal) Hash() (uint64, uint64) {

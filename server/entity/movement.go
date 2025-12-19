@@ -15,6 +15,8 @@ type MovementComputer struct {
 	DragBeforeGravity bool
 
 	onGround bool
+	collidedHorizontally bool
+	collidedVertically   bool
 }
 
 // blockBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
@@ -36,6 +38,7 @@ type Movement struct {
 	pos, vel, dpos, dvel mgl64.Vec3
 	rot                  cube.Rotation
 	onGround             bool
+	rotChanged           bool
 }
 
 // Send sends the Movement to any viewers watching the entity at the time of the movement. If the position/velocity
@@ -45,7 +48,7 @@ func (m *Movement) Send() {
 	velChanged := !m.dvel.ApproxEqualThreshold(zeroVec3, epsilon)
 
 	for _, v := range m.v {
-		if posChanged {
+		if posChanged || m.rotChanged {
 			v.ViewEntityMovement(m.e, m.pos, m.rot, m.onGround)
 		}
 		if velChanged {
@@ -77,7 +80,7 @@ func (m *Movement) Rotation() cube.Rotation {
 // of its Drag and Gravity.
 // The new position of the entity after movement is returned.
 // The resulting Movement can be sent to viewers by calling Movement.Send.
-func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot cube.Rotation, tx *world.Tx) *Movement {
+func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot, prevRot cube.Rotation, tx *world.Tx) *Movement {
 	viewers := tx.Viewers(pos)
 
 	velBefore := vel
@@ -86,7 +89,7 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 
 	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
 		pos: pos.Add(dPos), vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),
-		rot: rot, onGround: c.onGround,
+		rot: rot, onGround: c.onGround, rotChanged: rotationChanged(rot, prevRot),
 	}
 }
 
@@ -95,11 +98,29 @@ func (c *MovementComputer) OnGround() bool {
 	return c.onGround
 }
 
+// CollidedHorizontally reports if the last tick movement hit a horizontal surface.
+func (c *MovementComputer) CollidedHorizontally() bool {
+	return c.collidedHorizontally
+}
+
+// CollidedVertically reports if the last tick movement hit a vertical surface.
+func (c *MovementComputer) CollidedVertically() bool {
+	return c.collidedVertically
+}
+
 // zeroVec3 is a mgl64.Vec3 with zero values.
 var zeroVec3 mgl64.Vec3
 
 // epsilon is the epsilon used for thresholds for change used for change in position and velocity.
 const epsilon = 0.001
+
+func rotationChanged(rot, prev cube.Rotation) bool {
+	const rotationEpsilon = 0.01
+	if math.Abs(rot.Yaw-prev.Yaw) > rotationEpsilon {
+		return true
+	}
+	return math.Abs(rot.Pitch-prev.Pitch) > rotationEpsilon
+}
 
 // applyVerticalForces applies gravity and drag on the Y axis, based on the Gravity and Drag values set.
 func (c *MovementComputer) applyVerticalForces(vel mgl64.Vec3) mgl64.Vec3 {
@@ -134,17 +155,20 @@ func (c *MovementComputer) applyHorizontalForces(tx *world.Tx, pos, vel mgl64.Ve
 // happens to collide with a block.
 // The final velocity and the Vec3 that the entity should move is returned.
 func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
-	// TODO: Implement collision with other entities.
 	deltaX, deltaY, deltaZ := vel[0], vel[1], vel[2]
 
 	// Entities only ever have a single bounding box.
 	entityBBox := e.H().Type().BBox(e).Translate(pos)
 	blocks := blockBBoxsAround(tx, entityBBox.Extend(vel))
+	entities := entityBBoxsAround(tx, e, entityBBox.Extend(vel))
 
 	if !mgl64.FloatEqualThreshold(deltaY, 0, epsilon) {
 		// First we move the entity BBox on the Y axis.
 		for _, blockBBox := range blocks {
 			deltaY = entityBBox.YOffset(blockBBox, deltaY)
+		}
+		for _, colliderBBox := range entities {
+			deltaY = entityBBox.YOffset(colliderBBox, deltaY)
 		}
 		entityBBox = entityBBox.Translate(mgl64.Vec3{0, deltaY})
 	}
@@ -153,6 +177,9 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 		for _, blockBBox := range blocks {
 			deltaX = entityBBox.XOffset(blockBBox, deltaX)
 		}
+		for _, colliderBBox := range entities {
+			deltaX = entityBBox.XOffset(colliderBBox, deltaX)
+		}
 		entityBBox = entityBBox.Translate(mgl64.Vec3{deltaX})
 	}
 	if !mgl64.FloatEqualThreshold(deltaZ, 0, epsilon) {
@@ -160,12 +187,17 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 		for _, blockBBox := range blocks {
 			deltaZ = entityBBox.ZOffset(blockBBox, deltaZ)
 		}
+		for _, colliderBBox := range entities {
+			deltaZ = entityBBox.ZOffset(colliderBBox, deltaZ)
+		}
 	}
 	if !mgl64.FloatEqual(vel[1], 0) {
 		// The Y velocity of the entity is currently not 0, meaning it is moving either up or down. We can
 		// then assume the entity is not currently on the ground.
 		c.onGround = false
 	}
+	c.collidedHorizontally = !mgl64.FloatEqual(deltaX, vel[0]) || !mgl64.FloatEqual(deltaZ, vel[2])
+	c.collidedVertically = !mgl64.FloatEqual(deltaY, vel[1])
 	if !mgl64.FloatEqual(deltaX, vel[0]) {
 		vel[0] = 0
 	}
@@ -181,6 +213,7 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 		vel[2] = 0
 	}
 	blockBBoxPool.Put(blocks[:0])
+	entityBBoxPool.Put(entities[:0])
 	return mgl64.Vec3{deltaX, deltaY, deltaZ}, vel
 }
 
@@ -226,4 +259,34 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 		}
 	}
 	return blockBBoxs
+}
+
+// entityBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
+// resolution when checking collisions with other living entities.
+var entityBBoxPool = sync.Pool{
+	New: func() any {
+		return make([]cube.BBox, 0, 8)
+	},
+}
+
+// entityBBoxsAround returns all entity bounding boxes around the entity passed, using the BBox passed to make a
+// prediction of what entities need to have their BBox returned.
+func entityBBoxsAround(tx *world.Tx, self world.Entity, box cube.BBox) []cube.BBox {
+	if _, ok := self.(Living); !ok {
+		return entityBBoxPool.Get().([]cube.BBox)[:0]
+	}
+	expanded := box.Grow(0.5)
+	entityBBoxs := entityBBoxPool.Get().([]cube.BBox)
+	entityBBoxs = entityBBoxs[:0]
+	for e := range tx.EntitiesWithin(expanded) {
+		if e == self {
+			continue
+		}
+		l, ok := e.(Living)
+		if !ok || l.Dead() {
+			continue
+		}
+		entityBBoxs = append(entityBBoxs, e.H().Type().BBox(e).Translate(e.Position()))
+	}
+	return entityBBoxs
 }
