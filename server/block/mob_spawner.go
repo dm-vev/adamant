@@ -15,7 +15,6 @@ import (
 type MobSpawner struct {
 	solid
 	transparent
-	empty
 
 	entity string
 
@@ -243,7 +242,7 @@ func (m MobSpawner) DecodeNBT(data map[string]any) any {
 
 // BreakInfo ...
 func (MobSpawner) BreakInfo() BreakInfo {
-	return newBreakInfo(5, pickaxeHarvestable, pickaxeEffective, nothingEffective)
+	return newBreakInfo(5, pickaxeHarvestable, pickaxeEffective, simpleDrops())
 }
 
 // EncodeItem ...
