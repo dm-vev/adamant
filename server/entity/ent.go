@@ -126,6 +126,7 @@ func (e *Ent) SetNameTag(s string) {
 // Tick ticks Ent, progressing its lifetime and closing the entity if it is
 // in the void.
 func (e *Ent) Tick(tx *world.Tx, current int64) {
+	e.bindTx(tx)
 	y := e.data.Pos[1]
 	if y < float64(tx.Range()[0]) && current%10 == 0 {
 		_ = e.CloseIn(tx)
