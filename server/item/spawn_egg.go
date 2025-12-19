@@ -3,7 +3,6 @@ package item
 import (
 	"log/slog"
 
-	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -17,10 +16,7 @@ type SpawnEgg struct {
 
 // UseOnBlock spawns an entity at the clicked position.
 func (s SpawnEgg) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
-	if spawner, ok := tx.Block(pos).(block.MobSpawner); ok {
-		spawner = spawner.WithEntity(s.Entity)
-		tx.SetBlock(pos, spawner, nil)
-		ctx.SubtractFromCount(1)
+	if b := tx.Block(pos); s.trySetSpawner(pos, b, tx, ctx) {
 		return true
 	}
 	return s.spawnAt(pos.Side(face).Vec3Middle(), tx, ctx)
@@ -47,6 +43,24 @@ func (s SpawnEgg) spawnAt(pos mgl64.Vec3, tx *world.Tx, ctx *UseContext) bool {
 	}
 	opts := world.EntitySpawnOpts{Position: pos}
 	tx.AddEntity(opts.New(t, emptyEntityConfig{}))
+	ctx.SubtractFromCount(1)
+	return true
+}
+
+type spawnerBlock interface {
+	WithEntity(entity string) world.Block
+}
+
+func (s SpawnEgg) trySetSpawner(pos cube.Pos, b world.Block, tx *world.Tx, ctx *UseContext) bool {
+	name, _ := b.EncodeBlock()
+	if name != "minecraft:mob_spawner" {
+		return false
+	}
+	spawner, ok := b.(spawnerBlock)
+	if !ok {
+		return false
+	}
+	tx.SetBlock(pos, spawner.WithEntity(s.Entity), nil)
 	ctx.SubtractFromCount(1)
 	return true
 }
