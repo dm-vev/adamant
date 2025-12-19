@@ -4,14 +4,55 @@ import (
 	"encoding/binary"
 	"math"
 	"sort"
+	"sync"
 
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 var (
 	// maxVanillaBiomeID is the highest ID used by vanilla biomes.
 	maxVanillaBiomeID int
+
+	biomeRuntimeOnce     sync.Once
+	biomeIDsSorted       []int
+	biomeIDToRuntimeID   map[uint32]uint32
+	biomeRuntimeIDToID   []uint32
 )
+
+func init() {
+	chunk.BiomeIDToRuntimeID = func(id uint32) (uint32, bool) {
+		ensureBiomeRuntimeData()
+		rid, ok := biomeIDToRuntimeID[id]
+		return rid, ok
+	}
+	chunk.BiomeRuntimeIDToID = func(runtimeID uint32) (uint32, bool) {
+		ensureBiomeRuntimeData()
+		if runtimeID >= uint32(len(biomeRuntimeIDToID)) {
+			return 0, false
+		}
+		return biomeRuntimeIDToID[runtimeID], true
+	}
+}
+
+func ensureBiomeRuntimeData() {
+	biomeRuntimeOnce.Do(func() {
+		ids := make([]int, 0, len(biomes))
+		for id := range biomes {
+			ids = append(ids, id)
+		}
+		sort.Ints(ids)
+		biomeIDsSorted = ids
+
+		biomeIDToRuntimeID = make(map[uint32]uint32, len(ids))
+		biomeRuntimeIDToID = make([]uint32, len(ids))
+		for i, id := range ids {
+			runtimeID := uint32(i)
+			biomeIDToRuntimeID[uint32(id)] = runtimeID
+			biomeRuntimeIDToID[runtimeID] = uint32(id)
+		}
+	})
+}
 
 // finaliseBiomeRegistry is called after all vanilla biomes have been registered.
 // It sets maxVanillaBiomeID to the highest ID found among them.
@@ -29,6 +70,7 @@ func finaliseBiomeRegistry() {
 
 // BiomeDefinitions returns the list of biome definitions along with the associated StringList.
 func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
+	ensureBiomeRuntimeData()
 	var (
 		internedStrings     []string
 		internedStringIndex = make(map[string]int)
@@ -45,16 +87,9 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 	}
 
 	// The order of biomes in this packet must be deterministic across server runs.
-	// Clients use biome IDs in chunk data for things like grass/foliage colouring. If biome definitions are
-	// generated in a random order (as iterating maps does), clients may interpret biome IDs incorrectly.
-	ids := make([]int, 0, len(biomes))
-	for id := range biomes {
-		ids = append(ids, id)
-	}
-	sort.Ints(ids)
-
-	encodedBiomes := make([]protocol.BiomeDefinition, 0, len(ids))
-	for _, id := range ids {
+	// Clients use runtime IDs in chunk data, which are assigned by the order in this list.
+	encodedBiomes := make([]protocol.BiomeDefinition, 0, len(biomeIDsSorted))
+	for _, id := range biomeIDsSorted {
 		b := biomes[id]
 		nameIndex := intern(b.String())
 

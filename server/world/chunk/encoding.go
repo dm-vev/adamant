@@ -35,6 +35,10 @@ var (
 	BiomePaletteEncoding biomePaletteEncoding
 	// BlockPaletteEncoding is the paletteEncoding used for encoding a palette of block states encoded as NBT.
 	BlockPaletteEncoding blockPaletteEncoding
+	// BiomeIDToRuntimeID maps a biome ID to a runtime ID for network encoding.
+	BiomeIDToRuntimeID func(id uint32) (runtimeID uint32, ok bool)
+	// BiomeRuntimeIDToID maps a biome runtime ID to a biome ID for network decoding.
+	BiomeRuntimeIDToID func(runtimeID uint32) (id uint32, ok bool)
 )
 
 // biomePaletteEncoding implements the encoding of biome palettes to disk.
@@ -152,15 +156,25 @@ func (diskEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, e pa
 type networkEncoding struct{}
 
 func (networkEncoding) network() byte { return 1 }
-func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, _ paletteEncoding) {
+func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, pe paletteEncoding) {
 	if p.size != 0 {
 		_ = protocol.WriteVarint32(buf, int32(p.Len()))
+	}
+	if _, ok := pe.(biomePaletteEncoding); ok && BiomeIDToRuntimeID != nil {
+		for _, val := range p.values {
+			rid, found := BiomeIDToRuntimeID(val)
+			if !found {
+				rid = 0
+			}
+			_ = protocol.WriteVarint32(buf, int32(rid))
+		}
+		return
 	}
 	for _, val := range p.values {
 		_ = protocol.WriteVarint32(buf, int32(val))
 	}
 }
-func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, _ paletteEncoding) (*Palette, error) {
+func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, pe paletteEncoding) (*Palette, error) {
 	var paletteCount int32 = 1
 	if blockSize != 0 {
 		if err := protocol.Varint32(buf, &paletteCount); err != nil {
@@ -176,7 +190,16 @@ func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, _
 		if err := protocol.Varint32(buf, &temp); err != nil {
 			return nil, fmt.Errorf("error decoding palette entry: %w", err)
 		}
-		blocks[i] = uint32(temp)
+		val := uint32(temp)
+		if _, ok := pe.(biomePaletteEncoding); ok && BiomeRuntimeIDToID != nil {
+			id, found := BiomeRuntimeIDToID(val)
+			if found {
+				val = id
+			} else {
+				val = 0
+			}
+		}
+		blocks[i] = val
 	}
 	return &Palette{values: blocks, size: blockSize}, nil
 }
