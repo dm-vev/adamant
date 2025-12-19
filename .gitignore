@@ -16,3 +16,4 @@ goroutines.txt
 mot
 .gocache
 .gomodcache
+.tmp/
