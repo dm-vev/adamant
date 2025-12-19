@@ -2,7 +2,6 @@ package world
 
 import (
 	"encoding/binary"
-	"math"
 	"sort"
 	"sync"
 
@@ -14,10 +13,10 @@ var (
 	// maxVanillaBiomeID is the highest ID used by vanilla biomes.
 	maxVanillaBiomeID int
 
-	biomeRuntimeOnce     sync.Once
-	biomeIDsSorted       []int
-	biomeIDToRuntimeID   map[uint32]uint32
-	biomeRuntimeIDToID   []uint32
+	biomeRuntimeOnce   sync.Once
+	biomeIDsSorted     []int
+	biomeIDToRuntimeID map[uint32]uint32
+	biomeRuntimeToID   []uint32
 )
 
 func init() {
@@ -28,10 +27,10 @@ func init() {
 	}
 	chunk.BiomeRuntimeIDToID = func(runtimeID uint32) (uint32, bool) {
 		ensureBiomeRuntimeData()
-		if runtimeID >= uint32(len(biomeRuntimeIDToID)) {
+		if runtimeID >= uint32(len(biomeRuntimeToID)) {
 			return 0, false
 		}
-		return biomeRuntimeIDToID[runtimeID], true
+		return biomeRuntimeToID[runtimeID], true
 	}
 }
 
@@ -45,11 +44,11 @@ func ensureBiomeRuntimeData() {
 		biomeIDsSorted = ids
 
 		biomeIDToRuntimeID = make(map[uint32]uint32, len(ids))
-		biomeRuntimeIDToID = make([]uint32, len(ids))
+		biomeRuntimeToID = make([]uint32, len(ids))
 		for i, id := range ids {
 			runtimeID := uint32(i)
 			biomeIDToRuntimeID[uint32(id)] = runtimeID
-			biomeRuntimeIDToID[runtimeID] = uint32(id)
+			biomeRuntimeToID[runtimeID] = uint32(id)
 		}
 	})
 }
@@ -87,7 +86,6 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 	}
 
 	// The order of biomes in this packet must be deterministic across server runs.
-	// Clients use runtime IDs in chunk data, which are assigned by the order in this list.
 	encodedBiomes := make([]protocol.BiomeDefinition, 0, len(biomeIDsSorted))
 	for _, id := range biomeIDsSorted {
 		b := biomes[id]
@@ -99,10 +97,8 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 			tagIndices[i] = uint16(intern(tag))
 		}
 
-		// Always set BiomeID explicitly. The ID is what is referenced in chunk biome data and must match what
-		// the client expects, otherwise biome-dependent colouring won't apply correctly.
 		biomeID := int16(-1)
-		if id >= 0 && id <= math.MaxInt16 {
+		if id > maxVanillaBiomeID {
 			biomeID = int16(id)
 		}
 
