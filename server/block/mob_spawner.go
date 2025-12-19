@@ -44,7 +44,7 @@ func NewMobSpawner() MobSpawner {
 }
 
 // WithEntity returns the spawner updated to spawn the entity name passed.
-func (m MobSpawner) WithEntity(entity string) MobSpawner {
+func (m MobSpawner) WithEntity(entity string) world.Block {
 	if entity == "" {
 		return m
 	}

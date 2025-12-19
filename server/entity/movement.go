@@ -17,6 +17,7 @@ type MovementComputer struct {
 	onGround bool
 	collidedHorizontally bool
 	collidedVertically   bool
+	CollideEntities      bool
 }
 
 // blockBBoxPool caches scratch slices used while expanding collision boxes around an entity during movement
@@ -160,7 +161,10 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 	// Entities only ever have a single bounding box.
 	entityBBox := e.H().Type().BBox(e).Translate(pos)
 	blocks := blockBBoxsAround(tx, entityBBox.Extend(vel))
-	entities := entityBBoxsAround(tx, e, entityBBox.Extend(vel))
+	var entities []cube.BBox
+	if c.CollideEntities {
+		entities = entityBBoxsAround(tx, e, entityBBox.Extend(vel))
+	}
 
 	if !mgl64.FloatEqualThreshold(deltaY, 0, epsilon) {
 		// First we move the entity BBox on the Y axis.
@@ -213,7 +217,9 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 		vel[2] = 0
 	}
 	blockBBoxPool.Put(blocks[:0])
-	entityBBoxPool.Put(entities[:0])
+	if c.CollideEntities {
+		entityBBoxPool.Put(entities[:0])
+	}
 	return mgl64.Vec3{deltaX, deltaY, deltaZ}, vel
 }
 
