@@ -10,15 +10,12 @@ import (
 
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/internal/packbuilder"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/biome"
-	"github.com/df-mc/dragonfly/server/world/generator"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/google/uuid"
@@ -475,14 +472,14 @@ func loadResources(dir string) ([]*resource.Pack, error) {
 }
 
 // defaultGeneratorProvider returns the generator function to use when none is supplied by the user configuration.
-// The overworld and end utilise a Java 1.12 style generator, while the nether remains flat.
+// The overworld, nether and end utilise Java 1.12 style generators.
 func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Generator {
 	return func(dim world.Dimension) world.Generator {
 		switch dim {
 		case world.Overworld:
 			return advanced.NewOverworld(seed)
 		case world.Nether:
-			return generator.NewFlat(biome.NetherWastes{}, []world.Block{block.Netherrack{}, block.Netherrack{}, block.Netherrack{}, block.Bedrock{}})
+			return advanced.NewNether(seed)
 		case world.End:
 			return advanced.NewEnd(seed)
 		}
