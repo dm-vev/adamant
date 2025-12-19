@@ -79,6 +79,18 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if o, ok := e.(onFire); ok && o.OnFireDuration() > 0 {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagOnFire)
 	}
+	if b, ok := e.(baby); ok && b.Baby() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBaby)
+	}
+	if db, ok := e.(doorBreaker); ok && db.CanBreakDoors() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagDoorBreaker)
+	}
+	if br, ok := e.(breakingObstruction); ok && br.BreakingObstruction() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBreakingObstruction)
+	}
+	if ar, ok := e.(armsRaised); ok && ar.ArmsRaised() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCharging)
+	}
 	if u, ok := e.(using); ok && u.UsingItem() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagUsingItem)
 	}
@@ -261,6 +273,22 @@ type areaEffectCloud interface {
 
 type onFire interface {
 	OnFireDuration() time.Duration
+}
+
+type baby interface {
+	Baby() bool
+}
+
+type doorBreaker interface {
+	CanBreakDoors() bool
+}
+
+type breakingObstruction interface {
+	BreakingObstruction() bool
+}
+
+type armsRaised interface {
+	ArmsRaised() bool
 }
 
 type effectBearer interface {

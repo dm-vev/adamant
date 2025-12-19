@@ -2,6 +2,7 @@ package advanced
 
 import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/end"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/nether"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
 )
 
@@ -13,4 +14,9 @@ func NewEnd(seed int64) *end.End {
 // NewOverworld returns a Java Edition 1.12-style Overworld terrain generator.
 func NewOverworld(seed int64) *overworld.Overworld {
 	return overworld.New(seed)
+}
+
+// NewNether returns a Java Edition 1.12-style Nether terrain generator.
+func NewNether(seed int64) *nether.Nether {
+	return nether.New(seed)
 }
