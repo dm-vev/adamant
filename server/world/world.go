@@ -1208,14 +1208,30 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 	// Note: We close c.Entities here because some entities may remove
 	// themselves from the world in their Close method, which can lead to
 	// unexpected conditions.
+	ready := c.Ready()
+	if !ready {
+		// Prevent shutdown from blocking on unfinished generation.
+		c.markReady()
+	}
 	for _, e := range slices.Clone(c.Entities) {
 		ent := e.mustEntity(tx)
-		if closer, ok := ent.(interface{ CloseIn(*Tx) error }); ok {
-			// Avoid ExecWorld deadlocks by closing entities via the active Tx.
-			_ = closer.CloseIn(tx)
-		} else {
-			_ = ent.Close()
+		if ready {
+			if closer, ok := ent.(interface{ CloseIn(*Tx) error }); ok {
+				// Avoid ExecWorld deadlocks by closing entities via the active Tx.
+				_ = closer.CloseIn(tx)
+			} else {
+				_ = ent.Close()
+			}
+			continue
 		}
+
+		w.Handler().HandleEntityDespawn(tx, ent)
+		for v := range c.viewers {
+			v.HideEntity(ent)
+		}
+		delete(w.entities, e)
+		e.unsetAndLockWorld()
+		_ = e.Close()
 	}
 	clear(c.Entities)
 	delete(w.chunks, pos)
