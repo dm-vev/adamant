@@ -39,7 +39,7 @@ func (h *pathHeap) Pop() any {
 	return item
 }
 
-func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater bool) []cube.Pos {
+func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allowDoors bool) []cube.Pos {
 	if start == goal {
 		return nil
 	}
@@ -68,7 +68,7 @@ func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater bool)
 		closed[current.pos] = struct{}{}
 
 		for _, dir := range []cube.Face{cube.FaceNorth, cube.FaceSouth, cube.FaceEast, cube.FaceWest} {
-			next, ok := nextStep(tx, current.pos, dir, allowWater)
+			next, ok := nextStep(tx, current.pos, dir, allowWater, allowDoors)
 			if !ok {
 				continue
 			}
@@ -140,25 +140,37 @@ func stepCost(tx *world.Tx, pos cube.Pos, allowWater bool) float64 {
 	return cost
 }
 
-func nextStep(tx *world.Tx, current cube.Pos, dir cube.Face, allowWater bool) (cube.Pos, bool) {
+func nextStep(tx *world.Tx, current cube.Pos, dir cube.Face, allowWater, allowDoors bool) (cube.Pos, bool) {
 	next := current.Side(dir)
-	if walkable(tx, next, allowWater) {
+	if walkable(tx, next, allowWater, allowDoors) {
 		return next, true
 	}
 	up := next.Side(cube.FaceUp)
-	if walkable(tx, up, allowWater) && solidBelow(tx, up) {
+	if walkable(tx, up, allowWater, allowDoors) && solidBelow(tx, up) {
 		return up, true
 	}
 	down := next.Side(cube.FaceDown)
-	if walkable(tx, down, allowWater) && solidBelow(tx, down) {
+	if walkable(tx, down, allowWater, allowDoors) && solidBelow(tx, down) {
 		return down, true
 	}
 	return cube.Pos{}, false
 }
 
-func walkable(tx *world.Tx, pos cube.Pos, allowWater bool) bool {
+func walkable(tx *world.Tx, pos cube.Pos, allowWater, allowDoors bool) bool {
 	if pos.OutOfBounds(tx.Range()) {
 		return false
+	}
+	if allowDoors {
+		switch b := tx.Block(pos).(type) {
+		case block.WoodDoor:
+			if !b.Open {
+				return true
+			}
+		case block.CopperDoor:
+			if !b.Open {
+				return true
+			}
+		}
 	}
 	if !allowWater {
 		if _, ok := tx.Liquid(pos); ok {
@@ -177,7 +189,8 @@ func walkable(tx *world.Tx, pos cube.Pos, allowWater bool) bool {
 
 func solidBelow(tx *world.Tx, pos cube.Pos) bool {
 	below := pos.Side(cube.FaceDown)
-	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
+	boxes := tx.Block(below).Model().BBox(below, tx)
+	return len(boxes) > 0
 }
 
 func isPassable(tx *world.Tx, pos cube.Pos) bool {

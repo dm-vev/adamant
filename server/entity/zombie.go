@@ -157,6 +157,9 @@ type zombieData struct {
 	lastPathTarget cube.Pos
 	hasPathTarget bool
 	lastSeenTick  int64
+	lastSeenTarget *world.EntityHandle
+	wantJump      bool
+	knockbackTicks int
 
 	lastDamage  float64
 	immuneUntil time.Time
@@ -169,6 +172,7 @@ type zombieBrain struct {
 
 	nextWanderTick int64
 	wanderDir      mgl64.Vec3
+	idleUntilTick  int64
 }
 
 func newZombieBrain(seed uint64) *zombieBrain {
@@ -194,12 +198,17 @@ func (b *zombieBrain) Compute(s mobai.Snapshot) mobai.Intent {
 		return intent
 	}
 
+	if s.Tick < b.idleUntilTick {
+		return intent
+	}
 	if s.Tick >= b.nextWanderTick || b.wanderDir.LenSqr() == 0 {
 		// Pick a new random horizontal direction.
 		angle := b.rng.Float64() * 2 * math.Pi
 		b.wanderDir = mgl64.Vec3{math.Sin(angle), 0, math.Cos(angle)}
-		// Wander for 2–4 seconds.
-		b.nextWanderTick = s.Tick + int64(40+b.rng.IntN(41))
+		// Wander for 2–4 seconds, then idle for 1–2 seconds.
+		wanderTicks := int64(40 + b.rng.IntN(41))
+		b.nextWanderTick = s.Tick + wanderTicks
+		b.idleUntilTick = b.nextWanderTick + int64(20+b.rng.IntN(21))
 	}
 	intent.MoveDir = b.wanderDir
 	intent.HasLookAt = true
@@ -427,6 +436,7 @@ func (z *Zombie) resetAttackState() {
 	z.zd.path = nil
 	z.zd.pathIndex = 0
 	z.zd.hasPathTarget = false
+	z.zd.wantJump = false
 	z.setArmsRaised(false)
 }
 
@@ -571,6 +581,7 @@ func (z *Zombie) KnockBack(src mgl64.Vec3, force, height float64) {
 	}
 	velocity[1] = height
 	z.SetVelocity(velocity)
+	z.zd.knockbackTicks = 8
 }
 
 func (z *Zombie) AddEffect(e effect.Effect) {
@@ -638,6 +649,7 @@ func (z *Zombie) Tick(tx *world.Tx, current int64) {
 	z.data.Pos, z.data.Vel, z.data.Rot = m.Position(), m.Velocity(), m.Rotation()
 	z.applyJump(tx, m)
 	z.applyEntityInsiders(tx)
+	z.resolveEntityOverlap(tx)
 	m.Send()
 
 	z.data.Age += time.Second / 20
@@ -654,6 +666,35 @@ func (z *Zombie) snapshot(tx *world.Tx, current int64) mobai.Snapshot {
 	)
 
 	maxDistSq := z.zd.followRange * z.zd.followRange
+	shouldSearch := rand.IntN(10) == 0
+	if z.zd.lastTarget != nil {
+		if ent, ok := z.zd.lastTarget.Entity(tx); ok {
+			if living, ok := ent.(Living); ok && !living.Dead() {
+				d := ent.Position().Sub(pos)
+				distSq := d.LenSqr()
+				if distSq <= maxDistSq {
+					hasLOS := z.hasLineOfSight(tx, ent)
+					if hasLOS || current-z.zd.lastSeenTick <= 60 {
+						if hasLOS {
+							z.zd.lastSeenTick = current
+							z.zd.lastSeenTarget = z.zd.lastTarget
+						}
+						nearestDistSq = distSq
+						nearestHandle = z.zd.lastTarget
+						nearestPos = ent.Position()
+					} else {
+						z.zd.lastTarget = nil
+					}
+				} else {
+					z.zd.lastTarget = nil
+				}
+			} else {
+				z.zd.lastTarget = nil
+			}
+		} else {
+			z.zd.lastTarget = nil
+		}
+	}
 	if z.zd.forcedTarget != nil {
 		if ent, ok := z.zd.forcedTarget.Entity(tx); ok {
 			if living, ok := ent.(Living); ok && !living.Dead() {
@@ -661,13 +702,16 @@ func (z *Zombie) snapshot(tx *world.Tx, current int64) mobai.Snapshot {
 				distSq := d.LenSqr()
 				if distSq <= maxDistSq {
 					hasLOS := z.hasLineOfSight(tx, ent)
-					if hasLOS || current-z.zd.lastSeenTick <= 40 {
+					if hasLOS || current-z.zd.lastSeenTick <= 60 {
 						if hasLOS {
 							z.zd.lastSeenTick = current
+							z.zd.lastSeenTarget = z.zd.forcedTarget
 						}
-						nearestDistSq = distSq
-						nearestHandle = z.zd.forcedTarget
-						nearestPos = ent.Position()
+						if distSq < nearestDistSq {
+							nearestDistSq = distSq
+							nearestHandle = z.zd.forcedTarget
+							nearestPos = ent.Position()
+						}
 					} else {
 						z.zd.forcedTarget = nil
 					}
@@ -681,7 +725,7 @@ func (z *Zombie) snapshot(tx *world.Tx, current int64) mobai.Snapshot {
 			z.zd.forcedTarget = nil
 		}
 	}
-	if nearestHandle == nil {
+	if nearestHandle == nil && shouldSearch {
 		for p := range tx.Players() {
 			if gm, ok := p.(interface{ GameMode() world.GameMode }); ok && !gm.GameMode().AllowsTakingDamage() {
 				continue
@@ -691,8 +735,15 @@ func (z *Zombie) snapshot(tx *world.Tx, current int64) mobai.Snapshot {
 			if distSq > maxDistSq || distSq >= nearestDistSq {
 				continue
 			}
-			if !z.hasLineOfSight(tx, p) {
-				continue
+			hasLOS := z.hasLineOfSight(tx, p)
+			if !hasLOS {
+				if z.zd.lastSeenTarget == nil || z.zd.lastSeenTarget != p.H() || current-z.zd.lastSeenTick > 60 {
+					continue
+				}
+			}
+			if hasLOS {
+				z.zd.lastSeenTick = current
+				z.zd.lastSeenTarget = p.H()
 			}
 			nearestDistSq = distSq
 			nearestHandle = p.H()
@@ -720,6 +771,14 @@ func (z *Zombie) applyIntent(tx *world.Tx, current int64) {
 		yaw := mgl64.RadToDeg(math.Atan2(diff[0], diff[2]))
 		pitch := mgl64.RadToDeg(math.Atan2(diff[1], math.Hypot(diff[0], diff[2])))
 		z.data.Rot = cube.Rotation{yaw, pitch}
+	}
+
+	if z.zd.knockbackTicks > 0 {
+		z.zd.knockbackTicks--
+		if intent.Target == nil {
+			z.resetAttackState()
+		}
+		return
 	}
 
 	if intent.Target == nil {
@@ -819,12 +878,25 @@ func (z *Zombie) hasLineOfSight(tx *world.Tx, target world.Entity) bool {
 	for i := 0; i < steps; i++ {
 		pos = pos.Add(step)
 		blockPos := cube.PosFromVec3(pos)
-		b := tx.Block(blockPos)
-		if len(b.Model().BBox(blockPos, tx)) > 0 {
+		if _, ok := tx.Liquid(blockPos); ok {
+			continue
+		}
+		if blocksSight(tx, blockPos) {
 			return false
 		}
 	}
 	return true
+}
+
+func blocksSight(tx *world.Tx, pos cube.Pos) bool {
+	b := tx.Block(pos)
+	m := b.Model()
+	for face := cube.Face(0); face < 6; face++ {
+		if m.FaceSolid(pos, face, tx) {
+			return true
+		}
+	}
+	return false
 }
 
 func (z *Zombie) pathMoveDir(tx *world.Tx, current int64, target world.Entity) mgl64.Vec3 {
@@ -837,18 +909,35 @@ func (z *Zombie) pathMoveDir(tx *world.Tx, current int64, target world.Entity) m
 		if _, ok := tx.Liquid(targetPos); ok {
 			allowWater = true
 		}
+		allowDoors := z.zd.breakDoors
 		start := cube.PosFromVec3(z.Position())
-		z.zd.path = findPath(tx, start, targetPos, 512, allowWater)
+		z.zd.path = findPath(tx, start, targetPos, 512, allowWater, allowDoors)
 		z.zd.pathIndex = 0
 		z.zd.lastPathTarget = targetPos
 		z.zd.hasPathTarget = true
-		z.zd.nextPathTick = current + 10
+		delay := int64(4 + rand.IntN(7))
+		distSq := z.Position().Sub(target.Position()).LenSqr()
+		if distSq > 1024 {
+			delay += 10
+		} else if distSq > 256 {
+			delay += 5
+		}
+		if len(z.zd.path) == 0 {
+			delay += 15
+		}
+		z.zd.nextPathTick = current + delay
 	}
 
 	if len(z.zd.path) == 0 || z.zd.pathIndex >= len(z.zd.path) {
-		return target.Position().Sub(z.Position())
+		z.zd.wantJump = false
+		if z.Position().Sub(target.Position()).LenSqr() <= z.attackReachSq(target) {
+			return target.Position().Sub(z.Position())
+		}
+		return mgl64.Vec3{}
 	}
 	next := z.zd.path[z.zd.pathIndex]
+	selfPos := cube.PosFromVec3(z.Position())
+	z.zd.wantJump = next.Y() > selfPos.Y()
 	nextPos := next.Vec3Middle()
 	if z.Position().Sub(nextPos).LenSqr() < 0.4*0.4 {
 		z.zd.pathIndex++
@@ -869,6 +958,9 @@ func (z *Zombie) shouldRepath(current int64, target cube.Pos) bool {
 		return true
 	}
 	if z.zd.pathIndex >= len(z.zd.path) {
+		return true
+	}
+	if rand.Float64() < 0.05 {
 		return true
 	}
 	dx := target.X() - z.zd.lastPathTarget.X()
@@ -941,7 +1033,7 @@ func (z *Zombie) applyEnvironment(tx *world.Tx) {
 	case block.Lava:
 		z.mc.Gravity = zombieLavaGravity
 		z.mc.Drag = zombieLavaDrag
-		z.zd.speedMultiplier = 0.4
+		z.zd.speedMultiplier = 0.25
 		z.applyBuoyancy(0.02)
 	default:
 		z.mc.Gravity = zombieWaterGravity
@@ -960,7 +1052,7 @@ func (z *Zombie) applyBuoyancy(minRise float64) {
 }
 
 func (z *Zombie) applyJump(tx *world.Tx, m *Movement) {
-	if !z.mc.OnGround() || !z.mc.CollidedHorizontally() {
+	if !z.mc.OnGround() {
 		return
 	}
 	moveDir := z.zd.intent.MoveDir
@@ -968,7 +1060,7 @@ func (z *Zombie) applyJump(tx *world.Tx, m *Movement) {
 	if moveDir.LenSqr() < 0.01 {
 		return
 	}
-	if !z.blockedAhead(tx, moveDir) {
+	if !z.zd.wantJump && !z.blockedAhead(tx, moveDir) {
 		return
 	}
 	if _, ok := z.liquidInBox(tx); ok {
@@ -985,10 +1077,42 @@ func (z *Zombie) applyJump(tx *world.Tx, m *Movement) {
 	z.SetVelocity(vel)
 	m.dvel = vel.Sub(m.vel)
 	m.vel = vel
+	z.zd.wantJump = false
 }
 
 func (z *Zombie) applyEntityInsiders(tx *world.Tx) {
 	checkEntityInsiders(tx, z)
+}
+
+func (z *Zombie) resolveEntityOverlap(tx *world.Tx) {
+	box := z.H().Type().BBox(z).Translate(z.Position())
+	expanded := box.Grow(0.1)
+	for e := range tx.EntitiesWithin(expanded) {
+		if e == z {
+			continue
+		}
+		l, ok := e.(Living)
+		if !ok || l.Dead() {
+			continue
+		}
+		other := e.H().Type().BBox(e).Translate(e.Position())
+		if !box.IntersectsWith(other) {
+			continue
+		}
+		dir := z.Position().Sub(e.Position())
+		dir[1] = 0
+		if dir.LenSqr() == 0 {
+			dir = mgl64.Vec3{0.1, 0, 0}
+		} else {
+			dir = dir.Normalize().Mul(0.1)
+		}
+		z.data.Pos = z.data.Pos.Add(dir)
+		vel := z.Velocity()
+		vel[0] += dir[0]
+		vel[2] += dir[2]
+		z.SetVelocity(vel)
+		box = z.H().Type().BBox(z).Translate(z.Position())
+	}
 }
 
 func (z *Zombie) hasHeadroom(tx *world.Tx) bool {
