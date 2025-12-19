@@ -2854,7 +2854,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.prevWorld = tx.World()
 
 	if p.session() == session.Nop && !p.Immobile() {
-		m := p.mc.TickMovement(p, p.Position(), p.Velocity(), p.Rotation(), p.tx)
+		m := p.mc.TickMovement(p, p.Position(), p.Velocity(), p.Rotation(), p.Rotation(), p.tx)
 		m.Send()
 
 		p.data.Vel = m.Velocity()

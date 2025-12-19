@@ -116,10 +116,10 @@ const epsilon = 0.001
 
 func rotationChanged(rot, prev cube.Rotation) bool {
 	const rotationEpsilon = 0.01
-	if math.Abs(rot.Yaw-prev.Yaw) > rotationEpsilon {
+	if math.Abs(rot.Yaw()-prev.Yaw()) > rotationEpsilon {
 		return true
 	}
-	return math.Abs(rot.Pitch-prev.Pitch) > rotationEpsilon
+	return math.Abs(rot.Pitch()-prev.Pitch()) > rotationEpsilon
 }
 
 // applyVerticalForces applies gravity and drag on the Y axis, based on the Gravity and Drag values set.
