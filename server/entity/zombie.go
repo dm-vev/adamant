@@ -79,7 +79,7 @@ func (c ZombieConfig) Apply(data *world.EntityData) {
 	if attackRange < 0 {
 		attackRange = 0
 	}
-	armor := zombieDefaultArmor
+	armor := float64(zombieDefaultArmor)
 	if c.Armor != nil {
 		armor = max(*c.Armor, 0)
 	}
