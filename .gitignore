@@ -17,3 +17,6 @@ mot
 .gocache
 .gomodcache
 .tmp/
+
+mcp940-master
+fixes/
