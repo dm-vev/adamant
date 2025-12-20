@@ -79,7 +79,7 @@ func (r RedstoneWire) RedstoneWirePowerTo(pos cube.Pos, face cube.Face, src worl
 	if r.Power == 0 {
 		return 0
 	}
-	if face == cube.FaceDown {
+	if face == cube.FaceUp {
 		return uint8(r.Power)
 	}
 	if face.Axis() == cube.Y {
@@ -128,9 +128,6 @@ func canConnectUpwardsTo(b world.Block) bool {
 	if _, ok := b.(world.RedstoneWire); ok {
 		return true
 	}
-	if _, ok := b.(world.RedstoneDiode); ok {
-		return true
-	}
 	return false
 }
 
@@ -142,7 +139,10 @@ func canConnectTo(b world.Block, side cube.Face) bool {
 		facing := diode.RedstoneDiodeFacing().Face()
 		return facing == side || facing.Opposite() == side
 	}
-	if _, ok := b.(world.RedstonePowerSource); ok && side.Axis() != cube.Y {
+	if obs, ok := b.(Observer); ok {
+		return side == obs.Facing
+	}
+	if _, ok := b.(world.RedstonePowerSource); ok {
 		return true
 	}
 	return false

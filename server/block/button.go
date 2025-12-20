@@ -46,6 +46,7 @@ func (b Button) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _
 	b.Pressed = true
 	tx.SetBlock(pos, b, nil)
 	tx.ScheduleBlockUpdate(pos, b, redstoneTicks(b.Type.pressTicks()))
+	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
 	return true
 }
 
@@ -63,6 +64,7 @@ func (b Button) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	}
 	b.Pressed = false
 	tx.SetBlock(pos, b, nil)
+	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
 }
 
 // RedstoneWeakPower ...

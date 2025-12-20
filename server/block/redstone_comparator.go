@@ -164,14 +164,7 @@ func (c RedstoneComparator) inputPower(pos cube.Pos, tx *world.Tx) int {
 }
 
 func (c RedstoneComparator) sidePower(pos cube.Pos, tx *world.Tx) int {
-	left := c.Facing.RotateLeft().Face()
-	right := c.Facing.RotateRight().Face()
-	leftPower := int(world.RedstonePowerFromSide(tx, pos, left))
-	rightPower := int(world.RedstonePowerFromSide(tx, pos, right))
-	if leftPower > rightPower {
-		return leftPower
-	}
-	return rightPower
+	return diodeSideInputPower(pos, c.Facing, tx)
 }
 
 type comparatorOutputer interface {

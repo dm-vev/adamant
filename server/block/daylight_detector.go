@@ -38,6 +38,7 @@ func (d DaylightDetector) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3,
 	}
 	d.Signal = d.daylightSignal(pos, tx)
 	place(tx, pos, d, user, ctx)
+	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	return placed(ctx)
 }
 
@@ -94,6 +95,7 @@ func (d DaylightDetector) updateSignal(pos cube.Pos, tx *world.Tx) {
 	if newSignal != d.Signal {
 		d.Signal = newSignal
 		tx.SetBlock(pos, d, nil)
+		tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	}
 	tx.ScheduleBlockUpdate(pos, d, redstoneTicks(daylightUpdateTicks))
 }

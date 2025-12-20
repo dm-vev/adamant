@@ -105,12 +105,7 @@ func (r RedstoneRepeater) inputPower(pos cube.Pos, tx *world.Tx) int {
 }
 
 func (r RedstoneRepeater) isLocked(pos cube.Pos, tx *world.Tx) bool {
-	left := r.Facing.RotateLeft().Face()
-	right := r.Facing.RotateRight().Face()
-	if world.RedstonePowerFromSide(tx, pos, left) > 0 {
-		return true
-	}
-	return world.RedstonePowerFromSide(tx, pos, right) > 0
+	return diodeSideInputPower(pos, r.Facing, tx) > 0
 }
 
 func (r RedstoneRepeater) delayTicks() int {

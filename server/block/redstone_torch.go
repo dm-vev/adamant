@@ -2,6 +2,7 @@ package block
 
 import (
 	"math/rand/v2"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -17,6 +18,16 @@ type RedstoneTorch struct {
 	Facing cube.Face
 	Lit    bool
 }
+
+type redstoneTorchToggle struct {
+	pos  cube.Pos
+	tick int64
+}
+
+var (
+	redstoneTorchToggleMu sync.Mutex
+	redstoneTorchToggles  = map[*world.World][]redstoneTorchToggle{}
+)
 
 // BreakInfo ...
 func (t RedstoneTorch) BreakInfo() BreakInfo {
@@ -56,6 +67,7 @@ func (t RedstoneTorch) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 	t.Facing = face.Opposite()
 	t.Lit = true
 	place(tx, pos, t, user, ctx)
+	tx.DoBlockUpdatesAround(pos.Side(t.Facing))
 	return placed(ctx)
 }
 
@@ -70,23 +82,75 @@ func (t RedstoneTorch) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 
 // ScheduledTick ...
 func (t RedstoneTorch) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if t.shouldTurnOff(pos, tx) {
-		if t.Lit {
+	shouldOff := t.shouldTurnOff(pos, tx)
+	w := tx.World()
+	now := w.CurrentTick()
+
+	if t.Lit {
+		if shouldOff {
 			t.Lit = false
 			tx.SetBlock(pos, t, nil)
+			tx.DoBlockUpdatesAround(pos.Side(t.Facing))
+			if redstoneTorchBurnedOut(w, pos, true, now) {
+				tx.ScheduleBlockUpdate(pos, t, redstoneTicks(160))
+			}
 		}
 		return
 	}
-	if !t.Lit {
+
+	if !shouldOff && !redstoneTorchBurnedOut(w, pos, false, now) {
 		t.Lit = true
 		tx.SetBlock(pos, t, nil)
+		tx.DoBlockUpdatesAround(pos.Side(t.Facing))
 	}
 }
 
 func (t RedstoneTorch) shouldTurnOff(pos cube.Pos, tx *world.Tx) bool {
 	attachedPos := pos.Side(t.Facing)
-	attachedFace := t.Facing.Opposite()
+	attachedFace := t.Facing
 	return world.RedstonePowerAt(tx, attachedPos, attachedFace) > 0
+}
+
+func redstoneTorchBurnedOut(w *world.World, pos cube.Pos, turnOff bool, now int64) bool {
+	if w == nil {
+		return false
+	}
+
+	redstoneTorchToggleMu.Lock()
+	defer redstoneTorchToggleMu.Unlock()
+
+	list := redstoneTorchToggles[w]
+	if len(list) > 0 {
+		prune := 0
+		for prune < len(list) && now-list[prune].tick > 60 {
+			prune++
+		}
+		if prune > 0 {
+			list = append([]redstoneTorchToggle(nil), list[prune:]...)
+		}
+	}
+
+	if turnOff {
+		list = append(list, redstoneTorchToggle{pos: pos, tick: now})
+	}
+
+	count := 0
+	for _, toggle := range list {
+		if toggle.pos == pos {
+			count++
+			if count >= 8 {
+				redstoneTorchToggles[w] = list
+				return true
+			}
+		}
+	}
+
+	if len(list) == 0 {
+		delete(redstoneTorchToggles, w)
+	} else {
+		redstoneTorchToggles[w] = list
+	}
+	return false
 }
 
 // RedstoneWeakPower ...

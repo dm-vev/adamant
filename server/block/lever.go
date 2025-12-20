@@ -40,6 +40,7 @@ func (l Lever) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 func (l Lever) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	l.Powered = !l.Powered
 	tx.SetBlock(pos, l, nil)
+	tx.DoBlockUpdatesAround(pos.Side(l.Orientation.SupportDirection()))
 	return true
 }
 

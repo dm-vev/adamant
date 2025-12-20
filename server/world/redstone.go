@@ -89,6 +89,23 @@ func redstoneStrongPowerFromNeighbours(src BlockSource, pos cube.Pos) uint8 {
 	return power
 }
 
+func redstoneStrongPowerFromNeighboursNoWire(src BlockSource, pos cube.Pos) uint8 {
+	var power uint8
+	for _, face := range cube.Faces() {
+		if _, ok := src.Block(pos.Side(face)).(RedstoneWire); ok {
+			continue
+		}
+		blockPower := redstoneStrongPowerAt(src, pos.Side(face), face.Opposite())
+		if blockPower >= 15 {
+			return 15
+		}
+		if blockPower > power {
+			power = blockPower
+		}
+	}
+	return power
+}
+
 func isNormalBlock(src BlockSource, pos cube.Pos) bool {
 	b := src.Block(pos)
 	if _, ok := b.(RedstonePowerSource); ok {
@@ -235,33 +252,45 @@ func (e *redstoneEngine) processBatch(batch []cube.Pos) {
 	}
 
 	snap := e.w.redstoneSnapshot(positions)
-	queue := append([]cube.Pos(nil), batch...)
-	visited := map[cube.Pos]struct{}{}
 	changes := map[cube.Pos]Block{}
+	overlay := redstoneOverlay{base: snap, changes: changes}
+
+	queue := make([]cube.Pos, 0, len(batch)*7)
+	queued := map[cube.Pos]struct{}{}
+	enqueue := func(pos cube.Pos) {
+		if _, ok := queued[pos]; ok {
+			return
+		}
+		queued[pos] = struct{}{}
+		queue = append(queue, pos)
+	}
+	for _, pos := range batch {
+		enqueue(pos)
+		for _, face := range cube.Faces() {
+			enqueue(pos.Side(face))
+		}
+	}
 
 	processed := 0
 	for len(queue) > 0 && processed < redstoneMaxWireUpdatesBatch {
 		pos := queue[0]
 		queue = queue[1:]
-		if _, ok := visited[pos]; ok {
-			continue
-		}
-		visited[pos] = struct{}{}
-		processed++
+		delete(queued, pos)
 
-		wire, ok := snap.Block(pos).(RedstoneWire)
+		wire, ok := overlay.Block(pos).(RedstoneWire)
 		if !ok {
 			continue
 		}
-		newPower := computeWirePower(pos, wire, snap)
+		processed++
+		newPower := computeWirePower(pos, wire, overlay)
 		if newPower == wire.RedstoneWirePower() {
 			continue
 		}
 		changes[pos] = wire.WithRedstoneWirePower(newPower)
-		queue = append(queue, pos)
 		for _, face := range cube.Faces() {
-			queue = append(queue, pos.Side(face))
+			enqueue(pos.Side(face))
 		}
+		enqueue(pos)
 	}
 
 	if len(queue) > 0 {
@@ -351,6 +380,18 @@ func (w *World) redstoneSnapshot(positions map[cube.Pos]struct{}) redstoneSnapsh
 	return redstoneSnapshot{blocks: blocks}
 }
 
+type redstoneOverlay struct {
+	base    redstoneSnapshot
+	changes map[cube.Pos]Block
+}
+
+func (o redstoneOverlay) Block(pos cube.Pos) Block {
+	if b, ok := o.changes[pos]; ok {
+		return b
+	}
+	return o.base.Block(pos)
+}
+
 func computeWirePower(pos cube.Pos, wire RedstoneWire, src BlockSource) uint8 {
 	current := int(wire.RedstoneWirePower())
 	maxStrength := current
@@ -412,11 +453,10 @@ func indirectPowerFrom(pos cube.Pos, face cube.Face, src BlockSource) int {
 	if _, ok := src.Block(pos).(RedstoneWire); ok {
 		return 0
 	}
-	emitFace := face.Opposite()
 	if isNormalBlock(src, pos) {
-		return int(redstoneStrongPowerAt(src, pos.Side(face), emitFace))
+		return int(redstoneStrongPowerFromNeighboursNoWire(src, pos))
 	}
-	return int(redstoneWeakPowerAt(src, pos, emitFace))
+	return int(redstoneWeakPowerAt(src, pos, face.Opposite()))
 }
 
 func maxWireStrengthAt(pos cube.Pos, src BlockSource) int {

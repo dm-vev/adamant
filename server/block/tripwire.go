@@ -164,6 +164,7 @@ func updateHookState(pos cube.Pos, hook TripwireHook, attached, powered bool, tx
 	hook.Attached = attached
 	hook.Powered = powered
 	tx.SetBlock(pos, hook, nil)
+	tx.DoBlockUpdatesAround(pos.Side(hook.Facing.Opposite().Face()))
 }
 
 func allTripwires() (wires []world.Block) {

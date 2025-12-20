@@ -113,6 +113,11 @@ func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
 	tx.World().scheduleBlockUpdate(pos, b, delay)
 }
 
+// DoBlockUpdatesAround triggers neighbour updates around the position passed.
+func (tx *Tx) DoBlockUpdatesAround(pos cube.Pos) {
+	tx.World().doBlockUpdatesAround(pos)
+}
+
 // HighestLightBlocker gets the Y value of the highest fully light blocking
 // block at the x and z values passed in the World.
 func (tx *Tx) HighestLightBlocker(x, z int) int {

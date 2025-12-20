@@ -95,6 +95,7 @@ func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
 	}
 	p.Signal = newSignal
 	tx.SetBlock(pos, p, nil)
+	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	if newSignal > 0 {
 		tx.ScheduleBlockUpdate(pos, p, redstoneTicks(1))
 	}

@@ -58,7 +58,7 @@ func (o Observer) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 
 // RedstoneWeakPower ...
 func (o Observer) RedstoneWeakPower(face cube.Face) uint8 {
-	if o.Powered && face == o.Facing.Opposite() {
+	if o.Powered && face == o.Facing {
 		return 15
 	}
 	return 0

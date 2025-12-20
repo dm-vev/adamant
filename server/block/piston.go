@@ -74,6 +74,18 @@ func (p Piston) shouldExtend(pos cube.Pos, tx *world.Tx) bool {
 			return true
 		}
 	}
+	if world.RedstonePowerFromSide(tx, pos, cube.FaceDown) > 0 {
+		return true
+	}
+	above := pos.Side(cube.FaceUp)
+	for _, face := range cube.Faces() {
+		if face == cube.FaceDown {
+			continue
+		}
+		if world.RedstonePowerFromSide(tx, above, face) > 0 {
+			return true
+		}
+	}
 	return false
 }
 
