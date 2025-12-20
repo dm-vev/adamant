@@ -131,9 +131,6 @@ func canConnectUpwardsTo(b world.Block) bool {
 	if _, ok := b.(world.RedstoneDiode); ok {
 		return true
 	}
-	if _, ok := b.(world.RedstoneConnectable); ok {
-		return true
-	}
 	return false
 }
 
@@ -148,14 +145,14 @@ func canConnectTo(b world.Block, side cube.Face) bool {
 	if _, ok := b.(world.RedstonePowerSource); ok && side.Axis() != cube.Y {
 		return true
 	}
-	if conn, ok := b.(world.RedstoneConnectable); ok {
-		return conn.RedstoneConnectsTo(side)
-	}
 	return false
 }
 
 func isNormalBlock(pos cube.Pos, src world.BlockSource) bool {
 	b := src.Block(pos)
+	if _, ok := b.(world.RedstonePowerSource); ok {
+		return false
+	}
 	for _, face := range cube.Faces() {
 		if !b.Model().FaceSolid(pos, face, src) {
 			return false

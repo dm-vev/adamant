@@ -414,7 +414,7 @@ func indirectPowerFrom(pos cube.Pos, face cube.Face, src BlockSource) int {
 	}
 	emitFace := face.Opposite()
 	if isNormalBlock(src, pos) {
-		return int(redstoneStrongPowerAt(src, pos, emitFace))
+		return int(redstoneStrongPowerAt(src, pos.Side(face), emitFace))
 	}
 	return int(redstoneWeakPowerAt(src, pos, emitFace))
 }
