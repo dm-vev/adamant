@@ -353,9 +353,9 @@ func (p Piston) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (p Piston) EncodeBlock() (string, map[string]any) {
 	if p.Sticky {
-		return "minecraft:sticky_piston", map[string]any{"facing_direction": pistonFacingDirection(p.Facing)}
+		return "minecraft:sticky_piston", map[string]any{"facing_direction": pistonStateFacingDirection(p.Facing)}
 	}
-	return "minecraft:piston", map[string]any{"facing_direction": pistonFacingDirection(p.Facing)}
+	return "minecraft:piston", map[string]any{"facing_direction": pistonStateFacingDirection(p.Facing)}
 }
 
 // RedstoneConnectsTo ...
@@ -388,9 +388,9 @@ func (p PistonHead) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // EncodeBlock ...
 func (p PistonHead) EncodeBlock() (string, map[string]any) {
 	if p.Sticky {
-		return "minecraft:sticky_piston_arm_collision", map[string]any{"facing_direction": pistonFacingDirection(p.Facing)}
+		return "minecraft:sticky_piston_arm_collision", map[string]any{"facing_direction": pistonStateFacingDirection(p.Facing)}
 	}
-	return "minecraft:piston_arm_collision", map[string]any{"facing_direction": pistonFacingDirection(p.Facing)}
+	return "minecraft:piston_arm_collision", map[string]any{"facing_direction": pistonStateFacingDirection(p.Facing)}
 }
 
 func pistonFacingDirection(face cube.Face) int32 {
@@ -410,6 +410,17 @@ func pistonFacingDirection(face cube.Face) int32 {
 	default:
 		return int32(face)
 	}
+}
+
+func pistonStateFacingDirection(face cube.Face) int32 {
+	return pistonFacingDirection(pistonStateFacing(face))
+}
+
+func pistonStateFacing(face cube.Face) cube.Face {
+	if face.Axis() == cube.Y {
+		return face
+	}
+	return face.Opposite()
 }
 
 func isEmptyOrReplaceable(tx *world.Tx, pos cube.Pos) bool {

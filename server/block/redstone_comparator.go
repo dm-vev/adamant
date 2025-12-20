@@ -72,7 +72,7 @@ func (c RedstoneComparator) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Ra
 
 // RedstoneWeakPower ...
 func (c RedstoneComparator) RedstoneWeakPower(face cube.Face) uint8 {
-	if face == c.Facing.Face() {
+	if face == c.Facing.Opposite().Face() {
 		return c.Output
 	}
 	return 0
@@ -165,7 +165,7 @@ func (c RedstoneComparator) targetOutput(pos cube.Pos, tx *world.Tx) uint8 {
 }
 
 func (c RedstoneComparator) inputPower(pos cube.Pos, tx *world.Tx) int {
-	inputFace := c.Facing.Opposite().Face()
+	inputFace := c.Facing.Face()
 	inputPos := pos.Side(inputFace)
 	if output, ok := comparatorOverride(tx, inputPos); ok {
 		return int(output)

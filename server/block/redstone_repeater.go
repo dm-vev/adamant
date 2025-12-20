@@ -90,7 +90,7 @@ func (r RedstoneRepeater) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {
 }
 
 func (r RedstoneRepeater) inputPower(pos cube.Pos, tx *world.Tx) int {
-	inputFace := r.Facing.Opposite().Face()
+	inputFace := r.Facing.Face()
 	inputPos := pos.Side(inputFace)
 	power := int(world.RedstonePowerAt(tx, inputPos, inputFace.Opposite()))
 	if power >= 15 {
@@ -117,7 +117,7 @@ func (r RedstoneRepeater) RedstoneWeakPower(face cube.Face) uint8 {
 	if !r.Powered {
 		return 0
 	}
-	if face == r.Facing.Face() {
+	if face == r.Facing.Opposite().Face() {
 		return 15
 	}
 	return 0
