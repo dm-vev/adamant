@@ -90,12 +90,28 @@ func (c RedstoneComparator) RedstoneDiodeFacing() cube.Direction {
 
 // EncodeNBT ...
 func (c RedstoneComparator) EncodeNBT() map[string]any {
-	return map[string]any{"output": byte(c.Output)}
+	return map[string]any{
+		"id":           "Comparator",
+		"OutputSignal": int32(c.Output),
+	}
 }
 
 // DecodeNBT ...
 func (c RedstoneComparator) DecodeNBT(data map[string]any) any {
-	c.Output = nbtconv.Uint8(data, "output")
+	if v, ok := data["OutputSignal"]; ok {
+		switch n := v.(type) {
+		case int32:
+			c.Output = uint8(n)
+		case int64:
+			c.Output = uint8(n)
+		case int:
+			c.Output = uint8(n)
+		case uint8:
+			c.Output = n
+		}
+	} else {
+		c.Output = nbtconv.Uint8(data, "output")
+	}
 	c.Powered = c.Output > 0
 	return c
 }

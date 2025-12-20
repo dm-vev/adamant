@@ -2,6 +2,7 @@ package block
 
 import (
 	"math/rand/v2"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
@@ -17,6 +18,16 @@ type Observer struct {
 	Powered bool
 }
 
+type observerPendingPulse struct {
+	pos  cube.Pos
+	tick int64
+}
+
+var (
+	observerPendingMu sync.Mutex
+	observerPending   = map[*world.World][]observerPendingPulse{}
+)
+
 // BreakInfo ...
 func (o Observer) BreakInfo() BreakInfo {
 	return newBreakInfo(3, alwaysHarvestable, pickaxeEffective, oneOf(o))
@@ -28,9 +39,12 @@ func (o Observer) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 	if !used {
 		return false
 	}
-	o.Facing = calculateFace(user, pos)
+	o.Facing = calculateFace(user, pos).Opposite()
 	o.Powered = false
 	place(tx, pos, o, user, ctx)
+	if !observerPulsePending(tx.World(), pos) {
+		tx.ScheduleBlockUpdate(pos, o, redstoneTicks(2))
+	}
 	return placed(ctx)
 }
 
@@ -42,26 +56,93 @@ func (o Observer) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.
 	if o.Powered {
 		return
 	}
-	o.Powered = true
-	tx.SetBlock(pos, o, nil)
+	if observerPulsePending(tx.World(), pos) {
+		return
+	}
 	tx.ScheduleBlockUpdate(pos, o, redstoneTicks(2))
 }
 
 // ScheduledTick ...
 func (o Observer) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if !o.Powered {
+	if o.Powered {
+		o.Powered = false
+		tx.SetBlock(pos, o, nil)
+		tx.DoBlockUpdatesAround(pos.Side(o.Facing.Opposite()))
 		return
 	}
-	o.Powered = false
+	observerClearPending(tx.World(), pos)
+	o.Powered = true
 	tx.SetBlock(pos, o, nil)
+	tx.DoBlockUpdatesAround(pos.Side(o.Facing.Opposite()))
+	tx.ScheduleBlockUpdate(pos, o, redstoneTicks(2))
 }
 
 // RedstoneWeakPower ...
 func (o Observer) RedstoneWeakPower(face cube.Face) uint8 {
-	if o.Powered && face == o.Facing {
+	if o.Powered && face == o.Facing.Opposite() {
 		return 15
 	}
 	return 0
+}
+
+func observerPulsePending(w *world.World, pos cube.Pos) bool {
+	if w == nil {
+		return false
+	}
+	now := w.CurrentTick()
+
+	observerPendingMu.Lock()
+	defer observerPendingMu.Unlock()
+
+	list := observerPending[w]
+	if len(list) > 0 {
+		prune := 0
+		for prune < len(list) && now-list[prune].tick > 4 {
+			prune++
+		}
+		if prune > 0 {
+			list = append([]observerPendingPulse(nil), list[prune:]...)
+		}
+	}
+	for _, pending := range list {
+		if pending.pos == pos {
+			observerPending[w] = list
+			return true
+		}
+	}
+	list = append(list, observerPendingPulse{pos: pos, tick: now})
+	observerPending[w] = list
+	return false
+}
+
+func observerClearPending(w *world.World, pos cube.Pos) {
+	if w == nil {
+		return
+	}
+	now := w.CurrentTick()
+
+	observerPendingMu.Lock()
+	defer observerPendingMu.Unlock()
+
+	list := observerPending[w]
+	if len(list) == 0 {
+		return
+	}
+	pruned := make([]observerPendingPulse, 0, len(list))
+	for _, pending := range list {
+		if now-pending.tick > 4 {
+			continue
+		}
+		if pending.pos == pos {
+			continue
+		}
+		pruned = append(pruned, pending)
+	}
+	if len(pruned) == 0 {
+		delete(observerPending, w)
+		return
+	}
+	observerPending[w] = pruned
 }
 
 // RedstoneStrongPower ...

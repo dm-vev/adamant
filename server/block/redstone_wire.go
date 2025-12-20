@@ -140,7 +140,7 @@ func canConnectTo(b world.Block, side cube.Face) bool {
 		return facing == side || facing.Opposite() == side
 	}
 	if obs, ok := b.(Observer); ok {
-		return side == obs.Facing
+		return side == obs.Facing.Opposite()
 	}
 	if _, ok := b.(world.RedstonePowerSource); ok {
 		return true
