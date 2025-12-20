@@ -302,6 +302,24 @@ apply:
 		block := e.applyPending[pos]
 		delete(e.applyPending, pos)
 		tx.SetBlock(pos, block, nil)
+		e.notifyIndirectUpdates(pos, tx)
+	}
+}
+
+func (e *redstoneEngine) notifyIndirectUpdates(pos cube.Pos, tx *Tx) {
+	w := tx.World()
+	for _, face := range cube.Faces() {
+		normalPos := pos.Side(face)
+		if normalPos.OutOfBounds(w.ra) {
+			continue
+		}
+		if !isNormalBlock(tx, normalPos) {
+			continue
+		}
+		w.updateNeighbour(normalPos, pos)
+		normalPos.Neighbours(func(p cube.Pos) {
+			w.updateNeighbour(p, normalPos)
+		}, w.ra)
 	}
 }
 
