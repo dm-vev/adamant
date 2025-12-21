@@ -82,6 +82,12 @@ func encodeSlabBlock(block world.Block, double bool) (id string, suffix string) 
 		return "red_nether_brick", suffix
 	case Planks:
 		return block.Wood.String(), suffix
+	case BambooPlanks:
+		return "bamboo", suffix
+	case BambooMosaic:
+		return "bamboo_mosaic", suffix
+	case PetrifiedOak:
+		return "petrified_oak", suffix
 	case PolishedBlackstoneBrick:
 		if !block.Cracked {
 			return "polished_blackstone_brick", suffix
@@ -195,6 +201,9 @@ func SlabBlocks() []world.Block {
 	for _, w := range WoodTypes() {
 		b = append(b, Planks{Wood: w})
 	}
+	b = append(b, BambooPlanks{})
+	b = append(b, BambooMosaic{})
+	b = append(b, PetrifiedOak{})
 	for _, o := range OxidationTypes() {
 		b = append(b, Copper{Type: CutCopper(), Oxidation: o})
 		b = append(b, Copper{Type: CutCopper(), Oxidation: o, Waxed: true})

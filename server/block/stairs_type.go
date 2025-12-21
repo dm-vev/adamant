@@ -71,6 +71,10 @@ func encodeStairsBlock(block world.Block) string {
 		return "red_nether_brick"
 	case Planks:
 		return block.Wood.String()
+	case BambooPlanks:
+		return "bamboo"
+	case BambooMosaic:
+		return "bamboo_mosaic"
 	case PolishedBlackstoneBrick:
 		if !block.Cracked {
 			return "polished_blackstone_brick"
@@ -177,6 +181,8 @@ func StairsBlocks() []world.Block {
 	for _, w := range WoodTypes() {
 		b = append(b, Planks{Wood: w})
 	}
+	b = append(b, BambooPlanks{})
+	b = append(b, BambooMosaic{})
 	for _, o := range OxidationTypes() {
 		b = append(b, Copper{Type: CutCopper(), Oxidation: o})
 		b = append(b, Copper{Type: CutCopper(), Oxidation: o, Waxed: true})

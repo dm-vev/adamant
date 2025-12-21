@@ -99,6 +99,10 @@ type Session struct {
 	debugShapesAdd    chan debug.Shape
 	debugShapesRemove chan int
 
+	blockUpdatesMu      sync.Mutex
+	blockUpdates        map[blockUpdateKey]blockUpdateData
+	blockUpdateDrops    atomic.Uint32
+	blockUpdateLastLog  atomic.Int64
 	closeBackground chan struct{}
 
 	overflowStreak  atomic.Uint32
@@ -381,6 +385,7 @@ func (s *Session) background(r map[string]map[int]cmd.Runnable, enums map[string
 	for {
 		select {
 		case <-t.C:
+			s.flushBlockUpdates()
 			s.ent.ExecWorld(func(tx *world.Tx, e world.Entity) {
 				c := e.(Controllable)
 
