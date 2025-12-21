@@ -1,6 +1,8 @@
 package builtin
 
 import (
+	"fmt"
+
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
@@ -16,9 +18,11 @@ func newStopCommand(srv serverAdapter) cmd.Command {
 
 func (s stopCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 	o.Print("Stopping server...")
-	if err := s.srv.Close(); err != nil {
-		o.Error(err)
-	}
+	go func() {
+		if err := s.srv.Close(); err != nil {
+			fmt.Println("close server:", err)
+		}
+	}()
 }
 
 func (stopCommand) Allow(src cmd.Source) bool {
