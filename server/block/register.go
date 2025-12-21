@@ -90,6 +90,8 @@ func init() {
 	world.RegisterBlock(NetherGoldOre{})
 	world.RegisterBlock(NetherQuartzOre{})
 	world.RegisterBlock(NetherSprouts{})
+	world.RegisterBlock(CrimsonRoots{})
+	world.RegisterBlock(WarpedRoots{})
 	world.RegisterBlock(NetherWartBlock{Warped: true})
 	world.RegisterBlock(NetherWartBlock{})
 	world.RegisterBlock(Netherite{})
