@@ -32,7 +32,7 @@ Stop the server with `Ctrl+C`.
 ### Configuration
 Server settings are in `config.toml`.
 - `Network.Address`: listen address and port (default `:19132`).
-- `Server.Name`: server name in the list; `AuthEnabled`, `DisableJoinQuitMessages`, `MuteEmoteChat`.
+- `Server.Name`: server name in the list; `AuthEnabled`, `DisableJoinQuitMessages`, `MuteEmoteChat`, `ReconnectPolicy`.
 - `World`: `Seed`, `SaveData`, `GeneratorWorkers`, `GeneratorQueueSize`, `Folder`.
 
   The asynchronous generator defaults to `GeneratorQueueSize = GeneratorWorkers * 4`. Under

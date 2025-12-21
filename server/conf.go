@@ -60,6 +60,8 @@ type Config struct {
 	AuthDisabled bool
 	// MuteEmoteChat specifies if the player emote chat should be muted or not.
 	MuteEmoteChat bool
+	// ReconnectPolicy controls what happens when a player tries to join while already connected.
+	ReconnectPolicy ReconnectPolicy
 	// MaxPlayers is the maximum amount of players allowed to join the server at
 	// once.
 	MaxPlayers int
@@ -137,6 +139,27 @@ type Config struct {
 	// formatting directive such as %s, the name of the target dimension is passed as the
 	// first argument. Set this to an empty string to disable the notification entirely.
 	PortalDisabledMessage string
+}
+
+// ReconnectPolicy controls how the server handles duplicate logins for the same player.
+type ReconnectPolicy uint8
+
+const (
+	// ReconnectKickJoining disconnects the connecting player when a session already exists.
+	ReconnectKickJoining ReconnectPolicy = iota
+	// ReconnectKickExisting disconnects the existing player and allows the new connection.
+	ReconnectKickExisting
+)
+
+func parseReconnectPolicy(value string) (ReconnectPolicy, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "kick-joining", "kick_joining", "kick-connecting", "kick-connection", "kick-new":
+		return ReconnectKickJoining, true
+	case "kick-existing", "kick_existing", "kick-old", "kick-previous":
+		return ReconnectKickExisting, true
+	default:
+		return 0, false
+	}
 }
 
 // New creates a Server using fields of conf. The Server's worlds are created
@@ -312,6 +335,9 @@ type UserConfig struct {
 		DisableJoinQuitMessages bool
 		// MuteEmoteChat specifies if the player emote chat should be muted or not.
 		MuteEmoteChat bool
+		// ReconnectPolicy controls what happens when a player connects while already online.
+		// Valid values: "kick-joining" or "kick-existing".
+		ReconnectPolicy string
 	}
 	World struct {
 		// SaveData controls whether a world's data will be saved and loaded.
@@ -408,6 +434,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		ResourcesRequired:       uc.Resources.Required,
 		AuthDisabled:            !uc.Server.AuthEnabled,
 		MuteEmoteChat:           uc.Server.MuteEmoteChat,
+		ReconnectPolicy:         ReconnectKickJoining,
 		MaxPlayers:              uc.Players.MaxCount,
 		MaxChunkRadius:          uc.Players.MaximumChunkRadius,
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
@@ -426,6 +453,13 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	}
 	if !uc.Server.DisableJoinQuitMessages {
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
+	}
+	if policyValue := strings.TrimSpace(uc.Server.ReconnectPolicy); policyValue != "" {
+		if parsed, ok := parseReconnectPolicy(policyValue); ok {
+			conf.ReconnectPolicy = parsed
+		} else if log != nil {
+			log.Warn("Unknown reconnect policy, using kick-joining.", "value", policyValue)
+		}
 	}
 	if uc.World.SaveData {
 		conf.WorldProvider, err = mcdb.Config{Log: log}.Open(uc.World.Folder)
@@ -496,6 +530,7 @@ func DefaultConfig() UserConfig {
 	c.World.SaveData = true
 	c.World.Folder = "world"
 	c.World.Seed = 0
+	c.Server.ReconnectPolicy = "kick-joining"
 	c.World.DisableOverworld = false
 	c.World.DisableNether = false
 	c.World.DisableEnd = false

@@ -542,8 +542,7 @@ func (s *Session) writePacket(pk packet.Packet) {
 		case <-s.closeBackground:
 			return
 		default:
-			s.conf.Log.Warn("session packet queue overflow, closing connection", "packet", fmt.Sprintf("%T", pk))
-			s.CloseConnection()
+			s.conf.Log.Warn("session packet queue overflow, dropping packet", "packet", fmt.Sprintf("%T", pk))
 		}
 	}
 }

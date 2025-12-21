@@ -516,19 +516,57 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 
 	data.EmoteChatMuted = srv.conf.MuteEmoteChat
 
+	if handle, ok := srv.Player(id); ok {
+		if !srv.handleReconnect(l, conn, id, handle) {
+			return
+		}
+	}
+
 	if err := conn.StartGameContext(ctx, data); err != nil {
 		_ = l.Disconnect(conn, "Connection timeout.")
 
 		srv.conf.Log.Debug("spawn failed: "+err.Error(), "raddr", conn.RemoteAddr())
 		return
 	}
-	if _, ok := srv.Player(id); ok {
-		_ = l.Disconnect(conn, "Already logged in.")
-		srv.conf.Log.Debug("spawn failed: already logged in", "raddr", conn.RemoteAddr())
-		return
-	}
 	_ = conn.WritePacket(&packet.ItemRegistry{Items: srv.customItems})
 	srv.incoming <- srv.createPlayer(id, conn, d, w)
+}
+
+func (srv *Server) handleReconnect(l Listener, conn session.Conn, id uuid.UUID, handle *world.EntityHandle) bool {
+	switch srv.conf.ReconnectPolicy {
+	case ReconnectKickExisting:
+		handle.ExecWorld(func(tx *world.Tx, e world.Entity) {
+			e.(*player.Player).Disconnect("Logged in from another location.")
+		})
+		if srv.waitForPlayerRemoval(id, 5*time.Second) {
+			return true
+		}
+		_ = l.Disconnect(conn, "Already logged in.")
+		srv.conf.Log.Debug("spawn failed: already logged in", "raddr", conn.RemoteAddr())
+		return false
+	default:
+		_ = l.Disconnect(conn, "Already logged in.")
+		srv.conf.Log.Debug("spawn failed: already logged in", "raddr", conn.RemoteAddr())
+		return false
+	}
+}
+
+func (srv *Server) waitForPlayerRemoval(id uuid.UUID, timeout time.Duration) bool {
+	timer := time.NewTimer(timeout)
+	ticker := time.NewTicker(25 * time.Millisecond)
+	defer timer.Stop()
+	defer ticker.Stop()
+
+	for {
+		if _, ok := srv.Player(id); !ok {
+			return true
+		}
+		select {
+		case <-ticker.C:
+		case <-timer.C:
+			return false
+		}
+	}
 }
 
 // defaultGameData returns a minecraft.GameData as sent for a new player. It
