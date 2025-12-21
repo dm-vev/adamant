@@ -100,6 +100,9 @@ type Session struct {
 	debugShapesRemove chan int
 
 	closeBackground chan struct{}
+
+	overflowStreak  atomic.Uint32
+	overflowLastLog atomic.Int64
 }
 
 // Conn represents a connection that packets are read from and written to by a Session. In addition, it holds some
@@ -534,15 +537,21 @@ func (s *Session) writePacket(pk packet.Packet) {
 	}
 	select {
 	case s.packets <- pk:
+		s.overflowStreak.Store(0)
 		return
 	case <-s.closeBackground:
 		return
 	default:
-		select {
-		case <-s.closeBackground:
-			return
-		default:
-			s.conf.Log.Warn("session packet queue overflow, dropping packet", "packet", fmt.Sprintf("%T", pk))
+		const overflowDisconnectThreshold = 64
+		streak := s.overflowStreak.Add(1)
+		now := time.Now().UnixNano()
+		last := s.overflowLastLog.Load()
+		if now-last > int64(time.Second) && s.overflowLastLog.CompareAndSwap(last, now) {
+			s.conf.Log.Warn("session packet queue overflow, dropping packets", "packet", fmt.Sprintf("%T", pk), "streak", streak)
+		}
+		if streak >= overflowDisconnectThreshold {
+			s.conf.Log.Warn("closing session due to packet queue overflow", "streak", streak)
+			s.CloseConnection()
 		}
 	}
 }
