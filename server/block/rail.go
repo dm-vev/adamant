@@ -308,7 +308,11 @@ func (r PoweredRail) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		breakBlock(r, pos, tx)
 		return
 	}
-	r.Powered = redstonePowered(pos, tx)
+	powered := redstonePowered(pos, tx)
+	if powered == r.Powered {
+		return
+	}
+	r.Powered = powered
 	tx.SetBlock(pos, r, nil)
 }
 
@@ -459,7 +463,11 @@ func (r ActivatorRail) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		breakBlock(r, pos, tx)
 		return
 	}
-	r.Powered = redstonePowered(pos, tx)
+	powered := redstonePowered(pos, tx)
+	if powered == r.Powered {
+		return
+	}
+	r.Powered = powered
 	tx.SetBlock(pos, r, nil)
 }
 

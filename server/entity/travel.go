@@ -123,11 +123,11 @@ func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *w
 	go func() {
 		spawn := pos.Vec3Middle()
 
-		source.Exec(func(tx *world.Tx) {
+		<-source.Exec(func(tx *world.Tx) {
 			tx.RemoveEntity(e)
 		})
 
-		destination.Exec(func(tx *world.Tx) {
+		<-destination.Exec(func(tx *world.Tx) {
 			if netherPortal, ok := portal.FindOrCreateNetherPortal(tx, pos, 128); ok {
 				spawn = netherPortal.Spawn().Vec3Middle()
 			}
