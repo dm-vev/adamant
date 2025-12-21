@@ -304,7 +304,11 @@ func (e *redstoneEngine) processBatch(batch []cube.Pos) {
 	for pos, block := range changes {
 		updates = append(updates, redstoneChange{pos: pos, block: block})
 	}
-	e.applyCh <- updates
+	select {
+	case e.applyCh <- updates:
+	case <-e.closeCh:
+		return
+	}
 }
 
 func (e *redstoneEngine) Apply(tx *Tx) {
