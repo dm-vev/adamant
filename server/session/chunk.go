@@ -16,6 +16,8 @@ import (
 // but also solves issues with block entities such as item frames and lecterns as of v1.19.10.
 const subChunkRequests = true
 
+const maxPendingBlobs = 4096
+
 // ViewChunk ...
 func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, blockEntities map[cube.Pos]world.Block, c *chunk.Chunk) {
 	if !s.conn.ClientCacheEnabled() {
@@ -154,6 +156,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chu
 			})
 			return
 		}
+		return
 	}
 
 	var (
@@ -169,12 +172,14 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chu
 	}
 
 	s.blobMu.Lock()
-	s.openChunkTransactions = append(s.openChunkTransactions, m)
-	if l := len(s.blobs); l > 4096 {
+	pending := len(s.blobs)
+	if pending+len(hashes) > maxPendingBlobs {
 		s.blobMu.Unlock()
-		s.conf.Log.Error("too many blobs pending", "n", l)
+		s.conf.Log.Error("too many blobs pending", "n", pending)
+		s.CloseConnection()
 		return
 	}
+	s.openChunkTransactions = append(s.openChunkTransactions, m)
 	for i := range hashes {
 		s.blobs[hashes[i]] = blobs[i]
 	}
@@ -251,9 +256,10 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, c *c
 // connection.
 func (s *Session) trackBlob(hash uint64, blob []byte) bool {
 	s.blobMu.Lock()
-	if l := len(s.blobs); l > 4096 {
+	if len(s.blobs) >= maxPendingBlobs {
 		s.blobMu.Unlock()
-		s.conf.Log.Error("too many blobs pending", "n", l)
+		s.conf.Log.Error("too many blobs pending", "n", maxPendingBlobs)
+		s.CloseConnection()
 		return false
 	}
 	s.blobs[hash] = blob
