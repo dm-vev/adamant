@@ -387,7 +387,7 @@ func (DeprecatedPurpurBlock1) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (DeprecatedPurpurBlock1) EncodeBlock() (string, map[string]any) {
-	return "minecraft:purpur_block", nil
+	return "minecraft:purpur_block", map[string]any{"pillar_axis": "y"}
 }
 
 // Hash returns a max hash to force runtime ID lookup by state.
@@ -412,7 +412,7 @@ func (DeprecatedPurpurBlock2) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (DeprecatedPurpurBlock2) EncodeBlock() (string, map[string]any) {
-	return "minecraft:purpur_block", nil
+	return "minecraft:purpur_block", map[string]any{"pillar_axis": "y"}
 }
 
 // Hash returns a max hash to force runtime ID lookup by state.

@@ -1,6 +1,9 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/item"
+import (
+	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/world"
+)
 
 // HardenedGlass is a hardened glass block.
 type HardenedGlass struct {
@@ -121,4 +124,20 @@ func (TintedGlass) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (TintedGlass) EncodeBlock() (string, map[string]any) {
 	return "minecraft:tinted_glass", nil
+}
+
+// allHardenedStainedGlass returns all hardened stained glass block states.
+func allHardenedStainedGlass() (blocks []world.Block) {
+	for _, c := range item.Colours() {
+		blocks = append(blocks, HardenedStainedGlass{Colour: c})
+	}
+	return
+}
+
+// allHardenedStainedGlassPanes returns all hardened stained glass pane block states.
+func allHardenedStainedGlassPanes() (blocks []world.Block) {
+	for _, c := range item.Colours() {
+		blocks = append(blocks, HardenedStainedGlassPane{Colour: c})
+	}
+	return
 }

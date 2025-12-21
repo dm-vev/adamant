@@ -154,6 +154,7 @@ func init() {
 	world.RegisterBlock(InfoUpdate2{})
 	world.RegisterBlock(Reserved6{})
 	world.RegisterBlock(UnknownBlock{})
+	world.RegisterBlock(Web{})
 
 	for _, ore := range OreTypes() {
 		world.RegisterBlock(CoalOre{Type: ore})
@@ -215,6 +216,8 @@ func init() {
 	registerAll(allGrindstones())
 	registerAll(allHayBales())
 	registerAll(allHoppers())
+	registerAll(allHardenedStainedGlass())
+	registerAll(allHardenedStainedGlassPanes())
 	registerAll(allItemFrames())
 	registerAll(allKelp())
 	registerAll(allLadders())
