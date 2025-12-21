@@ -1,3 +1,6 @@
+//go:build tools
+// +build tools
+
 package main
 
 import (
@@ -46,4 +49,3 @@ func main() {
     fmt.Printf("block[%d] pos=%v nbt=%v\n", i, entry["pos"], nbt)
   }
 }
-
