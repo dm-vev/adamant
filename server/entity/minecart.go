@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -168,6 +169,16 @@ func (b *MinecartBehaviour) InteractText() string {
 		return ""
 	}
 	return ""
+}
+
+// CanRideTarget reports if the minecart may be ridden.
+func (b *MinecartBehaviour) CanRideTarget() bool {
+	return b.rideable
+}
+
+// SeatOffset returns the seat offset for riders.
+func (b *MinecartBehaviour) SeatOffset() mgl32.Vec3 {
+	return mgl32.Vec3{0, 0.35, 0}
 }
 
 // SetVehicleInput updates the input used by the minecart.
@@ -577,8 +588,10 @@ func (b *MinecartBehaviour) checkPassengerAlive(e *Ent, tx *world.Tx) {
 }
 
 func (b *MinecartBehaviour) handleCollisions(e *Ent, tx *world.Tx) {
-	box := e.H().Type().BBox(e).Translate(e.data.Pos).GrowVec3(mgl64.Vec3{0.2, 0.0, 0.2})
-	for other := range tx.EntitiesWithin(box) {
+	box := e.H().Type().BBox(e).Translate(e.data.Pos)
+	search := box.Grow(1.0)
+	collision := box.Grow(0.1)
+	for other := range tx.EntitiesWithin(search) {
 		if other.H() == e.H() {
 			continue
 		}
@@ -586,6 +599,10 @@ func (b *MinecartBehaviour) handleCollisions(e *Ent, tx *world.Tx) {
 			continue
 		}
 		if r, ok := other.(Rider); ok && r.Riding() == e.H() {
+			continue
+		}
+		otherBox := other.H().Type().BBox(other).Translate(other.Position())
+		if !collision.IntersectsWith(otherBox) {
 			continue
 		}
 		if otherCart, ok := other.(interface {
@@ -599,6 +616,39 @@ func (b *MinecartBehaviour) handleCollisions(e *Ent, tx *world.Tx) {
 }
 
 func (b *MinecartBehaviour) applyEntityCollision(e *Ent, other world.Entity, otherCart interface {
+	Velocity() mgl64.Vec3
+	SetVelocity(v mgl64.Vec3)
+	Rotation() cube.Rotation
+}) {
+	if isMinecartEntity(other) {
+		b.applyMinecartCollision(e, other, otherCart)
+		return
+	}
+	motiveX := other.Position()[0] - e.data.Pos[0]
+	motiveZ := other.Position()[2] - e.data.Pos[2]
+	square := motiveX*motiveX + motiveZ*motiveZ
+	if square < 1.0e-4 {
+		return
+	}
+	square = math.Sqrt(square)
+	motiveX /= square
+	motiveZ /= square
+	next := 1.0 / square
+	if next > 1.0 {
+		next = 1.0
+	}
+	motiveX *= next
+	motiveZ *= next
+	motiveX *= 0.1
+	motiveZ *= 0.1
+	motiveX *= 0.5
+	motiveZ *= 0.5
+
+	e.data.Vel[0] -= motiveX
+	e.data.Vel[2] -= motiveZ
+}
+
+func (b *MinecartBehaviour) applyMinecartCollision(e *Ent, other world.Entity, otherCart interface {
 	Velocity() mgl64.Vec3
 	SetVelocity(v mgl64.Vec3)
 	Rotation() cube.Rotation
@@ -623,38 +673,35 @@ func (b *MinecartBehaviour) applyEntityCollision(e *Ent, other world.Entity, oth
 	motiveX *= 0.5
 	motiveZ *= 0.5
 
-	if otherMinecart, ok := other.(interface {
-		Velocity() mgl64.Vec3
-		SetVelocity(v mgl64.Vec3)
-		Rotation() cube.Rotation
-	}); ok {
-		densityX := other.Position()[0] - e.data.Pos[0]
-		densityZ := other.Position()[2] - e.data.Pos[2]
-		vector := mgl64.Vec3{densityX, 0, densityZ}.Normalize()
-		yaw := e.data.Rot.Yaw() * math.Pi / 180
-		vec := mgl64.Vec3{math.Cos(yaw), 0, math.Sin(yaw)}.Normalize()
-		desinityXZ := math.Abs(vector.Dot(vec))
-		if desinityXZ < 0.8 {
-			return
-		}
-		otherVel := otherMinecart.Velocity()
-		motX := otherVel[0] + e.data.Vel[0]
-		motZ := otherVel[2] + e.data.Vel[2]
-
-		e.data.Vel[0] *= 0.2
-		e.data.Vel[2] *= 0.2
-		e.data.Vel[0] += motX/2 - motiveX
-		e.data.Vel[2] += motZ/2 - motiveZ
-
-		otherVel[0] *= 0.2
-		otherVel[2] *= 0.2
-		otherVel[0] += motX/2 + motiveX
-		otherVel[2] += motZ/2 + motiveZ
-		otherMinecart.SetVelocity(otherVel)
+	vector := mgl64.Vec3{motiveX, 0, motiveZ}.Normalize()
+	yaw := e.data.Rot.Yaw() * math.Pi / 180
+	vec := mgl64.Vec3{math.Cos(yaw), 0, math.Sin(yaw)}.Normalize()
+	densityXZ := math.Abs(vector.Dot(vec))
+	if densityXZ < 0.8 {
 		return
 	}
-	e.data.Vel[0] -= motiveX
-	e.data.Vel[2] -= motiveZ
+	otherVel := otherCart.Velocity()
+	motX := otherVel[0] + e.data.Vel[0]
+	motZ := otherVel[2] + e.data.Vel[2]
+
+	e.data.Vel[0] *= 0.2
+	e.data.Vel[2] *= 0.2
+	e.data.Vel[0] += motX/2 - motiveX
+	e.data.Vel[2] += motZ/2 - motiveZ
+
+	otherVel[0] *= 0.2
+	otherVel[2] *= 0.2
+	otherVel[0] += motX/2 + motiveX
+	otherVel[2] += motZ/2 + motiveZ
+	otherCart.SetVelocity(otherVel)
+}
+
+func isMinecartEntity(e world.Entity) bool {
+	switch e.H().Type().EncodeEntity() {
+	case "minecraft:minecart", "minecraft:chest_minecart", "minecraft:hopper_minecart", "minecraft:tnt_minecart":
+		return true
+	}
+	return false
 }
 
 func (b *MinecartBehaviour) activateDetectorRail(pos cube.Pos, r block.DetectorRail, tx *world.Tx) {

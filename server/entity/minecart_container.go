@@ -218,6 +218,7 @@ var chestMinecartConf = MinecartContainerBehaviourConfig{
 	Minecart: MinecartBehaviourConfig{
 		DisplayBlock:  block.Chest{},
 		DisplayOffset: minecartDisplayOffset,
+		Rideable:      true,
 	},
 	Size:          27,
 	ContainerType: minecartContainerChest,
@@ -257,6 +258,7 @@ var hopperMinecartConf = MinecartContainerBehaviourConfig{
 	Minecart: MinecartBehaviourConfig{
 		DisplayBlock:  block.Hopper{Facing: cube.FaceDown},
 		DisplayOffset: minecartDisplayOffset,
+		Rideable:      true,
 	},
 	Size:          5,
 	ContainerType: minecartContainerHopper,

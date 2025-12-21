@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -154,6 +155,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	}
 	if r, ok := e.(rider); ok && r.Riding() != nil {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRiding)
+	}
+	if r, ok := e.(rideTarget); ok {
+		m[protocol.EntityDataKeyCanRideTarget] = byte(boolByte(r.CanRideTarget()))
+	}
+	if s, ok := e.(seatOffset); ok {
+		m[protocol.EntityDataKeySeatOffset] = s.SeatOffset()
 	}
 	if ec, ok := e.(endCrystalMeta); ok {
 		if ec.ShowBase() {
@@ -398,4 +405,12 @@ type interactText interface {
 
 type rider interface {
 	Riding() *world.EntityHandle
+}
+
+type rideTarget interface {
+	CanRideTarget() bool
+}
+
+type seatOffset interface {
+	SeatOffset() mgl32.Vec3
 }

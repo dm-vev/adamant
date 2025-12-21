@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -16,6 +17,23 @@ func (h *InteractHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, c Con
 	pos := c.Position()
 
 	switch pk.ActionType {
+	case packet.InteractActionLeaveVehicle:
+		if pk.TargetEntityRuntimeID == selfEntityRuntimeID {
+			return errSelfRuntimeID
+		}
+		handle, ok := s.entityFromRuntimeID(pk.TargetEntityRuntimeID)
+		if !ok {
+			return nil
+		}
+		e, ok := handle.Entity(tx)
+		if !ok {
+			return nil
+		}
+		if dismountable, ok := e.(interface {
+			Dismount(tx *world.Tx, passenger world.Entity)
+		}); ok {
+			dismountable.Dismount(tx, c)
+		}
 	case packet.InteractActionMouseOverEntity:
 		// We don't need this action.
 	case packet.InteractActionOpenInventory:
