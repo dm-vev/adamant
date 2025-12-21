@@ -17,6 +17,10 @@ type Behaviour interface {
 	Tick(e *Ent, tx *world.Tx) *Movement
 }
 
+type dismounter interface {
+	DismountAll(e *Ent, tx *world.Tx)
+}
+
 // Ent is a world.Entity implementation that allows entity implementations to
 // share a lot of code. It is currently under development and is prone to
 // (breaking) changes.
@@ -99,6 +103,16 @@ func (e *Ent) SetOnFire(duration time.Duration) {
 	}
 }
 
+// Riding returns the entity that this entity is riding, if any.
+func (e *Ent) Riding() *world.EntityHandle {
+	return e.data.Riding
+}
+
+// SetRiding updates the entity that this entity is riding.
+func (e *Ent) SetRiding(r *world.EntityHandle) {
+	e.data.Riding = r
+}
+
 // Extinguish ...
 func (e *Ent) Extinguish() {
 	e.SetOnFire(0)
@@ -145,6 +159,11 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 // Close closes the Ent and removes the associated entity from the world.
 func (e *Ent) Close() error {
 	e.once.Do(func() {
+		if e.tx != nil {
+			if d, ok := e.Behaviour().(dismounter); ok {
+				d.DismountAll(e, e.tx)
+			}
+		}
 		e.tx.RemoveEntity(e)
 		_ = e.handle.Close()
 	})
@@ -159,6 +178,9 @@ func (e *Ent) bindTx(tx *world.Tx) {
 // This should be used from within world transactions (e.g., during ticks) to ensure a valid, active Tx is used.
 func (e *Ent) CloseIn(tx *world.Tx) error {
 	e.once.Do(func() {
+		if d, ok := e.Behaviour().(dismounter); ok {
+			d.DismountAll(e, tx)
+		}
 		tx.RemoveEntity(e)
 		_ = e.handle.Close()
 	})

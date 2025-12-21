@@ -20,6 +20,10 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	FallingBlockType,
 	FireworkType,
 	ItemType,
+	MinecartType,
+	ChestMinecartType,
+	HopperMinecartType,
+	TNTMinecartType,
 	LightningType,
 	EndCrystalType,
 	LingeringPotionType,
@@ -51,6 +55,18 @@ var conf = world.EntityRegistryConfig{
 	},
 	Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
 		return NewItem(opts, it.(item.Stack))
+	},
+	Minecart: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return opts.New(MinecartType, minecartConf)
+	},
+	MinecartChest: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return opts.New(ChestMinecartType, chestMinecartConf)
+	},
+	MinecartHopper: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return opts.New(HopperMinecartType, hopperMinecartConf)
+	},
+	MinecartTNT: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return opts.New(TNTMinecartType, tntMinecartConf)
 	},
 	LingeringPotion: func(opts world.EntitySpawnOpts, t any, owner world.Entity) *world.EntityHandle {
 		return NewLingeringPotion(opts, t.(potion.Potion), owner)

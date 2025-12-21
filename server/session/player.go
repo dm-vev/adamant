@@ -68,9 +68,24 @@ func (s *Session) closeCurrentContainer(tx *world.Tx) {
 	if !s.containerOpened.Load() {
 		return
 	}
+	openedEntity := s.openedEntity.Load()
+	openedPos := s.openedPos.Load()
 	s.closeWindow()
 
-	pos := *s.openedPos.Load()
+	if openedEntity != nil {
+		if ent, ok := openedEntity.Entity(tx); ok {
+			if container, ok := ent.(interface {
+				RemoveViewer(v block.ContainerViewer)
+			}); ok {
+				container.RemoveViewer(s)
+			}
+		}
+		return
+	}
+	if openedPos == nil {
+		return
+	}
+	pos := *openedPos
 	b := tx.Block(pos)
 	if container, ok := b.(block.Container); ok {
 		container.RemoveViewer(s, tx, pos)
@@ -269,9 +284,13 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 		if !s.containerOpened.Load() {
 			return nil, false
 		}
-		switch id {
-		case protocol.ContainerLevelEntity:
+		if id == protocol.ContainerLevelEntity {
 			return s.openedWindow.Load(), true
+		}
+		if s.openedEntity.Load() != nil {
+			return nil, false
+		}
+		switch id {
 		case protocol.ContainerShulkerBox:
 			if pos := s.openedPos.Load(); pos != nil {
 				if _, ok := tx.Block(*pos).(block.ShulkerBox); ok {

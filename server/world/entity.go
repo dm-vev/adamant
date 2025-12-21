@@ -293,6 +293,7 @@ type EntityData struct {
 	Name         string
 	FireDuration time.Duration
 	Age          time.Duration
+	Riding       *EntityHandle
 
 	Data any
 }
@@ -374,6 +375,10 @@ type EntityRegistryConfig struct {
 	Item               func(opts EntitySpawnOpts, it any) *EntityHandle
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration) *EntityHandle
+	Minecart           func(opts EntitySpawnOpts) *EntityHandle
+	MinecartChest      func(opts EntitySpawnOpts) *EntityHandle
+	MinecartHopper     func(opts EntitySpawnOpts) *EntityHandle
+	MinecartTNT        func(opts EntitySpawnOpts) *EntityHandle
 	BottleOfEnchanting func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	Arrow              func(opts EntitySpawnOpts, damage float64, owner Entity, critical, disallowPickup, obtainArrowOnPickup bool, punchLevel int, tip any) *EntityHandle
 	Trident            func(opts EntitySpawnOpts, owner Entity, stack any, loyalty, impaling int, channeling bool) *EntityHandle

@@ -120,6 +120,12 @@ type FenceGateClose struct {
 	sound
 }
 
+// PistonIn is a sound played when a piston retracts.
+type PistonIn struct{ sound }
+
+// PistonOut is a sound played when a piston extends.
+type PistonOut struct{ sound }
+
 // DoorCrash is a sound played when a door is forced open.
 type DoorCrash struct{ sound }
 

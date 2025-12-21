@@ -73,6 +73,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 
 	yaw, pitch := e.Rotation().Elem()
 	metadata := s.parseEntityMetadata(e)
+	links := s.entityLinks(e)
 
 	id := e.H().Type().EncodeEntity()
 	switch v := e.(type) {
@@ -97,6 +98,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			UUID:            v.UUID(),
 			Username:        v.Name(),
 			Yaw:             float32(yaw),
+			EntityLinks:     links,
 			AbilityData: protocol.AbilityData{
 				EntityUniqueID: int64(runtimeID),
 				Layers: []protocol.AbilityLayer{{
@@ -145,12 +147,35 @@ func (s *Session) ViewEntity(e world.Entity) {
 		EntityRuntimeID: runtimeID,
 		EntityType:      id,
 		EntityMetadata:  metadata,
+		EntityLinks:     links,
 		Position:        vec64To32(e.Position()),
 		Velocity:        vec64To32(vel),
 		Pitch:           float32(pitch),
 		Yaw:             float32(yaw),
 		HeadYaw:         float32(yaw),
 	})
+}
+
+// ViewEntityLink sends a link update between the ridden entity and the rider.
+func (s *Session) ViewEntityLink(ridden, rider *world.EntityHandle, mounted bool) {
+	if ridden == nil || rider == nil {
+		return
+	}
+	riddenID := s.handleRuntimeID(ridden)
+	riderID := s.handleRuntimeID(rider)
+	if riddenID == 0 || riderID == 0 {
+		return
+	}
+	linkType := byte(protocol.EntityLinkRemove)
+	if mounted {
+		linkType = byte(protocol.EntityLinkRider)
+	}
+	s.writePacket(&packet.SetActorLink{EntityLink: protocol.EntityLink{
+		RiddenEntityUniqueID: int64(riddenID),
+		RiderEntityUniqueID:  int64(riderID),
+		Type:                 linkType,
+		RiderInitiated:       true,
+	}})
 }
 
 // ViewEntityGameMode ...
@@ -671,6 +696,10 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType, pk.ExtraData = packet.SoundEventFenceGateOpen, int32(world.BlockRuntimeID(so.Block))
 	case sound.FenceGateClose:
 		pk.SoundType, pk.ExtraData = packet.SoundEventFenceGateClose, int32(world.BlockRuntimeID(so.Block))
+	case sound.PistonIn:
+		pk.SoundType = packet.SoundEventPistonIn
+	case sound.PistonOut:
+		pk.SoundType = packet.SoundEventPistonOut
 	case sound.Deny:
 		pk.SoundType = packet.SoundEventDeny
 	case sound.BlockPlace:
@@ -1173,6 +1202,39 @@ func (s *Session) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	})
 }
 
+// OpenEntityContainer opens an entity-backed container inventory.
+func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx) {
+	if s.containerOpened.Load() {
+		if opened := s.openedEntity.Load(); opened != nil && opened == e.H() {
+			return
+		}
+	}
+	s.closeCurrentContainer(tx)
+
+	if viewer, ok := e.(interface {
+		AddViewer(v block.ContainerViewer)
+	}); ok {
+		viewer.AddViewer(s)
+	}
+
+	nextID := s.nextWindowID()
+	s.containerOpened.Store(true)
+	s.openedWindow.Store(inv)
+	s.openedEntity.Store(e.H())
+	pos := e.Position()
+	openPos := cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
+	s.openedPos.Store(&openPos)
+	s.openedContainerID.Store(uint32(containerType))
+
+	s.writePacket(&packet.ContainerOpen{
+		WindowID:                nextID,
+		ContainerType:           containerType,
+		ContainerPosition:       protocol.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
+		ContainerEntityUniqueID: int64(s.entityRuntimeID(e)),
+	})
+	s.sendInv(inv, uint32(nextID))
+}
+
 // openNormalContainer opens a normal container that can hold items in it server-side.
 func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world.Tx) {
 	b.AddViewer(s, tx, pos) // Paired chests might update the block here.
@@ -1371,7 +1433,55 @@ func (s *Session) closeWindow() {
 	}
 	s.openedContainerID.Store(0)
 	s.openedWindow.Store(inventory.New(1, nil))
+	s.openedEntity.Store(nil)
 	s.writePacket(&packet.ContainerClose{WindowID: byte(s.openedWindowID.Load())})
+}
+
+func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
+	var links []entity.Link
+	if linker, ok := e.(entity.Linker); ok {
+		links = append(links, linker.Links()...)
+	}
+	if rider, ok := e.(entity.Rider); ok {
+		if riding := rider.Riding(); riding != nil {
+			links = append(links, entity.Link{
+				Ridden:         riding,
+				Rider:          e.H(),
+				Type:           entity.LinkRider,
+				RiderInitiated: true,
+			})
+		}
+	}
+	if len(links) == 0 {
+		return nil
+	}
+	out := make([]protocol.EntityLink, 0, len(links))
+	for _, link := range links {
+		if link.Ridden == nil || link.Rider == nil {
+			continue
+		}
+		riddenID := s.handleRuntimeID(link.Ridden)
+		riderID := s.handleRuntimeID(link.Rider)
+		if riddenID == 0 || riderID == 0 {
+			continue
+		}
+		linkType := byte(protocol.EntityLinkRemove)
+		switch link.Type {
+		case entity.LinkRider:
+			linkType = byte(protocol.EntityLinkRider)
+		case entity.LinkPassenger:
+			linkType = byte(protocol.EntityLinkPassenger)
+		}
+		out = append(out, protocol.EntityLink{
+			RiddenEntityUniqueID:   int64(riddenID),
+			RiderEntityUniqueID:    int64(riderID),
+			Type:                   linkType,
+			Immediate:              link.Immediate,
+			RiderInitiated:         link.RiderInitiated,
+			VehicleAngularVelocity: link.VehicleAngularVelocity,
+		})
+	}
+	return out
 }
 
 // entityRuntimeID returns the runtime ID of the entity passed.

@@ -128,6 +128,33 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		m[protocol.EntityDataKeyFuseTime] = int32(t.Fuse().Milliseconds() / 50)
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagIgnited)
 	}
+	if i, ok := e.(igniteable); ok && i.Ignited() {
+		m[protocol.EntityDataKeyFuseTime] = int32(i.FuseTicks())
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagIgnited)
+	}
+	if d, ok := e.(displayTile); ok {
+		m[protocol.EntityDataKeyDisplayTileRuntimeID] = d.DisplayTile()
+		m[protocol.EntityDataKeyDisplayOffset] = int32(d.DisplayOffset())
+		m[protocol.EntityDataKeyCustomDisplay] = byte(boolByte(d.CustomDisplay()))
+	}
+	if c, ok := e.(containerMeta); ok {
+		m[protocol.EntityDataKeyContainerType] = c.ContainerType()
+		m[protocol.EntityDataKeyContainerSize] = c.ContainerSize()
+		m[protocol.EntityDataKeyContainerStrengthModifier] = c.ContainerStrengthModifier()
+	}
+	if h, ok := e.(minecartDamage); ok {
+		m[protocol.EntityDataKeyHurt] = int32(h.RollingAmplitude())
+		m[protocol.EntityDataKeyHurtDirection] = int32(h.RollingDirection())
+		m[protocol.EntityDataKeyStructuralIntegrity] = float32(h.Damage())
+	}
+	if t, ok := e.(interactText); ok {
+		if text := t.InteractText(); text != "" {
+			m[protocol.EntityDataKeyInteractText] = text
+		}
+	}
+	if r, ok := e.(rider); ok && r.Riding() != nil {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRiding)
+	}
 	if ec, ok := e.(endCrystalMeta); ok {
 		if ec.ShowBase() {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShowBottom)
@@ -324,6 +351,11 @@ type tnt interface {
 	Fuse() time.Duration
 }
 
+type igniteable interface {
+	Ignited() bool
+	FuseTicks() int
+}
+
 type living interface {
 	UUID() uuid.UUID
 	DeathPosition() (mgl64.Vec3, world.Dimension, bool)
@@ -340,4 +372,30 @@ type markVariable interface {
 type endCrystalMeta interface {
 	ShowBase() bool
 	BeamTarget() (mgl64.Vec3, bool)
+}
+
+type displayTile interface {
+	DisplayTile() int32
+	DisplayOffset() int
+	CustomDisplay() bool
+}
+
+type containerMeta interface {
+	ContainerType() int32
+	ContainerSize() int32
+	ContainerStrengthModifier() int32
+}
+
+type minecartDamage interface {
+	RollingAmplitude() int
+	RollingDirection() int
+	Damage() float64
+}
+
+type interactText interface {
+	InteractText() string
+}
+
+type rider interface {
+	Riding() *world.EntityHandle
 }

@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
@@ -18,14 +19,14 @@ type PlayerAuthInputHandler struct{}
 // Handle ...
 func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*packet.PlayerAuthInput)
-	if err := h.handleMovement(pk, s, c); err != nil {
+	if err := h.handleMovement(pk, s, tx, c); err != nil {
 		return err
 	}
 	return h.handleActions(pk, s, tx, c)
 }
 
 // handleMovement handles the movement part of the packet.PlayerAuthInput.
-func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Session, c Controllable) error {
+func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Session, tx *world.Tx, c Controllable) error {
 	yaw, pitch := c.Rotation().Elem()
 	pos := c.Position()
 
@@ -46,11 +47,6 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 
 	newPos := vec32To64(pk.Position)
 	deltaPos, deltaYaw, deltaPitch := newPos.Sub(pos), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
-	if mgl64.FloatEqual(deltaPos.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0) {
-		// The PlayerAuthInput packet is sent every tick, so don't do anything if the position and rotation
-		// were unchanged.
-		return nil
-	}
 
 	if expected := s.teleportPos.Load(); expected != nil {
 		if newPos.Sub(*expected).Len() > 1 {
@@ -60,6 +56,24 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 			return nil
 		}
 		s.teleportPos.Store(nil)
+	}
+
+	var ridingHandle *world.EntityHandle
+	if rider, ok := c.(entity.Rider); ok {
+		ridingHandle = rider.Riding()
+	}
+	if ridingHandle != nil {
+		deltaPos = mgl64.Vec3{}
+		if ridden, ok := ridingHandle.Entity(tx); ok {
+			if input, ok := ridden.(entity.VehicleInput); ok {
+				input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
+			}
+		}
+	}
+	if mgl64.FloatEqual(deltaPos.Len(), 0) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0) {
+		// The PlayerAuthInput packet is sent every tick, so don't do anything if the position and rotation
+		// were unchanged.
+		return nil
 	}
 
 	s.moving = true
@@ -79,7 +93,7 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 			return err
 		}
 	}
-	h.handleInputFlags(pk.InputData, s, c)
+	h.handleInputFlags(pk.InputData, s, tx, c)
 
 	if pk.InputData.Load(packet.InputFlagPerformItemStackRequest) {
 		s.inTransaction.Store(true)
@@ -97,7 +111,8 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 }
 
 // handleInputFlags handles the toggleable input flags set in a PlayerAuthInput packet.
-func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.Bitset, s *Session, c Controllable) {
+func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.Bitset, s *Session, tx *world.Tx, c Controllable) {
+	dismountedByJump := h.tryDismount(flags, tx, c)
 	if flags.Load(packet.InputFlagStartSprinting) {
 		c.StartSprinting()
 	}
@@ -122,7 +137,7 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.Bitset, s *Sessi
 	if flags.Load(packet.InputFlagStopGliding) {
 		c.StopGliding()
 	}
-	if flags.Load(packet.InputFlagStartJumping) {
+	if flags.Load(packet.InputFlagStartJumping) && !dismountedByJump {
 		c.Jump()
 	}
 	if flags.Load(packet.InputFlagStartCrawling) {
@@ -147,6 +162,30 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.Bitset, s *Sessi
 	if flags.Load(packet.InputFlagStopFlying) {
 		c.StopFlying()
 	}
+}
+
+func (h PlayerAuthInputHandler) tryDismount(flags protocol.Bitset, tx *world.Tx, c Controllable) bool {
+	if !flags.Load(packet.InputFlagStartSneaking) && !flags.Load(packet.InputFlagStartJumping) {
+		return false
+	}
+	rider, ok := c.(entity.Rider)
+	if !ok {
+		return false
+	}
+	handle := rider.Riding()
+	if handle == nil {
+		return false
+	}
+	dismounted := false
+	if ridden, ok := handle.Entity(tx); ok {
+		if dismountable, ok := ridden.(interface {
+			Dismount(tx *world.Tx, passenger world.Entity)
+		}); ok {
+			dismountable.Dismount(tx, c)
+			dismounted = true
+		}
+	}
+	return dismounted && flags.Load(packet.InputFlagStartJumping)
 }
 
 // handleUseItemData handles the protocol.UseItemTransactionData found in a packet.PlayerAuthInput.

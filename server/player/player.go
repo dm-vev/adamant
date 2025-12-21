@@ -1911,17 +1911,24 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 		return false
 	}
 	i, left := p.HeldItems()
-	usable, ok := i.Item().(item.UsableOnEntity)
-	if !ok {
+	if usable, ok := i.Item().(item.UsableOnEntity); ok {
+		useCtx := p.useContext()
+		if usable.UseOnEntity(e, p.tx, p, useCtx) {
+			p.SwingArm()
+			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
+			p.addNewItem(useCtx)
+		}
 		return true
 	}
-	useCtx := p.useContext()
-	if !usable.UseOnEntity(e, p.tx, p, useCtx) {
+	if interactable, ok := e.(entity.Interactable); ok {
+		useCtx := p.useContext()
+		if interactable.Interact(p.tx, p, useCtx) {
+			p.SwingArm()
+			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
+			p.addNewItem(useCtx)
+		}
 		return true
 	}
-	p.SwingArm()
-	p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
-	p.addNewItem(useCtx)
 	return true
 }
 
@@ -2564,6 +2571,16 @@ func (p *Player) Rotation() cube.Rotation {
 	return p.data.Rot
 }
 
+// Riding returns the entity handle this player is riding, if any.
+func (p *Player) Riding() *world.EntityHandle {
+	return p.data.Riding
+}
+
+// SetRiding updates the entity handle this player is riding.
+func (p *Player) SetRiding(r *world.EntityHandle) {
+	p.data.Riding = r
+}
+
 // Collect makes the player collect the item stack passed, adding it to the inventory. The amount of items that could
 // be added is returned.
 func (p *Player) Collect(s item.Stack) (int, bool) {
@@ -2729,6 +2746,13 @@ func (p *Player) Drop(s item.Stack) int {
 func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	if p.session() != session.Nop {
 		p.session().OpenBlockContainer(pos, tx)
+	}
+}
+
+// OpenEntityContainer opens an entity container, such as a chest minecart.
+func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx) {
+	if p.session() != session.Nop {
+		p.session().OpenEntityContainer(e, inv, containerType, tx)
 	}
 }
 
