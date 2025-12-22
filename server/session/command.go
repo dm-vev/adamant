@@ -1,12 +1,13 @@
 package session
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"golang.org/x/text/language"
-	"math"
 )
 
 // SendCommandOutput sends the output of a command to the player. It will be shown to the caller of the
@@ -141,10 +142,11 @@ func (s *Session) sendAvailableCommands(co Controllable) map[string]map[int]cmd.
 			}
 		}
 		pk.Commands = append(pk.Commands, protocol.Command{
-			Name:          c.Name(),
-			Description:   c.Description(),
-			AliasesOffset: aliasesIndex,
-			Overloads:     overloads,
+			Name:            c.Name(),
+			Description:     c.Description(),
+			AliasesOffset:   aliasesIndex,
+			PermissionLevel: protocol.CommandPermissionLevelAny,
+			Overloads:       overloads,
 		})
 	}
 	pk.DynamicEnums = make([]protocol.DynamicEnum, 0, len(dynamicEnums))
@@ -165,7 +167,7 @@ func (s *Session) sendAvailableCommands(co Controllable) map[string]map[int]cmd.
 				enumValueIndices[opt] = index
 				pk.EnumValues = append(pk.EnumValues, opt)
 			}
-			protoEnum.ValueIndices = append(protoEnum.ValueIndices, uint(index))
+			protoEnum.ValueIndices = append(protoEnum.ValueIndices, index)
 		}
 		pk.Enums = append(pk.Enums, protoEnum)
 	}

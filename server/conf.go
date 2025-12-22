@@ -267,8 +267,6 @@ func (conf Config) New() *Server {
 		srv.registerWorld(dim, w)
 	}
 
-	srv.checkNetIsolation()
-
 	return srv
 }
 
