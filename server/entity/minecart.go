@@ -15,6 +15,7 @@ import (
 const (
 	minecartDefaultMaxSpeed = 0.4
 	minecartDisplayOffset   = 6
+	minecartSeatOffset      = 0.525
 )
 
 var minecartMatrix = [10][2][3]int{
@@ -178,7 +179,7 @@ func (b *MinecartBehaviour) CanRideTarget() bool {
 
 // SeatOffset returns the seat offset for riders.
 func (b *MinecartBehaviour) SeatOffset() mgl32.Vec3 {
-	return mgl32.Vec3{0, 0.35, 0}
+	return mgl32.Vec3{0, float32(minecartSeatOffset), 0}
 }
 
 // SetVehicleInput updates the input used by the minecart.
@@ -319,16 +320,16 @@ func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, 
 	dir, _, _ := block.RailInfo(rail)
 	switch dir {
 	case block.RailAscendingNorth:
-		vel[2] += 0.0078125
-		pos[1] += 1
-	case block.RailAscendingSouth:
-		vel[2] -= 0.0078125
-		pos[1] += 1
-	case block.RailAscendingEast:
 		vel[0] -= 0.0078125
 		pos[1] += 1
-	case block.RailAscendingWest:
+	case block.RailAscendingSouth:
 		vel[0] += 0.0078125
+		pos[1] += 1
+	case block.RailAscendingEast:
+		vel[2] += 0.0078125
+		pos[1] += 1
+	case block.RailAscendingWest:
+		vel[2] -= 0.0078125
 		pos[1] += 1
 	}
 
@@ -564,7 +565,7 @@ func (b *MinecartBehaviour) updatePassenger(e *Ent, tx *world.Tx) {
 		b.passenger = nil
 		return
 	}
-	target := e.data.Pos.Add(mgl64.Vec3{0, 0.35, 0})
+	target := e.data.Pos.Add(mgl64.Vec3{0, minecartSeatOffset, 0})
 	if mover, ok := passenger.(interface {
 		Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64)
 		Position() mgl64.Vec3

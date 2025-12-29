@@ -78,8 +78,9 @@ func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, ctx *UseContext, create fun
 		return false
 	}
 	spawn := pos.Vec3Middle()
+	spawn[1] += 0.0625
 	if ascending {
-		spawn[1]++
+		spawn[1] += 0.5
 	}
 	opts := world.EntitySpawnOpts{Position: spawn}
 	tx.AddEntity(create(opts))
