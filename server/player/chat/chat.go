@@ -32,9 +32,8 @@ func (chat *Chat) Write(p []byte) (n int, err error) {
 
 // WriteString writes a string s to the chat.
 func (chat *Chat) WriteString(s string) (n int, err error) {
-	chat.m.Lock()
-	defer chat.m.Unlock()
-	for _, subscriber := range chat.subscribers {
+	subscribers := chat.snapshotSubscribers()
+	for _, subscriber := range subscribers {
 		subscriber.Message(s)
 	}
 	return len(s), nil
@@ -45,9 +44,8 @@ func (chat *Chat) WriteString(s string) (n int, err error) {
 // of subscribers if they implement Translator. Subscribers that do not
 // implement Translator have the fallback message sent.
 func (chat *Chat) Writet(t Translation, a ...any) {
-	chat.m.Lock()
-	defer chat.m.Unlock()
-	for _, subscriber := range chat.subscribers {
+	subscribers := chat.snapshotSubscribers()
+	for _, subscriber := range subscribers {
 		if translator, ok := subscriber.(Translator); ok {
 			translator.Messaget(t, a...)
 			continue
@@ -61,6 +59,10 @@ func (chat *Chat) Writet(t Translation, a ...any) {
 func (chat *Chat) Subscribe(s Subscriber) {
 	chat.m.Lock()
 	defer chat.m.Unlock()
+	if chat.subscribers == nil {
+		// Chat was closed.
+		return
+	}
 	chat.subscribers[s.UUID()] = s
 }
 
@@ -68,6 +70,9 @@ func (chat *Chat) Subscribe(s Subscriber) {
 func (chat *Chat) Subscribed(s Subscriber) bool {
 	chat.m.Lock()
 	defer chat.m.Unlock()
+	if chat.subscribers == nil {
+		return false
+	}
 	_, ok := chat.subscribers[s.UUID()]
 	return ok
 }
@@ -77,6 +82,10 @@ func (chat *Chat) Subscribed(s Subscriber) bool {
 func (chat *Chat) Unsubscribe(s Subscriber) {
 	chat.m.Lock()
 	defer chat.m.Unlock()
+	if chat.subscribers == nil {
+		// Chat was closed.
+		return
+	}
 	delete(chat.subscribers, s.UUID())
 }
 
@@ -86,4 +95,18 @@ func (chat *Chat) Close() error {
 	chat.subscribers = nil
 	chat.m.Unlock()
 	return nil
+}
+
+// snapshotSubscribers copies the current subscribers so callbacks are invoked without holding the chat lock.
+func (chat *Chat) snapshotSubscribers() []Subscriber {
+	chat.m.Lock()
+	defer chat.m.Unlock()
+	if len(chat.subscribers) == 0 {
+		return nil
+	}
+	subscribers := make([]Subscriber, 0, len(chat.subscribers))
+	for _, subscriber := range chat.subscribers {
+		subscribers = append(subscribers, subscriber)
+	}
+	return subscribers
 }

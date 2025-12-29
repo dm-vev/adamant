@@ -17,6 +17,8 @@ type Scoreboard struct {
 	descending bool
 }
 
+const maxScoreboardLines = 15
+
 // New returns a new scoreboard with the display name passed. Once returned, lines may be added to the
 // scoreboard to add text to it. The name is formatted according to the rules of fmt.Sprintln.
 // Changing the scoreboard after sending it to a player will not update the scoreboard of the player
@@ -33,26 +35,29 @@ func (board *Scoreboard) Name() string {
 // Write writes a slice of data as text to the scoreboard. Newlines may be written to create a new line on
 // the scoreboard.
 func (board *Scoreboard) Write(p []byte) (n int, err error) {
-	return board.WriteString(string(p))
+	if _, err := board.WriteString(string(p)); err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }
 
 // WriteString writes a string of text to the scoreboard. Newlines may be written to create a new line on
 // the scoreboard.
 func (board *Scoreboard) WriteString(s string) (n int, err error) {
 	lines := strings.Split(s, "\n")
-	board.lines = append(board.lines, lines...)
 
 	// Scoreboards can have up to 15 lines. (16 including the title.)
-	if len(board.lines) >= 15 {
-		return len(lines), fmt.Errorf("write scoreboard: maximum of 15 lines of text exceeded")
+	if len(board.lines)+len(lines) > maxScoreboardLines {
+		return 0, fmt.Errorf("write scoreboard: maximum of %d lines of text exceeded", maxScoreboardLines)
 	}
-	return len(lines), nil
+	board.lines = append(board.lines, lines...)
+	return len(s), nil
 }
 
 // Set changes a specific line in the scoreboard and adds empty lines until this index is reached. Set panics if the
 // index passed is negative or 15+.
 func (board *Scoreboard) Set(index int, s string) {
-	if index < 0 || index >= 15 {
+	if index < 0 || index >= maxScoreboardLines {
 		panic(fmt.Sprintf("index out of range %v", index))
 	}
 	if diff := index - (len(board.lines) - 1); diff > 0 {
@@ -64,7 +69,7 @@ func (board *Scoreboard) Set(index int, s string) {
 
 // Remove removes a specific line from the scoreboard. Remove panics if the index passed is negative or 15+.
 func (board *Scoreboard) Remove(index int) {
-	if index < 0 || index >= 15 {
+	if index < 0 || index >= maxScoreboardLines {
 		panic(fmt.Sprintf("index out of range %v", index))
 	}
 	board.lines = append(board.lines[:index], board.lines[index+1:]...)
