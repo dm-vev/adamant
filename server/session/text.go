@@ -70,10 +70,21 @@ func (s *Session) SendToast(title, message string) {
 
 // SendScoreboard ...
 func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
-	if s == Nop {
+	if s == Nop || sb == nil {
 		return
 	}
-	currentName, currentLines := *s.currentScoreboard.Load(), *s.currentLines.Load()
+	currentScoreboard := s.currentScoreboard.Load()
+	currentLinesPtr := s.currentLines.Load()
+	if currentScoreboard == nil || currentLinesPtr == nil {
+		// Ensure scoreboard state is initialized to avoid nil dereferences if the session was not built via New().
+		var name string
+		var lines []string
+		s.currentScoreboard.Store(&name)
+		s.currentLines.Store(&lines)
+		currentScoreboard = &name
+		currentLinesPtr = &lines
+	}
+	currentName, currentLines := *currentScoreboard, *currentLinesPtr
 	name := sb.Name()
 	lines := sb.Lines()
 
