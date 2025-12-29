@@ -11,11 +11,19 @@ import (
 	"time"
 )
 
-func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World) (player.Config, *world.World) {
+func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallbackID uuid.UUID) (player.Config, *world.World) {
 	dim, _ := world.DimensionByID(int(d.Dimension))
 	mode, _ := world.GameModeByID(int(d.GameMode))
+	playerID := fallbackID
+	if d.UUID != "" {
+		parsed, err := uuid.Parse(d.UUID)
+		if err == nil {
+			playerID = parsed
+		}
+	}
 	conf := player.Config{
-		UUID:                uuid.MustParse(d.UUID),
+		// Fall back to the key UUID if the stored data is corrupted.
+		UUID:                playerID,
 		XUID:                d.XUID,
 		Name:                d.Username,
 		Position:            d.Position,

@@ -11,3 +11,4 @@
 - Guarded whitelist enabled flag with locks to avoid races during allow checks.
 - Fixed @p target selection to pick the true nearest player without sorting.
 - Made held slot access atomic and captured inventory slot callbacks to remove concurrent update races.
+- Hardened query token caching and playerdb persistence by pruning tokens, validating UUIDs, and guarding corrupt inventory slots.

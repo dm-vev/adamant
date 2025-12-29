@@ -65,6 +65,10 @@ func encodeItems(items []item.Stack) (encoded []jsonSlot) {
 
 func decodeItems(encoded []jsonSlot, items []item.Stack) {
 	for _, i := range encoded {
+		if i.Slot < 0 || i.Slot >= len(items) {
+			// Skip invalid slots to avoid panics on corrupted data.
+			continue
+		}
 		items[i.Slot] = decodeItem(i.Item)
 	}
 }

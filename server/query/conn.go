@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+const (
+	queryTokenTTL             = 30 * time.Second
+	queryTokenCleanupInterval = 5 * time.Second
+	queryTokenMaxEntries      = 4096
+)
+
 // packetConn intercepts query requests and responds directly while delegating
 // all other traffic to the wrapped PacketConn.
 type packetConn struct {
@@ -19,9 +25,10 @@ type packetConn struct {
 	host string
 	port int
 
-	mu     sync.Mutex
-	tokens map[string]token
-	rng    *rand.Rand
+	mu               sync.Mutex
+	tokens           map[string]token
+	rng              *rand.Rand
+	lastTokenCleanup time.Time
 }
 
 // Logger provides the logging capabilities used by the query implementation.
@@ -32,6 +39,33 @@ type Logger interface {
 type token struct {
 	value  int32
 	expiry time.Time
+}
+
+func (c *packetConn) pruneTokensLocked(now time.Time) {
+	if c.lastTokenCleanup.IsZero() || now.Sub(c.lastTokenCleanup) >= queryTokenCleanupInterval {
+		for addr, token := range c.tokens {
+			if now.After(token.expiry) {
+				delete(c.tokens, addr)
+			}
+		}
+		c.lastTokenCleanup = now
+	}
+}
+
+func (c *packetConn) enforceTokenLimitLocked(keepAddr string) {
+	if len(c.tokens) <= queryTokenMaxEntries {
+		return
+	}
+	// Evict arbitrary entries while keeping the most recent token to bound memory.
+	for addr := range c.tokens {
+		if addr == keepAddr {
+			continue
+		}
+		delete(c.tokens, addr)
+		if len(c.tokens) <= queryTokenMaxEntries {
+			return
+		}
+	}
 }
 
 // ReadFrom inspects incoming datagrams and filters out query packets so that
@@ -83,6 +117,8 @@ func (c *packetConn) handleQuery(b []byte, addr net.Addr) bool {
 // newToken issues a temporary token for the provided address. The token is
 // required by the query protocol to guard against amplification attacks.
 func (c *packetConn) newToken(addr string) int32 {
+	now := time.Now()
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -90,24 +126,31 @@ func (c *packetConn) newToken(addr string) int32 {
 		c.tokens = make(map[string]token)
 	}
 	if c.rng == nil {
-		c.rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+		c.rng = rand.New(rand.NewSource(now.UnixNano()))
 	}
+	c.pruneTokensLocked(now)
+
 	value := int32(c.rng.Int31())
 	c.tokens[addr] = token{
 		value:  value,
-		expiry: time.Now().Add(30 * time.Second),
+		expiry: now.Add(queryTokenTTL),
 	}
+	c.enforceTokenLimitLocked(addr)
 	return value
 }
 
 // validateToken checks whether a previously issued token remains valid for the
 // provided address.
 func (c *packetConn) validateToken(addr string, value int32) bool {
+	now := time.Now()
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	c.pruneTokensLocked(now)
+
 	token, ok := c.tokens[addr]
-	if !ok || time.Now().After(token.expiry) || token.value != value {
+	if !ok || now.After(token.expiry) || token.value != value {
 		delete(c.tokens, addr)
 		return false
 	}

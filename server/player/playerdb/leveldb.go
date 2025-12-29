@@ -20,8 +20,8 @@ type Provider struct {
 // NewProvider creates a new player data provider that saves and loads data using
 // a LevelDB database.
 func NewProvider(path string) (*Provider, error) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		_ = os.Mkdir(path, 0777)
+	if err := os.MkdirAll(path, 0777); err != nil {
+		return nil, err
 	}
 	db, err := leveldb.OpenFile(path, &opt.Options{Compression: opt.SnappyCompression})
 	if err != nil {
@@ -50,7 +50,7 @@ func (p *Provider) Load(id uuid.UUID, world func(world.Dimension) *world.World) 
 	if err != nil {
 		return player.Config{}, nil, err
 	}
-	conf, w := p.fromJson(d, world)
+	conf, w := p.fromJson(d, world, id)
 
 	return conf, w, nil
 }
