@@ -31,3 +31,5 @@
 - Guarded session shutdown and chunk-radius handling when loaders or handles are uninitialised to prevent nil-pointer panics during early disconnects.
 - Hardened NBT item damage encoding to avoid panics on unexpected numeric types and preserve existing damage tags.
 - Guarded scoreboard sends for Nop/uninitialised sessions to prevent nil pointer panics.
+- Avoided inventory merge deadlocks with ordered locks and cloned slot snapshots.
+- Moved command origin tracking to an atomic session field to avoid races and keep command output correlated with the latest request.

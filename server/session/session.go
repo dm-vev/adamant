@@ -41,6 +41,9 @@ type Session struct {
 	handlers map[uint32]packetHandler
 	packets  chan packet.Packet
 
+	// commandOrigin holds the last command origin so output can match request metadata.
+	commandOrigin atomic.Pointer[protocol.CommandOrigin]
+
 	currentScoreboard atomic.Pointer[string]
 	currentLines      atomic.Pointer[[]string]
 
@@ -219,6 +222,8 @@ func (conf Config) New(conn Conn) *Session {
 	var scoreboardLines []string
 	s.currentScoreboard.Store(&scoreboardName)
 	s.currentLines.Store(&scoreboardLines)
+	var origin protocol.CommandOrigin
+	s.commandOrigin.Store(&origin)
 
 	s.registerHandlers()
 	s.sendBiomes()
