@@ -7,3 +7,6 @@
 - Fixed scoreboard state tracking to remove stale entries and corrected lightning height checks to use X/Z coordinates.
 - Added locks and snapshotting for creative items/groups and recipe registries to prevent concurrent access races.
 - Added registry locks for items, enchantments, effects, and biomes; rebuilt biome runtime caches safely and replaced unsafe hash encoding with deterministic byte writes.
+- Guarded player lookups by name/XUID with locks to prevent map races and removed unnecessary allocations; fixed lightning entity height comparisons.
+- Guarded whitelist enabled flag with locks to avoid races during allow checks.
+- Fixed @p target selection to pick the true nearest player without sorting.

@@ -55,7 +55,10 @@ func (w *Whitelist) Enabled() bool {
 	if w == nil {
 		return false
 	}
-	return w.enabled
+	w.mu.RLock()
+	enabled := w.enabled
+	w.mu.RUnlock()
+	return enabled
 }
 
 // SetEnabled updates whether the whitelist is enforced.
@@ -63,21 +66,31 @@ func (w *Whitelist) SetEnabled(enabled bool) {
 	if w == nil {
 		return
 	}
+	w.mu.Lock()
 	w.enabled = enabled
+	w.mu.Unlock()
 }
 
 // Allow implements the Allower interface, allowing players to join only if the whitelist is enabled and contains their
 // name.
 func (w *Whitelist) Allow(_ net.Addr, d login.IdentityData, _ login.ClientData) (string, bool) {
-	if w == nil || !w.enabled {
+	if w == nil {
 		return "", true
-	}
-	name := strings.TrimSpace(d.DisplayName)
-	if name == "" {
-		return "You are not whitelisted on this server.", false
 	}
 
 	w.mu.RLock()
+	enabled := w.enabled
+	if !enabled {
+		w.mu.RUnlock()
+		return "", true
+	}
+
+	name := strings.TrimSpace(d.DisplayName)
+	if name == "" {
+		w.mu.RUnlock()
+		return "You are not whitelisted on this server.", false
+	}
+
 	_, ok := w.players[normalizeName(name)]
 	w.mu.RUnlock()
 	if !ok {

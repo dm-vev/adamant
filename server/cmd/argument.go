@@ -8,7 +8,6 @@ import (
 	"math/rand/v2"
 	"reflect"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -277,18 +276,19 @@ func (p parser) parseTargets(line *Line, tx *world.Tx) ([]Target, error) {
 	}
 	switch first[:min(len(first), 2)] {
 	case "@p":
-		pos := line.src.Position()
-		playerDistances := make([]float64, len(players))
-		for i, p := range players {
-			playerDistances[i] = p.Position().Sub(pos).Len()
-		}
-		sort.Slice(players, func(i, j int) bool {
-			return playerDistances[i] < playerDistances[j]
-		})
 		if len(players) == 0 {
 			return nil, nil
 		}
-		return sliceutil.Convert[Target](players[0:1]), nil
+		pos := line.src.Position()
+		nearest := players[0]
+		nearestDistance := nearest.Position().Sub(pos).Len()
+		for _, p := range players[1:] {
+			if distance := p.Position().Sub(pos).Len(); distance < nearestDistance {
+				nearest = p
+				nearestDistance = distance
+			}
+		}
+		return []Target{nearest}, nil
 	case "@e":
 		return entities, nil
 	case "@a":
