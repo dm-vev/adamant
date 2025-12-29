@@ -12,3 +12,5 @@
 - Fixed @p target selection to pick the true nearest player without sorting.
 - Made held slot access atomic and captured inventory slot callbacks to remove concurrent update races.
 - Hardened query token caching and playerdb persistence by pruning tokens, validating UUIDs, and guarding corrupt inventory slots.
+- Guarded session chunk radius with atomic access and clamped client values to safe bounds to prevent races and overflowed view distances.
+- Tracked placeholder chunks after provider load errors to avoid mutating untracked columns and losing world changes.

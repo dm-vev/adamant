@@ -1531,6 +1531,11 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// To avoid deadlocks, return a ready empty column and the error.
 		col := newColumn(chunk.New(airRID, w.Range()))
 		col.markReady()
+		// Keep the placeholder column tracked so callers don't mutate an untracked chunk on errors.
+		if _, ok := w.chunks[pos]; !ok {
+			w.chunkCount.Add(1)
+		}
+		w.chunks[pos] = col
 		return col, err
 	}
 }

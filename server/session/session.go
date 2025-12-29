@@ -44,8 +44,10 @@ type Session struct {
 	currentScoreboard atomic.Pointer[string]
 	currentLines      atomic.Pointer[[]string]
 
-	chunkLoader                 *world.Loader
-	chunkRadius, maxChunkRadius int32
+	chunkLoader *world.Loader
+	// chunkRadius is updated by packet handlers while the background tick reads it.
+	chunkRadius    atomic.Int32
+	maxChunkRadius int32
 
 	emoteChatMuted bool
 
@@ -165,8 +167,18 @@ type Config struct {
 
 func (conf Config) New(conn Conn) *Session {
 	r := conn.ChunkRadius()
-	if r > conf.MaxChunkRadius {
-		r = conf.MaxChunkRadius
+	requestedRadius := r
+	maxChunkRadius := conf.MaxChunkRadius
+	if maxChunkRadius < 0 {
+		maxChunkRadius = 0
+	}
+	if r < 0 {
+		r = 0
+	}
+	if r > maxChunkRadius {
+		r = maxChunkRadius
+	}
+	if r != requestedRadius {
 		_ = conn.WritePacket(&packet.ChunkRadiusUpdated{ChunkRadius: int32(r)})
 	}
 	if conf.Log == nil {
@@ -184,8 +196,7 @@ func (conf Config) New(conn Conn) *Session {
 		entities:               map[uint64]*world.EntityHandle{},
 		hiddenEntities:         map[uuid.UUID]struct{}{},
 		blobs:                  map[uint64][]byte{},
-		chunkRadius:            int32(r),
-		maxChunkRadius:         int32(conf.MaxChunkRadius),
+		maxChunkRadius:         int32(maxChunkRadius),
 		emoteChatMuted:         conf.EmoteChatMuted,
 		conn:                   conn,
 		currentEntityRuntimeID: 1,
@@ -198,6 +209,7 @@ func (conf Config) New(conn Conn) *Session {
 		debugShapesAdd:         make(chan debug.Shape, 256),
 		debugShapesRemove:      make(chan int, 256),
 	}
+	s.chunkRadius.Store(int32(r))
 	s.openedWindow.Store(inventory.New(1, nil))
 	s.openedPos.Store(&cube.Pos{})
 
@@ -245,11 +257,12 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	s.SendFood(c.Food(), 0, 0)
 
 	pos := c.Position()
-	s.chunkLoader = world.NewLoader(int(s.chunkRadius), tx.World(), s)
+	chunkRadius := s.chunkRadius.Load()
+	s.chunkLoader = world.NewLoader(int(chunkRadius), tx.World(), s)
 	s.chunkLoader.Move(tx, pos)
 	s.writePacket(&packet.NetworkChunkPublisherUpdate{
 		Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		Radius:   uint32(s.chunkRadius) << 4,
+		Radius:   uint32(chunkRadius) << 4,
 	})
 
 	s.sendAvailableEntities(tx.World())
@@ -417,10 +430,11 @@ func (s *Session) sendChunks(tx *world.Tx, c Controllable) {
 		s.handleWorldSwitch(w, tx, c)
 	}
 	pos := c.Position()
+	chunkRadius := s.chunkRadius.Load()
 	s.chunkLoader.Move(tx, pos)
 	s.writePacket(&packet.NetworkChunkPublisherUpdate{
 		Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		Radius:   uint32(s.chunkRadius) << 4,
+		Radius:   uint32(chunkRadius) << 4,
 	})
 
 	s.blobMu.Lock()
