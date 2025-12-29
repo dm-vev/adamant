@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/df-mc/dragonfly/server/item"
 	"math"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -296,13 +297,28 @@ func (inv *Inventory) ContainsItemFunc(n int, comparable func(stack item.Stack) 
 
 // Merge merges two inventories into one. The function passed is called for every slot change in the new inventory.
 func (inv *Inventory) Merge(inv2 *Inventory, f func(int, item.Stack, item.Stack)) *Inventory {
-	inv.mu.RLock()
-	defer inv.mu.RUnlock()
-	inv2.mu.RLock()
-	defer inv2.mu.RUnlock()
+	if inv == inv2 {
+		// Avoid self-deadlocks and return a stable snapshot of the inventory.
+		inv.mu.RLock()
+		defer inv.mu.RUnlock()
+
+		n := New(len(inv.slots), f)
+		n.slots = slices.Clone(inv.slots)
+		return n
+	}
+
+	// Lock inventories in a stable order to avoid deadlocks when multiple merges happen concurrently.
+	first, second := inv, inv2
+	if reflect.ValueOf(first).Pointer() > reflect.ValueOf(second).Pointer() {
+		first, second = second, first
+	}
+	first.mu.RLock()
+	second.mu.RLock()
+	defer second.mu.RUnlock()
+	defer first.mu.RUnlock()
 
 	n := New(len(inv.slots)+len(inv2.slots), f)
-	n.slots = append(inv.slots, inv2.slots...)
+	n.slots = append(slices.Clone(inv.slots), inv2.slots...)
 	return n
 }
 
