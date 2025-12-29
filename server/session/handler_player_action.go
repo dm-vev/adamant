@@ -29,11 +29,15 @@ func handlePlayerAction(action int32, face int32, pos protocol.BlockPos, entityR
 	case protocol.PlayerActionStopSleeping:
 		c.Wake()
 	case protocol.PlayerActionStartBreak, protocol.PlayerActionContinueDestroyBlock:
+		blockFace, err := parseBlockFace(face)
+		if err != nil {
+			return err
+		}
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
 
 		s.breakingPos = cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
-		c.StartBreaking(s.breakingPos, cube.Face(face))
+		c.StartBreaking(s.breakingPos, blockFace)
 	case protocol.PlayerActionAbortBreak:
 		c.AbortBreaking()
 	case protocol.PlayerActionPredictDestroyBlock, protocol.PlayerActionStopBreak:

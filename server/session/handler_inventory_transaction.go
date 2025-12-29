@@ -189,7 +189,11 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *protocol.Us
 	case protocol.UseItemActionBreakBlock:
 		c.BreakBlock(pos)
 	case protocol.UseItemActionClickBlock:
-		c.UseItemOnBlock(pos, cube.Face(data.BlockFace), vec32To64(data.ClickedPosition))
+		face, err := parseBlockFace(data.BlockFace)
+		if err != nil {
+			return err
+		}
+		c.UseItemOnBlock(pos, face, vec32To64(data.ClickedPosition))
 	case protocol.UseItemActionClickAir:
 		c.UseItem()
 	default:
