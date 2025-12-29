@@ -72,6 +72,10 @@ func (board *Scoreboard) Remove(index int) {
 	if index < 0 || index >= maxScoreboardLines {
 		panic(fmt.Sprintf("index out of range %v", index))
 	}
+	if index >= len(board.lines) {
+		// No line exists at this index yet, so there is nothing to remove.
+		return
+	}
 	board.lines = append(board.lines[:index], board.lines[index+1:]...)
 }
 

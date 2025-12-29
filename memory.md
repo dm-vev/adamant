@@ -23,3 +23,6 @@
 - Reworked pathfinding node storage to use stable pointers and heap fixes, preventing invalid heap references during path expansion.
 - Fixed instant-break checks to use a baseline haste multiplier and corrected lightning fire spread offsets.
 - Hardened trace traversal and recipe/command/custom block registries against external mutation and zero-length ray crashes.
+
+- Bounded pmgen population concurrency to prevent goroutine growth and fixed paletted storage equality for empty or nil palettes.
+- Guarded scoreboard line removal to avoid panics when removing a non-existent line.
