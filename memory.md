@@ -16,3 +16,4 @@
 - Tracked placeholder chunks after provider load errors to avoid mutating untracked columns and losing world changes.
 
 - Hardened AI scheduler shutdown, ensured brain in-flight resets on panic, cleared inventory state/handlers on close, and constrained slice deletes to comparable types.
+- Validated item stack request result slots, creative item IDs, and anvil rename indices to avoid out-of-range panics.

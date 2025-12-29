@@ -279,7 +279,8 @@ func (h *ItemStackRequestHandler) handleMineBlock(a *protocol.MineBlockStackRequ
 // output as usual.
 func (h *ItemStackRequestHandler) handleCreate(a *protocol.CreateStackRequestAction, s *Session, tx *world.Tx) error {
 	slot := int(a.ResultsSlot)
-	if len(h.pendingResults) < slot {
+	if slot < 0 || slot >= len(h.pendingResults) {
+		// ResultsSlot is client-controlled; reject out-of-range values to avoid panics.
 		return fmt.Errorf("invalid pending result slot: %v", a.ResultsSlot)
 	}
 

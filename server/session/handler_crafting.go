@@ -155,11 +155,15 @@ func (h *ItemStackRequestHandler) handleCreativeCraft(a *protocol.CraftCreativeS
 	if !c.GameMode().CreativeInventory() {
 		return fmt.Errorf("can only craft creative items in gamemode creative/spectator")
 	}
-	index := a.CreativeItemNetworkID - 1
-	if int(index) >= len(creative.Items()) {
-		return fmt.Errorf("creative item with network ID %v does not exist", index)
+	items := creative.Items()
+	if a.CreativeItemNetworkID == 0 {
+		return fmt.Errorf("creative item network ID must be at least 1")
 	}
-	it := creative.Items()[index].Stack
+	index := a.CreativeItemNetworkID - 1
+	if index >= uint32(len(items)) {
+		return fmt.Errorf("creative item with network ID %v does not exist", a.CreativeItemNetworkID)
+	}
+	it := items[int(index)].Stack
 	it = it.Grow(it.MaxCount() - 1)
 	return h.createResults(s, tx, it)
 }

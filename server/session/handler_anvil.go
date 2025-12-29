@@ -31,8 +31,14 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRec
 		return fmt.Errorf("no anvil container opened")
 	}
 	hasRename := len(filterStrings) > 0
-	if hasRename && a.FilterStringIndex >= uint32(len(filterStrings)) {
-		return fmt.Errorf("filter string index %v is out of bounds", a.FilterStringIndex)
+	renameIndex := -1
+	if hasRename {
+		// Guard against client-provided indexes that would otherwise panic when slicing.
+		index := int64(a.FilterStringIndex)
+		if index < 0 || index >= int64(len(filterStrings)) {
+			return fmt.Errorf("filter string index %v is out of bounds", a.FilterStringIndex)
+		}
+		renameIndex = int(index)
 	}
 
 	input, _ := h.itemInSlot(protocol.StackRequestSlotInfo{
@@ -96,7 +102,7 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRec
 	if hasRename {
 		renameCost = 1
 		actionCost += renameCost
-		result = result.WithCustomName(filterStrings[int(a.FilterStringIndex)])
+		result = result.WithCustomName(filterStrings[renameIndex])
 	}
 
 	// Calculate the total cost. (action cost + anvil cost)
