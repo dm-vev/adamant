@@ -1,9 +1,14 @@
 package effect
 
+import "sync"
+
 // Register registers an Effect with a specific ID to translate from and to on disk and network. An Effect
 // instance may be created by creating a struct instance in this package like
 // effect.regeneration{}.
 func Register(id int, e Type) {
+	effectMu.Lock()
+	defer effectMu.Unlock()
+
 	effects[id] = e
 	effectIds[e] = id
 }
@@ -43,6 +48,7 @@ func init() {
 }
 
 var (
+	effectMu  sync.RWMutex
 	effects   = map[int]Type{}
 	effectIds = map[Type]int{}
 )
@@ -50,6 +56,9 @@ var (
 // ByID attempts to return an effect by the ID it was registered with. If found, the effect found
 // is returned and the bool true.
 func ByID(id int) (Type, bool) {
+	effectMu.RLock()
+	defer effectMu.RUnlock()
+
 	effect, ok := effects[id]
 	return effect, ok
 }
@@ -57,6 +66,9 @@ func ByID(id int) (Type, bool) {
 // ID attempts to return the ID an effect was registered with. If found, the id is returned and
 // the bool true.
 func ID(e Type) (int, bool) {
+	effectMu.RLock()
+	defer effectMu.RUnlock()
+
 	id, ok := effectIds[e]
 	return id, ok
 }

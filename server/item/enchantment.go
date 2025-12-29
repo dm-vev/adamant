@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"sort"
+	"sync"
 )
 
 // Enchantment is an enchantment that can be applied to a Stack. It holds an EnchantmentType and level that influences
@@ -63,11 +64,15 @@ type Enchantable interface {
 // RegisterEnchantment registers an enchantment with the ID passed. Once registered, enchantments may be received
 // by instantiating an EnchantmentType struct (e.g. enchantment.Protection{})
 func RegisterEnchantment(id int, enchantment EnchantmentType) {
+	enchantmentMu.Lock()
+	defer enchantmentMu.Unlock()
+
 	enchantmentsMap[id] = enchantment
 	enchantmentIDs[enchantment] = id
 }
 
 var (
+	enchantmentMu   sync.RWMutex
 	enchantmentsMap = map[int]EnchantmentType{}
 	enchantmentIDs  = map[EnchantmentType]int{}
 )
@@ -75,6 +80,9 @@ var (
 // EnchantmentByID attempts to return an enchantment by the ID it was registered with. If found, the enchantment found
 // is returned and the bool true.
 func EnchantmentByID(id int) (EnchantmentType, bool) {
+	enchantmentMu.RLock()
+	defer enchantmentMu.RUnlock()
+
 	e, ok := enchantmentsMap[id]
 	return e, ok
 }
@@ -82,17 +90,25 @@ func EnchantmentByID(id int) (EnchantmentType, bool) {
 // EnchantmentID attempts to return the ID the enchantment was registered with. If found, the id is returned and
 // the bool true.
 func EnchantmentID(e EnchantmentType) (int, bool) {
+	enchantmentMu.RLock()
+	defer enchantmentMu.RUnlock()
+
 	id, ok := enchantmentIDs[e]
 	return id, ok
 }
 
 // Enchantments returns a slice of all registered enchantments.
 func Enchantments() []EnchantmentType {
+	enchantmentMu.RLock()
 	e := slices.Collect(maps.Values(enchantmentsMap))
+	ids := make(map[EnchantmentType]int, len(e))
+	for _, enchantment := range e {
+		ids[enchantment] = enchantmentIDs[enchantment]
+	}
+	enchantmentMu.RUnlock()
+
 	sort.Slice(e, func(i, j int) bool {
-		id1, _ := EnchantmentID(e[i])
-		id2, _ := EnchantmentID(e[j])
-		return id1 < id2
+		return ids[e[i]] < ids[e[j]]
 	})
 	return e
 }

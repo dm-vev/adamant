@@ -3,6 +3,7 @@ package world
 import (
 	"bytes"
 	_ "embed"
+	"encoding/binary"
 	"fmt"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
@@ -11,7 +12,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"unsafe"
 )
 
 var (
@@ -171,8 +171,9 @@ func hashProperties(properties map[string]any) string {
 		case uint8:
 			b.WriteByte(v)
 		case int32:
-			a := *(*[4]byte)(unsafe.Pointer(&v))
-			b.Write(a[:])
+			var buf [4]byte
+			binary.LittleEndian.PutUint32(buf[:], uint32(v))
+			b.Write(buf[:])
 		case string:
 			b.WriteString(v)
 		default:

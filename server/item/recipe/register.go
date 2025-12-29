@@ -1,6 +1,7 @@
 package recipe
 
 import (
+	"encoding/binary"
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -8,7 +9,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"unsafe"
 )
 
 // recipes is a list of each recipe.
@@ -123,8 +123,9 @@ func hashItems(items []world.Item, useMeta bool) string {
 		name, meta := it.EncodeItem()
 		b.WriteString(name)
 		if useMeta {
-			a := *(*[2]byte)(unsafe.Pointer(&meta))
-			b.Write(a[:])
+			var buf [2]byte
+			binary.LittleEndian.PutUint16(buf[:], uint16(meta))
+			b.Write(buf[:])
 		}
 	}
 	return b.String()

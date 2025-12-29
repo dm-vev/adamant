@@ -1,6 +1,9 @@
 package world
 
-import "image/color"
+import (
+	"image/color"
+	"sync"
+)
 
 // Biome is a region in a world with distinct geographical features, flora, temperatures, humidity ratings,
 // and sky, water, grass and foliage colours.
@@ -25,34 +28,50 @@ type Biome interface {
 
 // biomes holds a map of id => Biome to be used for looking up the biome by an ID. It is registered
 // to when calling RegisterBiome.
-var biomes = map[int]Biome{}
+var (
+	biomeMu sync.RWMutex
+	biomes  = map[int]Biome{}
 
-var biomeByName = map[string]Biome{}
+	biomeByName = map[string]Biome{}
+)
 
 // RegisterBiome registers a biome to the map so that it can be saved and loaded with the world.
 func RegisterBiome(b Biome) {
+	biomeMu.Lock()
+	defer biomeMu.Unlock()
+
 	id := b.EncodeBiome()
 	if _, ok := biomes[id]; ok {
 		panic("cannot register the same biome (" + b.String() + ") twice")
 	}
 	biomes[id] = b
 	biomeByName[b.String()] = b
+	biomeRuntimeReady = false
 }
 
 // BiomeByID looks up a biome by the ID and returns it if found.
 func BiomeByID(id int) (Biome, bool) {
+	biomeMu.RLock()
+	defer biomeMu.RUnlock()
+
 	e, ok := biomes[id]
 	return e, ok
 }
 
 // BiomeByName looks up a biome by the name and returns it if found.
 func BiomeByName(name string) (Biome, bool) {
+	biomeMu.RLock()
+	defer biomeMu.RUnlock()
+
 	e, ok := biomeByName[name]
 	return e, ok
 }
 
 // Biomes returns a slice of all registered biomes.
 func Biomes() []Biome {
+	biomeMu.RLock()
+	defer biomeMu.RUnlock()
+
 	bs := make([]Biome, 0, len(biomes))
 	for _, b := range biomes {
 		bs = append(bs, b)

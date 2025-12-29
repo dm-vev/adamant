@@ -6,6 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/item/category"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"image"
+	"slices"
+	"sync"
 )
 
 // Item represents an item that may be added to an inventory. It has a method to encode the item to an ID and
@@ -32,6 +34,9 @@ type CustomItem interface {
 // ID and metadata value using itemByID().
 // If an item with the ID and meta passed already exists, RegisterItem panics.
 func RegisterItem(item Item) {
+	itemMu.Lock()
+	defer itemMu.Unlock()
+
 	name, meta := item.EncodeItem()
 	h := itemHash{name: name, meta: meta}
 
@@ -60,6 +65,8 @@ type itemHash struct {
 var (
 	//go:embed vanilla_items.nbt
 	itemRuntimeIDData []byte
+	// itemMu protects all item registry maps and slices.
+	itemMu sync.RWMutex
 	// items holds a list of all registered items, indexed using the itemHash created when calling
 	// Item.EncodeItem.
 	items = map[itemHash]Item{}
@@ -91,6 +98,9 @@ func init() {
 
 // ItemByName attempts to return an item by a name and a metadata value.
 func ItemByName(name string, meta int16) (Item, bool) {
+	itemMu.RLock()
+	defer itemMu.RUnlock()
+
 	it, ok := items[itemHash{name: name, meta: meta}]
 	if !ok {
 		// Also try obtaining the item with a metadata value of 0, for cases with durability.
@@ -103,14 +113,18 @@ func ItemByName(name string, meta int16) (Item, bool) {
 // registered.
 func ItemRuntimeID(i Item) (rid int32, meta int16, ok bool) {
 	name, meta := i.EncodeItem()
+	itemMu.RLock()
 	rid, ok = itemNamesToRuntimeIDs[name]
+	itemMu.RUnlock()
 	return rid, meta, ok
 }
 
 // ItemByRuntimeID attempts to return an Item by the runtime ID passed. If no item with that runtime ID exists,
 // false is returned. ItemByRuntimeID also tries to find the item with a metadata value of 0.
 func ItemByRuntimeID(rid int32, meta int16) (Item, bool) {
+	itemMu.RLock()
 	name, ok := itemRuntimeIDsToNames[rid]
+	itemMu.RUnlock()
 	if !ok {
 		return nil, false
 	}
@@ -119,6 +133,9 @@ func ItemByRuntimeID(rid int32, meta int16) (Item, bool) {
 
 // Items returns a slice of all registered items.
 func Items() []Item {
+	itemMu.RLock()
+	defer itemMu.RUnlock()
+
 	m := make([]Item, 0, len(items))
 	for _, i := range items {
 		m = append(m, i)
@@ -128,5 +145,7 @@ func Items() []Item {
 
 // CustomItems returns a slice of all registered custom items.
 func CustomItems() []CustomItem {
-	return customItems
+	itemMu.RLock()
+	defer itemMu.RUnlock()
+	return slices.Clone(customItems)
 }
