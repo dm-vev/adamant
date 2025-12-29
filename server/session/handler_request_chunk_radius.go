@@ -21,7 +21,10 @@ func (*RequestChunkRadiusHandler) Handle(p packet.Packet, s *Session, tx *world.
 	}
 	s.chunkRadius.Store(chunkRadius)
 
-	s.chunkLoader.ChangeRadius(tx, int(chunkRadius))
+	// The chunk loader is initialised during Spawn, so it may be nil early on.
+	if s.chunkLoader != nil {
+		s.chunkLoader.ChangeRadius(tx, int(chunkRadius))
+	}
 
 	s.writePacket(&packet.ChunkRadiusUpdated{ChunkRadius: chunkRadius})
 	return nil

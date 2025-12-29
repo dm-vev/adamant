@@ -26,3 +26,6 @@
 
 - Bounded pmgen population concurrency to prevent goroutine growth and fixed paletted storage equality for empty or nil palettes.
 - Guarded scoreboard line removal to avoid panics when removing a non-existent line.
+- Fixed chest unpairing to use fresh viewer locks/maps for cloned inventories, keeping callbacks in sync after separation.
+- Clamped query HostPort to safe bounds to avoid wrapping invalid ports.
+- Guarded session shutdown and chunk-radius handling when loaders or handles are uninitialised to prevent nil-pointer panics during early disconnects.

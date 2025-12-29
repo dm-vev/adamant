@@ -306,14 +306,18 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 	c.MoveItemsToInventory()
 	s.closeCurrentContainer(tx)
 
-	s.conf.HandleStop(tx, c)
+	if s.conf.HandleStop != nil {
+		s.conf.HandleStop(tx, c)
+	}
 
 	// Clear the inventories so that they no longer hold references to the connection.
 	_ = s.inv.Close()
 	_ = s.offHand.Close()
 	_ = s.armour.Close()
 
-	s.chunkLoader.Close(tx)
+	if s.chunkLoader != nil {
+		s.chunkLoader.Close(tx)
+	}
 
 	if !s.conf.QuitMessage.Zero() {
 		chat.Global.Writet(s.conf.QuitMessage, s.conn.IdentityData().DisplayName)
@@ -323,15 +327,19 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 	// Note: Be aware of where RemoveEntity is called. This must not be done too
 	// early.
 	tx.RemoveEntity(c)
-	_ = s.ent.Close()
+	if s.ent != nil {
+		_ = s.ent.Close()
+	}
 
 	// This should always be called last due to the timing of the removal of
 	// entity runtime IDs.
-	sessions.Remove(s)
-	s.entityMutex.Lock()
-	clear(s.entityRuntimeIDs)
-	clear(s.entities)
-	s.entityMutex.Unlock()
+	if s.ent != nil {
+		sessions.Remove(s)
+		s.entityMutex.Lock()
+		clear(s.entityRuntimeIDs)
+		clear(s.entities)
+		s.entityMutex.Unlock()
+	}
 }
 
 // CloseConnection closes the underlying connection of the session so that the session ends up being closed
