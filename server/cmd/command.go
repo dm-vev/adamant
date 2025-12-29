@@ -61,6 +61,8 @@ type Command struct {
 // is not a struct or a pointer to a struct, New panics.
 func New(name, description string, aliases []string, r ...Runnable) Command {
 	name = strings.ToLower(name)
+	// Copy the alias list before normalising so callers don't observe mutations.
+	aliases = slices.Clone(aliases)
 	for i, alias := range aliases {
 		aliases[i] = strings.ToLower(alias)
 	}
@@ -113,7 +115,7 @@ func (cmd Command) Usage() string {
 // Aliases returns a list of aliases for the command. In addition to the name of the command, the command may
 // be called using one of these aliases.
 func (cmd Command) Aliases() []string {
-	return cmd.aliases
+	return slices.Clone(cmd.aliases)
 }
 
 // Execute executes the Command as a source with the args passed. The args are parsed assuming they do not

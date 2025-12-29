@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/customblock"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"image"
+	"maps"
 	"math"
 	"math/bits"
 	"math/rand/v2"
@@ -228,7 +229,7 @@ func Blocks() []Block {
 
 // CustomBlocks returns a map of all custom blocks registered with their names as keys.
 func CustomBlocks() map[string]CustomBlock {
-	return customBlocks
+	return maps.Clone(customBlocks)
 }
 
 // air returns an air block.

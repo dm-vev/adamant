@@ -1,6 +1,8 @@
 package recipe
 
 import (
+	"slices"
+
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -38,7 +40,7 @@ type Shapeless struct {
 // player's inventory.
 func NewShapeless(input []Item, output item.Stack, block string) Shapeless {
 	return Shapeless{recipe: recipe{
-		input:  input,
+		input:  slices.Clone(input),
 		output: []item.Stack{output},
 		block:  block,
 	}}
@@ -130,7 +132,7 @@ func NewShaped(input []Item, output item.Stack, shape Shape, block string) Shape
 	return Shaped{
 		shape: shape,
 		recipe: recipe{
-			input:  input,
+			input:  slices.Clone(input),
 			output: []item.Stack{output},
 			block:  block,
 		},
@@ -158,12 +160,12 @@ type recipe struct {
 
 // Input ...
 func (r recipe) Input() []Item {
-	return r.input
+	return slices.Clone(r.input)
 }
 
 // Output ...
 func (r recipe) Output() []item.Stack {
-	return r.output
+	return slices.Clone(r.output)
 }
 
 // Block ...

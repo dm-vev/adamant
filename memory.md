@@ -21,3 +21,5 @@
 - Reused existing entity runtime IDs for all entities and backfilled runtime maps to prevent duplicate IDs and stale lookups.
 - Validated client block faces and loom banner pattern IDs to avoid panics; defaulted corrupted banner pattern NBT safely; guarded scoreboard removal for Nop sessions.
 - Reworked pathfinding node storage to use stable pointers and heap fixes, preventing invalid heap references during path expansion.
+- Fixed instant-break checks to use a baseline haste multiplier and corrected lightning fire spread offsets.
+- Hardened trace traversal and recipe/command/custom block registries against external mutation and zero-length ray crashes.
