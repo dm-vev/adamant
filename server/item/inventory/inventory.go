@@ -403,6 +403,9 @@ func (inv *Inventory) Close() error {
 
 	inv.check()
 	inv.f = func(int, item.Stack, item.Stack) {}
+	inv.h = NopHandler{}
+	// Clear slots without invoking callbacks; closed inventories should not emit events.
+	clear(inv.slots)
 	return nil
 }
 

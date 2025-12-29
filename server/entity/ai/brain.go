@@ -72,9 +72,10 @@ func (b *Brain) Request(snapshot Snapshot) bool {
 	}
 
 	ok := b.scheduler.Submit(func() {
+		// Ensure inFlight resets even if the compute function panics.
+		defer b.inFlight.Store(false)
 		intent := b.compute(snapshot)
 		b.publish(intent)
-		b.inFlight.Store(false)
 	})
 	if !ok {
 		b.inFlight.Store(false)

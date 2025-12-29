@@ -38,8 +38,8 @@ func Filter[E any](s []E, c func(E) bool) []E {
 }
 
 // DeleteVal deletes the first occurrence of a value in a slice of the type E
-// and returns a new slice without the value.
-func DeleteVal[E any](s []E, v E) []E {
+// and returns a new slice without the value. E must be comparable.
+func DeleteVal[E comparable](s []E, v E) []E {
 	for i, vs := range s {
 		if (any)(v) == (any)(vs) {
 			return slices.Delete(s, i, i+1)
