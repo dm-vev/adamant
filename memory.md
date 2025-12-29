@@ -19,3 +19,5 @@
 - Validated item stack request result slots, creative item IDs, and anvil rename indices to avoid out-of-range panics.
 - Normalized debug shape updates to last-op-wins pending maps with Nop guards to avoid add/remove ordering races and blocked queues.
 - Reused existing entity runtime IDs for all entities and backfilled runtime maps to prevent duplicate IDs and stale lookups.
+- Validated client block faces and loom banner pattern IDs to avoid panics; defaulted corrupted banner pattern NBT safely; guarded scoreboard removal for Nop sessions.
+- Reworked pathfinding node storage to use stable pointers and heap fixes, preventing invalid heap references during path expansion.

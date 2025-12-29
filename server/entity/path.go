@@ -12,7 +12,7 @@ import (
 type pathNode struct {
 	pos    cube.Pos
 	g, f   float64
-	parent int
+	parent *pathNode
 	index  int
 }
 
@@ -35,6 +35,7 @@ func (h *pathHeap) Pop() any {
 	n := len(old)
 	item := old[n-1]
 	old[n-1] = nil
+	item.index = -1
 	*h = old[:n-1]
 	return item
 }
@@ -47,20 +48,23 @@ func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allo
 	open := pathHeap{}
 	heap.Init(&open)
 
-	nodes := make([]pathNode, 0, maxNodes)
-	index := make(map[cube.Pos]int, maxNodes)
+	capHint := maxNodes
+	if capHint < 0 {
+		capHint = 0
+	}
+	// Store nodes as pointers so heap references stay valid if the slice grows.
+	index := make(map[cube.Pos]*pathNode, capHint)
+	startNode := &pathNode{pos: start, g: 0, f: heuristic(start, goal)}
+	index[start] = startNode
+	heap.Push(&open, startNode)
+	nodesCount := 1
 
-	startNode := pathNode{pos: start, g: 0, f: heuristic(start, goal), parent: -1}
-	nodes = append(nodes, startNode)
-	index[start] = 0
-	heap.Push(&open, &nodes[0])
+	closed := make(map[cube.Pos]struct{}, capHint)
 
-	closed := make(map[cube.Pos]struct{}, maxNodes)
-
-	for open.Len() > 0 && len(nodes) < maxNodes {
+	for open.Len() > 0 && nodesCount < maxNodes {
 		current := heap.Pop(&open).(*pathNode)
 		if current.pos == goal {
-			return reconstructPath(nodes, current)
+			return reconstructPath(current)
 		}
 		if _, ok := closed[current.pos]; ok {
 			continue
@@ -76,34 +80,34 @@ func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allo
 				continue
 			}
 			g := current.g + stepCost(tx, next, allowWater)
-			if idx, ok := index[next]; ok {
-				if g < nodes[idx].g {
-					nodes[idx].g = g
-					nodes[idx].f = g + heuristic(next, goal)
-					nodes[idx].parent = index[current.pos]
-					heap.Push(&open, &nodes[idx])
+			if node, ok := index[next]; ok {
+				if g < node.g {
+					node.g = g
+					node.f = g + heuristic(next, goal)
+					node.parent = current
+					heap.Fix(&open, node.index)
 				}
 				continue
 			}
-			node := pathNode{
+			node := &pathNode{
 				pos:    next,
 				g:      g,
 				f:      g + heuristic(next, goal),
-				parent: index[current.pos],
+				parent: current,
 			}
-			nodes = append(nodes, node)
-			index[next] = len(nodes) - 1
-			heap.Push(&open, &nodes[len(nodes)-1])
+			index[next] = node
+			heap.Push(&open, node)
+			nodesCount++
 		}
 	}
 	return nil
 }
 
-func reconstructPath(nodes []pathNode, current *pathNode) []cube.Pos {
+func reconstructPath(current *pathNode) []cube.Pos {
 	path := make([]cube.Pos, 0, 8)
-	for current.parent != -1 {
+	for current != nil && current.parent != nil {
 		path = append(path, current.pos)
-		current = &nodes[current.parent]
+		current = current.parent
 	}
 	for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
 		path[i], path[j] = path[j], path[i]
