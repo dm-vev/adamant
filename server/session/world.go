@@ -58,11 +58,13 @@ func (s *Session) ViewEntity(e world.Entity) {
 	}
 	var runtimeID uint64
 
-	_, controllable := e.(Controllable)
-
 	s.entityMutex.Lock()
-	if id, ok := s.entityRuntimeIDs[e.H()]; ok && controllable {
+	if id, ok := s.entityRuntimeIDs[e.H()]; ok {
+		// Reuse existing runtime IDs to avoid duplicate entities and stale mappings.
 		runtimeID = id
+		if _, ok := s.entities[id]; !ok {
+			s.entities[id] = e.H()
+		}
 	} else {
 		s.currentEntityRuntimeID += 1
 		runtimeID = s.currentEntityRuntimeID

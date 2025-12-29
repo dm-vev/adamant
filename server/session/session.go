@@ -85,7 +85,7 @@ type Session struct {
 	changingSlot                   atomic.Bool
 	changingDimension              atomic.Bool
 	// moving is set while applying client-driven movement to avoid echoing it back to the same client.
-	moving                         atomic.Bool
+	moving atomic.Bool
 
 	recipes map[uint32]recipe.Recipe
 
@@ -98,16 +98,18 @@ type Session struct {
 	hudUpdates map[hud.Element]bool
 	hiddenHud  map[hud.Element]struct{}
 
-	debugShapesMu     sync.RWMutex
-	debugShapes       map[int]debug.Shape
-	debugShapesAdd    chan debug.Shape
-	debugShapesRemove chan int
+	debugShapesMu sync.RWMutex
+	debugShapes   map[int]debug.Shape
+	// debugShapesPendingAdd and debugShapesPendingRemove capture the latest requested change per shape ID.
+	// This avoids ordering races between add/remove requests from different goroutines.
+	debugShapesPendingAdd    map[int]debug.Shape
+	debugShapesPendingRemove map[int]struct{}
 
-	blockUpdatesMu      sync.Mutex
-	blockUpdates        map[blockUpdateKey]blockUpdateData
-	blockUpdateDrops    atomic.Uint32
-	blockUpdateLastLog  atomic.Int64
-	closeBackground chan struct{}
+	blockUpdatesMu     sync.Mutex
+	blockUpdates       map[blockUpdateKey]blockUpdateData
+	blockUpdateDrops   atomic.Uint32
+	blockUpdateLastLog atomic.Int64
+	closeBackground    chan struct{}
 
 	overflowStreak  atomic.Uint32
 	overflowLastLog atomic.Int64
@@ -188,26 +190,26 @@ func (conf Config) New(conn Conn) *Session {
 
 	s := &Session{}
 	*s = Session{
-		openChunkTransactions:  make([]map[uint64]struct{}, 0, 8),
-		closeBackground:        make(chan struct{}),
-		handlers:               map[uint32]packetHandler{},
-		packets:                make(chan packet.Packet, 256),
-		entityRuntimeIDs:       map[*world.EntityHandle]uint64{},
-		entities:               map[uint64]*world.EntityHandle{},
-		hiddenEntities:         map[uuid.UUID]struct{}{},
-		blobs:                  map[uint64][]byte{},
-		maxChunkRadius:         int32(maxChunkRadius),
-		emoteChatMuted:         conf.EmoteChatMuted,
-		conn:                   conn,
-		currentEntityRuntimeID: 1,
-		heldSlot:               new(uint32),
-		recipes:                make(map[uint32]recipe.Recipe),
-		conf:                   conf,
-		hudUpdates:             make(map[hud.Element]bool),
-		hiddenHud:              make(map[hud.Element]struct{}),
-		debugShapes:            make(map[int]debug.Shape),
-		debugShapesAdd:         make(chan debug.Shape, 256),
-		debugShapesRemove:      make(chan int, 256),
+		openChunkTransactions:    make([]map[uint64]struct{}, 0, 8),
+		closeBackground:          make(chan struct{}),
+		handlers:                 map[uint32]packetHandler{},
+		packets:                  make(chan packet.Packet, 256),
+		entityRuntimeIDs:         map[*world.EntityHandle]uint64{},
+		entities:                 map[uint64]*world.EntityHandle{},
+		hiddenEntities:           map[uuid.UUID]struct{}{},
+		blobs:                    map[uint64][]byte{},
+		maxChunkRadius:           int32(maxChunkRadius),
+		emoteChatMuted:           conf.EmoteChatMuted,
+		conn:                     conn,
+		currentEntityRuntimeID:   1,
+		heldSlot:                 new(uint32),
+		recipes:                  make(map[uint32]recipe.Recipe),
+		conf:                     conf,
+		hudUpdates:               make(map[hud.Element]bool),
+		hiddenHud:                make(map[hud.Element]struct{}),
+		debugShapes:              make(map[int]debug.Shape),
+		debugShapesPendingAdd:    make(map[int]debug.Shape),
+		debugShapesPendingRemove: make(map[int]struct{}),
 	}
 	s.chunkRadius.Store(int32(r))
 	s.openedWindow.Store(inventory.New(1, nil))

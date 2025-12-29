@@ -881,18 +881,35 @@ func (s *Session) SendHudUpdates() {
 // AddDebugShape adds a debug shape to be rendered to the player. If the shape already exists, it will be
 // updated with the new information.
 func (s *Session) AddDebugShape(shape debug.Shape) {
-	s.debugShapesAdd <- shape
+	if s == Nop {
+		return
+	}
+	id := shape.ShapeID()
+	s.debugShapesMu.Lock()
+	// Ensure the latest operation wins if add/remove are called in quick succession.
+	delete(s.debugShapesPendingRemove, id)
+	s.debugShapesPendingAdd[id] = shape
+	s.debugShapesMu.Unlock()
 }
 
 // RemoveDebugShape removes a debug shape from the player by its unique identifier.
 func (s *Session) RemoveDebugShape(shape debug.Shape) {
-	id := shape.ShapeID()
-	s.debugShapesMu.RLock()
-	_, ok := s.debugShapes[id]
-	s.debugShapesMu.RUnlock()
-	if ok {
-		s.debugShapesRemove <- id
+	if s == Nop {
+		return
 	}
+	id := shape.ShapeID()
+	s.debugShapesMu.Lock()
+	if _, ok := s.debugShapes[id]; ok {
+		delete(s.debugShapesPendingAdd, id)
+		s.debugShapesPendingRemove[id] = struct{}{}
+		s.debugShapesMu.Unlock()
+		return
+	}
+	if _, ok := s.debugShapesPendingAdd[id]; ok {
+		delete(s.debugShapesPendingAdd, id)
+		s.debugShapesPendingRemove[id] = struct{}{}
+	}
+	s.debugShapesMu.Unlock()
 }
 
 // VisibleDebugShapes returns a slice of all debug shapes that are currently being shown to the player.
@@ -906,53 +923,43 @@ func (s *Session) VisibleDebugShapes() []debug.Shape {
 // RemoveAllDebugShapes removes all rendered debug shapes from the player, as well as any shapes that have
 // not yet been rendered.
 func (s *Session) RemoveAllDebugShapes() {
-	s.debugShapesMu.Lock()
-	// Drain pending additions so shapes don't get re-added after we clear.
-drainAdds:
-	for {
-		select {
-		case <-s.debugShapesAdd:
-		default:
-			break drainAdds
-		}
+	if s == Nop {
+		return
 	}
-	ids := make([]int, 0, len(s.debugShapes))
+	s.debugShapesMu.Lock()
+	// Clear pending additions and schedule removals for any currently visible shapes.
+	clear(s.debugShapesPendingAdd)
 	for id := range s.debugShapes {
-		ids = append(ids, id)
+		s.debugShapesPendingRemove[id] = struct{}{}
 	}
 	clear(s.debugShapes)
 	s.debugShapesMu.Unlock()
-
-	// Send removals without holding the lock to avoid blocking updates.
-	for _, id := range ids {
-		s.debugShapesRemove <- id
-	}
 }
 
 // SendDebugShapes sends any pending additions/removals of debug shapes to the player. Shapes should be sent
 // every tick to allow for batching and time-efficient updates.
 func (s *Session) SendDebugShapes(dim world.Dimension) {
+	if s == Nop {
+		return
+	}
 	s.debugShapesMu.Lock()
 	defer s.debugShapesMu.Unlock()
 
-	if len(s.debugShapesAdd) == 0 && len(s.debugShapesRemove) == 0 {
+	if len(s.debugShapesPendingAdd) == 0 && len(s.debugShapesPendingRemove) == 0 {
 		return
 	}
 
-	shapes := make([]protocol.DebugDrawerShape, 0, len(s.debugShapesAdd)+len(s.debugShapesRemove))
-loop:
-	for {
-		select {
-		case shape := <-s.debugShapesAdd:
-			s.debugShapes[shape.ShapeID()] = shape
-			shapes = append(shapes, s.debugShapeToProtocol(shape, dim))
-		case id := <-s.debugShapesRemove:
-			delete(s.debugShapes, id)
-			shapes = append(shapes, protocol.DebugDrawerShape{NetworkID: uint64(id), DimensionID: s.dimensionID(dim)})
-		default:
-			break loop
-		}
+	shapes := make([]protocol.DebugDrawerShape, 0, len(s.debugShapesPendingAdd)+len(s.debugShapesPendingRemove))
+	for id, shape := range s.debugShapesPendingAdd {
+		s.debugShapes[id] = shape
+		shapes = append(shapes, s.debugShapeToProtocol(shape, dim))
 	}
+	for id := range s.debugShapesPendingRemove {
+		delete(s.debugShapes, id)
+		shapes = append(shapes, protocol.DebugDrawerShape{NetworkID: uint64(id), DimensionID: s.dimensionID(dim)})
+	}
+	clear(s.debugShapesPendingAdd)
+	clear(s.debugShapesPendingRemove)
 	s.writePacket(&packet.DebugDrawer{Shapes: shapes})
 }
 
