@@ -36,12 +36,12 @@ type Session struct {
 	conf           Config
 	once, connOnce sync.Once
 
-	ent      *world.EntityHandle
-	conn     Conn
+	ent  *world.EntityHandle
+	conn Conn
 	// connWriteMu serializes connection writes to avoid concurrent WritePacket/Flush calls.
 	connWriteMu sync.Mutex
-	handlers map[uint32]packetHandler
-	packets  chan packet.Packet
+	handlers    map[uint32]packetHandler
+	packets     chan packet.Packet
 
 	// commandOrigin holds the last command origin so output can match request metadata.
 	commandOrigin atomic.Pointer[protocol.CommandOrigin]
@@ -91,6 +91,8 @@ type Session struct {
 	changingDimension              atomic.Bool
 	// moving is set while applying client-driven movement to avoid echoing it back to the same client.
 	moving atomic.Bool
+
+	lastChunkPos world.ChunkPos
 
 	recipes map[uint32]recipe.Recipe
 
@@ -455,10 +457,16 @@ func (s *Session) sendChunks(tx *world.Tx, c Controllable) {
 	pos := c.Position()
 	chunkRadius := s.chunkRadius.Load()
 	s.chunkLoader.Move(tx, pos)
-	s.writePacket(&packet.NetworkChunkPublisherUpdate{
-		Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		Radius:   uint32(chunkRadius) << 4,
-	})
+
+	blockPos := cube.PosFromVec3(pos)
+	chunkPos := world.ChunkPos{int32(blockPos[0] >> 4), int32(blockPos[2] >> 4)}
+	if s.lastChunkPos != chunkPos {
+		s.lastChunkPos = chunkPos
+		s.writePacket(&packet.NetworkChunkPublisherUpdate{
+			Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
+			Radius:   uint32(chunkRadius) << 4,
+		})
+	}
 
 	s.blobMu.Lock()
 	const maxChunkTransactions = 8
