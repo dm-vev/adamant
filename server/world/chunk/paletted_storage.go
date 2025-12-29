@@ -87,16 +87,24 @@ func (storage *PalettedStorage) Equal(other *PalettedStorage) bool {
 	if storage == nil || other == nil {
 		return false
 	}
-	if len(storage.indices) == 0 || len(other.indices) == 0 || storage.palette.values[0] == 0 || other.palette.values[0] == 0 {
+	if storage.palette == nil || other.palette == nil {
 		return false
 	}
-	indicesA := unsafe.Slice((*byte)(unsafe.Pointer(&storage.indices[0])), len(storage.indices)*4)
-	indicesB := unsafe.Slice((*byte)(unsafe.Pointer(&other.indices[0])), len(other.indices)*4)
-	if !bytes.Equal(indicesA, indicesB) {
+	if len(storage.indices) != len(other.indices) || len(storage.palette.values) != len(other.palette.values) {
 		return false
 	}
-	paletteA := unsafe.Slice((*byte)(unsafe.Pointer(&storage.palette.values[0])), len(storage.palette.values)*4)
-	paletteB := unsafe.Slice((*byte)(unsafe.Pointer(&other.palette.values[0])), len(other.palette.values)*4)
+	if len(storage.indices) > 0 {
+		indicesA := unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(storage.indices))), len(storage.indices)*uint32ByteSize)
+		indicesB := unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(other.indices))), len(other.indices)*uint32ByteSize)
+		if !bytes.Equal(indicesA, indicesB) {
+			return false
+		}
+	}
+	if len(storage.palette.values) == 0 {
+		return true
+	}
+	paletteA := unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(storage.palette.values))), len(storage.palette.values)*uint32ByteSize)
+	paletteB := unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(other.palette.values))), len(other.palette.values)*uint32ByteSize)
 	return bytes.Equal(paletteA, paletteB)
 }
 

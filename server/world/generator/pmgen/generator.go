@@ -118,8 +118,17 @@ func (g *Generator) BindWorld(w *world.World) {
 }
 
 func (g *Generator) populate() {
-	for job := range g.populationQueue {
-		go g.runPopulationJob(job)
+	// Use a bounded worker pool to avoid unbounded goroutine growth under heavy generation load.
+	workers := runtime.GOMAXPROCS(0)
+	if workers <= 0 {
+		workers = 1
+	}
+	for i := 0; i < workers; i++ {
+		go func() {
+			for job := range g.populationQueue {
+				g.runPopulationJob(job)
+			}
+		}()
 	}
 }
 
