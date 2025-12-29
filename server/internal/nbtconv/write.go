@@ -133,15 +133,20 @@ func writeDisplay(m map[string]any, s item.Stack) {
 // writeDamage writes the damage to an item.Stack (either an int16 for disk or int32 for network) to a map for NBT
 // encoding.
 func writeDamage(m map[string]any, s item.Stack, disk bool) {
-	if v, ok := m["Damage"]; !ok || v.(int16) == 0 {
-		if _, ok := s.Item().(item.Durable); ok {
-			if disk {
-				m["Damage"] = int16(s.MaxDurability() - s.Durability())
-			} else {
-				m["Damage"] = int32(s.MaxDurability() - s.Durability())
-			}
+	if v, ok := m["Damage"]; ok {
+		if known, zero := isZeroNumber(v); !known || !zero {
+			return
 		}
 	}
+	if _, ok := s.Item().(item.Durable); !ok {
+		return
+	}
+	damage := s.MaxDurability() - s.Durability()
+	if disk {
+		m["Damage"] = int16(damage)
+		return
+	}
+	m["Damage"] = int32(damage)
 }
 
 // writeAnvilCost ...
@@ -155,5 +160,37 @@ func writeAnvilCost(m map[string]any, s item.Stack) {
 func writeUnbreakable(m map[string]any, s item.Stack) {
 	if s.Unbreakable() {
 		m["Unbreakable"] = byte(1)
+	}
+}
+
+// isZeroNumber reports whether v is a supported numeric type and whether it is zero.
+func isZeroNumber(v any) (known bool, zero bool) {
+	switch n := v.(type) {
+	case int:
+		return true, n == 0
+	case int8:
+		return true, n == 0
+	case int16:
+		return true, n == 0
+	case int32:
+		return true, n == 0
+	case int64:
+		return true, n == 0
+	case uint:
+		return true, n == 0
+	case uint8:
+		return true, n == 0
+	case uint16:
+		return true, n == 0
+	case uint32:
+		return true, n == 0
+	case uint64:
+		return true, n == 0
+	case float32:
+		return true, n == 0
+	case float64:
+		return true, n == 0
+	default:
+		return false, false
 	}
 }

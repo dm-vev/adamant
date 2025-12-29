@@ -29,3 +29,4 @@
 - Fixed chest unpairing to use fresh viewer locks/maps for cloned inventories, keeping callbacks in sync after separation.
 - Clamped query HostPort to safe bounds to avoid wrapping invalid ports.
 - Guarded session shutdown and chunk-radius handling when loaders or handles are uninitialised to prevent nil-pointer panics during early disconnects.
+- Hardened NBT item damage encoding to avoid panics on unexpected numeric types and preserve existing damage tags.
