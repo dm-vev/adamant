@@ -272,23 +272,28 @@ func (c Chest) unpair(tx *world.Tx, pos cube.Pos) (ch, pair Chest, ok bool) {
 		c.close(tx, pos)
 	}
 
+	// Use fresh viewer maps so the cloned inventories notify the correct subscribers after unpairing.
+	newViewerMu := new(sync.RWMutex)
+	newViewers := make(map[ContainerViewer]struct{}, 1)
 	c.inventory = c.inventory.Clone(func(slot int, _, after item.Stack) {
-		c.viewerMu.RLock()
-		defer c.viewerMu.RUnlock()
-		for viewer := range c.viewers {
+		newViewerMu.RLock()
+		defer newViewerMu.RUnlock()
+		for viewer := range newViewers {
 			viewer.ViewSlotChange(slot, after)
 		}
 	})
+	newPairViewerMu := new(sync.RWMutex)
+	newPairViewers := make(map[ContainerViewer]struct{}, 1)
 	pair.inventory = pair.inventory.Clone(func(slot int, _, after item.Stack) {
-		pair.viewerMu.RLock()
-		defer pair.viewerMu.RUnlock()
-		for viewer := range pair.viewers {
+		newPairViewerMu.RLock()
+		defer newPairViewerMu.RUnlock()
+		for viewer := range newPairViewers {
 			viewer.ViewSlotChange(slot, after)
 		}
 	})
 	c.paired, pair.paired = false, false
-	c.viewerMu, pair.viewerMu = new(sync.RWMutex), new(sync.RWMutex)
-	c.viewers, pair.viewers = make(map[ContainerViewer]struct{}, 1), make(map[ContainerViewer]struct{}, 1)
+	c.viewerMu, pair.viewerMu = newViewerMu, newPairViewerMu
+	c.viewers, pair.viewers = newViewers, newPairViewers
 	c.pairInv, pair.pairInv = nil, nil
 	return c, pair, true
 }

@@ -103,7 +103,11 @@ func (d *Data) applyDefaults() {
 	if d.GameID == "" {
 		d.GameID = "MINECRAFT"
 	}
-	d.HostPort = int(uint16(d.HostPort))
+	if d.HostPort < 0 {
+		d.HostPort = 0
+	} else if d.HostPort > 65535 {
+		d.HostPort = 65535
+	}
 }
 
 // keyValues converts Data into the ordered key/value pairs required by the
