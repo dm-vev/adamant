@@ -70,7 +70,7 @@ func BreaksInstantly(b world.Block, i item.Stack) bool {
 	if e, ok := i.Enchantment(enchantment.Efficiency); ok {
 		efficiencyVal += enchantment.Efficiency.Addend(e.Level())
 	}
-	hasteVal := 0.0
+	hasteVal := 1.0 // Base multiplier when no haste effects are applied.
 	return (t.BaseMiningEfficiency(b)+efficiencyVal)*hasteVal >= hardness*30
 }
 

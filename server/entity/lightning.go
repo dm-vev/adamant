@@ -86,8 +86,9 @@ func (s *lightningState) dealDamage(e *Ent, tx *world.Tx) {
 func (s *lightningState) spreadFire(tx *world.Tx, pos cube.Pos) {
 	s.fire().Start(tx, pos)
 	for i := 0; i < 4; i++ {
-		pos.Add(cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1})
-		s.fire().Start(tx, pos)
+		// Use the original strike position for each offset so spread doesn't drift.
+		offset := cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1}
+		s.fire().Start(tx, pos.Add(offset))
 	}
 }
 
