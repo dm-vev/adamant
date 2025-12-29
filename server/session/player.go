@@ -8,6 +8,7 @@ import (
 	"math"
 	"net"
 	"slices"
+	"sync/atomic"
 	"time"
 	_ "unsafe" // Imported for compiler directives.
 
@@ -635,7 +636,7 @@ func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, 
 
 func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
-		if slot == int(*s.heldSlot) {
+		if slot == int(atomic.LoadUint32(s.heldSlot)) {
 			// Acquire viewers within a fresh transaction to avoid using a stale tx. Schedule this asynchronously
 			// to prevent re-entrancy deadlocks when the inventory update originates from an existing world
 			// transaction.

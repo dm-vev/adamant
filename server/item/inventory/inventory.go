@@ -374,8 +374,10 @@ func (inv *Inventory) setItem(slot int, it item.Stack) func() {
 	}
 	before := inv.slots[slot]
 	inv.slots[slot] = it
+	// Capture the current slot callback while the inventory is locked to avoid races if SlotFunc is swapped.
+	f := inv.f
 	return func() {
-		inv.f(slot, before, it)
+		f(slot, before, it)
 	}
 }
 

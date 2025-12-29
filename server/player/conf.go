@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
 	"math/rand/v2"
+	"sync/atomic"
 	"time"
 )
 
@@ -53,7 +54,8 @@ func (cfg Config) Apply(data *world.EntityData) {
 	conf := fillDefaults(cfg)
 
 	data.Name, data.Pos, data.Rot = conf.Name, conf.Position, conf.Rotation
-	slot := uint32(conf.HeldSlot)
+	slot := new(uint32)
+	atomic.StoreUint32(slot, uint32(conf.HeldSlot))
 	pdata := &playerData{
 		xuid:                conf.XUID,
 		ui:                  inventory.New(54, nil),
@@ -69,7 +71,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		cooldowns:           make(map[string]time.Time),
 		mc:                  &entity.MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
 		tc:                  &entity.TravelComputer{},
-		heldSlot:            &slot,
+		heldSlot:            slot,
 		gameMode:            conf.GameMode,
 		skin:                conf.Skin,
 		enchantSeed:         conf.EnchantmentSeed,

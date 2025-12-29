@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"sync/atomic"
 )
 
 // Type is a world.EntityType implementation for Player.
@@ -32,7 +33,7 @@ func (t ptype) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Entity
 		pd.s.HandleInventories(tx, p, pd.inv, pd.offHand, pd.enderChest, pd.ui, pd.armour, pd.heldSlot)
 	} else {
 		pd.inv.SlotFunc(func(slot int, before, after item.Stack) {
-			if slot == int(*p.heldSlot) {
+			if slot == int(atomic.LoadUint32(p.heldSlot)) {
 				p.broadcastItems(slot, before, after)
 			}
 		})

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/player/debug"
@@ -1435,14 +1436,16 @@ func (p *Player) Armour() *inventory.Armour {
 // the hand held anything.
 func (p *Player) HeldItems() (mainHand, offHand item.Stack) {
 	offHand, _ = p.offHand.Item(0)
-	mainHand, _ = p.inv.Item(int(*p.heldSlot))
+	heldSlot := int(atomic.LoadUint32(p.heldSlot))
+	mainHand, _ = p.inv.Item(heldSlot)
 	return mainHand, offHand
 }
 
 // SetHeldItems sets items to the main hand and the off-hand of the player. The Stacks passed may be empty
 // (Stack.Empty()) to clear the held item.
 func (p *Player) SetHeldItems(mainHand, offHand item.Stack) {
-	_ = p.inv.SetItem(int(*p.heldSlot), mainHand)
+	heldSlot := int(atomic.LoadUint32(p.heldSlot))
+	_ = p.inv.SetItem(heldSlot, mainHand)
 	_ = p.offHand.SetItem(0, offHand)
 }
 
@@ -1454,7 +1457,7 @@ func (p *Player) SetHeldSlot(to int) error {
 	if to < 0 || to > 8 {
 		return fmt.Errorf("held slot exceeds hotbar range 0-8: slot is %v", to)
 	}
-	from := int(*p.heldSlot)
+	from := int(atomic.LoadUint32(p.heldSlot))
 	if from == to {
 		// Old slot was the same as new slot, so don't do anything.
 		return nil
@@ -1467,7 +1470,7 @@ func (p *Player) SetHeldSlot(to int) error {
 		p.session().SendHeldSlot(from, p, true)
 		return nil
 	}
-	*p.heldSlot = uint32(to)
+	atomic.StoreUint32(p.heldSlot, uint32(to))
 	p.usingItem = false
 
 	viewers, release := p.viewers()
@@ -2423,7 +2426,8 @@ func (p *Player) PickBlock(pos cube.Pos) {
 			_ = p.SetHeldSlot(slot)
 			return
 		}
-		_ = p.Inventory().Swap(slot, int(*p.heldSlot))
+		heldSlot := int(atomic.LoadUint32(p.heldSlot))
+		_ = p.Inventory().Swap(slot, heldSlot)
 		return
 	}
 
@@ -2437,7 +2441,8 @@ func (p *Player) PickBlock(pos cube.Pos) {
 		_ = p.Inventory().SetItem(firstEmpty, pickedItem)
 		return
 	}
-	_ = p.Inventory().Swap(firstEmpty, int(*p.heldSlot))
+	heldSlot := int(atomic.LoadUint32(p.heldSlot))
+	_ = p.Inventory().Swap(firstEmpty, heldSlot)
 	p.SetHeldItems(pickedItem, offhand)
 }
 
@@ -3528,7 +3533,7 @@ func (p *Player) Data() Config {
 		MaxAirSupply:        p.maxAirSupplyTicks,
 		EnchantmentSeed:     p.enchantSeed,
 		Experience:          p.experience.Experience(),
-		HeldSlot:            int(*p.heldSlot),
+		HeldSlot:            int(atomic.LoadUint32(p.heldSlot)),
 		Inventory:           p.inv,
 		OffHand:             p.offHand,
 		Armour:              p.armour,
@@ -3562,7 +3567,7 @@ func (p *Player) useContext() *item.UseContext {
 	}
 	return &item.UseContext{
 		SwapHeldWithArmour: func(i int) {
-			src, dst, srcInv, dstInv := int(*p.heldSlot), i, p.inv, p.armour.Inventory()
+			src, dst, srcInv, dstInv := int(atomic.LoadUint32(p.heldSlot)), i, p.inv, p.armour.Inventory()
 			srcIt, _ := srcInv.Item(src)
 			dstIt, _ := dstInv.Item(dst)
 

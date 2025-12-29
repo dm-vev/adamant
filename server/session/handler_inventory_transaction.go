@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"sync/atomic"
 )
 
 // InventoryTransactionHandler handles the InventoryTransaction packet.
@@ -125,7 +126,7 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.Invento
 	// logic in the Comparable() method was flawed, users would be able to cheat with item properties.
 	// Only grow or shrink the held item to prevent any such issues.
 	res := actual.Grow(count - actual.Count())
-	if err := call(event.C(inventory.Holder(c)), int(*s.heldSlot), res, s.inv.Handler().HandleDrop); err != nil {
+	if err := call(event.C(inventory.Holder(c)), int(atomic.LoadUint32(s.heldSlot)), res, s.inv.Handler().HandleDrop); err != nil {
 		return err
 	}
 
@@ -165,7 +166,7 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *pro
 		return fmt.Errorf("unhandled UseItemOnEntity ActionType %v", data.ActionType)
 	}
 	if !valid {
-		slot := int(*s.heldSlot)
+		slot := int(atomic.LoadUint32(s.heldSlot))
 		it, _ := s.inv.Item(slot)
 		s.sendItem(it, slot, protocol.WindowIDInventory)
 	}

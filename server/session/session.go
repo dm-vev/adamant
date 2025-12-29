@@ -60,7 +60,8 @@ type Session struct {
 	entities         map[uint64]*world.EntityHandle
 	hiddenEntities   map[uuid.UUID]struct{}
 
-	// heldSlot is the slot in the inventory that the controllable is holding.
+	// heldSlot is the slot in the inventory that the controllable is holding. Use atomic access because it may be
+	// read from inventory callbacks running on different goroutines.
 	heldSlot                     *uint32
 	inv, offHand, enderChest, ui *inventory.Inventory
 	armour                       *inventory.Armour
