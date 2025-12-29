@@ -81,7 +81,8 @@ type Session struct {
 	swingingArm                    atomic.Bool
 	changingSlot                   atomic.Bool
 	changingDimension              atomic.Bool
-	moving                         bool
+	// moving is set while applying client-driven movement to avoid echoing it back to the same client.
+	moving                         atomic.Bool
 
 	recipes map[uint32]recipe.Recipe
 

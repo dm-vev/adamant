@@ -885,11 +885,12 @@ func (s *Session) AddDebugShape(shape debug.Shape) {
 
 // RemoveDebugShape removes a debug shape from the player by its unique identifier.
 func (s *Session) RemoveDebugShape(shape debug.Shape) {
+	id := shape.ShapeID()
 	s.debugShapesMu.RLock()
-	defer s.debugShapesMu.RUnlock()
-
-	if _, ok := s.debugShapes[shape.ShapeID()]; ok {
-		s.debugShapesRemove <- shape.ShapeID()
+	_, ok := s.debugShapes[id]
+	s.debugShapesMu.RUnlock()
+	if ok {
+		s.debugShapesRemove <- id
 	}
 }
 
@@ -905,10 +906,24 @@ func (s *Session) VisibleDebugShapes() []debug.Shape {
 // not yet been rendered.
 func (s *Session) RemoveAllDebugShapes() {
 	s.debugShapesMu.Lock()
-	defer s.debugShapesMu.Unlock()
-
-	s.debugShapesAdd = make(chan debug.Shape, 256)
+	// Drain pending additions so shapes don't get re-added after we clear.
+drainAdds:
+	for {
+		select {
+		case <-s.debugShapesAdd:
+		default:
+			break drainAdds
+		}
+	}
+	ids := make([]int, 0, len(s.debugShapes))
 	for id := range s.debugShapes {
+		ids = append(ids, id)
+	}
+	clear(s.debugShapes)
+	s.debugShapesMu.Unlock()
+
+	// Send removals without holding the lock to avoid blocking updates.
+	for _, id := range ids {
 		s.debugShapesRemove <- id
 	}
 }

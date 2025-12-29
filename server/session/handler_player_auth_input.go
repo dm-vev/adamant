@@ -76,8 +76,10 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 		return nil
 	}
 
-	s.moving = true
+	// Mark client-originated movement so we don't echo it back to the same client.
+	s.moving.Store(true)
 	c.Move(deltaPos, deltaYaw, deltaPitch)
+	s.moving.Store(false)
 	return nil
 }
 
