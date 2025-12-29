@@ -22,7 +22,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/internal/blockinternal"
 	"github.com/df-mc/dragonfly/server/internal/iteminternal"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	_ "github.com/df-mc/dragonfly/server/item" // Imported for maintaining correct initialisation order.
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
@@ -299,10 +298,13 @@ func (srv *Server) Player(uuid uuid.UUID) (*world.EntityHandle, bool) {
 // found, the entity handle is returned and the bool returned holds a true
 // value. If not, the bool is false and the handle is nil
 func (srv *Server) PlayerByName(name string) (*world.EntityHandle, bool) {
-	if p, ok := sliceutil.SearchValue(slices.Collect(maps.Values(srv.p)), func(p *onlinePlayer) bool {
-		return p.name == name
-	}); ok {
-		return p.handle, true
+	srv.pmu.RLock()
+	defer srv.pmu.RUnlock()
+
+	for _, p := range srv.p {
+		if p.name == name {
+			return p.handle, true
+		}
 	}
 	return nil, false
 }
@@ -311,10 +313,13 @@ func (srv *Server) PlayerByName(name string) (*world.EntityHandle, bool) {
 // found, the entity handle is returned and the bool returned is true. If no
 // player with the XUID was found, nil and false are returned.
 func (srv *Server) PlayerByXUID(xuid string) (*world.EntityHandle, bool) {
-	if p, ok := sliceutil.SearchValue(slices.Collect(maps.Values(srv.p)), func(p *onlinePlayer) bool {
-		return p.xuid == xuid
-	}); ok {
-		return p.handle, true
+	srv.pmu.RLock()
+	defer srv.pmu.RUnlock()
+
+	for _, p := range srv.p {
+		if p.xuid == xuid {
+			return p.handle, true
+		}
 	}
 	return nil, false
 }
