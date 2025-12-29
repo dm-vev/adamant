@@ -14,3 +14,5 @@
 - Hardened query token caching and playerdb persistence by pruning tokens, validating UUIDs, and guarding corrupt inventory slots.
 - Guarded session chunk radius with atomic access and clamped client values to safe bounds to prevent races and overflowed view distances.
 - Tracked placeholder chunks after provider load errors to avoid mutating untracked columns and losing world changes.
+
+- Hardened AI scheduler shutdown, ensured brain in-flight resets on panic, cleared inventory state/handlers on close, and constrained slice deletes to comparable types.

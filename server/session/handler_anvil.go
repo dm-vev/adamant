@@ -30,7 +30,8 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRec
 	if !ok {
 		return fmt.Errorf("no anvil container opened")
 	}
-	if len(filterStrings) < int(a.FilterStringIndex) {
+	hasRename := len(filterStrings) > 0
+	if hasRename && a.FilterStringIndex >= uint32(len(filterStrings)) {
 		return fmt.Errorf("filter string index %v is out of bounds", a.FilterStringIndex)
 	}
 
@@ -92,7 +93,7 @@ func (h *ItemStackRequestHandler) handleCraftRecipeOptional(a *protocol.CraftRec
 	}
 
 	// If we have a filter string, then the client is intending to rename the item.
-	if len(filterStrings) > 0 {
+	if hasRename {
 		renameCost = 1
 		actionCost += renameCost
 		result = result.WithCustomName(filterStrings[int(a.FilterStringIndex)])
