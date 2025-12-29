@@ -72,7 +72,17 @@ type World struct {
 	// and CPU usage during the entity pipeline.
 	entities map[*EntityHandle]*entityState
 
+	// chunkCount and entityCount track the map sizes so callers outside the world
+	// goroutine can read counts without racing map mutations.
+	chunkCount  atomic.Int64
+	entityCount atomic.Int64
+
 	r *rand.Rand
+
+	// weatherRand is used for out-of-band weather changes to avoid racing the
+	// main world RNG, which is owned by the tick loop.
+	weatherRandMu sync.Mutex
+	weatherRand   *rand.Rand
 
 	tps atomic.Uint64
 
@@ -222,12 +232,25 @@ func (w *World) TPS() float64 {
 // LoadedChunkCount returns the number of chunks currently kept in memory by the
 // world.
 func (w *World) LoadedChunkCount() int {
-	return len(w.chunks)
+	return int(w.chunkCount.Load())
 }
 
 // EntityCount returns the number of entities tracked by the world.
 func (w *World) EntityCount() int {
-	return len(w.entities)
+	return int(w.entityCount.Load())
+}
+
+// weatherRandIntN returns a random number for weather transitions without
+// contending with the tick loop RNG.
+func (w *World) weatherRandIntN(n int) int {
+	w.weatherRandMu.Lock()
+	defer w.weatherRandMu.Unlock()
+
+	if w.weatherRand == nil {
+		seed := uint64(time.Now().UnixNano())
+		w.weatherRand = rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
+	}
+	return w.weatherRand.IntN(n)
 }
 
 // ExecFunc is a function that performs a synchronised transaction on a World.
@@ -813,6 +836,9 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	currentTick := w.set.CurrentTick
 	w.set.Unlock()
 	state := &entityState{pos: pos, lastTick: currentTick, isItem: handle.t.EncodeEntity() == "minecraft:item"}
+	if _, ok := w.entities[handle]; !ok {
+		w.entityCount.Add(1)
+	}
 	w.entities[handle] = state
 
 	c := w.chunk(pos)
@@ -852,6 +878,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 		v.HideEntity(e)
 	}
 	delete(w.entities, handle)
+	w.entityCount.Add(-1)
 	handle.unsetAndLockWorld()
 	return handle
 }
@@ -1237,12 +1264,18 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		for v := range c.viewers {
 			v.HideEntity(ent)
 		}
-		delete(w.entities, e)
+		if _, ok := w.entities[e]; ok {
+			delete(w.entities, e)
+			w.entityCount.Add(-1)
+		}
 		e.unsetAndLockWorld()
 		_ = e.Close()
 	}
 	clear(c.Entities)
-	delete(w.chunks, pos)
+	if _, ok := w.chunks[pos]; ok {
+		delete(w.chunks, pos)
+		w.chunkCount.Add(-1)
+	}
 }
 
 // Close closes the world and saves all chunks currently loaded.
@@ -1448,6 +1481,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	case err == nil:
 		// Case 1: Column successfully loaded from persistent storage.
 		col := w.columnFrom(column, pos)
+		if _, ok := w.chunks[pos]; !ok {
+			w.chunkCount.Add(1)
+		}
 		w.chunks[pos] = col
 
 		// Mark the column ready immediately.
@@ -1458,6 +1494,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		currentTick := w.set.CurrentTick
 		w.set.Unlock()
 		for _, e := range col.Entities {
+			if _, ok := w.entities[e]; !ok {
+				w.entityCount.Add(1)
+			}
 			w.entities[e] = &entityState{
 				pos:      pos,
 				lastTick: currentTick,
@@ -1476,6 +1515,9 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// Case 2: Column not found in storage — needs generation.
 		// Create a new empty column filled with air.
 		col := newColumn(chunk.New(airRID, w.Range()))
+		if _, ok := w.chunks[pos]; !ok {
+			w.chunkCount.Add(1)
+		}
 		w.chunks[pos] = col
 
 		// Schedule asynchronous generation.

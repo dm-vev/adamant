@@ -74,13 +74,15 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 		return
 	}
 	currentName, currentLines := *s.currentScoreboard.Load(), *s.currentLines.Load()
+	name := sb.Name()
+	lines := sb.Lines()
 
-	if currentName != sb.Name() {
+	if currentName != name {
 		s.RemoveScoreboard()
 		pk := &packet.SetDisplayObjective{
 			DisplaySlot:   "sidebar",
-			ObjectiveName: sb.Name(),
-			DisplayName:   sb.Name(),
+			ObjectiveName: name,
+			DisplayName:   name,
 			CriteriaName:  "dummy",
 		}
 		if sb.Descending() {
@@ -89,9 +91,6 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			pk.SortOrder = packet.ScoreboardSortOrderAscending
 		}
 		s.writePacket(pk)
-		name, lines := sb.Name(), append([]string(nil), sb.Lines()...)
-		s.currentScoreboard.Store(&name)
-		s.currentLines.Store(&lines)
 	} else {
 		// Remove all current lines from the scoreboard. We can't replace them without removing them.
 		pk := &packet.SetScore{ActionType: packet.ScoreboardActionRemove}
@@ -107,13 +106,15 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 		}
 	}
 	pk := &packet.SetScore{ActionType: packet.ScoreboardActionModify}
-	for k, line := range sb.Lines() {
+	displayLines := make([]string, len(lines))
+	for k, line := range lines {
 		if len(line) == 0 {
 			line = "§" + colours[k]
 		}
+		displayLines[k] = line
 		pk.Entries = append(pk.Entries, protocol.ScoreboardEntry{
 			EntryID:       int64(k),
-			ObjectiveName: sb.Name(),
+			ObjectiveName: name,
 			Score:         int32(k),
 			IdentityType:  protocol.ScoreboardIdentityFakePlayer,
 			DisplayName:   line,
@@ -122,6 +123,9 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 	if len(pk.Entries) > 0 {
 		s.writePacket(pk)
 	}
+	// Store the last sent state so subsequent updates remove the right entries.
+	s.currentScoreboard.Store(&name)
+	s.currentLines.Store(&displayLines)
 }
 
 // colours holds a list of colour codes to be filled out for empty lines in a scoreboard.

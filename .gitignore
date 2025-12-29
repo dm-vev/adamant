@@ -1,25 +1,12 @@
-# JetBrains
-.idea/
-
-# Dragonfly
-/world/
-/players/
-/resources/
-
-/Lumi-master
-/pm-gen-master
-
-dragonfly.exe
-upx.exe
-heap*
-goroutines.txt
-mot
-.gocache
-.gomodcache
+auto.sh
+.codex/
+.gocache/
+.gomodcache/
 .tmp/
-
-mcp940-master
-fixes/
-Lumi-master
-.codex
+Lumi-master/
 codex.sh
+fixes/
+mcp940-master/
+players/
+world/
+memory.md

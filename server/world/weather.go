@@ -78,10 +78,10 @@ func (w weather) StopRaining() {
 	defer w.w.set.Unlock()
 
 	if w.w.set.Raining {
-		w.setRaining(false, time.Second*(time.Duration(w.w.r.IntN(8400)+600)))
+		w.setRaining(false, time.Second*(time.Duration(w.w.weatherRandIntN(8400)+600)))
 		if w.w.set.Thundering {
 			// Also reset thunder if it was previously thundering.
-			w.setThunder(false, time.Second*(time.Duration(w.w.r.IntN(8400)+600)))
+			w.setThunder(false, time.Second*(time.Duration(w.w.weatherRandIntN(8400)+600)))
 		}
 	}
 }
@@ -103,7 +103,7 @@ func (w weather) StopThundering() {
 	w.w.set.Lock()
 	defer w.w.set.Unlock()
 	if w.w.set.Thundering && w.w.set.Raining {
-		w.setThunder(false, time.Second*(time.Duration(w.w.r.IntN(8400)+600)))
+		w.setThunder(false, time.Second*(time.Duration(w.w.weatherRandIntN(8400)+600)))
 	}
 }
 
@@ -222,7 +222,7 @@ func (w weather) adjustPositionToEntities(tx *Tx, vec mgl64.Vec3) mgl64.Vec3 {
 			// block at its position is eligible to be struck by lightning. We
 			// first save all entity positions where this is the case.
 			pos := cube.PosFromVec3(e.Position())
-			if tx.HighestBlock(pos[0], pos[1]) < pos[2] {
+			if tx.HighestBlock(pos[0], pos[2]) < pos[2] {
 				list = append(list, e.Position())
 			}
 		}
