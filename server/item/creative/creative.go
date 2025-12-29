@@ -3,6 +3,8 @@ package creative
 import (
 	_ "embed"
 	"fmt"
+	"slices"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	// The following four imports are essential for this package: They make sure this package is loaded after
@@ -40,29 +42,39 @@ type Group struct {
 // Groups returns a list with all groups that have been registered as a creative group. These groups will be
 // accessible by players in-game who have creative mode enabled.
 func Groups() []Group {
-	return creativeGroups
+	creativeMu.RLock()
+	defer creativeMu.RUnlock()
+	return slices.Clone(creativeGroups)
 }
 
 // RegisterGroup registers a group as a creative group, exposing it in the creative inventory. It can then
 // be referenced using its name when calling RegisterItem.
 func RegisterGroup(group Group) {
+	creativeMu.Lock()
+	defer creativeMu.Unlock()
 	creativeGroups = append(creativeGroups, group)
 }
 
 // Items returns a list with all items that have been registered as a creative item. These items will
 // be accessible by players in-game who have creative mode enabled.
 func Items() []Item {
-	return creativeItemStacks
+	creativeMu.RLock()
+	defer creativeMu.RUnlock()
+	return slices.Clone(creativeItemStacks)
 }
 
 // RegisterItem registers an item as a creative item, exposing it in the creative inventory.
 func RegisterItem(item Item) {
+	creativeMu.Lock()
+	defer creativeMu.Unlock()
 	creativeItemStacks = append(creativeItemStacks, item)
 }
 
 var (
 	//go:embed creative_items.nbt
 	creativeItemData []byte
+
+	creativeMu sync.RWMutex
 
 	// creativeGroups holds a list of all groups that were registered to the creative inventory using
 	// RegisterGroup.
@@ -111,14 +123,18 @@ func registerCreativeItems() {
 		RegisterGroup(Group{Category: c, Name: name, Icon: st})
 	}
 	for _, data := range m.Items {
+		creativeMu.RLock()
 		if data.GroupIndex >= int32(len(creativeGroups)) {
+			creativeMu.RUnlock()
 			panic(fmt.Errorf("invalid group index %v for item %v", data.GroupIndex, data.Name))
 		}
+		groupName := creativeGroups[data.GroupIndex].Name
+		creativeMu.RUnlock()
 		st, ok := itemStackFromEntry(data)
 		if !ok {
 			continue
 		}
-		RegisterItem(Item{st, creativeGroups[data.GroupIndex].Name})
+		RegisterItem(Item{st, groupName})
 	}
 }
 

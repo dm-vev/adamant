@@ -7,11 +7,14 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"unsafe"
 )
 
 // recipes is a list of each recipe.
 var (
+	recipeMu sync.RWMutex
+
 	recipes []Recipe
 	// dynamicRecipes is a list of each dynamic recipe.
 	dynamicRecipes []DynamicRecipe
@@ -23,16 +26,23 @@ var (
 
 // Recipes returns each recipe in a slice.
 func Recipes() []Recipe {
+	recipeMu.RLock()
+	defer recipeMu.RUnlock()
 	return slices.Clone(recipes)
 }
 
 // DynamicRecipes returns each dynamic recipe in a slice.
 func DynamicRecipes() []DynamicRecipe {
+	recipeMu.RLock()
+	defer recipeMu.RUnlock()
 	return slices.Clone(dynamicRecipes)
 }
 
 // Register registers a new recipe.
 func Register(recipe Recipe) {
+	recipeMu.Lock()
+	defer recipeMu.Unlock()
+
 	recipes = append(recipes, recipe)
 
 	_, ok := recipe.(PotionContainerChange)
@@ -64,8 +74,10 @@ func Register(recipe Recipe) {
 // Perform performs the recipe with the given block and inputs and returns the outputs. If the inputs do not map to
 // any outputs, false is returned for the second return value.
 func Perform(block string, input ...world.Item) (output []item.Stack, ok bool) {
+	recipeMu.RLock()
 	blockInd, ok := index[block]
 	if !ok {
+		recipeMu.RUnlock()
 		// Block specific index didn't exist.
 		return nil, false
 	}
@@ -73,9 +85,11 @@ func Perform(block string, input ...world.Item) (output []item.Stack, ok bool) {
 	if !ok {
 		r, ok = blockInd[hashItems(input, false)]
 		if !ok {
+			recipeMu.RUnlock()
 			return nil, false
 		}
 	}
+	recipeMu.RUnlock()
 	_, containerChange := r.(PotionContainerChange)
 	for ind, it := range r.Output() {
 		if containerChange {
@@ -119,12 +133,16 @@ func hashItems(items []world.Item, useMeta bool) string {
 // ValidBrewingReagent checks if the world.Item is a brewing reagent.
 func ValidBrewingReagent(i world.Item) bool {
 	name, _ := i.EncodeItem()
+	recipeMu.RLock()
 	_, exists := reagent[name]
+	recipeMu.RUnlock()
 	return exists
 }
 
 // RegisterDynamic registers a new dynamic recipe. Dynamic recipes are not sent to the client
 // and are validated server-side.
 func RegisterDynamic(recipe DynamicRecipe) {
+	recipeMu.Lock()
+	defer recipeMu.Unlock()
 	dynamicRecipes = append(dynamicRecipes, recipe)
 }
