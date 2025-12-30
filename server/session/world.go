@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	"image/color"
 	"maps"
 	"math/rand/v2"
@@ -20,6 +21,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
+	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -358,6 +360,23 @@ func (s *Session) ViewItemCooldown(item world.Item, duration time.Duration) {
 	s.writePacket(&packet.ClientStartItemCooldown{
 		Category: category,
 		Duration: int32(duration.Milliseconds() / 50),
+	})
+}
+
+// ViewSleepingPlayers ...
+func (s *Session) ViewSleepingPlayers(sleeping, max int) {
+	buf := bytes.NewBuffer(nil)
+	_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(map[string]any{
+		"ableToSleep":          int32(max),
+		"overworldPlayerCount": int32(max),
+		"sleepingPlayerCount":  int32(sleeping),
+	})
+
+	eventData := buf.Bytes()
+
+	s.writePacket(&packet.LevelEventGeneric{
+		EventID:             packet.LevelEventSleepingPlayers,
+		SerialisedEventData: eventData[2 : len(eventData)-1],
 	})
 }
 
@@ -1046,29 +1065,29 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventHurt,
 		})
-		case entity.CriticalHitAction:
-			if act.Count <= 0 {
-				act.Count = 55
-			}
-			s.writePacket(&packet.Animate{
-				ActionType:      packet.AnimateActionCriticalHit,
-				EntityRuntimeID: s.entityRuntimeID(e),
-				Data:            float32(act.Count),
-			})
-		case entity.EnchantedHitAction:
-			if act.Count <= 0 {
-				act.Count = 15
-			}
-			s.writePacket(&packet.Animate{
-				ActionType:      packet.AnimateActionMagicCriticalHit,
-				EntityRuntimeID: s.entityRuntimeID(e),
-				Data:            float32(act.Count),
-			})
-		case entity.DeathAction:
-			s.writePacket(&packet.ActorEvent{
-				EntityRuntimeID: s.entityRuntimeID(e),
-				EventType:       packet.ActorEventDeath,
-			})
+	case entity.CriticalHitAction:
+		if act.Count <= 0 {
+			act.Count = 55
+		}
+		s.writePacket(&packet.Animate{
+			ActionType:      packet.AnimateActionCriticalHit,
+			EntityRuntimeID: s.entityRuntimeID(e),
+			Data:            float32(act.Count),
+		})
+	case entity.EnchantedHitAction:
+		if act.Count <= 0 {
+			act.Count = 15
+		}
+		s.writePacket(&packet.Animate{
+			ActionType:      packet.AnimateActionMagicCriticalHit,
+			EntityRuntimeID: s.entityRuntimeID(e),
+			Data:            float32(act.Count),
+		})
+	case entity.DeathAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventDeath,
+		})
 	case entity.PickedUpAction:
 		s.writePacket(&packet.TakeItemActor{
 			ItemEntityRuntimeID:  s.entityRuntimeID(e),
@@ -1409,14 +1428,6 @@ func (s *Session) ViewWeather(raining, thunder bool) {
 		pk.EventType, pk.EventData = packet.LevelEventStartThunderstorm, int32(rand.IntN(50000)+10000)
 	}
 	s.writePacket(pk)
-}
-
-// ViewSleepingPlayers ...
-func (s *Session) ViewSleepingPlayers(sleeping, max int) {
-	s.writePacket(&packet.LevelEvent{
-		EventType: packet.LevelEventSleepingPlayers,
-		EventData: int32((max << 16) | sleeping),
-	})
 }
 
 // ViewEntityWake ...

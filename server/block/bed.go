@@ -10,20 +10,19 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// Bed is a block, allowing players to sleep to set their spawns and skip the night.
+// Bed is a dyeable utility block that allows a player in the Overworld to sleep through the night and reset
+// their spawn point to within a few blocks of the bed, as long as it is not broken or obstructed.
 type Bed struct {
 	transparent
 	sourceWaterDisplacer
 
 	// Colour is the colour of the bed.
-	//blockhash:ignore
 	Colour item.Colour
 	// Facing is the direction that the bed is Facing.
 	Facing cube.Direction
 	// Head is true if the bed is the head side.
 	Head bool
 	// Sleeper is the user that is using the bed. It is only set for the Head part of the bed.
-	//blockhash:ignore
 	Sleeper *world.EntityHandle
 }
 
@@ -50,16 +49,19 @@ func (b Bed) BreakInfo() BreakInfo {
 			return
 		}
 
-		sleeper := headSide.Sleeper
-		if sleeper != nil {
+		s := headSide.Sleeper
+		if s == nil {
+			return
+		}
 
-			ent, ok := sleeper.Entity(tx)
-			if ok {
-				sleeper, ok := ent.(world.Sleeper)
-				if ok {
-					sleeper.Wake()
-				}
-			}
+		ent, ok := s.Entity(tx)
+		if !ok {
+			return
+		}
+
+		sleeper, ok := ent.(world.Sleeper)
+		if ok {
+			sleeper.Wake()
 		}
 	})
 }
@@ -81,7 +83,6 @@ func (b Bed) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx
 	if !replaceableWith(tx, sidePos, side) {
 		return
 	}
-
 	if !supportedFromBelow(sidePos, tx) {
 		return
 	}
@@ -100,7 +101,6 @@ func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *i
 	}
 
 	w := tx.World()
-
 	if w.Dimension() != world.Overworld {
 		tx.SetBlock(pos, nil, nil)
 		ExplosionConfig{
@@ -116,7 +116,7 @@ func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *i
 	}
 
 	userPos := s.Position()
-	if sidePos.Vec3Middle().Sub(userPos).Len() > 4 && pos.Vec3Middle().Sub(userPos).Len() > 4 {
+	if sidePos.Vec3Middle().Sub(userPos).Len() > 2 && pos.Vec3Middle().Sub(userPos).Len() > 2 {
 		s.Messaget(chat.MessageBedTooFar)
 		return true
 	}
@@ -125,26 +125,42 @@ func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *i
 	if !ok {
 		return false
 	}
+
+	if _, safeSpawn := b.SafeSpawn(pos, tx); !safeSpawn {
+		s.Messaget(chat.MessageBedObstructed)
+		return false
+	}
+
 	if _, ok = tx.Liquid(headPos); ok {
 		return false
 	}
 
 	previousSpawn := w.PlayerSpawn(s.UUID())
-	if previousSpawn != pos && previousSpawn != sidePos {
-		w.SetPlayerSpawn(s.UUID(), pos)
+	if previousSpawn != headPos {
+		w.SetPlayerSpawn(s.UUID(), headPos)
 		s.Messaget(chat.MessageRespawnPointSet)
 	}
 
 	time := w.Time() % world.TimeFull
-	if (time < world.TimeNight || time >= world.TimeSunrise) && !tx.ThunderingAt(pos) {
-		s.Messaget(chat.MessageNoSleep)
-		return true
+	if !tx.Thundering() {
+		if !tx.Raining() && (time <= world.TimeSleep || time >= world.TimeWake) {
+			s.Messaget(chat.MessageNoSleep)
+			return true
+		}
+		if time <= world.TimeSleepWithRain || time >= world.TimeWakeWithRain {
+			s.Messaget(chat.MessageNoSleep)
+			return true
+		}
 	}
 	if headSide.Sleeper != nil {
 		s.Messaget(chat.MessageBedIsOccupied)
 		return true
 	}
 
+	// TODO: add a check for when monsters are nearby
+
+	// If the sleeper is a player, bind the current world transaction so Sleep()
+	// can run synchronously without reacquiring a new transaction.
 	if binder, ok := s.(interface{ BindTransaction(*world.Tx) }); ok {
 		binder.BindTransaction(tx)
 	}
@@ -188,9 +204,9 @@ func (b Bed) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:bed", map[string]interface{}{
-		"direction":    int32(horizontalDirection(b.Facing)),
-		"occupied_bit": boolByte(b.Sleeper != nil),
-		"head_bit":     boolByte(b.Head),
+		"direction":      int32(horizontalDirection(b.Facing)),
+		"occupied_bit":   boolByte(b.Sleeper != nil),
+		"head_piece_bit": boolByte(b.Head),
 	}
 }
 
@@ -241,18 +257,55 @@ func allBeds() (beds []world.Block) {
 	return
 }
 
+// CanRespawnOn ...
 func (Bed) CanRespawnOn() bool {
 	return true
 }
 
-func (Bed) RespawnOn(pos cube.Pos, u item.User, tx *world.Tx) {}
+// RespawnOn ...
+func (Bed) RespawnOn(cube.Pos, item.User, *world.Tx) {}
 
-// RespawnBlock represents a block using which player can set his spawn point.
+// RespawnBlock represents a block using which a player can set their spawn point.
 type RespawnBlock interface {
-	// CanRespawnOn defines if player can use this block to respawn.
+	// CanRespawnOn defines if a player can use this block to respawn.
 	CanRespawnOn() bool
-	// RespawnOn is called when a player decides to respawn using this block.
+	// RespawnOn is called when a player respawns using this block.
 	RespawnOn(pos cube.Pos, u item.User, tx *world.Tx)
+}
+
+// bedOffsets is a map of offsets for each face of the bed. The offsets are relative to the heel side of the bed.
+var bedOffsets = map[cube.Face][]cube.Pos{
+	cube.FaceNorth: {{-1, 0, 0}, {-1, 0, 1}, {0, 0, 1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {1, 0, -2}, {0, 0, -2}, {-1, 0, -2}, {-1, 0, -1}, {0, 1, -1}, {0, 1, 0}},
+	cube.FaceEast:  {{0, 0, -1}, {-1, 0, -1}, {-1, 0, 0}, {-1, 0, 1}, {-1, 0, 1}, {0, 0, 1}, {1, 0, 1}, {2, 0, 1}, {2, 0, 0}, {2, 0, -1}, {1, 0, -1}, {1, 1, 0}, {0, 1, 0}},
+	cube.FaceSouth: {{1, 0, 0}, {1, 0, -1}, {0, 0, -1}, {-1, 0, -1}, {-1, 0, 0}, {-1, 0, 1}, {-1, 0, 2}, {0, 0, 2}, {1, 0, 2}, {1, 0, 1}, {0, 1, 1}, {0, 1, 0}},
+	cube.FaceWest:  {{0, 0, 1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {1, 0, -1}, {0, 0, -1}, {-1, 0, -1}, {-2, 0, -1}, {-2, 0, 0}, {-2, 0, 1}, {-1, 0, 1}, {-1, 1, 0}, {0, 1, 0}},
+}
+
+// SafeSpawn returns a safe spawn position close to the bed.
+func (b Bed) SafeSpawn(pos cube.Pos, tx *world.Tx) (cube.Pos, bool) {
+	_, headPos, ok := b.head(pos, tx)
+	if !ok {
+		return cube.Pos{}, false
+	}
+
+	heelPos := headPos.Side(b.Facing.Opposite().Face())
+
+	for _, offset := range bedOffsets[b.Facing.Face()] {
+		offsetPos := heelPos.Add(offset)
+
+		if _, solidBlock := tx.Block(offsetPos).Model().(model.Solid); solidBlock {
+			if diffuser, ok := tx.Block(offsetPos).(LightDiffuser); !ok || diffuser.LightDiffusionLevel() != 0 {
+				continue
+			}
+		}
+
+		if _, emptyBlock := tx.Block(offsetPos.Side(cube.FaceDown)).Model().(model.Empty); emptyBlock {
+			continue
+		}
+
+		return heelPos.Add(offset), true
+	}
+	return cube.Pos{}, false
 }
 
 // supportedFromBelow ...

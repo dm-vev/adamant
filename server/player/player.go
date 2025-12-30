@@ -59,8 +59,13 @@ type playerData struct {
 
 	sneaking, sprinting, swimming, gliding, crawling, flying,
 	invisible, immobile, onGround, usingItem bool
+
 	blockingDelayTicks int64
-	usingSince         time.Time
+
+	sleeping bool
+	sleepPos cube.Pos
+
+	usingSince time.Time
 
 	glideTicks   int64
 	fireTicks    int64
@@ -675,6 +680,8 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 		p.tx.PlaySound(pos, sound.Drowning{})
 	}
 
+	p.Wake()
+
 	if p.Dead() {
 		p.kill(src)
 	}
@@ -929,7 +936,9 @@ func finishDying(_ *world.Tx, e world.Entity) {
 		// position server side so that in the future, the client won't respawn
 		// on the death location when disconnecting. The client should not see
 		// the movement itself yet, though.
-		p.data.Pos = p.tx.World().Spawn().Vec3()
+		pos, _, _, _ := p.spawnLocation()
+
+		p.data.Pos = pos.Vec3()
 	}
 }
 
@@ -1016,12 +1025,18 @@ func (p *Player) respawn(f func(p *Player)) {
 	})
 }
 
-// spawnLocation returns position and world where player should be spawned.
+// spawnLocation designates the player's safe spawn location.
 func (p *Player) spawnLocation() (playerSpawn cube.Pos, w *world.World, spawnBlockBroken bool, previousDimension world.Dimension) {
 	tx := p.tx
 	w = tx.World()
 	previousDimension = w.Dimension()
 	playerSpawn = w.PlayerSpawn(p.UUID())
+	if b, ok := tx.Block(playerSpawn).(block.Bed); ok && b.CanRespawnOn() {
+		pos, ok := b.SafeSpawn(playerSpawn, tx)
+		if ok {
+			return pos, w, false, previousDimension
+		}
+	}
 	if b, ok := tx.Block(playerSpawn).(block.RespawnBlock); ok && b.CanRespawnOn() {
 		return playerSpawn, w, false, previousDimension
 	}
@@ -1281,11 +1296,13 @@ func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
 	b.Sleeper = p.H()
 	tx.SetBlock(pos, b, nil)
 
-	tx.World().SetRequiredSleepDuration(time.Second * 5)
+	tx.World().SetRequiredSleepDuration(time.Millisecond * 5050)
 
 	p.data.Pos = pos.Vec3Middle().Add(mgl64.Vec3{0, 0.5625})
 	p.sleeping = true
 	p.sleepPos = pos
+
+	p.session().SendPlayerSpawn(pos.Vec3())
 
 	if sendReminder {
 		tx.BroadcastSleepingReminder(p)
@@ -2473,6 +2490,7 @@ func (p *Player) Teleport(pos mgl64.Vec3) {
 	if p.Handler().HandleTeleport(ctx, pos); ctx.Cancelled() {
 		return
 	}
+	p.Wake()
 	p.StopFishing(p.tx, false)
 	p.teleport(pos)
 }
