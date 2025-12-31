@@ -219,7 +219,7 @@ func (h *ItemStackRequestHandler) handleSwap(a *protocol.SwapStackRequestAction,
 		return err
 	}
 	h.collectRewards(s, invA, int(a.Source.Slot), tx, c)
-	h.collectRewards(s, invA, int(a.Destination.Slot), tx, c)
+	h.collectRewards(s, invB, int(a.Destination.Slot), tx, c)
 	return nil
 }
 
@@ -460,8 +460,14 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotIn
 		sl = 0
 	}
 
-	before, _ := inv.Item(sl)
-	_ = inv.SetItem(sl, i)
+	// Fetch and set with error checks so invalid slots don't desync client/server state.
+	before, err := inv.Item(sl)
+	if err != nil {
+		return err
+	}
+	if err := inv.SetItem(sl, i); err != nil {
+		return err
+	}
 
 	respSlot := protocol.StackResponseSlotInfo{
 		Slot:                 slot.Slot,
