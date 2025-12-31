@@ -56,3 +56,6 @@
 - Guarded crossbow quick-charge tick math against invalid levels and cloned stack custom data/unbreakable flags based on the new item type.
 
 - Validated item stack request container lookups and slot updates to reject invalid containers and avoid nil dereferences during inventory actions.
+
+- Avoided holding the session list lock while sending player list packets by snapshotting sessions before I/O.
+- Clamped persisted and loaded held-slot values to hotbar bounds to avoid invalid inventory access from corrupted data.

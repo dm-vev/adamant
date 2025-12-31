@@ -128,5 +128,9 @@ func fillDefaults(conf Config) Config {
 	if conf.GameMode == nil {
 		conf.GameMode = world.GameModeSurvival
 	}
+	if conf.HeldSlot < 0 || conf.HeldSlot > 8 {
+		// Clamp corrupted configs to a valid hotbar slot to avoid invalid inventory access.
+		conf.HeldSlot = 0
+	}
 	return conf
 }

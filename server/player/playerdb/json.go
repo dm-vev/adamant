@@ -57,7 +57,12 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 	}
 	_ = conf.OffHand.SetItem(0, invData.OffHand)
 	conf.Armour.Set(invData.Helmet, invData.Chestplate, invData.Leggings, invData.Boots)
-	conf.HeldSlot = int(invData.MainHandSlot)
+	if invData.MainHandSlot > 8 {
+		// Corrupted data can carry invalid hotbar slots; default to the first slot.
+		conf.HeldSlot = 0
+	} else {
+		conf.HeldSlot = int(invData.MainHandSlot)
+	}
 
 	for slot, stack := range echest {
 		_ = conf.EnderChestInventory.SetItem(slot, stack)
@@ -69,6 +74,11 @@ func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 	dim, _ := world.DimensionID(w.Dimension())
 	mode, _ := world.GameModeID(d.GameMode)
 	offHand, _ := d.OffHand.Item(0)
+	heldSlot := d.HeldSlot
+	if heldSlot < 0 || heldSlot > 8 {
+		// Keep persisted data within hotbar bounds even if the config was invalid.
+		heldSlot = 0
+	}
 	return jsonData{
 		UUID:            d.UUID.String(),
 		Username:        d.Name,
@@ -97,7 +107,7 @@ func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 			Chestplate:   d.Armour.Chestplate(),
 			Helmet:       d.Armour.Helmet(),
 			OffHand:      offHand,
-			MainHandSlot: uint32(d.HeldSlot),
+			MainHandSlot: uint32(heldSlot),
 		}),
 		EnderChestInventory: encodeItems(d.EnderChestInventory.Slots()),
 		Dimension:           uint8(dim),
