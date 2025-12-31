@@ -35,10 +35,25 @@ func (w WrittenBook) Page(page int) (string, bool) {
 
 // DecodeNBT ...
 func (w WrittenBook) DecodeNBT(data map[string]any) any {
+	// Clamp and validate decoded pages to avoid panics and malformed data.
+	w.Pages = nil
 	if pages, ok := data["pages"].([]any); ok {
-		w.Pages = make([]string, len(pages))
-		for i, page := range pages {
-			w.Pages[i] = page.(map[string]any)["text"].(string)
+		if len(pages) > maxBookPages {
+			pages = pages[:maxBookPages]
+		}
+		for _, page := range pages {
+			pageData, ok := page.(map[string]any)
+			if !ok {
+				continue
+			}
+			text, ok := pageData["text"].(string)
+			if !ok {
+				continue
+			}
+			if len(text) > maxBookPageBytes {
+				text = text[:maxBookPageBytes]
+			}
+			w.Pages = append(w.Pages, text)
 		}
 	}
 	w.Title, _ = data["title"].(string)
@@ -58,8 +73,14 @@ func (w WrittenBook) DecodeNBT(data map[string]any) any {
 
 // EncodeNBT ...
 func (w WrittenBook) EncodeNBT() map[string]any {
-	pages := make([]any, 0, len(w.Pages))
-	for _, page := range w.Pages {
+	pages := make([]any, 0, min(len(w.Pages), maxBookPages))
+	for i, page := range w.Pages {
+		if i >= maxBookPages {
+			break
+		}
+		if len(page) > maxBookPageBytes {
+			page = page[:maxBookPageBytes]
+		}
 		pages = append(pages, map[string]any{"text": page})
 	}
 	return map[string]any{

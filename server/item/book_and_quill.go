@@ -8,6 +8,11 @@ type BookAndQuill struct {
 	Pages []string
 }
 
+const (
+	maxBookPages     = 50
+	maxBookPageBytes = 256
+)
+
 // MaxCount always returns 1.
 func (BookAndQuill) MaxCount() int {
 	return 1
@@ -89,13 +94,25 @@ func (b BookAndQuill) SwapPages(pageOne, pageTwo int) BookAndQuill {
 
 // DecodeNBT ...
 func (b BookAndQuill) DecodeNBT(data map[string]any) any {
+	// Clamp and validate decoded pages to avoid panics and malformed data.
+	b.Pages = nil
 	pages, _ := data["pages"].([]any)
+	if len(pages) > maxBookPages {
+		pages = pages[:maxBookPages]
+	}
 	for _, page := range pages {
-		if pageData, ok := page.(map[string]any); ok {
-			if text, ok := pageData["text"].(string); ok {
-				b.Pages = append(b.Pages, text)
-			}
+		pageData, ok := page.(map[string]any)
+		if !ok {
+			continue
 		}
+		text, ok := pageData["text"].(string)
+		if !ok {
+			continue
+		}
+		if len(text) > maxBookPageBytes {
+			text = text[:maxBookPageBytes]
+		}
+		b.Pages = append(b.Pages, text)
 	}
 	return b
 }
@@ -105,8 +122,14 @@ func (b BookAndQuill) EncodeNBT() map[string]any {
 	if len(b.Pages) == 0 {
 		return nil
 	}
-	pages := make([]any, 0, len(b.Pages))
-	for _, page := range b.Pages {
+	pages := make([]any, 0, min(len(b.Pages), maxBookPages))
+	for i, page := range b.Pages {
+		if i >= maxBookPages {
+			break
+		}
+		if len(page) > maxBookPageBytes {
+			page = page[:maxBookPageBytes]
+		}
 		pages = append(pages, map[string]any{"text": page})
 	}
 	return map[string]any{"pages": pages}

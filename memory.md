@@ -43,3 +43,7 @@
 - Hardened session form handling with Nop/handler guards and marshal error logging; validate transfer ports before sending.- Resolved translation parameter handling to honor Translation/translation arguments and avoid panics on nested translations.
 - Guarded player item cooldowns with a mutex to prevent concurrent map access races.
 - Made session held-slot pointers atomic and initialized before inventory callbacks to prevent racey nil dereferences during inventory transactions.
+
+- Guarded NPC dialogue state with mutex-protected pointers to avoid races between session updates and network handlers.
+
+- Hardened book NBT decode/encode paths to clamp page counts and sizes and skip malformed page entries.
