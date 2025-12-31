@@ -84,7 +84,8 @@ func (a Animation) Bounds() image.Rectangle {
 // The concrete type returned by At is a color.RGBA value.
 func (a Animation) At(x, y int) color.Color {
 	if x < 0 || y < 0 || x >= a.w || y >= a.h {
-		panic("pixel coordinates out of bounds")
+		// Return a zero colour for out-of-bounds access to avoid panics in callers.
+		return color.RGBA{}
 	}
 	offset := x*4 + a.w*y*4
 	return color.RGBA{

@@ -34,11 +34,12 @@ func (b BookAndQuill) Page(page int) (string, bool) {
 
 // DeletePage attempts to delete a page from the book.
 func (b BookAndQuill) DeletePage(page int) BookAndQuill {
-	if page < 0 || page >= 50 {
-		panic("invalid page number")
+	if page < 0 || page >= maxBookPages {
+		// Ignore invalid input to avoid panics from malformed client data.
+		return b
 	}
 	if _, ok := b.Page(page); !ok {
-		panic("cannot delete nonexistent page")
+		return b
 	}
 	b.Pages = slices.Delete(b.Pages, page, page+1)
 	return b
@@ -46,27 +47,29 @@ func (b BookAndQuill) DeletePage(page int) BookAndQuill {
 
 // InsertPage attempts to insert a page within the book
 func (b BookAndQuill) InsertPage(page int, text string) BookAndQuill {
-	if page < 0 || page >= 50 {
-		panic("invalid page number")
+	if page < 0 || page >= maxBookPages {
+		// Ignore invalid input to avoid panics from malformed client data.
+		return b
 	}
-	if len(text) > 256 {
-		panic("text longer then 256 bytes")
+	if len(text) > maxBookPageBytes {
+		text = text[:maxBookPageBytes]
 	}
 	if page > len(b.Pages) {
-		panic("unable to insert page at invalid position")
+		return b
 	}
 	b.Pages = slices.Insert(b.Pages, page, text)
 	return b
 }
 
-// SetPage writes a page to the book, if the page doesn't exist it will be created. It will panic if the
-// text is longer then 256 characters. It will return a new book representing this data.
+// SetPage writes a page to the book; if the page doesn't exist it will be created.
+// Text exceeding maxBookPageBytes is truncated to keep books within protocol limits.
 func (b BookAndQuill) SetPage(page int, text string) BookAndQuill {
-	if page < 0 || page >= 50 {
-		panic("invalid page number")
+	if page < 0 || page >= maxBookPages {
+		// Ignore invalid input to avoid panics from malformed client data.
+		return b
 	}
-	if len(text) > 256 {
-		panic("text longer then 256 bytes")
+	if len(text) > maxBookPageBytes {
+		text = text[:maxBookPageBytes]
 	}
 	if _, ok := b.Page(page); !ok {
 		pages := make([]string, page+1)
@@ -81,10 +84,11 @@ func (b BookAndQuill) SetPage(page int, text string) BookAndQuill {
 // return the newly updated pages.
 func (b BookAndQuill) SwapPages(pageOne, pageTwo int) BookAndQuill {
 	if pageOne < 0 || pageTwo < 0 {
-		panic("negative page number")
+		// Ignore invalid input to avoid panics from malformed client data.
+		return b
 	}
 	if _, ok := b.Page(max(pageOne, pageTwo)); !ok {
-		panic("invalid page number")
+		return b
 	}
 	temp := b.Pages[pageOne]
 	b.Pages[pageOne] = b.Pages[pageTwo]

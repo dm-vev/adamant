@@ -68,12 +68,11 @@ func (s Skin) ColorModel() color.Model {
 	return color.RGBAModel
 }
 
-// At returns the colour at a given position in the skin. The concrete value of the colour returned is a color.RGBA
-// value.
-// If the x or y values exceed the bounds of the skin, At will panic.
+// At returns the colour at a given position in the skin. The concrete value of the colour returned is a
+// color.RGBA value. Out-of-bounds access returns a zero colour to avoid panics in callers.
 func (s Skin) At(x, y int) color.Color {
 	if x < 0 || y < 0 || x >= s.w || y >= s.h {
-		panic("pixel coordinates out of bounds")
+		return color.RGBA{}
 	}
 	offset := x*4 + s.w*y*4
 	return color.RGBA{
