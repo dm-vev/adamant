@@ -68,3 +68,4 @@
 
 - Added internal locking to scoreboard state access to eliminate data races during concurrent updates and reads.
 - Validated inbound skin, cape, and animation payload dimensions and lengths, copying buffers to avoid malformed data panics.
+- Guarded enchanting random selection against invalid weights/values to avoid IntN panics on custom enchantables.

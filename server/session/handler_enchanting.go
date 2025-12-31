@@ -181,6 +181,10 @@ type treasureEnchantment interface {
 
 // createEnchantments creates a list of enchantments for the given item stack and returns them.
 func createEnchantments(random *rand.Rand, stack item.Stack, value, level int) []item.Enchantment {
+	if value < 0 {
+		// Guard against invalid enchantment values from custom items to avoid panics in IntN.
+		value = 0
+	}
 	// Calculate the "random bonus" for this level. This factor is used in calculating the enchantment cost, used
 	// during the selection of enchantments.
 	randomBonus := (random.Float64() + random.Float64() - 1.0) * 0.15
@@ -303,9 +307,17 @@ func searchBookshelves(tx *world.Tx, pos cube.Pos) (shelves int) {
 // weightedRandomEnchantment returns a random enchantment from the given list of enchantments using the rarity weight of
 // each enchantment.
 func weightedRandomEnchantment(rs *rand.Rand, enchants []item.Enchantment) item.Enchantment {
+	if len(enchants) == 0 {
+		// Defensive fallback to avoid panics if callers pass an empty list.
+		return item.Enchantment{}
+	}
 	var totalWeight int
 	for _, e := range enchants {
 		totalWeight += e.Type().Rarity().Weight()
+	}
+	if totalWeight <= 0 {
+		// All weights are invalid; fall back to a deterministic choice.
+		return enchants[0]
 	}
 	r := rs.IntN(totalWeight)
 	for _, e := range enchants {
