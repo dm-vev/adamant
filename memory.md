@@ -59,3 +59,4 @@
 
 - Avoided holding the session list lock while sending player list packets by snapshotting sessions before I/O.
 - Clamped persisted and loaded held-slot values to hotbar bounds to avoid invalid inventory access from corrupted data.
+- Detached query provider player-name slices to avoid concurrent mutation races during query responses.

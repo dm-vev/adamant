@@ -71,6 +71,8 @@ func collectData(host string, port int) Data {
 		return defaultData(host, port)
 	}
 	data := provider(canonicalHost(host), port)
+	// Detach provider-owned slices to avoid races if the provider mutates them after returning.
+	data = cloneData(data)
 	data.applyDefaults()
 	storeSnapshot(data)
 	return data
