@@ -23,6 +23,7 @@ import (
 const (
 	defaultPromptPrefix = "> "
 	maxHistoryEntries   = 128
+	maxConsoleLineSize  = 1 << 20
 )
 
 // Console provides a simple CLI backed command source that reads commands from
@@ -72,6 +73,8 @@ func (c *Console) Run(ctx context.Context) {
 
 func (c *Console) runScanner(ctx context.Context) {
 	scanner := bufio.NewScanner(c.reader)
+	// Allow long command lines (for example, complex JSON inputs) without terminating the console.
+	scanner.Buffer(make([]byte, 0, 4096), maxConsoleLineSize)
 	src := &consoleSource{log: c.log}
 
 	for {

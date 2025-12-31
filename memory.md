@@ -83,3 +83,5 @@
 
 - Made packbuilder item/text directory creation idempotent to avoid rebuild failures when directories already exist.
 - Only move items to inventory on valid container closes to avoid side effects from invalid close packets.
+- Validated inventory slot updates and swap reward collection to prevent desyncs during item stack requests.
+- Increased console scanner buffer to handle long command lines without terminating input processing.
