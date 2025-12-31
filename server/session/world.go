@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 	"image/color"
+	"maps"
 	"math/rand/v2"
 	"strings"
 	"time"
@@ -1322,6 +1323,9 @@ func (s *Session) ViewBlockAction(pos cube.Pos, a world.BlockAction) {
 		nbt := t.DecoratedPot.EncodeNBT()
 		if nbt == nil {
 			nbt = map[string]any{}
+		} else {
+			// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
+			nbt = maps.Clone(nbt)
 		}
 		nbt["x"], nbt["y"], nbt["z"] = blockPos.X(), blockPos.Y(), blockPos.Z()
 		nbt["animation"] = boolByte(t.Success) + 1

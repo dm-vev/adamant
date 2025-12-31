@@ -92,3 +92,7 @@
 
 - Allowed form submittables to be structs or pointers, cloning form values safely and invoking Submit on pointer receivers.
 - Guarded hunger state access with snapshots/tick state and atomic updates to remove food handling data races.
+
+- Guarded portal travel instant callback against nil and stopped portal scan loops early to avoid extra work.
+
+- Cloned block-entity NBT maps before adding positional fields to avoid mutating shared state during chunk and block update serialization.

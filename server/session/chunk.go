@@ -2,6 +2,7 @@ package session
 
 import (
 	"bytes"
+	"maps"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -107,6 +108,9 @@ func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *
 			d := n.EncodeNBT()
 			if d == nil {
 				d = map[string]any{}
+			} else {
+				// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
+				d = maps.Clone(d)
 			}
 			d["x"], d["y"], d["z"] = int32(pos[0]), int32(pos[1]), int32(pos[2])
 			_ = enc.Encode(d)
@@ -193,6 +197,9 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chu
 			d := n.EncodeNBT()
 			if d == nil {
 				d = map[string]any{}
+			} else {
+				// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
+				d = maps.Clone(d)
 			}
 			d["x"], d["y"], d["z"] = int32(bp[0]), int32(bp[1]), int32(bp[2])
 			_ = enc.Encode(d)
@@ -238,6 +245,9 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, c *c
 			d := n.EncodeNBT()
 			if d == nil {
 				d = map[string]any{}
+			} else {
+				// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
+				d = maps.Clone(d)
 			}
 			d["x"], d["y"], d["z"] = int32(bp[0]), int32(bp[1]), int32(bp[2])
 			_ = enc.Encode(d)
