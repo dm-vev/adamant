@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 )
 
 // Scoreboard represents a scoreboard that may be sent to a player. The scoreboard is shown on the right side
-// of the player's screen.
+// of the player's screen. It is safe for concurrent use.
 // Scoreboard implements the io.Writer and io.StringWriter interfaces. fmt.Fprintf and fmt.Fprint may be used
 // to write formatted text to the scoreboard.
 type Scoreboard struct {
+	mu         sync.RWMutex
 	name       string
 	lines      []string
 	padding    bool
@@ -29,6 +31,8 @@ func New(name ...any) *Scoreboard {
 
 // Name returns the display name of the scoreboard, as passed during the construction of the scoreboard.
 func (board *Scoreboard) Name() string {
+	board.mu.RLock()
+	defer board.mu.RUnlock()
 	return board.name
 }
 
@@ -47,6 +51,8 @@ func (board *Scoreboard) WriteString(s string) (n int, err error) {
 	lines := strings.Split(s, "\n")
 
 	// Scoreboards can have up to 15 lines. (16 including the title.)
+	board.mu.Lock()
+	defer board.mu.Unlock()
 	if len(board.lines)+len(lines) > maxScoreboardLines {
 		return 0, fmt.Errorf("write scoreboard: maximum of %d lines of text exceeded", maxScoreboardLines)
 	}
@@ -60,6 +66,8 @@ func (board *Scoreboard) Set(index int, s string) {
 	if index < 0 || index >= maxScoreboardLines {
 		panic(fmt.Sprintf("index out of range %v", index))
 	}
+	board.mu.Lock()
+	defer board.mu.Unlock()
 	if diff := index - (len(board.lines) - 1); diff > 0 {
 		board.lines = append(board.lines, make([]string, diff)...)
 	}
@@ -72,6 +80,8 @@ func (board *Scoreboard) Remove(index int) {
 	if index < 0 || index >= maxScoreboardLines {
 		panic(fmt.Sprintf("index out of range %v", index))
 	}
+	board.mu.Lock()
+	defer board.mu.Unlock()
 	if index >= len(board.lines) {
 		// No line exists at this index yet, so there is nothing to remove.
 		return
@@ -81,11 +91,15 @@ func (board *Scoreboard) Remove(index int) {
 
 // RemovePadding removes the padding of one space that is added to the start of every line.
 func (board *Scoreboard) RemovePadding() {
+	board.mu.Lock()
+	defer board.mu.Unlock()
 	board.padding = false
 }
 
 // Lines returns the data of the Scoreboard as a slice of strings.
 func (board *Scoreboard) Lines() []string {
+	board.mu.RLock()
+	defer board.mu.RUnlock()
 	lines := slices.Clone(board.lines)
 	if board.padding {
 		for i, line := range lines {
@@ -104,11 +118,15 @@ func (board *Scoreboard) Lines() []string {
 
 // Descending returns whether the scoreboard is sorted in descending order.
 func (board *Scoreboard) Descending() bool {
+	board.mu.RLock()
+	defer board.mu.RUnlock()
 	return board.descending
 }
 
 // SetDescending sets the scoreboard sort order to descending.
 // When sending the scoreboard to the player, it will reverse the order of the lines to match when it's ascending.
 func (board *Scoreboard) SetDescending() {
+	board.mu.Lock()
+	defer board.mu.Unlock()
 	board.descending = true
 }

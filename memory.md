@@ -63,3 +63,7 @@
 
 - Avoided ender chest slot updates after container close by checking open state and position inside the transaction.
 - Preserved quoted command arguments by splitting ExecuteLine once and parsing args consistently for hooks.
+
+- Defaulted query logging to slog.Default when a nil logger is supplied to avoid nil-pointer panics in RakNet network setup.
+
+- Added internal locking to scoreboard state access to eliminate data races during concurrent updates and reads.

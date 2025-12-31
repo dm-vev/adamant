@@ -171,9 +171,13 @@ func (a *Armour) Damage(dmg float64, f DamageFunc) {
 func (a *Armour) ThornsDamage(f DamageFunc) float64 {
 	slots := a.Slots()
 	dmg := 0.0
+	thornsSlots := make([]int, 0, len(slots))
 
-	for _, i := range slots {
+	for slot, i := range slots {
 		thorns, _ := i.Enchantment(enchantment.Thorns)
+		if thorns.Level() > 0 {
+			thornsSlots = append(thornsSlots, slot)
+		}
 		if level := float64(thorns.Level()); rand.Float64() < level*0.15 {
 			// 15%/level chance of thorns activation per item. Total damage from
 			// normal thorns armour (max thorns III) should never exceed 4.0 in
@@ -188,14 +192,15 @@ func (a *Armour) ThornsDamage(f DamageFunc) float64 {
 		// damage.
 		dmg = float64(highest - 10)
 	}
-	if dmg > 0 {
+	if dmg > 0 && len(thornsSlots) > 0 {
 		// Deal 2 damage to one random thorns item. Bedrock Edition and Java Edition
 		// both have different behaviour here and neither seem to match the expected
 		// behaviour. Java Edition deals 2 damage to a random thorns item for every
 		// thorns armour item worn, while Bedrock Edition deals 1 additional damage
 		// for every thorns item and another 2 for every thorns item when it
 		// activates.
-		slot := rand.IntN(len(slots))
+		// Limit the damage to items that actually have the thorns enchantment.
+		slot := thornsSlots[rand.IntN(len(thornsSlots))]
 		_ = a.Inventory().SetItem(slot, f(slots[slot], 2))
 	}
 	return dmg
