@@ -88,6 +88,10 @@ func (a Animation) At(x, y int) color.Color {
 		return color.RGBA{}
 	}
 	offset := x*4 + a.w*y*4
+	if offset+3 >= len(a.Pix) {
+		// Guard against invalid or truncated pixel data to avoid panics.
+		return color.RGBA{}
+	}
 	return color.RGBA{
 		R: a.Pix[offset],
 		G: a.Pix[offset+1],

@@ -75,6 +75,10 @@ func (s Skin) At(x, y int) color.Color {
 		return color.RGBA{}
 	}
 	offset := x*4 + s.w*y*4
+	if offset+3 >= len(s.Pix) {
+		// Guard against invalid or truncated pixel data to avoid panics.
+		return color.RGBA{}
+	}
 	return color.RGBA{
 		R: s.Pix[offset],
 		G: s.Pix[offset+1],

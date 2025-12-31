@@ -51,6 +51,10 @@ func (c Cape) At(x, y int) color.Color {
 		return color.RGBA{}
 	}
 	offset := x*4 + c.w*y*4
+	if offset+3 >= len(c.Pix) {
+		// Guard against invalid or truncated pixel data to avoid panics.
+		return color.RGBA{}
+	}
 	return color.RGBA{
 		R: c.Pix[offset],
 		G: c.Pix[offset+1],
