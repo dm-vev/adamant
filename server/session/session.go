@@ -308,6 +308,9 @@ func (s *Session) Close(tx *world.Tx, c Controllable) {
 // close closes the session, which in turn closes the controllable and the connection that the session
 // manages.
 func (s *Session) close(tx *world.Tx, c Controllable) {
+	// Ensure background workers and packet writers stop even if the network read loop exited first.
+	s.CloseConnection()
+
 	c.MoveItemsToInventory()
 	s.closeCurrentContainer(tx)
 

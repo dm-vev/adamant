@@ -35,3 +35,7 @@
 - Moved command origin tracking to an atomic session field to avoid races and keep command output correlated with the latest request.
 - Hardened explosion randomness by serializing shared rand sources and deduplicated affected blocks to avoid duplicate break/drop processing.
 - Hardened inspect_palette candle-cake scanning to avoid prefix slice panics and use EOF-safe decoding.
+
+- Guarded XP drop randomization against invalid ranges to avoid rand panics.
+
+- Ensured sessions always close background workers by closing connections during shutdown to prevent goroutine leaks after packet read errors.
