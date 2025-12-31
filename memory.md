@@ -62,3 +62,4 @@
 - Detached query provider player-name slices to avoid concurrent mutation races during query responses.
 
 - Avoided ender chest slot updates after container close by checking open state and position inside the transaction.
+- Preserved quoted command arguments by splitting ExecuteLine once and parsing args consistently for hooks.

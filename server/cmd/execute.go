@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/csv"
 	"strings"
+	"unicode"
 
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -18,12 +20,23 @@ func ExecuteLine(source Source, commandLine string, tx *world.Tx, before func(Co
 	if commandLine == "" {
 		return
 	}
-	args := strings.Split(commandLine, " ")
-	if len(args) == 0 {
+	if !strings.HasPrefix(commandLine, "/") {
 		return
 	}
-	name, ok := strings.CutPrefix(args[0], "/")
-	if !ok || name == "" {
+	trimmed := strings.TrimLeftFunc(commandLine[1:], unicode.IsSpace)
+	if trimmed == "" {
+		return
+	}
+
+	// Split once so quoted arguments keep their spaces for csv parsing downstream.
+	splitAt := strings.IndexFunc(trimmed, unicode.IsSpace)
+	name := trimmed
+	args := ""
+	if splitAt != -1 {
+		name = trimmed[:splitAt]
+		args = strings.TrimLeftFunc(trimmed[splitAt+1:], unicode.IsSpace)
+	}
+	if name == "" {
 		return
 	}
 
@@ -34,8 +47,20 @@ func ExecuteLine(source Source, commandLine string, tx *world.Tx, before func(Co
 		source.SendCommandOutput(output)
 		return
 	}
-	if before != nil && !before(command, args[1:]) {
+	var parsedArgs []string
+	if before != nil && args != "" {
+		reader := csv.NewReader(strings.NewReader(args))
+		reader.Comma, reader.LazyQuotes = ' ', true
+		record, err := reader.Read()
+		if err != nil {
+			// Fall back to whitespace splitting if the CSV parser fails unexpectedly.
+			parsedArgs = strings.Fields(args)
+		} else {
+			parsedArgs = record
+		}
+	}
+	if before != nil && !before(command, parsedArgs) {
 		return
 	}
-	command.Execute(strings.Join(args[1:], " "), source, tx)
+	command.Execute(args, source, tx)
 }

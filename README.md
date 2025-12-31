@@ -9,10 +9,17 @@ Upstream: https://github.com/df-mc/dragonfly
 ## What’s New in Adamant
 - **Fully asynchronous world generator:** generation tasks now run in parallel across worker goroutines, drastically improving chunk generation speed and reducing main-thread load.
 - **PM‑style world generation**: pmgen overworld with biomes (e.g., Swamp) and ore population; configurable seed, worker count and queue size.
+- **Vanilla dimension generators**: new Overworld/Nether/End generators ported from the original Minecraft generation rules.
 - **Built‑in admin commands + server CLI**: `help`, `list`, `kick`, `gamemode`, `time`, `chat`, `gc`, `status`, `stop`, `about`, `whitelist`.
 - **Bedrock Query support**: server status, players, MOTD and plugins exposed to query clients (integrated via `server/query_adapter.go`).
 - **Whitelist system**: TOML‑backed whitelist with built‑in commands to add/remove/list entries; toggle enforcement via config (`[Whitelist]`).
 - **New items and vanilla features**: early stage of implementing core Bedrock mechanics — starting with fishing rods and Nether portals.
+- **Stability and concurrency hardening**: locks/atomics across sessions, registries, world counters, whitelist checks, chunk radius, and command origin tracking; snapshotting to avoid hot locks and I/O under locks.
+- **Inventory and container safety**: ordered locks for merge operations, guarded slot callbacks, validated stack requests/containers, hotbar slot clamping, and safer container-close handling.
+- **Data validation and panic resistance**: checks for creative item IDs, anvil rename indices, banner patterns, item NBT damage/book pages, skin/cape dimensions, transfer ports, and query HostPort bounds.
+- **World/AI correctness fixes**: bounded pmgen population concurrency, placeholder chunk tracking after load errors, stable pathfinding node storage, and hardened weather/explosion randomness.
+- **Gameplay correctness**: fixes for lightning height/offsets, grindstone XP ranges, crossbow quick-charge ticks, instant-break haste baseline, XP drop ranges, chest unpairing, and barrel/brewing NBT state.
+- **Query and persistence robustness**: token pruning, UUID validation, corruption guards for inventories, detached query player slices, and safer resource pack building.
 
 ## Project Goal
 Achieve a PMMP‑like feature list, prioritising gameplay parity and admin ergonomics while keeping clean Go APIs for plugin and feature work.
