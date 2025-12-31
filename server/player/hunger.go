@@ -62,7 +62,7 @@ func (m *hungerManager) resetExhaustion() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.exhaustionLevel = 0
-	m.saturationLevel = 0
+	// Preserve saturation so cancelling food loss doesn't silently nerf regen.
 	m.foodTick = 1
 }
 

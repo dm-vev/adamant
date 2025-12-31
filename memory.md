@@ -85,3 +85,6 @@
 - Only move items to inventory on valid container closes to avoid side effects from invalid close packets.
 - Validated inventory slot updates and swap reward collection to prevent desyncs during item stack requests.
 - Increased console scanner buffer to handle long command lines without terminating input processing.
+- Hardened DecoratedPot NBT decode to skip invalid/extra sherd entries and avoid panics on malformed data.
+
+- Preserved hunger saturation when cancelling food loss to avoid unintended regeneration loss.
