@@ -101,3 +101,7 @@
 - Ensured server session close always decrements the player waitgroup to prevent shutdown hangs when players disconnect before being registered.
 
 - Added mutex protection for the pmgen biome registry to avoid concurrent map access.
+- Guarded skin, cape, and animation pixel reads against truncated Pix data to prevent panics.
+
+- Skipped invalid crossbow loading stages to avoid server panics on malformed sound events.
+- Ignored out-of-range scoreboard line indices to prevent panics from unsafe callers.

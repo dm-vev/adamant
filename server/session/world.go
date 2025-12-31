@@ -793,7 +793,8 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 				pk.SoundType = packet.SoundEventCrossbowQuickChargeEnd
 			}
 		default:
-			panic("invalid crossbow loading stage")
+			// Invalid stages should not crash the server; skip the sound instead.
+			return
 		}
 	case sound.CrossbowShoot:
 		pk.SoundType = packet.SoundEventCrossbowShoot

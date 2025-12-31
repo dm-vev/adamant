@@ -64,7 +64,8 @@ func (board *Scoreboard) WriteString(s string) (n int, err error) {
 // index passed is negative or 15+.
 func (board *Scoreboard) Set(index int, s string) {
 	if index < 0 || index >= maxScoreboardLines {
-		panic(fmt.Sprintf("index out of range %v", index))
+		// Ignore invalid indices to keep scoreboard updates safe for external callers.
+		return
 	}
 	board.mu.Lock()
 	defer board.mu.Unlock()
@@ -78,7 +79,8 @@ func (board *Scoreboard) Set(index int, s string) {
 // Remove removes a specific line from the scoreboard. Remove panics if the index passed is negative or 15+.
 func (board *Scoreboard) Remove(index int) {
 	if index < 0 || index >= maxScoreboardLines {
-		panic(fmt.Sprintf("index out of range %v", index))
+		// Ignore invalid indices to keep scoreboard updates safe for external callers.
+		return
 	}
 	board.mu.Lock()
 	defer board.mu.Unlock()
