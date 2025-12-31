@@ -454,9 +454,24 @@ func (s *Session) CloseDialogue() {
 // SendForm sends a form to the client of the connection. The Submit method of the form is called when the
 // client submits the form.
 func (s *Session) SendForm(f form.Form) {
-	b, _ := json.Marshal(f)
+	if s == Nop || s.handlers == nil {
+		return
+	}
+	b, err := json.Marshal(f)
+	if err != nil {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("SendForm: failed to marshal form", "err", err)
+		}
+		return
+	}
 
-	h := s.handlers[packet.IDModalFormResponse].(*ModalFormResponseHandler)
+	h, ok := s.handlers[packet.IDModalFormResponse].(*ModalFormResponseHandler)
+	if !ok || h == nil {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("SendForm: missing modal form handler")
+		}
+		return
+	}
 	id := h.currentID.Add(1)
 
 	h.mu.Lock()
@@ -484,6 +499,12 @@ func (s *Session) CloseForm() {
 
 // Transfer transfers the player to a server with the IP and port passed.
 func (s *Session) Transfer(ip net.IP, port int) {
+	if port < 0 || port > 65535 {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("Transfer: invalid port", "port", port)
+		}
+		return
+	}
 	s.writePacket(&packet.Transfer{
 		Address: ip.String(),
 		Port:    uint16(port),
