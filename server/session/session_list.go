@@ -20,9 +20,13 @@ type sessionList struct {
 
 func (l *sessionList) Add(s *Session) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
+	others := slices.Clone(l.s)
+	l.s = append(l.s, s)
+	l.mu.Unlock()
 
-	for _, other := range l.s {
+	// Avoid holding the session list lock while sending packets to prevent
+	// blocking unrelated session list operations on network backpressure.
+	for _, other := range others {
 		// Show all sessions to the new session and the new session to all
 		// existing sessions.
 		l.sendSessionTo(s, other)
@@ -30,17 +34,18 @@ func (l *sessionList) Add(s *Session) {
 	}
 	// Show the new session to itself.
 	l.sendSessionTo(s, s)
-	l.s = append(l.s, s)
 }
 
 func (l *sessionList) Remove(s *Session) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
+	others := slices.Clone(l.s)
+	l.s = sliceutil.DeleteVal(l.s, s)
+	l.mu.Unlock()
 
-	for _, other := range l.s {
+	// Unsend outside the lock to avoid blocking list operations on I/O.
+	for _, other := range others {
 		l.unsendSessionFrom(s, other)
 	}
-	l.s = sliceutil.DeleteVal(l.s, s)
 }
 
 func (l *sessionList) Lookup(id uuid.UUID) (*Session, bool) {
