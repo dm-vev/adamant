@@ -65,9 +65,9 @@ type Session struct {
 	entities         map[uint64]*world.EntityHandle
 	hiddenEntities   map[uuid.UUID]struct{}
 
-	// heldSlot is the slot in the inventory that the controllable is holding. Use atomic access because it may be
-	// read from inventory callbacks running on different goroutines.
-	heldSlot                     *uint32
+	// heldSlot points to the current hotbar slot index. It is stored in an atomic pointer so inventory callbacks can
+	// safely access the pointer while the session is still wiring up inventory state.
+	heldSlot                     atomic.Pointer[uint32]
 	inv, offHand, enderChest, ui *inventory.Inventory
 	armour                       *inventory.Armour
 
@@ -205,7 +205,6 @@ func (conf Config) New(conn Conn) *Session {
 		emoteChatMuted:           conf.EmoteChatMuted,
 		conn:                     conn,
 		currentEntityRuntimeID:   1,
-		heldSlot:                 new(uint32),
 		recipes:                  make(map[uint32]recipe.Recipe),
 		conf:                     conf,
 		hudUpdates:               make(map[hud.Element]bool),
@@ -214,6 +213,8 @@ func (conf Config) New(conn Conn) *Session {
 		debugShapesPendingAdd:    make(map[int]debug.Shape),
 		debugShapesPendingRemove: make(map[int]struct{}),
 	}
+	// Initialize heldSlot before any inventory callbacks can fire.
+	s.heldSlot.Store(new(uint32))
 	s.chunkRadius.Store(int32(r))
 	s.openedWindow.Store(inventory.New(1, nil))
 	s.openedPos.Store(&cube.Pos{})

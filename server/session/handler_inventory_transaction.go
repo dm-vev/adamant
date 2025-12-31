@@ -126,7 +126,11 @@ func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.Invento
 	// logic in the Comparable() method was flawed, users would be able to cheat with item properties.
 	// Only grow or shrink the held item to prevent any such issues.
 	res := actual.Grow(count - actual.Count())
-	if err := call(event.C(inventory.Holder(c)), int(atomic.LoadUint32(s.heldSlot)), res, s.inv.Handler().HandleDrop); err != nil {
+	heldSlot := s.heldSlot.Load()
+	if heldSlot == nil {
+		return fmt.Errorf("held slot not initialised for inventory transaction")
+	}
+	if err := call(event.C(inventory.Holder(c)), int(atomic.LoadUint32(heldSlot)), res, s.inv.Handler().HandleDrop); err != nil {
 		return err
 	}
 
@@ -166,7 +170,11 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *pro
 		return fmt.Errorf("unhandled UseItemOnEntity ActionType %v", data.ActionType)
 	}
 	if !valid {
-		slot := int(atomic.LoadUint32(s.heldSlot))
+		heldSlot := s.heldSlot.Load()
+		if heldSlot == nil {
+			return fmt.Errorf("held slot not initialised for inventory transaction")
+		}
+		slot := int(atomic.LoadUint32(heldSlot))
 		it, _ := s.inv.Item(slot)
 		s.sendItem(it, slot, protocol.WindowIDInventory)
 	}

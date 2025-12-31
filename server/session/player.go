@@ -641,6 +641,8 @@ func (s *Session) EnableInstantRespawn(enable bool) {
 // HandleInventories starts handling the inventories of the Controllable entity of the session. It sends packets when
 // slots in the inventory are changed.
 func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, enderChest, ui *inventory.Inventory, armour *inventory.Armour, heldSlot *uint32) {
+	// Store the held slot pointer before attaching callbacks to avoid races with concurrent inventory updates.
+	s.heldSlot.Store(heldSlot)
 	s.inv = inv
 	// Use tx-less broadcast functions that schedule work on the entity's world transaction.
 	s.inv.SlotFunc(s.broadcastInvFunc(c))
@@ -652,12 +654,12 @@ func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, 
 	s.armour.Inventory().SlotFunc(s.broadcastArmourFunc(c))
 	s.ui = ui
 	s.ui.SlotFunc(s.uiInventoryFunc(c))
-	s.heldSlot = heldSlot
 }
 
 func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
-		if slot == int(atomic.LoadUint32(s.heldSlot)) {
+		heldSlot := s.heldSlot.Load()
+		if heldSlot != nil && slot == int(atomic.LoadUint32(heldSlot)) {
 			// Acquire viewers within a fresh transaction to avoid using a stale tx. Schedule this asynchronously
 			// to prevent re-entrancy deadlocks when the inventory update originates from an existing world
 			// transaction.
