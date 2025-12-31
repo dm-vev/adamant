@@ -34,23 +34,34 @@ type rakNetNetwork struct {
 	log *slog.Logger
 }
 
+// effectiveLogger returns a usable logger even if the caller did not configure one.
+func (r rakNetNetwork) effectiveLogger() *slog.Logger {
+	if r.log == nil {
+		return slog.Default()
+	}
+	return r.log
+}
+
 // DialContext forwards dial requests to the default RakNet dialer.
 func (r rakNetNetwork) DialContext(ctx context.Context, address string) (net.Conn, error) {
-	return raknet.Dialer{ErrorLog: r.log.With("net origin", "raknet")}.DialContext(ctx, address)
+	logger := r.effectiveLogger()
+	return raknet.Dialer{ErrorLog: logger.With("net origin", "raknet")}.DialContext(ctx, address)
 }
 
 // PingContext forwards ping requests to the default RakNet dialer.
 func (r rakNetNetwork) PingContext(ctx context.Context, address string) ([]byte, error) {
-	return raknet.Dialer{ErrorLog: r.log.With("net origin", "raknet")}.PingContext(ctx, address)
+	logger := r.effectiveLogger()
+	return raknet.Dialer{ErrorLog: logger.With("net origin", "raknet")}.PingContext(ctx, address)
 }
 
 // Listen wraps the standard RakNet listener so that query packets are
 // intercepted before they reach the upstream handler.
 func (r rakNetNetwork) Listen(address string) (minecraft.NetworkListener, error) {
+	logger := r.effectiveLogger()
 	lc := raknet.ListenConfig{
-		ErrorLog: r.log.With("net origin", "raknet"),
+		ErrorLog: logger.With("net origin", "raknet"),
 		UpstreamPacketListener: &packetListener{
-			log: r.log.With("net origin", "raknet"),
+			log: logger.With("net origin", "raknet"),
 		},
 	}
 	return lc.Listen(address)
