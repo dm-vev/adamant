@@ -52,3 +52,7 @@
 
 - Ignored nil errors in command output collection to prevent panics when rendering command output.
 - Hardened resource pack building to return errors instead of panicking, adding logging and safe version parsing.
+
+- Guarded crossbow quick-charge tick math against invalid levels and cloned stack custom data/unbreakable flags based on the new item type.
+
+- Validated item stack request container lookups and slot updates to reject invalid containers and avoid nil dereferences during inventory actions.

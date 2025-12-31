@@ -160,8 +160,14 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to protocol.StackRequestS
 		dest = i.Grow(-math.MaxInt32)
 	}
 
-	invA, _ := s.invByID(int32(from.Container.ContainerID), tx)
-	invB, _ := s.invByID(int32(to.Container.ContainerID), tx)
+	invA, ok := s.invByID(int32(from.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown source container %v", from.Container.ContainerID)
+	}
+	invB, ok := s.invByID(int32(to.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown destination container %v", to.Container.ContainerID)
+	}
 
 	ctx := event.C(inventory.Holder(c))
 	_ = call(ctx, int(from.Slot), i.Grow(int(count)-i.Count()), invA.Handler().HandleTake)
@@ -170,8 +176,12 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to protocol.StackRequestS
 		return err
 	}
 
-	h.setItemInSlot(from, i.Grow(-int(count)), s, tx)
-	h.setItemInSlot(to, dest.Grow(int(count)), s, tx)
+	if err := h.setItemInSlot(from, i.Grow(-int(count)), s, tx); err != nil {
+		return err
+	}
+	if err := h.setItemInSlot(to, dest.Grow(int(count)), s, tx); err != nil {
+		return err
+	}
 	h.collectRewards(s, invA, int(from.Slot), tx, c)
 	return nil
 }
@@ -184,8 +194,14 @@ func (h *ItemStackRequestHandler) handleSwap(a *protocol.SwapStackRequestAction,
 	i, _ := h.itemInSlot(a.Source, s, tx)
 	dest, _ := h.itemInSlot(a.Destination, s, tx)
 
-	invA, _ := s.invByID(int32(a.Source.Container.ContainerID), tx)
-	invB, _ := s.invByID(int32(a.Destination.Container.ContainerID), tx)
+	invA, ok := s.invByID(int32(a.Source.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
+	}
+	invB, ok := s.invByID(int32(a.Destination.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown destination container %v", a.Destination.Container.ContainerID)
+	}
 
 	ctx := event.C(inventory.Holder(c))
 	_ = call(ctx, int(a.Source.Slot), i, invA.Handler().HandleTake)
@@ -196,8 +212,12 @@ func (h *ItemStackRequestHandler) handleSwap(a *protocol.SwapStackRequestAction,
 		return err
 	}
 
-	h.setItemInSlot(a.Source, dest, s, tx)
-	h.setItemInSlot(a.Destination, i, s, tx)
+	if err := h.setItemInSlot(a.Source, dest, s, tx); err != nil {
+		return err
+	}
+	if err := h.setItemInSlot(a.Destination, i, s, tx); err != nil {
+		return err
+	}
 	h.collectRewards(s, invA, int(a.Source.Slot), tx, c)
 	h.collectRewards(s, invA, int(a.Destination.Slot), tx, c)
 	return nil
@@ -231,7 +251,9 @@ func (h *ItemStackRequestHandler) handleDestroy(a *protocol.DestroyStackRequestA
 		return fmt.Errorf("client attempted to destroy %v items, but only %v present", a.Count, i.Count())
 	}
 
-	h.setItemInSlot(a.Source, i.Grow(-int(a.Count)), s, tx)
+	if err := h.setItemInSlot(a.Source, i.Grow(-int(a.Count)), s, tx); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -246,13 +268,18 @@ func (h *ItemStackRequestHandler) handleDrop(a *protocol.DropStackRequestAction,
 		return fmt.Errorf("client attempted to drop %v items, but only %v present", a.Count, i.Count())
 	}
 
-	inv, _ := s.invByID(int32(a.Source.Container.ContainerID), tx)
+	inv, ok := s.invByID(int32(a.Source.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown source container %v", a.Source.Container.ContainerID)
+	}
 	if err := call(event.C(inventory.Holder(c)), int(a.Source.Slot), i.Grow(int(a.Count)-i.Count()), inv.Handler().HandleDrop); err != nil {
 		return err
 	}
 
 	n := c.Drop(i.Grow(int(a.Count) - i.Count()))
-	h.setItemInSlot(a.Source, i.Grow(-n), s, tx)
+	if err := h.setItemInSlot(a.Source, i.Grow(-n), s, tx); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -270,7 +297,9 @@ func (h *ItemStackRequestHandler) handleMineBlock(a *protocol.MineBlockStackRequ
 
 	// Update the slots through ItemStackResponses, don't actually do anything special with this action.
 	i, _ := h.itemInSlot(slot, s, tx)
-	h.setItemInSlot(slot, i, s, tx)
+	if err := h.setItemInSlot(slot, i, s, tx); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -290,10 +319,12 @@ func (h *ItemStackRequestHandler) handleCreate(a *protocol.CreateStackRequestAct
 	}
 	h.pendingResults[slot] = item.Stack{}
 
-	h.setItemInSlot(protocol.StackRequestSlotInfo{
+	if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
 		Container: protocol.FullContainerName{ContainerID: protocol.ContainerCreatedOutput},
 		Slot:      craftingResult,
-	}, res, s, tx)
+	}, res, s, tx); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -328,7 +359,10 @@ func (h *ItemStackRequestHandler) verifySlot(slot protocol.StackRequestSlotInfo,
 	if len(h.responseChanges) > 256 {
 		return fmt.Errorf("too many unacknowledged request slot changes")
 	}
-	inv, _ := s.invByID(int32(slot.Container.ContainerID), tx)
+	inv, ok := s.invByID(int32(slot.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
+	}
 
 	i, err := h.itemInSlot(slot, s, tx)
 	if err != nil {
@@ -415,8 +449,11 @@ func (h *ItemStackRequestHandler) itemInSlot(slot protocol.StackRequestSlotInfo,
 }
 
 // setItemInSlot sets an item stack in the slot of a container present in the slot info.
-func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotInfo, i item.Stack, s *Session, tx *world.Tx) {
-	inv, _ := s.invByID(int32(slot.Container.ContainerID), tx)
+func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotInfo, i item.Stack, s *Session, tx *world.Tx) error {
+	inv, ok := s.invByID(int32(slot.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown container %v", slot.Container.ContainerID)
+	}
 
 	sl := int(slot.Slot)
 	if inv == s.offHand {
@@ -452,6 +489,7 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotIn
 		id:        respSlot.StackNetworkID,
 		timestamp: h.current,
 	}
+	return nil
 }
 
 // resolve resolves the request with the ID passed.
@@ -489,7 +527,11 @@ func (h *ItemStackRequestHandler) reject(id int32, s *Session, tx *world.Tx) {
 	// Revert changes that we already made for valid actions.
 	for container, slots := range h.changes {
 		for slot, info := range slots {
-			inv, _ := s.invByID(int32(container), tx)
+			inv, ok := s.invByID(int32(container), tx)
+			if !ok {
+				// Skip reverting missing containers to avoid panicking on malicious or out-of-order requests.
+				continue
+			}
 			_ = inv.SetItem(int(slot), info.before)
 		}
 	}
