@@ -4,15 +4,25 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/pmgen/populate"
+	"sync"
 )
 
-var biomes = make(map[uint8]Biome)
+var (
+	biomeMu sync.RWMutex
+	biomes  = make(map[uint8]Biome)
+)
 
 func Register(id uint8, b Biome) {
+	biomeMu.Lock()
+	defer biomeMu.Unlock()
+
 	biomes[id] = b
 }
 
 func BiomeByID(id uint8) Biome {
+	biomeMu.RLock()
+	defer biomeMu.RUnlock()
+
 	return biomes[id]
 }
 

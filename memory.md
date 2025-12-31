@@ -99,3 +99,5 @@
 
 - Serialized session connection writes to avoid concurrent WritePacket/Flush races during disconnects.
 - Ensured server session close always decrements the player waitgroup to prevent shutdown hangs when players disconnect before being registered.
+
+- Added mutex protection for the pmgen biome registry to avoid concurrent map access.
