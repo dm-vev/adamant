@@ -40,5 +40,4 @@
 - Avoided panics when encoding/decoding item custom NBT data by skipping malformed values and filtering lore entries safely.
 - Fixed grindstone experience calculation to return values in the correct inclusive range and added guards against invalid ranges.
 - Preserved barrel open state and brewing stand slot flags during NBT decode to keep block entity state aligned with stored runtime IDs.
-
-- Hardened session form handling with Nop/handler guards and marshal error logging; validate transfer ports before sending.
+- Hardened session form handling with Nop/handler guards and marshal error logging; validate transfer ports before sending.- Resolved translation parameter handling to honor Translation/translation arguments and avoid panics on nested translations.

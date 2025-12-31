@@ -109,11 +109,26 @@ func (t translation) Resolve(l language.Tag) string {
 func (t translation) Params(l language.Tag) []string {
 	params := make([]string, len(t.params))
 	for i, arg := range t.params {
-		if str, ok := arg.(TranslationString); ok {
-			params[i] = str.Resolve(l)
-			continue
+		switch v := arg.(type) {
+		case TranslationString:
+			params[i] = v.Resolve(l)
+		case Translation:
+			if v.params == 0 {
+				params[i] = v.Resolve(l)
+			} else {
+				// Translation parameters should not require arguments; fall back to the raw key to avoid panics.
+				params[i] = v.str.Resolve(l)
+			}
+		case translation:
+			if len(v.params) == 0 {
+				params[i] = v.Resolve(l)
+			} else {
+				// Fall back to the preformatted string when nested translations carry their own parameters.
+				params[i] = v.String()
+			}
+		default:
+			params[i] = fmt.Sprint(arg)
 		}
-		params[i] = fmt.Sprint(arg)
 	}
 	return params
 }
