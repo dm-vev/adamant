@@ -413,8 +413,12 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 	b, _ := json.Marshal(d)
 
 	h := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
-	h.dialogue = d
+	dialogueCopy := d
+	h.mu.Lock()
+	h.dialogue = &dialogueCopy
 	h.entityRuntimeID = s.entityRuntimeID(e)
+	entityRuntimeID := h.entityRuntimeID
+	h.mu.Unlock()
 
 	metadata := s.parseEntityMetadata(e)
 	metadata[protocol.EntityDataKeyHasNPC] = uint8(1)
@@ -425,11 +429,11 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 	metadata[protocol.EntityDataKeyNPCData] = string(display)
 
 	s.writePacket(&packet.SetActorData{
-		EntityRuntimeID: h.entityRuntimeID,
+		EntityRuntimeID: entityRuntimeID,
 		EntityMetadata:  metadata,
 	})
 	s.writePacket(&packet.NPCDialogue{
-		EntityUniqueID: h.entityRuntimeID,
+		EntityUniqueID: entityRuntimeID,
 		ActionType:     packet.NPCDialogueActionOpen,
 		Dialogue:       d.Body(),
 		SceneName:      "default",
@@ -440,15 +444,19 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 
 func (s *Session) CloseDialogue() {
 	h := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
-	if h.entityRuntimeID == 0 {
+	h.mu.Lock()
+	entityRuntimeID := h.entityRuntimeID
+	h.entityRuntimeID = 0
+	h.dialogue = nil
+	h.mu.Unlock()
+	if entityRuntimeID == 0 {
 		return
 	}
 
 	s.writePacket(&packet.NPCDialogue{
-		EntityUniqueID: h.entityRuntimeID,
+		EntityUniqueID: entityRuntimeID,
 		ActionType:     packet.NPCDialogueActionClose,
 	})
-	h.entityRuntimeID = 0
 }
 
 // SendForm sends a form to the client of the connection. The Submit method of the form is called when the
