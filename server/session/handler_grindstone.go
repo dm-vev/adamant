@@ -103,7 +103,14 @@ func experienceFromEnchantments(stack item.Stack) int {
 	}
 
 	minExperience := int(math.Ceil(float64(totalCost) / 2))
-	return minExperience + rand.IntN(minExperience)
+	maxExperience := totalCost
+	rangeSize := maxExperience - minExperience + 1
+	if rangeSize <= 0 {
+		// Guard against unexpected cost math to avoid panics.
+		return minExperience
+	}
+	// Minecraft returns a value between ceil(total/2) and total, inclusive.
+	return minExperience + rand.IntN(rangeSize)
 }
 
 // stripPossibleEnchantments strips all enchantments possible, excluding curses.
