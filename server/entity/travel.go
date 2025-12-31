@@ -48,6 +48,7 @@ func (t *TravelComputer) TickTravelling(travel Traveller, tx *world.Tx) {
 	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
 	maxX, maxY, maxZ := int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))
 	found, target := false, world.Dimension(nil)
+search:
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
 			for z := minZ; z <= maxZ; z++ {
@@ -59,7 +60,7 @@ func (t *TravelComputer) TickTravelling(travel Traveller, tx *world.Tx) {
 				for _, blockBox := range p.Model().BBox(pos, tx) {
 					if blockBox.Translate(pos.Vec3()).IntersectsWith(box) {
 						found, target = true, p.Portal()
-						break
+						break search
 					}
 				}
 			}
@@ -91,7 +92,9 @@ func (t *TravelComputer) TickTravelling(travel Traveller, tx *world.Tx) {
 			return
 		}
 		t.deniedActive = false
-		if t.Instantaneous() || (t.awaitingTravel && time.Since(t.start) >= time.Second*4) {
+		// Treat a nil Instantaneous callback as "not instant" to avoid panics.
+		instantaneous := t.Instantaneous != nil && t.Instantaneous()
+		if instantaneous || (t.awaitingTravel && time.Since(t.start) >= time.Second*4) {
 			t.mu.Unlock()
 			t.Travel(travel, tx.World(), dest)
 			t.mu.Lock()
