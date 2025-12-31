@@ -221,13 +221,15 @@ func (s Stack) CustomName() string {
 // where the first string is at the top and the last at the bottom.
 // The lore may be cleared by passing no lines into the Stack.
 func (s Stack) WithLore(lines ...string) Stack {
-	s.lore = lines
+	// Clone to avoid sharing backing arrays with caller-provided slices.
+	s.lore = slices.Clone(lines)
 	return s
 }
 
 // Lore returns the lore set for the Stack. If no lore is present, the slice returned has a len of 0.
 func (s Stack) Lore() []string {
-	return s.lore
+	// Return a copy to prevent external mutation of the stack's lore.
+	return slices.Clone(s.lore)
 }
 
 // WithValue returns the current Stack with a value set at a specific key. This method may be used to
@@ -383,7 +385,7 @@ func (s Stack) Comparable(s2 Stack) bool {
 	if name != name2 || meta != meta2 || s.anvilCost != s2.anvilCost || s.customName != s2.customName {
 		return false
 	}
-	for !slices.Equal(s.lore, s2.lore) {
+	if !slices.Equal(s.lore, s2.lore) {
 		return false
 	}
 	if len(s.enchantments) != len(s2.enchantments) {

@@ -45,5 +45,6 @@
 - Made session held-slot pointers atomic and initialized before inventory callbacks to prevent racey nil dereferences during inventory transactions.
 
 - Guarded NPC dialogue state with mutex-protected pointers to avoid races between session updates and network handlers.
+- Prevented item stack lore slices from sharing backing arrays with callers to avoid accidental mutation and race risks.
 
 - Hardened book NBT decode/encode paths to clamp page counts and sizes and skip malformed page entries.
