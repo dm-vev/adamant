@@ -57,8 +57,13 @@ func (c Crossbow) ContinueCharge(releaser Releaser, tx *world.Tx, ctx *UseContex
 		tx.PlaySound(releaser.Position(), sound.CrossbowLoad{Stage: sound.CrossbowLoadingStart, QuickCharge: qcLevel > 0})
 	}
 
-	// Base reload time is 25 ticks; each Quick Charge level reduces by 5 ticks
-	multiplier := 25.0 / float64(25-(5*qcLevel))
+	// Base reload time is 25 ticks; each Quick Charge level reduces by 5 ticks.
+	// Clamp at 1 tick so invalid levels cannot cause division by zero.
+	baseTicks := 25 - (5 * qcLevel)
+	if baseTicks <= 0 {
+		baseTicks = 1
+	}
+	multiplier := 25.0 / float64(baseTicks)
 
 	// Adjust ticks based on the multiplier
 	adjustedTicks := int(float64(duration.Milliseconds()) / (50 / multiplier))

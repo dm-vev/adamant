@@ -337,8 +337,9 @@ func (s Stack) WithItem(t world.Item) Stack {
 		WithLore(s.lore...).
 		WithEnchantments(s.Enchantments()...).
 		WithAnvilCost(s.anvilCost)
-	cp.unbreakable = s.unbreakable && s.MaxDurability() != -1
-	cp.data = s.data
+	cp.unbreakable = s.unbreakable && cp.MaxDurability() != -1
+	// Clone custom data to avoid sharing the same map between stacks.
+	cp.data = maps.Clone(s.data)
 	return cp
 }
 
