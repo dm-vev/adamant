@@ -1,6 +1,7 @@
 package block
 
 import (
+	"fmt"
 	"runtime"
 	"testing"
 	"time"
@@ -25,6 +26,8 @@ func TestTryCreateEndPortalCompletesRing(t *testing.T) {
 	}()
 
 	done := make(chan struct{})
+	// Capture failures from the world transaction without touching testing.T in a goroutine.
+	errCh := make(chan error, 1)
 	go func() {
 		defer close(done)
 		<-w.Exec(func(tx *world.Tx) {
@@ -34,6 +37,13 @@ func TestTryCreateEndPortalCompletesRing(t *testing.T) {
 
 			axisX := directionVec(cube.East)
 			axisZ := directionVec(cube.South)
+
+			report := func(err error) {
+				select {
+				case errCh <- err:
+				default:
+				}
+			}
 
 			for _, inverted := range []bool{false, true} {
 				for _, offset := range endPortalFrameOffsets {
@@ -51,7 +61,8 @@ func TestTryCreateEndPortalCompletesRing(t *testing.T) {
 				for _, offset := range endPortalInteriorOffsets {
 					pos := origin.Add(applyEndPortalOffset(offset, axisX, axisZ))
 					if _, ok := tx.Block(pos).(EndPortal); !ok {
-						t.Fatalf("interior block at %v not end portal: %T", pos, tx.Block(pos))
+						report(fmt.Errorf("interior block at %v not end portal: %T", pos, tx.Block(pos)))
+						return
 					}
 					tx.SetBlock(pos, Air{}, nil)
 				}
@@ -76,4 +87,9 @@ func TestTryCreateEndPortalCompletesRing(t *testing.T) {
 
 	<-done
 	timer.Stop()
+	select {
+	case err := <-errCh:
+		t.Fatal(err)
+	default:
+	}
 }

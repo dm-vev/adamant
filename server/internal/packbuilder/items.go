@@ -8,7 +8,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"strings"
 	_ "unsafe" // Imported for compiler directives.
 )
 
@@ -27,7 +26,10 @@ func buildItems(dir string) (count int, lang []string, err error) {
 		identifier, _ := item.EncodeItem()
 		lang = append(lang, fmt.Sprintf("item.%s.name=%s", identifier, item.Name()))
 
-		name := strings.Split(identifier, ":")[1]
+		name, ok := identifierName(identifier)
+		if !ok {
+			return 0, nil, fmt.Errorf("invalid item identifier %q", identifier)
+		}
 		textureData[identifier] = map[string]string{"textures": fmt.Sprintf("textures/items/%s.png", name)}
 
 		if err := buildItemTexture(dir, name, item.Texture()); err != nil {

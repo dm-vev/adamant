@@ -282,8 +282,6 @@ func readDragonflyData(m map[string]any, s *item.Stack) {
 						d = append(d, b)
 					case int8:
 						d = append(d, byte(b))
-					case uint8:
-						d = append(d, byte(b))
 					}
 				}
 			}

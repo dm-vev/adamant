@@ -346,8 +346,12 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 // ViewItemCooldown ...
 func (s *Session) ViewItemCooldown(item world.Item, duration time.Duration) {
 	name, _ := item.EncodeItem()
+	category := name
+	if _, suffix, ok := strings.Cut(name, ":"); ok && suffix != "" {
+		category = suffix
+	}
 	s.writePacket(&packet.ClientStartItemCooldown{
-		Category: strings.Split(name, ":")[1],
+		Category: category,
 		Duration: int32(duration.Milliseconds() / 50),
 	})
 }

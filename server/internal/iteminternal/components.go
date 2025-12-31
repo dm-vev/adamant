@@ -11,7 +11,14 @@ import (
 func Components(it world.CustomItem) map[string]any {
 	category := it.Category()
 	identifier, _ := it.EncodeItem()
-	name := strings.Split(identifier, ":")[1]
+	name := identifier
+	if _, suffix, ok := strings.Cut(identifier, ":"); ok && suffix != "" {
+		name = suffix
+	}
+	if name == "" {
+		// Fall back to a stable, non-empty value if a custom item has an invalid identifier.
+		name = it.Name()
+	}
 
 	builder := NewComponentBuilder(it.Name(), identifier, category)
 

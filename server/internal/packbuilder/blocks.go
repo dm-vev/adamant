@@ -8,7 +8,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"strings"
 	_ "unsafe" // Imported for compiler directives.
 )
 
@@ -29,7 +28,10 @@ func buildBlocks(dir string) (count int, lang []string, err error) {
 			continue
 		}
 
-		name := strings.Split(identifier, ":")[1]
+		name, ok := identifierName(identifier)
+		if !ok {
+			return 0, nil, fmt.Errorf("invalid block identifier %q", identifier)
+		}
 		lang = append(lang, fmt.Sprintf("tile.%s.name=%s", identifier, b.Name()))
 		for name, texture := range b.Textures() {
 			textureData[name] = map[string]string{"textures": "textures/blocks/" + name}

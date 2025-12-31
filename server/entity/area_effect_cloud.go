@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"math"
 	"time"
 )
 
@@ -64,8 +65,8 @@ func (areaEffectCloudType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		RadiusUseGrowth:    float64(nbtconv.Float32(m, "RadiusOnUse")),
 		RadiusTickGrowth:   float64(nbtconv.Float32(m, "RadiusPerTick")),
 		Duration:           nbtconv.TickDuration[int32](m, "Duration"),
-		DurationUseGrowth:  nbtconv.TickDuration[int32](m, "ReapplicationDelay"),
-		ReapplicationDelay: nbtconv.TickDuration[int32](m, "DurationOnUse"),
+		DurationUseGrowth:  nbtconv.TickDuration[int32](m, "DurationOnUse"),
+		ReapplicationDelay: nbtconv.TickDuration[int32](m, "ReapplicationDelay"),
 	}.New()
 }
 
@@ -73,11 +74,23 @@ func (areaEffectCloudType) EncodeNBT(data *world.EntityData) map[string]any {
 	a := data.Data.(*AreaEffectCloudBehaviour)
 	return map[string]any{
 		"PotionId":           int32(a.conf.Potion.Uint8()),
-		"ReapplicationDelay": int32(a.conf.ReapplicationDelay),
+		"ReapplicationDelay": durationToTicks(a.conf.ReapplicationDelay),
 		"RadiusPerTick":      float32(a.conf.RadiusTickGrowth),
 		"RadiusOnUse":        float32(a.conf.RadiusUseGrowth),
-		"DurationOnUse":      int32(a.conf.DurationUseGrowth),
+		"DurationOnUse":      durationToTicks(a.conf.DurationUseGrowth),
 		"Radius":             float32(a.radius),
-		"Duration":           int32(a.duration),
+		"Duration":           durationToTicks(a.duration),
 	}
+}
+
+// durationToTicks converts a duration to the tick units used in NBT payloads.
+func durationToTicks(d time.Duration) int32 {
+	if d <= 0 {
+		return 0
+	}
+	ticks := d / (time.Second / 20)
+	if ticks > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(ticks)
 }

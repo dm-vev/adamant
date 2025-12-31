@@ -689,15 +689,27 @@ func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
 
 func (s *Session) broadcastEnderChestFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
-		if !s.inTransaction.Load() {
-			// Determine if an ender chest is open within a valid transaction. Defer this work so that callers already
-			// holding a transaction lock do not block waiting for ExecWorld.
-			go c.H().ExecWorld(func(tx *world.Tx, _ world.Entity) {
-				if _, ok := tx.Block(*s.openedPos.Load()).(block.EnderChest); ok {
-					s.ViewSlotChange(slot, after)
-				}
-			})
+		if s.inTransaction.Load() || !s.containerOpened.Load() {
+			return
 		}
+		openedPos := s.openedPos.Load()
+		if openedPos == nil {
+			return
+		}
+		pos := *openedPos
+		// Check container state inside the transaction to avoid sending updates after the chest is closed or moved.
+		go c.H().ExecWorld(func(tx *world.Tx, _ world.Entity) {
+			if !s.containerOpened.Load() {
+				return
+			}
+			current := s.openedPos.Load()
+			if current == nil || *current != pos {
+				return
+			}
+			if _, ok := tx.Block(pos).(block.EnderChest); ok {
+				s.ViewSlotChange(slot, after)
+			}
+		})
 	}
 }
 
