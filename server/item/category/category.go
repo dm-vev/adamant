@@ -53,7 +53,8 @@ func (c Category) String() string {
 	case 4:
 		return "items"
 	}
-	panic("should never happen")
+	// Fall back to a stable default when a zero or invalid category is supplied.
+	return "items"
 }
 
 // Group ...

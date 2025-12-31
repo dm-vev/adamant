@@ -610,7 +610,9 @@ func (s *Session) sendAvailableEntities(w *world.World) {
 	}
 	serializedEntityData, err := nbt.Marshal(map[string]any{"idlist": identifiers})
 	if err != nil {
-		panic("should never happen")
+		// Avoid crashing the session if serialization fails; log and skip the packet.
+		s.conf.Log.Error("failed to marshal entity identifiers", "err", err)
+		return
 	}
 	s.writePacket(&packet.AvailableActorIdentifiers{SerialisedEntityIdentifiers: serializedEntityData})
 }

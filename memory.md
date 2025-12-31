@@ -73,3 +73,8 @@
 - Resolved missing client cache blob hashes even when payloads are unavailable to avoid stalling chunk delivery.
 - Guarded explosion knockback and orb attraction math against zero-length vectors to prevent NaNs.
 - Avoided deleting unrelated entity runtime IDs when removing sessions by checking mapping presence before delete.
+- Corrected Nether/Overworld coordinate scaling to use floor division for negative positions during portal travel.
+
+- Avoided sending invalid sound events for wax/scrape/lightning effects and unknown music discs, preventing crashes and stray packets.
+- Defaulted invalid item categories to a safe label instead of panicking during component builds.
+- Logged and skipped failed entity identifier serialization rather than panicking during session setup.
