@@ -96,3 +96,6 @@
 - Guarded portal travel instant callback against nil and stopped portal scan loops early to avoid extra work.
 
 - Cloned block-entity NBT maps before adding positional fields to avoid mutating shared state during chunk and block update serialization.
+
+- Serialized session connection writes to avoid concurrent WritePacket/Flush races during disconnects.
+- Ensured server session close always decrements the player waitgroup to prevent shutdown hangs when players disconnect before being registered.

@@ -635,6 +635,9 @@ func (srv *Server) checkNetIsolation() {
 // handleSessionClose handles the closing of a session. It removes the player
 // of the session from the server.
 func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
+	// Always decrement the wait group because createPlayer unconditionally increments it.
+	defer srv.pwg.Done()
+
 	srv.pmu.Lock()
 	_, ok := srv.p[c.UUID()]
 	delete(srv.p, c.UUID())
@@ -649,7 +652,6 @@ func (srv *Server) handleSessionClose(tx *world.Tx, c session.Controllable) {
 	if err := srv.conf.PlayerProvider.Save(c.UUID(), c.(*player.Player).Data(), tx.World()); err != nil {
 		srv.conf.Log.Error("Save player data: " + err.Error())
 	}
-	srv.pwg.Done()
 }
 
 // createPlayer creates a new player instance using the UUID and connection
