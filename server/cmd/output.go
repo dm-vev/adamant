@@ -23,6 +23,10 @@ func (o *Output) Errorf(format string, a ...any) {
 func (o *Output) Error(a ...any) {
 	if len(a) == 1 {
 		if err, ok := a[0].(error); ok {
+			if err == nil {
+				// Ignore nil errors to avoid panics when rendering output.
+				return
+			}
 			o.errors = append(o.errors, err)
 			return
 		}
