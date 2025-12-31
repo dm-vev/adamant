@@ -80,3 +80,6 @@
 - Logged and skipped failed entity identifier serialization rather than panicking during session setup.
 - Treated unexpected recipe item types as mismatches during crafting to avoid panics from malformed or mixed recipe data.
 - Hardened book editing methods against invalid indices and oversized text, and made skin/cape/animation At return zero colors for out-of-bounds access.
+
+- Made packbuilder item/text directory creation idempotent to avoid rebuild failures when directories already exist.
+- Only move items to inventory on valid container closes to avoid side effects from invalid close packets.
