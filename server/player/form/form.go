@@ -41,10 +41,7 @@ func (f Custom) MarshalJSON() ([]byte, error) {
 // panics. New also panics if one of the exported field types of the Submittable is not one that implements
 // the Element interface.
 func New(submittable Submittable, title ...any) Custom {
-	t := reflect.TypeOf(submittable)
-	if t.Kind() != reflect.Struct {
-		panic("submittable must be struct")
-	}
+	structValue(submittable)
 	f := Custom{title: format(title), submittable: submittable}
 	f.verify()
 	return f
@@ -57,8 +54,8 @@ func (f Custom) Title() string {
 
 // Elements returns a list of all elements as set in the Submittable passed to form.New().
 func (f Custom) Elements() []Element {
-	v := reflect.New(reflect.TypeOf(f.submittable)).Elem()
-	v.Set(reflect.ValueOf(f.submittable))
+	value, typ, _ := structValue(f.submittable)
+	v := cloneStruct(value, typ)
 	n := v.NumField()
 
 	elements := make([]Element, 0, n)
@@ -93,8 +90,8 @@ func (f Custom) SubmitJSON(b []byte, submitter Submitter, tx *world.Tx) error {
 		return fmt.Errorf("error decoding JSON data to slice: %w", err)
 	}
 
-	v := reflect.New(reflect.TypeOf(f.submittable)).Elem()
-	v.Set(reflect.ValueOf(f.submittable))
+	value, typ, isPtr := structValue(f.submittable)
+	v := cloneStruct(value, typ)
 
 	for i := 0; i < v.NumField(); i++ {
 		fieldV := v.Field(i)
@@ -113,7 +110,11 @@ func (f Custom) SubmitJSON(b []byte, submitter Submitter, tx *world.Tx) error {
 		data = data[1:]
 	}
 
-	v.Interface().(Submittable).Submit(submitter, tx)
+	submittable := v
+	if isPtr {
+		submittable = v.Addr()
+	}
+	submittable.Interface().(Submittable).Submit(submitter, tx)
 
 	return nil
 }
@@ -184,15 +185,13 @@ func (f Custom) parseValue(elem Element, s any) (reflect.Value, error) {
 func (f Custom) verify() {
 	el := reflect.TypeOf((*Element)(nil)).Elem()
 
-	v := reflect.New(reflect.TypeOf(f.submittable)).Elem()
-	v.Set(reflect.ValueOf(f.submittable))
-
-	t := reflect.TypeOf(f.submittable)
+	value, typ, _ := structValue(f.submittable)
+	v := cloneStruct(value, typ)
 	for i := 0; i < v.NumField(); i++ {
 		if !v.Field(i).CanSet() {
 			continue
 		}
-		if !t.Field(i).Type.Implements(el) {
+		if !typ.Field(i).Type.Implements(el) {
 			panic("all exported fields must implement form.Element interface")
 		}
 	}

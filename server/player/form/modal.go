@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/df-mc/dragonfly/server/world"
-	"reflect"
 )
 
 // Modal represents a modal form. These forms have a body with text and two buttons at the end, typically one
@@ -20,10 +19,7 @@ type Modal struct {
 // Default 'yes' and 'no' buttons may be passed by setting the two exported struct fields of the submittable
 // to YesButton() and NoButton() respectively.
 func NewModal(submittable ModalSubmittable, title ...any) Modal {
-	t := reflect.TypeOf(submittable)
-	if t.Kind() != reflect.Struct {
-		panic("submittable must be struct")
-	}
+	structValue(submittable)
 	m := Modal{title: format(title), submittable: submittable}
 	m.verify()
 	return m
@@ -91,8 +87,8 @@ func (m Modal) SubmitJSON(b []byte, submitter Submitter, tx *world.Tx) error {
 
 // Buttons returns a list of all buttons of the Modal form, which will always be a total of two buttons.
 func (m Modal) Buttons() []Button {
-	v := reflect.New(reflect.TypeOf(m.submittable)).Elem()
-	v.Set(reflect.ValueOf(m.submittable))
+	value, typ, _ := structValue(m.submittable)
+	v := cloneStruct(value, typ)
 
 	buttons := make([]Button, 0, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
@@ -111,8 +107,8 @@ func (m Modal) Buttons() []Button {
 func (m Modal) verify() {
 	var count int
 
-	v := reflect.New(reflect.TypeOf(m.submittable)).Elem()
-	v.Set(reflect.ValueOf(m.submittable))
+	value, typ, _ := structValue(m.submittable)
+	v := cloneStruct(value, typ)
 
 	for i := 0; i < v.NumField(); i++ {
 		if !v.Field(i).CanSet() {

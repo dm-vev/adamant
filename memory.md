@@ -88,3 +88,6 @@
 - Hardened DecoratedPot NBT decode to skip invalid/extra sherd entries and avoid panics on malformed data.
 
 - Preserved hunger saturation when cancelling food loss to avoid unintended regeneration loss.
+- Fixed grass bone meal handling to consume items only when growth succeeds.
+
+- Allowed form submittables to be structs or pointers, cloning form values safely and invoking Submit on pointer receivers.

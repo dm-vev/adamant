@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/df-mc/dragonfly/server/world"
-	"reflect"
 )
 
 // Menu represents a menu form. These menus are made up of a title and a body, with a number of buttons which
@@ -18,10 +17,7 @@ type Menu struct {
 // NewMenu creates a new Menu form using the MenuSubmittable passed to handle the output of the form. The
 // title passed is formatted following the rules of fmt.Sprintln.
 func NewMenu(submittable MenuSubmittable, title ...any) Menu {
-	t := reflect.TypeOf(submittable)
-	if t.Kind() != reflect.Struct {
-		panic("submittable must be struct")
-	}
+	structValue(submittable)
 	m := Menu{title: format(title), submittable: submittable}
 	m.verify()
 	return m
@@ -64,8 +60,8 @@ func (m Menu) Body() string {
 // Buttons returns a list of all buttons of the MenuSubmittable. It parses them from the fields using
 // reflection and returns them.
 func (m Menu) Buttons() []Button {
-	v := reflect.New(reflect.TypeOf(m.submittable)).Elem()
-	v.Set(reflect.ValueOf(m.submittable))
+	value, typ, _ := structValue(m.submittable)
+	v := cloneStruct(value, typ)
 
 	buttons := make([]Button, 0)
 	for i := 0; i < v.NumField(); i++ {
@@ -105,8 +101,8 @@ func (m Menu) SubmitJSON(b []byte, submitter Submitter, tx *world.Tx) error {
 // verify verifies if the form is valid, checking all fields are of the type Button. It panics if the form is
 // not valid.
 func (m Menu) verify() {
-	v := reflect.New(reflect.TypeOf(m.submittable)).Elem()
-	v.Set(reflect.ValueOf(m.submittable))
+	value, typ, _ := structValue(m.submittable)
+	v := cloneStruct(value, typ)
 	for i := 0; i < v.NumField(); i++ {
 		if !v.Field(i).CanSet() {
 			continue
