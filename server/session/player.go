@@ -348,11 +348,13 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 // it will be shown to the client.
 func (s *Session) Disconnect(message string) {
 	if s != Nop {
+		s.connWriteMu.Lock()
 		_ = s.conn.WritePacket(&packet.Disconnect{
 			HideDisconnectionScreen: message == "",
 			Message:                 message,
 		})
 		_ = s.conn.Flush()
+		s.connWriteMu.Unlock()
 	}
 }
 

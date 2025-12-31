@@ -38,6 +38,8 @@ type Session struct {
 
 	ent      *world.EntityHandle
 	conn     Conn
+	// connWriteMu serializes connection writes to avoid concurrent WritePacket/Flush calls.
+	connWriteMu sync.Mutex
 	handlers map[uint32]packetHandler
 	packets  chan packet.Packet
 
@@ -239,7 +241,9 @@ func (conf Config) New(conn Conn) *Session {
 			case <-s.closeBackground:
 				return
 			case pk := <-s.packets:
+				s.connWriteMu.Lock()
 				_ = conn.WritePacket(pk)
+				s.connWriteMu.Unlock()
 			}
 		}
 	}()
