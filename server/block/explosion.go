@@ -12,6 +12,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
 	"math/rand/v2"
+	"sync"
 	"time"
 )
 
@@ -56,6 +57,20 @@ type Explodable interface {
 // rays ...
 var rays = make([]mgl64.Vec3, 0, 1352)
 
+// lockedSource serializes access to a rand.Source to avoid data races when a
+// source is shared across concurrent explosions.
+type lockedSource struct {
+	mu  sync.Mutex
+	src rand.Source
+}
+
+func (s *lockedSource) Uint64() uint64 {
+	s.mu.Lock()
+	value := s.src.Uint64()
+	s.mu.Unlock()
+	return value
+}
+
 // init ...
 func init() {
 	for x := 0.0; x < 16; x++ {
@@ -82,6 +97,8 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 		if c.RandSource == nil {
 			t := uint64(time.Now().UnixNano())
 			c.RandSource = rand.NewPCG(t, t)
+		} else if _, ok := c.RandSource.(*lockedSource); !ok {
+			c.RandSource = &lockedSource{src: c.RandSource}
 		}
 		if c.Size == 0 {
 			c.Size = 4
@@ -112,6 +129,7 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 		}
 
 		affectedBlocks := make([]cube.Pos, 0, 32)
+		affectedBlockSet := make(map[cube.Pos]struct{}, 32)
 		for _, ray := range rays {
 			pos := explosionPos
 			for blastForce := c.Size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
@@ -130,7 +148,10 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 
 				pos = pos.Add(ray)
 				if blastForce -= (resistance/5 + 0.3) * 0.3; blastForce > 0 {
-					affectedBlocks = append(affectedBlocks, current)
+					if _, ok := affectedBlockSet[current]; !ok {
+						affectedBlockSet[current] = struct{}{}
+						affectedBlocks = append(affectedBlocks, current)
+					}
 				}
 			}
 		}
