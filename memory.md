@@ -38,3 +38,5 @@
 - Guarded XP drop randomization against invalid ranges to avoid rand panics.
 - Ensured sessions always close background workers by closing connections during shutdown to prevent goroutine leaks after packet read errors.
 - Avoided panics when encoding/decoding item custom NBT data by skipping malformed values and filtering lore entries safely.
+- Fixed grindstone experience calculation to return values in the correct inclusive range and added guards against invalid ranges.
+- Preserved barrel open state and brewing stand slot flags during NBT decode to keep block entity state aligned with stored runtime IDs.

@@ -104,8 +104,11 @@ func (b BrewingStand) DecodeNBT(data map[string]any) any {
 	fuel := int32(nbtconv.Int16(data, "FuelAmount"))
 	maxFuel := int32(nbtconv.Int16(data, "FuelTotal"))
 
+	leftSlot, middleSlot, rightSlot := b.LeftSlot, b.MiddleSlot, b.RightSlot
 	//noinspection GoAssignmentToReceiver
 	b = NewBrewingStand()
+	// Preserve block state bits to match the stored runtime ID after decoding NBT.
+	b.LeftSlot, b.MiddleSlot, b.RightSlot = leftSlot, middleSlot, rightSlot
 	b.setDuration(brew)
 	b.setFuel(fuel, maxFuel)
 	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"))

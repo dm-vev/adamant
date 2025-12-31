@@ -144,9 +144,12 @@ func (Barrel) FuelInfo() item.FuelInfo {
 // DecodeNBT ...
 func (b Barrel) DecodeNBT(data map[string]any) any {
 	facing := b.Facing
+	open := b.Open
 	//noinspection GoAssignmentToReceiver
 	b = NewBarrel()
 	b.Facing = facing
+	// Preserve the block state bits so the decoded block matches the stored runtime ID.
+	b.Open = open
 	b.CustomName = nbtconv.String(data, "CustomName")
 	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"))
 	return b
