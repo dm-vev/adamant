@@ -33,3 +33,5 @@
 - Guarded scoreboard sends for Nop/uninitialised sessions to prevent nil pointer panics.
 - Avoided inventory merge deadlocks with ordered locks and cloned slot snapshots.
 - Moved command origin tracking to an atomic session field to avoid races and keep command output correlated with the latest request.
+- Hardened explosion randomness by serializing shared rand sources and deduplicated affected blocks to avoid duplicate break/drop processing.
+- Hardened inspect_palette candle-cake scanning to avoid prefix slice panics and use EOF-safe decoding.
