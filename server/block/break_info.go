@@ -131,9 +131,14 @@ type XPDropRange [2]int
 
 // RandomValue returns a random XP value that falls within the drop range.
 func (r XPDropRange) RandomValue() int {
-	diff := r[1] - r[0]
+	minDrop, maxDrop := r[0], r[1]
+	if maxDrop < minDrop {
+		// Guard against invalid ranges so we do not panic on rand.IntN.
+		return minDrop
+	}
+	diff := maxDrop - minDrop
 	// Add one because it's a [r[0], r[1]] interval.
-	return rand.IntN(diff+1) + r[0]
+	return rand.IntN(diff+1) + minDrop
 }
 
 // pickaxeEffective is a convenience function for blocks that are effectively mined with a pickaxe.
