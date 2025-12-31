@@ -14,7 +14,8 @@ import (
 // buildItems builds all the item-related files for the resource pack. This includes textures, language
 // entries and item atlas.
 func buildItems(dir string) (count int, lang []string, err error) {
-	if err := os.Mkdir(filepath.Join(dir, "items"), os.ModePerm); err != nil {
+	// Use MkdirAll so repeated pack builds do not fail when directories already exist.
+	if err := os.MkdirAll(filepath.Join(dir, "items"), os.ModePerm); err != nil {
 		return 0, nil, fmt.Errorf("create items dir: %w", err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "textures/items"), os.ModePerm); err != nil {
