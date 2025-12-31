@@ -41,13 +41,22 @@ type Animation struct {
 
 // NewAnimation returns a new animation using the width and height passed, with the type specifying what part
 // of the body to display it on.
-// NewAnimation fills out the Pix field adequately and sets FrameCount to 1 by default.
+// NewAnimation fills out the Pix field adequately and sets FrameCount to 1 by default. Invalid dimensions
+// return an empty animation to avoid panics from invalid allocations.
 func NewAnimation(width, height int, expression int, animationType AnimationType) Animation {
+	pixelCount, ok := pixelBufferSize(width, height)
+	if !ok {
+		return Animation{
+			aType:               animationType,
+			FrameCount:          0,
+			AnimationExpression: expression,
+		}
+	}
 	return Animation{
 		w:                   width,
 		h:                   height,
 		aType:               animationType,
-		Pix:                 make([]uint8, width*height*4),
+		Pix:                 make([]uint8, pixelCount),
 		FrameCount:          1,
 		AnimationExpression: expression,
 	}

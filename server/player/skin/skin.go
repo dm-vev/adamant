@@ -36,14 +36,22 @@ type Skin struct {
 }
 
 // New creates a new skin using the width and height passed. The dimensions passed must be either 64x32,
-// 64x64 or 128x128. An error is returned if other dimensions are used.
-// The skin pixels are initialised for the skin, and a random skin ID is picked. The model name and model is
+// 64x64 or 128x128. Invalid dimensions return an empty skin to avoid panics from
+// invalid allocations.
+// The skin pixels are initialised for the skin, and the model name and model are
 // left empty.
 func New(width, height int) Skin {
+	if !validSkinSize(width, height) {
+		return Skin{}
+	}
+	pixelCount, ok := pixelBufferSize(width, height)
+	if !ok {
+		return Skin{}
+	}
 	return Skin{
 		w:   width,
 		h:   height,
-		Pix: make([]uint8, width*height*4),
+		Pix: make([]uint8, pixelCount),
 	}
 }
 

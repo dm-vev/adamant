@@ -16,10 +16,17 @@ type Cape struct {
 	Pix []uint8
 }
 
-// NewCape initialises a new Cape using the width and height passed. The pixels are pre-allocated so that the
-// Cape may be used immediately.
+// NewCape initialises a new Cape using the width and height passed. Invalid dimensions return an empty cape
+// to avoid panics from invalid allocations.
 func NewCape(width, height int) Cape {
-	return Cape{w: width, h: height, Pix: make([]uint8, width*height*4)}
+	if !validCapeSize(width, height) {
+		return Cape{}
+	}
+	pixelCount, ok := pixelBufferSize(width, height)
+	if !ok {
+		return Cape{}
+	}
+	return Cape{w: width, h: height, Pix: make([]uint8, pixelCount)}
 }
 
 // ColorModel ...

@@ -48,3 +48,4 @@
 - Prevented item stack lore slices from sharing backing arrays with callers to avoid accidental mutation and race risks.
 
 - Hardened book NBT decode/encode paths to clamp page counts and sizes and skip malformed page entries.
+- Guarded skin, cape, and animation constructors against invalid dimensions and overflowed allocations by returning empty values.
