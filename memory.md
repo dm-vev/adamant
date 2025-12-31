@@ -67,3 +67,4 @@
 - Defaulted query logging to slog.Default when a nil logger is supplied to avoid nil-pointer panics in RakNet network setup.
 
 - Added internal locking to scoreboard state access to eliminate data races during concurrent updates and reads.
+- Validated inbound skin, cape, and animation payload dimensions and lengths, copying buffers to avoid malformed data panics.

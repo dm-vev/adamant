@@ -1206,16 +1206,38 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 	if sk.SkinID == "" {
 		return skin.Skin{}, fmt.Errorf("SkinID must not be an empty string")
 	}
+	if !validSkinDimensions(int(sk.SkinImageWidth), int(sk.SkinImageHeight)) {
+		return skin.Skin{}, fmt.Errorf("invalid skin dimensions: %dx%d", sk.SkinImageWidth, sk.SkinImageHeight)
+	}
+	skinDataLen, err := expectedRGBABytes(int(sk.SkinImageWidth), int(sk.SkinImageHeight))
+	if err != nil {
+		return skin.Skin{}, fmt.Errorf("invalid skin dimensions: %w", err)
+	}
+	if len(sk.SkinData) != skinDataLen {
+		return skin.Skin{}, fmt.Errorf("invalid skin data length: got %d, want %d", len(sk.SkinData), skinDataLen)
+	}
 
 	s = skin.New(int(sk.SkinImageWidth), int(sk.SkinImageHeight))
 	s.Persona = sk.PersonaSkin
-	s.Pix = sk.SkinData
+	s.Pix = append([]byte(nil), sk.SkinData...)
 	s.Model = sk.SkinGeometry
 	s.PlayFabID = sk.PlayFabID
 	s.FullID = sk.FullID
 
-	s.Cape = skin.NewCape(int(sk.CapeImageWidth), int(sk.CapeImageHeight))
-	s.Cape.Pix = sk.CapeData
+	if sk.CapeImageWidth != 0 || sk.CapeImageHeight != 0 || len(sk.CapeData) != 0 {
+		if !validCapeDimensions(int(sk.CapeImageWidth), int(sk.CapeImageHeight)) {
+			return skin.Skin{}, fmt.Errorf("invalid cape dimensions: %dx%d", sk.CapeImageWidth, sk.CapeImageHeight)
+		}
+		capeDataLen, err := expectedRGBABytes(int(sk.CapeImageWidth), int(sk.CapeImageHeight))
+		if err != nil {
+			return skin.Skin{}, fmt.Errorf("invalid cape dimensions: %w", err)
+		}
+		if len(sk.CapeData) != capeDataLen {
+			return skin.Skin{}, fmt.Errorf("invalid cape data length: got %d, want %d", len(sk.CapeData), capeDataLen)
+		}
+		s.Cape = skin.NewCape(int(sk.CapeImageWidth), int(sk.CapeImageHeight))
+		s.Cape.Pix = append([]byte(nil), sk.CapeData...)
+	}
 
 	m := make(map[string]any)
 	if err = json.Unmarshal(sk.SkinGeometry, &m); err != nil {
@@ -1239,13 +1261,54 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 			return skin.Skin{}, fmt.Errorf("invalid animation type: %v", anim.AnimationType)
 		}
 
+		frameCount := int(anim.FrameCount)
+		if frameCount <= 0 {
+			return skin.Skin{}, fmt.Errorf("invalid animation frame count: %v", anim.FrameCount)
+		}
+		animDataLen, err := expectedRGBABytes(int(anim.ImageWidth), int(anim.ImageHeight))
+		if err != nil {
+			return skin.Skin{}, fmt.Errorf("invalid animation dimensions: %w", err)
+		}
+		animDataLen *= frameCount
+		if len(anim.ImageData) != animDataLen {
+			return skin.Skin{}, fmt.Errorf("invalid animation data length: got %d, want %d", len(anim.ImageData), animDataLen)
+		}
+
 		animation := skin.NewAnimation(int(anim.ImageWidth), int(anim.ImageHeight), int(anim.ExpressionType), t)
-		animation.FrameCount = int(anim.FrameCount)
-		animation.Pix = anim.ImageData
+		animation.FrameCount = frameCount
+		animation.Pix = append([]byte(nil), anim.ImageData...)
 
 		s.Animations = append(s.Animations, animation)
 	}
 	return
+}
+
+// expectedRGBABytes returns the RGBA buffer length for the supplied dimensions.
+func expectedRGBABytes(width, height int) (int, error) {
+	const bytesPerPixel = 4
+	if width <= 0 || height <= 0 {
+		return 0, fmt.Errorf("non-positive dimensions: %dx%d", width, height)
+	}
+	maxInt := int(^uint(0) >> 1)
+	if width > maxInt/bytesPerPixel/height {
+		return 0, fmt.Errorf("dimensions overflow: %dx%d", width, height)
+	}
+	return width * height * bytesPerPixel, nil
+}
+
+func validSkinDimensions(width, height int) bool {
+	switch {
+	case width == 64 && (height == 32 || height == 64):
+		return true
+	case width == 128 && height == 128:
+		return true
+	default:
+		return false
+	}
+}
+
+func validCapeDimensions(width, height int) bool {
+	return width == 32 && height == 64
 }
 
 // gameTypeFromMode returns the game type ID from the game mode passed.
