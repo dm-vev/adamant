@@ -55,9 +55,10 @@ func (f Firework) EncodeNBT() map[string]any {
 	for _, explosion := range f.Explosions {
 		explosions = append(explosions, explosion.EncodeNBT())
 	}
+	flightTicks := encodeFireworkFlightTicks(f.Duration)
 	return map[string]any{"Fireworks": map[string]any{
 		"Explosions": explosions,
-		"Flight":     uint8((f.Duration/10 - time.Millisecond*50).Milliseconds() / 50),
+		"Flight":     flightTicks,
 	}}
 }
 
@@ -65,13 +66,21 @@ func (f Firework) EncodeNBT() map[string]any {
 func (f Firework) DecodeNBT(data map[string]any) any {
 	if fireworks, ok := data["Fireworks"].(map[string]any); ok {
 		if explosions, ok := fireworks["Explosions"].([]any); ok {
-			f.Explosions = make([]FireworkExplosion, len(explosions))
-			for i, explosion := range f.Explosions {
-				f.Explosions[i] = explosion.DecodeNBT(explosions[i].(map[string]any)).(FireworkExplosion)
+			f.Explosions = make([]FireworkExplosion, 0, len(explosions))
+			for _, raw := range explosions {
+				explosionData, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				decoded, ok := (FireworkExplosion{}).DecodeNBT(explosionData).(FireworkExplosion)
+				if !ok {
+					continue
+				}
+				f.Explosions = append(f.Explosions, decoded)
 			}
 		}
-		if durationTicks, ok := fireworks["Flight"].(uint8); ok {
-			f.Duration = (time.Duration(durationTicks)*time.Millisecond*50 + time.Millisecond*50) * 10
+		if durationTicks, ok := readUint8(fireworks["Flight"]); ok {
+			f.Duration = decodeFireworkFlightTicks(durationTicks)
 		}
 	}
 	return f
@@ -90,4 +99,83 @@ func (Firework) OffHand() bool {
 // EncodeItem ...
 func (Firework) EncodeItem() (name string, meta int16) {
 	return "minecraft:firework_rocket", 0
+}
+
+const (
+	fireworkFlightStep = 50 * time.Millisecond
+	fireworkFlightBase = 50 * time.Millisecond
+)
+
+// encodeFireworkFlightTicks maps flight duration to the encoded "Flight" ticks, clamping
+// to a safe range to avoid underflows from malformed values.
+func encodeFireworkFlightTicks(duration time.Duration) uint8 {
+	if duration < 0 {
+		duration = 0
+	}
+	encoded := int64((duration/10 - fireworkFlightBase) / fireworkFlightStep)
+	if encoded < 0 {
+		encoded = 0
+	} else if encoded > 255 {
+		encoded = 255
+	}
+	return uint8(encoded)
+}
+
+// decodeFireworkFlightTicks converts encoded ticks back into the approximate flight duration.
+func decodeFireworkFlightTicks(ticks uint8) time.Duration {
+	return (time.Duration(ticks)*fireworkFlightStep + fireworkFlightBase) * 10
+}
+
+func readUint8(value any) (uint8, bool) {
+	switch v := value.(type) {
+	case uint8:
+		return v, true
+	case int8:
+		if v < 0 {
+			return 0, false
+		}
+		return uint8(v), true
+	case int16:
+		if v < 0 || v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	case uint16:
+		if v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	case int32:
+		if v < 0 || v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	case uint32:
+		if v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	case int64:
+		if v < 0 || v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	case uint64:
+		if v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	case int:
+		if v < 0 || v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	case uint:
+		if v > 255 {
+			return 0, false
+		}
+		return uint8(v), true
+	default:
+		return 0, false
+	}
 }

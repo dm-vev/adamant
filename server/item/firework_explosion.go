@@ -33,19 +33,38 @@ func (f FireworkExplosion) EncodeNBT() map[string]any {
 
 // DecodeNBT ...
 func (f FireworkExplosion) DecodeNBT(data map[string]any) any {
-	f.Shape = FireworkShapes()[data["FireworkType"].(uint8)]
-	f.Twinkle = data["FireworkFlicker"].(uint8) == 1
-	f.Trail = data["FireworkTrail"].(uint8) == 1
+	if rawShape, ok := readUint8(data["FireworkType"]); ok {
+		shapes := FireworkShapes()
+		if int(rawShape) < len(shapes) {
+			f.Shape = shapes[rawShape]
+		}
+	}
+	if twinkle, ok := readUint8(data["FireworkFlicker"]); ok {
+		f.Twinkle = twinkle == 1
+	}
+	if trail, ok := readUint8(data["FireworkTrail"]); ok {
+		f.Trail = trail == 1
+	}
 
 	colours := data["FireworkColor"]
 	if diskColour, ok := colours.([1]uint8); ok {
 		f.Colour = invertColourID(int16(diskColour[0]))
 	} else if networkColours, ok := colours.([]any); ok {
-		f.Colour = invertColourID(int16(networkColours[0].(uint8)))
+		if len(networkColours) > 0 {
+			if colour, ok := readUint8(networkColours[0]); ok {
+				f.Colour = invertColourID(int16(colour))
+			}
+		}
 	}
 
 	if fades, ok := data["FireworkFade"].([1]uint8); ok {
 		f.Fade, f.Fades = invertColourID(int16(fades[0])), true
+	} else if networkFades, ok := data["FireworkFade"].([]any); ok {
+		if len(networkFades) > 0 {
+			if fade, ok := readUint8(networkFades[0]); ok {
+				f.Fade, f.Fades = invertColourID(int16(fade)), true
+			}
+		}
 	}
 	return f
 }

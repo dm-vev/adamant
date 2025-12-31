@@ -16,7 +16,9 @@ func (f FireworkStar) EncodeNBT() map[string]any {
 // DecodeNBT ...
 func (f FireworkStar) DecodeNBT(data map[string]any) any {
 	if i, ok := data["FireworksItem"].(map[string]any); ok {
-		f.FireworkExplosion = f.FireworkExplosion.DecodeNBT(i).(FireworkExplosion)
+		if decoded, ok := f.FireworkExplosion.DecodeNBT(i).(FireworkExplosion); ok {
+			f.FireworkExplosion = decoded
+		}
 	}
 	return f
 }
