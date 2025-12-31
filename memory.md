@@ -49,3 +49,6 @@
 
 - Hardened book NBT decode/encode paths to clamp page counts and sizes and skip malformed page entries.
 - Guarded skin, cape, and animation constructors against invalid dimensions and overflowed allocations by returning empty values.
+
+- Ignored nil errors in command output collection to prevent panics when rendering command output.
+- Hardened resource pack building to return errors instead of panicking, adding logging and safe version parsing.

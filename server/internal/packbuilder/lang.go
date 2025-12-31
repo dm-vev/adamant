@@ -7,11 +7,12 @@ import (
 )
 
 // buildLanguageFile creates a lang file and writes all of the language entries to the pack.
-func buildLanguageFile(dir string, lang []string) {
+func buildLanguageFile(dir string, lang []string) error {
 	if err := os.Mkdir(filepath.Join(dir, "texts"), os.ModePerm); err != nil {
-		panic(err)
+		return err
 	}
 	if err := os.WriteFile(filepath.Join(dir, "texts/en_US.lang"), []byte(strings.Join(lang, "\n")), 0666); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }

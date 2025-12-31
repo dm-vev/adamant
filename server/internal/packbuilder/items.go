@@ -14,12 +14,12 @@ import (
 
 // buildItems builds all the item-related files for the resource pack. This includes textures, language
 // entries and item atlas.
-func buildItems(dir string) (count int, lang []string) {
+func buildItems(dir string) (count int, lang []string, err error) {
 	if err := os.Mkdir(filepath.Join(dir, "items"), os.ModePerm); err != nil {
-		panic(err)
+		return 0, nil, fmt.Errorf("create items dir: %w", err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "textures/items"), os.ModePerm); err != nil {
-		panic(err)
+		return 0, nil, fmt.Errorf("create item textures dir: %w", err)
 	}
 
 	textureData := make(map[string]any)
@@ -30,41 +30,50 @@ func buildItems(dir string) (count int, lang []string) {
 		name := strings.Split(identifier, ":")[1]
 		textureData[identifier] = map[string]string{"textures": fmt.Sprintf("textures/items/%s.png", name)}
 
-		buildItemTexture(dir, name, item.Texture())
+		if err := buildItemTexture(dir, name, item.Texture()); err != nil {
+			return 0, nil, fmt.Errorf("build item texture %s: %w", name, err)
+		}
 
 		count++
 	}
 
-	buildItemAtlas(dir, map[string]any{
+	if err := buildItemAtlas(dir, map[string]any{
 		"resource_pack_name": "vanilla",
 		"texture_name":       "atlas.items",
 		"texture_data":       textureData,
-	})
-	return
+	}); err != nil {
+		return 0, nil, fmt.Errorf("build item atlas: %w", err)
+	}
+	return count, lang, nil
 }
 
 // buildItemTexture creates a PNG file for the item from the provided image and name and writes it to the pack.
-func buildItemTexture(dir, name string, img image.Image) {
+func buildItemTexture(dir, name string, img image.Image) error {
 	texture, err := os.Create(filepath.Join(dir, "textures/items", name+".png"))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err := png.Encode(texture, img); err != nil {
-		_ = texture.Close()
-		panic(err)
+		closeErr := texture.Close()
+		if closeErr != nil {
+			return fmt.Errorf("encode image: %w (close error: %v)", err, closeErr)
+		}
+		return err
 	}
 	if err := texture.Close(); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // buildItemAtlas creates the identifier to texture mapping and writes it to the pack.
-func buildItemAtlas(dir string, atlas map[string]any) {
+func buildItemAtlas(dir string, atlas map[string]any) error {
 	b, err := json.Marshal(atlas)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err := os.WriteFile(filepath.Join(dir, "textures/item_texture.json"), b, 0666); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }

@@ -14,12 +14,12 @@ import (
 
 // buildBlocks builds all the block-related files for the resource pack. This includes textures, geometries, language
 // entries and terrain texture atlas.
-func buildBlocks(dir string) (count int, lang []string) {
+func buildBlocks(dir string) (count int, lang []string, err error) {
 	if err := os.MkdirAll(filepath.Join(dir, "models/blocks"), os.ModePerm); err != nil {
-		panic(err)
+		return 0, nil, fmt.Errorf("create block models dir: %w", err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "textures/blocks"), os.ModePerm); err != nil {
-		panic(err)
+		return 0, nil, fmt.Errorf("create block textures dir: %w", err)
 	}
 
 	textureData := make(map[string]any)
@@ -33,48 +33,57 @@ func buildBlocks(dir string) (count int, lang []string) {
 		lang = append(lang, fmt.Sprintf("tile.%s.name=%s", identifier, b.Name()))
 		for name, texture := range b.Textures() {
 			textureData[name] = map[string]string{"textures": "textures/blocks/" + name}
-			buildBlockTexture(dir, name, texture)
+			if err := buildBlockTexture(dir, name, texture); err != nil {
+				return 0, nil, fmt.Errorf("build block texture %s: %w", name, err)
+			}
 		}
 		if b.Geometry() != nil {
 			if err := os.WriteFile(filepath.Join(dir, "models/blocks", fmt.Sprintf("%s.geo.json", name)), b.Geometry(), 0666); err != nil {
-				panic(err)
+				return 0, nil, fmt.Errorf("write geometry for %s: %w", name, err)
 			}
 		}
 		count++
 	}
 
-	buildBlockAtlas(dir, map[string]any{
+	if err := buildBlockAtlas(dir, map[string]any{
 		"resource_pack_name": "vanilla",
 		"texture_name":       "atlas.terrain",
 		"padding":            8,
 		"num_mip_levels":     4,
 		"texture_data":       textureData,
-	})
-	return
+	}); err != nil {
+		return 0, nil, fmt.Errorf("build block atlas: %w", err)
+	}
+	return count, lang, nil
 }
 
 // buildBlockTexture creates a PNG file for the block from the provided image and name and writes it to the pack.
-func buildBlockTexture(dir, name string, img image.Image) {
+func buildBlockTexture(dir, name string, img image.Image) error {
 	texture, err := os.Create(filepath.Join(dir, fmt.Sprintf("textures/blocks/%s.png", name)))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err := png.Encode(texture, img); err != nil {
-		_ = texture.Close()
-		panic(err)
+		closeErr := texture.Close()
+		if closeErr != nil {
+			return fmt.Errorf("encode image: %w (close error: %v)", err, closeErr)
+		}
+		return err
 	}
 	if err := texture.Close(); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // buildBlockAtlas creates the identifier to texture mapping and writes it to the pack.
-func buildBlockAtlas(dir string, atlas map[string]any) {
+func buildBlockAtlas(dir string, atlas map[string]any) error {
 	b, err := json.Marshal(atlas)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err := os.WriteFile(filepath.Join(dir, "textures/terrain_texture.json"), b, 0666); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
