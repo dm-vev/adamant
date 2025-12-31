@@ -58,7 +58,12 @@ type PassiveBehaviour struct {
 // Explode adds velocity to a passive entity to blast it away from the
 // explosion's source.
 func (p *PassiveBehaviour) Explode(e *Ent, src mgl64.Vec3, impact float64, _ block.ExplosionConfig) {
-	e.data.Vel = e.data.Vel.Add(e.data.Pos.Sub(src).Normalize().Mul(impact))
+	delta := e.data.Pos.Sub(src)
+	if delta.LenSqr() == 0 {
+		// Avoid NaNs when the explosion originates exactly at the entity position.
+		return
+	}
+	e.data.Vel = e.data.Vel.Add(delta.Normalize().Mul(impact))
 }
 
 // Fuse returns the leftover time until PassiveBehaviourConfig.Expire is called,
