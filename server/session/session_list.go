@@ -86,8 +86,11 @@ func (l *sessionList) sendSessionTo(s, to *Session) {
 
 func (l *sessionList) unsendSessionFrom(s, from *Session) {
 	from.entityMutex.Lock()
-	delete(from.entities, from.entityRuntimeIDs[s.ent])
-	delete(from.entityRuntimeIDs, s.ent)
+	if id, ok := from.entityRuntimeIDs[s.ent]; ok {
+		// Only remove the runtime ID when the mapping exists to avoid deleting unrelated entities.
+		delete(from.entities, id)
+		delete(from.entityRuntimeIDs, s.ent)
+	}
 	from.entityMutex.Unlock()
 
 	from.writePacket(&packet.PlayerList{
