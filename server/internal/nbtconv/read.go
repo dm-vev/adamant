@@ -252,9 +252,13 @@ func readDisplay(m map[string]any, s *item.Stack) {
 		} else if lore, ok := display["Lore"].([]any); ok {
 			loreLines := make([]string, 0, len(lore))
 			for _, l := range lore {
-				loreLines = append(loreLines, l.(string))
+				if line, ok := l.(string); ok {
+					loreLines = append(loreLines, line)
+				}
 			}
-			*s = s.WithLore(loreLines...)
+			if len(loreLines) != 0 {
+				*s = s.WithLore(loreLines...)
+			}
 		}
 	}
 }
@@ -265,16 +269,34 @@ func readDragonflyData(m map[string]any, s *item.Stack) {
 	if customData, ok := m["dragonflyData"]; ok {
 		d, ok := customData.([]byte)
 		if !ok {
-			if itf, ok := customData.([]any); ok {
+			if itf, ok := customData.([]int8); ok {
+				d = make([]byte, 0, len(itf))
 				for _, v := range itf {
-					b, _ := v.(byte)
-					d = append(d, b)
+					d = append(d, byte(v))
 				}
 			}
+			if itf, ok := customData.([]any); ok {
+				for _, v := range itf {
+					switch b := v.(type) {
+					case byte:
+						d = append(d, b)
+					case int8:
+						d = append(d, byte(b))
+					case uint8:
+						d = append(d, byte(b))
+					}
+				}
+			}
+		} else if len(d) == 0 {
+			return
+		}
+		if len(d) == 0 {
+			return
 		}
 		var values []mapValue
 		if err := gob.NewDecoder(bytes.NewBuffer(d)).Decode(&values); err != nil {
-			panic("error decoding item user data: " + err.Error())
+			// Ignore malformed custom data to avoid crashing on corrupted items.
+			return
 		}
 		for _, val := range values {
 			*s = s.WithValue(val.K, val.V)

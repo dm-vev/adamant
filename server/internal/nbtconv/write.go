@@ -73,7 +73,8 @@ func writeDragonflyData(m map[string]any, s item.Stack) {
 	if v := s.Values(); len(v) != 0 {
 		buf := new(bytes.Buffer)
 		if err := gob.NewEncoder(buf).Encode(mapToSlice(v)); err != nil {
-			panic("error encoding item user data: " + err.Error())
+			// Skip custom data if it cannot be encoded to avoid crashing on invalid values.
+			return
 		}
 		m["dragonflyData"] = buf.Bytes()
 	}
