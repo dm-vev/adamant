@@ -13,6 +13,21 @@ type hungerManager struct {
 	foodTick        int
 }
 
+type hungerSnapshot struct {
+	foodLevel       int
+	saturationLevel float64
+	exhaustionLevel float64
+	foodTick        int
+}
+
+type hungerTickState struct {
+	foodTick             int
+	canQuicklyRegenerate bool
+	canRegenerate        bool
+	starving             bool
+	canSprint            bool
+}
+
 // newHungerManager returns a new hunger manager with the default values for food level, saturation level and
 // exhaustion level.
 func newHungerManager() *hungerManager {
@@ -42,6 +57,49 @@ func (m *hungerManager) AddFood(points int) {
 	defer m.mu.Unlock()
 
 	m.foodLevel = max(min(m.foodLevel+points, 20), 0)
+}
+
+// setState applies a full hunger state snapshot at once.
+func (m *hungerManager) setState(food, foodTick int, exhaustion, saturation float64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.foodLevel = food
+	m.foodTick = foodTick
+	m.exhaustionLevel = exhaustion
+	m.saturationLevel = saturation
+}
+
+// snapshot returns a consistent copy of the current hunger state.
+func (m *hungerManager) snapshot() hungerSnapshot {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return hungerSnapshot{
+		foodLevel:       m.foodLevel,
+		foodTick:        m.foodTick,
+		exhaustionLevel: m.exhaustionLevel,
+		saturationLevel: m.saturationLevel,
+	}
+}
+
+// tickState advances the food tick counter and returns the pre-advance state.
+func (m *hungerManager) tickState() hungerTickState {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	state := hungerTickState{
+		foodTick:             m.foodTick,
+		canQuicklyRegenerate: m.foodLevel == 20 && m.saturationLevel > 0,
+		canRegenerate:        m.foodLevel >= 18,
+		starving:             m.foodLevel == 0,
+		canSprint:            m.foodLevel > 6,
+	}
+	m.foodTick++
+	if m.foodTick > 80 {
+		m.foodTick = 1
+	}
+	return state
 }
 
 // Reset resets the hunger manager to its default values, identical to those set when creating a new manager

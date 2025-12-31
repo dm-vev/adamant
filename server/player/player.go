@@ -801,7 +801,8 @@ func (p *Player) Saturate(food int, saturation float64) {
 
 // sendFood sends the current food properties to the client.
 func (p *Player) sendFood() {
-	p.session().SendFood(p.hunger.foodLevel, p.hunger.saturationLevel, p.hunger.exhaustionLevel)
+	state := p.hunger.snapshot()
+	p.session().SendFood(state.foodLevel, state.saturationLevel, state.exhaustionLevel)
 }
 
 // AddEffect adds an entity.Effect to the Player. If the effect is instant, it is applied to the Player
@@ -2934,29 +2935,25 @@ func (p *Player) tickAirSupply() {
 // tickFood ticks food related functionality, such as the depletion of the food bar and regeneration if it
 // is full enough.
 func (p *Player) tickFood() {
-	if p.hunger.foodTick%10 == 0 && (p.hunger.canQuicklyRegenerate() || p.tx.World().Difficulty().FoodRegenerates()) {
+	state := p.hunger.tickState()
+	if state.foodTick%10 == 0 && (state.canQuicklyRegenerate || p.tx.World().Difficulty().FoodRegenerates()) {
 		if p.tx.World().Difficulty().FoodRegenerates() {
 			p.AddFood(1)
 		}
-		if p.hunger.foodTick%20 == 0 {
+		if state.foodTick%20 == 0 {
 			p.regenerate(true)
 		}
 	}
-	if p.hunger.foodTick == 1 {
-		if p.hunger.canRegenerate() {
+	if state.foodTick == 1 {
+		if state.canRegenerate {
 			p.regenerate(false)
-		} else if p.hunger.starving() {
+		} else if state.starving {
 			p.starve()
 		}
 	}
 
-	if !p.hunger.canSprint() {
+	if !state.canSprint {
 		p.StopSprinting()
-	}
-
-	p.hunger.foodTick++
-	if p.hunger.foodTick > 80 {
-		p.hunger.foodTick = 1
 	}
 }
 
@@ -3528,8 +3525,7 @@ func (p *Player) quit(msg string) {
 // Data returns the player data that needs to be saved. This is used when the player
 // gets disconnected and the player provider needs to save the data.
 func (p *Player) Data() Config {
-	p.hunger.mu.RLock()
-	defer p.hunger.mu.RUnlock()
+	hunger := p.hunger.snapshot()
 	return Config{
 		Session:             p.s,
 		Skin:                p.skin,
@@ -3543,10 +3539,10 @@ func (p *Player) Data() Config {
 		Velocity:            p.Velocity(),
 		Health:              p.Health(),
 		MaxHealth:           p.MaxHealth(),
-		FoodTick:            p.hunger.foodTick,
-		Food:                p.hunger.foodLevel,
-		Exhaustion:          p.hunger.exhaustionLevel,
-		Saturation:          p.hunger.saturationLevel,
+		FoodTick:            hunger.foodTick,
+		Food:                hunger.foodLevel,
+		Exhaustion:          hunger.exhaustionLevel,
+		Saturation:          hunger.saturationLevel,
 		AirSupply:           p.airSupplyTicks,
 		MaxAirSupply:        p.maxAirSupplyTicks,
 		EnchantmentSeed:     p.enchantSeed,
