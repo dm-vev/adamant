@@ -105,3 +105,6 @@
 
 - Skipped invalid crossbow loading stages to avoid server panics on malformed sound events.
 - Ignored out-of-range scoreboard line indices to prevent panics from unsafe callers.
+
+- Hardened firework NBT decode/encode to clamp flight ticks and skip malformed explosion data.
+- Returned empty subchunk responses before chunk loader init, capped offsets, and shifted min-Y before casting to avoid early panics and oversized allocations.

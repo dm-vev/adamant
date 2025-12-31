@@ -17,7 +17,10 @@ import (
 // but also solves issues with block entities such as item frames and lecterns as of v1.19.10.
 const subChunkRequests = true
 
-const maxPendingBlobs = 4096
+const (
+	maxPendingBlobs    = 4096
+	maxSubChunkOffsets = 4096
+)
 
 // ViewChunk ...
 func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, blockEntities map[cube.Pos]world.Block, c *chunk.Chunk) {
@@ -30,12 +33,27 @@ func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, blockEntiti
 
 // ViewSubChunks ...
 func (s *Session) ViewSubChunks(center world.SubChunkPos, offsets []protocol.SubChunkOffset, tx *world.Tx) {
+	if s.chunkLoader == nil {
+		// The chunk loader is initialised during Spawn, so return an empty response for early requests.
+		dim, _ := world.DimensionID(tx.World().Dimension())
+		s.writePacket(&packet.SubChunk{
+			Dimension:       int32(dim),
+			Position:        protocol.SubChunkPos(center),
+			CacheEnabled:    s.conn.ClientCacheEnabled(),
+			SubChunkEntries: nil,
+		})
+		return
+	}
+	if len(offsets) > maxSubChunkOffsets {
+		// Cap offsets to bound memory usage when handling malformed or abusive requests.
+		offsets = offsets[:maxSubChunkOffsets]
+	}
 	r := tx.Range()
 
 	entries := make([]protocol.SubChunkEntry, 0, len(offsets))
 	transaction := make(map[uint64]struct{})
 	for _, offset := range offsets {
-		ind := int16(center.Y()) + int16(offset[1]) - int16(r[0])>>4
+		ind := int16(center.Y()) + int16(offset[1]) - int16(r[0]>>4)
 		if ind < 0 || ind > int16(r.Height()>>4) {
 			entries = append(entries, protocol.SubChunkEntry{Result: protocol.SubChunkResultIndexOutOfBounds, Offset: offset})
 			continue
