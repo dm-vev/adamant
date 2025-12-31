@@ -18,18 +18,16 @@ func (c *ClientCacheBlobStatusHandler) Handle(p packet.Packet, s *Session, _ *wo
 
 	s.blobMu.Lock()
 	for _, hit := range pk.HitHashes {
-		delete(s.blobs, hit)
 		c.resolveBlob(hit, s)
 	}
 	for _, miss := range pk.MissHashes {
 		blob, ok := s.blobs[miss]
-		if !ok {
-			// This is expected to happen sometimes, for example when we send the same block storage or biomes a lot of
-			// times in a short timeframe. There is no need to log this, it'll just cause unnecessary noise that doesn't
-			// actually aid in terms of information.
-			continue
+		if ok {
+			resp.Blobs = append(resp.Blobs, protocol.CacheBlob{Hash: miss, Payload: blob})
+		} else {
+			// A missing blob can happen when identical hashes are reused or cache state is reset. We still resolve the
+			// transaction to avoid stalling chunk delivery on an unresolvable hash.
 		}
-		resp.Blobs = append(resp.Blobs, protocol.CacheBlob{Hash: miss, Payload: blob})
 		c.resolveBlob(miss, s)
 	}
 	s.blobMu.Unlock()
