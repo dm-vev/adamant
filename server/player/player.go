@@ -71,6 +71,9 @@ type playerData struct {
 	maxAirSupplyTicks int
 
 	cooldowns map[string]time.Time
+	// cooldownsMu guards the cooldowns map, which is accessed from gameplay and
+	// network goroutines.
+	cooldownsMu sync.Mutex
 
 	speed               float64
 	flightSpeed         float64
@@ -1528,11 +1531,15 @@ func (p *Player) HasCooldown(item world.Item) bool {
 		return false
 	}
 	name, _ := item.EncodeItem()
+	now := time.Now()
+	p.cooldownsMu.Lock()
+	defer p.cooldownsMu.Unlock()
+
 	otherTime, ok := p.cooldowns[name]
 	if !ok {
 		return false
 	}
-	if time.Now().After(otherTime) {
+	if now.After(otherTime) {
 		delete(p.cooldowns, name)
 		return false
 	}
@@ -1545,7 +1552,9 @@ func (p *Player) SetCooldown(item world.Item, cooldown time.Duration) {
 		return
 	}
 	name, _ := item.EncodeItem()
+	p.cooldownsMu.Lock()
 	p.cooldowns[name] = time.Now().Add(cooldown)
+	p.cooldownsMu.Unlock()
 	p.session().ViewItemCooldown(item, cooldown)
 }
 
@@ -2868,11 +2877,14 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		p.ContinueBreaking(p.breakingFace)
 	}
 
+	now := time.Now()
+	p.cooldownsMu.Lock()
 	for it, ti := range p.cooldowns {
-		if time.Now().After(ti) {
+		if now.After(ti) {
 			delete(p.cooldowns, it)
 		}
 	}
+	p.cooldownsMu.Unlock()
 
 	p.session().SendDebugShapes(tx.World().Dimension())
 	p.session().SendHudUpdates()
