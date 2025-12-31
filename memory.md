@@ -78,4 +78,5 @@
 - Avoided sending invalid sound events for wax/scrape/lightning effects and unknown music discs, preventing crashes and stray packets.
 - Defaulted invalid item categories to a safe label instead of panicking during component builds.
 - Logged and skipped failed entity identifier serialization rather than panicking during session setup.
+- Treated unexpected recipe item types as mismatches during crafting to avoid panics from malformed or mixed recipe data.
 - Hardened book editing methods against invalid indices and oversized text, and made skin/cape/animation At return zero colors for out-of-bounds access.

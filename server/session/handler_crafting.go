@@ -201,7 +201,8 @@ func matchingStacks(has, expected recipe.Item) bool {
 			nameTwo, _ := expected.Item().EncodeItem()
 			return nameOne == nameTwo
 		}
-		panic(fmt.Errorf("client has unexpected recipe item %T", has))
+		// Unknown recipe item type: treat as a mismatch to avoid panicking on unexpected data.
+		return false
 	case recipe.ItemTag:
 		switch has := has.(type) {
 		case item.Stack:
@@ -210,9 +211,12 @@ func matchingStacks(has, expected recipe.Item) bool {
 		case recipe.ItemTag:
 			return has.Tag() == expected.Tag()
 		}
-		panic(fmt.Errorf("client has unexpected recipe item %T", has))
+		// Unknown recipe item type: treat as a mismatch to avoid panicking on unexpected data.
+		return false
+	default:
+		// Unknown recipe item type: treat as a mismatch to avoid panicking on unexpected data.
+		return false
 	}
-	panic(fmt.Errorf("tried to match with unexpected recipe item %T", expected))
 }
 
 // repeatStacks multiplies the count of all item stacks provided by the number of repetitions provided. Item
@@ -241,7 +245,8 @@ func grow(i recipe.Item, count int) recipe.Item {
 	case recipe.ItemTag:
 		return recipe.NewItemTag(i.Tag(), i.Count()+count)
 	}
-	panic(fmt.Errorf("unexpected recipe item %T", i))
+	// TODO: Support growing custom recipe item types if they are ever introduced.
+	return i
 }
 
 // tryDynamicCraft attempts to match the items in the crafting grid with any registered dynamic recipes.
