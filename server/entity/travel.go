@@ -110,7 +110,8 @@ func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *w
 	sourceDimension := source.Dimension()
 	pos := cube.PosFromVec3(e.Position())
 	if sourceDimension == world.Overworld {
-		pos = cube.Pos{pos.X() / 8, pos.Y(), pos.Z() / 8}
+		// Nether scaling uses floor division for negative coordinates.
+		pos = cube.Pos{floorDiv(pos.X(), 8), pos.Y(), floorDiv(pos.Z(), 8)}
 	} else if sourceDimension == world.Nether {
 		pos = cube.Pos{pos.X() * 8, pos.Y(), pos.Z() * 8}
 	}
@@ -142,6 +143,19 @@ func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *w
 		defer t.mu.Unlock()
 		t.travelling = false
 	}()
+}
+
+// floorDiv returns floor(n/d) for positive divisors, matching Minecraft coordinate scaling.
+func floorDiv(n, d int) int {
+	if d <= 0 {
+		panic("floorDiv requires a positive divisor")
+	}
+	q := n / d
+	r := n % d
+	if r != 0 && n < 0 {
+		q -= 1
+	}
+	return q
 }
 
 func (t *TravelComputer) notifyDenied(travel Traveller, tx *world.Tx, dim world.Dimension) {
