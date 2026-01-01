@@ -412,14 +412,39 @@ func (s *Session) SendFood(food int, saturation, exhaustion float64) {
 // SendDialogue sends an NPC dialogue to the client of the connection. The Submit method of the dialogue is
 // called when the client interacts with a button in the dialogue.
 func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
-	b, _ := json.Marshal(d)
+	// Nop sessions are returned for offline players and must remain safe to call.
+	if s == Nop || s.handlers == nil {
+		return
+	}
+	if e == nil {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("SendDialogue: nil entity")
+		}
+		return
+	}
+	b, err := json.Marshal(d)
+	if err != nil {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("SendDialogue: failed to marshal dialogue", "err", err)
+		}
+		return
+	}
 
-	h := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
+	h, ok := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
+	if !ok || h == nil {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("SendDialogue: missing NPC request handler")
+		}
+		return
+	}
+	entityRuntimeID := s.entityRuntimeID(e)
+	if entityRuntimeID == 0 {
+		return
+	}
 	dialogueCopy := d
 	h.mu.Lock()
 	h.dialogue = &dialogueCopy
-	h.entityRuntimeID = s.entityRuntimeID(e)
-	entityRuntimeID := h.entityRuntimeID
+	h.entityRuntimeID = entityRuntimeID
 	h.mu.Unlock()
 
 	metadata := s.parseEntityMetadata(e)
@@ -427,8 +452,14 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 
 	disp := d.Display()
 	disp.EntityOffset = disp.EntityOffset.Add(entityOffset(e))
-	display, _ := json.Marshal(map[string]any{"portrait_offsets": disp})
-	metadata[protocol.EntityDataKeyNPCData] = string(display)
+	display, err := json.Marshal(map[string]any{"portrait_offsets": disp})
+	if err != nil {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("SendDialogue: failed to marshal dialogue display", "err", err)
+		}
+	} else {
+		metadata[protocol.EntityDataKeyNPCData] = string(display)
+	}
 
 	s.writePacket(&packet.SetActorData{
 		EntityRuntimeID: entityRuntimeID,
@@ -445,7 +476,16 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 }
 
 func (s *Session) CloseDialogue() {
-	h := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
+	if s == Nop || s.handlers == nil {
+		return
+	}
+	h, ok := s.handlers[packet.IDNPCRequest].(*NPCRequestHandler)
+	if !ok || h == nil {
+		if s.conf.Log != nil {
+			s.conf.Log.Error("CloseDialogue: missing NPC request handler")
+		}
+		return
+	}
 	h.mu.Lock()
 	entityRuntimeID := h.entityRuntimeID
 	h.entityRuntimeID = 0
