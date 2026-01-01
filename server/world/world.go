@@ -194,6 +194,9 @@ func New() *World {
 // provider is set, the name will be updated according to the name that it
 // provides.
 func (w *World) Name() string {
+	if w == nil {
+		return "World"
+	}
 	w.set.Lock()
 	defer w.set.Unlock()
 	return w.set.Name
@@ -203,12 +206,18 @@ func (w *World) Name() string {
 // colour and behaviour of a variety of world features differ based on the
 // Dimension.
 func (w *World) Dimension() Dimension {
+	if w == nil {
+		return Overworld
+	}
 	return w.conf.Dim
 }
 
 // Range returns the range in blocks of the World (min and max). It is
 // equivalent to calling World.Dimension().Range().
 func (w *World) Range() cube.Range {
+	if w == nil {
+		return Overworld.Range()
+	}
 	return w.ra
 }
 
@@ -226,17 +235,26 @@ func (w *World) CurrentTick() int64 {
 // averaged over the last tpsSampleSize ticks and may be zero if no samples have
 // been recorded yet.
 func (w *World) TPS() float64 {
+	if w == nil {
+		return 0
+	}
 	return math.Float64frombits(w.tps.Load())
 }
 
 // LoadedChunkCount returns the number of chunks currently kept in memory by the
 // world.
 func (w *World) LoadedChunkCount() int {
+	if w == nil {
+		return 0
+	}
 	return int(w.chunkCount.Load())
 }
 
 // EntityCount returns the number of entities tracked by the world.
 func (w *World) EntityCount() int {
+	if w == nil {
+		return 0
+	}
 	return int(w.entityCount.Load())
 }
 
@@ -260,6 +278,11 @@ type ExecFunc func(tx *Tx)
 // that is closed once the transaction is complete.
 func (w *World) Exec(f ExecFunc) <-chan struct{} {
 	c := make(chan struct{})
+	if w == nil {
+		// Nil worlds are treated as no-ops; return a closed channel so callers don't block.
+		close(c)
+		return c
+	}
 	w.queue <- normalTransaction{c: c, f: f}
 	return c
 }
@@ -287,6 +310,9 @@ func (w *World) handleTransactions() {
 // EntityRegistry returns the EntityRegistry that was passed to the World's
 // Config upon construction.
 func (w *World) EntityRegistry() EntityRegistry {
+	if w == nil {
+		return EntityRegistry{}
+	}
 	return w.conf.Entities
 }
 
@@ -1168,6 +1194,9 @@ func (w *World) releaseViewers(viewers []Viewer) {
 // return the Overworld, for instance. If no destination World is available,
 // nil is returned.
 func (w *World) PortalDestination(dim Dimension) *World {
+	if w == nil {
+		return nil
+	}
 	if w.conf.PortalDestination == nil {
 		return nil
 	}
@@ -1184,6 +1213,9 @@ func (w *World) PortalDestination(dim Dimension) *World {
 // PortalDisabledMessage resolves the message to display when a portal targeting the
 // provided Dimension is disabled. An empty string suppresses any feedback.
 func (w *World) PortalDisabledMessage(dim Dimension) string {
+	if w == nil {
+		return ""
+	}
 	if w.conf.PortalDisabledMessage == nil {
 		return ""
 	}
@@ -1193,6 +1225,9 @@ func (w *World) PortalDisabledMessage(dim Dimension) string {
 // DefaultWorld returns the primary world configured for this server. If no explicit default
 // callback is provided, the world itself is returned so respawn logic always has a destination.
 func (w *World) DefaultWorld() *World {
+	if w == nil {
+		return nil
+	}
 	if w.conf.DefaultWorld == nil {
 		return w
 	}
@@ -1204,6 +1239,9 @@ func (w *World) DefaultWorld() *World {
 
 // Save saves the World to the provider.
 func (w *World) Save() {
+	if w == nil {
+		return
+	}
 	<-w.Exec(w.save(w.saveChunk))
 }
 
@@ -1280,6 +1318,9 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 
 // Close closes the world and saves all chunks currently loaded.
 func (w *World) Close() error {
+	if w == nil {
+		return nil
+	}
 	w.o.Do(w.close)
 	return nil
 }
@@ -1818,6 +1859,9 @@ func (w *World) autoSave() {
 // CollectGarbage closes chunks that have no viewers and returns the number of
 // chunks, entities and block entities that were removed as a result.
 func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, blockEntitiesCollected int) {
+	if w == nil {
+		return 0, 0, 0
+	}
 	for pos, c := range w.chunks {
 		if len(c.viewers) != 0 || len(c.loaders) != 0 {
 			continue
