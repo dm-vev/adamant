@@ -107,9 +107,14 @@ func (b Banner) DecodeNBT(m map[string]any) any {
 	}
 	b.Illager = nbtconv.Int32(m, "Type") == 1
 	if patterns := nbtconv.Slice(m, "Patterns"); patterns != nil {
-		b.Patterns = make([]BannerPatternLayer, len(patterns))
-		for i, p := range b.Patterns {
-			b.Patterns[i] = p.DecodeNBT(patterns[i].(map[string]any)).(BannerPatternLayer)
+		b.Patterns = make([]BannerPatternLayer, 0, len(patterns))
+		for _, raw := range patterns {
+			patternData, ok := raw.(map[string]any)
+			if !ok {
+				// Skip malformed pattern entries to avoid panics on corrupted NBT.
+				continue
+			}
+			b.Patterns = append(b.Patterns, BannerPatternLayer{}.DecodeNBT(patternData).(BannerPatternLayer))
 		}
 	}
 	return b

@@ -108,3 +108,5 @@
 
 - Hardened firework NBT decode/encode to clamp flight ticks and skip malformed explosion data.
 - Returned empty subchunk responses before chunk loader init, capped offsets, and shifted min-Y before casting to avoid early panics and oversized allocations.
+- Guarded World public accessors and lifecycle methods to handle nil receivers safely, returning defaults or no-op behavior to avoid nil dereference panics.
+- Hardened banner pattern NBT decode to skip malformed entries and avoid panics on corrupted data.
