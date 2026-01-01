@@ -111,3 +111,4 @@
 - Guarded World public accessors and lifecycle methods to handle nil receivers safely, returning defaults or no-op behavior to avoid nil dereference panics.
 - Hardened banner pattern NBT decode to skip malformed entries and avoid panics on corrupted data.
 - Guarded NPC dialogue send/close paths to handle Nop sessions, missing handlers, nil entities, and marshal errors safely.
+- Made EffectManager thread-safe by guarding effect state with a mutex and applying tick/start/end actions outside the lock to avoid data races.
