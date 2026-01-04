@@ -1879,7 +1879,7 @@ func (w *World) autoSave() {
 		save = time.NewTicker(w.conf.SaveInterval)
 		defer save.Stop()
 	}
-	closeUnused := time.NewTicker(time.Minute * 2)
+	closeUnused := time.NewTicker(w.conf.ChunkUnloadInterval)
 	defer closeUnused.Stop()
 
 	for {
@@ -1895,7 +1895,7 @@ func (w *World) autoSave() {
 	}
 }
 
-// CollectGarbage closes chunks that have no viewers and returns the number of
+// CollectGarbage closes chunks that have no viewers or loaders and returns the number of
 // chunks, entities and block entities that were removed as a result.
 func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, blockEntitiesCollected int) {
 	if w == nil {
@@ -1913,7 +1913,7 @@ func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, bloc
 	return
 }
 
-// closeUnusedChunk is called every 5 minutes by autoSave.
+// closeUnusedChunks closes chunks currently not in use by any viewer or loader.
 func (w *World) closeUnusedChunks(tx *Tx) {
 	w.CollectGarbage(tx)
 }
