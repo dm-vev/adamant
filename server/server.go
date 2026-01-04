@@ -688,15 +688,17 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 	gen := srv.conf.Generator(dim)
 	sourceDim := dim
 	conf := world.Config{
-		Log:                logger,
-		Dim:                dim,
-		Provider:           srv.conf.WorldProvider,
-		Generator:          gen,
-		GeneratorWorkers:   srv.conf.GeneratorWorkers,
-		GeneratorQueueSize: srv.conf.GeneratorQueueSize,
-		RandomTickSpeed:    srv.conf.RandomTickSpeed,
-		ReadOnly:           srv.conf.ReadOnlyWorld,
-		Entities:           srv.conf.Entities,
+		Log:                 logger,
+		Dim:                 dim,
+		Provider:            srv.conf.WorldProvider,
+		Generator:           gen,
+		GeneratorWorkers:    srv.conf.GeneratorWorkers,
+		GeneratorQueueSize:  srv.conf.GeneratorQueueSize,
+		RandomTickSpeed:     srv.conf.RandomTickSpeed,
+		ReadOnly:            srv.conf.ReadOnlyWorld,
+		SaveInterval:        srv.conf.SaveInterval,
+		ChunkUnloadInterval: srv.conf.ChunkUnloadInterval,
+		Entities:            srv.conf.Entities,
 		PortalDestination: func(target world.Dimension) *world.World {
 			resolved := target
 			if target == world.Nether && sourceDim == world.Nether {
