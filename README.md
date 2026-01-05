@@ -25,7 +25,7 @@ Upstream: https://github.com/df-mc/dragonfly
 Achieve a PMMP‑like feature list, prioritising gameplay parity and admin ergonomics while keeping clean Go APIs for plugin and feature work.
 
 ## Getting Started
-Requirements: **Go 1.23+**
+Requirements: **Go 1.24+**
 
 Run from source:
 ```shell
