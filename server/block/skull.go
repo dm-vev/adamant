@@ -95,9 +95,7 @@ func (s Skull) DecodeNBT(data map[string]interface{}) interface{} {
 			s.Type = SkullType{t}
 		}
 	}
-	if _, ok := data["Rotation"]; ok {
-		s.Attach.o = cube.OrientationFromYaw(float64(nbtconv.Float32(data, "Rotation")))
-	}
+	s.Attach.o = cube.OrientationFromYaw(float64(nbtconv.Float32(data, "Rotation")))
 	return s
 }
 
