@@ -1262,6 +1262,11 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) ExecFunc {
 
 // saveChunk saves a chunk and its entities to disk after compacting the chunk.
 func (w *World) saveChunk(_ *Tx, pos ChunkPos, c *Column) {
+	// Column generation runs in background workers. Saving is performed on the world transaction goroutine and must
+	// not access columns that are still being generated.
+	if !c.Ready() {
+		return
+	}
 	if !w.conf.ReadOnly && c.modified {
 		c.Compact()
 		if err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, w.columnTo(c, pos)); err != nil {
@@ -1653,6 +1658,9 @@ func (w *World) generatorWorker() {
 // This design guarantees that no waiting goroutine (e.g., loadChunk callers)
 // will hang indefinitely due to an unmarked column.
 func (w *World) runGenerationTask(task generationTask) {
+	// Chunk generation is performed on background workers. World transactions must treat not-yet-ready columns as
+	// immutable: once markReady() is called, the generation worker will no longer mutate the column. The ready flag
+	// acts as a synchronization point to safely publish generated chunk contents to the transaction goroutine.
 	defer func() {
 		// Always recover from panics during generation to prevent worker termination.
 		if r := recover(); r != nil {
@@ -1663,30 +1671,29 @@ func (w *World) runGenerationTask(task generationTask) {
 				"Z", task.pos[1],
 			)
 		}
-
-		// Mark the column as ready regardless of success or failure.
 		task.col.markReady()
 	}()
 
 	// Perform the actual chunk generation.
 	// The generator implementation is responsible for populating the chunk’s data.
 	w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
-	w.initialiseGeneratedBlockEntities(task.pos, task.col)
+
+	task.col.BlockEntities = w.generatedBlockEntities(task.pos, task.col.Chunk)
+	if task.col.BlockEntities == nil {
+		task.col.BlockEntities = map[cube.Pos]Block{}
+	}
 	task.col.modified = true
 }
 
-// initialiseGeneratedBlockEntities initialises default block entity data for any blocks that require it in a newly
-// generated chunk. This ensures clients receive the correct block entity NBT (for example for beacons or end
-// gateways) immediately when the chunk is sent.
-func (w *World) initialiseGeneratedBlockEntities(pos ChunkPos, col *Column) {
-	if col == nil || col.Chunk == nil {
-		return
-	}
-	if col.BlockEntities == nil {
-		col.BlockEntities = map[cube.Pos]Block{}
+// generatedBlockEntities produces default block entity data for NBT blocks in a newly generated chunk.
+// The returned map is safe to assign on the world's transaction goroutine.
+func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Pos]Block {
+	if c == nil {
+		return nil
 	}
 
-	c := col.Chunk
+	// Most generated chunks do not contain NBT blocks, so allocate lazily to avoid churn.
+	var blockEntities map[cube.Pos]Block
 	baseX, baseZ := int(pos[0]<<4), int(pos[1]<<4)
 
 	for subIndex, sub := range c.Sub() {
@@ -1718,7 +1725,7 @@ func (w *World) initialiseGeneratedBlockEntities(pos ChunkPos, col *Column) {
 						continue
 					}
 					worldPos := cube.Pos{baseX + int(x), subY + int(y), baseZ + int(z)}
-					if _, ok := col.BlockEntities[worldPos]; ok {
+					if _, ok := blockEntities[worldPos]; ok {
 						continue
 					}
 					nbt := map[string]any{}
@@ -1740,11 +1747,15 @@ func (w *World) initialiseGeneratedBlockEntities(pos ChunkPos, col *Column) {
 						}
 					}
 					nbtB := blockByRuntimeIDOrAir(rid).(NBTer).DecodeNBT(nbt).(Block)
-					col.BlockEntities[worldPos] = nbtB
+					if blockEntities == nil {
+						blockEntities = make(map[cube.Pos]Block, 8)
+					}
+					blockEntities[worldPos] = nbtB
 				}
 			}
 		}
 	}
+	return blockEntities
 }
 
 // drainGenerationQueue flushes any remaining tasks in the generator queue.

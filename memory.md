@@ -120,3 +120,5 @@
 - Prevented `World.Exec` tests from deadlocking the transaction loop by avoiding `t.Fatal/Fatalf` inside Exec callbacks, and fixed the end portal spawn test to treat air as a block value (not `nil`).
 - Fixed overworld surface generator tests by initialising the block runtime registry and making biome search resilient to seed-dependent distances.
 - Added a nested module for the local `fixes/` directory so `go test ./...` ignores it and stays buildable in clean checkouts.
+
+- Avoided saving/compacting chunks while generation is in flight to remove a world close-time data race.
