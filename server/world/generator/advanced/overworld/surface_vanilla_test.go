@@ -2,12 +2,20 @@ package overworld
 
 import (
 	"testing"
+	_ "unsafe"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 	mcbiome "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/biome"
 )
+
+func init() {
+	worldFinaliseBlockRegistry()
+}
+
+//go:linkname worldFinaliseBlockRegistry github.com/df-mc/dragonfly/server/world.finaliseBlockRegistry
+func worldFinaliseBlockRegistry()
 
 func findChunkWithCenterBiome(g *Overworld, targets map[int]struct{}, radiusChunks int) (chunkX, chunkZ int, ok bool) {
 	for x := -radiusChunks; x <= radiusChunks; x++ {
@@ -61,9 +69,17 @@ func TestSurfaceIncludesMesaBands(t *testing.T) {
 		int(mcbiome.ModifiedBadlandsPlateau):     {},
 		int(mcbiome.ModifiedWoodedBadlandsPlateau): {},
 	}
-	chunkX, chunkZ, ok := findChunkWithCenterBiome(g, targets, 96)
+	// Mesa biomes can be far from the origin depending on the seed and biome generator.
+	// Search progressively further to keep this test stable while still validating mesa band generation.
+	chunkX, chunkZ, ok := 0, 0, false
+	for _, radius := range []int{96, 192, 384, 512} {
+		chunkX, chunkZ, ok = findChunkWithCenterBiome(g, targets, radius)
+		if ok {
+			break
+		}
+	}
 	if !ok {
-		t.Fatalf("no mesa biome found near origin")
+		t.Fatalf("no mesa biome found within 512 chunks of origin")
 	}
 
 	c := generateBaseAndSurface(g, chunkX, chunkZ)
@@ -95,9 +111,15 @@ func TestSurfaceMegaTaigaHasPodzolPatches(t *testing.T) {
 		int(mcbiome.GiantSpruceTaiga):    {},
 		int(mcbiome.GiantSpruceTaigaHills): {},
 	}
-	chunkX, chunkZ, ok := findChunkWithCenterBiome(g, targets, 96)
+	chunkX, chunkZ, ok := 0, 0, false
+	for _, radius := range []int{96, 192, 384, 512} {
+		chunkX, chunkZ, ok = findChunkWithCenterBiome(g, targets, radius)
+		if ok {
+			break
+		}
+	}
 	if !ok {
-		t.Fatalf("no mega taiga biome found near origin")
+		t.Fatalf("no mega taiga biome found within 512 chunks of origin")
 	}
 
 	c := generateBaseAndSurface(g, chunkX, chunkZ)
@@ -127,4 +149,3 @@ func TestSurfaceMegaTaigaHasPodzolPatches(t *testing.T) {
 		t.Fatalf("expected some grass on mega taiga surface, got 0")
 	}
 }
-

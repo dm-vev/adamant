@@ -2,10 +2,12 @@ auto.sh
 .codex/
 .gocache/
 .gomodcache/
+.gotmp/
 .tmp/
 Lumi-master/
 codex.sh
-fixes/
+fixes/*
+!fixes/go.mod
 mcp940-master/
 players/
 world/

@@ -116,3 +116,7 @@
 - Updated whitelist persistence to match line-based allowlist files (with TOML fallback), added `whitelist`/`allowlist` on/off/reload commands, and ensured query reports whitelist status correctly.
 - Aligned Bedrock query responses with Lumi/Nukkit wire format (binary MD5 token, lowercase `splitnum`, long/short payloads, stable key ordering/defaults) and updated the query adapter accordingly.
 - Cached Bedrock query payloads for 5 seconds to match Nukkit regeneration cadence, reduce per-request allocations, and keep query responses stable within the TTL.
+
+- Prevented `World.Exec` tests from deadlocking the transaction loop by avoiding `t.Fatal/Fatalf` inside Exec callbacks, and fixed the end portal spawn test to treat air as a block value (not `nil`).
+- Fixed overworld surface generator tests by initialising the block runtime registry and making biome search resilient to seed-dependent distances.
+- Added a nested module for the local `fixes/` directory so `go test ./...` ignores it and stays buildable in clean checkouts.
