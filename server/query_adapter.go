@@ -28,7 +28,10 @@ func (srv *Server) buildQueryData(host string, port int) query.Data {
 		worldName = srv.world.Name()
 	}
 	modeName := defaultGameModeName(srv)
-	pluginString := strings.Join(srv.plugins(), ";")
+	pluginString := ""
+	if query.PluginListingEnabled() {
+		pluginString = strings.Join(srv.plugins(), ";")
+	}
 	difficulty := "NORMAL"
 
 	srv.pmu.RLock()

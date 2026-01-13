@@ -15,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
+	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
@@ -323,6 +324,12 @@ type UserConfig struct {
 		// Address is the address on which the server should listen. Players may
 		// connect to this address in order to join.
 		Address string
+		// EnableQuery controls whether Bedrock Query responses are enabled.
+		// When disabled, query packets are ignored (no reply is sent).
+		EnableQuery bool
+		// QueryPlugins controls whether the query response should list plugins.
+		// When disabled, the query `plugins` field only contains the engine label.
+		QueryPlugins bool
 	}
 	Server struct {
 		// Name is the name of the server as it shows up in the server list.
@@ -425,6 +432,9 @@ type UserConfig struct {
 // resources failed.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	var err error
+	query.SetEnabled(uc.Network.EnableQuery)
+	query.SetPluginListingEnabled(uc.Network.QueryPlugins)
+
 	defaultDim := world.Dimension(world.Overworld)
 	if name := strings.TrimSpace(uc.World.DefaultDimension); name != "" {
 		if parsed, ok := parseDimension(name); ok {
@@ -532,6 +542,8 @@ func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Genera
 func DefaultConfig() UserConfig {
 	c := UserConfig{}
 	c.Network.Address = ":19132"
+	c.Network.EnableQuery = true
+	c.Network.QueryPlugins = false
 	c.Server.Name = "Dragonfly Server"
 	c.Server.AuthEnabled = true
 	c.World.SaveData = true

@@ -133,3 +133,5 @@
 - Fixed item stack request stack-network-ID handling to use the internal `item_id` helper (restoring a clean build without expanding `item.Stack`'s public API).
 - Updated block tests to initialise the block runtime registry through the existing linkname helper to keep `go test ./...` working.
 - Changed the default reconnect policy to `kick-existing` to match upstream "disconnect old session on duplicate login" behaviour.
+
+- Added config-driven toggles for Bedrock query enablement and plugin listing, and ensured disabled query packets are silently ignored without reaching RakNet.

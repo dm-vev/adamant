@@ -48,6 +48,11 @@ func (c *packetConn) handleQuery(b []byte, addr net.Addr) bool {
 	if len(b) < 7 || b[0] != queryVersion[0] || b[1] != queryVersion[1] {
 		return false
 	}
+	if !Enabled() {
+		// If query is disabled, ignore query packets without responding. Passing these packets through to RakNet
+		// provides no value and may cause noisy "unknown packet" logs in upstream listeners.
+		return true
+	}
 	reqType := b[2]
 	sequence := int32(binary.BigEndian.Uint32(b[3:7]))
 	switch reqType {
