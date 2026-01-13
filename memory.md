@@ -135,3 +135,5 @@
 - Changed the default reconnect policy to `kick-existing` to match upstream "disconnect old session on duplicate login" behaviour.
 
 - Added config-driven toggles for Bedrock query enablement and plugin listing, and ensured disabled query packets are silently ignored without reaching RakNet.
+
+- Allowed operators listed in `ops.txt` to bypass whitelist enforcement and added tests for the combined allower.

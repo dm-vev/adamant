@@ -216,6 +216,8 @@ func (conf Config) New() *Server {
 	}
 	if wl, ok := conf.Allower.(*Whitelist); ok {
 		srv.whitelist = wl
+	} else if holder, ok := conf.Allower.(interface{ underlyingWhitelist() *Whitelist }); ok {
+		srv.whitelist = holder.underlyingWhitelist()
 	}
 	registerQueryServer(srv)
 	for _, lf := range conf.Listeners {
@@ -493,7 +495,15 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	}
 	wl.SetEnabled(uc.Whitelist.Enabled)
 	wl.SetKickMessage(uc.Whitelist.Reason)
-	conf.Allower = wl
+
+	// Lumi/Nukkit exempts operators (ops.txt) from whitelist checks. Load the ops file from the same directory as the
+	// whitelist so that deployments can keep access control files together.
+	opsPath := filepath.Join(filepath.Dir(whitelistFile), "ops.txt")
+	ops, err := loadOperators(opsPath)
+	if err != nil {
+		return conf, fmt.Errorf("load ops list: %w", err)
+	}
+	conf.Allower = whitelistOperatorsAllower{whitelist: wl, operators: ops}
 	if uc.Players.SaveData {
 		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
 		if err != nil {
