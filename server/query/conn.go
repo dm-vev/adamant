@@ -2,18 +2,9 @@ package query
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/binary"
-	"math/rand"
 	"net"
-	"strconv"
-	"sync"
-	"time"
-)
-
-const (
-	queryTokenTTL             = 30 * time.Second
-	queryTokenCleanupInterval = 5 * time.Second
-	queryTokenMaxEntries      = 4096
 )
 
 // packetConn intercepts query requests and responds directly while delegating
@@ -25,47 +16,13 @@ type packetConn struct {
 	host string
 	port int
 
-	mu               sync.Mutex
-	tokens           map[string]token
-	rng              *rand.Rand
-	lastTokenCleanup time.Time
+	token     [16]byte
+	lastToken [16]byte
 }
 
 // Logger provides the logging capabilities used by the query implementation.
 type Logger interface {
 	Debug(msg string, args ...any)
-}
-
-type token struct {
-	value  int32
-	expiry time.Time
-}
-
-func (c *packetConn) pruneTokensLocked(now time.Time) {
-	if c.lastTokenCleanup.IsZero() || now.Sub(c.lastTokenCleanup) >= queryTokenCleanupInterval {
-		for addr, token := range c.tokens {
-			if now.After(token.expiry) {
-				delete(c.tokens, addr)
-			}
-		}
-		c.lastTokenCleanup = now
-	}
-}
-
-func (c *packetConn) enforceTokenLimitLocked(keepAddr string) {
-	if len(c.tokens) <= queryTokenMaxEntries {
-		return
-	}
-	// Evict arbitrary entries while keeping the most recent token to bound memory.
-	for addr := range c.tokens {
-		if addr == keepAddr {
-			continue
-		}
-		delete(c.tokens, addr)
-		if len(c.tokens) <= queryTokenMaxEntries {
-			return
-		}
-	}
 }
 
 // ReadFrom inspects incoming datagrams and filters out query packets so that
@@ -93,136 +50,100 @@ func (c *packetConn) handleQuery(b []byte, addr net.Addr) bool {
 	sequence := int32(binary.BigEndian.Uint32(b[3:7]))
 	switch reqType {
 	case queryTypeHandshake:
-		token := c.newToken(addr.String())
-		c.writeHandshake(addr, sequence, token)
+		c.writeHandshake(addr, sequence)
 		return true
 	case queryTypeInformation:
-		if len(b) <= 7 {
+		// The statistics request must include the 4-byte token. If it doesn't, it is ignored.
+		if len(b) < 11 {
 			return true
 		}
-		token, ok := parseTokenValue(b[7:])
-		if !ok {
+		if !c.validateToken(addr, b[7:11]) {
 			return true
 		}
-		if !c.validateToken(addr.String(), token) {
-			return true
-		}
-		c.writeInfo(addr, sequence)
+		// Lumi decides between long and short responses by checking that 8 bytes remain after the token.
+		long := len(b[11:]) == 8
+		c.writeInfo(addr, sequence, long)
 		return true
 	default:
 		return false
 	}
 }
 
-// newToken issues a temporary token for the provided address. The token is
-// required by the query protocol to guard against amplification attacks.
-func (c *packetConn) newToken(addr string) int32 {
-	now := time.Now()
+func (c *packetConn) tokenDigest(addr net.Addr, token [16]byte) [4]byte {
+	javaAddr := javaInetAddressString(addr)
+	hash := md5.New()
+	_, _ = hash.Write([]byte(javaAddr))
+	_, _ = hash.Write(token[:])
+	sum := hash.Sum(nil)
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.tokens == nil {
-		c.tokens = make(map[string]token)
-	}
-	if c.rng == nil {
-		c.rng = rand.New(rand.NewSource(now.UnixNano()))
-	}
-	c.pruneTokensLocked(now)
-
-	value := int32(c.rng.Int31())
-	c.tokens[addr] = token{
-		value:  value,
-		expiry: now.Add(queryTokenTTL),
-	}
-	c.enforceTokenLimitLocked(addr)
-	return value
+	var out [4]byte
+	copy(out[:], sum[:4])
+	return out
 }
 
-// validateToken checks whether a previously issued token remains valid for the
-// provided address.
-func (c *packetConn) validateToken(addr string, value int32) bool {
-	now := time.Now()
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.pruneTokensLocked(now)
-
-	token, ok := c.tokens[addr]
-	if !ok || now.After(token.expiry) || token.value != value {
-		delete(c.tokens, addr)
-		return false
+// javaInetAddressString mimics InetAddress#toString for raw IP addresses used by Lumi.
+//
+// The method includes a leading slash (for example "/127.0.0.1"), which is part of the token hash input.
+func javaInetAddressString(addr net.Addr) string {
+	if addr == nil {
+		return ""
 	}
-	return true
+	if udpAddr, ok := addr.(*net.UDPAddr); ok && udpAddr.IP != nil {
+		return "/" + udpAddr.IP.String()
+	}
+	host, _, err := net.SplitHostPort(addr.String())
+	if err != nil || host == "" {
+		return ""
+	}
+	return "/" + host
 }
 
 // writeHandshake constructs the handshake response that contains the issued
 // token.
-func (c *packetConn) writeHandshake(addr net.Addr, sequence, token int32) {
-	buf := bytes.NewBuffer(make([]byte, 0, 1+4+12))
-	buf.WriteByte(queryTypeHandshake)
-	_ = binary.Write(buf, binary.BigEndian, sequence)
+func (c *packetConn) writeHandshake(addr net.Addr, sequence int32) {
+	digest := c.tokenDigest(addr, c.token)
 
-	tokenStr := strconv.FormatInt(int64(token), 10)
-	if len(tokenStr) > 12 {
-		tokenStr = tokenStr[:12]
-	}
-	buf.WriteString(tokenStr)
-	if padding := 12 - len(tokenStr); padding > 0 {
-		buf.Write(make([]byte, padding))
-	}
-	if _, err := c.PacketConn.WriteTo(buf.Bytes(), addr); err != nil {
+	var resp [10]byte
+	resp[0] = queryTypeHandshake
+	binary.BigEndian.PutUint32(resp[1:5], uint32(sequence))
+	copy(resp[5:9], digest[:])
+	resp[9] = 0x00
+
+	if _, err := c.PacketConn.WriteTo(resp[:], addr); err != nil {
 		c.log.Debug("query handshake write failed", "err", err, "raddr", addr.String())
 	}
 }
 
-// writeInfo renders the full server information payload for a validated query
-// request.
-func (c *packetConn) writeInfo(addr net.Addr, sequence int32) {
-	data := collectData(c.host, c.port)
-
-	buf := bytes.NewBuffer(make([]byte, 0, 256))
-	buf.WriteByte(queryTypeInformation)
-	_ = binary.Write(buf, binary.BigEndian, sequence)
-	buf.Write(querySplitNum[:])
-	buf.WriteByte(0x80)
-	buf.WriteByte(0x00)
-
-	for _, kv := range data.keyValues() {
-		buf.WriteString(kv.key)
-		buf.WriteByte(0x00)
-		buf.WriteString(kv.value)
-		buf.WriteByte(0x00)
+func (c *packetConn) validateToken(addr net.Addr, payload []byte) bool {
+	if len(payload) < 4 {
+		return false
 	}
-	buf.WriteByte(0x00)
-	buf.Write(queryPlayerKey[:])
-	for _, name := range data.PlayerNames {
-		buf.WriteString(name)
-		buf.WriteByte(0x00)
-	}
-	buf.WriteByte(0x00)
+	token := payload[:4]
 
-	if _, err := c.PacketConn.WriteTo(buf.Bytes(), addr); err != nil {
-		c.log.Debug("query info write failed", "err", err, "raddr", addr.String())
+	want := c.tokenDigest(addr, c.token)
+	if bytes.Equal(token, want[:]) {
+		return true
 	}
+	want = c.tokenDigest(addr, c.lastToken)
+	return bytes.Equal(token, want[:])
 }
 
-func parseTokenValue(payload []byte) (int32, bool) {
-	trimmed := payload
-	if len(trimmed) >= 4 {
-		if i := bytes.Index(trimmed, []byte{0xff, 0xff, 0xff, 0x01}); i >= 0 {
-			trimmed = trimmed[:i]
-		}
+// writeInfo renders the server information payload for a validated query request.
+func (c *packetConn) writeInfo(addr net.Addr, sequence int32, long bool) {
+	data := collectData(c.host, c.port)
+	data.applyDefaults()
+
+	payload := data.shortPayload()
+	if long {
+		payload = data.longPayload()
 	}
-	trimmed = bytes.TrimRight(trimmed, "\x00")
-	if len(trimmed) > 0 {
-		if value, err := strconv.ParseInt(string(trimmed), 10, 32); err == nil {
-			return int32(value), true
-		}
+
+	resp := make([]byte, 1+4+len(payload))
+	resp[0] = queryTypeInformation
+	binary.BigEndian.PutUint32(resp[1:5], uint32(sequence))
+	copy(resp[5:], payload)
+
+	if _, err := c.PacketConn.WriteTo(resp, addr); err != nil {
+		c.log.Debug("query info write failed", "err", err, "raddr", addr.String())
 	}
-	if len(payload) >= 4 {
-		return int32(binary.BigEndian.Uint32(payload[:4])), true
-	}
-	return 0, false
 }

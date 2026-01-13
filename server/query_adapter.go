@@ -28,10 +28,7 @@ func (srv *Server) buildQueryData(host string, port int) query.Data {
 		worldName = srv.world.Name()
 	}
 	modeName := defaultGameModeName(srv)
-	pluginString := strings.Join(srv.plugins(), "; ")
-	if pluginString == "" {
-		pluginString = "Adamant"
-	}
+	pluginString := strings.Join(srv.plugins(), ";")
 	difficulty := "NORMAL"
 
 	srv.pmu.RLock()
@@ -55,6 +52,8 @@ func (srv *Server) buildQueryData(host string, port int) query.Data {
 		Plugins:          pluginString,
 		PlayerNames:      playerNames,
 		Version:          protocol.CurrentVersion,
+		GameID:           "MINECRAFTPE",
+		GameType:         defaultGameType(srv),
 		WhitelistEnabled: srv.WhitelistEnabled(),
 	}
 }
@@ -78,6 +77,19 @@ func defaultGameModeName(srv *Server) string {
 		}
 	}
 	return "SURVIVAL"
+}
+
+// defaultGameType returns the Nukkit-style game type value.
+//
+// Lumi reports "CMP" when the default game mode is creative and "SMP" otherwise.
+func defaultGameType(srv *Server) string {
+	if srv == nil || srv.world == nil {
+		return "SMP"
+	}
+	if id, ok := world.GameModeID(srv.world.DefaultGameMode()); ok && id == 1 {
+		return "CMP"
+	}
+	return "SMP"
 }
 
 // plugins returns the names of active plugins. The function remains in place so

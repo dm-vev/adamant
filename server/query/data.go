@@ -1,8 +1,9 @@
 package query
 
 import (
+	"bytes"
+	"encoding/binary"
 	"strconv"
-	"strings"
 	"sync/atomic"
 
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -43,7 +44,7 @@ type Data struct {
 	// GameType describes the type of game. Defaults to "SMP" when empty.
 	GameType string
 	// GameID is the identifier of the title shown to clients. Defaults to
-	// "MINECRAFT" when empty.
+	// "MINECRAFTPE" when empty.
 	GameID string
 	// WhitelistEnabled indicates whether the server whitelist is enabled.
 	WhitelistEnabled bool
@@ -103,7 +104,7 @@ func (d *Data) applyDefaults() {
 		d.GameType = "SMP"
 	}
 	if d.GameID == "" {
-		d.GameID = "MINECRAFT"
+		d.GameID = "MINECRAFTPE"
 	}
 	if d.HostPort < 0 {
 		d.HostPort = 0
@@ -112,48 +113,40 @@ func (d *Data) applyDefaults() {
 	}
 }
 
-// keyValues converts Data into the ordered key/value pairs required by the
-// query protocol.
-func (d Data) keyValues() []keyValue {
+// longKeyValues returns the ordered key/value pairs used by Lumi/Nukkit long query responses.
+//
+// Order is observable: Lumi uses a LinkedHashMap and serialises entries in insertion order.
+func (d Data) longKeyValues() []keyValue {
 	whitelist := "off"
 	if d.WhitelistEnabled {
 		whitelist = "on"
 	}
-	values := []keyValue{
+
+	mapName := d.WorldName
+	if mapName == "" {
+		mapName = "unknown"
+	}
+
+	plugins := d.Engine
+	if d.Plugins != "" {
+		// Lumi prefixes plugin metadata with the engine label.
+		plugins = plugins + ":" + d.Plugins
+	}
+
+	return []keyValue{
 		{"hostname", d.HostName},
 		{"gametype", d.GameType},
 		{"game_id", d.GameID},
 		{"version", d.Version},
 		{"server_engine", d.Engine},
+		{"plugins", plugins},
+		{"map", mapName},
+		{"numplayers", strconv.Itoa(d.PlayerCount)},
+		{"maxplayers", strconv.Itoa(d.MaxPlayers)},
+		{"whitelist", whitelist},
+		{"hostip", d.HostIP},
+		{"hostport", strconv.Itoa(d.HostPort)},
 	}
-	if d.WorldName != "" {
-		values = append(values, keyValue{"map", d.WorldName})
-	}
-	values = append(values,
-		keyValue{"numplayers", strconv.Itoa(d.PlayerCount)},
-		keyValue{"maxplayers", strconv.Itoa(d.MaxPlayers)},
-		keyValue{"whitelist", whitelist},
-		keyValue{"hostport", strconv.Itoa(d.HostPort)},
-		keyValue{"hostip", d.HostIP},
-	)
-	if d.GameMode != "" {
-		values = append(values, keyValue{"gamemode", d.GameMode})
-	}
-	if d.Difficulty != "" {
-		values = append(values, keyValue{"difficulty", d.Difficulty})
-	}
-	if d.MOTD != "" {
-		values = append(values, keyValue{"motd", d.MOTD})
-	}
-	if d.Plugins != "" {
-		values = append(values, keyValue{"plugins", d.Plugins})
-	} else {
-		values = append(values, keyValue{"plugins", ""})
-	}
-	if len(d.PlayerNames) > 0 {
-		values = append(values, keyValue{"players", strings.Join(d.PlayerNames, ", ")})
-	}
-	return values
 }
 
 // defaultData returns the fallback query response when neither a provider nor a
@@ -166,7 +159,7 @@ func defaultData(host string, port int) Data {
 		HostIP:   canonicalHost(host),
 		HostPort: port,
 		GameType: "SMP",
-		GameID:   "MINECRAFT",
+		GameID:   "MINECRAFTPE",
 	}
 	storeSnapshot(data)
 	return data
@@ -195,4 +188,59 @@ func cloneData(data Data) Data {
 		cp.PlayerNames = append([]string(nil), data.PlayerNames...)
 	}
 	return cp
+}
+
+// longPayload returns the wire payload for the long query response (excluding the packet header).
+func (d Data) longPayload() []byte {
+	var buf bytes.Buffer
+	buf.Grow(512)
+
+	buf.Write(querySplitNumPrefix[:])
+
+	for _, kv := range d.longKeyValues() {
+		buf.WriteString(kv.key)
+		buf.WriteByte(0x00)
+		buf.WriteString(kv.value)
+		buf.WriteByte(0x00)
+	}
+
+	buf.Write(queryPlayerKey[:])
+	for _, name := range d.PlayerNames {
+		buf.WriteString(name)
+		buf.WriteByte(0x00)
+	}
+	buf.WriteByte(0x00)
+
+	return append([]byte(nil), buf.Bytes()...)
+}
+
+// shortPayload returns the wire payload for the short query response (excluding the packet header).
+func (d Data) shortPayload() []byte {
+	var buf bytes.Buffer
+	buf.Grow(128)
+
+	mapName := d.WorldName
+	if mapName == "" {
+		mapName = "unknown"
+	}
+
+	buf.WriteString(d.HostName)
+	buf.WriteByte(0x00)
+	buf.WriteString(d.GameType)
+	buf.WriteByte(0x00)
+	buf.WriteString(mapName)
+	buf.WriteByte(0x00)
+	buf.WriteString(strconv.Itoa(d.PlayerCount))
+	buf.WriteByte(0x00)
+	buf.WriteString(strconv.Itoa(d.MaxPlayers))
+	buf.WriteByte(0x00)
+
+	var port [2]byte
+	binary.LittleEndian.PutUint16(port[:], uint16(d.HostPort))
+	buf.Write(port[:])
+
+	buf.WriteString(d.HostIP)
+	buf.WriteByte(0x00)
+
+	return append([]byte(nil), buf.Bytes()...)
 }

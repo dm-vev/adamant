@@ -2,6 +2,9 @@ package query
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
+	"io"
 	"net"
 
 	"github.com/sandertv/go-raknet"
@@ -15,9 +18,11 @@ const (
 )
 
 var (
-	querySplitNum  = [...]byte{'S', 'P', 'L', 'I', 'T', 'N', 'U', 'M', 0x00}
-	queryPlayerKey = [...]byte{0x00, 0x01, 'p', 'l', 'a', 'y', 'e', 'r', '_', 0x00, 0x00}
-	queryVersion   = [...]byte{0xfe, 0xfd}
+	// querySplitNumPrefix matches the "splitnum" header used by Lumi/Nukkit.
+	// It is case sensitive and must remain lowercase for protocol compatibility.
+	querySplitNumPrefix = [...]byte{'s', 'p', 'l', 'i', 't', 'n', 'u', 'm', 0x00, 0x80, 0x00}
+	queryPlayerKey      = [...]byte{0x00, 0x01, 'p', 'l', 'a', 'y', 'e', 'r', '_', 0x00, 0x00}
+	queryVersion        = [...]byte{0xfe, 0xfd}
 )
 
 // init replaces the default RakNet implementation so that the query specific
@@ -90,10 +95,26 @@ func (l *packetListener) ListenPacket(network, address string) (net.PacketConn, 
 	if local != nil {
 		port = local.Port
 	}
+
+	token, err := newQueryToken()
+	if err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
 	return &packetConn{
 		PacketConn: conn,
 		log:        l.log,
 		host:       host,
 		port:       port,
+		token:      token,
+		lastToken:  token,
 	}, nil
+}
+
+func newQueryToken() ([16]byte, error) {
+	var token [16]byte
+	if _, err := io.ReadFull(rand.Reader, token[:]); err != nil {
+		return [16]byte{}, fmt.Errorf("read query token: %w", err)
+	}
+	return token, nil
 }

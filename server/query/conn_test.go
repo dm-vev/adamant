@@ -1,15 +1,13 @@
 package query
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"net"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
-
-	gophertunnelquery "github.com/sandertv/gophertunnel/query"
 )
 
 type nopLogger struct{}
@@ -42,7 +40,7 @@ func (p *packetRecorder) SetReadDeadline(time.Time) error { return nil }
 
 func (p *packetRecorder) SetWriteDeadline(time.Time) error { return nil }
 
-func TestQueryResponsesParseWithGophertunnel(t *testing.T) {
+func TestQueryResponsesMatchLumiFormat(t *testing.T) {
 	lastSnapshot.Store(nil)
 	RegisterProvider(nil)
 	t.Cleanup(func() {
@@ -52,17 +50,14 @@ func TestQueryResponsesParseWithGophertunnel(t *testing.T) {
 
 	expected := Data{
 		HostName:         "Test Server",
-		MOTD:             "Integration Test",
-		GameMode:         "CREATIVE",
-		Difficulty:       "HARD",
 		WorldName:        "Overworld",
 		Engine:           "Adamant (integration)",
 		Version:          "1.21.100",
 		PlayerCount:      3,
 		MaxPlayers:       25,
-		Plugins:          "PluginA; PluginB",
+		Plugins:          "PluginA;PluginB",
 		PlayerNames:      []string{"Alex", "Bob", "Steve"},
-		GameType:         "ADVENTURE",
+		GameType:         "SMP",
 		GameID:           "MINECRAFTPE",
 		WhitelistEnabled: true,
 	}
@@ -74,47 +69,23 @@ func TestQueryResponsesParseWithGophertunnel(t *testing.T) {
 		return data
 	})
 
-	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen packet: %v", err)
-	}
-	defer conn.Close()
-
-	addr := conn.LocalAddr().(*net.UDPAddr)
-	host := addr.IP.String()
-	if host == "" {
-		host = "0.0.0.0"
-	}
+	recorder := &packetRecorder{}
+	host := "127.0.0.1"
+	port := 19132
 
 	pc := &packetConn{
-		PacketConn: conn,
+		PacketConn: recorder,
 		log:        nopLogger{},
 		host:       host,
-		port:       addr.Port,
+		port:       port,
+		token:      [16]byte{0x01},
+		lastToken:  [16]byte{0x01},
 	}
 
-	done := make(chan error, 1)
-	go func() {
-		buf := make([]byte, 2048)
-		for {
-			n, raddr, err := conn.ReadFrom(buf)
-			if err != nil {
-				if isClosedError(err) {
-					done <- nil
-				} else {
-					done <- err
-				}
-				return
-			}
-			if pc.handleQuery(buf[:n], raddr) {
-				continue
-			}
-		}
-	}()
-
-	information, err := gophertunnelquery.Do(addr.String())
+	remote := &net.UDPAddr{IP: net.IPv4(10, 0, 0, 1), Port: 12345}
+	longInfo, shortInfo, err := doNukkitQuery(pc, remote, expected)
 	if err != nil {
-		t.Fatalf("query do: %v", err)
+		t.Fatalf("nukkit query: %v", err)
 	}
 
 	checks := map[string]string{
@@ -127,17 +98,12 @@ func TestQueryResponsesParseWithGophertunnel(t *testing.T) {
 		"numplayers":    strconv.Itoa(expected.PlayerCount),
 		"maxplayers":    strconv.Itoa(expected.MaxPlayers),
 		"whitelist":     "on",
-		"hostport":      strconv.Itoa(addr.Port),
 		"hostip":        host,
-		"gamemode":      expected.GameMode,
-		"difficulty":    expected.Difficulty,
-		"motd":          expected.MOTD,
-		"plugins":       expected.Plugins,
-		"players":       strings.Join(expected.PlayerNames, ", "),
+		"hostport":      strconv.Itoa(port),
 	}
 
 	for key, want := range checks {
-		got, ok := information[key]
+		got, ok := longInfo[key]
 		if !ok {
 			t.Fatalf("expected key %q to be present in query information", key)
 		}
@@ -146,63 +112,271 @@ func TestQueryResponsesParseWithGophertunnel(t *testing.T) {
 		}
 	}
 
-	if err := conn.Close(); err != nil {
-		t.Fatalf("close packet conn: %v", err)
+	plugins, ok := longInfo["plugins"]
+	if !ok {
+		t.Fatalf("expected key %q to be present in query information", "plugins")
 	}
-	if err := <-done; err != nil {
-		t.Fatalf("listener failed: %v", err)
+	if plugins != expected.Engine+":"+expected.Plugins {
+		t.Fatalf("unexpected plugins value: got %q, want %q", plugins, expected.Engine+":"+expected.Plugins)
+	}
+
+	if shortInfo.serverName != expected.HostName {
+		t.Fatalf("unexpected short hostname: got %q, want %q", shortInfo.serverName, expected.HostName)
+	}
+	if shortInfo.gameType != expected.GameType {
+		t.Fatalf("unexpected short gametype: got %q, want %q", shortInfo.gameType, expected.GameType)
+	}
+	if shortInfo.mapName != expected.WorldName {
+		t.Fatalf("unexpected short map: got %q, want %q", shortInfo.mapName, expected.WorldName)
+	}
+	if shortInfo.numPlayers != expected.PlayerCount || shortInfo.maxPlayers != expected.MaxPlayers {
+		t.Fatalf("unexpected short player counts: got %d/%d, want %d/%d",
+			shortInfo.numPlayers, shortInfo.maxPlayers, expected.PlayerCount, expected.MaxPlayers)
+	}
+	if shortInfo.port != port {
+		t.Fatalf("unexpected short port: got %d, want %d", shortInfo.port, port)
+	}
+	if shortInfo.hostIP != host {
+		t.Fatalf("unexpected short hostip: got %q, want %q", shortInfo.hostIP, host)
 	}
 }
 
-func TestHandleQueryAcceptsASCIIChallengeTokens(t *testing.T) {
+func TestHandleQueryRejectsInvalidToken(t *testing.T) {
 	recorder := &packetRecorder{}
 	pc := &packetConn{
 		PacketConn: recorder,
 		log:        nopLogger{},
 		host:       "0.0.0.0",
 		port:       19132,
+		token:      [16]byte{0x01},
+		lastToken:  [16]byte{0x01},
 	}
 
 	addr := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 43210}
 
-	pc.mu.Lock()
-	pc.tokens = map[string]token{
-		addr.String(): {
-			value:  7654321,
-			expiry: time.Now().Add(time.Minute),
-		},
-	}
-	pc.mu.Unlock()
-
-	payload := make([]byte, 0, 7+7+5)
+	payload := make([]byte, 0, 7+4+8)
 	payload = append(payload, queryVersion[:]...)
 	payload = append(payload, queryTypeInformation)
-	seq := make([]byte, 4)
-	binary.BigEndian.PutUint32(seq, 42)
-	payload = append(payload, seq...)
-	payload = append(payload, []byte("7654321")...)
-	payload = append(payload, 0x00)
-	payload = append(payload, 0xff, 0xff, 0xff, 0x01)
+	var seq [4]byte
+	binary.BigEndian.PutUint32(seq[:], 42)
+	payload = append(payload, seq[:]...)
+	payload = append(payload, 0xde, 0xad, 0xbe, 0xef)
+	payload = append(payload, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
 
 	handled := pc.handleQuery(payload, addr)
 	if !handled {
 		t.Fatalf("expected query information request to be handled")
 	}
-	if len(recorder.writes) != 1 {
-		t.Fatalf("expected one response write, got %d", len(recorder.writes))
+	if len(recorder.writes) != 0 {
+		t.Fatalf("expected no response write, got %d", len(recorder.writes))
 	}
 }
 
-func isClosedError(err error) bool {
-	if err == nil {
-		return false
+type shortQueryInfo struct {
+	serverName string
+	gameType   string
+	mapName    string
+	numPlayers int
+	maxPlayers int
+	port       int
+	hostIP     string
+}
+
+func doNukkitQuery(conn *packetConn, remote net.Addr, expected Data) (map[string]string, shortQueryInfo, error) {
+	recorder, ok := conn.PacketConn.(*packetRecorder)
+	if !ok {
+		return nil, shortQueryInfo{}, errors.New("packet recorder missing")
 	}
-	if errors.Is(err, net.ErrClosed) {
-		return true
+
+	session := uint32(12345)
+
+	handshakeReq := make([]byte, 7)
+	copy(handshakeReq[:2], queryVersion[:])
+	handshakeReq[2] = queryTypeHandshake
+	binary.BigEndian.PutUint32(handshakeReq[3:7], session)
+	if handled := conn.handleQuery(handshakeReq, remote); !handled {
+		return nil, shortQueryInfo{}, errors.New("handshake request not handled")
 	}
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		return isClosedError(opErr.Err)
+
+	if len(recorder.writes) != 1 {
+		return nil, shortQueryInfo{}, errors.New("missing handshake response")
 	}
-	return strings.Contains(err.Error(), "use of closed network connection")
+	handshakeResp := recorder.writes[0]
+	if len(handshakeResp) != 10 {
+		return nil, shortQueryInfo{}, errors.New("unexpected handshake response length")
+	}
+	if handshakeResp[0] != queryTypeHandshake {
+		return nil, shortQueryInfo{}, errors.New("unexpected handshake response type")
+	}
+	if binary.BigEndian.Uint32(handshakeResp[1:5]) != session {
+		return nil, shortQueryInfo{}, errors.New("unexpected handshake session id")
+	}
+	token := append([]byte(nil), handshakeResp[5:9]...)
+
+	var sequence [4]byte
+	binary.BigEndian.PutUint32(sequence[:], session+1)
+
+	infoReq := make([]byte, 0, 7+4+8)
+	infoReq = append(infoReq, queryVersion[:]...)
+	infoReq = append(infoReq, queryTypeInformation)
+	infoReq = append(infoReq, sequence[:]...)
+	infoReq = append(infoReq, token...)
+	infoReq = append(infoReq, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+
+	if handled := conn.handleQuery(infoReq, remote); !handled {
+		return nil, shortQueryInfo{}, errors.New("long stats request not handled")
+	}
+	if len(recorder.writes) < 2 {
+		return nil, shortQueryInfo{}, errors.New("missing long stats response")
+	}
+	infoResp := recorder.writes[1]
+	if len(infoResp) < 5 {
+		return nil, shortQueryInfo{}, errors.New("unexpected info response length")
+	}
+	if infoResp[0] != queryTypeInformation {
+		return nil, shortQueryInfo{}, errors.New("unexpected info response type")
+	}
+
+	longKV, err := parseLongPayload(infoResp[5:], expected.PlayerNames)
+	if err != nil {
+		return nil, shortQueryInfo{}, err
+	}
+
+	binary.BigEndian.PutUint32(sequence[:], session+2)
+	shortReq := make([]byte, 0, 7+4)
+	shortReq = append(shortReq, queryVersion[:]...)
+	shortReq = append(shortReq, queryTypeInformation)
+	shortReq = append(shortReq, sequence[:]...)
+	shortReq = append(shortReq, token...)
+	if handled := conn.handleQuery(shortReq, remote); !handled {
+		return nil, shortQueryInfo{}, errors.New("short stats request not handled")
+	}
+
+	if len(recorder.writes) < 3 {
+		return nil, shortQueryInfo{}, errors.New("missing short stats response")
+	}
+	shortResp := recorder.writes[2]
+	if len(shortResp) < 5 {
+		return nil, shortQueryInfo{}, errors.New("unexpected short response length")
+	}
+
+	shortInfo, err := parseShortPayload(shortResp[5:])
+	if err != nil {
+		return nil, shortQueryInfo{}, err
+	}
+	return longKV, shortInfo, nil
+}
+
+func parseLongPayload(payload []byte, expectedPlayers []string) (map[string]string, error) {
+	if !bytes.HasPrefix(payload, querySplitNumPrefix[:]) {
+		return nil, errors.New("missing splitnum prefix")
+	}
+
+	playerIdx := bytes.Index(payload, queryPlayerKey[:])
+	if playerIdx < 0 {
+		return nil, errors.New("missing player section")
+	}
+
+	kvBytes := payload[len(querySplitNumPrefix):playerIdx]
+	values, err := parseNullSeparatedPairs(kvBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	playerBytes := payload[playerIdx+len(queryPlayerKey):]
+	players := parseNullSeparatedStrings(playerBytes)
+	if len(players) != len(expectedPlayers) {
+		return nil, errors.New("unexpected player count")
+	}
+	return values, nil
+}
+
+func parseNullSeparatedPairs(b []byte) (map[string]string, error) {
+	out := make(map[string]string)
+	for len(b) > 0 {
+		keyEnd := bytes.IndexByte(b, 0x00)
+		if keyEnd < 0 {
+			return nil, errors.New("unterminated key")
+		}
+		key := string(b[:keyEnd])
+		b = b[keyEnd+1:]
+
+		valEnd := bytes.IndexByte(b, 0x00)
+		if valEnd < 0 {
+			return nil, errors.New("unterminated value")
+		}
+		out[key] = string(b[:valEnd])
+		b = b[valEnd+1:]
+	}
+	return out, nil
+}
+
+func parseNullSeparatedStrings(b []byte) []string {
+	var out []string
+	for len(b) > 0 {
+		end := bytes.IndexByte(b, 0x00)
+		if end < 0 {
+			break
+		}
+		if end == 0 {
+			return out
+		}
+		out = append(out, string(b[:end]))
+		b = b[end+1:]
+	}
+	return out
+}
+
+func parseShortPayload(payload []byte) (shortQueryInfo, error) {
+	readCString := func(b []byte) (string, []byte, error) {
+		end := bytes.IndexByte(b, 0x00)
+		if end < 0 {
+			return "", nil, errors.New("unterminated string")
+		}
+		return string(b[:end]), b[end+1:], nil
+	}
+
+	var info shortQueryInfo
+	var err error
+	info.serverName, payload, err = readCString(payload)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	info.gameType, payload, err = readCString(payload)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	info.mapName, payload, err = readCString(payload)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	numPlayers, payload, err := readCString(payload)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	maxPlayers, payload, err := readCString(payload)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	info.numPlayers, err = strconv.Atoi(numPlayers)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	info.maxPlayers, err = strconv.Atoi(maxPlayers)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	if len(payload) < 2 {
+		return shortQueryInfo{}, errors.New("missing port")
+	}
+	info.port = int(binary.LittleEndian.Uint16(payload[:2]))
+	payload = payload[2:]
+	info.hostIP, payload, err = readCString(payload)
+	if err != nil {
+		return shortQueryInfo{}, err
+	}
+	if len(payload) != 0 {
+		return shortQueryInfo{}, errors.New("unexpected trailing data")
+	}
+	return info, nil
 }

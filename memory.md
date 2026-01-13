@@ -114,3 +114,4 @@
 - Made EffectManager thread-safe by guarding effect state with a mutex and applying tick/start/end actions outside the lock to avoid data races.
 
 - Updated whitelist persistence to match line-based allowlist files (with TOML fallback), added `whitelist`/`allowlist` on/off/reload commands, and ensured query reports whitelist status correctly.
+- Aligned Bedrock query responses with Lumi/Nukkit wire format (binary MD5 token, lowercase `splitnum`, long/short payloads, stable key ordering/defaults) and updated the query adapter accordingly.
