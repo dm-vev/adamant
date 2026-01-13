@@ -129,3 +129,7 @@
 
 - Matched query information update cadence by caching provider Data for 512 ticks while keeping the 5ms payload TTL.
 - Updated shipped `config.toml` defaults to match runtime defaults, documented allowlist formats, and added an empty `white-list.txt` (keeping `whitelist.toml` as a legacy format).
+
+- Fixed item stack request stack-network-ID handling to use the internal `item_id` helper (restoring a clean build without expanding `item.Stack`'s public API).
+- Updated block tests to initialise the block runtime registry through the existing linkname helper to keep `go test ./...` working.
+- Changed the default reconnect policy to `kick-existing` to match upstream "disconnect old session on duplicate login" behaviour.

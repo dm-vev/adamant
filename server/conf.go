@@ -440,7 +440,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		ResourcesRequired:       uc.Resources.Required,
 		AuthDisabled:            !uc.Server.AuthEnabled,
 		MuteEmoteChat:           uc.Server.MuteEmoteChat,
-		ReconnectPolicy:         ReconnectKickJoining,
+		ReconnectPolicy:         ReconnectKickExisting,
 		MaxPlayers:              uc.Players.MaxCount,
 		MaxChunkRadius:          uc.Players.MaximumChunkRadius,
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
@@ -464,7 +464,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		if parsed, ok := parseReconnectPolicy(policyValue); ok {
 			conf.ReconnectPolicy = parsed
 		} else if log != nil {
-			log.Warn("Unknown reconnect policy, using kick-joining.", "value", policyValue)
+			log.Warn("Unknown reconnect policy, using kick-existing.", "value", policyValue)
 		}
 	}
 	if uc.World.SaveData {
@@ -537,7 +537,7 @@ func DefaultConfig() UserConfig {
 	c.World.SaveData = true
 	c.World.Folder = "world"
 	c.World.Seed = 0
-	c.Server.ReconnectPolicy = "kick-joining"
+	c.Server.ReconnectPolicy = "kick-existing"
 	c.World.DisableOverworld = false
 	c.World.DisableNether = false
 	c.World.DisableEnd = false

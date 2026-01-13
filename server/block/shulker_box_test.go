@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	world.FinaliseBlockRegistry()
+	worldFinaliseBlockRegistry()
 }
 
 type containerViewerStub struct {
