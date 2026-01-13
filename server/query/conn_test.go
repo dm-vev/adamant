@@ -2,6 +2,7 @@ package query
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/binary"
 	"errors"
 	"net"
@@ -229,7 +230,7 @@ func TestQueryInfoIsCachedForTTL(t *testing.T) {
 		t.Fatalf("unexpected first server name: got %q, want %q", shortInfo1.serverName, "Test Server 1")
 	}
 
-	currentNano.Store(int64(time.Second))
+	currentNano.Store(int64(time.Millisecond))
 	shortInfo2, err := doQuery()
 	if err != nil {
 		t.Fatalf("nukkit query: %v", err)
@@ -238,7 +239,7 @@ func TestQueryInfoIsCachedForTTL(t *testing.T) {
 		t.Fatalf("unexpected cached server name: got %q, want %q", shortInfo2.serverName, "Test Server 1")
 	}
 
-	currentNano.Store(int64(queryInfoTTL) + int64(time.Second))
+	currentNano.Store(int64(queryInfoTTL) + int64(time.Millisecond))
 	shortInfo3, err := doQuery()
 	if err != nil {
 		t.Fatalf("nukkit query: %v", err)
@@ -249,6 +250,29 @@ func TestQueryInfoIsCachedForTTL(t *testing.T) {
 
 	if got := calls.Load(); got != 2 {
 		t.Fatalf("unexpected provider call count: got %d, want %d", got, 2)
+	}
+}
+
+func TestTokenDigestMatchesJavaInetAddressFormattingIPv6(t *testing.T) {
+	pc := &packetConn{
+		PacketConn: &packetRecorder{},
+		log:        nopLogger{},
+		host:       "0.0.0.0",
+		port:       19132,
+		token:      [16]byte{0x01},
+		lastToken:  [16]byte{0x01},
+	}
+
+	addr := &net.UDPAddr{IP: net.ParseIP("::1"), Port: 12345}
+	digest := pc.tokenDigest(addr, pc.token)
+
+	hash := md5.New()
+	_, _ = hash.Write([]byte("/0:0:0:0:0:0:0:1"))
+	_, _ = hash.Write(pc.token[:])
+	sum := hash.Sum(nil)
+
+	if !bytes.Equal(digest[:], sum[:4]) {
+		t.Fatalf("unexpected digest: got %x, want %x", digest, sum[:4])
 	}
 }
 

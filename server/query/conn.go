@@ -5,6 +5,8 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"net"
+	"strconv"
+	"strings"
 )
 
 // packetConn intercepts query requests and responds directly while delegating
@@ -89,13 +91,54 @@ func javaInetAddressString(addr net.Addr) string {
 		return ""
 	}
 	if udpAddr, ok := addr.(*net.UDPAddr); ok && udpAddr.IP != nil {
-		return "/" + udpAddr.IP.String()
+		return "/" + javaIPAddressString(udpAddr.IP, udpAddr.Zone)
 	}
 	host, _, err := net.SplitHostPort(addr.String())
 	if err != nil || host == "" {
 		return ""
 	}
+	ipStr, zone, _ := strings.Cut(host, "%")
+	if parsed := net.ParseIP(ipStr); parsed != nil {
+		return "/" + javaIPAddressString(parsed, zone)
+	}
 	return "/" + host
+}
+
+// javaIPAddressString returns the address string in the format produced by InetAddress#getHostAddress, and appends the
+// optional zone identifier when present.
+//
+// Token hashing depends on this exact formatting: Java does not apply IPv6 "::" compression, whereas net.IP.String()
+// does. Query clients using IPv6 would be unable to validate tokens if we used the Go formatting.
+func javaIPAddressString(ip net.IP, zone string) string {
+	if ipv4 := ip.To4(); ipv4 != nil {
+		return ipv4.String()
+	}
+	if len(ip) != net.IPv6len {
+		return ip.String()
+	}
+	host := javaIPv6HostAddress(ip)
+	if zone != "" {
+		host += "%" + zone
+	}
+	return host
+}
+
+// javaIPv6HostAddress formats an IPv6 address using the same rules as Java's Inet6Address#getHostAddress.
+//
+// It prints all 8 hextets without "::" compression and uses lowercase hexadecimal digits without leading zeros.
+func javaIPv6HostAddress(ip net.IP) string {
+	if len(ip) != net.IPv6len {
+		return ip.String()
+	}
+	buf := make([]byte, 0, 39)
+	for i := 0; i < net.IPv6len; i += 2 {
+		if i > 0 {
+			buf = append(buf, ':')
+		}
+		value := uint16(ip[i])<<8 | uint16(ip[i+1])
+		buf = strconv.AppendUint(buf, uint64(value), 16)
+	}
+	return string(buf)
 }
 
 // writeHandshake constructs the handshake response that contains the issued

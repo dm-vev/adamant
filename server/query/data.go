@@ -59,12 +59,13 @@ type keyValue struct {
 
 var lastSnapshot atomic.Pointer[Data]
 
-// queryInfoTTL matches the default QueryRegenerateEvent timeout in Lumi/Nukkit.
+// queryInfoTTL matches the default QueryRegenerateEvent timeout used by Lumi/Nukkit.
 //
-// Query clients may observe server information changing. Lumi/Nukkit keeps long/short responses stable for a short
-// period to avoid rebuilding large payloads (player lists, plugin metadata) on every request. We mirror that behaviour
-// for compatibility and performance.
-const queryInfoTTL = 5 * time.Second
+// In the reference implementation the timeout value is added directly to System.currentTimeMillis(), so the default
+// constructor argument of 5 results in a 5 millisecond cache. Query clients may observe server information changing,
+// but keeping payloads stable for this short window avoids rebuilding large responses (player lists, plugin metadata)
+// on every request.
+const queryInfoTTL = 5 * time.Millisecond
 
 // timeNow is overridden in tests to make cache expiry deterministic.
 var timeNow = time.Now

@@ -122,3 +122,4 @@
 - Added a nested module for the local `fixes/` directory so `go test ./...` ignores it and stays buildable in clean checkouts.
 
 - Avoided saving/compacting chunks while generation is in flight to remove a world close-time data race.
+- Matched query payload regeneration TTL to Lumi/Nukkit’s millisecond-based timeout and fixed query token hashing for IPv6 by mirroring Java InetAddress formatting (no :: compression).
