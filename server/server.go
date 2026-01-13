@@ -212,6 +212,23 @@ func (srv *Server) WhitelistEnabled() bool {
 	return srv.whitelist.Enabled()
 }
 
+// WhitelistSetEnabled updates whether the whitelist is enforced.
+func (srv *Server) WhitelistSetEnabled(enabled bool) error {
+	if srv.whitelist == nil {
+		return ErrWhitelistUnavailable
+	}
+	srv.whitelist.SetEnabled(enabled)
+	return nil
+}
+
+// WhitelistReload refreshes the whitelist contents from disk.
+func (srv *Server) WhitelistReload() error {
+	if srv.whitelist == nil {
+		return ErrWhitelistUnavailable
+	}
+	return srv.whitelist.Reload()
+}
+
 // WhitelistAdd adds a player name to the whitelist.
 func (srv *Server) WhitelistAdd(name string) (bool, error) {
 	if srv.whitelist == nil {

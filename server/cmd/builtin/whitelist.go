@@ -15,6 +15,21 @@ type whitelistAddCommand struct {
 	Name string         `cmd:"player"`
 }
 
+type whitelistOnCommand struct {
+	srv serverAdapter
+	On  cmd.SubCommand `cmd:"on"`
+}
+
+type whitelistOffCommand struct {
+	srv serverAdapter
+	Off cmd.SubCommand `cmd:"off"`
+}
+
+type whitelistReloadCommand struct {
+	srv    serverAdapter
+	Reload cmd.SubCommand `cmd:"reload"`
+}
+
 type whitelistRemoveCommand struct {
 	srv    serverAdapter
 	Remove cmd.SubCommand `cmd:"remove"`
@@ -30,8 +45,11 @@ func newWhitelistCommand(srv serverAdapter) cmd.Command {
 	return cmd.New(
 		"whitelist",
 		"Manages the whitelist.",
-		nil,
+		[]string{"allowlist"},
 		whitelistAddCommand{srv: srv},
+		whitelistOnCommand{srv: srv},
+		whitelistOffCommand{srv: srv},
+		whitelistReloadCommand{srv: srv},
 		whitelistRemoveCommand{srv: srv},
 		whitelistListCommand{srv: srv},
 	)
@@ -57,6 +75,30 @@ func (c whitelistAddCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		return
 	}
 	o.Printf("%s is already on the whitelist.", name)
+}
+
+func (c whitelistOnCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+	if err := c.srv.WhitelistSetEnabled(true); err != nil {
+		o.Error(err)
+		return
+	}
+	o.Print("Whitelist enabled.")
+}
+
+func (c whitelistOffCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+	if err := c.srv.WhitelistSetEnabled(false); err != nil {
+		o.Error(err)
+		return
+	}
+	o.Print("Whitelist disabled.")
+}
+
+func (c whitelistReloadCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
+	if err := c.srv.WhitelistReload(); err != nil {
+		o.Error(err)
+		return
+	}
+	o.Print("Whitelist reloaded.")
 }
 
 func (c whitelistRemoveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -87,11 +129,7 @@ func (c whitelistListCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Error(err)
 		return
 	}
-	status := "enabled"
-	if !c.srv.WhitelistEnabled() {
-		status = "disabled"
-	}
-	o.Printf("Whitelist (%s): %d player(s).", status, len(entries))
+	o.Printf("Whitelist: %d player(s).", len(entries))
 	if len(entries) != 0 {
 		o.Print(strings.Join(entries, ", "))
 	}

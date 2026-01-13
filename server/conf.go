@@ -409,8 +409,14 @@ type UserConfig struct {
 	Whitelist struct {
 		// Enabled controls if the whitelist should be enforced for players attempting to join.
 		Enabled bool
-		// File is the path to the whitelist TOML file that stores player names.
+		// File is the path to the whitelist file that stores player names.
+		// Supported formats:
+		//   - .txt/.list/.enum: line-separated list, one player name per line.
+		//   - .toml: legacy TOML format with a "players" array.
 		File string
+		// Reason is the message sent to players that are rejected by the whitelist.
+		// If empty, a safe default is used.
+		Reason string
 	}
 }
 
@@ -449,7 +455,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	}
 	whitelistFile := strings.TrimSpace(uc.Whitelist.File)
 	if whitelistFile == "" {
-		whitelistFile = "whitelist.toml"
+		whitelistFile = "white-list.txt"
 	}
 	if !uc.Server.DisableJoinQuitMessages {
 		conf.JoinMessage, conf.QuitMessage = chat.MessageJoin, chat.MessageQuit
@@ -476,6 +482,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		return conf, fmt.Errorf("load whitelist: %w", err)
 	}
 	wl.SetEnabled(uc.Whitelist.Enabled)
+	wl.SetKickMessage(uc.Whitelist.Reason)
 	conf.Allower = wl
 	if uc.Players.SaveData {
 		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
@@ -542,7 +549,8 @@ func DefaultConfig() UserConfig {
 	c.Resources.AutoBuildPack = true
 	c.Resources.Folder = "resources"
 	c.Resources.Required = false
-	c.Whitelist.File = "whitelist.toml"
+	c.Whitelist.File = "white-list.txt"
+	c.Whitelist.Reason = defaultWhitelistKickMessage
 	return c
 }
 

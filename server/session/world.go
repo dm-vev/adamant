@@ -1,7 +1,6 @@
 package session
 
 import (
-	"fmt"
 	"image/color"
 	"maps"
 	"math/rand/v2"

@@ -112,3 +112,5 @@
 - Hardened banner pattern NBT decode to skip malformed entries and avoid panics on corrupted data.
 - Guarded NPC dialogue send/close paths to handle Nop sessions, missing handlers, nil entities, and marshal errors safely.
 - Made EffectManager thread-safe by guarding effect state with a mutex and applying tick/start/end actions outside the lock to avoid data races.
+
+- Updated whitelist persistence to match line-based allowlist files (with TOML fallback), added `whitelist`/`allowlist` on/off/reload commands, and ensured query reports whitelist status correctly.

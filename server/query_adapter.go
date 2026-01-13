@@ -43,18 +43,19 @@ func (srv *Server) buildQueryData(host string, port int) query.Data {
 	sort.Strings(playerNames)
 
 	return query.Data{
-		HostName:    status.ServerName,
-		MOTD:        status.ServerSubName,
-		GameMode:    modeName,
-		Difficulty:  difficulty,
-		WorldName:   worldName,
-		PlayerCount: playerCount,
-		MaxPlayers:  status.MaxPlayers,
-		HostIP:      host,
-		HostPort:    port,
-		Plugins:     pluginString,
-		PlayerNames: playerNames,
-		Version:     protocol.CurrentVersion,
+		HostName:         status.ServerName,
+		MOTD:             status.ServerSubName,
+		GameMode:         modeName,
+		Difficulty:       difficulty,
+		WorldName:        worldName,
+		PlayerCount:      playerCount,
+		MaxPlayers:       status.MaxPlayers,
+		HostIP:           host,
+		HostPort:         port,
+		Plugins:          pluginString,
+		PlayerNames:      playerNames,
+		Version:          protocol.CurrentVersion,
+		WhitelistEnabled: srv.WhitelistEnabled(),
 	}
 }
 
