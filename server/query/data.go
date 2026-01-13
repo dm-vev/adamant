@@ -59,16 +59,30 @@ type keyValue struct {
 
 var lastSnapshot atomic.Pointer[Data]
 
-// queryInfoTTL matches the default QueryRegenerateEvent timeout used by Lumi/Nukkit.
+// queryPayloadTTL matches the default QueryRegenerateEvent timeout used by Lumi/Nukkit.
 //
 // In the reference implementation the timeout value is added directly to System.currentTimeMillis(), so the default
 // constructor argument of 5 results in a 5 millisecond cache. Query clients may observe server information changing,
 // but keeping payloads stable for this short window avoids rebuilding large responses (player lists, plugin metadata)
 // on every request.
-const queryInfoTTL = 5 * time.Millisecond
+const queryPayloadTTL = 5 * time.Millisecond
+
+// queryDataTTL matches the cadence at which Lumi refreshes QueryRegenerateEvent.
+//
+// Lumi rebuilds QueryRegenerateEvent every 512 ticks (25.6 seconds at 20 TPS), and the query responder rebuilds
+// payloads frequently from that snapshot. Keeping the server-supplied Data stable for the same window matches the
+// observable update timing of player lists and other dynamic fields.
+const queryDataTTL = 512 * (time.Second / 20)
 
 // timeNow is overridden in tests to make cache expiry deterministic.
 var timeNow = time.Now
+
+type cachedData struct {
+	host      string
+	port      int
+	expiresAt int64
+	data      Data
+}
 
 type cachedPayloads struct {
 	host      string
@@ -81,11 +95,14 @@ type cachedPayloads struct {
 }
 
 var (
+	dataCache        atomic.Pointer[cachedData]
+	dataRefreshMu    sync.Mutex
 	payloadCache     atomic.Pointer[cachedPayloads]
 	payloadRefreshMu sync.Mutex
 )
 
 func invalidatePayloadCache() {
+	dataCache.Store(nil)
 	payloadCache.Store(nil)
 }
 
@@ -93,21 +110,53 @@ func invalidatePayloadCache() {
 // snapshot. When no provider is registered the latest cached snapshot is used
 // instead. If no snapshot exists yet, sane defaults are emitted.
 func collectData(host string, port int) Data {
+	host = canonicalHost(host)
+
 	provider := loadProvider()
 	if provider == nil {
 		if snap, ok := loadSnapshot(); ok {
-			snap.HostIP = canonicalHost(host)
+			snap.HostIP = host
 			snap.HostPort = port
 			snap.applyDefaults()
 			return snap
 		}
 		return defaultData(host, port)
 	}
-	data := provider(canonicalHost(host), port)
+
+	now := timeNow().UnixNano()
+	if cached := dataCache.Load(); cached != nil && cached.host == host && cached.port == port && now < cached.expiresAt {
+		data := cloneData(cached.data)
+		data.HostIP = host
+		data.HostPort = port
+		data.applyDefaults()
+		return data
+	}
+
+	dataRefreshMu.Lock()
+	defer dataRefreshMu.Unlock()
+
+	now = timeNow().UnixNano()
+	if cached := dataCache.Load(); cached != nil && cached.host == host && cached.port == port && now < cached.expiresAt {
+		data := cloneData(cached.data)
+		data.HostIP = host
+		data.HostPort = port
+		data.applyDefaults()
+		return data
+	}
+
+	data := provider(host, port)
 	// Detach provider-owned slices to avoid races if the provider mutates them after returning.
 	data = cloneData(data)
+	data.HostIP = host
+	data.HostPort = port
 	data.applyDefaults()
 	storeSnapshot(data)
+	dataCache.Store(&cachedData{
+		host:      host,
+		port:      port,
+		expiresAt: now + int64(queryDataTTL),
+		data:      cloneData(data),
+	})
 	return data
 }
 
@@ -138,7 +187,7 @@ func collectPayload(host string, port int, long bool) []byte {
 	updated := &cachedPayloads{
 		host:      host,
 		port:      port,
-		expiresAt: now + int64(queryInfoTTL),
+		expiresAt: now + int64(queryPayloadTTL),
 		data:      cloneData(data),
 		long:      data.longPayload(),
 		short:     data.shortPayload(),

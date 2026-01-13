@@ -12,7 +12,7 @@ Upstream: https://github.com/df-mc/dragonfly
 - **Vanilla dimension generators**: new Overworld/Nether/End generators ported from the original Minecraft generation rules.
 - **Built‑in admin commands + server CLI**: `help`, `list`, `kick`, `gamemode`, `time`, `chat`, `gc`, `status`, `stop`, `about`, `whitelist`.
 - **Bedrock Query support**: server status, players, MOTD and plugins exposed to query clients (integrated via `server/query_adapter.go`).
-- **Whitelist system**: TOML‑backed whitelist with built‑in commands to add/remove/list entries; toggle enforcement via config (`[Whitelist]`).
+- **Whitelist system**: Nukkit-style `white-list.txt` allowlist with legacy TOML fallback; built‑in `whitelist`/`allowlist` commands and config enforcement.
 - **New items and vanilla features**: early stage of implementing core Bedrock mechanics — starting with fishing rods and Nether portals.
 - **Stability and concurrency hardening**: locks/atomics across sessions, registries, world counters, whitelist checks, chunk radius, and command origin tracking; snapshotting to avoid hot locks and I/O under locks.
 - **Inventory and container safety**: ordered locks for merge operations, guarded slot callbacks, validated stack requests/containers, hotbar slot clamping, and safer container-close handling.
@@ -48,7 +48,7 @@ Server settings are in `config.toml`.
   it is limited by LevelDB or other I/O to ensure additional workers do not become the bottleneck.
 - `Players`: `MaxCount`, `MaximumChunkRadius`, `SaveData`, `Folder`.
 - `Resources`: `AutoBuildPack`, `Folder`, `Required`.
-- `Whitelist`: `Enabled`, `File` (default `whitelist.toml`).
+- `Whitelist`: `Enabled`, `File` (default `white-list.txt`), `Reason` (kick message).
 
 ### Whitelist Management
 - Enable/disable via `config.toml` → `[Whitelist].Enabled`.

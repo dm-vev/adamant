@@ -1,2 +1,3 @@
-# List of player names allowed to join the server when the whitelist is enabled.
+# Legacy TOML whitelist format.
+# Prefer `white-list.txt` (line-separated) for compatibility with Bedrock server allowlist tools.
 players = []

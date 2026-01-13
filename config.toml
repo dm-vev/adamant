@@ -9,7 +9,7 @@
   # name of the server.
   Name = "Dragonfly Server"
   # AuthEnabled controls whether players must be connected to Xbox Live in order to join the server.
-  AuthEnabled = false
+  AuthEnabled = true
   # DisableJoinQuitMessages specifies if join/quit messages should be broadcast when players join the server.
   DisableJoinQuitMessages = false
   # MuteEmoteChat specifies if the player emote chat should be muted or not.
@@ -71,10 +71,17 @@
   # Folder configures the directory used by the server to load resource packs.
   Folder = "resources"
   # Required configures whether the server will require players to have a resource pack to join.
-  Required = true
+  Required = false
 
 [Whitelist]
   # Enabled controls if only players listed in the whitelist file are allowed to join.
   Enabled = false
-  # File is the path to the whitelist TOML file that stores player names.
-  File = "whitelist.toml"
+  # File is the path to the whitelist file that stores player names.
+  #
+  # Supported formats:
+  #   - .txt/.list/.enum: line-separated list, one player name per line. (Default: "white-list.txt")
+  #   - .toml: legacy TOML format with a "players" array.
+  File = "white-list.txt"
+  # Reason is the message sent to players that are rejected by the whitelist.
+  # If empty, a safe default is used.
+  Reason = "§cServer is white-listed"

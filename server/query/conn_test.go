@@ -180,6 +180,7 @@ func TestHandleQueryRejectsInvalidToken(t *testing.T) {
 
 func TestQueryInfoIsCachedForTTL(t *testing.T) {
 	lastSnapshot.Store(nil)
+	dataCache.Store(nil)
 	payloadCache.Store(nil)
 	RegisterProvider(nil)
 
@@ -192,6 +193,7 @@ func TestQueryInfoIsCachedForTTL(t *testing.T) {
 		timeNow = originalNow
 		RegisterProvider(nil)
 		lastSnapshot.Store(nil)
+		dataCache.Store(nil)
 		payloadCache.Store(nil)
 	})
 
@@ -240,17 +242,30 @@ func TestQueryInfoIsCachedForTTL(t *testing.T) {
 		t.Fatalf("unexpected cached server name: got %q, want %q", shortInfo2.serverName, "Test Server 1")
 	}
 
-	currentNano.Store(int64(queryInfoTTL) + int64(time.Millisecond))
+	currentNano.Store(int64(queryPayloadTTL) + int64(time.Millisecond))
 	shortInfo3, err := doQuery()
 	if err != nil {
 		t.Fatalf("nukkit query: %v", err)
 	}
-	if shortInfo3.serverName != "Test Server 2" {
-		t.Fatalf("unexpected refreshed server name: got %q, want %q", shortInfo3.serverName, "Test Server 2")
+	if shortInfo3.serverName != "Test Server 1" {
+		t.Fatalf("unexpected data-cached server name: got %q, want %q", shortInfo3.serverName, "Test Server 1")
+	}
+
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("unexpected provider call count: got %d, want %d", got, 1)
+	}
+
+	currentNano.Store(int64(queryDataTTL) + int64(queryPayloadTTL) + int64(time.Millisecond))
+	shortInfo4, err := doQuery()
+	if err != nil {
+		t.Fatalf("nukkit query: %v", err)
+	}
+	if shortInfo4.serverName != "Test Server 2" {
+		t.Fatalf("unexpected refreshed server name: got %q, want %q", shortInfo4.serverName, "Test Server 2")
 	}
 
 	if got := calls.Load(); got != 2 {
-		t.Fatalf("unexpected provider call count: got %d, want %d", got, 2)
+		t.Fatalf("unexpected provider call count after refresh: got %d, want %d", got, 2)
 	}
 }
 
