@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"strconv"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
@@ -57,6 +59,35 @@ type keyValue struct {
 
 var lastSnapshot atomic.Pointer[Data]
 
+// queryInfoTTL matches the default QueryRegenerateEvent timeout in Lumi/Nukkit.
+//
+// Query clients may observe server information changing. Lumi/Nukkit keeps long/short responses stable for a short
+// period to avoid rebuilding large payloads (player lists, plugin metadata) on every request. We mirror that behaviour
+// for compatibility and performance.
+const queryInfoTTL = 5 * time.Second
+
+// timeNow is overridden in tests to make cache expiry deterministic.
+var timeNow = time.Now
+
+type cachedPayloads struct {
+	host      string
+	port      int
+	expiresAt int64
+
+	data  Data
+	long  []byte
+	short []byte
+}
+
+var (
+	payloadCache     atomic.Pointer[cachedPayloads]
+	payloadRefreshMu sync.Mutex
+)
+
+func invalidatePayloadCache() {
+	payloadCache.Store(nil)
+}
+
 // collectData retrieves the latest state, normalises it and updates the cached
 // snapshot. When no provider is registered the latest cached snapshot is used
 // instead. If no snapshot exists yet, sane defaults are emitted.
@@ -77,6 +108,46 @@ func collectData(host string, port int) Data {
 	data.applyDefaults()
 	storeSnapshot(data)
 	return data
+}
+
+func collectPayload(host string, port int, long bool) []byte {
+	host = canonicalHost(host)
+
+	now := timeNow().UnixNano()
+	if cached := payloadCache.Load(); cached != nil && cached.host == host && cached.port == port && now < cached.expiresAt {
+		if long {
+			return cached.long
+		}
+		return cached.short
+	}
+
+	payloadRefreshMu.Lock()
+	defer payloadRefreshMu.Unlock()
+
+	now = timeNow().UnixNano()
+	if cached := payloadCache.Load(); cached != nil && cached.host == host && cached.port == port && now < cached.expiresAt {
+		if long {
+			return cached.long
+		}
+		return cached.short
+	}
+
+	data := collectData(host, port)
+
+	updated := &cachedPayloads{
+		host:      host,
+		port:      port,
+		expiresAt: now + int64(queryInfoTTL),
+		data:      cloneData(data),
+		long:      data.longPayload(),
+		short:     data.shortPayload(),
+	}
+	payloadCache.Store(updated)
+
+	if long {
+		return updated.long
+	}
+	return updated.short
 }
 
 // canonicalHost returns the textual representation of the listening host or a

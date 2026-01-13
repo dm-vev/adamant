@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -42,10 +43,12 @@ func (p *packetRecorder) SetWriteDeadline(time.Time) error { return nil }
 
 func TestQueryResponsesMatchLumiFormat(t *testing.T) {
 	lastSnapshot.Store(nil)
+	payloadCache.Store(nil)
 	RegisterProvider(nil)
 	t.Cleanup(func() {
 		RegisterProvider(nil)
 		lastSnapshot.Store(nil)
+		payloadCache.Store(nil)
 	})
 
 	expected := Data{
@@ -142,6 +145,7 @@ func TestQueryResponsesMatchLumiFormat(t *testing.T) {
 }
 
 func TestHandleQueryRejectsInvalidToken(t *testing.T) {
+	payloadCache.Store(nil)
 	recorder := &packetRecorder{}
 	pc := &packetConn{
 		PacketConn: recorder,
@@ -169,6 +173,82 @@ func TestHandleQueryRejectsInvalidToken(t *testing.T) {
 	}
 	if len(recorder.writes) != 0 {
 		t.Fatalf("expected no response write, got %d", len(recorder.writes))
+	}
+}
+
+func TestQueryInfoIsCachedForTTL(t *testing.T) {
+	lastSnapshot.Store(nil)
+	payloadCache.Store(nil)
+	RegisterProvider(nil)
+
+	var currentNano atomic.Int64
+	originalNow := timeNow
+	timeNow = func() time.Time {
+		return time.Unix(0, currentNano.Load())
+	}
+	t.Cleanup(func() {
+		timeNow = originalNow
+		RegisterProvider(nil)
+		lastSnapshot.Store(nil)
+		payloadCache.Store(nil)
+	})
+
+	var calls atomic.Int64
+	RegisterProvider(func(host string, port int) Data {
+		n := calls.Add(1)
+		return Data{
+			HostName:    "Test Server " + strconv.FormatInt(n, 10),
+			WorldName:   "Overworld",
+			PlayerCount: 1,
+			MaxPlayers:  10,
+			HostIP:      host,
+			HostPort:    port,
+		}
+	})
+
+	remote := &net.UDPAddr{IP: net.IPv4(10, 0, 0, 1), Port: 12345}
+	doQuery := func() (shortQueryInfo, error) {
+		recorder := &packetRecorder{}
+		conn := &packetConn{
+			PacketConn: recorder,
+			log:        nopLogger{},
+			host:       "127.0.0.1",
+			port:       19132,
+			token:      [16]byte{0x01},
+			lastToken:  [16]byte{0x01},
+		}
+		_, shortInfo, err := doNukkitQuery(conn, remote, Data{PlayerNames: nil})
+		return shortInfo, err
+	}
+
+	shortInfo1, err := doQuery()
+	if err != nil {
+		t.Fatalf("nukkit query: %v", err)
+	}
+	if shortInfo1.serverName != "Test Server 1" {
+		t.Fatalf("unexpected first server name: got %q, want %q", shortInfo1.serverName, "Test Server 1")
+	}
+
+	currentNano.Store(int64(time.Second))
+	shortInfo2, err := doQuery()
+	if err != nil {
+		t.Fatalf("nukkit query: %v", err)
+	}
+	if shortInfo2.serverName != "Test Server 1" {
+		t.Fatalf("unexpected cached server name: got %q, want %q", shortInfo2.serverName, "Test Server 1")
+	}
+
+	currentNano.Store(int64(queryInfoTTL) + int64(time.Second))
+	shortInfo3, err := doQuery()
+	if err != nil {
+		t.Fatalf("nukkit query: %v", err)
+	}
+	if shortInfo3.serverName != "Test Server 2" {
+		t.Fatalf("unexpected refreshed server name: got %q, want %q", shortInfo3.serverName, "Test Server 2")
+	}
+
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("unexpected provider call count: got %d, want %d", got, 2)
 	}
 }
 

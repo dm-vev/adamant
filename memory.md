@@ -115,3 +115,4 @@
 
 - Updated whitelist persistence to match line-based allowlist files (with TOML fallback), added `whitelist`/`allowlist` on/off/reload commands, and ensured query reports whitelist status correctly.
 - Aligned Bedrock query responses with Lumi/Nukkit wire format (binary MD5 token, lowercase `splitnum`, long/short payloads, stable key ordering/defaults) and updated the query adapter accordingly.
+- Cached Bedrock query payloads for 5 seconds to match Nukkit regeneration cadence, reduce per-request allocations, and keep query responses stable within the TTL.

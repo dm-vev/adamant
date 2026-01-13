@@ -20,6 +20,7 @@ var (
 // function unregisters the current provider, after which responses will fall
 // back to the latest cached snapshot or default values.
 func RegisterProvider(fn ProviderFunc) {
+	invalidatePayloadCache()
 	if fn == nil {
 		providerPointer.Store(nil)
 		return

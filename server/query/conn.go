@@ -130,13 +130,7 @@ func (c *packetConn) validateToken(addr net.Addr, payload []byte) bool {
 
 // writeInfo renders the server information payload for a validated query request.
 func (c *packetConn) writeInfo(addr net.Addr, sequence int32, long bool) {
-	data := collectData(c.host, c.port)
-	data.applyDefaults()
-
-	payload := data.shortPayload()
-	if long {
-		payload = data.longPayload()
-	}
+	payload := collectPayload(c.host, c.port, long)
 
 	resp := make([]byte, 1+4+len(payload))
 	resp[0] = queryTypeInformation
