@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	worldFinaliseBlockRegistry()
+	world.FinaliseBlockRegistry()
 }
 
 func TestTryCreateEndPortalCompletesRing(t *testing.T) {

@@ -118,6 +118,8 @@
 - Cached Bedrock query payloads for 5 seconds to match Nukkit regeneration cadence, reduce per-request allocations, and keep query responses stable within the TTL.
 
 - Prevented `World.Exec` tests from deadlocking the transaction loop by avoiding `t.Fatal/Fatalf` inside Exec callbacks, and fixed the end portal spawn test to treat air as a block value (not `nil`).
+- Fixed item stack request verification/response to use `item.Stack.NetworkID()` (restoring build and correct StackNetworkID behaviour).
+- Updated block tests to use `world.FinaliseBlockRegistry()` directly, avoiding missing linkname helper symbols during `go test`.
 - Fixed overworld surface generator tests by initialising the block runtime registry and making biome search resilient to seed-dependent distances.
 - Added a nested module for the local `fixes/` directory so `go test ./...` ignores it and stays buildable in clean checkouts.
 
