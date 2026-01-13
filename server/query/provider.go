@@ -1,7 +1,6 @@
 package query
 
 import (
-	"runtime/debug"
 	"sync/atomic"
 )
 
@@ -37,20 +36,9 @@ func loadProvider() ProviderFunc {
 	return *ptr
 }
 
-// engineLabel constructs the engine identifier that is shown by query clients.
-var engineLabel = buildEngineLabel()
-
-// buildEngineLabel inspects build metadata to determine the engine label that
-// is reported through the query interface. The build information is optional,
-// so sane defaults are supplied when it cannot be determined.
-func buildEngineLabel() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok || info == nil {
-		return "Adamant"
-	}
-	version := info.Main.Version
-	if version == "" {
-		version = "dev"
-	}
-	return "Adamant (" + version + ")"
-}
+// engineLabel is the default server identifier reported via query.
+//
+// Lumi uses the constant `Nukkit.NUKKIT` ("Lumi") as the engine label in both the `server_engine` field and as the
+// base of the `plugins` value. Keeping this default aligned makes the query output compatible without requiring the
+// caller to fill Data.Engine explicitly.
+const engineLabel = "Lumi"

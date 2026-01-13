@@ -120,8 +120,9 @@ func TestQueryResponsesMatchLumiFormat(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected key %q to be present in query information", "plugins")
 	}
-	if plugins != expected.Engine+":"+expected.Plugins {
-		t.Fatalf("unexpected plugins value: got %q, want %q", plugins, expected.Engine+":"+expected.Plugins)
+	wantPlugins := expected.Engine + ": " + expected.Plugins
+	if plugins != wantPlugins {
+		t.Fatalf("unexpected plugins value: got %q, want %q", plugins, wantPlugins)
 	}
 
 	if shortInfo.serverName != expected.HostName {

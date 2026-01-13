@@ -123,3 +123,4 @@
 
 - Avoided saving/compacting chunks while generation is in flight to remove a world close-time data race.
 - Matched query payload regeneration TTL to Lumi/Nukkit’s millisecond-based timeout and fixed query token hashing for IPv6 by mirroring Java InetAddress formatting (no :: compression).
+- Aligned query `server_engine` default and plugin string formatting with upstream query conventions.
