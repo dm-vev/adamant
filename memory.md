@@ -137,3 +137,5 @@
 - Added config-driven toggles for Bedrock query enablement and plugin listing, and ensured disabled query packets are silently ignored without reaching RakNet.
 
 - Allowed operators listed in `ops.txt` to bypass whitelist enforcement and added tests for the combined allower.
+- Corrected furnace-family NBT tags and burn progress scaling, preserving max fuel duration and legacy XP tag compatibility for client-visible state.
+- Reset smelter cook progress immediately when fuel ends to match expected gameplay progress handling.
