@@ -175,7 +175,12 @@ func (s *smelter) setDurations(remaining, max, cook time.Duration) {
 
 // tickSmelting ticks the smelter, ensuring the necessary items exist in the furnace, and then processing all inputted
 // items for the necessary duration.
-func (s *smelter) tickSmelting(requirement, decrement time.Duration, lit bool, supported func(item.SmeltInfo) bool) bool {
+func (s *smelter) tickSmelting(
+	requirement time.Duration,
+	decrement time.Duration,
+	lit bool,
+	supported func(item.SmeltInfo) bool,
+) bool {
 	s.mu.Lock()
 
 	// First keep track of our past durations, since if any of them change, we need to be able to tell they did and then
@@ -261,9 +266,23 @@ func (s *smelter) tickSmelting(requirement, decrement time.Duration, lit bool, s
 		s.cookDuration -= decrement
 	}
 
-	// Update the viewers on the new durations.
+	prevBurnDurationTicks := smelterBurnDurationTicks(prevRemainingDuration, prevMaxDuration, requirement)
+	burnDurationTicks := smelterBurnDurationTicks(s.remainingDuration, s.maxDuration, requirement)
+	prevBurnDuration := time.Duration(prevBurnDurationTicks) * time.Millisecond * 50
+	burnDuration := time.Duration(burnDurationTicks) * time.Millisecond * 50
+	prevMaxBurnDuration := time.Duration(0)
+	maxBurnDuration := time.Duration(0)
+	if prevMaxDuration > 0 {
+		prevMaxBurnDuration = requirement
+	}
+	if s.maxDuration > 0 {
+		maxBurnDuration = requirement
+	}
+
+	// Update the viewers on the new durations using UI-scaled fuel progress.
+	// Previously we sent full fuel ticks, which made client bars disagree with the chunk NBT values.
 	for v := range s.viewers {
-		v.ViewFurnaceUpdate(prevCookDuration, s.cookDuration, prevRemainingDuration, s.remainingDuration, prevMaxDuration, s.maxDuration)
+		v.ViewFurnaceUpdate(prevCookDuration, s.cookDuration, prevBurnDuration, burnDuration, prevMaxBurnDuration, maxBurnDuration)
 	}
 
 	s.mu.Unlock()

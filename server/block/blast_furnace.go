@@ -96,11 +96,17 @@ func (b BlastFurnace) EncodeNBT() map[string]interface{} {
 		b = NewBlastFurnace(b.Facing)
 	}
 	remaining, maximum, cook := b.Durations()
+	burnTimeTicks := smelterTicks(remaining)
+	cookTimeTicks := smelterTicks(cook)
+	burnDurationTicks := smelterBurnDurationTicks(remaining, maximum, time.Second*5)
+	maxTimeTicks := smelterTicks(maximum)
 	return map[string]interface{}{
-		"BurnTime":     int16(remaining.Milliseconds() / 50),
-		"CookTime":     int16(cook.Milliseconds() / 50),
-		"BurnDuration": int16(maximum.Milliseconds() / 50),
-		"StoredXPInt":  int16(b.Experience()),
+		"BurnTime": burnTimeTicks,
+		"CookTime": cookTimeTicks,
+		// BurnDuration is the UI-scaled burn progress, while MaxTime persists the full fuel duration.
+		"BurnDuration": burnDurationTicks,
+		"MaxTime":      maxTimeTicks,
+		"StoredXpInt":  int16(b.Experience()),
 		"Items":        nbtconv.InvToNBT(b.inventory),
 		"id":           "BlastFurnace",
 	}
@@ -108,11 +114,38 @@ func (b BlastFurnace) EncodeNBT() map[string]interface{} {
 
 // DecodeNBT ...
 func (b BlastFurnace) DecodeNBT(data map[string]interface{}) interface{} {
-	remaining := nbtconv.TickDuration[int16](data, "BurnTime")
-	maximum := nbtconv.TickDuration[int16](data, "BurnDuration")
-	cook := nbtconv.TickDuration[int16](data, "CookTime")
+	burnTimeTicks := nbtconv.Int16(data, "BurnTime")
+	if burnTimeTicks < 0 {
+		burnTimeTicks = 0
+	}
+	cookTimeTicks := nbtconv.Int16(data, "CookTime")
+	if cookTimeTicks < 0 {
+		cookTimeTicks = 0
+	}
+	burnDurationTicks := nbtconv.Int16(data, "BurnDuration")
+	if burnDurationTicks < 0 {
+		burnDurationTicks = 0
+	}
+	maxTimeTicks := nbtconv.Int16(data, "MaxTime")
+	if maxTimeTicks < 0 {
+		maxTimeTicks = 0
+	}
 
-	xp := int(nbtconv.Int16(data, "StoredXPInt"))
+	requirementTicks := smelterTicks(time.Second * 5)
+	maxTimeTicks = smelterNBTMaxTimeTicks(burnTimeTicks, maxTimeTicks, burnDurationTicks, requirementTicks)
+	if burnTimeTicks == 0 {
+		cookTimeTicks = 0
+	}
+
+	remaining := time.Duration(burnTimeTicks) * time.Millisecond * 50
+	maximum := time.Duration(maxTimeTicks) * time.Millisecond * 50
+	cook := time.Duration(cookTimeTicks) * time.Millisecond * 50
+
+	xpValue, ok := data["StoredXpInt"].(int16)
+	if !ok {
+		xpValue, _ = data["StoredXPInt"].(int16)
+	}
+	xp := int(xpValue)
 	lit := b.Lit
 
 	//noinspection GoAssignmentToReceiver

@@ -956,6 +956,7 @@ func (s *Session) OpenSign(pos cube.Pos, frontSide bool) {
 }
 
 // ViewFurnaceUpdate updates a furnace for the associated session based on previous times.
+// Fuel values are UI-scaled and use the per-item cook requirement as the duration baseline.
 func (s *Session) ViewFurnaceUpdate(prevCookTime, cookTime, prevRemainingFuelTime, remainingFuelTime, prevMaxFuelTime, maxFuelTime time.Duration) {
 	if prevCookTime != cookTime {
 		s.writePacket(&packet.ContainerSetData{
