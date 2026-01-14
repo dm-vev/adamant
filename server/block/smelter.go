@@ -175,12 +175,7 @@ func (s *smelter) setDurations(remaining, max, cook time.Duration) {
 
 // tickSmelting ticks the smelter, ensuring the necessary items exist in the furnace, and then processing all inputted
 // items for the necessary duration.
-func (s *smelter) tickSmelting(
-	requirement time.Duration,
-	decrement time.Duration,
-	lit bool,
-	supported func(item.SmeltInfo) bool,
-) bool {
+func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported func(item.SmeltInfo) bool) bool {
 	s.mu.Lock()
 
 	// First keep track of our past durations, since if any of them change, we need to be able to tell they did and then
@@ -260,10 +255,11 @@ func (s *smelter) tickSmelting(
 		s.maxDuration, lit = 0, false
 	}
 
-	// We've run out of fuel, but we have some remaining cook duration, so instead of stopping entirely, we reduce the
-	// cook duration by the decrement.
+	// Expected gameplay logic is that cook progress does not linger once the fuel is out.
+	// The previous decrement-based decay kept partial progress alive and let smelting resume too far ahead.
+	// Resetting here keeps client-visible progress and smelting results aligned with canonical rules.
 	if s.cookDuration > 0 && !lit {
-		s.cookDuration -= decrement
+		s.cookDuration = 0
 	}
 
 	prevBurnDurationTicks := smelterBurnDurationTicks(prevRemainingDuration, prevMaxDuration, requirement)
