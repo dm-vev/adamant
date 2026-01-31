@@ -64,6 +64,9 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if gl, ok := e.(glider); ok && gl.Gliding() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagGliding)
 	}
+	if bb, ok := e.(baby); ok && bb.Baby() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBaby)
+	}
 	if b, ok := e.(breather); ok {
 		m[protocol.EntityDataKeyAirSupply] = int16(b.AirSupply().Milliseconds() / 50)
 		m[protocol.EntityDataKeyAirSupplyMax] = int16(b.MaxAirSupply().Milliseconds() / 50)
@@ -79,9 +82,6 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	}
 	if o, ok := e.(onFire); ok && o.OnFireDuration() > 0 {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagOnFire)
-	}
-	if b, ok := e.(baby); ok && b.Baby() {
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBaby)
 	}
 	if db, ok := e.(doorBreaker); ok && db.CanBreakDoors() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagDoorBreaker)
