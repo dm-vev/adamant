@@ -297,10 +297,7 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 		chat.Global.Writet(s.conf.JoinMessage, s.conn.IdentityData().DisplayName)
 	}
 
-	runnable := s.sendAvailableCommands(c)
-	enums, enumValues := s.enums(c)
-
-	go s.background(runnable, enums, enumValues)
+	go s.background()
 	go s.handlePackets()
 }
 
@@ -414,12 +411,21 @@ func (s *Session) handlePackets() {
 
 // background performs background tasks of the Session. This includes chunk sending and automatic command updating.
 // background returns when the Session's connection is closed using CloseConnection.
-func (s *Session) background(r map[string]map[int]cmd.Runnable, enums map[string]cmd.Enum, enumValues map[string][]string) {
+func (s *Session) background() {
 	var (
-		ok bool
-		i  int
+		r          map[string]map[int]cmd.Runnable
+		enums      map[string]cmd.Enum
+		enumValues map[string][]string
+		softEnums  = make(map[string]struct{})
+		ok         bool
+		i          int
 	)
 
+	s.ent.ExecWorld(func(tx *world.Tx, e world.Entity) {
+		co := e.(Controllable)
+		r = s.sendAvailableCommands(co, softEnums)
+		enums, enumValues = s.enums(co)
+	})
 	t := time.NewTicker(time.Second / 20)
 	defer t.Stop()
 	for {
@@ -432,11 +438,11 @@ func (s *Session) background(r map[string]map[int]cmd.Runnable, enums map[string
 				if i++; i%20 == 0 {
 					// Enum resending happens relatively often and frequent updates are more important than with full
 					// command changes. Those are generally only related to permission changes, which doesn't happen often.
-					s.resendEnums(enums, enumValues, c)
+					r = s.resendEnums(enums, enumValues, softEnums, r, c)
 				}
 				if i%100 == 0 {
 					// Try to resend commands only every 5 seconds.
-					if r, ok = s.resendCommands(r, c); ok {
+					if r, ok = s.resendCommands(r, c, softEnums); ok {
 						enums, enumValues = s.enums(c)
 					}
 				}
