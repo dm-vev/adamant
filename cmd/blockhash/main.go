@@ -262,7 +262,7 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ".Uint8())", 3
 	case "AnvilType", "SandstoneType", "PrismarineType", "StoneBricksType", "NetherBricksType", "FroglightType",
 		"WallConnectionType", "BlackstoneType", "DeepslateType", "TallGrassType", "CopperType", "OxidationType",
-		"SeaGrassType", "MushroomBlockKind", "ColoredTorchColour":
+		"SeaGrassType", "MushroomBlockKind", "ColoredTorchColour", "TorchColour":
 		return "uint64(" + s + ".Uint8())", 2
 	case "ShulkerBoxType":
 		return "uint64(" + s + ".Uint8())", 5

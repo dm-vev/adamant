@@ -55,7 +55,7 @@ const (
 	hashCoalOre
 	hashCobblestone
 	hashCocoaBean
-	hashColoredTorch
+	hashColouredTorch
 	hashComposter
 	hashConcrete
 	hashConcretePowder
@@ -487,8 +487,8 @@ func (c CocoaBean) Hash() (uint64, uint64) {
 	return hashCocoaBean, uint64(c.Facing) | uint64(c.Age)<<2
 }
 
-func (t ColoredTorch) Hash() (uint64, uint64) {
-	return hashColoredTorch, uint64(t.Colour.Uint8()) | uint64(t.Facing)<<2
+func (t ColouredTorch) Hash() (uint64, uint64) {
+	return hashColouredTorch, uint64(t.Facing) | uint64(t.Colour.Uint8())<<3
 }
 
 func (c Composter) Hash() (uint64, uint64) {
