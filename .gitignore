@@ -10,5 +10,5 @@ fixes/*
 !fixes/go.mod
 mcp940-master/
 players/
-world/
+/world/
 memory.md

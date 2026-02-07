@@ -304,9 +304,19 @@ func (s *Session) ViewEntityItems(e world.Entity) {
 		// Don't view the items of the entity if the entity is the Controllable entity of the session.
 		return
 	}
-	c, ok := e.(item.Carrier)
+	c, ok := e.(interface {
+		HeldItems() (mainHand, offHand item.Stack)
+	})
 	if !ok {
-		return
+		if b, ok2 := e.(*entity.Ent); ok2 {
+			if c, ok = b.Behaviour().(interface {
+				HeldItems() (mainHand, offHand item.Stack)
+			}); !ok {
+				return
+			}
+		} else {
+			return
+		}
 	}
 
 	mainHand, offHand := c.HeldItems()
@@ -335,10 +345,21 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 		Armour() *inventory.Armour
 	})
 	if !ok {
-		return
+		if b, ok2 := e.(*entity.Ent); ok2 {
+			if armoured, ok = b.Behaviour().(interface {
+				Armour() *inventory.Armour
+			}); !ok {
+				return
+			}
+		} else {
+			return
+		}
 	}
 
 	inv := armoured.Armour()
+	if inv == nil {
+		return
+	}
 
 	// Show the entity's armour
 	s.writePacket(&packet.MobArmourEquipment{
@@ -950,6 +971,30 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 			Position:  vec64To32(pos),
 			Volume:    1,
 			Pitch:     1.0,
+		})
+		return
+	case sound.ArmourStandHit:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventSoundArmorStandHit,
+			Position:  vec64To32(pos),
+		})
+		return
+	case sound.ArmourStandBreak:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventSoundArmorStandBreak,
+			Position:  vec64To32(pos),
+		})
+		return
+	case sound.ArmourStandPlace:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventSoundArmorStandPlace,
+			Position:  vec64To32(pos),
+		})
+		return
+	case sound.ArmourStandLand:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventSoundArmorStandLand,
+			Position:  vec64To32(pos),
 		})
 		return
 	}

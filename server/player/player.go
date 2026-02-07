@@ -1944,24 +1944,36 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 		return false
 	}
 	i, left := p.HeldItems()
+	useCtx := p.useContext()
+
 	if usable, ok := i.Item().(item.UsableOnEntity); ok {
-		useCtx := p.useContext()
 		if usable.UseOnEntity(e, p.tx, p, useCtx) {
 			p.SwingArm()
 			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 			p.addNewItem(useCtx)
+			return true
 		}
+	}
+
+	used := false
+	if acceptor, ok := e.(entity.ItemAcceptor); ok {
+		if acceptor.AcceptItem(p, p.tx, useCtx) {
+			used = true
+		}
+	}
+	if !used {
+		if interactable, ok := e.(entity.Interactable); ok {
+			if interactable.Interact(p.tx, p, useCtx) {
+				used = true
+			}
+		}
+	}
+	if !used {
 		return true
 	}
-	if interactable, ok := e.(entity.Interactable); ok {
-		useCtx := p.useContext()
-		if interactable.Interact(p.tx, p, useCtx) {
-			p.SwingArm()
-			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
-			p.addNewItem(useCtx)
-		}
-		return true
-	}
+	p.SwingArm()
+	p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
+	p.addNewItem(useCtx)
 	return true
 }
 
@@ -1995,12 +2007,13 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 
 	destructible, isDestructible := e.(entity.Destructible)
+	attackable, isAttackable := e.(entity.Attackable)
 
 	ctx := event.C(p)
 	if p.Handler().HandleAttackEntity(ctx, e, &force, &height, &critical); ctx.Cancelled() {
 		return false
 	}
-	if !isLiving && !isDestructible {
+	if !isLiving && !isDestructible && !isAttackable {
 		p.SwingArm()
 		return false
 	}
@@ -2008,7 +2021,18 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	p.SwingArm()
 
 	i, left := p.HeldItems()
+	if isAttackable {
+		attackable.Attack(p, p.tx)
+	}
 	if !isLiving {
+		if isAttackable && !isDestructible {
+			if durable, ok := i.Item().(item.Durable); ok {
+				p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
+			}
+			p.Exhaust(0.1)
+			return true
+		}
+
 		src := world.DamageSource(entity.AttackDamageSource{Attacker: p})
 		if !destructible.Destroy(p.tx, src, p) {
 			return false

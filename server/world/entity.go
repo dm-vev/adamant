@@ -392,6 +392,7 @@ type EntityRegistryConfig struct {
 	SplashPotion       func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Lightning          func(opts EntitySpawnOpts) *EntityHandle
 	EndCrystal         func(opts EntitySpawnOpts, showBase bool) *EntityHandle
+	ArmourStand        func(opts EntitySpawnOpts) *EntityHandle
 	FishingHook        func(opts EntitySpawnOpts, owner Entity, rod any) *EntityHandle
 }
 
