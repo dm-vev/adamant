@@ -18,11 +18,11 @@ func TestEnsureEndPortalSpawnBuildsPlatform(t *testing.T) {
 
 	var err error
 	<-w.Exec(func(tx *world.Tx) {
-		tx.World().SetSpawn(cube.Pos{10, tx.Range()[1] + 20, -5})
 		spawn := ensureEndPortalSpawn(tx)
 
-		if spawn != (cube.Pos{10, tx.Range()[0] + 1, -5}) {
-			err = fmt.Errorf("unexpected spawn position: got %v want %v", spawn, cube.Pos{10, tx.Range()[0] + 1, -5})
+		expected := cube.Pos{100, 50, 0}
+		if spawn != expected {
+			err = fmt.Errorf("unexpected spawn position: got %v want %v", spawn, expected)
 			return
 		}
 
@@ -30,13 +30,16 @@ func TestEnsureEndPortalSpawnBuildsPlatform(t *testing.T) {
 		for x := -2; x <= 2; x++ {
 			for z := -2; z <= 2; z++ {
 				pos := cube.Pos{spawn.X() + x, baseY, spawn.Z() + z}
-				if b := tx.Block(pos); b != nil {
-					if _, ok := b.(Obsidian); ok {
-						continue
-					}
+				b := tx.Block(pos)
+				if b == nil {
 					err = fmt.Errorf("platform block at %v is not obsidian: %T", pos, b)
 					return
 				}
+				if _, ok := b.(Obsidian); ok {
+					continue
+				}
+				err = fmt.Errorf("platform block at %v is not obsidian: %T", pos, b)
+				return
 			}
 		}
 

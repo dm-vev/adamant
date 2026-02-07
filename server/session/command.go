@@ -112,7 +112,12 @@ func (s *Session) sendAvailableCommands(co Controllable, softEnums map[string]st
 				} else {
 					t |= protocol.CommandArgValid
 					if len(enum.Options) > 0 || enum.Type != "" {
-						_, dynamic := softEnums[enum.Type]
+						dynamic := enum.Dynamic
+						if !dynamic {
+							_, dynamic = softEnums[enum.Type]
+						} else {
+							softEnums[enum.Type] = struct{}{}
+						}
 						if !dynamic {
 							index, ok := enumIndices[enum.Type]
 							if !ok {
@@ -177,6 +182,7 @@ func (s *Session) sendAvailableCommands(co Controllable, softEnums map[string]st
 type commandEnum struct {
 	Type    string
 	Options []string
+	Dynamic bool
 }
 
 // valueToParamType finds the command argument type of the value passed and returns it, in addition to creating

@@ -117,9 +117,6 @@ type playerData struct {
 	prevWorld *world.World
 
 	fishingHook *world.EntityHandle
-
-	sleeping bool
-	sleepPos cube.Pos
 }
 
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players

@@ -363,10 +363,6 @@ type gameMode interface {
 	GameMode() world.GameMode
 }
 
-type sleeper interface {
-	Sleeping() (cube.Pos, bool)
-}
-
 type tnt interface {
 	Fuse() time.Duration
 }

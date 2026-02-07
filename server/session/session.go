@@ -533,7 +533,7 @@ func (s *Session) ChangingDimension() bool {
 
 // ChunkRadius returns the chunk radius of the session.
 func (s *Session) ChunkRadius() int32 {
-	return s.chunkRadius
+	return s.chunkRadius.Load()
 }
 
 // handlePacket handles an incoming packet, processing it accordingly. If the packet had invalid data or was

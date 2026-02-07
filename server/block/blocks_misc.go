@@ -107,27 +107,6 @@ func (GlowingObsidian) EncodeBlock() (string, map[string]any) {
 	return "minecraft:glowingobsidian", nil
 }
 
-// SmoothBasalt is a smooth basalt block.
-type SmoothBasalt struct {
-	solid
-	bassDrum
-}
-
-// BreakInfo ...
-func (s SmoothBasalt) BreakInfo() BreakInfo {
-	return newBreakInfo(1.25, pickaxeHarvestable, pickaxeEffective, oneOf(s)).withBlastResistance(21)
-}
-
-// EncodeItem ...
-func (SmoothBasalt) EncodeItem() (name string, meta int16) {
-	return "minecraft:smooth_basalt", 0
-}
-
-// EncodeBlock ...
-func (SmoothBasalt) EncodeBlock() (string, map[string]any) {
-	return "minecraft:smooth_basalt", nil
-}
-
 // MangroveRoots are a decorative block.
 type MangroveRoots struct {
 	transparent

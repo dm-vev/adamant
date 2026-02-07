@@ -108,6 +108,5 @@ func (NopViewer) ViewWorldSpawn(cube.Pos)                                       
 func (NopViewer) ViewWeather(bool, bool)                                                     {}
 func (NopViewer) ViewEntityWake(Entity)                                                      {}
 func (NopViewer) ViewBrewingUpdate(time.Duration, time.Duration, int32, int32, int32, int32) {}
-func (NopViewer) ViewEntityWake(Entity)                                                      {}
 func (NopViewer) ViewFurnaceUpdate(time.Duration, time.Duration, time.Duration, time.Duration, time.Duration, time.Duration) {
 }
