@@ -68,13 +68,13 @@ type Box struct {
 
 	// Colour is the colour that will be used for the outline. If empty, it will default to white.
 	Colour color.RGBA
-	// Bounds is the size of the box in the world, acting as an offset from the Position. If empty,
-	// it will default to a 1x1x1 box.
-	Bounds mgl64.Vec3
 	// Position is the origin position of the shape in the world.
 	Position mgl64.Vec3
 	// Scale is the rate to scale the shape from its origin point. If zero, it will default to 1.0.
 	Scale float64
+	// Bounds is the size of the box in the world, acting as an offset from the Position. If empty,
+	// it will default to a 1x1x1 box.
+	Bounds mgl64.Vec3
 	// Entity is an optional entity handle to attach the shape to.
 	Entity *world.EntityHandle
 }
