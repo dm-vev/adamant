@@ -258,6 +258,8 @@ func (storage *PalettedStorage) compact() {
 		}
 	}
 
+	// If every palette entry is used and the palette size cannot shrink, nothing changes.
+	// This avoids allocating a new indices slice and palette values slice for already-optimal storages.
 	size := paletteSizeFor(usedCount)
 	if allUsed && size == storage.palette.size {
 		return
