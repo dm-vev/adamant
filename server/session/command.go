@@ -59,7 +59,9 @@ type translation interface {
 	Params(l language.Tag) []string
 }
 
-// BuildAvailableCommands builds an AvailableCommands packet and the runnable command map for the Source passed.
+// BuildAvailableCommands builds an AvailableCommands packet and the runnable command map for the Source
+// passed. The input map may contain aliases. It returns the AvailableCommands packet and the runnable command map
+// for the commands that the Source can execute.
 func BuildAvailableCommands(
 	commands map[string]cmd.Command,
 	src cmd.Source,
@@ -68,6 +70,7 @@ func BuildAvailableCommands(
 	m := make(map[string]map[int]cmd.Runnable, len(commands))
 
 	pk := &packet.AvailableCommands{}
+
 	var enums []commandEnum
 	enumIndices := map[string]uint32{}
 
@@ -81,6 +84,7 @@ func BuildAvailableCommands(
 			// Don't add duplicate entries for aliases.
 			continue
 		}
+
 		if run := c.Runnables(src); len(run) > 0 {
 			m[alias] = run
 		} else {
@@ -155,6 +159,7 @@ func BuildAvailableCommands(
 			Overloads:       overloads,
 		})
 	}
+
 	pk.DynamicEnums = make([]protocol.DynamicEnum, 0, len(dynamicEnums))
 	for _, e := range dynamicEnums {
 		pk.DynamicEnums = append(pk.DynamicEnums, protocol.DynamicEnum{Type: e.Type, Values: e.Options})
