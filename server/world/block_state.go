@@ -5,13 +5,14 @@ import (
 	_ "embed"
 	"encoding/binary"
 	"fmt"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"maps"
 	"math"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
 var (
