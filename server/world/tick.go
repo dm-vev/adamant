@@ -1,7 +1,6 @@
 package world
 
 import (
-	"maps"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -21,10 +20,9 @@ type entityChunkRef struct {
 	pos ChunkPos
 }
 
-func clearEntityRefMap(m map[*EntityHandle]entityChunkRef) {
-	for k := range m {
-		delete(m, k)
-	}
+type entityTickEntry struct {
+	handle *EntityHandle
+	ref    entityChunkRef
 }
 
 const (
@@ -189,6 +187,8 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	if len(w.activeColumns) == 0 {
 		return
 	}
+	randomTickSpeed := w.conf.RandomTickSpeed
+	doRandomTicks := randomTickSpeed > 0
 
 	areas := w.scratchLoaderAreas
 	if cap(areas) < len(loaders) {
@@ -204,6 +204,34 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	blockEntities := w.scratchBlockEntities[:0]
 	randomBlocks := w.scratchRandom[:0]
 
+	if !doRandomTicks {
+		for _, ref := range w.activeColumns {
+			if !columnWithinAreas(ref.pos, areas) {
+				continue
+			}
+			c := ref.col
+			if c == nil {
+				continue
+			}
+			for be := range c.BlockEntities {
+				blockEntities = append(blockEntities, be)
+			}
+		}
+		for _, pos := range blockEntities {
+			if tb, ok := tx.Block(pos).(TickerBlock); ok {
+				tb.Tick(tick, pos, tx)
+			}
+		}
+		w.scratchLoaderAreas = areas[:0]
+		w.scratchRandom = randomBlocks[:0]
+		w.scratchBlockEntities = blockEntities[:0]
+		return
+	}
+
+	minSubY := tx.Range().Min() >> 4
+	randomSubIndices := w.scratchRandomSubIndices[:0]
+	randomSubY := w.scratchRandomSubY[:0]
+
 	for _, ref := range w.activeColumns {
 		if !columnWithinAreas(ref.pos, areas) {
 			continue
@@ -217,21 +245,48 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		}
 
 		cx, cz := int(ref.pos[0]<<4), int(ref.pos[1]<<4)
+		subChunks := c.Sub()
+		randomSubIndices = randomSubIndices[:0]
+		randomSubY = randomSubY[:0]
 
-		// We generate up to j random positions for every sub chunk.
-		for j := 0; j < w.conf.RandomTickSpeed; j++ {
+		for i, sub := range subChunks {
+			if sub.Empty() {
+				continue
+			}
+			layers := sub.Layers()
+			if len(layers) == 0 {
+				continue
+			}
+			pal := layers[0].Palette()
+
+			hasRandomTicker := false
+			for pi := 0; pi < pal.Len(); pi++ {
+				if rid := pal.Value(uint16(pi)); randomTickBlocks[rid] {
+					hasRandomTicker = true
+					break
+				}
+			}
+			if !hasRandomTicker {
+				continue
+			}
+			randomSubIndices = append(randomSubIndices, i)
+			randomSubY = append(randomSubY, (i+minSubY)<<4)
+		}
+		if len(randomSubIndices) == 0 {
+			continue
+		}
+
+		// We generate up to j random positions for every sub chunk that may contain random-tickable blocks.
+		for j := 0; j < randomTickSpeed; j++ {
 			x, y, z := g.uint4(w.r), g.uint4(w.r), g.uint4(w.r)
 
-			for i, sub := range c.Sub() {
-				if sub.Empty() {
-					// SubChunk is empty, so skip it right away.
-					continue
-				}
+			for idx, subIndex := range randomSubIndices {
+				sub := subChunks[subIndex]
 				// Generally we would want to make sure the block has its block entities, but provided blocks
 				// with block entities are generally ticked already, we are safe to assume that blocks
 				// implementing the RandomTicker don't rely on additional block entity data.
 				if rid := sub.Layers()[0].At(x, y, z); randomTickBlocks[rid] {
-					subY := (i + (tx.Range().Min() >> 4)) << 4
+					subY := randomSubY[idx]
 					randomBlocks = append(randomBlocks, cube.Pos{cx + int(x), subY + int(y), cz + int(z)})
 
 					// Only generate new coordinates if a tickable block was actually found. If not, we can just re-use
@@ -256,6 +311,8 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	w.scratchLoaderAreas = areas[:0]
 	w.scratchRandom = randomBlocks[:0]
 	w.scratchBlockEntities = blockEntities[:0]
+	w.scratchRandomSubIndices = randomSubIndices[:0]
+	w.scratchRandomSubY = randomSubY[:0]
 }
 
 func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
@@ -292,35 +349,19 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 
 	lazyMaintenance := tick%sleepMaintenanceInterval == 0
 
-	active := w.scratchActiveEntities
+	active := w.scratchActiveEntityTicks
 	if cap(active) == 0 {
-		active = make([]*EntityHandle, 0, 64)
+		active = make([]entityTickEntry, 0, 64)
 	}
 	active = active[:0]
 
-	sleeping := w.scratchSleepingEntities
+	sleeping := w.scratchSleepingEntityTicks
 	if cap(sleeping) == 0 {
-		sleeping = make([]*EntityHandle, 0, 64)
+		sleeping = make([]entityTickEntry, 0, 64)
 	}
 	sleeping = sleeping[:0]
 
-	activeChunks := w.scratchActiveRefs
-	if activeChunks == nil {
-		activeChunks = make(map[*EntityHandle]entityChunkRef)
-		w.scratchActiveRefs = activeChunks
-	} else {
-		clearEntityRefMap(activeChunks)
-	}
-
-	sleepingChunks := w.scratchSleepingRefs
-	if sleepingChunks == nil {
-		sleepingChunks = make(map[*EntityHandle]entityChunkRef)
-		w.scratchSleepingRefs = sleepingChunks
-	} else {
-		clearEntityRefMap(sleepingChunks)
-	}
-
-	// We iterate over the cached entity column list to partition entity handles. The maps keep track of the
+	// We iterate over the cached entity column list to partition entity handles. The references keep track of the
 	// originating column so that we can update viewer lists or perform removals without having to search for the
 	// owning chunk again later in the tick.
 
@@ -329,10 +370,10 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 		if col == nil || len(col.Entities) == 0 {
 			continue
 		}
+		entryRef := entityChunkRef{col: col, pos: ref.pos}
 		if len(col.viewers) > 0 {
 			for _, handle := range col.Entities {
-				active = append(active, handle)
-				activeChunks[handle] = entityChunkRef{col: col, pos: ref.pos}
+				active = append(active, entityTickEntry{handle: handle, ref: entryRef})
 			}
 			continue
 		}
@@ -340,29 +381,32 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 			continue
 		}
 		for _, handle := range col.Entities {
-			sleeping = append(sleeping, handle)
-			sleepingChunks[handle] = entityChunkRef{col: col, pos: ref.pos}
+			sleeping = append(sleeping, entityTickEntry{handle: handle, ref: entryRef})
 		}
 	}
 
-	for _, handle := range active {
-		t.tickEntityHandle(tx, tick, handle, activeChunks[handle], true)
+	for _, entry := range active {
+		t.tickEntityHandle(tx, tick, entry.handle, entry.ref, true)
 	}
 	if lazyMaintenance {
-		for _, handle := range sleeping {
-			t.tickEntityHandle(tx, tick, handle, sleepingChunks[handle], false)
+		for _, entry := range sleeping {
+			t.tickEntityHandle(tx, tick, entry.handle, entry.ref, false)
 		}
 	}
 
-	w.scratchActiveEntities = active[:0]
-	w.scratchSleepingEntities = sleeping[:0]
-	clearEntityRefMap(activeChunks)
-	clearEntityRefMap(sleepingChunks)
+	w.scratchActiveEntityTicks = active[:0]
+	w.scratchSleepingEntityTicks = sleeping[:0]
 }
 
 func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref entityChunkRef, active bool) {
 	w := tx.World()
-	state := w.entities[handle]
+	state := handle.state
+	if state == nil {
+		state = w.entities[handle]
+		if state != nil {
+			handle.state = state
+		}
+	}
 	if state == nil {
 		return
 	}
@@ -536,29 +580,34 @@ func newScheduledTickQueue(tick int64) *scheduledTickQueue {
 // queue.
 func (queue *scheduledTickQueue) tick(tx *Tx, tick int64) {
 	queue.currentTick = tick
+	if len(queue.ticks) == 0 {
+		return
+	}
 
 	w := tx.World()
-	for _, t := range queue.ticks {
+	ticks := queue.ticks
+	dst := 0
+	for _, t := range ticks {
 		if t.t > tick {
+			ticks[dst] = t
+			dst++
 			continue
 		}
 		b := tx.Block(t.pos)
 		if ticker, ok := b.(ScheduledTicker); ok && BlockHash(b) == t.bhash {
 			ticker.ScheduledTick(t.pos, tx, w.r)
-		} else if liquid, ok := tx.World().additionalLiquid(t.pos); ok && BlockHash(liquid) == t.bhash {
+		} else if liquid, ok := w.additionalLiquid(t.pos); ok && BlockHash(liquid) == t.bhash {
 			if ticker, ok := liquid.(ScheduledTicker); ok {
 				ticker.ScheduledTick(t.pos, tx, w.r)
 			}
 		}
 	}
-
-	// Clear scheduled ticks that were processed from the queue.
-	queue.ticks = slices.DeleteFunc(queue.ticks, func(t scheduledTick) bool {
-		return t.t <= tick
-	})
-	maps.DeleteFunc(queue.furthestTicks, func(index scheduledTickIndex, t int64) bool {
-		return t <= tick
-	})
+	for index, furthest := range queue.furthestTicks {
+		if furthest <= tick {
+			delete(queue.furthestTicks, index)
+		}
+	}
+	queue.ticks = ticks[:dst]
 }
 
 // schedule schedules a block update at the position passed for the block type
@@ -596,9 +645,11 @@ func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
 	})
 	// Also remove any furthest tick entries that belong to this chunk to avoid
 	// retaining references after the chunk is closed.
-	maps.DeleteFunc(queue.furthestTicks, func(index scheduledTickIndex, _ int64) bool {
-		return chunkPosFromBlockPos(index.pos) == pos
-	})
+	for index := range queue.furthestTicks {
+		if chunkPosFromBlockPos(index.pos) == pos {
+			delete(queue.furthestTicks, index)
+		}
+	}
 }
 
 // add adds a slice of scheduled ticks to the queue. It assumes no duplicate
@@ -607,11 +658,11 @@ func (queue *scheduledTickQueue) add(ticks []scheduledTick) {
 	queue.ticks = append(queue.ticks, ticks...)
 	for _, t := range ticks {
 		index := scheduledTickIndex{pos: t.pos, hash: t.bhash}
-		if existing, ok := queue.furthestTicks[index]; ok {
+		if existing, ok := queue.furthestTicks[index]; !ok || t.t > existing {
 			// Make sure we find the furthest tick for each of the ticks added.
 			// Some ticks may have the same block and position, in which case we
 			// need to set the furthest tick.
-			queue.furthestTicks[index] = max(existing, t.t)
+			queue.furthestTicks[index] = t.t
 		}
 	}
 }

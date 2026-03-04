@@ -51,6 +51,9 @@ type EntityHandle struct {
 	worldless    *atomic.Bool
 	weakTxActive bool
 	w            *World
+	// state caches the world-owned entity state for fast tick-path access.
+	// It is set/cleared by the world goroutine when entities enter/leave worlds.
+	state *entityState
 
 	data EntityData
 

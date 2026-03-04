@@ -94,13 +94,13 @@ type World struct {
 	neighbourUpdates []neighbourUpdate
 	redstone         *redstoneEngine
 
-	scratchRandom           []cube.Pos
-	scratchBlockEntities    []cube.Pos
-	scratchLoaderAreas      []loaderActiveArea
-	scratchActiveEntities   []*EntityHandle
-	scratchSleepingEntities []*EntityHandle
-	scratchActiveRefs       map[*EntityHandle]entityChunkRef
-	scratchSleepingRefs     map[*EntityHandle]entityChunkRef
+	scratchRandom              []cube.Pos
+	scratchBlockEntities       []cube.Pos
+	scratchLoaderAreas         []loaderActiveArea
+	scratchRandomSubIndices    []int
+	scratchRandomSubY          []int
+	scratchActiveEntityTicks   []entityTickEntry
+	scratchSleepingEntityTicks []entityTickEntry
 
 	activeColumns     []columnRef
 	activeColumnIndex map[ChunkPos]int
@@ -880,6 +880,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		w.entityCount.Add(1)
 	}
 	w.entities[handle] = state
+	handle.state = state
 
 	c := w.chunk(pos)
 	c.Entities, c.modified = append(c.Entities, handle), true
@@ -919,6 +920,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	}
 	delete(w.entities, handle)
 	w.entityCount.Add(-1)
+	handle.state = nil
 	handle.unsetAndLockWorld()
 	return handle
 }
@@ -1338,6 +1340,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			delete(w.entities, e)
 			w.entityCount.Add(-1)
 		}
+		e.state = nil
 		e.unsetAndLockWorld()
 		_ = e.Close()
 	}
@@ -1571,11 +1574,13 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			if _, ok := w.entities[e]; !ok {
 				w.entityCount.Add(1)
 			}
-			w.entities[e] = &entityState{
+			state := &entityState{
 				pos:      pos,
 				lastTick: currentTick,
 				isItem:   e.t.EncodeEntity() == "minecraft:item",
 			}
+			w.entities[e] = state
+			e.state = state
 			e.w = w
 		}
 
