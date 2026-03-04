@@ -209,7 +209,11 @@ func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 
 func (chestMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*MinecartContainerBehaviour)
-	m := map[string]any{"Items": nbtconv.InvToNBT(b.inv)}
+	items := nbtconv.InvToNBT(b.inv)
+	if items == nil {
+		items = []map[string]any{}
+	}
+	m := map[string]any{"Items": items}
 	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
 	return m
 }
@@ -218,7 +222,7 @@ var chestMinecartConf = MinecartContainerBehaviourConfig{
 	Minecart: MinecartBehaviourConfig{
 		DisplayBlock:  block.Chest{},
 		DisplayOffset: minecartDisplayOffset,
-		Rideable:      true,
+		Rideable:      false,
 	},
 	Size:          27,
 	ContainerType: minecartContainerChest,
@@ -249,7 +253,11 @@ func (hopperMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 
 func (hopperMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*MinecartContainerBehaviour)
-	m := map[string]any{"Items": nbtconv.InvToNBT(b.inv)}
+	items := nbtconv.InvToNBT(b.inv)
+	if items == nil {
+		items = []map[string]any{}
+	}
+	m := map[string]any{"Items": items}
 	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
 	return m
 }
@@ -258,7 +266,7 @@ var hopperMinecartConf = MinecartContainerBehaviourConfig{
 	Minecart: MinecartBehaviourConfig{
 		DisplayBlock:  block.Hopper{Facing: cube.FaceDown},
 		DisplayOffset: minecartDisplayOffset,
-		Rideable:      true,
+		Rideable:      false,
 	},
 	Size:          5,
 	ContainerType: minecartContainerHopper,

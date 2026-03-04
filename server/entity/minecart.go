@@ -15,7 +15,7 @@ import (
 const (
 	minecartDefaultMaxSpeed = 0.4
 	minecartDisplayOffset   = 6
-	minecartSeatOffset      = 0.525
+	minecartSeatOffset      = 0.35
 )
 
 var minecartMatrix = [10][2][3]int{
@@ -76,7 +76,11 @@ func (conf MinecartBehaviourConfig) New() *MinecartBehaviour {
 		rollingDirection:    1,
 	}
 	if conf.DisplayBlock != nil {
-		b.displayTile = int32(world.BlockRuntimeID(conf.DisplayBlock))
+		if tile, ok := displayTileFromBlock(conf.DisplayBlock); ok {
+			b.displayTile = tile
+		} else {
+			b.displayTile = int32(world.BlockRuntimeID(conf.DisplayBlock))
+		}
 	}
 	return b
 }
@@ -203,7 +207,7 @@ func (b *MinecartBehaviour) DisplayBlock() (world.Block, bool) {
 		return b.displayBlock, true
 	}
 	if b.displayTile != 0 {
-		if bl, ok := world.BlockByRuntimeID(uint32(b.displayTile)); ok {
+		if bl, ok := blockFromDisplayTile(b.displayTile); ok {
 			return bl, true
 		}
 	}
@@ -212,6 +216,12 @@ func (b *MinecartBehaviour) DisplayBlock() (world.Block, bool) {
 
 // DisplayTile returns the raw display tile value.
 func (b *MinecartBehaviour) DisplayTile() int32 {
+	if bl := b.displayBlock; bl != nil {
+		return int32(world.BlockRuntimeID(bl))
+	}
+	if bl, ok := blockFromDisplayTile(b.displayTile); ok {
+		return int32(world.BlockRuntimeID(bl))
+	}
 	return b.displayTile
 }
 
@@ -256,12 +266,23 @@ func (b *MinecartBehaviour) ResetDamage() {
 // SetDisplayBlock updates the display block on the minecart.
 func (b *MinecartBehaviour) SetDisplayBlock(bl world.Block, custom bool) {
 	b.displayBlock = bl
-	b.customDisplay = custom
 	if bl == nil {
+		b.customDisplay = false
 		b.displayTile = 0
+		if custom {
+			b.displayOffset = 0
+		}
 		return
 	}
-	b.displayTile = int32(world.BlockRuntimeID(bl))
+	b.customDisplay = custom
+	if tile, ok := displayTileFromBlock(bl); ok {
+		b.displayTile = tile
+	} else {
+		b.displayTile = int32(world.BlockRuntimeID(bl))
+	}
+	if custom {
+		b.displayOffset = minecartDisplayOffset
+	}
 }
 
 // SetDisplayOffset updates the display offset.
@@ -445,13 +466,13 @@ func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, 
 		if speed > 0.01 {
 			vel[0] += vel[0] / speed * 0.06
 			vel[2] += vel[2] / speed * 0.06
-		} else if dir == block.RailEastWest {
+		} else if dir == block.RailNorthSouth {
 			if tx.Block(railPos.Side(cube.FaceWest)).Model().FaceSolid(railPos.Side(cube.FaceWest), cube.FaceEast, tx) {
 				vel[0] = 0.02
 			} else if tx.Block(railPos.Side(cube.FaceEast)).Model().FaceSolid(railPos.Side(cube.FaceEast), cube.FaceWest, tx) {
 				vel[0] = -0.02
 			}
-		} else if dir == block.RailNorthSouth {
+		} else if dir == block.RailEastWest {
 			if tx.Block(railPos.Side(cube.FaceNorth)).Model().FaceSolid(railPos.Side(cube.FaceNorth), cube.FaceSouth, tx) {
 				vel[2] = 0.02
 			} else if tx.Block(railPos.Side(cube.FaceSouth)).Model().FaceSolid(railPos.Side(cube.FaceSouth), cube.FaceNorth, tx) {
@@ -558,6 +579,9 @@ func (b *MinecartBehaviour) updateRotation(e *Ent, prevPos mgl64.Vec3) {
 	if diffX*diffX+diffZ*diffZ > 0.001 {
 		yaw = math.Atan2(diffZ, diffX) * 180 / math.Pi
 	}
+	if yaw < 0 {
+		yaw -= yaw - yaw
+	}
 	e.data.Rot = cube.Rotation{yaw, 0}
 }
 
@@ -611,24 +635,23 @@ func (b *MinecartBehaviour) handleCollisions(e *Ent, tx *world.Tx) {
 		if !collision.IntersectsWith(otherBox) {
 			continue
 		}
-		if otherCart, ok := other.(interface {
-			Velocity() mgl64.Vec3
-			SetVelocity(v mgl64.Vec3)
-			Rotation() cube.Rotation
-		}); ok {
-			b.applyEntityCollision(e, other, otherCart)
-		}
+		b.applyEntityCollision(e, other)
 	}
 }
 
-func (b *MinecartBehaviour) applyEntityCollision(e *Ent, other world.Entity, otherCart interface {
-	Velocity() mgl64.Vec3
-	SetVelocity(v mgl64.Vec3)
-	Rotation() cube.Rotation
-}) {
-	if isMinecartEntity(other) {
-		b.applyMinecartCollision(e, other, otherCart)
+func (b *MinecartBehaviour) applyEntityCollision(e *Ent, other world.Entity) {
+	if gm, ok := other.(interface{ GameMode() world.GameMode }); ok && !gm.GameMode().HasCollision() {
 		return
+	}
+	if isMinecartEntity(other) {
+		otherCart, ok := other.(interface {
+			Velocity() mgl64.Vec3
+			SetVelocity(v mgl64.Vec3)
+		})
+		if ok {
+			b.applyMinecartCollision(e, other, otherCart)
+			return
+		}
 	}
 	motiveX := other.Position()[0] - e.data.Pos[0]
 	motiveZ := other.Position()[2] - e.data.Pos[2]
@@ -657,7 +680,6 @@ func (b *MinecartBehaviour) applyEntityCollision(e *Ent, other world.Entity, oth
 func (b *MinecartBehaviour) applyMinecartCollision(e *Ent, other world.Entity, otherCart interface {
 	Velocity() mgl64.Vec3
 	SetVelocity(v mgl64.Vec3)
-	Rotation() cube.Rotation
 }) {
 	motiveX := other.Position()[0] - e.data.Pos[0]
 	motiveZ := other.Position()[2] - e.data.Pos[2]
@@ -690,24 +712,65 @@ func (b *MinecartBehaviour) applyMinecartCollision(e *Ent, other world.Entity, o
 	motX := otherVel[0] + e.data.Vel[0]
 	motZ := otherVel[2] + e.data.Vel[2]
 
+	otherType := minecartEntityTypeID(other.H().Type().EncodeEntity())
+	selfType := minecartEntityTypeID(e.H().Type().EncodeEntity())
+	if otherType == 2 && selfType != 2 {
+		e.data.Vel[0] *= 0.2
+		e.data.Vel[2] *= 0.2
+		e.data.Vel[0] += otherVel[0] - motiveX
+		e.data.Vel[2] += otherVel[2] - motiveZ
+
+		otherVel[0] *= 0.95
+		otherVel[2] *= 0.95
+		otherCart.SetVelocity(otherVel)
+		return
+	}
+	if otherType != 2 && selfType == 2 {
+		otherVel[0] *= 0.2
+		otherVel[2] *= 0.2
+		otherVel[0] += e.data.Vel[0] + motiveX
+		otherVel[2] += e.data.Vel[2] + motiveZ
+		otherCart.SetVelocity(otherVel)
+
+		e.data.Vel[0] *= 0.95
+		e.data.Vel[2] *= 0.95
+		return
+	}
+
+	motX /= 2
+	motZ /= 2
+
 	e.data.Vel[0] *= 0.2
 	e.data.Vel[2] *= 0.2
-	e.data.Vel[0] += motX/2 - motiveX
-	e.data.Vel[2] += motZ/2 - motiveZ
+	e.data.Vel[0] += motX - motiveX
+	e.data.Vel[2] += motZ - motiveZ
 
 	otherVel[0] *= 0.2
 	otherVel[2] *= 0.2
-	otherVel[0] += motX/2 + motiveX
-	otherVel[2] += motZ/2 + motiveZ
+	otherVel[0] += motX + motiveX
+	otherVel[2] += motZ + motiveZ
 	otherCart.SetVelocity(otherVel)
 }
 
 func isMinecartEntity(e world.Entity) bool {
-	switch e.H().Type().EncodeEntity() {
-	case "minecraft:minecart", "minecraft:chest_minecart", "minecraft:hopper_minecart", "minecraft:tnt_minecart":
-		return true
+	return minecartEntityTypeID(e.H().Type().EncodeEntity()) != -1
+}
+
+func minecartEntityTypeID(entityID string) int {
+	switch entityID {
+	case "minecraft:minecart":
+		return 0
+	case "minecraft:chest_minecart":
+		return 1
+	case "minecraft:furnace_minecart":
+		return 2
+	case "minecraft:tnt_minecart":
+		return 3
+	case "minecraft:hopper_minecart":
+		return 5
+	default:
+		return -1
 	}
-	return false
 }
 
 func (b *MinecartBehaviour) activateDetectorRail(pos cube.Pos, r block.DetectorRail, tx *world.Tx) {
@@ -812,8 +875,10 @@ func (m *Minecart) SetVehicleInput(strafe, forward float64) {
 // Interact handles interaction with the minecart.
 func (m *Minecart) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	if b := m.base(); b != nil && b.rideable {
-		b.Mount(m.Ent, tx, user)
-		return true
+		if _, hasDisplay := b.DisplayBlock(); hasDisplay {
+			return false
+		}
+		return b.Mount(m.Ent, tx, user)
 	}
 	return false
 }
@@ -951,20 +1016,19 @@ func readMinecartDisplayNBT(b *MinecartBehaviour, m map[string]any) {
 			b.customDisplay = true
 			b.displayTile = int32(readNBTInt(m["DisplayTile"]))
 			b.displayOffset = int(readNBTInt(m["DisplayOffset"]))
-			if bl, ok := world.BlockByRuntimeID(uint32(b.displayTile)); ok {
+			if bl, ok := blockFromDisplayTile(b.displayTile); ok {
 				b.displayBlock = bl
 			}
-		} else {
-			b.displayBlock = nil
-			b.displayTile = 0
-			b.customDisplay = false
 		}
 		return
 	}
 	if b.displayBlock != nil {
-		b.customDisplay = true
 		if b.displayTile == 0 {
-			b.displayTile = int32(world.BlockRuntimeID(b.displayBlock))
+			if tile, ok := displayTileFromBlock(b.displayBlock); ok {
+				b.displayTile = tile
+			} else {
+				b.displayTile = int32(world.BlockRuntimeID(b.displayBlock))
+			}
 		}
 		if b.displayOffset == 0 {
 			b.displayOffset = minecartDisplayOffset
@@ -976,13 +1040,115 @@ func writeMinecartDisplayNBT(b *MinecartBehaviour, m map[string]any) {
 	if b == nil {
 		return
 	}
-	hasDisplay := b.displayBlock != nil || b.displayTile != 0
+	hasDisplay := b.customDisplay || b.displayBlock != nil || b.displayTile != 0
 	m["CustomDisplayTile"] = boolByte(hasDisplay)
 	if !hasDisplay {
 		return
 	}
-	m["DisplayTile"] = b.displayTile
-	m["DisplayOffset"] = int32(b.displayOffset)
+	displayTile := b.displayTile
+	if b.displayBlock != nil {
+		if tile, ok := displayTileFromBlock(b.displayBlock); ok {
+			displayTile = tile
+		} else if displayTile == 0 {
+			displayTile = int32(world.BlockRuntimeID(b.displayBlock))
+		}
+	}
+	offset := b.displayOffset
+	if offset == 0 && b.displayBlock != nil {
+		offset = minecartDisplayOffset
+	}
+	m["DisplayTile"] = displayTile
+	m["DisplayOffset"] = int32(offset)
+}
+
+func blockFromDisplayTile(tile int32) (world.Block, bool) {
+	if bl, ok := world.BlockByRuntimeID(uint32(tile)); ok {
+		return bl, true
+	}
+
+	id := int(tile & 0xffff)
+	meta := int((uint32(tile) >> 16) & 0xffff)
+	switch id {
+	case 46:
+		return block.TNT{}, true
+	case 54:
+		return block.Chest{Facing: legacyHorizontalMetaToDirection(meta)}, true
+	case 154:
+		return block.Hopper{Facing: legacyHopperMetaToFace(meta)}, true
+	default:
+		return nil, false
+	}
+}
+
+func displayTileFromBlock(bl world.Block) (int32, bool) {
+	switch b := bl.(type) {
+	case block.TNT:
+		return 46, true
+	case block.Chest:
+		return 54 | (legacyHorizontalDirectionToMeta(b.Facing) << 16), true
+	case block.Hopper:
+		return 154 | (legacyHopperFaceToMeta(b.Facing) << 16), true
+	default:
+		return 0, false
+	}
+}
+
+func legacyHorizontalDirectionToMeta(dir cube.Direction) int32 {
+	switch dir {
+	case cube.North:
+		return 2
+	case cube.South:
+		return 3
+	case cube.West:
+		return 4
+	case cube.East:
+		return 5
+	default:
+		return 2
+	}
+}
+
+func legacyHorizontalMetaToDirection(meta int) cube.Direction {
+	switch meta {
+	case 3:
+		return cube.South
+	case 4:
+		return cube.West
+	case 5:
+		return cube.East
+	default:
+		return cube.North
+	}
+}
+
+func legacyHopperFaceToMeta(face cube.Face) int32 {
+	switch face {
+	case cube.FaceNorth:
+		return 2
+	case cube.FaceSouth:
+		return 3
+	case cube.FaceWest:
+		return 4
+	case cube.FaceEast:
+		return 5
+	default:
+		return 0
+	}
+}
+
+func legacyHopperMetaToFace(meta int) cube.Face {
+	switch meta {
+	case 2:
+		return cube.FaceNorth
+	case 3:
+		return cube.FaceSouth
+	case 4:
+		return cube.FaceWest
+	case 5:
+		return cube.FaceEast
+	default:
+		return cube.FaceDown
+	}
 }
 
 func readNBTInt(v any) int32 {

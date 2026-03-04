@@ -64,9 +64,6 @@ func (b *MinecartTNTBehaviour) Activate(e *Ent, tx *world.Tx, powered bool) {
 	if !powered {
 		return
 	}
-	if b.fuse > 0 {
-		return
-	}
 	b.prime(e, tx, 80)
 }
 
@@ -116,11 +113,9 @@ func (m *MinecartTNT) Interact(tx *world.Tx, user item.User, ctx *item.UseContex
 	main, _ := user.HeldItems()
 	switch main.Item().(type) {
 	case item.FlintAndSteel:
-		ctx.DamageItem(1)
 		b.prime(m.Ent, tx, 80)
 		return true
 	case item.FireCharge:
-		ctx.SubtractFromCount(1)
 		b.prime(m.Ent, tx, 80)
 		return true
 	}
@@ -189,7 +184,7 @@ var tntMinecartConf = MinecartTNTBehaviourConfig{
 	Minecart: MinecartBehaviourConfig{
 		DisplayBlock:  block.TNT{},
 		DisplayOffset: minecartDisplayOffset,
-		Rideable:      true,
+		Rideable:      false,
 	},
 	Fuse: -1,
 }
