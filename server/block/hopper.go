@@ -183,6 +183,7 @@ func (h Hopper) insertItem(pos cube.Pos, tx *world.Tx) bool {
 			}
 
 			_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
+			notifyComparatorUpdate(destPos, tx)
 
 			if hopper, ok := dest.(Hopper); ok {
 				hopper.TransferCooldown = 8
@@ -224,6 +225,7 @@ func (h Hopper) extractItem(pos cube.Pos, tx *world.Tx) bool {
 			}
 
 			_ = containerOrigin.Inventory(tx, originPos).SetItem(slot, stack.Grow(-1))
+			notifyComparatorUpdate(originPos, tx)
 
 			if hopper, ok := origin.(Hopper); ok {
 				hopper.TransferCooldown = 8

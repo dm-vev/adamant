@@ -37,9 +37,13 @@ func (f Furnace) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if f.Lit && rand.Float64() <= 0.016 { // Every three or so seconds.
 		tx.PlaySound(pos.Vec3Centre(), sound.FurnaceCrackle{})
 	}
-	if lit := f.smelter.tickSmelting(time.Second*10, f.Lit, func(item.SmeltInfo) bool {
+	lit, inventoryChanged := f.smelter.tickSmelting(time.Second*10, f.Lit, func(item.SmeltInfo) bool {
 		return true
-	}); f.Lit != lit {
+	})
+	if inventoryChanged {
+		notifyComparatorUpdate(pos, tx)
+	}
+	if f.Lit != lit {
 		f.Lit = lit
 		tx.SetBlock(pos, f, nil)
 	}

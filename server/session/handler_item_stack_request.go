@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/item"
@@ -68,6 +69,7 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 			h.reject(req.RequestID, s, tx)
 			return
 		}
+		h.notifyContainerRedstone(s, tx)
 		h.resolve(req.RequestID, s)
 		h.ignoreDestroy = false
 	}()
@@ -497,6 +499,40 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotIn
 		timestamp: h.current,
 	}
 	return nil
+}
+
+func (h *ItemStackRequestHandler) notifyContainerRedstone(s *Session, tx *world.Tx) {
+	if !s.containerOpened.Load() {
+		return
+	}
+	openedPos := s.openedPos.Load()
+	if openedPos == nil {
+		return
+	}
+	openedInv := s.openedWindow.Load()
+	if openedInv == nil {
+		return
+	}
+	for containerID := range h.changes {
+		inv, ok := s.invByID(int32(containerID), tx)
+		if !ok || inv != openedInv {
+			continue
+		}
+		openedBlock := tx.Block(*openedPos)
+		if _, ok := openedBlock.(block.Container); !ok {
+			return
+		}
+		block.NotifyComparatorUpdate(*openedPos, tx)
+		if _, ok := openedBlock.(block.Chest); ok {
+			for _, face := range cube.HorizontalFaces() {
+				sidePos := openedPos.Side(face)
+				if _, ok := tx.Block(sidePos).(block.Chest); ok {
+					block.NotifyComparatorUpdate(sidePos, tx)
+				}
+			}
+		}
+		return
+	}
 }
 
 // resolve resolves the request with the ID passed.

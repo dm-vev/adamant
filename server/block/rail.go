@@ -575,6 +575,15 @@ func (PoweredRail) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 
 // NeighbourUpdateTick ...
 func (r PoweredRail) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	r.updatePowered(pos, tx)
+}
+
+// ScheduledTick ...
+func (r PoweredRail) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	r.updatePowered(pos, tx)
+}
+
+func (r PoweredRail) updatePowered(pos cube.Pos, tx *world.Tx) {
 	if !railCanStay(pos, tx, r.Direction) {
 		breakBlock(r, pos, tx)
 		return
@@ -604,7 +613,11 @@ func (r PoweredRail) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *
 		return false
 	}
 	place(tx, pos, r, user, ctx)
-	return placed(ctx)
+	if !placed(ctx) {
+		return false
+	}
+	tx.ScheduleBlockUpdate(pos, r, 0)
+	return true
 }
 
 // EncodeItem ...
@@ -693,7 +706,11 @@ func (r DetectorRail) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 		return false
 	}
 	place(tx, pos, r, user, ctx)
-	return placed(ctx)
+	if !placed(ctx) {
+		return false
+	}
+	tx.ScheduleBlockUpdate(pos, r, 0)
+	return true
 }
 
 // EncodeItem ...
@@ -736,6 +753,15 @@ func (ActivatorRail) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 
 // NeighbourUpdateTick ...
 func (r ActivatorRail) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	r.updatePowered(pos, tx)
+}
+
+// ScheduledTick ...
+func (r ActivatorRail) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	r.updatePowered(pos, tx)
+}
+
+func (r ActivatorRail) updatePowered(pos cube.Pos, tx *world.Tx) {
 	if !railCanStay(pos, tx, r.Direction) {
 		breakBlock(r, pos, tx)
 		return
@@ -765,7 +791,11 @@ func (r ActivatorRail) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 		return false
 	}
 	place(tx, pos, r, user, ctx)
-	return placed(ctx)
+	if !placed(ctx) {
+		return false
+	}
+	tx.ScheduleBlockUpdate(pos, r, 0)
+	return true
 }
 
 // EncodeItem ...

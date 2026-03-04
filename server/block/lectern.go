@@ -3,6 +3,7 @@ package block
 import (
 	"fmt"
 	"math"
+	"math/rand/v2"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -16,7 +17,6 @@ import (
 
 // Lectern is a librarian's job site block found in villages. It is used to hold books for multiple players to read in
 // multiplayer.
-// TODO: Redstone functionality.
 type Lectern struct {
 	bass
 	sourceWaterDisplacer
@@ -27,6 +27,8 @@ type Lectern struct {
 	Book item.Stack
 	// Page is the page the Lectern is currently on in the book.
 	Page int
+	// Powered indicates if the lectern is currently emitting a redstone pulse.
+	Powered bool
 }
 
 // Model ...
@@ -90,7 +92,9 @@ func (l Lectern) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, 
 	}
 
 	l.Book, l.Page = held, 0
+	l.Powered = false
 	tx.SetBlock(pos, l, nil)
+	notifyComparatorUpdate(pos, tx)
 
 	tx.PlaySound(pos.Vec3Centre(), sound.LecternBookPlace{})
 	ctx.SubtractFromCount(1)
@@ -107,7 +111,9 @@ func (l Lectern) Punch(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User) {
 	dropItem(tx, l.Book, pos.Side(cube.FaceUp).Vec3Middle())
 
 	l.Book = item.Stack{}
+	l.Powered = false
 	tx.SetBlock(pos, l, nil)
+	notifyComparatorUpdate(pos, tx)
 	tx.PlaySound(pos.Vec3Centre(), sound.Attack{})
 }
 
@@ -124,8 +130,21 @@ func (l Lectern) TurnPage(pos cube.Pos, tx *world.Tx, page int) error {
 		return fmt.Errorf("page number %d is out of bounds", page)
 	}
 	l.Page = page
+	l.Powered = true
 	tx.SetBlock(pos, l, nil)
+	notifyComparatorUpdate(pos, tx)
+	tx.ScheduleBlockUpdate(pos, l, redstoneTicks(1))
 	return nil
+}
+
+// ScheduledTick ...
+func (l Lectern) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	if !l.Powered {
+		return
+	}
+	l.Powered = false
+	tx.SetBlock(pos, l, nil)
+	notifyComparatorUpdate(pos, tx)
 }
 
 // EncodeNBT ...
@@ -158,8 +177,24 @@ func (Lectern) EncodeItem() (name string, meta int16) {
 func (l Lectern) EncodeBlock() (string, map[string]any) {
 	return "minecraft:lectern", map[string]any{
 		"minecraft:cardinal_direction": l.Facing.String(),
-		"powered_bit":                  boolByte(!l.Book.Empty()),
+		"powered_bit":                  boolByte(l.Powered),
 	}
+}
+
+// RedstoneWeakPower ...
+func (l Lectern) RedstoneWeakPower(cube.Face) uint8 {
+	if l.Powered {
+		return 15
+	}
+	return 0
+}
+
+// RedstoneStrongPower ...
+func (l Lectern) RedstoneStrongPower(face cube.Face) uint8 {
+	if face == cube.FaceDown {
+		return l.RedstoneWeakPower(face)
+	}
+	return 0
 }
 
 // ComparatorOutput returns the redstone signal output for a comparator.
@@ -193,6 +228,7 @@ func (l Lectern) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
 func allLecterns() (lecterns []world.Block) {
 	for _, f := range cube.Directions() {
 		lecterns = append(lecterns, Lectern{Facing: f})
+		lecterns = append(lecterns, Lectern{Facing: f, Powered: true})
 	}
 	return
 }

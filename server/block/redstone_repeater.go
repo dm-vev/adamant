@@ -59,15 +59,18 @@ func (r RedstoneRepeater) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand
 	if r.isLocked(pos, tx) {
 		return
 	}
+	outputPos := pos.Side(r.Facing.Opposite().Face())
 	shouldPower := r.shouldBePowered(pos, tx)
 	if r.Powered && !shouldPower {
 		r.Powered = false
-		tx.SetBlock(pos, r, nil)
+		tx.SetBlock(pos, r, &world.SetOpts{DisableBlockUpdates: true})
+		tx.DoBlockUpdatesAround(outputPos)
 		return
 	}
 	if !r.Powered && shouldPower {
 		r.Powered = true
-		tx.SetBlock(pos, r, nil)
+		tx.SetBlock(pos, r, &world.SetOpts{DisableBlockUpdates: true})
+		tx.DoBlockUpdatesAround(outputPos)
 		if !r.shouldBePowered(pos, tx) {
 			tx.ScheduleBlockUpdate(pos, r, redstoneTicks(r.delayTicks()))
 		}

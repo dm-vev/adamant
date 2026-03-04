@@ -55,9 +55,11 @@ func (c Cake) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *
 		c.Bites++
 		if c.Bites > 6 {
 			tx.SetBlock(pos, nil, nil)
+			notifyComparatorUpdate(pos, tx)
 			return true
 		}
 		tx.SetBlock(pos, c, nil)
+		notifyComparatorUpdate(pos, tx)
 		return true
 	}
 	return false
@@ -81,6 +83,18 @@ func (c Cake) EncodeBlock() (name string, properties map[string]any) {
 // Model ...
 func (c Cake) Model() world.BlockModel {
 	return model.Cake{Bites: c.Bites}
+}
+
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (c Cake) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	signal := (7 - c.Bites) << 1
+	if signal < 0 {
+		return 0
+	}
+	if signal > 15 {
+		return 15
+	}
+	return uint8(signal)
 }
 
 // allCake ...

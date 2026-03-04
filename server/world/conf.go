@@ -155,7 +155,6 @@ func (conf Config) New() *World {
 		go w.generatorWorker()
 	}
 	go w.handleTransactions()
-	w.redstone = newRedstoneEngine(w)
 
 	<-w.Exec(t.tick)
 	return w

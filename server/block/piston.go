@@ -1,13 +1,16 @@
 package block
 
 import (
+	"maps"
+	"math"
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
 )
 
 const (
@@ -16,7 +19,8 @@ const (
 	pistonStateExtended
 	pistonStateRetracting
 
-	pistonMoveStep float32 = 0.5
+	pistonMoveStep  float32 = 0.5
+	pistonMoveLimit         = 12
 )
 
 // Piston is a block that can push blocks when powered.
@@ -27,6 +31,7 @@ type Piston struct {
 	Sticky bool
 
 	Moving       bool
+	Powered      bool
 	Extending    bool
 	Progress     float32
 	LastProgress float32
@@ -48,21 +53,68 @@ func (p Piston) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	}
 	p.Facing = calculateFace(user, pos)
 	place(tx, pos, p, user, ctx)
+	if placed(ctx) {
+		tx.ScheduleBlockUpdate(pos, p, 0)
+	}
 	return placed(ctx)
 }
 
 // NeighbourUpdateTick ...
 func (p Piston) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	p.handleState(pos, tx)
+}
+
+// ScheduledTick ...
+func (p Piston) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	p.handleState(pos, tx)
+}
+
+// Tick ...
+func (p Piston) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
+	if !p.Moving {
+		return
+	}
+	if p.Extending {
+		p.Progress = min(1, p.Progress+pistonMoveStep)
+		p.LastProgress = min(1, p.LastProgress+pistonMoveStep)
+	} else {
+		p.Progress = max(0, p.Progress-pistonMoveStep)
+		p.LastProgress = max(0, p.LastProgress-pistonMoveStep)
+	}
+
+	p.moveCollidedEntities(pos, tx)
+	if p.Progress == p.LastProgress {
+		p.finishMove(pos, tx)
+		return
+	}
+	p.store(pos, tx)
+}
+
+func (p Piston) handleState(pos cube.Pos, tx *world.Tx) {
+	powered := p.shouldExtend(pos, tx)
 	if p.Moving {
+		if p.Powered != powered {
+			p.Powered = powered
+			p.store(pos, tx)
+		}
 		return
 	}
-	shouldExtend := p.shouldExtend(pos, tx)
-	if shouldExtend && !p.extended(pos, tx) {
-		p.extend(pos, tx)
-		return
+
+	if powered && !p.extended(pos, tx) {
+		p.Powered = true
+		if p.doMove(pos, tx, true) {
+			return
+		}
 	}
-	if !shouldExtend && p.extended(pos, tx) {
-		p.retract(pos, tx)
+	if !powered && p.extended(pos, tx) {
+		p.Powered = false
+		if p.doMove(pos, tx, false) {
+			return
+		}
+	}
+	if p.Powered != powered {
+		p.Powered = powered
+		p.store(pos, tx)
 	}
 }
 
@@ -91,89 +143,250 @@ func (p Piston) shouldExtend(pos cube.Pos, tx *world.Tx) bool {
 }
 
 func (p Piston) extended(pos cube.Pos, tx *world.Tx) bool {
-	_, ok := tx.Block(pos.Side(p.Facing)).(PistonHead)
-	return ok
+	front := tx.Block(pos.Side(p.Facing))
+	if head, ok := front.(PistonHead); ok {
+		return head.Facing == p.Facing && head.Sticky == p.Sticky
+	}
+	if moving, ok := front.(MovingBlock); ok {
+		return moving.PistonPos == pos
+	}
+	return false
 }
 
-func (p Piston) extend(pos cube.Pos, tx *world.Tx) {
-	dir := p.Facing
-	headPos := pos.Side(dir)
-	blocks, ok := p.collectMoveBlocks(headPos, dir, tx)
-	if !ok {
-		return
+func (p Piston) doMove(pos cube.Pos, tx *world.Tx, extending bool) bool {
+	calc := newPistonMoveCalculator(pos, p, tx, extending)
+	canMove := calc.canMove()
+	if !canMove && extending {
+		return false
 	}
-	if !p.spawnMovingBlocks(pos, blocks, dir, tx) {
-		return
-	}
-	tx.SetBlock(headPos, PistonHead{Facing: dir, Sticky: p.Sticky}, nil)
-	p.startMove(true, blocks)
-	tx.PlaySound(pos.Vec3Centre(), sound.PistonOut{})
-	tx.SetBlock(pos, p, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
-}
 
-func (p Piston) retract(pos cube.Pos, tx *world.Tx) {
-	dir := p.Facing
-	headPos := pos.Side(dir)
-	blocks := make([]cube.Pos, 0, 1)
-	if p.Sticky {
-		pullPos := headPos.Side(dir)
-		if !isEmptyOrReplaceable(tx, pullPos) && !isPistonImmovable(tx.Block(pullPos)) {
-			blocks = append(blocks, pullPos)
+	attached := make([]cube.Pos, 0)
+	if canMove && (p.Sticky || extending) {
+		for i := len(calc.toDestroy) - 1; i >= 0; i-- {
+			destroyPos := calc.toDestroy[i]
+			breakBlock(tx.Block(destroyPos), destroyPos, tx)
+		}
+		attached = append(attached, calc.toMove...)
+		moveDir := p.Facing
+		if !extending {
+			moveDir = moveDir.Opposite()
+		}
+		if !p.spawnMovingBlocks(pos, calc.toMove, moveDir, tx) {
+			return false
 		}
 	}
-	if !p.spawnMovingBlocks(pos, blocks, dir.Opposite(), tx) {
-		return
-	}
-	p.startMove(false, blocks)
-	tx.PlaySound(pos.Vec3Centre(), sound.PistonIn{})
-	tx.SetBlock(pos, p, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
-}
 
-// Tick ...
-func (p Piston) Tick(currentTick int64, pos cube.Pos, tx *world.Tx) {
-	if !p.Moving {
-		return
+	if extending {
+		tx.SetBlock(pos.Side(p.Facing), PistonHead{Facing: p.Facing, Sticky: p.Sticky}, nil)
 	}
-	if p.Extending {
-		p.Progress += pistonMoveStep
-		if p.Progress > 1 {
-			p.Progress = 1
-		}
-		p.LastProgress += pistonMoveStep
-		if p.LastProgress > 1 {
-			p.LastProgress = 1
-		}
+
+	p.startMove(extending, attached)
+	p.moveCollidedEntities(pos, tx)
+	if extending {
+		tx.PlaySound(pos.Vec3Centre(), sound.PistonOut{})
 	} else {
-		p.Progress -= pistonMoveStep
-		if p.Progress < 0 {
-			p.Progress = 0
-		}
-		p.LastProgress -= pistonMoveStep
-		if p.LastProgress < 0 {
-			p.LastProgress = 0
-		}
+		tx.PlaySound(pos.Vec3Centre(), sound.PistonIn{})
 	}
-
-	if p.Progress == p.LastProgress {
-		p.finishMove(pos, tx)
-		return
-	}
-	tx.SetBlock(pos, p, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
+	p.store(pos, tx)
+	return true
 }
 
-// ScheduledTick ...
-func (p Piston) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if p.Moving {
+func (p *Piston) startMove(extending bool, blocks []cube.Pos) {
+	p.Moving = true
+	p.Extending = extending
+	p.Attached = append(p.Attached[:0], blocks...)
+	if extending {
+		p.State = pistonStateExtending
+		p.NewState = pistonStateExtending
+		p.Progress = 0
+		p.LastProgress = -pistonMoveStep
 		return
 	}
-	shouldExtend := p.shouldExtend(pos, tx)
-	if shouldExtend && !p.extended(pos, tx) {
-		p.extend(pos, tx)
+	p.State = pistonStateRetracting
+	p.NewState = pistonStateRetracting
+	p.Progress = 1
+	p.LastProgress = 1 + pistonMoveStep
+}
+
+func (p *Piston) finishMove(pos cube.Pos, tx *world.Tx) {
+	pushDir := p.Facing
+	if p.Extending {
+		p.State = pistonStateExtended
+		p.NewState = pistonStateExtended
+	} else {
+		p.State = pistonStateRetracted
+		p.NewState = pistonStateRetracted
+		p.Extending = false
+		pushDir = p.Facing.Opposite()
+	}
+
+	for _, basePos := range p.Attached {
+		movingPos := basePos.Side(pushDir)
+		mb, ok := tx.Block(movingPos).(MovingBlock)
+		if !ok {
+			continue
+		}
+		moved := mb.Moving
+		if moved == nil {
+			tx.SetBlock(movingPos, nil, nil)
+			continue
+		}
+		if mb.MovingEntity != nil {
+			if nbtBlock, ok := moved.(world.NBTer); ok {
+				movingEntity := maps.Clone(mb.MovingEntity)
+				movingEntity["x"] = int32(movingPos.X())
+				movingEntity["y"] = int32(movingPos.Y())
+				movingEntity["z"] = int32(movingPos.Z())
+				if decoded, ok := nbtBlock.DecodeNBT(movingEntity).(world.Block); ok {
+					moved = decoded
+				}
+			}
+		}
+		tx.SetBlock(movingPos, moved, nil)
+	}
+
+	if !p.Extending {
+		headPos := pos.Side(p.Facing)
+		if _, ok := tx.Block(headPos).(PistonHead); ok {
+			tx.SetBlock(headPos, nil, nil)
+		}
+	}
+
+	p.Moving = false
+	p.Attached = nil
+	p.store(pos, tx)
+	tx.ScheduleBlockUpdate(pos, *p, redstoneTicks(1))
+}
+
+func (p Piston) spawnMovingBlocks(pistonPos cube.Pos, blocks []cube.Pos, dir cube.Face, tx *world.Tx) bool {
+	for i := len(blocks) - 1; i >= 0; i-- {
+		from := blocks[i]
+		to := from.Side(dir)
+		b := tx.Block(from)
+		movingEntity := encodeNestedBlockEntity(from, b)
+		tx.SetBlock(to, MovingBlock{Moving: b, MovingEntity: movingEntity, PistonPos: pistonPos}, nil)
+		tx.SetBlock(from, nil, nil)
+	}
+	return true
+}
+
+func (p Piston) moveCollidedEntities(pos cube.Pos, tx *world.Tx) {
+	step := math.Abs(float64(p.Progress - p.LastProgress))
+	if step == 0 {
 		return
 	}
-	if !shouldExtend && p.extended(pos, tx) {
-		p.retract(pos, tx)
+	pushDir := p.Facing
+	if !p.Extending {
+		pushDir = pushDir.Opposite()
 	}
+	moved := make(map[*world.EntityHandle]struct{}, 8)
+	for _, basePos := range p.Attached {
+		movingPos := basePos.Side(pushDir)
+		mb, ok := tx.Block(movingPos).(MovingBlock)
+		if !ok {
+			continue
+		}
+		for _, box := range movingBlockBoxes(mb, movingPos, p, pushDir, tx) {
+			p.moveEntitiesInBox(box, pushDir, step, tx, moved)
+		}
+	}
+	armBox := cube.Box(0, 0, 0, 1, 1, 1).Translate(pos.Vec3()).Translate(faceOffset(pushDir, float64(p.Progress)))
+	p.moveEntitiesInBox(armBox, pushDir, step, tx, moved)
+}
+
+func (p Piston) moveEntitiesInBox(box cube.BBox, dir cube.Face, distance float64, tx *world.Tx, moved map[*world.EntityHandle]struct{}) {
+	search := box.Grow(1)
+	for e := range tx.EntitiesWithin(search) {
+		if _, ok := moved[e.H()]; ok {
+			continue
+		}
+		if !e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
+			continue
+		}
+		if pushEntityByPiston(e, dir, distance) {
+			moved[e.H()] = struct{}{}
+		}
+	}
+}
+
+func movingBlockBoxes(mb MovingBlock, pos cube.Pos, piston Piston, dir cube.Face, tx *world.Tx) []cube.BBox {
+	if mb.Moving == nil {
+		return nil
+	}
+	boxes := mb.Moving.Model().BBox(pos, tx)
+	if len(boxes) == 0 {
+		return nil
+	}
+	translated := make([]cube.BBox, 0, len(boxes))
+	offset := faceOffset(dir, float64(piston.Progress)).Sub(faceOffset(dir, 1))
+	for _, box := range boxes {
+		translated = append(translated, box.Translate(pos.Vec3()).Translate(offset))
+	}
+	return translated
+}
+
+func pushEntityByPiston(e world.Entity, dir cube.Face, distance float64) bool {
+	delta := faceOffset(dir, distance)
+	if mover, ok := e.(interface {
+		Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64)
+	}); ok {
+		mover.Move(delta, 0, 0)
+		return true
+	}
+	if traveller, ok := e.(interface {
+		Teleport(pos mgl64.Vec3)
+	}); ok {
+		traveller.Teleport(e.Position().Add(delta))
+		return true
+	}
+	if mover, ok := e.(interface {
+		SetVelocity(v mgl64.Vec3)
+		Velocity() mgl64.Vec3
+	}); ok {
+		mover.SetVelocity(mover.Velocity().Add(delta))
+		return true
+	}
+	return false
+}
+
+func faceOffset(face cube.Face, distance float64) mgl64.Vec3 {
+	switch face {
+	case cube.FaceDown:
+		return mgl64.Vec3{0, -distance}
+	case cube.FaceUp:
+		return mgl64.Vec3{0, distance}
+	case cube.FaceNorth:
+		return mgl64.Vec3{0, 0, -distance}
+	case cube.FaceSouth:
+		return mgl64.Vec3{0, 0, distance}
+	case cube.FaceWest:
+		return mgl64.Vec3{-distance}
+	case cube.FaceEast:
+		return mgl64.Vec3{distance}
+	default:
+		return mgl64.Vec3{}
+	}
+}
+
+func encodeNestedBlockEntity(pos cube.Pos, b world.Block) map[string]any {
+	nbter, ok := b.(world.NBTer)
+	if !ok {
+		return nil
+	}
+	data := nbter.EncodeNBT()
+	if data == nil {
+		data = map[string]any{}
+	} else {
+		data = maps.Clone(data)
+	}
+	data["x"] = int32(pos.X())
+	data["y"] = int32(pos.Y())
+	data["z"] = int32(pos.Z())
+	return data
+}
+
+func (p Piston) store(pos cube.Pos, tx *world.Tx) {
+	tx.SetBlock(pos, p, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 }
 
 // EncodeNBT ...
@@ -184,17 +397,17 @@ func (p Piston) EncodeNBT() map[string]any {
 	}
 	return map[string]any{
 		"id":             "PistonArm",
-		"Progress":       float32(p.Progress),
-		"LastProgress":   float32(p.LastProgress),
+		"Progress":       p.Progress,
+		"LastProgress":   p.LastProgress,
 		"isMovable":      !p.Moving,
 		"facing":         int32(pistonFacingDirection(p.Facing)),
-		"Extending":      p.Extending,
-		"powered":        p.Extending,
+		"Extending":      boolByte(p.Extending),
+		"powered":        boolByte(p.Powered),
 		"AttachedBlocks": attached,
 		"BreakBlocks":    []int32{},
-		"Sticky":         p.Sticky,
-		"State":          byte(p.State),
-		"NewState":       byte(p.NewState),
+		"Sticky":         boolByte(p.Sticky),
+		"State":          p.State,
+		"NewState":       p.NewState,
 	}
 }
 
@@ -202,9 +415,10 @@ func (p Piston) EncodeNBT() map[string]any {
 func (p Piston) DecodeNBT(data map[string]any) any {
 	p.Progress = nbtconv.Float32(data, "Progress")
 	p.LastProgress = nbtconv.Float32(data, "LastProgress")
+	p.Powered = nbtconv.Bool(data, "powered")
 	p.State = nbtconv.Uint8(data, "State")
 	p.NewState = nbtconv.Uint8(data, "NewState")
-	p.Extending = p.State == pistonStateExtending || p.State == pistonStateExtended
+	p.Extending = nbtconv.Bool(data, "Extending")
 	p.Moving = p.State == pistonStateExtending || p.State == pistonStateRetracting
 	p.Attached = decodePistonAttachedBlocks(data)
 	return p
@@ -241,110 +455,6 @@ func decodePistonAttachedBlocks(data map[string]any) []cube.Pos {
 	return positions
 }
 
-func (p *Piston) startMove(extending bool, blocks []cube.Pos) {
-	p.Moving = true
-	p.Extending = extending
-	p.Attached = blocks
-	if extending {
-		p.State = pistonStateExtending
-		p.NewState = pistonStateExtending
-		p.Progress = 0
-		p.LastProgress = -pistonMoveStep
-		return
-	}
-	p.State = pistonStateRetracting
-	p.NewState = pistonStateRetracting
-	p.Progress = 1
-	p.LastProgress = 1 + pistonMoveStep
-}
-
-func (p Piston) collectMoveBlocks(headPos cube.Pos, dir cube.Face, tx *world.Tx) ([]cube.Pos, bool) {
-	blocks := make([]cube.Pos, 0, 12)
-	cur := headPos
-
-	for i := 0; i < 12; i++ {
-		if isEmptyOrReplaceable(tx, cur) {
-			return blocks, true
-		}
-		if isPistonImmovable(tx.Block(cur)) {
-			return nil, false
-		}
-		blocks = append(blocks, cur)
-		cur = cur.Side(dir)
-	}
-
-	if !isEmptyOrReplaceable(tx, cur) {
-		return nil, false
-	}
-	return blocks, true
-}
-
-func (p Piston) spawnMovingBlocks(pistonPos cube.Pos, blocks []cube.Pos, dir cube.Face, tx *world.Tx) bool {
-	if len(blocks) == 0 {
-		return true
-	}
-	for i := len(blocks) - 1; i >= 0; i-- {
-		from := blocks[i]
-		to := from.Side(dir)
-		b := tx.Block(from)
-		var movingEntity map[string]any
-		if nbt, ok := b.(world.NBTer); ok {
-			movingEntity = nbt.EncodeNBT()
-		}
-		tx.SetBlock(to, MovingBlock{Moving: b, MovingEntity: movingEntity, PistonPos: pistonPos}, nil)
-		tx.SetBlock(from, nil, nil)
-	}
-	return true
-}
-
-func (p *Piston) finishMove(pos cube.Pos, tx *world.Tx) {
-	if p.Extending {
-		p.State = pistonStateExtended
-		p.NewState = pistonStateExtended
-	} else {
-		p.State = pistonStateRetracted
-		p.NewState = pistonStateRetracted
-	}
-
-	pushDir := p.Facing
-	if !p.Extending {
-		pushDir = p.Facing.Opposite()
-	}
-
-	for _, basePos := range p.Attached {
-		movingPos := basePos.Side(pushDir)
-		mb, ok := tx.Block(movingPos).(MovingBlock)
-		if !ok {
-			continue
-		}
-		moved := mb.Moving
-		if moved == nil {
-			tx.SetBlock(movingPos, nil, nil)
-			continue
-		}
-		if mb.MovingEntity != nil {
-			if nbtBlock, ok := moved.(world.NBTer); ok {
-				if decoded, ok := nbtBlock.DecodeNBT(mb.MovingEntity).(world.Block); ok {
-					moved = decoded
-				}
-			}
-		}
-		tx.SetBlock(movingPos, moved, nil)
-	}
-
-	if !p.Extending {
-		headPos := pos.Side(p.Facing)
-		if _, ok := tx.Block(headPos).(PistonHead); ok {
-			tx.SetBlock(headPos, nil, nil)
-		}
-	}
-
-	p.Moving = false
-	p.Attached = nil
-	tx.SetBlock(pos, *p, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
-	tx.ScheduleBlockUpdate(pos, *p, redstoneTicks(1))
-}
-
 // EncodeItem ...
 func (p Piston) EncodeItem() (name string, meta int16) {
 	if p.Sticky {
@@ -369,6 +479,7 @@ func (Piston) RedstoneConnectsTo(cube.Face) bool {
 // PistonHead is the collision block placed in front of an extended piston.
 type PistonHead struct {
 	solid
+	transparent
 
 	Facing cube.Face
 	Sticky bool
@@ -426,6 +537,84 @@ func isEmptyOrReplaceable(tx *world.Tx, pos cube.Pos) bool {
 	return false
 }
 
+func canPushBlock(pos cube.Pos, b world.Block, face cube.Face, destroyBlocks, extending bool, tx *world.Tx, pistonPos cube.Pos) bool {
+	if pos.Y() < tx.Range()[0] || pos.Y() > tx.Range()[1] {
+		return false
+	}
+	if face == cube.FaceDown && pos.Y() == tx.Range()[0] {
+		return false
+	}
+	if face == cube.FaceUp && pos.Y() == tx.Range()[1] {
+		return false
+	}
+	if pos == pistonPos {
+		return false
+	}
+	if isEmptyOrReplaceable(tx, pos) {
+		return true
+	}
+	if isPistonImmovable(b) {
+		return false
+	}
+	if breaksWhenMoved(b) {
+		return destroyBlocks || sticksToPiston(b)
+	}
+	return true
+}
+
+func breaksWhenMoved(b world.Block) bool {
+	name, _ := b.EncodeBlock()
+	switch name {
+	case "minecraft:redstone_wire",
+		"minecraft:redstone_torch",
+		"minecraft:unlit_redstone_torch",
+		"minecraft:torch",
+		"minecraft:soul_torch",
+		"minecraft:lever",
+		"minecraft:trip_wire",
+		"minecraft:tripwire",
+		"minecraft:tripwire_hook",
+		"minecraft:ladder",
+		"minecraft:vine",
+		"minecraft:weeping_vines",
+		"minecraft:twisting_vines",
+		"minecraft:deadbush",
+		"minecraft:short_grass",
+		"minecraft:tallgrass",
+		"minecraft:fern",
+		"minecraft:double_plant",
+		"minecraft:waterlily",
+		"minecraft:banner",
+		"minecraft:standing_banner",
+		"minecraft:wall_banner",
+		"minecraft:standing_sign",
+		"minecraft:wall_sign",
+		"minecraft:skull",
+		"minecraft:item_frame",
+		"minecraft:glow_frame",
+		"minecraft:snow_layer",
+		"minecraft:candle",
+		"minecraft:flower_pot",
+		"minecraft:rail",
+		"minecraft:golden_rail",
+		"minecraft:detector_rail",
+		"minecraft:activator_rail":
+		return true
+	default:
+		return false
+	}
+}
+
+func sticksToPiston(b world.Block) bool {
+	name, _ := b.EncodeBlock()
+	switch name {
+	case "minecraft:slime", "minecraft:slime_block", "minecraft:honey_block":
+		return true
+	default:
+		return false
+	}
+}
+
 func isPistonImmovable(b world.Block) bool {
 	name, _ := b.EncodeBlock()
 	switch name {
@@ -444,6 +633,190 @@ func isPistonImmovable(b world.Block) bool {
 	default:
 		return false
 	}
+}
+
+type pistonMoveCalculator struct {
+	pistonPos      cube.Pos
+	armPos         cube.Pos
+	blockToMove    cube.Pos
+	hasBlockToMove bool
+	moveDirection  cube.Face
+	extending      bool
+	sticky         bool
+	tx             *world.Tx
+	toMove         []cube.Pos
+	toDestroy      []cube.Pos
+}
+
+func newPistonMoveCalculator(pos cube.Pos, piston Piston, tx *world.Tx, extending bool) pistonMoveCalculator {
+	calc := pistonMoveCalculator{
+		pistonPos: pos,
+		extending: extending,
+		sticky:    piston.Sticky,
+		tx:        tx,
+		toMove:    make([]cube.Pos, 0, pistonMoveLimit),
+		toDestroy: make([]cube.Pos, 0, 1),
+	}
+	face := piston.Facing
+	if extending {
+		calc.moveDirection = face
+		calc.blockToMove = pos.Side(face)
+		calc.hasBlockToMove = true
+		return calc
+	}
+	calc.armPos = pos.Side(face)
+	calc.moveDirection = face.Opposite()
+	if piston.Sticky {
+		calc.blockToMove = stepPos(pos, face, 2)
+		calc.hasBlockToMove = true
+	}
+	return calc
+}
+
+func (c *pistonMoveCalculator) canMove() bool {
+	if !c.sticky && !c.extending {
+		return true
+	}
+	c.toMove = c.toMove[:0]
+	c.toDestroy = c.toDestroy[:0]
+	if !c.hasBlockToMove {
+		return true
+	}
+
+	block := c.tx.Block(c.blockToMove)
+	if !canPushBlock(c.blockToMove, block, c.moveDirection, true, c.extending, c.tx, c.pistonPos) {
+		return false
+	}
+	if breaksWhenMoved(block) {
+		if c.extending || sticksToPiston(block) {
+			c.toDestroy = append(c.toDestroy, c.blockToMove)
+		}
+		return true
+	}
+	if !c.addBlockLine(c.blockToMove, c.moveDirection) {
+		return false
+	}
+	for _, pos := range append([]cube.Pos(nil), c.toMove...) {
+		if sticksToPiston(c.tx.Block(pos)) && !c.addBranchingBlocks(pos) {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *pistonMoveCalculator) addBlockLine(origin cube.Pos, _ cube.Face) bool {
+	block := c.tx.Block(origin)
+	if isEmptyOrReplaceable(c.tx, origin) {
+		return true
+	}
+	if !canPushBlock(origin, block, c.moveDirection, false, c.extending, c.tx, c.pistonPos) {
+		return true
+	}
+	if origin == c.pistonPos || containsPos(c.toMove, origin) {
+		return true
+	}
+	if len(c.toMove) >= pistonMoveLimit {
+		return false
+	}
+	c.toMove = append(c.toMove, origin)
+
+	count := 1
+	stuck := make([]cube.Pos, 0, 4)
+	for sticksToPiston(block) {
+		nextPos := stepPos(origin, c.moveDirection.Opposite(), count)
+		next := c.tx.Block(nextPos)
+		if isEmptyOrReplaceable(c.tx, nextPos) || !canPushBlock(nextPos, next, c.moveDirection, false, c.extending, c.tx, c.pistonPos) || nextPos == c.pistonPos {
+			break
+		}
+		if breaksWhenMoved(next) {
+			if sticksToPiston(next) {
+				c.toDestroy = append(c.toDestroy, nextPos)
+			}
+			break
+		}
+		count++
+		if count+len(c.toMove) > pistonMoveLimit {
+			return false
+		}
+		stuck = append(stuck, nextPos)
+	}
+	if len(stuck) > 0 {
+		for i := len(stuck) - 1; i >= 0; i-- {
+			c.toMove = append(c.toMove, stuck[i])
+		}
+	}
+
+	stuckCount := len(stuck)
+	step := 1
+	for {
+		nextPos := stepPos(origin, c.moveDirection, step)
+		if index := indexPos(c.toMove, nextPos); index > -1 {
+			c.reorderListAtCollision(stuckCount, index)
+			for i := 0; i <= index+stuckCount; i++ {
+				if sticksToPiston(c.tx.Block(c.toMove[i])) && !c.addBranchingBlocks(c.toMove[i]) {
+					return false
+				}
+			}
+			return true
+		}
+		if isEmptyOrReplaceable(c.tx, nextPos) || nextPos == c.armPos {
+			return true
+		}
+		next := c.tx.Block(nextPos)
+		if !canPushBlock(nextPos, next, c.moveDirection, true, c.extending, c.tx, c.pistonPos) || nextPos == c.pistonPos {
+			return false
+		}
+		if breaksWhenMoved(next) {
+			c.toDestroy = append(c.toDestroy, nextPos)
+			return true
+		}
+		if len(c.toMove) >= pistonMoveLimit {
+			return false
+		}
+		c.toMove = append(c.toMove, nextPos)
+		stuckCount++
+		step++
+	}
+}
+
+func (c *pistonMoveCalculator) reorderListAtCollision(count, index int) {
+	list := append([]cube.Pos(nil), c.toMove[:index]...)
+	list1 := append([]cube.Pos(nil), c.toMove[len(c.toMove)-count:]...)
+	list2 := append([]cube.Pos(nil), c.toMove[index:len(c.toMove)-count]...)
+	c.toMove = append(list, list1...)
+	c.toMove = append(c.toMove, list2...)
+}
+
+func (c *pistonMoveCalculator) addBranchingBlocks(pos cube.Pos) bool {
+	for _, face := range cube.Faces() {
+		if face.Axis() == c.moveDirection.Axis() {
+			continue
+		}
+		if !c.addBlockLine(pos.Side(face), face) {
+			return false
+		}
+	}
+	return true
+}
+
+func stepPos(pos cube.Pos, face cube.Face, count int) cube.Pos {
+	for i := 0; i < count; i++ {
+		pos = pos.Side(face)
+	}
+	return pos
+}
+
+func containsPos(positions []cube.Pos, pos cube.Pos) bool {
+	return indexPos(positions, pos) != -1
+}
+
+func indexPos(positions []cube.Pos, pos cube.Pos) int {
+	for i, current := range positions {
+		if current == pos {
+			return i
+		}
+	}
+	return -1
 }
 
 func allPistons() (pistons []world.Block) {

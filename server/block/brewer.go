@@ -95,6 +95,7 @@ func (b *brewer) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 
 		_ = b.Inventory(tx, pos).SetItem(slot, stack)
 		_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
+		notifyComparatorUpdate(pos, tx)
 		return true
 
 	}
@@ -113,6 +114,7 @@ func (b *brewer) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 			continue
 		}
 		_ = b.Inventory(tx, pos).SetItem(sourceSlot, sourceStack.Grow(-1))
+		notifyComparatorUpdate(pos, tx)
 		return true
 	}
 	return false
@@ -168,8 +170,9 @@ func (b *brewer) setFuel(fuel, maxFuel int32) {
 
 // tickBrewing ticks the brewer, ensuring the necessary items exist in the brewer, and then processing all inputted
 // items for the necessary duration.
-func (b *brewer) tickBrewing(block string, pos cube.Pos, tx *world.Tx) {
+func (b *brewer) tickBrewing(block string, pos cube.Pos, tx *world.Tx) bool {
 	b.mu.Lock()
+	inventoryChanged := false
 
 	// Get each item in the brewer. We don't need to validate errors here since we know the bounds of the brewer.
 	left, _ := b.inventory.Item(1)
@@ -186,6 +189,7 @@ func (b *brewer) tickBrewing(block string, pos cube.Pos, tx *world.Tx) {
 	fuel, _ := b.inventory.Item(4)
 
 	if _, ok := fuel.Item().(item.BlazePowder); ok && b.fuelAmount <= 0 {
+		inventoryChanged = true
 		defer b.inventory.SetItem(4, fuel.Grow(-1))
 		b.fuelAmount, b.fuelTotal = 20, 20
 	}
@@ -212,16 +216,20 @@ func (b *brewer) tickBrewing(block string, pos cube.Pos, tx *world.Tx) {
 			if b.duration <= 0 {
 				// Create the output items.
 				if leftAffected {
+					inventoryChanged = true
 					defer b.inventory.SetItem(1, leftOutput[0])
 				}
 				if middleAffected {
+					inventoryChanged = true
 					defer b.inventory.SetItem(2, middleOutput[0])
 				}
 				if rightAffected {
+					inventoryChanged = true
 					defer b.inventory.SetItem(3, rightOutput[0])
 				}
 
 				// Reduce the ingredient by one.
+				inventoryChanged = true
 				defer b.inventory.SetItem(0, ingredient.Grow(-1))
 				tx.PlaySound(pos.Vec3Centre(), sound.PotionBrewed{})
 
@@ -244,4 +252,5 @@ func (b *brewer) tickBrewing(block string, pos cube.Pos, tx *world.Tx) {
 	}
 
 	b.mu.Unlock()
+	return inventoryChanged
 }

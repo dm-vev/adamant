@@ -64,6 +64,7 @@ func (c CandleCake) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.Use
 		tx.PlaySound(u.Position().Add(mgl64.Vec3{0, 1.5}), sound.Burp{})
 		dropItem(tx, item.NewStack(Candle{Colour: c.Colour, Coloured: c.Coloured}, 1), pos.Vec3Centre())
 		tx.SetBlock(pos, Cake{Bites: 1}, nil)
+		notifyComparatorUpdate(pos, tx)
 		return true
 	}
 	return false
@@ -120,6 +121,11 @@ func (c CandleCake) EncodeBlock() (name string, properties map[string]any) {
 // Model ...
 func (CandleCake) Model() world.BlockModel {
 	return model.Cake{Bites: 0}
+}
+
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (CandleCake) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	return 14
 }
 
 // allCandleCakes returns all candle cake block states.

@@ -3308,9 +3308,7 @@ func (p *Player) TurnLecternPage(pos cube.Pos, page int) error {
 		return nil
 	}
 
-	lectern.Page = page
-	p.tx.SetBlock(pos, lectern, nil)
-	return nil
+	return lectern.TurnPage(pos, p.tx, page)
 }
 
 // updateState updates the state of the player to all viewers of the player.

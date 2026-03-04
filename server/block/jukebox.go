@@ -33,6 +33,7 @@ func (j Jukebox) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 		if m, ok := sourceStack.Item().(item.MusicDisc); ok {
 			j.Item = sourceStack
 			tx.SetBlock(pos, j, nil)
+			notifyComparatorUpdate(pos, tx)
 			_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
 			tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscPlay{DiscType: m.DiscType})
 			return true
@@ -43,9 +44,19 @@ func (j Jukebox) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 }
 
 // ExtractItem ...
-func (j Jukebox) ExtractItem(_ Hopper, _ cube.Pos, _ *world.Tx) bool {
-	// TODO: This functionality requires redstone to be implemented.
-	return false
+func (j Jukebox) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
+	if j.Item.Empty() {
+		return false
+	}
+	_, err := h.inventory.AddItem(j.Item.Grow(-j.Item.Count() + 1))
+	if err != nil {
+		return false
+	}
+	j.Item = item.Stack{}
+	tx.SetBlock(pos, j, nil)
+	notifyComparatorUpdate(pos, tx)
+	tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscEnd{})
+	return true
 }
 
 // FuelInfo ...
@@ -77,12 +88,14 @@ func (j Jukebox) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, 
 
 		j.Item = item.Stack{}
 		tx.SetBlock(pos, j, nil)
+		notifyComparatorUpdate(pos, tx)
 		tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscEnd{})
 	} else if held, _ := u.HeldItems(); !held.Empty() {
 		if m, ok := held.Item().(item.MusicDisc); ok {
 			j.Item = held
 
 			tx.SetBlock(pos, j, nil)
+			notifyComparatorUpdate(pos, tx)
 			tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscEnd{})
 			ctx.SubtractFromCount(1)
 
@@ -107,7 +120,40 @@ func (j Jukebox) Disc() (sound.DiscType, bool) {
 
 // ComparatorOutput returns the redstone signal output for a comparator.
 func (j Jukebox) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
-	if _, ok := j.Disc(); ok {
+	d, ok := j.Disc()
+	if !ok {
+		return 0
+	}
+	switch d.Uint8() {
+	case sound.Disc13().Uint8():
+		return 1
+	case sound.DiscCat().Uint8():
+		return 2
+	case sound.DiscBlocks().Uint8():
+		return 3
+	case sound.DiscChirp().Uint8():
+		return 4
+	case sound.DiscFar().Uint8():
+		return 5
+	case sound.DiscMall().Uint8():
+		return 6
+	case sound.DiscMellohi().Uint8():
+		return 7
+	case sound.DiscStal().Uint8():
+		return 8
+	case sound.DiscStrad().Uint8():
+		return 9
+	case sound.DiscWard().Uint8():
+		return 10
+	case sound.Disc11().Uint8():
+		return 11
+	case sound.DiscWait().Uint8():
+		return 12
+	case sound.DiscPigstep().Uint8():
+		return 13
+	case sound.DiscOtherside().Uint8():
+		return 14
+	case sound.Disc5().Uint8(), sound.DiscRelic().Uint8():
 		return 15
 	}
 	return 0

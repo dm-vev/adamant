@@ -53,6 +53,7 @@ func (c Composter) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 
 		c.Level = 0
 		tx.SetBlock(pos, c, nil)
+		notifyComparatorUpdate(pos, tx)
 		tx.PlaySound(pos.Vec3(), sound.ComposterEmpty{})
 		return true
 	}
@@ -95,6 +96,7 @@ func (c Composter) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User
 		if c.Level == 8 {
 			c.Level = 0
 			tx.SetBlock(pos, c, nil)
+			notifyComparatorUpdate(pos, tx)
 			dropItem(tx, item.NewStack(item.BoneMeal{}, 1), pos.Side(cube.FaceUp).Vec3Middle())
 			tx.PlaySound(pos.Vec3(), sound.ComposterEmpty{})
 		}
@@ -121,6 +123,7 @@ func (c Composter) fill(it item.Stack, pos cube.Pos, tx *world.Tx) bool {
 	}
 	c.Level++
 	tx.SetBlock(pos, c, nil)
+	notifyComparatorUpdate(pos, tx)
 	tx.PlaySound(pos.Vec3(), sound.ComposterFillLayer{})
 	if c.Level == 7 {
 		tx.ScheduleBlockUpdate(pos, c, time.Second)
@@ -134,6 +137,7 @@ func (c Composter) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if c.Level == 7 {
 		c.Level = 8
 		tx.SetBlock(pos, c, nil)
+		notifyComparatorUpdate(pos, tx)
 		tx.PlaySound(pos.Vec3(), sound.ComposterReady{})
 	}
 }
@@ -146,6 +150,17 @@ func (c Composter) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (c Composter) EncodeBlock() (string, map[string]any) {
 	return "minecraft:composter", map[string]any{"composter_fill_level": int32(c.Level)}
+}
+
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (c Composter) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	if c.Level < 0 {
+		return 0
+	}
+	if c.Level > 8 {
+		return 8
+	}
+	return uint8(c.Level)
 }
 
 // allComposters ...

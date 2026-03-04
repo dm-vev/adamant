@@ -46,6 +46,7 @@ func (f EndPortalFrame) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item
 
 	f.Eye = true
 	tx.SetBlock(pos, f, nil)
+	notifyComparatorUpdate(pos, tx)
 	tx.PlaySound(pos.Vec3Centre(), sound.BlockPlace{Block: f})
 	ctx.SubtractFromCount(1)
 	tryCreateEndPortal(tx, pos)
@@ -77,6 +78,14 @@ func allEndPortalFrames() (frames []world.Block) {
 		frames = append(frames, EndPortalFrame{Facing: d, Eye: true})
 	}
 	return
+}
+
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (f EndPortalFrame) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	if f.Eye {
+		return 15
+	}
+	return 0
 }
 
 func tryCreateEndPortal(tx *world.Tx, placed cube.Pos) {

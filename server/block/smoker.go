@@ -38,9 +38,13 @@ func (s Smoker) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if s.Lit && rand.Float64() <= 0.016 { // Every three or so seconds.
 		tx.PlaySound(pos.Vec3Centre(), sound.SmokerCrackle{})
 	}
-	if lit := s.smelter.tickSmelting(time.Second*5, s.Lit, func(i item.SmeltInfo) bool {
+	lit, inventoryChanged := s.smelter.tickSmelting(time.Second*5, s.Lit, func(i item.SmeltInfo) bool {
 		return i.Food
-	}); s.Lit != lit {
+	})
+	if inventoryChanged {
+		notifyComparatorUpdate(pos, tx)
+	}
+	if s.Lit != lit {
 		s.Lit = lit
 		tx.SetBlock(pos, s, nil)
 	}

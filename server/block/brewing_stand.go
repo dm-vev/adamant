@@ -55,7 +55,9 @@ func (b BrewingStand) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	}
 
 	// Tick brewing.
-	b.tickBrewing("brewing_stand", pos, tx)
+	if b.tickBrewing("brewing_stand", pos, tx) {
+		notifyComparatorUpdate(pos, tx)
+	}
 }
 
 // Activate ...

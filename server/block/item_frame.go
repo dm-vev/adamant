@@ -46,6 +46,7 @@ func (i ItemFrame) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User
 	}
 
 	tx.SetBlock(pos, i, nil)
+	notifyComparatorUpdate(pos.Side(i.Facing), tx)
 	return true
 }
 
@@ -65,6 +66,7 @@ func (i ItemFrame) Punch(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User) {
 	i.Item, i.Rotations = item.Stack{}, 0
 	tx.PlaySound(pos.Vec3Centre(), sound.ItemFrameRemove{})
 	tx.SetBlock(pos, i, nil)
+	notifyComparatorUpdate(pos.Side(i.Facing), tx)
 }
 
 // UseOnBlock ...

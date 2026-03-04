@@ -31,6 +31,7 @@ const (
 	tpsSampleSize              = 20
 	tpsWarningThreshold        = 19.0
 	passiveMaintenanceInterval = 80
+	maxNeighbourUpdatesPerTick = 16384
 )
 
 // tickLoop starts ticking the World 20 times every second, updating all
@@ -141,9 +142,6 @@ func (t ticker) tick(tx *Tx) {
 
 	t.tickEntities(tx, tick)
 	w.scheduledUpdates.tick(tx, tick)
-	if w.redstone != nil {
-		w.redstone.Apply(tx)
-	}
 	t.tickBlocksRandomly(tx, loaders, tick)
 	t.performNeighbourUpdates(tx)
 }
@@ -151,10 +149,9 @@ func (t ticker) tick(tx *Tx) {
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.
 func (t ticker) performNeighbourUpdates(tx *Tx) {
 	w := tx.World()
-	updates := w.neighbourUpdates
-	limit := len(updates)
-	for i := 0; i < limit; i++ {
-		update := updates[i]
+	processed := 0
+	for processed < len(w.neighbourUpdates) && processed < maxNeighbourUpdatesPerTick {
+		update := w.neighbourUpdates[processed]
 		pos, changedNeighbour := update.pos, update.neighbour
 		if ticker, ok := tx.Block(pos).(NeighbourUpdateTicker); ok {
 			ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
@@ -164,9 +161,10 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 				ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 			}
 		}
+		processed++
 	}
-	if len(w.neighbourUpdates) > limit {
-		remaining := w.neighbourUpdates[limit:]
+	if len(w.neighbourUpdates) > processed {
+		remaining := w.neighbourUpdates[processed:]
 		copy(w.neighbourUpdates, remaining)
 		w.neighbourUpdates = w.neighbourUpdates[:len(remaining)]
 		return

@@ -67,6 +67,7 @@ func (t RedstoneTorch) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 	t.Facing = face.Opposite()
 	t.Lit = true
 	place(tx, pos, t, user, ctx)
+	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(t.Facing))
 	return placed(ctx)
 }
@@ -90,6 +91,7 @@ func (t RedstoneTorch) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 		if shouldOff {
 			t.Lit = false
 			tx.SetBlock(pos, t, nil)
+			tx.DoBlockUpdatesAround(pos)
 			tx.DoBlockUpdatesAround(pos.Side(t.Facing))
 			if redstoneTorchBurnedOut(w, pos, true, now) {
 				tx.ScheduleBlockUpdate(pos, t, redstoneTicks(160))
@@ -101,6 +103,7 @@ func (t RedstoneTorch) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if !shouldOff && !redstoneTorchBurnedOut(w, pos, false, now) {
 		t.Lit = true
 		tx.SetBlock(pos, t, nil)
+		tx.DoBlockUpdatesAround(pos)
 		tx.DoBlockUpdatesAround(pos.Side(t.Facing))
 	}
 }

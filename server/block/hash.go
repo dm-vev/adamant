@@ -880,7 +880,7 @@ func (l Leaves) Hash() (uint64, uint64) {
 }
 
 func (l Lectern) Hash() (uint64, uint64) {
-	return hashLectern, uint64(l.Facing)
+	return hashLectern, uint64(l.Facing) | uint64(boolByte(l.Powered))<<2
 }
 
 func (l Lever) Hash() (uint64, uint64) {

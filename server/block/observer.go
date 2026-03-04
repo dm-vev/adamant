@@ -42,9 +42,6 @@ func (o Observer) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 	o.Facing = calculateFace(user, pos).Opposite()
 	o.Powered = false
 	place(tx, pos, o, user, ctx)
-	if !observerPulsePending(tx.World(), pos) {
-		tx.ScheduleBlockUpdate(pos, o, redstoneTicks(2))
-	}
 	return placed(ctx)
 }
 
@@ -59,7 +56,7 @@ func (o Observer) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.
 	if observerPulsePending(tx.World(), pos) {
 		return
 	}
-	tx.ScheduleBlockUpdate(pos, o, redstoneTicks(2))
+	tx.ScheduleBlockUpdate(pos, o, redstoneTicks(1))
 }
 
 // ScheduledTick ...

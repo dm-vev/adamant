@@ -52,6 +52,7 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 	if r.Charge < 4 && usingGlowstone {
 		r.Charge++
 		tx.SetBlock(pos, r, nil)
+		notifyComparatorUpdate(pos, tx)
 		ctx.SubtractFromCount(1)
 		tx.PlaySound(pos.Vec3Centre(), sound.RespawnAnchorCharge{Charge: r.Charge})
 		return true
@@ -70,6 +71,7 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 			return true
 		}
 		tx.SetBlock(pos, nil, nil)
+		notifyComparatorUpdate(pos, tx)
 		ExplosionConfig{
 			Size:      5,
 			SpawnFire: true,
@@ -94,5 +96,22 @@ func (r RespawnAnchor) CanRespawnOn() bool {
 
 func (r RespawnAnchor) RespawnOn(pos cube.Pos, u item.User, w *world.Tx) {
 	w.SetBlock(pos, RespawnAnchor{Charge: r.Charge - 1}, nil)
+	notifyComparatorUpdate(pos, w)
 	w.PlaySound(pos.Vec3(), sound.RespawnAnchorDeplete{Charge: r.Charge - 1})
+}
+
+// ComparatorOutput returns the redstone signal output for a comparator.
+func (r RespawnAnchor) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	switch r.Charge {
+	case 1:
+		return 3
+	case 2:
+		return 7
+	case 3:
+		return 11
+	case 4:
+		return 15
+	default:
+		return 0
+	}
 }

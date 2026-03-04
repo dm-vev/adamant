@@ -62,12 +62,14 @@ func (c RedstoneComparator) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // ScheduledTick ...
 func (c RedstoneComparator) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	target := c.targetOutput(pos, tx)
-	if target == c.Output {
+	shouldPower := c.shouldBePowered(pos, tx)
+	if target == c.Output && c.Powered == shouldPower {
 		return
 	}
 	c.Output = target
-	c.Powered = target > 0
-	tx.SetBlock(pos, c, nil)
+	c.Powered = shouldPower
+	tx.SetBlock(pos, c, &world.SetOpts{DisableBlockUpdates: true})
+	notifyComparatorUpdate(pos, tx)
 }
 
 // RedstoneWeakPower ...
@@ -112,7 +114,6 @@ func (c RedstoneComparator) DecodeNBT(data map[string]any) any {
 	} else {
 		c.Output = nbtconv.Uint8(data, "output")
 	}
-	c.Powered = c.Output > 0
 	return c
 }
 
@@ -136,7 +137,8 @@ func (c RedstoneComparator) EncodeBlock() (string, map[string]any) {
 
 func (c RedstoneComparator) updateOutput(pos cube.Pos, tx *world.Tx) {
 	target := c.targetOutput(pos, tx)
-	if target == c.Output {
+	shouldPower := c.shouldBePowered(pos, tx)
+	if target == c.Output && c.Powered == shouldPower {
 		return
 	}
 	tx.ScheduleBlockUpdate(pos, c, redstoneTicks(2))
@@ -164,6 +166,18 @@ func (c RedstoneComparator) targetOutput(pos cube.Pos, tx *world.Tx) uint8 {
 	return 0
 }
 
+func (c RedstoneComparator) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {
+	input := c.inputPower(pos, tx)
+	if input >= 15 {
+		return true
+	}
+	if input == 0 {
+		return false
+	}
+	side := c.sidePower(pos, tx)
+	return side == 0 || input >= side
+}
+
 func (c RedstoneComparator) inputPower(pos cube.Pos, tx *world.Tx) int {
 	inputFace := c.Facing.Face()
 	inputPos := pos.Side(inputFace)
@@ -171,6 +185,11 @@ func (c RedstoneComparator) inputPower(pos cube.Pos, tx *world.Tx) int {
 		return int(output)
 	}
 	power := int(world.RedstonePowerAt(tx, inputPos, inputFace.Opposite()))
+	if power < 15 && redstoneNormalBlock(inputPos, tx) {
+		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace)); ok {
+			return int(output)
+		}
+	}
 	if wire, ok := tx.Block(inputPos).(world.RedstoneWire); ok {
 		if wPower := int(wire.RedstoneWirePower()); wPower > power {
 			return wPower

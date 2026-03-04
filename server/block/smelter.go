@@ -75,6 +75,7 @@ func (s *smelter) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 
 		_ = s.Inventory(tx, pos).SetItem(slot, stack)
 		_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
+		notifyComparatorUpdate(pos, tx)
 		return true
 	}
 
@@ -106,6 +107,7 @@ func (s *smelter) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 		}
 
 		_ = s.Inventory(tx, pos).SetItem(sourceSlot, sourceStack.Grow(-1))
+		notifyComparatorUpdate(pos, tx)
 		return true
 	}
 
@@ -175,8 +177,9 @@ func (s *smelter) setDurations(remaining, max, cook time.Duration) {
 
 // tickSmelting ticks the smelter, ensuring the necessary items exist in the furnace, and then processing all inputted
 // items for the necessary duration.
-func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported func(item.SmeltInfo) bool) bool {
+func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported func(item.SmeltInfo) bool) (bool, bool) {
 	s.mu.Lock()
+	inventoryChanged := false
 
 	// First keep track of our past durations, since if any of them change, we need to be able to tell they did and then
 	// update the viewers on the change.
@@ -212,6 +215,7 @@ func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported fu
 	canSmelt := input.Count() > 0 && (inputInfo.Product.Comparable(product)) && !inputInfo.Product.Empty() && product.Count() < product.MaxCount()
 	if s.remainingDuration <= 0 && canSmelt && fuelInfo.Duration > 0 && fuel.Count() > 0 {
 		s.remainingDuration, s.maxDuration, lit = fuelInfo.Duration, fuelInfo.Duration, true
+		inventoryChanged = true
 		defer s.inventory.SetItem(1, fuelInfo.Residue)
 	}
 
@@ -228,6 +232,7 @@ func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported fu
 			// Check if we've cooked enough to match the requirement.
 			if s.cookDuration >= requirement {
 				// We can now create the product and reduce the input by one.
+				inventoryChanged = true
 				defer s.inventory.SetItem(0, input.Grow(-1))
 				defer s.inventory.SetItem(2, item.NewStack(inputInfo.Product.Item(), product.Count()+inputInfo.Product.Count()))
 
@@ -282,5 +287,5 @@ func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported fu
 	}
 
 	s.mu.Unlock()
-	return lit
+	return lit, inventoryChanged
 }
