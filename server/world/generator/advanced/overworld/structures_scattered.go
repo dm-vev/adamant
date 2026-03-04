@@ -75,7 +75,7 @@ func (g *Overworld) scatteredStructure(startChunkX, startChunkZ int) *scatteredS
 	}
 
 	// Determine structure biome at the centre of the start chunk.
-	biomeID := g.biomeProvider.biomes(startChunkX*16+8, startChunkZ*16+8, 1, 1)[0]
+	biomeID := g.biomeIDAt(startChunkX*16+8, startChunkZ*16+8)
 
 	var kind scatteredKind
 	switch mcbiome.ID(biomeID) {
@@ -167,7 +167,8 @@ func (g *Overworld) scatteredGroundY(kind scatteredKind, rot, startX, startZ int
 		zs = append(zs, last)
 	}
 
-	cache := make(map[world.ChunkPos]*chunk.Chunk, 4)
+	cache := g.acquirePreviewScratch()
+	defer g.releasePreviewScratch(cache)
 	sum := 0
 	count := 0
 	for _, dx := range xs {

@@ -89,7 +89,7 @@ func (g *Overworld) mineshaftStructure(startChunkX, startChunkZ int) *mineshaftS
 		return nil
 	}
 
-	biomeID := g.biomeProvider.biomes(startChunkX*16+8, startChunkZ*16+8, 1, 1)[0]
+	biomeID := g.biomeIDAt(startChunkX*16+8, startChunkZ*16+8)
 	mType := mineshaftNormal
 	if mcbiome.IsMesa(biomeID) {
 		mType = mineshaftMesa

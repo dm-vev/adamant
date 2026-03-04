@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/genlayer"
 	mcbiome "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/biome"
 )
 
@@ -43,23 +44,23 @@ type Overworld struct {
 	mapGenK int64
 
 	// cached runtime IDs
-	airRID          uint32
-	stoneRID        uint32
-	dirtRID         uint32
-	grassRID        uint32
-	myceliumRID     uint32
-	podzolRID       uint32
-	coarseDirtRID   uint32
-	farmlandRID     uint32
-	bedrockRID      uint32
-	waterRID        uint32
-	lavaRID         uint32
-	gravelRID       uint32
-	sandRID         uint32
-	redSandRID      uint32
-	sandstoneRID    uint32
-	redSandstoneRID uint32
-	terracottaRID   uint32
+	airRID                uint32
+	stoneRID              uint32
+	dirtRID               uint32
+	grassRID              uint32
+	myceliumRID           uint32
+	podzolRID             uint32
+	coarseDirtRID         uint32
+	farmlandRID           uint32
+	bedrockRID            uint32
+	waterRID              uint32
+	lavaRID               uint32
+	gravelRID             uint32
+	sandRID               uint32
+	redSandRID            uint32
+	sandstoneRID          uint32
+	redSandstoneRID       uint32
+	terracottaRID         uint32
 	stainedTerracottaRIDs [16]uint32
 	mesaBands             [64]uint32
 
@@ -80,9 +81,9 @@ type Overworld struct {
 	iceRID       uint32
 	snowLayerRID uint32
 
-	deadBushRID   uint32
-	cactusRID     uint32
-	sugarCaneRID  uint32
+	deadBushRID  uint32
+	cactusRID    uint32
+	sugarCaneRID uint32
 
 	oakLogRID     uint32
 	spruceLogRID  uint32
@@ -119,6 +120,10 @@ type Overworld struct {
 
 	scatteredCache sync.Map // world.ChunkPos -> *scatteredStructure (nil when absent)
 	mineshaftCache sync.Map // world.ChunkPos -> *mineshaftStructure (nil when absent)
+	previewCache   *previewCache
+	biomeDataCache *biomeDataCache
+	previewScratch sync.Pool
+	lakeShapePool  sync.Pool
 
 	pool sync.Pool
 }
@@ -236,6 +241,14 @@ func NewOverworld(seed int64) *Overworld {
 		torchRID:         torchRID,
 
 		populationQueue: make(chan populationJob, 65536),
+		previewCache:    newPreviewCache(1024),
+		biomeDataCache:  newBiomeDataCache(2048),
+	}
+	g.previewScratch.New = func() any {
+		return make(map[world.ChunkPos]*chunk.Chunk, 9)
+	}
+	g.lakeShapePool.New = func() any {
+		return make([]bool, 16*16*8)
 	}
 
 	for i, c := range item.Colours() {
@@ -273,31 +286,55 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	defer g.pool.Put(s)
 
 	chunkX, chunkZ := int(pos[0]), int(pos[1])
-
-	genIDs := g.biomeProvider.biomesForGeneration(chunkX*4-2, chunkZ*4-2, 10, 10)
-	biomeIDs := g.biomeProvider.biomes(chunkX*16, chunkZ*16, 16, 16)
+	biomeData := g.biomeDataForChunk(chunkX, chunkZ)
 
 	var biomesForGeneration [10 * 10]*biomeDef
 	var biomes [16 * 16]*biomeDef
-	for i, id := range genIDs {
+	for i, id := range biomeData.genIDs {
 		biomesForGeneration[i] = g.biomeDef(id)
 	}
-	for i, id := range biomeIDs {
+	for i, id := range biomeData.biomeIDs {
 		biomes[i] = g.biomeDef(id)
 	}
 
 	g.setBlocksInChunk(chunkX, chunkZ, c, biomesForGeneration[:], s)
 	r := mc112.NewRand(int64(chunkX)*341873128712 + int64(chunkZ)*132897987541)
 	g.replaceBiomeBlocks(chunkX, chunkZ, c, biomes[:], r, s)
-	g.applySwampWaterlilies(chunkX, chunkZ, c, biomeIDs)
+	g.applySwampWaterlilies(chunkX, chunkZ, c, biomeData.biomeIDs[:])
 	g.carve(chunkX, chunkZ, c, biomes[:])
 	popRand := g.chunkPopulationRand(chunkX, chunkZ)
 	villageGenerated := g.generateStructures(chunkX, chunkZ, c, popRand)
 	g.populateLakes(chunkX, chunkZ, c, villageGenerated)
 	g.populateOresInChunk(chunkX, chunkZ, c)
 	g.decorate(chunkX, chunkZ, c)
-	g.freezeAndSnow(chunkX, chunkZ, c, biomeIDs)
+	g.freezeAndSnow(chunkX, chunkZ, c, biomeData.biomeIDs[:])
 	g.fillBiomes(c, biomes[:])
+}
+
+func (g *Overworld) biomeDataForChunk(chunkX, chunkZ int) *biomeData {
+	pos := world.ChunkPos{int32(chunkX), int32(chunkZ)}
+	if data, ok := g.biomeDataCache.get(pos); ok {
+		return data
+	}
+
+	genIDs := g.biomeProvider.biomesForGeneration(chunkX*4-2, chunkZ*4-2, 10, 10)
+	biomeIDs := g.biomeProvider.biomes(chunkX*16, chunkZ*16, 16, 16)
+
+	data := &biomeData{}
+	copy(data.genIDs[:], genIDs)
+	copy(data.biomeIDs[:], biomeIDs)
+	genlayer.ReleaseInts(genIDs)
+	genlayer.ReleaseInts(biomeIDs)
+
+	g.biomeDataCache.add(pos, data)
+	return data
+}
+
+func (g *Overworld) biomeIDAt(worldX, worldZ int) int {
+	chunkX, chunkZ := worldX>>4, worldZ>>4
+	data := g.biomeDataForChunk(chunkX, chunkZ)
+	x, z := worldX&15, worldZ&15
+	return data.biomeIDs[z*16+x]
 }
 
 func (g *Overworld) applySwampWaterlilies(chunkX, chunkZ int, c *chunk.Chunk, biomeIDs []int) {
@@ -336,16 +373,11 @@ func (g *Overworld) applySwampWaterlilies(chunkX, chunkZ int, c *chunk.Chunk, bi
 }
 
 func (g *Overworld) fillBiomes(c *chunk.Chunk, biomes []*biomeDef) {
-	minY, maxY := int16(c.Range().Min()), int16(c.Range().Max())
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
-			// biomes[] is indexed as x + z*16.
-			biomeID := biomes[int(x)+int(z)*16].biomeID
-			for y := minY; y <= maxY; y++ {
-				c.SetBiome(x, y, z, biomeID)
-			}
-		}
+	var biomeColumns [16 * 16]uint32
+	for i, b := range biomes {
+		biomeColumns[i] = b.biomeID
 	}
+	c.FillBiomes2D(biomeColumns[:])
 }
 
 func (g *Overworld) setBlocksInChunk(chunkX, chunkZ int, c *chunk.Chunk, biomesForGeneration []*biomeDef, s *scratch) {

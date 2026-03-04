@@ -10,13 +10,13 @@ import (
 )
 
 type decoratorSettings struct {
-	treesPerChunk    int
-	extraTreeChance  float64
-	flowersPerChunk  int
-	grassPerChunk    int
-	deadBushPerChunk int
-	reedsPerChunk    int
-	cactiPerChunk    int
+	treesPerChunk         int
+	extraTreeChance       float64
+	flowersPerChunk       int
+	grassPerChunk         int
+	deadBushPerChunk      int
+	reedsPerChunk         int
+	cactiPerChunk         int
 	sandPatchesPerChunk   int
 	gravelPatchesPerChunk int
 	clayPerChunk          int
@@ -79,14 +79,14 @@ func decoratorSettingsForBiome(biomeID int) decoratorSettings {
 			treesPerChunk: 10, extraTreeChance: 0.0, flowersPerChunk: 1, grassPerChunk: 1,
 			sandPatchesPerChunk: 3, gravelPatchesPerChunk: 1, clayPerChunk: 1,
 			mushroomsPerChunk: 1,
-			generateFalls: true,
+			generateFalls:     true,
 		}
 	case mcbiome.GiantTreeTaiga, mcbiome.GiantTreeTaigaHills, mcbiome.GiantSpruceTaiga, mcbiome.GiantSpruceTaigaHills:
 		return decoratorSettings{
 			treesPerChunk: 10, extraTreeChance: 0.0, flowersPerChunk: 1, grassPerChunk: 7, deadBushPerChunk: 1,
 			sandPatchesPerChunk: 3, gravelPatchesPerChunk: 1, clayPerChunk: 1,
 			mushroomsPerChunk: 3,
-			generateFalls: true,
+			generateFalls:     true,
 		}
 
 	case mcbiome.Jungle, mcbiome.JungleHills, mcbiome.ModifiedJungle:
@@ -94,14 +94,14 @@ func decoratorSettingsForBiome(biomeID int) decoratorSettings {
 			treesPerChunk: 50, extraTreeChance: 0.0, flowersPerChunk: 4, grassPerChunk: 25,
 			sandPatchesPerChunk: 3, gravelPatchesPerChunk: 1, clayPerChunk: 1,
 			generateFalls: true,
-			jungleVines: true, jungleMelons: true,
+			jungleVines:   true, jungleMelons: true,
 		}
 	case mcbiome.JungleEdge, mcbiome.ModifiedJungleEdge:
 		return decoratorSettings{
 			treesPerChunk: 2, extraTreeChance: 0.0, flowersPerChunk: 4, grassPerChunk: 25,
 			sandPatchesPerChunk: 3, gravelPatchesPerChunk: 1, clayPerChunk: 1,
 			generateFalls: true,
-			jungleVines: true, jungleMelons: true,
+			jungleVines:   true, jungleMelons: true,
 		}
 
 	case mcbiome.Savanna, mcbiome.SavannaPlateau, mcbiome.ShatteredSavanna, mcbiome.ShatteredSavannaPlateau:
@@ -116,7 +116,7 @@ func decoratorSettingsForBiome(biomeID int) decoratorSettings {
 			treesPerChunk: 2, extraTreeChance: 0.0, flowersPerChunk: 1, grassPerChunk: 5, deadBushPerChunk: 1, reedsPerChunk: 10,
 			clayPerChunk: 1, waterlilyPerChunk: 4, sandPatchesPerChunk: 0, gravelPatchesPerChunk: 0,
 			mushroomsPerChunk: 8,
-			generateFalls: true,
+			generateFalls:     true,
 		}
 
 	case mcbiome.Desert, mcbiome.DesertHills, mcbiome.DesertM:
@@ -143,13 +143,14 @@ func (g *Overworld) decorate(chunkX, chunkZ int, c *chunk.Chunk) {
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
 
-	preview := make(map[world.ChunkPos]*chunk.Chunk, 9)
+	preview := g.acquirePreviewScratch()
+	defer g.releasePreviewScratch(preview)
 
 	for dx := 0; dx >= -1; dx-- {
 		for dz := 0; dz >= -1; dz-- {
 			originChunkX, originChunkZ := chunkX+dx, chunkZ+dz
 			r := g.chunkPopulationRand(originChunkX, originChunkZ)
-			biomeID := g.biomeProvider.biomes(originChunkX*16+16, originChunkZ*16+16, 1, 1)[0]
+			biomeID := g.biomeIDAt(originChunkX*16+16, originChunkZ*16+16)
 			s := decoratorSettingsForBiome(biomeID)
 			g.decorateOrigin(c, preview, chunkX, chunkZ, chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ, originChunkX, originChunkZ, biomeID, r, s)
 		}
@@ -438,17 +439,24 @@ func (g *Overworld) previewChunkCached(preview map[world.ChunkPos]*chunk.Chunk, 
 	return c
 }
 
-func (g *Overworld) surfaceYAt(c *chunk.Chunk, preview map[world.ChunkPos]*chunk.Chunk, chunkX, chunkZ int, worldX, worldZ int) int {
+func (g *Overworld) chunkForWorldXZ(c *chunk.Chunk, preview map[world.ChunkPos]*chunk.Chunk, chunkX, chunkZ int, worldX, worldZ int) (*chunk.Chunk, uint8, uint8) {
+	x := uint8(worldX & 15)
+	z := uint8(worldZ & 15)
 	if worldX>>4 == chunkX && worldZ>>4 == chunkZ {
-		return int(c.HighestBlock(uint8(worldX&15), uint8(worldZ&15)))
+		return c, x, z
 	}
-	pc := g.previewChunkCached(preview, worldX>>4, worldZ>>4)
-	return int(pc.HighestBlock(uint8(worldX&15), uint8(worldZ&15)))
+	return g.previewChunkCached(preview, worldX>>4, worldZ>>4), x, z
+}
+
+func (g *Overworld) surfaceYAt(c *chunk.Chunk, preview map[world.ChunkPos]*chunk.Chunk, chunkX, chunkZ int, worldX, worldZ int) int {
+	pc, x, z := g.chunkForWorldXZ(c, preview, chunkX, chunkZ, worldX, worldZ)
+	return int(pc.HighestBlock(x, z))
 }
 
 func (g *Overworld) topSolidOrLiquidYAt(c *chunk.Chunk, preview map[world.ChunkPos]*chunk.Chunk, chunkX, chunkZ int, worldX, worldZ int) int {
-	for y := 255; y >= 0; y-- {
-		rid := g.blockRIDAt(c, preview, chunkX, chunkZ, worldX, y, worldZ)
+	pc, x, z := g.chunkForWorldXZ(c, preview, chunkX, chunkZ, worldX, worldZ)
+	for y := int(pc.HighestBlock(x, z)); y >= 0; y-- {
+		rid := pc.Block(x, int16(y), z, 0)
 		if rid != g.airRID && !g.isLeaves(rid) {
 			return y
 		}
@@ -460,11 +468,8 @@ func (g *Overworld) blockRIDAt(c *chunk.Chunk, preview map[world.ChunkPos]*chunk
 	if worldY < 0 || worldY > 255 {
 		return g.airRID
 	}
-	if worldX>>4 == chunkX && worldZ>>4 == chunkZ {
-		return c.Block(uint8(worldX&15), int16(worldY), uint8(worldZ&15), 0)
-	}
-	pc := g.previewChunkCached(preview, worldX>>4, worldZ>>4)
-	return pc.Block(uint8(worldX&15), int16(worldY), uint8(worldZ&15), 0)
+	pc, x, z := g.chunkForWorldXZ(c, preview, chunkX, chunkZ, worldX, worldZ)
+	return pc.Block(x, int16(worldY), z, 0)
 }
 
 func (g *Overworld) setRIDIfInChunk(c *chunk.Chunk, chunkX, chunkZ int, worldX, worldY, worldZ int, rid uint32) {

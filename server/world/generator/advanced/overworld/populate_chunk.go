@@ -12,7 +12,7 @@ func (g *Overworld) populateChunk(tx *world.Tx, pos world.ChunkPos) {
 	r := g.chunkPopulationRand(chunkX, chunkZ)
 
 	origin := cube.Pos{chunkX * 16, 0, chunkZ * 16}
-	biomeID := g.biomeProvider.biomes(origin[0]+8, origin[2]+8, 1, 1)[0]
+	biomeID := g.biomeIDAt(origin[0]+8, origin[2]+8)
 
 	g.populateDungeons(tx, r, chunkX, chunkZ, origin)
 	g.populateOres(tx, r, chunkX, chunkZ, origin, biomeID)

@@ -19,12 +19,14 @@ type layerContinent struct {
 }
 
 func (l *layerContinent) GetInts(x, z, w, h int) []int {
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			r := l.randAt(int64(x+dx), int64(z+dz))
 			if r.nextInt(10) == 0 {
 				out[dx+dz*w] = 1
+			} else {
+				out[dx+dz*w] = 0
 			}
 		}
 	}
@@ -49,7 +51,7 @@ func (l *layerZoom) GetInts(x, z, w, h int) []int {
 	parent := l.parent.GetInts(px, pz, pw, ph)
 	newW := (pw - 1) * 2
 	newH := (ph - 1) * 2
-	expanded := make([]int, newW*newH)
+	expanded := borrowInts(newW * newH)
 
 	for j := 0; j < ph-1; j++ {
 		for i := 0; i < pw-1; i++ {
@@ -72,13 +74,15 @@ func (l *layerZoom) GetInts(x, z, w, h int) []int {
 		}
 	}
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	offX := x & 1
 	offZ := z & 1
 	for j := 0; j < h; j++ {
 		row := (j + offZ) * newW
 		copy(out[j*w:(j+1)*w], expanded[row+offX:row+offX+w])
 	}
+	releaseInts(parent)
+	releaseInts(expanded)
 	return out
 }
 
@@ -149,7 +153,7 @@ func (l *layerAddIsland) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			nw := parent[(dx+0)+(dz+0)*pw]
@@ -214,6 +218,7 @@ func (l *layerAddIsland) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = v
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -227,7 +232,7 @@ func (l *layerRemoveTooMuchOcean) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			center := parent[(dx+1)+(dz+1)*pw]
@@ -244,6 +249,7 @@ func (l *layerRemoveTooMuchOcean) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = center
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -257,7 +263,7 @@ func (l *layerAddSnow) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			v := parent[(dx+1)+(dz+1)*pw]
@@ -275,6 +281,7 @@ func (l *layerAddSnow) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = v
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -288,7 +295,7 @@ func (l *layerCoolWarm) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			v := parent[(dx+1)+(dz+1)*pw]
@@ -304,6 +311,7 @@ func (l *layerCoolWarm) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = v
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -317,7 +325,7 @@ func (l *layerHeatIce) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			v := parent[(dx+1)+(dz+1)*pw]
@@ -333,6 +341,7 @@ func (l *layerHeatIce) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = v
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -370,7 +379,7 @@ func (l *layerAddMushroom) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			center := parent[(dx+1)+(dz+1)*pw]
@@ -387,6 +396,7 @@ func (l *layerAddMushroom) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = center
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -400,7 +410,7 @@ func (l *layerDeepOcean) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			center := parent[(dx+1)+(dz+1)*pw]
@@ -425,6 +435,7 @@ func (l *layerDeepOcean) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = center
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -519,7 +530,7 @@ func (l *layerBiomeEdge) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			center := parent[(dx+1)+(dz+1)*pw]
@@ -560,6 +571,7 @@ func (l *layerBiomeEdge) GetInts(x, z, w, h int) []int {
 			}
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -587,7 +599,7 @@ func (l *layerHills) GetInts(x, z, w, h int) []int {
 	biomes := l.parent.GetInts(px, pz, pw, ph)
 	rivers := l.parent2.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			a11 := biomes[(dx+1)+(dz+1)*pw]
@@ -650,6 +662,8 @@ func (l *layerHills) GetInts(x, z, w, h int) []int {
 			}
 		}
 	}
+	releaseInts(biomes)
+	releaseInts(rivers)
 	return out
 }
 
@@ -731,7 +745,7 @@ func (l *layerShore) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			center := parent[(dx+1)+(dz+1)*pw]
@@ -807,6 +821,7 @@ func (l *layerShore) GetInts(x, z, w, h int) []int {
 			out[idx] = center
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -825,7 +840,7 @@ func (l *layerRiver) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			v01 := reduceRiverID(parent[(dx+0)+(dz+1)*pw])
@@ -841,6 +856,7 @@ func (l *layerRiver) GetInts(x, z, w, h int) []int {
 			}
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -861,7 +877,7 @@ func (l *layerSmooth) GetInts(x, z, w, h int) []int {
 	pw, ph := w+2, h+2
 	parent := l.parent.GetInts(px, pz, pw, ph)
 
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 	for dz := 0; dz < h; dz++ {
 		for dx := 0; dx < w; dx++ {
 			center := parent[(dx+1)+(dz+1)*pw]
@@ -890,6 +906,7 @@ func (l *layerSmooth) GetInts(x, z, w, h int) []int {
 			out[dx+dz*w] = center
 		}
 	}
+	releaseInts(parent)
 	return out
 }
 
@@ -915,6 +932,7 @@ func (l *layerRiverMix) GetInts(x, z, w, h int) []int {
 			}
 		}
 	}
+	releaseInts(rivers)
 	return biomes
 }
 
@@ -932,7 +950,7 @@ func (l *layerVoronoi114) GetInts(x, z, w, h int) []int {
 	ph := ((z + h) >> 2) - pz + 2
 
 	parent := l.parent.GetInts(px, pz, pw, ph)
-	out := make([]int, w*h)
+	out := borrowInts(w * h)
 
 	for pj := 0; pj < ph-1; pj++ {
 		j4 := (pz+pj)*4 - z
@@ -1008,6 +1026,7 @@ func (l *layerVoronoi114) GetInts(x, z, w, h int) []int {
 		}
 	}
 
+	releaseInts(parent)
 	return out
 }
 
