@@ -81,6 +81,12 @@ func (storage *PalettedStorage) Set(x, y, z byte, v uint32) {
 	storage.setPaletteIndex(x&15, y&15, z&15, uint16(index))
 }
 
+// SetPaletteIndex sets a precomputed palette index at x, y and z.
+// x, y and z are masked to 0..15.
+func (storage *PalettedStorage) SetPaletteIndex(x, y, z byte, index uint16) {
+	storage.setPaletteIndex(x&15, y&15, z&15, index)
+}
+
 // Equal checks if two PalettedStorages are equal value wise. False is returned
 // if either of the storages are nil.
 func (storage *PalettedStorage) Equal(other *PalettedStorage) bool {
@@ -127,8 +133,31 @@ func (storage *PalettedStorage) paletteIndex(x, y, z byte) uint16 {
 		// by biomes.
 		return 0
 	}
-	offset := ((uint16(x) << 8) | (uint16(z) << 4) | uint16(y)) * storage.bitsPerIndex
-	uint32Offset, bitOffset := offset/storage.filledBitsPerIndex, offset%storage.filledBitsPerIndex
+	index := (uint16(x) << 8) | (uint16(z) << 4) | uint16(y)
+	var (
+		uint32Offset uint16
+		bitOffset    uint16
+	)
+	switch storage.bitsPerIndex {
+	case 1:
+		uint32Offset = index >> 5
+		bitOffset = index & 31
+	case 2:
+		uint32Offset = index >> 4
+		bitOffset = (index & 15) << 1
+	case 4:
+		uint32Offset = index >> 3
+		bitOffset = (index & 7) << 2
+	case 8:
+		uint32Offset = index >> 2
+		bitOffset = (index & 3) << 3
+	case 16:
+		uint32Offset = index >> 1
+		bitOffset = (index & 1) << 4
+	default:
+		offset := index * storage.bitsPerIndex
+		uint32Offset, bitOffset = offset/storage.filledBitsPerIndex, offset%storage.filledBitsPerIndex
+	}
 
 	w := *(*uint32)(unsafe.Pointer(uintptr(storage.indicesStart) + uintptr(uint32Offset<<2)))
 	return uint16((w >> bitOffset) & storage.indexMask)
@@ -140,8 +169,31 @@ func (storage *PalettedStorage) setPaletteIndex(x, y, z byte, i uint16) {
 	if storage.bitsPerIndex == 0 {
 		return
 	}
-	offset := ((uint16(x) << 8) | (uint16(z) << 4) | uint16(y)) * storage.bitsPerIndex
-	uint32Offset, bitOffset := offset/storage.filledBitsPerIndex, offset%storage.filledBitsPerIndex
+	index := (uint16(x) << 8) | (uint16(z) << 4) | uint16(y)
+	var (
+		uint32Offset uint16
+		bitOffset    uint16
+	)
+	switch storage.bitsPerIndex {
+	case 1:
+		uint32Offset = index >> 5
+		bitOffset = index & 31
+	case 2:
+		uint32Offset = index >> 4
+		bitOffset = (index & 15) << 1
+	case 4:
+		uint32Offset = index >> 3
+		bitOffset = (index & 7) << 2
+	case 8:
+		uint32Offset = index >> 2
+		bitOffset = (index & 3) << 3
+	case 16:
+		uint32Offset = index >> 1
+		bitOffset = (index & 1) << 4
+	default:
+		offset := index * storage.bitsPerIndex
+		uint32Offset, bitOffset = offset/storage.filledBitsPerIndex, offset%storage.filledBitsPerIndex
+	}
 
 	ptr := (*uint32)(unsafe.Pointer(uintptr(storage.indicesStart) + uintptr(uint32Offset<<2)))
 	*ptr = (*ptr &^ (storage.indexMask << bitOffset)) | (uint32(i) << bitOffset)

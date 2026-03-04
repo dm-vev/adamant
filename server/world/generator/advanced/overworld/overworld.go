@@ -393,6 +393,15 @@ func (g *Overworld) setBlocksInChunk(chunkX, chunkZ int, c *chunk.Chunk, biomesF
 		maxY = yMax
 	}
 
+	type terrainSubStorage struct {
+		initialised bool
+		storage    *chunk.PalettedStorage
+		stoneIndex uint16
+		waterIndex uint16
+	}
+	var terrainBySub [16]terrainSubStorage
+	subMin := c.SubIndex(minY)
+
 	for xCell := 0; xCell < 4; xCell++ {
 		for zCell := 0; zCell < 4; zCell++ {
 			for yCell := 0; yCell < 32; yCell++ {
@@ -426,12 +435,22 @@ func (g *Overworld) setBlocksInChunk(chunkX, chunkZ int, c *chunk.Chunk, biomesF
 						d16 := (d11 - d10) * 0.25
 
 						x := uint8(xStep + xCell*4)
+						subIndex := c.SubIndex(y) - subMin
+						sub := &terrainBySub[subIndex]
 						for zStep := 0; zStep < 4; zStep++ {
 							z := uint8(zStep + zCell*4)
 							if d15 > 0.0 {
-								c.SetBlock(x, y, z, 0, g.stoneRID)
+								if !sub.initialised {
+									sub.storage, sub.stoneIndex, sub.waterIndex = c.LayerStorageWithTwoRuntimeIDs(y, 0, g.stoneRID, g.waterRID)
+									sub.initialised = true
+								}
+								sub.storage.SetPaletteIndex(x, uint8(y), z, sub.stoneIndex)
 							} else if int(y) < javaSeaLevel {
-								c.SetBlock(x, y, z, 0, g.waterRID)
+								if !sub.initialised {
+									sub.storage, sub.stoneIndex, sub.waterIndex = c.LayerStorageWithTwoRuntimeIDs(y, 0, g.stoneRID, g.waterRID)
+									sub.initialised = true
+								}
+								sub.storage.SetPaletteIndex(x, uint8(y), z, sub.waterIndex)
 							}
 							d15 += d16
 						}

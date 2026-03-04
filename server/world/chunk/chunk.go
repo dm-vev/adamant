@@ -75,8 +75,8 @@ func (chunk *Chunk) Sub() []*SubChunk {
 // Block returns the runtime ID of the block at a given x, y and z in a chunk at the given layer. If no
 // sub chunk exists at the given y, the block is assumed to be air.
 func (chunk *Chunk) Block(x uint8, y int16, z uint8, layer uint8) uint32 {
-	sub := chunk.SubChunk(y)
-	if sub.Empty() || uint8(len(sub.storages)) <= layer {
+	sub := chunk.sub[chunk.SubIndex(y)]
+	if uint8(len(sub.storages)) <= layer {
 		return chunk.air
 	}
 	return sub.storages[layer].At(x, uint8(y), z)
@@ -86,13 +86,77 @@ func (chunk *Chunk) Block(x uint8, y int16, z uint8, layer uint8) uint32 {
 // SubChunk exists at the given y, a new SubChunk is created and the block is set.
 func (chunk *Chunk) SetBlock(x uint8, y int16, z uint8, layer uint8, block uint32) {
 	sub := chunk.sub[chunk.SubIndex(y)]
-	if uint8(len(sub.storages)) <= layer && block == chunk.air {
-		// Air was set at n layer, but there were less than n layers, so there already was air there.
-		// Don't do anything with this, just return.
+	if uint8(len(sub.storages)) <= layer {
+		if block == chunk.air {
+			// Air was set at n layer, but there were less than n layers, so there already was air there.
+			// Don't do anything with this, just return.
+			return
+		}
+		sub.Layer(layer).Set(x, uint8(y), z, block)
+		chunk.recalculateHeightMap = true
 		return
 	}
-	sub.Layer(layer).Set(x, uint8(y), z, block)
+	sub.storages[layer].Set(x, uint8(y), z, block)
 	chunk.recalculateHeightMap = true
+}
+
+// LayerStorageWithTwoRuntimeIDs returns the storage for a layer and ensures both runtime IDs are present.
+// The palette indices for runtimeID1 and runtimeID2 are returned in that order.
+// If the layer does not exist yet, it is initialised directly with a palette containing air and the runtime IDs.
+func (chunk *Chunk) LayerStorageWithTwoRuntimeIDs(y int16, layer uint8, runtimeID1, runtimeID2 uint32) (*PalettedStorage, uint16, uint16) {
+	sub := chunk.sub[chunk.SubIndex(y)]
+	if uint8(len(sub.storages)) <= layer {
+		valueCount := 1
+		index1, index2 := uint16(0), uint16(0)
+		if runtimeID1 != sub.air {
+			index1 = uint16(valueCount)
+			valueCount++
+		}
+		if runtimeID2 == sub.air {
+			index2 = 0
+		} else if runtimeID2 == runtimeID1 {
+			index2 = index1
+		} else {
+			index2 = uint16(valueCount)
+			valueCount++
+		}
+
+		valuesCopy := make([]uint32, valueCount)
+		valuesCopy[0] = sub.air
+		writeIndex := 1
+		if index1 != 0 {
+			valuesCopy[writeIndex] = runtimeID1
+			writeIndex++
+		}
+		if index2 != 0 && runtimeID2 != runtimeID1 {
+			valuesCopy[writeIndex] = runtimeID2
+		}
+		size := paletteSizeFor(valueCount)
+		storage := newPalettedStorage(make([]uint32, size.uint32s()), newPalette(size, valuesCopy))
+
+		currentLayers := uint8(len(sub.storages))
+		for currentLayers < layer {
+			sub.storages = append(sub.storages, emptyStorage(sub.air))
+			currentLayers++
+		}
+		if currentLayers == layer {
+			sub.storages = append(sub.storages, storage)
+		} else {
+			sub.storages[layer] = storage
+		}
+		return storage, index1, index2
+	}
+
+	storage := sub.storages[layer]
+	index1 := storage.palette.Index(runtimeID1)
+	if index1 == -1 {
+		index1 = storage.addNew(runtimeID1)
+	}
+	index2 := storage.palette.Index(runtimeID2)
+	if index2 == -1 {
+		index2 = storage.addNew(runtimeID2)
+	}
+	return storage, uint16(index1), uint16(index2)
 }
 
 // Biome returns the biome ID at a specific column in the chunk.
