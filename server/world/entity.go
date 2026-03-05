@@ -379,6 +379,8 @@ type EntityRegistryConfig struct {
 	Item               func(opts EntitySpawnOpts, it any) *EntityHandle
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration) *EntityHandle
+	Boat               func(opts EntitySpawnOpts, variant int) *EntityHandle
+	ChestBoat          func(opts EntitySpawnOpts, variant int) *EntityHandle
 	Minecart           func(opts EntitySpawnOpts) *EntityHandle
 	MinecartChest      func(opts EntitySpawnOpts) *EntityHandle
 	MinecartHopper     func(opts EntitySpawnOpts) *EntityHandle
