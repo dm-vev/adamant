@@ -114,7 +114,7 @@ func (l *Loader) Load(tx *Tx, n int) {
 			continue
 		}
 
-		l.viewer.ViewChunk(pos, l.w.Dimension(), c.BlockEntities, c.Chunk)
+		l.viewer.ViewChunk(pos, l.w.Dimension(), c)
 		l.w.addViewer(tx, pos, c, l)
 
 		l.loaded[pos] = c

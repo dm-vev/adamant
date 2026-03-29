@@ -2749,6 +2749,11 @@ func (p *Player) CollectExperience(value int) bool {
 	return true
 }
 
+// CanCollectExperience returns whether the player can currently collect experience orbs.
+func (p *Player) CanCollectExperience() bool {
+	return !p.Dead() && p.GameMode().AllowsInteraction()
+}
+
 // mendItems handles the mending enchantment when collecting experience, it then returns the leftover experience.
 func (p *Player) mendItems(xp int) int {
 	mendingItems := make([]item.Stack, 0, 6)

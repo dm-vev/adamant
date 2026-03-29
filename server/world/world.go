@@ -15,7 +15,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/event"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
@@ -93,13 +92,9 @@ type World struct {
 	scheduledUpdates *scheduledTickQueue
 	neighbourUpdates []neighbourUpdate
 
-	scratchRandom              []cube.Pos
-	scratchBlockEntities       []cube.Pos
-	scratchLoaderAreas         []loaderActiveArea
-	scratchRandomSubIndices    []int
-	scratchRandomSubY          []int
-	scratchActiveEntityTicks   []entityTickEntry
-	scratchSleepingEntityTicks []entityTickEntry
+	scratchRandom        []cube.Pos
+	scratchBlockEntities []cube.Pos
+	scratchLoaderAreas   []loaderActiveArea
 
 	activeColumns     []columnRef
 	activeColumnIndex map[ChunkPos]int
@@ -339,6 +334,8 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 		// stored NBT yet. We add it here and update the block.
 		nbtB := blockByRuntimeIDOrAir(rid).(NBTer).DecodeNBT(map[string]any{}).(Block)
 		c.BlockEntities[pos] = nbtB
+		c.invalidateTickerBlockEntities()
+		c.invalidateBlockEntityPayloads()
 		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, nbtB, 0)
 		}
@@ -440,10 +437,17 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 
 	c.modified = true
 	c.SetBlock(x, y, z, 0, rid)
+	c.invalidateRandomTickSubChunks()
+	c.invalidateSubChunkHeightMaps()
+	c.invalidateNetworkSubChunkPayloads()
 	if nbtBlocks[rid] {
 		c.BlockEntities[pos] = b
+		c.invalidateTickerBlockEntities()
+		c.invalidateBlockEntityPayloads()
 	} else {
 		delete(c.BlockEntities, pos)
+		c.invalidateTickerBlockEntities()
+		c.invalidateBlockEntityPayloads()
 	}
 
 	if !opts.DisableLiquidDisplacement {
@@ -453,6 +457,9 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 			if li := c.Block(x, y, z, 1); li != airRID {
 				c.SetBlock(x, y, z, 0, li)
 				c.SetBlock(x, y, z, 1, airRID)
+				c.invalidateRandomTickSubChunks()
+				c.invalidateSubChunkHeightMaps()
+				c.invalidateNetworkSubChunkPayloads()
 				secondLayer = air()
 				b = blockByRuntimeIDOrAir(li)
 			}
@@ -496,6 +503,7 @@ func (w *World) setBiome(pos cube.Pos, b Biome) {
 	c := w.chunk(chunkPosFromBlockPos(pos))
 	c.modified = true
 	c.SetBiome(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), uint32(b.EncodeBiome()))
+	c.invalidateNetworkBiomePayload()
 }
 
 // buildStructure builds a Structure passed at a specific position in the
@@ -555,12 +563,19 @@ func (w *World) buildStructure(pos cube.Pos, s Structure) {
 							if b != nil {
 								rid := BlockRuntimeID(b)
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 0, rid)
+								c.invalidateRandomTickSubChunks()
+								c.invalidateSubChunkHeightMaps()
+								c.invalidateNetworkSubChunkPayloads()
 
 								nbtPos := cube.Pos{xOffset, yOffset, zOffset}
 								if nbtBlocks[rid] {
 									c.BlockEntities[nbtPos] = b
+									c.invalidateTickerBlockEntities()
+									c.invalidateBlockEntityPayloads()
 								} else {
 									delete(c.BlockEntities, nbtPos)
+									c.invalidateTickerBlockEntities()
+									c.invalidateBlockEntityPayloads()
 								}
 							}
 							if liq != nil {
@@ -578,7 +593,7 @@ func (w *World) buildStructure(pos cube.Pos, s Structure) {
 			// After setting all blocks of the structure within a single chunk,
 			// we show the new chunk to all viewers once.
 			for viewer := range c.viewers {
-				viewer.ViewChunk(chunkPos, w.Dimension(), c.BlockEntities, c.Chunk)
+				viewer.ViewChunk(chunkPos, w.Dimension(), c)
 			}
 		}
 	}
@@ -642,6 +657,9 @@ func (w *World) setLiquid(pos cube.Pos, b Liquid) {
 	rid := BlockRuntimeID(b)
 	if w.removeLiquids(c, pos) {
 		c.SetBlock(x, y, z, 0, rid)
+		c.invalidateRandomTickSubChunks()
+		c.invalidateSubChunkHeightMaps()
+		c.invalidateNetworkSubChunkPayloads()
 		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, b, 0)
 		}
@@ -663,7 +681,7 @@ func (w *World) removeLiquids(c *Column, pos cube.Pos) bool {
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
 
 	noneLeft := false
-	if noLeft, changed := w.removeLiquidOnLayer(c.Chunk, x, y, z, 0); noLeft {
+	if noLeft, changed := w.removeLiquidOnLayer(c, x, y, z, 0); noLeft {
 		if changed {
 			for v := range c.viewers {
 				v.ViewBlockUpdate(pos, air(), 0)
@@ -671,7 +689,7 @@ func (w *World) removeLiquids(c *Column, pos cube.Pos) bool {
 		}
 		noneLeft = true
 	}
-	if _, changed := w.removeLiquidOnLayer(c.Chunk, x, y, z, 1); changed {
+	if _, changed := w.removeLiquidOnLayer(c, x, y, z, 1); changed {
 		for v := range c.viewers {
 			v.ViewBlockUpdate(pos, air(), 1)
 		}
@@ -681,7 +699,7 @@ func (w *World) removeLiquids(c *Column, pos cube.Pos) bool {
 
 // removeLiquidOnLayer removes a liquid block from a specific layer in the
 // chunk passed, returning true if successful.
-func (w *World) removeLiquidOnLayer(c *chunk.Chunk, x uint8, y int16, z, layer uint8) (bool, bool) {
+func (w *World) removeLiquidOnLayer(c *Column, x uint8, y int16, z, layer uint8) (bool, bool) {
 	id := c.Block(x, y, z, layer)
 
 	b, ok := BlockByRuntimeID(id)
@@ -691,6 +709,9 @@ func (w *World) removeLiquidOnLayer(c *chunk.Chunk, x uint8, y int16, z, layer u
 	}
 	if _, ok := b.(Liquid); ok {
 		c.SetBlock(x, y, z, layer, airRID)
+		c.invalidateRandomTickSubChunks()
+		c.invalidateSubChunkHeightMaps()
+		c.invalidateNetworkSubChunkPayloads()
 		return true, true
 	}
 	return id == airRID, false
@@ -882,7 +903,8 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	handle.state = state
 
 	c := w.chunk(pos)
-	c.Entities, c.modified = append(c.Entities, handle), true
+	c.addEntity(handle)
+	c.modified = true
 	w.addEntityColumn(pos, c)
 
 	e := state.entity(tx, handle)
@@ -909,7 +931,9 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	w.Handler().HandleEntityDespawn(tx, e)
 
 	c := w.chunk(pos)
-	c.Entities, c.modified = sliceutil.DeleteVal(c.Entities, handle), true
+	if c.removeEntity(handle) {
+		c.modified = true
+	}
 	if len(c.Entities) == 0 {
 		w.removeEntityColumn(pos)
 	}
@@ -1336,7 +1360,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		e.unsetAndLockWorld()
 		_ = e.Close()
 	}
-	clear(c.Entities)
+	c.resetEntities()
 	if _, ok := w.chunks[pos]; ok {
 		delete(w.chunks, pos)
 		w.chunkCount.Add(-1)
@@ -1703,6 +1727,9 @@ func (w *World) runGenerationTask(task generationTask) {
 	if task.col.BlockEntities == nil {
 		task.col.BlockEntities = map[cube.Pos]Block{}
 	}
+	task.col.invalidateNetworkBiomePayload()
+	task.col.invalidateNetworkSubChunkPayloads()
+	task.col.invalidateBlockEntityPayloads()
 	task.col.modified = true
 }
 
@@ -1917,8 +1944,19 @@ type Column struct {
 	modified bool
 
 	*chunk.Chunk
-	Entities      []*EntityHandle
-	BlockEntities map[cube.Pos]Block
+	Entities                        []*EntityHandle
+	entityIndices                   map[*EntityHandle]int
+	BlockEntities                   map[cube.Pos]Block
+	randomTickSubChunksDirty        bool
+	cachedRandomTickSubChunkIndices []int
+	tickerBlockEntitiesDirty        bool
+	cachedTickerBlockEntities       []cube.Pos
+	subChunkHeightMaps              map[int16]cachedSubChunkHeightMap
+	networkBiomePayload             cachedBlockEntityPayload
+	networkSubChunkPayloads         map[int16]cachedBlockEntityPayload
+	chunkBlockEntityPayload         cachedBlockEntityPayload
+	chunkBlockEntityPayloadNoBorder cachedBlockEntityPayload
+	subChunkBlockEntityPayloads     map[int16]cachedBlockEntityPayload
 
 	viewers map[Viewer]struct{}
 	loaders []*Loader
@@ -2003,11 +2041,218 @@ var viewerSlicePool = sync.Pool{
 // newColumn returns a new Column wrapper around the chunk.Chunk passed.
 func newColumn(c *chunk.Chunk) *Column {
 	return &Column{
-		Chunk:         c,
-		BlockEntities: map[cube.Pos]Block{},
-		readyCh:       make(chan struct{}),
-		viewers:       make(map[Viewer]struct{}),
+		Chunk:                    c,
+		BlockEntities:            map[cube.Pos]Block{},
+		randomTickSubChunksDirty: true,
+		tickerBlockEntitiesDirty: true,
+		readyCh:                  make(chan struct{}),
+		viewers:                  make(map[Viewer]struct{}),
 	}
+}
+
+// addEntity appends an entity handle to the column and tracks its slot for O(1) removal.
+func (c *Column) addEntity(handle *EntityHandle) {
+	if c.entityIndices == nil {
+		c.entityIndices = make(map[*EntityHandle]int, 4)
+	}
+	c.entityIndices[handle] = len(c.Entities)
+	c.Entities = append(c.Entities, handle)
+}
+
+// removeEntity removes an entity handle from the column in O(1).
+func (c *Column) removeEntity(handle *EntityHandle) bool {
+	if len(c.Entities) == 0 {
+		return false
+	}
+	index, ok := c.entityIndices[handle]
+	if !ok {
+		return false
+	}
+
+	last := len(c.Entities) - 1
+	lastHandle := c.Entities[last]
+	c.Entities[index] = lastHandle
+	c.Entities[last] = nil
+	c.Entities = c.Entities[:last]
+	delete(c.entityIndices, handle)
+
+	if index != last {
+		c.entityIndices[lastHandle] = index
+	}
+	if len(c.Entities) == 0 {
+		clear(c.entityIndices)
+	}
+	return true
+}
+
+// resetEntities drops entity references and indices from the column.
+func (c *Column) resetEntities() {
+	clear(c.Entities)
+	c.Entities = c.Entities[:0]
+	if len(c.entityIndices) > 0 {
+		clear(c.entityIndices)
+	}
+}
+
+func (c *Column) invalidateRandomTickSubChunks() {
+	c.randomTickSubChunksDirty = true
+}
+
+func (c *Column) invalidateTickerBlockEntities() {
+	c.tickerBlockEntitiesDirty = true
+}
+
+func (c *Column) invalidateSubChunkHeightMaps() {
+	clear(c.subChunkHeightMaps)
+}
+
+func (c *Column) invalidateNetworkBiomePayload() {
+	c.networkBiomePayload = cachedBlockEntityPayload{}
+}
+
+func (c *Column) invalidateNetworkSubChunkPayloads() {
+	clear(c.networkSubChunkPayloads)
+}
+
+func (c *Column) invalidateBlockEntityPayloads() {
+	c.chunkBlockEntityPayload = cachedBlockEntityPayload{}
+	c.chunkBlockEntityPayloadNoBorder = cachedBlockEntityPayload{}
+	clear(c.subChunkBlockEntityPayloads)
+}
+
+// CachedSubChunkHeightMap returns cached height map data for a sub-chunk.
+func (c *Column) CachedSubChunkHeightMap(ind int16) (byte, []int8, bool) {
+	if c.subChunkHeightMaps == nil {
+		return 0, nil, false
+	}
+	heightMap, ok := c.subChunkHeightMaps[ind]
+	return heightMap.mapType, heightMap.mapData, ok && heightMap.ready
+}
+
+// CacheSubChunkHeightMap stores height map data for a sub-chunk.
+func (c *Column) CacheSubChunkHeightMap(ind int16, mapType byte, mapData []int8) {
+	if c.subChunkHeightMaps == nil {
+		c.subChunkHeightMaps = make(map[int16]cachedSubChunkHeightMap, 4)
+	}
+	c.subChunkHeightMaps[ind] = cachedSubChunkHeightMap{
+		mapType: mapType,
+		mapData: mapData,
+		ready:   true,
+	}
+}
+
+// CachedNetworkBiomePayload returns the cached network biome payload for the column.
+func (c *Column) CachedNetworkBiomePayload() ([]byte, bool) {
+	return c.networkBiomePayload.payload, c.networkBiomePayload.ready
+}
+
+// CacheNetworkBiomePayload stores the network biome payload for the column.
+func (c *Column) CacheNetworkBiomePayload(payload []byte) {
+	c.networkBiomePayload = cachedBlockEntityPayload{payload: payload, ready: true}
+}
+
+// CachedNetworkSubChunkPayload returns the cached encoded network payload for a sub-chunk.
+func (c *Column) CachedNetworkSubChunkPayload(ind int16) ([]byte, bool) {
+	if c.networkSubChunkPayloads == nil {
+		return nil, false
+	}
+	payload, ok := c.networkSubChunkPayloads[ind]
+	return payload.payload, ok && payload.ready
+}
+
+// CacheNetworkSubChunkPayload stores the encoded network payload for a sub-chunk.
+func (c *Column) CacheNetworkSubChunkPayload(ind int16, payload []byte) {
+	if c.networkSubChunkPayloads == nil {
+		c.networkSubChunkPayloads = make(map[int16]cachedBlockEntityPayload, 4)
+	}
+	c.networkSubChunkPayloads[ind] = cachedBlockEntityPayload{payload: payload, ready: true}
+}
+
+// CachedChunkBlockEntityPayload returns a cached encoded block entity payload for the column.
+func (c *Column) CachedChunkBlockEntityPayload(noBorder bool) ([]byte, bool) {
+	if noBorder {
+		return c.chunkBlockEntityPayloadNoBorder.payload, c.chunkBlockEntityPayloadNoBorder.ready
+	}
+	return c.chunkBlockEntityPayload.payload, c.chunkBlockEntityPayload.ready
+}
+
+// CacheChunkBlockEntityPayload stores an encoded block entity payload for the column.
+func (c *Column) CacheChunkBlockEntityPayload(noBorder bool, payload []byte) {
+	entry := cachedBlockEntityPayload{payload: payload, ready: true}
+	if noBorder {
+		c.chunkBlockEntityPayloadNoBorder = entry
+		return
+	}
+	c.chunkBlockEntityPayload = entry
+}
+
+// CachedSubChunkBlockEntityPayload returns a cached encoded block entity payload for a sub-chunk.
+func (c *Column) CachedSubChunkBlockEntityPayload(ind int16) ([]byte, bool) {
+	if c.subChunkBlockEntityPayloads == nil {
+		return nil, false
+	}
+	payload, ok := c.subChunkBlockEntityPayloads[ind]
+	return payload.payload, ok && payload.ready
+}
+
+// CacheSubChunkBlockEntityPayload stores an encoded block entity payload for a sub-chunk.
+func (c *Column) CacheSubChunkBlockEntityPayload(ind int16, payload []byte) {
+	if c.subChunkBlockEntityPayloads == nil {
+		c.subChunkBlockEntityPayloads = make(map[int16]cachedBlockEntityPayload, 4)
+	}
+	c.subChunkBlockEntityPayloads[ind] = cachedBlockEntityPayload{payload: payload, ready: true}
+}
+
+func (c *Column) randomTickSubChunkIndices() []int {
+	if !c.randomTickSubChunksDirty {
+		return c.cachedRandomTickSubChunkIndices
+	}
+	indices := c.cachedRandomTickSubChunkIndices[:0]
+	for i, sub := range c.Sub() {
+		if sub.Empty() {
+			continue
+		}
+		layers := sub.Layers()
+		if len(layers) == 0 {
+			continue
+		}
+		pal := layers[0].Palette()
+		for pi := 0; pi < pal.Len(); pi++ {
+			if rid := pal.Value(uint16(pi)); randomTickBlocks[rid] {
+				indices = append(indices, i)
+				break
+			}
+		}
+	}
+	c.cachedRandomTickSubChunkIndices = indices
+	c.randomTickSubChunksDirty = false
+	return c.cachedRandomTickSubChunkIndices
+}
+
+func (c *Column) tickerBlockEntityPositions() []cube.Pos {
+	if !c.tickerBlockEntitiesDirty {
+		return c.cachedTickerBlockEntities
+	}
+	positions := c.cachedTickerBlockEntities[:0]
+	for pos, block := range c.BlockEntities {
+		if _, ok := block.(TickerBlock); ok {
+			positions = append(positions, pos)
+		}
+	}
+	c.cachedTickerBlockEntities = positions
+	c.tickerBlockEntitiesDirty = false
+	return c.cachedTickerBlockEntities
+}
+
+type cachedBlockEntityPayload struct {
+	payload []byte
+	ready   bool
+}
+
+type cachedSubChunkHeightMap struct {
+	mapType byte
+	mapData []int8
+	ready   bool
 }
 
 // forEachViewer calls the function passed for each viewer in the column.

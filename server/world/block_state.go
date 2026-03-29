@@ -47,8 +47,8 @@ func init() {
 
 	// Register all block states present in the block_states.nbt file. These are all possible options registered
 	// blocks may encode to.
-	var s blockState
 	for {
+		var s blockState
 		if err := dec.Decode(&s); err != nil {
 			break
 		}

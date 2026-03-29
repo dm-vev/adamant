@@ -91,7 +91,7 @@ func (SpruceTree) Grow(tx *world.Tx, chunkPos world.ChunkPos, pos cube.Pos, r *r
 					continue
 				}
 				if b := tx.Block(p); b.Model() != (model.Solid{}) {
-					tx.SetBlock(p, block.Leaves{Wood: block.SpruceWood()}, setOpts)
+					tx.SetBlock(p, block.Leaves{Type: block.SpruceLeaves()}, setOpts)
 				}
 			}
 		}
@@ -115,7 +115,7 @@ func (OakTree) Grow(tx *world.Tx, chunkPos world.ChunkPos, pos cube.Pos, r *rand
 		return
 	}
 	treeHeight := int(r.Int31n(3)) + 4
-	basicTop(tx, chunkPos, pos, r, block.Leaves{Wood: block.OakWood()}, treeHeight)
+	basicTop(tx, chunkPos, pos, r, block.Leaves{Type: block.OakLeaves()}, treeHeight)
 	trunk(tx, chunkPos, pos, block.OakWood(), treeHeight-1)
 }
 
@@ -131,7 +131,7 @@ func (b BirchTree) Grow(tx *world.Tx, chunkPos world.ChunkPos, pos cube.Pos, r *
 	if b.Super {
 		treeHeight += 5
 	}
-	basicTop(tx, chunkPos, pos, r, block.Leaves{Wood: block.BirchWood()}, treeHeight)
+	basicTop(tx, chunkPos, pos, r, block.Leaves{Type: block.BirchLeaves()}, treeHeight)
 	trunk(tx, chunkPos, pos, block.BirchWood(), treeHeight-1)
 }
 

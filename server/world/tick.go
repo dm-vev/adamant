@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 )
 
 // ticker implements World ticking methods.
@@ -18,11 +17,6 @@ type ticker struct {
 type entityChunkRef struct {
 	col *Column
 	pos ChunkPos
-}
-
-type entityTickEntry struct {
-	handle *EntityHandle
-	ref    entityChunkRef
 }
 
 const (
@@ -211,14 +205,11 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			if c == nil {
 				continue
 			}
-			for be := range c.BlockEntities {
-				blockEntities = append(blockEntities, be)
-			}
+			blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
 		}
 		for _, pos := range blockEntities {
-			if tb, ok := tx.Block(pos).(TickerBlock); ok {
-				tb.Tick(tick, pos, tx)
-			}
+			tb := tx.World().chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
+			tb.Tick(tick, pos, tx)
 		}
 		w.scratchLoaderAreas = areas[:0]
 		w.scratchRandom = randomBlocks[:0]
@@ -227,8 +218,6 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	}
 
 	minSubY := tx.Range().Min() >> 4
-	randomSubIndices := w.scratchRandomSubIndices[:0]
-	randomSubY := w.scratchRandomSubY[:0]
 
 	for _, ref := range w.activeColumns {
 		if !columnWithinAreas(ref.pos, areas) {
@@ -238,38 +227,11 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		if c == nil {
 			continue
 		}
-		for be := range c.BlockEntities {
-			blockEntities = append(blockEntities, be)
-		}
+		blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
 
 		cx, cz := int(ref.pos[0]<<4), int(ref.pos[1]<<4)
 		subChunks := c.Sub()
-		randomSubIndices = randomSubIndices[:0]
-		randomSubY = randomSubY[:0]
-
-		for i, sub := range subChunks {
-			if sub.Empty() {
-				continue
-			}
-			layers := sub.Layers()
-			if len(layers) == 0 {
-				continue
-			}
-			pal := layers[0].Palette()
-
-			hasRandomTicker := false
-			for pi := 0; pi < pal.Len(); pi++ {
-				if rid := pal.Value(uint16(pi)); randomTickBlocks[rid] {
-					hasRandomTicker = true
-					break
-				}
-			}
-			if !hasRandomTicker {
-				continue
-			}
-			randomSubIndices = append(randomSubIndices, i)
-			randomSubY = append(randomSubY, (i+minSubY)<<4)
-		}
+		randomSubIndices := c.randomTickSubChunkIndices()
 		if len(randomSubIndices) == 0 {
 			continue
 		}
@@ -278,13 +240,13 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		for j := 0; j < randomTickSpeed; j++ {
 			x, y, z := g.uint4(w.r), g.uint4(w.r), g.uint4(w.r)
 
-			for idx, subIndex := range randomSubIndices {
+			for _, subIndex := range randomSubIndices {
 				sub := subChunks[subIndex]
 				// Generally we would want to make sure the block has its block entities, but provided blocks
 				// with block entities are generally ticked already, we are safe to assume that blocks
 				// implementing the RandomTicker don't rely on additional block entity data.
 				if rid := sub.Layers()[0].At(x, y, z); randomTickBlocks[rid] {
-					subY := randomSubY[idx]
+					subY := (subIndex + minSubY) << 4
 					randomBlocks = append(randomBlocks, cube.Pos{cx + int(x), subY + int(y), cz + int(z)})
 
 					// Only generate new coordinates if a tickable block was actually found. If not, we can just re-use
@@ -301,16 +263,13 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		}
 	}
 	for _, pos := range blockEntities {
-		if tb, ok := tx.Block(pos).(TickerBlock); ok {
-			tb.Tick(tick, pos, tx)
-		}
+		tb := tx.World().chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
+		tb.Tick(tick, pos, tx)
 	}
 
 	w.scratchLoaderAreas = areas[:0]
 	w.scratchRandom = randomBlocks[:0]
 	w.scratchBlockEntities = blockEntities[:0]
-	w.scratchRandomSubIndices = randomSubIndices[:0]
-	w.scratchRandomSubY = randomSubY[:0]
 }
 
 func columnWithinAreas(pos ChunkPos, areas []loaderActiveArea) bool {
@@ -347,53 +306,34 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 
 	lazyMaintenance := tick%sleepMaintenanceInterval == 0
 
-	active := w.scratchActiveEntityTicks
-	if cap(active) == 0 {
-		active = make([]entityTickEntry, 0, 64)
-	}
-	active = active[:0]
-
-	sleeping := w.scratchSleepingEntityTicks
-	if cap(sleeping) == 0 {
-		sleeping = make([]entityTickEntry, 0, 64)
-	}
-	sleeping = sleeping[:0]
-
 	// We iterate over the cached entity column list to partition entity handles. The references keep track of the
 	// originating column so that we can update viewer lists or perform removals without having to search for the
 	// owning chunk again later in the tick.
-
 	for _, ref := range w.entityColumns {
 		col := ref.col
 		if col == nil || len(col.Entities) == 0 {
 			continue
 		}
-		entryRef := entityChunkRef{col: col, pos: ref.pos}
 		if len(col.viewers) > 0 {
-			for _, handle := range col.Entities {
-				active = append(active, entityTickEntry{handle: handle, ref: entryRef})
-			}
+			t.tickEntityColumn(tx, tick, ref.pos, col, true)
 			continue
 		}
 		if !lazyMaintenance {
 			continue
 		}
-		for _, handle := range col.Entities {
-			sleeping = append(sleeping, entityTickEntry{handle: handle, ref: entryRef})
+		t.tickEntityColumn(tx, tick, ref.pos, col, false)
+	}
+}
+
+func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active bool) {
+	ref := entityChunkRef{col: col, pos: pos}
+	for index := 0; index < len(col.Entities); {
+		handle := col.Entities[index]
+		t.tickEntityHandle(tx, tick, handle, ref, active)
+		if index < len(col.Entities) && col.Entities[index] == handle {
+			index++
 		}
 	}
-
-	for _, entry := range active {
-		t.tickEntityHandle(tx, tick, entry.handle, entry.ref, true)
-	}
-	if lazyMaintenance {
-		for _, entry := range sleeping {
-			t.tickEntityHandle(tx, tick, entry.handle, entry.ref, false)
-		}
-	}
-
-	w.scratchActiveEntityTicks = active[:0]
-	w.scratchSleepingEntityTicks = sleeping[:0]
 }
 
 func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref entityChunkRef, active bool) {
@@ -410,44 +350,41 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	}
 
 	chunkPos := chunkPosFromVec3(handle.data.Pos)
-
-	var (
-		entity       Entity
-		entityLoaded bool
-	)
-	loadEntity := func() Entity {
-		// Entity handles lazily open their backing implementation. We memoise the first load so repeated
-		// viewers or ticker calls reuse the same pointer and avoid repeated provider work each tick.
-		if !entityLoaded {
-			entity = state.entity(tx, handle)
-			entityLoaded = true
-		}
-		return entity
-	}
+	var entity Entity
 
 	if state.lastTick == 0 {
 		state.lastTick = tick
+	}
+	if active && state.pos == chunkPos {
+		state.nextPassiveTick = tick + passiveMaintenanceInterval
+		delta := tick - state.lastTick
+		if delta <= 1 && state.tickerChecked && !state.isTicker {
+			state.lastTick = tick
+			return
+		}
 	}
 	if state.pos != chunkPos {
 		oldPos := state.pos
 		state.pos = chunkPos
 
 		newChunk := w.chunk(chunkPos)
-		newChunk.Entities = append(newChunk.Entities, handle)
+		newChunk.addEntity(handle)
 		newChunk.modified = true
 		w.addEntityColumn(chunkPos, newChunk)
 
 		var viewers map[Viewer]struct{}
 		if oldPos == ref.pos && ref.col != nil {
-			ref.col.Entities = sliceutil.DeleteVal(ref.col.Entities, handle)
-			ref.col.modified = true
+			if ref.col.removeEntity(handle) {
+				ref.col.modified = true
+			}
 			if len(ref.col.Entities) == 0 {
 				w.removeEntityColumn(ref.pos)
 			}
 			viewers = ref.col.viewers
 		} else if old, ok := w.chunks[oldPos]; ok {
-			old.Entities = sliceutil.DeleteVal(old.Entities, handle)
-			old.modified = true
+			if old.removeEntity(handle) {
+				old.modified = true
+			}
 			if len(old.Entities) == 0 {
 				w.removeEntityColumn(oldPos)
 			}
@@ -455,7 +392,12 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		}
 
 		if len(viewers) > 0 || len(newChunk.viewers) > 0 {
-			ent := loadEntity()
+			// Entity handles lazily open their backing implementation. We memoise the first load so repeated
+			// viewers or ticker calls reuse the same pointer and avoid repeated provider work each tick.
+			if entity == nil {
+				entity = state.entity(tx, handle)
+			}
+			ent := entity
 			for v := range viewers {
 				if _, ok := newChunk.viewers[v]; !ok {
 					v.HideEntity(ent)
@@ -494,7 +436,11 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		}
 		state.nextPassiveTick = tick + passiveMaintenanceInterval
 		if state.isItem && handle.data.Age >= 5*time.Minute {
-			if ent := loadEntity(); ent != nil {
+			if entity == nil {
+				entity = state.entity(tx, handle)
+			}
+			if entity != nil {
+				ent := entity
 				_ = ent.Close()
 			}
 		}
@@ -522,7 +468,9 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		// Tx expires at the end of each frame, so behaviours that capture the Tx (fire, name tags, etc.) rely
 		// on bindTx being invoked every time we service the entity. The previous implementation called
 		// state.entity each tick; keep that contract so that helpers never observe a stale, closed Tx.
-		loadEntity()
+		if entity == nil {
+			entity = state.entity(tx, handle)
+		}
 	}
 	if state.isTicker && state.ticker != nil {
 		state.ticker.Tick(tx, tick)

@@ -67,13 +67,12 @@ func (s *Session) StartShowingEntity(e world.Entity) {
 }
 
 // closeCurrentContainer closes the container the player might currently have open.
-func (s *Session) closeCurrentContainer(tx *world.Tx) {
-	if !s.containerOpened.Load() {
+func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
+	if !s.closeWindow(clientRequested) {
 		return
 	}
 	openedEntity := s.openedEntity.Load()
 	openedPos := s.openedPos.Load()
-	s.closeWindow()
 
 	if openedEntity != nil {
 		if ent, ok := openedEntity.Entity(tx); ok {
@@ -1056,23 +1055,54 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 	shapes := make([]protocol.DebugDrawerShape, 0, len(s.debugShapesPendingAdd)+len(s.debugShapesPendingRemove))
 	for id, shape := range s.debugShapesPendingAdd {
 		s.debugShapes[id] = shape
-		shapes = append(shapes, s.debugShapeToProtocol(shape, dim))
+		shapes = append(shapes, debugShapeToProtocol(shape, dim, s.shapeAttachedEntityRuntimeID(shape)))
 	}
 	for id := range s.debugShapesPendingRemove {
 		delete(s.debugShapes, id)
-		shapes = append(shapes, protocol.DebugDrawerShape{NetworkID: uint64(id), DimensionID: protocol.Option(s.dimensionID(dim))})
+		shapes = append(shapes, protocol.DebugDrawerShape{
+			NetworkID:   uint64(id),
+			DimensionID: protocol.Option(s.dimensionID(dim)),
+			ExtraShapeData: &protocol.LastShape{},
+		})
 	}
 	clear(s.debugShapesPendingAdd)
 	clear(s.debugShapesPendingRemove)
 	s.writePacket(&packet.DebugDrawer{Shapes: shapes})
 }
 
+// shapeAttachedEntityRuntimeID returns the runtime ID of the entity attached to a debug shape.
+func (s *Session) shapeAttachedEntityRuntimeID(shape debug.Shape) int64 {
+	var handle *world.EntityHandle
+	switch shape := shape.(type) {
+	case *debug.Arrow:
+		handle = shape.Entity
+	case *debug.Box:
+		handle = shape.Entity
+	case *debug.Circle:
+		handle = shape.Entity
+	case *debug.Line:
+		handle = shape.Entity
+	case *debug.Sphere:
+		handle = shape.Entity
+	case *debug.Text:
+		handle = shape.Entity
+	}
+	if handle == nil {
+		return 0
+	}
+	return int64(s.handleRuntimeID(handle))
+}
+
 // debugShapeToProtocol converts a debug shape to its protocol representation. It also provides defaults
 // for some fields such as colour, scale and other per-shape properties.
-func (s *Session) debugShapeToProtocol(shape debug.Shape, dim world.Dimension) protocol.DebugDrawerShape {
+func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntityID int64) protocol.DebugDrawerShape {
+	dimID, _ := world.DimensionID(dim)
 	ps := protocol.DebugDrawerShape{
 		NetworkID:   uint64(shape.ShapeID()),
-		DimensionID: protocol.Option(s.dimensionID(dim)),
+		DimensionID: protocol.Option(int32(dimID)),
+	}
+	if attachedEntityID > 0 {
+		ps.AttachedToEntityID = protocol.Option(uint64(attachedEntityID))
 	}
 	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 	switch shape := shape.(type) {
@@ -1113,6 +1143,7 @@ func (s *Session) debugShapeToProtocol(shape debug.Shape, dim world.Dimension) p
 		ps.Type = protocol.Option(uint8(protocol.DebugDrawerShapeText))
 		ps.Colour = protocol.Option(valueOrDefault(shape.Colour, white))
 		ps.Location = protocol.Option(vec64To32(shape.Position))
+		ps.Scale = protocol.Option(valueOrDefault(float32(shape.Scale), 1))
 		ps.ExtraShapeData = &protocol.TextShape{Text: shape.Text}
 	default:
 		panic(fmt.Sprintf("unknown debug shape type %T", shape))

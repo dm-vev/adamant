@@ -2,7 +2,7 @@ package session
 
 import (
 	"bytes"
-	"maps"
+	"sync"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -18,17 +18,24 @@ import (
 const subChunkRequests = true
 
 const (
-	maxPendingBlobs    = 4096
-	maxSubChunkOffsets = 4096
+	maxPendingBlobs         = 4096
+	maxSubChunkOffsets      = 4096
+	maxPooledChunkEncodeCap = 64 << 10
 )
 
+var chunkEncodeBufferPool = sync.Pool{
+	New: func() any {
+		return bytes.NewBuffer(make([]byte, 0, 512))
+	},
+}
+
 // ViewChunk ...
-func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, blockEntities map[cube.Pos]world.Block, c *chunk.Chunk) {
+func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
 	if !s.conn.ClientCacheEnabled() {
-		s.sendNetworkChunk(pos, dim, c, blockEntities)
+		s.sendNetworkChunk(pos, dim, col)
 		return
 	}
-	s.sendBlobHashes(pos, dim, c, blockEntities)
+	s.sendBlobHashes(pos, dim, col)
 }
 
 // ViewSubChunks ...
@@ -83,27 +90,7 @@ func (s *Session) ViewSubChunks(center world.SubChunkPos, offsets []protocol.Sub
 }
 
 func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) protocol.SubChunkEntry {
-	chunkMap := col.Chunk.HeightMap()
-	subMapType, subMap := byte(protocol.HeightMapDataHasData), make([]int8, 256)
-	higher, lower := true, true
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
-			y, i := chunkMap.At(x, z), (uint16(z)<<4)|uint16(x)
-			otherInd := col.Chunk.SubIndex(y)
-			if otherInd > ind {
-				subMap[i], lower = 16, false
-			} else if otherInd < ind {
-				subMap[i], higher = -1, false
-			} else {
-				subMap[i], lower, higher = int8(y-col.Chunk.SubY(otherInd)), false, false
-			}
-		}
-	}
-	if higher {
-		subMapType, subMap = protocol.HeightMapDataTooHigh, nil
-	} else if lower {
-		subMapType, subMap = protocol.HeightMapDataTooLow, nil
-	}
+	subMapType, subMap := subChunkHeightMap(col, ind)
 
 	sub := col.Chunk.Sub()[ind]
 	if sub.Empty() {
@@ -117,27 +104,12 @@ func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *
 		}
 	}
 
-	serialisedSubChunk := chunk.EncodeSubChunk(col.Chunk, chunk.NetworkEncoding, int(ind))
-
-	blockEntityBuf := bytes.NewBuffer(nil)
-	enc := nbt.NewEncoderWithEncoding(blockEntityBuf, nbt.NetworkLittleEndian)
-	for pos, b := range col.BlockEntities {
-		if n, ok := b.(world.NBTer); ok && col.Chunk.SubIndex(int16(pos.Y())) == ind {
-			d := n.EncodeNBT()
-			if d == nil {
-				d = map[string]any{}
-			} else {
-				// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
-				d = maps.Clone(d)
-			}
-			d["x"], d["y"], d["z"] = int32(pos[0]), int32(pos[1]), int32(pos[2])
-			_ = enc.Encode(d)
-		}
-	}
+	serialisedSubChunk := networkSubChunkPayload(col, ind)
+	blockEntityPayload := subChunkBlockEntityPayload(col, ind)
 
 	entry := protocol.SubChunkEntry{
 		Result:              protocol.SubChunkResultSuccess,
-		RawPayload:          append(serialisedSubChunk, blockEntityBuf.Bytes()...),
+		RawPayload:          joinPayloads(serialisedSubChunk, blockEntityPayload),
 		HeightMapType:       subMapType,
 		HeightMapData:       subMap,
 		RenderHeightMapType: subMapType,
@@ -149,10 +121,43 @@ func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *
 			transaction[hash] = struct{}{}
 
 			entry.BlobHash = hash
-			entry.RawPayload = blockEntityBuf.Bytes()
+			entry.RawPayload = blockEntityPayload
 		}
 	}
 	return entry
+}
+
+func subChunkHeightMap(col *world.Column, ind int16) (byte, []int8) {
+	if mapType, mapData, ok := col.CachedSubChunkHeightMap(ind); ok {
+		return mapType, mapData
+	}
+
+	chunkMap := col.Chunk.HeightMap()
+	subMapType, subMap := byte(protocol.HeightMapDataHasData), make([]int8, 256)
+	higher, lower := true, true
+	for x := uint8(0); x < 16; x++ {
+		for z := uint8(0); z < 16; z++ {
+			y, i := chunkMap.At(x, z), (uint16(z)<<4)|uint16(x)
+			otherInd := col.Chunk.SubIndex(y)
+			if otherInd > ind {
+				subMap[i], lower = 16, false
+				continue
+			}
+			if otherInd < ind {
+				subMap[i], higher = -1, false
+				continue
+			}
+			subMap[i], lower, higher = int8(y-col.Chunk.SubY(otherInd)), false, false
+		}
+	}
+	if higher {
+		subMapType, subMap = protocol.HeightMapDataTooHigh, nil
+	} else if lower {
+		subMapType, subMap = protocol.HeightMapDataTooLow, nil
+	}
+
+	col.CacheSubChunkHeightMap(ind, subMapType, subMap)
+	return subMapType, subMap
 }
 
 // dimensionID returns the dimension ID of the world that the session is in.
@@ -163,9 +168,10 @@ func (s *Session) dimensionID(dim world.Dimension) int32 {
 
 // sendBlobHashes sends chunk blob hashes of the data of the chunk and stores the data in a map of blobs. Only
 // data that the client doesn't yet have will be sent over the network.
-func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chunk.Chunk, blockEntities map[cube.Pos]world.Block) {
+func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
+	c := col.Chunk
 	if subChunkRequests {
-		biomes := chunk.EncodeBiomes(c, chunk.NetworkEncoding)
+		biomes := networkBiomePayload(col)
 		if hash := xxhash.Sum64(biomes); s.trackBlob(hash, biomes) {
 			s.writePacket(&packet.LevelChunk{
 				Dimension:       s.dimensionID(dim),
@@ -182,7 +188,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chu
 	}
 
 	var (
-		data   = chunk.Encode(c, chunk.NetworkEncoding)
+		data   = networkChunkData(col)
 		count  = uint32(len(data.SubChunks))
 		blobs  = append(data.SubChunks, data.Biomes)
 		hashes = make([]uint64, len(blobs))
@@ -207,22 +213,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chu
 	}
 	s.blobMu.Unlock()
 
-	// Length of 1 byte for the border block count.
-	raw := bytes.NewBuffer(make([]byte, 1, 32))
-	enc := nbt.NewEncoderWithEncoding(raw, nbt.NetworkLittleEndian)
-	for bp, b := range blockEntities {
-		if n, ok := b.(world.NBTer); ok {
-			d := n.EncodeNBT()
-			if d == nil {
-				d = map[string]any{}
-			} else {
-				// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
-				d = maps.Clone(d)
-			}
-			d["x"], d["y"], d["z"] = int32(bp[0]), int32(bp[1]), int32(bp[2])
-			_ = enc.Encode(d)
-		}
-	}
+	raw := chunkBlockEntityPayload(col, false)
 
 	s.writePacket(&packet.LevelChunk{
 		Dimension:     s.dimensionID(dim),
@@ -230,53 +221,48 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chu
 		SubChunkCount: count,
 		CacheEnabled:  true,
 		BlobHashes:    hashes,
-		RawPayload:    raw.Bytes(),
+		RawPayload:    raw,
 	})
 }
 
 // sendNetworkChunk sends a network encoded chunk to the client.
-func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, c *chunk.Chunk, blockEntities map[cube.Pos]world.Block) {
+func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
+	c := col.Chunk
 	if subChunkRequests {
+		biomes := networkBiomePayload(col)
+		raw := make([]byte, len(biomes)+1)
+		copy(raw, biomes)
 		s.writePacket(&packet.LevelChunk{
 			Dimension:       s.dimensionID(dim),
 			SubChunkCount:   protocol.SubChunkRequestModeLimited,
 			Position:        protocol.ChunkPos(pos),
 			HighestSubChunk: c.HighestFilledSubChunk(),
-			RawPayload:      append(chunk.EncodeBiomes(c, chunk.NetworkEncoding), 0),
+			RawPayload:      raw,
 		})
 		return
 	}
 
-	data := chunk.Encode(c, chunk.NetworkEncoding)
-	chunkBuf := bytes.NewBuffer(nil)
+	data := networkChunkData(col)
+	totalLen := 1 + len(data.Biomes)
 	for _, s := range data.SubChunks {
-		_, _ = chunkBuf.Write(s)
+		totalLen += len(s)
 	}
-	_, _ = chunkBuf.Write(data.Biomes)
+	blockEntityPayload := chunkBlockEntityPayload(col, true)
+	totalLen += len(blockEntityPayload)
 
-	// Length of 1 byte for the border block count.
-	chunkBuf.WriteByte(0)
-
-	enc := nbt.NewEncoderWithEncoding(chunkBuf, nbt.NetworkLittleEndian)
-	for bp, b := range blockEntities {
-		if n, ok := b.(world.NBTer); ok {
-			d := n.EncodeNBT()
-			if d == nil {
-				d = map[string]any{}
-			} else {
-				// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
-				d = maps.Clone(d)
-			}
-			d["x"], d["y"], d["z"] = int32(bp[0]), int32(bp[1]), int32(bp[2])
-			_ = enc.Encode(d)
-		}
+	raw := make([]byte, 0, totalLen)
+	for _, subChunk := range data.SubChunks {
+		raw = append(raw, subChunk...)
 	}
+	raw = append(raw, data.Biomes...)
+	raw = append(raw, 0)
+	raw = append(raw, blockEntityPayload...)
 
 	s.writePacket(&packet.LevelChunk{
 		Dimension:     s.dimensionID(dim),
 		Position:      protocol.ChunkPos{pos.X(), pos.Z()},
 		SubChunkCount: uint32(len(data.SubChunks)),
-		RawPayload:    append([]byte(nil), chunkBuf.Bytes()...),
+		RawPayload:    raw,
 	})
 }
 
@@ -293,4 +279,154 @@ func (s *Session) trackBlob(hash uint64, blob []byte) bool {
 	s.blobs[hash] = blob
 	s.blobMu.Unlock()
 	return true
+}
+
+func pooledChunkEncodeBuffer() *bytes.Buffer {
+	buf := chunkEncodeBufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	return buf
+}
+
+func releaseChunkEncodeBuffer(buf *bytes.Buffer) {
+	if buf.Cap() > maxPooledChunkEncodeCap {
+		return
+	}
+	buf.Reset()
+	chunkEncodeBufferPool.Put(buf)
+}
+
+func joinPayloads(first, second []byte) []byte {
+	if len(second) == 0 {
+		return first
+	}
+	raw := make([]byte, len(first)+len(second))
+	copy(raw, first)
+	copy(raw[len(first):], second)
+	return raw
+}
+
+func networkChunkData(col *world.Column) chunk.SerialisedData {
+	sub := col.Chunk.Sub()
+	data := chunk.SerialisedData{
+		SubChunks: make([][]byte, len(sub)),
+		Biomes:    networkBiomePayload(col),
+	}
+	for i := range sub {
+		data.SubChunks[i] = networkSubChunkPayload(col, int16(i))
+	}
+	return data
+}
+
+func networkBiomePayload(col *world.Column) []byte {
+	if payload, ok := col.CachedNetworkBiomePayload(); ok {
+		return payload
+	}
+	payload := chunk.EncodeBiomes(col.Chunk, chunk.NetworkEncoding)
+	col.CacheNetworkBiomePayload(payload)
+	return payload
+}
+
+func networkSubChunkPayload(col *world.Column, ind int16) []byte {
+	if payload, ok := col.CachedNetworkSubChunkPayload(ind); ok {
+		return payload
+	}
+	payload := chunk.EncodeSubChunk(col.Chunk, chunk.NetworkEncoding, int(ind))
+	col.CacheNetworkSubChunkPayload(ind, payload)
+	return payload
+}
+
+func chunkBlockEntityPayload(col *world.Column, noBorder bool) []byte {
+	if payload, ok := col.CachedChunkBlockEntityPayload(noBorder); ok {
+		return payload
+	}
+	var payload []byte
+	if noBorder {
+		payload = encodeChunkBlockEntitiesNoBorder(col.BlockEntities)
+	} else {
+		payload = encodeChunkBlockEntities(col.BlockEntities)
+	}
+	col.CacheChunkBlockEntityPayload(noBorder, payload)
+	return payload
+}
+
+func subChunkBlockEntityPayload(col *world.Column, ind int16) []byte {
+	if payload, ok := col.CachedSubChunkBlockEntityPayload(ind); ok {
+		return payload
+	}
+	payload := encodeSubChunkBlockEntities(col, ind)
+	col.CacheSubChunkBlockEntityPayload(ind, payload)
+	return payload
+}
+
+func encodeChunkBlockEntities(blockEntities map[cube.Pos]world.Block) []byte {
+	buf := pooledChunkEncodeBuffer()
+	defer releaseChunkEncodeBuffer(buf)
+
+	// Length of 1 byte for the border block count.
+	buf.WriteByte(0)
+	encodeAllBlockEntities(buf, blockEntities)
+
+	raw := make([]byte, buf.Len())
+	copy(raw, buf.Bytes())
+	return raw
+}
+
+func encodeChunkBlockEntitiesNoBorder(blockEntities map[cube.Pos]world.Block) []byte {
+	buf := pooledChunkEncodeBuffer()
+	defer releaseChunkEncodeBuffer(buf)
+
+	encodeAllBlockEntities(buf, blockEntities)
+	if buf.Len() == 0 {
+		return nil
+	}
+	raw := make([]byte, buf.Len())
+	copy(raw, buf.Bytes())
+	return raw
+}
+
+func encodeSubChunkBlockEntities(col *world.Column, ind int16) []byte {
+	buf := pooledChunkEncodeBuffer()
+	defer releaseChunkEncodeBuffer(buf)
+
+	encodeSubChunkEntities(buf, col, ind)
+	if buf.Len() == 0 {
+		return nil
+	}
+	raw := make([]byte, buf.Len())
+	copy(raw, buf.Bytes())
+	return raw
+}
+
+func encodeAllBlockEntities(buf *bytes.Buffer, blockEntities map[cube.Pos]world.Block) {
+	enc := nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian)
+	for pos, block := range blockEntities {
+		nbtBlock, ok := block.(world.NBTer)
+		if !ok {
+			continue
+		}
+		encodeBlockEntityNBT(enc, pos, nbtBlock)
+	}
+}
+
+func encodeSubChunkEntities(buf *bytes.Buffer, col *world.Column, ind int16) {
+	enc := nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian)
+	for pos, block := range col.BlockEntities {
+		if col.Chunk.SubIndex(int16(pos.Y())) != ind {
+			continue
+		}
+		nbtBlock, ok := block.(world.NBTer)
+		if !ok {
+			continue
+		}
+		encodeBlockEntityNBT(enc, pos, nbtBlock)
+	}
+}
+
+func encodeBlockEntityNBT(enc *nbt.Encoder, pos cube.Pos, nbtBlock world.NBTer) {
+	data := nbtBlock.EncodeNBT()
+	if data == nil {
+		data = map[string]any{}
+	}
+	data["x"], data["y"], data["z"] = int32(pos[0]), int32(pos[1]), int32(pos[2])
+	_ = enc.Encode(data)
 }

@@ -11,7 +11,6 @@ const (
 	hashAncientDebris
 	hashAndesite
 	hashAnvil
-	hashAzaleaLeaves
 	hashBamboo
 	hashBambooBlock
 	hashBambooFence
@@ -234,6 +233,7 @@ const (
 	hashSign
 	hashSkull
 	hashSlab
+	hashSlime
 	hashSmithingTable
 	hashSmoker
 	hashSmoothBasalt
@@ -309,10 +309,6 @@ func (a Andesite) Hash() (uint64, uint64) {
 
 func (a Anvil) Hash() (uint64, uint64) {
 	return hashAnvil, uint64(a.Type.Uint8()) | uint64(a.Facing)<<2
-}
-
-func (l AzaleaLeaves) Hash() (uint64, uint64) {
-	return hashAzaleaLeaves, uint64(boolByte(l.Persistent)) | uint64(boolByte(l.ShouldUpdate))<<1 | uint64(boolByte(l.Flowered))<<2
 }
 
 func (b Bamboo) Hash() (uint64, uint64) {
@@ -876,7 +872,7 @@ func (l LeafLitter) Hash() (uint64, uint64) {
 }
 
 func (l Leaves) Hash() (uint64, uint64) {
-	return hashLeaves, uint64(l.Wood.Uint8()) | uint64(boolByte(l.Persistent))<<4 | uint64(boolByte(l.ShouldUpdate))<<5
+	return hashLeaves, uint64(l.Type.Uint8()) | uint64(boolByte(l.Persistent))<<4 | uint64(boolByte(l.ShouldUpdate))<<5
 }
 
 func (l Lectern) Hash() (uint64, uint64) {
@@ -1201,6 +1197,10 @@ func (s Skull) Hash() (uint64, uint64) {
 
 func (s Slab) Hash() (uint64, uint64) {
 	return hashSlab, world.BlockHash(s.Block) | uint64(boolByte(s.Top))<<32 | uint64(boolByte(s.Double))<<33
+}
+
+func (Slime) Hash() (uint64, uint64) {
+	return hashSlime, 0
 }
 
 func (SmithingTable) Hash() (uint64, uint64) {

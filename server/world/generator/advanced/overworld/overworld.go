@@ -225,12 +225,12 @@ func NewOverworld(seed int64) *Overworld {
 		acaciaLogRID:  world.BlockRuntimeID(block.Log{Wood: block.AcaciaWood(), Axis: cube.Y}),
 		darkOakLogRID: world.BlockRuntimeID(block.Log{Wood: block.DarkOakWood(), Axis: cube.Y}),
 
-		oakLeavesRID:     world.BlockRuntimeID(block.Leaves{Wood: block.OakWood(), ShouldUpdate: true}),
-		spruceLeavesRID:  world.BlockRuntimeID(block.Leaves{Wood: block.SpruceWood(), ShouldUpdate: true}),
-		birchLeavesRID:   world.BlockRuntimeID(block.Leaves{Wood: block.BirchWood(), ShouldUpdate: true}),
-		jungleLeavesRID:  world.BlockRuntimeID(block.Leaves{Wood: block.JungleWood(), ShouldUpdate: true}),
-		acaciaLeavesRID:  world.BlockRuntimeID(block.Leaves{Wood: block.AcaciaWood(), ShouldUpdate: true}),
-		darkOakLeavesRID: world.BlockRuntimeID(block.Leaves{Wood: block.DarkOakWood(), ShouldUpdate: true}),
+		oakLeavesRID:     world.BlockRuntimeID(block.Leaves{Type: block.OakLeaves(), ShouldUpdate: true}),
+		spruceLeavesRID:  world.BlockRuntimeID(block.Leaves{Type: block.SpruceLeaves(), ShouldUpdate: true}),
+		birchLeavesRID:   world.BlockRuntimeID(block.Leaves{Type: block.BirchLeaves(), ShouldUpdate: true}),
+		jungleLeavesRID:  world.BlockRuntimeID(block.Leaves{Type: block.JungleLeaves(), ShouldUpdate: true}),
+		acaciaLeavesRID:  world.BlockRuntimeID(block.Leaves{Type: block.AcaciaLeaves(), ShouldUpdate: true}),
+		darkOakLeavesRID: world.BlockRuntimeID(block.Leaves{Type: block.DarkOakLeaves(), ShouldUpdate: true}),
 
 		oakPlanksRID:     world.BlockRuntimeID(block.Planks{Wood: block.OakWood()}),
 		darkOakPlanksRID: world.BlockRuntimeID(block.Planks{Wood: block.DarkOakWood()}),
