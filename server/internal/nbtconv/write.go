@@ -25,6 +25,7 @@ func WriteItem(s item.Stack, disk bool) map[string]any {
 	writeDisplay(tag, s)
 	writeDragonflyData(tag, s)
 	writeEnchantments(tag, s)
+	writeItemLock(tag, s)
 	writeUnbreakable(tag, s)
 
 	data := make(map[string]any)

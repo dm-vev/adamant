@@ -2477,11 +2477,15 @@ func (p *Player) PickBlock(pos cube.Pos) {
 	if p.Handler().HandleBlockPick(ctx, pos, b); ctx.Cancelled() {
 		return
 	}
-	_, offhand := p.HeldItems()
+	held, offhand := p.HeldItems()
 
 	if found {
+		foundItem, _ := p.Inventory().Item(slot)
 		if slot < 9 {
 			_ = p.SetHeldSlot(slot)
+			return
+		}
+		if held.LockMode() == item.LockInSlot || foundItem.LockMode() == item.LockInSlot {
 			return
 		}
 		heldSlot := int(atomic.LoadUint32(p.heldSlot))
@@ -2491,12 +2495,18 @@ func (p *Player) PickBlock(pos cube.Pos) {
 
 	firstEmpty, emptyFound := p.Inventory().FirstEmpty()
 	if !emptyFound {
+		if held.Locked() {
+			return
+		}
 		p.SetHeldItems(pickedItem, offhand)
 		return
 	}
 	if firstEmpty < 9 {
 		_ = p.SetHeldSlot(firstEmpty)
 		_ = p.Inventory().SetItem(firstEmpty, pickedItem)
+		return
+	}
+	if held.LockMode() == item.LockInSlot {
 		return
 	}
 	heldSlot := int(atomic.LoadUint32(p.heldSlot))
@@ -2877,6 +2887,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 
 	p.checkBlockCollisions(p.data.Vel)
 	p.onGround = p.checkOnGround(mgl64.Vec3{})
+	p.checkEntitySteppers()
 
 	if p.tc != nil {
 		p.tc.TickTravelling(p, tx)
@@ -3175,6 +3186,28 @@ func (p *Player) checkEntityInsiders(entityBBox cube.BBox) {
 					}
 				}
 			}
+		}
+	}
+}
+
+// checkEntitySteppers checks if the player is standing on any EntityStepper blocks.
+func (p *Player) checkEntitySteppers() {
+	if !p.OnGround() {
+		return
+	}
+	box := Type.BBox(p).Translate(p.Position()).Grow(-0.0001)
+	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
+	y := int(math.Floor(box.Min()[1] - 0.0001))
+
+	for x := low[0]; x <= high[0]; x++ {
+		for z := low[2]; z <= high[2]; z++ {
+			pos := cube.Pos{x, y, z}
+			stepper, ok := p.tx.Block(pos).(block.EntityStepper)
+			if !ok {
+				continue
+			}
+			stepper.EntityStepOn(pos, p.tx, p)
+			return
 		}
 	}
 }
@@ -3630,6 +3663,9 @@ func (p *Player) useContext() *item.UseContext {
 			src, dst, srcInv, dstInv := int(atomic.LoadUint32(p.heldSlot)), i, p.inv, p.armour.Inventory()
 			srcIt, _ := srcInv.Item(src)
 			dstIt, _ := dstInv.Item(dst)
+			if srcIt.LockMode() == item.LockInSlot || dstIt.LockMode() == item.LockInSlot {
+				return
+			}
 
 			ctx := event.C(inventory.Holder(p))
 			_ = call(ctx, src, srcIt, srcInv.Handler().HandleTake)

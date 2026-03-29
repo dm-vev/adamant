@@ -175,6 +175,7 @@ func Item(data map[string]any, s *item.Stack) item.Stack {
 	readDisplay(tag, s)
 	readDragonflyData(tag, s)
 	readEnchantments(tag, s)
+	readItemLock(tag, s)
 	readUnbreakable(tag, s)
 	return *s
 }
