@@ -1060,7 +1060,7 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 	}
 	for id := range s.debugShapesPendingRemove {
 		delete(s.debugShapes, id)
-		shapes = append(shapes, protocol.DebugDrawerShape{NetworkID: uint64(id), DimensionID: s.dimensionID(dim)})
+		shapes = append(shapes, protocol.DebugDrawerShape{NetworkID: uint64(id), DimensionID: protocol.Option(s.dimensionID(dim))})
 	}
 	clear(s.debugShapesPendingAdd)
 	clear(s.debugShapesPendingRemove)
@@ -1072,7 +1072,7 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 func (s *Session) debugShapeToProtocol(shape debug.Shape, dim world.Dimension) protocol.DebugDrawerShape {
 	ps := protocol.DebugDrawerShape{
 		NetworkID:   uint64(shape.ShapeID()),
-		DimensionID: s.dimensionID(dim),
+		DimensionID: protocol.Option(s.dimensionID(dim)),
 	}
 	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 	switch shape := shape.(type) {

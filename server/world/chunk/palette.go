@@ -13,6 +13,10 @@ type Palette struct {
 	last      uint32
 	lastIndex int16
 	size      paletteSize
+	cacheLen  uint8
+	cacheNext uint8
+	cacheVals [4]uint32
+	cacheIdxs [4]int16
 
 	// values is a map of values. A PalettedStorage points to the index to this value.
 	values []uint32
@@ -34,6 +38,8 @@ func (palette *Palette) Len() int {
 func (palette *Palette) Add(v uint32) (index int16, resize bool) {
 	i := int16(len(palette.values))
 	palette.values = append(palette.values, v)
+	palette.cachePut(v, i)
+	palette.last, palette.lastIndex = v, i
 
 	if palette.needsResize() {
 		palette.increaseSize()
@@ -47,6 +53,7 @@ func (palette *Palette) Add(v uint32) (index int16, resize bool) {
 func (palette *Palette) Replace(f func(v uint32) uint32) {
 	// Reset last runtime ID as it now has a different offset.
 	palette.last = math.MaxUint32
+	palette.cacheLen, palette.cacheNext = 0, 0
 	for index, v := range palette.values {
 		palette.values[index] = f(v)
 	}
@@ -59,6 +66,13 @@ func (palette *Palette) Index(runtimeID uint32) int16 {
 		// Fast path out.
 		return palette.lastIndex
 	}
+	for i := uint8(0); i < palette.cacheLen; i++ {
+		if palette.cacheVals[i] == runtimeID {
+			index := palette.cacheIdxs[i]
+			palette.last, palette.lastIndex = runtimeID, index
+			return index
+		}
+	}
 	// Slow path in a separate function allows for inlining the fast path.
 	return palette.indexSlow(runtimeID)
 }
@@ -68,13 +82,31 @@ func (palette *Palette) indexSlow(runtimeID uint32) int16 {
 	l := len(palette.values)
 	for i := 0; i < l; i++ {
 		if palette.values[i] == runtimeID {
-			palette.last = runtimeID
 			v := int16(i)
-			palette.lastIndex = v
+			palette.last, palette.lastIndex = runtimeID, v
+			palette.cachePut(runtimeID, v)
 			return v
 		}
 	}
 	return -1
+}
+
+func (palette *Palette) cachePut(runtimeID uint32, index int16) {
+	for i := uint8(0); i < palette.cacheLen; i++ {
+		if palette.cacheVals[i] == runtimeID {
+			palette.cacheIdxs[i] = index
+			return
+		}
+	}
+	if palette.cacheLen < uint8(len(palette.cacheVals)) {
+		palette.cacheVals[palette.cacheLen] = runtimeID
+		palette.cacheIdxs[palette.cacheLen] = index
+		palette.cacheLen++
+		return
+	}
+	palette.cacheVals[palette.cacheNext] = runtimeID
+	palette.cacheIdxs[palette.cacheNext] = index
+	palette.cacheNext = (palette.cacheNext + 1) & (uint8(len(palette.cacheVals)) - 1)
 }
 
 // Value returns the value in the Palette at a specific index.

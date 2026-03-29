@@ -51,6 +51,9 @@ type EntityHandle struct {
 	worldless    *atomic.Bool
 	weakTxActive bool
 	w            *World
+	// state caches the world-owned entity state for fast tick-path access.
+	// It is set/cleared by the world goroutine when entities enter/leave worlds.
+	state *entityState
 
 	data EntityData
 
@@ -376,6 +379,8 @@ type EntityRegistryConfig struct {
 	Item               func(opts EntitySpawnOpts, it any) *EntityHandle
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration) *EntityHandle
+	Boat               func(opts EntitySpawnOpts, variant int) *EntityHandle
+	ChestBoat          func(opts EntitySpawnOpts, variant int) *EntityHandle
 	Minecart           func(opts EntitySpawnOpts) *EntityHandle
 	MinecartChest      func(opts EntitySpawnOpts) *EntityHandle
 	MinecartHopper     func(opts EntitySpawnOpts) *EntityHandle

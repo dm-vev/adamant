@@ -22,6 +22,11 @@ type VehicleInput interface {
 	SetVehicleInput(strafe, forward float64)
 }
 
+// VehicleController represents a vehicle that may decide which passenger controls it.
+type VehicleController interface {
+	ControlsVehicle(passenger world.Entity) bool
+}
+
 // ContainerOpener represents a user that can open an entity container.
 type ContainerOpener interface {
 	OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx)

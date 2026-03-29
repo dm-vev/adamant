@@ -18,7 +18,8 @@ func (g *Overworld) populateLakes(chunkX, chunkZ int, c *chunk.Chunk, villageGen
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
 
-	preview := make(map[world.ChunkPos]*chunk.Chunk, 9)
+	preview := g.acquirePreviewScratch()
+	defer g.releasePreviewScratch(preview)
 
 	for dx := 0; dx >= -1; dx-- {
 		for dz := 0; dz >= -1; dz-- {
@@ -26,7 +27,7 @@ func (g *Overworld) populateLakes(chunkX, chunkZ int, c *chunk.Chunk, villageGen
 			r := g.chunkPopulationRand(originChunkX, originChunkZ)
 
 			// Vanilla: biome = world.getBiome(blockpos.add(16, 0, 16)).
-			biomeID := g.biomeProvider.biomes(originChunkX*16+16, originChunkZ*16+16, 1, 1)[0]
+			biomeID := g.biomeIDAt(originChunkX*16+16, originChunkZ*16+16)
 			flagVillage := villageGenerated && originChunkX == chunkX && originChunkZ == chunkZ
 
 			if mcbiome.ID(biomeID) != mcbiome.Desert && mcbiome.ID(biomeID) != mcbiome.DesertHills &&
@@ -88,7 +89,8 @@ func (g *Overworld) genLake(
 		return false
 	}
 
-	shape := make([]bool, 2048)
+	shape := g.acquireLakeShape()
+	defer g.releaseLakeShape(shape)
 	ellipses := int(r.Intn(4)) + 4
 	for j := 0; j < ellipses; j++ {
 		d0 := r.Float64()*6.0 + 3.0

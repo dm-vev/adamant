@@ -149,6 +149,19 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		m[protocol.EntityDataKeyHurtDirection] = int32(h.RollingDirection())
 		m[protocol.EntityDataKeyStructuralIntegrity] = float32(h.Damage())
 	}
+	if r, ok := e.(rowTime); ok {
+		m[protocol.EntityDataKeyRowTimeLeft] = r.RowTimeLeft()
+		m[protocol.EntityDataKeyRowTimeRight] = r.RowTimeRight()
+	}
+	if b, ok := e.(buoyantMeta); ok {
+		m[protocol.EntityDataKeyIsBuoyant] = byte(boolByte(b.Buoyant()))
+		if data := b.BuoyancyData(); data != "" {
+			m[protocol.EntityDataKeyBuoyancyData] = data
+		}
+	}
+	if c, ok := e.(controllingSeat); ok {
+		m[protocol.EntityDataKeyControllingSeatIndex] = c.ControllingSeatIndex()
+	}
 	if t, ok := e.(interactText); ok {
 		if text := t.InteractText(); text != "" {
 			m[protocol.EntityDataKeyInteractText] = text
@@ -420,6 +433,20 @@ type minecartDamage interface {
 	RollingAmplitude() int
 	RollingDirection() int
 	Damage() float64
+}
+
+type rowTime interface {
+	RowTimeLeft() float32
+	RowTimeRight() float32
+}
+
+type buoyantMeta interface {
+	Buoyant() bool
+	BuoyancyData() string
+}
+
+type controllingSeat interface {
+	ControllingSeatIndex() int32
 }
 
 type interactText interface {

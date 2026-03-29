@@ -95,6 +95,10 @@ func init() {
 	world.RegisterItem(MinecartChest{})
 	world.RegisterItem(MinecartHopper{})
 	world.RegisterItem(MinecartTNT{})
+	for _, variant := range BoatVariants() {
+		world.RegisterItem(Boat{Variant: variant})
+		world.RegisterItem(ChestBoat{Variant: variant})
+	}
 	world.RegisterItem(MelonSlice{})
 	world.RegisterItem(MushroomStew{})
 	world.RegisterItem(Mutton{Cooked: true})

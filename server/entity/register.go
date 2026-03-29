@@ -21,6 +21,8 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	FallingBlockType,
 	FireworkType,
 	ItemType,
+	BoatType,
+	ChestBoatType,
 	MinecartType,
 	ChestMinecartType,
 	HopperMinecartType,
@@ -57,6 +59,12 @@ var conf = world.EntityRegistryConfig{
 	},
 	Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
 		return NewItem(opts, it.(item.Stack))
+	},
+	Boat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
+		return NewBoat(opts, variant)
+	},
+	ChestBoat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
+		return NewChestBoat(opts, variant)
 	},
 	Minecart: func(opts world.EntitySpawnOpts) *world.EntityHandle {
 		return opts.New(MinecartType, minecartConf)

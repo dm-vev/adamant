@@ -66,7 +66,13 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 		deltaPos = mgl64.Vec3{}
 		if ridden, ok := ridingHandle.Entity(tx); ok {
 			if input, ok := ridden.(entity.VehicleInput); ok {
-				input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
+				allowVehicleInput := true
+				if controller, ok := ridden.(entity.VehicleController); ok {
+					allowVehicleInput = controller.ControlsVehicle(c)
+				}
+				if allowVehicleInput {
+					input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
+				}
 			}
 		}
 	}

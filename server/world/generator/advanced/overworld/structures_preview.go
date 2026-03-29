@@ -2,25 +2,35 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 )
 
 func (g *Overworld) previewChunk(chunkX, chunkZ int) *chunk.Chunk {
+	pos := world.ChunkPos{int32(chunkX), int32(chunkZ)}
+	if c, ok := g.previewCache.get(pos); ok {
+		return c
+	}
+	c := g.buildPreviewChunk(chunkX, chunkZ)
+	g.previewCache.add(pos, c)
+	return c
+}
+
+func (g *Overworld) buildPreviewChunk(chunkX, chunkZ int) *chunk.Chunk {
 	c := chunk.New(g.airRID, cube.Range{0, 255})
 
 	s := g.pool.Get().(*scratch)
 	defer g.pool.Put(s)
 
-	genIDs := g.biomeProvider.biomesForGeneration(chunkX*4-2, chunkZ*4-2, 10, 10)
-	biomeIDs := g.biomeProvider.biomes(chunkX*16, chunkZ*16, 16, 16)
+	biomeData := g.biomeDataForChunk(chunkX, chunkZ)
 
 	var biomesForGeneration [10 * 10]*biomeDef
 	var biomes [16 * 16]*biomeDef
-	for i, id := range genIDs {
+	for i, id := range biomeData.genIDs {
 		biomesForGeneration[i] = g.biomeDef(id)
 	}
-	for i, id := range biomeIDs {
+	for i, id := range biomeData.biomeIDs {
 		biomes[i] = g.biomeDef(id)
 	}
 

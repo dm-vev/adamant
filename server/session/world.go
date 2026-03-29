@@ -162,6 +162,11 @@ func (s *Session) ViewEntity(e world.Entity) {
 
 // ViewEntityLink sends a link update between the ridden entity and the rider.
 func (s *Session) ViewEntityLink(ridden, rider *world.EntityHandle, mounted bool) {
+	s.ViewEntityLinkType(ridden, rider, entity.LinkRider, mounted)
+}
+
+// ViewEntityLinkType sends a link update between the ridden entity and the rider with an explicit link type.
+func (s *Session) ViewEntityLinkType(ridden, rider *world.EntityHandle, linkType entity.LinkType, mounted bool) {
 	if ridden == nil || rider == nil {
 		return
 	}
@@ -170,14 +175,19 @@ func (s *Session) ViewEntityLink(ridden, rider *world.EntityHandle, mounted bool
 	if riddenID == 0 || riderID == 0 {
 		return
 	}
-	linkType := byte(protocol.EntityLinkRemove)
+	pkType := byte(protocol.EntityLinkRemove)
 	if mounted {
-		linkType = byte(protocol.EntityLinkRider)
+		switch linkType {
+		case entity.LinkPassenger:
+			pkType = byte(protocol.EntityLinkPassenger)
+		default:
+			pkType = byte(protocol.EntityLinkRider)
+		}
 	}
 	s.writePacket(&packet.SetActorLink{EntityLink: protocol.EntityLink{
 		RiddenEntityUniqueID: int64(riddenID),
 		RiderEntityUniqueID:  int64(riderID),
-		Type:                 linkType,
+		Type:                 pkType,
 		RiderInitiated:       true,
 	}})
 }

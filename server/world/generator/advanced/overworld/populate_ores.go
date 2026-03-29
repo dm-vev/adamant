@@ -13,7 +13,7 @@ import (
 
 func (g *Overworld) populateOresInChunk(chunkX, chunkZ int, c *chunk.Chunk) {
 	r := g.chunkPopulationRand(chunkX, chunkZ)
-	biomeID := g.biomeProvider.biomes(chunkX*16+16, chunkZ*16+16, 1, 1)[0]
+	biomeID := g.biomeIDAt(chunkX*16+16, chunkZ*16+16)
 	g.populateOresChunk(c, r, chunkX, chunkZ, biomeID)
 }
 

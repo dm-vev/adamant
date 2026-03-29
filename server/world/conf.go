@@ -122,23 +122,21 @@ func (conf Config) New() *World {
 	}
 	s := conf.Provider.Settings()
 	w := &World{
-		scheduledUpdates:    newScheduledTickQueue(s.CurrentTick),
-		entities:            make(map[*EntityHandle]*entityState),
-		viewers:             make(map[*Loader]Viewer),
-		chunks:              make(map[ChunkPos]*Column),
-		queueClosing:        make(chan struct{}),
-		closing:             make(chan struct{}),
-		queue:               make(chan transaction, 128),
-		generatorQueue:      make(chan generationTask, conf.GeneratorQueueSize),
-		r:                   rand.New(conf.RandSource),
-		advance:             s.ref.Add(1) == 1,
-		conf:                conf,
-		ra:                  conf.Dim.Range(),
-		set:                 s,
-		activeColumnIndex:   make(map[ChunkPos]int),
-		entityColumnIndex:   make(map[ChunkPos]int),
-		scratchActiveRefs:   make(map[*EntityHandle]entityChunkRef),
-		scratchSleepingRefs: make(map[*EntityHandle]entityChunkRef),
+		scheduledUpdates:  newScheduledTickQueue(s.CurrentTick),
+		entities:          make(map[*EntityHandle]*entityState),
+		viewers:           make(map[*Loader]Viewer),
+		chunks:            make(map[ChunkPos]*Column),
+		queueClosing:      make(chan struct{}),
+		closing:           make(chan struct{}),
+		queue:             make(chan transaction, 128),
+		generatorQueue:    make(chan generationTask, conf.GeneratorQueueSize),
+		r:                 rand.New(conf.RandSource),
+		advance:           s.ref.Add(1) == 1,
+		conf:              conf,
+		ra:                conf.Dim.Range(),
+		set:               s,
+		activeColumnIndex: make(map[ChunkPos]int),
+		entityColumnIndex: make(map[ChunkPos]int),
 	}
 	w.weather = weather{w: w}
 	var h Handler = NopHandler{}
