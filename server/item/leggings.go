@@ -75,6 +75,12 @@ func (l Leggings) RepairableBy(i Stack) bool {
 	return armourTierRepairable(l.Tier)(i)
 }
 
+// FireProof ...
+func (l Leggings) FireProof() bool {
+	_, netherite := l.Tier.(ArmourTierNetherite)
+	return netherite
+}
+
 // SmeltInfo ...
 func (l Leggings) SmeltInfo() SmeltInfo {
 	switch l.Tier.(type) {

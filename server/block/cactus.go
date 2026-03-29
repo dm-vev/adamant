@@ -69,7 +69,11 @@ func (c Cactus) canGrowHere(pos cube.Pos, tx *world.Tx, recursive bool) bool {
 }
 
 // EntityInside ...
-func (c Cactus) EntityInside(_ cube.Pos, _ *world.Tx, e world.Entity) {
+func (c Cactus) EntityInside(pos cube.Pos, _ *world.Tx, e world.Entity) {
+	if p, ok := e.(PrickableEntity); ok {
+		p.Prick(pos)
+		return
+	}
 	if l, ok := e.(livingEntity); ok {
 		l.Hurt(0.5, DamageSource{Block: c})
 	}
@@ -106,6 +110,12 @@ func allCactus() (b []world.Block) {
 		b = append(b, Cactus{Age: i})
 	}
 	return
+}
+
+// PrickableEntity represents an entity that can be pricked.
+type PrickableEntity interface {
+	// Prick is called whenever a block on the position passed tries to prick this entity.
+	Prick(pos cube.Pos)
 }
 
 // DamageSource is passed as world.DamageSource for damage caused by a block,

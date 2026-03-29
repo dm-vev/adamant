@@ -102,6 +102,11 @@ func (a Axe) RepairableBy(i Stack) bool {
 	return toolTierRepairable(a.Tier)(i)
 }
 
+// FireProof ...
+func (a Axe) FireProof() bool {
+	return a.Tier == ToolTierNetherite
+}
+
 // EnchantmentValue ...
 func (a Axe) EnchantmentValue() int {
 	return a.Tier.EnchantmentValue

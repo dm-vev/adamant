@@ -51,6 +51,12 @@ func (b Boots) RepairableBy(i Stack) bool {
 	return armourTierRepairable(b.Tier)(i)
 }
 
+// FireProof ...
+func (b Boots) FireProof() bool {
+	_, netherite := b.Tier.(ArmourTierNetherite)
+	return netherite
+}
+
 // DefencePoints ...
 func (b Boots) DefencePoints() float64 {
 	switch b.Tier.Name() {

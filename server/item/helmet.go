@@ -79,6 +79,12 @@ func (h Helmet) RepairableBy(i Stack) bool {
 	return armourTierRepairable(h.Tier)(i)
 }
 
+// FireProof ...
+func (h Helmet) FireProof() bool {
+	_, netherite := h.Tier.(ArmourTierNetherite)
+	return netherite
+}
+
 // Helmet ...
 func (h Helmet) Helmet() bool {
 	return true

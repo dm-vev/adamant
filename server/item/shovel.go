@@ -110,6 +110,11 @@ func (s Shovel) RepairableBy(i Stack) bool {
 	return toolTierRepairable(s.Tier)(i)
 }
 
+// FireProof ...
+func (s Shovel) FireProof() bool {
+	return s.Tier == ToolTierNetherite
+}
+
 // EncodeItem ...
 func (s Shovel) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + s.Tier.Name + "_shovel", 0

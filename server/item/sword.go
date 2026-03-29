@@ -79,6 +79,11 @@ func (s Sword) RepairableBy(i Stack) bool {
 	return toolTierRepairable(s.Tier)(i)
 }
 
+// FireProof ...
+func (s Sword) FireProof() bool {
+	return s.Tier == ToolTierNetherite
+}
+
 // EncodeItem ...
 func (s Sword) EncodeItem() (name string, meta int16) {
 	return "minecraft:" + s.Tier.Name + "_sword", 0

@@ -157,9 +157,14 @@ type DamageFunc func(s item.Stack, d int) item.Stack
 
 // Damage deals damage (hearts) to Armour. The resulting item damage depends on the
 // dmg passed and the DamageFunc used.
-func (a *Armour) Damage(dmg float64, f DamageFunc) {
+func (a *Armour) Damage(dmg float64, fire bool, f DamageFunc) {
 	armourDamage := int(math.Max(math.Floor(dmg/4), 1))
 	for slot, it := range a.Slots() {
+		if fire {
+			if fireproof, ok := it.Item().(item.FireProof); ok && fireproof.FireProof() {
+				continue
+			}
+		}
 		_ = a.inv.SetItem(slot, f(it, armourDamage))
 	}
 }

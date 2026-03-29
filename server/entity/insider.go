@@ -6,9 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// checkEntityInsiders checks if the entity is colliding with any EntityInsider blocks.
-func checkEntityInsiders(tx *world.Tx, e world.Entity) {
-	box := e.H().Type().BBox(e).Translate(e.Position()).Grow(-0.0001)
+// CheckEntityInsiders checks if the entity is colliding with any EntityInsider blocks.
+func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
 
 	for y := low[1]; y <= high[1]; y++ {
@@ -31,4 +30,9 @@ func checkEntityInsiders(tx *world.Tx, e world.Entity) {
 			}
 		}
 	}
+}
+
+// checkEntityInsiders checks if the entity is colliding with any EntityInsider blocks.
+func checkEntityInsiders(tx *world.Tx, e world.Entity) {
+	CheckEntityInsiders(tx, e.H().Type().BBox(e).Translate(e.Position()).Grow(-0.0001), e)
 }

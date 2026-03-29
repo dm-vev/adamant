@@ -59,6 +59,11 @@ func (p Pickaxe) RepairableBy(i Stack) bool {
 	return toolTierRepairable(p.Tier)(i)
 }
 
+// FireProof ...
+func (p Pickaxe) FireProof() bool {
+	return p.Tier == ToolTierNetherite
+}
+
 // SmeltInfo ...
 func (p Pickaxe) SmeltInfo() SmeltInfo {
 	switch p.Tier {

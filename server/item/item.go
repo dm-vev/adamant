@@ -131,6 +131,12 @@ type Cooldown interface {
 	Cooldown() time.Duration
 }
 
+// FireProof indicates an item that cannot be destroyed by fire and does not take damage from fire.
+type FireProof interface {
+	// FireProof returns true if the item is fireproof.
+	FireProof() bool
+}
+
 // nameable represents a block that may be named. These are often containers such as chests, which have a
 // name displayed in their interface.
 type nameable interface {

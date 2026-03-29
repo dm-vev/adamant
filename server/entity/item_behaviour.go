@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -74,6 +75,14 @@ func (i *ItemBehaviour) Item() item.Stack {
 // Tick moves the entity, checks if it should be picked up by a nearby collector
 // or if it should merge with nearby item entities.
 func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	if e.OnFireDuration() > 0 {
+		if fireproof, ok := i.Item().Item().(item.FireProof); !(ok && fireproof.FireProof()) {
+			tx.PlaySound(e.Position(), sound.FireExtinguish{})
+			_ = e.Close()
+			return nil
+		}
+	}
+
 	pos := cube.PosFromVec3(e.Position())
 	blockPos := pos.Side(cube.FaceDown)
 
@@ -110,6 +119,17 @@ func (i *ItemBehaviour) Explode(e *Ent, src mgl64.Vec3, impact float64, conf blo
 		}
 		_ = e.Close()
 	}
+}
+
+// Prick reacts to contact with cactus. The item entity is destroyed unless the item type is prick proof.
+func (i *ItemBehaviour) Prick(e *Ent, blockPos cube.Pos) {
+	if _, cactus := e.tx.Block(blockPos).(block.Cactus); !cactus {
+		return
+	}
+	if p, ok := i.Item().Item().(interface{ PrickProof() bool }); ok && p.PrickProof() {
+		return
+	}
+	_ = e.Close()
 }
 
 // tick checks if the item can be picked up or merged with nearby item stacks.
