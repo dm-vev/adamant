@@ -1954,6 +1954,8 @@ type Column struct {
 	subChunkHeightMaps              map[int16]cachedSubChunkHeightMap
 	networkBiomePayload             cachedBlockEntityPayload
 	networkSubChunkPayloads         map[int16]cachedBlockEntityPayload
+	limitedChunkPayload             cachedBlockEntityPayload
+	fullChunkPayload                cachedBlockEntityPayload
 	chunkBlockEntityPayload         cachedBlockEntityPayload
 	chunkBlockEntityPayloadNoBorder cachedBlockEntityPayload
 	subChunkBlockEntityPayloads     map[int16]cachedBlockEntityPayload
@@ -2108,16 +2110,20 @@ func (c *Column) invalidateSubChunkHeightMaps() {
 
 func (c *Column) invalidateNetworkBiomePayload() {
 	c.networkBiomePayload = cachedBlockEntityPayload{}
+	c.limitedChunkPayload = cachedBlockEntityPayload{}
+	c.fullChunkPayload = cachedBlockEntityPayload{}
 }
 
 func (c *Column) invalidateNetworkSubChunkPayloads() {
 	clear(c.networkSubChunkPayloads)
+	c.fullChunkPayload = cachedBlockEntityPayload{}
 }
 
 func (c *Column) invalidateBlockEntityPayloads() {
 	c.chunkBlockEntityPayload = cachedBlockEntityPayload{}
 	c.chunkBlockEntityPayloadNoBorder = cachedBlockEntityPayload{}
 	clear(c.subChunkBlockEntityPayloads)
+	c.fullChunkPayload = cachedBlockEntityPayload{}
 }
 
 // CachedSubChunkHeightMap returns cached height map data for a sub-chunk.
@@ -2166,6 +2172,26 @@ func (c *Column) CacheNetworkSubChunkPayload(ind int16, payload []byte) {
 		c.networkSubChunkPayloads = make(map[int16]cachedBlockEntityPayload, 4)
 	}
 	c.networkSubChunkPayloads[ind] = cachedBlockEntityPayload{payload: payload, ready: true}
+}
+
+// CachedLimitedChunkPayload returns the cached limited chunk raw payload.
+func (c *Column) CachedLimitedChunkPayload() ([]byte, bool) {
+	return c.limitedChunkPayload.payload, c.limitedChunkPayload.ready
+}
+
+// CacheLimitedChunkPayload stores the limited chunk raw payload.
+func (c *Column) CacheLimitedChunkPayload(payload []byte) {
+	c.limitedChunkPayload = cachedBlockEntityPayload{payload: payload, ready: true}
+}
+
+// CachedFullChunkPayload returns the cached full chunk raw payload.
+func (c *Column) CachedFullChunkPayload() ([]byte, bool) {
+	return c.fullChunkPayload.payload, c.fullChunkPayload.ready
+}
+
+// CacheFullChunkPayload stores the full chunk raw payload.
+func (c *Column) CacheFullChunkPayload(payload []byte) {
+	c.fullChunkPayload = cachedBlockEntityPayload{payload: payload, ready: true}
 }
 
 // CachedChunkBlockEntityPayload returns a cached encoded block entity payload for the column.

@@ -102,6 +102,44 @@ func BenchmarkNetworkSubChunkPayload(b *testing.B) {
 	})
 }
 
+func BenchmarkLimitedChunkPayload(b *testing.B) {
+	baseCol, _ := benchmarkColumnWithBlockEntities(b, 32)
+	b.Run("cold", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			col := &world.Column{Chunk: baseCol.Chunk, BlockEntities: baseCol.BlockEntities}
+			_ = limitedChunkPayload(col)
+		}
+	})
+	b.Run("warm", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = limitedChunkPayload(baseCol)
+		}
+	})
+}
+
+func BenchmarkFullChunkPayload(b *testing.B) {
+	baseCol, _ := benchmarkColumnWithBlockEntities(b, 32)
+	b.Run("cold", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			col := &world.Column{Chunk: baseCol.Chunk, BlockEntities: baseCol.BlockEntities}
+			_ = fullChunkPayload(col)
+		}
+	})
+	b.Run("warm", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = fullChunkPayload(baseCol)
+		}
+	})
+}
+
 func benchmarkBlockEntities(b *testing.B, count int) map[cube.Pos]world.Block {
 	b.Helper()
 

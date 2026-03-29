@@ -229,40 +229,21 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col *world.Column) {
 	c := col.Chunk
 	if subChunkRequests {
-		biomes := networkBiomePayload(col)
-		raw := make([]byte, len(biomes)+1)
-		copy(raw, biomes)
 		s.writePacket(&packet.LevelChunk{
 			Dimension:       s.dimensionID(dim),
 			SubChunkCount:   protocol.SubChunkRequestModeLimited,
 			Position:        protocol.ChunkPos(pos),
 			HighestSubChunk: c.HighestFilledSubChunk(),
-			RawPayload:      raw,
+			RawPayload:      limitedChunkPayload(col),
 		})
 		return
 	}
 
-	data := networkChunkData(col)
-	totalLen := 1 + len(data.Biomes)
-	for _, s := range data.SubChunks {
-		totalLen += len(s)
-	}
-	blockEntityPayload := chunkBlockEntityPayload(col, true)
-	totalLen += len(blockEntityPayload)
-
-	raw := make([]byte, 0, totalLen)
-	for _, subChunk := range data.SubChunks {
-		raw = append(raw, subChunk...)
-	}
-	raw = append(raw, data.Biomes...)
-	raw = append(raw, 0)
-	raw = append(raw, blockEntityPayload...)
-
 	s.writePacket(&packet.LevelChunk{
 		Dimension:     s.dimensionID(dim),
 		Position:      protocol.ChunkPos{pos.X(), pos.Z()},
-		SubChunkCount: uint32(len(data.SubChunks)),
-		RawPayload:    raw,
+		SubChunkCount: uint32(len(c.Sub())),
+		RawPayload:    fullChunkPayload(col),
 	})
 }
 
@@ -333,6 +314,41 @@ func networkSubChunkPayload(col *world.Column, ind int16) []byte {
 	payload := chunk.EncodeSubChunk(col.Chunk, chunk.NetworkEncoding, int(ind))
 	col.CacheNetworkSubChunkPayload(ind, payload)
 	return payload
+}
+
+func limitedChunkPayload(col *world.Column) []byte {
+	if payload, ok := col.CachedLimitedChunkPayload(); ok {
+		return payload
+	}
+	biomes := networkBiomePayload(col)
+	raw := make([]byte, len(biomes)+1)
+	copy(raw, biomes)
+	col.CacheLimitedChunkPayload(raw)
+	return raw
+}
+
+func fullChunkPayload(col *world.Column) []byte {
+	if payload, ok := col.CachedFullChunkPayload(); ok {
+		return payload
+	}
+
+	data := networkChunkData(col)
+	totalLen := 1 + len(data.Biomes)
+	for _, subChunk := range data.SubChunks {
+		totalLen += len(subChunk)
+	}
+	blockEntityPayload := chunkBlockEntityPayload(col, true)
+	totalLen += len(blockEntityPayload)
+
+	raw := make([]byte, 0, totalLen)
+	for _, subChunk := range data.SubChunks {
+		raw = append(raw, subChunk...)
+	}
+	raw = append(raw, data.Biomes...)
+	raw = append(raw, 0)
+	raw = append(raw, blockEntityPayload...)
+	col.CacheFullChunkPayload(raw)
+	return raw
 }
 
 func chunkBlockEntityPayload(col *world.Column, noBorder bool) []byte {
