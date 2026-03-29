@@ -11,6 +11,7 @@ const (
 	hashAncientDebris
 	hashAndesite
 	hashAnvil
+	hashAzalea
 	hashBamboo
 	hashBambooBlock
 	hashBambooFence
@@ -33,17 +34,22 @@ const (
 	hashBorderBlock
 	hashBrewingStand
 	hashBricks
+	hashBrownMushroom
+	hashBuddingAmethyst
 	hashBush
 	hashButton
 	hashCactus
 	hashCactusFlower
 	hashCake
 	hashCalcite
+	hashCamera
 	hashCampfire
 	hashCandle
 	hashCandleCake
 	hashCarpet
 	hashCarrot
+	hashCartographyTable
+	hashChemicalHeat
 	hashChest
 	hashChiseledQuartz
 	hashChorusFlower
@@ -112,6 +118,7 @@ const (
 	hashFireflyBush
 	hashFletchingTable
 	hashFlower
+	hashFloweringAzalea
 	hashFroglight
 	hashFurnace
 	hashGlass
@@ -121,6 +128,7 @@ const (
 	hashGlowstone
 	hashGold
 	hashGoldOre
+	hashGoldenDandelion
 	hashGranite
 	hashGrass
 	hashGravel
@@ -157,6 +165,7 @@ const (
 	hashLight
 	hashLilyPad
 	hashLitPumpkin
+	hashLodestone
 	hashLog
 	hashLoom
 	hashMagma
@@ -210,6 +219,7 @@ const (
 	hashRawCopper
 	hashRawGold
 	hashRawIron
+	hashRedMushroom
 	hashRedstoneBlock
 	hashRedstoneComparator
 	hashRedstoneLamp
@@ -227,6 +237,7 @@ const (
 	hashSeaGrass
 	hashSeaLantern
 	hashSeaPickle
+	hashShelf
 	hashShortDryGrass
 	hashShortGrass
 	hashShroomlight
@@ -312,6 +323,10 @@ func (a Anvil) Hash() (uint64, uint64) {
 	return hashAnvil, uint64(a.Type.Uint8()) | uint64(a.Facing)<<2
 }
 
+func (Azalea) Hash() (uint64, uint64) {
+	return hashAzalea, 0
+}
+
 func (b Bamboo) Hash() (uint64, uint64) {
 	return hashBamboo, uint64(boolByte(b.Ready)) | uint64(boolByte(b.Thick))<<1 | uint64(b.LeafSize.Uint8())<<2
 }
@@ -381,7 +396,7 @@ func (BlueIce) Hash() (uint64, uint64) {
 }
 
 func (b Bone) Hash() (uint64, uint64) {
-	return hashBone, uint64(b.Axis)
+	return hashBone, uint64(b.Axis) | uint64(b.Deprecated)<<2
 }
 
 func (Bookshelf) Hash() (uint64, uint64) {
@@ -398,6 +413,14 @@ func (b BrewingStand) Hash() (uint64, uint64) {
 
 func (Bricks) Hash() (uint64, uint64) {
 	return hashBricks, 0
+}
+
+func (BrownMushroom) Hash() (uint64, uint64) {
+	return hashBrownMushroom, 0
+}
+
+func (BuddingAmethyst) Hash() (uint64, uint64) {
+	return hashBuddingAmethyst, 0
 }
 
 func (Bush) Hash() (uint64, uint64) {
@@ -424,6 +447,10 @@ func (Calcite) Hash() (uint64, uint64) {
 	return hashCalcite, 0
 }
 
+func (Camera) Hash() (uint64, uint64) {
+	return hashCamera, 0
+}
+
 func (c Campfire) Hash() (uint64, uint64) {
 	return hashCampfire, uint64(c.Facing) | uint64(boolByte(c.Extinguished))<<2 | uint64(c.Type.Uint8())<<3
 }
@@ -444,12 +471,20 @@ func (c Carrot) Hash() (uint64, uint64) {
 	return hashCarrot, uint64(c.Growth)
 }
 
+func (CartographyTable) Hash() (uint64, uint64) {
+	return hashCartographyTable, 0
+}
+
+func (ChemicalHeat) Hash() (uint64, uint64) {
+	return hashChemicalHeat, 0
+}
+
 func (c Chest) Hash() (uint64, uint64) {
 	return hashChest, uint64(c.Facing)
 }
 
-func (ChiseledQuartz) Hash() (uint64, uint64) {
-	return hashChiseledQuartz, 0
+func (c ChiseledQuartz) Hash() (uint64, uint64) {
+	return hashChiseledQuartz, uint64(c.Axis)
 }
 
 func (c ChorusFlower) Hash() (uint64, uint64) {
@@ -716,6 +751,10 @@ func (f Flower) Hash() (uint64, uint64) {
 	return hashFlower, uint64(f.Type.Uint8())
 }
 
+func (FloweringAzalea) Hash() (uint64, uint64) {
+	return hashFloweringAzalea, 0
+}
+
 func (f Froglight) Hash() (uint64, uint64) {
 	return hashFroglight, uint64(f.Type.Uint8()) | uint64(f.Axis)<<2
 }
@@ -733,7 +772,11 @@ func (GlassPane) Hash() (uint64, uint64) {
 }
 
 func (t GlazedTerracotta) Hash() (uint64, uint64) {
-	return hashGlazedTerracotta, uint64(t.Colour.Uint8()) | uint64(t.Facing)<<4
+	hash := uint64(t.Colour.Uint8()) | uint64(t.Facing)<<4
+	if t.legacyFacing {
+		hash |= 1 << 8
+	}
+	return hashGlazedTerracotta, hash
 }
 
 func (GlowingObsidian) Hash() (uint64, uint64) {
@@ -750,6 +793,10 @@ func (Gold) Hash() (uint64, uint64) {
 
 func (g GoldOre) Hash() (uint64, uint64) {
 	return hashGoldOre, uint64(g.Type.Uint8())
+}
+
+func (GoldenDandelion) Hash() (uint64, uint64) {
+	return hashGoldenDandelion, 0
 }
 
 func (g Granite) Hash() (uint64, uint64) {
@@ -789,7 +836,7 @@ func (p HardenedStainedGlassPane) Hash() (uint64, uint64) {
 }
 
 func (h HayBale) Hash() (uint64, uint64) {
-	return hashHayBale, uint64(h.Axis)
+	return hashHayBale, uint64(h.Axis) | uint64(h.Deprecated)<<2
 }
 
 func (HeavyCore) Hash() (uint64, uint64) {
@@ -849,7 +896,11 @@ func (k Kelp) Hash() (uint64, uint64) {
 }
 
 func (l Ladder) Hash() (uint64, uint64) {
-	return hashLadder, uint64(l.Facing)
+	hash := uint64(l.Facing)
+	if l.legacyFacing {
+		hash |= 1 << 3
+	}
+	return hashLadder, hash
 }
 
 func (l Lantern) Hash() (uint64, uint64) {
@@ -894,6 +945,10 @@ func (LilyPad) Hash() (uint64, uint64) {
 
 func (l LitPumpkin) Hash() (uint64, uint64) {
 	return hashLitPumpkin, uint64(l.Facing)
+}
+
+func (Lodestone) Hash() (uint64, uint64) {
+	return hashLodestone, 0
 }
 
 func (l Log) Hash() (uint64, uint64) {
@@ -1076,8 +1131,8 @@ func (p PumpkinSeeds) Hash() (uint64, uint64) {
 	return hashPumpkinSeeds, uint64(p.Growth) | uint64(p.Direction)<<8
 }
 
-func (Purpur) Hash() (uint64, uint64) {
-	return hashPurpur, 0
+func (p Purpur) Hash() (uint64, uint64) {
+	return hashPurpur, uint64(p.Axis)
 }
 
 func (p PurpurPillar) Hash() (uint64, uint64) {
@@ -1085,7 +1140,7 @@ func (p PurpurPillar) Hash() (uint64, uint64) {
 }
 
 func (q Quartz) Hash() (uint64, uint64) {
-	return hashQuartz, uint64(boolByte(q.Smooth))
+	return hashQuartz, uint64(boolByte(q.Smooth)) | uint64(q.Axis)<<1
 }
 
 func (QuartzBricks) Hash() (uint64, uint64) {
@@ -1106,6 +1161,10 @@ func (RawGold) Hash() (uint64, uint64) {
 
 func (RawIron) Hash() (uint64, uint64) {
 	return hashRawIron, 0
+}
+
+func (RedMushroom) Hash() (uint64, uint64) {
+	return hashRedMushroom, 0
 }
 
 func (RedstoneBlock) Hash() (uint64, uint64) {
@@ -1174,6 +1233,10 @@ func (SeaLantern) Hash() (uint64, uint64) {
 
 func (s SeaPickle) Hash() (uint64, uint64) {
 	return hashSeaPickle, uint64(s.AdditionalCount) | uint64(boolByte(s.Dead))<<8
+}
+
+func (s Shelf) Hash() (uint64, uint64) {
+	return hashShelf, uint64(s.Material.Uint8()) | uint64(s.Facing)<<4 | uint64(boolByte(s.Powered))<<6 | uint64(s.PoweredShelfType)<<7
 }
 
 func (ShortDryGrass) Hash() (uint64, uint64) {

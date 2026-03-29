@@ -12,6 +12,8 @@ type (
 	Purpur struct {
 		solid
 		bassDrum
+		// Axis is the axis encoded by vanilla block states.
+		Axis cube.Axis
 	}
 	// PurpurPillar is a variant of Purpur that can be rotated.
 	PurpurPillar struct {
@@ -35,7 +37,7 @@ func (p Purpur) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (p Purpur) EncodeBlock() (name string, properties map[string]interface{}) {
-	return "minecraft:purpur_block", map[string]interface{}{"pillar_axis": "y"}
+	return "minecraft:purpur_block", map[string]interface{}{"pillar_axis": p.Axis.String()}
 }
 
 // UseOnBlock ...
@@ -67,8 +69,8 @@ func (p PurpurPillar) EncodeBlock() (name string, properties map[string]interfac
 
 // allPurpurs ...
 func allPurpurs() (purpur []world.Block) {
-	purpur = append(purpur, Purpur{})
 	for _, axis := range cube.Axes() {
+		purpur = append(purpur, Purpur{Axis: axis})
 		purpur = append(purpur, PurpurPillar{Axis: axis})
 	}
 	return

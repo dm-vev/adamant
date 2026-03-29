@@ -15,6 +15,8 @@ type HayBale struct {
 
 	// Axis is the axis which the hay bale block faces.
 	Axis cube.Axis
+	// Deprecated holds the legacy data value still present in vanilla block states.
+	Deprecated int32
 }
 
 // Instrument ...
@@ -63,13 +65,15 @@ func (HayBale) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (h HayBale) EncodeBlock() (name string, properties map[string]interface{}) {
-	return "minecraft:hay_block", map[string]interface{}{"pillar_axis": h.Axis.String(), "deprecated": int32(0)}
+	return "minecraft:hay_block", map[string]interface{}{"pillar_axis": h.Axis.String(), "deprecated": h.Deprecated}
 }
 
 // allHayBales ...
 func allHayBales() (haybale []world.Block) {
-	for _, a := range cube.Axes() {
-		haybale = append(haybale, HayBale{Axis: a})
+	for deprecated := int32(0); deprecated <= 3; deprecated++ {
+		for _, a := range cube.Axes() {
+			haybale = append(haybale, HayBale{Axis: a, Deprecated: deprecated})
+		}
 	}
 	return
 }

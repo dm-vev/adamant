@@ -17,6 +17,8 @@ type Ladder struct {
 
 	// Facing is the side of the block the ladder is currently attached to.
 	Facing cube.Direction
+	// legacyFacing registers the remaining vanilla state with facing_direction=1.
+	legacyFacing bool
 }
 
 // NeighbourUpdateTick ...
@@ -83,6 +85,9 @@ func (l Ladder) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (l Ladder) EncodeBlock() (string, map[string]any) {
+	if l.legacyFacing {
+		return "minecraft:ladder", map[string]any{"facing_direction": int32(1)}
+	}
 	if l.Facing == unknownDirection {
 		return "minecraft:ladder", map[string]any{"facing_direction": int32(0)}
 	}
@@ -96,7 +101,8 @@ func (l Ladder) Model() world.BlockModel {
 
 // allLadders ...
 func allLadders() (b []world.Block) {
-	for _, f := range append(cube.Directions(), unknownDirection) {
+	b = append(b, Ladder{Facing: unknownDirection}, Ladder{legacyFacing: true})
+	for _, f := range cube.Directions() {
 		b = append(b, Ladder{Facing: f})
 	}
 	return

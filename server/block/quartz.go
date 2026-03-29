@@ -14,12 +14,16 @@ type (
 		bassDrum
 		// Smooth specifies if the quartz block is smooth or not.
 		Smooth bool
+		// Axis is the axis encoded by vanilla block states.
+		Axis cube.Axis
 	}
 
 	// ChiseledQuartz is a mineral block used only for decoration.
 	ChiseledQuartz struct {
 		solid
 		bassDrum
+		// Axis is the axis encoded by vanilla block states.
+		Axis cube.Axis
 	}
 	// QuartzPillar is a mineral block used only for decoration.
 	QuartzPillar struct {
@@ -89,14 +93,14 @@ func (q QuartzPillar) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (q Quartz) EncodeBlock() (name string, properties map[string]any) {
 	if q.Smooth {
-		return "minecraft:smooth_quartz", map[string]any{"pillar_axis": "y"}
+		return "minecraft:smooth_quartz", map[string]any{"pillar_axis": q.Axis.String()}
 	}
-	return "minecraft:quartz_block", map[string]any{"pillar_axis": "y"}
+	return "minecraft:quartz_block", map[string]any{"pillar_axis": q.Axis.String()}
 }
 
 // EncodeBlock ...
-func (ChiseledQuartz) EncodeBlock() (name string, properties map[string]any) {
-	return "minecraft:chiseled_quartz_block", map[string]any{"pillar_axis": "y"}
+func (c ChiseledQuartz) EncodeBlock() (name string, properties map[string]any) {
+	return "minecraft:chiseled_quartz_block", map[string]any{"pillar_axis": c.Axis.String()}
 }
 
 // EncodeBlock ...
@@ -106,10 +110,10 @@ func (q QuartzPillar) EncodeBlock() (name string, properties map[string]any) {
 
 // allQuartz ...
 func allQuartz() (quartz []world.Block) {
-	quartz = append(quartz, Quartz{})
-	quartz = append(quartz, Quartz{Smooth: true})
-	quartz = append(quartz, ChiseledQuartz{})
 	for _, a := range cube.Axes() {
+		quartz = append(quartz, Quartz{Axis: a})
+		quartz = append(quartz, Quartz{Smooth: true, Axis: a})
+		quartz = append(quartz, ChiseledQuartz{Axis: a})
 		quartz = append(quartz, QuartzPillar{Axis: a})
 	}
 	return

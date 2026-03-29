@@ -16,6 +16,8 @@ type GlazedTerracotta struct {
 	Colour item.Colour
 	// Facing specifies the face of the block.
 	Facing cube.Direction
+	// legacyFacing registers the remaining vanilla state with facing_direction=1.
+	legacyFacing bool
 }
 
 // BreakInfo ...
@@ -30,6 +32,9 @@ func (t GlazedTerracotta) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (t GlazedTerracotta) EncodeBlock() (name string, properties map[string]any) {
+	if t.legacyFacing {
+		return "minecraft:" + t.Colour.SilverString() + "_glazed_terracotta", map[string]any{"facing_direction": int32(1)}
+	}
 	if t.Facing == unknownDirection {
 		return "minecraft:" + t.Colour.SilverString() + "_glazed_terracotta", map[string]any{"facing_direction": int32(0)}
 	}
@@ -50,8 +55,10 @@ func (t GlazedTerracotta) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3,
 
 // allGlazedTerracotta returns glazed terracotta blocks with all possible colours.
 func allGlazedTerracotta() (b []world.Block) {
-	for _, dir := range append(cube.Directions(), unknownDirection) {
-		for _, c := range item.Colours() {
+	for _, c := range item.Colours() {
+		b = append(b, GlazedTerracotta{Colour: c, Facing: unknownDirection})
+		b = append(b, GlazedTerracotta{Colour: c, legacyFacing: true})
+		for _, dir := range cube.Directions() {
 			b = append(b, GlazedTerracotta{Colour: c, Facing: dir})
 		}
 	}

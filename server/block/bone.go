@@ -14,6 +14,8 @@ type Bone struct {
 
 	// Axis is the axis which the bone block faces.
 	Axis cube.Axis
+	// Deprecated holds the legacy data value still present in vanilla block states.
+	Deprecated int32
 }
 
 // Instrument ...
@@ -45,13 +47,15 @@ func (b Bone) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (b Bone) EncodeBlock() (name string, properties map[string]any) {
-	return "minecraft:bone_block", map[string]any{"pillar_axis": b.Axis.String(), "deprecated": int32(0)}
+	return "minecraft:bone_block", map[string]any{"pillar_axis": b.Axis.String(), "deprecated": b.Deprecated}
 }
 
 // allBoneBlock ...
 func allBoneBlock() (boneBlocks []world.Block) {
-	for _, axis := range cube.Axes() {
-		boneBlocks = append(boneBlocks, Bone{Axis: axis})
+	for deprecated := int32(0); deprecated <= 3; deprecated++ {
+		for _, axis := range cube.Axes() {
+			boneBlocks = append(boneBlocks, Bone{Axis: axis, Deprecated: deprecated})
+		}
 	}
 	return
 }
