@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+var loaderOffsetCache sync.Map
+
 // Loader implements the loading of the world. A loader can typically be moved around the world to load
 // different parts of the world. An example usage is the player, which uses a loader to load chunks around it
 // so that it can view them.
@@ -175,36 +177,40 @@ func (l *Loader) evictUnused(tx *Tx) {
 // which chunks around the position the loader is now in should be loaded. Chunks are ordered to be loaded
 // from the middle outwards.
 func (l *Loader) populateLoadQueue() {
-	// We'll first load the chunk positions to load in a map indexed by the distance to the center (basically,
-	// what precedence it should have), and put them in the loadQueue in that order.
-	queue := map[int32][]ChunkPos{}
+	l.loadQueue = l.loadQueue[:0]
+	for _, offset := range loaderOffsets(l.r) {
+		pos := ChunkPos{offset[0] + l.pos[0], offset[1] + l.pos[1]}
+		if _, ok := l.loaded[pos]; ok {
+			continue
+		}
+		l.loadQueue = append(l.loadQueue, pos)
+	}
+}
 
-	r := int32(l.r)
+func loaderOffsets(radius int) []ChunkPos {
+	if offsets, ok := loaderOffsetCache.Load(radius); ok {
+		return offsets.([]ChunkPos)
+	}
+
+	r := int32(radius)
+	queue := make(map[int32][]ChunkPos, radius+1)
 	for x := -r; x <= r; x++ {
 		for z := -r; z <= r; z++ {
 			distance := math.Sqrt(float64(x*x) + float64(z*z))
 			chunkDistance := int32(math.Round(distance))
 			if chunkDistance > r {
-				// The chunk was outside the chunk radius.
 				continue
 			}
-			pos := ChunkPos{x + l.pos[0], z + l.pos[1]}
-			if _, ok := l.loaded[pos]; ok {
-				// The chunk was already loaded, so we don't need to do anything.
-				continue
-			}
-			if m, ok := queue[chunkDistance]; ok {
-				queue[chunkDistance] = append(m, pos)
-				continue
-			}
-			queue[chunkDistance] = []ChunkPos{pos}
+			queue[chunkDistance] = append(queue[chunkDistance], ChunkPos{x, z})
 		}
 	}
 
-	l.loadQueue = l.loadQueue[:0]
+	offsets := make([]ChunkPos, 0, len(queue)*8)
 	for i := int32(0); i <= r; i++ {
-		l.loadQueue = append(l.loadQueue, queue[i]...)
+		offsets = append(offsets, queue[i]...)
 	}
+	actual, _ := loaderOffsetCache.LoadOrStore(radius, offsets)
+	return actual.([]ChunkPos)
 }
 
 func (l *Loader) activeArea(simRadius int32) loaderActiveArea {

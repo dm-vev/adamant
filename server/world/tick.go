@@ -601,8 +601,8 @@ func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
 // add adds a slice of scheduled ticks to the queue. It assumes no duplicate
 // ticks are present in the slice.
 func (queue *scheduledTickQueue) add(ticks []scheduledTick) {
-	queue.ticks = append(queue.ticks, ticks...)
 	for _, t := range ticks {
+		queue.ticks = append(queue.ticks, t)
 		index := scheduledTickIndex{pos: t.pos, hash: t.bhash}
 		if existing, ok := queue.furthestTicks[index]; !ok || t.t > existing {
 			// Make sure we find the furthest tick for each of the ticks added.
