@@ -30,11 +30,12 @@ func (h *NPCRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c 
 	}
 	dialogue := *dialoguePtr
 
-	if pk.RequestType == packet.NPCRequestActionExecuteAction {
+	switch pk.RequestType {
+	case packet.NPCRequestActionExecuteAction:
 		if err := dialogue.Submit(uint(pk.ActionType), c, tx); err != nil {
 			return fmt.Errorf("error submitting dialogue: %w", err)
 		}
-	} else if pk.RequestType == packet.NPCRequestActionExecuteClosingCommands {
+	case packet.NPCRequestActionExecuteClosingCommands:
 		dialogue.Close(c, tx)
 		h.mu.Lock()
 		if h.dialogue == dialoguePtr {
