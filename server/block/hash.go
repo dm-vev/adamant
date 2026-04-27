@@ -265,6 +265,7 @@ const (
 	hashStonecutter
 	hashStructureVoid
 	hashSugarCane
+	hashSweetBerries
 	hashTNT
 	hashTallDryGrass
 	hashTerracotta
@@ -1347,6 +1348,10 @@ func (StructureVoid) Hash() (uint64, uint64) {
 
 func (c SugarCane) Hash() (uint64, uint64) {
 	return hashSugarCane, uint64(c.Age)
+}
+
+func (s SweetBerries) Hash() (uint64, uint64) {
+	return hashSweetBerries, uint64(s.Growth)
 }
 
 func (TNT) Hash() (uint64, uint64) {
