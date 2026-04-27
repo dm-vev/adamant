@@ -1324,6 +1324,17 @@ func (w *World) saveChunk(_ *Tx, pos ChunkPos, c *Column) {
 // Afterwards, scheduled updates from that chunk are removed and all entities
 // in it are closed.
 func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
+	for _, e := range slices.Clone(c.Entities) {
+		if _, ok := e.Entity(tx); ok {
+			continue
+		}
+		if c.removeEntity(e) {
+			if _, ok := w.entities[e]; ok {
+				delete(w.entities, e)
+				w.entityCount.Add(-1)
+			}
+		}
+	}
 	w.saveChunk(tx, pos, c)
 	w.scheduledUpdates.removeChunk(pos)
 	w.removeActiveColumn(pos)
@@ -1337,7 +1348,10 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		c.markReady()
 	}
 	for _, e := range slices.Clone(c.Entities) {
-		ent := e.mustEntity(tx)
+		ent, ok := e.Entity(tx)
+		if !ok {
+			continue
+		}
 		if ready {
 			if closer, ok := ent.(interface{ CloseIn(*Tx) error }); ok {
 				// Avoid ExecWorld deadlocks by closing entities via the active Tx.
