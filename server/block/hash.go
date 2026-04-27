@@ -65,6 +65,7 @@ const (
 	hashComposter
 	hashConcrete
 	hashConcretePowder
+	hashConduit
 	hashCopper
 	hashCopperBars
 	hashCopperBulb
@@ -89,6 +90,9 @@ const (
 	hashDeepslateBricks
 	hashDeepslateTiles
 	hashDeny
+	hashDeprecatedAnvil
+	hashDeprecatedPurpurBlock1
+	hashDeprecatedPurpurBlock2
 	hashDiamond
 	hashDiamondOre
 	hashDiorite
@@ -120,7 +124,10 @@ const (
 	hashFletchingTable
 	hashFlower
 	hashFloweringAzalea
+	hashFrogSpawn
 	hashFroglight
+	hashFrostedIce
+	hashFungus
 	hashFurnace
 	hashGlass
 	hashGlassPane
@@ -142,9 +149,11 @@ const (
 	hashHardenedStainedGlassPane
 	hashHayBale
 	hashHeavyCore
+	hashHoneyBlock
 	hashHoneycomb
 	hashHopper
 	hashHugeMushroomBlock
+	hashInfestedBlock
 	hashInfoUpdate
 	hashInfoUpdate2
 	hashInvisibleBedrock
@@ -163,6 +172,7 @@ const (
 	hashLeafLitter
 	hashLeaves
 	hashLectern
+	hashLegacyStonecutter
 	hashLever
 	hashLight
 	hashLilyPad
@@ -185,6 +195,7 @@ const (
 	hashNetherBricks
 	hashNetherGoldOre
 	hashNetherQuartzOre
+	hashNetherReactor
 	hashNetherSprouts
 	hashNetherWart
 	hashNetherWartBlock
@@ -209,6 +220,7 @@ const (
 	hashPolishedTuff
 	hashPortal
 	hashPotato
+	hashPowderSnow
 	hashPressurePlate
 	hashPrismarine
 	hashPumpkin
@@ -225,6 +237,7 @@ const (
 	hashRedstoneBlock
 	hashRedstoneComparator
 	hashRedstoneLamp
+	hashRedstoneOre
 	hashRedstoneRepeater
 	hashRedstoneTorch
 	hashRedstoneWire
@@ -236,6 +249,7 @@ const (
 	hashRespawnAnchor
 	hashSand
 	hashSandstone
+	hashSculk
 	hashSeaGrass
 	hashSeaLantern
 	hashSeaPickle
@@ -268,13 +282,16 @@ const (
 	hashSweetBerries
 	hashTNT
 	hashTallDryGrass
+	hashTarget
 	hashTerracotta
 	hashTintedGlass
 	hashTorch
+	hashTorchflower
 	hashTripwire
 	hashTripwireHook
 	hashTuff
 	hashTuffBricks
+	hashUnderwaterTNT
 	hashUnderwaterTorch
 	hashUnknownBlock
 	hashVines
@@ -542,6 +559,10 @@ func (c ConcretePowder) Hash() (uint64, uint64) {
 	return hashConcretePowder, uint64(c.Colour.Uint8())
 }
 
+func (Conduit) Hash() (uint64, uint64) {
+	return hashConduit, 0
+}
+
 func (c Copper) Hash() (uint64, uint64) {
 	return hashCopper, uint64(c.Type.Uint8()) | uint64(c.Oxidation.Uint8())<<2 | uint64(boolByte(c.Waxed))<<4
 }
@@ -636,6 +657,18 @@ func (d DeepslateTiles) Hash() (uint64, uint64) {
 
 func (Deny) Hash() (uint64, uint64) {
 	return hashDeny, 0
+}
+
+func (d DeprecatedAnvil) Hash() (uint64, uint64) {
+	return hashDeprecatedAnvil, uint64(d.Facing)
+}
+
+func (p DeprecatedPurpurBlock1) Hash() (uint64, uint64) {
+	return hashDeprecatedPurpurBlock1, uint64(p.Axis)
+}
+
+func (p DeprecatedPurpurBlock2) Hash() (uint64, uint64) {
+	return hashDeprecatedPurpurBlock2, uint64(p.Axis)
 }
 
 func (Diamond) Hash() (uint64, uint64) {
@@ -762,8 +795,20 @@ func (FloweringAzalea) Hash() (uint64, uint64) {
 	return hashFloweringAzalea, 0
 }
 
+func (FrogSpawn) Hash() (uint64, uint64) {
+	return hashFrogSpawn, 0
+}
+
 func (f Froglight) Hash() (uint64, uint64) {
 	return hashFroglight, uint64(f.Type.Uint8()) | uint64(f.Axis)<<2
+}
+
+func (f FrostedIce) Hash() (uint64, uint64) {
+	return hashFrostedIce, uint64(f.Age)
+}
+
+func (f Fungus) Hash() (uint64, uint64) {
+	return hashFungus, uint64(boolByte(f.Warped))
 }
 
 func (f Furnace) Hash() (uint64, uint64) {
@@ -854,6 +899,10 @@ func (HeavyCore) Hash() (uint64, uint64) {
 	return hashHeavyCore, 0
 }
 
+func (HoneyBlock) Hash() (uint64, uint64) {
+	return hashHoneyBlock, 0
+}
+
 func (Honeycomb) Hash() (uint64, uint64) {
 	return hashHoneycomb, 0
 }
@@ -864,6 +913,10 @@ func (h Hopper) Hash() (uint64, uint64) {
 
 func (m HugeMushroomBlock) Hash() (uint64, uint64) {
 	return hashHugeMushroomBlock, uint64(m.Kind.Uint8()) | uint64(m.Variant)<<2
+}
+
+func (i InfestedBlock) Hash() (uint64, uint64) {
+	return hashInfestedBlock, uint64(i.Type) | uint64(i.Axis)<<8
 }
 
 func (InfoUpdate) Hash() (uint64, uint64) {
@@ -940,6 +993,10 @@ func (l Leaves) Hash() (uint64, uint64) {
 
 func (l Lectern) Hash() (uint64, uint64) {
 	return hashLectern, uint64(l.Facing) | uint64(boolByte(l.Powered))<<2
+}
+
+func (LegacyStonecutter) Hash() (uint64, uint64) {
+	return hashLegacyStonecutter, 0
 }
 
 func (l Lever) Hash() (uint64, uint64) {
@@ -1028,6 +1085,10 @@ func (NetherGoldOre) Hash() (uint64, uint64) {
 
 func (NetherQuartzOre) Hash() (uint64, uint64) {
 	return hashNetherQuartzOre, 0
+}
+
+func (NetherReactor) Hash() (uint64, uint64) {
+	return hashNetherReactor, 0
 }
 
 func (NetherSprouts) Hash() (uint64, uint64) {
@@ -1126,6 +1187,10 @@ func (p Potato) Hash() (uint64, uint64) {
 	return hashPotato, uint64(p.Growth)
 }
 
+func (PowderSnow) Hash() (uint64, uint64) {
+	return hashPowderSnow, 0
+}
+
 func (p PressurePlate) Hash() (uint64, uint64) {
 	return hashPressurePlate, uint64(p.Type.Uint8()) | uint64(p.Signal)<<4
 }
@@ -1190,6 +1255,10 @@ func (l RedstoneLamp) Hash() (uint64, uint64) {
 	return hashRedstoneLamp, uint64(boolByte(l.Lit))
 }
 
+func (r RedstoneOre) Hash() (uint64, uint64) {
+	return hashRedstoneOre, uint64(boolByte(r.Deepslate)) | uint64(boolByte(r.Lit))<<1
+}
+
 func (r RedstoneRepeater) Hash() (uint64, uint64) {
 	return hashRedstoneRepeater, uint64(r.Facing) | uint64(r.Delay)<<2 | uint64(boolByte(r.Powered))<<10
 }
@@ -1232,6 +1301,10 @@ func (s Sand) Hash() (uint64, uint64) {
 
 func (s Sandstone) Hash() (uint64, uint64) {
 	return hashSandstone, uint64(s.Type.Uint8()) | uint64(boolByte(s.Red))<<2
+}
+
+func (Sculk) Hash() (uint64, uint64) {
+	return hashSculk, 0
 }
 
 func (s SeaGrass) Hash() (uint64, uint64) {
@@ -1362,6 +1435,10 @@ func (TallDryGrass) Hash() (uint64, uint64) {
 	return hashTallDryGrass, 0
 }
 
+func (Target) Hash() (uint64, uint64) {
+	return hashTarget, 0
+}
+
 func (Terracotta) Hash() (uint64, uint64) {
 	return hashTerracotta, 0
 }
@@ -1372,6 +1449,10 @@ func (TintedGlass) Hash() (uint64, uint64) {
 
 func (t Torch) Hash() (uint64, uint64) {
 	return hashTorch, uint64(t.Facing) | uint64(t.Type.Uint8())<<3
+}
+
+func (Torchflower) Hash() (uint64, uint64) {
+	return hashTorchflower, 0
 }
 
 func (t Tripwire) Hash() (uint64, uint64) {
@@ -1388,6 +1469,10 @@ func (t Tuff) Hash() (uint64, uint64) {
 
 func (t TuffBricks) Hash() (uint64, uint64) {
 	return hashTuffBricks, uint64(boolByte(t.Chiseled))
+}
+
+func (t UnderwaterTNT) Hash() (uint64, uint64) {
+	return hashUnderwaterTNT, uint64(boolByte(t.Explode))
 }
 
 func (t UnderwaterTorch) Hash() (uint64, uint64) {

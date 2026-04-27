@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
 )
 
 // Allow is a block that permits edits for players.
@@ -348,6 +347,9 @@ func (StructureVoid) EncodeBlock() (string, map[string]any) {
 // DeprecatedAnvil is a placeholder anvil block.
 type DeprecatedAnvil struct {
 	solid
+
+	// Facing is the direction the deprecated anvil faces.
+	Facing cube.Direction
 }
 
 // BreakInfo ...
@@ -361,18 +363,24 @@ func (DeprecatedAnvil) EncodeItem() (name string, meta int16) {
 }
 
 // EncodeBlock ...
-func (DeprecatedAnvil) EncodeBlock() (string, map[string]any) {
-	return "minecraft:anvil", map[string]any{"minecraft:cardinal_direction": "north"}
+func (d DeprecatedAnvil) EncodeBlock() (string, map[string]any) {
+	return "minecraft:deprecated_anvil", map[string]any{"minecraft:cardinal_direction": d.Facing.String()}
 }
 
-// Hash returns a max hash to force runtime ID lookup by state.
-func (DeprecatedAnvil) Hash() (uint64, uint64) {
-	return 0, math.MaxUint64
+// allDeprecatedAnvils returns all deprecated anvil states.
+func allDeprecatedAnvils() (blocks []world.Block) {
+	for _, d := range cube.Directions() {
+		blocks = append(blocks, DeprecatedAnvil{Facing: d})
+	}
+	return
 }
 
 // DeprecatedPurpurBlock1 is a placeholder purpur block.
 type DeprecatedPurpurBlock1 struct {
 	solid
+
+	// Axis is the axis encoded by the deprecated purpur block.
+	Axis cube.Axis
 }
 
 // BreakInfo ...
@@ -386,18 +394,24 @@ func (DeprecatedPurpurBlock1) EncodeItem() (name string, meta int16) {
 }
 
 // EncodeBlock ...
-func (DeprecatedPurpurBlock1) EncodeBlock() (string, map[string]any) {
-	return "minecraft:purpur_block", map[string]any{"pillar_axis": "y"}
+func (p DeprecatedPurpurBlock1) EncodeBlock() (string, map[string]any) {
+	return "minecraft:deprecated_purpur_block_1", map[string]any{"pillar_axis": p.Axis.String()}
 }
 
-// Hash returns a max hash to force runtime ID lookup by state.
-func (DeprecatedPurpurBlock1) Hash() (uint64, uint64) {
-	return 0, math.MaxUint64
+// allDeprecatedPurpurBlock1 returns all deprecated purpur block 1 states.
+func allDeprecatedPurpurBlock1() (blocks []world.Block) {
+	for _, axis := range cube.Axes() {
+		blocks = append(blocks, DeprecatedPurpurBlock1{Axis: axis})
+	}
+	return
 }
 
 // DeprecatedPurpurBlock2 is a placeholder purpur block.
 type DeprecatedPurpurBlock2 struct {
 	solid
+
+	// Axis is the axis encoded by the deprecated purpur block.
+	Axis cube.Axis
 }
 
 // BreakInfo ...
@@ -411,13 +425,16 @@ func (DeprecatedPurpurBlock2) EncodeItem() (name string, meta int16) {
 }
 
 // EncodeBlock ...
-func (DeprecatedPurpurBlock2) EncodeBlock() (string, map[string]any) {
-	return "minecraft:purpur_block", map[string]any{"pillar_axis": "y"}
+func (p DeprecatedPurpurBlock2) EncodeBlock() (string, map[string]any) {
+	return "minecraft:deprecated_purpur_block_2", map[string]any{"pillar_axis": p.Axis.String()}
 }
 
-// Hash returns a max hash to force runtime ID lookup by state.
-func (DeprecatedPurpurBlock2) Hash() (uint64, uint64) {
-	return 0, math.MaxUint64
+// allDeprecatedPurpurBlock2 returns all deprecated purpur block 2 states.
+func allDeprecatedPurpurBlock2() (blocks []world.Block) {
+	for _, axis := range cube.Axes() {
+		blocks = append(blocks, DeprecatedPurpurBlock2{Axis: axis})
+	}
+	return
 }
 
 // allBorderBlocks returns all border block states.
