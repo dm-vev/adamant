@@ -57,6 +57,9 @@ type BarrelOpen struct{ sound }
 // BarrelClose is played when a barrel is closed.
 type BarrelClose struct{ sound }
 
+// BellRing is played when a bell is rung.
+type BellRing struct{ sound }
+
 // Deny is a sound played when a block is placed or broken above a 'Deny' block from Education edition.
 type Deny struct{ sound }
 

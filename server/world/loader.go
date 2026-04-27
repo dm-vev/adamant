@@ -51,16 +51,22 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	old := l.w
 	loaded := maps.Clone(l.loaded)
-	l.w.Exec(func(tx *Tx) {
+	removeLoaded := func(tx *Tx) {
 		for pos := range loaded {
 			tx.World().removeViewer(tx, pos, l)
 		}
-	})
+	}
+	if tx.World() == old {
+		removeLoaded(tx)
+	} else {
+		<-old.Exec(removeLoaded)
+	}
 	clear(l.loaded)
-	l.w.viewerMu.Lock()
-	delete(l.w.viewers, l)
-	l.w.viewerMu.Unlock()
+	old.viewerMu.Lock()
+	delete(old.viewers, l)
+	old.viewerMu.Unlock()
 
 	l.world(new)
 }

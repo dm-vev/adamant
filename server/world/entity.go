@@ -193,7 +193,18 @@ func (e *EntityHandle) execWorld(f func(tx *Tx, e Entity), weak bool) bool {
 	// transaction turns out to be invalidated (ret == false), we simply try
 	// again, this time with e.execWorld(f, true) to make this goroutine bypass
 	// any goroutines still awaiting e.cond.
-	ret := e.weakExec(func(tx *Tx) { f(tx, e.mustEntity(tx)) })
+	ret := e.weakExec(func(tx *Tx) bool {
+		e.cond.L.Lock()
+		if e.w != tx.World() {
+			e.cond.L.Unlock()
+			return false
+		}
+		ent := e.t.Open(tx, e, &e.data)
+		e.cond.L.Unlock()
+
+		f(tx, ent)
+		return true
+	})
 	e.cond.L.Unlock()
 
 	if !ret {
@@ -211,7 +222,7 @@ func (e *EntityHandle) execWorld(f func(tx *Tx, e Entity), weak bool) bool {
 // true, and any calls to ExecWorld waiting on e.cond are awakened. The goal of
 // weakExec is to suspend the current goroutine and unlock e.cond.L while
 // waiting for previous transactions to finish.
-func (e *EntityHandle) weakExec(f ExecFunc) bool {
+func (e *EntityHandle) weakExec(f func(tx *Tx) bool) bool {
 	e.weakTxActive = true
 
 	// We create a weak transaction and start a for loop to listen for the
@@ -226,18 +237,13 @@ func (e *EntityHandle) weakExec(f ExecFunc) bool {
 		// continue after that.
 		e.cond.Wait()
 	}
-	// If the EntityHandle was closed (e.w == closeWorld), we treat the
-	// transaction as successful, because all transactions must be cancelled.
-	if e.w != closeWorld && !<-c {
-		// Weak transaction was suspended. Return false and try again.
-		return false
-	}
 	// After setting e.weakTxActive back to false, we must Broadcast to make
 	// sure any goroutines waiting in e.execWorld as a result of the
 	// e.weakTxActive condition can continue.
+	success := e.w == closeWorld || <-c
 	e.weakTxActive = false
 	e.cond.Broadcast()
-	return true
+	return success
 }
 
 var closeWorld = &World{}

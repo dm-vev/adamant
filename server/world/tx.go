@@ -359,7 +359,7 @@ func (ntx normalTransaction) Run(w *World) {
 // bool to false before the transaction is run.
 type weakTransaction struct {
 	c       chan bool
-	f       func(tx *Tx)
+	f       func(tx *Tx) bool
 	invalid *atomic.Bool
 	cond    *sync.Cond
 }
@@ -369,6 +369,7 @@ type weakTransaction struct {
 // run is added to wtx.c. Finally, wtx.cond.Broadcast() is called.
 func (wtx weakTransaction) Run(w *World) {
 	valid := !wtx.invalid.Load()
+	ran := false
 	var panicErr any
 	if valid {
 		tx := &Tx{w: w}
@@ -379,7 +380,7 @@ func (wtx weakTransaction) Run(w *World) {
 					panicErr = r
 				}
 			}()
-			wtx.f(tx)
+			ran = wtx.f(tx)
 		}()
 	}
 	// We have to acquire a lock on wtx.cond.L here to make sure cond.Wait()
@@ -388,7 +389,7 @@ func (wtx weakTransaction) Run(w *World) {
 	wtx.cond.L.Lock()
 	defer wtx.cond.L.Unlock()
 
-	wtx.c <- valid && panicErr == nil
+	wtx.c <- valid && ran && panicErr == nil
 	wtx.cond.Broadcast()
 	if panicErr != nil {
 		panic(panicErr)

@@ -281,7 +281,7 @@ func (w *World) Exec(f ExecFunc) <-chan struct{} {
 	return c
 }
 
-func (w *World) weakExec(invalid *atomic.Bool, cond *sync.Cond, f ExecFunc) <-chan bool {
+func (w *World) weakExec(invalid *atomic.Bool, cond *sync.Cond, f func(tx *Tx) bool) <-chan bool {
 	c := make(chan bool, 1)
 	w.queue <- weakTransaction{c: c, f: f, invalid: invalid, cond: cond}
 	return c
@@ -1451,7 +1451,9 @@ func (w *World) addViewer(tx *Tx, pos ChunkPos, c *Column, loader *Loader) {
 	w.addActiveColumn(pos, c)
 
 	for _, entity := range c.Entities {
-		showEntity(entity.mustEntity(tx), loader.viewer)
+		if ent, ok := entity.Entity(tx); ok {
+			showEntity(ent, loader.viewer)
+		}
 	}
 }
 
@@ -1478,7 +1480,9 @@ func (w *World) removeViewer(tx *Tx, pos ChunkPos, loader *Loader) {
 	delete(c.viewers, loader.viewer)
 	if loader.viewer != nil {
 		for _, entity := range c.Entities {
-			loader.viewer.HideEntity(entity.mustEntity(tx))
+			if ent, ok := entity.Entity(tx); ok {
+				loader.viewer.HideEntity(ent)
+			}
 		}
 	}
 
