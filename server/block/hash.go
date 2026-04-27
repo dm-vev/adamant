@@ -135,6 +135,7 @@ const (
 	hashGravel
 	hashGrindstone
 	hashHangingRoots
+	hashHangingSign
 	hashHardenedGlass
 	hashHardenedGlassPane
 	hashHardenedStainedGlass
@@ -822,6 +823,10 @@ func (g Grindstone) Hash() (uint64, uint64) {
 
 func (HangingRoots) Hash() (uint64, uint64) {
 	return hashHangingRoots, 0
+}
+
+func (h HangingSign) Hash() (uint64, uint64) {
+	return hashHangingSign, uint64(h.Wood.Uint8()) | uint64(h.Attach.Uint8())<<4
 }
 
 func (HardenedGlass) Hash() (uint64, uint64) {
