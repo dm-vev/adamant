@@ -19,7 +19,6 @@ import (
 	"github.com/df-mc/dragonfly/server/query"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced"
-	"github.com/df-mc/dragonfly/server/world/generator/vanilla"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -369,12 +368,9 @@ type UserConfig struct {
 		// Folder is the folder that the data of the world resides in.
 		Folder string
 		// Seed controls the procedural generation of the overworld when no custom
-		// generator is provided. This value is passed directly to the terrain
+		// generator is provided. This value is passed directly to the pm-gen terrain
 		// generator.
 		Seed int64
-		// Generator selects the built-in generator used for standard dimensions.
-		// Valid values are "advanced" and "vanilla". Empty uses "advanced".
-		Generator string
 		// GeneratorWorkers is the number of background workers that should be
 		// dedicated to generating chunks. Set to 0 to automatically select a
 		// reasonable default based on the host's CPU count.
@@ -471,7 +467,6 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		MaxChunkRadius:          uc.Players.MaximumChunkRadius,
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
 		OverworldSeed:           uc.World.Seed,
-		Generator:               configuredGeneratorProvider(uc.World.Generator, uc.World.Seed, log),
 		GeneratorWorkers:        uc.World.GeneratorWorkers,
 		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
 		DisableOverworld:        uc.World.DisableOverworld,
@@ -563,26 +558,6 @@ func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Genera
 	}
 }
 
-func configuredGeneratorProvider(name string, seed int64, log *slog.Logger) func(dim world.Dimension) world.Generator {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "", "advanced":
-		return defaultGeneratorProvider(seed)
-	case "vanilla":
-		return vanillaGeneratorProvider(seed)
-	default:
-		if log != nil {
-			log.Warn("Unknown world generator, using advanced.", "value", name)
-		}
-		return defaultGeneratorProvider(seed)
-	}
-}
-
-func vanillaGeneratorProvider(seed int64) func(dim world.Dimension) world.Generator {
-	return func(dim world.Dimension) world.Generator {
-		return vanilla.NewForDimension(seed, dim)
-	}
-}
-
 // DefaultConfig returns a configuration with the default values filled out.
 func DefaultConfig() UserConfig {
 	c := UserConfig{}
@@ -594,7 +569,6 @@ func DefaultConfig() UserConfig {
 	c.World.SaveData = true
 	c.World.Folder = "world"
 	c.World.Seed = 0
-	c.World.Generator = "advanced"
 	c.Server.ReconnectPolicy = "kick-existing"
 	c.World.DisableOverworld = false
 	c.World.DisableNether = false

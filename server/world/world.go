@@ -1737,15 +1737,9 @@ func (w *World) runGenerationTask(task generationTask) {
 		task.col.markReady()
 	}()
 
-	if generator, ok := w.conf.Generator.(ColumnGenerator); ok {
-		raw := &chunk.Column{Chunk: task.col.Chunk}
-		generator.GenerateColumn(task.pos, raw)
-		task.col.StructureStarts = append(task.col.StructureStarts[:0], raw.StructureStarts...)
-		task.col.StructureRefs = append(task.col.StructureRefs[:0], raw.StructureRefs...)
-	} else {
-		// The generator implementation is responsible for populating the chunk's data.
-		w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
-	}
+	// Perform the actual chunk generation.
+	// The generator implementation is responsible for populating the chunk’s data.
+	w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
 
 	task.col.BlockEntities = w.generatedBlockEntities(task.pos, task.col.Chunk)
 	if task.col.BlockEntities == nil {
@@ -1971,8 +1965,6 @@ type Column struct {
 	Entities                        []*EntityHandle
 	entityIndices                   map[*EntityHandle]int
 	BlockEntities                   map[cube.Pos]Block
-	StructureStarts                 []chunk.StructureStart
-	StructureRefs                   []chunk.StructureReference
 	randomTickSubChunksDirty        bool
 	cachedRandomTickSubChunkIndices []int
 	tickerBlockEntitiesDirty        bool
@@ -2357,8 +2349,6 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		BlockEntities:   make([]chunk.BlockEntity, 0, len(col.BlockEntities)),
 		ScheduledBlocks: make([]chunk.ScheduledBlockUpdate, 0, len(scheduled)),
 		Tick:            w.scheduledUpdates.currentTick,
-		StructureStarts: append([]chunk.StructureStart(nil), col.StructureStarts...),
-		StructureRefs:   append([]chunk.StructureReference(nil), col.StructureRefs...),
 	}
 	for _, e := range col.Entities {
 		if e.t.EncodeEntity() == "minecraft:player" {
@@ -2388,8 +2378,6 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 	col := newColumn(c.Chunk)
 	col.Entities = make([]*EntityHandle, 0, len(c.Entities))
 	col.BlockEntities = make(map[cube.Pos]Block, len(c.BlockEntities))
-	col.StructureStarts = append([]chunk.StructureStart(nil), c.StructureStarts...)
-	col.StructureRefs = append([]chunk.StructureReference(nil), c.StructureRefs...)
 	for _, e := range c.Entities {
 		eid, ok := e.Data["identifier"].(string)
 		if !ok {

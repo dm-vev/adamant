@@ -12,12 +12,6 @@ type Generator interface {
 	GenerateChunk(pos ChunkPos, chunk *chunk.Chunk)
 }
 
-// ColumnGenerator may be implemented by generators that also want to attach
-// extra chunk metadata when a new chunk is generated.
-type ColumnGenerator interface {
-	GenerateColumn(pos ChunkPos, col *chunk.Column)
-}
-
 // NopGenerator is the default generator a world. It places no blocks in the world which results in a void
 // world.
 type NopGenerator struct{}
