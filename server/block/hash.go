@@ -197,7 +197,6 @@ const (
 	hashNetherQuartzOre
 	hashNetherReactor
 	hashNetherSprouts
-	hashNetherVines
 	hashNetherWart
 	hashNetherWartBlock
 	hashNetherite
@@ -308,6 +307,7 @@ const (
 	hashWoodFenceGate
 	hashWoodTrapdoor
 	hashWool
+	hashNetherVines
 	hashCustomBlockBase
 )
 
