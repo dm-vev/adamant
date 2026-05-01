@@ -1737,9 +1737,15 @@ func (w *World) runGenerationTask(task generationTask) {
 		task.col.markReady()
 	}()
 
-	// Perform the actual chunk generation.
-	// The generator implementation is responsible for populating the chunk’s data.
-	w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
+	if generator, ok := w.conf.Generator.(ColumnGenerator); ok {
+		raw := &chunk.Column{Chunk: task.col.Chunk}
+		generator.GenerateColumn(task.pos, raw)
+		task.col.StructureStarts = append(task.col.StructureStarts[:0], raw.StructureStarts...)
+		task.col.StructureRefs = append(task.col.StructureRefs[:0], raw.StructureRefs...)
+	} else {
+		// The generator implementation is responsible for populating the chunk's data.
+		w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
+	}
 
 	task.col.BlockEntities = w.generatedBlockEntities(task.pos, task.col.Chunk)
 	if task.col.BlockEntities == nil {
