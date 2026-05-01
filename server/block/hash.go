@@ -1499,7 +1499,7 @@ func (w Water) Hash() (uint64, uint64) {
 	return hashWater, uint64(boolByte(w.Still)) | uint64(w.Depth)<<1 | uint64(boolByte(w.Falling))<<9
 }
 
-func (Web) Hash() (uint64, uint64) {
+func (Cobweb) Hash() (uint64, uint64) {
 	return hashWeb, 0
 }
 
