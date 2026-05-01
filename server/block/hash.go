@@ -197,6 +197,7 @@ const (
 	hashNetherQuartzOre
 	hashNetherReactor
 	hashNetherSprouts
+	hashNetherVines
 	hashNetherWart
 	hashNetherWartBlock
 	hashNetherite
@@ -1093,6 +1094,10 @@ func (NetherReactor) Hash() (uint64, uint64) {
 
 func (NetherSprouts) Hash() (uint64, uint64) {
 	return hashNetherSprouts, 0
+}
+
+func (v NetherVines) Hash() (uint64, uint64) {
+	return hashNetherVines, uint64(boolByte(v.Twisting)) | uint64(v.Age)<<1
 }
 
 func (n NetherWart) Hash() (uint64, uint64) {

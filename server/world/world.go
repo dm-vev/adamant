@@ -1965,6 +1965,8 @@ type Column struct {
 	Entities                        []*EntityHandle
 	entityIndices                   map[*EntityHandle]int
 	BlockEntities                   map[cube.Pos]Block
+	StructureStarts                 []chunk.StructureStart
+	StructureRefs                   []chunk.StructureReference
 	randomTickSubChunksDirty        bool
 	cachedRandomTickSubChunkIndices []int
 	tickerBlockEntitiesDirty        bool
@@ -2349,6 +2351,8 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		BlockEntities:   make([]chunk.BlockEntity, 0, len(col.BlockEntities)),
 		ScheduledBlocks: make([]chunk.ScheduledBlockUpdate, 0, len(scheduled)),
 		Tick:            w.scheduledUpdates.currentTick,
+		StructureStarts: append([]chunk.StructureStart(nil), col.StructureStarts...),
+		StructureRefs:   append([]chunk.StructureReference(nil), col.StructureRefs...),
 	}
 	for _, e := range col.Entities {
 		if e.t.EncodeEntity() == "minecraft:player" {
@@ -2378,6 +2382,8 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 	col := newColumn(c.Chunk)
 	col.Entities = make([]*EntityHandle, 0, len(c.Entities))
 	col.BlockEntities = make(map[cube.Pos]Block, len(c.BlockEntities))
+	col.StructureStarts = append([]chunk.StructureStart(nil), c.StructureStarts...)
+	col.StructureRefs = append([]chunk.StructureReference(nil), c.StructureRefs...)
 	for _, e := range c.Entities {
 		eid, ok := e.Data["identifier"].(string)
 		if !ok {
