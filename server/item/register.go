@@ -76,6 +76,7 @@ func init() {
 	world.RegisterItem(GoldenApple{})
 	world.RegisterItem(GoldenCarrot{})
 	world.RegisterItem(Gunpowder{})
+	world.RegisterItem(HoneyBottle{})
 	world.RegisterItem(FishingRod{})
 	world.RegisterItem(HeartOfTheSea{})
 	world.RegisterItem(HeavyCore{})
