@@ -30,6 +30,8 @@
   Folder = "world"
   # Seed controls the overworld terrain generation. Use the same value to reproduce the same world. 0 is allowed.
   Seed = 0
+  # Generator selects the built-in world generator. Valid values: "advanced" or "vanilla".
+  Generator = "advanced"
   # Whether the worlds' data will be saved and loaded. If true, the server will use the
   # default LevelDB data provider and if false, an empty provider will be used. To use your
   # own provider, turn this value to false, as you will still be able to pass your own provider.
