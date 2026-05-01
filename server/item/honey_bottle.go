@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// HoneyBottle is a food item obtained from full beehives or beehives using a glass bottle. Consuming it
+// HoneyBottle is a food item obtained from full beehives or bee nests using a glass bottle. Consuming it
 // restores hunger, removes any active poison and returns an empty glass bottle.
 type HoneyBottle struct{}
 
