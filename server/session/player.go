@@ -987,12 +987,7 @@ func (s *Session) AddDebugShape(shape debug.Shape) {
 	if s == Nop {
 		return
 	}
-	id := shape.ShapeID()
-	s.debugShapesMu.Lock()
-	// Ensure the latest operation wins if add/remove are called in quick succession.
-	delete(s.debugShapesPendingRemove, id)
-	s.debugShapesPendingAdd[id] = shape
-	s.debugShapesMu.Unlock()
+	s.queueDebugShapeUpdate(debugShapeUpdate{id: shape.ShapeID(), shape: shape})
 }
 
 // RemoveDebugShape removes a debug shape from the player by its unique identifier.
@@ -1000,19 +995,7 @@ func (s *Session) RemoveDebugShape(shape debug.Shape) {
 	if s == Nop {
 		return
 	}
-	id := shape.ShapeID()
-	s.debugShapesMu.Lock()
-	if _, ok := s.debugShapes[id]; ok {
-		delete(s.debugShapesPendingAdd, id)
-		s.debugShapesPendingRemove[id] = struct{}{}
-		s.debugShapesMu.Unlock()
-		return
-	}
-	if _, ok := s.debugShapesPendingAdd[id]; ok {
-		delete(s.debugShapesPendingAdd, id)
-		s.debugShapesPendingRemove[id] = struct{}{}
-	}
-	s.debugShapesMu.Unlock()
+	s.queueDebugShapeUpdate(debugShapeUpdate{id: shape.ShapeID()})
 }
 
 // VisibleDebugShapes returns a slice of all debug shapes that are currently being shown to the player.
@@ -1030,12 +1013,10 @@ func (s *Session) RemoveAllDebugShapes() {
 		return
 	}
 	s.debugShapesMu.Lock()
-	// Clear pending additions and schedule removals for any currently visible shapes.
-	clear(s.debugShapesPendingAdd)
+	s.debugShapeUpdates = s.debugShapeUpdates[:0]
 	for id := range s.debugShapes {
-		s.debugShapesPendingRemove[id] = struct{}{}
+		s.debugShapeUpdates = append(s.debugShapeUpdates, debugShapeUpdate{id: id})
 	}
-	clear(s.debugShapes)
 	s.debugShapesMu.Unlock()
 }
 
@@ -1046,28 +1027,37 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 		return
 	}
 	s.debugShapesMu.Lock()
-	defer s.debugShapesMu.Unlock()
-
-	if len(s.debugShapesPendingAdd) == 0 && len(s.debugShapesPendingRemove) == 0 {
+	updates := s.debugShapeUpdates
+	if len(updates) == 0 {
+		s.debugShapesMu.Unlock()
 		return
 	}
 
-	shapes := make([]protocol.DebugDrawerShape, 0, len(s.debugShapesPendingAdd)+len(s.debugShapesPendingRemove))
-	for id, shape := range s.debugShapesPendingAdd {
-		s.debugShapes[id] = shape
-		shapes = append(shapes, debugShapeToProtocol(shape, dim, s.shapeAttachedEntityRuntimeID(shape)))
+	shapes := make([]protocol.DebugDrawerShape, 0, len(updates))
+	for _, update := range updates {
+		if update.shape == nil {
+			delete(s.debugShapes, update.id)
+			shapes = append(shapes, protocol.DebugDrawerShape{
+				NetworkID:      uint64(update.id),
+				DimensionID:    protocol.Option(s.dimensionID(dim)),
+				ExtraShapeData: &protocol.LastShape{},
+			})
+			continue
+		}
+		s.debugShapes[update.id] = update.shape
+		shapes = append(shapes, debugShapeToProtocol(update.shape, dim, s.shapeAttachedEntityRuntimeID(update.shape)))
 	}
-	for id := range s.debugShapesPendingRemove {
-		delete(s.debugShapes, id)
-		shapes = append(shapes, protocol.DebugDrawerShape{
-			NetworkID:   uint64(id),
-			DimensionID: protocol.Option(s.dimensionID(dim)),
-			ExtraShapeData: &protocol.LastShape{},
-		})
-	}
-	clear(s.debugShapesPendingAdd)
-	clear(s.debugShapesPendingRemove)
+	s.debugShapeUpdates = s.debugShapeUpdates[:0]
+	s.debugShapesMu.Unlock()
+
 	s.writePacket(&packet.DebugDrawer{Shapes: shapes})
+}
+
+// queueDebugShapeUpdate queues a mutation to be applied the next time debug shapes are sent.
+func (s *Session) queueDebugShapeUpdate(update debugShapeUpdate) {
+	s.debugShapesMu.Lock()
+	s.debugShapeUpdates = append(s.debugShapeUpdates, update)
+	s.debugShapesMu.Unlock()
 }
 
 // shapeAttachedEntityRuntimeID returns the runtime ID of the entity attached to a debug shape.

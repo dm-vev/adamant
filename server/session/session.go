@@ -105,12 +105,9 @@ type Session struct {
 	hudUpdates map[hud.Element]bool
 	hiddenHud  map[hud.Element]struct{}
 
-	debugShapesMu sync.RWMutex
-	debugShapes   map[int]debug.Shape
-	// debugShapesPendingAdd and debugShapesPendingRemove capture the latest requested change per shape ID.
-	// This avoids ordering races between add/remove requests from different goroutines.
-	debugShapesPendingAdd    map[int]debug.Shape
-	debugShapesPendingRemove map[int]struct{}
+	debugShapesMu     sync.RWMutex
+	debugShapes       map[int]debug.Shape
+	debugShapeUpdates []debugShapeUpdate
 
 	blockUpdatesMu     sync.Mutex
 	blockUpdates       map[blockUpdateKey]blockUpdateData
@@ -120,6 +117,12 @@ type Session struct {
 
 	overflowStreak  atomic.Uint32
 	overflowLastLog atomic.Int64
+}
+
+// debugShapeUpdate represents a pending debug shape mutation. A nil shape removes the matching ID.
+type debugShapeUpdate struct {
+	id    int
+	shape debug.Shape
 }
 
 // Conn represents a connection that packets are read from and written to by a Session. In addition, it holds some
@@ -197,25 +200,24 @@ func (conf Config) New(conn Conn) *Session {
 
 	s := &Session{}
 	*s = Session{
-		openChunkTransactions:    make([]map[uint64]struct{}, 0, 8),
-		closeBackground:          make(chan struct{}),
-		handlers:                 map[uint32]packetHandler{},
-		packets:                  make(chan packet.Packet, 256),
-		entityRuntimeIDs:         map[*world.EntityHandle]uint64{},
-		entities:                 map[uint64]*world.EntityHandle{},
-		hiddenEntities:           map[uuid.UUID]struct{}{},
-		blobs:                    map[uint64][]byte{},
-		maxChunkRadius:           int32(maxChunkRadius),
-		emoteChatMuted:           conf.EmoteChatMuted,
-		conn:                     conn,
-		currentEntityRuntimeID:   1,
-		recipes:                  make(map[uint32]recipe.Recipe),
-		conf:                     conf,
-		hudUpdates:               make(map[hud.Element]bool),
-		hiddenHud:                make(map[hud.Element]struct{}),
-		debugShapes:              make(map[int]debug.Shape),
-		debugShapesPendingAdd:    make(map[int]debug.Shape),
-		debugShapesPendingRemove: make(map[int]struct{}),
+		openChunkTransactions:  make([]map[uint64]struct{}, 0, 8),
+		closeBackground:        make(chan struct{}),
+		handlers:               map[uint32]packetHandler{},
+		packets:                make(chan packet.Packet, 256),
+		entityRuntimeIDs:       map[*world.EntityHandle]uint64{},
+		entities:               map[uint64]*world.EntityHandle{},
+		hiddenEntities:         map[uuid.UUID]struct{}{},
+		blobs:                  map[uint64][]byte{},
+		maxChunkRadius:         int32(maxChunkRadius),
+		emoteChatMuted:         conf.EmoteChatMuted,
+		conn:                   conn,
+		currentEntityRuntimeID: 1,
+		recipes:                make(map[uint32]recipe.Recipe),
+		conf:                   conf,
+		hudUpdates:             make(map[hud.Element]bool),
+		hiddenHud:              make(map[hud.Element]struct{}),
+		debugShapes:            make(map[int]debug.Shape),
+		debugShapeUpdates:      make([]debugShapeUpdate, 0, 256),
 	}
 	// Initialize heldSlot before any inventory callbacks can fire.
 	s.heldSlot.Store(new(uint32))
