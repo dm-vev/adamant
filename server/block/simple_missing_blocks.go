@@ -153,62 +153,6 @@ func allFrostedIce() (blocks []world.Block) {
 	return
 }
 
-// InfestedBlock is a stone-like block that may contain silverfish in vanilla.
-type InfestedBlock struct {
-	solid
-	bassDrum
-
-	// Type is the infested block variant.
-	Type int
-	// Axis is the axis encoded by the infested deepslate variant.
-	Axis cube.Axis
-}
-
-// BreakInfo ...
-func (i InfestedBlock) BreakInfo() BreakInfo {
-	return newBreakInfo(0, alwaysHarvestable, nothingEffective, simpleDrops()).withBlastResistance(3.75)
-}
-
-// EncodeItem ...
-func (i InfestedBlock) EncodeItem() (name string, meta int16) {
-	name, _ = i.EncodeBlock()
-	return name, 0
-}
-
-// EncodeBlock ...
-func (i InfestedBlock) EncodeBlock() (string, map[string]any) {
-	switch i.Type {
-	case 1:
-		return "minecraft:infested_cobblestone", nil
-	case 2:
-		return "minecraft:infested_stone_bricks", nil
-	case 3:
-		return "minecraft:infested_mossy_stone_bricks", nil
-	case 4:
-		return "minecraft:infested_cracked_stone_bricks", nil
-	case 5:
-		return "minecraft:infested_chiseled_stone_bricks", nil
-	case 6:
-		return "minecraft:infested_deepslate", map[string]any{"pillar_axis": i.Axis.String()}
-	default:
-		return "minecraft:infested_stone", nil
-	}
-}
-
-// allInfestedBlocks returns all simple infested block variants.
-func allInfestedBlocks() (blocks []world.Block) {
-	for i := 0; i < 7; i++ {
-		if i == 6 {
-			for _, axis := range cube.Axes() {
-				blocks = append(blocks, InfestedBlock{Type: i, Axis: axis})
-			}
-			continue
-		}
-		blocks = append(blocks, InfestedBlock{Type: i})
-	}
-	return
-}
-
 // NetherReactor is a legacy block kept for old worlds.
 type NetherReactor struct {
 	solid

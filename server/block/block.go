@@ -1,15 +1,16 @@
 package block
 
 import (
+	"math"
+	"math/rand/v2"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/customblock"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"math/rand/v2"
-	"time"
 )
 
 // Activatable represents a block that may be activated by a viewer of the world. When activated, the block
@@ -327,6 +328,14 @@ type bassDrum struct{}
 // Instrument ...
 func (bassDrum) Instrument() sound.Instrument {
 	return sound.BassDrum()
+}
+
+// flute is a struct that may be embedded for blocks that create a flute sound.
+type flute struct{}
+
+// Instrument ...
+func (flute) Instrument() sound.Instrument {
+	return sound.Flute()
 }
 
 // newSmeltInfo returns a new SmeltInfo with the given values.

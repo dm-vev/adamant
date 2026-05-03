@@ -154,9 +154,12 @@ const (
 	hashHoneycomb
 	hashHopper
 	hashHugeMushroomBlock
-	hashInfestedBlock
 	hashInfoUpdate
 	hashInfoUpdate2
+	hashInfestedCobblestone
+	hashInfestedDeepslate
+	hashInfestedStone
+	hashInfestedStoneBricks
 	hashInvisibleBedrock
 	hashIron
 	hashIronBars
@@ -921,16 +924,28 @@ func (m HugeMushroomBlock) Hash() (uint64, uint64) {
 	return hashHugeMushroomBlock, uint64(m.Kind.Uint8()) | uint64(m.Variant)<<2
 }
 
-func (i InfestedBlock) Hash() (uint64, uint64) {
-	return hashInfestedBlock, uint64(i.Type) | uint64(i.Axis)<<8
-}
-
 func (InfoUpdate) Hash() (uint64, uint64) {
 	return hashInfoUpdate, 0
 }
 
 func (InfoUpdate2) Hash() (uint64, uint64) {
 	return hashInfoUpdate2, 0
+}
+
+func (InfestedCobblestone) Hash() (uint64, uint64) {
+	return hashInfestedCobblestone, 0
+}
+
+func (i InfestedDeepslate) Hash() (uint64, uint64) {
+	return hashInfestedDeepslate, uint64(i.Axis)
+}
+
+func (InfestedStone) Hash() (uint64, uint64) {
+	return hashInfestedStone, 0
+}
+
+func (i InfestedStoneBricks) Hash() (uint64, uint64) {
+	return hashInfestedStoneBricks, uint64(i.Type.Uint8())
 }
 
 func (InvisibleBedrock) Hash() (uint64, uint64) {

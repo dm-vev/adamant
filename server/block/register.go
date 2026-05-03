@@ -81,6 +81,14 @@ func init() {
 	world.RegisterBlock(HangingRoots{})
 	world.RegisterBlock(HeavyCore{})
 	world.RegisterBlock(Honeycomb{})
+	world.RegisterBlock(InfestedStone{})
+	world.RegisterBlock(InfestedCobblestone{})
+	for _, b := range allInfestedStoneBricks() {
+		world.RegisterBlock(b)
+	}
+	for _, b := range allInfestedDeepslate() {
+		world.RegisterBlock(b)
+	}
 	world.RegisterBlock(InvisibleBedrock{})
 	world.RegisterBlock(IronBars{})
 	world.RegisterBlock(Iron{})
@@ -301,7 +309,6 @@ func init() {
 	registerAll(allWheat())
 	registerAll(allWood())
 	registerAll(allBorderBlocks())
-	registerAll(allInfestedBlocks())
 	registerAll(allDriedGhast())
 	registerAll(allLeafLitter())
 	registerAll(allResinClumps())
@@ -459,10 +466,13 @@ func init() {
 	world.RegisterItem(Conduit{})
 	world.RegisterItem(InfoUpdate{})
 	world.RegisterItem(InfoUpdate2{})
-	world.RegisterItem(InvisibleBedrock{})
-	for i := 0; i < 7; i++ {
-		world.RegisterItem(InfestedBlock{Type: i})
+	world.RegisterItem(InfestedStone{})
+	world.RegisterItem(InfestedCobblestone{})
+	for _, t := range StoneBricksTypes() {
+		world.RegisterItem(InfestedStoneBricks{Type: t})
 	}
+	world.RegisterItem(InfestedDeepslate{})
+	world.RegisterItem(InvisibleBedrock{})
 	world.RegisterItem(IronBars{})
 	world.RegisterItem(Iron{})
 	world.RegisterItem(ItemFrame{Glowing: true})
