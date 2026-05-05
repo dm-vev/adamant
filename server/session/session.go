@@ -109,6 +109,8 @@ type Session struct {
 	debugShapes       map[int]debug.Shape
 	debugShapeUpdates []debugShapeUpdate
 
+	viewLayer *world.ViewLayer
+
 	blockUpdatesMu     sync.Mutex
 	blockUpdates       map[blockUpdateKey]blockUpdateData
 	blockUpdateDrops   atomic.Uint32
@@ -219,6 +221,7 @@ func (conf Config) New(conn Conn) *Session {
 		debugShapes:            make(map[int]debug.Shape),
 		debugShapeUpdates:      make([]debugShapeUpdate, 0, 256),
 	}
+	s.viewLayer = world.NewViewLayer(s)
 	// Initialize heldSlot before any inventory callbacks can fire.
 	s.heldSlot.Store(new(uint32))
 	s.chunkRadius.Store(int32(r))
@@ -319,6 +322,9 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 
 	c.MoveItemsToInventory()
 	s.closeCurrentContainer(tx, false)
+	if s.viewLayer != nil {
+		_ = s.viewLayer.Close()
+	}
 
 	if s.conf.HandleStop != nil {
 		s.conf.HandleStop(tx, c)
@@ -348,7 +354,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 	// This should always be called last due to the timing of the removal of
 	// entity runtime IDs.
 	if s.ent != nil {
-		sessions.Remove(s)
+		sessions.Remove(s, c)
 		s.entityMutex.Lock()
 		clear(s.entityRuntimeIDs)
 		clear(s.entities)

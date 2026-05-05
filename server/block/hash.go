@@ -60,7 +60,6 @@ const (
 	hashCoal
 	hashCoalOre
 	hashCobblestone
-	hashCobweb
 	hashCocoaBean
 	hashColouredTorch
 	hashComposter
@@ -282,7 +281,6 @@ const (
 	hashStoneBricks
 	hashStonecutter
 	hashStructureVoid
-	hashString
 	hashSugarCane
 	hashSweetBerries
 	hashTNT
@@ -542,10 +540,6 @@ func (c CoalOre) Hash() (uint64, uint64) {
 
 func (c Cobblestone) Hash() (uint64, uint64) {
 	return hashCobblestone, uint64(boolByte(c.Mossy))
-}
-
-func (Cobweb) Hash() (uint64, uint64) {
-	return hashCobweb, 0
 }
 
 func (c CocoaBean) Hash() (uint64, uint64) {
@@ -1438,10 +1432,6 @@ func (s Stonecutter) Hash() (uint64, uint64) {
 
 func (StructureVoid) Hash() (uint64, uint64) {
 	return hashStructureVoid, 0
-}
-
-func (s String) Hash() (uint64, uint64) {
-	return hashString, uint64(boolByte(s.Attached)) | uint64(boolByte(s.Disarmed))<<1 | uint64(boolByte(s.Powered))<<2 | uint64(boolByte(s.Suspended))<<3
 }
 
 func (c SugarCane) Hash() (uint64, uint64) {

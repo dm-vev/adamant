@@ -6,6 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/internal/sliceutil"
 	"github.com/df-mc/dragonfly/server/player/skin"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -36,7 +37,7 @@ func (l *sessionList) Add(s *Session) {
 	l.sendSessionTo(s, s)
 }
 
-func (l *sessionList) Remove(s *Session) {
+func (l *sessionList) Remove(s *Session, entity world.Entity) {
 	l.mu.Lock()
 	others := slices.Clone(l.s)
 	l.s = sliceutil.DeleteVal(l.s, s)
@@ -45,6 +46,15 @@ func (l *sessionList) Remove(s *Session) {
 	// Unsend outside the lock to avoid blocking list operations on I/O.
 	for _, other := range others {
 		l.unsendSessionFrom(s, other)
+	}
+
+	if entity == nil {
+		return
+	}
+	for _, other := range others {
+		if other.viewLayer != nil {
+			other.viewLayer.Remove(entity)
+		}
 	}
 }
 
