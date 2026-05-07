@@ -1,5 +1,7 @@
 github.com/brentp/intintmap v0.0.0-20190211203843-30dc0ade9af9 h1:/G0ghZwrhou0Wq21qc1vXXMm/t/aKWkALWwITptKbE0=
 github.com/brentp/intintmap v0.0.0-20190211203843-30dc0ade9af9/go.mod h1:TOk10ahXejq9wkEaym3KPRNeuR/h5Jx+s8QRWIa2oTM=
+github.com/brentp/intintmap v0.0.0-20251106190759-56907b1f8479 h1:UZbbt19ACBOFO+CiDQFjaEoPJkBhj7GNGtIq59WR6Os=
+github.com/brentp/intintmap v0.0.0-20251106190759-56907b1f8479/go.mod h1:TOk10ahXejq9wkEaym3KPRNeuR/h5Jx+s8QRWIa2oTM=
 github.com/c-bata/go-prompt v0.2.6 h1:POP+nrHE+DfLYx370bedwNhsqmpCUynWPxuHi0C5vZI=
 github.com/c-bata/go-prompt v0.2.6/go.mod h1:/LMAke8wD2FsNu9EXNdHxNLbd9MedkPnCdfpU9wwHfY=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
@@ -61,6 +63,8 @@ github.com/sandertv/gophertunnel v1.55.0 h1:0GMBOOl3NEzSOOUz6qNTWQ7S/seSYLh/4zAg
 github.com/sandertv/gophertunnel v1.55.0/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
 github.com/sandertv/gophertunnel v1.55.2 h1:y6Di88trBI4sF5kYMxJDbAsGx5wta0svLRbakQNzMbk=
 github.com/sandertv/gophertunnel v1.55.2/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
+github.com/sandertv/gophertunnel v1.56.2 h1:eFc58AkMQo43ntR0Wmvz8GRFSdOgABKVDn52GMbIYag=
+github.com/sandertv/gophertunnel v1.56.2/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
 golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329 h1:9kj3STMvgqy3YA4VQXBrN7925ICMxD5wzMRcgA30588=
 golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329/go.mod h1:qj5a5QZpwLU2NLQudwIN5koi3beDhSAlJwa67PuM98c=
 golang.org/x/mod v0.22.0 h1:D4nJWe9zXqHOmWqj4VMOJhvzj7bEZg4wEYa759z1pH4=

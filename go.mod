@@ -3,7 +3,7 @@ module github.com/df-mc/dragonfly
 go 1.26.0
 
 require (
-	github.com/brentp/intintmap v0.0.0-20190211203843-30dc0ade9af9
+	github.com/brentp/intintmap v0.0.0-20251106190759-56907b1f8479
 	github.com/c-bata/go-prompt v0.2.6
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/df-mc/goleveldb v1.1.9
@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml v1.9.5
 	github.com/sandertv/go-raknet v1.15.1-0.20260112202637-beca0b10c217
-	github.com/sandertv/gophertunnel v1.55.2
+	github.com/sandertv/gophertunnel v1.56.2
 	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329
 	golang.org/x/mod v0.22.0
 	golang.org/x/term v0.38.0
