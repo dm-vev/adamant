@@ -2112,6 +2112,10 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	n, vulnerable := living.Hurt(dmg, src)
 	i, left = p.HeldItems()
 
+	if durable, ok := i.Item().(item.Durable); ok {
+		p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
+	}
+
 	p.tx.PlaySound(entity.EyePosition(e), sound.Attack{Damage: !mgl64.FloatEqual(n, 0)})
 	if smashReady && vulnerable && !mgl64.FloatEqual(n, 0) {
 		p.ResetFallDistance()
@@ -2147,10 +2151,6 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		if flammable, ok := living.(entity.Flammable); ok {
 			flammable.SetOnFire(enchantment.FireAspect.Duration(f.Level()))
 		}
-	}
-
-	if durable, ok := i.Item().(item.Durable); ok {
-		p.SetHeldItems(p.damageItem(i, durable.DurabilityInfo().AttackDurability), left)
 	}
 	return true
 }
