@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/world"
 	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
@@ -337,6 +338,11 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 		random: *r,
 	}
 	g.populationQueue <- job
+}
+
+// DefaultSpawn returns the default overworld spawn position.
+func (*Generator) DefaultSpawn(world.Dimension) cube.Pos {
+	return cube.Pos{0, 65, 0}
 }
 
 func (g *Generator) applyBiomeColumn(c *chunk.Chunk, x, z uint8, b pmBiome.Biome) {

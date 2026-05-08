@@ -120,6 +120,11 @@ func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.populate(chunkX, chunkZ, c, r)
 }
 
+// DefaultSpawn returns the vanilla End arrival position.
+func (*End) DefaultSpawn(world.Dimension) cube.Pos {
+	return cube.Pos{100, 50, 0}
+}
+
 func (g *End) generateTerrain(chunkX, chunkZ int, c *chunk.Chunk, s *endScratch) {
 	heights := g.getHeights(s, chunkX*2, 0, chunkZ*2, 3, 33, 3)
 

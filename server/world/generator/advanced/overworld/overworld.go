@@ -10,8 +10,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/genlayer"
 	mcbiome "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/biome"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/genlayer"
 )
 
 const (
@@ -311,6 +311,11 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.fillBiomes(c, biomes[:])
 }
 
+// DefaultSpawn returns the default overworld spawn position.
+func (*Overworld) DefaultSpawn(world.Dimension) cube.Pos {
+	return cube.Pos{0, javaSeaLevel + 2, 0}
+}
+
 func (g *Overworld) biomeDataForChunk(chunkX, chunkZ int) *biomeData {
 	pos := world.ChunkPos{int32(chunkX), int32(chunkZ)}
 	if data, ok := g.biomeDataCache.get(pos); ok {
@@ -395,9 +400,9 @@ func (g *Overworld) setBlocksInChunk(chunkX, chunkZ int, c *chunk.Chunk, biomesF
 
 	type terrainSubStorage struct {
 		initialised bool
-		storage    *chunk.PalettedStorage
-		stoneIndex uint16
-		waterIndex uint16
+		storage     *chunk.PalettedStorage
+		stoneIndex  uint16
+		waterIndex  uint16
 	}
 	var terrainBySub [16]terrainSubStorage
 	subMin := c.SubIndex(minY)

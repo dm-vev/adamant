@@ -34,27 +34,27 @@ type Nether struct {
 	mapGenJ int64
 	mapGenK int64
 
-	airRID        uint32
-	netherrackRID uint32
-	bedrockRID    uint32
-	lavaStillRID  uint32
-	lavaFlowRID   uint32
-	gravelRID     uint32
-	soulSandRID   uint32
-	dirtRID       uint32
-	grassRID      uint32
-	glowstoneRID  uint32
-	fireRID       uint32
-	brownMushroomRID uint32
-	redMushroomRID   uint32
-	quartzOreRID  uint32
-	magmaRID      uint32
-	netherBricksRID     uint32
-	netherBrickFenceRID uint32
-	netherWartRID       uint32
+	airRID               uint32
+	netherrackRID        uint32
+	bedrockRID           uint32
+	lavaStillRID         uint32
+	lavaFlowRID          uint32
+	gravelRID            uint32
+	soulSandRID          uint32
+	dirtRID              uint32
+	grassRID             uint32
+	glowstoneRID         uint32
+	fireRID              uint32
+	brownMushroomRID     uint32
+	redMushroomRID       uint32
+	quartzOreRID         uint32
+	magmaRID             uint32
+	netherBricksRID      uint32
+	netherBrickFenceRID  uint32
+	netherWartRID        uint32
 	netherBrickStairsRID [4]uint32
-	spawnerRID uint32
-	chestRID   uint32
+	spawnerRID           uint32
+	chestRID             uint32
 
 	biomeID uint32
 
@@ -103,18 +103,18 @@ func NewNether(seed int64) *Nether {
 		mapGenJ: mapGenRand.Long(),
 		mapGenK: mapGenRand.Long(),
 
-		airRID:        world.BlockRuntimeID(block.Air{}),
-		netherrackRID: world.BlockRuntimeID(block.Netherrack{}),
-		bedrockRID:    world.BlockRuntimeID(block.Bedrock{}),
-		lavaStillRID:  world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
-		lavaFlowRID:   world.BlockRuntimeID(block.Lava{Depth: 8, Still: false}),
-		gravelRID:     world.BlockRuntimeID(block.Gravel{}),
-		soulSandRID:   world.BlockRuntimeID(block.SoulSand{}),
-		dirtRID:       world.BlockRuntimeID(block.Dirt{}),
-		grassRID:      world.BlockRuntimeID(block.Grass{}),
-		glowstoneRID:  world.BlockRuntimeID(block.Glowstone{}),
-		fireRID:       world.BlockRuntimeID(block.Fire{}),
-		quartzOreRID:  world.BlockRuntimeID(block.NetherQuartzOre{}),
+		airRID:              world.BlockRuntimeID(block.Air{}),
+		netherrackRID:       world.BlockRuntimeID(block.Netherrack{}),
+		bedrockRID:          world.BlockRuntimeID(block.Bedrock{}),
+		lavaStillRID:        world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
+		lavaFlowRID:         world.BlockRuntimeID(block.Lava{Depth: 8, Still: false}),
+		gravelRID:           world.BlockRuntimeID(block.Gravel{}),
+		soulSandRID:         world.BlockRuntimeID(block.SoulSand{}),
+		dirtRID:             world.BlockRuntimeID(block.Dirt{}),
+		grassRID:            world.BlockRuntimeID(block.Grass{}),
+		glowstoneRID:        world.BlockRuntimeID(block.Glowstone{}),
+		fireRID:             world.BlockRuntimeID(block.Fire{}),
+		quartzOreRID:        world.BlockRuntimeID(block.NetherQuartzOre{}),
 		netherBricksRID:     world.BlockRuntimeID(block.NetherBricks{}),
 		netherBrickFenceRID: world.BlockRuntimeID(block.NetherBrickFence{}),
 		netherWartRID:       world.BlockRuntimeID(block.NetherWart{Age: 0}),
@@ -168,6 +168,11 @@ func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.populate(chunkX, chunkZ, c, r)
 
 	g.fillBiomes(c)
+}
+
+// DefaultSpawn returns the default Nether spawn position.
+func (*Nether) DefaultSpawn(world.Dimension) cube.Pos {
+	return cube.Pos{0, netherSeaLevel + 2, 0}
 }
 
 func (g *Nether) fillBiomes(c *chunk.Chunk) {

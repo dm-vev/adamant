@@ -3,6 +3,7 @@ package pmgen
 import (
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -43,4 +44,9 @@ func (o *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	o.mu.RUnlock()
 	// gen is created in NewOverworld, so this should not be nil.
 	gen.GenerateChunk(pos, c)
+}
+
+// DefaultSpawn returns the default overworld spawn position.
+func (*Overworld) DefaultSpawn(world.Dimension) cube.Pos {
+	return cube.Pos{0, 65, 0}
 }

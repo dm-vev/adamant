@@ -50,6 +50,10 @@ func (g benchmarkTerrainGenerator) GenerateChunk(_ ChunkPos, c *chunk.Chunk) {
 	}
 }
 
+func (benchmarkTerrainGenerator) DefaultSpawn(Dimension) cube.Pos {
+	return cube.Pos{0, 65, 0}
+}
+
 func BenchmarkTickLoaded1000Chunks(b *testing.B) {
 	w, _ := setupTickBenchmarkWorld(b, 3)
 	tk := ticker{interval: time.Second / 20}
