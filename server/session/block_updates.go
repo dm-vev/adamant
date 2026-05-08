@@ -30,7 +30,7 @@ type blockUpdateData struct {
 func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	update := blockUpdateData{
 		pos:       protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		runtimeID: world.BlockRuntimeID(b),
+		runtimeID: s.br.BlockRuntimeID(b),
 		layer:     uint32(layer),
 	}
 	if v, ok := b.(world.NBTer); ok {

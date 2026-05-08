@@ -21,7 +21,7 @@ func BenchmarkGenerate1000Chunks(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for _, pos := range positions {
-			c := chunk.New(g.airRID, cube.Range{0, 255})
+			c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 			g.GenerateChunk(pos, c)
 		}
 	}

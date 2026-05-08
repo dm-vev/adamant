@@ -65,6 +65,8 @@ github.com/sandertv/gophertunnel v1.55.2 h1:y6Di88trBI4sF5kYMxJDbAsGx5wta0svLRba
 github.com/sandertv/gophertunnel v1.55.2/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
 github.com/sandertv/gophertunnel v1.56.2 h1:eFc58AkMQo43ntR0Wmvz8GRFSdOgABKVDn52GMbIYag=
 github.com/sandertv/gophertunnel v1.56.2/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
+github.com/segmentio/fasthash v1.0.3 h1:EI9+KE1EwvMLBWwjpRDc+fEM+prwxDYbslddQGtrmhM=
+github.com/segmentio/fasthash v1.0.3/go.mod h1:waKX8l2N8yckOgmSsXJi7x1ZfdKZ4x7KRMzBtS3oedY=
 golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329 h1:9kj3STMvgqy3YA4VQXBrN7925ICMxD5wzMRcgA30588=
 golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329/go.mod h1:qj5a5QZpwLU2NLQudwIN5koi3beDhSAlJwa67PuM98c=
 golang.org/x/mod v0.22.0 h1:D4nJWe9zXqHOmWqj4VMOJhvzj7bEZg4wEYa759z1pH4=

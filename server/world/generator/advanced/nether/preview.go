@@ -13,7 +13,7 @@ type netherPreview struct {
 }
 
 func (g *Nether) previewChunk(chunkX, chunkZ int) *netherPreview {
-	c := chunk.New(g.airRID, cube.Range{0, 127})
+	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 127})
 
 	s := g.pool.Get().(*netherScratch)
 	defer g.pool.Put(s)

@@ -4,7 +4,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-	_ "unsafe"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -15,11 +14,8 @@ import (
 )
 
 func init() {
-	worldFinaliseBlockRegistry()
+	world.DefaultBlockRegistry.Finalize()
 }
-
-//go:linkname worldFinaliseBlockRegistry github.com/df-mc/dragonfly/server/world.finaliseBlockRegistry
-func worldFinaliseBlockRegistry()
 
 func TestEndCrystalUseOnBlockReturns(t *testing.T) {
 	w := world.Config{Entities: entity.DefaultRegistry}.New()

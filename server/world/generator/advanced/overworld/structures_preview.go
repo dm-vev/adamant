@@ -18,7 +18,7 @@ func (g *Overworld) previewChunk(chunkX, chunkZ int) *chunk.Chunk {
 }
 
 func (g *Overworld) buildPreviewChunk(chunkX, chunkZ int) *chunk.Chunk {
-	c := chunk.New(g.airRID, cube.Range{0, 255})
+	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 
 	s := g.pool.Get().(*scratch)
 	defer g.pool.Put(s)

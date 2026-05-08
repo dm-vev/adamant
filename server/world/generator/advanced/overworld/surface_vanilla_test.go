@@ -2,20 +2,17 @@ package overworld
 
 import (
 	"testing"
-	_ "unsafe"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 	mcbiome "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/biome"
 )
 
 func init() {
-	worldFinaliseBlockRegistry()
+	world.DefaultBlockRegistry.Finalize()
 }
-
-//go:linkname worldFinaliseBlockRegistry github.com/df-mc/dragonfly/server/world.finaliseBlockRegistry
-func worldFinaliseBlockRegistry()
 
 func findChunkWithCenterBiome(g *Overworld, targets map[int]struct{}, radiusChunks int) (chunkX, chunkZ int, ok bool) {
 	for x := -radiusChunks; x <= radiusChunks; x++ {
@@ -42,7 +39,7 @@ func biomeDefsForChunk(g *Overworld, chunkX, chunkZ int) (gen [10 * 10]*biomeDef
 }
 
 func generateBaseAndSurface(g *Overworld, chunkX, chunkZ int) *chunk.Chunk {
-	c := chunk.New(g.airRID, cube.Range{0, 255})
+	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 	s := &scratch{
 		heightMap:  make([]float64, 5*33*5),
 		mainNoise:  make([]float64, 5*33*5),
@@ -62,11 +59,11 @@ func generateBaseAndSurface(g *Overworld, chunkX, chunkZ int) *chunk.Chunk {
 func TestSurfaceIncludesMesaBands(t *testing.T) {
 	g := NewOverworld(1)
 	targets := map[int]struct{}{
-		int(mcbiome.Badlands):                    {},
-		int(mcbiome.BadlandsPlateau):             {},
-		int(mcbiome.WoodedBadlandsPlateau):       {},
-		int(mcbiome.ErodedBadlands):              {},
-		int(mcbiome.ModifiedBadlandsPlateau):     {},
+		int(mcbiome.Badlands):                      {},
+		int(mcbiome.BadlandsPlateau):               {},
+		int(mcbiome.WoodedBadlandsPlateau):         {},
+		int(mcbiome.ErodedBadlands):                {},
+		int(mcbiome.ModifiedBadlandsPlateau):       {},
 		int(mcbiome.ModifiedWoodedBadlandsPlateau): {},
 	}
 	// Mesa biomes can be far from the origin depending on the seed and biome generator.
@@ -106,9 +103,9 @@ func TestSurfaceIncludesMesaBands(t *testing.T) {
 func TestSurfaceMegaTaigaHasPodzolPatches(t *testing.T) {
 	g := NewOverworld(2)
 	targets := map[int]struct{}{
-		int(mcbiome.GiantTreeTaiga):      {},
-		int(mcbiome.GiantTreeTaigaHills): {},
-		int(mcbiome.GiantSpruceTaiga):    {},
+		int(mcbiome.GiantTreeTaiga):        {},
+		int(mcbiome.GiantTreeTaigaHills):   {},
+		int(mcbiome.GiantSpruceTaiga):      {},
 		int(mcbiome.GiantSpruceTaigaHills): {},
 	}
 	chunkX, chunkZ, ok := 0, 0, false

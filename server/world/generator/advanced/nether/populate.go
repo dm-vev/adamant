@@ -42,7 +42,7 @@ func (g *Nether) populateOrigin(
 	target := c
 	simulate := false
 	if originChunkX != chunkX || originChunkZ != chunkZ {
-		target = chunk.New(g.airRID, c.Range())
+		target = chunk.New(world.DefaultBlockRegistry, c.Range())
 		simulate = true
 	}
 	g.applyNetherBridge(originChunkX, originChunkZ, target, r, simulate)

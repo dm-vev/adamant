@@ -156,6 +156,10 @@ type Config struct {
 	// formatting directive such as %s, the name of the target dimension is passed as the
 	// first argument. Set this to an empty string to disable the notification entirely.
 	PortalDisabledMessage string
+	// Blocks is the BlockRegistry template used for newly created worlds. If nil, world.DefaultBlockRegistry is used.
+	// For a non-default registry, set this to world.NewBlockRegistry(), register blocks on that instance, and ensure
+	// it is finalized before use.
+	Blocks world.BlockRegistry
 }
 
 // ReconnectPolicy controls how the server handles duplicate logins for the same player.
@@ -216,8 +220,17 @@ func (conf Config) New() *Server {
 	if len(conf.Entities.Types()) == 0 {
 		conf.Entities = entity.DefaultRegistry
 	}
+	if conf.Blocks == nil {
+		conf.Blocks = world.DefaultBlockRegistry
+	}
+
+	// Initialize the passed block registry and also initialize the default block registry which
+	// is used in some vanilla paths.
+	conf.Blocks.Finalize()
+	world.DefaultBlockRegistry.Finalize()
+
 	if !conf.DisableResourceBuilding {
-		if pack, ok := packbuilder.BuildResourcePack(); ok {
+		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks); ok {
 			conf.Resources = append(conf.Resources, pack)
 		}
 	}
@@ -250,7 +263,6 @@ func (conf Config) New() *Server {
 	}
 
 	creative_registerCreativeItems()
-	world_finaliseBlockRegistry()
 	recipe_registerVanilla()
 
 	defaultDim := conf.DefaultDimension
@@ -599,8 +611,3 @@ func creative_registerCreativeItems()
 //
 //go:linkname recipe_registerVanilla github.com/df-mc/dragonfly/server/item/recipe.registerVanilla
 func recipe_registerVanilla()
-
-// noinspection ALL
-//
-//go:linkname world_finaliseBlockRegistry github.com/df-mc/dragonfly/server/world.finaliseBlockRegistry
-func world_finaliseBlockRegistry()

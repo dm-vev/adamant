@@ -119,6 +119,8 @@ type Session struct {
 
 	overflowStreak  atomic.Uint32
 	overflowLastLog atomic.Int64
+
+	br world.BlockRegistry
 }
 
 // debugShapeUpdate represents a pending debug shape mutation. A nil shape removes the matching ID.
@@ -177,6 +179,8 @@ type Config struct {
 	JoinMessage, QuitMessage chat.Translation
 
 	HandleStop func(*world.Tx, Controllable)
+	// BlockRegistry overrides the registry used for network serialization. If nil, world.DefaultBlockRegistry is used.
+	BlockRegistry world.BlockRegistry
 }
 
 func (conf Config) New(conn Conn) *Session {
@@ -235,9 +239,15 @@ func (conf Config) New(conn Conn) *Session {
 	var origin protocol.CommandOrigin
 	s.commandOrigin.Store(&origin)
 
+	if conf.BlockRegistry == nil {
+		s.br = world.DefaultBlockRegistry
+	} else {
+		s.br = conf.BlockRegistry
+	}
+
 	s.registerHandlers()
 	s.sendBiomes()
-	groups, items := creativeContent()
+	groups, items := creativeContent(s.br)
 	s.writePacket(&packet.CreativeContent{Groups: groups, Items: items})
 	s.sendRecipes()
 	s.sendArmourTrimData()

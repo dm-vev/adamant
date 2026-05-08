@@ -19,6 +19,10 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
+func init() {
+	world.DefaultBlockRegistry.Finalize()
+}
+
 func BenchmarkEncodeChunkBlockEntities(b *testing.B) {
 	for _, count := range []int{0, 32, 256} {
 		blockEntities := benchmarkBlockEntities(b, count)
@@ -165,10 +169,6 @@ func benchmarkBlockEntities(b *testing.B, count int) map[cube.Pos]world.Block {
 func benchmarkColumnWithBlockEntities(b *testing.B, count int) (*world.Column, int16) {
 	b.Helper()
 
-	airRID, ok := chunk.StateToRuntimeID("minecraft:air", nil)
-	if !ok {
-		b.Fatal("air runtime ID not found")
-	}
 	stoneRID, ok := chunk.StateToRuntimeID("minecraft:stone", nil)
 	if !ok {
 		b.Fatal("stone runtime ID not found")
@@ -178,7 +178,7 @@ func benchmarkColumnWithBlockEntities(b *testing.B, count int) (*world.Column, i
 		b.Fatal("beacon runtime ID not found")
 	}
 
-	c := chunk.New(airRID, cube.Range{0, 255})
+	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
 			for y := int16(0); y < 64; y++ {

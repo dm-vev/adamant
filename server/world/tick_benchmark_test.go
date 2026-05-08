@@ -115,7 +115,7 @@ func benchmarkScheduledTickQueueN(b *testing.B, scheduledCount int) {
 	<-w.Exec(func(tx *Tx) {
 		for i := 0; i < b.N; i++ {
 			for _, pos := range positions {
-				queue.schedule(pos, blk, time.Second/20)
+				queue.schedule(DefaultBlockRegistry, pos, blk, time.Second/20)
 			}
 			queue.tick(tx, int64(i+1))
 		}

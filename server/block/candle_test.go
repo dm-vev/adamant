@@ -6,15 +6,11 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	_ "unsafe"
 )
 
 func init() {
-	worldFinaliseBlockRegistry()
+	world.DefaultBlockRegistry.Finalize()
 }
-
-//go:linkname worldFinaliseBlockRegistry github.com/df-mc/dragonfly/server/world.finaliseBlockRegistry
-func worldFinaliseBlockRegistry()
 
 func TestCandleIgnitePreservesAdditionalCandles(t *testing.T) {
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
