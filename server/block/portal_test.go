@@ -46,7 +46,7 @@ func TestPortalRuntimeIDs(t *testing.T) {
 			if name != "minecraft:portal" || props["portal_axis"] != tt.prop {
 				t.Fatalf("RuntimeIDToState(%d) = %s %+v", rid, name, props)
 			}
-			entry := chunk.BlockPaletteEncoding.EncodeBlockState(rid)
+			entry := (chunk.BlockPaletteEncoding{Blocks: world.DefaultBlockRegistry}).EncodeBlockState(rid)
 			if entry.Name != "minecraft:portal" || entry.State["portal_axis"] != tt.prop {
 				t.Fatalf("EncodeBlockState(%d) = %s %+v", rid, entry.Name, entry.State)
 			}

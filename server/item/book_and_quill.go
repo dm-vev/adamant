@@ -90,9 +90,7 @@ func (b BookAndQuill) SwapPages(pageOne, pageTwo int) BookAndQuill {
 	if _, ok := b.Page(max(pageOne, pageTwo)); !ok {
 		return b
 	}
-	temp := b.Pages[pageOne]
-	b.Pages[pageOne] = b.Pages[pageTwo]
-	b.Pages[pageTwo] = temp
+	b.Pages[pageOne], b.Pages[pageTwo] = b.Pages[pageTwo], b.Pages[pageOne]
 	return b
 }
 

@@ -1,3 +1,9 @@
+# IDEs
+.idea/
+.zed/
+.vscode/
+
+# Adamant
 auto.sh
 .codex/
 .gocache/

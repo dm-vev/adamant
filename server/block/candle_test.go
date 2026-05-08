@@ -12,6 +12,10 @@ func init() {
 	world.DefaultBlockRegistry.Finalize()
 }
 
+func worldFinaliseBlockRegistry() {
+	world.DefaultBlockRegistry.Finalize()
+}
+
 func TestCandleIgnitePreservesAdditionalCandles(t *testing.T) {
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
 	defer w.Close()
