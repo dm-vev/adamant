@@ -175,11 +175,12 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 			if explodable, ok := bl.(Explodable); ok {
 				explodable.Explode(explosionPos, pos, tx, c)
 			} else if breakable, ok := bl.(Breakable); ok {
+				// Clear the block first so break handlers see the post-break world. Redstone updates rely on this ordering.
+				tx.SetBlock(pos, nil, nil)
 				breakHandler := breakable.BreakInfo().BreakHandler
 				if breakHandler != nil {
 					breakHandler(pos, tx, nil)
 				}
-				tx.SetBlock(pos, nil, nil)
 				if itemDropChance > r.Float64() {
 					for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
 						dropItem(tx, drop, pos.Vec3Centre())
@@ -200,13 +201,13 @@ func (c ExplosionConfig) Explode(tx *world.Tx, explosionPos mgl64.Vec3) {
 
 		tx.AddParticle(explosionPos, c.Particle)
 		tx.PlaySound(explosionPos, c.Sound)
-		}) {
-			return
-		}
+	}) {
+		return
 	}
+}
 
-	// exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.
-	func exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
+// exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.
+func exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
 	pos := e.Position()
 	box := e.H().Type().BBox(e).Translate(pos)
 

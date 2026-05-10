@@ -27,6 +27,16 @@ type RedstoneConnectable interface {
 
 // RedstonePowerAt returns the redstone power level emitted from the block at pos towards the neighbour on face.
 func RedstonePowerAt(src BlockSource, pos cube.Pos, face cube.Face) uint8 {
+	b := src.Block(pos)
+	if _, ok := b.(RedstoneWire); ok {
+		return redstoneWeakPowerAt(src, pos, face)
+	}
+	if _, ok := b.(RedstonePowerSource); ok {
+		return redstoneWeakPowerAt(src, pos, face)
+	}
+	if conductor, ok := b.(Conductor); ok && conductor.RedstoneSource() {
+		return redstoneWeakPowerAt(src, pos, face)
+	}
 	if isNormalBlock(src, pos) {
 		return redstoneStrongPowerFromNeighbours(src, pos)
 	}
@@ -44,21 +54,33 @@ func RedstoneSidePowered(src BlockSource, pos cube.Pos, face cube.Face) bool {
 }
 
 func redstoneWeakPowerAt(src BlockSource, pos cube.Pos, face cube.Face) uint8 {
-	if wire, ok := src.Block(pos).(RedstoneWire); ok {
+	b := src.Block(pos)
+	if wire, ok := b.(RedstoneWire); ok {
 		return wire.RedstoneWirePowerTo(pos, face, src)
 	}
-	if source, ok := src.Block(pos).(RedstonePowerSource); ok {
+	if source, ok := b.(RedstonePowerSource); ok {
 		return source.RedstoneWeakPower(face)
+	}
+	if conductor, ok := b.(Conductor); ok {
+		if tx, ok := src.(*Tx); ok {
+			return uint8(conductor.WeakPower(pos, face.Opposite(), tx, true))
+		}
 	}
 	return 0
 }
 
 func redstoneStrongPowerAt(src BlockSource, pos cube.Pos, face cube.Face) uint8 {
-	if wire, ok := src.Block(pos).(RedstoneWire); ok {
+	b := src.Block(pos)
+	if wire, ok := b.(RedstoneWire); ok {
 		return wire.RedstoneWirePowerTo(pos, face, src)
 	}
-	if source, ok := src.Block(pos).(RedstonePowerSource); ok {
+	if source, ok := b.(RedstonePowerSource); ok {
 		return source.RedstoneStrongPower(face)
+	}
+	if conductor, ok := b.(Conductor); ok {
+		if tx, ok := src.(*Tx); ok {
+			return uint8(conductor.StrongPower(pos, face.Opposite(), tx, true))
+		}
 	}
 	return 0
 }

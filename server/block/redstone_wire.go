@@ -2,29 +2,22 @@ package block
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// RedstoneWire is a thin redstone component that transmits power.
+// RedstoneWire is a block that is used to transfer a charge between objects. Charged objects can be used to open doors
+// or activate certain items. This block is the placed form of redstone which can be found by mining redstone ore with
+// an iron pickaxe or better. Deactivated redstone wire will appear dark red, but activated redstone wire will appear
+// bright red with a sparkling particle effect.
 type RedstoneWire struct {
-	carpet
-	replaceable
+	empty
 	transparent
-	sourceWaterDisplacer
 
+	// Power is the current power level of the redstone wire. It ranges from 0 to 15.
 	Power int
-}
-
-// BreakInfo ...
-func (r RedstoneWire) BreakInfo() BreakInfo {
-	return newBreakInfo(0.1, alwaysHarvestable, nothingEffective, oneOf(r))
-}
-
-// SideClosed ...
-func (RedstoneWire) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
-	return false
 }
 
 // HasLiquidDrops ...
@@ -32,13 +25,23 @@ func (RedstoneWire) HasLiquidDrops() bool {
 	return true
 }
 
-// NeighbourUpdateTick ...
-func (r RedstoneWire) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx) {
-		breakBlock(r, pos, tx)
-		return
+// BreakInfo ...
+func (r RedstoneWire) BreakInfo() BreakInfo {
+	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(RedstoneWire{})).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) {
+		updateStrongRedstone(pos, tx)
+	})
+}
+
+// EncodeBlock ...
+func (r RedstoneWire) EncodeBlock() (string, map[string]any) {
+	return "minecraft:redstone_wire", map[string]any{
+		"redstone_signal": int32(r.Power),
 	}
-	r.calculateCurrentChanges(pos, tx, false, true)
+}
+
+// EncodeItem ...
+func (RedstoneWire) EncodeItem() (name string, meta int16) {
+	return "minecraft:redstone", 0
 }
 
 // UseOnBlock ...
@@ -47,277 +50,248 @@ func (r RedstoneWire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 	if !used {
 		return false
 	}
-	if !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx) {
+	belowPos := pos.Side(cube.FaceDown)
+	if !tx.Block(belowPos).Model().FaceSolid(belowPos, cube.FaceUp, tx) {
 		return false
 	}
-	r.Power = 0
+	r.Power = r.calculatePower(pos, tx)
 	place(tx, pos, r, user, ctx)
-	r.calculateCurrentChanges(pos, tx, true, true)
-
-	for _, vertical := range []cube.Face{cube.FaceDown, cube.FaceUp} {
-		r.updateAround(pos.Side(vertical), tx)
+	if placed(ctx) {
+		updateStrongRedstone(pos, tx)
+		return true
 	}
-
-	for _, side := range cube.HorizontalFaces() {
-		sidePos := pos.Side(side)
-		if wireIsNormalBlock(sidePos, tx) {
-			r.updateAround(sidePos.Side(cube.FaceUp), tx)
-			continue
-		}
-		r.updateAround(sidePos.Side(cube.FaceDown), tx)
-	}
-	return placed(ctx)
+	return false
 }
 
-func (r RedstoneWire) updateAround(pos cube.Pos, tx *world.Tx) {
-	if _, ok := tx.Block(pos).(world.RedstoneWire); !ok {
+// NeighbourUpdateTick ...
+func (r RedstoneWire) NeighbourUpdateTick(pos, neighbour cube.Pos, tx *world.Tx) {
+	if pos == neighbour {
+		// Ignore the self-update sent after this wire's block state changes.
 		return
 	}
-	tx.DoBlockUpdatesAround(pos)
-	for _, side := range cube.Faces() {
-		tx.DoBlockUpdatesAround(pos.Side(side))
-	}
-}
-
-func (r RedstoneWire) calculateCurrentChanges(pos cube.Pos, tx *world.Tx, force, stillExists bool) {
-	meta := r.Power
-	maxStrength := meta
-	power := wireIndirectPower(pos, tx)
-	if power > 0 && power > maxStrength-1 {
-		maxStrength = power
-	}
-
-	strength := 0
-	for _, side := range cube.HorizontalFaces() {
-		sidePos := pos.Side(side)
-		strength = wireMaxCurrentStrength(sidePos, strength, tx)
-
-		sideNormal := wireIsNormalBlock(sidePos, tx)
-		if sideNormal && !wireIsNormalBlock(pos.Side(cube.FaceUp), tx) {
-			strength = wireMaxCurrentStrength(sidePos.Side(cube.FaceUp), strength, tx)
-		} else if !sideNormal {
-			strength = wireMaxCurrentStrength(sidePos.Side(cube.FaceDown), strength, tx)
-		}
-	}
-
-	if strength > maxStrength {
-		maxStrength = strength - 1
-	} else if maxStrength > 0 {
-		maxStrength--
-	} else {
-		maxStrength = 0
-	}
-
-	if power > maxStrength-1 {
-		maxStrength = power
-	} else if power < maxStrength && strength <= maxStrength {
-		maxStrength = maxInt(power, strength-1)
-	}
-
-	if maxStrength < 0 {
-		maxStrength = 0
-	} else if maxStrength > 15 {
-		maxStrength = 15
-	}
-
-	if meta != maxStrength {
-		if stillExists {
-			r.Power = maxStrength
-			tx.SetBlock(pos, r, &world.SetOpts{DisableBlockUpdates: true})
-		}
-		tx.DoBlockUpdatesAround(pos)
-		for _, side := range cube.Faces() {
-			tx.DoBlockUpdatesAround(pos.Side(side))
-		}
+	below := pos.Side(cube.FaceDown)
+	if !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) {
+		breakBlock(r, pos, tx)
 		return
 	}
-	if !force {
-		return
-	}
-	for _, side := range cube.Faces() {
-		tx.DoBlockUpdatesAround(pos.Side(side))
+	if changed, ok := r.updateFromNeighbour(pos, tx); ok && !changed {
+		updateStrongRedstone(pos, tx)
 	}
 }
 
-func wireMaxCurrentStrength(pos cube.Pos, maxStrength int, src world.BlockSource) int {
-	wire, ok := src.Block(pos).(world.RedstoneWire)
-	if !ok {
-		return maxStrength
-	}
-	strength := int(wire.RedstoneWirePower())
-	if strength > maxStrength {
-		return strength
-	}
-	return maxStrength
+// RedstoneUpdate ...
+func (r RedstoneWire) RedstoneUpdate(pos cube.Pos, tx *world.Tx) {
+	r.updatePower(pos, tx)
 }
 
-func wireIndirectPower(pos cube.Pos, src world.BlockSource) int {
-	power := 0
-	for _, face := range cube.Faces() {
-		blockPower := wireIndirectPowerFrom(pos.Side(face), face, src)
-		if blockPower >= 15 {
-			return 15
-		}
-		if blockPower > power {
-			power = blockPower
-		}
+// updateFromNeighbour updates the wire after a neighbour change. changed reports whether the wire's power changed,
+// and ok reports whether the update was allowed by the redstone update handler.
+func (r RedstoneWire) updateFromNeighbour(pos cube.Pos, tx *world.Tx) (changed bool, ok bool) {
+	if redstoneUpdateCancelled(pos, tx) {
+		return false, false
 	}
-	return power
+	return r.updatePower(pos, tx), true
 }
 
-func wireIndirectPowerFrom(pos cube.Pos, face cube.Face, src world.BlockSource) int {
-	if _, ok := src.Block(pos).(world.RedstoneWire); ok {
+// updatePower recalculates the wire's power and propagates the network when the power changes.
+func (r RedstoneWire) updatePower(pos cube.Pos, tx *world.Tx) bool {
+	if power := r.calculatePower(pos, tx); r.Power != power {
+		r.Power = power
+		tx.SetBlock(pos, r, &world.SetOpts{DisableBlockUpdates: true})
+		updateStrongRedstone(pos, tx)
+		return true
+	}
+	return false
+}
+
+// RedstoneSource ...
+func (RedstoneWire) RedstoneSource() bool {
+	return false
+}
+
+// WeaklyPowersBlocks returns true because powered redstone dust weakly powers conductive blocks it points into or rests on top of.
+func (RedstoneWire) WeaklyPowersBlocks() bool {
+	return true
+}
+
+// WeakPower returns the power emitted by the wire toward a neighbouring receiver. Dust powers upward, never powers
+// downward, and only powers horizontal receivers in connected directions. A powered wire with no horizontal
+// connections behaves as an unconnected cross and powers every horizontal side.
+func (r RedstoneWire) WeakPower(pos cube.Pos, face cube.Face, tx *world.Tx, accountForDust bool) int {
+	if !accountForDust {
 		return 0
 	}
-	if wireIsNormalBlock(pos, src) {
-		return int(wireStrongPowerFromNeighboursNoWire(src, pos))
+	if face == cube.FaceUp {
+		return r.Power
 	}
-	return int(wireWeakPowerAt(src, pos, face.Opposite()))
-}
-
-func wireWeakPowerAt(src world.BlockSource, pos cube.Pos, face cube.Face) uint8 {
-	if wire, ok := src.Block(pos).(world.RedstoneWire); ok {
-		return wire.RedstoneWirePowerTo(pos, face, src)
+	if face == cube.FaceDown {
+		return 0
 	}
-	if source, ok := src.Block(pos).(world.RedstonePowerSource); ok {
-		return source.RedstoneWeakPower(face)
+	if !r.hasHorizontalRedstoneConnection(pos, tx) {
+		return r.Power
 	}
-	return 0
-}
-
-func wireStrongPowerAt(src world.BlockSource, pos cube.Pos, face cube.Face) uint8 {
-	if wire, ok := src.Block(pos).(world.RedstoneWire); ok {
-		return wire.RedstoneWirePowerTo(pos, face, src)
+	if r.connection(pos, face.Opposite(), tx) {
+		return r.Power
 	}
-	if source, ok := src.Block(pos).(world.RedstonePowerSource); ok {
-		return source.RedstoneStrongPower(face)
+	if r.connection(pos, face, tx) && !r.connection(pos, face.RotateLeft(), tx) && !r.connection(pos, face.RotateRight(), tx) {
+		return r.Power
 	}
 	return 0
 }
 
-func wireStrongPowerFromNeighboursNoWire(src world.BlockSource, pos cube.Pos) uint8 {
-	var power uint8
-	for _, face := range cube.Faces() {
-		if _, ok := src.Block(pos.Side(face)).(world.RedstoneWire); ok {
-			continue
-		}
-		blockPower := wireStrongPowerAt(src, pos.Side(face), face.Opposite())
-		if blockPower >= 15 {
-			return 15
-		}
-		if blockPower > power {
-			power = blockPower
-		}
-	}
-	return power
+// StrongPower returns 0 because redstone dust weakly powers conductive blocks rather than strongly powering them.
+func (RedstoneWire) StrongPower(cube.Pos, cube.Face, *world.Tx, bool) int {
+	return 0
 }
 
-// EncodeItem ...
-func (r RedstoneWire) EncodeItem() (name string, meta int16) {
-	return "minecraft:redstone", 0
-}
-
-// EncodeBlock ...
-func (r RedstoneWire) EncodeBlock() (name string, properties map[string]any) {
-	return "minecraft:redstone_wire", map[string]any{"redstone_signal": int32(r.Power)}
-}
-
-// RedstoneWirePower ...
+// RedstoneWirePower returns the wire's power through the legacy redstone API.
 func (r RedstoneWire) RedstoneWirePower() uint8 {
 	return uint8(r.Power)
 }
 
-// WithRedstoneWirePower ...
+// WithRedstoneWirePower returns a copy with the supplied power through the legacy redstone API.
 func (r RedstoneWire) WithRedstoneWirePower(power uint8) world.Block {
 	r.Power = int(power)
 	return r
 }
 
-// RedstoneWirePowerTo returns the power emitted towards a face.
+// RedstoneWirePowerTo returns the power emitted towards face through the legacy redstone API.
 func (r RedstoneWire) RedstoneWirePowerTo(pos cube.Pos, face cube.Face, src world.BlockSource) uint8 {
-	if r.Power == 0 {
-		return 0
-	}
-	if face == cube.FaceUp {
+	tx, ok := src.(*world.Tx)
+	if !ok {
 		return uint8(r.Power)
 	}
-	if face.Axis() == cube.Y {
-		return 0
-	}
-
-	connections := map[cube.Face]struct{}{}
-	for _, side := range cube.HorizontalFaces() {
-		if r.isPowerSourceAt(pos, side, src) {
-			connections[side] = struct{}{}
-		}
-	}
-
-	if len(connections) == 0 {
-		return uint8(r.Power)
-	}
-	if _, ok := connections[face]; ok {
-		if _, ok := connections[face.RotateLeft()]; ok {
-			return 0
-		}
-		if _, ok := connections[face.RotateRight()]; ok {
-			return 0
-		}
-		return uint8(r.Power)
-	}
-	return 0
+	return uint8(r.WeakPower(pos, face.Opposite(), tx, true))
 }
 
-func (r RedstoneWire) isPowerSourceAt(pos cube.Pos, side cube.Face, src world.BlockSource) bool {
-	sidePos := pos.Side(side)
-	block := src.Block(sidePos)
-	sideNormal := wireIsNormalBlock(sidePos, src)
-	if !wireIsNormalBlock(pos.Side(cube.FaceUp), src) && sideNormal && canConnectUpwardsTo(src.Block(sidePos.Side(cube.FaceUp))) {
-		return true
+// calculatePower returns the highest level of received redstone power at the provided position.
+func (r RedstoneWire) calculatePower(pos cube.Pos, tx *world.Tx) int {
+	return calculateRedstoneWirePower(pos, tx, tx.Block)
+}
+
+// calculateRedstoneWirePower returns the highest level of received redstone power at the provided position. blockAt is
+// injected so direct updates and the BFS wire network share the same rules while the BFS path may still read cached
+// node state.
+func calculateRedstoneWirePower(pos cube.Pos, tx *world.Tx, blockAt func(cube.Pos) world.Block) int {
+	aboveBlocksVerticalTravel := blocksRedstoneWireVerticalTravel(blockAt(pos.Side(cube.FaceUp)))
+	var blockPower, wirePower int
+	for _, side := range cube.Faces() {
+		neighbourPos := pos.Side(side)
+		neighbour := blockAt(neighbourPos)
+
+		wirePower = maxRedstoneWirePower(neighbour, wirePower)
+		blockPower = max(blockPower, tx.RedstonePower(neighbourPos, side, false))
+
+		if side.Axis() == cube.Y {
+			// Only check horizontal neighbours from here on.
+			continue
+		}
+
+		if canRedstoneWireStepDown(pos, neighbourPos, neighbour, tx) && !aboveBlocksVerticalTravel {
+			wirePower = maxRedstoneWirePower(blockAt(neighbourPos.Side(cube.FaceUp)), wirePower)
+		}
+		if canRedstoneWireStepDown(neighbourPos.Side(cube.FaceDown), neighbourPos, neighbour, tx) && !blocksRedstoneWireVerticalTravel(neighbour) {
+			wirePower = maxRedstoneWirePower(blockAt(neighbourPos.Side(cube.FaceDown)), wirePower)
+		}
+
+		if _, neighbourSolid := neighbour.Model().(model.Solid); !neighbourSolid {
+			wirePower = maxRedstoneWirePower(blockAt(neighbourPos.Side(cube.FaceDown)), wirePower)
+		}
 	}
-	if canConnectTo(block, side) {
-		return true
-	}
-	if !sideNormal && canConnectUpwardsTo(src.Block(sidePos.Side(cube.FaceDown))) {
-		return true
+	return max(blockPower, wirePower-1)
+}
+
+// hasHorizontalRedstoneConnection checks if the dust connects horizontally to redstone wire or a redstone source. It
+// does not include passive receivers such as doors, trapdoors, or note blocks.
+func (r RedstoneWire) hasHorizontalRedstoneConnection(pos cube.Pos, tx *world.Tx) bool {
+	for _, face := range cube.HorizontalFaces() {
+		if r.connection(pos, face, tx) {
+			return true
+		}
 	}
 	return false
 }
 
-func canConnectUpwardsTo(b world.Block) bool {
-	if _, ok := b.(world.RedstoneWire); ok {
+// connection returns true if the dust shape connects through the given face to another wire or a redstone source. It
+// also accounts for valid one-block vertical wire connections.
+func (r RedstoneWire) connection(pos cube.Pos, face cube.Face, tx *world.Tx) bool {
+	sidePos := pos.Side(face)
+	sideBlock := tx.Block(sidePos)
+	if r.connectsAbove(pos, sidePos, sideBlock, tx) || r.connectsTo(sideBlock, true) {
 		return true
 	}
-	return false
+	return r.connectsBelow(sidePos, sideBlock, tx)
 }
 
-func canConnectTo(b world.Block, side cube.Face) bool {
-	if _, ok := b.(world.RedstoneWire); ok {
+// connectsAbove checks if the redstone wire can connect to the block above it.
+func (r RedstoneWire) connectsAbove(pos, sidePos cube.Pos, sideBlock world.Block, tx *world.Tx) bool {
+	if blocksRedstoneWireVerticalTravel(tx.Block(pos.Side(cube.FaceUp))) || !r.canRunOnTop(tx, sidePos, sideBlock) {
+		return false
+	}
+	return r.connectsTo(tx.Block(sidePos.Side(cube.FaceUp)), false)
+}
+
+// connectsBelow checks if the redstone wire can connect to the block below it.
+func (r RedstoneWire) connectsBelow(sidePos cube.Pos, sideBlock world.Block, tx *world.Tx) bool {
+	_, sideSolid := sideBlock.Model().(model.Solid)
+	return !sideSolid && r.connectsTo(tx.Block(sidePos.Side(cube.FaceDown)), false)
+}
+
+// connectsTo reports whether a block is part of the redstone wire connection graph. Passive redstone receivers are not
+// connections; direct source conductors count only when allowDirectSources is true.
+func (RedstoneWire) connectsTo(block world.Block, allowDirectSources bool) bool {
+	if _, ok := block.(RedstoneWire); ok {
 		return true
 	}
-	if diode, ok := b.(world.RedstoneDiode); ok {
-		facing := diode.RedstoneDiodeFacing().Face()
-		return facing == side || facing.Opposite() == side
+	c, ok := block.(world.Conductor)
+	if ok {
+		return allowDirectSources && c.RedstoneSource()
 	}
-	if _, ok := b.(world.RedstonePowerSource); ok {
-		return true
-	}
-	return false
+	_, legacySource := block.(world.RedstonePowerSource)
+	return allowDirectSources && legacySource
 }
 
-func wireIsNormalBlock(pos cube.Pos, src world.BlockSource) bool {
-	return redstoneNormalBlock(pos, src)
+// canRunOnTop checks whether redstone dust can be placed on top of the block.
+func (RedstoneWire) canRunOnTop(tx *world.Tx, pos cube.Pos, block world.Block) bool {
+	return block.Model().FaceSolid(pos, cube.FaceUp, tx)
 }
 
-func maxInt(a, b int) int {
-	if a > b {
-		return a
+// blocksRedstoneWireVerticalTravel checks if the block above redstone wire blocks vertical wire travel.
+func blocksRedstoneWireVerticalTravel(block world.Block) bool {
+	if _, ok := block.Model().(model.Solid); !ok {
+		return false
 	}
-	return b
+	diffuser, ok := block.(LightDiffuser)
+	return !ok || diffuser.LightDiffusionLevel() != 0
 }
 
-func allRedstoneWires() (wires []world.Block) {
-	for i := 0; i <= 15; i++ {
-		wires = append(wires, RedstoneWire{Power: i})
+// canRedstoneWireStepDown checks if redstone dust can provide power while travelling down around the side block.
+func canRedstoneWireStepDown(from, side cube.Pos, block world.Block, tx *world.Tx) bool {
+	if stepDowner, ok := block.(RedstoneWireStepDowner); ok {
+		return stepDowner.CanRedstoneWireStepDown(side, from, tx)
+	}
+	for _, face := range cube.Faces() {
+		if !block.Model().FaceSolid(side, face, tx) {
+			return false
+		}
+	}
+	return true
+}
+
+// TrimMaterial delegates to item.RedstoneWire so the block form stays valid for smithing trim decoding too.
+func (RedstoneWire) TrimMaterial() string {
+	return item.RedstoneWire{}.TrimMaterial()
+}
+
+// MaterialColour delegates to item.RedstoneWire to keep trim metadata defined in one place.
+func (RedstoneWire) MaterialColour() string {
+	return item.RedstoneWire{}.MaterialColour()
+}
+
+// allRedstoneWires returns a list of all redstone dust states.
+func allRedstoneWires() (all []world.Block) {
+	for i := range 16 {
+		all = append(all, RedstoneWire{Power: i})
 	}
 	return
 }

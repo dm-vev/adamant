@@ -1,9 +1,6 @@
 package block
 
-import (
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
-)
+import "github.com/df-mc/dragonfly/server/world"
 
 // Conduit is an underwater utility block.
 type Conduit struct {
@@ -25,67 +22,6 @@ func (Conduit) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (Conduit) EncodeBlock() (string, map[string]any) {
 	return "minecraft:conduit", nil
-}
-
-// RedstoneOre is an ore block that drops redstone dust when mined.
-type RedstoneOre struct {
-	solid
-	bassDrum
-
-	// Deepslate specifies if the ore is the deepslate variant.
-	Deepslate bool
-	// Lit specifies if the ore is emitting light.
-	Lit bool
-}
-
-// LightEmissionLevel ...
-func (r RedstoneOre) LightEmissionLevel() uint8 {
-	if r.Lit {
-		return 9
-	}
-	return 0
-}
-
-// BreakInfo ...
-func (r RedstoneOre) BreakInfo() BreakInfo {
-	return newBreakInfo(3, pickaxeHarvestable, pickaxeEffective, oneOf(r)).withXPDropRange(1, 5).withBlastResistance(15)
-}
-
-// SmeltInfo ...
-func (r RedstoneOre) SmeltInfo() item.SmeltInfo {
-	return newOreSmeltInfo(item.NewStack(RedstoneOre{Deepslate: r.Deepslate}, 1), 0.7)
-}
-
-// EncodeItem ...
-func (r RedstoneOre) EncodeItem() (name string, meta int16) {
-	if r.Deepslate {
-		return "minecraft:deepslate_redstone_ore", 0
-	}
-	return "minecraft:redstone_ore", 0
-}
-
-// EncodeBlock ...
-func (r RedstoneOre) EncodeBlock() (string, map[string]any) {
-	switch {
-	case r.Deepslate && r.Lit:
-		return "minecraft:lit_deepslate_redstone_ore", nil
-	case r.Deepslate:
-		return "minecraft:deepslate_redstone_ore", nil
-	case r.Lit:
-		return "minecraft:lit_redstone_ore", nil
-	default:
-		return "minecraft:redstone_ore", nil
-	}
-}
-
-// allRedstoneOre returns all redstone ore states.
-func allRedstoneOre() []world.Block {
-	return []world.Block{
-		RedstoneOre{},
-		RedstoneOre{Lit: true},
-		RedstoneOre{Deepslate: true},
-		RedstoneOre{Deepslate: true, Lit: true},
-	}
 }
 
 // HoneyBlock is a sticky block made from honey bottles.

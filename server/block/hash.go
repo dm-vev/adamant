@@ -1015,7 +1015,7 @@ func (LegacyStonecutter) Hash() (uint64, uint64) {
 }
 
 func (l Lever) Hash() (uint64, uint64) {
-	return hashLever, uint64(l.Orientation.Uint8()) | uint64(boolByte(l.Powered))<<3
+	return hashLever, uint64(boolByte(l.Powered)) | uint64(l.Facing)<<1 | uint64(l.Direction)<<4
 }
 
 func (l Light) Hash() (uint64, uint64) {
@@ -1271,7 +1271,7 @@ func (l RedstoneLamp) Hash() (uint64, uint64) {
 }
 
 func (r RedstoneOre) Hash() (uint64, uint64) {
-	return hashRedstoneOre, uint64(boolByte(r.Deepslate)) | uint64(boolByte(r.Lit))<<1
+	return hashRedstoneOre, uint64(r.Type.Uint8()) | uint64(boolByte(r.Lit))<<1
 }
 
 func (r RedstoneRepeater) Hash() (uint64, uint64) {

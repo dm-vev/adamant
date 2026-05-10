@@ -16,6 +16,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/df-mc/dragonfly/server/world/redstone"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -100,6 +101,8 @@ type World struct {
 	activeColumnIndex map[ChunkPos]int
 	entityColumns     []columnRef
 	entityColumnIndex map[ChunkPos]int
+
+	redstone redstone.State
 
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer

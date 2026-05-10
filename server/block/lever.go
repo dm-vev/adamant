@@ -4,21 +4,57 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// Lever is a redstone component that toggles power.
+// Lever is a non-solid block that can provide switchable redstone power.
 type Lever struct {
-	transparent
 	empty
+	transparent
+	flowingWaterDisplacer
 
-	Orientation LeverOrientation
-	Powered     bool
+	// Powered is if the lever is switched on.
+	Powered bool
+	// Facing is the face of the block that the lever is attached to.
+	Facing cube.Face
+	// Direction is the direction the lever is pointing. This is only used for levers that are attached on up or down
+	// faces. Currently, only North and West directions are supported due to Bedrock Edition limitations.
+	Direction cube.Direction
 }
 
-// BreakInfo ...
-func (l Lever) BreakInfo() BreakInfo {
-	return newBreakInfo(0.5, alwaysHarvestable, nothingEffective, oneOf(l))
+// RedstoneSource ...
+func (l Lever) RedstoneSource() bool {
+	return true
+}
+
+// WeakPower ...
+func (l Lever) WeakPower(cube.Pos, cube.Face, *world.Tx, bool) int {
+	if l.Powered {
+		return 15
+	}
+	return 0
+}
+
+// StrongPower ...
+func (l Lever) StrongPower(_ cube.Pos, face cube.Face, _ *world.Tx, _ bool) int {
+	if l.Powered && l.Facing == face {
+		return 15
+	}
+	return 0
+}
+
+// SideClosed ...
+func (l Lever) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
+	return false
+}
+
+// NeighbourUpdateTick ...
+func (l Lever) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	supportPos := pos.Side(l.Facing.Opposite())
+	if !tx.Block(supportPos).Model().FaceSolid(supportPos, l.Facing, tx) {
+		breakBlock(l, pos, tx)
+	}
 }
 
 // UseOnBlock ...
@@ -27,11 +63,17 @@ func (l Lever) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 	if !used {
 		return false
 	}
-	orientation := leverOrientationFor(face, user.Rotation().Direction())
-	if !tx.Block(pos.Side(orientation.SupportDirection())).Model().FaceSolid(pos.Side(orientation.SupportDirection()), orientation.SupportFace(), tx) {
+	supportPos := pos.Side(face.Opposite())
+	if !tx.Block(supportPos).Model().FaceSolid(supportPos, face, tx) {
 		return false
 	}
-	l.Orientation = orientation
+
+	l.Powered = false
+	l.Facing = face
+	l.Direction = cube.North
+	if face.Axis() == cube.Y && user.Rotation().Direction().Face().Axis() == cube.X {
+		l.Direction = cube.West
+	}
 	place(tx, pos, l, user, ctx)
 	return placed(ctx)
 }
@@ -40,35 +82,20 @@ func (l Lever) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 func (l Lever) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	l.Powered = !l.Powered
 	tx.SetBlock(pos, l, nil)
-	tx.DoBlockUpdatesAround(pos)
-	tx.DoBlockUpdatesAround(pos.Side(l.Orientation.SupportDirection()))
+	if l.Powered {
+		tx.PlaySound(pos.Vec3Centre(), sound.PowerOn{})
+	} else {
+		tx.PlaySound(pos.Vec3Centre(), sound.PowerOff{})
+	}
+	updateDirectionalRedstone(pos, tx, l.Facing.Opposite())
 	return true
 }
 
-// NeighbourUpdateTick ...
-func (l Lever) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !tx.Block(pos.Side(l.Orientation.SupportDirection())).Model().FaceSolid(pos.Side(l.Orientation.SupportDirection()), l.Orientation.SupportFace(), tx) {
-		breakBlock(l, pos, tx)
-	}
-}
-
-// RedstoneWeakPower ...
-func (l Lever) RedstoneWeakPower(cube.Face) uint8 {
-	if l.Powered {
-		return 15
-	}
-	return 0
-}
-
-// RedstoneStrongPower ...
-func (l Lever) RedstoneStrongPower(face cube.Face) uint8 {
-	if !l.Powered {
-		return 0
-	}
-	if face == l.Orientation.SupportDirection() {
-		return 15
-	}
-	return 0
+// BreakInfo ...
+func (l Lever) BreakInfo() BreakInfo {
+	return newBreakInfo(0.5, alwaysHarvestable, nothingEffective, oneOf(Lever{})).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) {
+		updateDirectionalRedstone(pos, tx, l.Facing.Opposite())
+	})
 }
 
 // EncodeItem ...
@@ -78,103 +105,27 @@ func (l Lever) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (l Lever) EncodeBlock() (string, map[string]any) {
-	return "minecraft:lever", map[string]any{"lever_direction": l.Orientation.String(), "open_bit": boolByte(l.Powered)}
-}
-
-// LeverOrientation represents the attachment direction of a lever.
-type LeverOrientation uint8
-
-const (
-	leverDownEastWest LeverOrientation = iota
-	leverEast
-	leverWest
-	leverSouth
-	leverNorth
-	leverUpNorthSouth
-	leverUpEastWest
-	leverDownNorthSouth
-)
-
-func leverOrientationFor(face cube.Face, playerFacing cube.Direction) LeverOrientation {
-	switch face {
-	case cube.FaceDown:
-		if isXAxis(playerFacing) {
-			return leverDownEastWest
+	direction := l.Facing.String()
+	if l.Facing == cube.FaceDown || l.Facing == cube.FaceUp {
+		axis := "east_west"
+		if l.Direction == cube.North {
+			axis = "north_south"
 		}
-		return leverDownNorthSouth
-	case cube.FaceUp:
-		if isXAxis(playerFacing) {
-			return leverUpEastWest
-		}
-		return leverUpNorthSouth
-	case cube.FaceNorth:
-		return leverNorth
-	case cube.FaceSouth:
-		return leverSouth
-	case cube.FaceWest:
-		return leverWest
-	case cube.FaceEast:
-		return leverEast
+		direction += "_" + axis
 	}
-	return leverDownEastWest
+	return "minecraft:lever", map[string]any{"open_bit": l.Powered, "lever_direction": direction}
 }
 
-func (l LeverOrientation) String() string {
-	switch l {
-	case leverDownEastWest:
-		return "down_east_west"
-	case leverEast:
-		return "east"
-	case leverWest:
-		return "west"
-	case leverSouth:
-		return "south"
-	case leverNorth:
-		return "north"
-	case leverUpNorthSouth:
-		return "up_north_south"
-	case leverUpEastWest:
-		return "up_east_west"
-	case leverDownNorthSouth:
-		return "down_north_south"
+// allLevers ...
+func allLevers() (all []world.Block) {
+	f := func(facing cube.Face, direction cube.Direction) {
+		all = append(all, Lever{Facing: facing, Direction: direction})
+		all = append(all, Lever{Facing: facing, Direction: direction, Powered: true})
 	}
-	return "down_east_west"
-}
-
-func (l LeverOrientation) Uint8() uint8 {
-	return uint8(l)
-}
-
-func (l LeverOrientation) SupportFace() cube.Face {
-	switch l {
-	case leverDownEastWest, leverDownNorthSouth:
-		return cube.FaceDown
-	case leverUpEastWest, leverUpNorthSouth:
-		return cube.FaceUp
-	case leverNorth:
-		return cube.FaceNorth
-	case leverSouth:
-		return cube.FaceSouth
-	case leverWest:
-		return cube.FaceWest
-	case leverEast:
-		return cube.FaceEast
-	}
-	return cube.FaceDown
-}
-
-func (l LeverOrientation) SupportDirection() cube.Face {
-	return l.SupportFace().Opposite()
-}
-
-func isXAxis(d cube.Direction) bool {
-	return d == cube.East || d == cube.West
-}
-
-func allLevers() (levers []world.Block) {
-	for _, powered := range []bool{false, true} {
-		for o := leverDownEastWest; o <= leverDownNorthSouth; o++ {
-			levers = append(levers, Lever{Orientation: o, Powered: powered})
+	for _, facing := range cube.Faces() {
+		f(facing, cube.North)
+		if facing == cube.FaceDown || facing == cube.FaceUp {
+			f(facing, cube.West)
 		}
 	}
 	return

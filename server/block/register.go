@@ -131,6 +131,7 @@ func init() {
 	world.RegisterBlock(RawCopper{})
 	world.RegisterBlock(RawGold{})
 	world.RegisterBlock(RawIron{})
+	world.RegisterBlock(RedstoneBlock{})
 	world.RegisterBlock(ReinforcedDeepslate{})
 	world.RegisterBlock(RedMushroom{})
 	world.RegisterBlock(ResinBricks{Chiseled: true})
@@ -195,6 +196,8 @@ func init() {
 		world.RegisterBlock(GoldOre{Type: ore})
 		world.RegisterBlock(IronOre{Type: ore})
 		world.RegisterBlock(LapisOre{Type: ore})
+		world.RegisterBlock(RedstoneOre{Type: ore})
+		world.RegisterBlock(RedstoneOre{Type: ore, Lit: true})
 	}
 
 	registerAll(allAnvils())
@@ -281,7 +284,6 @@ func init() {
 	registerAll(allPumpkins())
 	registerAll(allPurpurs())
 	registerAll(allQuartz())
-	registerAll(allRedstoneOre())
 	registerAll(allShelves())
 	registerAll(allRespawnAnchors())
 	registerAll(allSandstones())
@@ -335,7 +337,6 @@ func init() {
 	registerAll(allRedstoneComparators())
 	registerAll(allObservers())
 	registerAll(allRedstoneLamps())
-	registerAll(allRedstoneBlocks())
 	registerAll(allPressurePlates())
 	registerAll(allDaylightDetectors())
 	registerAll(allTripwireHooks())
@@ -480,6 +481,7 @@ func init() {
 	world.RegisterItem(Ladder{})
 	world.RegisterItem(Lapis{})
 	world.RegisterItem(Lectern{})
+	world.RegisterItem(Lever{})
 	world.RegisterItem(LilyPad{})
 	world.RegisterItem(Lodestone{})
 	world.RegisterItem(Magma{})
@@ -535,8 +537,6 @@ func init() {
 	world.RegisterItem(Quartz{Smooth: true})
 	world.RegisterItem(Quartz{})
 	world.RegisterItem(RawCopper{})
-	world.RegisterItem(RedstoneOre{})
-	world.RegisterItem(RedstoneOre{Deepslate: true})
 	world.RegisterItem(RawGold{})
 	world.RegisterItem(RawIron{})
 	world.RegisterItem(ReinforcedDeepslate{})
@@ -607,7 +607,6 @@ func init() {
 	for _, t := range ButtonTypes() {
 		world.RegisterItem(Button{Type: t})
 	}
-	world.RegisterItem(Lever{})
 	world.RegisterItem(Rail{})
 	world.RegisterItem(PoweredRail{})
 	world.RegisterItem(DetectorRail{})
@@ -676,6 +675,7 @@ func init() {
 		world.RegisterItem(GoldOre{Type: ore})
 		world.RegisterItem(IronOre{Type: ore})
 		world.RegisterItem(LapisOre{Type: ore})
+		world.RegisterItem(RedstoneOre{Type: ore})
 	}
 	for _, f := range FireTypes() {
 		world.RegisterItem(Lantern{Type: f})
