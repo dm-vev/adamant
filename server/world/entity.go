@@ -392,7 +392,7 @@ type EntityRegistryConfig struct {
 	MinecartHopper     func(opts EntitySpawnOpts) *EntityHandle
 	MinecartTNT        func(opts EntitySpawnOpts) *EntityHandle
 	BottleOfEnchanting func(opts EntitySpawnOpts, owner Entity) *EntityHandle
-	Arrow              func(opts EntitySpawnOpts, damage float64, owner Entity, critical, disallowPickup, obtainArrowOnPickup bool, punchLevel int, tip any) *EntityHandle
+	Arrow              func(opts EntitySpawnOpts, conf ArrowSpawnConfig) *EntityHandle
 	Trident            func(opts EntitySpawnOpts, owner Entity, stack any, loyalty, impaling int, channeling bool) *EntityHandle
 	Egg                func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	EnderPearl         func(opts EntitySpawnOpts, owner Entity) *EntityHandle
@@ -405,6 +405,28 @@ type EntityRegistryConfig struct {
 	EndCrystal         func(opts EntitySpawnOpts, showBase bool) *EntityHandle
 	ArmourStand        func(opts EntitySpawnOpts) *EntityHandle
 	FishingHook        func(opts EntitySpawnOpts, owner Entity, rod any) *EntityHandle
+}
+
+// ArrowSpawnConfig holds the options used to spawn an arrow entity.
+type ArrowSpawnConfig struct {
+	// Damage specifies the base damage dealt by the arrow.
+	Damage float64
+	// Owner is the entity that fired the arrow.
+	Owner Entity
+	// Critical specifies if the arrow should deal critical damage.
+	Critical bool
+	// DisablePickup specifies if picking up the arrow should be disabled.
+	DisablePickup bool
+	// ObtainArrowOnPickup specifies if the arrow should be returned as an item when picked up.
+	ObtainArrowOnPickup bool
+	// PunchLevel specifies the level of punch knockback applied to the arrow.
+	PunchLevel int
+	// PiercingLevel is the crossbow Piercing enchantment level. The arrow passes
+	// through PiercingLevel entities and damages PiercingLevel+1 in total. A
+	// value of 0 means no piercing.
+	PiercingLevel int
+	// Tip specifies the potion tip carried by the arrow.
+	Tip any
 }
 
 // New creates an EntityRegistry using conf and the EntityTypes passed.
