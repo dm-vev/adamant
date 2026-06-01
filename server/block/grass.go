@@ -1,9 +1,10 @@
 package block
 
 import (
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"math/rand/v2"
 )
 
 // Grass blocks generate abundantly across the surface of the world.
