@@ -33,9 +33,12 @@ func (Bamboo) EncodeItem() (name string, meta int16) {
 }
 
 // BoneMeal attempts to affect the block using a bone meal item.
-func (b Bamboo) BoneMeal(pos cube.Pos, tx *world.Tx) bool {
+func (b Bamboo) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
 	top := b.top(pos, tx)
-	return tx.Block(top).(Bamboo).grow(top, rand.IntN(2)+1, b.maxHeight(top), tx)
+	if tx.Block(top).(Bamboo).grow(top, rand.IntN(2)+1, b.maxHeight(top), tx) {
+		return item.BoneMealResultSmall
+	}
+	return item.BoneMealResultNone
 }
 
 // BreakInfo ...
