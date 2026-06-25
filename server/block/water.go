@@ -86,6 +86,21 @@ func (Water) HasLiquidDrops() bool {
 	return false
 }
 
+// LiquidRemoveBlock drops the items of the removed block at the position passed if it has liquid drops.
+func (Water) LiquidRemoveBlock(pos cube.Pos, tx *world.Tx, removed world.Block) {
+	r, ok := removed.(LiquidRemovable)
+	if !ok || !r.HasLiquidDrops() {
+		return
+	}
+	b, ok := removed.(Breakable)
+	if !ok {
+		panic("liquid drops should always implement breakable")
+	}
+	for _, d := range b.BreakInfo().Drops(item.ToolNone{}, nil) {
+		dropItem(tx, d, pos.Vec3Centre())
+	}
+}
+
 // LightDiffusionLevel ...
 func (Water) LightDiffusionLevel() uint8 {
 	return 2

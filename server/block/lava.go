@@ -86,6 +86,11 @@ func (Lava) HasLiquidDrops() bool {
 	return false
 }
 
+// LiquidRemoveBlock plays a fizz sound at the position of the removed block.
+func (Lava) LiquidRemoveBlock(pos cube.Pos, tx *world.Tx, _ world.Block) {
+	tx.PlaySound(pos.Vec3Centre(), sound.Fizz{})
+}
+
 // LightDiffusionLevel always returns 2.
 func (Lava) LightDiffusionLevel() uint8 {
 	return 2
