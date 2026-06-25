@@ -79,6 +79,7 @@ func init() {
 	world.RegisterItem(FishingRod{})
 	world.RegisterItem(HeartOfTheSea{})
 	world.RegisterItem(HeavyCore{})
+	world.RegisterItem(HoneyBottle{})
 	world.RegisterItem(NameTag{})
 	world.RegisterItem(Honeycomb{})
 	world.RegisterItem(InkSac{Glowing: true})
