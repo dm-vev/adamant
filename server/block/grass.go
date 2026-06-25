@@ -79,7 +79,6 @@ func (g Grass) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 
 // BoneMeal ...
 func (g Grass) BoneMeal(pos cube.Pos, tx *world.Tx) bool {
-	applied := false
 	for i := 0; i < 14; i++ {
 		c := pos.Add(cube.Pos{rand.IntN(6) - 3, 0, rand.IntN(6) - 3})
 		above := c.Side(cube.FaceUp)
@@ -87,12 +86,10 @@ func (g Grass) BoneMeal(pos cube.Pos, tx *world.Tx) bool {
 		_, grass := tx.Block(c).(Grass)
 		if air && grass {
 			tx.SetBlock(above, plantSelection[rand.IntN(len(plantSelection))], nil)
-			applied = true
 		}
 	}
 
-	// Only consume bone meal if it successfully places a plant.
-	return applied
+	return true
 }
 
 // BreakInfo ...
