@@ -1,0 +1,350 @@
+{
+  "slug": "dragonfly-upstream-sync",
+  "spec_path": "docs/specs/dragonfly-upstream-sync/spec.md",
+  "plan_path": "docs/plans/dragonfly-upstream-sync/plan.md",
+  "max_iterations": 5,
+  "started_at": "2026-06-25T06:40:00Z",
+  "tasks": [
+    {
+      "task_id": "task-01-go-bump",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-01",
+      "status": "done",
+      "iteration": 1,
+      "spec_review": {
+        "overall": "PASS",
+        "note": "go.mod updated, build passes"
+      },
+      "quality_review": {
+        "overall": "PASS",
+        "note": "go vet clean"
+      },
+      "history": [
+        "Iteration 1: Go 1.24\u21921.26, build PASS, vet PASS, committed 6acd7593"
+      ]
+    },
+    {
+      "task_id": "task-02-mc-1.26.20",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-02",
+      "status": "in_review",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-03-mc-1.26.30",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-03",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-04-entities-within",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-04",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-05-block-string",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-05",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-06-liquid-drops",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-06",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-07-sessionless-panic",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-07",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-08-nil-session-metadata",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-08",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-09-nametag-metadata",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-09",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-10-eye-height",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-10",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-11-leveldat-full-read",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-11",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-12-leveldat-fields",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-12",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-13-debug-drawer-deadlock",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-13",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-14-hud-lock",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-14",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-15-cobweb",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-15",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-16-honey-bottle",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-16",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-17-infested-blocks",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-17",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-18-piercing",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-18",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-19-registry-refactor",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-19",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-20-view-layers",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-20",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-21-default-spawn",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-21",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-22-runtimeid-tohash",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-22",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-23-compression-config",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-23",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-24-durability",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-24",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-25-fortune-ore",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-25",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-26-stair-facesolid",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-26",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-27-incompatible-ench",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-27",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-28-fence-pane-collision",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-28",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-29-light-optimize",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-29",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-30-smelter-light",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-30",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-31-golden-apple",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-31",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-32-cube-trace",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-32",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-33-chunk-clone",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-33",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-34-bonemeal-dupe",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-34",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-35-bonemeal-particles",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-35",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-36-crossbow-fixes",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-36",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    },
+    {
+      "task_id": "task-37-gocritic",
+      "task_file": "docs/plans/dragonfly-upstream-sync/plan.md#task-37",
+      "status": "pending",
+      "iteration": 0,
+      "spec_review": null,
+      "quality_review": null,
+      "history": []
+    }
+  ]
+}
