@@ -38,8 +38,10 @@ func (s Sword) EnchantmentValue() int {
 }
 
 // BaseMiningEfficiency always returns 1.5, unless the block passed is cobweb, in which case 15 is returned.
-func (s Sword) BaseMiningEfficiency(world.Block) float64 {
-	// TODO: Implement cobwebs and return 15 here.
+func (s Sword) BaseMiningEfficiency(b world.Block) float64 {
+	if _, ok := b.(interface{ Cobweb() }); ok {
+		return 15
+	}
 	return 1.5
 }
 

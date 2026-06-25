@@ -33,6 +33,7 @@ func init() {
 	world.RegisterBlock(Coal{})
 	world.RegisterBlock(Cobblestone{Mossy: true})
 	world.RegisterBlock(Cobblestone{})
+	world.RegisterBlock(Cobweb{})
 	world.RegisterBlock(CraftingTable{})
 	world.RegisterBlock(CartographyTable{})
 	world.RegisterBlock(ChorusPlant{})
@@ -177,7 +178,6 @@ func init() {
 	world.RegisterBlock(InfoUpdate2{})
 	world.RegisterBlock(Reserved6{})
 	world.RegisterBlock(UnknownBlock{})
-	world.RegisterBlock(Web{})
 
 	for _, ore := range OreTypes() {
 		world.RegisterBlock(CoalOre{Type: ore})
@@ -391,6 +391,7 @@ func init() {
 	world.RegisterItem(CopperTorch{})
 	world.RegisterItem(Cobblestone{Mossy: true})
 	world.RegisterItem(Cobblestone{})
+	world.RegisterItem(Cobweb{})
 	world.RegisterItem(CocoaBean{})
 	world.RegisterItem(Composter{})
 	world.RegisterItem(CraftingTable{})
@@ -576,7 +577,6 @@ func init() {
 	world.RegisterItem(UnknownBlock{})
 	world.RegisterItem(UnderwaterTorch{})
 	world.RegisterItem(Vines{})
-	world.RegisterItem(Web{})
 	world.RegisterItem(WheatSeeds{})
 	world.RegisterItem(Wildflowers{})
 	world.RegisterItem(DecoratedPot{})

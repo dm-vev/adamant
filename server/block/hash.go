@@ -60,6 +60,7 @@ const (
 	hashCoal
 	hashCoalOre
 	hashCobblestone
+	hashCobweb
 	hashCocoaBean
 	hashColouredTorch
 	hashComposter
@@ -298,7 +299,6 @@ const (
 	hashWall
 	hashWarpedRoots
 	hashWater
-	hashWeb
 	hashWheatSeeds
 	hashWildflowers
 	hashWood
@@ -537,6 +537,10 @@ func (c CoalOre) Hash() (uint64, uint64) {
 
 func (c Cobblestone) Hash() (uint64, uint64) {
 	return hashCobblestone, uint64(boolByte(c.Mossy))
+}
+
+func (Cobweb) Hash() (uint64, uint64) {
+	return hashCobweb, 0
 }
 
 func (c CocoaBean) Hash() (uint64, uint64) {
@@ -1497,10 +1501,6 @@ func (WarpedRoots) Hash() (uint64, uint64) {
 
 func (w Water) Hash() (uint64, uint64) {
 	return hashWater, uint64(boolByte(w.Still)) | uint64(w.Depth)<<1 | uint64(boolByte(w.Falling))<<9
-}
-
-func (Web) Hash() (uint64, uint64) {
-	return hashWeb, 0
 }
 
 func (s WheatSeeds) Hash() (uint64, uint64) {
