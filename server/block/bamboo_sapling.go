@@ -4,6 +4,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -17,8 +18,11 @@ type BambooSapling struct {
 }
 
 // BoneMeal attempts to affect the block using a bone meal item.
-func (b BambooSapling) BoneMeal(pos cube.Pos, tx *world.Tx) bool {
-	return b.grow(pos, tx)
+func (b BambooSapling) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
+	if b.grow(pos, tx) {
+		return item.BoneMealResultSmall
+	}
+	return item.BoneMealResultNone
 }
 
 // NeighbourUpdateTick ...

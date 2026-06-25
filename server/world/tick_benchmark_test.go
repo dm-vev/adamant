@@ -36,6 +36,9 @@ func newBenchmarkTerrainGenerator() benchmarkTerrainGenerator {
 	}
 }
 
+// DefaultSpawn ...
+func (g benchmarkTerrainGenerator) DefaultSpawn(dim Dimension) cube.Pos { return cube.Pos{} }
+
 func (g benchmarkTerrainGenerator) GenerateChunk(_ ChunkPos, c *chunk.Chunk) {
 	const surfaceY = 64
 

@@ -103,17 +103,20 @@ func (conf Config) New() *World {
 	if conf.Dim == nil {
 		conf.Dim = Overworld
 	}
+	if conf.Generator == nil {
+		conf.Generator = NopGenerator{}
+	}
 	if conf.Provider == nil {
-		conf.Provider = NopProvider{}
+		// If no provider is set, use the default settings and the default spawn position from the generator.
+		s := defaultSettings()
+		s.Spawn = conf.Generator.DefaultSpawn(conf.Dim)
+		conf.Provider = NopProvider{Set: s}
 	}
 	if conf.SaveInterval == 0 {
 		conf.SaveInterval = time.Minute * 10
 	}
 	if conf.ChunkUnloadInterval <= 0 {
 		conf.ChunkUnloadInterval = time.Minute * 2
-	}
-	if conf.Generator == nil {
-		conf.Generator = NopGenerator{}
 	}
 	if conf.GeneratorWorkers <= 0 {
 		conf.GeneratorWorkers = runtime.NumCPU()

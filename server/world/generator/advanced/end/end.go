@@ -105,7 +105,13 @@ func NewEnd(seed int64) *End {
 	return g
 }
 
+// DefaultSpawn returns the default spawn position for end worlds.
+func (g *End) DefaultSpawn(dim world.Dimension) cube.Pos {
+	return cube.Pos{0, dim.Range().Min() + 1, 0}
+}
+
 // GenerateChunk generates a single End chunk at the position passed.
+// DefaultSpawn returns the default spawn position for end worlds.
 func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	g.fillBiomes(c)
 

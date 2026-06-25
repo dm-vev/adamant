@@ -54,13 +54,13 @@ func (s SweetBerries) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 }
 
 // BoneMeal ...
-func (s SweetBerries) BoneMeal(pos cube.Pos, tx *world.Tx) bool {
+func (s SweetBerries) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
 	if s.Growth >= 3 {
-		return false
+		return item.BoneMealResultNone
 	}
 	s.Growth++
 	tx.SetBlock(pos, s, nil)
-	return true
+	return item.BoneMealResultSmall
 }
 
 // FlammabilityInfo ...

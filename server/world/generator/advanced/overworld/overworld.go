@@ -280,6 +280,11 @@ func NewOverworld(seed int64) *Overworld {
 	return g
 }
 
+// DefaultSpawn returns the default spawn position for overworld worlds.
+func (g *Overworld) DefaultSpawn(dim world.Dimension) cube.Pos {
+	return cube.Pos{0, 64, 0}
+}
+
 // GenerateChunk generates a single overworld chunk at the position passed.
 func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	s := g.pool.Get().(*scratch)

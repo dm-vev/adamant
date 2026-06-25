@@ -154,7 +154,13 @@ func NewNether(seed int64) *Nether {
 	return g
 }
 
+// DefaultSpawn returns the default spawn position for nether worlds.
+func (g *Nether) DefaultSpawn(dim world.Dimension) cube.Pos {
+	return cube.Pos{0, dim.Range().Min() + 1, 0}
+}
+
 // GenerateChunk generates a single Nether chunk at the position passed.
+// DefaultSpawn returns the default spawn position for nether worlds.
 func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 	s := g.pool.Get().(*netherScratch)
 	defer g.pool.Put(s)
