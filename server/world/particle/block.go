@@ -49,7 +49,14 @@ type PunchBlock struct {
 type BlockForceField struct{ particle }
 
 // BoneMeal is a particle that shows up on bone meal usage.
-type BoneMeal struct{ particle }
+type BoneMeal struct {
+	particle
+
+	// Area specifies whether the particle effect should be for area. If false,
+	// a small burst is used for minor growth. If true, a large burst is used
+	// for significant growth.
+	Area bool
+}
 
 // Note is a particle that shows up on note block interactions.
 type Note struct {
