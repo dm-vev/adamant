@@ -329,6 +329,14 @@ func (bassDrum) Instrument() sound.Instrument {
 	return sound.BassDrum()
 }
 
+// flute is a struct that may be embedded for blocks that create a flute sound.
+type flute struct{}
+
+// Instrument ...
+func (flute) Instrument() sound.Instrument {
+	return sound.Flute()
+}
+
 // newSmeltInfo returns a new SmeltInfo with the given values.
 func newSmeltInfo(product item.Stack, experience float64) item.SmeltInfo {
 	return item.SmeltInfo{
