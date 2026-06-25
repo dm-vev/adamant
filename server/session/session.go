@@ -105,12 +105,9 @@ type Session struct {
 	hudUpdates map[hud.Element]bool
 	hiddenHud  map[hud.Element]struct{}
 
-	debugShapesMu sync.RWMutex
-	debugShapes   map[int]debug.Shape
-	// debugShapesPendingAdd and debugShapesPendingRemove capture the latest requested change per shape ID.
-	// This avoids ordering races between add/remove requests from different goroutines.
-	debugShapesPendingAdd    map[int]debug.Shape
-	debugShapesPendingRemove map[int]struct{}
+	debugShapesMu     sync.RWMutex
+	debugShapes       map[int]debug.Shape
+	debugShapeUpdates []debugShapeUpdate
 
 	blockUpdatesMu     sync.Mutex
 	blockUpdates       map[blockUpdateKey]blockUpdateData
@@ -120,6 +117,13 @@ type Session struct {
 
 	overflowStreak  atomic.Uint32
 	overflowLastLog atomic.Int64
+}
+
+// debugShapeUpdate represents a pending debug shape mutation. If shape is nil, the update removes the
+// debug shape with the matching ID. Updates are applied in order when the session sends debug shapes.
+type debugShapeUpdate struct {
+	id    int
+	shape debug.Shape
 }
 
 // Conn represents a connection that packets are read from and written to by a Session. In addition, it holds some
@@ -214,8 +218,7 @@ func (conf Config) New(conn Conn) *Session {
 		hudUpdates:               make(map[hud.Element]bool),
 		hiddenHud:                make(map[hud.Element]struct{}),
 		debugShapes:              make(map[int]debug.Shape),
-		debugShapesPendingAdd:    make(map[int]debug.Shape),
-		debugShapesPendingRemove: make(map[int]struct{}),
+		debugShapeUpdates:        make([]debugShapeUpdate, 0, 256),
 	}
 	// Initialize heldSlot before any inventory callbacks can fire.
 	s.heldSlot.Store(new(uint32))
