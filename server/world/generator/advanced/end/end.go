@@ -794,7 +794,7 @@ func abs(v int) int {
 }
 
 func mustStateRID(name string, props map[string]any) uint32 {
-	rid, ok := chunk.StateToRuntimeID(name, props)
+	rid, ok := world.DefaultBlockRegistry.StateToRuntimeID(name, props)
 	if !ok {
 		panic("mc112: missing runtime ID for " + name)
 	}
@@ -808,7 +808,7 @@ func findChorusFlowerDeadRID() uint32 {
 		found   bool
 	)
 	for rid := uint32(0); ; rid++ {
-		name, props, ok := chunk.RuntimeIDToState(rid)
+		name, props, ok := world.DefaultBlockRegistry.RuntimeIDToState(rid)
 		if !ok {
 			break
 		}

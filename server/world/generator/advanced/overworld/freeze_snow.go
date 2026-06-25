@@ -60,7 +60,7 @@ func (g *Overworld) freezeAndSnow(chunkX, chunkZ int, c *chunk.Chunk, biomeIDs [
 			if ground == g.airRID || ground == g.waterRID || ground == g.lavaRID || ground == g.iceRID || ground == packedIceRID {
 				continue
 			}
-			name, _, ok := chunk.RuntimeIDToState(ground)
+			name, _, ok := world.DefaultBlockRegistry.RuntimeIDToState(ground)
 			if ok && name == "minecraft:barrier" {
 				continue
 			}
@@ -83,7 +83,7 @@ func (g *Overworld) precipitationHeightInChunk(c *chunk.Chunk, x, z uint8) int {
 		if rid == g.airRID {
 			continue
 		}
-		if name, _, ok := chunk.RuntimeIDToState(rid); ok && passableForPrecipitation(name) {
+		if name, _, ok := world.DefaultBlockRegistry.RuntimeIDToState(rid); ok && passableForPrecipitation(name) {
 			continue
 		}
 		return y + 1
@@ -121,7 +121,7 @@ func (g *Overworld) canSnowRestOn(below uint32) bool {
 	}
 	// Many non-full blocks shouldn't support snow layer (fences, torches, etc.). We filter a few common ones by name
 	// to avoid obvious issues without needing full face-shape logic.
-	if name, _, ok := chunk.RuntimeIDToState(below); ok {
+	if name, _, ok := world.DefaultBlockRegistry.RuntimeIDToState(below); ok {
 		switch name {
 		case "minecraft:torch",
 			"minecraft:wall_torch",

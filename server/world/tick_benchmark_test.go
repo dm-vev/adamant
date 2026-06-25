@@ -28,8 +28,8 @@ type benchmarkTerrainGenerator struct {
 }
 
 func newBenchmarkTerrainGenerator() benchmarkTerrainGenerator {
-	stoneRID, _ := chunk.StateToRuntimeID("minecraft:stone", nil)
-	grassRID, _ := chunk.StateToRuntimeID("minecraft:grass", nil)
+	stoneRID, _ := DefaultBlockRegistry.StateToRuntimeID("minecraft:stone", nil)
+	grassRID, _ := DefaultBlockRegistry.StateToRuntimeID("minecraft:grass", nil)
 	return benchmarkTerrainGenerator{
 		stoneRID: stoneRID,
 		grassRID: grassRID,
@@ -111,7 +111,7 @@ func benchmarkScheduledTickQueueN(b *testing.B, scheduledCount int) {
 	<-w.Exec(func(tx *Tx) {
 		for i := 0; i < b.N; i++ {
 			for _, pos := range positions {
-				queue.schedule(pos, blk, time.Second/20)
+				queue.schedule(DefaultBlockRegistry, pos, blk, time.Second/20)
 			}
 			queue.tick(tx, int64(i+1))
 		}

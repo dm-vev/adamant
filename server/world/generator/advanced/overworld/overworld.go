@@ -160,9 +160,9 @@ func NewOverworld(seed int64) *Overworld {
 
 	mapGenRand := mc112.NewRand(seed)
 
-	railRID, _ := chunk.StateToRuntimeID("minecraft:rail", nil)
-	webRID, _ := chunk.StateToRuntimeID("minecraft:web", nil)
-	torchRID, _ := chunk.StateToRuntimeID("minecraft:torch", nil)
+	railRID, _ := world.DefaultBlockRegistry.StateToRuntimeID("minecraft:rail", nil)
+	webRID, _ := world.DefaultBlockRegistry.StateToRuntimeID("minecraft:web", nil)
+	torchRID, _ := world.DefaultBlockRegistry.StateToRuntimeID("minecraft:torch", nil)
 
 	g := &Overworld{
 		seed:                seed,

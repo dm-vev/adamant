@@ -39,14 +39,14 @@ func TestPortalRuntimeIDs(t *testing.T) {
 			if reflect.TypeOf(byRID) != reflect.TypeOf(p) {
 				t.Fatalf("BlockByRuntimeID returned %T, want %T", byRID, p)
 			}
-			name, props, found := chunk.RuntimeIDToState(rid)
+			name, props, found := world.DefaultBlockRegistry.RuntimeIDToState(rid)
 			if !found {
-				t.Fatalf("chunk.RuntimeIDToState(%d) not found", rid)
+				t.Fatalf("world.DefaultBlockRegistry.RuntimeIDToState(%d) not found", rid)
 			}
 			if name != "minecraft:portal" || props["portal_axis"] != tt.prop {
 				t.Fatalf("RuntimeIDToState(%d) = %s %+v", rid, name, props)
 			}
-			entry := chunk.BlockPaletteEncoding.EncodeBlockState(rid)
+			entry := chunk.BlockPaletteEncoding{Blocks: world.DefaultBlockRegistry}.EncodeBlockState(rid)
 			if entry.Name != "minecraft:portal" || entry.State["portal_axis"] != tt.prop {
 				t.Fatalf("EncodeBlockState(%d) = %s %+v", rid, entry.Name, entry.State)
 			}

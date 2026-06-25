@@ -564,7 +564,7 @@ func (g *End) endCityRotation(chunkX, chunkZ int) endCityRotation {
 }
 
 func (g *End) endCityYPosForStructure(chunkX, chunkZ int, rotation endCityRotation) (int, error) {
-	temp := chunk.New(g.airRID, cube.Range{0, 255})
+	temp := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 
 	s := g.pool.Get().(*endScratch)
 	defer g.pool.Put(s)

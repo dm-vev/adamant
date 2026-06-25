@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 )
 
@@ -161,12 +160,12 @@ func (g *Overworld) generateDungeon(tx *world.Tx, r *mc112.Rand, chunkX, chunkZ 
 }
 
 func dungeonAir(rid uint32) bool {
-	name, _, ok := chunk.RuntimeIDToState(rid)
+	name, _, ok := world.DefaultBlockRegistry.RuntimeIDToState(rid)
 	return ok && name == "minecraft:air"
 }
 
 func dungeonSolid(rid uint32) bool {
-	name, _, ok := chunk.RuntimeIDToState(rid)
+	name, _, ok := world.DefaultBlockRegistry.RuntimeIDToState(rid)
 	if !ok {
 		return false
 	}

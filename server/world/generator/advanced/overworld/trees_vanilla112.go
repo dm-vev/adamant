@@ -246,7 +246,7 @@ func (g *Overworld) canGrowIntoRID(rid uint32) bool {
 	case g.oakLogRID, g.spruceLogRID, g.birchLogRID, g.jungleLogRID, g.acaciaLogRID, g.darkOakLogRID:
 		return true
 	}
-	name, _, ok := chunk.RuntimeIDToState(rid)
+	name, _, ok := world.DefaultBlockRegistry.RuntimeIDToState(rid)
 	if !ok {
 		return false
 	}

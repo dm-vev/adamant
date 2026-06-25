@@ -92,7 +92,7 @@ func generateChunkDigests(seed int64, positions []world.ChunkPos) []chunkDiffDig
 	g := NewOverworld(seed)
 	digests := make([]chunkDiffDigest, 0, len(positions))
 	for _, pos := range positions {
-		c := chunk.New(g.airRID, cube.Range{0, 255})
+		c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 		g.GenerateChunk(pos, c)
 		digests = append(digests, chunkDiffDigest{
 			X:      int(pos[0]),

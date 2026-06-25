@@ -9,7 +9,6 @@ import (
 )
 
 func init() {
-	worldFinaliseBlockRegistry()
 }
 
 func TestEnsureEndPortalSpawnBuildsPlatform(t *testing.T) {

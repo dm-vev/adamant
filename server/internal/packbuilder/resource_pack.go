@@ -2,10 +2,12 @@ package packbuilder
 
 import (
 	_ "embed"
-	"github.com/sandertv/gophertunnel/minecraft/resource"
-	"golang.org/x/mod/sumdb/dirhash"
 	"log/slog"
 	"os"
+
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/sandertv/gophertunnel/minecraft/resource"
+	"golang.org/x/mod/sumdb/dirhash"
 )
 
 //go:embed pack_icon.png
@@ -15,7 +17,7 @@ var packIcon []byte
 // It creates a UUID based on the hash of the directory so the client will only be prompted to download it
 // once it is changed.
 // Errors are logged and cause the resource pack to be skipped so the server can keep running.
-func BuildResourcePack() (*resource.Pack, bool) {
+func BuildResourcePack(reg world.BlockRegistry) (*resource.Pack, bool) {
 	log := slog.Default()
 
 	dir, err := os.MkdirTemp("", "dragonfly_resource_pack-")
@@ -40,7 +42,7 @@ func BuildResourcePack() (*resource.Pack, bool) {
 	assets += itemCount
 	lang = append(lang, itemLang...)
 
-	blockCount, blockLang, err := buildBlocks(dir)
+	blockCount, blockLang, err := buildBlocks(reg, dir)
 	if err != nil {
 		log.Error("resource pack: build blocks failed", "err", err)
 		return nil, false
