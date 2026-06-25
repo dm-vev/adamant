@@ -169,6 +169,8 @@ type Chargeable interface {
 	ContinueCharge(releaser Releaser, tx *world.Tx, ctx *UseContext, duration time.Duration)
 	// ReleaseCharge is called when an item is being released.
 	ReleaseCharge(releaser Releaser, tx *world.Tx, ctx *UseContext) bool
+	// CanCharge returns whether the item can currently be charged.
+	CanCharge(releaser Releaser, tx *world.Tx, ctx *UseContext) bool
 }
 
 // User represents an entity that is able to use an item in the world, typically entities such as players,
