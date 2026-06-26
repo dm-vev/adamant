@@ -3,7 +3,8 @@ package world
 import (
 	"encoding/binary"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/segmentio/fasthash/fnv1a"
 )
@@ -18,11 +19,7 @@ func networkBlockHash(name string, properties map[string]any, scratch []byte) (u
 		return 0xfffffffe, scratch // -2
 	}
 
-	keys := make([]string, 0, len(properties))
-	for k := range properties {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(properties))
 
 	data := scratch[:0]
 	writeString := func(str string) {

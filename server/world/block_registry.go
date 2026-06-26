@@ -136,81 +136,65 @@ type BasicBlockRegistry struct {
 	airRID uint32
 }
 
-func (br *BasicBlockRegistry) BitSize() int {
+func (br *BasicBlockRegistry) mustFinalized() {
 	if !br.finalized {
-		panic("BlockRegistry.BitSize called on non finalized BlockRegistry")
+		panic("BlockRegistry: method called on non-finalized registry")
 	}
+}
+
+func (br *BasicBlockRegistry) BitSize() int {
+	br.mustFinalized()
 	return br.bitSize
 }
 
 func (br *BasicBlockRegistry) BlockCount() int {
-	if !br.finalized {
-		panic("BlockRegistry.BlockCount called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return len(br.blockInfos)
 }
 
 func (br *BasicBlockRegistry) RandomTickBlock(rid uint32) bool {
-	if !br.finalized {
-		panic("BlockRegistry.RandomTickBlock called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return br.blockInfos[rid].get(blockFlagRandomTick)
 }
 
 func (br *BasicBlockRegistry) FilteringBlock(rid uint32) uint8 {
-	if !br.finalized {
-		panic("BlockRegistry.FilteringBlock called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return br.blockInfos[rid].getLightFilter()
 }
 
 func (br *BasicBlockRegistry) LightBlock(rid uint32) uint8 {
-	if !br.finalized {
-		panic("BlockRegistry.LightBlock called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return br.blockInfos[rid].getLight()
 }
 
 func (br *BasicBlockRegistry) NBTBlock(rid uint32) bool {
-	if !br.finalized {
-		panic("BlockRegistry.NBTBlock called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return br.blockInfos[rid].get(blockFlagNBT)
 }
 
 func (br *BasicBlockRegistry) LiquidDisplacingBlock(rid uint32) bool {
-	if !br.finalized {
-		panic("BlockRegistry.LiquidDisplacingBlock called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return br.blockInfos[rid].get(blockFlagLiquidDisplacing)
 }
 
 func (br *BasicBlockRegistry) LiquidBlock(rid uint32) bool {
-	if !br.finalized {
-		panic("BlockRegistry.LiquidBlock called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return br.blockInfos[rid].get(blockFlagLiquid)
 }
 
 func (br *BasicBlockRegistry) Blocks() []Block {
-	if !br.finalized {
-		panic("BlockRegistry.Blocks called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return slices.Clone(br.blocks)
 }
 
 func (br *BasicBlockRegistry) HashToRuntimeID(hash uint32) (rid uint32, ok bool) {
-	if !br.finalized {
-		panic("BlockRegistry.HashToRuntimeID called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	rid, ok = br.networkhashToRids[hash]
 	return
 }
 
 func (br *BasicBlockRegistry) RuntimeIDToHash(runtimeID uint32) (hash uint32, ok bool) {
-	if !br.finalized {
-		panic("BlockRegistry.RuntimeIDToHash called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	if runtimeID >= uint32(len(br.ridsToNetworkhash)) {
 		return 0, false
 	}
@@ -424,17 +408,13 @@ func (br *BasicBlockRegistry) Finalize() {
 
 // AirRuntimeID returns the runtime ID of the air block.
 func (br *BasicBlockRegistry) AirRuntimeID() uint32 {
-	if !br.finalized {
-		panic("BlockRegistry.AirRuntimeID called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	return br.airRID
 }
 
 // RuntimeIDToState returns the name and state properties of a block by its runtime ID.
 func (br *BasicBlockRegistry) RuntimeIDToState(runtimeID uint32) (name string, properties map[string]any, found bool) {
-	if !br.finalized {
-		panic("BlockRegistry.RuntimeIDToState called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	if runtimeID >= uint32(len(br.blocks)) {
 		return "", nil, false
 	}
@@ -444,9 +424,7 @@ func (br *BasicBlockRegistry) RuntimeIDToState(runtimeID uint32) (name string, p
 
 // StateToRuntimeID returns the runtime ID of a block by its name and state properties.
 func (br *BasicBlockRegistry) StateToRuntimeID(name string, properties map[string]any) (runtimeID uint32, found bool) {
-	if !br.finalized {
-		panic("BlockRegistry.StateToRuntimeID called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	if rid, ok := br.stateRuntimeIDs[stateHash{name: name, properties: hashProperties(properties)}]; ok {
 		return rid, true
 	}
@@ -466,9 +444,7 @@ func (br *BasicBlockRegistry) BlockHash(b Block) uint64 {
 // BlockRuntimeID attempts to return a runtime ID of a block previously registered using RegisterBlock().
 // If the runtime ID cannot be found because the Block wasn't registered, BlockRuntimeID will panic.
 func (br *BasicBlockRegistry) BlockRuntimeID(b Block) uint32 {
-	if !br.finalized {
-		panic("BlockRegistry.BlockRuntimeID called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	if b == nil {
 		return br.airRID
 	}
@@ -501,9 +477,7 @@ func (br *BasicBlockRegistry) slowBlockRuntimeID(b Block) uint32 {
 // BlockByRuntimeID attempts to return a Block by its runtime ID. If not found, the bool returned is
 // false. If found, the block is non-nil and the bool true.
 func (br *BasicBlockRegistry) BlockByRuntimeID(rid uint32) (Block, bool) {
-	if !br.finalized {
-		panic("BlockRegistry.BlockByRuntimeID called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	if rid >= uint32(len(br.blocks)) {
 		return br.Air(), false
 	}
@@ -513,9 +487,7 @@ func (br *BasicBlockRegistry) BlockByRuntimeID(rid uint32) (Block, bool) {
 // BlockByName attempts to return a Block by its name and properties. If not found, the bool returned is
 // false.
 func (br *BasicBlockRegistry) BlockByName(name string, properties map[string]any) (Block, bool) {
-	if !br.finalized {
-		panic("BlockRegistry.BlockByName called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	rid, ok := br.stateRuntimeIDs[stateHash{name: name, properties: hashProperties(properties)}]
 	if !ok {
 		return nil, false
@@ -530,9 +502,7 @@ func (br *BasicBlockRegistry) CustomBlocks() map[string]CustomBlock {
 
 // Air returns an air block.
 func (br *BasicBlockRegistry) Air() Block {
-	if !br.finalized {
-		panic("BlockRegistry.Air called on non finalized BlockRegistry")
-	}
+	br.mustFinalized()
 	if br.airRID >= uint32(len(br.blocks)) {
 		// This should never happen for a valid registry (Finalize enforces air exists).
 		panic("BlockRegistry.Air: air runtime ID out of range")
