@@ -27,6 +27,8 @@ type BlockRegistry interface {
 	LiquidBlock(rid uint32) bool
 	// HashToRuntimeID resolves a "network block hash" to a runtime ID.
 	HashToRuntimeID(hash uint32) (rid uint32, ok bool)
+	// RuntimeIDToHash resolves a runtime ID to its "network block hash".
+	RuntimeIDToHash(runtimeID uint32) (hash uint32, ok bool)
 }
 
 // DefaultBlockRegistry is the registry used by the compatibility state lookup helpers below. The world package sets
