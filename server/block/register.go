@@ -17,6 +17,7 @@ func init() {
 	world.RegisterBlock(Andesite{Polished: true})
 	world.RegisterBlock(Andesite{})
 	world.RegisterBlock(Azalea{})
+	world.RegisterBlock(BambooMosaic{})
 	world.RegisterBlock(Barrier{})
 	world.RegisterBlock(Beacon{})
 	world.RegisterBlock(Bedrock{InfiniteBurning: true})
@@ -24,8 +25,6 @@ func init() {
 	world.RegisterBlock(BlueIce{})
 	world.RegisterBlock(Ice{})
 	world.RegisterBlock(Bookshelf{})
-	world.RegisterBlock(BambooPlanks{})
-	world.RegisterBlock(BambooMosaic{})
 	world.RegisterBlock(Bricks{})
 	world.RegisterBlock(BrownMushroom{})
 	world.RegisterBlock(Calcite{})
@@ -162,7 +161,6 @@ func init() {
 	world.RegisterBlock(PolishedTuff{})
 	world.RegisterBlock(ShortGrass{})
 	world.RegisterBlock(Fern{})
-	world.RegisterBlock(BambooFence{})
 	world.RegisterBlock(CactusFlower{})
 	world.RegisterBlock(FireflyBush{})
 	world.RegisterBlock(Bush{})
@@ -203,6 +201,7 @@ func init() {
 	registerAll(allAnvils())
 	registerAll(allBamboos())
 	registerAll(allBambooSaplings())
+	registerAll(allBambooBlocks())
 	registerAll(allBanners())
 	registerAll(allBarrels())
 	registerAll(allBasalt())
@@ -319,7 +318,6 @@ func init() {
 	registerAll(allHugeMushroomBlocks(BrownMushroomBlock()))
 	registerAll(allHugeMushroomBlocks(RedMushroomBlock()))
 	registerAll(allHugeMushroomBlocks(MushroomStemBlock()))
-	registerAll(allBambooBlocks())
 	registerAll(allWool())
 	registerAll(allDecoratedPots())
 	registerAll(allCopper())
@@ -360,6 +358,9 @@ func init() {
 	world.RegisterItem(Andesite{})
 	world.RegisterItem(Azalea{})
 	world.RegisterItem(Bamboo{})
+	world.RegisterItem(BambooBlock{})
+	world.RegisterItem(BambooBlock{Stripped: true})
+	world.RegisterItem(BambooMosaic{})
 	world.RegisterItem(Barrel{})
 	world.RegisterItem(Barrier{})
 	world.RegisterItem(Allow{})
@@ -374,9 +375,6 @@ func init() {
 	world.RegisterItem(Ice{})
 	world.RegisterItem(Bone{})
 	world.RegisterItem(Bookshelf{})
-	world.RegisterItem(BambooPlanks{})
-	world.RegisterItem(BambooMosaic{})
-	world.RegisterItem(BambooFence{})
 	world.RegisterItem(Bell{})
 	world.RegisterItem(BrewingStand{})
 	world.RegisterItem(Bricks{})
@@ -649,12 +647,15 @@ func init() {
 		world.RegisterItem(Wool{Colour: c})
 	}
 	for _, w := range WoodTypes() {
-		if w != WarpedWood() && w != CrimsonWood() {
-			t, _ := w.Leaves()
+		if t, ok := w.Leaves(); ok {
 			world.RegisterItem(Leaves{Type: t, Persistent: true})
 		}
-		world.RegisterItem(Log{Wood: w, Stripped: true})
-		world.RegisterItem(Log{Wood: w})
+		if w != BambooWood() {
+			world.RegisterItem(Log{Wood: w, Stripped: true})
+			world.RegisterItem(Log{Wood: w})
+			world.RegisterItem(Wood{Wood: w, Stripped: true})
+			world.RegisterItem(Wood{Wood: w})
+		}
 		world.RegisterItem(HangingSign{Wood: w})
 		world.RegisterItem(Planks{Wood: w})
 		world.RegisterItem(Sign{Wood: w})
@@ -662,8 +663,6 @@ func init() {
 		world.RegisterItem(WoodFenceGate{Wood: w})
 		world.RegisterItem(WoodFence{Wood: w})
 		world.RegisterItem(WoodTrapdoor{Wood: w})
-		world.RegisterItem(Wood{Wood: w, Stripped: true})
-		world.RegisterItem(Wood{Wood: w})
 	}
 	world.RegisterItem(Leaves{Type: AzaleaLeaves(), Persistent: true})
 	world.RegisterItem(Leaves{Type: FloweringAzaleaLeaves(), Persistent: true})
@@ -685,8 +684,6 @@ func init() {
 	for _, e := range allElements() {
 		world.RegisterItem(e.(world.Item))
 	}
-	world.RegisterItem(BambooBlock{Axis: cube.Y})
-	world.RegisterItem(BambooBlock{Axis: cube.Y, Stripped: true})
 	world.RegisterItem(ColoredTorch{Colour: BlueTorch()})
 	world.RegisterItem(ColoredTorch{Colour: GreenTorch()})
 	world.RegisterItem(ColoredTorch{Colour: PurpleTorch()})

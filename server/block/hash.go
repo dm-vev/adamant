@@ -358,16 +358,8 @@ func (b BambooBlock) Hash() (uint64, uint64) {
 	return hashBambooBlock, uint64(b.Axis) | uint64(boolByte(b.Stripped))<<2
 }
 
-func (BambooFence) Hash() (uint64, uint64) {
-	return hashBambooFence, 0
-}
-
 func (BambooMosaic) Hash() (uint64, uint64) {
 	return hashBambooMosaic, 0
-}
-
-func (BambooPlanks) Hash() (uint64, uint64) {
-	return hashBambooPlanks, 0
 }
 
 func (b BambooSapling) Hash() (uint64, uint64) {
