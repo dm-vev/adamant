@@ -23,13 +23,13 @@ func (h *NPCRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c 
 	pk := p.(*packet.NPCRequest)
 	h.mu.Lock()
 	dialoguePtr := h.dialogue
+	entityRuntimeID := h.entityRuntimeID
 	h.mu.Unlock()
-	if dialoguePtr == nil {
+	if dialoguePtr == nil || entityRuntimeID == 0 {
 		// Dialogue was closed or replaced before the response arrived.
 		return nil
 	}
 	dialogue := *dialoguePtr
-
 	switch pk.RequestType {
 	case packet.NPCRequestActionExecuteAction:
 		if err := dialogue.Submit(uint(pk.ActionType), c, tx); err != nil {

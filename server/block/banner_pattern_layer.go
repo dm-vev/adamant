@@ -24,7 +24,7 @@ func (b BannerPatternLayer) EncodeNBT() map[string]any {
 // DecodeNBT decodes the given NBT map into a BannerPatternLayer and returns it.
 func (b BannerPatternLayer) DecodeNBT(data map[string]any) any {
 	patternID := nbtconv.String(data, "Pattern")
-	if t, ok := BannerPatternByIDOk(patternID); ok {
+	if t, ok := BannerPatternByID(patternID); ok {
 		b.Type = t
 	} else {
 		// Default to a valid pattern to avoid panics on corrupted data.

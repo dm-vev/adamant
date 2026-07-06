@@ -59,17 +59,14 @@ func registerBannerPattern(id string, pattern BannerPatternType) {
 
 // BannerPatternByIDOk returns a banner pattern by ID and reports whether the ID was registered.
 func BannerPatternByIDOk(id string) (BannerPatternType, bool) {
-	b, ok := bannerPatternsMap[id]
-	return b, ok
+	return BannerPatternByID(id)
 }
 
-// BannerPatternByID returns a banner pattern by the ID it was registered with.
-func BannerPatternByID(id string) BannerPatternType {
+// BannerPatternByID returns a banner pattern by the ID it was registered with. Second return value describes whether
+// a banner pattern with the ID was found.
+func BannerPatternByID(id string) (BannerPatternType, bool) {
 	b, ok := bannerPatternsMap[id]
-	if !ok {
-		panic("should never happen")
-	}
-	return b
+	return b, ok
 }
 
 // bannerPatternID returns the ID a banner pattern was registered with.
