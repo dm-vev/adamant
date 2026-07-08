@@ -76,6 +76,14 @@ func (t ticker) tickLoop(w *World) {
 	}
 }
 
+// AdvanceTick advances the World by a single tick. It is generally only useful
+// for Worlds created with Config.Synchronous set: other Worlds tick
+// automatically 20 times per second. Synchronous Worlds tick loaded chunks
+// even when no viewers are present.
+func (w *World) AdvanceTick() {
+	<-w.Exec(ticker{}.tick)
+}
+
 // tick performs a tick on the World and updates the time, weather, blocks and
 // entities that require updates.
 func (t ticker) tick(tx *Tx) {
@@ -104,8 +112,9 @@ func (t ticker) tick(tx *Tx) {
 	}
 
 	w.set.Lock()
-	if len(viewers) == 0 && w.set.CurrentTick != 0 {
-		// Don't continue ticking if no viewers are in the world.
+	if len(viewers) == 0 && w.set.CurrentTick != 0 && !w.conf.Synchronous {
+		// Don't continue ticking if no viewers are in the world. Synchronous
+		// worlds only tick on explicit AdvanceTick calls, so they always tick.
 		w.set.Unlock()
 		return
 	}
@@ -179,8 +188,8 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 	w.neighbourUpdates = w.neighbourUpdates[:0]
 }
 
-// tickBlocksRandomly executes random block ticks in each sub chunk in the world that has at least one viewer
-// registered from the viewers passed.
+// tickBlocksRandomly executes random block ticks in loaded chunks within range of loaders. Synchronous worlds tick
+// every loaded chunk because they have no background loaders.
 func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	w := tx.World()
 	var (
@@ -191,7 +200,23 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		// NOP if the simulation distance is 0.
 		return
 	}
-	if len(w.activeColumns) == 0 {
+	columns := w.activeColumns
+	if w.conf.Synchronous {
+		columns = make([]columnRef, 0, len(w.chunks))
+		for pos, col := range w.chunks {
+			columns = append(columns, columnRef{pos: pos, col: col})
+		}
+		slices.SortFunc(columns, func(a, b columnRef) int {
+			if a.pos[0] < b.pos[0] || a.pos[0] == b.pos[0] && a.pos[1] < b.pos[1] {
+				return -1
+			}
+			if a.pos != b.pos {
+				return 1
+			}
+			return 0
+		})
+	}
+	if len(columns) == 0 {
 		return
 	}
 	randomTickSpeed := w.conf.RandomTickSpeed
@@ -212,8 +237,8 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	randomBlocks := w.scratchRandom[:0]
 
 	if !doRandomTicks {
-		for _, ref := range w.activeColumns {
-			if !columnWithinAreas(ref.pos, areas) {
+		for _, ref := range columns {
+			if !w.conf.Synchronous && !columnWithinAreas(ref.pos, areas) {
 				continue
 			}
 			c := ref.col
@@ -234,8 +259,8 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 
 	minSubY := tx.Range().Min() >> 4
 
-	for _, ref := range w.activeColumns {
-		if !columnWithinAreas(ref.pos, areas) {
+	for _, ref := range columns {
+		if !w.conf.Synchronous && !columnWithinAreas(ref.pos, areas) {
 			continue
 		}
 		c := ref.col
@@ -329,7 +354,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 		if col == nil || len(col.Entities) == 0 {
 			continue
 		}
-		if len(col.viewers) > 0 {
+		if w.conf.Synchronous || len(col.viewers) > 0 {
 			t.tickEntityColumn(tx, tick, ref.pos, col, true)
 			continue
 		}
