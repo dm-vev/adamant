@@ -164,7 +164,7 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	vel := e.Velocity()
 	m, result := lt.tickMovement(e, tx)
-	e.data.Pos, e.data.Vel = m.pos, m.vel
+	e.data.Pos, e.data.Vel, e.data.Rot = m.pos, m.vel, m.rot
 
 	lt.collisionPos, lt.collided, lt.ageCollided = cube.Pos{}, false, 0
 
@@ -279,6 +279,7 @@ func (lt *ProjectileBehaviour) hitBlockSurviving(e *Ent, r trace.BlockResult, m 
 		// Reuse the pooled buffer to broadcast the collision feedback, then hand it back so other projectiles
 		// in flight can benefit from the same allocation.
 		for _, v := range viewers {
+			v.ViewEntityTeleport(e, m.pos)
 			v.ViewEntityAction(e, ArrowShakeAction{Duration: time.Millisecond * 350})
 			v.ViewEntityState(e)
 		}
