@@ -115,6 +115,29 @@ func TestSynchronousAdvanceTickTicksViewerlessBlockEntities(t *testing.T) {
 	}
 }
 
+func TestEntitiesWithinCanRemoveYieldedEntities(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+
+	handles := []*EntityHandle{
+		EntitySpawnOpts{Position: mgl64.Vec3{0, 4, 0}}.New(testEntityType{}, testEntityConfig{}),
+		EntitySpawnOpts{Position: mgl64.Vec3{1, 4, 1}}.New(testEntityType{}, testEntityConfig{}),
+	}
+	removed := 0
+	<-w.Exec(func(tx *Tx) {
+		for _, handle := range handles {
+			tx.AddEntity(handle)
+		}
+		for entity := range tx.EntitiesWithin(cube.Box(-1, 0, -1, 2, 8, 2)) {
+			tx.RemoveEntity(entity)
+			removed++
+		}
+	})
+	if removed != len(handles) {
+		t.Fatalf("expected to remove %d entities, removed %d", len(handles), removed)
+	}
+}
+
 type testEntityConfig struct{}
 
 func (testEntityConfig) Apply(*EntityData) {}
