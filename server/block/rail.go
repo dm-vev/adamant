@@ -679,16 +679,14 @@ func (r DetectorRail) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	r.updatePowered(pos, tx, detectorRailHasMinecart(pos, tx))
 }
 
-// RedstoneWeakPower ...
-func (r DetectorRail) RedstoneWeakPower(cube.Face) uint8 {
+func (r DetectorRail) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
 	if r.Powered {
 		return 15
 	}
 	return 0
 }
 
-// RedstoneStrongPower ...
-func (r DetectorRail) RedstoneStrongPower(face cube.Face) uint8 {
+func (r DetectorRail) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if face == cube.FaceDown && r.Powered {
 		return 15
 	}

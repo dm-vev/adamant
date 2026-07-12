@@ -8,16 +8,11 @@ import (
 )
 
 func redstoneTicks(ticks int) time.Duration {
-	return time.Duration(ticks) * (time.Second / 20)
+	return time.Duration(max(ticks, 1)) * time.Second / 10
 }
 
 func redstonePowered(pos cube.Pos, tx *world.Tx) bool {
-	for _, face := range cube.Faces() {
-		if world.RedstonePowerFromSide(tx, pos, face) > 0 {
-			return true
-		}
-	}
-	return false
+	return tx.RedstonePower(pos) > 0
 }
 
 // NotifyComparatorUpdate sends neighbour updates around a position and around adjacent normal blocks.
@@ -40,12 +35,6 @@ func notifyComparatorUpdate(pos cube.Pos, tx *world.Tx) {
 	}
 }
 
-func redstoneNormalBlock(pos cube.Pos, src world.BlockSource) bool {
-	b := src.Block(pos)
-	for _, face := range cube.Faces() {
-		if !b.Model().FaceSolid(pos, face, src) {
-			return false
-		}
-	}
-	return true
+func redstoneNormalBlock(pos cube.Pos, tx *world.Tx) bool {
+	return world.RedstoneFullPowerConductor(pos, tx.Block(pos), tx)
 }

@@ -74,8 +74,7 @@ func (o Observer) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	tx.ScheduleBlockUpdate(pos, o, redstoneTicks(2))
 }
 
-// RedstoneWeakPower ...
-func (o Observer) RedstoneWeakPower(face cube.Face) uint8 {
+func (o Observer) RedstonePower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if o.Powered && face == o.Facing.Opposite() {
 		return 15
 	}
@@ -142,9 +141,8 @@ func observerClearPending(w *world.World, pos cube.Pos) {
 	observerPending[w] = pruned
 }
 
-// RedstoneStrongPower ...
-func (o Observer) RedstoneStrongPower(face cube.Face) uint8 {
-	return o.RedstoneWeakPower(face)
+func (o Observer) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
+	return o.RedstonePower(pos, tx, face)
 }
 
 // EncodeItem ...

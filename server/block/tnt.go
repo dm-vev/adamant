@@ -1,19 +1,32 @@
 package block
 
 import (
+	"math/rand/v2"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
-	"time"
 )
 
 // TNT is an explosive block that can be primed to generate an explosion.
 type TNT struct {
 	solid
+}
+
+var _ world.RedstonePowerAction = TNT{}
+
+func (TNT) RedstoneNonConductive() {}
+
+// RedstonePowerAction primes TNT when it first receives redstone power.
+func (t TNT) RedstonePowerAction(pos cube.Pos, tx *world.Tx, oldPower, newPower int) {
+	if oldPower > 0 || newPower == 0 {
+		return
+	}
+	t.Ignite(pos, tx, nil)
 }
 
 // ProjectileHit ...
@@ -32,13 +45,6 @@ func (t TNT) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx 
 		return true
 	}
 	return false
-}
-
-// NeighbourUpdateTick ...
-func (t TNT) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if redstonePowered(pos, tx) {
-		t.Ignite(pos, tx, nil)
-	}
 }
 
 // Ignite ...
@@ -70,11 +76,6 @@ func (t TNT) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (t TNT) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:tnt", map[string]interface{}{"explode_bit": false}
-}
-
-// RedstoneConnectsTo ...
-func (TNT) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // spawnTnt creates a new TNT entity at the given position with the given fuse duration.

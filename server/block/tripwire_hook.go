@@ -50,16 +50,14 @@ func (t TripwireHook) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	updateTripwireLine(pos, t, tx)
 }
 
-// RedstoneWeakPower ...
-func (t TripwireHook) RedstoneWeakPower(cube.Face) uint8 {
+func (t TripwireHook) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
 	if t.Powered {
 		return 15
 	}
 	return 0
 }
 
-// RedstoneStrongPower ...
-func (t TripwireHook) RedstoneStrongPower(face cube.Face) uint8 {
+func (t TripwireHook) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if !t.Powered {
 		return 0
 	}

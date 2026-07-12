@@ -58,7 +58,7 @@ func TestDropperDispensesOneRandomStack(t *testing.T) {
 		got := tx.Block(pos).(Dropper)
 		coal, _ := got.inventory.Item(1)
 		diamond, _ := got.inventory.Item(7)
-		if coal.Count()+diamond.Count() != 3 || got.Triggered {
+		if coal.Count()+diamond.Count() != 3 || !got.Triggered {
 			t.Fatalf("counts = %d + %d, triggered=%v", coal.Count(), diamond.Count(), got.Triggered)
 		}
 	})
@@ -93,7 +93,10 @@ func TestDropperFallingEdgeDoesNotDispense(t *testing.T) {
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(pos, d, nil)
-		d.RedstoneUpdate(pos, tx)
+		after, changed := d.RedstonePowerUpdate(pos, tx, 0)
+		if changed {
+			tx.SetBlock(pos, after, nil)
+		}
 		got := tx.Block(pos).(Dropper)
 		stack, _ := got.inventory.Item(0)
 		if got.Triggered || stack.Count() != 2 {

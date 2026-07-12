@@ -63,15 +63,13 @@ func (d DaylightDetector) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand
 	d.updateSignal(pos, tx)
 }
 
-// RedstoneWeakPower ...
-func (d DaylightDetector) RedstoneWeakPower(cube.Face) uint8 {
-	return uint8(d.Signal)
+func (d DaylightDetector) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
+	return d.Signal
 }
 
-// RedstoneStrongPower ...
-func (d DaylightDetector) RedstoneStrongPower(face cube.Face) uint8 {
+func (d DaylightDetector) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if face == cube.FaceDown {
-		return uint8(d.Signal)
+		return d.Signal
 	}
 	return 0
 }

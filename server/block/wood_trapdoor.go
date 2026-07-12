@@ -67,14 +67,17 @@ func (t WoodTrapdoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.U
 	return true
 }
 
-// NeighbourUpdateTick ...
-func (t WoodTrapdoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	powered := redstonePowered(pos, tx)
+func (t WoodTrapdoor) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
+	powered := power > 0
 	if powered == t.Open {
-		return
+		return t, false
 	}
 	t.Open = powered
-	tx.SetBlock(pos, t, nil)
+	return t, true
+}
+
+func (t WoodTrapdoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, _, _ int) {
+	t = after.(WoodTrapdoor)
 	if t.Open {
 		tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorOpen{Block: t})
 		return
@@ -114,11 +117,6 @@ func (t WoodTrapdoor) EncodeBlock() (name string, properties map[string]any) {
 		return "minecraft:trapdoor", map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
 	}
 	return "minecraft:" + t.Wood.String() + "_trapdoor", map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
-}
-
-// RedstoneConnectsTo ...
-func (WoodTrapdoor) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // allTrapdoors returns a list of all trapdoor types

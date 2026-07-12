@@ -162,6 +162,7 @@ func (conf Config) New() *World {
 	s := conf.Provider.Settings()
 	w := &World{
 		scheduledUpdates:  newScheduledTickQueue(s.CurrentTick),
+		redstone:          newRedstoneEngine(s.CurrentTick),
 		entities:          make(map[*EntityHandle]*entityState),
 		viewers:           make(map[*Loader]Viewer),
 		chunks:            make(map[ChunkPos]*Column),

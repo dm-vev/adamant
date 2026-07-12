@@ -160,6 +160,7 @@ func (t ticker) tick(tx *Tx) {
 	w.scheduledUpdates.tick(tx, tick)
 	t.tickBlocksRandomly(tx, loaders, tick)
 	t.performNeighbourUpdates(tx)
+	w.redstone.tick(tx, tick)
 }
 
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.
@@ -603,10 +604,7 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64) {
 func (queue *scheduledTickQueue) schedule(br BlockRegistry, pos cube.Pos, b Block, delay time.Duration) {
 	resTick := queue.currentTick + int64(max(delay/(time.Second/20), 1))
 	index := scheduledTickIndex{pos: pos, hash: br.BlockHash(b)}
-	if t, ok := queue.furthestTicks[index]; ok && t >= resTick {
-		// Already have a tick scheduled for this position that will occur after
-		// the delay passed. Block updates can only be scheduled if they are
-		// after any currently scheduled updates.
+	if t, ok := queue.furthestTicks[index]; ok && t >= resTick && t > queue.currentTick {
 		return
 	}
 	queue.furthestTicks[index] = resTick

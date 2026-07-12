@@ -62,15 +62,13 @@ func (p PressurePlate) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	p.updateSignal(pos, tx)
 }
 
-// RedstoneWeakPower ...
-func (p PressurePlate) RedstoneWeakPower(cube.Face) uint8 {
-	return uint8(p.Signal)
+func (p PressurePlate) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
+	return p.Signal
 }
 
-// RedstoneStrongPower ...
-func (p PressurePlate) RedstoneStrongPower(face cube.Face) uint8 {
+func (p PressurePlate) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if face == cube.FaceDown {
-		return uint8(p.Signal)
+		return p.Signal
 	}
 	return 0
 }

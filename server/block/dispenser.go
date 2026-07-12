@@ -92,15 +92,19 @@ func (d Dispenser) BreakInfo() BreakInfo {
 	})
 }
 
-func (d Dispenser) RedstoneUpdate(pos cube.Pos, tx *world.Tx) {
-	powered := redstonePowered(pos, tx)
+func (d Dispenser) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
+	powered := power > 0
 	if powered == d.Triggered {
-		return
+		return d, false
 	}
 	d.Triggered = powered
-	tx.SetBlock(pos, d, &world.SetOpts{DisableBlockUpdates: true})
-	if powered {
-		tx.ScheduleBlockUpdate(pos, d, redstoneTicks(4))
+	return d, true
+
+}
+
+func (d Dispenser) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, oldPower, newPower int) {
+	if oldPower == 0 && newPower > 0 {
+		tx.ScheduleBlockUpdate(pos, after, redstoneTicks(2))
 	}
 }
 
@@ -108,8 +112,6 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	if !d.Triggered {
 		return
 	}
-	d.Triggered = false
-	tx.SetBlock(pos, d, &world.SetOpts{DisableBlockUpdates: true})
 
 	slots := d.inventory.Slots()
 	nonEmpty := make([]int, 0, len(slots))

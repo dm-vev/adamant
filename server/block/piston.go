@@ -61,11 +61,16 @@ func (p Piston) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 
 // NeighbourUpdateTick ...
 func (p Piston) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	p.handleState(pos, tx)
+	tx.Redstone().ScheduleUpdate(pos)
 }
 
 // ScheduledTick ...
 func (p Piston) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	tx.Redstone().ScheduleUpdate(pos)
+}
+
+// RedstonePowerActionUpdate applies directional and quasi-connectivity rules after the update event is accepted.
+func (p Piston) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, _ world.RedstoneUpdate) {
 	p.handleState(pos, tx)
 }
 
@@ -123,7 +128,7 @@ func (p Piston) shouldExtend(pos cube.Pos, tx *world.Tx) bool {
 		if face == p.Facing {
 			continue
 		}
-		if world.RedstonePowerFromSide(tx, pos, face) > 0 {
+		if tx.RedstonePowerFrom(pos, face) > 0 {
 			return true
 		}
 	}
@@ -132,7 +137,7 @@ func (p Piston) shouldExtend(pos cube.Pos, tx *world.Tx) bool {
 		if face == cube.FaceDown {
 			continue
 		}
-		if world.RedstonePowerFromSide(tx, above, face) > 0 {
+		if tx.RedstonePowerFrom(above, face) > 0 {
 			return true
 		}
 	}
@@ -472,11 +477,6 @@ func (p Piston) EncodeBlock() (string, map[string]any) {
 		return "minecraft:sticky_piston", map[string]any{"facing_direction": pistonFacingDirection(p.Facing)}
 	}
 	return "minecraft:piston", map[string]any{"facing_direction": pistonFacingDirection(p.Facing)}
-}
-
-// RedstoneConnectsTo ...
-func (Piston) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // PistonHead is the collision block placed in front of an extended piston.

@@ -320,9 +320,9 @@ func targetSignal(pos cube.Pos, hit mgl64.Vec3, face cube.Face) uint8 {
 
 func targetResetDelay(identifier string) time.Duration {
 	if identifier == "minecraft:arrow" || identifier == "minecraft:thrown_trident" {
-		return redstoneTicks(20)
+		return time.Second
 	}
-	return redstoneTicks(8)
+	return 400 * time.Millisecond
 }
 
 // ScheduledTick resets the target's signal.
@@ -335,14 +335,8 @@ func (t Target) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	tx.DoBlockUpdatesAround(pos)
 }
 
-// RedstoneSource ...
-func (Target) RedstoneSource() bool { return true }
-
-// WeakPower ...
-func (t Target) WeakPower(cube.Pos, cube.Face, *world.Tx, bool) int { return int(t.Signal) }
-
-// StrongPower ...
-func (Target) StrongPower(cube.Pos, cube.Face, *world.Tx, bool) int { return 0 }
+// RedstonePower returns the target's current hit signal.
+func (t Target) RedstonePower(cube.Pos, *world.Tx, cube.Face) int { return int(t.Signal) }
 
 // EncodeNBT ...
 func (t Target) EncodeNBT() map[string]any {

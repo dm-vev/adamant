@@ -6,13 +6,7 @@ import (
 )
 
 func diodeSidePower(sidePos cube.Pos, side cube.Face, tx *world.Tx) int {
-	if wire, ok := tx.Block(sidePos).(world.RedstoneWire); ok {
-		return int(wire.RedstoneWirePower())
-	}
-	if source, ok := tx.Block(sidePos).(world.RedstonePowerSource); ok {
-		return int(source.RedstoneStrongPower(side.Opposite()))
-	}
-	return 0
+	return tx.RedstoneDirectPowerFrom(sidePos.Side(side.Opposite()), side)
 }
 
 func diodeSideInputPower(pos cube.Pos, facing cube.Direction, tx *world.Tx) int {

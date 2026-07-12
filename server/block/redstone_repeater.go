@@ -94,17 +94,7 @@ func (r RedstoneRepeater) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {
 
 func (r RedstoneRepeater) inputPower(pos cube.Pos, tx *world.Tx) int {
 	inputFace := r.Facing.Face()
-	inputPos := pos.Side(inputFace)
-	power := int(world.RedstonePowerAt(tx, inputPos, inputFace.Opposite()))
-	if power >= 15 {
-		return power
-	}
-	if wire, ok := tx.Block(inputPos).(world.RedstoneWire); ok {
-		if wPower := int(wire.RedstoneWirePower()); wPower > power {
-			return wPower
-		}
-	}
-	return power
+	return tx.RedstonePowerFrom(pos, inputFace)
 }
 
 func (r RedstoneRepeater) isLocked(pos cube.Pos, tx *world.Tx) bool {
@@ -115,8 +105,8 @@ func (r RedstoneRepeater) delayTicks() int {
 	return (1 + r.Delay) * 2
 }
 
-// RedstoneWeakPower ...
-func (r RedstoneRepeater) RedstoneWeakPower(face cube.Face) uint8 {
+// RedstonePower returns the repeater output through its front face.
+func (r RedstoneRepeater) RedstonePower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if !r.Powered {
 		return 0
 	}
@@ -126,14 +116,9 @@ func (r RedstoneRepeater) RedstoneWeakPower(face cube.Face) uint8 {
 	return 0
 }
 
-// RedstoneStrongPower ...
-func (r RedstoneRepeater) RedstoneStrongPower(face cube.Face) uint8 {
-	return r.RedstoneWeakPower(face)
-}
-
-// RedstoneDiodeFacing ...
-func (r RedstoneRepeater) RedstoneDiodeFacing() cube.Direction {
-	return r.Facing
+// RedstoneStrongPower returns the repeater's directional strong output.
+func (r RedstoneRepeater) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
+	return r.RedstonePower(pos, tx, face)
 }
 
 // EncodeItem ...

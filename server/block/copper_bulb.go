@@ -51,17 +51,16 @@ func (b CopperBulb) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.Use
 	return true
 }
 
-// NeighbourUpdateTick ...
-func (b CopperBulb) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	powered := redstonePowered(pos, tx)
+func (b CopperBulb) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
+	powered := power > 0
 	if powered == b.Powered {
-		return
+		return b, false
 	}
 	if powered {
 		b.Lit = !b.Lit
 	}
 	b.Powered = powered
-	tx.SetBlock(pos, b, nil)
+	return b, true
 }
 
 // Wax waxes the bulb to stop it from oxidising further.
@@ -134,11 +133,6 @@ func (b CopperBulb) EncodeBlock() (string, map[string]any) {
 		name = "waxed_" + name
 	}
 	return "minecraft:" + name, map[string]any{"lit": b.Lit, "powered_bit": b.Powered}
-}
-
-// RedstoneConnectsTo ...
-func (CopperBulb) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // allCopperBulbs returns all possible copper bulb states.

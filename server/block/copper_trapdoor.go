@@ -93,14 +93,17 @@ func (t CopperTrapdoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item
 	return true
 }
 
-// NeighbourUpdateTick ...
-func (t CopperTrapdoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	powered := redstonePowered(pos, tx)
+func (t CopperTrapdoor) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
+	powered := power > 0
 	if powered == t.Open {
-		return
+		return t, false
 	}
 	t.Open = powered
-	tx.SetBlock(pos, t, nil)
+	return t, true
+}
+
+func (t CopperTrapdoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, _, _ int) {
+	t = after.(CopperTrapdoor)
 	if t.Open {
 		tx.PlaySound(pos.Vec3Centre(), sound.TrapdoorOpen{Block: t})
 		return
@@ -132,11 +135,6 @@ func (t CopperTrapdoor) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (t CopperTrapdoor) EncodeBlock() (name string, properties map[string]any) {
 	return copperBlockName("copper_trapdoor", t.Oxidation, t.Waxed), map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
-}
-
-// RedstoneConnectsTo ...
-func (CopperTrapdoor) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // allCopperTrapdoors returns a list of all copper trapdoor types

@@ -29,10 +29,14 @@ func (l RedstoneLamp) LightEmissionLevel() uint8 {
 
 // NeighbourUpdateTick ...
 func (l RedstoneLamp) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	powered := redstonePowered(pos, tx)
+	tx.Redstone().ScheduleUpdate(pos)
+}
+
+func (l RedstoneLamp) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, update world.RedstoneUpdate) {
+	powered := update.NewPower > 0
 	if powered && !l.Lit {
 		l.Lit = true
-		tx.SetBlock(pos, l, nil)
+		tx.SetBlock(pos, l, &world.SetOpts{DisableRedstoneUpdates: true})
 		return
 	}
 	if !powered && l.Lit {
@@ -44,7 +48,7 @@ func (l RedstoneLamp) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 func (l RedstoneLamp) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if l.Lit && !redstonePowered(pos, tx) {
 		l.Lit = false
-		tx.SetBlock(pos, l, nil)
+		tx.SetBlock(pos, l, &world.SetOpts{DisableRedstoneUpdates: true})
 	}
 }
 
@@ -60,12 +64,6 @@ func (l RedstoneLamp) EncodeBlock() (string, map[string]any) {
 	}
 	return "minecraft:redstone_lamp", nil
 }
-
-// RedstoneConnectsTo ...
-func (RedstoneLamp) RedstoneConnectsTo(cube.Face) bool {
-	return true
-}
-
 func allRedstoneLamps() (lamps []world.Block) {
 	return []world.Block{RedstoneLamp{Lit: false}, RedstoneLamp{Lit: true}}
 }

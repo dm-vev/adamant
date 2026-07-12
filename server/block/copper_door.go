@@ -73,7 +73,6 @@ func (d CopperDoor) WithOxidationLevel(o OxidationType) Oxidisable {
 // NeighbourUpdateTick ...
 func (d CopperDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	updated := false
-	openChanged := false
 
 	if d.Top {
 		if b, ok := tx.Block(pos.Side(cube.FaceDown)).(CopperDoor); !ok {
@@ -98,35 +97,34 @@ func (d CopperDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		updated = true
 	}
 
-	powered := redstonePowered(pos, tx)
-	if d.Top {
-		powered = powered || redstonePowered(pos.Side(cube.FaceDown), tx)
-	} else {
-		powered = powered || redstonePowered(pos.Side(cube.FaceUp), tx)
+	if updated {
+		tx.SetBlock(pos, d, nil)
 	}
-	if powered != d.Open {
-		d.Open = powered
-		openChanged = true
-		updated = true
-	}
+	tx.Redstone().ScheduleUpdate(pos)
+}
 
-	if !updated {
+func (d CopperDoor) RedstonePowerUpdate(pos cube.Pos, tx *world.Tx, power int) (world.Block, bool) {
+	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
+	powered := power > 0 || tx.RedstonePower(otherPos) > 0
+	if powered == d.Open {
+		return d, false
+	}
+	d.Open = powered
+	return d, true
+}
+
+func (d CopperDoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, _, _ int) {
+	d = after.(CopperDoor)
+	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
+	if door, ok := tx.Block(otherPos).(CopperDoor); ok && door.Open != d.Open {
+		door.Open = d.Open
+		tx.SetBlock(otherPos, door, &world.SetOpts{DisableRedstoneUpdates: true})
+	}
+	if d.Open {
+		tx.PlaySound(pos.Vec3Centre(), sound.DoorOpen{Block: d})
 		return
 	}
-	tx.SetBlock(pos, d, nil)
-	if openChanged {
-		otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
-		other := tx.Block(otherPos)
-		if door, ok := other.(CopperDoor); ok {
-			door.Open = d.Open
-			tx.SetBlock(otherPos, door, nil)
-		}
-		if d.Open {
-			tx.PlaySound(pos.Vec3Centre(), sound.DoorOpen{Block: d})
-			return
-		}
-		tx.PlaySound(pos.Vec3Centre(), sound.DoorClose{Block: d})
-	}
+	tx.PlaySound(pos.Vec3Centre(), sound.DoorClose{Block: d})
 }
 
 // UseOnBlock handles the directional placing of doors
@@ -207,11 +205,6 @@ func (d CopperDoor) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (d CopperDoor) EncodeBlock() (name string, properties map[string]any) {
 	return copperBlockName("copper_door", d.Oxidation, d.Waxed), map[string]any{"minecraft:cardinal_direction": d.Facing.RotateRight().String(), "door_hinge_bit": d.Right, "open_bit": d.Open, "upper_block_bit": d.Top}
-}
-
-// RedstoneConnectsTo ...
-func (CopperDoor) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // allCopperDoors returns a list of all copper door types

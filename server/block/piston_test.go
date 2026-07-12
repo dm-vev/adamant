@@ -82,7 +82,7 @@ func TestPistonLifecycle(t *testing.T) {
 		tx.SetBlock(pos, piston, nil)
 		tx.SetBlock(blockPos, Stone{}, nil)
 		tx.SetBlock(sourcePos, RedstoneBlock{}, nil)
-		piston.NeighbourUpdateTick(pos, sourcePos, tx)
+		piston.RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
 		got, ok := tx.Block(pos).(Piston)
 		if !ok || !got.Moving || !got.Extending || !got.Powered {
 			t.Fatalf("powered piston = %#v, want extending and powered", tx.Block(pos))
@@ -107,7 +107,7 @@ func TestPistonLifecycle(t *testing.T) {
 		if !ok {
 			t.Fatalf("piston = %#v", tx.Block(pos))
 		}
-		piston.NeighbourUpdateTick(pos, sourcePos, tx)
+		piston.RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
 		piston = tx.Block(pos).(Piston)
 		if !piston.Moving || piston.Extending || piston.Powered {
 			t.Fatalf("retracting piston = %#v", piston)

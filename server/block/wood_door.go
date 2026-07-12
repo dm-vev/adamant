@@ -66,23 +66,25 @@ func (d WoodDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		return
 	}
 
-	powered := redstonePowered(pos, tx)
-	if d.Top {
-		powered = powered || redstonePowered(pos.Side(cube.FaceDown), tx)
-	} else {
-		powered = powered || redstonePowered(pos.Side(cube.FaceUp), tx)
-	}
+	tx.Redstone().ScheduleUpdate(pos)
+}
+
+func (d WoodDoor) RedstonePowerUpdate(pos cube.Pos, tx *world.Tx, power int) (world.Block, bool) {
+	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
+	powered := power > 0 || tx.RedstonePower(otherPos) > 0
 	if powered == d.Open {
-		return
+		return d, false
 	}
 	d.Open = powered
-	tx.SetBlock(pos, d, nil)
+	return d, true
+}
 
+func (d WoodDoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, _, _ int) {
+	d = after.(WoodDoor)
 	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
-	other := tx.Block(otherPos)
-	if door, ok := other.(WoodDoor); ok {
+	if door, ok := tx.Block(otherPos).(WoodDoor); ok && door.Open != d.Open {
 		door.Open = d.Open
-		tx.SetBlock(otherPos, door, nil)
+		tx.SetBlock(otherPos, door, &world.SetOpts{DisableRedstoneUpdates: true})
 	}
 	if d.Open {
 		tx.PlaySound(pos.Vec3Centre(), sound.DoorOpen{Block: d})
@@ -170,11 +172,6 @@ func (d WoodDoor) EncodeBlock() (name string, properties map[string]any) {
 		return "minecraft:wooden_door", map[string]any{"minecraft:cardinal_direction": d.Facing.RotateRight().String(), "door_hinge_bit": d.Right, "open_bit": d.Open, "upper_block_bit": d.Top}
 	}
 	return "minecraft:" + d.Wood.String() + "_door", map[string]any{"minecraft:cardinal_direction": d.Facing.RotateRight().String(), "door_hinge_bit": d.Right, "open_bit": d.Open, "upper_block_bit": d.Top}
-}
-
-// RedstoneConnectsTo ...
-func (WoodDoor) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // allDoors returns a list of all door types

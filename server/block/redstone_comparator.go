@@ -72,22 +72,17 @@ func (c RedstoneComparator) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Ra
 	notifyComparatorUpdate(pos, tx)
 }
 
-// RedstoneWeakPower ...
-func (c RedstoneComparator) RedstoneWeakPower(face cube.Face) uint8 {
+// RedstonePower returns the comparator output through its front face.
+func (c RedstoneComparator) RedstonePower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if face == c.Facing.Opposite().Face() {
-		return c.Output
+		return int(c.Output)
 	}
 	return 0
 }
 
-// RedstoneStrongPower ...
-func (c RedstoneComparator) RedstoneStrongPower(face cube.Face) uint8 {
-	return c.RedstoneWeakPower(face)
-}
-
-// RedstoneDiodeFacing ...
-func (c RedstoneComparator) RedstoneDiodeFacing() cube.Direction {
-	return c.Facing
+// RedstoneStrongPower returns the comparator's directional strong output.
+func (c RedstoneComparator) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
+	return c.RedstonePower(pos, tx, face)
 }
 
 // EncodeNBT ...
@@ -184,15 +179,10 @@ func (c RedstoneComparator) inputPower(pos cube.Pos, tx *world.Tx) int {
 	if output, ok := comparatorOverride(tx, inputPos); ok {
 		return int(output)
 	}
-	power := int(world.RedstonePowerAt(tx, inputPos, inputFace.Opposite()))
+	power := tx.RedstonePowerFrom(pos, inputFace)
 	if power < 15 && redstoneNormalBlock(inputPos, tx) {
 		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace)); ok {
 			return int(output)
-		}
-	}
-	if wire, ok := tx.Block(inputPos).(world.RedstoneWire); ok {
-		if wPower := int(wire.RedstoneWirePower()); wPower > power {
-			return wPower
 		}
 	}
 	return power

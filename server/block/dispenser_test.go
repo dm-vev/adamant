@@ -56,7 +56,7 @@ func TestAllDispenserStates(t *testing.T) {
 	}
 }
 
-func TestDispenserConsumesOneAndClearsTrigger(t *testing.T) {
+func TestDispenserConsumesOneAndKeepsPoweredState(t *testing.T) {
 	d := NewDispenser()
 	d.Facing, d.Triggered = cube.FaceEast, true
 	_ = d.inventory.SetItem(0, item.NewStack(item.FireCharge{}, 2))
@@ -69,7 +69,7 @@ func TestDispenserConsumesOneAndClearsTrigger(t *testing.T) {
 		d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
 		got := tx.Block(pos).(Dispenser)
 		stack, _ := got.inventory.Item(0)
-		if _, ok := tx.Block(pos.Side(d.Facing)).(Fire); got.Triggered || stack.Count() != 1 || !ok {
+		if _, ok := tx.Block(pos.Side(d.Facing)).(Fire); !got.Triggered || stack.Count() != 1 || !ok {
 			t.Fatalf("triggered=%v stack=%v front=%T", got.Triggered, stack, tx.Block(pos.Side(d.Facing)))
 		}
 	})
@@ -84,11 +84,47 @@ func TestDispenserFallingEdgeDoesNotConsume(t *testing.T) {
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(pos, d, nil)
-		d.RedstoneUpdate(pos, tx)
+		after, changed := d.RedstonePowerUpdate(pos, tx, 0)
+		if changed {
+			tx.SetBlock(pos, after, nil)
+		}
 		got := tx.Block(pos).(Dispenser)
 		stack, _ := got.inventory.Item(0)
 		if got.Triggered || stack.Count() != 2 {
 			t.Fatalf("triggered=%v stack=%v", got.Triggered, stack)
+		}
+	})
+}
+
+func TestDispenserFiresOncePerPoweredEdge(t *testing.T) {
+	d := NewDispenser()
+	d.Facing = cube.FaceEast
+	_ = d.inventory.SetItem(0, item.NewStack(item.FireCharge{}, 2))
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+	pos := cube.Pos{0, 1, 0}
+	sourcePos := pos.Side(cube.FaceWest)
+
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(pos, d, nil)
+		tx.SetBlock(pos.Side(d.Facing).Side(cube.FaceDown), Stone{}, nil)
+		tx.SetBlock(sourcePos, RedstoneBlock{}, nil)
+	})
+	for range 12 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		got := tx.Block(pos).(Dispenser)
+		stack, _ := got.inventory.Item(0)
+		if !got.Triggered || stack.Count() != 1 {
+			t.Fatalf("continuous power triggered more than once: triggered=%v stack=%v", got.Triggered, stack)
+		}
+		tx.SetBlock(sourcePos, nil, nil)
+	})
+	w.AdvanceTick()
+	<-w.Exec(func(tx *world.Tx) {
+		if tx.Block(pos).(Dispenser).Triggered {
+			t.Fatal("falling edge did not clear triggered state")
 		}
 	})
 }

@@ -64,26 +64,29 @@ func (f WoodFenceGate) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 // NeighbourUpdateTick ...
 func (f WoodFenceGate) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	lowered := f.shouldBeLowered(pos, tx)
-	loweredChanged := lowered != f.Lowered
-	if loweredChanged {
-		f.Lowered = lowered
-	}
-	powered := redstonePowered(pos, tx)
-	openChanged := powered != f.Open
-	if openChanged {
-		f.Open = powered
-	}
-	if !loweredChanged && !openChanged {
+	if lowered == f.Lowered {
 		return
 	}
+	f.Lowered = lowered
 	tx.SetBlock(pos, f, nil)
-	if openChanged {
-		if f.Open {
-			tx.PlaySound(pos.Vec3Centre(), sound.FenceGateOpen{Block: f})
-			return
-		}
-		tx.PlaySound(pos.Vec3Centre(), sound.FenceGateClose{Block: f})
+}
+
+func (f WoodFenceGate) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
+	powered := power > 0
+	if powered == f.Open {
+		return f, false
 	}
+	f.Open = powered
+	return f, true
+}
+
+func (f WoodFenceGate) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, _, _ int) {
+	f = after.(WoodFenceGate)
+	if f.Open {
+		tx.PlaySound(pos.Vec3Centre(), sound.FenceGateOpen{Block: f})
+		return
+	}
+	tx.PlaySound(pos.Vec3Centre(), sound.FenceGateClose{Block: f})
 }
 
 // shouldBeLowered returns if the fence gate should be lowered or not, based on the neighbouring walls.
@@ -128,11 +131,6 @@ func (f WoodFenceGate) EncodeBlock() (name string, properties map[string]any) {
 		return "minecraft:fence_gate", map[string]any{"minecraft:cardinal_direction": f.Facing.String(), "open_bit": f.Open, "in_wall_bit": f.Lowered}
 	}
 	return "minecraft:" + f.Wood.String() + "_fence_gate", map[string]any{"minecraft:cardinal_direction": f.Facing.String(), "open_bit": f.Open, "in_wall_bit": f.Lowered}
-}
-
-// RedstoneConnectsTo ...
-func (WoodFenceGate) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // Model ...

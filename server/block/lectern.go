@@ -181,18 +181,16 @@ func (l Lectern) EncodeBlock() (string, map[string]any) {
 	}
 }
 
-// RedstoneWeakPower ...
-func (l Lectern) RedstoneWeakPower(cube.Face) uint8 {
+func (l Lectern) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
 	if l.Powered {
 		return 15
 	}
 	return 0
 }
 
-// RedstoneStrongPower ...
-func (l Lectern) RedstoneStrongPower(face cube.Face) uint8 {
+func (l Lectern) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
 	if face == cube.FaceDown {
-		return l.RedstoneWeakPower(face)
+		return l.RedstonePower(pos, tx, face)
 	}
 	return 0
 }

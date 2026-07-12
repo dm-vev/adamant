@@ -69,16 +69,14 @@ func (b Button) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
 }
 
-// RedstoneWeakPower ...
-func (b Button) RedstoneWeakPower(cube.Face) uint8 {
+func (b Button) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
 	if b.Pressed {
 		return 15
 	}
 	return 0
 }
 
-// RedstoneStrongPower ...
-func (b Button) RedstoneStrongPower(face cube.Face) uint8 {
+func (b Button) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
 	if !b.Pressed {
 		return 0
 	}

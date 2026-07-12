@@ -64,8 +64,8 @@ func TestTargetInterfacesAndEncoding(t *testing.T) {
 	if _, ok := target.(world.NBTer); !ok {
 		t.Fatal("Target does not implement world.NBTer")
 	}
-	if _, ok := target.(world.Conductor); !ok {
-		t.Fatal("Target does not implement world.Conductor")
+	if _, ok := target.(world.RedstonePowerSource); !ok {
+		t.Fatal("Target does not implement world.RedstonePowerSource")
 	}
 	if _, ok := target.(world.ScheduledTicker); !ok {
 		t.Fatal("Target does not implement world.ScheduledTicker")
@@ -74,11 +74,8 @@ func TestTargetInterfacesAndEncoding(t *testing.T) {
 	if name != "minecraft:target" || states != nil {
 		t.Fatalf("EncodeBlock() = %q, %#v", name, states)
 	}
-	conductor := target.(world.Conductor)
-	if got := conductor.WeakPower(cube.Pos{}, cube.FaceUp, nil, true); got != 15 {
-		t.Fatalf("WeakPower() = %d, want 15", got)
-	}
-	if got := conductor.StrongPower(cube.Pos{}, cube.FaceUp, nil, true); got != 0 {
-		t.Fatalf("StrongPower() = %d, want 0", got)
+	source := target.(world.RedstonePowerSource)
+	if got := source.RedstonePower(cube.Pos{}, nil, cube.FaceUp); got != 15 {
+		t.Fatalf("RedstonePower() = %d, want 15", got)
 	}
 }

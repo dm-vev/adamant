@@ -81,14 +81,13 @@ func (h Hopper) BreakInfo() BreakInfo {
 	})
 }
 
-// NeighbourUpdateTick ...
-func (h Hopper) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	powered := redstonePowered(pos, tx)
+func (h Hopper) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
+	powered := power > 0
 	if powered == h.Powered {
-		return
+		return h, false
 	}
 	h.Powered = powered
-	tx.SetBlock(pos, h, nil)
+	return h, true
 }
 
 // Inventory returns the inventory of the hopper.
@@ -254,11 +253,6 @@ func (h Hopper) EncodeBlock() (string, map[string]any) {
 		"facing_direction": int32(h.Facing),
 		"toggle_bit":       h.Powered,
 	}
-}
-
-// RedstoneConnectsTo ...
-func (Hopper) RedstoneConnectsTo(cube.Face) bool {
-	return true
 }
 
 // EncodeNBT ...
