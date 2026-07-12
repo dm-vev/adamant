@@ -2,7 +2,9 @@ package block
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -53,6 +55,11 @@ func (c Candle) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, simpleDrops(item.NewStack(c.baseItem(), c.AdditionalCandles+1)))
 }
 
+// Model ...
+func (c Candle) Model() world.BlockModel {
+	return model.Candle{Count: c.AdditionalCandles + 1}
+}
+
 // SideClosed ...
 func (Candle) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 	return false
@@ -67,6 +74,17 @@ func (c Candle) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 		existing.AdditionalCandles++
 		place(tx, pos, existing, user, ctx)
 		return placed(ctx)
+	}
+
+	if face == cube.FaceUp {
+		if existing, ok := tx.Block(pos.Side(cube.FaceUp)).(Candle); ok && c.matchesColour(existing) {
+			if existing.AdditionalCandles >= 3 {
+				return false
+			}
+			existing.AdditionalCandles++
+			place(tx, pos.Side(cube.FaceUp), existing, user, ctx)
+			return placed(ctx)
+		}
 	}
 
 	if cake, ok := tx.Block(pos).(Cake); ok && face == cube.FaceUp && cake.Bites == 0 {
@@ -109,7 +127,13 @@ func (Candle) HasLiquidDrops() bool {
 }
 
 // Activate ...
-func (c Candle) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
+func (c Candle) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx *item.UseContext) bool {
+	held, _ := u.HeldItems()
+	if _, ok := held.Enchantment(enchantment.FireAspect); ok {
+		c.Ignite(pos, tx, nil)
+		ctx.DamageItem(1)
+		return true
+	}
 	if !c.Lit {
 		return false
 	}
@@ -118,6 +142,13 @@ func (c Candle) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _
 	c.Lit = false
 	tx.SetBlock(pos, c, nil)
 	return true
+}
+
+// EntityInside ...
+func (c Candle) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
+	if flammable, ok := e.(flammableEntity); ok && flammable.OnFireDuration() > 0 {
+		c.Ignite(pos, tx, e)
+	}
 }
 
 // Ignite ...
