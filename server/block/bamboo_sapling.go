@@ -17,12 +17,22 @@ type BambooSapling struct {
 	Ready bool
 }
 
+var (
+	_ item.BoneMealAffected = BambooSapling{}
+	_ Flammable             = BambooSapling{}
+)
+
 // BoneMeal attempts to affect the block using a bone meal item.
 func (b BambooSapling) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
 	if b.grow(pos, tx) {
 		return item.BoneMealResultSmall
 	}
 	return item.BoneMealResultNone
+}
+
+// FlammabilityInfo ...
+func (BambooSapling) FlammabilityInfo() FlammabilityInfo {
+	return newFlammabilityInfo(60, 60, true)
 }
 
 // NeighbourUpdateTick ...

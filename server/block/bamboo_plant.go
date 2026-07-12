@@ -22,6 +22,11 @@ type Bamboo struct {
 	LeafSize BambooLeafSize
 }
 
+var (
+	_ item.BoneMealAffected = Bamboo{}
+	_ Flammable             = Bamboo{}
+)
+
 // FuelInfo ...
 func (Bamboo) FuelInfo() item.FuelInfo {
 	return newFuelInfo(2500 * time.Millisecond)
@@ -39,6 +44,11 @@ func (b Bamboo) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
 		return item.BoneMealResultSmall
 	}
 	return item.BoneMealResultNone
+}
+
+// FlammabilityInfo ...
+func (Bamboo) FlammabilityInfo() FlammabilityInfo {
+	return newFlammabilityInfo(60, 60, true)
 }
 
 // BreakInfo ...
@@ -121,8 +131,9 @@ func (b Bamboo) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 }
 
 func (Bamboo) maxHeight(pos cube.Pos) int {
-	// TODO: The RNG algorithm does not match vanilla's.
-	return 12 + int(rand.NewPCG(uint64(pos.X()), uint64(pos.Z())).Uint64()%5)
+	seed := 3129871*uint32(pos.X()) ^ 116129781*uint32(pos.Z())
+	seed *= 42317861*seed + 11
+	return 12 + int(seed>>24)%5
 }
 
 func (Bamboo) top(pos cube.Pos, tx *world.Tx) (top cube.Pos) {

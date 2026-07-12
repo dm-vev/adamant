@@ -18,7 +18,6 @@ func (x *Xoroshiro128PlusPlus) Next() uint64 {
 	s0 := x.seed0
 	s1 := x.seed1
 	result := bits.RotateLeft64(s0+s1, 17) + s0
-
 	s1 ^= s0
 	x.seed0 = bits.RotateLeft64(s0, 49) ^ s1 ^ (s1 << 21)
 	x.seed1 = bits.RotateLeft64(s1, 28)
