@@ -721,7 +721,7 @@ func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {
 			// Acquire viewers within a fresh transaction to avoid using a stale tx. Schedule this asynchronously
 			// to prevent re-entrancy deadlocks when the inventory update originates from an existing world
 			// transaction.
-			go c.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+			c.H().Do(func(tx *world.Tx, e world.Entity) {
 				viewers := tx.Viewers(e.Position())
 				// Equipment updates are extremely frequent; using the pooled slice keeps hotbar spam from
 				// producing unnecessary garbage.
@@ -748,7 +748,7 @@ func (s *Session) broadcastEnderChestFunc(c Controllable) inventory.SlotFunc {
 		}
 		pos := *openedPos
 		// Check container state inside the transaction to avoid sending updates after the chest is closed or moved.
-		go c.H().ExecWorld(func(tx *world.Tx, _ world.Entity) {
+		c.H().Do(func(tx *world.Tx, _ world.Entity) {
 			if !s.containerOpened.Load() {
 				return
 			}
@@ -767,7 +767,7 @@ func (s *Session) broadcastOffHandFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
 		// Broadcast off-hand changes within a valid transaction. Run asynchronously to avoid blocking existing
 		// world transactions that triggered the inventory update.
-		go c.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+		c.H().Do(func(tx *world.Tx, e world.Entity) {
 			viewers := tx.Viewers(e.Position())
 			// Off-hand sync leverages the same pooled viewer slice so rapidly switching totems or shields remains
 			// allocation free.
@@ -798,7 +798,7 @@ func (s *Session) broadcastArmourFunc(c Controllable) inventory.SlotFunc {
 		}
 		// Broadcast armour changes within a valid transaction. Schedule asynchronously to prevent blocking the
 		// caller when the update occurs inside an existing world transaction.
-		go c.H().ExecWorld(func(tx *world.Tx, e world.Entity) {
+		c.H().Do(func(tx *world.Tx, e world.Entity) {
 			viewers := tx.Viewers(e.Position())
 			// Armour broadcasts also borrow the pooled buffer. Players often spam armour swaps in PvP; the pool keeps
 			// the resulting updates cheap.
@@ -819,7 +819,7 @@ func (s *Session) uiInventoryFunc(c Controllable) inventory.SlotFunc {
 	return func(slot int, _, after item.Stack) {
 		if slot == enchantingInputSlot && s.containerOpened.Load() {
 			pos := *s.openedPos.Load()
-			go c.H().ExecWorld(func(tx *world.Tx, _ world.Entity) {
+			c.H().Do(func(tx *world.Tx, _ world.Entity) {
 				if _, enchanting := tx.Block(pos).(block.EnchantingTable); enchanting {
 					s.sendEnchantmentOptions(tx, c, pos, after)
 				}

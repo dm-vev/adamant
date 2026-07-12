@@ -5,7 +5,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
-	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -130,7 +129,7 @@ func updateRedstoneFrom(pos, source cube.Pos, tx *world.Tx) {
 
 // redstoneUpdateCancelled checks if the redstone update has been cancelled by the HandleRedstoneUpdate handler.
 func redstoneUpdateCancelled(pos cube.Pos, tx *world.Tx) bool {
-	ctx := event.C(tx)
+	ctx := tx.Event()
 	tx.World().Handler().HandleRedstoneUpdate(ctx, pos)
 	return ctx.Cancelled()
 }

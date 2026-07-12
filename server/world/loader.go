@@ -61,7 +61,7 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	if tx.World() == old {
 		removeLoaded(tx)
 	} else {
-		<-old.Exec(removeLoaded)
+		<-old.exec(removeLoaded)
 	}
 	clear(l.loaded)
 	old.viewerMu.Lock()

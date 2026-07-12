@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/event"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/redstone"
 	"github.com/df-mc/goleveldb/leveldb"
@@ -46,6 +45,16 @@ type World struct {
 	queueClosing chan struct{}
 	queueing     sync.WaitGroup
 
+	// scheduleMu serialises task scheduling against the close transitions
+	// below. scheduling counts in-flight scheduled work that close must drain.
+	scheduleMu sync.Mutex
+	scheduling sync.WaitGroup
+	// closed flips once close starts; new tasks fail with ErrWorldClosed.
+	// closeAcceptingEntityTasks is true only during the close transaction, when
+	// entity Close methods may still schedule final work that close drains.
+	closed                    atomic.Bool
+	closeAcceptingEntityTasks atomic.Bool
+
 	// advance is a bool that specifies if this World should advance the current
 	// tick, time and weather saved in the Settings struct held by the World.
 	advance bool
@@ -57,8 +66,11 @@ type World struct {
 
 	weather
 
-	closing chan struct{}
-	running sync.WaitGroup
+	// closeStarted closes as soon as World.Close begins, before the close
+	// transaction runs; closing closes once the world stops ticking.
+	closeStarted chan struct{}
+	closing      chan struct{}
+	running      sync.WaitGroup
 
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
@@ -276,15 +288,23 @@ func (w *World) BlockRegistry() BlockRegistry {
 	return w.conf.Blocks
 }
 
-// ExecFunc is a function that performs a synchronised transaction on a World.
+// execFunc is a function that performs a synchronised transaction on a World.
+type execFunc func(tx *Tx)
+
+// ExecFunc is kept for Adamant callers that still use the legacy blocking API.
 type ExecFunc func(tx *Tx)
 
-// Exec performs a synchronised transaction f on a World. Exec returns a channel
-// that is closed once the transaction is complete. For Worlds created with
-// Config.Synchronous set, the transaction is executed on the calling goroutine
-// and the channel returned is closed when Exec returns. Awaiting a nested Exec
-// from within a transaction deadlocks on non-synchronous Worlds.
+// Exec performs a legacy blocking transaction. New off-owner code should use
+// Do or Call so scheduling cannot block the caller when the queue is full.
 func (w *World) Exec(f ExecFunc) <-chan struct{} {
+	return w.exec(execFunc(f))
+}
+
+// exec runs f on the World, bypassing the closed check that Do/DoAfter/Call
+// apply — reserved for the World's own machinery (ticking, saving, chunk
+// unload, the close transaction), which must queue work after close begins.
+// The returned channel closes when done; waiting on it from the owner deadlocks.
+func (w *World) exec(f execFunc) <-chan struct{} {
 	c := make(chan struct{})
 	if w == nil {
 		// Nil worlds are treated as no-ops; return a closed channel so callers don't block.
@@ -300,24 +320,47 @@ func (w *World) Exec(f ExecFunc) <-chan struct{} {
 	return c
 }
 
-func (w *World) weakExec(invalid *atomic.Bool, cond *sync.Cond, f func(tx *Tx) bool) <-chan bool {
+func (w *World) weakExec(valid func() bool, cond *sync.Cond, f execFunc, allowClosed bool) <-chan bool {
 	c := make(chan bool, 1)
 	if w.conf.Synchronous {
-		valid := !invalid.Load()
-		ran := false
-		if valid {
+		run := valid == nil || valid()
+		if run {
 			// As in weakTransaction.Run, f must not run under cond.L: it may
 			// relock it, e.g. through RemoveEntity.
 			cond.L.Unlock()
-			tx := &Tx{w: w}
-			ran = f(tx)
+			tx := newTx(w)
+			f(tx)
 			tx.close()
+			tx.runDeferred()
 			cond.L.Lock()
 		}
-		c <- valid && ran
+		c <- run
 		return c
 	}
-	w.queue <- weakTransaction{c: c, f: f, invalid: invalid, cond: cond}
+	w.scheduleMu.Lock()
+	if w.closed.Load() && !w.closeAcceptingEntityTasks.Load() && !allowClosed {
+		w.scheduleMu.Unlock()
+		c <- false
+		return c
+	}
+	wtx := weakTransaction{c: c, f: f, valid: valid, cond: cond}
+	select {
+	case w.queue <- wtx:
+		w.scheduleMu.Unlock()
+	default:
+		w.scheduling.Add(1)
+		w.scheduleMu.Unlock()
+		go func() {
+			defer w.scheduling.Done()
+			select {
+			case w.queue <- wtx:
+			case <-w.closing:
+				wtx.fail()
+			case <-w.queueClosing:
+				wtx.fail()
+			}
+		}()
+	}
 	return c
 }
 
@@ -866,6 +909,7 @@ func (w *World) enableTimeCycle(v bool) {
 	defer w.set.Unlock()
 	w.set.TimeCycle = v
 	viewers, _ := w.allViewers()
+	defer w.releaseViewers(viewers)
 	for _, viewer := range viewers {
 		viewer.ViewTimeCycle(v)
 	}
@@ -909,7 +953,7 @@ func (w *World) addParticle(pos mgl64.Vec3, p Particle) {
 // playSound plays a sound at a specific position in the World. Viewers of that
 // position will be able to hear the sound if they are close enough.
 func (w *World) playSound(tx *Tx, pos mgl64.Vec3, s Sound) {
-	ctx := event.C(tx)
+	ctx := tx.Event()
 	if w.Handler().HandleSound(ctx, s, pos); ctx.Cancelled() {
 		return
 	}
@@ -950,6 +994,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		showEntity(e, v)
 	}
 	w.Handler().HandleEntitySpawn(tx, e)
+	handle.markWorldReady(w)
 	return e
 }
 
@@ -1036,7 +1081,7 @@ func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 // allEntities returns an iterator that yields all entities in the World.
 func (w *World) allEntities(tx *Tx) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
-		for handle, state := range w.entities {
+		for handle, state := range maps.Clone(w.entities) {
 			if ent := state.entity(tx, handle); ent != nil {
 				if !yield(ent) {
 					return
@@ -1049,7 +1094,7 @@ func (w *World) allEntities(tx *Tx) iter.Seq[Entity] {
 // allPlayers returns an iterator that yields all player entities in the World.
 func (w *World) allPlayers(tx *Tx) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
-		for handle, state := range w.entities {
+		for handle, state := range maps.Clone(w.entities) {
 			if handle.t.EncodeEntity() == "minecraft:player" {
 				if ent := state.entity(tx, handle); ent != nil {
 					if !yield(ent) {
@@ -1342,11 +1387,11 @@ func (w *World) Save() {
 	if w == nil {
 		return
 	}
-	<-w.Exec(w.save(w.saveChunk))
+	<-w.exec(w.save(w.saveChunk))
 }
 
 // save saves all loaded chunks to the World's provider.
-func (w *World) save(f func(*Tx, ChunkPos, *Column)) ExecFunc {
+func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 	return func(tx *Tx) {
 		if w.conf.ReadOnly {
 			return
@@ -1448,13 +1493,27 @@ func (w *World) Close() error {
 // close stops the World from ticking, saves all chunks to the Provider and
 // updates the world's settings.
 func (w *World) close() {
-	<-w.Exec(func(tx *Tx) {
+	w.scheduleMu.Lock()
+	w.closed.Store(true)
+	close(w.closeStarted)
+	w.scheduleMu.Unlock()
+
+	w.scheduling.Wait()
+	w.scheduleMu.Lock()
+	w.closeAcceptingEntityTasks.Store(true)
+	w.scheduleMu.Unlock()
+	<-w.exec(func(tx *Tx) {
 		// Let user code run anything that needs to be finished before closing.
 		w.Handler().HandleClose(tx)
+		tx.runDeferred()
 		w.Handle(NopHandler{})
 
 		w.save(w.closeChunk)(tx)
 	})
+	w.scheduleMu.Lock()
+	w.closeAcceptingEntityTasks.Store(false)
+	w.scheduleMu.Unlock()
+	w.scheduling.Wait()
 
 	close(w.closing)
 	w.running.Wait()
@@ -1656,6 +1715,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		currentTick := w.set.CurrentTick
 		w.set.Unlock()
 		for _, e := range col.Entities {
+			e.setAndUnlockWorld(w)
 			if _, ok := w.entities[e]; !ok {
 				w.entityCount.Add(1)
 			}
@@ -1666,7 +1726,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			}
 			w.entities[e] = state
 			e.state = state
-			e.w = w
+			e.markWorldReady(w)
 		}
 
 		if len(col.Entities) > 0 {
@@ -1982,7 +2042,7 @@ func (w *World) autoSave() {
 	for {
 		select {
 		case <-closeUnused.C:
-			<-w.Exec(w.closeUnusedChunks)
+			<-w.exec(w.closeUnusedChunks)
 		case <-save.C:
 			w.Save()
 		case <-w.closing:
