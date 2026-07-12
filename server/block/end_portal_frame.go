@@ -69,6 +69,16 @@ func (f EndPortalFrame) InsertEndPortalEye(pos cube.Pos, tx *world.Tx) bool {
 	return true
 }
 
+// EncodeNBT encodes the End portal block actor stored with the frame.
+func (EndPortalFrame) EncodeNBT() map[string]any {
+	return map[string]any{"id": "EndPortal"}
+}
+
+// DecodeNBT decodes the End portal block actor. Eye and facing are stored in the block state.
+func (f EndPortalFrame) DecodeNBT(map[string]any) any {
+	return f
+}
+
 // ComparatorOutput returns the redstone signal output for a comparator.
 func (f EndPortalFrame) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
 	if f.Eye {
