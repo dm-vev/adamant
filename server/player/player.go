@@ -3087,17 +3087,15 @@ func (p *Player) tickAirSupply() {
 // is full enough.
 func (p *Player) tickFood() {
 	state := p.hunger.tickState()
-	if state.foodTick%10 == 0 && (state.canQuicklyRegenerate || p.tx.World().Difficulty().FoodRegenerates()) {
-		if p.tx.World().Difficulty().FoodRegenerates() {
-			p.AddFood(1)
-		}
+	if state.foodTick%10 == 0 && p.tx.World().Difficulty().FoodRegenerates() {
+		p.AddFood(1)
 		if state.foodTick%20 == 0 {
-			p.regenerate(true)
+			p.regenerate(false)
 		}
 	}
 	if state.foodTick == 1 {
 		if state.canRegenerate {
-			p.regenerate(false)
+			p.regenerate(!p.tx.World().Difficulty().FoodRegenerates())
 		} else if state.starving {
 			p.starve()
 		}
