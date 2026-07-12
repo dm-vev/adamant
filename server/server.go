@@ -150,7 +150,6 @@ func (srv *Server) Accept() iter.Seq[*player.Player] {
 				return !yield(p), nil
 			})
 			if err != nil {
-				world.RethrowPanic(err)
 				srv.pmu.Lock()
 				delete(srv.p, inc.p.handle.UUID())
 				srv.pmu.Unlock()
@@ -311,7 +310,6 @@ func (srv *Server) Players(tx *world.Tx) iter.Seq[*player.Player] {
 				return !yield(p), nil
 			})
 			if err != nil {
-				world.RethrowPanic(err)
 				continue
 			}
 			if ret {

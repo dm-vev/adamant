@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"context"
 	"math"
 	"sync"
 	"time"
@@ -71,7 +72,6 @@ search:
 	defer t.mu.Unlock()
 	if !found {
 		if t.travelling {
-			// Don't reset if we're travelling.
 			return
 		}
 		t.timedOut, t.awaitingTravel = false, false
@@ -82,21 +82,19 @@ search:
 	switch target {
 	case world.Nether:
 		if t.timedOut {
-			// Timed out, we can't travel through Nether portals.
 			return
 		}
-		dest := tx.World().PortalDestination(world.Nether)
-		if dest == nil {
+		destination := tx.World().PortalDestination(world.Nether)
+		if destination == nil || destination == tx.World() {
 			t.notifyDenied(travel, tx, world.Nether)
 			t.awaitingTravel = false
 			return
 		}
 		t.deniedActive = false
-		// Treat a nil Instantaneous callback as "not instant" to avoid panics.
 		instantaneous := t.Instantaneous != nil && t.Instantaneous()
 		if instantaneous || (t.awaitingTravel && time.Since(t.start) >= time.Second*4) {
 			t.mu.Unlock()
-			t.Travel(travel, tx.World(), dest)
+			t.travel(travel, tx, destination)
 			t.mu.Lock()
 		} else if !t.awaitingTravel {
 			t.start, t.awaitingTravel = time.Now(), true
@@ -104,48 +102,80 @@ search:
 	}
 }
 
-// Travel moves the player to the given Nether or Overworld world and translates the player's current position based
-// on the source world.
-func (t *TravelComputer) Travel(e Traveller, source *world.World, destination *world.World) {
-	if destination == nil {
+// travel defers removal until the current owner callback completes, then moves e to destination.
+func (t *TravelComputer) travel(e Traveller, tx *world.Tx, destination *world.World) {
+	source := tx.World()
+	if destination == nil || destination == source {
 		return
 	}
-	sourceDimension := source.Dimension()
-	pos := cube.PosFromVec3(e.Position())
-	if sourceDimension == world.Overworld {
-		// Nether scaling uses floor division for negative coordinates.
+	origin := e.Position()
+	pos := cube.PosFromVec3(origin)
+	if source.Dimension() == world.Overworld {
 		pos = cube.Pos{floorDiv(pos.X(), 8), pos.Y(), floorDiv(pos.Z(), 8)}
-	} else if sourceDimension == world.Nether {
+	} else if source.Dimension() == world.Nether {
 		pos = cube.Pos{pos.X() * 8, pos.Y(), pos.Z() * 8}
 	}
 
 	t.mu.Lock()
-	defer t.mu.Unlock()
 	t.travelling, t.timedOut, t.awaitingTravel = true, true, false
 	t.deniedActive = false
+	t.mu.Unlock()
 
-	go func() {
+	h := e.H()
+	tx.Defer(func(tx *world.Tx) {
+		e, ok := h.Entity(tx)
+		if !ok {
+			t.resetFailedTravel()
+			return
+		}
+		handle := tx.RemoveEntity(e)
+		if handle == nil {
+			t.resetFailedTravel()
+			return
+		}
+		go t.transfer(handle, source, destination, origin, pos)
+	})
+}
+
+// transfer adds a removed entity to destination, restoring it to source if destination is unavailable.
+func (t *TravelComputer) transfer(handle *world.EntityHandle, source, destination *world.World, origin mgl64.Vec3, pos cube.Pos) {
+	travelled, err := world.Call(context.Background(), destination, func(tx *world.Tx) (bool, error) {
 		spawn := pos.Vec3Middle()
-
-		<-source.Exec(func(tx *world.Tx) {
-			tx.RemoveEntity(e)
-		})
-
-		<-destination.Exec(func(tx *world.Tx) {
-			if netherPortal, ok := portal.FindOrCreateNetherPortal(tx, pos, 128); ok {
-				spawn = netherPortal.Spawn().Vec3Middle()
+		if netherPortal, ok := portal.FindOrCreateNetherPortal(tx, pos, 128); ok {
+			spawn = netherPortal.Spawn().Vec3Middle()
+		}
+		if e, ok := tx.AddEntity(handle).(Traveller); ok {
+			e.Teleport(spawn)
+		}
+		return true, nil
+	})
+	if err != nil {
+		travelled = false
+	}
+	if !travelled {
+		_, err = world.Call(context.Background(), source, func(tx *world.Tx) (struct{}, error) {
+			if e, ok := tx.AddEntity(handle).(Traveller); ok {
+				e.Teleport(origin)
 			}
-
-			tx.AddEntity(e.H())
-			if ent, ok := e.H().Entity(tx); ok {
-				ent.(Traveller).Teleport(spawn)
-			}
+			return struct{}{}, nil
 		})
+		if err != nil {
+			_ = handle.Close()
+		}
+	}
 
-		t.mu.Lock()
-		defer t.mu.Unlock()
-		t.travelling = false
-	}()
+	t.mu.Lock()
+	t.travelling = false
+	if !travelled {
+		t.timedOut = false
+	}
+	t.mu.Unlock()
+}
+
+func (t *TravelComputer) resetFailedTravel() {
+	t.mu.Lock()
+	t.travelling, t.timedOut = false, false
+	t.mu.Unlock()
 }
 
 // floorDiv returns floor(n/d) for positive divisors, matching Minecraft coordinate scaling.
@@ -156,7 +186,7 @@ func floorDiv(n, d int) int {
 	q := n / d
 	r := n % d
 	if r != 0 && n < 0 {
-		q -= 1
+		q--
 	}
 	return q
 }

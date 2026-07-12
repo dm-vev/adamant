@@ -453,7 +453,6 @@ func (s *Session) handlePackets() {
 			return s.handlePacket(pk, tx, c)
 		})
 		if err != nil {
-			world.RethrowPanic(err)
 			if sessionOwnerStopped(err) {
 				return
 			}
