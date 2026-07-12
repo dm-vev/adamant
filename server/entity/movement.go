@@ -14,7 +14,7 @@ type MovementComputer struct {
 	Gravity, Drag     float64
 	DragBeforeGravity bool
 
-	onGround bool
+	onGround             bool
 	collidedHorizontally bool
 	collidedVertically   bool
 	CollideEntities      bool
@@ -86,7 +86,7 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 
 	velBefore := vel
 	vel = c.applyHorizontalForces(tx, pos, c.applyVerticalForces(vel))
-	dPos, vel := c.checkCollision(tx, e, pos, vel)
+	dPos, vel := c.CheckCollision(tx, e, pos, vel)
 
 	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
 		pos: pos.Add(dPos), vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),
@@ -152,9 +152,13 @@ func (c *MovementComputer) applyHorizontalForces(tx *world.Tx, pos, vel mgl64.Ve
 	return vel
 }
 
-// checkCollision handles the collision of the entity with blocks, adapting the velocity of the entity if it
+// CheckCollision handles the collision of the entity with blocks, adapting the velocity of the entity if it
 // happens to collide with a block.
 // The final velocity and the Vec3 that the entity should move is returned.
+func (c *MovementComputer) CheckCollision(tx *world.Tx, e world.Entity, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
+	return c.checkCollision(tx, e, pos, vel)
+}
+
 func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
 	deltaX, deltaY, deltaZ := vel[0], vel[1], vel[2]
 

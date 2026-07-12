@@ -2,6 +2,11 @@ package block
 
 import (
 	"fmt"
+	"math/rand/v2"
+	"strings"
+	"sync"
+	"sync/atomic"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -10,10 +15,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
-	"strings"
-	"sync"
-	"sync/atomic"
 )
 
 const (
@@ -85,7 +86,6 @@ func (s ShulkerBox) AddViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
 	if len(s.viewers) == 0 {
 		s.open(tx, pos)
 	}
-
 	s.viewers[v] = struct{}{}
 }
 
@@ -125,7 +125,6 @@ func (s ShulkerBox) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *w
 	if !used {
 		return
 	}
-
 	if s.inventory == nil {
 		typ, customName := s.Type, s.CustomName
 		//noinspection GoAssignmentToReceiver
@@ -168,6 +167,7 @@ func (s ShulkerBox) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 		s.progress.Store(0)
 	case StateOpening:
 		s.progress.Add(1)
+		s.pushEntities(pos, tx)
 		if s.progress.Load() >= 10 {
 			s.progress.Store(10)
 			s.animationStatus.Store(StateOpened)
@@ -212,6 +212,65 @@ func (s ShulkerBox) itemStackForDrop() item.Stack {
 	return item.NewStack(drop, 1)
 }
 
+// pushEntities pushes all entities touching the shulker box lid during opening.
+func (s ShulkerBox) pushEntities(pos cube.Pos, tx *world.Tx) {
+	shulkerBBoxes := s.Model().BBox(pos, tx)
+	if len(shulkerBBoxes) == 0 {
+		return
+	}
+	searchBox := shulkerBBoxes[0].Translate(pos.Vec3()).Grow(0.35)
+	for e := range tx.EntitiesWithin(searchBox) {
+		s.push(pos, tx, e)
+	}
+}
+
+// push pushes entities when the shulker box lid is opening.
+func (s ShulkerBox) push(pos cube.Pos, tx *world.Tx, e world.Entity) {
+	if s.animationStatus.Load() != StateOpening {
+		return
+	}
+	mover, ok := e.(interface {
+		Displace(deltaPos mgl64.Vec3)
+	})
+	if !ok {
+		return
+	}
+	shulkerBBoxes := s.Model().BBox(pos, tx)
+	if len(shulkerBBoxes) == 0 {
+		return
+	}
+	shulkerBBox := shulkerBBoxes[0].Translate(pos.Vec3())
+	entityBBox := e.H().Type().BBox(e).Translate(e.Position())
+	if !shulkerBBox.IntersectsWith(entityBBox) {
+		return
+	}
+
+	// Move the entity out along the lid's facing axis by the penetration depth
+	// between the shulker lid box and the entity box.
+	delta := shulkerPushDelta(s.Facing, shulkerBBox, entityBBox)
+	if delta != (mgl64.Vec3{}) {
+		mover.Displace(delta)
+	}
+}
+
+func shulkerPushDelta(facing cube.Face, shulkerBBox, entityBBox cube.BBox) (delta mgl64.Vec3) {
+	switch facing {
+	case cube.FaceDown:
+		delta[1] = shulkerBBox.Min().Y() - entityBBox.Max().Y()
+	case cube.FaceUp:
+		delta[1] = shulkerBBox.Max().Y() - entityBBox.Min().Y()
+	case cube.FaceEast:
+		delta[0] = shulkerBBox.Max().X() - entityBBox.Min().X()
+	case cube.FaceWest:
+		delta[0] = shulkerBBox.Min().X() - entityBBox.Max().X()
+	case cube.FaceSouth:
+		delta[2] = shulkerBBox.Max().Z() - entityBBox.Min().Z()
+	case cube.FaceNorth:
+		delta[2] = shulkerBBox.Min().Z() - entityBBox.Max().Z()
+	}
+	return delta
+}
+
 // MaxCount always returns 1.
 func (s ShulkerBox) MaxCount() int {
 	return 1
@@ -253,7 +312,6 @@ func (s ShulkerBox) EncodeNBT() map[string]any {
 		"id":     "ShulkerBox",
 		"facing": uint8(s.Facing),
 	}
-
 	if s.CustomName != "" {
 		m["CustomName"] = s.CustomName
 	}
