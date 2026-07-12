@@ -62,6 +62,11 @@ type ExperienceOrbBehaviour struct {
 	target         *world.EntityHandle
 }
 
+// PortalTravelComputer returns the interdimensional travel state for the behaviour.
+func (exp *ExperienceOrbBehaviour) PortalTravelComputer() *PortalTravelComputer {
+	return exp.passive.PortalTravelComputer()
+}
+
 // Experience returns the amount of experience the orb carries.
 func (exp *ExperienceOrbBehaviour) Experience() int {
 	return exp.conf.Experience

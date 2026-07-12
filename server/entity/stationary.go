@@ -31,13 +31,15 @@ func (conf StationaryBehaviourConfig) New() *StationaryBehaviour {
 	if conf.ExistenceDuration == 0 {
 		conf.ExistenceDuration = math.MaxInt64
 	}
-	return &StationaryBehaviour{conf: conf}
+	return &StationaryBehaviour{BaseBehaviour: NewBaseBehaviour(), conf: conf}
 }
 
 // StationaryBehaviour implements the behaviour of an entity that is unable to
 // move, such as a text entity or an area effect cloud. Applying velocity to
 // such entities will not move them.
 type StationaryBehaviour struct {
+	BaseBehaviour
+
 	conf  StationaryBehaviourConfig
 	close bool
 }
@@ -46,7 +48,7 @@ type StationaryBehaviour struct {
 // behaviour the entity might require.
 func (s *StationaryBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if s.close {
-    _ = e.CloseIn(tx)
+		_ = e.CloseIn(tx)
 		return nil
 	}
 

@@ -66,6 +66,11 @@ type AreaEffectCloudBehaviour struct {
 	targets  map[*world.EntityHandle]time.Duration
 }
 
+// PortalTravelComputer returns the interdimensional travel state for the behaviour.
+func (a *AreaEffectCloudBehaviour) PortalTravelComputer() *PortalTravelComputer {
+	return a.stationary.PortalTravelComputer()
+}
+
 // Radius returns the current radius of the area effect cloud.
 func (a *AreaEffectCloudBehaviour) Radius() float64 {
 	return a.radius

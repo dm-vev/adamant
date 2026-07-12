@@ -42,10 +42,11 @@ type dismounter interface {
 // share a lot of code. It is currently under development and is prone to
 // (breaking) changes.
 type Ent struct {
-	tx     *world.Tx
-	handle *world.EntityHandle
-	data   *world.EntityData
-	once   sync.Once
+	tx                *world.Tx
+	handle            *world.EntityHandle
+	data              *world.EntityData
+	deferPortalTravel bool
+	once              sync.Once
 }
 
 // Open converts a world.EntityHandle to an Ent in a world.Tx.
@@ -94,6 +95,16 @@ func (e *Ent) Velocity() mgl64.Vec3 {
 // that axis in blocks/tick.
 func (e *Ent) SetVelocity(v mgl64.Vec3) {
 	e.data.Vel = v
+}
+
+// Teleport teleports the entity to the position given.
+func (e *Ent) Teleport(pos mgl64.Vec3) {
+	viewers := e.tx.Viewers(e.data.Pos)
+	e.data.Pos = pos
+	for _, v := range viewers {
+		v.ViewEntityTeleport(e, pos)
+	}
+	e.tx.ReleaseViewers(viewers)
 }
 
 // Rotation returns the rotation of the entity.
@@ -193,6 +204,11 @@ func (e *Ent) Attack(attacker world.Entity, tx *world.Tx) {
 // in the void.
 func (e *Ent) Tick(tx *world.Tx, current int64) {
 	e.bindTx(tx)
+	e.deferPortalTravel = true
+	defer func() {
+		e.deferPortalTravel = false
+	}()
+
 	y := e.data.Pos[1]
 	if y < float64(tx.Range()[0]) && current%10 == 0 {
 		_ = e.CloseIn(tx)
@@ -202,10 +218,45 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 
 	m := e.Behaviour().Tick(e, tx)
 	checkEntityInsiders(tx, e)
+	if e.finishPendingPortalTravel(tx) {
+		return
+	}
 	if m != nil {
 		m.Send()
 	}
+	e.stopPortalContact()
 	e.data.Age += time.Second / 20
+}
+
+// TravelThroughPortal handles the entity touching a portal block.
+func (e *Ent) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
+	if tc := e.portalTravelComputer(); tc != nil {
+		if e.deferPortalTravel {
+			tc.queuePortalTravel(tx, target)
+			return
+		}
+		tc.EnterPortal(e, tx, target)
+	}
+}
+
+func (e *Ent) portalTravelComputer() *PortalTravelComputer {
+	if b, ok := e.Behaviour().(portalTravelComputerProvider); ok {
+		return b.PortalTravelComputer()
+	}
+	return nil
+}
+
+func (e *Ent) stopPortalContact() {
+	if tc := e.portalTravelComputer(); tc != nil {
+		tc.StopPortalContact()
+	}
+}
+
+func (e *Ent) finishPendingPortalTravel(tx *world.Tx) bool {
+	if tc := e.portalTravelComputer(); tc != nil {
+		return tc.finishPendingPortalTravel(e, tx)
+	}
+	return false
 }
 
 // Close closes the Ent and removes the associated entity from the world.

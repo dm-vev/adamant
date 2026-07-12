@@ -1,6 +1,11 @@
 package player
 
 import (
+	"math/rand/v2"
+	"sync/atomic"
+	"time"
+
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -11,9 +16,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"golang.org/x/text/language"
-	"math/rand/v2"
-	"sync/atomic"
-	"time"
 )
 
 // Config holds options that a Player can be created with.
@@ -70,7 +72,6 @@ func (cfg Config) Apply(data *world.EntityData) {
 		locale:              conf.Locale,
 		cooldowns:           make(map[string]time.Time),
 		mc:                  &entity.MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
-		tc:                  &entity.TravelComputer{},
 		heldSlot:            slot,
 		gameMode:            conf.GameMode,
 		skin:                conf.Skin,
@@ -88,11 +89,30 @@ func (cfg Config) Apply(data *world.EntityData) {
 		fireTicks:           conf.FireTicks,
 		fallDistance:        conf.FallDistance,
 	}
+	playerUUID := conf.UUID
+	pdata.portalTravel = &entity.PortalTravelComputer{
+		Instantaneous: func(_, target world.Dimension) bool {
+			return target == world.End || pdata.gameMode != nil && pdata.gameMode.CreativeInventory()
+		},
+		Teleport: func(e entity.Traveller, pos mgl64.Vec3) {
+			e.(*Player).forceTeleport(pos)
+		},
+		SpawnPoint: func(tx *world.Tx) mgl64.Vec3 {
+			// Use the player's spawn only while its bed still exists and is unobstructed, like respawning.
+			pos := tx.World().PlayerSpawn(playerUUID)
+			if b, ok := tx.Block(pos).(block.Bed); ok && b.CanRespawnOn() {
+				if safe, ok := b.SafeSpawn(pos, tx); ok {
+					return safe.Vec3Middle()
+				}
+			}
+			return tx.World().Spawn().Vec3Middle()
+		},
+		Player: true,
+		// Only players create a portal at the destination when no linked portal exists.
+		CreatePortal: true,
+	}
 	pdata.hunger.setState(conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation)
 	pdata.experience.Add(conf.Experience)
-	pdata.tc.Instantaneous = func() bool {
-		return pdata.gameMode != nil && pdata.gameMode.CreativeInventory()
-	}
 	data.Data = pdata
 }
 

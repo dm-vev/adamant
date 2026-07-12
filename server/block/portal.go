@@ -15,6 +15,11 @@ type Portal struct {
 	Axis cube.Axis
 }
 
+// portalTraveller represents an entity that can handle touching a portal block.
+type portalTraveller interface {
+	TravelThroughPortal(tx *world.Tx, target world.Dimension)
+}
+
 // Model ...
 func (p Portal) Model() world.BlockModel {
 	return model.Portal{Axis: p.Axis}
@@ -23,6 +28,11 @@ func (p Portal) Model() world.BlockModel {
 // Portal ...
 func (Portal) Portal() world.Dimension {
 	return world.Nether
+}
+
+// LightEmissionLevel returns 11.
+func (Portal) LightEmissionLevel() uint8 {
+	return 11
 }
 
 // HasLiquidDrops ...
@@ -39,5 +49,12 @@ func (p Portal) EncodeBlock() (string, map[string]interface{}) {
 func (p Portal) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	if n, ok := portal.NetherPortalFromPos(tx, pos); ok && (!n.Framed() || !n.Activated()) {
 		n.Deactivate()
+	}
+}
+
+// EntityInside ...
+func (p Portal) EntityInside(_ cube.Pos, tx *world.Tx, e world.Entity) {
+	if t, ok := e.(portalTraveller); ok {
+		t.TravelThroughPortal(tx, p.Portal())
 	}
 }

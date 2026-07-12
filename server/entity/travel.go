@@ -2,7 +2,6 @@ package entity
 
 import (
 	"context"
-	"math"
 	"sync"
 	"time"
 
@@ -12,115 +11,165 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// TravelComputer handles the interdimensional travelling of an entity.
-type TravelComputer struct {
-	// Instantaneous is a function that returns true if the entity given can travel instantly.
-	Instantaneous func() bool
+// PortalTravelComputer handles portal-triggered interdimensional travel for an entity.
+type PortalTravelComputer struct {
+	// Instantaneous returns true if the entity should skip the portal wait timer when moving between dimensions.
+	Instantaneous func(source, target world.Dimension) bool
+	// Teleport teleports the entity to the final portal position. If nil, Traveller.Teleport is used.
+	Teleport func(e Traveller, pos mgl64.Vec3)
+	// SpawnPoint returns the position the entity arrives at when returning from the End; if nil the world spawn is used.
+	SpawnPoint func(tx *world.Tx) mgl64.Vec3
+	// Player specifies if the entity is a player. Players arrive one block lower on the End platform than other entities.
+	Player bool
+	// CreatePortal specifies if the entity may create a portal at the destination when none is found.
+	CreatePortal bool
+	// Cooldown is how long the entity must wait after a travel attempt before it may travel again.
+	Cooldown time.Duration
 
-	mu             sync.RWMutex
+	mu             sync.Mutex
 	start          time.Time
+	cooldownUntil  time.Time
+	inside         bool
 	awaitingTravel bool
 	travelling     bool
 	timedOut       bool
+	pending        *world.World
 	deniedDim      world.Dimension
 	deniedActive   bool
+}
+
+// NewPortalTravelComputer creates a PortalTravelComputer for instant portal travel.
+func NewPortalTravelComputer() *PortalTravelComputer {
+	return &PortalTravelComputer{Instantaneous: func(world.Dimension, world.Dimension) bool { return true }, Cooldown: time.Second * 15}
+}
+
+const portalSearchRadius = 128
+
+type portalTravelComputerProvider interface {
+	PortalTravelComputer() *PortalTravelComputer
 }
 
 // Traveller represents a world.Entity that can travel between dimensions.
 type Traveller interface {
 	world.Entity
-	// Teleport teleports the entity to the position given.
 	Teleport(pos mgl64.Vec3)
 }
 
-// portalBlock represents a block that can be used as a portal to travel between dimensions.
-type portalBlock interface {
-	world.Block
-	// Portal returns the dimension that the portal leads to.
-	Portal() world.Dimension
+type portalTravelHandler interface {
+	HandlePortalTravel(source, destination world.Dimension)
 }
 
-// TickTravelling checks if the player is colliding with a nether portal block. If so, it teleports the player
-// to the other dimension after four seconds or instantly if instantaneous is true.
-func (t *TravelComputer) TickTravelling(travel Traveller, tx *world.Tx) {
-	box := travel.H().Type().BBox(travel).Translate(travel.Position()).Grow(0.25)
-
-	min, max := box.Min(), box.Max()
-	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
-	maxX, maxY, maxZ := int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))
-	found, target := false, world.Dimension(nil)
-search:
-	for y := minY; y <= maxY; y++ {
-		for x := minX; x <= maxX; x++ {
-			for z := minZ; z <= maxZ; z++ {
-				pos := cube.Pos{x, y, z}
-				p, ok := tx.Block(pos).(portalBlock)
-				if !ok {
-					continue
-				}
-				for _, blockBox := range p.Model().BBox(pos, tx) {
-					if blockBox.Translate(pos.Vec3()).IntersectsWith(box) {
-						found, target = true, p.Portal()
-						break search
-					}
-				}
-			}
-		}
-	}
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if !found {
-		if t.travelling {
-			return
-		}
-		t.timedOut, t.awaitingTravel = false, false
-		t.deniedActive = false
+// EnterPortal handles an entity touching a portal block.
+func (t *PortalTravelComputer) EnterPortal(e Traveller, tx *world.Tx, target world.Dimension) {
+	destination := tx.World().PortalDestination(target)
+	if destination == nil || destination == tx.World() {
+		t.notifyDenied(e, tx, target)
 		return
 	}
-
-	switch target {
-	case world.Nether:
-		if t.timedOut {
-			return
-		}
-		destination := tx.World().PortalDestination(world.Nether)
-		if destination == nil || destination == tx.World() {
-			t.notifyDenied(travel, tx, world.Nether)
-			t.awaitingTravel = false
-			return
-		}
-		t.deniedActive = false
-		instantaneous := t.Instantaneous != nil && t.Instantaneous()
-		if instantaneous || (t.awaitingTravel && time.Since(t.start) >= time.Second*4) {
-			t.mu.Unlock()
-			t.travel(travel, tx, destination)
-			t.mu.Lock()
-		} else if !t.awaitingTravel {
-			t.start, t.awaitingTravel = time.Now(), true
-		}
+	t.clearDenied()
+	if t.enterPortalDestination(tx.World().Dimension(), target, destination) {
+		t.travelQueued(e, tx, destination)
 	}
 }
 
-// travel defers removal until the current owner callback completes, then moves e to destination.
-func (t *TravelComputer) travel(e Traveller, tx *world.Tx, destination *world.World) {
+func (t *PortalTravelComputer) queuePortalTravel(tx *world.Tx, target world.Dimension) {
+	if destination := t.enterPortal(tx, target); destination != nil {
+		t.mu.Lock()
+		t.pending = destination
+		t.mu.Unlock()
+	}
+}
+
+func (t *PortalTravelComputer) enterPortal(tx *world.Tx, target world.Dimension) *world.World {
+	source := tx.World()
+	destination := source.PortalDestination(target)
+	if destination == nil || destination == source {
+		return nil
+	}
+	if t.enterPortalDestination(source.Dimension(), target, destination) {
+		return destination
+	}
+	return nil
+}
+
+func (t *PortalTravelComputer) enterPortalDestination(source, target world.Dimension, destination *world.World) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.inside = true
+	if t.timedOut || time.Now().Before(t.cooldownUntil) {
+		return false
+	}
+	travelNow := t.instantaneous(source, target) || (t.awaitingTravel && time.Since(t.start) >= time.Second*4)
+	if !travelNow && !t.awaitingTravel {
+		t.start, t.awaitingTravel = time.Now(), true
+	}
+	return travelNow && destination != nil
+}
+
+func (t *PortalTravelComputer) instantaneous(source, target world.Dimension) bool {
+	return t.Instantaneous != nil && t.Instantaneous(source, target)
+}
+
+func (t *PortalTravelComputer) hasPendingPortalTravel() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.pending != nil
+}
+
+func (t *PortalTravelComputer) finishPendingPortalTravel(e Traveller, tx *world.Tx) bool {
+	t.mu.Lock()
+	destination := t.pending
+	t.pending = nil
+	t.mu.Unlock()
+	if destination == nil {
+		return false
+	}
+	t.travel(e, tx, destination)
+	return true
+}
+
+// StopPortalContact resets the portal timer if the entity was not inside a portal this tick.
+func (t *PortalTravelComputer) StopPortalContact() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.inside {
+		t.inside = false
+		return
+	}
+	if t.travelling || t.pending != nil {
+		return
+	}
+	t.timedOut, t.awaitingTravel, t.deniedActive = false, false, false
+}
+
+func (t *PortalTravelComputer) travel(e Traveller, tx *world.Tx, destination *world.World) {
 	source := tx.World()
 	if destination == nil || destination == source {
 		return
 	}
+	sourceDim, destinationDim := source.Dimension(), destination.Dimension()
 	origin := e.Position()
-	pos := cube.PosFromVec3(origin)
-	if source.Dimension() == world.Overworld {
-		pos = cube.Pos{floorDiv(pos.X(), 8), pos.Y(), floorDiv(pos.Z(), 8)}
-	} else if source.Dimension() == world.Nether {
-		pos = cube.Pos{pos.X() * 8, pos.Y(), pos.Z() * 8}
+	pos := translatePortalPosition(cube.PosFromVec3(origin), sourceDim, destinationDim)
+
+	t.beginTravel()
+	handle := tx.RemoveEntity(e)
+	if handle == nil {
+		t.resetFailedTravel()
+		return
 	}
+	go t.transfer(handle, source, destination, origin, pos, sourceDim, destinationDim)
+}
 
-	t.mu.Lock()
-	t.travelling, t.timedOut, t.awaitingTravel = true, true, false
-	t.deniedActive = false
-	t.mu.Unlock()
+func (t *PortalTravelComputer) travelQueued(e Traveller, tx *world.Tx, destination *world.World) {
+	source := tx.World()
+	if destination == nil || destination == source {
+		return
+	}
+	sourceDim, destinationDim := source.Dimension(), destination.Dimension()
+	origin := e.Position()
+	pos := translatePortalPosition(cube.PosFromVec3(origin), sourceDim, destinationDim)
 
+	t.beginTravel()
 	h := e.H()
 	tx.Defer(func(tx *world.Tx) {
 		e, ok := h.Entity(tx)
@@ -133,19 +182,30 @@ func (t *TravelComputer) travel(e Traveller, tx *world.Tx, destination *world.Wo
 			t.resetFailedTravel()
 			return
 		}
-		go t.transfer(handle, source, destination, origin, pos)
+		go t.transfer(handle, source, destination, origin, pos, sourceDim, destinationDim)
 	})
 }
 
-// transfer adds a removed entity to destination, restoring it to source if destination is unavailable.
-func (t *TravelComputer) transfer(handle *world.EntityHandle, source, destination *world.World, origin mgl64.Vec3, pos cube.Pos) {
+func (t *PortalTravelComputer) beginTravel() {
+	t.mu.Lock()
+	t.travelling, t.timedOut, t.awaitingTravel, t.deniedActive = true, true, false, false
+	t.mu.Unlock()
+}
+
+func (t *PortalTravelComputer) resetFailedTravel() {
+	t.mu.Lock()
+	t.travelling, t.timedOut = false, false
+	t.mu.Unlock()
+}
+
+func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, destination *world.World, origin mgl64.Vec3, pos cube.Pos, sourceDim, destinationDim world.Dimension) {
 	travelled, err := world.Call(context.Background(), destination, func(tx *world.Tx) (bool, error) {
-		spawn := pos.Vec3Middle()
-		if netherPortal, ok := portal.FindOrCreateNetherPortal(tx, pos, 128); ok {
-			spawn = netherPortal.Spawn().Vec3Middle()
+		spawn, ok := t.destinationSpawn(tx, sourceDim, pos)
+		if !ok {
+			return false, nil
 		}
 		if e, ok := tx.AddEntity(handle).(Traveller); ok {
-			e.Teleport(spawn)
+			t.finishTravel(e, spawn, sourceDim, destinationDim)
 		}
 		return true, nil
 	})
@@ -166,38 +226,91 @@ func (t *TravelComputer) transfer(handle *world.EntityHandle, source, destinatio
 
 	t.mu.Lock()
 	t.travelling = false
+	t.cooldownUntil = time.Now().Add(t.Cooldown)
 	if !travelled {
 		t.timedOut = false
 	}
 	t.mu.Unlock()
 }
 
-func (t *TravelComputer) resetFailedTravel() {
-	t.mu.Lock()
-	t.travelling, t.timedOut = false, false
-	t.mu.Unlock()
-}
-
-// floorDiv returns floor(n/d) for positive divisors, matching Minecraft coordinate scaling.
-func floorDiv(n, d int) int {
-	if d <= 0 {
-		panic("floorDiv requires a positive divisor")
+func (t *PortalTravelComputer) destinationSpawn(tx *world.Tx, sourceDim world.Dimension, pos cube.Pos) (mgl64.Vec3, bool) {
+	if tx.World().Dimension() == world.End {
+		portal.GenerateEndSpawnPlatform(tx)
+		return portal.EndSpawnPosition(t.Player), true
 	}
-	q := n / d
-	r := n % d
-	if r != 0 && n < 0 {
-		q--
-	}
-	return q
-}
-
-func (t *TravelComputer) notifyDenied(travel Traveller, tx *world.Tx, dim world.Dimension) {
-	if msg := tx.World().PortalDisabledMessage(dim); msg != "" {
-		if m, ok := travel.(interface{ Message(...any) }); ok {
-			if !t.deniedActive || t.deniedDim != dim {
-				t.deniedActive, t.deniedDim = true, dim
-				m.Message(msg)
-			}
+	if sourceDim == world.End && tx.World().Dimension() == world.Overworld {
+		if t.SpawnPoint != nil {
+			return t.SpawnPoint(tx), true
 		}
+		return tx.World().Spawn().Vec3Middle(), true
 	}
+	if !t.CreatePortal {
+		n, ok := portal.FindNetherPortal(tx, pos, portalSearchRadius)
+		if !ok {
+			return mgl64.Vec3{}, false
+		}
+		return n.Spawn().Vec3Middle(), true
+	}
+	if n, ok := portal.FindOrCreateNetherPortal(tx, pos, portalSearchRadius); ok {
+		return n.Spawn().Vec3Middle(), true
+	}
+	return pos.Vec3Middle(), true
+}
+
+func (t *PortalTravelComputer) finishTravel(e Traveller, pos mgl64.Vec3, source, destination world.Dimension) {
+	handlePortalTravel(e, source, destination)
+	if t.Teleport != nil {
+		t.Teleport(e, pos)
+		return
+	}
+	e.Teleport(pos)
+}
+
+func handlePortalTravel(e Traveller, source, destination world.Dimension) {
+	if ent, ok := e.(*Ent); ok {
+		if h, ok := ent.Behaviour().(portalTravelHandler); ok {
+			h.HandlePortalTravel(source, destination)
+		}
+		return
+	}
+	if h, ok := e.(portalTravelHandler); ok {
+		h.HandlePortalTravel(source, destination)
+	}
+}
+
+func translatePortalPosition(pos cube.Pos, source, target world.Dimension) cube.Pos {
+	switch source {
+	case world.Overworld:
+		pos[0], pos[2] = pos[0]>>3, pos[2]>>3
+	case world.Nether:
+		pos[0], pos[2] = pos[0]*8, pos[2]*8
+	}
+	r := target.Range()
+	pos[1] = min(max(pos[1], r.Min()), r.Max())
+	return pos
+}
+
+func (t *PortalTravelComputer) notifyDenied(e Traveller, tx *world.Tx, dim world.Dimension) {
+	msg := tx.World().PortalDisabledMessage(dim)
+	t.mu.Lock()
+	t.inside = true
+	if msg == "" {
+		t.mu.Unlock()
+		return
+	}
+	if t.deniedActive && t.deniedDim == dim {
+		t.mu.Unlock()
+		return
+	}
+	t.deniedActive, t.deniedDim = true, dim
+	t.mu.Unlock()
+	if m, ok := e.(interface{ Message(...any) }); ok {
+		m.Message(msg)
+	}
+}
+
+func (t *PortalTravelComputer) clearDenied() {
+	t.mu.Lock()
+	t.deniedActive = false
+	t.mu.Unlock()
 }

@@ -432,6 +432,7 @@ func init() {
 	world.RegisterItem(Eyeblossom{Open: false})
 	world.RegisterItem(Eyeblossom{Open: true})
 	world.RegisterItem(EndBricks{})
+	world.RegisterItem(EndPortalFrame{})
 	world.RegisterItem(EndRod{})
 	world.RegisterItem(EndStone{})
 	world.RegisterItem(MobSpawner{})
