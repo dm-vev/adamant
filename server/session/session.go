@@ -120,6 +120,9 @@ type Session struct {
 	overflowStreak  atomic.Uint32
 	overflowLastLog atomic.Int64
 
+	inputLocksMu sync.RWMutex
+	inputLocks   uint32
+
 	br world.BlockRegistry
 }
 
