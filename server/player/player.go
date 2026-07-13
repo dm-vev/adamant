@@ -548,15 +548,18 @@ func (p *Player) addHealth(health float64) {
 // the entity healed by having a full food bar. If the health added to the
 // original health exceeds the entity's max health, Heal will not add the full
 // amount. If the health passed is negative, Heal will not do anything.
-func (p *Player) Heal(health float64, source world.HealingSource) {
+// Heal returns the amount of health regenerated.
+func (p *Player) Heal(health float64, source world.HealingSource) float64 {
 	if p.Dead() || health < 0 || !p.GameMode().AllowsTakingDamage() {
-		return
+		return 0
 	}
 	ctx := newContext(p)
 	if p.Handler().HandleHeal(ctx, &health, source); ctx.Cancelled() {
-		return
+		return 0
 	}
+	oldHealth := p.Health()
 	p.addHealth(health)
+	return p.Health() - oldHealth
 }
 
 // updateFallState is called to update the entities falling state.
@@ -3123,15 +3126,18 @@ func (p *Player) tickAirSupply() {
 // is full enough.
 func (p *Player) tickFood() {
 	state := p.hunger.tickState()
-	if state.foodTick%10 == 0 && p.tx.World().Difficulty().FoodRegenerates() {
-		p.AddFood(1)
+	foodRegenerates := p.tx.World().Difficulty().FoodRegenerates()
+	if state.foodTick%10 == 0 && (state.canQuicklyRegenerate || foodRegenerates) {
+		if foodRegenerates {
+			p.AddFood(1)
+		}
 		if state.foodTick%20 == 0 {
-			p.regenerate(false)
+			p.regenerate(true)
 		}
 	}
 	if state.foodTick == 1 {
 		if state.canRegenerate {
-			p.regenerate(!p.tx.World().Difficulty().FoodRegenerates())
+			p.regenerate(!foodRegenerates)
 		} else if state.starving {
 			p.starve()
 		}
@@ -3147,8 +3153,8 @@ func (p *Player) regenerate(exhaust bool) {
 	if p.Health() == p.MaxHealth() {
 		return
 	}
-	p.Heal(1, entity.FoodHealingSource{})
-	if exhaust {
+	regenerated := p.Heal(1, entity.FoodHealingSource{QuickRegeneration: exhaust})
+	if exhaust && regenerated > 0 {
 		p.Exhaust(6)
 	}
 }
