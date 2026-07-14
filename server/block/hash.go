@@ -55,6 +55,8 @@ const (
 	hashChiseledQuartz
 	hashChorusFlower
 	hashChorusPlant
+	hashCinnabar
+	hashCinnabarBricks
 	hashClay
 	hashClientRequestPlaceholderBlock
 	hashCoal
@@ -222,6 +224,8 @@ const (
 	hashPlanks
 	hashPodzol
 	hashPolishedBlackstoneBrick
+	hashPolishedCinnabar
+	hashPolishedSulfur
 	hashPolishedTuff
 	hashPortal
 	hashPotato
@@ -284,6 +288,8 @@ const (
 	hashStonecutter
 	hashStructureVoid
 	hashSugarCane
+	hashSulfur
+	hashSulfurBricks
 	hashSweetBerries
 	hashTNT
 	hashTallDryGrass
@@ -514,6 +520,14 @@ func (c ChorusFlower) Hash() (uint64, uint64) {
 
 func (ChorusPlant) Hash() (uint64, uint64) {
 	return hashChorusPlant, 0
+}
+
+func (c Cinnabar) Hash() (uint64, uint64) {
+	return hashCinnabar, uint64(boolByte(c.Chiseled))
+}
+
+func (CinnabarBricks) Hash() (uint64, uint64) {
+	return hashCinnabarBricks, 0
 }
 
 func (Clay) Hash() (uint64, uint64) {
@@ -1192,6 +1206,14 @@ func (b PolishedBlackstoneBrick) Hash() (uint64, uint64) {
 	return hashPolishedBlackstoneBrick, uint64(boolByte(b.Cracked))
 }
 
+func (PolishedCinnabar) Hash() (uint64, uint64) {
+	return hashPolishedCinnabar, 0
+}
+
+func (PolishedSulfur) Hash() (uint64, uint64) {
+	return hashPolishedSulfur, 0
+}
+
 func (PolishedTuff) Hash() (uint64, uint64) {
 	return hashPolishedTuff, 0
 }
@@ -1438,6 +1460,14 @@ func (StructureVoid) Hash() (uint64, uint64) {
 
 func (c SugarCane) Hash() (uint64, uint64) {
 	return hashSugarCane, uint64(c.Age)
+}
+
+func (s Sulfur) Hash() (uint64, uint64) {
+	return hashSulfur, uint64(boolByte(s.Chiseled))
+}
+
+func (SulfurBricks) Hash() (uint64, uint64) {
+	return hashSulfurBricks, 0
 }
 
 func (s SweetBerries) Hash() (uint64, uint64) {
