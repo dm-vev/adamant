@@ -39,6 +39,39 @@ type HoneyBlock struct {
 	solid
 }
 
+// Friction ...
+func (HoneyBlock) Friction() float64 {
+	return 0.8
+}
+
+// EntityInside ...
+func (HoneyBlock) EntityInside(pos cube.Pos, _ *world.Tx, e world.Entity) {
+	v, ok := e.(velocityEntity)
+	if !ok {
+		return
+	}
+	velocity, sliding := honeySlideVelocity(pos, e.Position(), v.Velocity())
+	if !sliding {
+		return
+	}
+	v.SetVelocity(velocity)
+	if fall, ok := e.(interface{ ResetFallDistance() }); ok {
+		fall.ResetFallDistance()
+	}
+}
+
+func honeySlideVelocity(pos cube.Pos, entityPos, velocity mgl64.Vec3) (mgl64.Vec3, bool) {
+	if velocity[1] >= 0 || (math.Abs(entityPos[0]-float64(pos[0])-0.5) <= 0.4375 && math.Abs(entityPos[2]-float64(pos[2])-0.5) <= 0.4375) {
+		return velocity, false
+	}
+	if velocity[1] < -0.13 {
+		scale := -0.05 / velocity[1]
+		velocity[0], velocity[2] = velocity[0]*scale, velocity[2]*scale
+	}
+	velocity[1] = -0.05
+	return velocity, true
+}
+
 // BreakInfo ...
 func (h HoneyBlock) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(h))
