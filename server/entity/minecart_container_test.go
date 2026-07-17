@@ -98,6 +98,7 @@ func TestHopperMinecartCollectsOneItemWithoutDuplication(t *testing.T) {
 }
 
 func TestHopperMinecartNBTRoundTrip(t *testing.T) {
+	world.DefaultBlockRegistry.Finalize()
 	b := hopperMinecartConf.New()
 	b.transferCooldown = 7
 	b.enabled = false
