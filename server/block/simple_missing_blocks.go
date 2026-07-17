@@ -84,6 +84,63 @@ func (FrostedIce) BreakInfo() BreakInfo {
 	return newBreakInfo(0.5, neverHarvestable, pickaxeEffective, simpleDrops())
 }
 
+// RandomTick ...
+func (f FrostedIce) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	f.tick(pos, tx, r)
+}
+
+// ScheduledTick ...
+func (f FrostedIce) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	f.tick(pos, tx, r)
+}
+
+func (f FrostedIce) tick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	if (r.IntN(3) != 0 && !fewerFrostedIceNeighbours(pos, tx, 4)) || tx.Light(pos) <= uint8(11-f.Age) {
+		tx.ScheduleBlockUpdate(pos, f, time.Duration(20+r.IntN(21))*time.Second/20)
+		return
+	}
+	next, melted := decayFrostedIce(f)
+	if !melted {
+		tx.SetBlock(pos, next, nil)
+		tx.ScheduleBlockUpdate(pos, next, time.Duration(20+r.IntN(21))*time.Second/20)
+		return
+	}
+	tx.SetBlock(pos, next, nil)
+	for _, face := range cube.Faces() {
+		neighbour := pos.Side(face)
+		ice, ok := tx.Block(neighbour).(FrostedIce)
+		if !ok {
+			continue
+		}
+		next, melted := decayFrostedIce(ice)
+		tx.SetBlock(neighbour, next, nil)
+		if !melted {
+			tx.ScheduleBlockUpdate(neighbour, next, time.Duration(20+r.IntN(21))*time.Second/20)
+		}
+	}
+}
+
+func decayFrostedIce(f FrostedIce) (world.Block, bool) {
+	if f.Age < 3 {
+		f.Age++
+		return f, false
+	}
+	return Water{Depth: 8, Still: true}, true
+}
+
+func fewerFrostedIceNeighbours(pos cube.Pos, tx *world.Tx, limit int) bool {
+	count := 0
+	for _, face := range cube.Faces() {
+		if _, ok := tx.Block(pos.Side(face)).(FrostedIce); ok {
+			count++
+			if count >= limit {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // EncodeBlock ...
 func (f FrostedIce) EncodeBlock() (string, map[string]any) {
 	return "minecraft:frosted_ice", map[string]any{"age": int32(f.Age)}
