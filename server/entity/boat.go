@@ -112,7 +112,7 @@ func (b *BoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 	pos, vel := e.data.Pos, e.data.Vel
 	waterDiff := b.waterLevelDiff(e, tx)
-	friction := b.groundFriction(tx, pos)
+	friction := b.groundFriction(tx, e)
 
 	b.applyInput(e, &vel, friction)
 	vel[0] *= friction
@@ -465,14 +465,40 @@ func liquidSurfaceHeight(liquid world.Liquid) float64 {
 	return float64(depth) / 8
 }
 
-func (b *BoatBehaviour) groundFriction(tx *world.Tx, pos mgl64.Vec3) float64 {
+func (b *BoatBehaviour) groundFriction(tx *world.Tx, e *Ent) float64 {
 	if b.inWater {
 		return boatWaterDrag
 	}
-	if f, ok := tx.Block(cube.PosFromVec3(pos).Side(cube.FaceDown)).(interface{ Friction() float64 }); ok {
-		return f.Friction()
+	box := e.H().Type().BBox(e).Translate(e.data.Pos)
+	min, max := box.Min(), box.Max()
+	under := cube.Box(min[0], min[1]-0.001, min[2], max[0], min[1], max[2])
+	friction, count := 0.0, 0
+	for x := int(math.Floor(min[0])); x < int(math.Ceil(max[0])); x++ {
+		for z := int(math.Floor(min[2])); z < int(math.Ceil(max[2])); z++ {
+			pos := cube.Pos{x, int(math.Floor(min[1] - 0.001)), z}
+			block := tx.Block(pos)
+			supported := false
+			for _, collision := range block.Model().BBox(pos, tx) {
+				if collision.Translate(mgl64.Vec3{float64(x), float64(pos[1]), float64(z)}).IntersectsWith(under) {
+					supported = true
+					break
+				}
+			}
+			if !supported {
+				continue
+			}
+			value := 0.6
+			if f, ok := block.(interface{ Friction() float64 }); ok {
+				value = f.Friction()
+			}
+			friction += value
+			count++
+		}
 	}
-	return 0.6
+	if count == 0 {
+		return 0.6
+	}
+	return friction / float64(count)
 }
 
 func (b *BoatBehaviour) passengerCount() int {

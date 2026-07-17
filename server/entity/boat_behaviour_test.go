@@ -4,11 +4,52 @@ import (
 	"math"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+func TestBoatGroundFrictionAveragesFootprint(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+
+	handle := NewBoat(world.EntitySpawnOpts{Position: mgl64.Vec3{1, 1, 1}}, 0)
+	<-w.Exec(func(tx *world.Tx) {
+		tx.AddEntity(handle)
+		for x := 0; x < 2; x++ {
+			for z := 0; z < 2; z++ {
+				var surface world.Block = block.Cobblestone{}
+				if x == 0 {
+					surface = block.Ice{}
+				}
+				tx.SetBlock(cube.Pos{x, 0, z}, surface, nil)
+			}
+		}
+		boatEntity, _ := handle.Entity(tx)
+		boat := boatEntity.(*Boat)
+		if got, want := boat.base().groundFriction(tx, boat.Ent), 0.79; math.Abs(got-want) > 1e-9 {
+			t.Fatalf("ground friction = %v, want %v", got, want)
+		}
+	})
+}
+
+func TestBoatGroundFrictionInWater(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+
+	handle := NewBoat(world.EntitySpawnOpts{}, 0)
+	<-w.Exec(func(tx *world.Tx) {
+		tx.AddEntity(handle)
+		boatEntity, _ := handle.Entity(tx)
+		boat := boatEntity.(*Boat)
+		boat.base().inWater = true
+		if got, want := boat.base().groundFriction(tx, boat.Ent), 0.9; got != want {
+			t.Fatalf("water friction = %v, want %v", got, want)
+		}
+	})
+}
 
 func TestControlledBoatTurnKeepsInputYaw(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
