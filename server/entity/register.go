@@ -36,7 +36,6 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	SplashPotionType,
 	TNTType,
 	TextType,
-	ZombieType,
 })
 
 var conf = world.EntityRegistryConfig{
