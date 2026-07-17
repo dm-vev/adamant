@@ -99,6 +99,7 @@ const (
 	hashDirt
 	hashDirtPath
 	hashDirtWithRoots
+	hashDispenser
 	hashDoubleFlower
 	hashDoubleTallGrass
 	hashDragonEgg
@@ -689,6 +690,10 @@ func (DirtPath) Hash() (uint64, uint64) {
 
 func (DirtWithRoots) Hash() (uint64, uint64) {
 	return hashDirtWithRoots, 0
+}
+
+func (d Dispenser) Hash() (uint64, uint64) {
+	return hashDispenser, uint64(d.Facing) | uint64(boolByte(d.Triggered))<<3
 }
 
 func (d DoubleFlower) Hash() (uint64, uint64) {

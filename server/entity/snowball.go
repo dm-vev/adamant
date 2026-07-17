@@ -9,7 +9,9 @@ import (
 // NewSnowball creates a snowball entity at a position with an owner entity.
 func NewSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle {
 	conf := snowballConf
-	conf.Owner = owner.H()
+	if owner != nil {
+		conf.Owner = owner.H()
+	}
 	return opts.New(SnowballType, conf)
 }
 
