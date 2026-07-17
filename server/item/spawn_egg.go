@@ -29,6 +29,9 @@ func (s SpawnEgg) UseOnEntity(e world.Entity, tx *world.Tx, _ User, ctx *UseCont
 
 // EncodeItem returns the ID and meta of the spawn egg item.
 func (s SpawnEgg) EncodeItem() (name string, meta int16) {
+	if itemName, ok := spawnEggItems[s.Entity]; ok {
+		return itemName, 0
+	}
 	return "minecraft:spawn_egg", 0
 }
 
@@ -65,3 +68,7 @@ func (s SpawnEgg) trySetSpawner(pos cube.Pos, b world.Block, tx *world.Tx, ctx *
 type emptyEntityConfig struct{}
 
 func (emptyEntityConfig) Apply(_ *world.EntityData) {}
+
+var spawnEggItems = map[string]string{
+	"minecraft:cow": "minecraft:cow_spawn_egg",
+}

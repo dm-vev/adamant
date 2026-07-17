@@ -25,6 +25,7 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	ChestBoatType,
 	MinecartType,
 	ChestMinecartType,
+	CowType,
 	HopperMinecartType,
 	TNTMinecartType,
 	LightningType,
