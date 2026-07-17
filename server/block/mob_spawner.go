@@ -30,7 +30,6 @@ type MobSpawner struct {
 // NewMobSpawner creates a new initialised MobSpawner.
 func NewMobSpawner() MobSpawner {
 	m := MobSpawner{
-		entity:              "minecraft:zombie",
 		minDelay:            200,
 		maxDelay:            800,
 		spawnCount:          1,
@@ -188,14 +187,14 @@ func (m MobSpawner) canSpawnAt(tx *world.Tx, pos mgl64.Vec3) bool {
 // EncodeNBT ...
 func (m MobSpawner) EncodeNBT() map[string]any {
 	encoded := map[string]any{
-		"id":                   "MobSpawner",
-		"EntityIdentifier":     m.entity,
-		"MinSpawnDelay":        m.minDelay,
-		"MaxSpawnDelay":        m.maxDelay,
-		"SpawnCount":           m.spawnCount,
-		"SpawnRange":           m.spawnRange,
-		"RequiredPlayerRange":  m.requiredPlayerRange,
-		"MaxNearbyEntities":    m.maxNearbyEntities,
+		"id":                  "MobSpawner",
+		"EntityIdentifier":    m.entity,
+		"MinSpawnDelay":       m.minDelay,
+		"MaxSpawnDelay":       m.maxDelay,
+		"SpawnCount":          m.spawnCount,
+		"SpawnRange":          m.spawnRange,
+		"RequiredPlayerRange": m.requiredPlayerRange,
+		"MaxNearbyEntities":   m.maxNearbyEntities,
 	}
 	if m.delay != nil {
 		encoded["Delay"] = int16(m.delay.Load())

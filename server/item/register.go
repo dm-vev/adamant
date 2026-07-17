@@ -154,7 +154,6 @@ func init() {
 	world.RegisterItem(WarpedFungusOnAStick{})
 	world.RegisterItem(Wheat{})
 	world.RegisterItem(WrittenBook{})
-	world.RegisterItem(SpawnEgg{Entity: "minecraft:zombie"})
 	for _, t := range ArmourTiers() {
 		world.RegisterItem(Helmet{Tier: t})
 		world.RegisterItem(Chestplate{Tier: t})
