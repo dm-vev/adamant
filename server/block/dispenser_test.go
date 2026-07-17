@@ -11,7 +11,7 @@ import (
 )
 
 type dispenserTestEntityType struct{}
-type dispenserTestEntityConfig struct{}
+type dispenserTestEntityConfig struct{ variant int }
 type dispenserTestEntity struct {
 	h    *world.EntityHandle
 	data *world.EntityData
@@ -26,7 +26,7 @@ func (dispenserTestEntityType) BBox(world.Entity) cube.BBox {
 }
 func (dispenserTestEntityType) DecodeNBT(map[string]any, *world.EntityData) {}
 func (dispenserTestEntityType) EncodeNBT(*world.EntityData) map[string]any  { return nil }
-func (dispenserTestEntityConfig) Apply(*world.EntityData)                   {}
+func (c dispenserTestEntityConfig) Apply(data *world.EntityData)            { data.Data = c.variant }
 func (e *dispenserTestEntity) Close() error                                 { return nil }
 func (e *dispenserTestEntity) H() *world.EntityHandle                       { return e.h }
 func (e *dispenserTestEntity) Position() mgl64.Vec3                         { return e.data.Pos }
@@ -118,5 +118,89 @@ func TestDispenserEjectsUnsupportedItem(t *testing.T) {
 		if count != 1 || !stack.Empty() {
 			t.Fatalf("entities=%d stack=%v", count, stack)
 		}
+	})
+}
+
+func TestDispenserSpawnsBoatsOnWater(t *testing.T) {
+	typ := dispenserTestEntityType{}
+	entities := world.EntityRegistryConfig{
+		Boat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: variant})
+		},
+		ChestBoat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: variant})
+		},
+	}.New([]world.EntityType{typ})
+
+	tests := []struct {
+		name    string
+		stack   item.Stack
+		variant item.BoatVariant
+		below   bool
+	}{
+		{"boat facing water", item.NewStack(item.Boat{Variant: item.BoatVariantCherry}, 1), item.BoatVariantCherry, false},
+		{"chest boat above water", item.NewStack(item.ChestBoat{Variant: item.BoatVariantBamboo}, 1), item.BoatVariantBamboo, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := NewDispenser()
+			d.Facing, d.Triggered = cube.FaceEast, true
+			_ = d.inventory.SetItem(0, tt.stack)
+			w := world.Config{Synchronous: true, Entities: entities}.New()
+			defer w.Close()
+			pos := cube.Pos{0, 1, 0}
+			<-w.Exec(func(tx *world.Tx) {
+				tx.SetBlock(pos, d, nil)
+				waterPos := pos.Side(d.Facing)
+				if tt.below {
+					waterPos = waterPos.Side(cube.FaceDown)
+				}
+				tx.SetLiquid(waterPos, Water{Depth: 8, Still: true})
+				d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
+
+				count := 0
+				for spawned := range tx.Entities() {
+					count++
+					e := spawned.(*dispenserTestEntity)
+					if e.data.Data != tt.variant.Int() || e.Position() != (mgl64.Vec3{1.5, 1.375, 0.5}) || e.Rotation() != (cube.Rotation{90, 0}) || e.data.Vel != (mgl64.Vec3{0.1, 0, 0}) {
+						t.Fatalf("unexpected boat: variant=%v pos=%v rot=%v vel=%v", e.data.Data, e.Position(), e.Rotation(), e.data.Vel)
+					}
+				}
+				stack, _ := tx.Block(pos).(Dispenser).inventory.Item(0)
+				if count != 1 || !stack.Empty() {
+					t.Fatalf("entities=%d stack=%v", count, stack)
+				}
+			})
+		})
+	}
+}
+
+func TestDispenserEjectsBoatWithoutWater(t *testing.T) {
+	typ := dispenserTestEntityType{}
+	entities := world.EntityRegistryConfig{
+		Item: func(opts world.EntitySpawnOpts, _ any) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: -1})
+		},
+		Boat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: variant})
+		},
+	}.New([]world.EntityType{typ})
+	d := NewDispenser()
+	d.Facing, d.Triggered = cube.FaceEast, true
+	_ = d.inventory.SetItem(0, item.NewStack(item.Boat{Variant: item.BoatVariantOak}, 1))
+	w := world.Config{Synchronous: true, Entities: entities}.New()
+	defer w.Close()
+	pos := cube.Pos{0, 1, 0}
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(pos, d, nil)
+		d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
+		for spawned := range tx.Entities() {
+			e := spawned.(*dispenserTestEntity)
+			if e.data.Data != -1 || e.data.Vel != (mgl64.Vec3{0.2, 0, 0}) {
+				t.Fatalf("boat did not use item fallback: variant=%v velocity=%v", e.data.Data, e.data.Vel)
+			}
+			return
+		}
+		t.Fatal("expected ejected boat item")
 	})
 }

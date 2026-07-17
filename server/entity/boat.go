@@ -122,7 +122,9 @@ func (b *BoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	dPos, newVel := b.mc.checkCollision(tx, e, pos, vel)
 	e.data.Pos = pos.Add(dPos)
 	e.data.Vel = newVel
-	b.updateRotation(e)
+	if b.passengers[0] == nil {
+		b.updateRotation(e)
+	}
 	b.updatePassengers(e, tx)
 	b.checkPassengersAlive(e, tx)
 	if math.Abs(float64(b.rowTimeLeft-prevRowLeft)) > 1e-4 || math.Abs(float64(b.rowTimeRight-prevRowRight)) > 1e-4 {

@@ -2,6 +2,7 @@ package block
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"strings"
 	"sync"
@@ -125,11 +126,43 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	direction := pos.Side(d.Facing).Vec3Centre().Sub(pos.Vec3Centre())
 	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre().Add(direction.Mul(0.7)), Velocity: direction.Mul(1.1)}
 
-	switch stack.Item().(type) {
+	switch held := stack.Item().(type) {
 	case item.Egg:
 		tx.AddEntity(tx.World().EntityRegistry().Config().Egg(opts, nil))
 	case item.Snowball:
 		tx.AddEntity(tx.World().EntityRegistry().Config().Snowball(opts, nil))
+	case item.Boat:
+		front := pos.Side(d.Facing)
+		frontLiquid, frontWater := tx.Liquid(front)
+		belowLiquid, waterBelow := tx.Liquid(front.Side(cube.FaceDown))
+		frontWater = frontWater && frontLiquid.LiquidType() == "water"
+		waterBelow = waterBelow && belowLiquid.LiquidType() == "water"
+		_, frontAir := tx.Block(front).(Air)
+		if frontWater || frontAir && waterBelow {
+			direction := front.Vec3Centre().Sub(pos.Vec3Centre())
+			opts.Position = front.Vec3Middle().Add(mgl64.Vec3{0, 0.375, 0})
+			opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
+			opts.Velocity = direction.Mul(0.1)
+			tx.AddEntity(tx.World().EntityRegistry().Config().Boat(opts, held.Variant.Int()))
+		} else {
+			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		}
+	case item.ChestBoat:
+		front := pos.Side(d.Facing)
+		frontLiquid, frontWater := tx.Liquid(front)
+		belowLiquid, waterBelow := tx.Liquid(front.Side(cube.FaceDown))
+		frontWater = frontWater && frontLiquid.LiquidType() == "water"
+		waterBelow = waterBelow && belowLiquid.LiquidType() == "water"
+		_, frontAir := tx.Block(front).(Air)
+		if frontWater || frontAir && waterBelow {
+			direction := front.Vec3Centre().Sub(pos.Vec3Centre())
+			opts.Position = front.Vec3Middle().Add(mgl64.Vec3{0, 0.375, 0})
+			opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
+			opts.Velocity = direction.Mul(0.1)
+			tx.AddEntity(tx.World().EntityRegistry().Config().ChestBoat(opts, held.Variant.Int()))
+		} else {
+			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		}
 	case item.FireCharge:
 		front := pos.Side(d.Facing)
 		_, wasFire := tx.Block(front).(Fire)
