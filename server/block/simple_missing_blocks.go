@@ -1,6 +1,15 @@
 package block
 
-import "github.com/df-mc/dragonfly/server/world"
+import (
+	"math"
+	"math/rand/v2"
+	"time"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
+)
 
 // Conduit is an underwater utility block.
 type Conduit struct {
@@ -178,6 +187,8 @@ func (Sculk) EncodeBlock() (string, map[string]any) {
 type Target struct {
 	solid
 	bassDrum
+
+	Signal uint8
 }
 
 // BreakInfo ...
@@ -193,6 +204,65 @@ func (Target) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (Target) EncodeBlock() (string, map[string]any) {
 	return "minecraft:target", nil
+}
+
+// ProjectileHit powers the target according to how close the projectile hit to the centre.
+func (t Target) ProjectileHit(pos cube.Pos, tx *world.Tx, projectile world.Entity, face cube.Face) {
+	t.Signal = targetSignal(pos, projectile.Position(), face)
+	tx.SetBlock(pos, t, nil)
+	tx.DoBlockUpdatesAround(pos)
+	tx.ScheduleBlockUpdate(pos, t, targetResetDelay(projectile.H().Type().EncodeEntity()))
+}
+
+func targetSignal(pos cube.Pos, hit mgl64.Vec3, face cube.Face) uint8 {
+	rel := hit.Sub(pos.Vec3())
+	var distance float64
+	switch face.Axis() {
+	case cube.X:
+		distance = max(math.Abs(rel.Y()-0.5), math.Abs(rel.Z()-0.5))
+	case cube.Y:
+		distance = max(math.Abs(rel.X()-0.5), math.Abs(rel.Z()-0.5))
+	case cube.Z:
+		distance = max(math.Abs(rel.X()-0.5), math.Abs(rel.Y()-0.5))
+	}
+	return uint8(max(1, math.Ceil(15*(1-min(distance*2, 1)))))
+}
+
+func targetResetDelay(identifier string) time.Duration {
+	if identifier == "minecraft:arrow" || identifier == "minecraft:thrown_trident" {
+		return redstoneTicks(20)
+	}
+	return redstoneTicks(8)
+}
+
+// ScheduledTick resets the target's signal.
+func (t Target) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	if t.Signal == 0 {
+		return
+	}
+	t.Signal = 0
+	tx.SetBlock(pos, t, nil)
+	tx.DoBlockUpdatesAround(pos)
+}
+
+// RedstoneSource ...
+func (Target) RedstoneSource() bool { return true }
+
+// WeakPower ...
+func (t Target) WeakPower(cube.Pos, cube.Face, *world.Tx, bool) int { return int(t.Signal) }
+
+// StrongPower ...
+func (Target) StrongPower(cube.Pos, cube.Face, *world.Tx, bool) int { return 0 }
+
+// EncodeNBT ...
+func (t Target) EncodeNBT() map[string]any {
+	return map[string]any{"id": "Target", "OutputSignal": int32(t.Signal)}
+}
+
+// DecodeNBT ...
+func (t Target) DecodeNBT(data map[string]any) any {
+	t.Signal = uint8(min(max(nbtconv.Int32(data, "OutputSignal"), 0), 15))
+	return t
 }
 
 // Torchflower is a decorative flower.
