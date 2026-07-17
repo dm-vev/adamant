@@ -32,6 +32,7 @@ var DefaultRegistry = conf.New([]world.EntityType{
 	EndCrystalType,
 	LingeringPotionType,
 	SnowballType,
+	SmallFireballType,
 	WindChargeType,
 	TridentType,
 	SplashPotionType,
