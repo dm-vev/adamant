@@ -163,6 +163,28 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		} else {
 			d.eject(tx, opts, stack.Grow(1-stack.Count()))
 		}
+	case item.Minecart, item.MinecartChest, item.MinecartHopper, item.MinecartTNT:
+		front := pos.Side(d.Facing)
+		if IsRail(tx.Block(front)) {
+			opts = world.EntitySpawnOpts{Position: front.Vec3Middle().Add(mgl64.Vec3{0, 0.0625, 0})}
+			direction, _, _ := RailInfo(tx.Block(front))
+			if direction.Ascending() {
+				opts.Position[1] += 0.5
+			}
+			conf := tx.World().EntityRegistry().Config()
+			switch held.(type) {
+			case item.Minecart:
+				tx.AddEntity(conf.Minecart(opts))
+			case item.MinecartChest:
+				tx.AddEntity(conf.MinecartChest(opts))
+			case item.MinecartHopper:
+				tx.AddEntity(conf.MinecartHopper(opts))
+			case item.MinecartTNT:
+				tx.AddEntity(conf.MinecartTNT(opts))
+			}
+		} else {
+			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		}
 	case item.FireCharge:
 		front := pos.Side(d.Facing)
 		_, wasFire := tx.Block(front).(Fire)

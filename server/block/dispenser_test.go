@@ -178,8 +178,8 @@ func TestDispenserSpawnsBoatsOnWater(t *testing.T) {
 func TestDispenserEjectsBoatWithoutWater(t *testing.T) {
 	typ := dispenserTestEntityType{}
 	entities := world.EntityRegistryConfig{
-		Item: func(opts world.EntitySpawnOpts, _ any) *world.EntityHandle {
-			return opts.New(typ, dispenserTestEntityConfig{variant: -1})
+		Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: -it.(item.Stack).Count()})
 		},
 		Boat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
 			return opts.New(typ, dispenserTestEntityConfig{variant: variant})
@@ -203,4 +203,99 @@ func TestDispenserEjectsBoatWithoutWater(t *testing.T) {
 		}
 		t.Fatal("expected ejected boat item")
 	})
+}
+
+func TestDispenserMinecarts(t *testing.T) {
+	typ := dispenserTestEntityType{}
+	entities := world.EntityRegistryConfig{
+		Item: func(opts world.EntitySpawnOpts, _ any) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: -1})
+		},
+		Minecart: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: 0})
+		},
+		MinecartChest: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: 1})
+		},
+		MinecartHopper: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: 2})
+		},
+		MinecartTNT: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+			return opts.New(typ, dispenserTestEntityConfig{variant: 3})
+		},
+	}.New([]world.EntityType{typ})
+	tests := []struct {
+		name string
+		item world.Item
+		want int
+	}{
+		{"minecart", item.Minecart{}, 0},
+		{"chest", item.MinecartChest{}, 1},
+		{"hopper", item.MinecartHopper{}, 2},
+		{"tnt", item.MinecartTNT{}, 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, rail := range []world.Block{Rail{Direction: RailEastWest}, PoweredRail{Direction: RailAscendingEast}} {
+				d := NewDispenser()
+				d.Facing, d.Triggered = cube.FaceEast, true
+				_ = d.inventory.SetItem(0, item.NewStack(tt.item, 1))
+				w := world.Config{Synchronous: true, Entities: entities}.New()
+				pos := cube.Pos{0, 1, 0}
+				<-w.Exec(func(tx *world.Tx) {
+					tx.SetBlock(pos, d, nil)
+					tx.SetBlock(pos.Side(d.Facing), rail, nil)
+					d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
+					count := 0
+					for spawned := range tx.Entities() {
+						count++
+						e := spawned.(*dispenserTestEntity)
+						wantPos := mgl64.Vec3{1.5, 1.0625, 0.5}
+						if direction, _, _ := RailInfo(rail); direction.Ascending() {
+							wantPos[1] += 0.5
+						}
+						if e.data.Data != tt.want || e.Position() != wantPos || e.data.Vel != (mgl64.Vec3{}) {
+							t.Fatalf("minecart=%v pos=%v velocity=%v", e.data.Data, e.Position(), e.data.Vel)
+						}
+					}
+					stack, _ := tx.Block(pos).(Dispenser).inventory.Item(0)
+					if count != 1 || !stack.Empty() {
+						t.Fatalf("entities=%d stack=%v", count, stack)
+					}
+				})
+				_ = w.Close()
+			}
+		})
+	}
+}
+
+func TestDispenserMinecartsFallbackWithoutRail(t *testing.T) {
+	typ := dispenserTestEntityType{}
+	entities := world.EntityRegistryConfig{Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
+		return opts.New(typ, dispenserTestEntityConfig{variant: -it.(item.Stack).Count()})
+	}}.New([]world.EntityType{typ})
+	for _, it := range []world.Item{item.Minecart{}, item.MinecartChest{}, item.MinecartHopper{}, item.MinecartTNT{}} {
+		d := NewDispenser()
+		d.Facing, d.Triggered = cube.FaceEast, true
+		_ = d.inventory.SetItem(0, item.NewStack(it, 1))
+		w := world.Config{Synchronous: true, Entities: entities}.New()
+		<-w.Exec(func(tx *world.Tx) {
+			pos := cube.Pos{0, 1, 0}
+			tx.SetBlock(pos, d, nil)
+			d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
+			count := 0
+			for spawned := range tx.Entities() {
+				count++
+				e := spawned.(*dispenserTestEntity)
+				if e.data.Data != -1 || e.data.Vel != (mgl64.Vec3{0.2, 0, 0}) {
+					t.Fatalf("minecart did not use item fallback: item=%T variant=%v velocity=%v", it, e.data.Data, e.data.Vel)
+				}
+			}
+			stack, _ := tx.Block(pos).(Dispenser).inventory.Item(0)
+			if count != 1 || !stack.Empty() {
+				t.Fatalf("entities=%d stack=%v", count, stack)
+			}
+		})
+		_ = w.Close()
+	}
 }
