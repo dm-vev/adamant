@@ -105,6 +105,7 @@ const (
 	hashDriedGhast
 	hashDriedKelp
 	hashDripstone
+	hashDropper
 	hashElement
 	hashEmerald
 	hashEmeraldOre
@@ -714,6 +715,10 @@ func (Dripstone) Hash() (uint64, uint64) {
 	return hashDripstone, 0
 }
 
+func (d Dropper) Hash() (uint64, uint64) {
+	return hashDropper, uint64(d.Facing) | uint64(boolByte(d.Triggered))<<3
+}
+
 func (e Element) Hash() (uint64, uint64) {
 	return hashElement, uint64(e.Number)
 }
@@ -910,14 +915,6 @@ func (m HugeMushroomBlock) Hash() (uint64, uint64) {
 	return hashHugeMushroomBlock, uint64(m.Kind.Uint8()) | uint64(m.Variant)<<2
 }
 
-func (InfoUpdate) Hash() (uint64, uint64) {
-	return hashInfoUpdate, 0
-}
-
-func (InfoUpdate2) Hash() (uint64, uint64) {
-	return hashInfoUpdate2, 0
-}
-
 func (InfestedCobblestone) Hash() (uint64, uint64) {
 	return hashInfestedCobblestone, 0
 }
@@ -932,6 +929,14 @@ func (InfestedStone) Hash() (uint64, uint64) {
 
 func (i InfestedStoneBricks) Hash() (uint64, uint64) {
 	return hashInfestedStoneBricks, uint64(i.Type.Uint8())
+}
+
+func (InfoUpdate) Hash() (uint64, uint64) {
+	return hashInfoUpdate, 0
+}
+
+func (InfoUpdate2) Hash() (uint64, uint64) {
+	return hashInfoUpdate2, 0
 }
 
 func (InvisibleBedrock) Hash() (uint64, uint64) {

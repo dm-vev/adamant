@@ -237,6 +237,7 @@ func init() {
 	registerAll(allDeprecatedPurpurBlock1())
 	registerAll(allDeprecatedPurpurBlock2())
 	registerAll(allDoors())
+	registerAll(allDroppers())
 	registerAll(allDoubleFlowers())
 	registerAll(allDoubleTallGrass())
 	registerAll(allElements())
