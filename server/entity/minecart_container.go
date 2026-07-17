@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 const (
@@ -111,8 +112,11 @@ type MinecartContainer struct {
 }
 
 func (m *MinecartContainer) container() *MinecartContainerBehaviour {
-	if b, ok := m.Behaviour().(*MinecartContainerBehaviour); ok {
+	switch b := m.Behaviour().(type) {
+	case *MinecartContainerBehaviour:
 		return b
+	case *HopperMinecartBehaviour:
+		return b.MinecartContainerBehaviour
 	}
 	return nil
 }
@@ -244,25 +248,136 @@ func (hopperMinecartType) BBox(world.Entity) cube.BBox {
 }
 
 func (hopperMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
-	conf := hopperMinecartConf
-	beh := conf.New()
+	beh := hopperMinecartConf.New()
 	readMinecartDisplayNBT(beh.MinecartBehaviour, m)
 	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"))
+	beh.transferCooldown = readNBTInt(m["TransferCooldown"])
+	if enabled, ok := m["Enabled"]; ok {
+		beh.enabled = readNBTBool(enabled)
+	}
 	data.Data = beh
 }
 
 func (hopperMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
-	b := data.Data.(*MinecartContainerBehaviour)
+	b := data.Data.(*HopperMinecartBehaviour)
 	items := nbtconv.InvToNBT(b.inv)
 	if items == nil {
 		items = []map[string]any{}
 	}
-	m := map[string]any{"Items": items}
+	m := map[string]any{"Items": items, "TransferCooldown": b.transferCooldown, "Enabled": b.enabled}
 	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
 	return m
 }
 
-var hopperMinecartConf = MinecartContainerBehaviourConfig{
+type hopperMinecartBehaviourConfig struct {
+	MinecartContainerBehaviourConfig
+}
+
+func (conf hopperMinecartBehaviourConfig) Apply(data *world.EntityData) {
+	data.Data = conf.New()
+}
+
+func (conf hopperMinecartBehaviourConfig) New() *HopperMinecartBehaviour {
+	return &HopperMinecartBehaviour{MinecartContainerBehaviour: conf.MinecartContainerBehaviourConfig.New(), enabled: true}
+}
+
+// HopperMinecartBehaviour adds item transfer behaviour to a container minecart.
+type HopperMinecartBehaviour struct {
+	*MinecartContainerBehaviour
+	transferCooldown int32
+	enabled          bool
+}
+
+// Tick moves the minecart and transfers items when its cooldown permits.
+func (b *HopperMinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	movement := b.MinecartBehaviour.Tick(e, tx)
+	b.updateEnabled(e, tx)
+	if b.transferCooldown > 0 {
+		b.transferCooldown--
+		return movement
+	}
+	if !b.enabled {
+		return movement
+	}
+	pos := cube.PosFromVec3(e.Position())
+	if b.push(pos.Side(cube.FaceDown), tx) || b.pull(pos.Side(cube.FaceUp), tx) || b.collectItem(e, tx) {
+		b.transferCooldown = 8
+	}
+	return movement
+}
+
+func (b *HopperMinecartBehaviour) updateEnabled(e *Ent, tx *world.Tx) {
+	pos := cube.PosFromVec3(e.Position())
+	for _, railPos := range [...]cube.Pos{pos, pos.Side(cube.FaceDown)} {
+		if rail, ok := tx.Block(railPos).(block.ActivatorRail); ok {
+			b.enabled = !rail.Powered
+			return
+		}
+	}
+}
+
+func (b *HopperMinecartBehaviour) push(pos cube.Pos, tx *world.Tx) bool {
+	destination, ok := tx.Block(pos).(block.Container)
+	if !ok {
+		return false
+	}
+	for slot, stack := range b.inv.Slots() {
+		if stack.Empty() {
+			continue
+		}
+		one := stack.Grow(1 - stack.Count())
+		if added, _ := destination.Inventory(tx, pos).AddItem(one); added != 1 {
+			continue
+		}
+		_ = b.inv.SetItem(slot, stack.Grow(-1))
+		block.NotifyComparatorUpdate(pos, tx)
+		return true
+	}
+	return false
+}
+
+func (b *HopperMinecartBehaviour) pull(pos cube.Pos, tx *world.Tx) bool {
+	source, ok := tx.Block(pos).(block.Container)
+	if !ok {
+		return false
+	}
+	for slot, stack := range source.Inventory(tx, pos).Slots() {
+		if stack.Empty() {
+			continue
+		}
+		one := stack.Grow(1 - stack.Count())
+		if added, _ := b.inv.AddItem(one); added != 1 {
+			continue
+		}
+		_ = source.Inventory(tx, pos).SetItem(slot, stack.Grow(-1))
+		block.NotifyComparatorUpdate(pos, tx)
+		return true
+	}
+	return false
+}
+
+func (b *HopperMinecartBehaviour) collectItem(e *Ent, tx *world.Tx) bool {
+	box := e.H().Type().BBox(e).Translate(e.Position()).GrowVec3(mgl64.Vec3{0.25, 0.25, 0.25})
+	for candidate := range tx.EntitiesWithin(box) {
+		itemEntity, ok := candidate.(*Ent)
+		if !ok || itemEntity.H().Type() != ItemType {
+			continue
+		}
+		stack := itemEntity.Behaviour().(*ItemBehaviour).Item()
+		one := stack.Grow(1 - stack.Count())
+		if added, _ := b.inv.AddItem(one); added != 1 {
+			continue
+		}
+		if stack.Count() > 1 {
+			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: itemEntity.Position(), Velocity: itemEntity.Velocity()}, stack.Grow(-1)))
+		}
+		_ = itemEntity.CloseIn(tx)
+		return true
+	}
+	return false
+}
+
+var hopperMinecartConf = hopperMinecartBehaviourConfig{MinecartContainerBehaviourConfig{
 	Minecart: MinecartBehaviourConfig{
 		DisplayBlock:  block.Hopper{Facing: cube.FaceDown},
 		DisplayOffset: minecartDisplayOffset,
@@ -270,4 +385,4 @@ var hopperMinecartConf = MinecartContainerBehaviourConfig{
 	},
 	Size:          5,
 	ContainerType: minecartContainerHopper,
-}
+}}
