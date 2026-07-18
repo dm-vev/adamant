@@ -400,7 +400,7 @@ func (p Piston) EncodeNBT() map[string]any {
 		"Progress":       p.Progress,
 		"LastProgress":   p.LastProgress,
 		"isMovable":      !p.Moving,
-		"facing":         int32(pistonFacingDirection(p.Facing)),
+		"facing":         uint8(pistonFacingDirection(p.Facing)),
 		"Extending":      boolByte(p.Extending),
 		"powered":        boolByte(p.Powered),
 		"AttachedBlocks": attached,
