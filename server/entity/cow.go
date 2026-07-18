@@ -20,6 +20,9 @@ var CowType cowType
 type cowType struct{}
 
 func (cowType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
+	if data.Data == nil {
+		CowConfig{}.Apply(data)
+	}
 	return &Cow{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
 
