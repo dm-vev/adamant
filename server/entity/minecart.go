@@ -15,7 +15,7 @@ import (
 const (
 	minecartDefaultMaxSpeed = 0.4
 	minecartDisplayOffset   = 6
-	minecartSeatOffset      = 0.35
+	minecartSeatOffset      = 0.75
 )
 
 var minecartMatrix = [10][2][3]int{
@@ -333,7 +333,11 @@ func (b *MinecartBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, rail world.Block, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
 	b.mc.onGround = true
 	vector, vectorOk := b.nextRailPos(tx, pos)
-	pos[1] = float64(railPos[1])
+	if vectorOk {
+		pos[1] = vector[1]
+	} else {
+		pos[1] = float64(railPos[1]) + 0.5
+	}
 
 	poweredRail := false
 	powered := false
@@ -346,17 +350,13 @@ func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, 
 	dir, _, _ := block.RailInfo(rail)
 	switch dir {
 	case block.RailAscendingNorth:
-		vel[0] -= 0.0078125
-		pos[1] += 1
-	case block.RailAscendingSouth:
-		vel[0] += 0.0078125
-		pos[1] += 1
-	case block.RailAscendingEast:
 		vel[2] += 0.0078125
-		pos[1] += 1
-	case block.RailAscendingWest:
+	case block.RailAscendingSouth:
 		vel[2] -= 0.0078125
-		pos[1] += 1
+	case block.RailAscendingEast:
+		vel[0] -= 0.0078125
+	case block.RailAscendingWest:
+		vel[0] += 0.0078125
 	}
 
 	facing := minecartMatrix[int(dir)]
@@ -467,16 +467,16 @@ func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, 
 			vel[0] += vel[0] / speed * 0.06
 			vel[2] += vel[2] / speed * 0.06
 		} else if dir == block.RailNorthSouth {
-			if tx.Block(railPos.Side(cube.FaceWest)).Model().FaceSolid(railPos.Side(cube.FaceWest), cube.FaceEast, tx) {
-				vel[0] = 0.02
-			} else if tx.Block(railPos.Side(cube.FaceEast)).Model().FaceSolid(railPos.Side(cube.FaceEast), cube.FaceWest, tx) {
-				vel[0] = -0.02
-			}
-		} else if dir == block.RailEastWest {
 			if tx.Block(railPos.Side(cube.FaceNorth)).Model().FaceSolid(railPos.Side(cube.FaceNorth), cube.FaceSouth, tx) {
 				vel[2] = 0.02
 			} else if tx.Block(railPos.Side(cube.FaceSouth)).Model().FaceSolid(railPos.Side(cube.FaceSouth), cube.FaceNorth, tx) {
 				vel[2] = -0.02
+			}
+		} else if dir == block.RailEastWest {
+			if tx.Block(railPos.Side(cube.FaceWest)).Model().FaceSolid(railPos.Side(cube.FaceWest), cube.FaceEast, tx) {
+				vel[0] = 0.02
+			} else if tx.Block(railPos.Side(cube.FaceEast)).Model().FaceSolid(railPos.Side(cube.FaceEast), cube.FaceWest, tx) {
+				vel[0] = -0.02
 			}
 		}
 	}
