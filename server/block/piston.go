@@ -127,9 +127,6 @@ func (p Piston) shouldExtend(pos cube.Pos, tx *world.Tx) bool {
 			return true
 		}
 	}
-	if world.RedstonePowerFromSide(tx, pos, cube.FaceDown) > 0 {
-		return true
-	}
 	above := pos.Side(cube.FaceUp)
 	for _, face := range cube.Faces() {
 		if face == cube.FaceDown {
@@ -413,6 +410,12 @@ func (p Piston) EncodeNBT() map[string]any {
 
 // DecodeNBT ...
 func (p Piston) DecodeNBT(data map[string]any) any {
+	if _, ok := data["facing"]; ok {
+		p.Facing = cube.Face(nbtconv.Uint8(data, "facing"))
+	}
+	if _, ok := data["Sticky"]; ok {
+		p.Sticky = nbtconv.Bool(data, "Sticky")
+	}
 	p.Progress = nbtconv.Float32(data, "Progress")
 	p.LastProgress = nbtconv.Float32(data, "LastProgress")
 	p.Powered = nbtconv.Bool(data, "powered")

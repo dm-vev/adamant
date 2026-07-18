@@ -62,10 +62,114 @@ func TestPistonFacing(t *testing.T) {
 				t.Fatalf("NBT facing = %v (%T), want %d (uint8)", got, got, test.want)
 			}
 
-			decoded := piston.DecodeNBT(map[string]any{"facing": uint8(5 - test.want)}).(Piston)
+			decoded := piston.DecodeNBT(piston.EncodeNBT()).(Piston)
 			if decoded.Facing != test.face {
 				t.Fatalf("decoded facing = %v, want runtime state %v", decoded.Facing, test.face)
 			}
 		})
+	}
+}
+
+func TestPistonLifecycle(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+
+	pos := cube.Pos{0, 0, 0}
+	piston := Piston{Facing: cube.FaceEast, Sticky: true}
+	blockPos := pos.Side(cube.FaceEast)
+	sourcePos := pos.Side(cube.FaceWest)
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(pos, piston, nil)
+		tx.SetBlock(blockPos, Stone{}, nil)
+		tx.SetBlock(sourcePos, RedstoneBlock{}, nil)
+		piston.NeighbourUpdateTick(pos, sourcePos, tx)
+		got, ok := tx.Block(pos).(Piston)
+		if !ok || !got.Moving || !got.Extending || !got.Powered {
+			t.Fatalf("powered piston = %#v, want extending and powered", tx.Block(pos))
+		}
+		if head, ok := tx.Block(blockPos).(PistonHead); !ok || head.Facing != cube.FaceEast || !head.Sticky {
+			t.Fatalf("piston head = %#v, want east sticky head", tx.Block(blockPos))
+		}
+		if moving, ok := tx.Block(blockPos.Side(cube.FaceEast)).(MovingBlock); !ok || moving.PistonPos != pos {
+			t.Fatalf("moving block = %#v, want block moved east", tx.Block(blockPos.Side(cube.FaceEast)))
+		}
+	})
+	w.AdvanceTick()
+	w.AdvanceTick()
+	w.AdvanceTick()
+
+	<-w.Exec(func(tx *world.Tx) {
+		if _, ok := tx.Block(blockPos).(PistonHead); !ok {
+			t.Fatalf("extended piston head missing: %#v", tx.Block(blockPos))
+		}
+		tx.SetBlock(sourcePos, Air{}, nil)
+		piston, ok := tx.Block(pos).(Piston)
+		if !ok {
+			t.Fatalf("piston = %#v", tx.Block(pos))
+		}
+		piston.NeighbourUpdateTick(pos, sourcePos, tx)
+		piston = tx.Block(pos).(Piston)
+		if !piston.Moving || piston.Extending || piston.Powered {
+			t.Fatalf("retracting piston = %#v", piston)
+		}
+	})
+	w.AdvanceTick()
+	w.AdvanceTick()
+	w.AdvanceTick()
+
+	<-w.Exec(func(tx *world.Tx) {
+		if _, ok := tx.Block(blockPos).(Stone); !ok {
+			t.Fatalf("sticky piston did not retract block: %#v", tx.Block(blockPos))
+		}
+		if _, ok := tx.Block(blockPos.Side(cube.FaceEast)).(Air); !ok {
+			t.Fatalf("moving block remained after retraction: %#v", tx.Block(blockPos.Side(cube.FaceEast)))
+		}
+	})
+}
+
+func TestPistonRedstoneDirections(t *testing.T) {
+	for _, facing := range cube.Faces() {
+		t.Run(facing.String(), func(t *testing.T) {
+			w := world.Config{Synchronous: true}.New()
+			defer w.Close()
+
+			pos := cube.Pos{0, 0, 0}
+			piston := Piston{Facing: facing}
+			<-w.Exec(func(tx *world.Tx) {
+				tx.SetBlock(pos.Side(facing.Opposite()), RedstoneBlock{}, nil)
+				if !piston.shouldExtend(pos, tx) {
+					t.Fatal("piston did not accept power from behind")
+				}
+				tx.SetBlock(pos.Side(facing.Opposite()), Air{}, nil)
+				tx.SetBlock(pos.Side(facing), RedstoneBlock{}, nil)
+				if piston.shouldExtend(pos, tx) {
+					t.Fatal("piston accepted power from its facing side")
+				}
+			})
+		})
+	}
+}
+
+func TestPistonNBT(t *testing.T) {
+	piston := Piston{
+		Facing: cube.FaceNorth, Sticky: true, Moving: true, Powered: true,
+		Extending: true, Progress: 0.5, LastProgress: 0,
+		State: pistonStateExtending, NewState: pistonStateExtending,
+		Attached: []cube.Pos{{1, 2, 3}},
+	}
+	decoded := piston.DecodeNBT(piston.EncodeNBT()).(Piston)
+	if decoded.Facing != piston.Facing || decoded.Sticky != piston.Sticky || decoded.Powered != piston.Powered ||
+		decoded.Extending != piston.Extending || decoded.State != piston.State || len(decoded.Attached) != 1 || decoded.Attached[0] != (cube.Pos{1, 2, 3}) {
+		t.Fatalf("decoded piston = %#v, want %#v", decoded, piston)
+	}
+	legacy := (Piston{Facing: cube.FaceWest, Sticky: true}).DecodeNBT(map[string]any{}).(Piston)
+	if legacy.Facing != cube.FaceWest || !legacy.Sticky {
+		t.Fatalf("NBT without facing state changed runtime properties: %#v", legacy)
+	}
+
+	moving := MovingBlock{Moving: Chest{}, PistonPos: cube.Pos{4, 5, 6}, MovingEntity: map[string]any{"id": "Chest"}}
+	decodedMoving := moving.DecodeNBT(moving.EncodeNBT()).(MovingBlock)
+	if _, ok := decodedMoving.Moving.(Chest); !ok || decodedMoving.PistonPos != moving.PistonPos || decodedMoving.MovingEntity["id"] != "Chest" {
+		t.Fatalf("decoded moving block = %#v, want %#v", decodedMoving, moving)
 	}
 }
