@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	boatSeatOffset         = 0.6
+	boatSeatOffset         = 1.02001
 	boatRiderOffsetXWhen2  = 0.2
 	boatPassengerOffsetX   = -0.6
 	boatSinkingDepth       = 0.07

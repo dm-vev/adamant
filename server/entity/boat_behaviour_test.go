@@ -74,6 +74,64 @@ func TestControlledBoatTurnKeepsInputYaw(t *testing.T) {
 	})
 }
 
+func TestBoatPassengerSeatHeight(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+
+	pos := mgl64.Vec3{0, 4, 0}
+	boatHandle := NewBoat(world.EntitySpawnOpts{Position: pos}, 0)
+	passengerHandle := world.EntitySpawnOpts{Position: pos}.New(seatTestRiderType{}, seatTestRiderConfig{})
+	<-w.Exec(func(tx *world.Tx) {
+		tx.AddEntity(boatHandle)
+		tx.AddEntity(passengerHandle)
+		boatEntity, _ := boatHandle.Entity(tx)
+		passenger, _ := passengerHandle.Entity(tx)
+		rider := passenger.(*seatTestRider)
+		boat := boatEntity.(*Boat)
+		behaviour := boat.base()
+		behaviour.passengers[0] = passengerHandle
+		behaviour.updatePassengers(boat.Ent, tx)
+
+		offset := passenger.Position()[1] - boat.Position()[1]
+		if got, want := behaviour.SeatOffset()[1], float32(1.02001); got != want {
+			t.Fatalf("seat metadata offset = %v, want %v", got, want)
+		} else if got != float32(offset) {
+			t.Fatalf("seat metadata offset = %v, passenger offset = %v", got, offset)
+		}
+		rim := boat.Position()[1] + BoatType.BBox(boat).Max()[1]
+		eyeY := passenger.Position()[1] + rider.EyeHeight()
+		if passenger.Position()[1] <= rim || eyeY <= rim {
+			t.Fatalf("passenger base/eye = %v/%v, want above boat rim %v", passenger.Position()[1], eyeY, rim)
+		}
+	})
+}
+
+type seatTestRiderConfig struct{}
+
+func (seatTestRiderConfig) Apply(*world.EntityData) {}
+
+type seatTestRiderType struct{}
+
+func (seatTestRiderType) Open(_ *world.Tx, h *world.EntityHandle, data *world.EntityData) world.Entity {
+	return &seatTestRider{h: h, data: data}
+}
+func (seatTestRiderType) EncodeEntity() string                        { return "test:rider" }
+func (seatTestRiderType) BBox(world.Entity) cube.BBox                 { return cube.BBox{} }
+func (seatTestRiderType) DecodeNBT(map[string]any, *world.EntityData) {}
+func (seatTestRiderType) EncodeNBT(*world.EntityData) map[string]any  { return nil }
+
+type seatTestRider struct {
+	h    *world.EntityHandle
+	data *world.EntityData
+}
+
+func (r *seatTestRider) H() *world.EntityHandle            { return r.h }
+func (r *seatTestRider) Position() mgl64.Vec3              { return r.data.Pos }
+func (r *seatTestRider) Rotation() cube.Rotation           { return r.data.Rot }
+func (r *seatTestRider) EyeHeight() float64                { return 1.62 }
+func (r *seatTestRider) Close() error                      { return nil }
+func (r *seatTestRider) Move(pos mgl64.Vec3, _, _ float64) { r.data.Pos = r.data.Pos.Add(pos) }
+
 func TestBoatNBTRoundTrip(t *testing.T) {
 	data := &world.EntityData{Data: BoatBehaviourConfig{Variant: 8}.New()}
 	nbt := BoatType.EncodeNBT(data)
