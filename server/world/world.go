@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -71,9 +72,13 @@ type World struct {
 	closing      chan struct{}
 	running      sync.WaitGroup
 
+	generatorRunning sync.WaitGroup
+	generatorEnqueue sync.WaitGroup
+
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
-	chunks map[ChunkPos]*Column
+	chunks        map[ChunkPos]*Column
+	chunkRequests map[ChunkPos][]chunkCallback
 
 	// entities holds a map of entities currently loaded and metadata associated
 	// with them, such as the last chunk position they were located in and a
@@ -180,6 +185,8 @@ type generationTask struct {
 	pos ChunkPos
 	col *Column
 }
+
+type chunkCallback func(tx *Tx, col *Column)
 
 // transaction is a type that may be added to the transaction queue of a World.
 // Its Run method is called when the transaction is taken out of the queue.
@@ -388,8 +395,8 @@ func (w *World) EntityRegistry() EntityRegistry {
 // block reads a block from the position passed. If a chunk is not yet loaded
 // at that position, the chunk is loaded, or generated if it could not be found
 // in the world save, and the block returned.
-func (w *World) block(pos cube.Pos) Block {
-	return w.blockInChunk(w.chunk(chunkPosFromBlockPos(pos)), pos)
+func (tx *Tx) block(pos cube.Pos) Block {
+	return tx.World().blockInChunk(tx.chunk(chunkPosFromBlockPos(pos)), pos)
 }
 
 // blockLoaded reads a block from a position only if its chunk is already loaded.
@@ -440,45 +447,55 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 // biome reads the Biome at the position passed. If a chunk is not yet loaded
 // at that position, the chunk is loaded, or generated if it could not be found
 // in the world save, and the Biome returned.
-func (w *World) biome(pos cube.Pos) Biome {
-	if pos.OutOfBounds(w.Range()) {
+func (tx *Tx) biome(pos cube.Pos) Biome {
+	if pos.OutOfBounds(tx.Range()) {
 		// Fast way out.
 		return ocean()
 	}
-	id := int(w.chunk(chunkPosFromBlockPos(pos)).Biome(uint8(pos[0]), int16(pos[1]), uint8(pos[2])))
+	id := int(tx.chunk(chunkPosFromBlockPos(pos)).Biome(uint8(pos[0]), int16(pos[1]), uint8(pos[2])))
 	b, ok := BiomeByID(id)
 	if !ok {
-		w.conf.Log.Error("biome not found by ID", "ID", id)
+		tx.World().conf.Log.Error("biome not found by ID", "ID", id)
 	}
 	return b
 }
 
 // HighestLightBlocker gets the Y value of the highest fully light blocking
-// block at the x and z values passed in the World.
+// block at the x and z values passed in the World. It must not be called from
+// within a transaction; use Tx.HighestLightBlocker instead.
 func (w *World) HighestLightBlocker(x, z int) int {
-	return int(w.chunk(ChunkPos{int32(x >> 4), int32(z >> 4)}).HighestLightBlocker(uint8(x), uint8(z)))
+	y, _ := Call(context.Background(), w, func(tx *Tx) (int, error) {
+		return tx.highestLightBlocker(x, z), nil
+	})
+	return y
+}
+
+// highestLightBlocker gets the Y value of the highest fully light blocking
+// block at the x and z values passed in the World.
+func (tx *Tx) highestLightBlocker(x, z int) int {
+	return int(tx.chunk(ChunkPos{int32(x >> 4), int32(z >> 4)}).HighestLightBlocker(uint8(x), uint8(z)))
 }
 
 // highestBlock looks up the highest non-air block in the World at a specific x
 // and z The y value of the highest block is returned, or 0 if no blocks were
 // present in the column.
-func (w *World) highestBlock(x, z int) int {
-	return int(w.chunk(ChunkPos{int32(x >> 4), int32(z >> 4)}).HighestBlock(uint8(x), uint8(z)))
+func (tx *Tx) highestBlock(x, z int) int {
+	return int(tx.chunk(ChunkPos{int32(x >> 4), int32(z >> 4)}).HighestBlock(uint8(x), uint8(z)))
 }
 
 // highestObstructingBlock returns the highest block in the World at a given x
 // and z that has at least a solid top or bottom face.
-func (w *World) highestObstructingBlock(x, z int) int {
-	yHigh := w.highestBlock(x, z)
-	src := worldSource{w: w}
-	for y := yHigh; y >= w.Range()[0]; y-- {
+func (tx *Tx) highestObstructingBlock(x, z int) int {
+	yHigh := tx.highestBlock(x, z)
+	src := worldSource{tx: tx}
+	for y := yHigh; y >= tx.Range()[0]; y-- {
 		pos := cube.Pos{x, y, z}
-		m := w.block(pos).Model()
+		m := tx.block(pos).Model()
 		if m.FaceSolid(pos, cube.FaceUp, src) || m.FaceSolid(pos, cube.FaceDown, src) {
 			return y
 		}
 	}
-	return w.Range()[0]
+	return tx.Range()[0]
 }
 
 // SetOpts holds several parameters that may be set to disable updates in the
@@ -513,7 +530,8 @@ type SetOpts struct {
 // setBlock should be avoided in situations where performance is critical when
 // needing to set a lot of blocks to the world. BuildStructure may be used
 // instead.
-func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
+func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
+	w := tx.World()
 	if pos.OutOfBounds(w.Range()) {
 		// Fast way out.
 		return
@@ -523,7 +541,7 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	}
 
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
-	c := w.chunk(chunkPosFromBlockPos(pos))
+	c := tx.chunk(chunkPosFromBlockPos(pos))
 
 	rid := w.conf.Blocks.BlockRuntimeID(b)
 	redstoneAfterRelevant := isRedstoneRelevant(b)
@@ -616,12 +634,12 @@ func (w *World) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 // setBiome sets the Biome at the position passed. If a chunk is not yet loaded
 // at that position, the chunk is first loaded or generated if it could not be
 // found in the world save.
-func (w *World) setBiome(pos cube.Pos, b Biome) {
-	if pos.OutOfBounds(w.Range()) {
+func (tx *Tx) setBiome(pos cube.Pos, b Biome) {
+	if pos.OutOfBounds(tx.Range()) {
 		// Fast way out.
 		return
 	}
-	c := w.chunk(chunkPosFromBlockPos(pos))
+	c := tx.chunk(chunkPosFromBlockPos(pos))
 	c.modified = true
 	c.SetBiome(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), uint32(b.EncodeBiome()))
 	c.invalidateNetworkBiomePayload()
@@ -634,12 +652,13 @@ func (w *World) setBiome(pos cube.Pos, b Biome) {
 // will do so within much less time than separate setBlock calls would. The
 // method operates on a per-chunk basis, setting all blocks within a single
 // chunk part of the Structure before moving on to the next chunk.
-func (w *World) buildStructure(pos cube.Pos, s Structure) {
+func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
+	w := tx.World()
 	dim := s.Dimensions()
 	width, height, length := dim[0], dim[1], dim[2]
 	maxX, maxY, maxZ := pos[0]+width, pos[1]+height, pos[2]+length
 	f := func(x, y, z int) Block {
-		return w.block(cube.Pos{pos[0] + x, pos[1] + y, pos[2] + z})
+		return tx.block(cube.Pos{pos[0] + x, pos[1] + y, pos[2] + z})
 	}
 
 	// We approach this on a per-chunk basis, so that we can keep only one chunk
@@ -649,7 +668,7 @@ func (w *World) buildStructure(pos cube.Pos, s Structure) {
 	for chunkX := pos[0] >> 4; chunkX <= maxX>>4; chunkX++ {
 		for chunkZ := pos[2] >> 4; chunkZ <= maxZ>>4; chunkZ++ {
 			chunkPos := ChunkPos{int32(chunkX), int32(chunkZ)}
-			c := w.chunk(chunkPos)
+			c := tx.chunk(chunkPos)
 
 			baseX, baseZ := chunkX<<4, chunkZ<<4
 			for i, sub := range c.Sub() {
@@ -723,12 +742,13 @@ func (w *World) buildStructure(pos cube.Pos, s Structure) {
 // liquid attempts to return a Liquid block at the position passed. This
 // Liquid may be in the foreground or in any other layer. If found, the Liquid
 // is returned. If not, the bool returned is false.
-func (w *World) liquid(pos cube.Pos) (Liquid, bool) {
+func (tx *Tx) liquid(pos cube.Pos) (Liquid, bool) {
+	w := tx.World()
 	if pos.OutOfBounds(w.Range()) {
 		// Fast way out.
 		return nil, false
 	}
-	c := w.chunk(chunkPosFromBlockPos(pos))
+	c := tx.chunk(chunkPosFromBlockPos(pos))
 	x, y, z := uint8(pos[0]), int16(pos[1]), uint8(pos[2])
 
 	id := c.Block(x, y, z, 0)
@@ -757,13 +777,14 @@ func (w *World) liquid(pos cube.Pos) (Liquid, bool) {
 // there already is a Liquid at that position, in which case it will be
 // overwritten. If nil is passed for the Liquid, any Liquid currently present
 // will be removed.
-func (w *World) setLiquid(pos cube.Pos, b Liquid) {
+func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
+	w := tx.World()
 	if pos.OutOfBounds(w.Range()) {
 		// Fast way out.
 		return
 	}
 	chunkPos := chunkPosFromBlockPos(pos)
-	c := w.chunk(chunkPos)
+	c := tx.chunk(chunkPos)
 	if b == nil {
 		w.removeLiquids(c, pos)
 		w.doBlockUpdatesAround(pos)
@@ -844,12 +865,13 @@ func (w *World) removeLiquidOnLayer(c *Column, x uint8, y int16, z, layer uint8)
 
 // additionalLiquid checks if the block at a position has additional liquid on
 // another layer and returns the liquid if so.
-func (w *World) additionalLiquid(pos cube.Pos) (Liquid, bool) {
+func (tx *Tx) additionalLiquid(pos cube.Pos) (Liquid, bool) {
+	w := tx.World()
 	if pos.OutOfBounds(w.Range()) {
 		// Fast way out.
 		return nil, false
 	}
-	c := w.chunk(chunkPosFromBlockPos(pos))
+	c := tx.chunk(chunkPosFromBlockPos(pos))
 	id := c.Block(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), 1)
 
 	b, ok := w.conf.Blocks.BlockByRuntimeID(id)
@@ -865,7 +887,8 @@ func (w *World) additionalLiquid(pos cube.Pos) (Liquid, bool) {
 // the sky and block light. The light value returned is a value in the range
 // 0-15, where 0 means there is no light present, whereas 15 means the block is
 // fully lit.
-func (w *World) light(pos cube.Pos) uint8 {
+func (tx *Tx) light(pos cube.Pos) uint8 {
+	w := tx.World()
 	if pos[1] < w.ra[0] {
 		// Fast way out.
 		return 0
@@ -874,14 +897,19 @@ func (w *World) light(pos cube.Pos) uint8 {
 		// Above the rest of the world, so full skylight.
 		return 15
 	}
-	return w.chunk(chunkPosFromBlockPos(pos)).Light(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
+	c, ok := w.loadedChunk(chunkPosFromBlockPos(pos))
+	if !ok {
+		return 0
+	}
+	return c.Light(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
 }
 
 // skyLight returns the skylight level at the position passed. This light level
 // is not influenced by blocks that emit light, such as torches. The light
 // value, similarly to light, is a value in the range 0-15, where 0 means no
 // light is present.
-func (w *World) skyLight(pos cube.Pos) uint8 {
+func (tx *Tx) skyLight(pos cube.Pos) uint8 {
+	w := tx.World()
 	if pos[1] < w.ra[0] {
 		// Fast way out.
 		return 0
@@ -890,7 +918,7 @@ func (w *World) skyLight(pos cube.Pos) uint8 {
 		// Above the rest of the world, so full skylight.
 		return 15
 	}
-	return w.chunk(chunkPosFromBlockPos(pos)).SkyLight(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
+	return tx.chunk(chunkPosFromBlockPos(pos)).SkyLight(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
 }
 
 // Time returns the current time of the world. The time is incremented every
@@ -975,13 +1003,13 @@ func (w *World) PlayersSleepingPercentage() int32 {
 
 // temperature returns the temperature in the World at a specific position.
 // Higher altitudes and different biomes influence the temperature returned.
-func (w *World) temperature(pos cube.Pos) float64 {
+func (tx *Tx) temperature(pos cube.Pos) float64 {
 	const (
 		tempDrop = 1.0 / 600
 		seaLevel = 64
 	)
 	diff := max(pos[1]-seaLevel, 0)
-	return w.biome(pos).Temperature() - float64(diff)*tempDrop
+	return tx.biome(pos).Temperature() - float64(diff)*tempDrop
 }
 
 // addParticle spawns a Particle at a given position in the World. Viewers that
@@ -1028,7 +1056,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	w.entities[handle] = state
 	handle.state = state
 
-	c := w.chunk(pos)
+	c := tx.chunk(pos)
 	c.addEntity(handle)
 	c.modified = true
 	w.addEntityColumn(pos, c)
@@ -1057,7 +1085,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	pos := state.pos
 	w.Handler().HandleEntityDespawn(tx, e)
 
-	c := w.chunk(pos)
+	c := tx.chunk(pos)
 	if c.removeEntity(handle) {
 		c.modified = true
 	}
@@ -1545,6 +1573,8 @@ func (w *World) close() {
 	w.scheduleMu.Unlock()
 
 	w.scheduling.Wait()
+	w.generatorEnqueue.Wait()
+	w.generatorRunning.Wait()
 	w.scheduleMu.Lock()
 	w.closeAcceptingEntityTasks.Store(true)
 	w.scheduleMu.Unlock()
@@ -1553,6 +1583,7 @@ func (w *World) close() {
 		w.Handler().HandleClose(tx)
 		tx.runDeferred()
 		w.Handle(NopHandler{})
+		clear(w.chunkRequests)
 
 		w.save(w.closeChunk)(tx)
 	})
@@ -1681,15 +1712,23 @@ func showEntity(e Entity, viewer Viewer) {
 	viewer.ViewEntityArmour(e)
 }
 
+// loadedChunk returns chunk & true only if chunk at position passed is loaded.
+func (w *World) loadedChunk(pos ChunkPos) (*Column, bool) {
+	c, ok := w.chunks[pos]
+	return c, ok && c.Ready() && c.lightReady.Load()
+}
+
 // chunk reads a chunk from the position passed. If a chunk at that position is
 // not yet loaded, the chunk is loaded from the provider, or generated if it
 // did not yet exist. Additionally, chunks newly loaded have the light in them
 // calculated before they are returned.
-func (w *World) chunk(pos ChunkPos) *Column {
+func (tx *Tx) chunk(pos ChunkPos) *Column {
+	w := tx.World()
 	c, ok := w.chunks[pos]
 	if ok {
 		c.waitReady()
 		c.ensureLight(w, pos)
+		w.finishChunkRequest(tx, pos, c)
 		return c
 	}
 	c, err := w.loadChunk(pos)
@@ -1697,31 +1736,11 @@ func (w *World) chunk(pos ChunkPos) *Column {
 		c.waitReady()
 	}
 	c.ensureLight(w, pos)
+	w.finishChunkRequest(tx, pos, c)
 	if err != nil {
 		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 	}
 	return c
-}
-
-// chunkIfReady attempts to return a chunk from the position passed. If the chunk is not yet generated, the bool
-// returned will be false and the chunk will be generated asynchronously.
-func (w *World) chunkIfReady(pos ChunkPos) (*Column, bool) {
-	if c, ok := w.chunks[pos]; ok {
-		if !c.Ready() {
-			return c, false
-		}
-		c.ensureLight(w, pos)
-		return c, true
-	}
-	c, err := w.loadChunk(pos)
-	if !c.Ready() {
-		return c, false
-	}
-	c.ensureLight(w, pos)
-	if err != nil {
-		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
-	}
-	return c, true
 }
 
 func (w *World) chunkLoaded(pos ChunkPos) bool {
@@ -1748,13 +1767,11 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	case err == nil:
 		// Case 1: Column successfully loaded from persistent storage.
 		col := w.columnFrom(column, pos)
+		col.fillLight(pos)
 		if _, ok := w.chunks[pos]; !ok {
 			w.chunkCount.Add(1)
 		}
 		w.chunks[pos] = col
-
-		// Mark the column ready immediately.
-		col.markReady()
 
 		// Register all entities contained in this column into the world.
 		w.set.Lock()
@@ -1800,6 +1817,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		// Case 3: Unexpected error occurred (I/O failure, corruption, etc.)
 		// To avoid deadlocks, return a ready empty column and the error.
 		col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+		col.fillLight(pos)
 		col.markReady()
 		// Keep the placeholder column tracked so callers don't mutate an untracked chunk on errors.
 		if _, ok := w.chunks[pos]; !ok {
@@ -1810,8 +1828,49 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 	}
 }
 
+// loadChunkAsync loads or generates the chunk at pos in the background,
+// calling callback once ready. It returns false if it could not be scheduled.
+func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) bool {
+	if w.closed.Load() {
+		return false
+	}
+	if c, ok := w.chunks[pos]; ok {
+		if c.Ready() {
+			c.ensureLight(w, pos)
+			callback(tx, c)
+		} else {
+			w.chunkRequests[pos] = append(w.chunkRequests[pos], callback)
+		}
+		return true
+	}
+
+	w.chunkRequests[pos] = append(w.chunkRequests[pos], callback)
+	c, err := w.loadChunk(pos)
+	if err != nil {
+		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+	}
+	if c.Ready() {
+		c.ensureLight(w, pos)
+		w.finishChunkRequest(tx, pos, c)
+	}
+	return true
+}
+
+// finishChunkRequest publishes a ready chunk to all loaders waiting for it.
+// It must run on the world owner.
+func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
+	callbacks := w.chunkRequests[pos]
+	if len(callbacks) == 0 || !c.Ready() || w.closed.Load() {
+		return
+	}
+	delete(w.chunkRequests, pos)
+	for _, callback := range callbacks {
+		callback(tx, c)
+	}
+}
+
 // generateChunkAsync schedules an asynchronous chunk generation task for the given position.
-// It ensures that no new tasks are enqueued once the world begins shutting down (w.closing is closed).
+// It ensures that no new tasks are enqueued once the world begins shutting down.
 // If shutdown is in progress, the column is immediately marked as ready to avoid deadlocks.
 //
 // This prevents chunks from being stuck in a "not ready" state during shutdown,
@@ -1824,7 +1883,7 @@ func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 	}
 
 	select {
-	case <-w.closing:
+	case <-w.closeStarted:
 		// The world is closing — do not enqueue any new generation tasks.
 		// Mark the column as ready immediately, ensuring waiters do not block.
 		col.markReady()
@@ -1837,6 +1896,7 @@ func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 		// The queue is full — fall back to asynchronous enqueue.
 		// This allows us to avoid blocking the main thread while still handling
 		// backpressure. enqueueGeneration itself respects shutdown signals.
+		w.generatorEnqueue.Add(1)
 		go w.enqueueGeneration(task)
 		w.handleGeneratorBackpressure()
 	}
@@ -1846,8 +1906,9 @@ func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 // If the world is already shutting down, the column is immediately marked as ready
 // so that no goroutine waiting on it will hang indefinitely.
 func (w *World) enqueueGeneration(task generationTask) {
+	defer w.generatorEnqueue.Done()
 	select {
-	case <-w.closing:
+	case <-w.closeStarted:
 		// World is closing — skip enqueue, mark column ready.
 		task.col.markReady()
 	case w.generatorQueue <- task:
@@ -1864,6 +1925,7 @@ func (w *World) enqueueGeneration(task generationTask) {
 //     columns are marked ready and no goroutine remains blocked waiting for generation.
 func (w *World) generatorWorker() {
 	defer w.running.Done()
+	defer w.generatorRunning.Done()
 
 	for {
 		select {
@@ -1871,7 +1933,7 @@ func (w *World) generatorWorker() {
 			// A new generation task is available — process it immediately.
 			w.runGenerationTask(task)
 
-		case <-w.closing:
+		case <-w.closeStarted:
 			// Shutdown signal received — mark all remaining queued columns as ready.
 			w.drainGenerationQueue()
 			return
@@ -1899,7 +1961,14 @@ func (w *World) runGenerationTask(task generationTask) {
 				"Z", task.pos[1],
 			)
 		}
+		task.col.fillLight(task.pos)
 		task.col.markReady()
+		if !w.closed.Load() {
+			w.Do(func(tx *Tx) {
+				task.col.ensureLight(w, task.pos)
+				w.finishChunkRequest(tx, task.pos, task.col)
+			})
+		}
 	}()
 
 	// Perform the actual chunk generation.
@@ -2105,7 +2174,7 @@ func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, bloc
 		return 0, 0, 0
 	}
 	for pos, c := range w.chunks {
-		if len(c.viewers) != 0 || len(c.loaders) != 0 {
+		if !c.Ready() || len(w.chunkRequests[pos]) != 0 || len(c.viewers) != 0 || len(c.loaders) != 0 {
 			continue
 		}
 		chunksCollected++
@@ -2146,10 +2215,11 @@ type Column struct {
 	viewers map[Viewer]struct{}
 	loaders []*Loader
 
-	ready      atomic.Bool
-	readyCh    chan struct{}
-	lightOnce  sync.Once
-	lightReady atomic.Bool
+	ready           atomic.Bool
+	readyCh         chan struct{}
+	lightOnce       sync.Once
+	lightSpreadOnce sync.Once
+	lightReady      atomic.Bool
 }
 
 func (w *World) addActiveColumn(pos ChunkPos, col *Column) {
@@ -2495,11 +2565,18 @@ func (c *Column) markReady() {
 	close(c.readyCh)
 }
 
-// ensureLight fills and spreads light for the Column once.
-func (c *Column) ensureLight(w *World, pos ChunkPos) {
+// fillLight calculates a column's own light. It is safe to run on a generation worker before readiness is published.
+func (c *Column) fillLight(pos ChunkPos) {
 	c.lightOnce.Do(func() {
 		chunk.LightArea([]*chunk.Chunk{c.Chunk}, int(pos[0]), int(pos[1])).Fill()
 		c.lightReady.Store(true)
+	})
+}
+
+// ensureLight fills the column and spreads it to ready neighbours once on the world owner.
+func (c *Column) ensureLight(w *World, pos ChunkPos) {
+	c.fillLight(pos)
+	c.lightSpreadOnce.Do(func() {
 		w.calculateLight(pos)
 	})
 }

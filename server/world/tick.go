@@ -103,7 +103,7 @@ func (t ticker) tick(tx *Tx) {
 	if resolveSpawnY {
 		// Vanilla will set the spawn position's Y value to max to indicate that
 		// the player should spawn at the highest position in the world.
-		y := w.highestObstructingBlock(spawnX, spawnZ) + 1
+		y := tx.highestObstructingBlock(spawnX, spawnZ) + 1
 		w.set.Lock()
 		if s := w.set.Spawn; s[0] == spawnX && s[2] == spawnZ && s[1] > tx.Range()[1] && w.Dimension() == Overworld {
 			w.set.Spawn[1] = y
@@ -173,7 +173,7 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 		if ticker, ok := tx.Block(pos).(NeighbourUpdateTicker); ok {
 			ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 		}
-		if liquid, ok := tx.World().additionalLiquid(pos); ok {
+		if liquid, ok := tx.additionalLiquid(pos); ok {
 			if ticker, ok := liquid.(NeighbourUpdateTicker); ok {
 				ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 			}
@@ -249,7 +249,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
 		}
 		for _, pos := range blockEntities {
-			tb := tx.World().chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
+			tb := tx.chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
 			tb.Tick(tick, pos, tx)
 		}
 		w.scratchLoaderAreas = areas[:0]
@@ -304,7 +304,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		}
 	}
 	for _, pos := range blockEntities {
-		tb := tx.World().chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
+		tb := tx.chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
 		tb.Tick(tick, pos, tx)
 	}
 
@@ -408,7 +408,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		oldPos := state.pos
 		state.pos = chunkPos
 
-		newChunk := w.chunk(chunkPos)
+		newChunk := tx.chunk(chunkPos)
 		newChunk.addEntity(handle)
 		newChunk.modified = true
 		w.addEntityColumn(chunkPos, newChunk)
@@ -583,7 +583,7 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64) {
 		b := tx.Block(t.pos)
 		if ticker, ok := b.(ScheduledTicker); ok && w.conf.Blocks.BlockHash(b) == t.bhash {
 			ticker.ScheduledTick(t.pos, tx, w.r)
-		} else if liquid, ok := w.additionalLiquid(t.pos); ok && w.conf.Blocks.BlockHash(liquid) == t.bhash {
+		} else if liquid, ok := tx.additionalLiquid(t.pos); ok && w.conf.Blocks.BlockHash(liquid) == t.bhash {
 			if ticker, ok := liquid.(ScheduledTicker); ok {
 				ticker.ScheduledTick(t.pos, tx, w.r)
 			}

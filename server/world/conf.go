@@ -166,6 +166,7 @@ func (conf Config) New() *World {
 		entities:          make(map[*EntityHandle]*entityState),
 		viewers:           make(map[*Loader]Viewer),
 		chunks:            make(map[ChunkPos]*Column),
+		chunkRequests:     make(map[ChunkPos][]chunkCallback),
 		queueClosing:      make(chan struct{}),
 		closeStarted:      make(chan struct{}),
 		closing:           make(chan struct{}),
@@ -188,6 +189,7 @@ func (conf Config) New() *World {
 	if !conf.Synchronous {
 		w.queueing.Add(1)
 		w.running.Add(conf.GeneratorWorkers + 2)
+		w.generatorRunning.Add(conf.GeneratorWorkers)
 
 		go t.tickLoop(w)
 		go w.autoSave()

@@ -1,10 +1,11 @@
 package world
 
 import (
-	"github.com/go-gl/mathgl/mgl64"
 	"maps"
 	"math"
 	"sync"
+
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 var loaderOffsetCache sync.Map
@@ -21,6 +22,7 @@ type Loader struct {
 	pos       ChunkPos
 	loadQueue []ChunkPos
 	loaded    map[ChunkPos]*Column
+	pending   map[ChunkPos]struct{}
 
 	activeRadius   int32
 	activeRadiusSq int64
@@ -33,7 +35,7 @@ type Loader struct {
 // The Viewer passed will handle the loading of chunks, including the viewing of entities that were loaded in
 // those chunks.
 func NewLoader(chunkRadius int, world *World, v Viewer) *Loader {
-	l := &Loader{r: chunkRadius, loaded: make(map[ChunkPos]*Column), viewer: v}
+	l := &Loader{r: chunkRadius, loaded: make(map[ChunkPos]*Column), pending: make(map[ChunkPos]struct{}), viewer: v}
 	l.world(world)
 	return l
 }
@@ -64,6 +66,7 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 		<-old.exec(removeLoaded)
 	}
 	clear(l.loaded)
+	clear(l.pending)
 	old.viewerMu.Lock()
 	delete(old.viewers, l)
 	old.viewerMu.Unlock()
@@ -95,39 +98,73 @@ func (l *Loader) Move(tx *Tx, pos mgl64.Vec3) {
 	l.populateLoadQueue()
 }
 
-// Load loads n chunks around the centre of the chunk, starting with the middle and working outwards. For
-// every chunk loaded, the Viewer passed through construction in New has its ViewChunk method called.
-// Load does nothing for n <= 0.
+// Load queues up to n chunks around the loader's centre, from the middle outwards, to be loaded in
+// the background. The Viewer's ViewChunk is called for each chunk once ready, which may be after Load
+// returns. Load does nothing for n <= 0.
 func (l *Loader) Load(tx *Tx, n int) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if l.closed || l.w == nil {
-		return
-	}
+	l.mu.RLock()
 	queueLen := len(l.loadQueue)
-	loaded := 0
-	processed := 0
-	for loaded < n && processed < queueLen {
+	l.mu.RUnlock()
+	queued := 0
+	for processed := 0; queued < n && processed < queueLen; processed++ {
+		l.mu.Lock()
+		if l.closed || l.w == nil || l.w != tx.World() {
+			l.mu.Unlock()
+			return
+		}
 		if len(l.loadQueue) == 0 {
+			l.mu.Unlock()
 			break
 		}
 		pos := l.loadQueue[0]
 		l.loadQueue = l.loadQueue[1:]
-		processed++
-
-		c, ok := tx.w.chunkIfReady(pos)
-		if !ok {
+		if _, pending := l.pending[pos]; pending {
 			l.loadQueue = append(l.loadQueue, pos)
+			l.mu.Unlock()
 			continue
 		}
+		w := l.w
+		l.pending[pos] = struct{}{}
+		l.loadQueue = append(l.loadQueue, pos)
+		l.mu.Unlock()
+		queued++
 
-		l.viewer.ViewChunk(pos, l.w.Dimension(), c)
-		l.w.addViewer(tx, pos, c, l)
-
-		l.loaded[pos] = c
-		loaded++
+		if !w.loadChunkAsync(tx, pos, func(tx2 *Tx, col *Column) {
+			l.viewChunk(tx2, pos, col)
+		}) {
+			l.mu.Lock()
+			delete(l.pending, pos)
+			l.queueLoad(pos)
+			l.mu.Unlock()
+		}
 	}
+}
+
+// viewChunk passes a loaded chunk to the Loader's Viewer. If the chunk failed
+// to load, it is queued to be loaded again.
+func (l *Loader) viewChunk(tx *Tx, pos ChunkPos, c *Column) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.closed || l.viewer == nil || l.w == nil || l.w != tx.World() {
+		return
+	}
+	delete(l.pending, pos)
+	l.removeQueued(pos)
+	if c == nil {
+		l.queueLoad(pos)
+		return
+	}
+	if _, ok := l.loaded[pos]; ok {
+		return
+	}
+	if !l.withinLoadRadius(pos) {
+		return
+	}
+	l.viewer.ViewChunk(pos, l.w.Dimension(), c)
+	l.w.addViewer(tx, pos, c, l)
+
+	l.loaded[pos] = c
 }
 
 // Chunk attempts to return a chunk at the given ChunkPos. If the chunk is not loaded, the second return value will
@@ -149,6 +186,7 @@ func (l *Loader) Close(tx *Tx) {
 		tx.World().removeViewer(tx, pos, l)
 	}
 	l.loaded = map[ChunkPos]*Column{}
+	clear(l.pending)
 
 	l.w.viewerMu.Lock()
 	delete(l.w.viewers, l)
@@ -169,12 +207,51 @@ func (l *Loader) world(new *World) {
 // evictUnused gets rid of chunks in the loaded map which are no longer within the chunk radius of the loader,
 // and should therefore be removed.
 func (l *Loader) evictUnused(tx *Tx) {
-	maxDistanceSquared := int64(l.r * l.r)
 	for pos := range l.loaded {
-		diffX, diffZ := int64(pos[0]-l.pos[0]), int64(pos[1]-l.pos[1])
-		if diffX*diffX+diffZ*diffZ > maxDistanceSquared {
+		diffX, diffZ := float64(pos[0])-float64(l.pos[0]), float64(pos[1])-float64(l.pos[1])
+		if math.Hypot(diffX, diffZ) > float64(l.r) {
 			delete(l.loaded, pos)
 			l.w.removeViewer(tx, pos, l)
+		}
+	}
+}
+
+// withinLoadRadius checks if a chunk position is within the Loader's radius.
+func (l *Loader) withinLoadRadius(pos ChunkPos) bool {
+	return chunkDistance(pos, l.pos) <= int32(l.r)
+}
+
+// chunkDistance returns the rounded distance between two chunk positions.
+func chunkDistance(a, b ChunkPos) int32 {
+	diffX, diffZ := float64(a[0])-float64(b[0]), float64(a[1])-float64(b[1])
+	return int32(math.Round(math.Sqrt(diffX*diffX + diffZ*diffZ)))
+}
+
+// queueLoad adds pos back to the load queue, unless it is already loaded,
+// queued, or no longer within the radius of the Loader.
+func (l *Loader) queueLoad(pos ChunkPos) {
+	if l.closed || l.w == nil || !l.withinLoadRadius(pos) {
+		return
+	}
+	if _, ok := l.loaded[pos]; ok {
+		return
+	}
+	if _, ok := l.pending[pos]; ok {
+		return
+	}
+	for _, queued := range l.loadQueue {
+		if queued == pos {
+			return
+		}
+	}
+	l.loadQueue = append(l.loadQueue, pos)
+}
+
+func (l *Loader) removeQueued(pos ChunkPos) {
+	for i, queued := range l.loadQueue {
+		if queued == pos {
+			l.loadQueue = append(l.loadQueue[:i], l.loadQueue[i+1:]...)
+			return
 		}
 	}
 }
@@ -187,6 +264,9 @@ func (l *Loader) populateLoadQueue() {
 	for _, offset := range loaderOffsets(l.r) {
 		pos := ChunkPos{offset[0] + l.pos[0], offset[1] + l.pos[1]}
 		if _, ok := l.loaded[pos]; ok {
+			continue
+		}
+		if _, ok := l.pending[pos]; ok {
 			continue
 		}
 		l.loadQueue = append(l.loadQueue, pos)
@@ -202,12 +282,11 @@ func loaderOffsets(radius int) []ChunkPos {
 	queue := make(map[int32][]ChunkPos, radius+1)
 	for x := -r; x <= r; x++ {
 		for z := -r; z <= r; z++ {
-			distance := math.Sqrt(float64(x*x) + float64(z*z))
-			chunkDistance := int32(math.Round(distance))
-			if chunkDistance > r {
+			distance := int32(math.Round(math.Hypot(float64(x), float64(z))))
+			if distance > r {
 				continue
 			}
-			queue[chunkDistance] = append(queue[chunkDistance], ChunkPos{x, z})
+			queue[distance] = append(queue[distance], ChunkPos{x, z})
 		}
 	}
 
