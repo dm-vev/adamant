@@ -130,13 +130,7 @@ func (e *Ent) SetOnFire(duration time.Duration) {
 
 	e.data.FireDuration = duration
 	if stateChanged {
-		viewers := e.tx.Viewers(e.data.Pos)
-		// The viewer list comes from a pooled buffer; releasing it after notifying observers keeps the hot path
-		// allocation-free while toggling fire particles on and off.
-		for _, v := range viewers {
-			v.ViewEntityState(e)
-		}
-		e.tx.ReleaseViewers(viewers)
+		e.updateState()
 	}
 }
 
@@ -165,9 +159,25 @@ func (e *Ent) NameTag() string {
 // empty string is passed.
 func (e *Ent) SetNameTag(s string) {
 	e.data.Name = s
-	viewers := e.tx.Viewers(e.Position())
-	// As with other broadcast helpers, we intentionally recycle the viewer slice once the update is sent to
-	// minimise GC churn when name tags are toggled rapidly (e.g. scoreboard updates).
+	e.updateState()
+}
+
+// AlwaysShowNameTag returns whether the name tag of the entity is shown at all
+// distances instead of only when the entity is looked at from up close.
+func (e *Ent) AlwaysShowNameTag() bool {
+	return e.data.AlwaysShowNameTag
+}
+
+// SetAlwaysShowNameTag changes whether the name tag of the entity is shown at
+// all distances instead of only when the entity is looked at from up close.
+func (e *Ent) SetAlwaysShowNameTag(alwaysShow bool) {
+	e.data.AlwaysShowNameTag = alwaysShow
+	e.updateState()
+}
+
+// updateState updates the state of the entity for all viewers of the entity.
+func (e *Ent) updateState() {
+	viewers := e.tx.Viewers(e.data.Pos)
 	for _, v := range viewers {
 		v.ViewEntityState(e)
 	}
