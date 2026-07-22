@@ -42,7 +42,7 @@ func (o Obsidian) EncodeBlock() (string, map[string]any) {
 func (o Obsidian) BreakInfo() BreakInfo {
 	return newBreakInfo(35, func(t item.Tool) bool {
 		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierDiamond.HarvestLevel
-	}, pickaxeEffective, oneOf(o)).withBlastResistance(6000)
+	}, pickaxeEffective, oneOf(o)).withBlastResistance(1200)
 }
 
 // Frame returns true if the obsidian block can be used as a frame for the given dimension's portal.

@@ -94,7 +94,7 @@ func (d Dropper) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *worl
 
 // BreakInfo returns the dropper's breaking properties and drops its contents when broken.
 func (d Dropper) BreakInfo() BreakInfo {
-	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(Dropper{})).withBlastResistance(17.5).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) {
+	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(Dropper{})).withBlastResistance(3.5).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) {
 		for _, stack := range d.Inventory(tx, pos).Clear() {
 			dropItem(tx, stack, pos.Vec3())
 		}

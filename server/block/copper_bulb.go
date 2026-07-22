@@ -87,7 +87,7 @@ func (b CopperBulb) Strip() (world.Block, world.Sound, bool) {
 func (b CopperBulb) BreakInfo() BreakInfo {
 	return newBreakInfo(3, func(t item.Tool) bool {
 		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierStone.HarvestLevel
-	}, pickaxeEffective, oneOf(b)).withBlastResistance(30)
+	}, pickaxeEffective, oneOf(b)).withBlastResistance(6)
 }
 
 // CanOxidate returns whether the bulb can still oxidise.

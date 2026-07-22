@@ -39,7 +39,7 @@ type Lodestone struct {
 
 // BreakInfo ...
 func (l Lodestone) BreakInfo() BreakInfo {
-	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(l)).withBlastResistance(18)
+	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(l)).withBlastResistance(3.5)
 }
 
 // EncodeItem ...

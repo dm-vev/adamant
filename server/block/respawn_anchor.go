@@ -36,7 +36,7 @@ func (r RespawnAnchor) EncodeBlock() (string, map[string]any) {
 func (r RespawnAnchor) BreakInfo() BreakInfo {
 	return newBreakInfo(50, func(t item.Tool) bool {
 		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierDiamond.HarvestLevel
-	}, pickaxeEffective, oneOf(r)).withBlastResistance(6000)
+	}, pickaxeEffective, oneOf(r)).withBlastResistance(1200)
 }
 
 // Activate ...

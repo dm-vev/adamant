@@ -20,7 +20,7 @@ type Conduit struct {
 
 // BreakInfo ...
 func (c Conduit) BreakInfo() BreakInfo {
-	return newBreakInfo(3, pickaxeHarvestable, pickaxeEffective, oneOf(c)).withBlastResistance(15)
+	return newBreakInfo(3, pickaxeHarvestable, pickaxeEffective, oneOf(c)).withBlastResistance(3)
 }
 
 // EncodeItem ...
@@ -195,7 +195,7 @@ type NetherReactor struct {
 
 // BreakInfo ...
 func (n NetherReactor) BreakInfo() BreakInfo {
-	return newBreakInfo(3, pickaxeHarvestable, pickaxeEffective, oneOf(n)).withBlastResistance(30)
+	return newBreakInfo(3, pickaxeHarvestable, pickaxeEffective, oneOf(n)).withBlastResistance(3)
 }
 
 // EncodeItem ...

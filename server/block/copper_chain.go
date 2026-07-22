@@ -44,7 +44,7 @@ func (c CopperChain) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *
 func (c CopperChain) BreakInfo() BreakInfo {
 	return newBreakInfo(3, func(t item.Tool) bool {
 		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierStone.HarvestLevel
-	}, pickaxeEffective, oneOf(c)).withBlastResistance(30)
+	}, pickaxeEffective, oneOf(c)).withBlastResistance(6)
 }
 
 // Wax waxes the copper chain to stop it from oxidising further.

@@ -45,7 +45,7 @@ func (c Cobweb) BreakInfo() BreakInfo {
 			return []item.Stack{item.NewStack(item.String{}, 1)}
 		}
 		return nil
-	}).withBlastResistance(4)
+	})
 }
 
 // HasLiquidDrops ...

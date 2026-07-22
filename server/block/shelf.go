@@ -35,7 +35,7 @@ func (s Shelf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 
 // BreakInfo ...
 func (s Shelf) BreakInfo() BreakInfo {
-	return newBreakInfo(2.5, alwaysHarvestable, axeEffective, oneOf(s)).withBlastResistance(15)
+	return newBreakInfo(2.5, alwaysHarvestable, axeEffective, oneOf(s)).withBlastResistance(3)
 }
 
 // FlammabilityInfo ...

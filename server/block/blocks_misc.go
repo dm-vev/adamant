@@ -66,7 +66,7 @@ type HeavyCore struct {
 
 // BreakInfo ...
 func (h HeavyCore) BreakInfo() BreakInfo {
-	return newBreakInfo(10, pickaxeHarvestable, pickaxeEffective, oneOf(h)).withBlastResistance(30)
+	return newBreakInfo(10, pickaxeHarvestable, pickaxeEffective, oneOf(h)).withBlastResistance(1200)
 }
 
 // EncodeItem ...
@@ -94,7 +94,7 @@ func (GlowingObsidian) LightEmissionLevel() uint8 {
 func (o GlowingObsidian) BreakInfo() BreakInfo {
 	return newBreakInfo(35, func(t item.Tool) bool {
 		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierDiamond.HarvestLevel
-	}, pickaxeEffective, oneOf(o)).withBlastResistance(6000)
+	}, pickaxeEffective, oneOf(o)).withBlastResistance(1200)
 }
 
 // EncodeItem ...
