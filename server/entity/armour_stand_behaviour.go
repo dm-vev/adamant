@@ -3,7 +3,6 @@ package entity
 import (
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
@@ -100,8 +99,8 @@ func (a *ArmourStandBehaviour) tick(e *Ent, tx *world.Tx) {
 }
 
 // Explode ...
-func (a *ArmourStandBehaviour) Explode(e *Ent, src mgl64.Vec3, impact float64, config block.ExplosionConfig) {
-	a.passive.Explode(e, src, impact, config)
+func (a *ArmourStandBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
+	a.passive.Explode(e, src, impact)
 }
 
 // AcceptItem ...

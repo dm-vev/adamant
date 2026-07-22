@@ -52,7 +52,10 @@ type (
 	}
 
 	// ExplosionDamageSource is used for damage caused by an explosion.
-	ExplosionDamageSource struct{}
+	ExplosionDamageSource struct {
+		// Source is the source of the explosion that dealt the damage.
+		Source world.ExplosionSource
+	}
 	// WindChargeDamageSource is used for damage caused by a wind charge burst.
 	WindChargeDamageSource struct{}
 )

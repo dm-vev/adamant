@@ -73,9 +73,12 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 		tx.SetBlock(pos, nil, nil)
 		notifyComparatorUpdate(pos, tx)
 		ExplosionConfig{
-			Size:      5,
 			SpawnFire: true,
-		}.Explode(tx, pos.Vec3Centre())
+		}.Explode(tx, world.BlockExplosionSource{
+			Block:         r,
+			Pos:           pos,
+			ExplosionSize: 5,
+		})
 	}
 
 	return false

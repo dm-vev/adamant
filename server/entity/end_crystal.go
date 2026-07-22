@@ -70,11 +70,11 @@ func (e *EndCrystal) Destroy(tx *world.Tx, src world.DamageSource, _ world.Entit
 }
 
 // Explode removes the end crystal when an explosion impacts it.
-func (e *EndCrystal) Explode(_ mgl64.Vec3, impact float64, _ block.ExplosionConfig) {
+func (e *EndCrystal) Explode(src world.ExplosionSource, impact float64) {
 	if impact <= 0 {
 		return
 	}
-	_ = e.Destroy(e.tx, world.DamageSource(ExplosionDamageSource{}), nil)
+	_ = e.Destroy(e.tx, ExplosionDamageSource{Source: src}, nil)
 }
 
 // ShowBase reports if the crystal should render its bedrock base.
@@ -150,7 +150,10 @@ func (b *EndCrystalBehaviour) Destroy(e *Ent, tx *world.Tx) bool {
 		return false
 	}
 	b.exploded = true
-	block.ExplosionConfig{Size: b.explosionSize, SpawnFire: true, ItemDropChance: 1}.Explode(tx, e.Position())
+	block.ExplosionConfig{SpawnFire: true, ItemDropChance: 1}.Explode(tx, world.EntityExplosionSource{
+		Entity:        e,
+		ExplosionSize: b.explosionSize,
+	})
 	_ = e.CloseIn(tx)
 	return true
 }

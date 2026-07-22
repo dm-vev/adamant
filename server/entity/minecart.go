@@ -153,8 +153,8 @@ func (b *MinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 
 // Explode adds velocity to the minecart when hit by an explosion.
-func (b *MinecartBehaviour) Explode(e *Ent, src mgl64.Vec3, impact float64, _ block.ExplosionConfig) {
-	delta := e.data.Pos.Sub(src)
+func (b *MinecartBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
+	delta := e.data.Pos.Sub(src.Position())
 	if delta.LenSqr() == 0 {
 		// Avoid NaNs when the explosion originates exactly at the minecart position.
 		return

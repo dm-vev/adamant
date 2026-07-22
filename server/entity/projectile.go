@@ -135,8 +135,8 @@ func (lt *ProjectileBehaviour) Owner() *world.EntityHandle {
 
 // Explode adds velocity to a projectile to blast it away from the explosion's
 // source.
-func (lt *ProjectileBehaviour) Explode(e *Ent, src mgl64.Vec3, impact float64, _ block.ExplosionConfig) {
-	delta := e.Position().Sub(src)
+func (lt *ProjectileBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
+	delta := e.Position().Sub(src.Position())
 	if delta.LenSqr() == 0 {
 		// Avoid NaNs when the explosion originates exactly at the projectile position.
 		return
