@@ -24,7 +24,7 @@ func (endCrystalType) EncodeEntity() string { return "minecraft:ender_crystal" }
 func (endCrystalType) NetworkEncodeEntity() string { return "minecraft:ender_crystal" }
 
 func (endCrystalType) BBox(world.Entity) cube.BBox {
-	return cube.Box(-0.5, 0, -0.5, 0.5, 2, 0.5)
+	return cube.Box(-1, 0, -1, 1, 2, 1)
 }
 
 func (endCrystalType) DecodeNBT(m map[string]any, data *world.EntityData) {
@@ -32,13 +32,18 @@ func (endCrystalType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	if _, ok := m["ShowBottom"]; ok {
 		conf.ShowBase = nbtconv.Bool(m, "ShowBottom")
 	}
-	if _, ok := m["BeamTargetX"]; ok {
-		target := mgl64.Vec3{
-			float64(nbtconv.Int32(m, "BeamTargetX")),
-			float64(nbtconv.Int32(m, "BeamTargetY")),
-			float64(nbtconv.Int32(m, "BeamTargetZ")),
+	conf.ExplosionSize = nbtconv.Float64(m, "ExplosionSize")
+	if _, hasX := m["BlockTargetX"]; hasX {
+		if _, hasY := m["BlockTargetY"]; hasY {
+			if _, hasZ := m["BlockTargetZ"]; hasZ {
+				target := mgl64.Vec3{
+					float64(nbtconv.Int32(m, "BlockTargetX")),
+					float64(nbtconv.Int32(m, "BlockTargetY")),
+					float64(nbtconv.Int32(m, "BlockTargetZ")),
+				}
+				conf.BeamTarget = &target
+			}
 		}
-		conf.BeamTarget = &target
 	}
 	data.Data = conf.New()
 }
@@ -46,15 +51,13 @@ func (endCrystalType) DecodeNBT(m map[string]any, data *world.EntityData) {
 func (endCrystalType) EncodeNBT(data *world.EntityData) map[string]any {
 	behaviour := data.Data.(*EndCrystalBehaviour)
 	m := map[string]any{
-		"ShowBottom": uint8(0),
+		"ShowBottom":    boolByte(behaviour.ShowBase()),
+		"ExplosionSize": behaviour.explosionSize,
 	}
-	if behaviour.ShowBase() {
-		m["ShowBottom"] = uint8(1)
-	}
-	if target, ok := behaviour.BeamTarget(); ok {
-		m["BeamTargetX"] = int32(target[0])
-		m["BeamTargetY"] = int32(target[1])
-		m["BeamTargetZ"] = int32(target[2])
+	if target, ok := behaviour.beamTargetPos(); ok {
+		m["BlockTargetX"] = int32(target[0])
+		m["BlockTargetY"] = int32(target[1])
+		m["BlockTargetZ"] = int32(target[2])
 	}
 	return m
 }
@@ -64,9 +67,9 @@ type EndCrystal struct {
 	*Ent
 }
 
-// Destroy destroys the end crystal, triggering its explosion behaviour.
+// Destroy destroys the end crystal, triggering its explosion behaviour unless it was destroyed by the void.
 func (e *EndCrystal) Destroy(tx *world.Tx, src world.DamageSource, _ world.Entity) bool {
-	return e.behaviour().Destroy(e.Ent, tx)
+	return e.behaviour().Destroy(e.Ent, tx, src)
 }
 
 // Explode removes the end crystal when an explosion impacts it.
@@ -112,18 +115,16 @@ func (conf EndCrystalBehaviourConfig) Apply(data *world.EntityData) {
 
 // New creates a new EndCrystalBehaviour from the config.
 func (conf EndCrystalBehaviourConfig) New() *EndCrystalBehaviour {
-	stationary := conf.Stationary.New()
-	size := conf.ExplosionSize
-	if size == 0 {
-		size = 6
+	if conf.ExplosionSize == 0 {
+		conf.ExplosionSize = 6
 	}
 	behaviour := &EndCrystalBehaviour{
-		stationary:    stationary,
-		explosionSize: size,
+		stationary:    conf.Stationary.New(),
+		explosionSize: conf.ExplosionSize,
 		showBase:      conf.ShowBase,
 	}
 	if conf.BeamTarget != nil {
-		behaviour.beamTarget = *conf.BeamTarget
+		behaviour.beamTarget = cube.PosFromVec3(*conf.BeamTarget)
 		behaviour.hasBeamTarget = true
 	}
 	return behaviour
@@ -134,27 +135,36 @@ type EndCrystalBehaviour struct {
 	stationary    *StationaryBehaviour
 	explosionSize float64
 	showBase      bool
-	beamTarget    mgl64.Vec3
+	beamTarget    cube.Pos
 	hasBeamTarget bool
 	exploded      bool
 }
 
-// Tick ticks the underlying stationary behaviour.
+// Tick ticks the underlying stationary behaviour and starts fire beneath End crystals in the End.
 func (b *EndCrystalBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	if tx.World().Dimension() == world.End {
+		block.Fire{}.Start(tx, cube.PosFromVec3(e.Position()))
+	}
 	return b.stationary.Tick(e, tx)
 }
 
 // Destroy destroys the end crystal if it hasn't been destroyed yet.
-func (b *EndCrystalBehaviour) Destroy(e *Ent, tx *world.Tx) bool {
+func (b *EndCrystalBehaviour) Destroy(e *Ent, tx *world.Tx, src world.DamageSource) bool {
 	if b.exploded {
 		return false
 	}
 	b.exploded = true
-	block.ExplosionConfig{SpawnFire: true, ItemDropChance: 1}.Explode(tx, world.EntityExplosionSource{
+	_ = e.CloseIn(tx)
+	if _, void := src.(VoidDamageSource); void {
+		return true
+	}
+	block.ExplosionConfig{
+		SuppressUnderwaterImpact:      true,
+		PreventBlockDamageBelowOrigin: true,
+	}.Explode(tx, world.EntityExplosionSource{
 		Entity:        e,
 		ExplosionSize: b.explosionSize,
 	})
-	_ = e.CloseIn(tx)
 	return true
 }
 
@@ -170,10 +180,17 @@ func (b *EndCrystalBehaviour) SetShowBase(show bool) {
 
 // BeamTarget returns the beam target of the end crystal, if any.
 func (b *EndCrystalBehaviour) BeamTarget() (mgl64.Vec3, bool) {
+	if !b.hasBeamTarget {
+		return mgl64.Vec3{}, false
+	}
+	return b.beamTarget.Vec3(), true
+}
+
+func (b *EndCrystalBehaviour) beamTargetPos() (cube.Pos, bool) {
 	return b.beamTarget, b.hasBeamTarget
 }
 
 // SetBeamTarget updates the beam target of the end crystal.
 func (b *EndCrystalBehaviour) SetBeamTarget(pos mgl64.Vec3) {
-	b.beamTarget, b.hasBeamTarget = pos, true
+	b.beamTarget, b.hasBeamTarget = cube.PosFromVec3(pos), true
 }

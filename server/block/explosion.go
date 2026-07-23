@@ -25,6 +25,12 @@ type ExplosionConfig struct {
 	// SpawnFire will cause the explosion to randomly start fires in 1/3 of all destroyed air blocks that are
 	// above opaque blocks.
 	SpawnFire bool
+	// SuppressUnderwaterImpact prevents the explosion from affecting entities through liquid layers. Bedrock Edition
+	// applies this to every explosion.
+	SuppressUnderwaterImpact bool
+	// PreventBlockDamageBelowOrigin prevents the explosion from destroying blocks below the block Y level of its
+	// origin. Entity damage is unaffected.
+	PreventBlockDamageBelowOrigin bool
 	// ItemDropChance specifies how item drops should be handled. By default,
 	// the item drop chance is 1/Size. If negative, no items will be dropped by
 	// the explosion. If set to 1 or higher, all items are dropped.
@@ -122,12 +128,15 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 			affectedEntities = append(affectedEntities, e)
 		}
 
-		affectedBlocks := make([]cube.Pos, 0, 32)
-		affectedBlockSet := make(map[cube.Pos]struct{}, 32)
+		affectedBlocks, affectedBlockSet := make([]cube.Pos, 0, 32), make(map[cube.Pos]struct{}, 32)
+		minY := int(math.Floor(explosionPos[1]))
 		for _, ray := range rays {
 			pos := explosionPos
 			for blastForce := size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
 				current := cube.PosFromVec3(pos)
+				if c.PreventBlockDamageBelowOrigin && current.Y() < minY {
+					break
+				}
 				currentBlock := tx.Block(current)
 
 				resistance, resists := 0.0, false
@@ -162,10 +171,15 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 		}
 
 		for _, e := range affectedEntities {
-			if explodable, ok := e.(ExplodableEntity); ok {
-				impact := (1 - e.Position().Sub(explosionPos).Len()/d) * exposure(tx, explosionPos, e)
-				explodable.Explode(src, impact)
+			explodable, ok := e.(ExplodableEntity)
+			if !ok {
+				continue
 			}
+			impact := (1 - e.Position().Sub(explosionPos).Len()/d) * c.exposure(tx, explosionPos, e)
+			if c.SuppressUnderwaterImpact && impact <= 0 {
+				continue
+			}
+			explodable.Explode(src, impact)
 		}
 
 		for _, pos := range affectedBlocks {
@@ -205,7 +219,7 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 }
 
 // exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.
-func exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
+func (c ExplosionConfig) exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
 	pos := e.Position()
 	box := e.H().Type().BBox(e).Translate(pos)
 
@@ -231,6 +245,12 @@ func exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
 				}
 				var collided bool
 				trace.TraverseBlocks(origin, point, func(pos cube.Pos) (cont bool) {
+					if c.SuppressUnderwaterImpact {
+						if _, liquid := tx.Liquid(pos); liquid {
+							collided = true
+							return false
+						}
+					}
 					_, collided = trace.BlockIntercept(pos, tx, tx.Block(pos), origin, point)
 					return !collided
 				})

@@ -38,6 +38,11 @@ func (o Obsidian) EncodeBlock() (string, map[string]any) {
 	return "minecraft:obsidian", nil
 }
 
+// SupportsEndCrystal returns whether an End crystal may be placed on the obsidian.
+func (o Obsidian) SupportsEndCrystal() bool {
+	return !o.Crying
+}
+
 // BreakInfo ...
 func (o Obsidian) BreakInfo() BreakInfo {
 	return newBreakInfo(35, func(t item.Tool) bool {
