@@ -49,8 +49,9 @@ type Server struct {
 	dimensions       map[world.Dimension]*world.World
 	defaultDimension world.Dimension
 
-	customBlocks []protocol.BlockEntry
-	customItems  []protocol.ItemEntry
+	customBlocks     []protocol.BlockEntry
+	customItems      []protocol.ItemEntry
+	customDimensions []protocol.DimensionDefinition
 
 	whitelist *Whitelist
 
@@ -457,6 +458,7 @@ func (srv *Server) listen(l Listener) {
 func (srv *Server) startListening() {
 	srv.makeBlockEntries()
 	srv.makeItemComponents()
+	srv.makeDimensionData()
 
 	srv.wg.Add(len(srv.listeners))
 	for _, l := range srv.listeners {
@@ -502,6 +504,21 @@ func (srv *Server) makeItemComponents() {
 			RuntimeID:      int16(rid),
 			Version:        entryVersion,
 			Data:           iteminternal.Components(it),
+		})
+	}
+}
+
+// makeDimensionData initialises the server's custom dimensions list.
+func (srv *Server) makeDimensionData() {
+	dimensions := world.CustomDimensions()
+	srv.customDimensions = make([]protocol.DimensionDefinition, 0, len(dimensions))
+	for _, registration := range dimensions {
+		r := registration.Dimension.Range()
+		srv.customDimensions = append(srv.customDimensions, protocol.DimensionDefinition{
+			Name:          registration.Name,
+			Range:         [2]int32{int32(r.Max() + 1), int32(r.Min())},
+			Generator:     protocol.GeneratorVoid,
+			DimensionType: int32(registration.ID),
 		})
 	}
 }
@@ -638,6 +655,7 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 		PlayerMovementSettings: protocol.PlayerMovementSettings{
 			ServerAuthoritativeBlockBreaking: true,
 		},
+		Dimensions: srv.customDimensions,
 	}
 }
 

@@ -110,7 +110,7 @@ func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 			MainHandSlot: uint32(heldSlot),
 		}),
 		EnderChestInventory: encodeItems(d.EnderChestInventory.Slots()),
-		Dimension:           uint8(dim),
+		Dimension:           int32(dim),
 	}
 }
 
@@ -133,7 +133,7 @@ type jsonData struct {
 	Effects                          []jsonEffect
 	FireTicks                        int64
 	FallDistance                     float64
-	Dimension                        uint8
+	Dimension                        int32
 }
 
 type jsonInventoryData struct {
