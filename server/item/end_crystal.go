@@ -45,7 +45,7 @@ func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.
 	if name, _ := tx.Block(pos).EncodeBlock(); name == "minecraft:bedrock" {
 		showBase = false
 	}
-	opts := world.EntitySpawnOpts{Position: pos.Vec3().Add(mgl64.Vec3{0.5, 1, 0.5})}
+	opts := world.EntitySpawnOpts{Position: above.Vec3Middle()}
 	tx.AddEntity(create(opts, showBase))
 	ctx.SubtractFromCount(1)
 	return true

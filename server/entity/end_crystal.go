@@ -159,8 +159,7 @@ func (b *EndCrystalBehaviour) Destroy(e *Ent, tx *world.Tx, src world.DamageSour
 		return true
 	}
 	block.ExplosionConfig{
-		SuppressUnderwaterImpact:      true,
-		PreventBlockDamageBelowOrigin: true,
+		SuppressUnderwaterImpact: true,
 	}.Explode(tx, world.EntityExplosionSource{
 		Entity:        e,
 		ExplosionSize: b.explosionSize,
