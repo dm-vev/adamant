@@ -183,8 +183,11 @@ func (p DecoratedPot) DecodeNBT(data map[string]any) any {
 	p.Decorations = [4]PotDecoration{}
 	if sherds := nbtconv.Slice(data, "sherds"); sherds != nil {
 		// Ignore invalid or extra entries to avoid crashing on malformed NBT.
-		for i := 0; i < len(p.Decorations) && i < len(sherds); i++ {
-			name, ok := sherds[i].(string)
+		for i, name := range sherds {
+			if i >= len(p.Decorations) {
+				break
+			}
+			name, ok := name.(string)
 			if !ok || name == "" {
 				continue
 			}
