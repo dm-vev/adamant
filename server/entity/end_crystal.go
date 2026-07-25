@@ -1,6 +1,9 @@
 package entity
 
 import (
+	"math/rand/v2"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -140,10 +143,17 @@ type EndCrystalBehaviour struct {
 	exploded      bool
 }
 
-// Tick ticks the underlying stationary behaviour and starts fire beneath End crystals in the End.
+// Tick ticks the underlying stationary behaviour and starts fire at supported End crystals in the End.
 func (b *EndCrystalBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if tx.World().Dimension() == world.End {
-		block.Fire{}.Start(tx, cube.PosFromVec3(e.Position()))
+		pos := cube.PosFromVec3(e.Position())
+		if _, air := tx.Block(pos.Side(cube.FaceDown)).(block.Air); !air {
+			if _, air := tx.Block(pos).(block.Air); air {
+				fire := block.Fire{}
+				tx.SetBlock(pos, fire, nil)
+				tx.ScheduleBlockUpdate(pos, fire, time.Duration(30+rand.IntN(10))*time.Second/20)
+			}
+		}
 	}
 	return b.stationary.Tick(e, tx)
 }

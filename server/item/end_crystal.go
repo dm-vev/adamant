@@ -16,7 +16,7 @@ type endCrystalSupport interface {
 
 // UseOnBlock places an End crystal on top of a supporting block if the two blocks above it are air and no other
 // entities intersect the space the crystal is placed in. The face clicked is ignored.
-func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
+func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
 	support, ok := tx.Block(pos).(endCrystalSupport)
 	if !ok || !support.SupportsEndCrystal() {
 		return false
@@ -29,10 +29,19 @@ func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.
 	if tx.Block(above) != air() || tx.Block(twoAbove) != air() {
 		return false
 	}
+	if _, liquid := tx.Liquid(above); liquid {
+		return false
+	}
+	if _, liquid := tx.Liquid(twoAbove); liquid {
+		return false
+	}
 
-	box := cube.Box(0, 0, 0, 1, 2, 1).Translate(above.Vec3())
+	// Vanilla anchors the entity check at the clicked block, spanning it and the
+	// air block above. Any intersecting entity blocks placement, including the
+	// placing player.
+	box := cube.Box(0, 0, 0, 1, 2, 1).Translate(pos.Vec3())
 	for entity := range tx.EntitiesWithin(box.Grow(2)) {
-		if (user == nil || entity.H() != user.H()) && entity.H().Type().BBox(entity).Translate(entity.Position()).IntersectsWith(box) {
+		if entity.H().Type().BBox(entity).Translate(entity.Position()).IntersectsWith(box) {
 			return false
 		}
 	}
