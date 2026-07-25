@@ -220,7 +220,9 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 	if !mgl64.FloatEqual(deltaZ, vel[2]) {
 		vel[2] = 0
 	}
-	blockBBoxPool.Put(blocks[:0])
+	if blocks != nil {
+		blockBBoxPool.Put(blocks[:0])
+	}
 	if c.CollideEntities {
 		entityBBoxPool.Put(entities[:0])
 	}
@@ -233,20 +235,16 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 	grown := box.Grow(0.25)
 	min, max := grown.Min(), grown.Max()
 	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
+	// The maximum bounds are exclusive: A block starting exactly at the box's
+	// maximum cannot collide with it.
 	maxX, maxY, maxZ := int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))
 
-	// A prediction of one BBox per block, plus an additional 2, in case
-	blockBBoxs := blockBBoxPool.Get().([]cube.BBox)
-	required := (maxX - minX) * (maxY - minY) * (maxZ - minZ)
-	if cap(blockBBoxs) < required+2 {
-		blockBBoxPool.Put(blockBBoxs[:0])
-		blockBBoxs = make([]cube.BBox, 0, required+2)
-	} else {
-		blockBBoxs = blockBBoxs[:0]
-	}
-	for y := minY; y <= maxY; y++ {
-		for x := minX; x <= maxX; x++ {
-			for z := minZ; z <= maxZ; z++ {
+	// Allocate the pooled result only if the scan finds a collision box.
+	predicted := (maxX-minX)*(maxY-minY)*(maxZ-minZ) + 2
+	var blockBBoxs []cube.BBox
+	for y := minY; y < maxY; y++ {
+		for x := minX; x < maxX; x++ {
+			for z := minZ; z < maxZ; z++ {
 				pos := cube.Pos{x, y, z}
 				block := tx.Block(pos)
 				// We deliberately avoid caching bounding boxes across different positions. Many
@@ -260,6 +258,15 @@ func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 				boxes := block.Model().BBox(pos, tx)
 				if len(boxes) == 0 {
 					continue
+				}
+				if blockBBoxs == nil {
+					blockBBoxs = blockBBoxPool.Get().([]cube.BBox)
+					if cap(blockBBoxs) < predicted {
+						blockBBoxPool.Put(blockBBoxs[:0])
+						blockBBoxs = make([]cube.BBox, 0, predicted)
+					} else {
+						blockBBoxs = blockBBoxs[:0]
+					}
 				}
 				offset := mgl64.Vec3{float64(x), float64(y), float64(z)}
 				for _, box := range boxes {
