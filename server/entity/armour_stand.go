@@ -3,6 +3,7 @@ package entity
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -40,8 +41,8 @@ func (armourStandType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := ArmourStandBehaviourConfig{
 		Armour:    inventory.NewArmour(nil),
 		PoseIndex: poseIndex % 13,
-		MainHand:  nbtconv.MapItem(m, "MainHand"),
-		OffHand:   nbtconv.MapItem(m, "Offhand"),
+		MainHand:  item.MapNBT(m, "MainHand"),
+		OffHand:   item.MapNBT(m, "Offhand"),
 	}
 
 	armours := nbtconv.Slice(m, "Armor")
@@ -50,7 +51,7 @@ func (armourStandType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		if !ok {
 			continue
 		}
-		it := nbtconv.Item(itemMap, nil)
+		it := item.ReadNBT(itemMap, nil)
 
 		switch i {
 		case 0:
@@ -72,13 +73,13 @@ func (armourStandType) EncodeNBT(data *world.EntityData) map[string]any {
 		return map[string]any{}
 	}
 	return map[string]any{
-		"MainHand": nbtconv.WriteItem(a.conf.MainHand, true),
-		"Offhand":  nbtconv.WriteItem(a.conf.OffHand, true),
+		"MainHand": item.WriteNBT(a.conf.MainHand, true),
+		"Offhand":  item.WriteNBT(a.conf.OffHand, true),
 		"Armor": []map[string]any{
-			nbtconv.WriteItem(a.Armour().Helmet(), true),
-			nbtconv.WriteItem(a.Armour().Chestplate(), true),
-			nbtconv.WriteItem(a.Armour().Leggings(), true),
-			nbtconv.WriteItem(a.Armour().Boots(), true),
+			item.WriteNBT(a.Armour().Helmet(), true),
+			item.WriteNBT(a.Armour().Chestplate(), true),
+			item.WriteNBT(a.Armour().Leggings(), true),
+			item.WriteNBT(a.Armour().Boots(), true),
 		},
 		"PoseIndex": int32(a.conf.PoseIndex),
 	}

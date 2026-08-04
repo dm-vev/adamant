@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -180,8 +179,8 @@ func TestShulkerBoxDropRoundTripNBT(t *testing.T) {
 	}
 
 	drop := box.itemStackForDrop()
-	data := nbtconv.WriteItem(drop, true)
-	restored := nbtconv.Item(data, nil)
+	data := item.WriteNBT(drop, true)
+	restored := item.ReadNBT(data, nil)
 
 	restoredBox, ok := restored.Item().(ShulkerBox)
 	if !ok {

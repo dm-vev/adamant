@@ -195,7 +195,7 @@ func (t tridentType) BBox(world.Entity) cube.BBox {
 func (t tridentType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := tridentConf
 	conf.DisablePickup = !nbtconv.Bool(m, "player")
-	conf.PickupItem = nbtconv.MapItem(m, "Item")
+	conf.PickupItem = item.MapNBT(m, "Item")
 	conf.CollisionPosition = nbtconv.Pos(m, "StuckToBlockPos")
 	trident := TridentConfig{
 		Projectile: conf,
@@ -219,7 +219,7 @@ func (t tridentType) EncodeNBT(data *world.EntityData) map[string]any {
 		"returning":  boolByte(behaviour.returning),
 	}
 	if !behaviour.item.Empty() {
-		m["Item"] = nbtconv.WriteItem(behaviour.item, true)
+		m["Item"] = item.WriteNBT(behaviour.item, true)
 	}
 	if behaviour.collided {
 		m["StuckToBlockPos"] = nbtconv.PosToInt32Slice(behaviour.collisionPos)

@@ -172,14 +172,14 @@ func (p DecoratedPot) EncodeNBT() map[string]any {
 		"sherds": sherds,
 	}
 	if !p.Item.Empty() {
-		m["item"] = nbtconv.WriteItem(p.Item, true)
+		m["item"] = item.WriteNBT(p.Item, true)
 	}
 	return m
 }
 
 // DecodeNBT ...
 func (p DecoratedPot) DecodeNBT(data map[string]any) any {
-	p.Item = nbtconv.MapItem(data, "item")
+	p.Item = item.MapNBT(data, "item")
 	p.Decorations = [4]PotDecoration{}
 	if sherds := nbtconv.Slice(data, "sherds"); sherds != nil {
 		// Ignore invalid or extra entries to avoid crashing on malformed NBT.
