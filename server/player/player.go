@@ -2299,6 +2299,7 @@ func (p *Player) breakContext() block.BreakContext {
 		Underwater:   p.insideOfWater(),
 		AquaAffinity: aquaAffinity,
 		Airborne:     !p.OnGround(),
+		Flying:       p.Flying(),
 	}
 	if e, ok := p.Effect(effect.Haste); ok {
 		ctx.HasteLevel = e.Level()
