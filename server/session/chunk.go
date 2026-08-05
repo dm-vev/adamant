@@ -91,15 +91,19 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 
 func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) protocol.SubChunkEntry {
 	subMapType, subMap := subChunkHeightMap(col, ind)
+	var subMapData protocol.Optional[[]int8]
+	if subMap != nil {
+		subMapData = protocol.Option(subMap)
+	}
 
 	sub := col.Sub()[ind]
 	if sub.Empty() {
 		return protocol.SubChunkEntry{
 			Result:              protocol.SubChunkResultSuccessAllAir,
 			HeightMapType:       subMapType,
-			HeightMapData:       subMap,
+			HeightMapData:       subMapData,
 			RenderHeightMapType: subMapType,
-			RenderHeightMapData: subMap,
+			RenderHeightMapData: subMapData,
 			Offset:              offset,
 		}
 	}
@@ -108,19 +112,18 @@ func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *
 
 	entry := protocol.SubChunkEntry{
 		Result:              protocol.SubChunkResultSuccess,
-		RawPayload:          joinPayloads(serialisedSubChunk, blockEntityPayload),
+		RawPayload:          protocol.Option(joinPayloads(serialisedSubChunk, blockEntityPayload)),
 		HeightMapType:       subMapType,
-		HeightMapData:       subMap,
+		HeightMapData:       subMapData,
 		RenderHeightMapType: subMapType,
-		RenderHeightMapData: subMap,
+		RenderHeightMapData: subMapData,
 		Offset:              offset,
 	}
 	if s.conn.ClientCacheEnabled() {
 		if hash := xxhash.Sum64(serialisedSubChunk); s.trackBlob(hash, serialisedSubChunk) {
 			transaction[hash] = struct{}{}
-
-			entry.BlobHash = hash
-			entry.RawPayload = blockEntityPayload
+			entry.BlobHash = protocol.Option(hash)
+			entry.RawPayload = protocol.Option(blockEntityPayload)
 		}
 	}
 	return entry
@@ -173,13 +176,13 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, col *w
 		biomes := networkBiomePayload(col)
 		if hash := xxhash.Sum64(biomes); s.trackBlob(hash, biomes) {
 			s.writePacket(&packet.LevelChunk{
-				Dimension:       s.dimensionID(dim),
-				SubChunkCount:   protocol.SubChunkRequestModeLimited,
-				Position:        protocol.ChunkPos(pos),
-				HighestSubChunk: c.HighestFilledSubChunk(),
-				BlobHashes:      []uint64{hash},
-				RawPayload:      []byte{0},
-				CacheEnabled:    true,
+				Dimension:     s.dimensionID(dim),
+				SubChunkCount: 0,
+				Position:      protocol.ChunkPos(pos),
+				SubChunkLimit: protocol.Option(int32(c.HighestFilledSubChunk())),
+				BlobHashes:    []uint64{hash},
+				RawPayload:    []byte{0},
+				CacheEnabled:  true,
 			})
 			return
 		}
@@ -229,11 +232,11 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, col 
 	c := col.Chunk
 	if subChunkRequests {
 		s.writePacket(&packet.LevelChunk{
-			Dimension:       s.dimensionID(dim),
-			SubChunkCount:   protocol.SubChunkRequestModeLimited,
-			Position:        protocol.ChunkPos(pos),
-			HighestSubChunk: c.HighestFilledSubChunk(),
-			RawPayload:      limitedChunkPayload(col),
+			Dimension:     s.dimensionID(dim),
+			SubChunkCount: 0,
+			Position:      protocol.ChunkPos(pos),
+			SubChunkLimit: protocol.Option(int32(c.HighestFilledSubChunk())),
+			RawPayload:    limitedChunkPayload(col),
 		})
 		return
 	}

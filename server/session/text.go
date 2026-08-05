@@ -105,9 +105,10 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 		s.writePacket(pk)
 	} else {
 		// Remove all current lines from the scoreboard. We can't replace them without removing them.
-		pk := &packet.SetScore{ActionType: packet.ScoreboardActionRemove}
+		pk := &packet.SetScore{}
 		for i := range currentLines {
 			pk.Entries = append(pk.Entries, protocol.ScoreboardEntry{
+				IdentityType:  protocol.ScoreboardIdentityRemove,
 				EntryID:       int64(i),
 				ObjectiveName: currentName,
 				Score:         int32(i),
@@ -117,7 +118,7 @@ func (s *Session) SendScoreboard(sb *scoreboard.Scoreboard) {
 			s.writePacket(pk)
 		}
 	}
-	pk := &packet.SetScore{ActionType: packet.ScoreboardActionModify}
+	pk := &packet.SetScore{}
 	displayLines := make([]string, len(lines))
 	for k, line := range lines {
 		if len(line) == 0 {
