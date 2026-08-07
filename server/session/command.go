@@ -237,7 +237,7 @@ func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum comman
 		}
 		return 0, ce
 	}
-	return protocol.CommandArgTypeValue, enum
+	return protocol.CommandArgTypeRValue, enum
 }
 
 // resendCommands resends all commands that a Session has access to if the map of runnable commands passed does not
