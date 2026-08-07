@@ -105,6 +105,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			Username:        v.Name(),
 			Yaw:             float32(yaw),
 			EntityLinks:     links,
+			BuildPlatform:   int32(protocol.DeviceDedicated),
 			AbilityData: protocol.AbilityData{
 				EntityUniqueID: int64(runtimeID),
 				Layers: []protocol.AbilityLayer{{
