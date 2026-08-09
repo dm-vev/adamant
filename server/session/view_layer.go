@@ -73,6 +73,9 @@ func (s *Session) RemoveViewLayer(entity world.Entity) {
 		return
 	}
 	s.viewLayer.Remove(entity)
+	if !s.entityHidden(entity) && s.viewingEntity(entity.H()) {
+		s.ViewEntityArmour(entity)
+	}
 }
 
 // ViewLayerEntityChanged refreshes the entity metadata for this session if the entity is currently visible.

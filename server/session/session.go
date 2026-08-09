@@ -43,8 +43,9 @@ type Session struct {
 	handlers    map[uint32]packetHandler
 	packets     chan packet.Packet
 	// abilityResend is the delayed ability update queued after a game mode change.
-	abilityResendMu    sync.RWMutex
+	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
+	abilityResendGen   uint64
 	abilityResendDelay time.Duration
 	closing            atomic.Bool
 
@@ -416,10 +417,13 @@ func (s *Session) CloseConnection() {
 	s.connOnce.Do(func() {
 		s.closing.Store(true)
 		s.abilityResendMu.Lock()
-		if s.abilityResend != nil {
-			s.abilityResend.Cancel()
-		}
+		s.abilityResendGen++
+		resend := s.abilityResend
+		s.abilityResend = nil
 		s.abilityResendMu.Unlock()
+		if resend != nil {
+			resend.Cancel()
+		}
 		_ = s.conn.Close()
 		close(s.closeBackground)
 	})

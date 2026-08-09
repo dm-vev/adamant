@@ -625,18 +625,24 @@ func (s *Session) resendAbilities(c Controllable) {
 	}
 
 	s.abilityResendMu.Lock()
-	defer s.abilityResendMu.Unlock()
 	if s.closing.Load() {
+		s.abilityResendMu.Unlock()
 		return
 	}
+	s.abilityResendGen++
+	generation := s.abilityResendGen
 	previous := s.abilityResend
 	s.abilityResend = c.H().DoAfter(delay, func(_ *world.Tx, _ world.Entity) {
-		s.abilityResendMu.RLock()
-		defer s.abilityResendMu.RUnlock()
-		if !s.closing.Load() {
-			s.SendAbilities(c)
+		s.abilityResendMu.Lock()
+		if s.closing.Load() || s.abilityResendGen != generation {
+			s.abilityResendMu.Unlock()
+			return
 		}
+		s.abilityResend = nil
+		s.abilityResendMu.Unlock()
+		s.SendAbilities(c)
 	})
+	s.abilityResendMu.Unlock()
 	if previous != nil {
 		previous.Cancel()
 	}

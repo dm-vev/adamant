@@ -3,9 +3,11 @@ package session
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
@@ -62,7 +64,7 @@ func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
 	var task *world.Task
 	if err := w.Do(func(*world.Tx) {
 		s.SendGameMode(c)
-		task = s.abilityResend
+		task = abilityResendTask(s)
 	}).Wait(context.Background()); err != nil {
 		t.Fatalf("send game mode: %v", err)
 	}
@@ -100,13 +102,19 @@ func TestCloseConnectionCancelsDelayedAbilityResend(t *testing.T) {
 	var task *world.Task
 	if err := w.Do(func(*world.Tx) {
 		s.SendGameMode(c)
-		task = s.abilityResend
+		task = abilityResendTask(s)
 	}).Wait(context.Background()); err != nil {
 		t.Fatalf("send game mode: %v", err)
 	}
 	<-s.packets // SetPlayerGameType.
 
 	s.CloseConnection()
+	s.abilityResendMu.Lock()
+	resend := s.abilityResend
+	s.abilityResendMu.Unlock()
+	if resend != nil {
+		t.Fatal("closed session retained delayed ability task")
+	}
 	if err := task.Wait(context.Background()); !errors.Is(err, world.ErrTaskCancelled) {
 		t.Fatalf("delayed ability resend error = %v, want %v", err, world.ErrTaskCancelled)
 	}
@@ -117,16 +125,69 @@ func TestCloseConnectionCancelsDelayedAbilityResend(t *testing.T) {
 	}
 }
 
+func TestNewAbilityResendCancelsStaleTask(t *testing.T) {
+	s, c, w := abilityTestSession(t, time.Hour)
+	var first, second *world.Task
+	if err := w.Do(func(*world.Tx) {
+		s.SendGameMode(c)
+		first = abilityResendTask(s)
+		s.SendGameMode(c)
+		second = abilityResendTask(s)
+	}).Wait(context.Background()); err != nil {
+		t.Fatalf("send game modes: %v", err)
+	}
+	if first == second {
+		t.Fatal("replacement reused stale ability task")
+	}
+	if err := first.Wait(context.Background()); !errors.Is(err, world.ErrTaskCancelled) {
+		t.Fatalf("stale ability resend error = %v, want %v", err, world.ErrTaskCancelled)
+	}
+}
+
+func TestSpectatorAbilityResendDoesNotDeadlockStartFlying(t *testing.T) {
+	s, c, w := abilityTestSession(t, time.Millisecond)
+	c.mode = world.GameModeSpectator
+	c.session = s
+	c.startedFlying = make(chan struct{})
+
+	var task *world.Task
+	if err := w.Do(func(*world.Tx) {
+		s.SendGameMode(c)
+		task = abilityResendTask(s)
+	}).Wait(context.Background()); err != nil {
+		t.Fatalf("send game mode: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := task.Wait(ctx); err != nil {
+		t.Fatalf("spectator ability resend: %v", err)
+	}
+	select {
+	case <-c.startedFlying:
+	case <-ctx.Done():
+		t.Fatal("StartFlying re-entry deadlocked delayed ability resend")
+	}
+}
+
+func abilityResendTask(s *Session) *world.Task {
+	s.abilityResendMu.Lock()
+	defer s.abilityResendMu.Unlock()
+	return s.abilityResend
+}
+
 func abilityTestSession(t *testing.T, delay time.Duration) (*Session, *abilityTestControllable, *world.World) {
 	t.Helper()
 	s := &Session{
 		conn:               abilityTestConn{},
-		packets:            make(chan packet.Packet, 2),
+		packets:            make(chan packet.Packet, 16),
 		closeBackground:    make(chan struct{}),
 		abilityResendDelay: delay,
 	}
 	c := &abilityTestControllable{mode: world.GameModeCreative}
 	c.handle = world.EntitySpawnOpts{}.New(abilityTestType{c: c}, abilityTestConfig{})
+	s.ent = c.handle
+	s.entityRuntimeIDs = map[*world.EntityHandle]uint64{c.handle: selfEntityRuntimeID}
+	s.entities = map[uint64]*world.EntityHandle{selfEntityRuntimeID: c.handle}
 	w := world.Config{Synchronous: true}.New()
 	if err := w.Do(func(tx *world.Tx) { tx.AddEntity(c.handle) }).Wait(context.Background()); err != nil {
 		t.Fatalf("add controllable: %v", err)
@@ -140,8 +201,11 @@ func abilityTestSession(t *testing.T, delay time.Duration) (*Session, *abilityTe
 
 type abilityTestControllable struct {
 	Controllable
-	handle *world.EntityHandle
-	mode   world.GameMode
+	handle        *world.EntityHandle
+	mode          world.GameMode
+	session       *Session
+	startedFlying chan struct{}
+	startFlying   sync.Once
 }
 
 func (c *abilityTestControllable) Close() error               { return nil }
@@ -152,6 +216,12 @@ func (c *abilityTestControllable) GameMode() world.GameMode   { return c.mode }
 func (*abilityTestControllable) Flying() bool                 { return false }
 func (*abilityTestControllable) FlightSpeed() float64         { return 0.05 }
 func (*abilityTestControllable) VerticalFlightSpeed() float64 { return 0.05 }
+func (c *abilityTestControllable) StartFlying() {
+	c.startFlying.Do(func() {
+		c.session.SendGameMode(c)
+		close(c.startedFlying)
+	})
+}
 
 type abilityTestType struct{ c *abilityTestControllable }
 
@@ -212,5 +282,103 @@ func TestCraftingAcceptsUserDataShapelessRecipes(t *testing.T) {
 	}
 	if err := h.handleAutoCraft(&protocol.AutoCraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
 		t.Fatalf("auto craft error = %v, want %q", err, want)
+	}
+}
+
+func TestMultiRecipeCraftsServerValidatedResult(t *testing.T) {
+	s := craftingTestSession()
+	first := item.NewStack(item.Bow{}, 1).WithDurability(10)
+	second := item.NewStack(item.Bow{}, 1).WithDurability(20)
+	_ = s.ui.SetItem(craftingGridSmallOffset, first)
+	_ = s.ui.SetItem(craftingGridSmallOffset+1, second)
+	s.recipes[1] = recipe.NewMulti(uuid.MustParse("00000000-0000-0000-0000-000000000001"))
+
+	h := craftingTestHandler()
+	err := h.handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
+		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{{Identifier: "minecraft:bow", Count: 1}}},
+		&protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset, item_id(first))}},
+		&protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset+1, item_id(second))}},
+	}}, s, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _ := s.ui.Item(craftingResult)
+	if _, ok := result.Item().(item.Bow); !ok || result.Durability() != 49 {
+		t.Fatalf("multi repair result = %v, want bow with 49 durability", result)
+	}
+	for _, slot := range []int{craftingGridSmallOffset, craftingGridSmallOffset + 1} {
+		if input, _ := s.ui.Item(slot); !input.Empty() {
+			t.Fatalf("multi recipe input slot %d was not consumed", slot)
+		}
+	}
+}
+
+func TestUserDataShapelessPreservesServerSourceNBT(t *testing.T) {
+	s := craftingTestSession()
+	sourceBox := block.NewShulkerBox()
+	sourceBox.Type = block.RedShulkerBox()
+	_ = sourceBox.Inventory(nil, cube.Pos{}).SetItem(0, item.NewStack(item.Apple{}, 3))
+	source := item.NewStack(sourceBox, 1).WithCustomName("Supplies")
+	dye := item.NewStack(item.Dye{Colour: item.ColourBlue()}, 1)
+	_ = s.ui.SetItem(craftingGridSmallOffset, source)
+	_ = s.ui.SetItem(craftingGridSmallOffset+1, dye)
+
+	expectedBox := block.NewShulkerBox()
+	expectedBox.Type = block.RedShulkerBox()
+	outputBox := block.NewShulkerBox()
+	outputBox.Type = block.BlueShulkerBox()
+	s.recipes[1] = recipe.NewUserDataShapeless([]recipe.Item{item.NewStack(expectedBox, 1), dye}, item.NewStack(outputBox, 1), "crafting_table")
+
+	h := craftingTestHandler()
+	err := h.handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
+		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{{
+			Identifier: "minecraft:blue_shulker_box",
+			Count:      1,
+			NBTData:    map[string]any{"CustomName": "injected"},
+		}}},
+	}}, s, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _ := s.ui.Item(craftingResult)
+	box, ok := result.Item().(block.ShulkerBox)
+	if !ok {
+		t.Fatalf("result item = %T, want block.ShulkerBox", result.Item())
+	}
+	if name, _ := box.EncodeItem(); name != "minecraft:blue_shulker_box" {
+		t.Fatalf("result item = %s, want blue shulker box", name)
+	}
+	contents, _ := box.Inventory(nil, cube.Pos{}).Item(0)
+	if contents.Count() != 3 || result.CustomName() != "Supplies" {
+		t.Fatalf("preserved result = %v with contents %v", result, contents)
+	}
+}
+
+func craftingTestSession() *Session {
+	return &Session{
+		br:              world.DefaultBlockRegistry,
+		recipes:         make(map[uint32]recipe.Recipe),
+		ui:              inventory.New(51, nil),
+		inv:             inventory.New(36, nil),
+		offHand:         inventory.New(1, nil),
+		packets:         make(chan packet.Packet, 4),
+		closeBackground: make(chan struct{}),
+	}
+}
+
+func craftingTestHandler() *ItemStackRequestHandler {
+	return &ItemStackRequestHandler{
+		changes:         make(map[byte]map[byte]changeInfo),
+		responseChanges: make(map[int32]map[*inventory.Inventory]map[byte]responseChange),
+	}
+}
+
+func craftingSlot(slot int, stackID int32) protocol.StackRequestSlotInfo {
+	return protocol.StackRequestSlotInfo{
+		Container:      protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+		Slot:           byte(slot),
+		StackNetworkID: stackID,
 	}
 }

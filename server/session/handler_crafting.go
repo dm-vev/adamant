@@ -12,12 +12,38 @@ import (
 	"slices"
 )
 
+const fireworkMultiRecipe = "00000000-0000-0000-0000-000000000002"
+
+var multiRecipeOutputs = map[string]string{
+	"442d85ed-8272-4543-a6f1-418f90ded05d": "minecraft:filled_map",
+	"8b36268c-1829-483c-a0f1-993b7156a8f2": "minecraft:filled_map",
+	"602234e4-cac1-4353-8bb7-b1ebff70024b": "minecraft:filled_map",
+	"98c84b38-1085-46bd-b1ce-dd38c159e6cc": "minecraft:filled_map",
+	"d392b075-4ba1-40ae-8789-af868d56f6ce": "minecraft:filled_map",
+	"85939755-ba10-4d9d-a4cc-efb7a8e943c4": "minecraft:filled_map",
+	"aecd2294-4b94-434b-8667-4499bb2c9327": "minecraft:filled_map",
+	"d1ca6b84-338e-4f2f-9c6b-76cc8b4bd98d": "minecraft:written_book",
+	"d81aaeaf-e172-4440-9225-868df030d27b": "minecraft:banner",
+	"b5c5d105-75a2-4076-af2b-923ea2bf4bf0": "minecraft:banner",
+}
+
+type multiCraft struct {
+	recipe        recipe.Multi
+	input         []item.Stack
+	times         int
+	consumed      int
+	resultCreated bool
+}
+
 // handleCraft handles the CraftRecipe request action.
 func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
 	craft, ok := s.recipes[a.RecipeNetworkID]
 	if !ok {
 		// Try dynamic recipes if no static recipe matches
 		return h.tryDynamicCraft(s, tx, int(a.NumberOfCrafts))
+	}
+	if multi, ok := craft.(recipe.Multi); ok {
+		return h.beginMultiCraft(multi, int(a.NumberOfCrafts), s)
 	}
 	_, shaped := craft.(recipe.Shaped)
 	_, shapeless := craft.(recipe.Shapeless)
@@ -37,6 +63,7 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 	size := s.craftingSize()
 	offset := s.craftingOffset()
 	consumed := make([]bool, size)
+	consumedInputs := make([]item.Stack, 0, len(craft.Input()))
 	for _, expected := range craft.Input() {
 		var (
 			processed bool
@@ -52,7 +79,7 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 				// We can't process this item, as it's not a part of the recipe.
 				continue
 			}
-			if !matchingStacks(has, expected) {
+			if !matchingCraftingStacks(has, expected, userDataShapeless) {
 				// Not the same item.
 				continue
 			}
@@ -61,7 +88,9 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 				continue
 			}
 			processed, consumed[slot-offset] = true, true
-			st := has.Grow(-expected.Count() * timesCrafted)
+			remove := expected.Count() * timesCrafted
+			consumedInputs = append(consumedInputs, has.Grow(remove-has.Count()))
+			st := has.Grow(-remove)
 			h.setItemInSlot(protocol.StackRequestSlotInfo{
 				Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
 				Slot:      byte(slot),
@@ -75,7 +104,139 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 			return fmt.Errorf("recipe %v: could not consume expected item: %v", a.RecipeNetworkID, expected)
 		}
 	}
-	return h.createResults(s, tx, repeatStacks(craft.Output(), timesCrafted)...)
+	output, err := craftingResults(craft, consumedInputs, timesCrafted, s.br)
+	if err != nil {
+		return err
+	}
+	return h.createResults(s, tx, output...)
+}
+
+func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCrafted int, s *Session) error {
+	if craft.Block() != "crafting_table" {
+		return fmt.Errorf("multi recipe is not a crafting table recipe")
+	}
+	if timesCrafted < 1 {
+		return fmt.Errorf("times crafted must be at least 1")
+	}
+	if h.multiCraft != nil {
+		return fmt.Errorf("another multi recipe is already being crafted")
+	}
+	size, offset := s.craftingSize(), s.craftingOffset()
+	input := make([]item.Stack, size)
+	for slot := uint32(0); slot < size; slot++ {
+		input[slot], _ = s.ui.Item(int(offset + slot))
+	}
+	h.multiCraft = &multiCraft{recipe: craft, input: input, times: timesCrafted}
+	return nil
+}
+
+func (h *ItemStackRequestHandler) handleMultiConsume(a *protocol.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
+	if a.Source.Container.ContainerID != protocol.ContainerCraftingInput || a.Count == 0 {
+		return fmt.Errorf("multi recipe consumed invalid crafting input")
+	}
+	if err := h.verifySlot(a.Source, s, tx); err != nil {
+		return err
+	}
+	has, err := h.itemInSlot(a.Source, s, tx)
+	if err != nil {
+		return err
+	}
+	if err := ensureUnlockedForCrafting(has); err != nil {
+		return err
+	}
+	if has.Count() < int(a.Count) {
+		return fmt.Errorf("multi recipe tried to consume %v items from a stack of %v", a.Count, has.Count())
+	}
+	if err := h.setItemInSlot(a.Source, has.Grow(-int(a.Count)), s, tx); err != nil {
+		return err
+	}
+	h.multiCraft.consumed += int(a.Count)
+	return nil
+}
+
+func (h *ItemStackRequestHandler) handleMultiResult(a *protocol.CraftResultsDeprecatedStackRequestAction, s *Session, tx *world.Tx) error {
+	craft := h.multiCraft
+	if craft.resultCreated || int(a.TimesCrafted) != craft.times || len(a.ResultItems) != 1 {
+		return fmt.Errorf("multi recipe supplied invalid result metadata")
+	}
+	result := a.ResultItems[0]
+	if result.Count == 0 {
+		return fmt.Errorf("multi recipe result count must be at least 1")
+	}
+
+	var source item.Stack
+	for _, input := range craft.input {
+		if input.Empty() {
+			continue
+		}
+		name, meta := input.Item().EncodeItem()
+		if name == result.Identifier && meta == int16(result.MetadataValue) {
+			source = input
+			break
+		}
+	}
+
+	var output item.Stack
+	if !source.Empty() {
+		if expected, restricted := multiRecipeOutputs[craft.recipe.UUID().String()]; restricted && result.Identifier != expected {
+			return fmt.Errorf("multi recipe result %q must be %q", result.Identifier, expected)
+		}
+		if int(result.Count) > source.MaxCount() {
+			return fmt.Errorf("multi recipe result count %v exceeds maximum %v", result.Count, source.MaxCount())
+		}
+		output = source.Grow(int(result.Count) - source.Count())
+		if craft.recipe.UUID().String() == "00000000-0000-0000-0000-000000000001" {
+			var err error
+			output, err = repairedMultiResult(craft.input, output)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		if craft.recipe.UUID().String() != fireworkMultiRecipe || result.Identifier != "minecraft:firework_rocket" {
+			return fmt.Errorf("multi recipe result %q is not derived from its server-side input", result.Identifier)
+		}
+		it, ok := world.ItemByName(result.Identifier, int16(result.MetadataValue))
+		if !ok {
+			return fmt.Errorf("multi recipe result item %q is not registered", result.Identifier)
+		}
+		if n, ok := it.(world.NBTer); ok {
+			decoded, ok := world.DecodeNBT(n, result.NBTData, s.br).(world.Item)
+			if !ok {
+				return fmt.Errorf("multi recipe result item %q decoded to a non-item", result.Identifier)
+			}
+			it = decoded
+		}
+		output = item.NewStack(it, int(result.Count))
+		if output.Count() > output.MaxCount() || output.Count() > 3*craft.times {
+			return fmt.Errorf("multi recipe result count %v is invalid", result.Count)
+		}
+	}
+	craft.resultCreated = true
+	return h.createResults(s, tx, output)
+}
+
+func repairedMultiResult(input []item.Stack, output item.Stack) (item.Stack, error) {
+	if output.Count() != 1 || output.MaxDurability() < 1 {
+		return item.Stack{}, fmt.Errorf("repair multi recipe must produce one durable item")
+	}
+	durability, matching := 0, 0
+	for _, stack := range input {
+		if stack.Empty() {
+			continue
+		}
+		name, meta := stack.Item().EncodeItem()
+		outputName, outputMeta := output.Item().EncodeItem()
+		if name != outputName || meta != outputMeta || stack.MaxDurability() < 1 || stack.Count() != 1 {
+			return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two matching durable items")
+		}
+		durability += stack.Durability()
+		matching++
+	}
+	if matching != 2 {
+		return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two matching durable items")
+	}
+	return output.WithDurability(min(output.MaxDurability(), durability+output.MaxDurability()/20)), nil
 }
 
 // handleAutoCraft handles the AutoCraftRecipe request action.
@@ -108,7 +269,7 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 		}
 
 		if ind := slices.IndexFunc(flattenedInputs, func(it recipe.Item) bool {
-			return matchingStacks(it, i)
+			return matchingCraftingStacks(it, i, userDataShapeless)
 		}); ind >= 0 {
 			flattenedInputs[ind] = grow(i, flattenedInputs[ind].Count())
 			continue
@@ -116,6 +277,7 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 		flattenedInputs = append(flattenedInputs, i)
 	}
 
+	consumedInputs := make([]item.Stack, 0, len(flattenedInputs))
 	for _, expected := range flattenedInputs {
 		remaining := expected.Count() * timesCrafted
 		var lockedErr error
@@ -129,7 +291,7 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 					// We don't have this item, skip it.
 					continue
 				}
-				if !matchingStacks(has, expected) {
+				if !matchingCraftingStacks(has, expected, userDataShapeless) {
 					// Not the same item.
 					continue
 				}
@@ -143,6 +305,7 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 					removal = remaining
 				}
 				remaining -= removal
+				consumedInputs = append(consumedInputs, has.Grow(removal-has.Count()))
 
 				has = has.Grow(-removal)
 				h.setItemInSlot(protocol.StackRequestSlotInfo{
@@ -167,7 +330,11 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 		}
 	}
 
-	return h.createResults(s, tx, repeatStacks(craft.Output(), timesCrafted)...)
+	output, err := craftingResults(craft, consumedInputs, timesCrafted, s.br)
+	if err != nil {
+		return err
+	}
+	return h.createResults(s, tx, output...)
 }
 
 // handleCreativeCraft handles the CreativeCraft request action.
@@ -237,6 +404,69 @@ func matchingStacks(has, expected recipe.Item) bool {
 		// Unknown recipe item type: treat as a mismatch to avoid panicking on unexpected data.
 		return false
 	}
+}
+
+func matchingCraftingStacks(has, expected recipe.Item, preserveUserData bool) bool {
+	if !preserveUserData {
+		return matchingStacks(has, expected)
+	}
+	hasStack, hasOK := has.(item.Stack)
+	expectedStack, expectedOK := expected.(item.Stack)
+	if !hasOK || !expectedOK {
+		return matchingStacks(has, expected)
+	}
+	name, meta := hasStack.Item().EncodeItem()
+	expectedName, expectedMeta := expectedStack.Item().EncodeItem()
+	if _, variants := expectedStack.Value("variants"); variants {
+		return name == expectedName
+	}
+	return name == expectedName && meta == expectedMeta
+}
+
+func craftingResults(craft recipe.Recipe, consumed []item.Stack, timesCrafted int, br world.BlockRegistry) ([]item.Stack, error) {
+	if _, ok := craft.(recipe.UserDataShapeless); !ok {
+		return repeatStacks(craft.Output(), timesCrafted), nil
+	}
+	if len(craft.Output()) != 1 {
+		return nil, fmt.Errorf("user-data shapeless recipe must have exactly one output")
+	}
+	output := craft.Output()[0]
+	outputNBT, ok := output.Item().(world.NBTer)
+	if !ok {
+		return nil, fmt.Errorf("user-data shapeless recipe output %T cannot retain user data", output.Item())
+	}
+
+	results := make([]item.Stack, 0, timesCrafted)
+	crafted := 0
+	for _, expected := range craft.Input() {
+		expectedStack, ok := expected.(item.Stack)
+		if !ok || expectedStack.Count() < 1 {
+			continue
+		}
+		if _, ok := expectedStack.Item().(world.NBTer); !ok {
+			continue
+		}
+		for _, source := range consumed {
+			if !matchingCraftingStacks(source, expected, true) || source.Count()%expectedStack.Count() != 0 {
+				continue
+			}
+			sourceNBT, ok := source.Item().(world.NBTer)
+			if !ok {
+				continue
+			}
+			n := source.Count() / expectedStack.Count()
+			decoded, ok := world.DecodeNBT(outputNBT, sourceNBT.EncodeNBT(), br).(world.Item)
+			if !ok {
+				return nil, fmt.Errorf("user-data shapeless recipe output %T decoded to a non-item", output.Item())
+			}
+			results = append(results, source.WithItem(decoded).Grow(output.Count()*n-source.Count()))
+			crafted += n
+		}
+	}
+	if crafted != timesCrafted {
+		return nil, fmt.Errorf("user-data shapeless recipe retained data for %v crafts, want %v", crafted, timesCrafted)
+	}
+	return results, nil
 }
 
 // repeatStacks multiplies the count of all item stacks provided by the number of repetitions provided. Item

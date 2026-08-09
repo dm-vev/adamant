@@ -60,6 +60,26 @@ func TestViewVisibilityHidesArmourPerViewer(t *testing.T) {
 	if hiddenViewer.entityRuntimeIDs[handle] != 2 || publicViewer.entityRuntimeIDs[handle] != 3 {
 		t.Fatal("visibility changes replaced per-viewer runtime IDs")
 	}
+
+	hiddenViewer.ViewVisibility(e, world.EnforceInvisible())
+	publicViewer.ViewVisibility(e, world.EnforceInvisible())
+	<-hiddenViewer.packets
+	<-publicViewer.packets
+	hiddenViewer.RemoveViewLayer(e)
+	if got := (<-hiddenViewer.packets).(*packet.MobArmourEquipment); got.Helmet.Stack.Count != 1 {
+		t.Fatal("removing one viewer's invisibility layer did not restore armour")
+	}
+	if len(publicViewer.packets) != 0 {
+		t.Fatal("removing one viewer's layer refreshed another viewer")
+	}
+	publicViewer.ViewEntityArmour(e)
+	if got := (<-publicViewer.packets).(*packet.MobArmourEquipment); got.Helmet.Stack.Count != 0 {
+		t.Fatal("remaining invisibility layer did not retain precedence")
+	}
+	publicViewer.RemoveViewLayer(e)
+	if got := (<-publicViewer.packets).(*packet.MobArmourEquipment); got.Helmet.Stack.Count != 1 {
+		t.Fatal("removing final invisibility layer did not restore armour")
+	}
 }
 
 func TestHideSessionlessControllableTwice(t *testing.T) {

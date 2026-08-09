@@ -24,6 +24,7 @@ type ItemStackRequestHandler struct {
 	responseChanges map[int32]map[*inventory.Inventory]map[byte]responseChange
 
 	pendingResults []item.Stack
+	multiCraft     *multiCraft
 
 	current       time.Time
 	ignoreDestroy bool
@@ -64,7 +65,9 @@ func (h *ItemStackRequestHandler) Handle(p packet.Packet, s *Session, tx *world.
 // handleRequest resolves a single item stack request from the client.
 func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s *Session, tx *world.Tx, c Controllable) (err error) {
 	h.currentRequest = req.RequestID
+	h.multiCraft = nil
 	defer func() {
+		h.multiCraft = nil
 		if err != nil {
 			h.reject(req.RequestID, s, tx)
 			return
@@ -119,8 +122,14 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 			err = h.handleMineBlock(a, s, tx)
 		case *protocol.CreateStackRequestAction:
 			err = h.handleCreate(a, s, tx)
-		case *protocol.ConsumeStackRequestAction, *protocol.CraftResultsDeprecatedStackRequestAction:
-			// Don't do anything with this.
+		case *protocol.ConsumeStackRequestAction:
+			if h.multiCraft != nil {
+				err = h.handleMultiConsume(a, s, tx)
+			}
+		case *protocol.CraftResultsDeprecatedStackRequestAction:
+			if h.multiCraft != nil {
+				err = h.handleMultiResult(a, s, tx)
+			}
 		default:
 			return fmt.Errorf("unhandled stack request action %#v", action)
 		}
@@ -128,6 +137,9 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 			err = fmt.Errorf("%T: %w", action, err)
 			return
 		}
+	}
+	if h.multiCraft != nil && (!h.multiCraft.resultCreated || h.multiCraft.consumed == 0) {
+		return fmt.Errorf("multi recipe requires a result and consumed input")
 	}
 	return
 }
