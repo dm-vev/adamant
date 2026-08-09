@@ -45,6 +45,8 @@ type Settings struct {
 	// TickRange is the radius in chunks around a Viewer that has its blocks and entities ticked when the world is
 	// ticked. If set to 0, blocks and entities will never be ticked.
 	TickRange int32
+	// FallDamage specifies if entities take damage from falling in this World.
+	FallDamage bool
 	// PlayersSleepingPercentage determines the percentage of players that must sleep to skip the night.
 	PlayersSleepingPercentage int32
 	// RequiredSleepTicks is the number of ticks that players must sleep for in order for the time to change to day.
@@ -60,6 +62,7 @@ func defaultSettings() *Settings {
 		TimeCycle:                 true,
 		WeatherCycle:              true,
 		TickRange:                 6,
+		FallDamage:                true,
 		PlayersSleepingPercentage: 100,
 	}
 }

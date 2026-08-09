@@ -1417,6 +1417,26 @@ func (w *World) SetDifficulty(d Difficulty) {
 	w.set.Difficulty = d
 }
 
+// FallDamage reports whether entities in the World take damage from falling.
+func (w *World) FallDamage() bool {
+	if w == nil {
+		return false
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	return w.set.FallDamage
+}
+
+// SetFallDamage sets whether entities in the World take damage from falling.
+func (w *World) SetFallDamage(v bool) {
+	if w == nil {
+		return
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	w.set.FallDamage = v
+}
+
 // scheduleBlockUpdate schedules a block update at the position passed for the
 // block type passed after a specific delay. If the block at that position does
 // not handle block updates, nothing will happen.

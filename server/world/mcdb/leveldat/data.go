@@ -258,6 +258,7 @@ func (d *Data) Settings() *world.Settings {
 		DefaultGameMode:           mode,
 		Difficulty:                difficulty,
 		TickRange:                 d.ServerChunkTickRange,
+		FallDamage:                d.FallDamage,
 		PlayersSleepingPercentage: d.PlayersSleepingPercentage,
 	}
 	entries := make([]world.PositionTrackingEntry, 0, len(d.DragonflyPositionTracking))
@@ -289,6 +290,7 @@ func (d *Data) PutSettings(s *world.Settings) {
 	}
 	d.CurrentTick = s.CurrentTick
 	d.ServerChunkTickRange = s.TickRange
+	d.FallDamage = s.FallDamage
 	d.PlayersSleepingPercentage = s.PlayersSleepingPercentage
 	mode, _ := world.GameModeID(s.DefaultGameMode)
 	d.GameType = int32(mode)
