@@ -42,6 +42,11 @@ type Session struct {
 	connWriteMu sync.Mutex
 	handlers    map[uint32]packetHandler
 	packets     chan packet.Packet
+	// abilityResend is the delayed ability update queued after a game mode change.
+	abilityResendMu    sync.RWMutex
+	abilityResend      *world.Task
+	abilityResendDelay time.Duration
+	closing            atomic.Bool
 
 	// commandOrigin holds the last command origin so output can match request metadata.
 	commandOrigin atomic.Pointer[protocol.CommandOrigin]
@@ -168,6 +173,8 @@ var Nop = &Session{conf: Config{Log: slog.New(slog.DiscardHandler)}}
 // selfEntityRuntimeID is the entity runtime (or unique) ID of the controllable that the session holds.
 const selfEntityRuntimeID = 1
 
+const defaultAbilityResendDelay = 50 * time.Millisecond
+
 // errSelfRuntimeID is an error returned during packet handling for fields that refer to the player itself and
 // must therefore always be 1.
 var errSelfRuntimeID = errors.New("invalid entity runtime ID: runtime ID for self must always be 1")
@@ -230,6 +237,7 @@ func (conf Config) New(conn Conn) *Session {
 		hiddenHud:              make(map[hud.Element]struct{}),
 		debugShapes:            make(map[int]debug.Shape),
 		debugShapeUpdates:      make([]debugShapeUpdate, 0, 256),
+		abilityResendDelay:     defaultAbilityResendDelay,
 	}
 	s.viewLayer = world.NewViewLayer(s)
 	// Initialize heldSlot before any inventory callbacks can fire.
@@ -406,6 +414,12 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 // eventually.
 func (s *Session) CloseConnection() {
 	s.connOnce.Do(func() {
+		s.closing.Store(true)
+		s.abilityResendMu.Lock()
+		if s.abilityResend != nil {
+			s.abilityResend.Cancel()
+		}
+		s.abilityResendMu.Unlock()
 		_ = s.conn.Close()
 		close(s.closeBackground)
 	})

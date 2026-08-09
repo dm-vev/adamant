@@ -594,7 +594,33 @@ func (s *Session) SendGameMode(c Controllable) {
 		return
 	}
 	s.writePacket(&packet.SetPlayerGameType{GameType: GameTypeFromMode(c.GameMode())})
-	s.SendAbilities(c)
+	s.resendAbilities(c)
+}
+
+// resendAbilities queues an ability update after a game mode update. Bedrock ignores abilities sent immediately
+// after the game type, so the update runs later on the controllable's world owner.
+func (s *Session) resendAbilities(c Controllable) {
+	delay := s.abilityResendDelay
+	if delay <= 0 {
+		delay = defaultAbilityResendDelay
+	}
+
+	s.abilityResendMu.Lock()
+	defer s.abilityResendMu.Unlock()
+	if s.closing.Load() {
+		return
+	}
+	previous := s.abilityResend
+	s.abilityResend = c.H().DoAfter(delay, func(_ *world.Tx, _ world.Entity) {
+		s.abilityResendMu.RLock()
+		defer s.abilityResendMu.RUnlock()
+		if !s.closing.Load() {
+			s.SendAbilities(c)
+		}
+	})
+	if previous != nil {
+		previous.Cancel()
+	}
 }
 
 // SendAbilities sends the abilities of the Controllable entity of the session to the client.

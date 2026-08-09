@@ -1,10 +1,15 @@
 package session
 
 import (
+	"context"
+	"errors"
 	"testing"
+	"time"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -48,3 +53,117 @@ func TestResyncInventory(t *testing.T) {
 		}
 	}
 }
+
+func TestSendGameModeResendsAbilitiesAfterDelay(t *testing.T) {
+	s, c, w := abilityTestSession(t, 10*time.Millisecond)
+	var task *world.Task
+	if err := w.Do(func(*world.Tx) {
+		s.SendGameMode(c)
+		task = s.abilityResend
+	}).Wait(context.Background()); err != nil {
+		t.Fatalf("send game mode: %v", err)
+	}
+
+	pk := <-s.packets
+	gameType, ok := pk.(*packet.SetPlayerGameType)
+	if !ok {
+		t.Fatalf("packet type = %T, want *packet.SetPlayerGameType", pk)
+	}
+	if gameType.GameType != packet.GameTypeCreative {
+		t.Fatalf("game type = %d, want %d", gameType.GameType, packet.GameTypeCreative)
+	}
+	select {
+	case pk := <-s.packets:
+		t.Fatalf("ability packet sent without delay: %T", pk)
+	default:
+	}
+	if err := task.Wait(context.Background()); err != nil {
+		t.Fatalf("resend abilities: %v", err)
+	}
+
+	pk = <-s.packets
+	abilities, ok := pk.(*packet.UpdateAbilities)
+	if !ok {
+		t.Fatalf("packet type = %T, want *packet.UpdateAbilities", pk)
+	}
+	want := uint32(protocol.AbilityMayFly | protocol.AbilityInvulnerable | protocol.AbilityInstantBuild | protocol.AbilityBuild | protocol.AbilityMine | protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers | protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs)
+	if got := abilities.AbilityData.Layers[0].Values; got != want {
+		t.Fatalf("ability values = %b, want %b", got, want)
+	}
+}
+
+func TestCloseConnectionCancelsDelayedAbilityResend(t *testing.T) {
+	s, c, w := abilityTestSession(t, time.Hour)
+	var task *world.Task
+	if err := w.Do(func(*world.Tx) {
+		s.SendGameMode(c)
+		task = s.abilityResend
+	}).Wait(context.Background()); err != nil {
+		t.Fatalf("send game mode: %v", err)
+	}
+	<-s.packets // SetPlayerGameType.
+
+	s.CloseConnection()
+	if err := task.Wait(context.Background()); !errors.Is(err, world.ErrTaskCancelled) {
+		t.Fatalf("delayed ability resend error = %v, want %v", err, world.ErrTaskCancelled)
+	}
+	select {
+	case pk := <-s.packets:
+		t.Fatalf("ability packet sent after close: %T", pk)
+	default:
+	}
+}
+
+func abilityTestSession(t *testing.T, delay time.Duration) (*Session, *abilityTestControllable, *world.World) {
+	t.Helper()
+	s := &Session{
+		conn:               abilityTestConn{},
+		packets:            make(chan packet.Packet, 2),
+		closeBackground:    make(chan struct{}),
+		abilityResendDelay: delay,
+	}
+	c := &abilityTestControllable{mode: world.GameModeCreative}
+	c.handle = world.EntitySpawnOpts{}.New(abilityTestType{c: c}, abilityTestConfig{})
+	w := world.Config{Synchronous: true}.New()
+	if err := w.Do(func(tx *world.Tx) { tx.AddEntity(c.handle) }).Wait(context.Background()); err != nil {
+		t.Fatalf("add controllable: %v", err)
+	}
+	t.Cleanup(func() {
+		s.CloseConnection()
+		_ = w.Close()
+	})
+	return s, c, w
+}
+
+type abilityTestControllable struct {
+	Controllable
+	handle *world.EntityHandle
+	mode   world.GameMode
+}
+
+func (c *abilityTestControllable) Close() error               { return nil }
+func (c *abilityTestControllable) H() *world.EntityHandle     { return c.handle }
+func (c *abilityTestControllable) Position() mgl64.Vec3       { return mgl64.Vec3{} }
+func (c *abilityTestControllable) Rotation() cube.Rotation    { return cube.Rotation{} }
+func (c *abilityTestControllable) GameMode() world.GameMode   { return c.mode }
+func (*abilityTestControllable) Flying() bool                 { return false }
+func (*abilityTestControllable) FlightSpeed() float64         { return 0.05 }
+func (*abilityTestControllable) VerticalFlightSpeed() float64 { return 0.05 }
+
+type abilityTestType struct{ c *abilityTestControllable }
+
+func (t abilityTestType) Open(*world.Tx, *world.EntityHandle, *world.EntityData) world.Entity {
+	return t.c
+}
+func (abilityTestType) EncodeEntity() string                        { return "test:abilities" }
+func (abilityTestType) BBox(world.Entity) cube.BBox                 { return cube.BBox{} }
+func (abilityTestType) DecodeNBT(map[string]any, *world.EntityData) {}
+func (abilityTestType) EncodeNBT(*world.EntityData) map[string]any  { return nil }
+
+type abilityTestConfig struct{}
+
+func (abilityTestConfig) Apply(*world.EntityData) {}
+
+type abilityTestConn struct{ Conn }
+
+func (abilityTestConn) Close() error { return nil }
