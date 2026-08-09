@@ -151,6 +151,13 @@ func (conf Config) New() *World {
 	// is used in some vanilla paths.
 	conf.Blocks.Finalize()
 	DefaultBlockRegistry.Finalize()
+	providerUse := retainProvider(conf.Provider)
+	constructed := false
+	defer func() {
+		if !constructed && releaseProvider(providerUse) {
+			_ = conf.Provider.Close()
+		}
+	}()
 	if provider, ok := conf.Provider.(blockRegistrySetter); ok {
 		provider.SetBlockRegistry(conf.Blocks)
 	}
@@ -161,6 +168,12 @@ func (conf Config) New() *World {
 	}
 	s := conf.Provider.Settings()
 	s.Lock()
+	settingsLocked := true
+	defer func() {
+		if settingsLocked {
+			s.Unlock()
+		}
+	}()
 	currentTick := s.CurrentTick
 	w := &World{
 		scheduledUpdates:  newScheduledTickQueue(currentTick),
@@ -179,7 +192,7 @@ func (conf Config) New() *World {
 		conf:              conf,
 		ra:                conf.Dim.Range(),
 		set:               s,
-		providerUse:       retainProvider(conf.Provider),
+		providerUse:       providerUse,
 		tick:              currentTick,
 		activeColumnIndex: make(map[ChunkPos]int),
 		entityColumnIndex: make(map[ChunkPos]int),
@@ -193,6 +206,7 @@ func (conf Config) New() *World {
 	}
 	s.worlds[w] = struct{}{}
 	s.Unlock()
+	settingsLocked = false
 	w.weather = weather{w: w}
 	var h Handler = NopHandler{}
 	w.handler.Store(&h)
@@ -213,5 +227,6 @@ func (conf Config) New() *World {
 	}
 
 	<-w.exec(t.tick)
+	constructed = true
 	return w
 }

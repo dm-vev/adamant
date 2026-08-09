@@ -1760,11 +1760,20 @@ func (w *World) viewChunkEntities(tx *Tx, c *Column, viewer Viewer) {
 // hidden from the viewer and no more calls will be made when events in the
 // chunk happen.
 func (w *World) removeViewer(tx *Tx, pos ChunkPos, loader *Loader) {
+	w.removeViewerFrom(tx, pos, nil, loader, loader.viewer, true)
+}
+
+// rollbackViewer removes a partially published chunk without closing it, so it may be retried.
+func (w *World) rollbackViewer(tx *Tx, pos ChunkPos, c *Column, loader *Loader, viewer Viewer) {
+	w.removeViewerFrom(tx, pos, c, loader, viewer, false)
+}
+
+func (w *World) removeViewerFrom(tx *Tx, pos ChunkPos, expected *Column, loader *Loader, viewer Viewer, closeUnused bool) {
 	if w == nil {
 		return
 	}
 	c, ok := w.chunks[pos]
-	if !ok {
+	if !ok || expected != nil && c != expected {
 		return
 	}
 	if i := slices.Index(c.loaders, loader); i != -1 {
@@ -1776,16 +1785,16 @@ func (w *World) removeViewer(tx *Tx, pos ChunkPos, loader *Loader) {
 	}
 
 	// Hide all entities in the chunk from the viewer.
-	delete(c.viewers, loader.viewer)
-	if loader.viewer != nil {
+	delete(c.viewers, viewer)
+	if viewer != nil {
 		for _, entity := range c.Entities {
 			if ent, ok := entity.Entity(tx); ok {
-				loader.viewer.HideEntity(ent)
+				viewer.HideEntity(ent)
 			}
 		}
 	}
 
-	if len(c.viewers) == 0 && len(c.loaders) == 0 {
+	if closeUnused && len(c.viewers) == 0 && len(c.loaders) == 0 {
 		w.closeChunk(tx, pos, c)
 	}
 }

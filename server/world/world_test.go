@@ -199,11 +199,65 @@ func TestSharedProviderWithDistinctSettingsClosesOnce(t *testing.T) {
 	}
 }
 
+func TestSharedProviderConstructionRetainedBeforeProviderUse(t *testing.T) {
+	provider := &lifecycleProvider{
+		freshSettings:        true,
+		blockRegistryStarted: make(chan struct{}),
+		releaseBlockRegistry: make(chan struct{}),
+	}
+	first := Config{Provider: provider, Synchronous: true}.New()
+	secondWorld := make(chan *World)
+	go func() {
+		secondWorld <- Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
+	}()
+	<-provider.blockRegistryStarted
+
+	if err := first.Close(); err != nil {
+		t.Fatalf("close first world: %v", err)
+	}
+	closedDuringConstruction := provider.closes.Load()
+	close(provider.releaseBlockRegistry)
+	second := <-secondWorld
+	t.Cleanup(func() { _ = second.Close() })
+
+	if closedDuringConstruction != 0 {
+		t.Fatalf("provider closed during world construction: %d", closedDuringConstruction)
+	}
+	if first.set == second.set {
+		t.Fatal("provider did not return distinct Settings values")
+	}
+	if err := second.Close(); err != nil {
+		t.Fatalf("close second world: %v", err)
+	}
+	if got := provider.closes.Load(); got != 1 {
+		t.Fatalf("provider close count = %d, want 1", got)
+	}
+}
+
+func TestProviderRetentionReleasedWhenConstructionPanics(t *testing.T) {
+	provider := &lifecycleProvider{panicBlockRegistry: true}
+	var recovered any
+	func() {
+		defer func() { recovered = recover() }()
+		Config{Provider: provider, Synchronous: true}.New()
+	}()
+	if recovered == nil {
+		t.Fatal("world construction did not panic")
+	}
+	if got := provider.closes.Load(); got != 1 {
+		t.Fatalf("provider close count = %d, want 1", got)
+	}
+}
+
 type lifecycleProvider struct {
 	NopProvider
-	freshSettings bool
-	saves         atomic.Int32
-	closes        atomic.Int32
+	freshSettings        bool
+	panicBlockRegistry   bool
+	blockRegistryCalls   atomic.Int32
+	blockRegistryStarted chan struct{}
+	releaseBlockRegistry chan struct{}
+	saves                atomic.Int32
+	closes               atomic.Int32
 }
 
 func (p *lifecycleProvider) Settings() *Settings {
@@ -211,6 +265,15 @@ func (p *lifecycleProvider) Settings() *Settings {
 		return defaultSettings()
 	}
 	return p.NopProvider.Settings()
+}
+func (p *lifecycleProvider) SetBlockRegistry(BlockRegistry) {
+	if p.panicBlockRegistry {
+		panic("set block registry")
+	}
+	if p.blockRegistryCalls.Add(1) == 2 && p.blockRegistryStarted != nil {
+		close(p.blockRegistryStarted)
+		<-p.releaseBlockRegistry
+	}
 }
 func (p *lifecycleProvider) SaveSettings(*Settings) { p.saves.Add(1) }
 func (p *lifecycleProvider) Close() error           { p.closes.Add(1); return nil }

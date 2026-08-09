@@ -123,6 +123,92 @@ func readyTestColumn(w *World, pos ChunkPos) *Column {
 	return col
 }
 
+func TestLoaderRetriesEntityPublicationAfterPanic(t *testing.T) {
+	w := Config{Synchronous: true, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	h := EntitySpawnOpts{Position: mgl64.Vec3{0.5, 4, 0.5}}.New(reentrantEntityType{}, reentrantEntityConfig{})
+	w.Do(func(tx *Tx) { tx.AddEntity(h) })
+
+	viewer := &panicEntityViewer{visible: make(map[*EntityHandle]bool), panicView: true}
+	loader := NewLoader(0, w, viewer)
+	w.Do(func(tx *Tx) { loader.Load(tx, 1) })
+
+	pos := ChunkPos{}
+	col := w.chunks[pos]
+	if _, ok := loader.Chunk(pos); ok {
+		t.Fatal("loader retained chunk after entity publication panic")
+	}
+	if viewer.visible[h] {
+		t.Fatal("viewer retained entity after publication panic")
+	}
+	if _, ok := col.viewers[viewer]; ok {
+		t.Fatal("chunk retained viewer after publication panic")
+	}
+	if countLoader(col.loaders, loader) != 0 {
+		t.Fatal("chunk retained loader after publication panic")
+	}
+	loader.mu.RLock()
+	_, pending := loader.pending[pos]
+	loader.mu.RUnlock()
+	if pending {
+		t.Fatal("loader retained pending request after publication panic")
+	}
+
+	w.Do(func(tx *Tx) { loader.Load(tx, 1) })
+	if _, ok := loader.Chunk(pos); !ok {
+		t.Fatal("loader did not retry chunk publication")
+	}
+	if !viewer.visible[h] {
+		t.Fatal("viewer did not receive entity on retry")
+	}
+	if viewer.duplicateViews != 0 {
+		t.Fatalf("viewer received %d duplicate entity views", viewer.duplicateViews)
+	}
+	if viewer.viewCalls != 2 || viewer.itemCalls != 1 || viewer.armourCalls != 1 {
+		t.Fatalf("entity callbacks = view %d, items %d, armour %d; want 2, 1, 1", viewer.viewCalls, viewer.itemCalls, viewer.armourCalls)
+	}
+	if got := countLoader(col.loaders, loader); got != 1 {
+		t.Fatalf("chunk loader registrations = %d, want 1", got)
+	}
+}
+
+type panicEntityViewer struct {
+	NopViewer
+	visible        map[*EntityHandle]bool
+	panicView      bool
+	viewCalls      int
+	itemCalls      int
+	armourCalls    int
+	duplicateViews int
+}
+
+func (v *panicEntityViewer) ViewEntity(e Entity) {
+	h := e.H()
+	v.viewCalls++
+	if v.visible[h] {
+		v.duplicateViews++
+	}
+	v.visible[h] = true
+	if v.panicView {
+		v.panicView = false
+		panic("view entity")
+	}
+}
+
+func (v *panicEntityViewer) HideEntity(e Entity)     { delete(v.visible, e.H()) }
+func (v *panicEntityViewer) ViewEntityItems(Entity)  { v.itemCalls++ }
+func (v *panicEntityViewer) ViewEntityArmour(Entity) { v.armourCalls++ }
+
+func countLoader(loaders []*Loader, target *Loader) int {
+	var count int
+	for _, loader := range loaders {
+		if loader == target {
+			count++
+		}
+	}
+	return count
+}
+
 // TestChunkCallbackDoesNotReenterLoader checks that viewing an entity may load
 // another pending chunk without re-entering Loader.viewChunk under Loader.mu.
 func TestChunkCallbackDoesNotReenterLoader(t *testing.T) {

@@ -185,20 +185,23 @@ func (l *Loader) viewChunk(tx *Tx, pos ChunkPos, c *Column) {
 	dim := w.Dimension()
 	l.mu.Unlock()
 
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				l.mu.Lock()
-				if l.loaded[pos] == c {
-					delete(l.loaded, pos)
-					l.queueLoad(pos)
-				}
-				l.mu.Unlock()
-				panic(r)
+	registered := false
+	defer func() {
+		if r := recover(); r != nil {
+			l.mu.Lock()
+			retry := l.w == w && l.viewer == viewer && l.loaded[pos] == c
+			if retry {
+				delete(l.loaded, pos)
+				l.queueLoad(pos)
 			}
-		}()
-		viewer.ViewChunk(pos, dim, c)
+			l.mu.Unlock()
+			if registered && retry {
+				w.rollbackViewer(tx, pos, c, l, viewer)
+			}
+			panic(r)
+		}
 	}()
+	viewer.ViewChunk(pos, dim, c)
 
 	l.mu.Lock()
 	if l.closed || l.changing || l.viewer != viewer || l.w != w || l.loaded[pos] != c || !l.withinLoadRadius(pos) {
@@ -206,6 +209,7 @@ func (l *Loader) viewChunk(tx *Tx, pos ChunkPos, c *Column) {
 		return
 	}
 	w.addViewer(pos, c, l, viewer)
+	registered = true
 	l.mu.Unlock()
 
 	w.viewChunkEntities(tx, c, viewer)
