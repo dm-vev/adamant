@@ -164,13 +164,13 @@ func (conf Config) New() *World {
 			w.set.Unlock()
 		}
 		if releaseProvider(providerUse) {
-			_ = conf.Provider.Close()
+			_, _ = providerUse.closeProvider(conf.Provider, false)
 		}
 	}()
 	if provider, ok := conf.Provider.(blockRegistrySetter); ok {
 		provider.SetBlockRegistry(conf.Blocks)
 	}
-	if _, err := providerUse.positionTracker(conf.Provider); err != nil {
+	if err := providerUse.loadPositionTracker(conf.Provider); err != nil {
 		conf.Log.Error("load position tracking data: " + err.Error())
 	}
 

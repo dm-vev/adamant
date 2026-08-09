@@ -1,6 +1,7 @@
 package world
 
 import (
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -117,4 +118,195 @@ func TestPositionTrackingDoesNotWaitForSettingsOwner(t *testing.T) {
 		w.set.Unlock()
 		t.Fatal("position tracking waited for the settings owner lock")
 	}
+}
+
+type trackingTestProvider struct {
+	NopProvider
+	mu               sync.Mutex
+	data             PositionTrackingData
+	loadErr          error
+	failLoads        int
+	loads            int
+	saves            int
+	closes           int
+	firstSaveStarted chan struct{}
+	releaseFirstSave chan struct{}
+}
+
+func (p *trackingTestProvider) LoadPositionTrackingData() (PositionTrackingData, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.loads++
+	if p.failLoads != 0 {
+		if p.failLoads > 0 {
+			p.failLoads--
+		}
+		return PositionTrackingData{}, p.loadErr
+	}
+	return clonePositionTrackingData(p.data), nil
+}
+
+func (p *trackingTestProvider) SavePositionTrackingData(data PositionTrackingData) error {
+	p.mu.Lock()
+	p.saves++
+	save := p.saves
+	p.mu.Unlock()
+	if save == 1 && p.firstSaveStarted != nil {
+		close(p.firstSaveStarted)
+		<-p.releaseFirstSave
+	}
+	p.mu.Lock()
+	p.data = clonePositionTrackingData(data)
+	p.mu.Unlock()
+	return nil
+}
+
+func (p *trackingTestProvider) Close() error {
+	p.mu.Lock()
+	p.closes++
+	p.mu.Unlock()
+	return nil
+}
+
+func (p *trackingTestProvider) snapshot() (PositionTrackingData, int, int, int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return clonePositionTrackingData(p.data), p.loads, p.saves, p.closes
+}
+
+func clonePositionTrackingData(data PositionTrackingData) PositionTrackingData {
+	data.Entries = append([]PositionTrackingEntry(nil), data.Entries...)
+	return data
+}
+
+func TestPositionTrackingSaveSerialisesSnapshotAndWrite(t *testing.T) {
+	provider := &trackingTestProvider{firstSaveStarted: make(chan struct{}), releaseFirstSave: make(chan struct{})}
+	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
+	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
+	released := false
+	t.Cleanup(func() {
+		if !released {
+			close(provider.releaseFirstSave)
+		}
+		_ = first.Close()
+		_ = second.Close()
+	})
+
+	first.TrackPosition(cube.Pos{1, 64, 1}, 0)
+	firstDone := make(chan struct{})
+	go func() {
+		first.Save()
+		close(firstDone)
+	}()
+	<-provider.firstSaveStarted
+
+	second.TrackPosition(cube.Pos{2, 64, 2}, 0)
+	secondDone := make(chan struct{})
+	go func() {
+		second.Save()
+		close(secondDone)
+	}()
+	select {
+	case <-secondDone:
+		t.Fatal("newer tracking save completed before the earlier write")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(provider.releaseFirstSave)
+	released = true
+	for name, done := range map[string]<-chan struct{}{"first": firstDone, "second": secondDone} {
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			t.Fatalf("%s save did not complete", name)
+		}
+	}
+
+	data, _, saves, _ := provider.snapshot()
+	if saves != 2 || data.Next != 2 || len(data.Entries) != 2 {
+		t.Fatalf("saved tracking data = %#v after %d saves", data, saves)
+	}
+}
+
+func TestPositionTrackingFailedLoadPreservesProviderData(t *testing.T) {
+	want := PositionTrackingData{Next: 7, Entries: []PositionTrackingEntry{{Handle: 7, Position: cube.Pos{7, 70, 7}, Active: true}}}
+	provider := &trackingTestProvider{data: want, loadErr: errors.New("temporary read failure"), failLoads: -1}
+	w := Config{Provider: provider, Synchronous: true}.New()
+	w.Save()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	got, _, saves, closes := provider.snapshot()
+	if saves != 0 || closes != 1 {
+		t.Fatalf("failed load produced %d saves and %d closes", saves, closes)
+	}
+	if got.Next != want.Next || len(got.Entries) != 1 || got.Entries[0] != want.Entries[0] {
+		t.Fatalf("provider data changed after failed load: %#v", got)
+	}
+}
+
+func TestPositionTrackingTransientLoadRecoversBeforeSave(t *testing.T) {
+	want := PositionTrackingData{Next: 4, Entries: []PositionTrackingEntry{{Handle: 4, Position: cube.Pos{4, 70, 4}, Active: true}}}
+	provider := &trackingTestProvider{data: want, loadErr: errors.New("temporary read failure"), failLoads: 1}
+	w := Config{Provider: provider, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	if _, _, ok := w.TrackedPosition(4); ok {
+		t.Fatal("invalid tracker exposed data before recovery")
+	}
+	w.Save()
+	if got, _, ok := w.TrackedPosition(4); !ok || got != want.Entries[0].Position {
+		t.Fatalf("recovered tracking position = %v, %v", got, ok)
+	}
+	got, loads, saves, _ := provider.snapshot()
+	if loads != 2 || saves != 1 || got.Next != want.Next || len(got.Entries) != 1 || got.Entries[0] != want.Entries[0] {
+		t.Fatalf("recovery state = %#v, loads=%d saves=%d", got, loads, saves)
+	}
+}
+
+func TestPositionTrackingFinalCloseSavesLatestOnce(t *testing.T) {
+	provider := &trackingTestProvider{}
+	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
+	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
+
+	first.TrackPosition(cube.Pos{1, 64, 1}, 0)
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, saves, closes := provider.snapshot(); saves != 0 || closes != 0 {
+		t.Fatalf("non-final close produced %d saves and %d closes", saves, closes)
+	}
+	second.TrackPosition(cube.Pos{2, 64, 2}, 0)
+	if err := second.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, _, saves, closes := provider.snapshot()
+	if saves != 1 || closes != 1 || data.Next != 2 || len(data.Entries) != 2 {
+		t.Fatalf("final state = %#v, saves=%d closes=%d", data, saves, closes)
+	}
+}
+
+func TestPositionTrackingProviderIdentityTopology(t *testing.T) {
+	first := Config{Provider: NopProvider{}, Synchronous: true}.New()
+	second := Config{Provider: NopProvider{}, Dim: Nether, Synchronous: true}.New()
+	if got := first.TrackPosition(cube.Pos{1, 64, 1}, 0); got != 1 {
+		t.Fatalf("first independent provider handle = %d, want 1", got)
+	}
+	if got := second.TrackPosition(cube.Pos{2, 64, 2}, 0); got != 1 {
+		t.Fatalf("second independent provider handle = %d, want 1", got)
+	}
+	_ = first.Close()
+	_ = second.Close()
+
+	provider := &NopProvider{}
+	first = Config{Provider: provider, Synchronous: true}.New()
+	second = Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
+	if got := first.TrackPosition(cube.Pos{1, 64, 1}, 0); got != 1 {
+		t.Fatalf("shared pointer provider first handle = %d, want 1", got)
+	}
+	if got := second.TrackPosition(cube.Pos{2, 64, 2}, 0); got != 2 {
+		t.Fatalf("shared pointer provider second handle = %d, want 2", got)
+	}
+	_ = first.Close()
+	_ = second.Close()
 }

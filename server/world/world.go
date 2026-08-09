@@ -1584,6 +1584,15 @@ func (w *World) Save() {
 		return
 	}
 	<-w.exec(w.save(w.saveChunk))
+	if !w.conf.ReadOnly {
+		w.savePositionTracking()
+	}
+}
+
+func (w *World) savePositionTracking() {
+	if err := w.providerUse.savePositionTracker(w.conf.Provider); err != nil {
+		w.conf.Log.Error("save position tracking data: " + err.Error())
+	}
 }
 
 // save saves all loaded chunks to the World's provider.
@@ -1598,11 +1607,6 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 		}
 		w.conf.Log.Debug("Updating level.dat values...")
 		w.conf.Provider.SaveSettings(w.set)
-		if provider, ok := w.conf.Provider.(positionTrackingProvider); ok {
-			if err := provider.SavePositionTrackingData(w.positionTracker().data()); err != nil {
-				w.conf.Log.Error("save position tracking data: " + err.Error())
-			}
-		}
 	}
 }
 
@@ -1734,8 +1738,12 @@ func (w *World) close() {
 	}
 
 	w.conf.Log.Debug("Closing provider...")
-	if err := w.conf.Provider.Close(); err != nil {
-		w.conf.Log.Error("close world provider: " + err.Error())
+	saveErr, closeErr := w.providerUse.closeProvider(w.conf.Provider, !w.conf.ReadOnly)
+	if saveErr != nil {
+		w.conf.Log.Error("save position tracking data: " + saveErr.Error())
+	}
+	if closeErr != nil {
+		w.conf.Log.Error("close world provider: " + closeErr.Error())
 	}
 }
 

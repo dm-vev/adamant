@@ -1,6 +1,7 @@
 package mcdb
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"testing"
@@ -108,6 +109,45 @@ func TestPositionTrackingExportRemovesPrunedEntries(t *testing.T) {
 	}
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMalformedPositionTrackingLoadDoesNotOverwriteData(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := decodeHex(t, vanillaPositionTrackLast)
+	malformedEntry := []byte{0xff, 0x01, 0x02}
+	if err := db.ldb.Put([]byte(keyPositionTrackLast), last, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.ldb.Put(positionTrackKey(42), malformedEntry, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	w := world.Config{Provider: db, Synchronous: true}.New()
+	w.Save()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err = Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	gotLast, err := db.ldb.Get([]byte(keyPositionTrackLast), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotEntry, err := db.ldb.Get(positionTrackKey(42), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(gotLast, last) || !bytes.Equal(gotEntry, malformedEntry) {
+		t.Fatalf("malformed tracking data was overwritten: last=%x entry=%x", gotLast, gotEntry)
 	}
 }
 

@@ -61,8 +61,7 @@ func NewPositionTracker() *PositionTracker {
 }
 
 func (w *World) positionTracker() *PositionTracker {
-	t, _ := w.providerUse.positionTracker(w.conf.Provider)
-	return t
+	return w.providerUse.positionTracker()
 }
 
 // PositionTrackingData is a persistent snapshot of the position tracking database.

@@ -87,6 +87,16 @@ func (db *DB) LoadPositionTrackingData() (world.PositionTrackingData, error) {
 
 	b, err := db.ldb.Get([]byte(keyPositionTrackLast), nil)
 	if errors.Is(err, leveldb.ErrNotFound) {
+		iter := db.ldb.NewIterator(util.BytesPrefix([]byte(keyPositionTrackEntry)), nil)
+		hasEntries := iter.Next()
+		iterErr := iter.Error()
+		iter.Release()
+		if iterErr != nil {
+			return world.PositionTrackingData{}, fmt.Errorf("iterate position tracking entries: %w", iterErr)
+		}
+		if hasEntries {
+			return world.PositionTrackingData{}, errors.New("position tracking entries exist without a last ID")
+		}
 		return world.PositionTrackingData{}, nil
 	} else if err != nil {
 		return world.PositionTrackingData{}, fmt.Errorf("read position tracking last ID: %w", err)
@@ -104,14 +114,26 @@ func (db *DB) LoadPositionTrackingData() (world.PositionTrackingData, error) {
 	defer iter.Release()
 	for iter.Next() {
 		n, err := strconv.ParseUint(strings.TrimPrefix(string(iter.Key()), keyPositionTrackEntry), 16, 31)
+		if err != nil {
+			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry key %q: %w", iter.Key(), err)
+		}
 		handle := int32(n)
-		if err != nil || handle == 0 || handle > next {
-			continue
+		if handle == 0 || handle > next {
+			return world.PositionTrackingData{}, fmt.Errorf("position tracking entry handle %d exceeds last ID %d", handle, next)
 		}
 		var entry positionTrackEntry
-		if err := nbt.UnmarshalEncoding(iter.Value(), &entry, nbt.LittleEndian); err != nil || len(entry.Position) != 3 {
-			db.conf.Log.Warn("Ignoring invalid position tracking entry", "handle", handle)
-			continue
+		if err := nbt.UnmarshalEncoding(iter.Value(), &entry, nbt.LittleEndian); err != nil {
+			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry %d: %w", handle, err)
+		}
+		if len(entry.Position) != 3 {
+			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry %d: position length is %d", handle, len(entry.Position))
+		}
+		entryHandle, err := parsePositionTrackID(entry.ID)
+		if err != nil || entryHandle != handle {
+			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry %d: invalid ID %q", handle, entry.ID)
+		}
+		if entry.Status > 1 {
+			return world.PositionTrackingData{}, fmt.Errorf("decode position tracking entry %d: invalid status %d", handle, entry.Status)
 		}
 		data.Entries = append(data.Entries, world.PositionTrackingEntry{
 			Handle: handle, Position: cube.Pos{int(entry.Position[0]), int(entry.Position[1]), int(entry.Position[2])},

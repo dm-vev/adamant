@@ -38,33 +38,84 @@ type positionTrackingProvider interface {
 	SavePositionTrackingData(PositionTrackingData) error
 }
 
-type providerKey struct {
-	typ   reflect.Type
-	ptr   uintptr
-	value any
-}
+type providerKey struct{ provider Provider }
 
 type providerRef struct {
-	key         providerKey
-	refs        int
-	shared      bool
-	trackerOnce sync.Once
-	tracker     *PositionTracker
-	trackerErr  error
+	key    providerKey
+	refs   int
+	shared bool
+
+	trackerMu      sync.Mutex
+	tracker        *PositionTracker
+	trackerValid   bool
+	providerClosed bool
 }
 
-func (r *providerRef) positionTracker(provider Provider) (*PositionTracker, error) {
-	r.trackerOnce.Do(func() {
-		r.tracker = NewPositionTracker()
-		if p, ok := provider.(positionTrackingProvider); ok {
-			var data PositionTrackingData
-			data, r.trackerErr = p.LoadPositionTrackingData()
-			if r.trackerErr == nil {
-				r.tracker.load(data)
-			}
-		}
-	})
-	return r.tracker, r.trackerErr
+func newProviderRef(provider Provider) *providerRef {
+	_, tracksPositions := provider.(positionTrackingProvider)
+	return &providerRef{refs: 1, tracker: NewPositionTracker(), trackerValid: !tracksPositions}
+}
+
+func (r *providerRef) positionTracker() *PositionTracker {
+	return r.tracker
+}
+
+func (r *providerRef) loadPositionTracker(provider Provider) error {
+	r.trackerMu.Lock()
+	defer r.trackerMu.Unlock()
+	return r.loadPositionTrackerLocked(provider)
+}
+
+func (r *providerRef) loadPositionTrackerLocked(provider Provider) error {
+	if r.trackerValid {
+		return nil
+	}
+	p, ok := provider.(positionTrackingProvider)
+	if !ok {
+		r.trackerValid = true
+		return nil
+	}
+	data, err := p.LoadPositionTrackingData()
+	if err != nil {
+		return err
+	}
+	r.tracker.load(data)
+	r.trackerValid = true
+	return nil
+}
+
+func (r *providerRef) savePositionTracker(provider Provider) error {
+	r.trackerMu.Lock()
+	defer r.trackerMu.Unlock()
+	if r.providerClosed {
+		return nil
+	}
+	return r.savePositionTrackerLocked(provider)
+}
+
+func (r *providerRef) savePositionTrackerLocked(provider Provider) error {
+	p, ok := provider.(positionTrackingProvider)
+	if !ok {
+		return nil
+	}
+	if err := r.loadPositionTrackerLocked(provider); err != nil {
+		return err
+	}
+	return p.SavePositionTrackingData(r.tracker.data())
+}
+
+func (r *providerRef) closeProvider(provider Provider, saveTracker bool) (saveErr, closeErr error) {
+	r.trackerMu.Lock()
+	defer r.trackerMu.Unlock()
+	if r.providerClosed {
+		return nil, nil
+	}
+	if saveTracker {
+		saveErr = r.savePositionTrackerLocked(provider)
+	}
+	r.providerClosed = true
+	closeErr = provider.Close()
+	return
 }
 
 var providerRefs = struct {
@@ -75,7 +126,7 @@ var providerRefs = struct {
 func retainProvider(provider Provider) *providerRef {
 	key, ok := providerIdentity(provider)
 	if !ok {
-		return &providerRef{refs: 1}
+		return newProviderRef(provider)
 	}
 	providerRefs.Lock()
 	defer providerRefs.Unlock()
@@ -83,7 +134,8 @@ func retainProvider(provider Provider) *providerRef {
 		ref.refs++
 		return ref
 	}
-	ref := &providerRef{key: key, refs: 1, shared: true}
+	ref := newProviderRef(provider)
+	ref.key, ref.shared = key, true
 	providerRefs.m[key] = ref
 	return ref
 }
@@ -103,20 +155,14 @@ func releaseProvider(ref *providerRef) bool {
 }
 
 func providerIdentity(provider Provider) (providerKey, bool) {
-	typ := reflect.TypeOf(provider)
-	if typ == nil {
-		return providerKey{}, false
-	}
-	if typ.Comparable() {
-		return providerKey{typ: typ, value: provider}, true
-	}
 	value := reflect.ValueOf(provider)
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
-		return providerKey{typ: typ, ptr: value.Pointer()}, true
-	default:
+	if !value.IsValid() {
 		return providerKey{}, false
 	}
+	if value.Kind() != reflect.Pointer || value.IsNil() {
+		return providerKey{}, false
+	}
+	return providerKey{provider: provider}, true
 }
 
 // Compile time check to make sure NopProvider implements Provider.
