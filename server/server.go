@@ -646,7 +646,6 @@ func (srv *Server) waitForPlayerRemoval(id uuid.UUID, timeout time.Duration) boo
 // may later be modified if the player was saved in the player provider of the
 // server.
 func (srv *Server) defaultGameData() minecraft.GameData {
-	gm, _ := world.GameModeID(srv.world.DefaultGameMode())
 	return minecraft.GameData{
 		// Entity runtime/unique ID for the player itself is always 1 in df.
 		EntityUniqueID:  1,
@@ -658,7 +657,7 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 		Time:       int64(srv.world.Time()),
 		Difficulty: 2,
 
-		PlayerGameMode:    int32(gm),
+		PlayerGameMode:    session.GameTypeFromMode(srv.world.DefaultGameMode()),
 		PlayerPermissions: packet.PermissionLevelMember,
 		PlayerPosition:    vec64To32(srv.world.Spawn().Vec3Centre().Add(mgl64.Vec3{0, player.Type.NetworkOffset()})),
 

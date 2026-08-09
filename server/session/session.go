@@ -347,41 +347,44 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 		_ = s.viewLayer.Close()
 	}
 
+	// HandleStop may call plugin-owned storage. Finish releasing session-owned
+	// resources before allowing any panic from it to propagate.
+	defer func() {
+		// Clear the inventories so that they no longer hold references to the connection.
+		_ = s.inv.Close()
+		_ = s.offHand.Close()
+		_ = s.armour.Close()
+
+		if !s.conf.QuitMessage.Zero() {
+			chat.Global.Writet(s.conf.QuitMessage, s.conn.IdentityData().DisplayName)
+		}
+		chat.Global.Unsubscribe(c)
+
+		// Remove the controllable before closing its loader. Closing the last
+		// loader may unload the chunk and close its remaining entities.
+		if tx != nil {
+			tx.RemoveEntity(c)
+		}
+		if tx != nil && s.chunkLoader != nil {
+			s.chunkLoader.Close(tx)
+		}
+		if s.ent != nil {
+			_ = s.ent.Close()
+		}
+
+		// This should always be called last due to the timing of the removal of
+		// entity runtime IDs.
+		if s.ent != nil {
+			sessions.Remove(s, c)
+			s.entityMutex.Lock()
+			clear(s.entityRuntimeIDs)
+			clear(s.entities)
+			s.entityMutex.Unlock()
+		}
+	}()
+
 	if s.conf.HandleStop != nil {
 		s.conf.HandleStop(tx, c)
-	}
-
-	// Clear the inventories so that they no longer hold references to the connection.
-	_ = s.inv.Close()
-	_ = s.offHand.Close()
-	_ = s.armour.Close()
-
-	if tx != nil && s.chunkLoader != nil {
-		s.chunkLoader.Close(tx)
-	}
-
-	if !s.conf.QuitMessage.Zero() {
-		chat.Global.Writet(s.conf.QuitMessage, s.conn.IdentityData().DisplayName)
-	}
-	chat.Global.Unsubscribe(c)
-
-	// Note: Be aware of where RemoveEntity is called. This must not be done too
-	// early.
-	if tx != nil {
-		tx.RemoveEntity(c)
-	}
-	if s.ent != nil {
-		_ = s.ent.Close()
-	}
-
-	// This should always be called last due to the timing of the removal of
-	// entity runtime IDs.
-	if s.ent != nil {
-		sessions.Remove(s, c)
-		s.entityMutex.Lock()
-		clear(s.entityRuntimeIDs)
-		clear(s.entities)
-		s.entityMutex.Unlock()
 	}
 }
 
@@ -414,6 +417,16 @@ func (s *Session) withControllable(ctx context.Context, f func(tx *world.Tx, c C
 	return err
 }
 
+// callControllable isolates panics at the asynchronous session boundary.
+func (s *Session) callControllable(ctx context.Context, f func(tx *world.Tx, c Controllable) error) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = world.ErrTaskPanicked
+		}
+	}()
+	return s.withControllable(ctx, f)
+}
+
 // sessionOwnerStopped reports whether err means the session's player can no
 // longer run owner callbacks, so session goroutines should stop quietly.
 func sessionOwnerStopped(err error) bool {
@@ -432,7 +445,7 @@ func (s *Session) handlePackets() {
 		// First close the Controllable. This might lead to a world change
 		// (player might be dead while disconnecting, in which case it will
 		// respawn first).
-		if err := s.withControllable(context.Background(), func(_ *world.Tx, c Controllable) error {
+		if err := s.callControllable(context.Background(), func(_ *world.Tx, c Controllable) error {
 			_ = c.Close()
 			return nil
 		}); err != nil && !sessionOwnerStopped(err) {
@@ -440,7 +453,7 @@ func (s *Session) handlePackets() {
 		}
 		// Because the player might no longer be in the same world after
 		// closing, we create a new transaction
-		if err := s.withControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
+		if err := s.callControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
 			s.Close(tx, c)
 			return nil
 		}); err != nil && !sessionOwnerStopped(err) {
@@ -452,18 +465,9 @@ func (s *Session) handlePackets() {
 		if err != nil {
 			return
 		}
-		err = func() (err error) {
-			defer func() {
-				// CallRef re-panics for synchronous callers. The packet loop is the
-				// asynchronous boundary where a player panic must stop only its session.
-				if r := recover(); r != nil {
-					err = world.ErrTaskPanicked
-				}
-			}()
-			return s.withControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
-				return s.handlePacket(pk, tx, c)
-			})
-		}()
+		err = s.callControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
+			return s.handlePacket(pk, tx, c)
+		})
 		if err != nil {
 			if sessionOwnerStopped(err) {
 				return

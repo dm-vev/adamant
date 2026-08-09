@@ -593,7 +593,7 @@ func (s *Session) SendGameMode(c Controllable) {
 	if s == Nop {
 		return
 	}
-	s.writePacket(&packet.SetPlayerGameType{GameType: gameTypeFromMode(c.GameMode())})
+	s.writePacket(&packet.SetPlayerGameType{GameType: GameTypeFromMode(c.GameMode())})
 	s.SendAbilities(c)
 }
 
@@ -1512,8 +1512,8 @@ func validCapeDimensions(width, height int) bool {
 	return width == 32 && height == 64
 }
 
-// gameTypeFromMode returns the game type ID from the game mode passed.
-func gameTypeFromMode(mode world.GameMode) int32 {
+// GameTypeFromMode returns the protocol game type ID for mode.
+func GameTypeFromMode(mode world.GameMode) int32 {
 	if mode.AllowsFlying() && mode.CreativeInventory() {
 		return packet.GameTypeCreative
 	}

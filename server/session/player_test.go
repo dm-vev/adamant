@@ -21,7 +21,7 @@ func TestGameTypeFromMode(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			if got := gameTypeFromMode(test.mode); got != test.want {
+			if got := GameTypeFromMode(test.mode); got != test.want {
 				t.Fatalf("game type = %d, want %d", got, test.want)
 			}
 		})

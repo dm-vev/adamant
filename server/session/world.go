@@ -97,7 +97,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		s.writePacket(&packet.AddPlayer{
 			EntityMetadata:  metadata,
 			EntityRuntimeID: runtimeID,
-			GameType:        gameTypeFromMode(v.GameMode()),
+			GameType:        GameTypeFromMode(v.GameMode()),
 			HeadYaw:         float32(yaw),
 			Pitch:           float32(pitch),
 			Position:        vec64To32(entityNetworkPosition(e, e.Position())),
@@ -207,7 +207,7 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 		return
 	}
 	s.writePacket(&packet.UpdatePlayerGameType{
-		GameType:       gameTypeFromMode(c.GameMode()),
+		GameType:       GameTypeFromMode(c.GameMode()),
 		PlayerUniqueID: int64(s.entityRuntimeID(c)),
 	})
 }
