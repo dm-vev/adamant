@@ -2690,9 +2690,11 @@ func (p *Player) Displace(deltaPos mgl64.Vec3) {
 		return
 	}
 	res := pos.Add(deltaPos)
-	for _, v := range p.viewers() {
+	viewers, release := p.viewers()
+	for _, v := range viewers {
 		v.ViewEntityDisplacement(p, res, p.Rotation(), p.OnGround())
 	}
+	releaseBorrowedViewers(p.tx, viewers, release)
 	p.data.Pos, p.data.Vel = res, velocity
 	p.checkBlockCollisions(deltaPos)
 	p.onGround = p.checkOnGround(deltaPos)

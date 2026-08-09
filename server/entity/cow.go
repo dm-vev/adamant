@@ -140,11 +140,14 @@ func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	return damage, true
 }
 
-// Heal restores the cow's health up to its maximum.
-func (c *Cow) Heal(health float64, _ world.HealingSource) {
-	if !c.Dead() && health > 0 {
-		c.behaviour().health.AddHealth(health)
+// Heal restores the cow's health up to its maximum and returns the amount restored.
+func (c *Cow) Heal(health float64, _ world.HealingSource) float64 {
+	if c.Dead() || health <= 0 {
+		return 0
 	}
+	oldHealth := c.Health()
+	c.behaviour().health.AddHealth(health)
+	return c.Health() - oldHealth
 }
 
 // KnockBack applies velocity away from the source position.

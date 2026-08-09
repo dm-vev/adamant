@@ -90,27 +90,26 @@ func (cfg Config) Apply(data *world.EntityData) {
 		fallDistance:        conf.FallDistance,
 	}
 	playerUUID := conf.UUID
-	pdata.portalTravel = &entity.PortalTravelComputer{
-		Instantaneous: func(_, target world.Dimension) bool {
-			return target == world.End || pdata.gameMode != nil && pdata.gameMode.CreativeInventory()
-		},
-		Teleport: func(e entity.Traveller, pos mgl64.Vec3) {
-			e.(*Player).forceTeleport(pos)
-		},
-		SpawnPoint: func(tx *world.Tx) mgl64.Vec3 {
-			// Use the player's spawn only while its bed still exists and is unobstructed, like respawning.
-			pos := tx.World().PlayerSpawn(playerUUID)
-			if b, ok := tx.Block(pos).(block.Bed); ok && b.CanRespawnOn() {
-				if safe, ok := b.SafeSpawn(pos, tx); ok {
-					return safe.Vec3Middle()
-				}
-			}
-			return tx.World().Spawn().Vec3Middle()
-		},
-		Player: true,
-		// Only players create a portal at the destination when no linked portal exists.
-		CreatePortal: true,
+	pdata.portalTravel = entity.NewPortalTravelComputer()
+	pdata.portalTravel.Instantaneous = func(_, target world.Dimension) bool {
+		return target == world.End || pdata.gameMode != nil && pdata.gameMode.CreativeInventory()
 	}
+	pdata.portalTravel.Teleport = func(e entity.Traveller, pos mgl64.Vec3) {
+		e.(*Player).forceTeleport(pos)
+	}
+	pdata.portalTravel.SpawnPoint = func(tx *world.Tx) mgl64.Vec3 {
+		// Use the player's spawn only while its bed still exists and is unobstructed, like respawning.
+		pos := tx.World().PlayerSpawn(playerUUID)
+		if b, ok := tx.Block(pos).(block.Bed); ok && b.CanRespawnOn() {
+			if safe, ok := b.SafeSpawn(pos, tx); ok {
+				return safe.Vec3Middle()
+			}
+		}
+		return tx.World().Spawn().Vec3Middle()
+	}
+	pdata.portalTravel.Player = true
+	// Only players create a portal at the destination when no linked portal exists.
+	pdata.portalTravel.CreatePortal = true
 	pdata.hunger.setState(conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation)
 	pdata.experience.Add(conf.Experience)
 	data.Data = pdata

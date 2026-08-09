@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -15,6 +16,13 @@ func init() {
 func worldFinaliseBlockRegistry() {
 	world.DefaultBlockRegistry.Finalize()
 }
+
+type candleTestUser struct {
+	pistonTestUser
+	held item.Stack
+}
+
+func (u *candleTestUser) HeldItems() (item.Stack, item.Stack) { return u.held, item.Stack{} }
 
 func TestCandleIgnitePreservesAdditionalCandles(t *testing.T) {
 	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
@@ -76,4 +84,26 @@ func TestCandleSplashPreservesAdditionalCandles(t *testing.T) {
 	})
 
 	<-done
+}
+
+func TestCandleActivateFireAspectExtinguishesLitCandle(t *testing.T) {
+	w := world.Config{Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
+	defer w.Close()
+
+	pos := cube.Pos{0, 64, 0}
+	user := &candleTestUser{held: item.NewStack(item.Sword{Tier: item.ToolTierWood}, 1).WithEnchantments(item.NewEnchantment(enchantment.FireAspect, 1))}
+	<-w.Exec(func(tx *world.Tx) {
+		candle := Candle{Lit: true}
+		tx.SetBlock(pos, candle, nil)
+		ctx := &item.UseContext{}
+		if !candle.Activate(pos, cube.FaceUp, tx, user, ctx) {
+			t.Fatal("expected lit candle activation to succeed")
+		}
+		if ctx.Damage != 0 {
+			t.Fatalf("unexpected durability damage: %d", ctx.Damage)
+		}
+		if tx.Block(pos).(Candle).Lit {
+			t.Fatal("expected candle to be extinguished")
+		}
+	})
 }

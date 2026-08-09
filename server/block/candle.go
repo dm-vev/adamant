@@ -130,9 +130,10 @@ func (Candle) HasLiquidDrops() bool {
 func (c Candle) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	held, _ := u.HeldItems()
 	if _, ok := held.Enchantment(enchantment.FireAspect); ok {
-		c.Ignite(pos, tx, nil)
-		ctx.DamageItem(1)
-		return true
+		if c.Ignite(pos, tx, nil) {
+			ctx.DamageItem(1)
+			return true
+		}
 	}
 	if !c.Lit {
 		return false
