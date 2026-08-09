@@ -67,7 +67,15 @@ type playerData struct {
 	sleeping bool
 	sleepPos cube.Pos
 
-	usingSince time.Time
+	usingSince               time.Time
+	usingTicks               int64
+	usingStack               item.Stack
+	usingSlot                uint32
+	itemUseTick              int64
+	itemUseCompleteTick      int64
+	itemUseCompletedStack    item.Stack
+	itemUseCompletedSlot     uint32
+	itemUseRecentlyCompleted bool
 
 	glideTicks   int64
 	fireTicks    int64
@@ -1575,7 +1583,8 @@ func (p *Player) SetHeldSlot(to int) error {
 		return nil
 	}
 	atomic.StoreUint32(p.heldSlot, uint32(to))
-	p.usingItem = false
+	p.cancelItemUse()
+	p.itemUseRecentlyCompleted = false
 
 	viewers, release := p.viewers()
 	for _, viewer := range viewers {
@@ -1597,6 +1606,9 @@ func (p *Player) EnderChestInventory() *inventory.Inventory {
 func (p *Player) SetGameMode(mode world.GameMode) {
 	previous := p.GameMode()
 	p.gameMode = mode
+	if !mode.AllowsInteraction() {
+		p.cancelItemUse()
+	}
 
 	if !mode.AllowsFlying() {
 		p.StopFlying()
@@ -1753,6 +1765,16 @@ func (p *Player) UseItem() {
 		return
 	}
 	i, left := p.HeldItems()
+	if p.recentlyCompletedItemUse(i) {
+		return
+	}
+	if p.usingItem {
+		if p.itemUseMatches(i) {
+			// Use packets may be repeated while an item is held. Completion is handled by Tick.
+			return
+		}
+		p.cancelItemUse()
+	}
 	it := i.Item()
 
 	if cd, ok := it.(item.Cooldown); ok {
@@ -1763,30 +1785,20 @@ func (p *Player) UseItem() {
 		if !p.canRelease() {
 			return
 		}
-		p.usingSince, p.usingItem = time.Now(), true
-		p.updateState()
+		p.startItemUse(i)
 	}
 	switch usable := it.(type) {
 	case item.Chargeable:
 		useCtx := p.useContext()
-		if !p.usingItem {
-			if !usable.ReleaseCharge(p, p.tx, useCtx) && usable.CanCharge(p, p.tx, useCtx) {
-				// If the item was not charged yet, start charging.
-				p.usingSince, p.usingItem = time.Now(), true
-			}
+		if usable.ReleaseCharge(p, p.tx, useCtx) {
 			p.handleUseContext(useCtx)
 			p.updateState()
 			return
 		}
-
-		// Stop charging and determine if the item is ready.
-		p.usingItem = false
-		dur := p.useDuration()
-		if usable.Charge(p, p.tx, useCtx, dur) {
-			p.session().SendChargeItemComplete()
+		if usable.CanCharge(p, p.tx, useCtx) {
+			p.startItemUse(i)
 		}
 		p.handleUseContext(useCtx)
-		p.updateState()
 	case item.Usable:
 		useCtx := p.useContext()
 		if !usable.Use(p.tx, p, useCtx) {
@@ -1798,38 +1810,9 @@ func (p *Player) UseItem() {
 		p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 		p.addNewItem(useCtx)
 	case item.Consumable:
-		if c, ok := usable.(interface{ CanConsume() bool }); ok && !c.CanConsume() {
-			p.ReleaseItem()
-			return
+		if p.canConsume(usable) {
+			p.startItemUse(i)
 		}
-		if !usable.AlwaysConsumable() && p.GameMode().AllowsTakingDamage() && p.Food() >= 20 {
-			// The item.Consumable is not always consumable, the player is not in creative mode and the
-			// food bar is filled: The item cannot be consumed.
-			p.ReleaseItem()
-			return
-		}
-		if !p.usingItem {
-			// Consumable starts being consumed: Set the start timestamp and update the using state to viewers.
-			p.usingItem, p.usingSince = true, time.Now()
-			p.updateState()
-			return
-		}
-		// The player is currently using the item held. This is a signal the item was consumed, so we
-		// consume it and start using it again.
-		useCtx, dur := p.useContext(), p.useDuration()
-		if dur < usable.ConsumeDuration() {
-			// The required duration for consuming this item was not met, so we don't consume it.
-			return
-		}
-		// Reset the duration for the next item to be consumed.
-		p.usingSince = time.Now()
-		ctx := NewEventContext(p.tx, p)
-		if p.Handler().HandleItemConsume(ctx, i); ctx.Cancelled() {
-			return
-		}
-		useCtx.CountSub, useCtx.NewItem = 1, usable.Consume(p.tx, p)
-		p.handleUseContext(useCtx)
-		p.tx.PlaySound(p.Position().Add(mgl64.Vec3{0, 1.5}), sound.Burp{})
 	}
 }
 
@@ -1839,21 +1822,117 @@ func (p *Player) UseItem() {
 // ReleaseItem either aborts the using of the item or finished it, depending on the time that elapsed since
 // the item started being used.
 func (p *Player) ReleaseItem() {
-	if !p.usingItem || !p.canRelease() || !p.GameMode().AllowsInteraction() {
-		p.usingItem = false
+	if !p.usingItem {
 		return
 	}
-	p.usingItem = false
-
-	useCtx, dur := p.useContext(), p.useDuration()
 	i, _ := p.HeldItems()
+	if !p.itemUseMatches(i) {
+		p.cancelItemUse()
+		return
+	}
+	dur := p.useDuration()
+	p.cancelItemUse()
+	if !p.canRelease() || !p.GameMode().AllowsInteraction() {
+		return
+	}
+
+	useCtx := p.useContext()
 	ctx := NewEventContext(p.tx, p)
 	if p.Handler().HandleItemRelease(ctx, i, dur); ctx.Cancelled() {
 		return
 	}
 	i.Item().(item.Releasable).Release(p, p.tx, useCtx, dur)
 	p.handleUseContext(useCtx)
+}
+
+func (p *Player) startItemUse(stack item.Stack) {
+	p.usingItem = true
+	p.usingSince = time.Now()
+	p.usingTicks = 0
+	p.usingStack = stack
+	p.usingSlot = atomic.LoadUint32(p.heldSlot)
+	p.itemUseRecentlyCompleted = false
 	p.updateState()
+}
+
+func (p *Player) cancelItemUse() {
+	if !p.usingItem {
+		return
+	}
+	p.usingItem = false
+	p.usingTicks = 0
+	p.usingStack = item.Stack{}
+	p.updateState()
+}
+
+func (p *Player) completeItemUse() {
+	p.usingItem = false
+	p.usingTicks = 0
+	p.usingStack = item.Stack{}
+	p.itemUseCompleteTick = p.itemUseTick
+	p.itemUseCompletedStack, _ = p.HeldItems()
+	p.itemUseCompletedSlot = atomic.LoadUint32(p.heldSlot)
+	p.itemUseRecentlyCompleted = true
+	p.updateState()
+}
+
+func (p *Player) itemUseMatches(stack item.Stack) bool {
+	return p.usingSlot == atomic.LoadUint32(p.heldSlot) && p.usingStack.Equal(stack)
+}
+
+func (p *Player) recentlyCompletedItemUse(stack item.Stack) bool {
+	if !p.itemUseRecentlyCompleted {
+		return false
+	}
+	if p.itemUseCompletedSlot != atomic.LoadUint32(p.heldSlot) || !p.itemUseCompletedStack.Equal(stack) {
+		p.itemUseRecentlyCompleted = false
+		return false
+	}
+	if ticks := p.itemUseTick - p.itemUseCompleteTick; ticks >= 0 && ticks <= 2 {
+		// Ignore the completion packet that commonly follows server-side completion within 100ms.
+		return true
+	}
+	p.itemUseRecentlyCompleted = false
+	return false
+}
+
+func (p *Player) canConsume(consumable item.Consumable) bool {
+	if c, ok := consumable.(interface{ CanConsume() bool }); ok && !c.CanConsume() {
+		return false
+	}
+	return consumable.AlwaysConsumable() || !p.GameMode().AllowsTakingDamage() || p.Food() < 20
+}
+
+func (p *Player) tryConsumeItem(consumable item.Consumable, stack item.Stack) {
+	if !p.canConsume(consumable) {
+		p.cancelItemUse()
+		return
+	}
+	if p.useDuration() < consumable.ConsumeDuration() {
+		return
+	}
+	ctx := NewEventContext(p.tx, p)
+	if p.Handler().HandleItemConsume(ctx, stack); ctx.Cancelled() {
+		p.completeItemUse()
+		return
+	}
+	useCtx := p.useContext()
+	useCtx.CountSub, useCtx.NewItem = 1, consumable.Consume(p.tx, p)
+	p.handleUseContext(useCtx)
+	p.tx.PlaySound(p.Position().Add(mgl64.Vec3{0, 1.5}), sound.Burp{})
+	p.completeItemUse()
+}
+
+func (p *Player) tryChargeItem(chargeable item.Chargeable) {
+	useCtx, dur := p.useContext(), p.useDuration()
+	chargeable.ContinueCharge(p, p.tx, useCtx, dur)
+	completed := chargeable.Charge(p, p.tx, useCtx, dur)
+	p.handleUseContext(useCtx)
+	if !completed {
+		return
+	}
+	p.session().SendChargeItemComplete()
+	p.completeItemUse()
 }
 
 // canRelease returns whether the player can release the item currently held in the main hand.
@@ -1909,7 +1988,7 @@ func (p *Player) handleUseContext(ctx *item.UseContext) {
 
 // useDuration returns the duration the player has been using the item in the main hand.
 func (p *Player) useDuration() time.Duration {
-	return time.Since(p.usingSince) + time.Second/20
+	return max(time.Since(p.usingSince)+time.Second/20, time.Duration(p.usingTicks)*time.Second/20)
 }
 
 // UsingItem checks if the Player is currently using an item. True is returned if the Player is currently eating an
@@ -2981,7 +3060,9 @@ func (p *Player) Latency() time.Duration {
 // Tick ticks the entity, performing actions such as checking if the player is still breaking a block.
 func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)
+	p.itemUseTick = current
 	if p.Dead() {
+		p.cancelItemUse()
 		return
 	}
 	if _, ok := p.tx.Liquid(cube.PosFromVec3(p.Position())); !ok {
@@ -3034,22 +3115,8 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		}
 	}
 
-	held, _ := p.HeldItems()
-	if current%4 == 0 && p.usingItem {
-		if _, ok := held.Item().(item.Consumable); ok {
-			// Eating particles seem to happen roughly every 4 ticks.
-			viewers, release := p.viewers()
-			for _, v := range viewers {
-				v.ViewEntityAction(p, entity.EatAction{})
-			}
-			releaseBorrowedViewers(p.tx, viewers, release)
-		}
-	}
-
 	if p.usingItem {
-		if c, ok := held.Item().(item.Chargeable); ok {
-			c.ContinueCharge(p, tx, p.useContext(), p.useDuration())
-		}
+		p.tickItemUse(current)
 	}
 	if p.breaking {
 		p.ContinueBreaking(p.breakingFace)
@@ -3083,6 +3150,29 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	}
 
 	p.portalTravel.StopPortalContact()
+}
+
+func (p *Player) tickItemUse(current int64) {
+	p.itemUseTick = current
+	p.usingTicks++
+	held, _ := p.HeldItems()
+	if !p.itemUseMatches(held) {
+		p.cancelItemUse()
+		return
+	}
+	switch usable := held.Item().(type) {
+	case item.Consumable:
+		if current%4 == 0 {
+			viewers, release := p.viewers()
+			for _, v := range viewers {
+				v.ViewEntityAction(p, entity.EatAction{})
+			}
+			releaseBorrowedViewers(p.tx, viewers, release)
+		}
+		p.tryConsumeItem(usable, held)
+	case item.Chargeable:
+		p.tryChargeItem(usable)
+	}
 }
 
 // TravelThroughPortal handles the player touching a portal block.
