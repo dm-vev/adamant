@@ -127,7 +127,21 @@ func (w *World) TrackPosition(pos cube.Pos, handle int32) int32 {
 	if !ok {
 		return 0
 	}
-	t := w.positionTracker()
+	r := w.providerUse
+	if err := r.ensurePositionTrackerLoaded(w.conf.Provider); err != nil {
+		if handle > 0 {
+			return handle
+		}
+		return 0
+	}
+	handle = r.tracker.trackPosition(dim, pos, handle)
+	if !w.conf.ReadOnly {
+		r.trackerVersion.Add(1)
+	}
+	return handle
+}
+
+func (t *PositionTracker) trackPosition(dim int, pos cube.Pos, handle int32) int32 {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if handle < 0 {
@@ -191,20 +205,14 @@ func (w *World) UntrackPosition(pos cube.Pos) {
 	if !ok {
 		return
 	}
-	t := w.positionTracker()
-	t.mu.Lock()
-	key := positionTrackingKey(dim, pos)
-	handle := t.byPosition[key]
-	if entry, exists := t.byHandle[handle]; exists && entry.active {
-		entry.active = false
-		t.byHandle[handle] = entry
-		delete(t.byPosition, key)
-		t.inactive = append(t.inactive, handle)
-		t.pruneInactive()
-	} else {
-		handle = 0
+	r := w.providerUse
+	if err := r.ensurePositionTrackerLoaded(w.conf.Provider); err != nil {
+		return
 	}
-	t.mu.Unlock()
+	handle := r.tracker.untrackPosition(dim, pos)
+	if handle != 0 && !w.conf.ReadOnly {
+		r.trackerVersion.Add(1)
+	}
 	if handle == 0 {
 		return
 	}
@@ -218,6 +226,30 @@ func (w *World) UntrackPosition(pos cube.Pos) {
 	for viewer := range viewers {
 		viewer.ViewBlockAction(pos, action)
 	}
+}
+
+func (r *providerRef) ensurePositionTrackerLoaded(provider Provider) error {
+	if r.trackerValid.Load() {
+		return nil
+	}
+	return r.loadPositionTracker(provider)
+}
+
+func (t *PositionTracker) untrackPosition(dim int, pos cube.Pos) int32 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	key := positionTrackingKey(dim, pos)
+	handle := t.byPosition[key]
+	if entry, exists := t.byHandle[handle]; exists && entry.active {
+		entry.active = false
+		t.byHandle[handle] = entry
+		delete(t.byPosition, key)
+		t.inactive = append(t.inactive, handle)
+		t.pruneInactive()
+	} else {
+		handle = 0
+	}
+	return handle
 }
 
 // TrackedPosition looks up an active position tracking handle.

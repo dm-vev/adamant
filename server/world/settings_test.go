@@ -81,6 +81,83 @@ func TestSetFallDamageViewerMayReadSetting(t *testing.T) {
 	}
 }
 
+func TestSetFallDamageConcurrentCallbacksRemainOrdered(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+
+	entered, release := make(chan struct{}), make(chan struct{})
+	completed := make(chan bool, 2)
+	viewer := &fallDamageTestViewer{callback: func(enabled bool) {
+		if !enabled {
+			close(entered)
+			<-release
+		}
+		completed <- enabled
+	}}
+	loader := NewLoader(0, w, viewer)
+	defer w.Do(loader.Close)
+
+	firstDone := make(chan struct{})
+	go func() {
+		w.SetFallDamage(false)
+		close(firstDone)
+	}()
+	<-entered
+	secondDone := make(chan struct{})
+	go func() {
+		w.SetFallDamage(true)
+		close(secondDone)
+	}()
+	select {
+	case <-secondDone:
+	case <-time.After(time.Second):
+		t.Fatal("newer fall damage update blocked on an older callback")
+	}
+	select {
+	case value := <-completed:
+		t.Fatalf("callback %v overtook blocked older callback", value)
+	default:
+	}
+	close(release)
+	select {
+	case <-firstDone:
+	case <-time.After(time.Second):
+		t.Fatal("fall damage dispatch did not finish")
+	}
+	if first, second := <-completed, <-completed; first || !second {
+		t.Fatalf("callback completion order = [%v %v], want [false true]", first, second)
+	}
+}
+
+func TestSetFallDamageViewerMayReenterSetter(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+
+	completed := make(chan bool, 2)
+	viewer := &fallDamageTestViewer{callback: func(enabled bool) {
+		if !enabled {
+			w.SetFallDamage(true)
+		}
+		completed <- enabled
+	}}
+	loader := NewLoader(0, w, viewer)
+	defer w.Do(loader.Close)
+
+	done := make(chan struct{})
+	go func() {
+		w.SetFallDamage(false)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("reentrant fall damage update deadlocked")
+	}
+	if first, second := <-completed, <-completed; first || !second {
+		t.Fatalf("reentrant callback completion order = [%v %v], want [false true]", first, second)
+	}
+}
+
 func TestSetFallDamageSlowViewerDoesNotBlockClose(t *testing.T) {
 	settings := defaultSettings()
 	provider := NopProvider{Set: settings}

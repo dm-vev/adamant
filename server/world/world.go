@@ -1433,20 +1433,54 @@ func (w *World) SetFallDamage(v bool) {
 		return
 	}
 	w.set.FallDamage = v
-	viewersByWorld := make(map[*World][]Viewer, len(w.set.worlds))
-	for shared := range w.set.worlds {
-		viewers, _ := shared.allViewers()
-		viewersByWorld[shared] = viewers
+	w.set.fallDamageVersion++
+	if w.set.fallDamageDispatching {
+		w.set.Unlock()
+		return
 	}
+	w.set.fallDamageDispatching = true
 	w.set.Unlock()
+	w.dispatchFallDamage()
+}
 
-	for shared, viewers := range viewersByWorld {
-		for _, viewer := range viewers {
-			if viewer, ok := viewer.(interface{ ViewFallDamage(bool) }); ok {
-				viewer.ViewFallDamage(v)
+func (w *World) dispatchFallDamage() {
+	for {
+		w.set.Lock()
+		version, value := w.set.fallDamageVersion, w.set.FallDamage
+		worlds := make([]*World, 0, len(w.set.worlds))
+		for shared := range w.set.worlds {
+			worlds = append(worlds, shared)
+		}
+		w.set.Unlock()
+
+		stale := false
+		for _, shared := range worlds {
+			viewers, _ := shared.allViewers()
+			for _, viewer := range viewers {
+				w.set.Lock()
+				current := w.set.fallDamageVersion == version
+				w.set.Unlock()
+				if !current {
+					stale = true
+					break
+				}
+				if viewer, ok := viewer.(interface{ ViewFallDamage(bool) }); ok {
+					viewer.ViewFallDamage(value)
+				}
+			}
+			shared.releaseViewers(viewers)
+			if stale {
+				break
 			}
 		}
-		shared.releaseViewers(viewers)
+
+		w.set.Lock()
+		if w.set.fallDamageVersion == version {
+			w.set.fallDamageDispatching = false
+			w.set.Unlock()
+			return
+		}
+		w.set.Unlock()
 	}
 }
 
@@ -1744,7 +1778,7 @@ func (w *World) close() {
 	}
 
 	w.conf.Log.Debug("Closing provider...")
-	saveErr, closeErr := w.providerUse.closeProvider(w.conf.Provider, !w.conf.ReadOnly)
+	saveErr, closeErr := w.providerUse.closeProvider(w.conf.Provider)
 	if saveErr != nil {
 		w.conf.Log.Error("save position tracking data: " + saveErr.Error())
 	}

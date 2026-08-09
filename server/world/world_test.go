@@ -376,6 +376,43 @@ func TestSharedProviderConstructionRetainedBeforeProviderUse(t *testing.T) {
 	}
 }
 
+func TestSharedProviderConstructionWaitsForFinalClose(t *testing.T) {
+	provider := &lifecycleProvider{
+		freshSettings: true,
+		closeStarted:  make(chan struct{}),
+		releaseClose:  make(chan struct{}),
+	}
+	w := Config{Provider: provider, Synchronous: true}.New()
+	closeDone := make(chan struct{})
+	go func() {
+		_ = w.Close()
+		close(closeDone)
+	}()
+	<-provider.closeStarted
+
+	newResult := make(chan any, 1)
+	go func() {
+		defer func() { newResult <- recover() }()
+		Config{Provider: provider, Synchronous: true}.New()
+	}()
+	select {
+	case result := <-newResult:
+		t.Fatalf("concurrent construction completed before provider close: %v", result)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(provider.releaseClose)
+	<-closeDone
+	if result := <-newResult; result == nil {
+		t.Fatal("construction reused a closed provider")
+	}
+	if got := provider.blockRegistryCalls.Load(); got != 1 {
+		t.Fatalf("block registry calls = %d, want 1", got)
+	}
+	if got := provider.closes.Load(); got != 1 {
+		t.Fatalf("provider close count = %d, want 1", got)
+	}
+}
+
 func TestProviderRetentionReleasedWhenConstructionPanics(t *testing.T) {
 	provider := &lifecycleProvider{panicBlockRegistry: true}
 	var recovered any
@@ -456,6 +493,8 @@ type lifecycleProvider struct {
 	blockRegistryCalls   atomic.Int32
 	blockRegistryStarted chan struct{}
 	releaseBlockRegistry chan struct{}
+	closeStarted         chan struct{}
+	releaseClose         chan struct{}
 	saves                atomic.Int32
 	closes               atomic.Int32
 }
@@ -476,7 +515,14 @@ func (p *lifecycleProvider) SetBlockRegistry(BlockRegistry) {
 	}
 }
 func (p *lifecycleProvider) SaveSettings(*Settings) { p.saves.Add(1) }
-func (p *lifecycleProvider) Close() error           { p.closes.Add(1); return nil }
+func (p *lifecycleProvider) Close() error {
+	if p.closeStarted != nil {
+		close(p.closeStarted)
+		<-p.releaseClose
+	}
+	p.closes.Add(1)
+	return nil
+}
 
 func TestCloseDoesNotLeaveOwnerWaitingForGeneration(t *testing.T) {
 	w := Config{GeneratorWorkers: 1, GeneratorQueueSize: 1}.New()

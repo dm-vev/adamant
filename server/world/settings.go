@@ -11,8 +11,10 @@ import (
 type Settings struct {
 	sync.Mutex
 
-	owner  *World
-	worlds map[*World]struct{}
+	owner                 *World
+	worlds                map[*World]struct{}
+	fallDamageVersion     uint64
+	fallDamageDispatching bool
 
 	// Name is the display name of the World.
 	Name string

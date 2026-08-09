@@ -264,6 +264,51 @@ func TestPositionTrackingTransientLoadRecoversBeforeSave(t *testing.T) {
 	}
 }
 
+func TestPositionTrackingFailedLoadBlocksAllocationUntilRecovery(t *testing.T) {
+	stored := cube.Pos{3, 70, 3}
+	provider := &trackingTestProvider{
+		data:      PositionTrackingData{Next: 3, Entries: []PositionTrackingEntry{{Handle: 3, Position: stored, Active: true}}},
+		loadErr:   errors.New("temporary read failure"),
+		failLoads: 2,
+	}
+	w := Config{Provider: provider, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	placed := cube.Pos{4, 70, 4}
+	if handle := w.TrackPosition(placed, 0); handle != 0 {
+		t.Fatalf("allocated handle %d while persisted IDs were unavailable", handle)
+	}
+	w.Save()
+	if got, _, ok := w.TrackedPosition(3); !ok || got != stored {
+		t.Fatalf("recovered stored target = %v, %v; want %v, true", got, ok, stored)
+	}
+	if handle := w.TrackPosition(placed, 0); handle != 4 {
+		t.Fatalf("post-recovery handle = %d, want 4", handle)
+	}
+}
+
+func TestPositionTrackingFailedLoadPreservesLoadedHandleUntilRecovery(t *testing.T) {
+	pos := cube.Pos{7, 70, 7}
+	provider := &trackingTestProvider{
+		data:      PositionTrackingData{Next: 7, Entries: []PositionTrackingEntry{{Handle: 7, Position: pos, Active: true}}},
+		loadErr:   errors.New("temporary read failure"),
+		failLoads: 2,
+	}
+	w := Config{Provider: provider, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	if handle := w.TrackPosition(pos, 7); handle != 7 {
+		t.Fatalf("loaded handle = %d, want persisted handle 7", handle)
+	}
+	if _, _, ok := w.TrackedPosition(7); ok {
+		t.Fatal("failed load registered an unverified handle")
+	}
+	w.Save()
+	if got, _, ok := w.TrackedPosition(7); !ok || got != pos {
+		t.Fatalf("recovered loaded target = %v, %v; want %v, true", got, ok, pos)
+	}
+}
+
 func TestPositionTrackingFinalCloseSavesLatestOnce(t *testing.T) {
 	provider := &trackingTestProvider{}
 	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
@@ -282,6 +327,28 @@ func TestPositionTrackingFinalCloseSavesLatestOnce(t *testing.T) {
 	}
 	data, _, saves, closes := provider.snapshot()
 	if saves != 1 || closes != 1 || data.Next != 2 || len(data.Entries) != 2 {
+		t.Fatalf("final state = %#v, saves=%d closes=%d", data, saves, closes)
+	}
+}
+
+func TestPositionTrackingWritableChangesSaveWhenReadOnlyWorldClosesLast(t *testing.T) {
+	provider := &trackingTestProvider{}
+	writable := Config{Provider: provider, Synchronous: true}.New()
+	readOnly := Config{Provider: provider, Dim: Nether, ReadOnly: true, Synchronous: true}.New()
+
+	pos := cube.Pos{1, 64, 1}
+	handle := writable.TrackPosition(pos, 0)
+	if err := writable.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, saves, closes := provider.snapshot(); saves != 0 || closes != 0 {
+		t.Fatalf("non-final writable close produced %d saves and %d closes", saves, closes)
+	}
+	if err := readOnly.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, _, saves, closes := provider.snapshot()
+	if saves != 1 || closes != 1 || len(data.Entries) != 1 || data.Entries[0].Handle != handle || data.Entries[0].Position != pos {
 		t.Fatalf("final state = %#v, saves=%d closes=%d", data, saves, closes)
 	}
 }

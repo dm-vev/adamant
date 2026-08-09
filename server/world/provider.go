@@ -8,6 +8,7 @@ import (
 	"io"
 	"reflect"
 	"sync"
+	"sync/atomic"
 )
 
 // Provider represents a value that may provide world data to a World value. It usually does the reading and
@@ -41,19 +42,27 @@ type positionTrackingProvider interface {
 type providerKey struct{ provider Provider }
 
 type providerRef struct {
-	key    providerKey
-	refs   int
-	shared bool
+	key     providerKey
+	refs    int
+	shared  bool
+	closed  bool
+	closing chan struct{}
 
 	trackerMu      sync.Mutex
 	tracker        *PositionTracker
-	trackerValid   bool
+	trackerValid   atomic.Bool
+	trackerVersion atomic.Uint64
+	trackerSaved   atomic.Uint64
+	writable       atomic.Bool
 	providerClosed bool
 }
 
-func newProviderRef(provider Provider) *providerRef {
+func newProviderRef(provider Provider, writable bool) *providerRef {
 	_, tracksPositions := provider.(positionTrackingProvider)
-	return &providerRef{refs: 1, tracker: NewPositionTracker(), trackerValid: !tracksPositions}
+	r := &providerRef{refs: 1, tracker: NewPositionTracker()}
+	r.trackerValid.Store(!tracksPositions)
+	r.writable.Store(writable)
+	return r
 }
 
 func (r *providerRef) positionTracker() *PositionTracker {
@@ -67,12 +76,12 @@ func (r *providerRef) loadPositionTracker(provider Provider) error {
 }
 
 func (r *providerRef) loadPositionTrackerLocked(provider Provider) error {
-	if r.trackerValid {
+	if r.trackerValid.Load() {
 		return nil
 	}
 	p, ok := provider.(positionTrackingProvider)
 	if !ok {
-		r.trackerValid = true
+		r.trackerValid.Store(true)
 		return nil
 	}
 	data, err := p.LoadPositionTrackingData()
@@ -80,7 +89,7 @@ func (r *providerRef) loadPositionTrackerLocked(provider Provider) error {
 		return err
 	}
 	r.tracker.load(data)
-	r.trackerValid = true
+	r.trackerValid.Store(true)
 	return nil
 }
 
@@ -101,16 +110,24 @@ func (r *providerRef) savePositionTrackerLocked(provider Provider) error {
 	if err := r.loadPositionTrackerLocked(provider); err != nil {
 		return err
 	}
-	return p.SavePositionTrackingData(r.tracker.data())
+	version, data := r.trackerVersion.Load(), r.tracker.data()
+	if err := p.SavePositionTrackingData(data); err != nil {
+		return err
+	}
+	r.trackerSaved.Store(version)
+	return nil
 }
 
-func (r *providerRef) closeProvider(provider Provider, saveTracker bool) (saveErr, closeErr error) {
+func (r *providerRef) closeProvider(provider Provider) (saveErr, closeErr error) {
+	if r.shared {
+		defer r.finishClose()
+	}
 	r.trackerMu.Lock()
 	defer r.trackerMu.Unlock()
 	if r.providerClosed {
 		return nil, nil
 	}
-	if saveTracker {
+	if r.writable.Load() && r.trackerVersion.Load() != r.trackerSaved.Load() {
 		saveErr = r.savePositionTrackerLocked(provider)
 	}
 	r.providerClosed = true
@@ -123,20 +140,34 @@ var providerRefs = struct {
 	m map[providerKey]*providerRef
 }{m: make(map[providerKey]*providerRef)}
 
-func retainProvider(provider Provider) *providerRef {
+func retainProvider(provider Provider, writable bool) *providerRef {
 	key, ok := providerIdentity(provider)
 	if !ok {
-		return newProviderRef(provider)
+		return newProviderRef(provider, writable)
 	}
 	providerRefs.Lock()
-	defer providerRefs.Unlock()
 	if ref := providerRefs.m[key]; ref != nil {
+		if ref.closed {
+			providerRefs.Unlock()
+			panic("world: provider is closed")
+		}
+		if ref.closing != nil {
+			closing := ref.closing
+			providerRefs.Unlock()
+			<-closing
+			panic("world: provider is closed")
+		}
 		ref.refs++
+		if writable {
+			ref.writable.Store(true)
+		}
+		providerRefs.Unlock()
 		return ref
 	}
-	ref := newProviderRef(provider)
+	ref := newProviderRef(provider, writable)
 	ref.key, ref.shared = key, true
 	providerRefs.m[key] = ref
+	providerRefs.Unlock()
 	return ref
 }
 
@@ -150,8 +181,15 @@ func releaseProvider(ref *providerRef) bool {
 	if ref.refs != 0 {
 		return false
 	}
-	delete(providerRefs.m, ref.key)
+	ref.closing = make(chan struct{})
 	return true
+}
+
+func (r *providerRef) finishClose() {
+	providerRefs.Lock()
+	r.closed = true
+	close(r.closing)
+	providerRefs.Unlock()
 }
 
 func providerIdentity(provider Provider) (providerKey, bool) {

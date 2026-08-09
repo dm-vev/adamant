@@ -151,7 +151,7 @@ func (conf Config) New() *World {
 	// is used in some vanilla paths.
 	conf.Blocks.Finalize()
 	DefaultBlockRegistry.Finalize()
-	providerUse := retainProvider(conf.Provider)
+	providerUse := retainProvider(conf.Provider, !conf.ReadOnly)
 	constructed := false
 	var w *World
 	defer func() {
@@ -164,7 +164,7 @@ func (conf Config) New() *World {
 			w.set.Unlock()
 		}
 		if releaseProvider(providerUse) {
-			_, _ = providerUse.closeProvider(conf.Provider, false)
+			_, _ = providerUse.closeProvider(conf.Provider)
 		}
 	}()
 	if provider, ok := conf.Provider.(blockRegistrySetter); ok {
