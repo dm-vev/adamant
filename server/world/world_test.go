@@ -249,6 +249,64 @@ func TestProviderRetentionReleasedWhenConstructionPanics(t *testing.T) {
 	}
 }
 
+func TestConstructionPanicUnregistersSharedSettingsWorld(t *testing.T) {
+	settings := defaultSettings()
+	settings.CurrentTick = 19
+	provider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
+	entered, release := make(chan struct{}), make(chan struct{})
+	panicResult := make(chan any)
+	go func() {
+		defer func() { panicResult <- recover() }()
+		Config{Provider: provider, Dim: panickingTimeCycleDimension{entered: entered, release: release}, Synchronous: true}.New()
+	}()
+	<-entered
+
+	w := Config{Provider: provider, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	close(release)
+	if recovered := <-panicResult; recovered == nil {
+		t.Fatal("world construction did not panic")
+	}
+
+	settings.Lock()
+	if settings.owner != w || len(settings.worlds) != 1 {
+		t.Fatalf("failed world remains registered: owner=%p, worlds=%d", settings.owner, len(settings.worlds))
+	}
+	settings.Unlock()
+	if got := provider.closes.Load(); got != 0 {
+		t.Fatalf("shared provider closed during rollback: %d", got)
+	}
+
+	start := settings.CurrentTick
+	w.AdvanceTick()
+	if got := settings.CurrentTick; got != start+1 {
+		t.Fatalf("shared current tick = %d, want %d", got, start+1)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("close successful world: %v", err)
+	}
+	if got := provider.closes.Load(); got != 1 {
+		t.Fatalf("shared provider close count = %d, want 1", got)
+	}
+	settings.Lock()
+	defer settings.Unlock()
+	if settings.owner != nil || len(settings.worlds) != 0 {
+		t.Fatalf("closed world remains registered: owner=%p, worlds=%d", settings.owner, len(settings.worlds))
+	}
+}
+
+type panickingTimeCycleDimension struct {
+	testDimension
+	entered chan<- struct{}
+	release <-chan struct{}
+}
+
+func (d panickingTimeCycleDimension) TimeCycle() bool {
+	close(d.entered)
+	<-d.release
+	panic("time cycle")
+}
+
 type lifecycleProvider struct {
 	NopProvider
 	freshSettings        bool

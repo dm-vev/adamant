@@ -1674,20 +1674,7 @@ func (w *World) close() {
 	w.queueing.Wait()
 
 	w.set.Lock()
-	delete(w.set.worlds, w)
-	if w.set.owner == w {
-		w.set.owner = nil
-		for next := range w.set.worlds {
-			if next.tick > w.set.CurrentTick {
-				w.set.CurrentTick = next.tick
-			}
-			next.tick = w.set.CurrentTick
-			next.advance = true
-			w.set.owner = next
-			break
-		}
-	}
-	w.advance = false
+	w.set.unregisterWorldLocked(w)
 	w.set.Unlock()
 	if !releaseProvider(w.providerUse) {
 		return

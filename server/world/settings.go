@@ -61,3 +61,21 @@ func defaultSettings() *Settings {
 		PlayersSleepingPercentage: 100,
 	}
 }
+
+// unregisterWorldLocked removes w and transfers shared tick ownership. The caller must hold the Settings lock.
+func (s *Settings) unregisterWorldLocked(w *World) {
+	delete(s.worlds, w)
+	if s.owner == w {
+		s.owner = nil
+		for next := range s.worlds {
+			if next.tick > s.CurrentTick {
+				s.CurrentTick = next.tick
+			}
+			next.tick = s.CurrentTick
+			next.advance = true
+			s.owner = next
+			break
+		}
+	}
+	w.advance = false
+}

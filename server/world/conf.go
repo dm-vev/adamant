@@ -153,8 +153,17 @@ func (conf Config) New() *World {
 	DefaultBlockRegistry.Finalize()
 	providerUse := retainProvider(conf.Provider)
 	constructed := false
+	var w *World
 	defer func() {
-		if !constructed && releaseProvider(providerUse) {
+		if constructed {
+			return
+		}
+		if w != nil {
+			w.set.Lock()
+			w.set.unregisterWorldLocked(w)
+			w.set.Unlock()
+		}
+		if releaseProvider(providerUse) {
 			_ = conf.Provider.Close()
 		}
 	}()
@@ -175,7 +184,7 @@ func (conf Config) New() *World {
 		}
 	}()
 	currentTick := s.CurrentTick
-	w := &World{
+	w = &World{
 		scheduledUpdates:  newScheduledTickQueue(currentTick),
 		redstone:          newRedstoneEngine(currentTick),
 		entities:          make(map[*EntityHandle]*entityState),
@@ -213,6 +222,12 @@ func (conf Config) New() *World {
 	w.tps.Store(math.Float64bits(20))
 
 	t := ticker{interval: time.Second / 20}
+	if conf.Synchronous {
+		<-w.exec(t.tick)
+	} else {
+		c := make(chan struct{})
+		normalTransaction{c: c, f: t.tick}.Run(w)
+	}
 	if !conf.Synchronous {
 		w.queueing.Add(1)
 		w.running.Add(conf.GeneratorWorkers + 2)
@@ -226,7 +241,6 @@ func (conf Config) New() *World {
 		go w.handleTransactions()
 	}
 
-	<-w.exec(t.tick)
 	constructed = true
 	return w
 }
