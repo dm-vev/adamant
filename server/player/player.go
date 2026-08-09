@@ -1756,6 +1756,9 @@ func (p *Player) StopFishing(tx *world.Tx, reel bool) bool {
 // unless the held item implements the item.Usable interface, in which case it will be activated.
 // This generally happens for items such as throwable items like snowballs.
 func (p *Player) UseItem() {
+	if !p.GameMode().AllowsInteraction() {
+		return
+	}
 	i, _ := p.HeldItems()
 	ctx := NewEventContext(p.tx, p)
 	if p.HasCooldown(i.Item()) {

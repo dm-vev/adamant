@@ -46,6 +46,29 @@ func TestConsumableCompletesFromTicks(t *testing.T) {
 	}
 }
 
+func TestUseItemRespectsGameModeInteraction(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		mode world.GameMode
+		want int
+	}{
+		{name: "spectator", mode: world.GameModeSpectator},
+		{name: "survival", mode: world.GameModeSurvival, want: 1},
+		{name: "creative", mode: world.GameModeCreative, want: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			withItemUsePlayer(t, Config{GameMode: test.mode}, func(_ *world.Tx, p *Player) {
+				probe := &usableProbe{}
+				p.SetHeldItems(item.NewStack(probe, 1), item.Stack{})
+				p.UseItem()
+				if probe.uses != test.want {
+					t.Fatalf("item uses = %d, want %d", probe.uses, test.want)
+				}
+			})
+		})
+	}
+}
+
 func TestConsumableCancellationStopsUse(t *testing.T) {
 	withItemUsePlayer(t, Config{Food: 10}, func(_ *world.Tx, p *Player) {
 		h := &cancelConsumeHandler{}
@@ -161,6 +184,15 @@ func (p *releasableProbe) Release(_ item.Releaser, _ *world.Tx, _ *item.UseConte
 
 func (p *releasableProbe) Requirements() []item.Stack { return nil }
 func (*releasableProbe) EncodeItem() (string, int16)  { return "test:releasable", 0 }
+
+type usableProbe struct{ uses int }
+
+func (p *usableProbe) Use(_ *world.Tx, _ item.User, _ *item.UseContext) bool {
+	p.uses++
+	return true
+}
+
+func (*usableProbe) EncodeItem() (string, int16) { return "test:usable", 0 }
 
 func withItemUsePlayer(t *testing.T, cfg Config, f func(tx *world.Tx, p *Player)) {
 	t.Helper()
