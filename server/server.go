@@ -486,9 +486,11 @@ func (srv *Server) makeBlockEntries() {
 // registered custom items. It allows item components to be created only once
 // at startup
 func (srv *Server) makeItemComponents() {
-	custom := world.CustomItems()
-	// Preallocate capacity but start with zero length to avoid unused zero entries.
-	srv.customItems = make([]protocol.ItemEntry, 0, len(custom))
+	srv.customItems = itemEntries(world.CustomItems())
+}
+
+func itemEntries(custom []world.CustomItem) []protocol.ItemEntry {
+	entries := make([]protocol.ItemEntry, len(custom))
 
 	for i, it := range custom {
 		name, _ := it.EncodeItem()
@@ -498,7 +500,7 @@ func (srv *Server) makeItemComponents() {
 		if isCustomBlock {
 			entryVersion = protocol.ItemEntryVersionNone
 		}
-		srv.customItems[i] = protocol.ItemEntry{
+		entries[i] = protocol.ItemEntry{
 			Name:           name,
 			ComponentBased: !isCustomBlock,
 			RuntimeID:      int16(rid),
@@ -506,6 +508,7 @@ func (srv *Server) makeItemComponents() {
 			Data:           iteminternal.Components(it),
 		}
 	}
+	return entries
 }
 
 // makeDimensionData initialises the server's custom dimensions list.

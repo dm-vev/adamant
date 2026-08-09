@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -42,6 +43,7 @@ func DimensionID(dim Dimension) (int, bool) {
 }
 
 type dimensionRegistry struct {
+	mu         sync.RWMutex
 	dimensions map[int]Dimension
 	ids        map[Dimension]int
 	custom     []DimensionRegistration
@@ -67,6 +69,9 @@ func newDimensionRegistry(dim map[int]Dimension) *dimensionRegistry {
 // Nether for 1 and End for 2. If the ID is unknown, the bool returned is
 // false. In this case the Dimension returned is Overworld.
 func (reg *dimensionRegistry) Lookup(id int) (Dimension, bool) {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
 	dim, ok := reg.dimensions[id]
 	if !ok {
 		dim = Overworld
@@ -77,6 +82,9 @@ func (reg *dimensionRegistry) Lookup(id int) (Dimension, bool) {
 // LookupID looks up the ID that a Dimension was registered with. If not found,
 // false is returned.
 func (reg *dimensionRegistry) LookupID(dim Dimension) (int, bool) {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
 	id, ok := reg.ids[dim]
 	return id, ok
 }
@@ -102,6 +110,8 @@ func (reg *dimensionRegistry) RegisterDimension(id int, name string, dim Dimensi
 	if r.Min() < math.MinInt16 || r.Max() > math.MaxInt16 {
 		return fmt.Errorf("custom dimension range must be between %d and %d", math.MinInt16, math.MaxInt16)
 	}
+	reg.mu.Lock()
+	defer reg.mu.Unlock()
 	if _, ok := reg.dimensions[id]; ok {
 		return fmt.Errorf("dimension ID %d is already registered", id)
 	}
@@ -126,7 +136,15 @@ func RegisterDimension(id int, name string, dim Dimension) error {
 
 // CustomDimensions returns all registered custom dimensions.
 func CustomDimensions() []DimensionRegistration {
-	return slices.Clone(dimensionReg.custom)
+	return dimensionReg.CustomDimensions()
+}
+
+// CustomDimensions returns a snapshot of all registered custom dimensions.
+func (reg *dimensionRegistry) CustomDimensions() []DimensionRegistration {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
+	return slices.Clone(reg.custom)
 }
 
 type (
