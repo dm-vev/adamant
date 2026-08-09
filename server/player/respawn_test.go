@@ -183,7 +183,7 @@ func TestPlayerDisplacementRejectsStaleAuthInput(t *testing.T) {
 		p.Displace(mgl64.Vec3{0.2})
 		displaced := p.Position()
 
-		pk := &packet.PlayerAuthInput{Position: mgl32.Vec3{float32(origin[0]), float32(origin[1] + 1.62), float32(origin[2])}}
+		pk := &packet.PlayerAuthInput{Position: mgl32.Vec3{float32(origin[0]), float32(origin[1] + Type.NetworkOffset()), float32(origin[2])}}
 		if err := (session.PlayerAuthInputHandler{}).Handle(pk, sess, tx, p); err != nil {
 			t.Fatalf("handle stale auth input: %v", err)
 		}
