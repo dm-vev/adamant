@@ -1823,26 +1823,41 @@ func (p *Player) UseItem() {
 // the item started being used.
 func (p *Player) ReleaseItem() {
 	if !p.usingItem {
+		p.resyncInventory()
 		return
 	}
 	i, _ := p.HeldItems()
 	if !p.itemUseMatches(i) {
 		p.cancelItemUse()
+		p.resyncInventory()
 		return
 	}
 	dur := p.useDuration()
 	p.cancelItemUse()
 	if !p.canRelease() || !p.GameMode().AllowsInteraction() {
+		p.resyncInventory()
 		return
 	}
 
 	useCtx := p.useContext()
 	ctx := NewEventContext(p.tx, p)
 	if p.Handler().HandleItemRelease(ctx, i, dur); ctx.Cancelled() {
+		p.resyncInventory()
 		return
 	}
 	i.Item().(item.Releasable).Release(p, p.tx, useCtx, dur)
 	p.handleUseContext(useCtx)
+	if len(useCtx.ConsumedItems) == 0 {
+		// Revert the item the client predicted the release would consume.
+		p.resyncInventory()
+	}
+}
+
+// resyncInventory corrects a client-side release prediction that did not consume an item.
+func (p *Player) resyncInventory() {
+	if s := p.session(); s != session.Nop {
+		s.ResyncInventory()
+	}
 }
 
 func (p *Player) startItemUse(stack item.Stack) {
