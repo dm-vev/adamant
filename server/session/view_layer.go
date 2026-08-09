@@ -62,6 +62,9 @@ func (s *Session) ViewVisibility(entity world.Entity, level world.VisibilityLeve
 		return
 	}
 	s.viewLayer.ViewVisibility(entity, level)
+	if !s.entityHidden(entity) && s.viewingEntity(entity.H()) {
+		s.ViewEntityArmour(entity)
+	}
 }
 
 // RemoveViewLayer removes all overrides for the entity and immediately refreshes it for this session.
