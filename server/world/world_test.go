@@ -11,6 +11,16 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+type neighbourUpdateCountingProvider struct {
+	NopProvider
+	loads atomic.Int32
+}
+
+func (p *neighbourUpdateCountingProvider) LoadColumn(pos ChunkPos, dim Dimension) (*chunk.Column, error) {
+	p.loads.Add(1)
+	return p.NopProvider.LoadColumn(pos, dim)
+}
+
 // TestSynchronousWorldDo verifies that Do on a synchronous World runs the task
 // on the calling goroutine and returns a completed task.
 func TestSynchronousWorldDo(t *testing.T) {
@@ -51,6 +61,47 @@ func TestSynchronousWorldAdvanceTick(t *testing.T) {
 	}
 	if got := current(); got != start+5 {
 		t.Fatalf("expected current tick %v after 5 AdvanceTick calls, got %v", start+5, got)
+	}
+}
+
+func TestNeighbourUpdatesDoNotLoadMissingChunks(t *testing.T) {
+	provider := &neighbourUpdateCountingProvider{}
+	w := Config{Provider: provider, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	w.Do(func(tx *Tx) {
+		pos := cube.Pos{15, 0, 0}
+		_ = tx.Block(pos)
+		tx.DoBlockUpdatesAround(pos)
+	})
+	loads := provider.loads.Load()
+	w.AdvanceTick()
+	if got := provider.loads.Load(); got != loads {
+		t.Fatalf("neighbour updates loaded %d additional chunks", got-loads)
+	}
+}
+
+func TestNeighbourUpdatesWaitForTrackedChunkReadiness(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	chunkPos := ChunkPos{1, 0}
+	col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+	w.chunks[chunkPos] = col
+	w.neighbourUpdates = append(w.neighbourUpdates, neighbourUpdate{
+		pos:       cube.Pos{16, 0, 0},
+		neighbour: cube.Pos{15, 0, 0},
+	})
+
+	w.AdvanceTick()
+	if got := len(w.neighbourUpdates); got != 1 {
+		t.Fatalf("pending neighbour updates = %d, want 1", got)
+	}
+	col.fillLight(chunkPos)
+	col.markReady()
+	w.AdvanceTick()
+	if got := len(w.neighbourUpdates); got != 0 {
+		t.Fatalf("pending neighbour updates after readiness = %d, want 0", got)
 	}
 }
 

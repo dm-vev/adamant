@@ -27,6 +27,7 @@ func init() {
 	world.RegisterBlock(Ice{})
 	world.RegisterBlock(Bookshelf{})
 	world.RegisterBlock(Bricks{})
+	registerAll(allBubbleColumns())
 	world.RegisterBlock(BrownMushroom{})
 	world.RegisterBlock(Calcite{})
 	world.RegisterBlock(Cinnabar{})

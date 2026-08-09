@@ -36,6 +36,7 @@ const (
 	hashBrewingStand
 	hashBricks
 	hashBrownMushroom
+	hashBubbleColumn
 	hashBuddingAmethyst
 	hashBush
 	hashButton
@@ -444,6 +445,10 @@ func (Bricks) Hash() (uint64, uint64) {
 
 func (BrownMushroom) Hash() (uint64, uint64) {
 	return hashBrownMushroom, 0
+}
+
+func (b BubbleColumn) Hash() (uint64, uint64) {
+	return hashBubbleColumn, uint64(boolByte(b.DragDown))
 }
 
 func (BuddingAmethyst) Hash() (uint64, uint64) {

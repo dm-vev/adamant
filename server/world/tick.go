@@ -169,11 +169,20 @@ func (t ticker) tick(tx *Tx) {
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.
 func (t ticker) performNeighbourUpdates(tx *Tx) {
 	w := tx.World()
-	processed := 0
+	processed, retained := 0, 0
 	for processed < len(w.neighbourUpdates) && processed < maxNeighbourUpdatesPerTick {
 		update := w.neighbourUpdates[processed]
+		processed++
 		pos, changedNeighbour := update.pos, update.neighbour
-		if ticker, ok := tx.Block(pos).(NeighbourUpdateTicker); ok {
+		b, ready := tx.BlockLoaded(pos)
+		if !ready {
+			if loaded, ready := tx.ChunkState(chunkPosFromBlockPos(pos)); loaded && !ready {
+				w.neighbourUpdates[retained] = update
+				retained++
+			}
+			continue
+		}
+		if ticker, ok := b.(NeighbourUpdateTicker); ok {
 			ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 		}
 		if liquid, ok := tx.additionalLiquid(pos); ok {
@@ -181,15 +190,10 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 				ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 			}
 		}
-		processed++
 	}
-	if len(w.neighbourUpdates) > processed {
-		remaining := w.neighbourUpdates[processed:]
-		copy(w.neighbourUpdates, remaining)
-		w.neighbourUpdates = w.neighbourUpdates[:len(remaining)]
-		return
-	}
-	w.neighbourUpdates = w.neighbourUpdates[:0]
+	remaining := len(w.neighbourUpdates) - processed
+	copy(w.neighbourUpdates[retained:], w.neighbourUpdates[processed:])
+	w.neighbourUpdates = w.neighbourUpdates[:retained+remaining]
 }
 
 // tickBlocksRandomly executes random block ticks in loaded chunks within range of loaders. Synchronous worlds tick
