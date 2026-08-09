@@ -35,11 +35,13 @@ func (CartographyTable) EncodeBlock() (string, map[string]any) {
 type Lodestone struct {
 	solid
 	bassDrum
+
+	trackingHandle int32
 }
 
 // BreakInfo ...
 func (l Lodestone) BreakInfo() BreakInfo {
-	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(l)).withBlastResistance(3.5)
+	return newBreakInfo(3.5, pickaxeHarvestable, pickaxeEffective, oneOf(Lodestone{})).withBlastResistance(3.5)
 }
 
 // EncodeItem ...

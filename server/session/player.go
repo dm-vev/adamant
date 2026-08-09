@@ -929,6 +929,11 @@ func (s *Session) VerifySlot(slot int, expected item.Stack) error {
 	}
 	clientSideItem := expected
 	actual, _ := s.inv.Item(slot)
+	if clientCompass, clientOK := clientSideItem.Item().(item.Compass); clientOK {
+		if serverCompass, serverOK := actual.Item().(item.Compass); serverOK && clientCompass.TrackingHandle != serverCompass.TrackingHandle {
+			clientSideItem = clientSideItem.WithItem(serverCompass)
+		}
+	}
 
 	// The item the client claims to have must be identical to the one we have
 	// registered server-side.
@@ -1359,7 +1364,10 @@ func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack {
 		}
 	}
 	//noinspection SpellCheckingInspection
-	if nbter, ok := t.(world.NBTer); ok && len(it.NBTData) != 0 {
+	if compass, ok := t.(item.Compass); ok {
+		// Decode even without NBT so the lodestone-compass registry variant cannot leak its registration handle.
+		t = compass.DecodeNBT(it.NBTData).(world.Item)
+	} else if nbter, ok := t.(world.NBTer); ok && len(it.NBTData) != 0 {
 		t = world.DecodeNBT(nbter, it.NBTData, br).(world.Item)
 	}
 	s := item.NewStack(t, int(it.Count))

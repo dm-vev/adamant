@@ -36,6 +36,16 @@ func TestStackToItemUsesBlockRegistryForNestedNBT(t *testing.T) {
 	}
 }
 
+func TestStackToItemClearsMissingLodestoneHandle(t *testing.T) {
+	stack := stackFromItem(world.DefaultBlockRegistry, item.NewStack(item.Compass{TrackingHandle: 1}, 1))
+	stack.NBTData = nil
+	got := stackToItem(world.DefaultBlockRegistry, stack)
+	compass, ok := got.Item().(item.Compass)
+	if !ok || compass.TrackingHandle != 0 {
+		t.Fatalf("decoded compass = %#v, want an unlinked compass", got.Item())
+	}
+}
+
 type sessionRegistryBlockItem struct{}
 
 func (sessionRegistryBlockItem) EncodeBlock() (string, map[string]any) {

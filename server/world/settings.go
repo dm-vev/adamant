@@ -11,8 +11,10 @@ import (
 type Settings struct {
 	sync.Mutex
 
-	owner  *World
-	worlds map[*World]struct{}
+	owner               *World
+	worlds              map[*World]struct{}
+	positionTrackerOnce sync.Once
+	positionTracker     *PositionTracker
 
 	// Name is the display name of the World.
 	Name string

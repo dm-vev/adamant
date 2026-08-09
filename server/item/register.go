@@ -40,6 +40,7 @@ func init() {
 	world.RegisterItem(Cod{Cooked: true})
 	world.RegisterItem(Cod{})
 	world.RegisterItem(Compass{})
+	world.RegisterItem(Compass{TrackingHandle: 1})
 	world.RegisterItem(ChorusFruit{})
 	world.RegisterItem(Cookie{})
 	world.RegisterItem(CopperIngot{})

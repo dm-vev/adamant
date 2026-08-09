@@ -598,12 +598,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	rid := w.conf.Blocks.BlockRuntimeID(b)
 	redstoneAfterRelevant := isRedstoneRelevant(b)
 	needOldBlock := !opts.DisableRedstoneUpdates || !redstoneAfterRelevant
-	needOldRID := needOldBlock || (rid != w.conf.Blocks.AirRuntimeID() && !opts.DisableLiquidDisplacement)
 
-	var oldRID uint32
-	if needOldRID {
-		oldRID = c.Block(x, y, z, 0)
-	}
+	oldRID := c.Block(x, y, z, 0)
+	needOldBlock = needOldBlock || w.conf.Blocks.NBTBlock(oldRID)
 	var oldBlock Block
 	if needOldBlock {
 		oldBlock = w.conf.Blocks.BlockByRuntimeIDOrAir(oldRID)
@@ -611,6 +608,12 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 			if blockEntity, ok := c.BlockEntities[pos]; ok {
 				oldBlock = blockEntity
 			}
+		}
+	}
+	if tracked, ok := oldBlock.(PositionTrackingBlock); ok && tracked.TrackingHandle() != 0 {
+		replacement, keepsHandle := b.(PositionTrackingBlock)
+		if !keepsHandle || replacement.TrackingHandle() != tracked.TrackingHandle() {
+			w.UntrackPosition(pos)
 		}
 	}
 
@@ -624,6 +627,12 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	c.invalidateRandomTickSubChunks()
 	c.invalidateSubChunkHeightMaps()
 	c.invalidateNetworkSubChunkPayloads()
+	if tracked, ok := b.(PositionTrackingBlock); ok {
+		handle := tracked.TrackingHandle()
+		if handle != 0 || w.PositionTrackingHandleAt(pos) != 0 {
+			b = tracked.WithTrackingHandle(w.TrackPosition(pos, handle))
+		}
+	}
 	if w.conf.Blocks.NBTBlock(rid) {
 		c.BlockEntities[pos] = b
 		c.invalidateTickerBlockEntities()
@@ -696,6 +705,18 @@ func (tx *Tx) setBlockEntity(pos cube.Pos, b Block) {
 	if !w.conf.Blocks.NBTBlock(rid) || c.Block(uint8(pos[0]), int16(pos[1]), uint8(pos[2]), 0) != rid {
 		tx.setBlock(pos, b, nil)
 		return
+	}
+	if old, ok := c.BlockEntities[pos].(PositionTrackingBlock); ok && old.TrackingHandle() != 0 {
+		replacement, keepsHandle := b.(PositionTrackingBlock)
+		if !keepsHandle || replacement.TrackingHandle() != old.TrackingHandle() {
+			w.UntrackPosition(pos)
+		}
+	}
+	if tracked, ok := b.(PositionTrackingBlock); ok {
+		handle := tracked.TrackingHandle()
+		if handle != 0 || w.PositionTrackingHandleAt(pos) != 0 {
+			b = tracked.WithTrackingHandle(w.TrackPosition(pos, handle))
+		}
 	}
 	c.BlockEntities[pos] = b
 	c.modified = true
@@ -2744,7 +2765,11 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 			w.conf.Log.Error("read column: block with nbt does not implement NBTer", "block", fmt.Sprintf("%#v", b))
 			continue
 		}
-		col.BlockEntities[be.Pos] = DecodeNBT(nb, be.Data, w.conf.Blocks).(Block)
+		decoded := DecodeNBT(nb, be.Data, w.conf.Blocks).(Block)
+		if tracked, ok := decoded.(PositionTrackingBlock); ok && tracked.TrackingHandle() != 0 {
+			decoded = tracked.WithTrackingHandle(w.TrackPosition(be.Pos, tracked.TrackingHandle()))
+		}
+		col.BlockEntities[be.Pos] = decoded
 	}
 	scheduled, savedTick := make([]scheduledTick, 0, len(c.ScheduledBlocks)), c.Tick
 	for _, t := range c.ScheduledBlocks {

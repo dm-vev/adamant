@@ -699,6 +699,7 @@ func (s *Session) registerHandlers() {
 		packet.IDServerBoundLoadingScreen:  &ServerBoundLoadingScreenHandler{},
 		packet.IDServerBoundDiagnostics:    &ServerBoundDiagnosticsHandler{},
 	}
+	s.handlers[packet.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
 }
 
 // writePacket writes a packet to the session's connection if it is not Nop.

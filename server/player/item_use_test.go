@@ -5,11 +5,55 @@ import (
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
+
+func TestLodestoneCompassBindRelinkAndBreak(t *testing.T) {
+	withItemUsePlayer(t, Config{}, func(tx *world.Tx, p *Player) {
+		first, second := cube.Pos{1, 64, 0}, cube.Pos{2, 64, 0}
+		tx.SetBlock(first, block.Lodestone{}, nil)
+		tx.SetBlock(second, block.Lodestone{}, nil)
+		p.SetHeldItems(item.NewStack(item.Compass{}, 2), item.Stack{})
+
+		p.UseItemOnBlock(first, cube.FaceUp, mgl64.Vec3{})
+		held, _ := p.HeldItems()
+		if held.Count() != 1 || held.Item() != (item.Compass{}) {
+			t.Fatalf("held stack after bind = %#v x%d, want one regular compass", held.Item(), held.Count())
+		}
+		slot, ok := p.Inventory().FirstFunc(func(stack item.Stack) bool {
+			compass, ok := stack.Item().(item.Compass)
+			return ok && compass.TrackingHandle != 0
+		})
+		if !ok {
+			t.Fatal("linked compass was not added to inventory")
+		}
+		linked, err := p.Inventory().Item(slot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		firstHandle := linked.Item().(item.Compass).TrackingHandle
+		if pos, dim, ok := tx.World().TrackedPosition(firstHandle); !ok || pos != first || dim != 0 {
+			t.Fatalf("first target = %v, %d, %v; want %v, 0, true", pos, dim, ok, first)
+		}
+
+		p.SetHeldItems(linked, item.Stack{})
+		p.UseItemOnBlock(second, cube.FaceUp, mgl64.Vec3{})
+		held, _ = p.HeldItems()
+		secondHandle := held.Item().(item.Compass).TrackingHandle
+		if held.Count() != 1 || secondHandle == 0 || secondHandle == firstHandle {
+			t.Fatalf("relinked compass = %#v x%d", held.Item(), held.Count())
+		}
+		tx.SetBlock(second, block.Air{}, nil)
+		if _, _, ok := tx.World().TrackedPosition(secondHandle); ok {
+			t.Fatal("broken lodestone remained tracked")
+		}
+	})
+}
 
 func TestConsumableCompletesFromTicks(t *testing.T) {
 	for _, test := range []struct {
