@@ -1429,7 +1429,19 @@ func (w *World) SetFallDamage(v bool) {
 	}
 	w.set.Lock()
 	defer w.set.Unlock()
+	if w.set.FallDamage == v {
+		return
+	}
 	w.set.FallDamage = v
+	for shared := range w.set.worlds {
+		viewers, _ := shared.allViewers()
+		for _, viewer := range viewers {
+			if viewer, ok := viewer.(interface{ ViewFallDamage(bool) }); ok {
+				viewer.ViewFallDamage(v)
+			}
+		}
+		shared.releaseViewers(viewers)
+	}
 }
 
 // scheduleBlockUpdate schedules a block update at the position passed for the

@@ -61,6 +61,7 @@ func (db *DB) Settings() *world.Settings {
 
 // SaveSettings saves the world.Settings passed to the level.dat.
 func (db *DB) SaveSettings(s *world.Settings) {
+	s = s.Snapshot()
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
 	db.ldat.PutSettings(s)

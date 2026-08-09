@@ -758,7 +758,8 @@ func (p *Player) FinalDamageFrom(dmg float64, src world.DamageSource) float64 {
 // Explode ...
 func (p *Player) Explode(src world.ExplosionSource, impact float64) {
 	p.Hurt(math.Floor((impact*impact+impact)*3.5*src.Size()*2+1), entity.ExplosionDamageSource{Source: src})
-	velocity := p.Velocity().Add(entity.ExplosionImpulse(p, src, impact))
+	impulse := entity.ExplosionImpulse(p, src, impact).Mul(1 - p.Armour().KnockBackResistance())
+	velocity := p.Velocity().Add(impulse)
 	p.data.Vel = velocity
 	p.SetVelocity(velocity)
 }

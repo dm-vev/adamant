@@ -6,8 +6,23 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
+
+func TestViewFallDamageSendsGameRule(t *testing.T) {
+	s := testSession("fall-damage")
+	s.ViewFallDamage(false)
+
+	pk, ok := (<-s.packets).(*packet.GameRulesChanged)
+	if !ok {
+		t.Fatalf("packet type = %T, want *packet.GameRulesChanged", pk)
+	}
+	want := []protocol.GameRule{{Name: "falldamage", Value: false}}
+	if len(pk.GameRules) != 1 || pk.GameRules[0] != want[0] {
+		t.Fatalf("game rules = %#v, want %#v", pk.GameRules, want)
+	}
+}
 
 func TestViewVisibilityHidesArmourPerViewer(t *testing.T) {
 	handle := &world.EntityHandle{}

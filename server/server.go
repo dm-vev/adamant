@@ -666,6 +666,7 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 		GameRules: []protocol.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
+			{Name: "falldamage", Value: srv.world.FallDamage()},
 		},
 
 		ServerAuthoritativeInventory: true,

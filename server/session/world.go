@@ -310,6 +310,11 @@ func (s *Session) ViewTimeCycle(doDayLightCycle bool) {
 	s.sendGameRules([]protocol.GameRule{{Name: "dodaylightcycle", Value: doDayLightCycle}})
 }
 
+// ViewFallDamage controls whether fall damage is enabled for this viewer.
+func (s *Session) ViewFallDamage(enabled bool) {
+	s.sendGameRules([]protocol.GameRule{{Name: "falldamage", Value: enabled}})
+}
+
 // ViewEntityTeleport ...
 func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 	id := s.entityRuntimeID(e)

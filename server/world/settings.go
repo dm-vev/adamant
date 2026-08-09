@@ -65,6 +65,30 @@ func defaultSettings() *Settings {
 	}
 }
 
+// Snapshot returns a detached copy of the Settings at this instant.
+func (s *Settings) Snapshot() *Settings {
+	s.Lock()
+	defer s.Unlock()
+	return &Settings{
+		Name:                      s.Name,
+		Spawn:                     s.Spawn,
+		Time:                      s.Time,
+		TimeCycle:                 s.TimeCycle,
+		RainTime:                  s.RainTime,
+		Raining:                   s.Raining,
+		ThunderTime:               s.ThunderTime,
+		Thundering:                s.Thundering,
+		WeatherCycle:              s.WeatherCycle,
+		CurrentTick:               s.CurrentTick,
+		DefaultGameMode:           s.DefaultGameMode,
+		Difficulty:                s.Difficulty,
+		TickRange:                 s.TickRange,
+		FallDamage:                s.FallDamage,
+		PlayersSleepingPercentage: s.PlayersSleepingPercentage,
+		RequiredSleepTicks:        s.RequiredSleepTicks,
+	}
+}
+
 // unregisterWorldLocked removes w and transfers shared tick ownership. The caller must hold the Settings lock.
 func (s *Settings) unregisterWorldLocked(w *World) {
 	delete(s.worlds, w)
