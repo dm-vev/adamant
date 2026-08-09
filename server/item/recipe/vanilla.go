@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
@@ -57,11 +58,27 @@ type potionContainerChangeRecipe struct {
 //lint:ignore U1000 Function is used through compiler directives.
 func registerVanilla() {
 	var craftingRecipes struct {
-		Shaped    []shapedRecipe    `nbt:"shaped"`
-		Shapeless []shapelessRecipe `nbt:"shapeless"`
+		Shaped            []shapedRecipe    `nbt:"shaped"`
+		Shapeless         []shapelessRecipe `nbt:"shapeless"`
+		UserDataShapeless []shapelessRecipe `nbt:"shulker_box"`
+		Multi             []string          `nbt:"multi"`
 	}
 	if err := nbt.Unmarshal(vanillaCraftingData, &craftingRecipes); err != nil {
 		panic(err)
+	}
+	for _, id := range craftingRecipes.Multi {
+		if parsed, err := uuid.Parse(id); err == nil {
+			Register(NewMulti(parsed))
+		}
+	}
+
+	for _, s := range craftingRecipes.UserDataShapeless {
+		input, ok := s.Input.Items()
+		output, outputOK := s.Output.Stacks()
+		if !ok || !outputOK {
+			continue
+		}
+		Register(UserDataShapeless{recipe{input: input, output: output, block: s.Block, priority: uint32(s.Priority)}})
 	}
 
 	for _, s := range craftingRecipes.Shapeless {

@@ -21,7 +21,8 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 	}
 	_, shaped := craft.(recipe.Shaped)
 	_, shapeless := craft.(recipe.Shapeless)
-	if !shaped && !shapeless {
+	_, userDataShapeless := craft.(recipe.UserDataShapeless)
+	if !shaped && !shapeless && !userDataShapeless {
 		return fmt.Errorf("recipe with network id %v is not a shaped or shapeless recipe", a.RecipeNetworkID)
 	}
 	if craft.Block() != "crafting_table" {
@@ -86,7 +87,8 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 	}
 	_, shaped := craft.(recipe.Shaped)
 	_, shapeless := craft.(recipe.Shapeless)
-	if !shaped && !shapeless {
+	_, userDataShapeless := craft.(recipe.UserDataShapeless)
+	if !shaped && !shapeless && !userDataShapeless {
 		return fmt.Errorf("recipe with network id %v is not a shaped or shapeless recipe", a.RecipeNetworkID)
 	}
 	if craft.Block() != "crafting_table" {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/google/uuid"
 )
 
 // Recipe is implemented by all recipe types.
@@ -44,6 +45,36 @@ func NewShapeless(input []Item, output item.Stack, block string) Shapeless {
 		output: []item.Stack{output},
 		block:  block,
 	}}
+}
+
+// UserDataShapeless is a shapeless recipe whose output retains user data such as contents or colour.
+type UserDataShapeless struct {
+	recipe
+}
+
+// NewUserDataShapeless creates a user-data-preserving shapeless recipe.
+func NewUserDataShapeless(input []Item, output item.Stack, block string) UserDataShapeless {
+	return UserDataShapeless{recipe: recipe{
+		input:  slices.Clone(input),
+		output: []item.Stack{output},
+		block:  block,
+	}}
+}
+
+// Multi enables a recipe whose behaviour is hardcoded in the vanilla client and identified by UUID.
+type Multi struct {
+	recipe
+	id uuid.UUID
+}
+
+// NewMulti creates a client-defined multi recipe.
+func NewMulti(id uuid.UUID) Multi {
+	return Multi{id: id, recipe: recipe{block: "crafting_table"}}
+}
+
+// UUID returns the identifier of the client-defined recipe.
+func (m Multi) UUID() uuid.UUID {
+	return m.id
 }
 
 // SmithingTransform represents a recipe only craftable on a smithing table.

@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -167,3 +170,47 @@ func (abilityTestConfig) Apply(*world.EntityData) {}
 type abilityTestConn struct{ Conn }
 
 func (abilityTestConn) Close() error { return nil }
+
+func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
+	id := uuid.MustParse("442d85ed-8272-4543-a6f1-418f90ded05d")
+	stick, apple := item.NewStack(item.Stick{}, 1), item.NewStack(item.Apple{}, 1)
+	recipe.Register(recipe.NewShaped([]recipe.Item{stick}, apple, recipe.Shape{1, 1}, "crafting_table"))
+	recipe.Register(recipe.NewUserDataShapeless([]recipe.Item{stick}, apple, "crafting_table"))
+	recipe.Register(recipe.NewMulti(id))
+
+	s := &Session{
+		br:              world.DefaultBlockRegistry,
+		recipes:         make(map[uint32]recipe.Recipe),
+		packets:         make(chan packet.Packet, 1),
+		closeBackground: make(chan struct{}),
+	}
+	s.sendRecipes()
+	raw := <-s.packets
+	pk, ok := raw.(*packet.CraftingData)
+	if !ok {
+		t.Fatalf("packet type = %T, want *packet.CraftingData", raw)
+	}
+	if len(pk.ShapedRecipes) == 0 || !pk.ShapedRecipes[len(pk.ShapedRecipes)-1].AssumeSymmetry {
+		t.Fatal("shaped recipe is not visible through symmetry metadata")
+	}
+	if len(pk.ShulkerBoxRecipes) == 0 {
+		t.Fatal("user-data shapeless recipe missing from CraftingData")
+	}
+	if len(pk.MultiRecipes) == 0 || pk.MultiRecipes[len(pk.MultiRecipes)-1].UUID != id {
+		t.Fatalf("multi recipes = %#v, want UUID %s", pk.MultiRecipes, id)
+	}
+}
+
+func TestCraftingAcceptsUserDataShapelessRecipes(t *testing.T) {
+	s := &Session{recipes: map[uint32]recipe.Recipe{
+		1: recipe.NewUserDataShapeless(nil, item.Stack{}, "crafting_table"),
+	}}
+	h := &ItemStackRequestHandler{}
+	const want = "times crafted must be at least 1"
+	if err := h.handleCraft(&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
+		t.Fatalf("normal craft error = %v, want %q", err, want)
+	}
+	if err := h.handleAutoCraft(&protocol.AutoCraftRecipeStackRequestAction{RecipeNetworkID: 1}, s, nil); err == nil || err.Error() != want {
+		t.Fatalf("auto craft error = %v, want %q", err, want)
+	}
+}

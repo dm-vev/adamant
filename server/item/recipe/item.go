@@ -1,12 +1,13 @@
 package recipe
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"math"
 )
 
-// Item represents an item that can be used as either the input or output of an item. These do not
+// Item represents an item that can be used as either the input or output of a recipe. These do not
 // necessarily resolve to an actual item, but can be just as simple as a tag etc.
 type Item interface {
 	// Count returns the amount of items that is present on the stack. The count is guaranteed never to be
@@ -14,6 +15,13 @@ type Item interface {
 	Count() int
 	// Empty checks if the stack is empty (has a count of 0).
 	Empty() bool
+}
+
+// blockState is the exact encoded state of a block in recipe NBT.
+type blockState struct {
+	Name       string         `nbt:"name"`
+	Properties map[string]any `nbt:"states"`
+	Version    int32          `nbt:"version"`
 }
 
 // inputItem is a type representing an input item, with a helper function to convert it to an Item.
@@ -24,12 +32,8 @@ type inputItem struct {
 	Meta int32 `nbt:"meta"`
 	// Count is the amount of the item.
 	Count int32 `nbt:"count"`
-	// State is included if the output is a block. If it's not included, the meta can be discarded and the output item can be incorrect.
-	State struct {
-		Name       string                 `nbt:"name"`
-		Properties map[string]interface{} `nbt:"states"`
-		Version    int32                  `nbt:"version"`
-	} `nbt:"block"`
+	// State is included if the input is a block.
+	State blockState `nbt:"block"`
 	// Tag is included if the input item is defined by a tag instead of a specific item.
 	Tag string `nbt:"tag"`
 }
@@ -76,27 +80,35 @@ type outputItem struct {
 	Meta int32 `nbt:"meta"`
 	// Count is the amount of the item.
 	Count int16 `nbt:"count"`
-	// State is included if the output is a block. If it's not included, the meta can be discarded and the output item can be incorrect.
-	State struct {
-		Name       string                 `nbt:"name"`
-		Properties map[string]interface{} `nbt:"states"`
-		Version    int32                  `nbt:"version"`
-	} `nbt:"block"`
+	// State is included if the output is a block.
+	State blockState `nbt:"block"`
 	// NBTData contains extra NBTData which may modify the item in other, more discreet ways.
-	NBTData map[string]interface{} `nbt:"data"`
+	NBTData map[string]any `nbt:"data"`
 }
 
 // Stack converts an output item to an item stack.
 func (o outputItem) Stack() (item.Stack, bool) {
-	it, ok := world.ItemByName(o.Name, int16(o.Meta))
+	it, ok := o.item()
 	if !ok {
 		return item.Stack{}, false
 	}
-	if n, ok := it.(world.NBTer); ok {
-		it = n.DecodeNBT(o.NBTData).(world.Item)
+	if n, ok := it.(world.NBTer); ok && len(o.NBTData) > 0 {
+		it = world.DecodeNBT(n, o.NBTData).(world.Item)
 	}
 
 	return item.NewStack(it, int(o.Count)), true
+}
+
+// item resolves the item from its exact block state when available.
+func (o outputItem) item() (world.Item, bool) {
+	if o.State.Name != "" {
+		if b, ok := world.BlockByName(o.State.Name, o.State.Properties); ok {
+			if it, ok := b.(world.Item); ok {
+				return it, true
+			}
+		}
+	}
+	return world.ItemByName(o.Name, int16(o.Meta))
 }
 
 // outputItems is an array of output items.
