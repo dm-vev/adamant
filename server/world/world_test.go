@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -162,6 +163,97 @@ func TestSynchronousAdvanceTickTicksViewerlessEntities(t *testing.T) {
 	}
 }
 
+func TestLoadedEntityCanBeRemoved(t *testing.T) {
+	pos := ChunkPos{0, 0}
+	provider := &entityLoadProvider{columns: make(map[ChunkPos]*chunk.Column)}
+	w := Config{
+		Synchronous: true,
+		Provider:    provider,
+		Entities:    (EntityRegistryConfig{}).New([]EntityType{testEntityType{}}),
+	}.New()
+	defer w.Close()
+	provider.columns[pos] = loadedTestEntityColumn(w, 1, mgl64.Vec3{1, 4, 1})
+
+	<-w.Exec(func(tx *Tx) {
+		col := tx.chunk(pos)
+		if len(col.Entities) != 1 {
+			t.Fatalf("loaded entity count = %d, want 1", len(col.Entities))
+		}
+		handle := col.Entities[0]
+		if index, ok := col.entityIndices[handle]; !ok || index != 0 {
+			t.Fatalf("loaded entity index = %d, %v, want 0, true", index, ok)
+		}
+		entity, ok := handle.Entity(tx)
+		if !ok {
+			t.Fatal("loaded entity was not bound to world")
+		}
+		if tx.RemoveEntity(entity) != handle {
+			t.Fatal("loaded entity was not removed")
+		}
+		if len(col.Entities) != 0 || len(col.entityIndices) != 0 {
+			t.Fatalf("loaded column retained entity after removal: entities=%d indices=%d", len(col.Entities), len(col.entityIndices))
+		}
+	})
+}
+
+func TestLoadedEntityMigratesWithoutLeavingDuplicate(t *testing.T) {
+	sourcePos, destinationPos := ChunkPos{0, 0}, ChunkPos{1, 0}
+	provider := &entityLoadProvider{columns: make(map[ChunkPos]*chunk.Column)}
+	w := Config{
+		Synchronous: true,
+		Provider:    provider,
+		Entities:    (EntityRegistryConfig{}).New([]EntityType{testEntityType{}}),
+	}.New()
+	defer w.Close()
+	provider.columns[sourcePos] = loadedTestEntityColumn(w, 1, mgl64.Vec3{15.5, 4, 1})
+	provider.columns[destinationPos] = &chunk.Column{Chunk: chunk.New(w.conf.Blocks, w.Range())}
+
+	var source, destination *Column
+	<-w.Exec(func(tx *Tx) {
+		source = tx.chunk(sourcePos)
+		destination = tx.chunk(destinationPos)
+		source.Entities[0].data.Pos[0] = 16.5
+	})
+	w.AdvanceTick()
+
+	<-w.Exec(func(tx *Tx) {
+		if len(source.Entities) != 0 || len(source.entityIndices) != 0 {
+			t.Fatalf("source retained migrated entity: entities=%d indices=%d", len(source.Entities), len(source.entityIndices))
+		}
+		if len(destination.Entities) != 1 || destination.entityIndices[destination.Entities[0]] != 0 {
+			t.Fatalf("destination entity bookkeeping invalid: entities=%d indices=%d", len(destination.Entities), len(destination.entityIndices))
+		}
+		if got := len(w.columnTo(source, sourcePos).Entities); got != 0 {
+			t.Fatalf("saved source entity count = %d, want 0", got)
+		}
+		if got := len(w.columnTo(destination, destinationPos).Entities); got != 1 {
+			t.Fatalf("saved destination entity count = %d, want 1", got)
+		}
+	})
+}
+
+func TestEntityCrossingIntoLaterColumnTicksOnce(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+
+	moverTicks, residentTicks := 0, 0
+	mover := EntitySpawnOpts{Position: mgl64.Vec3{15.5, 4, 1}}.New(testEntityType{}, boundaryTickerConfig{ticks: &moverTicks, crossBoundary: true})
+	resident := EntitySpawnOpts{Position: mgl64.Vec3{16.5, 4, 1}}.New(testEntityType{}, boundaryTickerConfig{ticks: &residentTicks})
+	<-w.Exec(func(tx *Tx) {
+		tx.AddEntity(mover)
+		tx.AddEntity(resident)
+	})
+
+	w.AdvanceTick()
+	w.AdvanceTick()
+	if moverTicks != 2 {
+		t.Fatalf("boundary-crossing entity ticked %d times in 2 world ticks, want 2", moverTicks)
+	}
+	if residentTicks != 2 {
+		t.Fatalf("destination resident ticked %d times in 2 world ticks, want 2", residentTicks)
+	}
+}
+
 func TestSynchronousAdvanceTickTicksViewerlessBlockEntities(t *testing.T) {
 	w := Config{Synchronous: true}.New()
 	defer w.Close()
@@ -253,8 +345,44 @@ func (e *testEntity) Rotation() cube.Rotation {
 }
 
 func (e *testEntity) Tick(*Tx, int64) {
+	if config, ok := e.data.Data.(boundaryTickerConfig); ok {
+		*config.ticks++
+		if config.crossBoundary && *config.ticks == 1 {
+			e.data.Pos[0] = 16.5
+		}
+		return
+	}
 	e.data.Pos = e.data.Pos.Add(mgl64.Vec3{0, -0.1, 0})
 }
+
+type entityLoadProvider struct {
+	NopProvider
+	columns map[ChunkPos]*chunk.Column
+}
+
+func (p *entityLoadProvider) LoadColumn(pos ChunkPos, dim Dimension) (*chunk.Column, error) {
+	if col, ok := p.columns[pos]; ok {
+		return col, nil
+	}
+	return p.NopProvider.LoadColumn(pos, dim)
+}
+
+func loadedTestEntityColumn(w *World, id int64, pos mgl64.Vec3) *chunk.Column {
+	return &chunk.Column{
+		Chunk: chunk.New(w.conf.Blocks, w.Range()),
+		Entities: []chunk.Entity{{ID: id, Data: map[string]any{
+			"identifier": "dragonfly:test_entity",
+			"Pos":        []float32{float32(pos[0]), float32(pos[1]), float32(pos[2])},
+		}}},
+	}
+}
+
+type boundaryTickerConfig struct {
+	ticks         *int
+	crossBoundary bool
+}
+
+func (c boundaryTickerConfig) Apply(data *EntityData) { data.Data = c }
 
 type testTickerBlock struct {
 	ticks int

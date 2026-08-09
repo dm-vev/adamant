@@ -389,6 +389,10 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	if state == nil {
 		return
 	}
+	if state.lastProcessedTick == tick {
+		return
+	}
+	state.lastProcessedTick = tick
 
 	chunkPos := chunkPosFromVec3(handle.data.Pos)
 	var entity Entity

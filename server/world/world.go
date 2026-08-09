@@ -144,9 +144,10 @@ const (
 )
 
 type entityState struct {
-	pos      ChunkPos
-	ent      Entity
-	lastTick int64
+	pos               ChunkPos
+	ent               Entity
+	lastTick          int64
+	lastProcessedTick int64
 	// nextPassiveTick is the next scheduled tick at which the entity should receive
 	// maintenance updates such as ageing and fire decay while it is outside of the
 	// active simulation range.
@@ -1105,7 +1106,12 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	w.set.Lock()
 	currentTick := w.set.CurrentTick
 	w.set.Unlock()
-	state := &entityState{pos: pos, lastTick: currentTick, isItem: handle.t.EncodeEntity() == "minecraft:item"}
+	state := &entityState{
+		pos:               pos,
+		lastTick:          currentTick,
+		lastProcessedTick: currentTick,
+		isItem:            handle.t.EncodeEntity() == "minecraft:item",
+	}
 	if _, ok := w.entities[handle]; !ok {
 		w.entityCount.Add(1)
 	}
@@ -1839,9 +1845,10 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 				w.entityCount.Add(1)
 			}
 			state := &entityState{
-				pos:      pos,
-				lastTick: currentTick,
-				isItem:   e.t.EncodeEntity() == "minecraft:item",
+				pos:               pos,
+				lastTick:          currentTick,
+				lastProcessedTick: currentTick,
+				isItem:            e.t.EncodeEntity() == "minecraft:item",
 			}
 			w.entities[e] = state
 			e.state = state
@@ -2665,6 +2672,9 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 	col := newColumn(c.Chunk)
 	col.Entities = make([]*EntityHandle, 0, len(c.Entities))
+	if len(c.Entities) > 0 {
+		col.entityIndices = make(map[*EntityHandle]int, len(c.Entities))
+	}
 	col.BlockEntities = make(map[cube.Pos]Block, len(c.BlockEntities))
 	for _, e := range c.Entities {
 		eid, ok := e.Data["identifier"].(string)
@@ -2682,7 +2692,7 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 			w.conf.Log.Error("read column: unknown entity type", "ID", e.ID, "type", eid)
 			continue
 		}
-		col.Entities = append(col.Entities, entityFromData(t, e.ID, e.Data))
+		col.addEntity(entityFromData(t, e.ID, e.Data))
 	}
 	for _, be := range c.BlockEntities {
 		rid := c.Chunk.Block(uint8(be.Pos[0]), int16(be.Pos[1]), uint8(be.Pos[2]), 0)
