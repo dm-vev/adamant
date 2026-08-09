@@ -54,6 +54,49 @@ func TestSynchronousWorldAdvanceTick(t *testing.T) {
 	}
 }
 
+func TestSynchronousWorldTicksAdvancePerDimension(t *testing.T) {
+	settings := defaultSettings()
+	provider := NopProvider{Set: settings}
+	worlds := []*World{
+		Config{Provider: provider, Dim: Overworld, Synchronous: true}.New(),
+		Config{Provider: provider, Dim: Nether, Synchronous: true}.New(),
+		Config{Provider: provider, Dim: End, Synchronous: true}.New(),
+		Config{Provider: provider, Dim: testDimension{i: 1029}, Synchronous: true}.New(),
+	}
+	for _, w := range worlds {
+		defer w.Close()
+	}
+
+	starts := make([]int64, len(worlds))
+	for i, w := range worlds {
+		starts[i] = w.CurrentTick()
+	}
+	startTime := settings.Time
+	for i, w := range worlds {
+		for range i + 1 {
+			w.AdvanceTick()
+		}
+	}
+
+	for i, w := range worlds {
+		want := starts[i] + int64(i+1)
+		if got := w.CurrentTick(); got != want {
+			t.Fatalf("world %v current tick = %d, want %d", w.Dimension(), got, want)
+		}
+		var txTick int64
+		<-w.Exec(func(tx *Tx) { txTick = tx.CurrentTick() })
+		if txTick != want {
+			t.Fatalf("world %v transaction tick = %d, want %d", w.Dimension(), txTick, want)
+		}
+	}
+	if got, want := settings.CurrentTick, starts[0]+1; got != want {
+		t.Fatalf("shared current tick = %d, want %d", got, want)
+	}
+	if got, want := settings.Time, startTime+1; got != want {
+		t.Fatalf("shared time = %d, want %d", got, want)
+	}
+}
+
 func TestCloseDoesNotLeaveOwnerWaitingForGeneration(t *testing.T) {
 	w := Config{GeneratorWorkers: 1, GeneratorQueueSize: 1}.New()
 

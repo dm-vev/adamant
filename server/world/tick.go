@@ -126,9 +126,11 @@ func (t ticker) tick(tx *Tx) {
 		if w.set.WeatherCycle {
 			w.advanceWeather()
 		}
+	} else {
+		w.tick++
 	}
 
-	rain, thunder, tick, tim := w.set.Raining, w.set.Thundering && w.set.Raining, w.set.CurrentTick, int(w.set.Time)
+	rain, thunder, tick, tim := w.set.Raining, w.set.Thundering && w.set.Raining, w.currentTickLocked(), int(w.set.Time)
 	timeCycle := w.set.TimeCycle
 
 	tryAdvanceDay := false

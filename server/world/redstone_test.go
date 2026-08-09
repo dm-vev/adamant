@@ -759,6 +759,52 @@ func TestScheduledTickQueueExecutesEarlierDueTickBeforeLaterTick(t *testing.T) {
 	}
 }
 
+func TestScheduledTicksAdvancePerDimension(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	provider := NopProvider{Set: defaultSettings()}
+	worlds := []*World{
+		Config{Provider: provider, Blocks: registry, Dim: Overworld, Synchronous: true}.New(),
+		Config{Provider: provider, Blocks: registry, Dim: Nether, Synchronous: true}.New(),
+		Config{Provider: provider, Blocks: registry, Dim: End, Synchronous: true}.New(),
+		Config{Provider: provider, Blocks: registry, Dim: testDimension{i: 1029}, Synchronous: true}.New(),
+	}
+	for _, w := range worlds {
+		defer w.Close()
+	}
+
+	pos := cube.Pos{8, 64, 8}
+	b := scheduledTickTestBlock{}
+	ticks := 0
+	scheduledTickTestBlockTicks = &ticks
+	t.Cleanup(func() { scheduledTickTestBlockTicks = nil })
+	starts := make([]int64, len(worlds))
+	for i, w := range worlds {
+		starts[i] = w.CurrentTick()
+		<-w.Exec(func(tx *Tx) {
+			tx.SetBlock(pos, b, &SetOpts{DisableBlockUpdates: true, DisableRedstoneUpdates: true})
+			tx.ScheduleBlockUpdate(pos, b, time.Second/10)
+		})
+	}
+
+	sharedTick := worlds[0].CurrentTick()
+	for i, w := range worlds {
+		w.AdvanceTick()
+		if ticks != i {
+			t.Fatalf("scheduled updates after first %v tick = %d, want %d", w.Dimension(), ticks, i)
+		}
+		w.AdvanceTick()
+		if ticks != i+1 {
+			t.Fatalf("scheduled updates after second %v tick = %d, want %d", w.Dimension(), ticks, i+1)
+		}
+		if got, want := w.CurrentTick(), starts[i]+2; got != want {
+			t.Fatalf("world %v current tick = %d, want %d", w.Dimension(), got, want)
+		}
+	}
+	if got, want := provider.Set.CurrentTick, sharedTick+2; got != want {
+		t.Fatalf("shared current tick = %d, want %d", got, want)
+	}
+}
+
 type scheduledTickTestBlock struct{}
 
 // Test counters below are package-level because block instances are registry values; tests using them must stay serial.

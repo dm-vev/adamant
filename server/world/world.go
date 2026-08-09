@@ -64,7 +64,10 @@ type World struct {
 
 	o sync.Once
 
-	set     *Settings
+	set *Settings
+	// tick is the per-world tick counter used by worlds that do not advance the
+	// shared Settings, such as the Nether, End and custom dimensions.
+	tick    int64
 	handler atomic.Pointer[Handler]
 
 	weather
@@ -131,6 +134,15 @@ type World struct {
 	// rate-limit backpressure warnings so operators can tune queue/worker sizes.
 	generatorQueueSaturation atomic.Uint64
 	lastQueueSaturationLog   atomic.Uint64
+}
+
+// currentTickLocked returns the tick used to update this world. The caller
+// must hold the shared settings lock.
+func (w *World) currentTickLocked() int64 {
+	if w.advance {
+		return w.set.CurrentTick
+	}
+	return w.tick
 }
 
 const (
@@ -246,7 +258,7 @@ func (w *World) CurrentTick() int64 {
 	}
 	w.set.Lock()
 	defer w.set.Unlock()
-	return w.set.CurrentTick
+	return w.currentTickLocked()
 }
 
 // TPS returns the current average ticks per second of the world. The value is
@@ -1104,7 +1116,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	handle.setAndUnlockWorld(w)
 	pos := chunkPosFromVec3(handle.data.Pos)
 	w.set.Lock()
-	currentTick := w.set.CurrentTick
+	currentTick := w.currentTickLocked()
 	w.set.Unlock()
 	state := &entityState{
 		pos:               pos,
@@ -1837,7 +1849,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 
 		// Register all entities contained in this column into the world.
 		w.set.Lock()
-		currentTick := w.set.CurrentTick
+		currentTick := w.currentTickLocked()
 		w.set.Unlock()
 		for _, e := range col.Entities {
 			e.setAndUnlockWorld(w)

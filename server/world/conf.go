@@ -160,9 +160,12 @@ func (conf Config) New() *World {
 		conf.RandSource = rand.NewPCG(t, t)
 	}
 	s := conf.Provider.Settings()
+	s.Lock()
+	currentTick := s.CurrentTick
+	s.Unlock()
 	w := &World{
-		scheduledUpdates:  newScheduledTickQueue(s.CurrentTick),
-		redstone:          newRedstoneEngine(s.CurrentTick),
+		scheduledUpdates:  newScheduledTickQueue(currentTick),
+		redstone:          newRedstoneEngine(currentTick),
 		entities:          make(map[*EntityHandle]*entityState),
 		viewers:           make(map[*Loader]Viewer),
 		chunks:            make(map[ChunkPos]*Column),
@@ -178,6 +181,7 @@ func (conf Config) New() *World {
 		conf:              conf,
 		ra:                conf.Dim.Range(),
 		set:               s,
+		tick:              currentTick,
 		activeColumnIndex: make(map[ChunkPos]int),
 		entityColumnIndex: make(map[ChunkPos]int),
 	}
