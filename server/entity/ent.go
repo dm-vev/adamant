@@ -106,6 +106,11 @@ func (e *Ent) Teleport(pos mgl64.Vec3) {
 	e.tx.ReleaseViewers(viewers)
 }
 
+// Displace moves the entity by a relative delta.
+func (e *Ent) Displace(deltaPos mgl64.Vec3) {
+	e.Teleport(e.Position().Add(deltaPos))
+}
+
 // Rotation returns the rotation of the entity.
 func (e *Ent) Rotation() cube.Rotation {
 	return e.data.Rot
@@ -228,6 +233,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	m := e.Behaviour().Tick(e, tx)
 	checkEntityInsiders(tx, e)
 	if e.finishPendingPortalTravel(tx) {
+		if m != nil {
+			m.releaseViewers()
+		}
 		return
 	}
 	if m != nil {

@@ -151,6 +151,19 @@ func (e *EntityHandle) Entity(tx *Tx) (Entity, bool) {
 	return e.t.Open(tx, e, &e.data), true
 }
 
+// World returns the world currently owning the entity, or nil if the entity is worldless or closed.
+func (e *EntityHandle) World() *World {
+	if e == nil {
+		return nil
+	}
+	e.cond.L.Lock()
+	defer e.cond.L.Unlock()
+	if e.w == closeWorld {
+		return nil
+	}
+	return e.w
+}
+
 // mustEntity calls Entity but panics if the worlds do not match.
 func (e *EntityHandle) mustEntity(tx *Tx) Entity {
 	if ent, ok := e.Entity(tx); ok {

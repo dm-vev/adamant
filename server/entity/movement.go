@@ -56,6 +56,10 @@ func (m *Movement) Send() {
 			v.ViewEntityVelocity(m.e, m.vel)
 		}
 	}
+	m.releaseViewers()
+}
+
+func (m *Movement) releaseViewers() {
 	if m.release != nil {
 		m.release()
 		m.release = nil

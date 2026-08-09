@@ -1,6 +1,7 @@
 package portal_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -201,7 +202,7 @@ func widthOffset(axis cube.Axis, width int) cube.Pos {
 
 func mustDo(t *testing.T, w *world.World, f func(tx *world.Tx)) {
 	t.Helper()
-	if err := w.Do(f).Err(); err != nil {
+	if err := w.Do(f).Wait(context.Background()); err != nil {
 		t.Fatalf("world task failed: %v", err)
 	}
 }

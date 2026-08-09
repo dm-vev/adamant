@@ -199,28 +199,41 @@ func (t *PortalTravelComputer) resetFailedTravel() {
 }
 
 func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, destination *world.World, origin mgl64.Vec3, pos cube.Pos, sourceDim, destinationDim world.Dimension) {
-	travelled, err := world.Call(context.Background(), destination, func(tx *world.Tx) (bool, error) {
+	travelled, err := safeWorldCall(destination, func(tx *world.Tx) (bool, error) {
 		spawn, ok := t.destinationSpawn(tx, sourceDim, pos)
 		if !ok {
 			return false, nil
 		}
-		if e, ok := tx.AddEntity(handle).(Traveller); ok {
-			t.finishTravel(e, spawn, sourceDim, destinationDim)
+		e, ok := tx.AddEntity(handle).(Traveller)
+		if !ok {
+			return false, nil
 		}
+		t.finishTravel(e, spawn, sourceDim, destinationDim)
 		return true, nil
 	})
 	if err != nil {
 		travelled = false
 	}
 	if !travelled {
-		_, err = world.Call(context.Background(), source, func(tx *world.Tx) (struct{}, error) {
-			if e, ok := tx.AddEntity(handle).(Traveller); ok {
+		detachPortalEntity(handle, destination)
+		restored := false
+		var restoreErr error
+		if handle.World() == nil {
+			restored, restoreErr = safeWorldCall(source, func(tx *world.Tx) (bool, error) {
+				e, ok := tx.AddEntity(handle).(Traveller)
+				if !ok {
+					return false, nil
+				}
 				e.Teleport(origin)
+				return true, nil
+			})
+		}
+		if restoreErr != nil || !restored {
+			detachPortalEntity(handle, source)
+			detachPortalEntity(handle, destination)
+			if handle.World() == nil {
+				_ = handle.Close()
 			}
-			return struct{}{}, nil
-		})
-		if err != nil {
-			_ = handle.Close()
 		}
 	}
 
@@ -233,6 +246,25 @@ func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, dest
 	t.mu.Unlock()
 }
 
+func safeWorldCall[T any](w *world.World, f func(*world.Tx) (T, error)) (result T, err error) {
+	defer func() {
+		if recover() != nil {
+			var zero T
+			result, err = zero, world.ErrTaskPanicked
+		}
+	}()
+	return world.Call(context.Background(), w, f)
+}
+
+func detachPortalEntity(handle *world.EntityHandle, w *world.World) {
+	_, _ = safeWorldCall(w, func(tx *world.Tx) (struct{}, error) {
+		if e, ok := handle.Entity(tx); ok {
+			tx.RemoveEntity(e)
+		}
+		return struct{}{}, nil
+	})
+}
+
 // destinationSpawn returns the position the entity should be placed at in the destination world. False is returned
 // if no linked nether portal was found and none could be created.
 func (t *PortalTravelComputer) destinationSpawn(tx *world.Tx, sourceDim world.Dimension, pos cube.Pos) (mgl64.Vec3, bool) {
@@ -240,7 +272,7 @@ func (t *PortalTravelComputer) destinationSpawn(tx *world.Tx, sourceDim world.Di
 		portal.GenerateEndSpawnPlatform(tx)
 		return portal.EndSpawnPosition(t.Player), true
 	}
-	if sourceDim == world.End && tx.World().Dimension() == world.Overworld {
+	if sourceDim == world.End {
 		if t.SpawnPoint != nil {
 			return t.SpawnPoint(tx), true
 		}

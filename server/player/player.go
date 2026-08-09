@@ -2716,7 +2716,7 @@ func (p *Player) Displace(deltaPos mgl64.Vec3) {
 	res := pos.Add(deltaPos)
 	viewers, release := p.viewers()
 	for _, v := range viewers {
-		v.ViewEntityDisplacement(p, res, p.Rotation(), p.OnGround())
+		v.ViewEntityTeleport(p, res)
 	}
 	releaseBorrowedViewers(p.tx, viewers, release)
 	p.data.Pos, p.data.Vel = res, velocity

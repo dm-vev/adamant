@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 func init() {
@@ -194,4 +195,66 @@ func TestShulkerBoxDropRoundTripNBT(t *testing.T) {
 	if !got.Equal(loot) {
 		t.Fatalf("expected restored inventory to contain %v, got %v", loot, got)
 	}
+}
+
+func TestShulkerBoxPushesAllMovableEntities(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	box := NewShulkerBox()
+	box.Facing = cube.FaceUp
+	box.animationStatus.Store(StateOpening)
+	box.progress.Store(1)
+
+	states := []*shulkerPushEntityState{{}, {}}
+	handles := make([]*world.EntityHandle, len(states))
+	for i, state := range states {
+		handles[i] = world.EntitySpawnOpts{Position: mgl64.Vec3{0.35 + float64(i)*0.3, 1, 0.5}}.New(shulkerPushEntityType{}, shulkerPushEntityConfig{state})
+	}
+	runWorld(w, func(tx *world.Tx) {
+		for _, handle := range handles {
+			tx.AddEntity(handle)
+		}
+		box.pushEntities(cube.Pos{}, tx)
+	})
+	for i, state := range states {
+		if state.displacements != 1 {
+			t.Fatalf("entity %d displacement count = %d, want 1", i, state.displacements)
+		}
+	}
+}
+
+type shulkerPushEntityState struct {
+	displacements int
+}
+
+type shulkerPushEntityConfig struct {
+	state *shulkerPushEntityState
+}
+
+func (c shulkerPushEntityConfig) Apply(data *world.EntityData) { data.Data = c.state }
+
+type shulkerPushEntityType struct{}
+
+func (shulkerPushEntityType) Open(_ *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
+	return shulkerPushEntity{handle: handle, data: data}
+}
+func (shulkerPushEntityType) EncodeEntity() string { return "test:shulker_push" }
+func (shulkerPushEntityType) BBox(world.Entity) cube.BBox {
+	return cube.Box(-0.25, 0, -0.25, 0.25, 0.5, 0.25)
+}
+func (shulkerPushEntityType) DecodeNBT(map[string]any, *world.EntityData) {}
+func (shulkerPushEntityType) EncodeNBT(*world.EntityData) map[string]any  { return nil }
+
+type shulkerPushEntity struct {
+	handle *world.EntityHandle
+	data   *world.EntityData
+}
+
+func (e shulkerPushEntity) Close() error            { return nil }
+func (e shulkerPushEntity) H() *world.EntityHandle  { return e.handle }
+func (e shulkerPushEntity) Position() mgl64.Vec3    { return e.data.Pos }
+func (e shulkerPushEntity) Rotation() cube.Rotation { return e.data.Rot }
+func (e shulkerPushEntity) Displace(delta mgl64.Vec3) {
+	e.data.Pos = e.data.Pos.Add(delta)
+	e.data.Data.(*shulkerPushEntityState).displacements++
 }

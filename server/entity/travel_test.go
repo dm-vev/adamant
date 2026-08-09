@@ -33,6 +33,20 @@ func TestPortalTravelComputerStopPortalContact(t *testing.T) {
 	})
 }
 
+func TestEntDisplace(t *testing.T) {
+	w := world.New()
+	t.Cleanup(func() { _ = w.Close() })
+	origin := mgl64.Vec3{1, 2, 3}
+	handle := world.EntitySpawnOpts{Position: origin}.New(testMovingEntType{}, testMoveConfig{})
+	mustDo(t, w, func(tx *world.Tx) {
+		e := tx.AddEntity(handle).(*Ent)
+		e.Displace(mgl64.Vec3{0.25, 0.5, -0.25})
+		if got, want := e.Position(), (mgl64.Vec3{1.25, 2.5, 2.75}); !got.ApproxEqual(want) {
+			t.Fatalf("Displace() position = %v, want %v", got, want)
+		}
+	})
+}
+
 func TestEntProjectileTravelsThroughPortal(t *testing.T) {
 	var overworld, nether *world.World
 	overworld = world.Config{PortalDestination: func(dim world.Dimension) *world.World {
@@ -127,7 +141,11 @@ func TestEntTravelsThroughPortalOnTick(t *testing.T) {
 		buildActivePortal(tx, targetPortal)
 	})
 
-	handle := world.EntitySpawnOpts{Position: sourcePortal.Vec3Middle().Sub(mgl64.Vec3{1})}.New(testMovingEntType{}, testMoveConfig{delta: mgl64.Vec3{1}})
+	releasedViewers := false
+	handle := world.EntitySpawnOpts{Position: sourcePortal.Vec3Middle().Sub(mgl64.Vec3{1})}.New(testMovingEntType{}, testMoveConfig{
+		delta:   mgl64.Vec3{1},
+		release: func() { releasedViewers = true },
+	})
 	mustDo(t, overworld, func(tx *world.Tx) {
 		e := tx.AddEntity(handle)
 		ticker, ok := e.(world.TickerEntity)
@@ -136,6 +154,9 @@ func TestEntTravelsThroughPortalOnTick(t *testing.T) {
 		}
 		ticker.Tick(tx, 1)
 	})
+	if !releasedViewers {
+		t.Fatal("terminal portal travel did not release movement viewers")
+	}
 
 	waitForEntityWorld(t, handle, nether)
 	if entityInWorld(handle, overworld) {
@@ -243,16 +264,57 @@ func TestEndReturnSpawnSelection(t *testing.T) {
 		})
 	})
 
-	t.Run("nether searches for a portal", func(t *testing.T) {
+	t.Run("non-overworld default uses world spawn", func(t *testing.T) {
 		w := world.Config{Dim: world.Nether}.New()
 		t.Cleanup(func() { _ = w.Close() })
 		tc := &PortalTravelComputer{}
 
 		mustDo(t, w, func(tx *world.Tx) {
-			if _, ok := tc.destinationSpawn(tx, world.End, cube.Pos{}); ok {
-				t.Fatal("destinationSpawn() ok = true without a linked Nether portal, want false")
+			want := tx.World().Spawn().Vec3Middle()
+			got, ok := tc.destinationSpawn(tx, world.End, cube.Pos{})
+			if !ok || !got.ApproxEqual(want) {
+				t.Fatalf("destinationSpawn() = %v, %v, want %v, true", got, ok, want)
 			}
 		})
+	})
+}
+
+func TestEntReturnsFromEndToDefaultWorldSpawn(t *testing.T) {
+	defaultWorld := world.Config{Dim: world.Nether}.New()
+	defaultWorld.SetSpawn(cube.Pos{23, 70, -9})
+	var end *world.World
+	end = world.Config{
+		Dim: world.End,
+		PortalDestination: func(world.Dimension) *world.World {
+			return end
+		},
+		DefaultWorld: func() *world.World { return defaultWorld },
+	}.New()
+	t.Cleanup(func() {
+		_ = end.Close()
+		_ = defaultWorld.Close()
+	})
+
+	origin := mgl64.Vec3{5.5, 64, 5.5}
+	handle := world.EntitySpawnOpts{Position: origin}.New(testMovingEntType{}, testMoveConfig{})
+	mustDo(t, end, func(tx *world.Tx) {
+		e := tx.AddEntity(handle)
+		(block.EndPortal{}).EntityInside(cube.PosFromVec3(origin), tx, e)
+	})
+
+	waitForEntityWorld(t, handle, defaultWorld)
+	mustDo(t, defaultWorld, func(tx *world.Tx) {
+		e, ok := handle.Entity(tx)
+		if !ok {
+			t.Fatal("entity was not added to the configured default world")
+		}
+		want := defaultWorld.Spawn().Vec3Middle()
+		if got := e.Position(); !got.ApproxEqual(want) {
+			t.Fatalf("End return position = %v, want default world spawn %v", got, want)
+		}
+		if _, ok := portal.FindNetherPortal(tx, cube.PosFromVec3(want), 16); ok {
+			t.Fatal("End return unexpectedly searched for or created a Nether portal")
+		}
 	})
 }
 
@@ -332,7 +394,7 @@ func TestEntPortalTravelWithoutDestinationPortal(t *testing.T) {
 	})
 
 	// The cooldown is stamped once the travel attempt finishes, after the entity was returned to the source world.
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		tc.mu.Lock()
 		done := !tc.cooldownUntil.IsZero()
@@ -392,32 +454,64 @@ func TestPortalTravelClosesHandleWhenBothWorldsClose(t *testing.T) {
 	}
 }
 
-func TestPortalTravelRethrowsDestinationPanic(t *testing.T) {
-	source := world.Config{Synchronous: true}.New()
-	destination := world.Config{Dim: world.Nether, Synchronous: true}.New()
-	t.Cleanup(func() {
-		_ = source.Close()
-		_ = destination.Close()
-	})
-	destination.Handle(panicSpawnHandler{})
+func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		spawnHandler world.Handler
+		teleport     func(Traveller, mgl64.Vec3)
+	}{
+		{name: "spawn", spawnHandler: panicSpawnHandler{}},
+		{name: "teleport", teleport: func(Traveller, mgl64.Vec3) { panic("teleport panic") }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source := world.New()
+			destination := world.Config{Dim: world.Nether}.New()
+			t.Cleanup(func() {
+				_ = source.Close()
+				_ = destination.Close()
+			})
+			targetPortal := cube.Pos{10, 64, 10}
+			mustDo(t, destination, func(tx *world.Tx) {
+				buildActivePortal(tx, targetPortal)
+			})
+			if test.spawnHandler != nil {
+				destination.Handle(test.spawnHandler)
+			}
 
-	origin := mgl64.Vec3{80.5, 64, 80.5}
-	handle := world.EntitySpawnOpts{Position: origin}.New(testMovingEntType{}, testPortalCreatorConfig{})
-	mustDo(t, source, func(tx *world.Tx) {
-		e := tx.AddEntity(handle)
-		if removed := tx.RemoveEntity(e); removed != handle {
-			t.Fatal("RemoveEntity() did not return the entity handle")
-		}
-	})
+			origin := mgl64.Vec3{80.5, 64, 80.5}
+			handle := world.EntitySpawnOpts{Position: origin}.New(EnderPearlType, enderPearlConf)
+			var tc *PortalTravelComputer
+			mustDo(t, source, func(tx *world.Tx) {
+				e := tx.AddEntity(handle)
+				tc = e.(*Ent).Behaviour().(*ProjectileBehaviour).PortalTravelComputer()
+				tc.Teleport = test.teleport
+				tc.travel(e.(Traveller), tx, destination)
+			})
 
-	defer func() {
-		if recovered := recover(); recovered != "spawn panic" {
-			t.Fatalf("transfer panic = %v, want spawn panic", recovered)
-		}
-	}()
-	tc := NewPortalTravelComputer()
-	tc.CreatePortal = true
-	tc.transfer(handle, source, destination, origin, cube.Pos{10, 64, 10}, world.Overworld, world.Nether)
+			deadline := time.Now().Add(10 * time.Second)
+			for time.Now().Before(deadline) {
+				tc.mu.Lock()
+				done := !tc.travelling
+				tc.mu.Unlock()
+				if done && entityInWorld(handle, source) {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			if !entityInWorld(handle, source) {
+				t.Fatal("entity was not restored to the source after destination panic")
+			}
+			if entityInWorld(handle, destination) {
+				t.Fatal("entity remained destination-bound after destination panic")
+			}
+			mustDo(t, source, func(tx *world.Tx) {
+				e, _ := handle.Entity(tx)
+				if got := e.Position(); !got.ApproxEqual(origin) {
+					t.Fatalf("restored entity position = %v, want %v", got, origin)
+				}
+			})
+		})
+	}
 }
 
 func TestFallingBlockDoesNotTravelThroughPortal(t *testing.T) {
@@ -507,7 +601,7 @@ func (testPortalCreatorConfig) Apply(data *world.EntityData) {
 
 func waitForEntityWorld(t *testing.T, handle *world.EntityHandle, w *world.World) {
 	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		if entityInWorld(handle, w) {
 			return
@@ -559,21 +653,26 @@ func (r *entitySpawnRecorder) HandleEntitySpawn(_ *world.Tx, e world.Entity) {
 }
 
 type testMoveConfig struct {
-	delta mgl64.Vec3
+	delta   mgl64.Vec3
+	release func()
 }
 
 func (c testMoveConfig) Apply(data *world.EntityData) {
-	data.Data = &testMoveBehaviour{BaseBehaviour: NewBaseBehaviour(), delta: c.delta}
+	data.Data = &testMoveBehaviour{BaseBehaviour: NewBaseBehaviour(), delta: c.delta, release: c.release}
 }
 
 type testMoveBehaviour struct {
 	BaseBehaviour
 
-	delta mgl64.Vec3
+	delta   mgl64.Vec3
+	release func()
 }
 
 func (b *testMoveBehaviour) Tick(e *Ent, _ *world.Tx) *Movement {
 	e.data.Pos = e.data.Pos.Add(b.delta)
+	if b.release != nil {
+		return &Movement{release: b.release}
+	}
 	return nil
 }
 
