@@ -15,11 +15,15 @@ import (
 var sessions = new(sessionList)
 
 type sessionList struct {
-	mu sync.Mutex
-	s  []*Session
+	mu   sync.Mutex
+	opMu sync.Mutex
+	s    []*Session
 }
 
 func (l *sessionList) Add(s *Session) {
+	l.opMu.Lock()
+	defer l.opMu.Unlock()
+
 	l.mu.Lock()
 	others := slices.Clone(l.s)
 	l.s = append(l.s, s)
@@ -38,6 +42,7 @@ func (l *sessionList) Add(s *Session) {
 }
 
 func (l *sessionList) Remove(s *Session, entity world.Entity) {
+	l.opMu.Lock()
 	l.mu.Lock()
 	others := slices.Clone(l.s)
 	l.s = sliceutil.DeleteVal(l.s, s)
@@ -47,6 +52,7 @@ func (l *sessionList) Remove(s *Session, entity world.Entity) {
 	for _, other := range others {
 		l.unsendSessionFrom(s, other)
 	}
+	l.opMu.Unlock()
 
 	if entity == nil {
 		return

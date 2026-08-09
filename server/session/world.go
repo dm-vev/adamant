@@ -214,13 +214,13 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 
 // HideEntity ...
 func (s *Session) HideEntity(e world.Entity) {
-	if s.entityRuntimeID(e) == selfEntityRuntimeID {
-		return
-	}
-
 	s.entityMutex.Lock()
 	id, ok := s.entityRuntimeIDs[e.H()]
-	if _, controllable := e.(Controllable); !controllable {
+	if ok && e.H() == s.ent && id == selfEntityRuntimeID {
+		s.entityMutex.Unlock()
+		return
+	}
+	if ok {
 		delete(s.entityRuntimeIDs, e.H())
 		delete(s.entities, id)
 	}
