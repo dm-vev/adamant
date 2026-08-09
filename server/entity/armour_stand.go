@@ -51,7 +51,7 @@ func (armourStandType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		if !ok {
 			continue
 		}
-		it := item.ReadNBT(itemMap, nil)
+		it := item.ReadNBT(itemMap, nil, world.BlockRegistryFromNBT(m))
 
 		switch i {
 		case 0:

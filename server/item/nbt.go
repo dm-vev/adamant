@@ -71,6 +71,9 @@ func ReadNBT(data map[string]any, s *Stack, registries ...world.BlockRegistry) S
 // block) in a map obtained by decoding NBT at key k to a Stack.
 func MapNBT(x map[string]any, k string, registries ...world.BlockRegistry) Stack {
 	if m, ok := x[k].(map[string]any); ok {
+		if len(registries) == 0 {
+			registries = []world.BlockRegistry{world.BlockRegistryFromNBT(x)}
+		}
 		return ReadNBT(m, nil, registries...)
 	}
 	return Stack{}
@@ -215,7 +218,7 @@ func readItemStack(m, t map[string]any, registries ...world.BlockRegistry) Stack
 		return Stack{}
 	}
 	if n, ok := it.(world.NBTer); ok {
-		it = n.DecodeNBT(t).(world.Item)
+		it = world.DecodeNBT(n, t, registries...).(world.Item)
 	}
 	return NewStack(it, int(nbtUint8(m, "Count")))
 }

@@ -32,13 +32,14 @@ func (conf ItemBehaviourConfig) Apply(data *world.EntityData) {
 	data.Data = conf.New()
 }
 
-// New creates an ItemBehaviour using i and the optional parameters in conf.
-func (conf ItemBehaviourConfig) New() *ItemBehaviour {
+// New creates an ItemBehaviour using i and the optional parameters in conf. An
+// optional block registry is used when normalising block items.
+func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBehaviour {
 	i := conf.Item
 	if i.Count() > i.MaxCount() {
 		i = i.Grow(i.MaxCount() - i.Count())
 	}
-	i = item.ReadNBT(item.WriteNBT(i, true), nil)
+	i = item.ReadNBT(item.WriteNBT(i, true), nil, registries...)
 
 	if conf.PickupDelay == 0 {
 		conf.PickupDelay = time.Second / 2

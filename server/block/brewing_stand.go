@@ -113,7 +113,7 @@ func (b BrewingStand) DecodeNBT(data map[string]any) any {
 	b.LeftSlot, b.MiddleSlot, b.RightSlot = leftSlot, middleSlot, rightSlot
 	b.setDuration(brew)
 	b.setFuel(fuel, maxFuel)
-	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"))
+	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
 	return b
 }
 

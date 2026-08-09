@@ -471,7 +471,7 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 		}
 		// Despite being a block with NBT, the block didn't actually have any
 		// stored NBT yet. We add it here and update the block.
-		nbtB := w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer).DecodeNBT(map[string]any{}).(Block)
+		nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), map[string]any{}, w.conf.Blocks).(Block)
 		c.BlockEntities[pos] = nbtB
 		c.invalidateTickerBlockEntities()
 		c.invalidateBlockEntityPayloads()
@@ -2099,7 +2099,7 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 							}
 						}
 					}
-					nbtB := w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer).DecodeNBT(nbt).(Block)
+					nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), nbt, w.conf.Blocks).(Block)
 					if blockEntities == nil {
 						blockEntities = make(map[cube.Pos]Block, 8)
 					}
@@ -2692,7 +2692,9 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 			w.conf.Log.Error("read column: unknown entity type", "ID", e.ID, "type", eid)
 			continue
 		}
-		col.addEntity(entityFromData(t, e.ID, e.Data))
+		col.addEntity(withBlockRegistryNBT(e.Data, w.conf.Blocks, func() *EntityHandle {
+			return entityFromData(t, e.ID, e.Data)
+		}))
 	}
 	for _, be := range c.BlockEntities {
 		rid := c.Chunk.Block(uint8(be.Pos[0]), int16(be.Pos[1]), uint8(be.Pos[2]), 0)
@@ -2706,7 +2708,7 @@ func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
 			w.conf.Log.Error("read column: block with nbt does not implement NBTer", "block", fmt.Sprintf("%#v", b))
 			continue
 		}
-		col.BlockEntities[be.Pos] = nb.DecodeNBT(be.Data).(Block)
+		col.BlockEntities[be.Pos] = DecodeNBT(nb, be.Data, w.conf.Blocks).(Block)
 	}
 	scheduled, savedTick := make([]scheduledTick, 0, len(c.ScheduledBlocks)), c.Tick
 	for _, t := range c.ScheduledBlocks {

@@ -151,7 +151,7 @@ func (b Barrel) DecodeNBT(data map[string]any) any {
 	// Preserve the block state bits so the decoded block matches the stored runtime ID.
 	b.Open = open
 	b.CustomName = nbtconv.String(data, "CustomName")
-	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"))
+	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
 	return b
 }
 

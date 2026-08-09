@@ -289,7 +289,7 @@ func (h Hopper) DecodeNBT(data map[string]any) any {
 	h.Powered = powered
 	h.CustomName = nbtconv.String(data, "CustomName")
 	h.TransferCooldown = int64(nbtconv.Int32(data, "TransferCooldown"))
-	nbtconv.InvFromNBT(h.inventory, nbtconv.Slice(data, "Items"))
+	nbtconv.InvFromNBT(h.inventory, nbtconv.Slice(data, "Items"), data)
 	return h
 }
 

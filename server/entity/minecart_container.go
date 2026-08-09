@@ -207,7 +207,7 @@ func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := chestMinecartConf
 	beh := conf.New()
 	readMinecartDisplayNBT(beh.MinecartBehaviour, m)
-	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"))
+	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)
 	data.Data = beh
 }
 
@@ -250,7 +250,7 @@ func (hopperMinecartType) BBox(world.Entity) cube.BBox {
 func (hopperMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	beh := hopperMinecartConf.New()
 	readMinecartDisplayNBT(beh.MinecartBehaviour, m)
-	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"))
+	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)
 	beh.transferCooldown = readNBTInt(m["TransferCooldown"])
 	if enabled, ok := m["Enabled"]; ok {
 		beh.enabled = readNBTBool(enabled)

@@ -231,7 +231,7 @@ func (d Dispenser) DecodeNBT(data map[string]any) any {
 	d = NewDispenser()
 	d.Facing, d.Triggered = facing, triggered
 	d.CustomName = nbtconv.String(data, "CustomName")
-	nbtconv.InvFromNBT(d.inventory, nbtconv.Slice(data, "Items"))
+	nbtconv.InvFromNBT(d.inventory, nbtconv.Slice(data, "Items"), data)
 	return d
 }
 

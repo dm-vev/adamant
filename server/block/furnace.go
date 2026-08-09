@@ -167,7 +167,7 @@ func (f Furnace) DecodeNBT(data map[string]interface{}) interface{} {
 	f.Lit = lit
 	f.setExperience(xp)
 	f.setDurations(remaining, maximum, cook)
-	nbtconv.InvFromNBT(f.inventory, nbtconv.Slice(data, "Items"))
+	nbtconv.InvFromNBT(f.inventory, nbtconv.Slice(data, "Items"), data)
 	return f
 }
 

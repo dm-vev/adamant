@@ -502,23 +502,26 @@ func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []protocol.I
 		}
 	}
 
-	entries := make([]protocol.ItemEntry, len(items))
+	entries := make([]protocol.ItemEntry, 0, len(items))
 
-	for i, it := range items {
+	for _, it := range items {
 		name, _ := it.EncodeItem()
-		rid, _, _ := world.ItemRuntimeID(it)
+		rid, _, ok := world.ItemRuntimeID(it)
+		if !ok {
+			continue
+		}
 		_, isCustomBlock := it.(world.CustomBlock)
 		var entryVersion int32 = protocol.ItemEntryVersionDataDriven
 		if isCustomBlock {
 			entryVersion = protocol.ItemEntryVersionNone
 		}
-		entries[i] = protocol.ItemEntry{
+		entries = append(entries, protocol.ItemEntry{
 			Name:           name,
 			ComponentBased: !isCustomBlock,
 			RuntimeID:      int16(rid),
 			Version:        entryVersion,
 			Data:           iteminternal.Components(it),
-		}
+		})
 	}
 	return entries
 }

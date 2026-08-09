@@ -53,7 +53,7 @@ func (itemType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf.Item = item.MapNBT(m, "Item")
 	conf.PickupDelay = time.Duration(nbtconv.Int64(m, "PickupDelay")) * (time.Second / 20)
 
-	data.Data = conf.New()
+	data.Data = conf.New(world.BlockRegistryFromNBT(m))
 }
 
 func (itemType) EncodeNBT(data *world.EntityData) map[string]any {

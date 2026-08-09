@@ -925,7 +925,7 @@ func (chestBoatType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	if v, ok := m["Variant"]; ok {
 		beh.variant = readNBTInt(v)
 	}
-	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"))
+	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)
 	data.Data = beh
 }
 

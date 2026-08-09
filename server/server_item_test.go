@@ -22,8 +22,12 @@ func TestItemEntriesCustomItem(t *testing.T) {
 
 func TestItemEntriesUseServerBlockRegistry(t *testing.T) {
 	a, b := customBlockItem{id: "test:registry_a"}, customBlockItem{id: "test:registry_b"}
+	unregistered := customBlockItem{id: "test:registry_unregistered"}
+	world.RegisterItem(a)
+	world.RegisterItem(b)
 	registryA, registryB := world.NewBlockRegistry(), world.NewBlockRegistry()
 	registryA.RegisterBlock(a)
+	registryA.RegisterBlock(unregistered)
 	registryB.RegisterBlock(b)
 
 	global := []world.CustomItem{a, b, customItem{}}
@@ -39,6 +43,9 @@ func TestItemEntriesUseServerBlockRegistry(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			names := map[string]bool{}
 			for _, entry := range itemEntries(test.br, global) {
+				if entry.RuntimeID == 0 {
+					t.Fatalf("entry %q has invalid runtime ID 0", entry.Name)
+				}
 				names[entry.Name] = true
 			}
 			if !names[test.want] || !names["minecraft:stick"] {
@@ -46,6 +53,9 @@ func TestItemEntriesUseServerBlockRegistry(t *testing.T) {
 			}
 			if names[test.notWant] {
 				t.Fatalf("entries %v contain block %q from another registry", names, test.notWant)
+			}
+			if names[unregistered.id] {
+				t.Fatalf("entries %v contain unregistered block item %q", names, unregistered.id)
 			}
 		})
 	}

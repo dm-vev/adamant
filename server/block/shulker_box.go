@@ -292,7 +292,7 @@ func (s ShulkerBox) DecodeNBT(data map[string]any) any {
 	//noinspection GoAssignmentToReceiver
 	s = NewShulkerBox()
 	s.Type = typ
-	nbtconv.InvFromNBT(s.inventory, nbtconv.Slice(data, "Items"))
+	nbtconv.InvFromNBT(s.inventory, nbtconv.Slice(data, "Items"), data)
 	s.Facing = cube.Face(nbtconv.Uint8(data, "facing"))
 	s.CustomName = nbtconv.String(data, "CustomName")
 	return s
