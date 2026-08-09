@@ -1898,11 +1898,10 @@ func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) boo
 		return false
 	}
 	if c, ok := w.chunks[pos]; ok {
+		w.chunkRequests[pos] = append(w.chunkRequests[pos], callback)
 		if c.Ready() {
 			c.ensureLight(w, pos)
-			callback(tx, c)
-		} else {
-			w.chunkRequests[pos] = append(w.chunkRequests[pos], callback)
+			w.finishChunkRequest(tx, pos, c)
 		}
 		return true
 	}
@@ -1923,13 +1922,21 @@ func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) boo
 // It must run on the world owner.
 func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 	callbacks := w.chunkRequests[pos]
-	if len(callbacks) == 0 || !c.Ready() || w.closed.Load() {
+	if len(callbacks) == 0 || !c.Ready() {
 		return
 	}
 	delete(w.chunkRequests, pos)
-	for _, callback := range callbacks {
-		callback(tx, c)
+	if w.closed.Load() {
+		return
 	}
+	tx.Defer(func(tx *Tx) {
+		if w.closed.Load() {
+			return
+		}
+		for _, callback := range callbacks {
+			callback(tx, c)
+		}
+	})
 }
 
 // generateChunkAsync schedules an asynchronous chunk generation task for the given position.
