@@ -2,6 +2,9 @@ package session
 
 import (
 	"fmt"
+	"maps"
+	"reflect"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
@@ -234,17 +237,26 @@ func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) err
 }
 
 func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, error) {
-	result := *craft.result
+	output, err := deriveMultiCraftResult(craft, br)
+	if err != nil {
+		return item.Stack{}, err
+	}
+	if !requestedMultiResultMatches(output, *craft.result) {
+		return item.Stack{}, fmt.Errorf("multi recipe result does not match server-derived output")
+	}
+	return output, nil
+}
+
+func deriveMultiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, error) {
 	inputs := make([]item.Stack, 0, len(craft.input))
 	for _, stack := range craft.input {
 		if !stack.Empty() {
 			inputs = append(inputs, stack)
 		}
 	}
-	wantResult := func(source item.Stack, name string, count int) (item.Stack, error) {
-		_, meta := source.Item().EncodeItem()
-		if result.Identifier != name || result.MetadataValue > math.MaxInt16 || int16(result.MetadataValue) != meta || int(result.Count) != count || count > source.MaxCount() {
-			return item.Stack{}, fmt.Errorf("multi recipe supplied invalid result %q x%v", result.Identifier, result.Count)
+	withCount := func(source item.Stack, count int) (item.Stack, error) {
+		if count < 1 || count > source.MaxCount() {
+			return item.Stack{}, fmt.Errorf("multi recipe output count %v is invalid", count)
 		}
 		return source.Grow(count - source.Count()), nil
 	}
@@ -258,11 +270,7 @@ func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, er
 		if craft.times != 1 || len(inputs) != 2 {
 			return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two inputs and one craft")
 		}
-		output, err := wantResult(inputs[0], nameOf(inputs[0]), 1)
-		if err != nil {
-			return item.Stack{}, err
-		}
-		return repairedMultiResult(inputs, output)
+		return repairedMultiResult(inputs)
 	case fireworkMultiRecipe:
 		paper, gunpowder := 0, 0
 		explosions := make([]item.FireworkExplosion, 0, len(inputs))
@@ -279,8 +287,8 @@ func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, er
 			}
 		}
 		count := 3 * craft.times
-		if paper != 1 || gunpowder < 1 || gunpowder > 3 || result.Identifier != "minecraft:firework_rocket" || result.MetadataValue != 0 || int(result.Count) != count || count > 64 {
-			return item.Stack{}, fmt.Errorf("firework multi recipe supplied invalid inputs or result")
+		if paper != 1 || gunpowder < 1 || gunpowder > 3 || count > 64 {
+			return item.Stack{}, fmt.Errorf("firework multi recipe supplied invalid inputs")
 		}
 		return item.NewStack(item.Firework{Duration: time.Duration(gunpowder+1) * 500 * time.Millisecond, Explosions: explosions}, count), nil
 	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe, mapCloningMultiRecipe, mapCloningCartographyMultiRecipe,
@@ -294,11 +302,11 @@ func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, er
 				source = stack
 			}
 		}
-		id, outputCount := craft.recipe.UUID().String(), craft.times
+		id, outputCount := craft.recipe.UUID().String(), 1
 		valid := counts["minecraft:filled_map"] == 1
 		switch id {
 		case mapExtendingMultiRecipe:
-			valid = valid && len(inputs) == 9 && counts["minecraft:paper"] == 8
+			valid = valid && len(inputs) == 9 && counts["minecraft:paper"] == 8 && mapCentredInPaper(craft.input)
 		case mapExtendingCartographyMultiRecipe:
 			valid = valid && len(inputs) == 2 && counts["minecraft:paper"] == 1
 		case mapCloningMultiRecipe:
@@ -315,7 +323,13 @@ func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, er
 		if !valid {
 			return item.Stack{}, fmt.Errorf("map multi recipe contains invalid inputs")
 		}
-		return wantResult(source, "minecraft:filled_map", outputCount)
+		if craft.times != 1 {
+			return item.Stack{}, fmt.Errorf("map multi recipes require exactly one craft")
+		}
+		if id == mapCloningMultiRecipe || id == mapCloningCartographyMultiRecipe {
+			return withCount(source, outputCount)
+		}
+		return changedMapResult(source, id, br)
 	case bookCloningMultiRecipe:
 		var source item.Stack
 		writable := 0
@@ -341,21 +355,22 @@ func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, er
 		} else {
 			book.Generation = item.CopyOfCopyGeneration()
 		}
-		return wantResult(source.WithItem(book), "minecraft:written_book", (writable+1)*craft.times)
+		return withCount(source.WithItem(book), (writable+1)*craft.times)
 	case bannerDuplicateMultiRecipe:
 		if len(inputs) != 2 {
 			return item.Stack{}, fmt.Errorf("banner duplication requires exactly two banners")
 		}
 		first, firstOK := inputs[0].Item().(block.Banner)
 		second, secondOK := inputs[1].Item().(block.Banner)
-		if !firstOK || !secondOK || first.Colour != second.Colour || (len(first.Patterns) == 0) == (len(second.Patterns) == 0) {
+		if !firstOK || !secondOK || first.Illager || second.Illager || first.Colour != second.Colour ||
+			(len(first.Patterns) == 0) == (len(second.Patterns) == 0) || max(len(first.Patterns), len(second.Patterns)) > 6 || !validBannerDuplicateGrid(craft.input) {
 			return item.Stack{}, fmt.Errorf("banner duplication requires one patterned and one blank matching banner")
 		}
 		source := inputs[0]
 		if len(second.Patterns) != 0 {
 			source = inputs[1]
 		}
-		return wantResult(source, "minecraft:banner", 2*craft.times)
+		return withCount(source, 2*craft.times)
 	case bannerAddPatternMultiRecipe:
 		var source item.Stack
 		var colour item.Colour
@@ -380,45 +395,309 @@ func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, er
 			}
 		}
 		sourceBanner, ok := source.Item().(block.Banner)
-		if !ok || dyes == 0 || patterns > 1 || result.Identifier != "minecraft:banner" || int(result.Count) != craft.times {
-			return item.Stack{}, fmt.Errorf("banner pattern recipe supplied invalid inputs or result")
+		if !ok || sourceBanner.Illager || len(sourceBanner.Patterns) >= 6 || dyes == 0 || patterns > 1 {
+			return item.Stack{}, fmt.Errorf("banner pattern recipe supplied invalid inputs")
 		}
-		decoded, ok := world.DecodeNBT(sourceBanner, result.NBTData, br).(block.Banner)
-		if !ok || decoded.Colour != sourceBanner.Colour || len(decoded.Patterns) != len(sourceBanner.Patterns)+1 || !slices.Equal(decoded.Patterns[:len(sourceBanner.Patterns)], sourceBanner.Patterns) {
-			return item.Stack{}, fmt.Errorf("banner pattern result does not extend its source banner")
+
+		var added block.BannerPatternType
+		if patterns == 1 {
+			if len(inputs) != 3 {
+				return item.Stack{}, fmt.Errorf("banner template recipe requires one banner, dye and template")
+			}
+			added, ok = bannerPatternForItem(pattern.Type)
+		} else {
+			added, ok = bannerPatternFromGrid(craft.input)
 		}
-		added := decoded.Patterns[len(decoded.Patterns)-1]
-		expectedPattern, hasPatternItem := added.Type.Item()
-		if added.Colour != colour || (patterns == 1 && (!hasPatternItem || expectedPattern != pattern.Type)) {
-			return item.Stack{}, fmt.Errorf("banner pattern result does not match its inputs")
+		if !ok {
+			return item.Stack{}, fmt.Errorf("banner pattern recipe has no valid pattern for its inputs")
 		}
-		return wantResult(source.WithItem(decoded), "minecraft:banner", craft.times)
+		sourceBanner.Patterns = append(slices.Clone(sourceBanner.Patterns), block.BannerPatternLayer{Type: added, Colour: colour})
+		return withCount(source.WithItem(sourceBanner), craft.times)
 	default:
 		return item.Stack{}, fmt.Errorf("unsupported multi recipe UUID %v", craft.recipe.UUID())
 	}
 }
 
-func repairedMultiResult(input []item.Stack, output item.Stack) (item.Stack, error) {
-	if output.Count() != 1 || output.MaxDurability() < 1 {
-		return item.Stack{}, fmt.Errorf("repair multi recipe must produce one durable item")
-	}
-	durability, matching := 0, 0
-	for _, stack := range input {
-		if stack.Empty() {
-			continue
-		}
-		name, meta := stack.Item().EncodeItem()
-		outputName, outputMeta := output.Item().EncodeItem()
-		if name != outputName || meta != outputMeta || stack.MaxDurability() < 1 || stack.Count() != 1 {
-			return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two matching durable items")
-		}
-		durability += stack.Durability()
-		matching++
-	}
-	if matching != 2 {
+func repairedMultiResult(input []item.Stack) (item.Stack, error) {
+	if len(input) != 2 {
 		return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two matching durable items")
 	}
+	durability := 0
+	for i, stack := range input {
+		if stack.Empty() || stack.MaxDurability() < 1 || stack.Count() != 1 {
+			return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two matching durable items")
+		}
+		name, meta := stack.Item().EncodeItem()
+		if i != 0 {
+			firstName, firstMeta := input[0].Item().EncodeItem()
+			if name != firstName || meta != firstMeta {
+				return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two matching durable items")
+			}
+		}
+		durability += stack.Durability()
+	}
+
+	name, meta := input[0].Item().EncodeItem()
+	base, ok := world.ItemByName(name, meta)
+	if !ok {
+		return item.Stack{}, fmt.Errorf("repair multi recipe item %q is not registered", name)
+	}
+	output := item.NewStack(base, 1)
+	curses := map[item.EnchantmentType]item.Enchantment{}
+	for _, stack := range input {
+		for _, enchantment := range stack.Enchantments() {
+			curse, ok := enchantment.Type().(interface{ Curse() bool })
+			if !ok || !curse.Curse() {
+				continue
+			}
+			if current, ok := curses[enchantment.Type()]; !ok || enchantment.Level() > current.Level() {
+				curses[enchantment.Type()] = enchantment
+			}
+		}
+	}
+	output = output.WithForcedEnchantments(slices.Collect(maps.Values(curses))...)
 	return output.WithDurability(min(output.MaxDurability(), durability+output.MaxDurability()/20)), nil
+}
+
+func requestedMultiResultMatches(want item.Stack, got protocol.StackRequestItem) bool {
+	name, meta := want.Item().EncodeItem()
+	if got.Identifier != name || got.MetadataValue > math.MaxInt16 || int16(got.MetadataValue) != meta || int(got.Count) != want.Count() {
+		return false
+	}
+	wantNBT := item.WriteNBT(want, false)
+	return len(wantNBT) == 0 && len(got.NBTData) == 0 || reflect.DeepEqual(wantNBT, got.NBTData)
+}
+
+func mapCentredInPaper(grid []item.Stack) bool {
+	if len(grid) != 9 {
+		return false
+	}
+	for slot, stack := range grid {
+		if stack.Empty() {
+			return false
+		}
+		name, _ := stack.Item().EncodeItem()
+		if slot == 4 {
+			if name != "minecraft:filled_map" {
+				return false
+			}
+		} else if name != "minecraft:paper" {
+			return false
+		}
+	}
+	return true
+}
+
+func changedMapResult(source item.Stack, operation string, br world.BlockRegistry) (item.Stack, error) {
+	name, meta := source.Item().EncodeItem()
+	nbter, ok := source.Item().(world.NBTer)
+	if !ok {
+		return item.Stack{}, fmt.Errorf("filled map does not expose map NBT state")
+	}
+	data := maps.Clone(nbter.EncodeNBT())
+	if _, ok := nbtInteger(data["map_uuid"]); !ok {
+		return item.Stack{}, fmt.Errorf("filled map has no valid map UUID")
+	}
+
+	targetMeta := meta
+	switch operation {
+	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe:
+		if meta != 0 && meta != 2 || nbtTruthy(data["map_to_lock"]) || nbtTruthy(data["map_scale_direction"]) {
+			return item.Stack{}, fmt.Errorf("map cannot be extended in its current state")
+		}
+		if raw, exists := data["map_scale"]; exists {
+			scale, valid := nbtInteger(raw)
+			if !valid || scale < 0 || scale >= 4 {
+				return item.Stack{}, fmt.Errorf("map cannot be extended beyond scale 4")
+			}
+		}
+		data["map_scale_direction"] = int32(1)
+	case mapUpgradingMultiRecipe, mapUpgradingCartographyMultiRecipe:
+		if meta != 0 || nbtTruthy(data["map_display_players"]) {
+			return item.Stack{}, fmt.Errorf("map already displays player positions")
+		}
+		targetMeta, data["map_display_players"] = 2, byte(1)
+	case mapLockingMultiRecipe:
+		if meta != 0 && meta != 2 || nbtTruthy(data["map_to_lock"]) {
+			return item.Stack{}, fmt.Errorf("map is already locked or cannot be locked")
+		}
+		targetMeta, data["map_to_lock"] = 5, byte(1)
+	default:
+		return item.Stack{}, fmt.Errorf("unsupported map operation %v", operation)
+	}
+
+	target, ok := world.ItemByName(name, targetMeta)
+	if !ok {
+		return item.Stack{}, fmt.Errorf("filled map metadata %v is not registered", targetMeta)
+	}
+	targetNBT, ok := target.(world.NBTer)
+	if !ok {
+		return item.Stack{}, fmt.Errorf("filled map metadata %v does not expose map NBT state", targetMeta)
+	}
+	decoded, ok := world.DecodeNBT(targetNBT, data, br).(world.Item)
+	if !ok {
+		return item.Stack{}, fmt.Errorf("filled map NBT decoded to a non-item")
+	}
+	output := source.WithItem(decoded).Grow(1 - source.Count())
+	if output.Equal(source.Grow(1 - source.Count())) {
+		return item.Stack{}, fmt.Errorf("map operation did not change the map")
+	}
+	return output, nil
+}
+
+func nbtInteger(value any) (int64, bool) {
+	switch value := value.(type) {
+	case byte:
+		return int64(value), true
+	case int8:
+		return int64(value), true
+	case int16:
+		return int64(value), true
+	case int32:
+		return int64(value), true
+	case int64:
+		return value, true
+	case int:
+		return int64(value), true
+	case uint16:
+		return int64(value), true
+	case uint32:
+		return int64(value), true
+	case uint64:
+		if value <= math.MaxInt64 {
+			return int64(value), true
+		}
+	}
+	return 0, false
+}
+
+func nbtTruthy(value any) bool {
+	if value, ok := value.(bool); ok {
+		return value
+	}
+	integer, ok := nbtInteger(value)
+	return ok && integer != 0
+}
+
+func validBannerDuplicateGrid(grid []item.Stack) bool {
+	width := 0
+	switch len(grid) {
+	case 4:
+		width = 2
+	case 9:
+		width = 3
+	default:
+		return false
+	}
+	patterned, blank := -1, -1
+	for slot, stack := range grid {
+		banner, ok := stack.Item().(block.Banner)
+		if !ok {
+			continue
+		}
+		if len(banner.Patterns) == 0 {
+			blank = slot
+		} else {
+			patterned = slot
+		}
+	}
+	return patterned >= 0 && blank >= 0 &&
+		(patterned+1 == blank && patterned/width == blank/width || patterned+width == blank)
+}
+
+func bannerPatternForItem(pattern item.BannerPatternType) (block.BannerPatternType, bool) {
+	for _, candidate := range block.BannerPatternTypes() {
+		if candidatePattern, ok := candidate.Item(); ok && candidatePattern == pattern {
+			return candidate, true
+		}
+	}
+	return block.BannerPatternType{}, false
+}
+
+func bannerPatternFromGrid(grid []item.Stack) (block.BannerPatternType, bool) {
+	if len(grid) != 9 {
+		return block.BannerPatternType{}, false
+	}
+	layout := make([]byte, 9)
+	for slot, stack := range grid {
+		switch stack.Item().(type) {
+		case nil:
+			layout[slot] = '.'
+		case block.Banner:
+			layout[slot] = 'B'
+		case item.Dye:
+			layout[slot] = 'D'
+		default:
+			return block.BannerPatternType{}, false
+		}
+	}
+	switch string(layout) {
+	case "....B.DDD":
+		return block.StripeBottomBannerPattern(), true
+	case "DDD....B.":
+		return block.StripeTopBannerPattern(), true
+	case "D..D..DB.":
+		return block.StripeLeftBannerPattern(), true
+	case "..D..D.BD":
+		return block.StripeRightBannerPattern(), true
+	case ".D..DB.D.":
+		return block.StripeCentreBannerPattern(), true
+	case "...DDD.B.":
+		return block.StripeMiddleBannerPattern(), true
+	case "D...D..BD":
+		return block.StripeDownRightBannerPattern(), true
+	case "..D.D.DB.":
+		return block.StripeDownLeftBannerPattern(), true
+	case "D.DD.D.B.":
+		return block.SmallStripesBannerPattern(), true
+	case "D.D.D.DBD":
+		return block.CrossBannerPattern(), true
+	case ".D.DDDBD.":
+		return block.StraightCrossBannerPattern(), true
+	case "DD.D...B.":
+		return block.DiagonalLeftBannerPattern(), true
+	case ".DD..D.B.":
+		return block.DiagonalRightBannerPattern(), true
+	case ".B.D..DD.":
+		return block.DiagonalUpLeftBannerPattern(), true
+	case ".B...D.DD":
+		return block.DiagonalUpRightBannerPattern(), true
+	case "DD.DDBDD.":
+		return block.HalfVerticalBannerPattern(), true
+	case ".DDBDD.DD":
+		return block.HalfVerticalRightBannerPattern(), true
+	case "DDDDDD.B.":
+		return block.HalfHorizontalBannerPattern(), true
+	case ".B.DDDDDD":
+		return block.HalfHorizontalBottomBannerPattern(), true
+	case "......DB.":
+		return block.SquareBottomLeftBannerPattern(), true
+	case ".......BD":
+		return block.SquareBottomRightBannerPattern(), true
+	case "D......B.":
+		return block.SquareTopLeftBannerPattern(), true
+	case "..D....B.":
+		return block.SquareTopRightBannerPattern(), true
+	case "....D.DBD":
+		return block.TriangleBottomBannerPattern(), true
+	case "D.D.D..B.":
+		return block.TriangleTopBannerPattern(), true
+	case "...DBD.D.":
+		return block.TrianglesBottomBannerPattern(), true
+	case ".D.D.D.B.":
+		return block.TrianglesTopBannerPattern(), true
+	case "....D..B.":
+		return block.CircleBannerPattern(), true
+	case ".D.DBD.D.":
+		return block.RhombusBannerPattern(), true
+	case "DDDDBDDDD":
+		return block.BorderBannerPattern(), true
+	case "DBD.D..D.":
+		return block.GradientBannerPattern(), true
+	case ".D..D.DBD":
+		return block.GradientUpBannerPattern(), true
+	}
+	return block.BannerPatternType{}, false
 }
 
 // handleAutoCraft handles the AutoCraftRecipe request action.

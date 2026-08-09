@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/item/recipe"
 	"github.com/df-mc/dragonfly/server/world"
@@ -294,9 +295,10 @@ func TestMultiRecipeCraftsServerValidatedResult(t *testing.T) {
 	s.recipes[1] = recipe.NewMulti(uuid.MustParse("00000000-0000-0000-0000-000000000001"))
 
 	h := craftingTestHandler()
+	expected := item.NewStack(item.Bow{}, 1).WithDurability(49)
 	err := h.handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
 		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
-		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{{Identifier: "minecraft:bow", Count: 1}}},
+		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{multiResultItem(expected)}},
 		&protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset, item_id(first))}},
 		&protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{Count: 1, Source: craftingSlot(craftingGridSmallOffset+1, item_id(second))}},
 	}}, s, nil, nil)
@@ -467,11 +469,8 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 			item.NewStack(item.Gunpowder{}, 1),
 			item.NewStack(item.FireworkStar{}, 1),
 		}
-		result := craftValidMulti(t, s, fireworkMultiRecipe, protocol.StackRequestItem{
-			Identifier: "minecraft:firework_rocket",
-			Count:      3,
-			NBTData:    map[string]any{"Fireworks": map[string]any{"Flight": uint8(3)}},
-		}, input)
+		expected := item.NewStack(item.Firework{Duration: time.Second, Explosions: []item.FireworkExplosion{{}}}, 3)
+		result := craftValidMulti(t, s, fireworkMultiRecipe, multiResultItem(expected), input)
 		firework, ok := result.Item().(item.Firework)
 		if !ok || result.Count() != 3 || firework.Duration != time.Second || len(firework.Explosions) != 1 {
 			t.Fatalf("firework result = %#v x%d", result.Item(), result.Count())
@@ -483,7 +482,8 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 			item.NewStack(craftingNamedItem("minecraft:filled_map"), 1).WithCustomName("trusted map"),
 			item.NewStack(craftingNamedItem("minecraft:empty_map"), 1),
 		}
-		result := craftValidMulti(t, s, mapCloningCartographyMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:filled_map", Count: 2}, input)
+		expected := input[0].Grow(1)
+		result := craftValidMulti(t, s, mapCloningCartographyMultiRecipe, multiResultItem(expected), input)
 		if result.Count() != 2 || result.CustomName() != "trusted map" {
 			t.Fatalf("map clone result = %v", result)
 		}
@@ -494,7 +494,8 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 			item.NewStack(item.WrittenBook{Title: "Trusted", Author: "Server", Pages: []string{"page"}, Generation: item.OriginalGeneration()}, 1),
 			item.NewStack(item.BookAndQuill{}, 1),
 		}
-		result := craftValidMulti(t, s, bookCloningMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:written_book", Count: 2}, input)
+		expected := item.NewStack(item.WrittenBook{Title: "Trusted", Author: "Server", Pages: []string{"page"}, Generation: item.CopyGeneration()}, 2)
+		result := craftValidMulti(t, s, bookCloningMultiRecipe, multiResultItem(expected), input)
 		book, ok := result.Item().(item.WrittenBook)
 		if !ok || result.Count() != 2 || book.Title != "Trusted" || book.Generation.Uint8() != 1 {
 			t.Fatalf("book clone result = %#v x%d", result.Item(), result.Count())
@@ -504,8 +505,7 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 		s := craftingTestSession()
 		patterned := block.Banner{Colour: item.ColourRed(), Patterns: []block.BannerPatternLayer{{Type: block.BorderBannerPattern(), Colour: item.ColourBlack()}}}
 		input := []item.Stack{item.NewStack(patterned, 1), item.NewStack(block.Banner{Colour: item.ColourRed()}, 1)}
-		_, meta := patterned.EncodeItem()
-		result := craftValidMulti(t, s, bannerDuplicateMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:banner", MetadataValue: uint32(meta), Count: 2}, input)
+		result := craftValidMulti(t, s, bannerDuplicateMultiRecipe, multiResultItem(input[0].Grow(1)), input)
 		banner, ok := result.Item().(block.Banner)
 		if !ok || result.Count() != 2 || len(banner.Patterns) != 1 {
 			t.Fatalf("banner duplicate result = %#v x%d", result.Item(), result.Count())
@@ -535,19 +535,376 @@ func TestMultiRecipeValidRepresentatives(t *testing.T) {
 	})
 }
 
+func TestBannerMultiRecipeDerivesPatternFromGrid(t *testing.T) {
+	t.Run("border arrangement", func(t *testing.T) {
+		s := largeCraftingTestSession()
+		base := block.Banner{Colour: item.ColourWhite()}
+		input := make([]item.Stack, 9)
+		for slot := range input {
+			input[slot] = item.NewStack(item.Dye{Colour: item.ColourRed()}, 1)
+		}
+		input[4] = item.NewStack(base, 1)
+		expected := base
+		expected.Patterns = []block.BannerPatternLayer{{Type: block.BorderBannerPattern(), Colour: item.ColourRed()}}
+		result := craftValidMulti(t, s, bannerAddPatternMultiRecipe, multiResultItem(item.NewStack(expected, 1)), input)
+		banner := result.Item().(block.Banner)
+		if len(banner.Patterns) != 1 || banner.Patterns[0].Type != block.BorderBannerPattern() {
+			t.Fatalf("banner result = %#v, want border", banner)
+		}
+	})
+
+	t.Run("template pattern", func(t *testing.T) {
+		s := craftingTestSession()
+		base := block.Banner{Colour: item.ColourWhite()}
+		input := []item.Stack{
+			item.NewStack(base, 1),
+			item.NewStack(item.Dye{Colour: item.ColourRed()}, 1),
+			item.NewStack(item.BannerPattern{Type: item.CreeperBannerPattern()}, 1),
+		}
+		expected := base
+		expected.Patterns = []block.BannerPatternLayer{{Type: block.CreeperBannerPattern(), Colour: item.ColourRed()}}
+		craftValidMulti(t, s, bannerAddPatternMultiRecipe, multiResultItem(item.NewStack(expected, 1)), input)
+	})
+}
+
+func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
+	base := block.Banner{Colour: item.ColourWhite()}
+	red := item.NewStack(item.Dye{Colour: item.ColourRed()}, 1)
+	patterned := func(pattern block.BannerPatternType) item.Stack {
+		output := base
+		output.Patterns = []block.BannerPatternLayer{{Type: pattern, Colour: item.ColourRed()}}
+		return item.NewStack(output, 1)
+	}
+	tests := []struct {
+		name   string
+		large  bool
+		input  []item.Stack
+		result protocol.StackRequestItem
+	}{
+		{
+			name:   "illager source",
+			input:  []item.Stack{item.NewStack(block.Banner{Colour: item.ColourWhite(), Illager: true}, 1), red, item.NewStack(item.BannerPattern{Type: item.CreeperBannerPattern()}, 1)},
+			result: multiResultItem(patterned(block.CreeperBannerPattern())),
+		},
+		{
+			name:   "forged illager result",
+			input:  []item.Stack{item.NewStack(base, 1), red, item.NewStack(item.BannerPattern{Type: item.CreeperBannerPattern()}, 1)},
+			result: multiResultItem(item.NewStack(block.Banner{Colour: item.ColourWhite(), Illager: true, Patterns: []block.BannerPatternLayer{{Type: block.CreeperBannerPattern(), Colour: item.ColourRed()}}}, 1)),
+		},
+		{
+			name:   "mojang without template",
+			input:  []item.Stack{item.NewStack(base, 1), red},
+			result: multiResultItem(patterned(block.MojangBannerPattern())),
+		},
+		{
+			name:   "creeper without template",
+			input:  []item.Stack{item.NewStack(base, 1), red},
+			result: multiResultItem(patterned(block.CreeperBannerPattern())),
+		},
+		{
+			name:   "wrong template",
+			input:  []item.Stack{item.NewStack(base, 1), red, item.NewStack(item.BannerPattern{Type: item.CreeperBannerPattern()}, 1)},
+			result: multiResultItem(patterned(block.SkullBannerPattern())),
+		},
+		{
+			name:  "invalid arrangement",
+			large: true,
+			input: []item.Stack{
+				item.NewStack(base, 1), red, red,
+				{}, {}, {},
+				{}, {}, {},
+			},
+			result: multiResultItem(patterned(block.StripeTopBannerPattern())),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := craftingTestSession()
+			if test.large {
+				s.openedContainerID.Store(1)
+			}
+			setCraftingInput(t, s, test.input)
+			err := craftingTestHandler().handleRequest(multiCraftingRequest(s, bannerAddPatternMultiRecipe, test.result, nonEmptySlots(test.input)...), s, nil, nil)
+			requireRejectedCraft(t, s, err, test.input)
+		})
+	}
+
+	t.Run("arbitrary result NBT", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{item.NewStack(base, 1), red, item.NewStack(item.BannerPattern{Type: item.CreeperBannerPattern()}, 1)}
+		setCraftingInput(t, s, input)
+		result := multiResultItem(patterned(block.CreeperBannerPattern()))
+		result.NBTData["forged"] = int32(1)
+		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, bannerAddPatternMultiRecipe, result, 0, 1, 2), s, nil, nil)
+		requireRejectedCraft(t, s, err, input)
+	})
+
+	t.Run("invalid duplicate order", func(t *testing.T) {
+		s := craftingTestSession()
+		patternedBanner := base
+		patternedBanner.Patterns = []block.BannerPatternLayer{{Type: block.BorderBannerPattern(), Colour: item.ColourRed()}}
+		input := []item.Stack{item.NewStack(base, 1), item.NewStack(patternedBanner, 1)}
+		setCraftingInput(t, s, input)
+		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, bannerDuplicateMultiRecipe, multiResultItem(input[1].Grow(1)), 0, 1), s, nil, nil)
+		requireRejectedCraft(t, s, err, input)
+	})
+}
+
+func TestMapMultiRecipesApplyStateTransitions(t *testing.T) {
+	registerCraftingMaps()
+	tests := []struct {
+		name     string
+		id       string
+		large    bool
+		input    []item.Stack
+		expected item.Stack
+	}{
+		{
+			name:  "extend crafting",
+			id:    mapExtendingMultiRecipe,
+			large: true,
+			input: func() []item.Stack {
+				grid := make([]item.Stack, 9)
+				for slot := range grid {
+					grid[slot] = item.NewStack(item.Paper{}, 1)
+				}
+				grid[4] = craftingMapStack(0, 2, false, false)
+				return grid
+			}(),
+			expected: craftingMapStack(0, 2, false, false).WithItem(craftingMapItem{Meta: 0, UUID: 42, Scale: 2, ScaleDirection: 1}),
+		},
+		{
+			name:     "extend cartography",
+			id:       mapExtendingCartographyMultiRecipe,
+			input:    []item.Stack{craftingMapStack(2, 1, true, false), item.NewStack(item.Paper{}, 1)},
+			expected: craftingMapStack(2, 1, true, false).WithItem(craftingMapItem{Meta: 2, UUID: 42, Scale: 1, DisplayPlayers: true, ScaleDirection: 1}),
+		},
+		{
+			name:     "upgrade crafting",
+			id:       mapUpgradingMultiRecipe,
+			input:    []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(item.Compass{}, 1)},
+			expected: craftingMapStack(2, 2, true, false),
+		},
+		{
+			name:     "upgrade cartography",
+			id:       mapUpgradingCartographyMultiRecipe,
+			input:    []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(item.Compass{}, 1)},
+			expected: craftingMapStack(2, 2, true, false),
+		},
+		{
+			name:     "lock cartography",
+			id:       mapLockingMultiRecipe,
+			input:    []item.Stack{craftingMapStack(2, 2, true, false), item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)},
+			expected: craftingMapStack(5, 2, true, true),
+		},
+		{
+			name:     "clone crafting",
+			id:       mapCloningMultiRecipe,
+			input:    []item.Stack{craftingMapStack(5, 2, true, false), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1)},
+			expected: craftingMapStack(5, 2, true, false).Grow(2),
+		},
+		{
+			name:     "clone cartography",
+			id:       mapCloningCartographyMultiRecipe,
+			input:    []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1)},
+			expected: craftingMapStack(0, 2, false, false).Grow(1),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := craftingTestSession()
+			if test.large {
+				s.openedContainerID.Store(1)
+			}
+			result := craftValidMulti(t, s, test.id, multiResultItem(test.expected), test.input)
+			if !result.Equal(test.expected) {
+				t.Fatalf("map result = %v, want %v", result, test.expected)
+			}
+		})
+	}
+}
+
+func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
+	registerCraftingMaps()
+	tests := []struct {
+		name  string
+		id    string
+		input []item.Stack
+	}{
+		{"extend locked", mapExtendingCartographyMultiRecipe, []item.Stack{craftingMapStack(5, 2, true, false), item.NewStack(item.Paper{}, 1)}},
+		{"extend maximum scale", mapExtendingCartographyMultiRecipe, []item.Stack{craftingMapStack(0, 4, false, false), item.NewStack(item.Paper{}, 1)}},
+		{"extend pending map", mapExtendingCartographyMultiRecipe, []item.Stack{item.NewStack(craftingMapItem{Meta: 0, UUID: 42, Scale: 2, ScaleDirection: 1}, 1), item.NewStack(item.Paper{}, 1)}},
+		{"upgrade locator", mapUpgradingCartographyMultiRecipe, []item.Stack{craftingMapStack(2, 2, true, false), item.NewStack(item.Compass{}, 1)}},
+		{"lock locked", mapLockingMultiRecipe, []item.Stack{craftingMapStack(5, 2, true, false), item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)}},
+		{"map without state API", mapExtendingCartographyMultiRecipe, []item.Stack{item.NewStack(craftingNamedItem("minecraft:filled_map"), 1), item.NewStack(item.Paper{}, 1)}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := craftingTestSession()
+			setCraftingInput(t, s, test.input)
+			err := craftingTestHandler().handleRequest(multiCraftingRequest(s, test.id, multiResultItem(test.input[0]), nonEmptySlots(test.input)...), s, nil, nil)
+			requireRejectedCraft(t, s, err, test.input)
+		})
+	}
+
+	t.Run("tampered transition result", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(item.Compass{}, 1)}
+		setCraftingInput(t, s, input)
+		forged := craftingMapStack(2, 2, true, false).WithCustomName("forged")
+		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, mapUpgradingCartographyMultiRecipe, multiResultItem(forged), 0, 1), s, nil, nil)
+		requireRejectedCraft(t, s, err, input)
+	})
+
+	t.Run("invalid extending arrangement", func(t *testing.T) {
+		s := largeCraftingTestSession()
+		input := make([]item.Stack, 9)
+		for slot := range input {
+			input[slot] = item.NewStack(item.Paper{}, 1)
+		}
+		input[0] = craftingMapStack(0, 2, false, false)
+		setCraftingInput(t, s, input)
+		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingMultiRecipe, multiResultItem(input[0]), nonEmptySlots(input)...), s, nil, nil)
+		requireRejectedCraft(t, s, err, input)
+	})
+}
+
+func TestRepairMultiRecipeStripsDataAndRetainsCurses(t *testing.T) {
+	first := item.NewStack(item.Bow{}, 1).
+		WithDurability(10).
+		WithCustomName("forged survivor").
+		WithLore("forged lore").
+		WithValue("forged", true).
+		WithAnvilCost(7).
+		AsUnbreakable().
+		WithForcedEnchantments(
+			item.NewEnchantment(enchantment.Power, 3),
+			item.NewEnchantment(enchantment.CurseOfVanishing, 1),
+		)
+	second := item.NewStack(item.Bow{}, 1).
+		WithDurability(20).
+		WithForcedEnchantments(item.NewEnchantment(enchantment.Punch, 2))
+	expected := item.NewStack(item.Bow{}, 1).
+		WithDurability(49).
+		WithForcedEnchantments(item.NewEnchantment(enchantment.CurseOfVanishing, 1))
+
+	s := craftingTestSession()
+	result := craftValidMulti(t, s, repairMultiRecipe, multiResultItem(expected), []item.Stack{first, second})
+	if !result.Equal(expected) || result.CustomName() != "" || len(result.Lore()) != 0 || len(result.Values()) != 0 || result.AnvilCost() != 0 || result.Unbreakable() {
+		t.Fatalf("repair result retained stripped data: %v", result)
+	}
+	if _, ok := result.Enchantment(enchantment.CurseOfVanishing); !ok || len(result.Enchantments()) != 1 {
+		t.Fatalf("repair enchantments = %#v, want only vanishing curse", result.Enchantments())
+	}
+}
+
+func TestRepairMultiRecipeStripsItemNBT(t *testing.T) {
+	charged := item.Crossbow{Item: item.NewStack(item.Arrow{}, 1)}
+	input := []item.Stack{item.NewStack(charged, 1).WithDurability(100), item.NewStack(charged, 1).WithDurability(100)}
+	expected := item.NewStack(item.Crossbow{}, 1).WithDurability(223)
+	result := craftValidMulti(t, craftingTestSession(), repairMultiRecipe, multiResultItem(expected), input)
+	crossbow, ok := result.Item().(item.Crossbow)
+	if !ok || !crossbow.Item.Empty() {
+		t.Fatalf("repair result retained charged item: %#v", result.Item())
+	}
+}
+
+func TestRepairMultiRecipeRejectsInvalidCountAndTampering(t *testing.T) {
+	t.Run("stacked input", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{item.NewStack(craftingStackableDurable{}, 2), item.NewStack(craftingStackableDurable{}, 1)}
+		setCraftingInput(t, s, input)
+		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, repairMultiRecipe, multiResultItem(item.NewStack(craftingStackableDurable{}, 1)), 0, 1), s, nil, nil)
+		requireRejectedCraft(t, s, err, input)
+	})
+
+	t.Run("result data", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{item.NewStack(item.Bow{}, 1).WithDurability(10), item.NewStack(item.Bow{}, 1).WithDurability(20)}
+		setCraftingInput(t, s, input)
+		forged := item.NewStack(item.Bow{}, 1).WithDurability(49).WithCustomName("forged")
+		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, repairMultiRecipe, multiResultItem(forged), 0, 1), s, nil, nil)
+		requireRejectedCraft(t, s, err, input)
+	})
+}
+
 type craftingNamedItem string
 
 func (i craftingNamedItem) EncodeItem() (string, int16) { return string(i), 0 }
 
+type craftingStackableDurable struct{}
+
+func (craftingStackableDurable) EncodeItem() (string, int16) { return "test:stackable_durable", 0 }
+func (craftingStackableDurable) DurabilityInfo() item.DurabilityInfo {
+	return item.DurabilityInfo{MaxDurability: 100, BrokenItem: func() item.Stack { return item.Stack{} }}
+}
+
+type craftingMapItem struct {
+	Meta           int16
+	UUID           int64
+	Scale          int32
+	DisplayPlayers bool
+	ScaleDirection int32
+	PendingMapLock bool
+}
+
+func (m craftingMapItem) EncodeItem() (string, int16) { return "minecraft:filled_map", m.Meta }
+
+func (m craftingMapItem) EncodeNBT() map[string]any {
+	data := map[string]any{"map_uuid": m.UUID, "map_scale": m.Scale}
+	if m.DisplayPlayers {
+		data["map_display_players"] = byte(1)
+	}
+	if m.ScaleDirection != 0 {
+		data["map_scale_direction"] = m.ScaleDirection
+	}
+	if m.PendingMapLock {
+		data["map_to_lock"] = byte(1)
+	}
+	return data
+}
+
+func (m craftingMapItem) DecodeNBT(data map[string]any) any {
+	m.UUID = testNBTInt64(data["map_uuid"])
+	m.Scale = int32(testNBTInt64(data["map_scale"]))
+	m.DisplayPlayers = testNBTInt64(data["map_display_players"]) != 0
+	m.ScaleDirection = int32(testNBTInt64(data["map_scale_direction"]))
+	m.PendingMapLock = testNBTInt64(data["map_to_lock"]) != 0
+	return m
+}
+
+var registerCraftingMapsOnce sync.Once
+
+func registerCraftingMaps() {
+	registerCraftingMapsOnce.Do(func() {
+		world.RegisterItem(craftingMapItem{Meta: 0})
+		world.RegisterItem(craftingMapItem{Meta: 2})
+		world.RegisterItem(craftingMapItem{Meta: 5})
+	})
+}
+
+func craftingMapStack(meta int16, scale int32, displayPlayers, pendingLock bool) item.Stack {
+	return item.NewStack(craftingMapItem{Meta: meta, UUID: 42, Scale: scale, DisplayPlayers: displayPlayers, PendingMapLock: pendingLock}, 1)
+}
+
+func testNBTInt64(value any) int64 {
+	switch value := value.(type) {
+	case byte:
+		return int64(value)
+	case int16:
+		return int64(value)
+	case int32:
+		return int64(value)
+	case int64:
+		return value
+	}
+	return 0
+}
+
 func craftValidMulti(t *testing.T, s *Session, id string, result protocol.StackRequestItem, input []item.Stack) item.Stack {
 	t.Helper()
-	for slot, stack := range input {
-		_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
-	}
-	consumes := make([]int, len(input))
-	for slot := range consumes {
-		consumes[slot] = slot
-	}
+	setCraftingInput(t, s, input)
+	consumes := nonEmptySlots(input)
 	if err := craftingTestHandler().handleRequest(multiCraftingRequest(s, id, result, consumes...), s, nil, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +919,7 @@ func multiCraftingRequest(s *Session, id string, result protocol.StackRequestIte
 		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{result}},
 	}
 	for _, inputSlot := range consumes {
-		slot := craftingGridSmallOffset + inputSlot
+		slot := int(s.craftingOffset()) + inputSlot
 		stack, _ := s.ui.Item(slot)
 		actions = append(actions, &protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{
 			Count:  1,
@@ -578,7 +935,7 @@ func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stac
 		t.Fatal("craft succeeded, want rejection")
 	}
 	for slot, want := range input {
-		got, _ := s.ui.Item(craftingGridSmallOffset + slot)
+		got, _ := s.ui.Item(int(s.craftingOffset()) + slot)
 		if !got.Equal(want) {
 			t.Fatalf("input slot %d = %v, want resynchronised %v", slot, got, want)
 		}
@@ -592,6 +949,35 @@ func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stac
 	}
 }
 
+func multiResultItem(stack item.Stack) protocol.StackRequestItem {
+	name, meta := stack.Item().EncodeItem()
+	return protocol.StackRequestItem{
+		Identifier:    name,
+		MetadataValue: uint32(meta),
+		Count:         uint16(stack.Count()),
+		NBTData:       item.WriteNBT(stack, false),
+	}
+}
+
+func setCraftingInput(t *testing.T, s *Session, input []item.Stack) {
+	t.Helper()
+	for slot, stack := range input {
+		if err := s.ui.SetItem(int(s.craftingOffset())+slot, stack); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func nonEmptySlots(input []item.Stack) []int {
+	slots := make([]int, 0, len(input))
+	for slot, stack := range input {
+		if !stack.Empty() {
+			slots = append(slots, slot)
+		}
+	}
+	return slots
+}
+
 func craftingTestSession() *Session {
 	return &Session{
 		br:              world.DefaultBlockRegistry,
@@ -602,6 +988,12 @@ func craftingTestSession() *Session {
 		packets:         make(chan packet.Packet, 4),
 		closeBackground: make(chan struct{}),
 	}
+}
+
+func largeCraftingTestSession() *Session {
+	s := craftingTestSession()
+	s.openedContainerID.Store(1)
+	return s
 }
 
 func craftingTestHandler() *ItemStackRequestHandler {
