@@ -68,11 +68,11 @@ func (s *Session) StartShowingEntity(e world.Entity) {
 
 // closeCurrentContainer closes the container the player might currently have open.
 func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
+	openedEntity := s.openedEntity.Load()
+	openedPos := s.openedPos.Load()
 	if !s.closeWindow(clientRequested) {
 		return
 	}
-	openedEntity := s.openedEntity.Load()
-	openedPos := s.openedPos.Load()
 
 	if openedEntity != nil {
 		if ent, ok := openedEntity.Entity(tx); ok {

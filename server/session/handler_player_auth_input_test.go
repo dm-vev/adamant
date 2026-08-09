@@ -42,23 +42,67 @@ func TestTeleportAcknowledgedAtLargeCoordinates(t *testing.T) {
 	}
 }
 
+func TestMalformedAuthInputUsesNetworkPositionFallback(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		sleeping bool
+	}{
+		{name: "standing"},
+		{name: "sleeping", sleeping: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			pos := mgl64.Vec3{29_999_999, 100, -29_999_999}
+			c := newUnchangedControllable()
+			c.position, c.sleeping = pos, test.sleeping
+			var delta mgl64.Vec3
+			c.move = func(d mgl64.Vec3) { delta = d }
+
+			s := &Session{conf: Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}}
+			s.teleportPos.Store(&pos)
+			pk := &packet.PlayerAuthInput{Position: [3]float32{float32(math.NaN()), float32(math.Inf(1)), float32(math.Inf(-1))}}
+			if err := (PlayerAuthInputHandler{}).handleMovement(pk, s, nil, c); err != nil {
+				t.Fatalf("handle movement: %v", err)
+			}
+
+			want := vec32To64(entityBasePosition(c, vec64To32(entityNetworkPosition(c, pos))))
+			if got := pos.Add(delta); got != want {
+				t.Fatalf("fallback position = %v, want %v", got, want)
+			}
+			if delta[1] != 0 {
+				t.Fatalf("fallback changed base Y by %v", delta[1])
+			}
+			if s.teleportPos.Load() != nil {
+				t.Fatal("malformed teleport acknowledgement left teleport pending")
+			}
+		})
+	}
+}
+
 type unchangedControllable struct {
 	Controllable
-	handle *world.EntityHandle
+	handle   *world.EntityHandle
+	position mgl64.Vec3
+	sleeping bool
+	move     func(mgl64.Vec3)
 }
 
-func newUnchangedControllable() unchangedControllable {
-	return unchangedControllable{handle: world.EntitySpawnOpts{}.New(offsetTestType{}, offsetTestConfig{})}
+func newUnchangedControllable() *unchangedControllable {
+	return &unchangedControllable{handle: world.EntitySpawnOpts{}.New(offsetTestType{}, offsetTestConfig{})}
 }
 
-func (c unchangedControllable) H() *world.EntityHandle { return c.handle }
-func (unchangedControllable) Position() mgl64.Vec3     { return mgl64.Vec3{} }
-func (unchangedControllable) Rotation() cube.Rotation {
+func (c *unchangedControllable) H() *world.EntityHandle { return c.handle }
+func (c *unchangedControllable) Position() mgl64.Vec3   { return c.position }
+func (*unchangedControllable) Rotation() cube.Rotation {
 	return cube.Rotation{}
 }
-func (unchangedControllable) Move(mgl64.Vec3, float64, float64) {
+func (c *unchangedControllable) Move(delta mgl64.Vec3, _, _ float64) {
+	if c.move != nil {
+		c.move(delta)
+		return
+	}
 	panic("Move called for unchanged movement")
 }
+func (c *unchangedControllable) Sleeping() (cube.Pos, bool) { return cube.Pos{}, c.sleeping }
 
 type offsetTestType struct{}
 

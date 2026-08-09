@@ -28,8 +28,9 @@ func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Session, tx *world.Tx, c Controllable) error {
 	yaw, pitch := c.Rotation().Elem()
 	pos := c.Position()
+	networkPos := entityNetworkPosition(c, pos)
 
-	reference := []float64{pitch, yaw, yaw, pos[0], pos[1], pos[2]}
+	reference := []float64{pitch, yaw, yaw, networkPos[0], networkPos[1], networkPos[2]}
 	for i, v := range [...]*float32{&pk.Pitch, &pk.Yaw, &pk.HeadYaw, &pk.Position[0], &pk.Position[1], &pk.Position[2]} {
 		f := float64(*v)
 		if math.IsNaN(f) || math.IsInf(f, 1) || math.IsInf(f, 0) {

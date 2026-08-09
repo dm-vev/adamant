@@ -336,56 +336,70 @@ func (s *Session) Close(tx *world.Tx, c Controllable) {
 // close closes the session, which in turn closes the controllable and the connection that the session
 // manages.
 func (s *Session) close(tx *world.Tx, c Controllable) {
-	// Ensure background workers and packet writers stop even if the network read loop exited first.
-	s.CloseConnection()
-
-	if tx != nil {
-		c.MoveItemsToInventory()
-		s.closeCurrentContainer(tx, false)
-	}
-	if s.viewLayer != nil {
-		_ = s.viewLayer.Close()
-	}
-
-	// HandleStop may call plugin-owned storage. Finish releasing session-owned
-	// resources before allowing any panic from it to propagate.
+	// Install all teardown before calling user- or entity-owned code. Each step
+	// still runs if an earlier one panics, after which the first panic propagates.
 	defer func() {
+		panicValue := recover()
+		run := func(f func()) {
+			defer func() {
+				if r := recover(); r != nil && panicValue == nil {
+					panicValue = r
+				}
+			}()
+			f()
+		}
+
+		if tx != nil {
+			run(c.MoveItemsToInventory)
+			run(func() { s.closeCurrentContainer(tx, false) })
+		}
+		if s.viewLayer != nil {
+			run(func() { _ = s.viewLayer.Close() })
+		}
+		if s.conf.HandleStop != nil {
+			run(func() { s.conf.HandleStop(tx, c) })
+		}
+
 		// Clear the inventories so that they no longer hold references to the connection.
-		_ = s.inv.Close()
-		_ = s.offHand.Close()
-		_ = s.armour.Close()
+		run(func() { _ = s.inv.Close() })
+		run(func() { _ = s.offHand.Close() })
+		run(func() { _ = s.armour.Close() })
 
 		if !s.conf.QuitMessage.Zero() {
-			chat.Global.Writet(s.conf.QuitMessage, s.conn.IdentityData().DisplayName)
+			run(func() { chat.Global.Writet(s.conf.QuitMessage, s.conn.IdentityData().DisplayName) })
 		}
-		chat.Global.Unsubscribe(c)
+		run(func() { chat.Global.Unsubscribe(c) })
 
 		// Remove the controllable before closing its loader. Closing the last
 		// loader may unload the chunk and close its remaining entities.
 		if tx != nil {
-			tx.RemoveEntity(c)
+			run(func() { tx.RemoveEntity(c) })
 		}
 		if tx != nil && s.chunkLoader != nil {
-			s.chunkLoader.Close(tx)
+			run(func() { s.chunkLoader.Close(tx) })
 		}
 		if s.ent != nil {
-			_ = s.ent.Close()
+			run(func() { _ = s.ent.Close() })
 		}
 
 		// This should always be called last due to the timing of the removal of
 		// entity runtime IDs.
 		if s.ent != nil {
-			sessions.Remove(s, c)
-			s.entityMutex.Lock()
-			clear(s.entityRuntimeIDs)
-			clear(s.entities)
-			s.entityMutex.Unlock()
+			run(func() { sessions.Remove(s, c) })
+			run(func() {
+				s.entityMutex.Lock()
+				clear(s.entityRuntimeIDs)
+				clear(s.entities)
+				s.entityMutex.Unlock()
+			})
+		}
+		if panicValue != nil {
+			panic(panicValue)
 		}
 	}()
 
-	if s.conf.HandleStop != nil {
-		s.conf.HandleStop(tx, c)
-	}
+	// Ensure background workers and packet writers stop even if the network read loop exited first.
+	s.CloseConnection()
 }
 
 // CloseConnection closes the underlying connection of the session so that the session ends up being closed

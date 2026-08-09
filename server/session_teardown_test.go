@@ -7,9 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/player"
@@ -120,6 +123,56 @@ func TestHandleStopPanicCompletesServerSessionTeardown(t *testing.T) {
 	}
 }
 
+func TestContainerRemoveViewerPanicDoesNotBlockServerShutdown(t *testing.T) {
+	provider := &recordingSaveProvider{saved: make(chan struct{}, 1)}
+	srv := newSessionTestServer(t, provider)
+	conn := newServerPanicConn()
+	id := uuid.MustParse(conn.identity.Identity)
+	pos := mgl64.Vec3{0.5, 64, 0.5}
+	inc := srv.createPlayer(id, conn, player.Config{Position: pos}, srv.world)
+	srv.pmu.Lock()
+	srv.p[id] = inc.p
+	srv.pmu.Unlock()
+
+	removed := make(chan struct{})
+	containerHandle := world.EntitySpawnOpts{Position: pos}.New(panicRemoveViewerType{}, panicRemoveViewerConfig{removed: removed})
+	if err := srv.world.Do(func(tx *world.Tx) {
+		p := tx.AddEntity(inc.p.handle).(*player.Player)
+		container := tx.AddEntity(containerHandle)
+		inc.s.Spawn(p, tx)
+		p.OpenEntityContainer(container, inventory.New(1, nil), 35, tx)
+	}).Wait(context.Background()); err != nil {
+		t.Fatalf("spawn player and open container: %v", err)
+	}
+
+	srv.Listen()
+	conn.readErrors <- io.EOF
+	select {
+	case <-removed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("container RemoveViewer was not called")
+	}
+
+	closed := make(chan struct{})
+	go func() {
+		_ = srv.Close()
+		close(closed)
+	}()
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("server shutdown blocked after RemoveViewer panic")
+	}
+	select {
+	case <-provider.saved:
+	default:
+		t.Fatal("player was not saved during teardown")
+	}
+	if got := provider.saves.Load(); got != 1 {
+		t.Fatalf("player save count = %d, want 1", got)
+	}
+}
+
 func newSessionTestServer(t *testing.T, provider player.Provider) *Server {
 	t.Helper()
 	srv := Config{
@@ -164,6 +217,48 @@ func waitForServerSessionViewer(t *testing.T, w *world.World, pos mgl64.Vec3, se
 type panicSaveProvider struct {
 	player.NopProvider
 	saved chan struct{}
+}
+
+type recordingSaveProvider struct {
+	player.NopProvider
+	saved chan struct{}
+	saves atomic.Int32
+}
+
+func (p *recordingSaveProvider) Save(uuid.UUID, player.Config, *world.World) error {
+	p.saves.Add(1)
+	p.saved <- struct{}{}
+	return nil
+}
+
+type panicRemoveViewerConfig struct {
+	removed chan struct{}
+}
+
+func (c panicRemoveViewerConfig) Apply(data *world.EntityData) { data.Data = c.removed }
+
+type panicRemoveViewerType struct{}
+
+func (panicRemoveViewerType) Open(_ *world.Tx, h *world.EntityHandle, data *world.EntityData) world.Entity {
+	return panicRemoveViewerEntity{handle: h, data: data}
+}
+func (panicRemoveViewerType) EncodeEntity() string                        { return "dragonfly:panic_container" }
+func (panicRemoveViewerType) BBox(world.Entity) cube.BBox                 { return cube.BBox{} }
+func (panicRemoveViewerType) DecodeNBT(map[string]any, *world.EntityData) {}
+func (panicRemoveViewerType) EncodeNBT(*world.EntityData) map[string]any  { return nil }
+
+type panicRemoveViewerEntity struct {
+	handle *world.EntityHandle
+	data   *world.EntityData
+}
+
+func (panicRemoveViewerEntity) Close() error              { return nil }
+func (e panicRemoveViewerEntity) H() *world.EntityHandle  { return e.handle }
+func (e panicRemoveViewerEntity) Position() mgl64.Vec3    { return e.data.Pos }
+func (e panicRemoveViewerEntity) Rotation() cube.Rotation { return e.data.Rot }
+func (e panicRemoveViewerEntity) RemoveViewer(block.ContainerViewer) {
+	close(e.data.Data.(chan struct{}))
+	panic("container RemoveViewer panic")
 }
 
 func (p *panicSaveProvider) Save(uuid.UUID, player.Config, *world.World) error {
