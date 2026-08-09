@@ -56,6 +56,10 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	defer l.changeMu.Unlock()
 
 	l.mu.Lock()
+	if l.closed {
+		l.mu.Unlock()
+		return
+	}
 	old := l.w
 	loaded := maps.Clone(l.loaded)
 	l.changing = true
@@ -72,7 +76,10 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	if tx.World() == old {
 		removeLoaded(tx)
 	} else {
-		<-old.exec(removeLoaded)
+		select {
+		case <-old.exec(removeLoaded):
+		case <-old.queueClosing:
+		}
 	}
 	old.viewerMu.Lock()
 	delete(old.viewers, l)
@@ -189,8 +196,14 @@ func (l *Loader) Chunk(pos ChunkPos) (*Column, bool) {
 // Close closes the loader. It unloads all chunks currently loaded for the viewer, and hides all entities that
 // are currently shown to it.
 func (l *Loader) Close(tx *Tx) {
+	l.changeMu.Lock()
+	defer l.changeMu.Unlock()
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.closed {
+		return
+	}
 
 	for pos := range l.loaded {
 		tx.World().removeViewer(tx, pos, l)

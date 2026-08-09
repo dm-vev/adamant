@@ -141,6 +141,90 @@ func TestLoaderChangeWorldDoesNotBlockViewChunkCompletion(t *testing.T) {
 	}
 }
 
+func TestLoaderChangeWorldAfterOldWorldClosed(t *testing.T) {
+	old := New()
+	newWorld := New()
+	t.Cleanup(func() {
+		_ = newWorld.Close()
+	})
+	loader := NewLoader(1, old, nopViewer{})
+	if err := old.Close(); err != nil {
+		t.Fatalf("close old world: %v", err)
+	}
+
+	change := newWorld.Do(func(tx *Tx) {
+		loader.ChangeWorld(tx, newWorld)
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := change.Wait(ctx); err != nil {
+		t.Fatalf("change from closed world: %v", err)
+	}
+	if got := loader.World(); got != newWorld {
+		t.Fatalf("loader world = %p, want %p", got, newWorld)
+	}
+	old.viewerMu.Lock()
+	_, oldRegistered := old.viewers[loader]
+	old.viewerMu.Unlock()
+	if oldRegistered {
+		t.Fatal("loader remained registered in closed world")
+	}
+}
+
+func TestLoaderCloseSerialisedWithChangeWorld(t *testing.T) {
+	old := Config{Synchronous: true}.New()
+	newWorld := Config{Synchronous: true}.New()
+	t.Cleanup(func() {
+		_ = old.Close()
+		_ = newWorld.Close()
+	})
+	loader := NewLoader(1, old, nopViewer{})
+
+	// Hold mu so Close deterministically acquires changeMu before ChangeWorld starts.
+	loader.mu.Lock()
+	closeDone := make(chan struct{})
+	go func() {
+		old.Do(func(tx *Tx) { loader.Close(tx) })
+		close(closeDone)
+	}()
+	deadline := time.Now().Add(time.Second)
+	for loader.changeMu.TryLock() {
+		loader.changeMu.Unlock()
+		if time.Now().After(deadline) {
+			loader.mu.Unlock()
+			t.Fatal("Close did not acquire the loader change lock")
+		}
+	}
+
+	changeDone := make(chan struct{})
+	go func() {
+		newWorld.Do(func(tx *Tx) { loader.ChangeWorld(tx, newWorld) })
+		close(changeDone)
+	}()
+	loader.mu.Unlock()
+
+	select {
+	case <-closeDone:
+	case <-time.After(time.Second):
+		t.Fatal("Close blocked against ChangeWorld")
+	}
+	select {
+	case <-changeDone:
+	case <-time.After(time.Second):
+		t.Fatal("ChangeWorld blocked after Close")
+	}
+
+	if got := loader.World(); got != old {
+		t.Fatalf("closed loader moved to world %p, want %p", got, old)
+	}
+	newWorld.viewerMu.Lock()
+	_, registered := newWorld.viewers[loader]
+	newWorld.viewerMu.Unlock()
+	if registered {
+		t.Fatal("closed loader registered in destination world")
+	}
+}
+
 func TestLoaderEvictionClosesUnusedChunks(t *testing.T) {
 	const radius = 2
 	conf := Config{

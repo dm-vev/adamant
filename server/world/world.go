@@ -324,7 +324,11 @@ func (w *World) exec(f execFunc) <-chan struct{} {
 		ntx.Run(w)
 		return c
 	}
-	w.queue <- ntx
+	select {
+	case w.queue <- ntx:
+	case <-w.queueClosing:
+		close(c)
+	}
 	return c
 }
 

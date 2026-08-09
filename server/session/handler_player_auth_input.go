@@ -52,7 +52,7 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 	// were unchanged.
 	if !mgl64.FloatEqual(deltaPos.Len(), 0) || !mgl64.FloatEqual(deltaYaw, 0) || !mgl64.FloatEqual(deltaPitch, 0) {
 		if expected := s.teleportPos.Load(); expected != nil {
-			if newPos.Sub(*expected).Len() > 0.01 {
+			if !teleportAcknowledged(newPos, *expected) {
 				// The player has moved before it received the teleport packet. Ignore this movement entirely and
 				// wait for the client to sync itself back to the server. Once we get a movement that is close
 				// enough to the teleport position, we'll allow the player to move around again.
@@ -91,6 +91,12 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 	c.Move(deltaPos, deltaYaw, deltaPitch)
 	s.moving.Store(false)
 	return nil
+}
+
+func teleportAcknowledged(pos, expected mgl64.Vec3) bool {
+	// X/Z cross the wire as float32. Compare with that exact representation rather than widening the tolerance.
+	expected[0], expected[2] = float64(float32(expected[0])), float64(float32(expected[2]))
+	return pos.Sub(expected).Len() <= 0.01
 }
 
 // handleActions handles the actions with the world that are present in the PlayerAuthInput packet.
