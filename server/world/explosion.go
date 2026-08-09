@@ -23,10 +23,20 @@ type EntityExplosionSource struct {
 	Entity Entity
 	// ExplosionSize is the size of the explosion. Defaults to 4 if 0.
 	ExplosionSize float64
+	origin        mgl64.Vec3
+	hasOrigin     bool
+}
+
+// NewEntityExplosionSource returns an entity explosion source with its origin fixed at the entity's current position.
+func NewEntityExplosionSource(entity Entity, size float64) EntityExplosionSource {
+	return EntityExplosionSource{Entity: entity, ExplosionSize: size, origin: entity.Position(), hasOrigin: true}
 }
 
 // Position ...
 func (e EntityExplosionSource) Position() mgl64.Vec3 {
+	if e.hasOrigin {
+		return e.origin
+	}
 	return e.Entity.Position()
 }
 
@@ -36,6 +46,25 @@ func (e EntityExplosionSource) Size() float64 {
 		return defaultExplosionSize
 	}
 	return e.ExplosionSize
+}
+
+// SnapshotExplosionSource fixes the position of entity explosion sources while preserving other source types.
+func SnapshotExplosionSource(src ExplosionSource) ExplosionSource {
+	switch s := src.(type) {
+	case EntityExplosionSource:
+		if !s.hasOrigin {
+			s.origin, s.hasOrigin = s.Entity.Position(), true
+		}
+		return s
+	case *EntityExplosionSource:
+		snapshot := *s
+		if !snapshot.hasOrigin {
+			snapshot.origin, snapshot.hasOrigin = snapshot.Entity.Position(), true
+		}
+		return snapshot
+	default:
+		return src
+	}
 }
 
 // BlockExplosionSource is used for an explosion caused by a block.

@@ -281,6 +281,13 @@ func (e *redstoneEngine) tick(tx *Tx, tick int64) {
 
 	candidates := slices.Collect(maps.Keys(dirty))
 	slices.SortFunc(candidates, compareBlockPos)
+	candidates = slices.DeleteFunc(candidates, func(pos cube.Pos) bool {
+		if _, ok := tx.World().blockLoaded(pos); ok {
+			return false
+		}
+		e.invalidate(pos, dirty[pos], tx.Range())
+		return true
+	})
 
 	graph := e.compile(tx, candidates)
 	cancelledSources, checkedSources := e.updateGraphSources(tx, graph, dirty)
@@ -500,11 +507,12 @@ func (e *redstoneEngine) update(tx *Tx, pos cube.Pos, d redstoneDirty, newPower 
 		}
 	}
 	if hasContextAction {
+		storeRedstonePower(e.power, pos, newPower)
 		contextAction.RedstonePowerActionUpdate(pos, tx, update)
 	} else if shouldRunAction {
+		storeRedstonePower(e.power, pos, newPower)
 		action.RedstonePowerAction(pos, tx, oldPower, newPower)
-	}
-	if blockChanged || shouldRunAction {
+	} else if blockChanged {
 		storeRedstonePower(e.power, pos, newPower)
 	}
 }

@@ -98,6 +98,7 @@ func init() {
 // Explode performs the explosion as specified by the configuration.
 func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 	if !txguard.Run(tx, func() {
+		src = world.SnapshotExplosionSource(src)
 		if c.Sound == nil {
 			c.Sound = sound.Explosion{}
 		}

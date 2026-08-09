@@ -9,6 +9,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -272,6 +273,38 @@ func TestRedstoneEngineRemoveChunkClearsTransientStateInChunk(t *testing.T) {
 	}
 }
 
+func TestRedstoneDirtyUnloadedNeighbourReconcilesAfterReload(t *testing.T) {
+	sourcePos, sinkPos := cube.Pos{15, 64, 0}, cube.Pos{16, 64, 0}
+	provider := &redstoneReloadProvider{columns: make(map[ChunkPos]*chunk.Column)}
+	w := Config{Synchronous: true, Blocks: redstoneCancellationTestRegistry(), Provider: provider}.New()
+	defer w.Close()
+
+	var powered bool
+	runWorld(w, func(tx *Tx) {
+		tx.SetBlock(sourcePos, redstoneCancellationSource{}, nil)
+		tx.SetBlock(sinkPos, redstoneCancellationConsumer{}, nil)
+		w.redstone.tick(tx, 1)
+
+		sinkChunk := chunkPosFromBlockPos(sinkPos)
+		w.closeChunk(tx, sinkChunk, w.chunks[sinkChunk])
+		tx.SetBlock(sourcePos, redstoneCancellationSource{Power: 15}, nil)
+		w.redstone.tick(tx, 2)
+		if tx.ChunkLoaded(sinkChunk) {
+			t.Fatal("redstone traversal loaded the neighbouring chunk")
+		}
+		if _, ok := w.redstone.dirty[sinkPos]; !ok {
+			t.Fatal("dirty position was discarded while its chunk was unloaded")
+		}
+
+		_ = tx.Block(sinkPos)
+		w.redstone.tick(tx, 3)
+		powered = tx.Block(sinkPos).(redstoneCancellationConsumer).Powered
+	})
+	if !powered {
+		t.Fatal("sink was not powered after its chunk reloaded")
+	}
+}
+
 func TestRedstoneCancelledSourceDoesNotPropagate(t *testing.T) {
 	sourcePos, sinkPos := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}
 	w := Config{Synchronous: true, Blocks: redstoneCancellationTestRegistry()}.New()
@@ -437,6 +470,23 @@ func TestRedstoneActionOnlyRunsOnPowerChange(t *testing.T) {
 	if actions != 1 {
 		t.Fatalf("actions after same-power dirty evaluation = %d, want 1", actions)
 	}
+}
+
+func TestRedstoneActionReplacingSelfDoesNotRestorePowerCache(t *testing.T) {
+	sourcePos, actionPos := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}
+	w := Config{Synchronous: true, Blocks: redstoneCancellationTestRegistry()}.New()
+	defer w.Close()
+
+	redstoneCancellationActionReplaceSelf = true
+	t.Cleanup(func() { redstoneCancellationActionReplaceSelf = false })
+	runWorld(w, func(tx *Tx) {
+		tx.SetBlock(sourcePos, redstoneCancellationSource{Power: 15}, nil)
+		tx.SetBlock(actionPos, redstoneCancellationAction{}, nil)
+		w.redstone.tick(tx, 1)
+		if _, ok := w.redstone.power[actionPos]; ok {
+			t.Fatal("self-replacing redstone action restored stale power cache")
+		}
+	})
 }
 
 func TestRedstoneRelayerToSinkDoesNotLosePower(t *testing.T) {
@@ -769,6 +819,24 @@ func (h *redstoneRecordingHandler) HandleRedstoneUpdate(_ *Context, update Redst
 }
 
 var redstoneCancellationActions *int
+var redstoneCancellationActionReplaceSelf bool
+
+type redstoneReloadProvider struct {
+	NopProvider
+	columns map[ChunkPos]*chunk.Column
+}
+
+func (p *redstoneReloadProvider) LoadColumn(pos ChunkPos, _ Dimension) (*chunk.Column, error) {
+	if col, ok := p.columns[pos]; ok {
+		return col, nil
+	}
+	return nil, leveldb.ErrNotFound
+}
+
+func (p *redstoneReloadProvider) StoreColumn(pos ChunkPos, _ Dimension, col *chunk.Column) error {
+	p.columns[pos] = col
+	return nil
+}
 
 func redstoneCancellationTestRegistry() BlockRegistry {
 	registry := NewBlockRegistry()
@@ -845,9 +913,12 @@ func (redstoneCancellationConsumer) Model() BlockModel { return redstoneCancella
 
 type redstoneCancellationAction struct{}
 
-func (redstoneCancellationAction) RedstonePowerAction(cube.Pos, *Tx, int, int) {
+func (redstoneCancellationAction) RedstonePowerAction(pos cube.Pos, tx *Tx, _, _ int) {
 	if redstoneCancellationActions != nil {
 		(*redstoneCancellationActions)++
+	}
+	if redstoneCancellationActionReplaceSelf {
+		tx.SetBlock(pos, redstoneCancellationConsumer{}, nil)
 	}
 }
 func (redstoneCancellationAction) EncodeBlock() (string, map[string]any) {

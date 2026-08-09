@@ -36,17 +36,28 @@ func (endCrystalType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		conf.ShowBase = nbtconv.Bool(m, "ShowBottom")
 	}
 	conf.ExplosionSize = nbtconv.Float64(m, "ExplosionSize")
-	if _, hasX := m["BlockTargetX"]; hasX {
-		if _, hasY := m["BlockTargetY"]; hasY {
-			if _, hasZ := m["BlockTargetZ"]; hasZ {
-				target := mgl64.Vec3{
-					float64(nbtconv.Int32(m, "BlockTargetX")),
-					float64(nbtconv.Int32(m, "BlockTargetY")),
-					float64(nbtconv.Int32(m, "BlockTargetZ")),
-				}
-				conf.BeamTarget = &target
-			}
+	decodeTarget := func(prefix string) (mgl64.Vec3, bool) {
+		if _, ok := m[prefix+"X"]; !ok {
+			return mgl64.Vec3{}, false
 		}
+		if _, ok := m[prefix+"Y"]; !ok {
+			return mgl64.Vec3{}, false
+		}
+		if _, ok := m[prefix+"Z"]; !ok {
+			return mgl64.Vec3{}, false
+		}
+		return mgl64.Vec3{
+			float64(nbtconv.Int32(m, prefix+"X")),
+			float64(nbtconv.Int32(m, prefix+"Y")),
+			float64(nbtconv.Int32(m, prefix+"Z")),
+		}, true
+	}
+	target, ok := decodeTarget("BlockTarget")
+	if !ok {
+		target, ok = decodeTarget("BeamTarget")
+	}
+	if ok {
+		conf.BeamTarget = &target
 	}
 	data.Data = conf.New()
 }
@@ -170,10 +181,7 @@ func (b *EndCrystalBehaviour) Destroy(e *Ent, tx *world.Tx, src world.DamageSour
 	}
 	block.ExplosionConfig{
 		SuppressUnderwaterImpact: true,
-	}.Explode(tx, world.EntityExplosionSource{
-		Entity:        e,
-		ExplosionSize: b.explosionSize,
-	})
+	}.Explode(tx, world.NewEntityExplosionSource(e, b.explosionSize))
 	return true
 }
 
