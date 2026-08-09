@@ -154,12 +154,7 @@ func (b *MinecartBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // Explode adds velocity to the minecart when hit by an explosion.
 func (b *MinecartBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
-	delta := e.data.Pos.Sub(src.Position())
-	if delta.LenSqr() == 0 {
-		// Avoid NaNs when the explosion originates exactly at the minecart position.
-		return
-	}
-	e.data.Vel = e.data.Vel.Add(delta.Normalize().Mul(impact))
+	e.data.Vel = e.data.Vel.Add(ExplosionImpulse(e, src, impact))
 }
 
 // Activate triggers activator rail behaviour for the base minecart.

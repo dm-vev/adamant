@@ -140,12 +140,7 @@ func (lt *ProjectileBehaviour) Owner() *world.EntityHandle {
 // Explode adds velocity to a projectile to blast it away from the explosion's
 // source.
 func (lt *ProjectileBehaviour) Explode(e *Ent, src world.ExplosionSource, impact float64) {
-	delta := e.Position().Sub(src.Position())
-	if delta.LenSqr() == 0 {
-		// Avoid NaNs when the explosion originates exactly at the projectile position.
-		return
-	}
-	e.data.Vel = e.Velocity().Add(delta.Normalize().Mul(impact))
+	e.data.Vel = e.Velocity().Add(ExplosionImpulse(e, src, impact))
 }
 
 // Potion returns the potion.Potion that is applied to an entity if hit by the

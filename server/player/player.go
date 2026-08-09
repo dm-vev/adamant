@@ -754,16 +754,10 @@ func (p *Player) FinalDamageFrom(dmg float64, src world.DamageSource) float64 {
 
 // Explode ...
 func (p *Player) Explode(src world.ExplosionSource, impact float64) {
-	explosionPos := src.Position()
-	diff := p.Position().Sub(explosionPos)
 	p.Hurt(math.Floor((impact*impact+impact)*3.5*src.Size()*2+1), entity.ExplosionDamageSource{Source: src})
-	length := diff.Len()
-	height := 0.0
-	if length > 0 {
-		// Avoid dividing by zero when the explosion is centered on the player.
-		height = diff[1] / length * impact
-	}
-	p.knockBack(explosionPos, impact, height)
+	velocity := p.Velocity().Add(entity.ExplosionImpulse(p, src, impact))
+	p.data.Vel = velocity
+	p.SetVelocity(velocity)
 }
 
 // Prick ...
