@@ -44,7 +44,7 @@ func WriteNBT(s Stack, disk bool) map[string]any {
 // ReadNBT decodes the data of an item into an item stack. A nil s selects the
 // disk format, in which the item's name and count are read from data itself;
 // otherwise the tags are applied to the stack passed.
-func ReadNBT(data map[string]any, s *Stack) Stack {
+func ReadNBT(data map[string]any, s *Stack, registries ...world.BlockRegistry) Stack {
 	disk, tag := s == nil, data
 	if disk {
 		t, ok := data["tag"].(map[string]any)
@@ -53,7 +53,7 @@ func ReadNBT(data map[string]any, s *Stack) Stack {
 		}
 		tag = t
 
-		a := readItemStack(data, tag)
+		a := readItemStack(data, tag, registries...)
 		s = &a
 	}
 
@@ -69,9 +69,9 @@ func ReadNBT(data map[string]any, s *Stack) Stack {
 
 // MapNBT converts an item's name, count, damage (and properties when it is a
 // block) in a map obtained by decoding NBT at key k to a Stack.
-func MapNBT(x map[string]any, k string) Stack {
+func MapNBT(x map[string]any, k string, registries ...world.BlockRegistry) Stack {
 	if m, ok := x[k].(map[string]any); ok {
-		return ReadNBT(m, nil)
+		return ReadNBT(m, nil, registries...)
 	}
 	return Stack{}
 }
@@ -201,13 +201,15 @@ func writeItemLock(m map[string]any, s Stack) {
 }
 
 // readItemStack reads a Stack from the NBT in the map passed.
-func readItemStack(m, t map[string]any) Stack {
+func readItemStack(m, t map[string]any, registries ...world.BlockRegistry) Stack {
 	var it world.Item
-	if blockItem, ok := nbtBlock(m, "Block").(world.Item); ok {
+	if blockItem, ok := nbtBlock(m, "Block", registries...).(world.Item); ok {
 		it = blockItem
 	}
-	if v, ok := world.ItemByName(nbtString(m, "Name"), nbtInt16(m, "Damage")); ok {
-		it = v
+	if it == nil {
+		if v, ok := world.ItemByName(nbtString(m, "Name"), nbtInt16(m, "Damage")); ok {
+			it = v
+		}
 	}
 	if it == nil {
 		return Stack{}
@@ -426,11 +428,15 @@ func nbtSlice(m map[string]any, k string) []any {
 }
 
 // nbtBlock decodes the data of a block in a map at key k into a world.Block.
-func nbtBlock(m map[string]any, k string) world.Block {
+func nbtBlock(m map[string]any, k string, registries ...world.BlockRegistry) world.Block {
 	if mk, ok := m[k].(map[string]any); ok {
 		name, _ := mk["name"].(string)
 		properties, _ := mk["states"].(map[string]any)
-		b, _ := world.BlockByName(name, properties)
+		var registry world.BlockRegistry = world.DefaultBlockRegistry
+		if len(registries) != 0 && registries[0] != nil {
+			registry = registries[0]
+		}
+		b, _ := registry.BlockByName(name, properties)
 		return b
 	}
 	return nil

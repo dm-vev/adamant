@@ -11,6 +11,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
 	"math/rand/v2"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -70,7 +71,7 @@ var rays = make([]mgl64.Vec3, 0, 1352)
 // lockedSource serializes access to a rand.Source to avoid data races when a
 // source is shared across concurrent explosions.
 type lockedSource struct {
-	mu  sync.Mutex
+	mu  *sync.Mutex
 	src rand.Source
 }
 
@@ -79,6 +80,21 @@ func (s *lockedSource) Uint64() uint64 {
 	value := s.src.Uint64()
 	s.mu.Unlock()
 	return value
+}
+
+// Source locks are striped by identity so explosions sharing a source share a
+// lock without retaining every source forever or serialising unrelated sources.
+var randSourceLocks [256]sync.Mutex
+
+func lockRandSource(src rand.Source) rand.Source {
+	if _, ok := src.(*lockedSource); ok {
+		return src
+	}
+	v := reflect.ValueOf(src)
+	if v.Kind() != reflect.Pointer || v.IsNil() {
+		return &lockedSource{mu: &randSourceLocks[0], src: src}
+	}
+	return &lockedSource{mu: &randSourceLocks[(v.Pointer()>>3)%uintptr(len(randSourceLocks))], src: src}
 }
 
 // init ...
@@ -108,8 +124,8 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 		if c.RandSource == nil {
 			t := uint64(time.Now().UnixNano())
 			c.RandSource = rand.NewPCG(t, t)
-		} else if _, ok := c.RandSource.(*lockedSource); !ok {
-			c.RandSource = &lockedSource{src: c.RandSource}
+		} else {
+			c.RandSource = lockRandSource(c.RandSource)
 		}
 		size, explosionPos := src.Size(), src.Position()
 		if c.ItemDropChance == 0 {

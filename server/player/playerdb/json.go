@@ -14,6 +14,11 @@ import (
 func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world.World, fallbackID uuid.UUID) (player.Config, *world.World) {
 	dim, _ := world.DimensionByID(int(d.Dimension))
 	mode, _ := world.GameModeByID(int(d.GameMode))
+	w := lookupWorld(dim)
+	var br world.BlockRegistry = world.DefaultBlockRegistry
+	if w != nil {
+		br = w.BlockRegistry()
+	}
 	playerID := fallbackID
 	if d.UUID != "" {
 		parsed, err := uuid.Parse(d.UUID)
@@ -49,8 +54,8 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 		Armour:              inventory.NewArmour(nil),
 	}
 	echest := make([]item.Stack, 27)
-	decodeItems(d.EnderChestInventory, echest)
-	invData := dataToInv(d.Inventory)
+	decodeItems(d.EnderChestInventory, echest, br)
+	invData := dataToInv(d.Inventory, br)
 
 	for slot, stack := range invData.Items {
 		_ = conf.Inventory.SetItem(slot, stack)
@@ -67,7 +72,7 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 	for slot, stack := range echest {
 		_ = conf.EnderChestInventory.SetItem(slot, stack)
 	}
-	return conf, lookupWorld(dim)
+	return conf, w
 }
 
 func (p *Provider) toJson(d player.Config, w *world.World) jsonData {

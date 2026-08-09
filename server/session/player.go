@@ -1312,7 +1312,7 @@ func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack {
 		t = nbter.DecodeNBT(it.NBTData).(world.Item)
 	}
 	s := item.NewStack(t, int(it.Count))
-	return item.ReadNBT(it.NBTData, &s)
+	return item.ReadNBT(it.NBTData, &s, br)
 }
 
 // instanceFromItem converts an item.Stack to its network ItemInstance representation.

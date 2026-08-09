@@ -181,9 +181,11 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShowBottom)
 		}
 		if target, ok := ec.BeamTarget(); ok {
-			m[protocol.EntityDataKeyTargetA] = int32(math.Floor(target[0]))
-			m[protocol.EntityDataKeyTargetB] = int32(math.Floor(target[1]))
-			m[protocol.EntityDataKeyTargetC] = int32(math.Floor(target[2]))
+			m[protocol.EntityDataKeyBlockTarget] = protocol.BlockPos{
+				int32(math.Floor(target[0])),
+				int32(math.Floor(target[1])),
+				int32(math.Floor(target[2])),
+			}
 		}
 	}
 	if nameTag, alwaysShow, ok := nameTagState(e); ok {

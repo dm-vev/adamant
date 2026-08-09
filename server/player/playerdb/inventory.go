@@ -3,6 +3,7 @@ package playerdb
 import (
 	"bytes"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
@@ -36,17 +37,17 @@ func invToData(data InventoryData) jsonInventoryData {
 	return d
 }
 
-func dataToInv(data jsonInventoryData) InventoryData {
+func dataToInv(data jsonInventoryData, br world.BlockRegistry) InventoryData {
 	d := InventoryData{
 		MainHandSlot: data.MainHandSlot,
-		OffHand:      decodeItem(data.OffHand),
+		OffHand:      decodeItem(data.OffHand, br),
 		Items:        make([]item.Stack, 36),
 	}
-	decodeItems(data.Items, d.Items)
-	d.Boots = decodeItem(data.Boots)
-	d.Leggings = decodeItem(data.Leggings)
-	d.Chestplate = decodeItem(data.Chestplate)
-	d.Helmet = decodeItem(data.Helmet)
+	decodeItems(data.Items, d.Items, br)
+	d.Boots = decodeItem(data.Boots, br)
+	d.Leggings = decodeItem(data.Leggings, br)
+	d.Chestplate = decodeItem(data.Chestplate, br)
+	d.Helmet = decodeItem(data.Helmet, br)
 	return d
 }
 
@@ -62,13 +63,13 @@ func encodeItems(items []item.Stack) (encoded []jsonSlot) {
 	return
 }
 
-func decodeItems(encoded []jsonSlot, items []item.Stack) {
+func decodeItems(encoded []jsonSlot, items []item.Stack, br world.BlockRegistry) {
 	for _, i := range encoded {
 		if i.Slot < 0 || i.Slot >= len(items) {
 			// Skip invalid slots to avoid panics on corrupted data.
 			continue
 		}
-		items[i.Slot] = decodeItem(i.Item)
+		items[i.Slot] = decodeItem(i.Item, br)
 	}
 }
 
@@ -87,12 +88,12 @@ func encodeItem(stack item.Stack) []byte {
 	return b.Bytes()
 }
 
-func decodeItem(data []byte) item.Stack {
+func decodeItem(data []byte, br world.BlockRegistry) item.Stack {
 	var itemNBT map[string]any
 	decoder := nbt.NewDecoderWithEncoding(bytes.NewBuffer(data), nbt.LittleEndian)
 	err := decoder.Decode(&itemNBT)
 	if err != nil {
 		return item.Stack{}
 	}
-	return item.ReadNBT(itemNBT, nil)
+	return item.ReadNBT(itemNBT, nil, br)
 }

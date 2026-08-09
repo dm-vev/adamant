@@ -486,13 +486,25 @@ func (srv *Server) makeBlockEntries() {
 // registered custom items. It allows item components to be created only once
 // at startup
 func (srv *Server) makeItemComponents() {
-	srv.customItems = itemEntries(world.CustomItems())
+	srv.customItems = itemEntries(srv.conf.Blocks, world.CustomItems())
 }
 
-func itemEntries(custom []world.CustomItem) []protocol.ItemEntry {
-	entries := make([]protocol.ItemEntry, len(custom))
+func itemEntries(br world.BlockRegistry, custom []world.CustomItem) []protocol.ItemEntry {
+	items := make([]world.CustomItem, 0, len(custom)+len(br.CustomBlocks()))
+	for _, it := range custom {
+		if _, blockItem := it.(world.CustomBlock); !blockItem {
+			items = append(items, it)
+		}
+	}
+	for _, b := range br.CustomBlocks() {
+		if it, ok := b.(world.CustomItem); ok {
+			items = append(items, it)
+		}
+	}
 
-	for i, it := range custom {
+	entries := make([]protocol.ItemEntry, len(items))
+
+	for i, it := range items {
 		name, _ := it.EncodeItem()
 		rid, _, _ := world.ItemRuntimeID(it)
 		_, isCustomBlock := it.(world.CustomBlock)
