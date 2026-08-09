@@ -356,6 +356,242 @@ func TestUserDataShapelessPreservesServerSourceNBT(t *testing.T) {
 	}
 }
 
+func TestMultiRecipeRejectsUntrustedConsumption(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       string
+		result   protocol.StackRequestItem
+		input    []item.Stack
+		consumes []int
+	}{
+		{
+			name:     "unrelated payment",
+			id:       repairMultiRecipe,
+			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1), item.NewStack(item.Apple{}, 1)},
+			consumes: []int{2},
+		},
+		{
+			name:     "one of two repair inputs",
+			id:       repairMultiRecipe,
+			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1)},
+			consumes: []int{0},
+		},
+		{
+			name:     "retained valuable source",
+			id:       repairMultiRecipe,
+			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			input:    []item.Stack{item.NewStack(item.Bow{}, 1).WithCustomName("valuable"), item.NewStack(item.Bow{}, 1), item.NewStack(item.Apple{}, 1)},
+			consumes: []int{1, 2},
+		},
+		{
+			name:     "duplicate slot",
+			id:       repairMultiRecipe,
+			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1)},
+			consumes: []int{0, 0},
+		},
+		{
+			name:     "arbitrary grid item",
+			id:       repairMultiRecipe,
+			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 1},
+			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1), item.NewStack(item.Apple{}, 1)},
+			consumes: []int{0, 1, 2},
+		},
+		{
+			name:     "excessive output count",
+			id:       repairMultiRecipe,
+			result:   protocol.StackRequestItem{Identifier: "minecraft:bow", Count: 2},
+			input:    []item.Stack{item.NewStack(item.Bow{}, 1), item.NewStack(item.Bow{}, 1)},
+			consumes: []int{0, 1},
+		},
+		{
+			name:     "unrestricted UUID output",
+			id:       "00000000-0000-0000-0000-0000000000c8",
+			result:   protocol.StackRequestItem{Identifier: "minecraft:diamond", Count: 64},
+			input:    []item.Stack{item.NewStack(item.Apple{}, 1)},
+			consumes: []int{0},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := craftingTestSession()
+			for slot, stack := range test.input {
+				_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
+			}
+			err := craftingTestHandler().handleRequest(multiCraftingRequest(s, test.id, test.result, test.consumes...), s, nil, nil)
+			requireRejectedCraft(t, s, err, test.input)
+		})
+	}
+	t.Run("excessive consumed count", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{item.NewStack(item.Paper{}, 2), item.NewStack(item.Gunpowder{}, 1)}
+		for slot, stack := range input {
+			_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
+		}
+		req := multiCraftingRequest(s, fireworkMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:firework_rocket", Count: 3}, 0, 1)
+		req.Actions[2].(*protocol.ConsumeStackRequestAction).Count = 2
+		err := craftingTestHandler().handleRequest(req, s, nil, nil)
+		requireRejectedCraft(t, s, err, input)
+	})
+}
+
+func TestUserDataShapelessRejectsExtraGridItem(t *testing.T) {
+	s := craftingTestSession()
+	box := block.NewShulkerBox()
+	box.Type = block.RedShulkerBox()
+	input := []item.Stack{
+		item.NewStack(box, 1).WithCustomName("valuable"),
+		item.NewStack(item.Dye{Colour: item.ColourBlue()}, 1),
+		item.NewStack(item.Apple{}, 1),
+	}
+	for slot, stack := range input {
+		_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
+	}
+	output := block.NewShulkerBox()
+	output.Type = block.BlueShulkerBox()
+	s.recipes[1] = recipe.NewUserDataShapeless([]recipe.Item{item.NewStack(box, 1), input[1]}, item.NewStack(output, 1), "crafting_table")
+
+	err := craftingTestHandler().handleRequest(protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
+		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+	}}, s, nil, nil)
+	requireRejectedCraft(t, s, err, input)
+}
+
+func TestMultiRecipeValidRepresentatives(t *testing.T) {
+	t.Run("firework", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{
+			item.NewStack(item.Paper{}, 1),
+			item.NewStack(item.Gunpowder{}, 1),
+			item.NewStack(item.FireworkStar{}, 1),
+		}
+		result := craftValidMulti(t, s, fireworkMultiRecipe, protocol.StackRequestItem{
+			Identifier: "minecraft:firework_rocket",
+			Count:      3,
+			NBTData:    map[string]any{"Fireworks": map[string]any{"Flight": uint8(3)}},
+		}, input)
+		firework, ok := result.Item().(item.Firework)
+		if !ok || result.Count() != 3 || firework.Duration != time.Second || len(firework.Explosions) != 1 {
+			t.Fatalf("firework result = %#v x%d", result.Item(), result.Count())
+		}
+	})
+	t.Run("map clone", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{
+			item.NewStack(craftingNamedItem("minecraft:filled_map"), 1).WithCustomName("trusted map"),
+			item.NewStack(craftingNamedItem("minecraft:empty_map"), 1),
+		}
+		result := craftValidMulti(t, s, mapCloningCartographyMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:filled_map", Count: 2}, input)
+		if result.Count() != 2 || result.CustomName() != "trusted map" {
+			t.Fatalf("map clone result = %v", result)
+		}
+	})
+	t.Run("book clone", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{
+			item.NewStack(item.WrittenBook{Title: "Trusted", Author: "Server", Pages: []string{"page"}, Generation: item.OriginalGeneration()}, 1),
+			item.NewStack(item.BookAndQuill{}, 1),
+		}
+		result := craftValidMulti(t, s, bookCloningMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:written_book", Count: 2}, input)
+		book, ok := result.Item().(item.WrittenBook)
+		if !ok || result.Count() != 2 || book.Title != "Trusted" || book.Generation.Uint8() != 1 {
+			t.Fatalf("book clone result = %#v x%d", result.Item(), result.Count())
+		}
+	})
+	t.Run("banner duplicate", func(t *testing.T) {
+		s := craftingTestSession()
+		patterned := block.Banner{Colour: item.ColourRed(), Patterns: []block.BannerPatternLayer{{Type: block.BorderBannerPattern(), Colour: item.ColourBlack()}}}
+		input := []item.Stack{item.NewStack(patterned, 1), item.NewStack(block.Banner{Colour: item.ColourRed()}, 1)}
+		_, meta := patterned.EncodeItem()
+		result := craftValidMulti(t, s, bannerDuplicateMultiRecipe, protocol.StackRequestItem{Identifier: "minecraft:banner", MetadataValue: uint32(meta), Count: 2}, input)
+		banner, ok := result.Item().(block.Banner)
+		if !ok || result.Count() != 2 || len(banner.Patterns) != 1 {
+			t.Fatalf("banner duplicate result = %#v x%d", result.Item(), result.Count())
+		}
+	})
+	t.Run("banner add pattern", func(t *testing.T) {
+		s := craftingTestSession()
+		base := block.Banner{Colour: item.ColourWhite()}
+		input := []item.Stack{
+			item.NewStack(base, 1),
+			item.NewStack(item.Dye{Colour: item.ColourRed()}, 1),
+			item.NewStack(item.BannerPattern{Type: item.CreeperBannerPattern()}, 1),
+		}
+		output := base
+		output.Patterns = []block.BannerPatternLayer{{Type: block.CreeperBannerPattern(), Colour: item.ColourRed()}}
+		_, meta := base.EncodeItem()
+		result := craftValidMulti(t, s, bannerAddPatternMultiRecipe, protocol.StackRequestItem{
+			Identifier:    "minecraft:banner",
+			MetadataValue: uint32(meta),
+			Count:         1,
+			NBTData:       output.EncodeNBT(),
+		}, input)
+		banner, ok := result.Item().(block.Banner)
+		if !ok || len(banner.Patterns) != 1 || banner.Patterns[0].Type != block.CreeperBannerPattern() {
+			t.Fatalf("banner pattern result = %#v", result.Item())
+		}
+	})
+}
+
+type craftingNamedItem string
+
+func (i craftingNamedItem) EncodeItem() (string, int16) { return string(i), 0 }
+
+func craftValidMulti(t *testing.T, s *Session, id string, result protocol.StackRequestItem, input []item.Stack) item.Stack {
+	t.Helper()
+	for slot, stack := range input {
+		_ = s.ui.SetItem(craftingGridSmallOffset+slot, stack)
+	}
+	consumes := make([]int, len(input))
+	for slot := range consumes {
+		consumes[slot] = slot
+	}
+	if err := craftingTestHandler().handleRequest(multiCraftingRequest(s, id, result, consumes...), s, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	crafted, _ := s.ui.Item(craftingResult)
+	return crafted
+}
+
+func multiCraftingRequest(s *Session, id string, result protocol.StackRequestItem, consumes ...int) protocol.ItemStackRequest {
+	s.recipes[1] = recipe.NewMulti(uuid.MustParse(id))
+	actions := []protocol.StackRequestAction{
+		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{result}},
+	}
+	for _, inputSlot := range consumes {
+		slot := craftingGridSmallOffset + inputSlot
+		stack, _ := s.ui.Item(slot)
+		actions = append(actions, &protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{
+			Count:  1,
+			Source: craftingSlot(slot, item_id(stack)),
+		}})
+	}
+	return protocol.ItemStackRequest{RequestID: -1, Actions: actions}
+}
+
+func requireRejectedCraft(t *testing.T, s *Session, err error, input []item.Stack) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("craft succeeded, want rejection")
+	}
+	for slot, want := range input {
+		got, _ := s.ui.Item(craftingGridSmallOffset + slot)
+		if !got.Equal(want) {
+			t.Fatalf("input slot %d = %v, want resynchronised %v", slot, got, want)
+		}
+	}
+	if result, _ := s.ui.Item(craftingResult); !result.Empty() {
+		t.Fatalf("rejected craft produced %v", result)
+	}
+	pk, ok := (<-s.packets).(*packet.ItemStackResponse)
+	if !ok || len(pk.Responses) != 1 || pk.Responses[0].Status != protocol.ItemStackResponseStatusError {
+		t.Fatalf("rejected craft response = %#v", pk)
+	}
+}
+
 func craftingTestSession() *Session {
 	return &Session{
 		br:              world.DefaultBlockRegistry,

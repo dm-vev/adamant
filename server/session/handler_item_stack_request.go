@@ -78,6 +78,13 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 	}()
 
 	for _, action := range req.Actions {
+		if h.multiCraft != nil {
+			switch action.(type) {
+			case *protocol.ConsumeStackRequestAction, *protocol.CraftResultsDeprecatedStackRequestAction:
+			default:
+				return fmt.Errorf("multi recipe contains unexpected action %T", action)
+			}
+		}
 		switch a := action.(type) {
 		case *protocol.TakeStackRequestAction:
 			err = h.handleTake(a, s, tx, c)
@@ -138,8 +145,8 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 			return
 		}
 	}
-	if h.multiCraft != nil && (!h.multiCraft.resultCreated || h.multiCraft.consumed == 0) {
-		return fmt.Errorf("multi recipe requires a result and consumed input")
+	if h.multiCraft != nil {
+		return h.finishMultiCraft(s, tx)
 	}
 	return
 }

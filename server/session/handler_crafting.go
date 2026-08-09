@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/creative"
 	"github.com/df-mc/dragonfly/server/item/inventory"
@@ -10,29 +11,30 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"math"
 	"slices"
+	"time"
 )
 
-const fireworkMultiRecipe = "00000000-0000-0000-0000-000000000002"
-
-var multiRecipeOutputs = map[string]string{
-	"442d85ed-8272-4543-a6f1-418f90ded05d": "minecraft:filled_map",
-	"8b36268c-1829-483c-a0f1-993b7156a8f2": "minecraft:filled_map",
-	"602234e4-cac1-4353-8bb7-b1ebff70024b": "minecraft:filled_map",
-	"98c84b38-1085-46bd-b1ce-dd38c159e6cc": "minecraft:filled_map",
-	"d392b075-4ba1-40ae-8789-af868d56f6ce": "minecraft:filled_map",
-	"85939755-ba10-4d9d-a4cc-efb7a8e943c4": "minecraft:filled_map",
-	"aecd2294-4b94-434b-8667-4499bb2c9327": "minecraft:filled_map",
-	"d1ca6b84-338e-4f2f-9c6b-76cc8b4bd98d": "minecraft:written_book",
-	"d81aaeaf-e172-4440-9225-868df030d27b": "minecraft:banner",
-	"b5c5d105-75a2-4076-af2b-923ea2bf4bf0": "minecraft:banner",
-}
+const (
+	repairMultiRecipe                  = "00000000-0000-0000-0000-000000000001"
+	fireworkMultiRecipe                = "00000000-0000-0000-0000-000000000002"
+	mapCloningCartographyMultiRecipe   = "442d85ed-8272-4543-a6f1-418f90ded05d"
+	mapLockingMultiRecipe              = "602234e4-cac1-4353-8bb7-b1ebff70024b"
+	mapCloningMultiRecipe              = "85939755-ba10-4d9d-a4cc-efb7a8e943c4"
+	mapExtendingCartographyMultiRecipe = "8b36268c-1829-483c-a0f1-993b7156a8f2"
+	mapUpgradingCartographyMultiRecipe = "98c84b38-1085-46bd-b1ce-dd38c159e6cc"
+	mapUpgradingMultiRecipe            = "aecd2294-4b94-434b-8667-4499bb2c9327"
+	bannerDuplicateMultiRecipe         = "b5c5d105-75a2-4076-af2b-923ea2bf4bf0"
+	bookCloningMultiRecipe             = "d1ca6b84-338e-4f2f-9c6b-76cc8b4bd98d"
+	mapExtendingMultiRecipe            = "d392b075-4ba1-40ae-8789-af868d56f6ce"
+	bannerAddPatternMultiRecipe        = "d81aaeaf-e172-4440-9225-868df030d27b"
+)
 
 type multiCraft struct {
-	recipe        recipe.Multi
-	input         []item.Stack
-	times         int
-	consumed      int
-	resultCreated bool
+	recipe   recipe.Multi
+	input    []item.Stack
+	times    int
+	consumed map[byte]int
+	result   *protocol.StackRequestItem
 }
 
 // handleCraft handles the CraftRecipe request action.
@@ -62,8 +64,17 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 
 	size := s.craftingSize()
 	offset := s.craftingOffset()
+	input := make([]item.Stack, size)
+	for slot := uint32(0); slot < size; slot++ {
+		input[slot], _ = s.ui.Item(int(offset + slot))
+	}
 	consumed := make([]bool, size)
 	consumedInputs := make([]item.Stack, 0, len(craft.Input()))
+	type removal struct {
+		slot  uint32
+		stack item.Stack
+	}
+	removals := make([]removal, 0, len(craft.Input()))
 	for _, expected := range craft.Input() {
 		var (
 			processed bool
@@ -74,7 +85,7 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 				// We've already consumed this slot, skip it.
 				continue
 			}
-			has, _ := s.ui.Item(int(slot))
+			has := input[slot-offset]
 			if has.Empty() != expected.Empty() || has.Count() < expected.Count()*timesCrafted {
 				// We can't process this item, as it's not a part of the recipe.
 				continue
@@ -90,11 +101,7 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 			processed, consumed[slot-offset] = true, true
 			remove := expected.Count() * timesCrafted
 			consumedInputs = append(consumedInputs, has.Grow(remove-has.Count()))
-			st := has.Grow(-remove)
-			h.setItemInSlot(protocol.StackRequestSlotInfo{
-				Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
-				Slot:      byte(slot),
-			}, st, s, tx)
+			removals = append(removals, removal{slot: slot, stack: has.Grow(-remove)})
 			break
 		}
 		if !processed {
@@ -104,9 +111,22 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 			return fmt.Errorf("recipe %v: could not consume expected item: %v", a.RecipeNetworkID, expected)
 		}
 	}
+	for slot, stack := range input {
+		if !stack.Empty() && !consumed[slot] {
+			return fmt.Errorf("recipe %v: crafting grid contains unexpected item: %v", a.RecipeNetworkID, stack)
+		}
+	}
 	output, err := craftingResults(craft, consumedInputs, timesCrafted, s.br)
 	if err != nil {
 		return err
+	}
+	for _, removal := range removals {
+		if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
+			Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+			Slot:      byte(removal.slot),
+		}, removal.stack, s, tx); err != nil {
+			return err
+		}
 	}
 	return h.createResults(s, tx, output...)
 }
@@ -126,13 +146,21 @@ func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCraft
 	for slot := uint32(0); slot < size; slot++ {
 		input[slot], _ = s.ui.Item(int(offset + slot))
 	}
-	h.multiCraft = &multiCraft{recipe: craft, input: input, times: timesCrafted}
+	h.multiCraft = &multiCraft{recipe: craft, input: input, times: timesCrafted, consumed: make(map[byte]int)}
 	return nil
 }
 
 func (h *ItemStackRequestHandler) handleMultiConsume(a *protocol.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
 	if a.Source.Container.ContainerID != protocol.ContainerCraftingInput || a.Count == 0 {
 		return fmt.Errorf("multi recipe consumed invalid crafting input")
+	}
+	offset := int(s.craftingOffset())
+	inputSlot := int(a.Source.Slot) - offset
+	if inputSlot < 0 || inputSlot >= len(h.multiCraft.input) {
+		return fmt.Errorf("multi recipe consumed slot outside the crafting grid")
+	}
+	if _, ok := h.multiCraft.consumed[a.Source.Slot]; ok {
+		return fmt.Errorf("multi recipe consumed crafting slot %v more than once", a.Source.Slot)
 	}
 	if err := h.verifySlot(a.Source, s, tx); err != nil {
 		return err
@@ -141,79 +169,233 @@ func (h *ItemStackRequestHandler) handleMultiConsume(a *protocol.ConsumeStackReq
 	if err != nil {
 		return err
 	}
-	if err := ensureUnlockedForCrafting(has); err != nil {
+	snapshot := h.multiCraft.input[inputSlot]
+	if snapshot.Empty() || !snapshot.Equal(has) {
+		return fmt.Errorf("multi recipe consumed an item not present in its crafting snapshot")
+	}
+	if err := ensureUnlockedForCrafting(snapshot); err != nil {
 		return err
 	}
-	if has.Count() < int(a.Count) {
-		return fmt.Errorf("multi recipe tried to consume %v items from a stack of %v", a.Count, has.Count())
+	if snapshot.Count() < int(a.Count) {
+		return fmt.Errorf("multi recipe tried to consume %v items from a stack of %v", a.Count, snapshot.Count())
 	}
-	if err := h.setItemInSlot(a.Source, has.Grow(-int(a.Count)), s, tx); err != nil {
-		return err
-	}
-	h.multiCraft.consumed += int(a.Count)
+	h.multiCraft.consumed[a.Source.Slot] = int(a.Count)
 	return nil
 }
 
-func (h *ItemStackRequestHandler) handleMultiResult(a *protocol.CraftResultsDeprecatedStackRequestAction, s *Session, tx *world.Tx) error {
+func (h *ItemStackRequestHandler) handleMultiResult(a *protocol.CraftResultsDeprecatedStackRequestAction, _ *Session, _ *world.Tx) error {
 	craft := h.multiCraft
-	if craft.resultCreated || int(a.TimesCrafted) != craft.times || len(a.ResultItems) != 1 {
+	if craft.result != nil || int(a.TimesCrafted) != craft.times || len(a.ResultItems) != 1 {
 		return fmt.Errorf("multi recipe supplied invalid result metadata")
 	}
 	result := a.ResultItems[0]
 	if result.Count == 0 {
 		return fmt.Errorf("multi recipe result count must be at least 1")
 	}
+	craft.result = &result
+	return nil
+}
 
-	var source item.Stack
-	for _, input := range craft.input {
-		if input.Empty() {
+func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) error {
+	craft := h.multiCraft
+	if craft.result == nil || len(craft.consumed) == 0 {
+		return fmt.Errorf("multi recipe requires one result and all consumed inputs")
+	}
+	for slot, snapshot := range craft.input {
+		count, consumed := craft.consumed[byte(int(s.craftingOffset())+slot)]
+		if snapshot.Empty() {
+			if consumed {
+				return fmt.Errorf("multi recipe consumed an empty crafting slot")
+			}
 			continue
 		}
-		name, meta := input.Item().EncodeItem()
-		if name == result.Identifier && meta == int16(result.MetadataValue) {
-			source = input
-			break
+		if !consumed || count != craft.times || snapshot.Count() < count {
+			return fmt.Errorf("multi recipe did not consume its exact crafting input")
 		}
 	}
 
-	var output item.Stack
-	if !source.Empty() {
-		if expected, restricted := multiRecipeOutputs[craft.recipe.UUID().String()]; restricted && result.Identifier != expected {
-			return fmt.Errorf("multi recipe result %q must be %q", result.Identifier, expected)
+	output, err := multiCraftResult(craft, s.br)
+	if err != nil {
+		return err
+	}
+	for slot, count := range craft.consumed {
+		has, err := s.ui.Item(int(slot))
+		if err != nil {
+			return err
 		}
-		if int(result.Count) > source.MaxCount() {
-			return fmt.Errorf("multi recipe result count %v exceeds maximum %v", result.Count, source.MaxCount())
-		}
-		output = source.Grow(int(result.Count) - source.Count())
-		if craft.recipe.UUID().String() == "00000000-0000-0000-0000-000000000001" {
-			var err error
-			output, err = repairedMultiResult(craft.input, output)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		if craft.recipe.UUID().String() != fireworkMultiRecipe || result.Identifier != "minecraft:firework_rocket" {
-			return fmt.Errorf("multi recipe result %q is not derived from its server-side input", result.Identifier)
-		}
-		it, ok := world.ItemByName(result.Identifier, int16(result.MetadataValue))
-		if !ok {
-			return fmt.Errorf("multi recipe result item %q is not registered", result.Identifier)
-		}
-		if n, ok := it.(world.NBTer); ok {
-			decoded, ok := world.DecodeNBT(n, result.NBTData, s.br).(world.Item)
-			if !ok {
-				return fmt.Errorf("multi recipe result item %q decoded to a non-item", result.Identifier)
-			}
-			it = decoded
-		}
-		output = item.NewStack(it, int(result.Count))
-		if output.Count() > output.MaxCount() || output.Count() > 3*craft.times {
-			return fmt.Errorf("multi recipe result count %v is invalid", result.Count)
+		if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
+			Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+			Slot:      slot,
+		}, has.Grow(-count), s, tx); err != nil {
+			return err
 		}
 	}
-	craft.resultCreated = true
 	return h.createResults(s, tx, output)
+}
+
+func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, error) {
+	result := *craft.result
+	inputs := make([]item.Stack, 0, len(craft.input))
+	for _, stack := range craft.input {
+		if !stack.Empty() {
+			inputs = append(inputs, stack)
+		}
+	}
+	wantResult := func(source item.Stack, name string, count int) (item.Stack, error) {
+		_, meta := source.Item().EncodeItem()
+		if result.Identifier != name || result.MetadataValue > math.MaxInt16 || int16(result.MetadataValue) != meta || int(result.Count) != count || count > source.MaxCount() {
+			return item.Stack{}, fmt.Errorf("multi recipe supplied invalid result %q x%v", result.Identifier, result.Count)
+		}
+		return source.Grow(count - source.Count()), nil
+	}
+	nameOf := func(stack item.Stack) string {
+		name, _ := stack.Item().EncodeItem()
+		return name
+	}
+
+	switch craft.recipe.UUID().String() {
+	case repairMultiRecipe:
+		if craft.times != 1 || len(inputs) != 2 {
+			return item.Stack{}, fmt.Errorf("repair multi recipe requires exactly two inputs and one craft")
+		}
+		output, err := wantResult(inputs[0], nameOf(inputs[0]), 1)
+		if err != nil {
+			return item.Stack{}, err
+		}
+		return repairedMultiResult(inputs, output)
+	case fireworkMultiRecipe:
+		paper, gunpowder := 0, 0
+		explosions := make([]item.FireworkExplosion, 0, len(inputs))
+		for _, stack := range inputs {
+			switch it := stack.Item().(type) {
+			case item.Paper:
+				paper++
+			case item.Gunpowder:
+				gunpowder++
+			case item.FireworkStar:
+				explosions = append(explosions, it.FireworkExplosion)
+			default:
+				return item.Stack{}, fmt.Errorf("firework multi recipe contains invalid input %v", stack)
+			}
+		}
+		count := 3 * craft.times
+		if paper != 1 || gunpowder < 1 || gunpowder > 3 || result.Identifier != "minecraft:firework_rocket" || result.MetadataValue != 0 || int(result.Count) != count || count > 64 {
+			return item.Stack{}, fmt.Errorf("firework multi recipe supplied invalid inputs or result")
+		}
+		return item.NewStack(item.Firework{Duration: time.Duration(gunpowder+1) * 500 * time.Millisecond, Explosions: explosions}, count), nil
+	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe, mapCloningMultiRecipe, mapCloningCartographyMultiRecipe,
+		mapUpgradingMultiRecipe, mapUpgradingCartographyMultiRecipe, mapLockingMultiRecipe:
+		var source item.Stack
+		counts := map[string]int{}
+		for _, stack := range inputs {
+			name := nameOf(stack)
+			counts[name]++
+			if name == "minecraft:filled_map" {
+				source = stack
+			}
+		}
+		id, outputCount := craft.recipe.UUID().String(), craft.times
+		valid := counts["minecraft:filled_map"] == 1
+		switch id {
+		case mapExtendingMultiRecipe:
+			valid = valid && len(inputs) == 9 && counts["minecraft:paper"] == 8
+		case mapExtendingCartographyMultiRecipe:
+			valid = valid && len(inputs) == 2 && counts["minecraft:paper"] == 1
+		case mapCloningMultiRecipe:
+			valid = valid && counts["minecraft:empty_map"] >= 1 && len(inputs) == counts["minecraft:empty_map"]+1
+			outputCount *= counts["minecraft:empty_map"] + 1
+		case mapCloningCartographyMultiRecipe:
+			valid = valid && len(inputs) == 2 && counts["minecraft:empty_map"] == 1
+			outputCount *= 2
+		case mapUpgradingMultiRecipe, mapUpgradingCartographyMultiRecipe:
+			valid = valid && len(inputs) == 2 && counts["minecraft:compass"] == 1
+		case mapLockingMultiRecipe:
+			valid = valid && len(inputs) == 2 && counts["minecraft:glass_pane"] == 1
+		}
+		if !valid {
+			return item.Stack{}, fmt.Errorf("map multi recipe contains invalid inputs")
+		}
+		return wantResult(source, "minecraft:filled_map", outputCount)
+	case bookCloningMultiRecipe:
+		var source item.Stack
+		writable := 0
+		for _, stack := range inputs {
+			switch nameOf(stack) {
+			case "minecraft:written_book":
+				if !source.Empty() {
+					return item.Stack{}, fmt.Errorf("book cloning requires one written book")
+				}
+				source = stack
+			case "minecraft:writable_book":
+				writable++
+			default:
+				return item.Stack{}, fmt.Errorf("book cloning contains invalid input")
+			}
+		}
+		book, ok := source.Item().(item.WrittenBook)
+		if !ok || writable == 0 || book.Generation.Uint8() > 1 {
+			return item.Stack{}, fmt.Errorf("book cloning requires one cloneable written book and writable books")
+		}
+		if book.Generation.Uint8() == 0 {
+			book.Generation = item.CopyGeneration()
+		} else {
+			book.Generation = item.CopyOfCopyGeneration()
+		}
+		return wantResult(source.WithItem(book), "minecraft:written_book", (writable+1)*craft.times)
+	case bannerDuplicateMultiRecipe:
+		if len(inputs) != 2 {
+			return item.Stack{}, fmt.Errorf("banner duplication requires exactly two banners")
+		}
+		first, firstOK := inputs[0].Item().(block.Banner)
+		second, secondOK := inputs[1].Item().(block.Banner)
+		if !firstOK || !secondOK || first.Colour != second.Colour || (len(first.Patterns) == 0) == (len(second.Patterns) == 0) {
+			return item.Stack{}, fmt.Errorf("banner duplication requires one patterned and one blank matching banner")
+		}
+		source := inputs[0]
+		if len(second.Patterns) != 0 {
+			source = inputs[1]
+		}
+		return wantResult(source, "minecraft:banner", 2*craft.times)
+	case bannerAddPatternMultiRecipe:
+		var source item.Stack
+		var colour item.Colour
+		dyes, patterns := 0, 0
+		var pattern item.BannerPattern
+		for _, stack := range inputs {
+			switch it := stack.Item().(type) {
+			case block.Banner:
+				if !source.Empty() {
+					return item.Stack{}, fmt.Errorf("banner pattern recipe contains multiple banners")
+				}
+				source = stack
+			case item.Dye:
+				if dyes > 0 && colour != it.Colour {
+					return item.Stack{}, fmt.Errorf("banner pattern recipe contains different dyes")
+				}
+				colour, dyes = it.Colour, dyes+1
+			case item.BannerPattern:
+				pattern, patterns = it, patterns+1
+			default:
+				return item.Stack{}, fmt.Errorf("banner pattern recipe contains invalid input")
+			}
+		}
+		sourceBanner, ok := source.Item().(block.Banner)
+		if !ok || dyes == 0 || patterns > 1 || result.Identifier != "minecraft:banner" || int(result.Count) != craft.times {
+			return item.Stack{}, fmt.Errorf("banner pattern recipe supplied invalid inputs or result")
+		}
+		decoded, ok := world.DecodeNBT(sourceBanner, result.NBTData, br).(block.Banner)
+		if !ok || decoded.Colour != sourceBanner.Colour || len(decoded.Patterns) != len(sourceBanner.Patterns)+1 || !slices.Equal(decoded.Patterns[:len(sourceBanner.Patterns)], sourceBanner.Patterns) {
+			return item.Stack{}, fmt.Errorf("banner pattern result does not extend its source banner")
+		}
+		added := decoded.Patterns[len(decoded.Patterns)-1]
+		expectedPattern, hasPatternItem := added.Type.Item()
+		if added.Colour != colour || (patterns == 1 && (!hasPatternItem || expectedPattern != pattern.Type)) {
+			return item.Stack{}, fmt.Errorf("banner pattern result does not match its inputs")
+		}
+		return wantResult(source.WithItem(decoded), "minecraft:banner", craft.times)
+	default:
+		return item.Stack{}, fmt.Errorf("unsupported multi recipe UUID %v", craft.recipe.UUID())
+	}
 }
 
 func repairedMultiResult(input []item.Stack, output item.Stack) (item.Stack, error) {
