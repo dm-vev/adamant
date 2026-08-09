@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"math"
 	"testing"
 	"time"
@@ -87,6 +88,56 @@ func TestLoaderEvictsChunksOutsideRadius(t *testing.T) {
 
 	if _, ok := loader.Chunk(target); ok {
 		t.Fatalf("chunk %v was not evicted after moving outside radius", target)
+	}
+}
+
+func TestLoaderChangeWorldDoesNotBlockViewChunkCompletion(t *testing.T) {
+	old := New()
+	newWorld := New()
+	t.Cleanup(func() {
+		_ = old.Close()
+		_ = newWorld.Close()
+	})
+	loader := NewLoader(1, old, nopViewer{})
+
+	viewStarted := make(chan struct{})
+	releaseView := make(chan struct{})
+	old.exec(func(tx *Tx) {
+		close(viewStarted)
+		<-releaseView
+		loader.viewChunk(tx, ChunkPos{}, nil)
+	})
+	<-viewStarted
+
+	change := newWorld.Do(func(tx *Tx) {
+		loader.ChangeWorld(tx, newWorld)
+	})
+	deadline := time.Now().Add(time.Second)
+	for {
+		if loader.mu.TryRLock() {
+			changing := loader.changing
+			loader.mu.RUnlock()
+			if changing {
+				break
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("loader did not begin world migration")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	close(releaseView)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := change.Wait(ctx); err != nil {
+		t.Fatalf("change world blocked behind chunk completion: %v", err)
+	}
+	if got := loader.World(); got != newWorld {
+		t.Fatalf("loader world = %p, want %p", got, newWorld)
+	}
+	if _, ok := loader.Chunk(ChunkPos{}); ok {
+		t.Fatal("loader retained a chunk from the old world")
 	}
 }
 

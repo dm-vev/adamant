@@ -341,8 +341,7 @@ func CallEntity[T any](ctx context.Context, h *EntityHandle, f func(tx *Tx, e En
 	return CallRef(ctx, NewEntityRef[Entity](h), f)
 }
 
-// scheduleTask enqueues a scheduledTransaction on the world's owner queue,
-// handing a full queue off to a helper goroutine rather than blocking.
+// scheduleTask enqueues a scheduledTransaction on the world's owner queue.
 func (w *World) scheduleTask(task *Task, f func(tx *Tx) error) *Task {
 	if task == nil {
 		task = newTask()
@@ -366,36 +365,9 @@ func (w *World) scheduleTask(task *Task, f func(tx *Tx) error) *Task {
 		st.Run(w)
 		return task
 	}
-	select {
-	case <-w.closing:
-		task.failIfPending(ErrWorldClosed)
-	case <-w.queueClosing:
-		task.failIfPending(ErrWorldClosed)
-	case w.queue <- st:
-	default:
-		w.scheduling.Add(1)
-		go w.queueScheduled(st)
-	}
+	w.enqueueTransaction(st)
 	w.scheduleMu.Unlock()
 	return task
-}
-
-// queueScheduled retries enqueuing st once the queue, full at schedule time,
-// has room, failing the task if the world closes first.
-func (w *World) queueScheduled(st scheduledTransaction) {
-	defer w.scheduling.Done()
-	if w.closed.Load() {
-		st.task.failIfPending(ErrWorldClosed)
-		return
-	}
-	select {
-	case <-w.closing:
-		st.task.failIfPending(ErrWorldClosed)
-	case <-w.queueClosing:
-		st.task.failIfPending(ErrWorldClosed)
-	case <-st.task.Done():
-	case w.queue <- st:
-	}
 }
 
 // scheduledTransaction is a queued task from Do, DoAfter or Tx.Defer: it

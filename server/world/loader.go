@@ -19,6 +19,7 @@ type Loader struct {
 	viewer Viewer
 
 	mu        sync.RWMutex
+	changeMu  sync.Mutex
 	pos       ChunkPos
 	loadQueue []ChunkPos
 	loaded    map[ChunkPos]*Column
@@ -27,7 +28,8 @@ type Loader struct {
 	activeRadius   int32
 	activeRadiusSq int64
 
-	closed bool
+	closed   bool
+	changing bool
 }
 
 // NewLoader creates a new loader using the chunk radius passed. Chunks beyond this radius from the position
@@ -50,11 +52,18 @@ func (l *Loader) World() *World {
 // ChangeWorld changes the World of the Loader. The currently loaded chunks are reset and any future loading
 // is done from the new World.
 func (l *Loader) ChangeWorld(tx *Tx, new *World) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	l.changeMu.Lock()
+	defer l.changeMu.Unlock()
 
+	l.mu.Lock()
 	old := l.w
 	loaded := maps.Clone(l.loaded)
+	l.changing = true
+	clear(l.loaded)
+	clear(l.pending)
+	l.loadQueue = l.loadQueue[:0]
+	l.mu.Unlock()
+
 	removeLoaded := func(tx *Tx) {
 		for pos := range loaded {
 			tx.World().removeViewer(tx, pos, l)
@@ -65,13 +74,14 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	} else {
 		<-old.exec(removeLoaded)
 	}
-	clear(l.loaded)
-	clear(l.pending)
 	old.viewerMu.Lock()
 	delete(old.viewers, l)
 	old.viewerMu.Unlock()
 
+	l.mu.Lock()
 	l.world(new)
+	l.changing = false
+	l.mu.Unlock()
 }
 
 // ChangeRadius changes the maximum chunk radius of the Loader.
@@ -108,7 +118,7 @@ func (l *Loader) Load(tx *Tx, n int) {
 	queued := 0
 	for processed := 0; queued < n && processed < queueLen; processed++ {
 		l.mu.Lock()
-		if l.closed || l.w == nil || l.w != tx.World() {
+		if l.closed || l.changing || l.w == nil || l.w != tx.World() {
 			l.mu.Unlock()
 			return
 		}
@@ -146,7 +156,7 @@ func (l *Loader) viewChunk(tx *Tx, pos ChunkPos, c *Column) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.closed || l.viewer == nil || l.w == nil || l.w != tx.World() {
+	if l.closed || l.changing || l.viewer == nil || l.w == nil || l.w != tx.World() {
 		return
 	}
 	delete(l.pending, pos)

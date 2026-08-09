@@ -41,9 +41,12 @@ type World struct {
 	conf Config
 	ra   cube.Range
 
-	queue        chan transaction
-	queueClosing chan struct{}
-	queueing     sync.WaitGroup
+	queue         chan transaction
+	queueClosing  chan struct{}
+	queueMu       sync.Mutex
+	queueOverflow []transaction
+	queueWake     chan struct{}
+	queueing      sync.WaitGroup
 
 	// scheduleMu serialises task scheduling against the close transitions
 	// below. scheduling counts in-flight scheduled work that close must drain.
@@ -123,8 +126,8 @@ type World struct {
 	viewers  map[*Loader]Viewer
 
 	generatorQueue chan generationTask
-	// generatorQueueSaturation counts how often chunk generation tasks had to be
-	// enqueued asynchronously because the worker queue was full. We use this to
+	// generatorQueueSaturation counts how often chunk generation tasks had to
+	// wait because the worker queue was full. We use this to
 	// rate-limit backpressure warnings so operators can tune queue/worker sizes.
 	generatorQueueSaturation atomic.Uint64
 	lastQueueSaturationLog   atomic.Uint64
@@ -349,24 +352,43 @@ func (w *World) weakExec(valid func() bool, cond *sync.Cond, f execFunc, allowCl
 		return c
 	}
 	wtx := weakTransaction{c: c, f: f, valid: valid, cond: cond}
-	select {
-	case w.queue <- wtx:
-		w.scheduleMu.Unlock()
-	default:
-		w.scheduling.Add(1)
-		w.scheduleMu.Unlock()
-		go func() {
-			defer w.scheduling.Done()
-			select {
-			case w.queue <- wtx:
-			case <-w.closing:
-				wtx.fail()
-			case <-w.queueClosing:
-				wtx.fail()
-			}
-		}()
-	}
+	w.enqueueTransaction(wtx)
+	w.scheduleMu.Unlock()
 	return c
+}
+
+// enqueueTransaction queues tx without blocking the owner. Once the bounded
+// channel fills, the owner drains the overflow itself instead of creating one
+// blocked goroutine per request.
+func (w *World) enqueueTransaction(tx transaction) {
+	w.queueMu.Lock()
+	defer w.queueMu.Unlock()
+
+	if len(w.queueOverflow) == 0 {
+		select {
+		case w.queue <- tx:
+			return
+		default:
+		}
+	}
+	w.scheduling.Add(1)
+	w.queueOverflow = append(w.queueOverflow, tx)
+	select {
+	case w.queueWake <- struct{}{}:
+	default:
+	}
+}
+
+func (w *World) nextOverflowTransaction() (transaction, bool) {
+	w.queueMu.Lock()
+	defer w.queueMu.Unlock()
+	if len(w.queueOverflow) == 0 {
+		return nil, false
+	}
+	tx := w.queueOverflow[0]
+	w.queueOverflow[0] = nil
+	w.queueOverflow = w.queueOverflow[1:]
+	return tx, true
 }
 
 // handleTransactions continuously reads transactions from the queue and runs
@@ -376,6 +398,18 @@ func (w *World) handleTransactions() {
 		select {
 		case tx := <-w.queue:
 			tx.Run(w)
+			continue
+		default:
+		}
+		if tx, ok := w.nextOverflowTransaction(); ok {
+			tx.Run(w)
+			w.scheduling.Done()
+			continue
+		}
+		select {
+		case tx := <-w.queue:
+			tx.Run(w)
+		case <-w.queueWake:
 		case <-w.queueClosing:
 			w.queueing.Done()
 			return
@@ -1895,42 +1929,31 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 // which could otherwise cause Close() or c.waitReady() to block forever.
 func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 	task := generationTask{pos: pos, col: col}
+	w.scheduleMu.Lock()
+	if w.closed.Load() {
+		w.scheduleMu.Unlock()
+		col.markReady()
+		return
+	}
 	if w.conf.Synchronous {
+		w.scheduleMu.Unlock()
 		w.runGenerationTask(task)
 		return
 	}
 
 	select {
-	case <-w.closeStarted:
-		// The world is closing — do not enqueue any new generation tasks.
-		// Mark the column as ready immediately, ensuring waiters do not block.
-		col.markReady()
-
 	case w.generatorQueue <- task:
-		// Successfully enqueued the generation task in the worker queue.
-		// A generator worker will pick it up and process it.
-
+		w.scheduleMu.Unlock()
 	default:
-		// The queue is full — fall back to asynchronous enqueue.
-		// This allows us to avoid blocking the main thread while still handling
-		// backpressure. enqueueGeneration itself respects shutdown signals.
 		w.generatorEnqueue.Add(1)
-		go w.enqueueGeneration(task)
+		w.scheduleMu.Unlock()
 		w.handleGeneratorBackpressure()
-	}
-}
-
-// enqueueGeneration tries to enqueue a chunk generation task asynchronously.
-// If the world is already shutting down, the column is immediately marked as ready
-// so that no goroutine waiting on it will hang indefinitely.
-func (w *World) enqueueGeneration(task generationTask) {
-	defer w.generatorEnqueue.Done()
-	select {
-	case <-w.closeStarted:
-		// World is closing — skip enqueue, mark column ready.
-		task.col.markReady()
-	case w.generatorQueue <- task:
-		// Successfully enqueued after waiting for space in the queue.
+		select {
+		case <-w.closeStarted:
+			col.markReady()
+		case w.generatorQueue <- task:
+		}
+		w.generatorEnqueue.Done()
 	}
 }
 
@@ -1953,6 +1976,7 @@ func (w *World) generatorWorker() {
 
 		case <-w.closeStarted:
 			// Shutdown signal received — mark all remaining queued columns as ready.
+			w.generatorEnqueue.Wait()
 			w.drainGenerationQueue()
 			return
 		}

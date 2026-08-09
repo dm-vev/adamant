@@ -53,6 +53,44 @@ func TestSynchronousWorldAdvanceTick(t *testing.T) {
 	}
 }
 
+func TestCloseDoesNotLeaveOwnerWaitingForGeneration(t *testing.T) {
+	w := Config{GeneratorWorkers: 1, GeneratorQueueSize: 1}.New()
+
+	ownerStarted := make(chan struct{})
+	releaseOwner := make(chan struct{})
+	w.exec(func(*Tx) {
+		close(ownerStarted)
+		<-releaseOwner
+	})
+	<-ownerStarted
+
+	closeDone := make(chan struct{})
+	go func() {
+		_ = w.Close()
+		close(closeDone)
+	}()
+	<-w.closeStarted
+
+	requestDone := w.exec(func(tx *Tx) {
+		for x := int32(0); x < 16; x++ {
+			tx.chunk(ChunkPos{x, 0})
+		}
+	})
+	w.generatorRunning.Wait()
+	close(releaseOwner)
+
+	select {
+	case <-requestDone:
+	case <-time.After(3 * time.Second):
+		t.Fatal("close-time chunk request waited for stopped generation workers")
+	}
+	select {
+	case <-closeDone:
+	case <-time.After(3 * time.Second):
+		t.Fatal("world close did not complete after close-time chunk request")
+	}
+}
+
 func TestSynchronousEntityDoCanRemoveEntity(t *testing.T) {
 	w := Config{Synchronous: true}.New()
 	defer w.Close()

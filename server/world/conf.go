@@ -168,6 +168,7 @@ func (conf Config) New() *World {
 		chunks:            make(map[ChunkPos]*Column),
 		chunkRequests:     make(map[ChunkPos][]chunkCallback),
 		queueClosing:      make(chan struct{}),
+		queueWake:         make(chan struct{}, 1),
 		closeStarted:      make(chan struct{}),
 		closing:           make(chan struct{}),
 		queue:             make(chan transaction, 128),
