@@ -225,6 +225,32 @@ func TestLoaderCloseSerialisedWithChangeWorld(t *testing.T) {
 	}
 }
 
+func TestLoaderCloseRemovesChunksFromLoaderWorld(t *testing.T) {
+	old := Config{Synchronous: true}.New()
+	current := Config{Synchronous: true}.New()
+	t.Cleanup(func() {
+		_ = old.Close()
+		_ = current.Close()
+	})
+	loader := NewLoader(1, old, nopViewer{})
+	pos := ChunkPos{}
+	var col *Column
+	old.Do(func(tx *Tx) {
+		col = tx.chunk(pos)
+		loader.viewChunk(tx, pos, col)
+	})
+
+	current.Do(func(tx *Tx) {
+		loader.Close(tx)
+	})
+
+	for _, registered := range col.loaders {
+		if registered == loader {
+			t.Fatal("closed loader remained registered in its old world chunk")
+		}
+	}
+}
+
 func TestLoaderEvictionClosesUnusedChunks(t *testing.T) {
 	const radius = 2
 	conf := Config{

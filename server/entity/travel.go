@@ -204,6 +204,7 @@ func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, dest
 		if !ok {
 			return false, nil
 		}
+		handle.SetPosition(spawn)
 		e, ok := tx.AddEntity(handle).(Traveller)
 		if !ok {
 			return false, nil
@@ -220,6 +221,7 @@ func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, dest
 		var restoreErr error
 		if handle.World() == nil {
 			restored, restoreErr = safeWorldCall(source, func(tx *world.Tx) (bool, error) {
+				handle.SetPosition(origin)
 				e, ok := tx.AddEntity(handle).(Traveller)
 				if !ok {
 					return false, nil

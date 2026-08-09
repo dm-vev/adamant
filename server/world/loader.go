@@ -200,23 +200,37 @@ func (l *Loader) Close(tx *Tx) {
 	defer l.changeMu.Unlock()
 
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	if l.closed {
+		l.mu.Unlock()
 		return
 	}
-
-	for pos := range l.loaded {
-		tx.World().removeViewer(tx, pos, l)
-	}
+	w := l.w
+	loaded := l.loaded
 	l.loaded = map[ChunkPos]*Column{}
 	clear(l.pending)
-
-	l.w.viewerMu.Lock()
-	delete(l.w.viewers, l)
-	l.w.viewerMu.Unlock()
-
 	l.closed = true
+	l.mu.Unlock()
+
+	removeLoaded := func(tx *Tx) {
+		for pos := range loaded {
+			w.removeViewer(tx, pos, l)
+		}
+	}
+	if tx.World() == w {
+		removeLoaded(tx)
+	} else {
+		select {
+		case <-w.exec(removeLoaded):
+		case <-w.queueClosing:
+		}
+	}
+	w.viewerMu.Lock()
+	delete(w.viewers, l)
+	w.viewerMu.Unlock()
+
+	l.mu.Lock()
 	l.viewer = nil
+	l.mu.Unlock()
 }
 
 // world sets the loader's world, adds them to the world's viewer list, then starts populating the load queue.

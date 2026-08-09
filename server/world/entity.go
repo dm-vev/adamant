@@ -164,6 +164,17 @@ func (e *EntityHandle) World() *World {
 	return e.w
 }
 
+// SetPosition sets the position used the next time the worldless handle is added to a World.
+// It panics if the handle is currently in a World.
+func (e *EntityHandle) SetPosition(pos mgl64.Vec3) {
+	e.cond.L.Lock()
+	defer e.cond.L.Unlock()
+	if e.w != nil {
+		panic("cannot set entity handle position while it is in a world")
+	}
+	e.data.Pos = pos
+}
+
 // mustEntity calls Entity but panics if the worlds do not match.
 func (e *EntityHandle) mustEntity(tx *Tx) Entity {
 	if ent, ok := e.Entity(tx); ok {

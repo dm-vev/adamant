@@ -514,6 +514,46 @@ func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
 	}
 }
 
+func TestPortalTravelRegistersEntityInDestinationChunk(t *testing.T) {
+	source := world.Config{Synchronous: true}.New()
+	destination := world.Config{Dim: world.Nether, Synchronous: true}.New()
+	t.Cleanup(func() {
+		_ = source.Close()
+		_ = destination.Close()
+	})
+	targetPortal := cube.Pos{160, 64, 160}
+	tc := NewPortalTravelComputer()
+	var spawn mgl64.Vec3
+	mustDo(t, destination, func(tx *world.Tx) {
+		buildActivePortal(tx, targetPortal)
+		var ok bool
+		spawn, ok = tc.destinationSpawn(tx, world.Overworld, targetPortal)
+		if !ok {
+			t.Fatal("destination portal was not found")
+		}
+	})
+
+	origin := mgl64.Vec3{0.5, 64, 0.5}
+	handle := world.EntitySpawnOpts{Position: origin}.New(testMovingEntType{}, testMoveConfig{})
+	mustDo(t, source, func(tx *world.Tx) {
+		e := tx.AddEntity(handle)
+		if tx.RemoveEntity(e) != handle {
+			t.Fatal("failed to remove entity from source world")
+		}
+	})
+	tc.transfer(handle, source, destination, origin, targetPortal, world.Overworld, world.Nether)
+
+	mustDo(t, destination, func(tx *world.Tx) {
+		found := false
+		for e := range tx.EntitiesWithin(cube.Box(spawn[0]-1, spawn[1]-1, spawn[2]-1, spawn[0]+1, spawn[1]+1, spawn[2]+1)) {
+			found = found || e.H() == handle
+		}
+		if !found {
+			t.Fatal("transferred entity was not indexed in its destination chunk")
+		}
+	})
+}
+
 func TestFallingBlockDoesNotTravelThroughPortal(t *testing.T) {
 	overworld, nether := portalWorlds(t)
 

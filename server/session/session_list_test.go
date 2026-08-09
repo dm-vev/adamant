@@ -4,10 +4,13 @@ import (
 	"io"
 	"log/slog"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
@@ -19,6 +22,9 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 	existing := testSession("existing")
 	joining := testSession("joining")
 	l.s = []*Session{existing}
+	existing.currentEntityRuntimeID = 2
+	existing.entityRuntimeIDs[joining.ent] = 2
+	existing.entities[2] = joining.ent
 
 	existing.entityMutex.Lock()
 	addDone := make(chan struct{})
@@ -26,10 +32,11 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 		l.Add(joining)
 		close(addDone)
 	}()
-	waitForSessionCount(t, l, 2)
-	if l.opMu.TryLock() {
-		l.opMu.Unlock()
-		t.Fatal("Add released operation ordering before publishing the session")
+	waitForSessionOperation(t, l)
+	if _, ok := l.Lookup(joining.ent.UUID()); ok {
+		existing.entityMutex.Unlock()
+		waitDone(t, addDone)
+		t.Fatal("Add published session before installing runtime IDs")
 	}
 
 	removeStarted := make(chan struct{})
@@ -45,11 +52,21 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 	waitDone(t, addDone)
 	waitDone(t, removeDone)
 
-	if _, ok := existing.entityRuntimeIDs[joining.ent]; ok {
+	existing.entityMutex.Lock()
+	_, mapped := existing.entityRuntimeIDs[joining.ent]
+	reverseCount := len(existing.entities)
+	existing.entityMutex.Unlock()
+	if mapped {
 		t.Fatal("joining session runtime ID remains after removal")
 	}
-	if len(l.s) != 1 || l.s[0] != existing {
-		t.Fatalf("session list contains removed session: %v", l.s)
+	if reverseCount != 1 {
+		t.Fatalf("runtime ID reverse map contains %d entries after removal, want 1", reverseCount)
+	}
+	l.mu.Lock()
+	remaining := slices.Clone(l.s)
+	l.mu.Unlock()
+	if len(remaining) != 1 || remaining[0] != existing {
+		t.Fatalf("session list contains removed session: %v", remaining)
 	}
 
 	first := (<-existing.packets).(*packet.PlayerList)
@@ -59,19 +76,17 @@ func TestSessionListConcurrentAddRemove(t *testing.T) {
 	}
 }
 
-func waitForSessionCount(t *testing.T, l *sessionList, count int) {
+func waitForSessionOperation(t *testing.T, l *sessionList) {
 	t.Helper()
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
-		l.mu.Lock()
-		got := len(l.s)
-		l.mu.Unlock()
-		if got == count {
+		if !l.opMu.TryLock() {
 			return
 		}
+		l.opMu.Unlock()
 		runtime.Gosched()
 	}
-	t.Fatalf("session count did not reach %d", count)
+	t.Fatal("session list operation did not start")
 }
 
 func waitDone(t *testing.T, done <-chan struct{}) {
@@ -84,7 +99,7 @@ func waitDone(t *testing.T, done <-chan struct{}) {
 }
 
 func testSession(name string) *Session {
-	handle := &world.EntityHandle{}
+	handle := entity.NewText(name, mgl64.Vec3{})
 	return &Session{
 		conn:                   testConn{identity: login.IdentityData{Identity: uuid.NewString(), DisplayName: name}},
 		conf:                   Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))},

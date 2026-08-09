@@ -26,6 +26,16 @@ func (l *sessionList) Add(s *Session) {
 
 	l.mu.Lock()
 	others := slices.Clone(l.s)
+	l.mu.Unlock()
+
+	// Install every runtime ID before Lookup can publish the session to ViewEntity.
+	for _, other := range others {
+		l.runtimeID(s, other)
+		l.runtimeID(other, s)
+	}
+	l.runtimeID(s, s)
+
+	l.mu.Lock()
 	l.s = append(l.s, s)
 	l.mu.Unlock()
 
@@ -77,16 +87,7 @@ func (l *sessionList) Lookup(id uuid.UUID) (*Session, bool) {
 }
 
 func (l *sessionList) sendSessionTo(s, to *Session) {
-	runtimeID := uint64(selfEntityRuntimeID)
-
-	to.entityMutex.Lock()
-	if s != to {
-		to.currentEntityRuntimeID += 1
-		runtimeID = to.currentEntityRuntimeID
-	}
-	to.entityRuntimeIDs[s.ent] = runtimeID
-	to.entities[runtimeID] = s.ent
-	to.entityMutex.Unlock()
+	runtimeID := l.runtimeID(s, to)
 
 	to.writePacket(&packet.PlayerList{
 		Entries: []protocol.PlayerListEntry{{
@@ -99,6 +100,24 @@ func (l *sessionList) sendSessionTo(s, to *Session) {
 			Skin:           skinToProtocol(s.joinSkin),
 		}},
 	})
+}
+
+func (*sessionList) runtimeID(s, to *Session) uint64 {
+	to.entityMutex.Lock()
+	defer to.entityMutex.Unlock()
+
+	if runtimeID, ok := to.entityRuntimeIDs[s.ent]; ok {
+		to.entities[runtimeID] = s.ent
+		return runtimeID
+	}
+	runtimeID := uint64(selfEntityRuntimeID)
+	if s != to {
+		to.currentEntityRuntimeID++
+		runtimeID = to.currentEntityRuntimeID
+	}
+	to.entityRuntimeIDs[s.ent] = runtimeID
+	to.entities[runtimeID] = s.ent
+	return runtimeID
 }
 
 func (l *sessionList) unsendSessionFrom(s, from *Session) {

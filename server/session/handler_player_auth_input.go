@@ -48,17 +48,16 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 	newPos := vec32To64(pk.Position)
 	deltaPos, deltaYaw, deltaPitch := newPos.Sub(pos), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch
 
-	// The PlayerAuthInput packet is sent every tick, so don't check for teleport if the position and rotation
-	// were unchanged.
-	if !mgl64.FloatEqual(deltaPos.Len(), 0) || !mgl64.FloatEqual(deltaYaw, 0) || !mgl64.FloatEqual(deltaPitch, 0) {
-		if expected := s.teleportPos.Load(); expected != nil {
-			if !teleportAcknowledged(newPos, *expected) {
+	if expected := s.teleportPos.Load(); expected != nil {
+		if teleportAcknowledged(newPos, *expected) {
+			s.teleportPos.Store(nil)
+		} else {
+			if !mgl64.FloatEqual(deltaPos.Len(), 0) || !mgl64.FloatEqual(deltaYaw, 0) || !mgl64.FloatEqual(deltaPitch, 0) {
 				// The player has moved before it received the teleport packet. Ignore this movement entirely and
 				// wait for the client to sync itself back to the server. Once we get a movement that is close
 				// enough to the teleport position, we'll allow the player to move around again.
 				return nil
 			}
-			s.teleportPos.Store(nil)
 		}
 	}
 
