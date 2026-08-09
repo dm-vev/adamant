@@ -179,8 +179,8 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 		}
 		s.tickerChecked = true
 	}
-	if binder, ok := s.ent.(interface{ bindTx(*Tx) }); ok {
-		binder.bindTx(tx)
+	if binder, ok := s.ent.(interface{ BindTransaction(*Tx) }); ok {
+		binder.BindTransaction(tx)
 	}
 	return s.ent
 }

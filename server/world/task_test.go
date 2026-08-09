@@ -102,6 +102,24 @@ func TestDoCapturesPanic(t *testing.T) {
 	}
 }
 
+func TestTaskWaitReturnsPanicError(t *testing.T) {
+	w := Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	panicValue := &struct{ message string }{"task panic"}
+	err := w.Do(func(*Tx) { panic(panicValue) }).Wait(testContext(t))
+	var panicErr *PanicError
+	if !errors.As(err, &panicErr) {
+		t.Fatalf("Task.Wait error = %v, want *PanicError", err)
+	}
+	if panicErr.Value != panicValue {
+		t.Fatalf("PanicError.Value = %v, want original value %v", panicErr.Value, panicValue)
+	}
+	if err := w.Do(func(*Tx) {}).Wait(testContext(t)); err != nil {
+		t.Fatalf("owner stopped after task panic: %v", err)
+	}
+}
+
 func TestEntityDoCancelAfterInvalidatedWeakTransactionDoesNotPoisonHandle(t *testing.T) {
 	w := New()
 	defer w.Close()

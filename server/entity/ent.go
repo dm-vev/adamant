@@ -294,6 +294,11 @@ func (e *Ent) bindTx(tx *world.Tx) {
 	e.tx = tx
 }
 
+// BindTransaction binds the Ent to tx for the duration of an owner callback.
+func (e *Ent) BindTransaction(tx *world.Tx) {
+	e.bindTx(tx)
+}
+
 // CloseIn closes the Ent using the provided transaction and removes the associated entity from the world.
 // This should be used from within world transactions (e.g., during ticks) to ensure a valid, active Tx is used.
 func (e *Ent) CloseIn(tx *world.Tx) error {

@@ -452,9 +452,18 @@ func (s *Session) handlePackets() {
 		if err != nil {
 			return
 		}
-		err = s.withControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
-			return s.handlePacket(pk, tx, c)
-		})
+		err = func() (err error) {
+			defer func() {
+				// CallRef re-panics for synchronous callers. The packet loop is the
+				// asynchronous boundary where a player panic must stop only its session.
+				if r := recover(); r != nil {
+					err = world.ErrTaskPanicked
+				}
+			}()
+			return s.withControllable(context.Background(), func(tx *world.Tx, c Controllable) error {
+				return s.handlePacket(pk, tx, c)
+			})
+		}()
 		if err != nil {
 			if sessionOwnerStopped(err) {
 				return
