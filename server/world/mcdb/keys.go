@@ -49,6 +49,8 @@ const (
 	keyBiomeData          = "BiomeData"
 	keyScoreboard         = "scoreboard"
 	keyLocalPlayer        = "~local_player"
+	keyPositionTrackLast  = "PositionTrackDB-LastId"
+	keyPositionTrackEntry = "PosTrackDB-0x"
 )
 
 const (

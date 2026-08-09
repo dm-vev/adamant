@@ -9,10 +9,11 @@ import (
 )
 
 func TestPositionTrackingDimensionAndWorldIdentity(t *testing.T) {
-	shared := &Settings{}
-	overworld := Config{Provider: NopProvider{Set: shared}, Dim: Overworld, Synchronous: true}.New()
-	nether := Config{Provider: NopProvider{Set: shared}, Dim: Nether, Synchronous: true}.New()
-	other := Config{Provider: NopProvider{Set: &Settings{}}, Dim: Overworld, Synchronous: true}.New()
+	sharedProvider := &lifecycleProvider{freshSettings: true}
+	overworld := Config{Provider: sharedProvider, Dim: Overworld, Synchronous: true}.New()
+	nether := Config{Provider: sharedProvider, Dim: Nether, Synchronous: true}.New()
+	independentProvider := &lifecycleProvider{NopProvider: NopProvider{Set: overworld.set}}
+	other := Config{Provider: independentProvider, Dim: Overworld, Synchronous: true}.New()
 	t.Cleanup(func() {
 		_ = overworld.Close()
 		_ = nether.Close()
@@ -20,6 +21,9 @@ func TestPositionTrackingDimensionAndWorldIdentity(t *testing.T) {
 	})
 
 	pos := cube.Pos{3, 70, -4}
+	if overworld.set == nether.set {
+		t.Fatal("shared provider did not return distinct settings")
+	}
 	overworldHandle := overworld.TrackPosition(pos, 0)
 	netherHandle := nether.TrackPosition(pos, 0)
 	if overworldHandle == 0 || netherHandle == 0 || overworldHandle == netherHandle {
@@ -42,21 +46,23 @@ func TestPositionTrackingBreakAndReplacement(t *testing.T) {
 	if _, _, ok := w.TrackedPosition(handle); ok {
 		t.Fatal("untracked position remained active")
 	}
-	if got := w.TrackPosition(pos, 0); got != handle {
-		t.Fatalf("replacement handle = %d, want %d", got, handle)
+	if got := w.PositionTrackingHandleAt(pos); got != 0 {
+		t.Fatalf("inactive position returned stale handle %d", got)
+	}
+	if got := w.TrackPosition(pos, 0); got == handle {
+		t.Fatalf("replacement revived inactive handle %d", handle)
 	}
 }
 
 func TestPositionTrackingCleanupIsBounded(t *testing.T) {
-	settings := &Settings{}
-	w := Config{Provider: NopProvider{Set: settings}, Synchronous: true}.New()
+	w := Config{Synchronous: true}.New()
 	defer w.Close()
 	for x := range maxInactivePositionTrackingEntries + 32 {
 		pos := cube.Pos{x, 64, 0}
 		w.TrackPosition(pos, 0)
 		w.UntrackPosition(pos)
 	}
-	data := settings.PositionTrackingData()
+	data := w.positionTracker().data()
 	if got := len(data.Entries); got != maxInactivePositionTrackingEntries {
 		t.Fatalf("retained inactive entries = %d, want %d", got, maxInactivePositionTrackingEntries)
 	}
@@ -66,9 +72,9 @@ func TestPositionTrackingCleanupIsBounded(t *testing.T) {
 }
 
 func TestPositionTrackingConcurrentWorldClose(t *testing.T) {
-	settings := &Settings{}
-	first := Config{Provider: NopProvider{Set: settings}, Dim: Overworld, Synchronous: true}.New()
-	second := Config{Provider: NopProvider{Set: settings}, Dim: Nether, Synchronous: true}.New()
+	provider := &lifecycleProvider{freshSettings: true}
+	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
+	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
 	first.TrackPosition(cube.Pos{1, 64, 1}, 0)
 	second.TrackPosition(cube.Pos{1, 64, 1}, 0)
 
@@ -84,7 +90,7 @@ func TestPositionTrackingConcurrentWorldClose(t *testing.T) {
 			}()
 		}
 		for range 100 {
-			_ = settings.PositionTrackingData()
+			_ = first.positionTracker().data()
 		}
 		wg.Wait()
 	}()
@@ -92,5 +98,23 @@ func TestPositionTrackingConcurrentWorldClose(t *testing.T) {
 	case <-done:
 	case <-time.After(3 * time.Second):
 		t.Fatal("concurrent world close deadlocked")
+	}
+}
+
+func TestPositionTrackingDoesNotWaitForSettingsOwner(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+	w.set.Lock()
+	done := make(chan struct{})
+	go func() {
+		w.TrackPosition(cube.Pos{1, 64, 1}, 0)
+		close(done)
+	}()
+	select {
+	case <-done:
+		w.set.Unlock()
+	case <-time.After(time.Second):
+		w.set.Unlock()
+		t.Fatal("position tracking waited for the settings owner lock")
 	}
 }

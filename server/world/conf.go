@@ -170,6 +170,9 @@ func (conf Config) New() *World {
 	if provider, ok := conf.Provider.(blockRegistrySetter); ok {
 		provider.SetBlockRegistry(conf.Blocks)
 	}
+	if _, err := providerUse.positionTracker(conf.Provider); err != nil {
+		conf.Log.Error("load position tracking data: " + err.Error())
+	}
 
 	if conf.RandSource == nil {
 		t := uint64(time.Now().UnixNano())

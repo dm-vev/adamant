@@ -601,21 +601,13 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 
 	oldRID := c.Block(x, y, z, 0)
 	needOldBlock = needOldBlock || w.conf.Blocks.NBTBlock(oldRID)
-	var oldBlock Block
-	if needOldBlock {
-		oldBlock = w.conf.Blocks.BlockByRuntimeIDOrAir(oldRID)
-		if w.conf.Blocks.NBTBlock(oldRID) {
-			if blockEntity, ok := c.BlockEntities[pos]; ok {
-				oldBlock = blockEntity
-			}
+	oldBlock := w.conf.Blocks.BlockByRuntimeIDOrAir(oldRID)
+	if w.conf.Blocks.NBTBlock(oldRID) {
+		if blockEntity, ok := c.BlockEntities[pos]; ok {
+			oldBlock = blockEntity
 		}
 	}
-	if tracked, ok := oldBlock.(PositionTrackingBlock); ok && tracked.TrackingHandle() != 0 {
-		replacement, keepsHandle := b.(PositionTrackingBlock)
-		if !keepsHandle || replacement.TrackingHandle() != tracked.TrackingHandle() {
-			w.UntrackPosition(pos)
-		}
-	}
+	b = w.replacePositionTrackingBlock(pos, oldBlock, b)
 
 	var before uint32
 	if rid != w.conf.Blocks.AirRuntimeID() && !opts.DisableLiquidDisplacement {
@@ -627,12 +619,6 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	c.invalidateRandomTickSubChunks()
 	c.invalidateSubChunkHeightMaps()
 	c.invalidateNetworkSubChunkPayloads()
-	if tracked, ok := b.(PositionTrackingBlock); ok {
-		handle := tracked.TrackingHandle()
-		if handle != 0 || w.PositionTrackingHandleAt(pos) != 0 {
-			b = tracked.WithTrackingHandle(w.TrackPosition(pos, handle))
-		}
-	}
 	if w.conf.Blocks.NBTBlock(rid) {
 		c.BlockEntities[pos] = b
 		c.invalidateTickerBlockEntities()
@@ -706,20 +692,21 @@ func (tx *Tx) setBlockEntity(pos cube.Pos, b Block) {
 		tx.setBlock(pos, b, nil)
 		return
 	}
-	if old, ok := c.BlockEntities[pos].(PositionTrackingBlock); ok && old.TrackingHandle() != 0 {
-		replacement, keepsHandle := b.(PositionTrackingBlock)
-		if !keepsHandle || replacement.TrackingHandle() != old.TrackingHandle() {
-			w.UntrackPosition(pos)
-		}
-	}
-	if tracked, ok := b.(PositionTrackingBlock); ok {
-		handle := tracked.TrackingHandle()
-		if handle != 0 || w.PositionTrackingHandleAt(pos) != 0 {
-			b = tracked.WithTrackingHandle(w.TrackPosition(pos, handle))
-		}
-	}
+	b = w.replacePositionTrackingBlock(pos, c.BlockEntities[pos], b)
 	c.BlockEntities[pos] = b
 	c.modified = true
+}
+
+func (w *World) replacePositionTrackingBlock(pos cube.Pos, old, replacement Block) Block {
+	oldTracked, oldOK := old.(PositionTrackingBlock)
+	newTracked, newOK := replacement.(PositionTrackingBlock)
+	if oldOK && oldTracked.TrackingHandle() != 0 && (!newOK || newTracked.TrackingHandle() != oldTracked.TrackingHandle()) {
+		w.UntrackPosition(pos)
+	}
+	if newOK && newTracked.TrackingHandle() != 0 {
+		return newTracked.WithTrackingHandle(w.TrackPosition(pos, newTracked.TrackingHandle()))
+	}
+	return replacement
 }
 
 // setBiome sets the Biome at the position passed. If a chunk is not yet loaded
@@ -792,13 +779,21 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 							}
 							b, liq := s.At(xOffset-pos[0], yOffset-pos[1], zOffset-pos[2], f)
 							if b != nil {
+								nbtPos := cube.Pos{xOffset, yOffset, zOffset}
+								oldRID := sub.Block(uint8(xOffset), uint8(yOffset), uint8(zOffset), 0)
+								oldBlock := w.conf.Blocks.BlockByRuntimeIDOrAir(oldRID)
+								if w.conf.Blocks.NBTBlock(oldRID) {
+									if blockEntity, ok := c.BlockEntities[nbtPos]; ok {
+										oldBlock = blockEntity
+									}
+								}
+								b = w.replacePositionTrackingBlock(nbtPos, oldBlock, b)
 								rid := w.conf.Blocks.BlockRuntimeID(b)
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 0, rid)
 								c.invalidateRandomTickSubChunks()
 								c.invalidateSubChunkHeightMaps()
 								c.invalidateNetworkSubChunkPayloads()
 
-								nbtPos := cube.Pos{xOffset, yOffset, zOffset}
 								if w.conf.Blocks.NBTBlock(rid) {
 									c.BlockEntities[nbtPos] = b
 									c.invalidateTickerBlockEntities()
@@ -1591,6 +1586,11 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 		}
 		w.conf.Log.Debug("Updating level.dat values...")
 		w.conf.Provider.SaveSettings(w.set)
+		if provider, ok := w.conf.Provider.(positionTrackingProvider); ok {
+			if err := provider.SavePositionTrackingData(w.positionTracker().data()); err != nil {
+				w.conf.Log.Error("save position tracking data: " + err.Error())
+			}
+		}
 	}
 }
 

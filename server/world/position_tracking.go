@@ -60,13 +60,9 @@ func NewPositionTracker() *PositionTracker {
 	return &PositionTracker{byHandle: map[int32]trackedPosition{}, byPosition: map[[4]int]int32{}}
 }
 
-func (s *Settings) tracker() *PositionTracker {
-	s.positionTrackerOnce.Do(func() {
-		if s.positionTracker == nil {
-			s.positionTracker = NewPositionTracker()
-		}
-	})
-	return s.positionTracker
+func (w *World) positionTracker() *PositionTracker {
+	t, _ := w.providerUse.positionTracker(w.conf.Provider)
+	return t
 }
 
 // PositionTrackingData is a persistent snapshot of the position tracking database.
@@ -75,9 +71,7 @@ type PositionTrackingData struct {
 	Entries []PositionTrackingEntry
 }
 
-// PositionTrackingData returns a snapshot of the position tracking database.
-func (s *Settings) PositionTrackingData() PositionTrackingData {
-	t := s.tracker()
+func (t *PositionTracker) data() PositionTrackingData {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	data := PositionTrackingData{Next: t.next, Entries: make([]PositionTrackingEntry, 0, len(t.byHandle))}
@@ -87,19 +81,7 @@ func (s *Settings) PositionTrackingData() PositionTrackingData {
 	return data
 }
 
-// PositionTrackingEntries returns a snapshot of the position tracking database.
-func (s *Settings) PositionTrackingEntries() []PositionTrackingEntry {
-	return s.PositionTrackingData().Entries
-}
-
-// LoadPositionTrackingEntries replaces the position tracking database with entries.
-func (s *Settings) LoadPositionTrackingEntries(entries []PositionTrackingEntry) {
-	s.LoadPositionTrackingData(PositionTrackingData{Entries: entries})
-}
-
-// LoadPositionTrackingData replaces the position tracking database with data.
-func (s *Settings) LoadPositionTrackingData(data PositionTrackingData) {
-	t := s.tracker()
+func (t *PositionTracker) load(data PositionTrackingData) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.next = data.Next
@@ -110,41 +92,50 @@ func (s *Settings) LoadPositionTrackingData(data PositionTrackingData) {
 	t.byPosition = map[[4]int]int32{}
 	t.inactive = nil
 	for _, entry := range data.Entries {
-		if entry.Handle == 0 {
+		if entry.Handle <= 0 {
 			continue
 		}
 		key := positionTrackingKey(entry.Dimension, entry.Position)
 		if old, ok := t.byHandle[entry.Handle]; ok {
-			delete(t.byPosition, positionTrackingKey(old.dim, old.pos))
+			oldKey := positionTrackingKey(old.dim, old.pos)
+			if t.byPosition[oldKey] == entry.Handle {
+				delete(t.byPosition, oldKey)
+			}
 			t.removeInactive(entry.Handle)
 		}
-		if oldHandle := t.byPosition[key]; oldHandle != 0 && oldHandle != entry.Handle {
-			delete(t.byHandle, oldHandle)
-			t.removeInactive(oldHandle)
+		if oldHandle := t.byPosition[key]; entry.Active && oldHandle != 0 && oldHandle != entry.Handle {
+			old := t.byHandle[oldHandle]
+			old.active = false
+			t.byHandle[oldHandle] = old
+			t.inactive = append(t.inactive, oldHandle)
 		}
 		t.byHandle[entry.Handle] = trackedPosition{pos: entry.Position, dim: entry.Dimension, active: entry.Active}
-		t.byPosition[key] = entry.Handle
-		if !entry.Active {
+		if entry.Active {
+			t.byPosition[key] = entry.Handle
+		} else {
 			t.inactive = append(t.inactive, entry.Handle)
-			t.pruneInactive()
 		}
+		t.pruneInactive()
 		if entry.Handle > t.next {
 			t.next = entry.Handle
 		}
 	}
 }
 
-// TrackPosition activates a tracking handle for pos. Existing handles at the same position are reused.
+// TrackPosition activates a tracking handle for pos. Active handles at the same position are reused when handle is 0.
 func (w *World) TrackPosition(pos cube.Pos, handle int32) int32 {
 	dim, ok := DimensionID(w.Dimension())
 	if !ok {
 		return 0
 	}
-	t := w.set.tracker()
+	t := w.positionTracker()
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if handle < 0 {
+		handle = 0
+	}
 	key := positionTrackingKey(dim, pos)
-	if existing := t.byPosition[key]; existing != 0 {
+	if existing := t.byPosition[key]; handle == 0 && existing != 0 {
 		handle = existing
 	}
 	if handle == 0 {
@@ -160,10 +151,20 @@ func (w *World) TrackPosition(pos cube.Pos, handle int32) int32 {
 		}
 	}
 	if entry, exists := t.byHandle[handle]; exists {
-		delete(t.byPosition, positionTrackingKey(entry.dim, entry.pos))
+		oldKey := positionTrackingKey(entry.dim, entry.pos)
+		if t.byPosition[oldKey] == handle {
+			delete(t.byPosition, oldKey)
+		}
 		if !entry.active {
 			t.removeInactive(handle)
 		}
+	}
+	if oldHandle := t.byPosition[key]; oldHandle != 0 && oldHandle != handle {
+		old := t.byHandle[oldHandle]
+		old.active = false
+		t.byHandle[oldHandle] = old
+		t.inactive = append(t.inactive, oldHandle)
+		t.pruneInactive()
 	}
 	if handle > t.next {
 		t.next = handle
@@ -179,7 +180,7 @@ func (w *World) PositionTrackingHandleAt(pos cube.Pos) int32 {
 	if !ok {
 		return 0
 	}
-	t := w.set.tracker()
+	t := w.positionTracker()
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.byPosition[positionTrackingKey(dim, pos)]
@@ -191,12 +192,14 @@ func (w *World) UntrackPosition(pos cube.Pos) {
 	if !ok {
 		return
 	}
-	t := w.set.tracker()
+	t := w.positionTracker()
 	t.mu.Lock()
-	handle := t.byPosition[positionTrackingKey(dim, pos)]
+	key := positionTrackingKey(dim, pos)
+	handle := t.byPosition[key]
 	if entry, exists := t.byHandle[handle]; exists && entry.active {
 		entry.active = false
 		t.byHandle[handle] = entry
+		delete(t.byPosition, key)
 		t.inactive = append(t.inactive, handle)
 		t.pruneInactive()
 	} else {
@@ -220,7 +223,7 @@ func (w *World) UntrackPosition(pos cube.Pos) {
 
 // TrackedPosition looks up an active position tracking handle.
 func (w *World) TrackedPosition(handle int32) (cube.Pos, int, bool) {
-	t := w.set.tracker()
+	t := w.positionTracker()
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	entry, ok := t.byHandle[handle]
@@ -252,6 +255,9 @@ func (t *PositionTracker) pruneInactive() {
 			continue
 		}
 		delete(t.byHandle, handle)
-		delete(t.byPosition, positionTrackingKey(entry.dim, entry.pos))
+		key := positionTrackingKey(entry.dim, entry.pos)
+		if t.byPosition[key] == handle {
+			delete(t.byPosition, key)
+		}
 	}
 }

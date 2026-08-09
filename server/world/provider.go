@@ -33,6 +33,11 @@ type Provider interface {
 	StoreColumn(pos ChunkPos, dim Dimension, col *chunk.Column) error
 }
 
+type positionTrackingProvider interface {
+	LoadPositionTrackingData() (PositionTrackingData, error)
+	SavePositionTrackingData(PositionTrackingData) error
+}
+
 type providerKey struct {
 	typ   reflect.Type
 	ptr   uintptr
@@ -40,9 +45,26 @@ type providerKey struct {
 }
 
 type providerRef struct {
-	key    providerKey
-	refs   int
-	shared bool
+	key         providerKey
+	refs        int
+	shared      bool
+	trackerOnce sync.Once
+	tracker     *PositionTracker
+	trackerErr  error
+}
+
+func (r *providerRef) positionTracker(provider Provider) (*PositionTracker, error) {
+	r.trackerOnce.Do(func() {
+		r.tracker = NewPositionTracker()
+		if p, ok := provider.(positionTrackingProvider); ok {
+			var data PositionTrackingData
+			data, r.trackerErr = p.LoadPositionTrackingData()
+			if r.trackerErr == nil {
+				r.tracker.load(data)
+			}
+		}
+	})
+	return r.tracker, r.trackerErr
 }
 
 var providerRefs = struct {

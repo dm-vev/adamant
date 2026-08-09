@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/mcdb/leveldat"
 	"github.com/df-mc/goleveldb/leveldb"
+	"github.com/df-mc/goleveldb/leveldb/util"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
@@ -61,6 +64,121 @@ func (db *DB) SaveSettings(s *world.Settings) {
 	db.lmu.Lock()
 	defer db.lmu.Unlock()
 	db.ldat.PutSettings(s)
+}
+
+type positionTrackLastID struct {
+	ID      string `nbt:"id"`
+	Version byte   `nbt:"version"`
+}
+
+type positionTrackEntry struct {
+	Dimension int32   `nbt:"dim"`
+	ID        string  `nbt:"id"`
+	Position  []int32 `nbt:"pos"`
+	Status    byte    `nbt:"status"`
+	Version   byte    `nbt:"version"`
+}
+
+// LoadPositionTrackingData loads Bedrock's position tracking database.
+func (db *DB) LoadPositionTrackingData() (world.PositionTrackingData, error) {
+	db.lmu.Lock()
+	defer db.lmu.Unlock()
+
+	b, err := db.ldb.Get([]byte(keyPositionTrackLast), nil)
+	if errors.Is(err, leveldb.ErrNotFound) {
+		return world.PositionTrackingData{}, nil
+	} else if err != nil {
+		return world.PositionTrackingData{}, fmt.Errorf("read position tracking last ID: %w", err)
+	}
+	var last positionTrackLastID
+	if err := nbt.UnmarshalEncoding(b, &last, nbt.LittleEndian); err != nil {
+		return world.PositionTrackingData{}, fmt.Errorf("decode position tracking last ID: %w", err)
+	}
+	next, err := parsePositionTrackID(last.ID)
+	if err != nil {
+		return world.PositionTrackingData{}, fmt.Errorf("decode position tracking last ID: %w", err)
+	}
+	data := world.PositionTrackingData{Next: next}
+	iter := db.ldb.NewIterator(util.BytesPrefix([]byte(keyPositionTrackEntry)), nil)
+	defer iter.Release()
+	for iter.Next() {
+		n, err := strconv.ParseUint(strings.TrimPrefix(string(iter.Key()), keyPositionTrackEntry), 16, 31)
+		handle := int32(n)
+		if err != nil || handle == 0 || handle > next {
+			continue
+		}
+		var entry positionTrackEntry
+		if err := nbt.UnmarshalEncoding(iter.Value(), &entry, nbt.LittleEndian); err != nil || len(entry.Position) != 3 {
+			db.conf.Log.Warn("Ignoring invalid position tracking entry", "handle", handle)
+			continue
+		}
+		data.Entries = append(data.Entries, world.PositionTrackingEntry{
+			Handle: handle, Position: cube.Pos{int(entry.Position[0]), int(entry.Position[1]), int(entry.Position[2])},
+			Dimension: int(entry.Dimension), Active: entry.Status == 0,
+		})
+	}
+	if err := iter.Error(); err != nil {
+		return world.PositionTrackingData{}, fmt.Errorf("iterate position tracking entries: %w", err)
+	}
+	return data, nil
+}
+
+// SavePositionTrackingData saves Bedrock's position tracking database.
+func (db *DB) SavePositionTrackingData(data world.PositionTrackingData) error {
+	db.lmu.Lock()
+	defer db.lmu.Unlock()
+
+	batch := new(leveldb.Batch)
+	iter := db.ldb.NewIterator(util.BytesPrefix([]byte(keyPositionTrackEntry)), nil)
+	for iter.Next() {
+		batch.Delete(slices.Clone(iter.Key()))
+	}
+	if err := iter.Error(); err != nil {
+		iter.Release()
+		return fmt.Errorf("iterate position tracking entries: %w", err)
+	}
+	iter.Release()
+
+	last, err := nbt.MarshalEncoding(positionTrackLastID{ID: positionTrackID(data.Next), Version: 1}, nbt.LittleEndian)
+	if err != nil {
+		return fmt.Errorf("encode position tracking last ID: %w", err)
+	}
+	batch.Put([]byte(keyPositionTrackLast), last)
+	for _, tracked := range data.Entries {
+		if tracked.Handle <= 0 {
+			continue
+		}
+		status := byte(1)
+		if tracked.Active {
+			status = 0
+		}
+		entry, err := nbt.MarshalEncoding(positionTrackEntry{
+			Dimension: int32(tracked.Dimension), ID: positionTrackID(tracked.Handle),
+			Position: []int32{int32(tracked.Position[0]), int32(tracked.Position[1]), int32(tracked.Position[2])},
+			Status:   status, Version: 1,
+		}, nbt.LittleEndian)
+		if err != nil {
+			return fmt.Errorf("encode position tracking entry %d: %w", tracked.Handle, err)
+		}
+		batch.Put(positionTrackKey(tracked.Handle), entry)
+	}
+	if err := db.ldb.Write(batch, nil); err != nil {
+		return fmt.Errorf("write position tracking data: %w", err)
+	}
+	return nil
+}
+
+func positionTrackKey(handle int32) []byte {
+	return []byte(keyPositionTrackEntry + fmt.Sprintf("%08x", uint32(handle)))
+}
+
+func positionTrackID(handle int32) string {
+	return fmt.Sprintf("0x%08x", uint32(handle))
+}
+
+func parsePositionTrackID(id string) (int32, error) {
+	n, err := strconv.ParseUint(strings.TrimPrefix(id, "0x"), 16, 31)
+	return int32(n), err
 }
 
 // playerData holds the fields that indicate where player data is stored for a player with a specific UUID.
