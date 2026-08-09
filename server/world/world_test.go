@@ -97,6 +97,124 @@ func TestSynchronousWorldTicksAdvancePerDimension(t *testing.T) {
 	}
 }
 
+func TestSharedProviderClosesAfterLastWorld(t *testing.T) {
+	for _, ownerFirst := range []bool{true, false} {
+		name := "owner_last"
+		if ownerFirst {
+			name = "owner_first"
+		}
+		t.Run(name, func(t *testing.T) {
+			settings := defaultSettings()
+			provider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
+			owner := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
+			other := Config{Provider: provider, Dim: testDimension{i: 1029}, Synchronous: true}.New()
+			t.Cleanup(func() {
+				_ = owner.Close()
+				_ = other.Close()
+			})
+
+			first, remaining := other, owner
+			if ownerFirst {
+				first, remaining = owner, other
+			}
+			if err := first.Close(); err != nil {
+				t.Fatalf("close first world: %v", err)
+			}
+			if got := provider.closes.Load(); got != 0 {
+				t.Fatalf("provider closed with a world remaining: %d", got)
+			}
+
+			startTick, startTime := settings.CurrentTick, settings.Time
+			remaining.AdvanceTick()
+			if got := settings.CurrentTick; got != startTick+1 {
+				t.Fatalf("shared tick after handoff = %d, want %d", got, startTick+1)
+			}
+			if got := settings.Time; got != startTime+1 {
+				t.Fatalf("shared time after handoff = %d, want %d", got, startTime+1)
+			}
+			saves := provider.saves.Load()
+			remaining.Save()
+			if got := provider.saves.Load(); got != saves+1 {
+				t.Fatalf("remaining world saves = %d, want %d", got, saves+1)
+			}
+
+			if err := remaining.Close(); err != nil {
+				t.Fatalf("close remaining world: %v", err)
+			}
+			if got := provider.closes.Load(); got != 1 {
+				t.Fatalf("provider close count = %d, want 1", got)
+			}
+		})
+	}
+}
+
+func TestIndependentProvidersSharingSettingsCloseIndependently(t *testing.T) {
+	settings := defaultSettings()
+	firstProvider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
+	secondProvider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
+	first := Config{Provider: firstProvider, Synchronous: true}.New()
+	second := Config{Provider: secondProvider, Dim: Nether, Synchronous: true}.New()
+	t.Cleanup(func() {
+		_ = first.Close()
+		_ = second.Close()
+	})
+
+	if err := first.Close(); err != nil {
+		t.Fatalf("close first world: %v", err)
+	}
+	if got := firstProvider.closes.Load(); got != 1 {
+		t.Fatalf("first provider close count = %d, want 1", got)
+	}
+	if got := secondProvider.closes.Load(); got != 0 {
+		t.Fatalf("second provider closed early: %d", got)
+	}
+	if err := second.Close(); err != nil {
+		t.Fatalf("close second world: %v", err)
+	}
+	if got := secondProvider.closes.Load(); got != 1 {
+		t.Fatalf("second provider close count = %d, want 1", got)
+	}
+}
+
+func TestSharedProviderWithDistinctSettingsClosesOnce(t *testing.T) {
+	provider := &lifecycleProvider{freshSettings: true}
+	first := Config{Provider: provider, Synchronous: true}.New()
+	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
+	t.Cleanup(func() {
+		_ = first.Close()
+		_ = second.Close()
+	})
+
+	if err := first.Close(); err != nil {
+		t.Fatalf("close first world: %v", err)
+	}
+	if got := provider.closes.Load(); got != 0 {
+		t.Fatalf("shared provider closed early: %d", got)
+	}
+	if err := second.Close(); err != nil {
+		t.Fatalf("close second world: %v", err)
+	}
+	if got := provider.closes.Load(); got != 1 {
+		t.Fatalf("shared provider close count = %d, want 1", got)
+	}
+}
+
+type lifecycleProvider struct {
+	NopProvider
+	freshSettings bool
+	saves         atomic.Int32
+	closes        atomic.Int32
+}
+
+func (p *lifecycleProvider) Settings() *Settings {
+	if p.freshSettings {
+		return defaultSettings()
+	}
+	return p.NopProvider.Settings()
+}
+func (p *lifecycleProvider) SaveSettings(*Settings) { p.saves.Add(1) }
+func (p *lifecycleProvider) Close() error           { p.closes.Add(1); return nil }
+
 func TestCloseDoesNotLeaveOwnerWaitingForGeneration(t *testing.T) {
 	w := Config{GeneratorWorkers: 1, GeneratorQueueSize: 1}.New()
 

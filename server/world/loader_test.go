@@ -2,17 +2,126 @@ package world
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
 // nopViewer implements Viewer with no-ops to avoid depending on the production
 // session implementation for tests.
 type nopViewer struct{ NopViewer }
+
+func TestLoaderViewChunkAllowsViewerReentry(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	v := &loaderReentryViewer{}
+	l := NewLoader(1, w, v)
+	v.loader = l
+	pos := ChunkPos{}
+	col := readyTestColumn(w, pos)
+
+	done := make(chan struct{})
+	go func() {
+		w.Do(func(tx *Tx) {
+			v.tx = tx
+			l.viewChunk(tx, pos, col)
+		})
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("viewer re-entry deadlocked Loader.viewChunk")
+	}
+	if !v.sawChunk {
+		t.Fatal("Chunk did not observe the chunk before ViewChunk returned")
+	}
+	l.mu.RLock()
+	closed := l.closed
+	l.mu.RUnlock()
+	if !closed {
+		t.Fatal("viewer Close did not close loader")
+	}
+	if _, ok := l.Chunk(pos); ok {
+		t.Fatal("closed loader retained chunk after viewer Move and Close")
+	}
+}
+
+type loaderReentryViewer struct {
+	NopViewer
+	loader   *Loader
+	tx       *Tx
+	sawChunk bool
+}
+
+func (v *loaderReentryViewer) ViewChunk(pos ChunkPos, _ Dimension, _ *Column) {
+	_, v.sawChunk = v.loader.Chunk(pos)
+	v.loader.Move(v.tx, mgl64.Vec3{64, 0, 0})
+	v.loader.Close(v.tx)
+}
+
+func TestChunkCallbackPanicDoesNotSkipOtherLoaders(t *testing.T) {
+	w := Config{Synchronous: true, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	pos := ChunkPos{}
+	col := readyTestColumn(w, pos)
+	panicking := NewLoader(0, w, panicChunkViewer{})
+	viewed := &countChunkViewer{}
+	healthy := NewLoader(0, w, viewed)
+	for _, loader := range []*Loader{panicking, healthy} {
+		loader.mu.Lock()
+		loader.pending[pos] = struct{}{}
+		loader.mu.Unlock()
+	}
+
+	w.Do(func(tx *Tx) {
+		w.chunks[pos] = col
+		w.chunkRequests[pos] = []chunkCallback{
+			func(tx *Tx, col *Column) { panicking.viewChunk(tx, pos, col) },
+			func(tx *Tx, col *Column) { healthy.viewChunk(tx, pos, col) },
+		}
+		w.finishChunkRequest(tx, pos, col)
+	})
+
+	if viewed.count != 1 {
+		t.Fatalf("healthy viewer callback count = %d, want 1", viewed.count)
+	}
+	if _, ok := healthy.Chunk(pos); !ok {
+		t.Fatal("healthy loader did not publish completed chunk")
+	}
+	for name, loader := range map[string]*Loader{"panicking": panicking, "healthy": healthy} {
+		loader.mu.RLock()
+		_, pending := loader.pending[pos]
+		loader.mu.RUnlock()
+		if pending {
+			t.Fatalf("%s loader retained pending request", name)
+		}
+	}
+}
+
+type panicChunkViewer struct{ NopViewer }
+
+func (panicChunkViewer) ViewChunk(ChunkPos, Dimension, *Column) { panic("view chunk") }
+
+type countChunkViewer struct {
+	NopViewer
+	count int
+}
+
+func (v *countChunkViewer) ViewChunk(ChunkPos, Dimension, *Column) { v.count++ }
+
+func readyTestColumn(w *World, pos ChunkPos) *Column {
+	col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+	col.fillLight(pos)
+	col.markReady()
+	return col
+}
 
 // TestChunkCallbackDoesNotReenterLoader checks that viewing an entity may load
 // another pending chunk without re-entering Loader.viewChunk under Loader.mu.

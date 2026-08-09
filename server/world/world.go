@@ -64,7 +64,8 @@ type World struct {
 
 	o sync.Once
 
-	set *Settings
+	set         *Settings
+	providerUse *providerRef
 	// tick is the per-world tick counter used by worlds that do not advance the
 	// shared Settings, such as the Nether, End and custom dimensions.
 	tick    int64
@@ -1672,9 +1673,26 @@ func (w *World) close() {
 	close(w.queueClosing)
 	w.queueing.Wait()
 
-	if w.set.ref.Add(-1); !w.advance {
+	w.set.Lock()
+	delete(w.set.worlds, w)
+	if w.set.owner == w {
+		w.set.owner = nil
+		for next := range w.set.worlds {
+			if next.tick > w.set.CurrentTick {
+				w.set.CurrentTick = next.tick
+			}
+			next.tick = w.set.CurrentTick
+			next.advance = true
+			w.set.owner = next
+			break
+		}
+	}
+	w.advance = false
+	w.set.Unlock()
+	if !releaseProvider(w.providerUse) {
 		return
 	}
+
 	w.conf.Log.Debug("Closing provider...")
 	if err := w.conf.Provider.Close(); err != nil {
 		w.conf.Log.Error("close world provider: " + err.Error())
@@ -1721,17 +1739,19 @@ func (w *World) addWorldViewer(l *Loader) {
 // addViewer adds a viewer to the World at a given position. Any events that
 // happen in the chunk at that position, such as block and entity changes, will
 // be sent to the viewer.
-func (w *World) addViewer(tx *Tx, pos ChunkPos, c *Column, loader *Loader) {
-	if loader.viewer != nil {
-		c.viewers[loader.viewer] = struct{}{}
+func (w *World) addViewer(pos ChunkPos, c *Column, loader *Loader, viewer Viewer) {
+	if viewer != nil {
+		c.viewers[viewer] = struct{}{}
 	}
 	c.loaders = append(c.loaders, loader)
 
 	w.addActiveColumn(pos, c)
+}
 
+func (w *World) viewChunkEntities(tx *Tx, c *Column, viewer Viewer) {
 	for _, entity := range c.Entities {
 		if ent, ok := entity.Entity(tx); ok {
-			showEntity(ent, loader.viewer)
+			showEntity(ent, viewer)
 		}
 	}
 }
@@ -1941,14 +1961,15 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 	if w.closed.Load() {
 		return
 	}
-	tx.Defer(func(tx *Tx) {
-		if w.closed.Load() {
-			return
-		}
-		for _, callback := range callbacks {
+	for _, callback := range callbacks {
+		callback := callback
+		tx.Defer(func(tx *Tx) {
+			if w.closed.Load() {
+				return
+			}
 			callback(tx, c)
-		}
-	})
+		})
+	}
 }
 
 // generateChunkAsync schedules an asynchronous chunk generation task for the given position.

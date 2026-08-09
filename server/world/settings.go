@@ -2,7 +2,6 @@ package world
 
 import (
 	"sync"
-	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
@@ -11,7 +10,9 @@ import (
 // Settings to multiple worlds created using New, in which case the Settings are synchronised between the worlds.
 type Settings struct {
 	sync.Mutex
-	ref atomic.Int32
+
+	owner  *World
+	worlds map[*World]struct{}
 
 	// Name is the display name of the World.
 	Name string

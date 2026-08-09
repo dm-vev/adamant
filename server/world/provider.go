@@ -6,6 +6,8 @@ import (
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/google/uuid"
 	"io"
+	"reflect"
+	"sync"
 )
 
 // Provider represents a value that may provide world data to a World value. It usually does the reading and
@@ -29,6 +31,70 @@ type Provider interface {
 	// StoreColumn stores a world.Column at a position and dimension in the DB.
 	// An error is returned if storing was unsuccessful.
 	StoreColumn(pos ChunkPos, dim Dimension, col *chunk.Column) error
+}
+
+type providerKey struct {
+	typ   reflect.Type
+	ptr   uintptr
+	value any
+}
+
+type providerRef struct {
+	key    providerKey
+	refs   int
+	shared bool
+}
+
+var providerRefs = struct {
+	sync.Mutex
+	m map[providerKey]*providerRef
+}{m: make(map[providerKey]*providerRef)}
+
+func retainProvider(provider Provider) *providerRef {
+	key, ok := providerIdentity(provider)
+	if !ok {
+		return &providerRef{refs: 1}
+	}
+	providerRefs.Lock()
+	defer providerRefs.Unlock()
+	if ref := providerRefs.m[key]; ref != nil {
+		ref.refs++
+		return ref
+	}
+	ref := &providerRef{key: key, refs: 1, shared: true}
+	providerRefs.m[key] = ref
+	return ref
+}
+
+func releaseProvider(ref *providerRef) bool {
+	if !ref.shared {
+		return true
+	}
+	providerRefs.Lock()
+	defer providerRefs.Unlock()
+	ref.refs--
+	if ref.refs != 0 {
+		return false
+	}
+	delete(providerRefs.m, ref.key)
+	return true
+}
+
+func providerIdentity(provider Provider) (providerKey, bool) {
+	typ := reflect.TypeOf(provider)
+	if typ == nil {
+		return providerKey{}, false
+	}
+	if typ.Comparable() {
+		return providerKey{typ: typ, value: provider}, true
+	}
+	value := reflect.ValueOf(provider)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
+		return providerKey{typ: typ, ptr: value.Pointer()}, true
+	default:
+		return providerKey{}, false
+	}
 }
 
 // Compile time check to make sure NopProvider implements Provider.

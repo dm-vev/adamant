@@ -162,7 +162,6 @@ func (conf Config) New() *World {
 	s := conf.Provider.Settings()
 	s.Lock()
 	currentTick := s.CurrentTick
-	s.Unlock()
 	w := &World{
 		scheduledUpdates:  newScheduledTickQueue(currentTick),
 		redstone:          newRedstoneEngine(currentTick),
@@ -177,14 +176,23 @@ func (conf Config) New() *World {
 		queue:             make(chan transaction, 128),
 		generatorQueue:    make(chan generationTask, conf.GeneratorQueueSize),
 		r:                 rand.New(conf.RandSource),
-		advance:           s.ref.Add(1) == 1,
 		conf:              conf,
 		ra:                conf.Dim.Range(),
 		set:               s,
+		providerUse:       retainProvider(conf.Provider),
 		tick:              currentTick,
 		activeColumnIndex: make(map[ChunkPos]int),
 		entityColumnIndex: make(map[ChunkPos]int),
 	}
+	if s.worlds == nil {
+		s.worlds = make(map[*World]struct{})
+	}
+	if s.owner == nil {
+		s.owner = w
+		w.advance = true
+	}
+	s.worlds[w] = struct{}{}
+	s.Unlock()
 	w.weather = weather{w: w}
 	var h Handler = NopHandler{}
 	w.handler.Store(&h)

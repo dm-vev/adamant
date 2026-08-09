@@ -161,27 +161,54 @@ func (l *Loader) Load(tx *Tx, n int) {
 // to load, it is queued to be loaded again.
 func (l *Loader) viewChunk(tx *Tx, pos ChunkPos, c *Column) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	if l.closed || l.changing || l.viewer == nil || l.w == nil || l.w != tx.World() {
+		l.mu.Unlock()
 		return
 	}
 	delete(l.pending, pos)
 	l.removeQueued(pos)
 	if c == nil {
 		l.queueLoad(pos)
+		l.mu.Unlock()
 		return
 	}
 	if _, ok := l.loaded[pos]; ok {
+		l.mu.Unlock()
 		return
 	}
 	if !l.withinLoadRadius(pos) {
+		l.mu.Unlock()
 		return
 	}
-	l.viewer.ViewChunk(pos, l.w.Dimension(), c)
-	l.w.addViewer(tx, pos, c, l)
-
 	l.loaded[pos] = c
+	w, viewer := l.w, l.viewer
+	dim := w.Dimension()
+	l.mu.Unlock()
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				l.mu.Lock()
+				if l.loaded[pos] == c {
+					delete(l.loaded, pos)
+					l.queueLoad(pos)
+				}
+				l.mu.Unlock()
+				panic(r)
+			}
+		}()
+		viewer.ViewChunk(pos, dim, c)
+	}()
+
+	l.mu.Lock()
+	if l.closed || l.changing || l.viewer != viewer || l.w != w || l.loaded[pos] != c || !l.withinLoadRadius(pos) {
+		l.mu.Unlock()
+		return
+	}
+	w.addViewer(pos, c, l, viewer)
+	l.mu.Unlock()
+
+	w.viewChunkEntities(tx, c, viewer)
 }
 
 // Chunk attempts to return a chunk at the given ChunkPos. If the chunk is not loaded, the second return value will
