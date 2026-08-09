@@ -173,3 +173,37 @@ func TestPistonNBT(t *testing.T) {
 		t.Fatalf("decoded moving block = %#v, want %#v", decodedMoving, moving)
 	}
 }
+
+func TestPistonRestoresMovingBlockWithRegistry(t *testing.T) {
+	registry, custom := containerTestBlockRegistry()
+	w := world.Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+
+	chest := NewChest()
+	if err := chest.inventory.SetItem(0, item.NewStack(custom, 2)); err != nil {
+		t.Fatal(err)
+	}
+	movingNBT := world.DecodeNBT(MovingBlock{}, MovingBlock{
+		Moving:       custom,
+		MovingEntity: chest.EncodeNBT(),
+		PistonPos:    cube.Pos{},
+	}.EncodeNBT(), registry).(MovingBlock)
+	if movingNBT.Moving != custom {
+		t.Fatalf("moving block = %#v, want %#v", movingNBT.Moving, custom)
+	}
+
+	<-w.Exec(func(tx *world.Tx) {
+		movingPos := cube.Pos{2, 0, 0}
+		tx.SetBlock(movingPos, MovingBlock{Moving: Chest{}, MovingEntity: movingNBT.MovingEntity}, nil)
+		piston := Piston{Facing: cube.FaceEast, Extending: true, Attached: []cube.Pos{{1, 0, 0}}}
+		piston.finishMove(cube.Pos{}, tx)
+		decoded := tx.Block(movingPos).(Chest)
+		got, err := decoded.inventory.Item(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Count() != 2 || got.Item() != custom {
+			t.Fatalf("moved chest item = %#v x%d, want %#v x2", got.Item(), got.Count(), custom)
+		}
+	})
+}

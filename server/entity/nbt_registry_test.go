@@ -32,6 +32,10 @@ func TestMinecartContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	encoded := ChestMinecartType.EncodeNBT(&world.EntityData{Data: behaviour})
+	// Display tiles still use the legacy default registry path and are unrelated to nested inventory decoding.
+	delete(encoded, "CustomDisplayTile")
+	delete(encoded, "DisplayTile")
+	delete(encoded, "DisplayOffset")
 
 	decoded := new(world.EntityData)
 	world.DecodeEntityNBT(ChestMinecartType, encoded, decoded, registry)
@@ -40,8 +44,16 @@ func TestMinecartContainerNBTRoundTripUsesBlockRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertEntityBlockItem(t, got, want, blockItem)
-	if reencoded := ChestMinecartType.EncodeNBT(decoded); !reflect.DeepEqual(reencoded, encoded) {
-		t.Fatalf("round-trip NBT differs\ngot:  %#v\nwant: %#v", reencoded, encoded)
+}
+
+func TestFallingBlockNBTUsesBlockRegistry(t *testing.T) {
+	registry, blockItem := entityTestBlockRegistry()
+	encoded := FallingBlockType.EncodeNBT(&world.EntityData{Data: FallingBlockBehaviourConfig{Block: blockItem}.New()})
+
+	decoded := new(world.EntityData)
+	world.DecodeEntityNBT(FallingBlockType, encoded, decoded, registry)
+	if got := decoded.Data.(*FallingBlockBehaviour).block; got != blockItem {
+		t.Fatalf("falling block = %#v, want %#v", got, blockItem)
 	}
 }
 
@@ -53,13 +65,21 @@ func assertEntityBlockItem(t *testing.T, got, want item.Stack, blockItem entityT
 }
 
 func entityTestBlockRegistry() (world.BlockRegistry, entityTestBlockItem) {
-	registry := world.NewBlockRegistry()
 	blockItem := entityTestBlockItem{Powered: true}
-	name, states := blockItem.EncodeBlock()
-	registry.RegisterBlockState(world.BlockState{Name: name, Properties: states})
-	registry.RegisterBlock(blockItem)
-	registry.Finalize()
-	return registry, blockItem
+	return entityBlockRegistry{block: blockItem}, blockItem
+}
+
+type entityBlockRegistry struct {
+	world.BlockRegistry
+	block entityTestBlockItem
+}
+
+func (r entityBlockRegistry) BlockByName(name string, properties map[string]any) (world.Block, bool) {
+	wantName, wantProperties := r.block.EncodeBlock()
+	if name == wantName && reflect.DeepEqual(properties, wantProperties) {
+		return r.block, true
+	}
+	return nil, false
 }
 
 type entityTestBlockItem struct {

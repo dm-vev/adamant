@@ -146,11 +146,15 @@ func PosToInt32Slice(x cube.Pos) []int32 {
 }
 
 // Block decodes the data of a block into a world.Block.
-func Block(m map[string]any, k string) world.Block {
+func Block(m map[string]any, k string, registries ...world.BlockRegistry) world.Block {
 	if mk, ok := m[k].(map[string]any); ok {
 		name, _ := mk["name"].(string)
 		properties, _ := mk["states"].(map[string]any)
-		b, _ := world.BlockByName(name, properties)
+		registry := world.BlockRegistryFromNBT(m)
+		if len(registries) != 0 && registries[0] != nil {
+			registry = registries[0]
+		}
+		b, _ := registry.BlockByName(name, properties)
 		return b
 	}
 	return nil

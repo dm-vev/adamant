@@ -1309,7 +1309,7 @@ func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack {
 	}
 	//noinspection SpellCheckingInspection
 	if nbter, ok := t.(world.NBTer); ok && len(it.NBTData) != 0 {
-		t = nbter.DecodeNBT(it.NBTData).(world.Item)
+		t = world.DecodeNBT(nbter, it.NBTData, br).(world.Item)
 	}
 	s := item.NewStack(t, int(it.Count))
 	return item.ReadNBT(it.NBTData, &s, br)

@@ -239,7 +239,7 @@ func (p *Piston) finishMove(pos cube.Pos, tx *world.Tx) {
 				movingEntity["x"] = int32(movingPos.X())
 				movingEntity["y"] = int32(movingPos.Y())
 				movingEntity["z"] = int32(movingPos.Z())
-				if decoded, ok := nbtBlock.DecodeNBT(movingEntity).(world.Block); ok {
+				if decoded, ok := world.DecodeNBT(nbtBlock, movingEntity, tx.World().BlockRegistry()).(world.Block); ok {
 					moved = decoded
 				}
 			}
