@@ -84,6 +84,18 @@ func (h *InventoryTransactionHandler) resendInventories(s *Session) {
 	s.sendInv(s.armour.Inventory(), protocol.WindowIDArmour)
 }
 
+// resendHeldSlot sends the authoritative stack after a client-predicted action.
+func (h *InventoryTransactionHandler) resendHeldSlot(s *Session) error {
+	heldSlot := s.heldSlot.Load()
+	if heldSlot == nil {
+		return fmt.Errorf("held slot not initialised for inventory transaction")
+	}
+	slot := int(atomic.LoadUint32(heldSlot))
+	it, _ := s.inv.Item(slot)
+	s.sendItem(it, slot, protocol.WindowIDInventory)
+	return nil
+}
+
 // handleNormalTransaction ...
 func (h *InventoryTransactionHandler) handleNormalTransaction(pk *packet.InventoryTransaction, s *Session, c Controllable) error {
 	if len(pk.Actions) != 2 {
@@ -168,25 +180,15 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *pro
 		s.conf.Log.Debug("invalid entity interaction: entity is not in the same world (anymore)", "ID", data.TargetEntityRuntimeID)
 		return nil
 	}
-	var valid bool
 	switch data.ActionType {
 	case protocol.UseItemOnEntityActionInteract:
-		valid = c.UseItemOnEntity(e)
+		c.UseItemOnEntity(e)
 	case protocol.UseItemOnEntityActionAttack:
-		valid = c.AttackEntity(e)
+		c.AttackEntity(e)
 	default:
 		return fmt.Errorf("unhandled UseItemOnEntity ActionType %v", data.ActionType)
 	}
-	if !valid {
-		heldSlot := s.heldSlot.Load()
-		if heldSlot == nil {
-			return fmt.Errorf("held slot not initialised for inventory transaction")
-		}
-		slot := int(atomic.LoadUint32(heldSlot))
-		it, _ := s.inv.Item(slot)
-		s.sendItem(it, slot, protocol.WindowIDInventory)
-	}
-	return nil
+	return h.resendHeldSlot(s)
 }
 
 // handleUseItemTransaction ...
@@ -197,12 +199,6 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *protocol.Us
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
 	}
-
-	// We reset the inventory so that we can send the held item update without the client already
-	// having done that client-side.
-	// Because of the new inventory system, the client will expect a transaction confirmation, but instead of doing that
-	// it's much easier to just resend the inventory.
-	h.resendInventories(s)
 
 	switch data.ActionType {
 	case protocol.UseItemActionBreakBlock:
@@ -218,7 +214,7 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *protocol.Us
 	default:
 		return fmt.Errorf("unhandled UseItem ActionType %v", data.ActionType)
 	}
-	return nil
+	return h.resendHeldSlot(s)
 }
 
 // handleReleaseItemTransaction ...
