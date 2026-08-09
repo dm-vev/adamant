@@ -105,6 +105,97 @@ func TestNeighbourUpdatesWaitForTrackedChunkReadiness(t *testing.T) {
 	}
 }
 
+func TestNeighbourUpdatesRotatePendingFrontAndLimitReadyTail(t *testing.T) {
+	provider := &neighbourUpdateCountingProvider{}
+	w := Config{Provider: provider, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	pendingChunk, readyChunk := ChunkPos{1, 0}, ChunkPos{2, 0}
+	w.chunks[pendingChunk] = newColumn(chunk.New(w.conf.Blocks, w.Range()))
+	ready := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+	ready.fillLight(readyChunk)
+	ready.markReady()
+	w.chunks[readyChunk] = ready
+
+	pendingPos, readyPos := cube.Pos{16, 0, 0}, cube.Pos{32, 0, 0}
+	pendingCount, readyCount := maxNeighbourUpdatesPerTick+1, maxNeighbourUpdatesPerTick+1
+	w.neighbourUpdates = make([]neighbourUpdate, 0, pendingCount+readyCount)
+	for range pendingCount {
+		w.neighbourUpdates = append(w.neighbourUpdates, neighbourUpdate{pos: pendingPos})
+	}
+	for range readyCount {
+		w.neighbourUpdates = append(w.neighbourUpdates, neighbourUpdate{pos: readyPos})
+	}
+	capacity, loads := cap(w.neighbourUpdates), provider.loads.Load()
+
+	w.AdvanceTick()
+
+	if got := len(w.neighbourUpdates); got != pendingCount+1 {
+		t.Fatalf("remaining neighbour updates = %d, want %d", got, pendingCount+1)
+	}
+	if w.neighbourUpdates[0].pos != readyPos {
+		t.Fatalf("first remaining update = %v, want ready update %v", w.neighbourUpdates[0].pos, readyPos)
+	}
+	for i, update := range w.neighbourUpdates[1:] {
+		if update.pos != pendingPos {
+			t.Fatalf("remaining update %d = %v, want pending update %v", i+1, update.pos, pendingPos)
+		}
+	}
+	if got := cap(w.neighbourUpdates); got != capacity {
+		t.Fatalf("neighbour update queue capacity = %d, want %d", got, capacity)
+	}
+	if got := provider.loads.Load(); got != loads {
+		t.Fatalf("neighbour updates loaded %d additional chunks", got-loads)
+	}
+}
+
+func TestNeighbourUpdatesMixedReadinessPreservesMechanicsOrder(t *testing.T) {
+	var updates []string
+	bubble := &neighbourMechanicsTestBlock{name: "bubble", updates: &updates}
+	displacer := &neighbourMechanicsTestBlock{name: "displacer"}
+	redstone := &neighbourMechanicsTestBlock{name: "redstone", updates: &updates}
+	liquid := &neighbourMechanicsTestLiquid{updates: &updates}
+	registry := NewBlockRegistry()
+	for _, b := range []Block{bubble, displacer, redstone, liquid} {
+		name, properties := b.EncodeBlock()
+		registry.RegisterBlockState(BlockState{Name: name, Properties: properties})
+		registry.RegisterBlock(b)
+	}
+	w := Config{Blocks: registry, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+
+	bubblePos, liquidPos, redstonePos := cube.Pos{0, 64, 0}, cube.Pos{1, 64, 0}, cube.Pos{2, 64, 0}
+	w.Do(func(tx *Tx) {
+		opts := &SetOpts{DisableBlockUpdates: true, DisableRedstoneUpdates: true}
+		tx.SetBlock(bubblePos, bubble, opts)
+		tx.SetBlock(liquidPos, displacer, opts)
+		tx.SetLiquid(liquidPos, liquid)
+		tx.SetBlock(redstonePos, redstone, opts)
+	})
+	w.neighbourUpdates = []neighbourUpdate{
+		{pos: cube.Pos{16, 64, 0}},
+		{pos: bubblePos},
+		{pos: liquidPos},
+		{pos: redstonePos},
+	}
+	w.chunks[ChunkPos{1, 0}] = newColumn(chunk.New(w.conf.Blocks, w.Range()))
+
+	w.AdvanceTick()
+
+	want := []string{"bubble", "liquid", "redstone"}
+	if len(updates) != len(want) {
+		t.Fatalf("mechanics updates = %v, want %v", updates, want)
+	}
+	for i := range want {
+		if updates[i] != want[i] {
+			t.Fatalf("mechanics updates = %v, want %v", updates, want)
+		}
+	}
+	if got := w.neighbourUpdates; len(got) != 1 || got[0].pos != (cube.Pos{16, 64, 0}) {
+		t.Fatalf("pending neighbour updates = %v, want generating entry", got)
+	}
+}
+
 func TestSynchronousWorldTicksAdvancePerDimension(t *testing.T) {
 	settings := defaultSettings()
 	provider := NopProvider{Set: settings}
@@ -720,6 +811,61 @@ func (c boundaryTickerConfig) Apply(data *EntityData) { data.Data = c }
 type testTickerBlock struct {
 	ticks int
 }
+
+type neighbourMechanicsTestBlock struct {
+	name    string
+	updates *[]string
+}
+
+func (b *neighbourMechanicsTestBlock) NeighbourUpdateTick(cube.Pos, cube.Pos, *Tx) {
+	if b.updates != nil {
+		*b.updates = append(*b.updates, b.name)
+	}
+}
+
+func (b *neighbourMechanicsTestBlock) CanDisplace(Liquid) bool { return true }
+func (*neighbourMechanicsTestBlock) SideClosed(cube.Pos, cube.Pos, *Tx) bool {
+	return false
+}
+func (b *neighbourMechanicsTestBlock) EncodeBlock() (string, map[string]any) {
+	return "test:" + b.name, nil
+}
+func (b *neighbourMechanicsTestBlock) Hash() (uint64, uint64) {
+	switch b.name {
+	case "bubble":
+		return 1 << 45, 0
+	case "displacer":
+		return 1 << 46, 0
+	default:
+		return 1 << 47, 0
+	}
+}
+func (*neighbourMechanicsTestBlock) Model() BlockModel { return unknownModel{} }
+
+type neighbourMechanicsTestLiquid struct {
+	updates *[]string
+}
+
+func (l *neighbourMechanicsTestLiquid) NeighbourUpdateTick(cube.Pos, cube.Pos, *Tx) {
+	*l.updates = append(*l.updates, "liquid")
+}
+func (*neighbourMechanicsTestLiquid) EncodeBlock() (string, map[string]any) {
+	return "test:liquid", nil
+}
+func (*neighbourMechanicsTestLiquid) Hash() (uint64, uint64) { return 1 << 48, 0 }
+func (*neighbourMechanicsTestLiquid) Model() BlockModel      { return unknownModel{} }
+func (*neighbourMechanicsTestLiquid) LiquidDepth() int       { return 8 }
+func (*neighbourMechanicsTestLiquid) SpreadDecay() int       { return 1 }
+func (l *neighbourMechanicsTestLiquid) WithDepth(int, bool) Liquid {
+	return l
+}
+func (*neighbourMechanicsTestLiquid) LiquidFalling() bool      { return false }
+func (*neighbourMechanicsTestLiquid) BlastResistance() float64 { return 100 }
+func (*neighbourMechanicsTestLiquid) LiquidType() string       { return "test" }
+func (*neighbourMechanicsTestLiquid) Harden(cube.Pos, *Tx, *cube.Pos) bool {
+	return false
+}
+func (*neighbourMechanicsTestLiquid) LiquidRemoveBlock(cube.Pos, *Tx, Block) {}
 
 type blockingOpenState struct {
 	opens      atomic.Int32

@@ -1428,13 +1428,19 @@ func (w *World) SetFallDamage(v bool) {
 		return
 	}
 	w.set.Lock()
-	defer w.set.Unlock()
 	if w.set.FallDamage == v {
+		w.set.Unlock()
 		return
 	}
 	w.set.FallDamage = v
+	viewersByWorld := make(map[*World][]Viewer, len(w.set.worlds))
 	for shared := range w.set.worlds {
 		viewers, _ := shared.allViewers()
+		viewersByWorld[shared] = viewers
+	}
+	w.set.Unlock()
+
+	for shared, viewers := range viewersByWorld {
 		for _, viewer := range viewers {
 			if viewer, ok := viewer.(interface{ ViewFallDamage(bool) }); ok {
 				viewer.ViewFallDamage(v)

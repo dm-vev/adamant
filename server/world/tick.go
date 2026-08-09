@@ -169,10 +169,11 @@ func (t ticker) tick(tx *Tx) {
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.
 func (t ticker) performNeighbourUpdates(tx *Tx) {
 	w := tx.World()
-	processed, retained := 0, 0
-	for processed < len(w.neighbourUpdates) && processed < maxNeighbourUpdatesPerTick {
-		update := w.neighbourUpdates[processed]
-		processed++
+	snapshot := len(w.neighbourUpdates)
+	examined, processed, retained := 0, 0, 0
+	for examined < snapshot && processed < maxNeighbourUpdatesPerTick {
+		update := w.neighbourUpdates[examined]
+		examined++
 		pos, changedNeighbour := update.pos, update.neighbour
 		b, ready := tx.BlockLoaded(pos)
 		if !ready {
@@ -182,6 +183,7 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 			}
 			continue
 		}
+		processed++
 		if ticker, ok := b.(NeighbourUpdateTicker); ok {
 			ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 		}
@@ -191,9 +193,13 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 			}
 		}
 	}
-	remaining := len(w.neighbourUpdates) - processed
-	copy(w.neighbourUpdates[retained:], w.neighbourUpdates[processed:])
+	remaining := len(w.neighbourUpdates) - examined
+	copy(w.neighbourUpdates[retained:], w.neighbourUpdates[examined:])
 	w.neighbourUpdates = w.neighbourUpdates[:retained+remaining]
+	// Move generating entries behind unexamined and newly queued updates without allocating.
+	slices.Reverse(w.neighbourUpdates[:retained])
+	slices.Reverse(w.neighbourUpdates[retained:])
+	slices.Reverse(w.neighbourUpdates)
 }
 
 // tickBlocksRandomly executes random block ticks in loaded chunks within range of loaders. Synchronous worlds tick
