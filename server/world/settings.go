@@ -1,6 +1,7 @@
 package world
 
 import (
+	"math/rand/v2"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -61,6 +62,8 @@ func defaultSettings() *Settings {
 		Difficulty:                DifficultyNormal,
 		TimeCycle:                 true,
 		WeatherCycle:              true,
+		RainTime:                  int64(rand.IntN(8400)+600) * 20,
+		ThunderTime:               int64(rand.IntN(8400)+600) * 20,
 		TickRange:                 6,
 		FallDamage:                true,
 		PlayersSleepingPercentage: 100,
