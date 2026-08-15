@@ -28,7 +28,8 @@ type blockState struct {
 type inputItem struct {
 	// Name is the name of the item being inputted.
 	Name string `nbt:"name"`
-	// Meta is the meta of the item. This can change the item almost completely, or act as durability.
+	// Meta may change the item almost completely, or act as durability. A value of math.MaxInt16 means any
+	// meta matches.
 	Meta int32 `nbt:"meta"`
 	// Count is the amount of the item.
 	Count int32 `nbt:"count"`
@@ -38,7 +39,7 @@ type inputItem struct {
 	Tag string `nbt:"tag"`
 }
 
-// Item converts an input item to a recipe item.
+// Item converts an input item to a recipe [Item].
 func (i inputItem) Item() (Item, bool) {
 	if i.Tag != "" {
 		return NewItemTag(i.Tag, int(i.Count)), true
@@ -56,10 +57,10 @@ func (i inputItem) Item() (Item, bool) {
 	return st, true
 }
 
-// inputItems is a type representing a list of input items, with a helper function to convert it to an Item.
+// inputItems is a list of input items, where each is convertible to an [Item].
 type inputItems []inputItem
 
-// Items converts input items to recipe items.
+// Items converts each input item to an [Item].
 func (d inputItems) Items() ([]Item, bool) {
 	s := make([]Item, 0, len(d))
 	for _, i := range d {
@@ -72,11 +73,11 @@ func (d inputItems) Items() ([]Item, bool) {
 	return s, true
 }
 
-// outputItem is an output item.
+// outputItem is an output item as present in the recipe data, convertible to an [item.Stack].
 type outputItem struct {
 	// Name is the name of the item being output.
 	Name string `nbt:"name"`
-	// Meta is the meta of the item. This can change the item almost completely, or act as durability.
+	// Meta may change the item almost completely, or act as durability.
 	Meta int32 `nbt:"meta"`
 	// Count is the amount of the item.
 	Count int16 `nbt:"count"`
@@ -86,7 +87,7 @@ type outputItem struct {
 	NBTData map[string]any `nbt:"data"`
 }
 
-// Stack converts an output item to an item stack.
+// Stack converts an output item to an [item.Stack].
 func (o outputItem) Stack() (item.Stack, bool) {
 	it, ok := o.item()
 	if !ok {
@@ -114,7 +115,7 @@ func (o outputItem) item() (world.Item, bool) {
 // outputItems is an array of output items.
 type outputItems []outputItem
 
-// Stacks converts output items to item stacks.
+// Stacks converts each output item to an [item.Stack].
 func (d outputItems) Stacks() ([]item.Stack, bool) {
 	s := make([]item.Stack, 0, len(d))
 	for _, o := range d {

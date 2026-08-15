@@ -131,7 +131,7 @@ func (s *Session) sendRecipes() {
 	var (
 		shapedRecipes            []protocol.ShapedRecipe
 		shapelessRecipes         []protocol.ShapelessRecipe
-		userDataShapelessRecipes []protocol.ShulkerBoxRecipe
+		userDataShapelessRecipes []protocol.UserDataShapelessRecipe
 		multiRecipes             []protocol.MultiRecipe
 		smithingTransformRecipes []protocol.SmithingTransformRecipe
 		smithingTrimRecipes      []protocol.SmithingTrimRecipe
@@ -154,7 +154,7 @@ func (s *Session) sendRecipes() {
 				RecipeNetworkID: networkID,
 			})
 		case recipe.UserDataShapeless:
-			userDataShapelessRecipes = append(userDataShapelessRecipes, protocol.ShulkerBoxRecipe{ShapelessRecipe: protocol.ShapelessRecipe{
+			userDataShapelessRecipes = append(userDataShapelessRecipes, protocol.UserDataShapelessRecipe{ShapelessRecipe: protocol.ShapelessRecipe{
 				RecipeID:        uuid.New().String(),
 				Priority:        int32(i.Priority()),
 				Input:           stacksToIngredientItems(s.br, i.Input()),
@@ -230,7 +230,7 @@ func (s *Session) sendRecipes() {
 		ShapedRecipes:                shapedRecipes,
 		ShapelessRecipes:             shapelessRecipes,
 		MultiRecipes:                 multiRecipes,
-		ShulkerBoxRecipes:            userDataShapelessRecipes,
+		UserDataShapelessRecipes:     userDataShapelessRecipes,
 		SmithingTransformRecipes:     smithingTransformRecipes,
 		SmithingTrimRecipes:          smithingTrimRecipes,
 		PotionRecipes:                potionRecipes,
