@@ -68,6 +68,8 @@ func NewShulkerBox() ShulkerBox {
 	return s
 }
 
+func (ShulkerBox) ContainerSize() int { return 27 }
+
 // Model ...
 func (s ShulkerBox) Model() world.BlockModel {
 	return model.Shulker{Facing: s.Facing, Progress: s.progress.Load()}
