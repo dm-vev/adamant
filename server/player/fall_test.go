@@ -46,7 +46,7 @@ func TestFallDamageSettingPreservesEntityLand(t *testing.T) {
 
 	<-w.Exec(func(tx *world.Tx) {
 		pos := mgl64.Vec3{0.5, 1, 0.5}
-		tx.SetBlock(cube.PosFromVec3(pos), block.Slime{}, nil)
+		tx.SetBlock(cube.PosFromVec3(pos).Sub(cube.Pos{0, 1}), block.Slime{}, nil)
 		p := tx.AddEntity(world.EntitySpawnOpts{Position: pos, Velocity: mgl64.Vec3{0, -1}}.New(Type, Config{Position: pos})).(*Player)
 		p.fall(10)
 		if got := p.Velocity()[1]; got != 1 {

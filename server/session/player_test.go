@@ -264,7 +264,7 @@ func TestSendRecipesExposesSpecialRecipes(t *testing.T) {
 	if len(pk.ShapedRecipes) == 0 || !pk.ShapedRecipes[len(pk.ShapedRecipes)-1].AssumeSymmetry {
 		t.Fatal("shaped recipe is not visible through symmetry metadata")
 	}
-	if len(pk.ShulkerBoxRecipes) == 0 {
+	if len(pk.UserDataShapelessRecipes) == 0 {
 		t.Fatal("user-data shapeless recipe missing from CraftingData")
 	}
 	if len(pk.MultiRecipes) == 0 || pk.MultiRecipes[len(pk.MultiRecipes)-1].UUID != id {
