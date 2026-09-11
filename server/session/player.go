@@ -1501,11 +1501,11 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 
 	m := make(map[string]any)
 	if err = json.Unmarshal(sk.SkinGeometry, &m); err != nil {
-		return skin.Skin{}, fmt.Errorf("SkinGeometry was not a valid JSON string: %v", err)
+		return skin.Skin{}, fmt.Errorf("SkinGeometry was not a valid JSON string: %w", err)
 	}
 
 	if s.ModelConfig, err = skin.DecodeModelConfig(sk.SkinResourcePatch); err != nil {
-		return skin.Skin{}, fmt.Errorf("SkinResourcePatch was not a valid JSON string: %v", err)
+		return skin.Skin{}, fmt.Errorf("SkinResourcePatch was not a valid JSON string: %w", err)
 	}
 
 	for _, anim := range sk.Animations {

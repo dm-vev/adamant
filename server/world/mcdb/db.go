@@ -260,7 +260,7 @@ func (db *DB) SavePlayerSpawnPosition(id uuid.UUID, pos cube.Pos) error {
 	if errors.Is(err, leveldb.ErrNotFound) {
 		data, err := nbt.MarshalEncoding(playerData{UUID: id.String(), ServerID: k}, nbt.LittleEndian)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("marshal player data (uuid=%v): %w", id, err)
 		}
 		if err := db.ldb.Put([]byte("player_"+id.String()), data, nil); err != nil {
 			return fmt.Errorf("write player data (uuid=%v): %w", id, err)
@@ -272,7 +272,7 @@ func (db *DB) SavePlayerSpawnPosition(id uuid.UUID, pos cube.Pos) error {
 
 	data, err := nbt.MarshalEncoding(d, nbt.LittleEndian)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("marshal server data for player %v: %w", id, err)
 	}
 	if err = db.ldb.Put([]byte(k), data, nil); err != nil {
 		return fmt.Errorf("write server data for player %v: %w", id, err)
