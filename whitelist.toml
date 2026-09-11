@@ -1,3 +1,0 @@
-# Legacy TOML whitelist format.
-# Prefer `white-list.txt` (line-separated) for compatibility with Bedrock server allowlist tools.
-players = []

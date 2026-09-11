@@ -19,3 +19,17 @@ players/
 /world/
 memory.md
 tools/
+
+# Build artifacts and test binaries (kept out of VCS; CI builds its own binary)
+dragonfly
+app-linux
+*.test
+server_run.err
+server_run.log
+temp.txt
+temp_merge.diff
+
+# Empty server data files (generated at runtime)
+ops.txt
+white-list.txt
+whitelist.toml
