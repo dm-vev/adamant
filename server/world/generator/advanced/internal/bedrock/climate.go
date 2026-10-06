@@ -29,12 +29,7 @@ func NewClimate(seed int64) *Climate {
 // noise grid. Biome-cell centres are spaced eight blocks apart. Sampling once
 // per column avoids repeating the same noise and spline work at every height.
 func (c *Climate) SampleColumn(x, z int32, column *ClimateColumn) {
-	qx, qz := float32(x>>2), float32(z>>2)
-	px := float32(qx + float32(c.shift.Sample(qx, 0, qz)*4))
-	pz := float32(qz + float32(c.shift.Sample(qz, qx, 0)*4))
-	continents := c.continentalness.Sample(px, 0, pz)
-	erosion := c.erosion.Sample(px, 0, pz)
-	weirdness := c.ridge.Sample(px, 0, pz)
+	px, pz, continents, erosion, weirdness := c.terrainAt(x, z)
 	column.point[0] = quantizeClimate(c.temperature.Sample(px, 0, pz))
 	column.point[1] = quantizeClimate(c.vegetation.Sample(px, 0, pz))
 	column.point[2] = quantizeClimate(continents)
@@ -43,6 +38,16 @@ func (c *Climate) SampleColumn(x, z int32, column *ClimateColumn) {
 	// BDS stores this as the single float32 constant 0xbf00f5c3, rather
 	// than adding 0.015 and subtracting 83/160 in separate operations.
 	column.depthOffset = float32(TerrainOffset(continents, erosion, weirdness) - 0.50375)
+}
+
+func (c *Climate) terrainAt(x, z int32) (px, pz, continents, erosion, weirdness float32) {
+	qx, qz := float32(x>>2), float32(z>>2)
+	px = float32(qx + float32(c.shift.Sample(qx, 0, qz)*4))
+	pz = float32(qz + float32(c.shift.Sample(qz, qx, 0)*4))
+	continents = c.continentalness.Sample(px, 0, pz)
+	erosion = c.erosion.Sample(px, 0, pz)
+	weirdness = c.ridge.Sample(px, 0, pz)
+	return
 }
 
 // PointAt returns this column's climate point at the block height. The pointer

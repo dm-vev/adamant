@@ -33,6 +33,14 @@
       "nodes": 9113,
       "record_bytes": 52,
       "sha256": "d6c2b4a010789ce23846ff1ff670ce88e39170305001c5dd291b193b40f89466"
+    },
+    "aquifer": {
+      "source": "native BDS fluid-level and barrier routines with seeded noise, MCP terrain splines and prescribed preliminary surfaces",
+      "native_entry_points": ["0x1481dfe30", "0x1481e0af0"],
+      "sampled_queries": 50000,
+      "seeds": 5,
+      "preliminary_surface_cases": 5,
+      "golden_sha256": "f06a5cc26a667c56bf29dab120ba0d6e5bc03ed64051011bb20296fdb4e4538f"
     }
   },
   "download_metadata_url": "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links",

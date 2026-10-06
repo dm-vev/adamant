@@ -30,6 +30,12 @@ func (f RandomFactory) fromName(name []byte) random {
 	return newRandom(f.low^binary.BigEndian.Uint64(hash[:8]), f.high^binary.BigEndian.Uint64(hash[8:]))
 }
 
+func (f RandomFactory) at(x, y, z int32) random {
+	hash := int64(x*3129871) ^ int64(z)*116129781 ^ int64(y)
+	hash = (hash*hash*42317861 + hash*11) >> 16
+	return newRandom(f.low^uint64(hash), f.high)
+}
+
 // random is the xoroshiro128++ stream underlying positional noise sources.
 type random struct {
 	low, high uint64

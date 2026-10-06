@@ -43,7 +43,7 @@ Custom `MissingStateReconstructor` implementations must preserve explicit proper
 
 ### Modern generation numerical kernel
 
-`server/world/generator/advanced/internal/bedrock` implements seeded float32 noise, eight-block Voronoi biome cells, cached climate columns, terrain splines and native-ordered biome lookup. The default dimension generators still use the legacy algorithms; this kernel does not yet replace their terrain, caves, aquifers, surfaces or features.
+`server/world/generator/advanced/internal/bedrock` implements seeded float32 noise, eight-block Voronoi biome cells, cached climate columns, terrain splines, native-ordered biome lookup and Overworld aquifers. The default dimension generators still use the legacy algorithms; these components do not yet replace their terrain, caves, fluids, surfaces or features.
 
 Readable Java 26.3 sources generated with [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn) supplied the spline shapes and Overworld climate rules. Bedrock-specific noise precision, quantization, spatial interpolation and tree ordering were checked separately. The packed tree contains 7,594 parameter records and 9,113 nodes, ordered by executing the pinned BDS tree builder rather than approximating its unstable sort.
 
@@ -52,7 +52,8 @@ Verification:
 - 49,614 spline evaluations agree between Java and the BDS evaluator using the same MCP-provided shape data.
 - 7,740 native tree-search queries agree, including history-sensitive interval boundaries.
 - 17,856 sampled biome observations across five seeds agree with the live BDS API. This is sampled climate coverage, not complete world-generation parity.
-- Hot climate, Voronoi and spline sampling allocates zero objects after initialization. Native-backed regression tests pass under the Go race detector.
+- 50,000 aquifer queries agree bit-for-bit with the native BDS fluid-level and barrier routines across five seeds, negative coordinates, world-border coordinates and five prescribed preliminary surfaces. This verifies the fluid component with initialized noise/spline inputs, not the complete terrain pipeline. The Bedrock implementation selects three nearest centres and retains its own pressure and update thresholds.
+- Hot climate, Voronoi, spline and aquifer sampling allocates zero objects after initialization; aquifer chunk-cache reset also allocates nothing. Native-backed regression tests pass under the Go race detector.
 
 The source revisions, reference executable hash and packed-data checksum are pinned in `vanilla-reference.json`. Decompiled game sources and reference executables are not redistributed with the kernel.
 
