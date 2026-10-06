@@ -43,7 +43,7 @@ Custom `MissingStateReconstructor` implementations must preserve explicit proper
 
 ### Modern generation numerical kernel
 
-`server/world/generator/advanced/internal/bedrock` implements seeded float32 noise, eight-block Voronoi biome cells, cached climate columns, terrain splines and column controls, preliminary surface heights, native-ordered biome lookup and Overworld aquifers. The default dimension generators still use the legacy algorithms; these components do not yet replace their terrain, caves, fluids, surfaces or features.
+`server/world/generator/advanced/internal/bedrock` implements seeded float32 noise, eight-block Voronoi biome cells, cached climate columns, terrain splines and column controls, preliminary surface heights, native-ordered biome lookup, Overworld cave density and aquifers. The default dimension generators still use the legacy algorithms; these components do not yet replace their terrain, caves, fluids, surfaces or features.
 
 Readable Java 26.3 sources generated with [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn) supplied the spline shapes and Overworld climate rules. Bedrock-specific noise precision, quantization, spatial interpolation and tree ordering were checked separately. The packed tree contains 7,594 parameter records and 9,113 nodes, ordered by executing the pinned BDS tree builder rather than approximating its unstable sort.
 
@@ -54,7 +54,8 @@ Verification:
 - 17,856 sampled biome observations across five seeds agree with the live BDS API. This is sampled climate coverage, not complete world-generation parity.
 - 50,000 aquifer queries agree bit-for-bit with the native BDS fluid-level and barrier routines across five seeds, negative coordinates, world-border coordinates and five prescribed preliminary surfaces. This verifies the fluid component with initialized noise/spline inputs, not the complete terrain pipeline. The Bedrock implementation selects three nearest centres and retains its own pressure and update thresholds.
 - 10,000 terrain columns and preliminary surface heights agree with the native routines using the same initialized noise and MCP spline data. Another 5,000 queries agree with native terrain-surface and aquifer sampling connected together.
-- Aquifer workers cache the bounded 27×19 preliminary-surface window instead of resampling it at every fluid centre. Hot climate, Voronoi, spline, terrain-column and aquifer sampling allocates zero objects after initialization; aquifer chunk-cache reset also allocates nothing. Native-backed regression tests pass under the Go race detector.
+- 50,595 cave-density queries agree bit-for-bit with the native routine using initialized noise inputs, including the surface/underground transition, negative and world-border coordinates, and non-finite upstream densities. The harness bridges `powf` to host libm; Go's widened pillar cube agrees in this corpus but is not universally bit-identical to that library.
+- Aquifer workers cache the bounded 27×19 preliminary-surface window instead of resampling it at every fluid centre. Hot climate, Voronoi, spline, terrain-column, cave and aquifer sampling allocates zero objects after initialization; aquifer chunk-cache reset also allocates nothing. Native-backed regression tests pass under the Go race detector.
 
 The source revisions, reference executable hash and packed-data checksum are pinned in `vanilla-reference.json`. Decompiled game sources and reference executables are not redistributed with the kernel.
 

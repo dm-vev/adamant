@@ -51,6 +51,15 @@
       "aquifer_integration_queries": 5000,
       "aquifer_integration_sha256": "e67f57d00efa945168e274ddb5599ac018c633a7ed989384eae15133540b5355"
     },
+    "caves": {
+      "source": "native BDS cave graph with seeded MCP noise definitions and native Overworld context parameters",
+      "native_entry_point": "0x1481e10d0",
+      "native_context_constructor": "0x14821f6f0",
+      "sampled_queries": 50595,
+      "seeds": 5,
+      "golden_sha256": "fa285e43dac493d70048859ff08ae668f34d2564fba788426d9e717bd800c4fc",
+      "math_library_limit": "The reference runner bridges powf to host libm. Go's widened pillar cube matched the sampled cave queries, but a separate exhaustive mantissa check found 5626 bitwise differences in 8388608 positive float32 inputs from 1 through the predecessor of 2."
+    },
     "noise_cell_overflow": {
       "source": "native BDS normal-noise sampling around signed cell-index conversion boundaries",
       "sampled_queries": 900,
