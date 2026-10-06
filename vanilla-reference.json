@@ -62,6 +62,17 @@
         "golden_sha256": "4d7767665dc8c89a12df61f99f3358301407bb4ac31e278b9973da104a8201b3"
       }
     },
+    "solid_materials": {
+      "source": "executed solid-material section of native BDS voxel loop with initialized noise and positional streams; only its continuation is replaced by returning the selected block",
+      "native_entry_point": "0x14822fc89",
+      "native_continuation": "0x148230190",
+      "settings_constructor": "0x148220f20",
+      "positional_streams": ["minecraft:depth_based_layer", "minecraft:ore"],
+      "sampled_queries": 100000,
+      "seeds": 5,
+      "materials": 8,
+      "golden_sha256": "2cd9717a15b2d00694413d763b5e06c5b0dd743cef36b277a23ec1fc03366358"
+    },
     "climate_tree": {
       "source": "MCP Overworld rules with Bedrock quantization, ordered by the native BDS tree builder",
       "path": "server/world/generator/advanced/internal/bedrock/climate_data.bin",
