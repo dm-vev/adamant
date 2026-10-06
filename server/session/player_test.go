@@ -28,7 +28,6 @@ func TestGameTypeFromMode(t *testing.T) {
 		"survival":  {world.GameModeSurvival, packet.GameTypeSurvival},
 		"creative":  {world.GameModeCreative, packet.GameTypeCreative},
 		"spectator": {world.GameModeSpectator, packet.GameTypeSpectator},
-		"fallback":  {world.GameModeAdventure, packet.GameTypeSurvival},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {

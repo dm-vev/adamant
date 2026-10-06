@@ -32,7 +32,7 @@
   # The folder that the world files (will) reside in, relative to the working directory. If not currently
   # present, the folder will be made.
   Folder = "world"
-  # Seed controls the overworld terrain generation. Use the same value to reproduce the same world. 0 is allowed.
+  # Seed selects all dimensions' generation seed for a new world. Existing level.dat.RandomSeed takes precedence, including 0.
   Seed = 0
   # Whether the worlds' data will be saved and loaded. If true, the server will use the
   # default LevelDB data provider and if false, an empty provider will be used. To use your

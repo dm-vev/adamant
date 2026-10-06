@@ -2,7 +2,6 @@ package leveldat
 
 import (
 	"math"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -186,9 +185,9 @@ func (d *Data) FillDefault() {
 	d.FireDamage = true
 	d.FreezeDamage = true
 	d.FunctionCommandLimit = 10000
-	d.GameType = 1
+	d.GameType = 0
 	d.Generator = 2
-	d.HasBeenLoadedInCreative = true
+	d.HasBeenLoadedInCreative = false
 	d.InventoryVersion = protocol.CurrentVersion
 	d.LANBroadcast = true
 	d.LANBroadcastIntent = true
@@ -210,7 +209,7 @@ func (d *Data) FillDefault() {
 	d.Platform = 2
 	d.PlatformBroadcastIntent = 3
 	d.RainLevel = 1.0
-	d.RandomSeed = time.Now().Unix()
+	d.RandomSeed = 0
 	d.RandomTickSpeed = 1
 	d.RespawnBlocksExplode = true
 	d.SendCommandFeedback = true
@@ -235,6 +234,8 @@ func (d *Data) Settings() *world.Settings {
 	mode, _ := world.GameModeByID(int(d.GameType))
 	return &world.Settings{
 		Name:                      d.LevelName,
+		Seed:                      d.RandomSeed,
+		SeedSet:                   true,
 		Spawn:                     cube.Pos{int(d.SpawnX), int(d.SpawnY), int(d.SpawnZ)},
 		Time:                      d.Time,
 		TimeCycle:                 d.DoDayLightCycle,
@@ -255,6 +256,9 @@ func (d *Data) Settings() *world.Settings {
 // PutSettings updates d with the Settings stored in s.
 func (d *Data) PutSettings(s *world.Settings) {
 	d.LevelName = s.Name
+	if s.SeedSet {
+		d.RandomSeed = s.Seed
+	}
 	d.SpawnX, d.SpawnY, d.SpawnZ = int32(s.Spawn.X()), int32(s.Spawn.Y()), int32(s.Spawn.Z())
 	d.LimitedWorldOriginX, d.LimitedWorldOriginY, d.LimitedWorldOriginZ = d.SpawnX, d.SpawnY, d.SpawnZ
 	d.Time = s.Time

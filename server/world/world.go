@@ -233,6 +233,14 @@ func (w *World) Name() string {
 	return w.set.Name
 }
 
+// Seed returns the immutable generation seed selected when the World opened.
+func (w *World) Seed() int64 {
+	if w == nil {
+		return 0
+	}
+	return w.conf.Seed
+}
+
 // Dimension returns the Dimension assigned to the World in world.New. The sky
 // colour and behaviour of a variety of world features differ based on the
 // Dimension.

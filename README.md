@@ -35,7 +35,17 @@ The registered 89 biome definitions match the pinned BDS's initial climate, wate
 
 `world.Biome.HasPrecipitation()` is now required independently of `Rainfall()` humidity. The End has humidity 0.5 but permits no precipitation. Existing unqualified biome names remain unchanged in the Go registry; the network packet qualifies default names with `minecraft:`.
 
-An offline BDS/Adamant handshake matched all 2,076 item definitions, all 89 biome definitions and the compared world settings at seed `9223372036854775807`. Login now advertises the configured default-generation seed instead of zero. This verifies initial metadata, not terrain or gameplay parity.
+An offline BDS/Adamant handshake matched all 2,076 item definitions, all 89 biome definitions and the compared world settings at seed `-9223372036854775808`. Both saved `level.dat` files retained that exact seed. This verifies initial metadata and saved settings, not terrain or gameplay parity.
+
+### World seed and saved settings
+
+`World.Seed` selects a new world's seed in all three dimensions. Once a world exists, `level.dat.RandomSeed` is authoritative, including zero; changing configuration does not change future terrain. `world.Settings.SeedSet` distinguishes a stored zero from an uninitialised provider. `server.Config.Generator` now receives `(dimension, resolvedSeed)` instead of capturing an unrelated configuration seed.
+
+Login advertises the opened world's seed, default game mode and difficulty. New persistent worlds use Survival, matching non-persistent worlds. Adventure is sent as Adventure rather than falling through to Survival.
+
+Restart verification generated three previously absent chunks in each dimension with stored seed `0` and configuration seed `12345`: their block hashes matched fresh seed-0 worlds and differed from seed-12345 controls. A separate real offline reconnect retained the signed minimum seed and advertised saved Adventure/Hard settings without changing item or biome metadata.
+
+**Migration warning:** earlier Adamant versions wrote the current timestamp to `RandomSeed`, independently of their generator seed. Back up such worlds and correct `level.dat.RandomSeed` to the actual original generation seed before upgrading. The timestamp cannot recover that seed, and changing configuration no longer overrides an existing saved value.
 
 ### Block states and migration
 
@@ -93,6 +103,7 @@ Server settings are in `config.toml`.
   NetherNet serves HTTP signaling on `Network.Address` (TCP) and uses WebRTC UDP connectivity for gameplay. Deployments behind NAT/firewalls must allow the negotiated ICE connectivity; opening only the old RakNet UDP port is not sufficient. The built-in endpoint is HTTP; TLS termination can be provided by a reverse proxy. Keep `Server.AuthEnabled = true` outside isolated test environments.
 - `Server.Name`: server name in the list; `AuthEnabled`, `DisableJoinQuitMessages`, `MuteEmoteChat`, `ReconnectPolicy`.
 - `World`: `Seed`, `SaveData`, `GeneratorWorkers`, `GeneratorQueueSize`, `Folder`.
+  `Seed` only applies when creating a world; existing saved metadata takes precedence. See the migration warning above for worlds created by older Adamant versions.
 
   The asynchronous generator defaults to `GeneratorQueueSize = GeneratorWorkers * 4`. Under
   extreme preloading you may need to raise both values to keep the queue from saturating; watch

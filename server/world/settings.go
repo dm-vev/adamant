@@ -19,6 +19,10 @@ type Settings struct {
 
 	// Name is the display name of the World.
 	Name string
+	// Seed is the immutable generation seed. SeedSet distinguishes a persisted
+	// seed of zero from a new provider that has not selected a seed yet.
+	Seed    int64
+	SeedSet bool
 	// Spawn is the spawn position of the World. New players that join the world will be spawned here.
 	Spawn cube.Pos
 	// Time is the current time of the World. It advances every tick if TimeCycle is set to true.
@@ -70,12 +74,26 @@ func defaultSettings() *Settings {
 	}
 }
 
+// ResolveSeed selects fallback only when no seed has been stored or selected.
+// Providers and generator factories must resolve the seed before constructing
+// generators. Worlds sharing these Settings always retain the first selection.
+func (s *Settings) ResolveSeed(fallback int64) int64 {
+	s.Lock()
+	defer s.Unlock()
+	if !s.SeedSet {
+		s.Seed, s.SeedSet = fallback, true
+	}
+	return s.Seed
+}
+
 // Snapshot returns a detached copy of the Settings at this instant.
 func (s *Settings) Snapshot() *Settings {
 	s.Lock()
 	defer s.Unlock()
 	return &Settings{
 		Name:                      s.Name,
+		Seed:                      s.Seed,
+		SeedSet:                   s.SeedSet,
 		Spawn:                     s.Spawn,
 		Time:                      s.Time,
 		TimeCycle:                 s.TimeCycle,

@@ -647,19 +647,22 @@ func (srv *Server) waitForPlayerRemoval(id uuid.UUID, timeout time.Duration) boo
 // may later be modified if the player was saved in the player provider of the
 // server.
 func (srv *Server) defaultGameData() minecraft.GameData {
+	mode := session.GameTypeFromMode(srv.world.DefaultGameMode())
+	difficulty, _ := world.DifficultyID(srv.world.Difficulty())
 	return minecraft.GameData{
 		// Entity runtime/unique ID for the player itself is always 1 in df.
 		EntityUniqueID:  1,
 		EntityRuntimeID: 1,
 
 		WorldName:       srv.conf.Name,
-		WorldSeed:       srv.conf.OverworldSeed,
+		WorldSeed:       srv.world.Seed(),
 		BaseGameVersion: protocol.CurrentVersion,
 
 		Time:       int64(srv.world.Time()),
-		Difficulty: 2,
+		Difficulty: int32(difficulty),
 
-		PlayerGameMode:    session.GameTypeFromMode(srv.world.DefaultGameMode()),
+		WorldGameMode:     mode,
+		PlayerGameMode:    mode,
 		PlayerPermissions: packet.PermissionLevelMember,
 		PlayerPosition:    vec64To32(srv.world.Spawn().Vec3Centre().Add(mgl64.Vec3{0, player.Type.NetworkOffset()})),
 
@@ -747,12 +750,13 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 	logger := srv.conf.Log.With("dimension", strings.ToLower(fmt.Sprint(dim)))
 	logger.Debug("Loading dimension...")
 
-	gen := srv.conf.Generator(dim)
+	gen := srv.conf.Generator(dim, srv.conf.OverworldSeed)
 	sourceDim := dim
 	conf := world.Config{
 		Log:                 logger,
 		Dim:                 dim,
 		Provider:            srv.conf.WorldProvider,
+		Seed:                srv.conf.OverworldSeed,
 		Generator:           gen,
 		GeneratorWorkers:    srv.conf.GeneratorWorkers,
 		GeneratorQueueSize:  srv.conf.GeneratorQueueSize,

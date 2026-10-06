@@ -1579,6 +1579,9 @@ func GameTypeFromMode(mode world.GameMode) int32 {
 	if !mode.Visible() && !mode.HasCollision() {
 		return packet.GameTypeSpectator
 	}
+	if !mode.AllowsEditing() {
+		return packet.GameTypeAdventure
+	}
 	return packet.GameTypeSurvival
 }
 

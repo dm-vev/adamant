@@ -97,12 +97,10 @@ type Config struct {
 	// ReadOnlyWorld specifies if the standard worlds should be read only. If
 	// set to true, the WorldProvider won't be saved to at all.
 	ReadOnlyWorld bool
-	// Generator should return a function that specifies the world.Generator to
-	// use for every world.Dimension (world.Overworld, world.Nether and
-	// world.End). If left empty, Generator will be set to a flat world for each
-	// of the dimensions (with netherrack and end stone for nether/end
-	// respectively).
-	Generator func(dim world.Dimension) world.Generator
+	// Generator constructs each dimension's generator using the resolved world
+	// seed. Existing provider metadata takes precedence over OverworldSeed.
+	// If nil, the built-in generators are used for all three dimensions.
+	Generator func(dim world.Dimension, seed int64) world.Generator
 	// GeneratorWorkers controls the number of asynchronous workers dedicated
 	// to generating chunks. If set to 0 or lower, the worker count will be
 	// derived from the host's available CPUs. Consider raising this when
@@ -114,9 +112,8 @@ type Config struct {
 	// count will be chosen automatically. Increase it alongside
 	// GeneratorWorkers if the logs report generator queue saturation.
 	GeneratorQueueSize int
-	// OverworldSeed is the seed used by the default overworld generator when
-	// Generator is not supplied. A value of 0 is valid and results in a fixed
-	// world layout identical to Java's seed 0.
+	// OverworldSeed is the seed for a new world in all dimensions. Existing
+	// provider metadata takes precedence. Zero is a valid, deterministic seed.
 	OverworldSeed int64
 	// RandomTickSpeed specifies the rate at which blocks should be ticked in
 	// the default worlds. Setting this value to -1 or lower will stop random
@@ -209,7 +206,7 @@ func (conf Config) New() *Server {
 		conf.WorldProvider = world.NopProvider{}
 	}
 	if conf.Generator == nil {
-		conf.Generator = defaultGeneratorProvider(conf.OverworldSeed)
+		conf.Generator = defaultGenerator
 	}
 	if conf.MaxChunkRadius == 0 {
 		conf.MaxChunkRadius = 12
@@ -228,6 +225,7 @@ func (conf Config) New() *Server {
 	// is used in some vanilla paths.
 	conf.Blocks.Finalize()
 	world.DefaultBlockRegistry.Finalize()
+	conf.OverworldSeed = conf.WorldProvider.Settings().ResolveSeed(conf.OverworldSeed)
 
 	if !conf.DisableResourceBuilding {
 		if pack, ok := packbuilder.BuildResourcePack(conf.Blocks); ok {
@@ -389,9 +387,8 @@ type UserConfig struct {
 		SaveData bool
 		// Folder is the folder that the data of the world resides in.
 		Folder string
-		// Seed controls the procedural generation of the overworld when no custom
-		// generator is provided. This value is passed directly to the pm-gen terrain
-		// generator.
+		// Seed selects the generation seed for a new world in all dimensions.
+		// Existing level.dat metadata takes precedence, including seed zero.
 		Seed int64
 		// GeneratorWorkers is the number of background workers that should be
 		// dedicated to generating chunks. Set to 0 to automatically select a
@@ -572,20 +569,18 @@ func loadResources(dir string) ([]*resource.Pack, error) {
 	return packs, nil
 }
 
-// defaultGeneratorProvider returns the generator function to use when none is supplied by the user configuration.
-// The overworld, nether and end utilise Java 1.12 style generators.
-func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Generator {
-	return func(dim world.Dimension) world.Generator {
-		switch dim {
-		case world.Overworld:
-			return advanced.NewOverworld(seed)
-		case world.Nether:
-			return advanced.NewNether(seed)
-		case world.End:
-			return advanced.NewEnd(seed)
-		}
-		panic("should never happen")
+// defaultGenerator constructs a dimension generator using the resolved seed.
+// The overworld, nether and end still utilise Java 1.12 style generators.
+func defaultGenerator(dim world.Dimension, seed int64) world.Generator {
+	switch dim {
+	case world.Overworld:
+		return advanced.NewOverworld(seed)
+	case world.Nether:
+		return advanced.NewNether(seed)
+	case world.End:
+		return advanced.NewEnd(seed)
 	}
+	panic("should never happen")
 }
 
 // DefaultConfig returns a configuration with the default values filled out.

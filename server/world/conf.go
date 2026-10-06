@@ -40,6 +40,10 @@ type Config struct {
 	// data. If set to nil, the Provider used will be NopProvider, which does
 	// not store any data to disk.
 	Provider Provider
+	// Seed is selected for a new World only. A stored provider seed takes
+	// precedence, including zero. Initialise a custom Generator with the seed
+	// returned by Provider.Settings().ResolveSeed before constructing the World.
+	Seed int64
 	// Generator is the Generator implementation used to generate new areas of
 	// the World. If set to nil, the Generator used will be NopGenerator, which
 	// generates completely empty chunks.
@@ -182,6 +186,7 @@ func (conf Config) New() *World {
 		conf.RandSource = rand.NewPCG(t, t)
 	}
 	s := conf.Provider.Settings()
+	conf.Seed = s.ResolveSeed(conf.Seed)
 	s.Lock()
 	settingsLocked := true
 	defer func() {

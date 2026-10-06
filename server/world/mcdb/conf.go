@@ -46,9 +46,11 @@ func (conf Config) Open(dir string) (*DB, error) {
 
 	db := &DB{conf: conf, dir: dir, ldat: &leveldat.Data{}}
 	db.SetBlockRegistry(conf.Blocks)
+	newWorld := false
 	if _, err := os.Stat(filepath.Join(dir, "level.dat")); os.IsNotExist(err) {
 		// A level.dat was not currently present for the world.
 		db.ldat.FillDefault()
+		newWorld = true
 	} else {
 		ldat, err := leveldat.ReadFile(filepath.Join(dir, "level.dat"))
 		if err != nil {
@@ -63,6 +65,7 @@ func (conf Config) Open(dir string) (*DB, error) {
 		}
 	}
 	db.set = db.ldat.Settings()
+	db.set.SeedSet = !newWorld
 	ldb, err := leveldb.OpenFile(filepath.Join(dir, "db"), conf.LDBOptions)
 	if err != nil {
 		return nil, fmt.Errorf("open db: leveldb: %w", err)
