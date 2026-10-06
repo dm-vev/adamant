@@ -653,6 +653,7 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 		EntityRuntimeID: 1,
 
 		WorldName:       srv.conf.Name,
+		WorldSeed:       srv.conf.OverworldSeed,
 		BaseGameVersion: protocol.CurrentVersion,
 
 		Time:       int64(srv.world.Time()),

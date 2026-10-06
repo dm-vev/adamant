@@ -32,7 +32,7 @@ func (Savanna) WaterColour() color.RGBA {
 
 // Tags ...
 func (Savanna) Tags() []string {
-	return []string{"animal", "monster", "overworld", "savanna", "spawns_savanna_mobs", "spawns_warm_variant_farm_animals"}
+	return []string{"animal", "has_structure_abandoned_camp", "monster", "overworld", "savanna", "spawns_savanna_mobs", "spawns_warm_variant_farm_animals"}
 }
 
 // String ...

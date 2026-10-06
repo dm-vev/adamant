@@ -1,8 +1,8 @@
 package world
 
 import (
-	"encoding/binary"
 	"sort"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -110,7 +110,11 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 	encodedBiomes := make([]protocol.BiomeDefinition, 0, len(biomeIDsSorted))
 	for _, id := range biomeIDsSorted {
 		b := biomes[id]
-		nameIndex := intern(b.String())
+		name := b.String()
+		if !strings.Contains(name, ":") {
+			name = "minecraft:" + name
+		}
+		nameIndex := intern(name)
 
 		tags := b.Tags()
 		tagIndices := make([]uint16, len(tags))
@@ -122,22 +126,18 @@ func BiomeDefinitions() ([]protocol.BiomeDefinition, []string) {
 		if id > maxVanillaBiomeID {
 			biomeID = int16(id)
 		}
+		water := b.WaterColour()
 
 		def := protocol.BiomeDefinition{
-			NameIndex:   int16(nameIndex),
-			BiomeID:     biomeID,
-			Temperature: float32(b.Temperature()),
-			Downfall:    float32(b.Rainfall()),
-			Depth:       float32(b.Depth()),
-			Scale:       float32(b.Scale()),
-			MapWaterColour: int32(binary.BigEndian.Uint32([]byte{
-				b.WaterColour().A,
-				b.WaterColour().R,
-				b.WaterColour().G,
-				b.WaterColour().B,
-			})),
-			Rain: b.Rainfall() > 0,
-			Tags: protocol.Option[[]uint16](tagIndices),
+			NameIndex:      int16(nameIndex),
+			BiomeID:        biomeID,
+			Temperature:    float32(b.Temperature()),
+			Downfall:       float32(b.Rainfall()),
+			Depth:          float32(b.Depth()),
+			Scale:          float32(b.Scale()),
+			MapWaterColour: int32(uint32(water.A)<<24 | uint32(water.R)<<16 | uint32(water.G)<<8 | uint32(water.B)),
+			Rain:           b.HasPrecipitation(),
+			Tags:           protocol.Option[[]uint16](tagIndices),
 		}
 
 		encodedBiomes = append(encodedBiomes, def)

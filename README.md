@@ -29,6 +29,14 @@ The reference is BDS **1.26.52.3**, build **51798919**. Archive, embedded item-r
 
 Current gaps include modern world generation, mob coverage and block implementations. A registered block state can still be an `unknownBlock`; a non-placeholder implementation can also have incomplete behaviour.
 
+### Biome registry
+
+The registered 89 biome definitions match the pinned BDS's initial climate, water-colour, precipitation and tag metadata, including `dappled_forest` at persistent ID **195**. That ID was read from a saved BDS chunk after its biome was identified through the live Script API.
+
+`world.Biome.HasPrecipitation()` is now required independently of `Rainfall()` humidity. The End has humidity 0.5 but permits no precipitation. Existing unqualified biome names remain unchanged in the Go registry; the network packet qualifies default names with `minecraft:`.
+
+An offline BDS/Adamant handshake matched all 2,076 item definitions, all 89 biome definitions and the compared world settings at seed `9223372036854775807`. Login now advertises the configured default-generation seed instead of zero. This verifies initial metadata, not terrain or gameplay parity.
+
 ### Block states and migration
 
 The embedded palette contains **22,079 persisted states across 1,477 block identifiers**, captured from the pinned BDS. This is registry coverage, not implementation coverage.

@@ -32,7 +32,7 @@ func (OldGrowthBirchForest) WaterColour() color.RGBA {
 
 // Tags ...
 func (OldGrowthBirchForest) Tags() []string {
-	return []string{"animal", "birch", "forest", "monster", "mutated", "bee_habitat", "overworld_generation", "has_structure_trail_ruins"}
+	return []string{"animal", "bee_habitat", "birch", "forest", "has_structure_abandoned_camp", "has_structure_trail_ruins", "monster", "mutated", "overworld_generation"}
 }
 
 // String ...

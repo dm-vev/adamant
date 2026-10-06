@@ -32,7 +32,7 @@ func (CherryGrove) WaterColour() color.RGBA {
 
 // Tags ...
 func (CherryGrove) Tags() []string {
-	return []string{"mountains", "monster", "overworld", "cherry_grove", "bee_habitat"}
+	return []string{"bee_habitat", "cherry_grove", "has_structure_abandoned_camp", "monster", "mountains", "overworld"}
 }
 
 // String ...

@@ -50,6 +50,7 @@ func init() {
 	world.RegisterBiome(LegacyFrozenOcean{})
 	world.RegisterBiome(LukewarmOcean{})
 	world.RegisterBiome(LushCaves{})
+	world.RegisterBiome(DappledForest{})
 	world.RegisterBiome(MangroveSwamp{})
 	world.RegisterBiome(Meadow{})
 	world.RegisterBiome(ModifiedBadlandsPlateau{})

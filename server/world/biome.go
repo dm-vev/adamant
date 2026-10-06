@@ -10,12 +10,14 @@ import (
 type Biome interface {
 	// Temperature returns the temperature of the biome.
 	Temperature() float64
-	// Rainfall returns the rainfall of the biome.
+	// Rainfall returns the humidity of the biome.
 	Rainfall() float64
 	// Depth returns the depth of the biome.
 	Depth() float64
 	// Scale returns the scale of the biome.
 	Scale() float64
+	// HasPrecipitation reports whether rain or snow can fall in the biome.
+	HasPrecipitation() bool
 	// WaterColour returns the water colour of the biome.
 	WaterColour() color.RGBA
 	// Tags returns the tags for the biome.
@@ -98,5 +100,6 @@ func (unknownBiome) Depth() float64          { return 0.1 }
 func (unknownBiome) Scale() float64          { return 0.1 }
 func (unknownBiome) WaterColour() color.RGBA { return color.RGBA{R: 0x44, G: 0xaf, B: 0xf5, A: 0xff} }
 func (unknownBiome) Tags() []string          { return nil }
+func (unknownBiome) HasPrecipitation() bool  { return false }
 func (unknownBiome) String() string          { return "unknown" }
 func (b unknownBiome) EncodeBiome() int      { return b.id }

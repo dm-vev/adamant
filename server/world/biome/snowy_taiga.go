@@ -32,7 +32,7 @@ func (SnowyTaiga) WaterColour() color.RGBA {
 
 // Tags ...
 func (SnowyTaiga) Tags() []string {
-	return []string{"animal", "cold", "forest", "monster", "overworld", "taiga", "has_structure_trail_ruins", "spawns_cold_variant_farm_animals"}
+	return []string{"animal", "cold", "forest", "has_structure_abandoned_camp", "has_structure_trail_ruins", "monster", "overworld", "spawns_cold_variant_farm_animals", "taiga"}
 }
 
 // String ...

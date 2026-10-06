@@ -31,6 +31,12 @@
       "generation_entries": 89,
       "packet_body_bytes": 332518,
       "capture_sha256": "802541c7992d5cfa38faa7805ec2f9f6d458cf2fb08e443a1f8b0fad95c8c4c3",
+      "dappled_forest_identity": {
+        "persistent_id": 195,
+        "seed": "9223372036854775807",
+        "position": [4120, -16, -4100],
+        "source": "live getBiome followed by decoding the dirty, unloaded and saved BDS biome column"
+      },
       "ordering": "Packet positions are diagnostic, not canonical biome identities; native order changed with generation-data negotiation."
     },
     "blended_noise": {
