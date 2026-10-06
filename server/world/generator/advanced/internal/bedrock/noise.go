@@ -120,6 +120,11 @@ func (n *improvedNoise) sample(x, y, z float32) float32 {
 }
 
 func floor32(value float32) int32 {
+	// Native floorf is followed by an SSE int32 conversion. Overflow and
+	// NaN produce MinInt32, rather than a wrapped negative-floor correction.
+	if math.Float32bits(value)&0x7fffffff >= 0x4f000000 {
+		return -1 << 31
+	}
 	i := int32(value)
 	if value < float32(i) {
 		return i - 1

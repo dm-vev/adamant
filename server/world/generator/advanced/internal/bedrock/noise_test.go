@@ -21,6 +21,7 @@ func TestNormalNoiseNativePrecision(t *testing.T) {
 		{"gapped_octaves", 0, "minecraft:temperature", -10, []float32{1.5, 0, 1, 0, 0, 0}, [3]float32{3161966, -741944, -2383429}, 0xbbd164d8},
 		{"negative_seed", -1, "minecraft:continentalness", -9, []float32{1, 1, 2, 2, 2, 1, 1, 1, 1}, [3]float32{653113, 7453338, 3879325}, 0xbe112aaf},
 		{"high_seed_bits", 1 << 32, "minecraft:offset", -3, []float32{1, 1, 1, 0}, [3]float32{-5013538, 7239588, 2690029}, 0xbec17124},
+		{"native_cell_overflow", 1, "minecraft:continentalness", -9, []float32{1, 1, 2, 2, 2, 1, 1, 1, 1}, [3]float32{17.25, -36.5, -4294967296}, 0xff800000},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {

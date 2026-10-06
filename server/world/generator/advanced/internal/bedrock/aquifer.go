@@ -22,10 +22,14 @@ type aquiferCell struct {
 // AquiferChunk caches fluid centres for one 16×16 Overworld chunk. Sampling is
 // restricted to that chunk's block coordinates and the height range -64..319.
 type AquiferChunk struct {
-	aquifer       *Aquifer
-	surfaceHeight func(x, z int32) int32
-	minX, minZ    int32
-	cells         [3 * aquiferHeight * 3]aquiferCell
+	aquifer                  *Aquifer
+	surfaceHeight            func(x, z int32) int32
+	minX, minZ               int32
+	cells                    [3 * aquiferHeight * 3]aquiferCell
+	minSurfaceX, minSurfaceZ int32
+	// The centre jitter and thirteen offsets cover 27×19 quart columns.
+	// Encode heights as height+65, reserving zero for an unsampled column.
+	surfaces [27 * 19]uint16
 }
 
 // AquiferSample describes the nearest fluid and the density of its separating
@@ -58,6 +62,8 @@ func (a *Aquifer) Prepare(chunkX, chunkZ int32, surfaceHeight func(x, z int32) i
 	scratch.aquifer = a
 	scratch.surfaceHeight = surfaceHeight
 	scratch.minX, scratch.minZ = chunkX-1, chunkZ-1
+	scratch.minSurfaceX, scratch.minSurfaceZ = chunkX*4-16, chunkZ*4-8
+	clear(scratch.surfaces[:])
 	for i := range scratch.cells {
 		scratch.cells[i].x = aquiferUnknown
 		scratch.cells[i].level = aquiferUnknown
@@ -183,6 +189,17 @@ var aquiferSurfaceOffsets = [...][2]int32{
 	{-2, 1}, {-1, 1}, {0, 1}, {1, 1},
 }
 
+func (c *AquiferChunk) surfaceAt(x, z int32) int32 {
+	qx, qz := x>>2, z>>2
+	index := (qx-c.minSurfaceX)*19 + qz - c.minSurfaceZ
+	if encoded := c.surfaces[index]; encoded != 0 {
+		return int32(encoded) - 65
+	}
+	height := c.surfaceHeight(qx*4, qz*4)
+	c.surfaces[index] = uint16(height + 65)
+	return height
+}
+
 func (c *AquiferChunk) fluidLevel(cell *aquiferCell) {
 	if cell.level != aquiferUnknown {
 		return
@@ -190,8 +207,9 @@ func (c *AquiferChunk) fluidLevel(cell *aquiferCell) {
 	cell.level, cell.lava = 63, false
 	minimumSurface := int32(0x7fff)
 	centreUnderWater := false
-	for _, offset := range aquiferSurfaceOffsets {
-		surface := c.surfaceHeight((cell.x+offset[0]*16)&^3, (cell.z+offset[1]*16)&^3)
+	for i := range aquiferSurfaceOffsets {
+		offset := &aquiferSurfaceOffsets[i]
+		surface := c.surfaceAt(cell.x+offset[0]*16, cell.z+offset[1]*16)
 		centre := offset[0] == 0 && offset[1] == 0
 		if centre && surface+8 < cell.y-12 {
 			return

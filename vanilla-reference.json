@@ -41,6 +41,20 @@
       "seeds": 5,
       "preliminary_surface_cases": 5,
       "golden_sha256": "f06a5cc26a667c56bf29dab120ba0d6e5bc03ed64051011bb20296fdb4e4538f"
+    },
+    "terrain_columns": {
+      "source": "native BDS terrain columns and unblended preliminary-surface search with seeded noise and MCP terrain splines",
+      "native_entry_points": ["0x1481def00", "0x14822e160"],
+      "sampled_columns": 10000,
+      "seeds": 5,
+      "golden_sha256": "4acf2f99d1ea0946dfcb3740e17a728946850ab751d232608f0dc813b228ec58",
+      "aquifer_integration_queries": 5000,
+      "aquifer_integration_sha256": "e67f57d00efa945168e274ddb5599ac018c633a7ed989384eae15133540b5355"
+    },
+    "noise_cell_overflow": {
+      "source": "native BDS normal-noise sampling around signed cell-index conversion boundaries",
+      "sampled_queries": 900,
+      "golden_sha256": "54c109ff231ee488fa149189c026259d9cce22ec2a5d8d126f61f51a049536aa"
     }
   },
   "download_metadata_url": "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links",
