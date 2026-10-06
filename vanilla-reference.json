@@ -19,6 +19,22 @@
     "state_version": 18168865,
     "sha256": "3ea34d7ac71f9469bb822685e09776a0ed059a94de57d584a6f836e6297bf089"
   },
+  "generation_reference": {
+    "mcp_reborn_url": "https://github.com/Hexeption/MCP-Reborn",
+    "mcp_reborn_revision": "727d72ffc66bcdf1a8c16ee92b120db2eaa46e26",
+    "minecraft_version": "26.3",
+    "mcp_config_version": "20260918.230105",
+    "mcp_config_sha1": "2bb703b56ca5c3138da8e89c739e333725c26f60",
+    "climate_tree": {
+      "source": "MCP Overworld rules with Bedrock quantization, ordered by the native BDS tree builder",
+      "path": "server/world/generator/advanced/internal/bedrock/climate_data.bin",
+      "parameter_records": 7594,
+      "biomes": 56,
+      "nodes": 9113,
+      "record_bytes": 52,
+      "sha256": "d6c2b4a010789ce23846ff1ff670ce88e39170305001c5dd291b193b40f89466"
+    }
+  },
   "download_metadata_url": "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links",
   "linux": {
     "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.52.3.zip",
@@ -26,6 +42,7 @@
   },
   "windows": {
     "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-win/bedrock-server-1.26.52.3.zip",
-    "sha256": "2c9b98d07d2504786996f2335980e88bd969b4a77514925e75471a1349995825"
+    "sha256": "2c9b98d07d2504786996f2335980e88bd969b4a77514925e75471a1349995825",
+    "executable_sha256": "19c88569af2e4b7d984e999055a31cbcb0799dacf8bbbf7371eda42f5772a443"
   }
 }

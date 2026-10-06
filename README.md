@@ -9,7 +9,7 @@ Upstream: https://github.com/df-mc/dragonfly
 ## What’s New in Adamant
 - **Modern protocol and transport:** gophertunnel v1.62.0 (protocol 2193), native NetherNet HTTP signaling/WebRTC, and a persistent server identity across restarts.
 - **Fully asynchronous world generator:** generation tasks now run in parallel across worker goroutines, drastically improving chunk generation speed and reducing main-thread load.
-- **PM‑style world generation**: pmgen overworld with biomes (e.g., Swamp) and ore population; configurable seed, worker count and queue size.
+- **Optional PM-style generator:** pmgen remains available separately; it is not the default dimension generator.
 - **Legacy dimension generators**: Overworld/Nether/End use partial Java 1.12-based algorithms. They are not modern Bedrock world generation.
 - **Built‑in admin commands + server CLI**: `help`, `list`, `kick`, `gamemode`, `time`, `chat`, `gc`, `status`, `stop`, `about`, `whitelist`.
 - **RakNet Query support**: server status, players, MOTD and plugins exposed to query clients when the RakNet transport and Query are enabled.
@@ -40,6 +40,21 @@ The embedded palette contains **22,079 persisted states across 1,477 block ident
 - State lookup distinguishes property names, types and string boundaries; invalid supplied properties are not silently replaced with defaults.
 
 Custom `MissingStateReconstructor` implementations must preserve explicit properties and assign a lower `ReconstructionOrder` to derived-state dependencies. Same-order neighbours may be read for base properties, not unresolved derived geometry. Ray callers now choose `trace.RayShape` or `trace.CollisionShape` explicitly.
+
+### Modern generation numerical kernel
+
+`server/world/generator/advanced/internal/bedrock` implements seeded float32 noise, eight-block Voronoi biome cells, cached climate columns, terrain splines and native-ordered biome lookup. The default dimension generators still use the legacy algorithms; this kernel does not yet replace their terrain, caves, aquifers, surfaces or features.
+
+Readable Java 26.3 sources generated with [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn) supplied the spline shapes and Overworld climate rules. Bedrock-specific noise precision, quantization, spatial interpolation and tree ordering were checked separately. The packed tree contains 7,594 parameter records and 9,113 nodes, ordered by executing the pinned BDS tree builder rather than approximating its unstable sort.
+
+Verification:
+- 30,000 noise evaluations and 100,000 biome-cell selections match the executed BDS routines.
+- 49,614 spline evaluations agree between Java and the BDS evaluator using the same MCP-provided shape data.
+- 7,740 native tree-search queries agree, including history-sensitive interval boundaries.
+- 17,856 sampled biome observations across five seeds agree with the live BDS API. This is sampled climate coverage, not complete world-generation parity.
+- Hot climate, Voronoi and spline sampling allocates zero objects after initialization. Native-backed regression tests pass under the Go race detector.
+
+The source revisions, reference executable hash and packed-data checksum are pinned in `vanilla-reference.json`. Decompiled game sources and reference executables are not redistributed with the kernel.
 
 ## Getting Started
 Requirements: **Go 1.26+**
