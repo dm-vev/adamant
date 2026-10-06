@@ -40,6 +40,10 @@ type ClimateLookup struct {
 // synchronously and never retained. Equal fitness leaves do not replace the
 // previous winner, matching native search's strict-less-than update.
 func (lookup *ClimateLookup) Biome(point *ClimatePoint) string {
+	return climateBiomeNames[lookup.biomeIndex(point)]
+}
+
+func (lookup *ClimateLookup) biomeIndex(point *ClimatePoint) uint8 {
 	best := int32(-1)
 	var bestDistance int64
 	if lookup.previous != 0 {
@@ -50,8 +54,7 @@ func (lookup *ClimateLookup) Biome(point *ClimatePoint) string {
 	}
 	climateSearch(climateRootIndex, point, &best, &bestDistance)
 	lookup.previous = uint16(best + 1)
-	biomeID := climateTreeData[int(best)*climateNodeSize+climateBiomeOffset]
-	return climateBiomeNames[biomeID]
+	return climateTreeData[int(best)*climateNodeSize+climateBiomeOffset]
 }
 
 func climateSearch(nodeIndex int32, point *ClimatePoint, best *int32, bestDistance *int64) {
