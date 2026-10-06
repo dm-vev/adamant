@@ -91,9 +91,13 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 
 func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) protocol.SubChunkEntry {
 	subMapType, subMap := subChunkHeightMap(col, ind)
-	var subMapData protocol.Optional[[]int8]
+	var subMapData protocol.Optional[protocol.HeightMap]
 	if subMap != nil {
-		subMapData = protocol.Option(subMap)
+		var heightMap protocol.HeightMap
+		for z := range heightMap {
+			copy(heightMap[z][:], subMap[z*16:(z+1)*16])
+		}
+		subMapData = protocol.Option(heightMap)
 	}
 
 	sub := col.Sub()[ind]

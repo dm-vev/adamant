@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"log/slog"
@@ -17,6 +18,8 @@ import (
 )
 
 func main() {
+	headless := flag.Bool("headless", false, "run without the interactive console")
+	flag.Parse()
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	chat.Global.Subscribe(chat.StdoutSubscriber{})
 	conf, err := readConfig(slog.Default())
@@ -32,10 +35,11 @@ func main() {
 	builtin.Register(srv)
 	srv.CloseOnProgramEnd()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go console.New(srv, conf.Log).Run(ctx)
+	if !*headless {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go console.New(srv, conf.Log).Run(ctx)
+	}
 
 	srv.Listen()
 	for p := range srv.Accept() {

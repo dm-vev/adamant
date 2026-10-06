@@ -3,9 +3,13 @@
   # The address of the server, including the port. The server will be listening on this address. If another
   # server is already running on this port, please select a different port.
   Address = ":19132"
-  # EnableQuery controls whether Bedrock Query responses are enabled.
-  # When disabled, query packets are ignored (no reply is sent).
-  EnableQuery = true
+  # Modern Bedrock uses NetherNet (HTTP signaling and WebRTC). RakNet is available for older/custom clients.
+  Transport = "nethernet"
+  # Persistent server identity. Keep this private key across restarts and out of version control.
+  IdentityFile = "server-key.pem"
+  # EnableQuery controls Bedrock Query responses on the RakNet transport.
+  # NetherNet does not expose the legacy UDP Query endpoint.
+  EnableQuery = false
   # QueryPlugins controls whether plugin metadata is included in the long query response.
   # When disabled, the query `plugins` field only contains the engine label.
   QueryPlugins = false

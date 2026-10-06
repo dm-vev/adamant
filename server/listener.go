@@ -36,6 +36,9 @@ func (uc UserConfig) listenerFunc(conf Config) (Listener, error) {
 	if conf.Log.Enabled(context.Background(), slog.LevelDebug) {
 		cfg.ErrorLog = conf.Log.With("net origin", "gophertunnel")
 	}
+	if uc.Network.Transport == "" || uc.Network.Transport == "nethernet" {
+		return uc.netherNetListener(conf, cfg)
+	}
 	l, err := cfg.Listen("raknet", uc.Network.Address)
 	if err != nil {
 		return nil, fmt.Errorf("create minecraft listener: %w", err)

@@ -1,0 +1,23 @@
+{
+  "edition": "bedrock",
+  "version": "1.26.52.3",
+  "build_id": 51798919,
+  "commit_id": "54116bb5ee0b7aee0b5591efbcc8bc3cf64f168a",
+  "transport": "nethernet",
+  "protocol_version": 2193,
+  "item_registry": {
+    "source": "live BDS ItemRegistry packet",
+    "path": "server/world/vanilla_items.nbt",
+    "entries": 2076,
+    "sha256": "13a4e0b69f91934ea0745d26cef0ea2e7f02ea44add0fd46afb55cb35f214929"
+  },
+  "download_metadata_url": "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links",
+  "linux": {
+    "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.52.3.zip",
+    "sha256": "f6348d84fa714d04ca194f207e89453ca6bba0a1359396475271a52a150471c6"
+  },
+  "windows": {
+    "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-win/bedrock-server-1.26.52.3.zip",
+    "sha256": "2c9b98d07d2504786996f2335980e88bd969b4a77514925e75471a1349995825"
+  }
+}

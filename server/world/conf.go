@@ -159,6 +159,9 @@ func (conf Config) New() *World {
 			return
 		}
 		if w != nil {
+			w.closed.Store(true)
+			close(w.closeStarted)
+			w.generatorRunning.Wait()
 			w.set.Lock()
 			w.set.unregisterWorldLocked(w)
 			w.set.Unlock()
@@ -225,6 +228,15 @@ func (conf Config) New() *World {
 	w.tps.Store(math.Float64bits(20))
 
 	t := ticker{interval: time.Second / 20}
+	if !conf.Synchronous {
+		// The initial tick may generate the spawn column. Its readiness must not
+		// depend on workers that are only started after that tick returns.
+		w.running.Add(conf.GeneratorWorkers)
+		w.generatorRunning.Add(conf.GeneratorWorkers)
+		for range conf.GeneratorWorkers {
+			go w.generatorWorker()
+		}
+	}
 	if conf.Synchronous {
 		<-w.exec(t.tick)
 	} else {
@@ -233,14 +245,10 @@ func (conf Config) New() *World {
 	}
 	if !conf.Synchronous {
 		w.queueing.Add(1)
-		w.running.Add(conf.GeneratorWorkers + 2)
-		w.generatorRunning.Add(conf.GeneratorWorkers)
+		w.running.Add(2)
 
 		go t.tickLoop(w)
 		go w.autoSave()
-		for i := 0; i < conf.GeneratorWorkers; i++ {
-			go w.generatorWorker()
-		}
 		go w.handleTransactions()
 	}
 

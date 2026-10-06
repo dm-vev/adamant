@@ -64,6 +64,38 @@ func TestSynchronousWorldAdvanceTick(t *testing.T) {
 	}
 }
 
+func TestWorldConstructionResolvesUnloadedSpawnHeight(t *testing.T) {
+	for _, synchronous := range []bool{false, true} {
+		name := "asynchronous"
+		if synchronous {
+			name = "synchronous"
+		}
+		t.Run(name, func(t *testing.T) {
+			settings := defaultSettings()
+			settings.Spawn = cube.Pos{7, 32767, 9}
+			ready := make(chan *World, 1)
+			go func() {
+				ready <- (Config{
+					Provider: NopProvider{Set: settings}, Generator: NopGenerator{},
+					Synchronous: synchronous, GeneratorWorkers: 1,
+				}).New()
+			}()
+			select {
+			case w := <-ready:
+				defer w.Close()
+				settings.Lock()
+				spawn := settings.Spawn
+				settings.Unlock()
+				if want := (cube.Pos{7, w.Range().Min() + 1, 9}); spawn != want {
+					t.Fatalf("resolved spawn = %v, want %v", spawn, want)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("world construction blocked waiting for its spawn column")
+			}
+		})
+	}
+}
+
 func TestNeighbourUpdatesDoNotLoadMissingChunks(t *testing.T) {
 	provider := &neighbourUpdateCountingProvider{}
 	w := Config{Provider: provider, Synchronous: true}.New()

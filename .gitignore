@@ -33,3 +33,5 @@ temp_merge.diff
 ops.txt
 white-list.txt
 whitelist.toml
+server-key.pem
+.server-key-*

@@ -352,6 +352,12 @@ type UserConfig struct {
 		// Address is the address on which the server should listen. Players may
 		// connect to this address in order to join.
 		Address string
+		// Transport selects "nethernet" (modern Bedrock) or "raknet" for older/custom clients.
+		// An empty value selects NetherNet.
+		Transport string
+		// IdentityFile stores the NetherNet server's persistent P-384 identity key.
+		// An empty value uses "server-key.pem".
+		IdentityFile string
 		// EnableQuery controls whether Bedrock Query responses are enabled.
 		// When disabled, query packets are ignored (no reply is sent).
 		EnableQuery bool
@@ -459,6 +465,14 @@ type UserConfig struct {
 // a Server. An error is returned if creating data providers or loading
 // resources failed.
 func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
+	transport := strings.ToLower(strings.TrimSpace(uc.Network.Transport))
+	if transport == "" {
+		transport = "nethernet"
+	}
+	if transport != "nethernet" && transport != "raknet" {
+		return Config{}, fmt.Errorf("unknown network transport %q", uc.Network.Transport)
+	}
+	uc.Network.Transport = transport
 	var err error
 	query.SetEnabled(uc.Network.EnableQuery)
 	query.SetPluginListingEnabled(uc.Network.QueryPlugins)
@@ -578,7 +592,9 @@ func defaultGeneratorProvider(seed int64) func(dim world.Dimension) world.Genera
 func DefaultConfig() UserConfig {
 	c := UserConfig{}
 	c.Network.Address = ":19132"
-	c.Network.EnableQuery = true
+	c.Network.Transport = "nethernet"
+	c.Network.IdentityFile = "server-key.pem"
+	c.Network.EnableQuery = false
 	c.Network.QueryPlugins = false
 	c.Server.Name = "Dragonfly Server"
 	c.Server.AuthEnabled = true
