@@ -2,6 +2,7 @@ package chunk
 
 import (
 	"bytes"
+	"maps"
 	"slices"
 	"unsafe"
 )
@@ -33,10 +34,9 @@ type PalettedStorage struct {
 
 	// Palette holds all block runtime IDs that the indices in the indices slice point to. These runtime IDs
 	// point to block states.
-	palette *Palette
-
-	// indices contains all indices in the PalettedStorage. This slice has a variable size, but may not be changed
-	// unless the whole PalettedStorage is resized, including the Palette.
+	palette             *Palette
+	missingStateEntries map[uint16]missingStateEntry
+	// indices contains all indices in the PalettedStorage and changes only when the whole storage is resized.
 	indices []uint32
 }
 
@@ -62,7 +62,9 @@ func emptyStorage(v uint32) *PalettedStorage {
 
 // Clone returns an independent copy of the PalettedStorage.
 func (storage *PalettedStorage) Clone() *PalettedStorage {
-	return newPalettedStorage(slices.Clone(storage.indices), storage.palette.Clone())
+	clone := newPalettedStorage(slices.Clone(storage.indices), storage.palette.Clone())
+	clone.missingStateEntries = maps.Clone(storage.missingStateEntries)
+	return clone
 }
 
 // Palette returns the Palette of the PalettedStorage.
@@ -222,6 +224,7 @@ func (storage *PalettedStorage) resize(newPaletteSize paletteSize) {
 			}
 		}
 	}
+	newStorage.missingStateEntries = storage.missingStateEntries
 	// Set the new storage.
 	*storage = *newStorage
 }
@@ -291,6 +294,15 @@ func (storage *PalettedStorage) compact() {
 				newStorage.setPaletteIndex(x, y, z, conversion[storage.paletteIndex(x, y, z)])
 			}
 		}
+	}
+	if len(storage.missingStateEntries) != 0 {
+		entries := make(map[uint16]missingStateEntry, len(storage.missingStateEntries))
+		for index, entry := range storage.missingStateEntries {
+			if int(index) < len(usedIndices) && usedIndices[index] {
+				entries[conversion[index]] = entry
+			}
+		}
+		newStorage.missingStateEntries = entries
 	}
 	*storage = *newStorage
 }

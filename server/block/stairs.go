@@ -21,6 +21,8 @@ type Stairs struct {
 	UpsideDown bool
 	// Facing is the direction that the full side of the stairs is facing.
 	Facing cube.Direction
+	// Corner is the canonical corner shape encoded by the game.
+	Corner model.StairCorner
 }
 
 // UseOnBlock handles the directional placing of stairs and makes sure they are properly placed upside down
@@ -31,17 +33,67 @@ func (s Stairs) UseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec3, tx
 		return
 	}
 	s.Facing = user.Rotation().Direction()
-	if face == cube.FaceDown || (clickPos[1] > 0.5 && face != cube.FaceUp) {
-		s.UpsideDown = true
-	}
+	s.UpsideDown = face == cube.FaceDown || (clickPos[1] > 0.5 && face != cube.FaceUp)
+	s.Corner = s.cornerAt(pos, tx)
 
 	place(tx, pos, s, user, ctx)
 	return placed(ctx)
 }
 
+// NeighbourUpdateTick updates the persisted corner after adjacent stairs change.
+func (s Stairs) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	corner := s.cornerAt(pos, tx)
+	if corner != s.Corner {
+		s.Corner = corner
+		tx.SetBlock(pos, s, nil)
+	}
+}
+
+// ReconstructMissingState restores a corner omitted by an older disk palette.
+// Explicitly saved corner values are left untouched.
+func (s Stairs) ReconstructMissingState(pos cube.Pos, missing []string, bs world.BlockSource) world.Block {
+	for _, name := range missing {
+		if name == "minecraft:corner" {
+			s.Corner = s.cornerAt(pos, bs)
+			break
+		}
+	}
+	return s
+}
+
+func (s Stairs) cornerAt(pos cube.Pos, bs world.BlockSource) model.StairCorner {
+	right, left := s.Facing.RotateRight(), s.Facing.RotateLeft()
+	if front, ok := bs.Block(pos.Side(s.Facing.Face())).(Stairs); ok && front.UpsideDown == s.UpsideDown {
+		if (front.Facing == right || front.Facing == left) && !s.sameStairAt(pos.Side(front.Facing.Opposite().Face()), bs) {
+			switch front.Facing {
+			case right:
+				return model.StairCornerOuterRight
+			case left:
+				return model.StairCornerOuterLeft
+			}
+		}
+	}
+	if back, ok := bs.Block(pos.Side(s.Facing.Opposite().Face())).(Stairs); ok && back.UpsideDown == s.UpsideDown {
+		if (back.Facing == right || back.Facing == left) && !s.sameStairAt(pos.Side(back.Facing.Face()), bs) {
+			switch back.Facing {
+			case right:
+				return model.StairCornerInnerRight
+			case left:
+				return model.StairCornerInnerLeft
+			}
+		}
+	}
+	return model.StairCornerNone
+}
+
+func (s Stairs) sameStairAt(pos cube.Pos, bs world.BlockSource) bool {
+	side, ok := bs.Block(pos).(Stairs)
+	return ok && side.Facing == s.Facing && side.UpsideDown == s.UpsideDown && side.Block == s.Block
+}
+
 // Model ...
 func (s Stairs) Model() world.BlockModel {
-	return model.Stair{Facing: s.Facing, UpsideDown: s.UpsideDown}
+	return model.Stair{Facing: s.Facing, UpsideDown: s.UpsideDown, Corner: s.Corner}
 }
 
 // BreakInfo ...
@@ -84,7 +136,11 @@ func (s Stairs) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (s Stairs) EncodeBlock() (name string, properties map[string]any) {
-	return "minecraft:" + encodeStairsBlock(s.Block) + "_stairs", map[string]any{"upside_down_bit": s.UpsideDown, "weirdo_direction": toStairsDirection(s.Facing)}
+	return "minecraft:" + encodeStairsBlock(s.Block) + "_stairs", map[string]any{
+		"upside_down_bit":  s.UpsideDown,
+		"weirdo_direction": toStairsDirection(s.Facing),
+		"minecraft:corner": s.Corner.String(),
+	}
 }
 
 // toStairDirection converts a facing to a stair's direction for Minecraft.
@@ -104,14 +160,14 @@ func (Stairs) CanRedstoneWireStepDown(cube.Pos, cube.Pos, *world.Tx) bool {
 
 // allStairs returns all states of stairs.
 func allStairs() (stairs []world.Block) {
-	f := func(facing cube.Direction, upsideDown bool) {
-		for _, s := range StairsBlocks() {
-			stairs = append(stairs, Stairs{Facing: facing, UpsideDown: upsideDown, Block: s})
+	for _, block := range StairsBlocks() {
+		for facing := cube.Direction(0); facing <= 3; facing++ {
+			for half := range 2 {
+				for corner := model.StairCornerNone; corner <= model.StairCornerOuterRight; corner++ {
+					stairs = append(stairs, Stairs{Block: block, Facing: facing, UpsideDown: half != 0, Corner: corner})
+				}
+			}
 		}
-	}
-	for i := cube.Direction(0); i <= 3; i++ {
-		f(i, true)
-		f(i, false)
 	}
 	return
 }

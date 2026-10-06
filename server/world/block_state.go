@@ -95,21 +95,31 @@ func hashProperties(properties map[string]any) string {
 	slices.Sort(keys)
 
 	var b strings.Builder
+	var encodedLength [binary.MaxVarintLen64]byte
 	for _, k := range keys {
+		n := binary.PutUvarint(encodedLength[:], uint64(len(k)))
+		b.Write(encodedLength[:n])
+		b.WriteString(k)
 		switch v := properties[k].(type) {
 		case bool:
+			b.WriteByte(0)
 			if v {
 				b.WriteByte(1)
 			} else {
 				b.WriteByte(0)
 			}
 		case uint8:
+			b.WriteByte(0)
 			b.WriteByte(v)
 		case int32:
+			b.WriteByte(1)
 			var buf [4]byte
 			binary.LittleEndian.PutUint32(buf[:], uint32(v))
 			b.Write(buf[:])
 		case string:
+			b.WriteByte(2)
+			n = binary.PutUvarint(encodedLength[:], uint64(len(v)))
+			b.Write(encodedLength[:n])
 			b.WriteString(v)
 		default:
 			// If block encoding is broken, we want to find out as soon as possible. This saves a lot of time

@@ -220,6 +220,10 @@ func (br *BasicBlockRegistry) RuntimeIDToHash(runtimeID uint32) (hash uint32, ok
 // Clone returns an independent copy of the registry. If the source registry is finalized, the clone is also finalized.
 // If the source is not finalized, the clone remains mutable.
 func (br *BasicBlockRegistry) Clone() *BasicBlockRegistry {
+	return br.clone(false)
+}
+
+func (br *BasicBlockRegistry) clone(mutable bool) *BasicBlockRegistry {
 	br.mu.Lock()
 	defer br.mu.Unlock()
 
@@ -227,7 +231,7 @@ func (br *BasicBlockRegistry) Clone() *BasicBlockRegistry {
 		blockProperties: make(map[string]map[string]any, len(br.blockProperties)),
 		stateRuntimeIDs: make(map[stateHash]uint32, len(br.stateRuntimeIDs)),
 		customBlocks:    make(map[string]CustomBlock, len(br.customBlocks)),
-		finalized:       br.finalized,
+		finalized:       br.finalized && !mutable,
 		bitSize:         br.bitSize,
 		airRID:          br.airRID,
 	}
@@ -240,9 +244,9 @@ func (br *BasicBlockRegistry) Clone() *BasicBlockRegistry {
 
 	br2.blocks = make([]Block, len(br.blocks))
 	copy(br2.blocks, br.blocks)
-	br2.blockInfos = append([]blockInfo(nil), br.blockInfos...)
 
-	if br.finalized {
+	if br2.finalized {
+		br2.blockInfos = slices.Clone(br.blockInfos)
 		br2.hashes = intintmap.New(len(br.blocks), 0.999)
 		for rid, b := range br2.blocks {
 			if _, hash := b.Hash(); hash == math.MaxUint64 {
@@ -262,16 +266,10 @@ func (br *BasicBlockRegistry) Clone() *BasicBlockRegistry {
 // Callers may RegisterBlockState/RegisterBlock and must call Finalize() before using the registry for world/chunk
 // serialization. The returned registry is independent from DefaultBlockRegistry.
 func NewBlockRegistry() BlockRegistry {
-	// Clone() produces a fully populated registry. We then mark it mutable again so that additional block states and
-	// blocks can be registered before finalizing.
-	br := DefaultBlockRegistry.Clone()
-	br.finalized = false
-	br.bitSize = 0
-	br.hashes = nil
-	br.networkhashToRids = nil
-	br.ridsToNetworkhash = nil
-	br.blockInfos = nil
-	return br
+	// Composite block hashes use the default registry's bit width. Initialise it
+	// before building an independent registry, even when no world exists yet.
+	DefaultBlockRegistry.Finalize()
+	return DefaultBlockRegistry.clone(true)
 }
 
 // RegisterBlock registers the Block passed. The EncodeBlock method will be used to encode and decode the
@@ -450,7 +448,22 @@ func (br *BasicBlockRegistry) StateToRuntimeID(name string, properties map[strin
 	if rid, ok := br.stateRuntimeIDs[stateHash{name: name, properties: hashProperties(properties)}]; ok {
 		return rid, true
 	}
-	rid, ok := br.stateRuntimeIDs[stateHash{name: name, properties: hashProperties(br.blockProperties[name])}]
+	defaults, ok := br.blockProperties[name]
+	if !ok {
+		return 0, false
+	}
+	if len(properties) == 0 {
+		rid, ok := br.stateRuntimeIDs[stateHash{name: name, properties: hashProperties(defaults)}]
+		return rid, ok
+	}
+	merged := maps.Clone(defaults)
+	for key, value := range properties {
+		if _, known := defaults[key]; !known {
+			return 0, false
+		}
+		merged[key] = value
+	}
+	rid, ok := br.stateRuntimeIDs[stateHash{name: name, properties: hashProperties(merged)}]
 	return rid, ok
 }
 

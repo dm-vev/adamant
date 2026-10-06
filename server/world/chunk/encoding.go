@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"slices"
 
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
@@ -57,6 +58,21 @@ type BlockPaletteEncoding struct {
 	Blocks BlockRegistry
 }
 
+type missingStateEntry struct {
+	properties []string
+	state      blockEntry
+}
+
+type paletteStateMigration struct {
+	index   uint16
+	entries map[uint16]missingStateEntry
+}
+
+type blockPaletteMigrationEncoding struct {
+	BlockPaletteEncoding
+	migration *paletteStateMigration
+}
+
 func (bpe BlockPaletteEncoding) encode(buf *bytes.Buffer, v uint32) {
 	_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(bpe.EncodeBlockState(v))
 }
@@ -65,7 +81,36 @@ func (bpe BlockPaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
 	if err := nbt.NewDecoderWithEncoding(buf, nbt.LittleEndian).Decode(&m); err != nil {
 		return 0, fmt.Errorf("error decoding block palette entry: %w", err)
 	}
-	return bpe.DecodeBlockState(m)
+	rid, _, _, err := bpe.decodeBlockState(m)
+	return rid, err
+}
+
+func (bpe blockPaletteMigrationEncoding) encode(buf *bytes.Buffer, v uint32) {
+	if entry, ok := bpe.migration.entries[bpe.migration.index]; ok {
+		_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(entry.state)
+	} else {
+		bpe.BlockPaletteEncoding.encode(buf, v)
+	}
+	bpe.migration.index++
+}
+
+func (bpe blockPaletteMigrationEncoding) decode(buf *bytes.Buffer) (uint32, error) {
+	var m map[string]any
+	if err := nbt.NewDecoderWithEncoding(buf, nbt.LittleEndian).Decode(&m); err != nil {
+		return 0, fmt.Errorf("error decoding block palette entry: %w", err)
+	}
+	rid, missing, entry, err := bpe.BlockPaletteEncoding.decodeBlockState(m)
+	if len(missing) != 0 {
+		if bpe.migration.entries == nil {
+			bpe.migration.entries = make(map[uint16]missingStateEntry)
+		}
+		bpe.migration.entries[bpe.migration.index] = missingStateEntry{
+			properties: missing,
+			state:      entry,
+		}
+	}
+	bpe.migration.index++
+	return rid, err
 }
 
 func (bpe BlockPaletteEncoding) EncodeBlockState(v uint32) blockEntry {
@@ -76,6 +121,11 @@ func (bpe BlockPaletteEncoding) EncodeBlockState(v uint32) blockEntry {
 }
 
 func (bpe BlockPaletteEncoding) DecodeBlockState(m map[string]any) (uint32, error) {
+	rid, _, _, err := bpe.decodeBlockState(m)
+	return rid, err
+}
+
+func (bpe BlockPaletteEncoding) decodeBlockState(m map[string]any) (uint32, []string, blockEntry, error) {
 	// Decode the name and version of the block entry.
 	name, _ := m["name"].(string)
 	version, _ := m["version"].(int32)
@@ -89,7 +139,7 @@ func (bpe BlockPaletteEncoding) DecodeBlockState(m map[string]any) (uint32, erro
 		// Upgrade the pre-1.13 state into a post-1.13 state.
 		state, ok := upgradeLegacyEntry(name, meta)
 		if !ok {
-			return 0, fmt.Errorf("cannot find mapping for legacy block entry: %v, %v", name, meta)
+			return 0, nil, blockEntry{}, fmt.Errorf("cannot find mapping for legacy block entry: %v, %v", name, meta)
 		}
 
 		// Update the name, state, and version.
@@ -103,7 +153,7 @@ func (bpe BlockPaletteEncoding) DecodeBlockState(m map[string]any) (uint32, erro
 	}
 	state, ok := stateI.(map[string]any)
 	if !ok {
-		return 0, fmt.Errorf("invalid state in block entry")
+		return 0, nil, blockEntry{}, fmt.Errorf("invalid state in block entry")
 	}
 
 	// Upgrade the block state if necessary.
@@ -115,9 +165,20 @@ func (bpe BlockPaletteEncoding) DecodeBlockState(m map[string]any) (uint32, erro
 
 	v, ok := bpe.Blocks.StateToRuntimeID(upgraded.Name, upgraded.Properties)
 	if !ok {
-		return 0, fmt.Errorf("cannot get runtime ID of block state %v{%+v} %v", upgraded.Name, upgraded.Properties, upgraded.Version)
+		return 0, nil, blockEntry{}, fmt.Errorf("cannot get runtime ID of block state %v{%+v} %v", upgraded.Name, upgraded.Properties, upgraded.Version)
 	}
-	return v, nil
+	_, canonical, found := bpe.Blocks.RuntimeIDToState(v)
+	var missing []string
+	if found {
+		for key := range canonical {
+			if _, supplied := upgraded.Properties[key]; !supplied {
+				missing = append(missing, key)
+			}
+		}
+		slices.Sort(missing)
+	}
+	entry := blockEntry{Name: upgraded.Name, State: upgraded.Properties, Version: CurrentBlockVersion}
+	return v, missing, entry, nil
 }
 
 // diskEncoding implements the Chunk encoding for writing to disk.

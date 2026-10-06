@@ -25,6 +25,16 @@ type Block interface {
 	Model() BlockModel
 }
 
+// MissingStateReconstructor reconstructs derived block properties that were absent from a decoded disk state.
+// It must preserve all properties not listed in missing and must not cause chunk loads.
+type MissingStateReconstructor interface {
+	ReconstructMissingState(pos cube.Pos, missing []string, blocks BlockSource) Block
+	// ReconstructionOrder orders derived-state dependencies. A block may rely
+	// on reconstructed properties of neighbours with a strictly smaller order.
+	// Same-order neighbours may only be used for their non-derived properties.
+	ReconstructionOrder() int
+}
+
 // CustomBlock represents a block that is non-vanilla and requires a resource pack and extra steps to show it to the
 // client.
 type CustomBlock interface {

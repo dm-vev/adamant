@@ -1,8 +1,11 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // HardenedGlass is a hardened glass block.
@@ -30,9 +33,13 @@ func (HardenedGlass) EncodeBlock() (string, map[string]any) {
 // HardenedGlassPane is a hardened glass pane.
 type HardenedGlassPane struct {
 	transparent
-	thin
 	clicksAndSticks
 	sourceWaterDisplacer
+
+	NorthConnection bool
+	EastConnection  bool
+	SouthConnection bool
+	WestConnection  bool
 }
 
 // BreakInfo ...
@@ -46,8 +53,33 @@ func (HardenedGlassPane) EncodeItem() (name string, meta int16) {
 }
 
 // EncodeBlock ...
-func (HardenedGlassPane) EncodeBlock() (string, map[string]any) {
-	return "minecraft:hard_glass_pane", nil
+func (p HardenedGlassPane) EncodeBlock() (string, map[string]any) {
+	return "minecraft:hard_glass_pane", (thinConnections{p.NorthConnection, p.EastConnection, p.SouthConnection, p.WestConnection}).properties()
+}
+
+// Model ...
+func (p HardenedGlassPane) Model() world.BlockModel {
+	return model.Thin{North: p.NorthConnection, East: p.EastConnection, South: p.SouthConnection, West: p.WestConnection}
+}
+
+// NeighbourUpdateTick ...
+func (p HardenedGlassPane) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	updateThinBlock(pos, tx, p, thinConnections{p.NorthConnection, p.EastConnection, p.SouthConnection, p.WestConnection})
+}
+
+// UseOnBlock ...
+func (p HardenedGlassPane) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeThin(pos, face, p, tx, user, ctx)
+}
+
+func allHardenedGlassPane() (panes []world.Block) {
+	for _, connections := range allThinConnections() {
+		panes = append(panes, HardenedGlassPane{
+			NorthConnection: connections.north, EastConnection: connections.east,
+			SouthConnection: connections.south, WestConnection: connections.west,
+		})
+	}
+	return
 }
 
 // HardenedStainedGlass is a hardened stained glass block.
@@ -77,11 +109,15 @@ func (g HardenedStainedGlass) EncodeBlock() (string, map[string]any) {
 // HardenedStainedGlassPane is a hardened stained glass pane.
 type HardenedStainedGlassPane struct {
 	transparent
-	thin
 	clicksAndSticks
 	sourceWaterDisplacer
 
 	Colour item.Colour
+
+	NorthConnection bool
+	EastConnection  bool
+	SouthConnection bool
+	WestConnection  bool
 }
 
 // BreakInfo ...
@@ -96,7 +132,22 @@ func (p HardenedStainedGlassPane) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (p HardenedStainedGlassPane) EncodeBlock() (string, map[string]any) {
-	return "minecraft:hard_" + p.Colour.String() + "_stained_glass_pane", nil
+	return "minecraft:hard_" + p.Colour.String() + "_stained_glass_pane", (thinConnections{p.NorthConnection, p.EastConnection, p.SouthConnection, p.WestConnection}).properties()
+}
+
+// Model ...
+func (p HardenedStainedGlassPane) Model() world.BlockModel {
+	return model.Thin{North: p.NorthConnection, East: p.EastConnection, South: p.SouthConnection, West: p.WestConnection}
+}
+
+// NeighbourUpdateTick ...
+func (p HardenedStainedGlassPane) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	updateThinBlock(pos, tx, p, thinConnections{p.NorthConnection, p.EastConnection, p.SouthConnection, p.WestConnection})
+}
+
+// UseOnBlock ...
+func (p HardenedStainedGlassPane) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeThin(pos, face, p, tx, user, ctx)
 }
 
 // allHardenedStainedGlass returns all hardened stained glass block states.
@@ -110,7 +161,12 @@ func allHardenedStainedGlass() (blocks []world.Block) {
 // allHardenedStainedGlassPanes returns all hardened stained glass pane block states.
 func allHardenedStainedGlassPanes() (blocks []world.Block) {
 	for _, c := range item.Colours() {
-		blocks = append(blocks, HardenedStainedGlassPane{Colour: c})
+		for _, connections := range allThinConnections() {
+			blocks = append(blocks, HardenedStainedGlassPane{
+				Colour: c, NorthConnection: connections.north, EastConnection: connections.east,
+				SouthConnection: connections.south, WestConnection: connections.west,
+			})
+		}
 	}
 	return
 }

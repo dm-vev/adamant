@@ -18,10 +18,14 @@ type Tripwire struct {
 	replaceable
 	sourceWaterDisplacer
 
-	Attached  bool
-	Disarmed  bool
-	Powered   bool
-	Suspended bool
+	Attached        bool
+	Disarmed        bool
+	Powered         bool
+	Suspended       bool
+	NorthConnection bool
+	EastConnection  bool
+	SouthConnection bool
+	WestConnection  bool
 }
 
 // BreakInfo ...
@@ -37,6 +41,7 @@ func (t Tripwire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 	}
 	t.Suspended = !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx)
 	place(tx, pos, t, user, ctx)
+	updateTripwireConnections(pos, tx)
 	updateTripwireFrom(pos, tx)
 	return placed(ctx)
 }
@@ -48,6 +53,7 @@ func (t Tripwire) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		t.Suspended = suspended
 		tx.SetBlock(pos, t, nil)
 	}
+	updateTripwireConnections(pos, tx)
 	updateTripwireFrom(pos, tx)
 }
 
@@ -72,10 +78,14 @@ func (Tripwire) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (t Tripwire) EncodeBlock() (string, map[string]any) {
 	return "minecraft:trip_wire", map[string]any{
-		"attached_bit":  boolByte(t.Attached),
-		"disarmed_bit":  boolByte(t.Disarmed),
-		"powered_bit":   boolByte(t.Powered),
-		"suspended_bit": boolByte(t.Suspended),
+		"attached_bit":               boolByte(t.Attached),
+		"disarmed_bit":               boolByte(t.Disarmed),
+		"powered_bit":                boolByte(t.Powered),
+		"suspended_bit":              boolByte(t.Suspended),
+		"minecraft:connection_north": boolByte(t.NorthConnection),
+		"minecraft:connection_east":  boolByte(t.EastConnection),
+		"minecraft:connection_south": boolByte(t.SouthConnection),
+		"minecraft:connection_west":  boolByte(t.WestConnection),
 	}
 }
 
@@ -106,19 +116,45 @@ func tripwirePowered(pos cube.Pos, tx *world.Tx) bool {
 func updateTripwireFrom(pos cube.Pos, tx *world.Tx) {
 	for _, dir := range cube.Directions() {
 		cur := pos
-		for i := 0; i < maxTripwireLength; i++ {
+		for range maxTripwireLength {
 			cur = cur.Side(dir.Face())
 			b := tx.Block(cur)
 			if _, ok := b.(Tripwire); ok {
 				continue
 			}
 			hook, ok := b.(TripwireHook)
-			if ok && hook.Facing == dir {
+			if ok && hook.Facing == dir.Opposite() {
 				updateTripwireLine(cur, hook, tx)
 			}
 			break
 		}
 	}
+}
+func updateTripwireConnections(pos cube.Pos, tx *world.Tx) {
+	t, ok := tx.Block(pos).(Tripwire)
+	if !ok {
+		return
+	}
+	connections := [4]bool{}
+	for _, dir := range cube.Directions() {
+		neighbourPos := pos.Side(dir.Face())
+		neighbour := tx.Block(neighbourPos)
+		switch neighbour := neighbour.(type) {
+		case Tripwire:
+			connections[dir] = true
+		case TripwireHook:
+			connections[dir] = neighbour.Facing == dir.Opposite()
+		}
+	}
+	if t.NorthConnection == connections[cube.North] && t.EastConnection == connections[cube.East] &&
+		t.SouthConnection == connections[cube.South] && t.WestConnection == connections[cube.West] {
+		return
+	}
+	t.NorthConnection = connections[cube.North]
+	t.EastConnection = connections[cube.East]
+	t.SouthConnection = connections[cube.South]
+	t.WestConnection = connections[cube.West]
+	tx.SetBlock(pos, t, &world.SetOpts{DisableBlockUpdates: true})
 }
 
 func updateTripwireLine(pos cube.Pos, hook TripwireHook, tx *world.Tx) {
@@ -128,7 +164,7 @@ func updateTripwireLine(pos cube.Pos, hook TripwireHook, tx *world.Tx) {
 	wirePositions := make([]cube.Pos, 0, maxTripwireLength)
 
 	cur := pos
-	for i := 0; i < maxTripwireLength; i++ {
+	for range maxTripwireLength {
 		cur = cur.Side(facing.Face())
 		b := tx.Block(cur)
 		if tw, ok := b.(Tripwire); ok {
@@ -149,6 +185,7 @@ func updateTripwireLine(pos cube.Pos, hook TripwireHook, tx *world.Tx) {
 	}
 	updateHookState(pos, hook, attached, powered, tx)
 	for _, wirePos := range wirePositions {
+		updateTripwireConnections(wirePos, tx)
 		tw := tx.Block(wirePos).(Tripwire)
 		if tw.Attached != attached {
 			tw.Attached = attached
@@ -167,15 +204,42 @@ func updateHookState(pos cube.Pos, hook TripwireHook, attached, powered bool, tx
 	tx.DoBlockUpdatesAround(pos.Side(hook.Facing.Opposite().Face()))
 }
 
-func allTripwires() (wires []world.Block) {
-	for _, attached := range []bool{false, true} {
-		for _, disarmed := range []bool{false, true} {
-			for _, powered := range []bool{false, true} {
-				for _, suspended := range []bool{false, true} {
-					wires = append(wires, Tripwire{Attached: attached, Disarmed: disarmed, Powered: powered, Suspended: suspended})
-				}
-			}
+func (t Tripwire) ReconstructMissingState(pos cube.Pos, missing []string, bs world.BlockSource) world.Block {
+	if hasMissingProperty(missing, "minecraft:connection_north") {
+		t.NorthConnection = tripwireConnectsFrom(bs, pos, cube.North)
+	}
+	if hasMissingProperty(missing, "minecraft:connection_east") {
+		t.EastConnection = tripwireConnectsFrom(bs, pos, cube.East)
+	}
+	if hasMissingProperty(missing, "minecraft:connection_south") {
+		t.SouthConnection = tripwireConnectsFrom(bs, pos, cube.South)
+	}
+	if hasMissingProperty(missing, "minecraft:connection_west") {
+		t.WestConnection = tripwireConnectsFrom(bs, pos, cube.West)
+	}
+	return t
+}
+
+func tripwireConnectsFrom(bs world.BlockSource, pos cube.Pos, dir cube.Direction) bool {
+	neighbour := bs.Block(pos.Side(dir.Face()))
+	switch neighbour := neighbour.(type) {
+	case Tripwire:
+		return true
+	case TripwireHook:
+		return neighbour.Facing == dir.Opposite()
+	default:
+		return false
+	}
+}
+func allTripwires() []world.Block {
+	wires := make([]world.Block, 256)
+	for mask := range 256 {
+		wires[mask] = Tripwire{
+			Attached: mask&128 != 0, Disarmed: mask&64 != 0,
+			Powered: mask&32 != 0, Suspended: mask&16 != 0,
+			NorthConnection: mask&8 != 0, EastConnection: mask&4 != 0,
+			SouthConnection: mask&2 != 0, WestConnection: mask&1 != 0,
 		}
 	}
-	return
+	return wires
 }

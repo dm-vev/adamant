@@ -1,6 +1,7 @@
 package chunk
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -26,6 +27,153 @@ type Chunk struct {
 	sub []*SubChunk
 	// biomes is an array of biome IDs. There is one biome ID for every column in the chunk.
 	biomes []*PalettedStorage
+	// missingBlockStates records block states with canonical properties omitted for later reconstruction.
+	missingBlockStates map[missingBlockStateKey][]string
+}
+
+type missingBlockStateKey struct {
+	position cube.Pos
+	layer    uint8
+}
+
+// MissingBlockState describes a block state whose canonical properties were omitted for reconstruction.
+type MissingBlockState struct {
+	Position   cube.Pos
+	Layer      uint8
+	Properties []string
+}
+
+// MissingBlockStates returns block states with omitted canonical properties.
+func (chunk *Chunk) MissingBlockStates() []MissingBlockState {
+	states := make([]MissingBlockState, 0, len(chunk.missingBlockStates))
+	for key, properties := range chunk.missingBlockStates {
+		states = append(states, MissingBlockState{
+			Position: key.position, Layer: key.layer, Properties: slices.Clone(properties),
+		})
+	}
+	slices.SortFunc(states, func(a, b MissingBlockState) int {
+		for axis := range 3 {
+			if a.Position[axis] < b.Position[axis] {
+				return -1
+			}
+			if a.Position[axis] > b.Position[axis] {
+				return 1
+			}
+		}
+		if a.Layer < b.Layer {
+			return -1
+		}
+		if a.Layer > b.Layer {
+			return 1
+		}
+		return 0
+	})
+	return states
+}
+
+// CanonicalizeMissingBlockState moves one resolved cell off its partial palette entry.
+// The entry remains partial when other cells still use it.
+func (chunk *Chunk) CanonicalizeMissingBlockState(pos cube.Pos, layer uint8) bool {
+	sub := chunk.SubChunk(int16(pos[1]))
+	if int(layer) >= len(sub.storages) {
+		return false
+	}
+	storage := sub.storages[layer]
+	x, y, z := byte(int(pos[0])&15), byte(pos[1]), byte(int(pos[2])&15)
+	paletteIndex := storage.paletteIndex(x, y, z)
+	if _, partial := storage.missingStateEntries[paletteIndex]; !partial {
+		chunk.clearMissingBlockState(pos, layer)
+		return true
+	}
+	rid := storage.palette.Value(paletteIndex)
+	for index, candidate := range storage.palette.values {
+		if candidate == rid {
+			if _, partial := storage.missingStateEntries[uint16(index)]; !partial {
+				storage.setPaletteIndex(x, y, z, uint16(index))
+				chunk.clearMissingBlockState(pos, layer)
+				return true
+			}
+		}
+	}
+	if len(storage.palette.values) >= (1<<16)-1 {
+		return false
+	}
+	index, resize := storage.palette.Add(rid)
+	if resize {
+		storage.resize(storage.palette.size)
+	}
+	storage.setPaletteIndex(x, y, z, uint16(index))
+	chunk.clearMissingBlockState(pos, layer)
+	return true
+}
+func (chunk *Chunk) clearMissingBlockState(pos cube.Pos, layer uint8) {
+	pos[0] &= 15
+	pos[2] &= 15
+	delete(chunk.missingBlockStates, missingBlockStateKey{position: pos, layer: layer})
+}
+
+// MarkGeneratedBlockStates marks only registered derived properties in generated palettes for reconstruction.
+func (chunk *Chunk) MarkGeneratedBlockStates(derivedProperties func(uint32) []string) {
+	for subIndex, sub := range chunk.sub {
+		baseY := int(chunk.SubY(int16(subIndex)))
+		for layer, storage := range sub.storages {
+			var entries map[uint16]missingStateEntry
+			for index, rid := range storage.palette.values {
+				keys := derivedProperties(rid)
+				if len(keys) == 0 {
+					continue
+				}
+				name, properties, ok := chunk.br.RuntimeIDToState(rid)
+				if !ok {
+					continue
+				}
+				partial := make(map[string]any, len(properties))
+				for key, value := range properties {
+					partial[key] = value
+				}
+				var missing []string
+				for _, key := range keys {
+					if _, exists := partial[key]; exists {
+						missing = append(missing, key)
+						delete(partial, key)
+					}
+				}
+				if len(missing) == 0 {
+					continue
+				}
+				slices.Sort(missing)
+				if entries == nil {
+					entries = make(map[uint16]missingStateEntry)
+				}
+				entries[uint16(index)] = missingStateEntry{
+					properties: missing,
+					state:      blockEntry{Name: name, State: partial, Version: CurrentBlockVersion},
+				}
+			}
+			if len(entries) == 0 {
+				continue
+			}
+			storage.missingStateEntries = entries
+			for x := byte(0); x < 16; x++ {
+				for z := byte(0); z < 16; z++ {
+					for y := byte(0); y < 16; y++ {
+						paletteIndex := storage.paletteIndex(x, y, z)
+						entry, marked := entries[paletteIndex]
+						if !marked {
+							continue
+						}
+						if chunk.missingBlockStates == nil {
+							chunk.missingBlockStates = make(map[missingBlockStateKey][]string)
+						}
+						chunk.missingBlockStates[missingBlockStateKey{
+							position: cube.Pos{int(x), baseY + int(y), int(z)},
+							layer:    uint8(layer),
+						}] = entry.properties
+					}
+				}
+			}
+		}
+	}
 }
 
 // New initialises a new chunk and returns it, so that it may be used.
@@ -65,6 +213,10 @@ func (chunk *Chunk) Clone() *Chunk {
 	}
 	for i, biomes := range chunk.biomes {
 		clone.biomes[i] = biomes.Clone()
+	}
+	clone.missingBlockStates = maps.Clone(chunk.missingBlockStates)
+	for key, properties := range clone.missingBlockStates {
+		clone.missingBlockStates[key] = slices.Clone(properties)
 	}
 	return clone
 }

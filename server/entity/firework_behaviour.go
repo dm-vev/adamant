@@ -135,7 +135,7 @@ func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 			victim.(Living).Hurt(dmg, src)
 			continue
 		}
-		if _, ok := trace.Perform(pos, tpos, tx, victim.H().Type().BBox(victim).Grow(0.3), nil); ok {
+		if _, ok := trace.Perform(pos, tpos, tx, victim.H().Type().BBox(victim).Grow(0.3), nil, trace.CollisionShape); ok {
 			victim.(Living).Hurt(dmg, src)
 		}
 	}

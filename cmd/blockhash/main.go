@@ -166,9 +166,6 @@ func (b *hashBuilder) writeMethods(w io.Writer) {
 					// should not be in the Hash method.
 					continue
 				}
-				if !fieldName.IsExported() {
-					continue
-				}
 				directives := make(map[string]string)
 				if field.Doc != nil {
 					for _, d := range field.Doc.List {
@@ -241,6 +238,10 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(boolByte(" + s + "))", 1
 	case "int":
 		return "uint64(" + s + ")", 8
+	case "uint8":
+		return "uint64(" + s + ")", 8
+	case "int32":
+		return "uint64(uint32(" + s + "))", 32
 	case "Block":
 		return "world.BlockHash(" + s + ")", 32
 	case "Attachment":
@@ -258,9 +259,9 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 	case "WoodType", "LeavesType", "FlowerType", "DoubleFlowerType", "Colour":
 		// Assuming these were all based on metadata, it should be safe to assume a bit size of 4 for this.
 		return "uint64(" + s + ".Uint8())", 4
-	case "ButtonType", "PressurePlateType":
+	case "ButtonType", "PressurePlateType", "ShelfMaterial":
 		return "uint64(" + s + ".Uint8())", 4
-	case "CoralType", "SkullType":
+	case "CoralType", "SkullType", "StairCorner":
 		return "uint64(" + s + ".Uint8())", 3
 	case "LeverOrientation":
 		return "uint64(" + s + ".Uint8())", 3
@@ -274,8 +275,11 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ".Uint8())", 1
 	case "BambooLeafSize":
 		return "uint64(" + s + ".Uint8())", 2
-	case "Direction", "Axis":
+	case "Axis":
 		return "uint64(" + s + ")", 2
+	case "Direction":
+		// Some vanilla block states also retain the unknownDirection sentinel (4).
+		return "uint64(" + s + ")", 3
 	case "Face":
 		return "uint64(" + s + ")", 3
 	default:

@@ -81,11 +81,43 @@ func DiskDecode(br BlockRegistry, data SerialisedData, r cube.Range) (*Chunk, er
 			continue
 		}
 		index := uint8(i)
-		if c.sub[index], err = decodeSubChunk(bytes.NewBuffer(sub), c, &index, DiskEncoding); err != nil {
-			return nil, err
+		decoded, decodeErr := decodeSubChunk(bytes.NewBuffer(sub), c, &index, DiskEncoding)
+		if decodeErr != nil {
+			return nil, decodeErr
 		}
+		if int(index) >= len(c.sub) {
+			return nil, fmt.Errorf("invalid sub-chunk index %d: chunk range has %d sub-chunks", index, len(c.sub))
+		}
+		c.sub[index] = decoded
+		c.recordMissingBlockStates(index, decoded)
 	}
 	return c, nil
+}
+func (c *Chunk) recordMissingBlockStates(subIndex uint8, sub *SubChunk) {
+	baseY := int(c.SubY(int16(subIndex)))
+	for layer, storage := range sub.storages {
+		if len(storage.missingStateEntries) == 0 {
+			continue
+		}
+		for x := byte(0); x < 16; x++ {
+			for z := byte(0); z < 16; z++ {
+				for y := byte(0); y < 16; y++ {
+					paletteIndex := storage.paletteIndex(x, y, z)
+					entry, missing := storage.missingStateEntries[paletteIndex]
+					if !missing {
+						continue
+					}
+					if c.missingBlockStates == nil {
+						c.missingBlockStates = make(map[missingBlockStateKey][]string)
+					}
+					c.missingBlockStates[missingBlockStateKey{
+						position: cube.Pos{int(x), baseY + int(y), int(z)},
+						layer:    uint8(layer),
+					}] = entry.properties
+				}
+			}
+		}
+	}
 }
 
 // decodeSubChunk decodes a SubChunk from a bytes.Buffer. The Encoding passed defines how the block storages of the
@@ -100,8 +132,7 @@ func decodeSubChunk(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) (*SubC
 	default:
 		return nil, fmt.Errorf("unknown sub chunk version %v: can't decode", ver)
 	case 1:
-		// Version 1 only has one layer for each sub chunk, but uses the format with palettes.
-		storage, err := decodePalettedStorage(buf, e, BlockPaletteEncoding{Blocks: c.br})
+		storage, err := decodeBlockStorage(buf, e, c.br)
 		if err != nil {
 			return nil, err
 		}
@@ -122,15 +153,27 @@ func decodeSubChunk(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) (*SubC
 			*index = uint8(int8(uIndex) - int8(c.r[0]>>4))
 		}
 		sub.storages = make([]*PalettedStorage, storageCount)
-
 		for i := byte(0); i < storageCount; i++ {
-			sub.storages[i], err = decodePalettedStorage(buf, e, BlockPaletteEncoding{Blocks: c.br})
+			sub.storages[i], err = decodeBlockStorage(buf, e, c.br)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 	return sub, nil
+}
+
+func decodeBlockStorage(buf *bytes.Buffer, e Encoding, br BlockRegistry) (*PalettedStorage, error) {
+	migration := paletteStateMigration{}
+	storage, err := decodePalettedStorage(buf, e, blockPaletteMigrationEncoding{
+		BlockPaletteEncoding: BlockPaletteEncoding{Blocks: br},
+		migration:            &migration,
+	})
+	if err != nil {
+		return nil, err
+	}
+	storage.missingStateEntries = migration.entries
+	return storage, nil
 }
 
 // decodeBiomes reads the paletted storages holding biomes from buf and stores it into the Chunk passed.

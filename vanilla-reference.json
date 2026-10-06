@@ -11,6 +11,14 @@
     "entries": 2076,
     "sha256": "13a4e0b69f91934ea0745d26cef0ea2e7f02ea44add0fd46afb55cb35f214929"
   },
+  "block_palette": {
+    "source": "live BDS persisted structure palettes and structure_void world state",
+    "path": "server/world/block_states.nbt",
+    "block_identifiers": 1477,
+    "states": 22079,
+    "state_version": 18168865,
+    "sha256": "3ea34d7ac71f9469bb822685e09776a0ed059a94de57d584a6f836e6297bf089"
+  },
   "download_metadata_url": "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links",
   "linux": {
     "url": "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.52.3.zip",

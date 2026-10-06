@@ -25,9 +25,21 @@ Upstream: https://github.com/df-mc/dragonfly
 ## Project Goal
 Reproduce the gameplay, generation, persistence and network behaviour of the BDS release pinned in [`vanilla-reference.json`](vanilla-reference.json). BDS is the behavioural oracle; Java sources are supplementary references, not a substitute for checking edition differences.
 
-The reference is BDS **1.26.52.3**, build **51798919**. Archive and embedded item-registry hashes are recorded in the reference file. Protocol library version strings and successful connections alone do not establish gameplay parity.
+The reference is BDS **1.26.52.3**, build **51798919**. Archive, embedded item-registry and block-palette hashes are recorded in the reference file. Protocol library version strings and successful connections alone do not establish gameplay parity.
 
 Current gaps include modern world generation, mob coverage and block implementations. A registered block state can still be an `unknownBlock`; a non-placeholder implementation can also have incomplete behaviour.
+
+### Block states and migration
+
+The embedded palette contains **22,079 persisted states across 1,477 block identifiers**, captured from the pinned BDS. This is registry coverage, not implementation coverage.
+
+- Panes, bars, fences and tripwire persist their four cardinal connections. Stairs persist straight, inner-left/right and outer-left/right corners.
+- Old disk states retain explicitly supplied properties. Missing derived properties are reconstructed from loaded neighbours; unresolved boundary states survive save/reload without forcing neighbouring chunk generation. Stair geometry resolves before dependent pane/fence connections.
+- Generated chunks reconstruct the same derived properties before they are committed as complete states.
+- Stair neighbour rules are checked against 112 BDS scenarios, including orientation, half and material-dependent corner suppression. Physical corner collision and projectile/ray shape are separate: captured BDS arrows use the straight stair outline even at corners. Explosion and firework exposure retain their existing collision-shape behaviour.
+- State lookup distinguishes property names, types and string boundaries; invalid supplied properties are not silently replaced with defaults.
+
+Custom `MissingStateReconstructor` implementations must preserve explicit properties and assign a lower `ReconstructionOrder` to derived-state dependencies. Same-order neighbours may be read for base properties, not unresolved derived geometry. Ray callers now choose `trace.RayShape` or `trace.CollisionShape` explicitly.
 
 ## Getting Started
 Requirements: **Go 1.26+**

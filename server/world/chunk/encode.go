@@ -9,10 +9,9 @@ const (
 	// SubChunkVersion is the current version of the written sub chunks, specifying the format they are
 	// written on disk and over network.
 	SubChunkVersion = 9
-	// CurrentBlockVersion is the current version of blocks (states) of the game. This version is composed
-	// of 4 bytes indicating a version, interpreted as a big endian int. The current version represents
-	// 1.16.0.14 {1, 16, 0, 14}.
-	CurrentBlockVersion int32 = 18040335
+	// CurrentBlockVersion is the block-state encoding version observed in persisted palettes
+	// from BDS 1.26.52.3. It is distinct from the game/protocol version.
+	CurrentBlockVersion int32 = 18168865
 )
 
 var (
@@ -66,7 +65,14 @@ func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
 	s := c.sub[ind]
 	_, _ = buf.Write([]byte{SubChunkVersion, byte(len(s.storages)), uint8(ind + (c.r[0] >> 4))})
 	for _, storage := range s.storages {
-		encodePalettedStorage(buf, storage, nil, e, BlockPaletteEncoding{Blocks: c.br})
+		pe := paletteEncoding(BlockPaletteEncoding{Blocks: c.br})
+		if e.network() == 0 && len(storage.missingStateEntries) != 0 {
+			pe = blockPaletteMigrationEncoding{
+				BlockPaletteEncoding: BlockPaletteEncoding{Blocks: c.br},
+				migration:            &paletteStateMigration{entries: storage.missingStateEntries},
+			}
+		}
+		encodePalettedStorage(buf, storage, nil, e, pe)
 	}
 	sub := make([]byte, buf.Len())
 	_, _ = buf.Read(sub)

@@ -289,7 +289,7 @@ func (c ExplosionConfig) exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entit
 							return false
 						}
 					}
-					_, collided = trace.BlockIntercept(pos, tx, tx.Block(pos), origin, point)
+					_, collided = trace.BlockIntercept(pos, tx, tx.Block(pos), origin, point, trace.CollisionShape)
 					return !collided
 				})
 

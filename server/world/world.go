@@ -469,6 +469,94 @@ func (w *World) blockLoaded(pos cube.Pos) (Block, bool) {
 	return w.conf.Blocks.BlockByRuntimeIDOrAir(rid), true
 }
 
+// reconcileMissingBlockStates applies only opted-in missing-state reconstruction. It runs on the world owner after a
+// chunk becomes ready, and revisits pending states in the chunk and its surrounding chunks.
+func (w *World) reconcileMissingBlockStates(pos ChunkPos) {
+	type candidate struct {
+		column     *Column
+		pos        cube.Pos
+		properties []string
+		order      int
+	}
+	candidates := make([]candidate, 0)
+	for _, offset := range [...]ChunkPos{{}, {-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}} {
+		candidatePos := ChunkPos{pos[0] + offset[0], pos[1] + offset[1]}
+		col, ok := w.chunks[candidatePos]
+		if !ok || !col.Ready() || len(col.missingBlockStates) == 0 {
+			continue
+		}
+		for blockPos, state := range col.missingBlockStates {
+			current, loaded := w.blockLoaded(blockPos)
+			if !loaded {
+				continue
+			}
+			reconstructor, ok := current.(MissingStateReconstructor)
+			if !ok {
+				if col.CanonicalizeMissingBlockState(blockPos, 0) {
+					col.modified = true
+					delete(col.missingBlockStates, blockPos)
+				}
+				continue
+			}
+			candidates = append(candidates, candidate{
+				column: col, pos: blockPos, properties: state.properties,
+				order: reconstructor.ReconstructionOrder(),
+			})
+		}
+	}
+	if len(candidates) == 0 {
+		return
+	}
+	slices.SortFunc(candidates, func(a, b candidate) int {
+		if a.order < b.order {
+			return -1
+		}
+		if a.order > b.order {
+			return 1
+		}
+		for _, axis := range [...]int{1, 0, 2} {
+			if a.pos[axis] < b.pos[axis] {
+				return -1
+			}
+			if a.pos[axis] > b.pos[axis] {
+				return 1
+			}
+		}
+		return 0
+	})
+	for _, candidate := range candidates {
+		current, loaded := w.blockLoaded(candidate.pos)
+		if !loaded {
+			continue
+		}
+		reconstructor, ok := current.(MissingStateReconstructor)
+		if !ok {
+			continue
+		}
+		source := &loadedWorldSource{w: w, complete: true, order: candidate.order}
+		updated := reconstructor.ReconstructMissingState(candidate.pos, candidate.properties, source)
+		if updated == nil || !source.complete {
+			continue
+		}
+		rid := w.conf.Blocks.BlockRuntimeID(updated)
+		oldRID := candidate.column.Block(uint8(candidate.pos[0]), int16(candidate.pos[1]), uint8(candidate.pos[2]), 0)
+		if oldRID != rid {
+			candidate.column.SetBlock(uint8(candidate.pos[0]), int16(candidate.pos[1]), uint8(candidate.pos[2]), 0, rid)
+			candidate.column.invalidateRandomTickSubChunks()
+			candidate.column.invalidateSubChunkHeightMaps()
+			candidate.column.invalidateNetworkSubChunkPayloads()
+			candidate.column.modified = true
+			for viewer := range candidate.column.viewers {
+				viewer.ViewBlockUpdate(candidate.pos, updated, 0)
+			}
+		}
+		if candidate.column.CanonicalizeMissingBlockState(candidate.pos, 0) {
+			candidate.column.modified = true
+			delete(candidate.column.missingBlockStates, candidate.pos)
+		}
+	}
+}
+
 // blockInChunk reads a block from a chunk at the position passed. The block
 // is assumed to be within the chunk passed.
 func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
@@ -617,6 +705,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 
 	c.modified = true
 	c.SetBlock(x, y, z, 0, rid)
+	if _, pending := c.missingBlockStates[pos]; pending && c.CanonicalizeMissingBlockState(pos, 0) {
+		delete(c.missingBlockStates, pos)
+	}
 	c.invalidateRandomTickSubChunks()
 	c.invalidateSubChunkHeightMaps()
 	c.invalidateNetworkSubChunkPayloads()
@@ -1964,6 +2055,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			w.chunkCount.Add(1)
 		}
 		w.chunks[pos] = col
+		w.reconcileMissingBlockStates(pos)
 
 		// Register all entities contained in this column into the world.
 		w.set.Lock()
@@ -2157,6 +2249,8 @@ func (w *World) runGenerationTask(task generationTask) {
 		if !w.closed.Load() {
 			w.Do(func(tx *Tx) {
 				task.col.ensureLight(w, task.pos)
+				w.markGeneratedDerivedBlockStates(task.pos, task.col)
+				w.reconcileMissingBlockStates(task.pos)
 				w.finishChunkRequest(tx, task.pos, task.col)
 			})
 		}
@@ -2381,8 +2475,14 @@ func (w *World) closeUnusedChunks(tx *Tx) {
 	w.CollectGarbage(tx)
 }
 
+// pendingMissingBlockState retains a partial state until its horizontal neighbours are available.
+type pendingMissingBlockState struct {
+	properties []string
+}
+
 // Column represents the data of a chunk including the (block) entities and
 // viewers and loaders.
+
 type Column struct {
 	modified bool
 
@@ -2390,6 +2490,7 @@ type Column struct {
 	Entities                        []*EntityHandle
 	entityIndices                   map[*EntityHandle]int
 	BlockEntities                   map[cube.Pos]Block
+	missingBlockStates              map[cube.Pos]pendingMissingBlockState
 	randomTickSubChunksDirty        bool
 	cachedRandomTickSubChunkIndices []int
 	tickerBlockEntitiesDirty        bool
@@ -2804,11 +2905,44 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 	}
 	return c
 }
+func (w *World) markGeneratedDerivedBlockStates(pos ChunkPos, col *Column) {
+	col.Chunk.MarkGeneratedBlockStates(func(runtimeID uint32) []string {
+		block := w.conf.Blocks.BlockByRuntimeIDOrAir(runtimeID)
+		provider, ok := block.(interface{ DerivedStateProperties() []string })
+		if !ok {
+			return nil
+		}
+		return provider.DerivedStateProperties()
+	})
+	for _, state := range col.Chunk.MissingBlockStates() {
+		if state.Layer != 0 {
+			continue
+		}
+		state.Position[0] += int(pos[0]) * 16
+		state.Position[2] += int(pos[1]) * 16
+		if col.missingBlockStates == nil {
+			col.missingBlockStates = make(map[cube.Pos]pendingMissingBlockState)
+		}
+		col.missingBlockStates[state.Position] = pendingMissingBlockState{properties: state.Properties}
+	}
+}
 
 // columnFrom converts a chunk.Column to a Column after reading it from a
 // provider.
-func (w *World) columnFrom(c *chunk.Column, _ ChunkPos) *Column {
+func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 	col := newColumn(c.Chunk)
+	states := c.Chunk.MissingBlockStates()
+	if len(states) != 0 {
+		col.missingBlockStates = make(map[cube.Pos]pendingMissingBlockState, len(states))
+	}
+	for _, state := range states {
+		if state.Layer != 0 {
+			continue
+		}
+		state.Position[0] += int(pos[0]) * 16
+		state.Position[2] += int(pos[1]) * 16
+		col.missingBlockStates[state.Position] = pendingMissingBlockState{properties: state.Properties}
+	}
 	col.Entities = make([]*EntityHandle, 0, len(c.Entities))
 	if len(c.Entities) > 0 {
 		col.entityIndices = make(map[*EntityHandle]int, len(c.Entities))

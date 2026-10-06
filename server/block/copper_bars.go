@@ -4,6 +4,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -12,13 +14,17 @@ import (
 // CopperBars are blocks that serve a similar purpose to glass panes, but made of copper instead of glass.
 type CopperBars struct {
 	transparent
-	thin
 	sourceWaterDisplacer
 
 	// Oxidation is the level of oxidation of the copper bars.
 	Oxidation OxidationType
 	// Waxed bool is whether the copper bars has been waxed with honeycomb.
 	Waxed bool
+
+	NorthConnection bool
+	EastConnection  bool
+	SouthConnection bool
+	WestConnection  bool
 }
 
 // BreakInfo ...
@@ -80,17 +86,36 @@ func (c CopperBars) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (c CopperBars) EncodeBlock() (name string, properties map[string]any) {
-	return copperBlockName("copper_bars", c.Oxidation, c.Waxed), nil
+	return copperBlockName("copper_bars", c.Oxidation, c.Waxed), (thinConnections{c.NorthConnection, c.EastConnection, c.SouthConnection, c.WestConnection}).properties()
+}
+
+// Model ...
+func (c CopperBars) Model() world.BlockModel {
+	return model.Thin{North: c.NorthConnection, East: c.EastConnection, South: c.SouthConnection, West: c.WestConnection}
+}
+
+// NeighbourUpdateTick ...
+func (c CopperBars) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	updateThinBlock(pos, tx, c, thinConnections{c.NorthConnection, c.EastConnection, c.SouthConnection, c.WestConnection})
+}
+
+// UseOnBlock ...
+func (c CopperBars) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeThin(pos, face, c, tx, user, ctx)
 }
 
 // allCopperBars ...
 func allCopperBars() (bars []world.Block) {
-	f := func(waxed bool) {
-		for _, o := range OxidationTypes() {
-			bars = append(bars, CopperBars{Oxidation: o, Waxed: waxed})
+	for _, waxed := range []bool{true, false} {
+		for _, oxidation := range OxidationTypes() {
+			for _, connections := range allThinConnections() {
+				bars = append(bars, CopperBars{
+					Oxidation: oxidation, Waxed: waxed,
+					NorthConnection: connections.north, EastConnection: connections.east,
+					SouthConnection: connections.south, WestConnection: connections.west,
+				})
+			}
 		}
 	}
-	f(true)
-	f(false)
 	return
 }

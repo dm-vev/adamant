@@ -52,7 +52,7 @@ func TestSmallFireballHit(t *testing.T) {
 
 		pos := cube.Pos{2, 1, 0}
 		tx.SetBlock(pos, block.Cobblestone{}, nil)
-		blockResult, ok := trace.BlockIntercept(pos, tx, tx.Block(pos), mgl64.Vec3{2.5, 3, 0.5}, mgl64.Vec3{2.5, 1.5, 0.5})
+		blockResult, ok := trace.BlockIntercept(pos, tx, tx.Block(pos), mgl64.Vec3{2.5, 3, 0.5}, mgl64.Vec3{2.5, 1.5, 0.5}, trace.RayShape)
 		if !ok {
 			t.Fatal("expected ray to hit block")
 		}
