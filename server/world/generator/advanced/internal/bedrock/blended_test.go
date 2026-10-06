@@ -5,23 +5,27 @@ import (
 	"testing"
 )
 
-func TestBlendedNativeDensity(t *testing.T) {
+func TestBlendedNativeVolumes(t *testing.T) {
 	tests := []struct {
-		name    string
-		seed    int64
-		x, y, z int32
-		want    uint32
+		name           string
+		seed           int64
+		chunkX, chunkZ int32
+		index          int
+		want           uint32
 	}{
-		{"positive_subcell", 0, 0, 1, 0, 0x404bb431},
-		{"negative_subcell", 1, 0, -1, 0, 0xbf0d4b28},
-		{"lower_boundary", -1, 0, -64, 0, 0x40b69da0},
-		{"upper_boundary_full_width_seed", -1 << 63, 0, 256, 0, 0xc1b6982d},
-		{"far_cell_index_overflow", 1 << 32, 9541171, 117, 28710309, 0xc19c3adf},
+		{"cached_vertical_gradients", 0, 0, 0, 14, 0xbdc2af98},
+		{"negative_chunk_upper_vertex", 1, -1, -1, 40, 0x413e400c},
+		{"negative_seed", -1, 257, -257, 420, 0xc19a33ef},
+		{"upper_corner_full_width_seed", -1 << 63, -1025, 513, 1024, 0x42528aca},
+		{"far_cell_index_overflow", 1 << 32, -1874998, 1874998, 614, 0xc27503e0},
+		{"far_positive_chunk", 0x12345678abcdef01, 1874998, -1874998, 999, 0xc01d36a2},
 	}
+	var values [densityGridSize]float32
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			noise := NewBlendedNoise(test.seed)
-			got := math.Float32bits(noise.Sample(test.x, test.y, test.z))
+			noise.Fill(test.chunkX, test.chunkZ, &values)
+			got := math.Float32bits(values[test.index])
 			if got != test.want {
 				t.Fatalf("blended density bits = %08x, want %08x", got, test.want)
 			}

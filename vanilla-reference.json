@@ -40,11 +40,27 @@
       "ordering": "Packet positions are diagnostic, not canonical biome identities; native order changed with generation-data negotiation."
     },
     "blended_noise": {
-      "source": "native BDS three-dimensional smeared-Perlin evaluator with seeded 16/16/8 terrain stacks",
+      "source": "native BDS bulk three-dimensional smeared-Perlin evaluator with seeded 16/16/8 terrain stacks and retained vertical gradient history",
       "native_entry_point": "0x145e23fc0",
-      "sampled_queries": 32790,
+      "sampled_vertices": 36900,
+      "grid_dimensions": [5, 41, 5],
       "seeds": 6,
-      "golden_sha256": "baa34c9eeda79e3bb73455ae3639f12b3d717a5b3561534d969773fa0a579076"
+      "golden_sha256": "b029e5e4ca786e8f0e0f223cf2c0dfb041c77d8ec09f92aec4cbadf8af21ae74"
+    },
+    "density_grid": {
+      "source": "native BDS unblended Overworld density composer with initialized noise and MCP terrain splines",
+      "native_entry_point": "0x14822d4b0",
+      "sampled_vertices": 102500,
+      "component_values": 820000,
+      "chunks": 100,
+      "seeds": 5,
+      "golden_sha256": "bacdd5533d501da4e9baace3d44e8a847758ae0daa8931224ada072405446c34",
+      "interpolation_reference": {
+        "source": "independent scalar transcription of native voxel interpolation, squeeze and noodle expressions over captured native grids, not execution of the native voxel loop",
+        "sampled_queries": 100000,
+        "component_values": 400000,
+        "golden_sha256": "4d7767665dc8c89a12df61f99f3358301407bb4ac31e278b9973da104a8201b3"
+      }
     },
     "climate_tree": {
       "source": "MCP Overworld rules with Bedrock quantization, ordered by the native BDS tree builder",
