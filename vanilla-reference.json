@@ -33,6 +33,13 @@
       "capture_sha256": "802541c7992d5cfa38faa7805ec2f9f6d458cf2fb08e443a1f8b0fad95c8c4c3",
       "ordering": "Packet positions are diagnostic, not canonical biome identities; native order changed with generation-data negotiation."
     },
+    "blended_noise": {
+      "source": "native BDS three-dimensional smeared-Perlin evaluator with seeded 16/16/8 terrain stacks",
+      "native_entry_point": "0x145e23fc0",
+      "sampled_queries": 32790,
+      "seeds": 6,
+      "golden_sha256": "baa34c9eeda79e3bb73455ae3639f12b3d717a5b3561534d969773fa0a579076"
+    },
     "climate_tree": {
       "source": "MCP Overworld rules with Bedrock quantization, ordered by the native BDS tree builder",
       "path": "server/world/generator/advanced/internal/bedrock/climate_data.bin",
