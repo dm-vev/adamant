@@ -25,6 +25,14 @@
     "minecraft_version": "26.3",
     "mcp_config_version": "20260918.230105",
     "mcp_config_sha1": "2bb703b56ca5c3138da8e89c739e333725c26f60",
+    "biome_definitions": {
+      "source": "live BDS BiomeDefinitionList packet with server and client chunk-generation support enabled",
+      "entries": 89,
+      "generation_entries": 89,
+      "packet_body_bytes": 332518,
+      "capture_sha256": "802541c7992d5cfa38faa7805ec2f9f6d458cf2fb08e443a1f8b0fad95c8c4c3",
+      "ordering": "Packet positions are diagnostic, not canonical biome identities; native order changed with generation-data negotiation."
+    },
     "climate_tree": {
       "source": "MCP Overworld rules with Bedrock quantization, ordered by the native BDS tree builder",
       "path": "server/world/generator/advanced/internal/bedrock/climate_data.bin",

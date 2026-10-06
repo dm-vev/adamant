@@ -103,6 +103,21 @@ The Bedrock Query adapter is available with `Network.Transport = "raknet"` and `
 ## Development
 Adamant retains Dragonfly's structure and Go API conventions. Behaviour changes should include a reproducible scenario against the pinned BDS release.
 
+### Native registry comparison
+
+`scripts/vanilla_compare.py` runs the pinned BDS and Adamant in isolated directories, captures their initial item and biome registries, and compares world settings and registry metadata. Use an unpacked BDS distribution:
+
+```shell
+python3 scripts/vanilla_compare.py --bds-dir /path/to/bds --output /path/to/new-capture --seed 1 --timeout 90
+```
+
+Add `--reference-only` to capture BDS without starting Adamant. The offline probe needs no Microsoft account; keep these unauthenticated reference servers isolated.
+
+Each capture includes a JSON snapshot and a `*-biomes.bin` packet body. `cmd/vanilla-probe -biomes-packet PATH` advertises client-generation support and preserves the complete decoded biome-definition payload without its packet header. The harness explicitly enables BDS's `client-side-chunk-generation-enabled` property; without this negotiation, BDS omits the optional generation rules. The pinned capture contains 89 biome definitions, all with generation data.
+
+`cmd/vanilla-compare -reference reference.json -candidate candidate.json` compares biome names, climate, precipitation, water colour and tags in addition to items and world settings. Snapshots without the `biomes` field must be recaptured. Packet positions remain available as `index` for diagnostics but are not an equality criterion: enabling generation data changed 71 positions in two native captures with otherwise identical metadata. Tag ordering is likewise ignored. The comparator does not compare the optional generation rules or establish gameplay/terrain parity.
+
+
 
 Upstream docs: https://pkg.go.dev/github.com/df-mc/dragonfly/server
 
