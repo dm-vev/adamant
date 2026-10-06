@@ -2,7 +2,7 @@
 
 # Adamant
 
-Adamant is a Go-based Minecraft: Bedrock Edition server, forked from df-mc/dragonfly. Its goal is behavioural compatibility with a pinned modern Bedrock Dedicated Server (BDS) release while retaining native Go simulation. Full vanilla parity has **not** been reached.
+Adamant is a Go-based Minecraft: Bedrock Edition server, forked from df-mc/dragonfly. It ports Java 26.3 generation and gameplay while using a pinned Bedrock Dedicated Server (BDS) release for protocol, registries and NBT compatibility. Full vanilla parity has **not** been reached.
 
 Upstream: https://github.com/df-mc/dragonfly
 
@@ -10,7 +10,7 @@ Upstream: https://github.com/df-mc/dragonfly
 - **Modern protocol and transport:** gophertunnel v1.62.0 (protocol 2193), native NetherNet HTTP signaling/WebRTC, and a persistent server identity across restarts.
 - **Fully asynchronous world generator:** generation tasks now run in parallel across worker goroutines, drastically improving chunk generation speed and reducing main-thread load.
 - **Optional PM-style generator:** pmgen remains available separately; it is not the default dimension generator.
-- **Legacy dimension generators**: Overworld/Nether/End use partial Java 1.12-based algorithms. They are not modern Bedrock world generation.
+- **Java 26.3 generation kernel:** Java random streams, noise, terrain splines, climate lookup, biome zoom and aquifers are checked against the mapped Java runtime. Dimension structures, material rules and feature integration are still in progress.
 - **Built‑in admin commands + server CLI**: `help`, `list`, `kick`, `gamemode`, `time`, `chat`, `gc`, `status`, `stop`, `about`, `whitelist`.
 - **RakNet Query support**: server status, players, MOTD and plugins exposed to query clients when the RakNet transport and Query are enabled.
 - **Whitelist system**: Nukkit-style `white-list.txt` allowlist with legacy TOML fallback; built‑in `whitelist`/`allowlist` commands and config enforcement.
@@ -23,9 +23,9 @@ Upstream: https://github.com/df-mc/dragonfly
 - **Query and persistence robustness**: token pruning, UUID validation, corruption guards for inventories, detached query player slices, and safer resource pack building.
 
 ## Project Goal
-Reproduce the gameplay, generation, persistence and network behaviour of the BDS release pinned in [`vanilla-reference.json`](vanilla-reference.json). BDS is the behavioural oracle; Java sources are supplementary references, not a substitute for checking edition differences.
+Port Java **26.3** generation and gameplay from the pinned [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn) sources. Java is the behavioural reference for terrain, features, items and survival logic; byte-for-byte reproduction of Bedrock's generation algorithms is not the goal.
 
-The reference is BDS **1.26.52.3**, build **51798919**. Archive, embedded item-registry and block-palette hashes are recorded in the reference file. Protocol library version strings and successful connections alone do not establish gameplay parity.
+Use BDS **1.26.52.3**, build **51798919**, as the reference for Bedrock protocol, registry and NBT compatibility. Archive, item-registry, block-palette and source revisions are recorded in [`vanilla-reference.json`](vanilla-reference.json). Successful connections alone do not establish gameplay parity.
 
 Current gaps include modern world generation, mob coverage and block implementations. A registered block state can still be an `unknownBlock`; a non-placeholder implementation can also have incomplete behaviour.
 
@@ -59,27 +59,29 @@ The embedded palette contains **22,079 persisted states across 1,477 block ident
 
 Custom `MissingStateReconstructor` implementations must preserve explicit properties and assign a lower `ReconstructionOrder` to derived-state dependencies. Same-order neighbours may be read for base properties, not unresolved derived geometry. Ray callers now choose `trace.RayShape` or `trace.CollisionShape` explicitly.
 
-### Modern generation numerical kernel
+### Generated entities and block data
 
-`server/world/generator/advanced/internal/bedrock` implements seeded float32 noise, eight-block Voronoi biome cells, cached climate columns, terrain splines and column controls, batched blended terrain noise, preliminary surface heights, native-ordered biome lookup, composed Overworld density grids, noodle caves and aquifers. The default dimension generators still use the legacy algorithms; these components do not yet replace their terrain, caves, fluids, surfaces or features.
+`world.Generator.GenerateChunk` now returns `world.GenerationResult` in addition to filling the supplied chunk. Return newly constructed worldless entity handles, absolute-position block-entity NBT, and initial block updates whose `Tick` values are relative delays. The world takes ownership; generation workers must not retain mutable result data or enter world transactions. Block-only generators return the zero value.
 
-Readable Java 26.3 sources generated with [MCP-Reborn](https://github.com/Hexeption/MCP-Reborn) supplied the spline shapes and Overworld climate rules. Bedrock-specific noise precision, quantization, spatial interpolation and tree ordering were checked separately. The packed tree contains 7,594 parameter records and 9,113 nodes, ordered by executing the pinned BDS tree builder rather than approximating its unstable sort.
+The world installs this data once on its owner goroutine before publishing or saving the column. Shutdown also consumes in-flight results, and read-only worlds close their entities without saving columns. Dimension generators, rather than the world layer, supply gateway destinations and banner data.
 
-Verification:
-- 30,000 noise evaluations, 900 cell-index overflow cases and 100,000 biome-cell selections match the executed BDS routines. Overflow follows the native SSE conversion, including non-finite noise results; it is not replaced with Java coordinate wrapping.
-- 49,614 spline evaluations agree between Java and the BDS evaluator using the same MCP-provided shape data.
-- 7,740 native tree-search queries agree, including history-sensitive interval boundaries.
-- 17,856 sampled biome observations across five seeds agree with the live BDS API. This is sampled climate coverage, not complete world-generation parity.
-- A worker-local 3×3×49 biome lattice reproduces 13,824 of those live observations across four seeds, plus the saved native column's Y=-64 and Y=319 boundaries. It retains each climate column's vertical tie history and caches positional jitter, so preparing a chunk and sampling its block biomes allocate nothing after source construction.
-- 50,000 aquifer queries agree bit-for-bit with the native BDS fluid-level and barrier routines across five seeds, negative coordinates, world-border coordinates and five prescribed preliminary surfaces. This verifies the fluid component with initialized noise/spline inputs, not the complete terrain pipeline. The Bedrock implementation selects three nearest centres and retains its own pressure and update thresholds.
-- 10,000 terrain columns and preliminary surface heights agree with the native routines using the same initialized noise and MCP spline data. Another 5,000 queries agree with native terrain-surface and aquifer sampling connected together.
-- 36,900 blended terrain vertices agree bit-for-bit with the native three-dimensional smeared-Perlin evaluator across six seeds and complete 5×41×5 chunk grids. The implementation retains native vertical gradient history; independently sampling each vertex loses that history and produces different rounding. The immutable 16/16/8 octave stacks allocate nothing while filling a grid.
-- 50,595 cave-density queries agree bit-for-bit with the native routine using initialized noise inputs, including the surface/underground transition, negative and world-border coordinates, and non-finite upstream densities. The harness bridges `powf` to host libm; Go's widened pillar cube agrees in this corpus but is not universally bit-identical to that library.
-- 102,500 composed density vertices across 100 chunks and five seeds agree bit-for-bit with the native unblended Overworld composer, including all seven auxiliary noodle/ore fields: 820,000 matching float32 values. This uses initialized noise and MCP spline inputs, with the reference runner's `powf` limitation described above. Grid preparation and density sampling allocate nothing.
-- Cached Z/X/Y voxel interpolation, density squeezing and noodle decisions agree with an independent scalar transcription on 100,000 queries from those native grids. This checks 400,000 density/ore values, not execution of the native full voxel-fill loop; block selection, structure adjustments and dimension-generator integration remain separate work.
-- Aquifer workers cache the bounded 27×19 preliminary-surface window instead of resampling it at every fluid centre. Hot climate, Voronoi, spline, terrain-column, cave and aquifer sampling allocates zero objects after initialization; aquifer chunk-cache reset also allocates nothing. Native-backed regression tests pass under the Go race detector.
+Runtime verification under the race detector covered synchronous and background generation, an End crystal with a beam target, gateway NBT, disk reopening without a generator, and a generated water update that flowed on its third tick. Regression tests also cover shutdown while a generation worker is still running. Flat generation fills biomes through the dimension's inclusive upper boundary, including Overworld Y=319.
 
-The source revisions, reference executable hash and packed-data checksum are pinned in `vanilla-reference.json`. Decompiled game sources and reference executables are not redistributed with the kernel.
+### Java 26.3 generation kernel
+
+`server/world/generator/advanced/internal/java26` ports Java's legacy and Xoroshiro random sources, float32 noise stacks, blended terrain noise, terrain splines, climate search, three-dimensional biome zoom, Overworld density graph, noodle caves, ore-vein fields and aquifers. The climate tree contains all 7,594 Java parameter records and uses Java's 19-child search tree; biome identities are translated separately to Bedrock registry IDs.
+
+The Overworld cutover is still in progress: the verified kernel does not yet replace the default generator's complete terrain, surfaces, structures and feature pipeline. These checks are not a claim of complete generation or gameplay parity.
+
+Verification against executed Java 26.3 classes:
+
+- 707 random/noise comparisons cover both random algorithms, Gaussian sampling, normal and legacy Nether noise, simplex noise, blended terrain, biome-seed hashing and ridge folding.
+- 16,538 terrain-spline samples match the Java results exactly.
+- 280 Overworld router fields across 35 sampled positions agree within `1e-6`; the largest observed absolute difference was `7.450580596923828e-9`.
+- 35 biome-zoom probes agree, including negative coordinates.
+- Fifteen complete Overworld density/aquifer chunks across seeds `0`, `1` and `-1` match all **1,474,560** material decisions and fluid-update flags. This excludes surface rules, structures, carvers and placed features.
+
+Reference executables, decompiled sources and temporary oracle programs are not committed. A PDB may only supply RVAs for an executable with the matching CodeView GUID and age; the supplied 26.51.1 symbols do not match the pinned 1.26.52.3 executable.
 
 ## Getting Started
 Requirements: **Go 1.26+**
