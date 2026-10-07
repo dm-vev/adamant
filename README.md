@@ -125,6 +125,8 @@ Sculk patches match **28 executed Java scenarios and 5,968 final block writes**,
 
 Template features are connected to the feature dispatcher. **48 executed Java scenarios and 1,548 final block writes** cover both desert-well templates, rotations, missing-template failure, dry/wet starting terrain and inline archaeology loot processors. A public decorator smoke checked **196,608 cells, 12 loot actors and 48 following-stream values**. Rule processors use a position-seeded Legacy stream, independent of the placement RNG. These cases do not establish general template fluid-fill, neighbor-shape updates or deferred chunk postprocessing parity.
 
+Template processor block and height queries read the current feature region, including earlier feature writes, rather than the untouched terrain source. A public chained-feature smoke reproduced a stale-location failure before the correction, then matched a stone-dependent rule and placed gold at Y=80; with a following gravity processor it placed gold at Y=81 and retained the original stone.
+
 Diamond-ore loot with Fortune III now matches the pinned Java Xoroshiro stream and source ore-bonus formula for 16 seeds (14 mismatches before the correction). A single eligible pool entry no longer consumes a selection draw. Enchantment modifiers preserve unmentioned enchantments and implement additive replacement without losing JSON numeric component values.
 
 Six effective-difficulty boundaries were checked against the actual Java `DifficultyInstance` class. The capped Easy result is **1.5**, not 1.625; the source arithmetic was unchanged and the incorrect regression expectation was corrected.

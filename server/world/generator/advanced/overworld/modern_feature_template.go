@@ -128,13 +128,19 @@ func placeModernTemplateFeature(region *featureRegion, config map[string]any, or
 		}
 	}
 	processors, err := javastructure.LoadProcessors(processorNames, inlineProcessorSpecs, javastructure.ProcessorEnvironment{
-		BaseBlock:   func(x, y, z int32) world.Block { return region.f.source.BaseBlock(x, y, z) },
+		BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
 		JavaBiomeAt: region.f.source.JavaBiomeAt,
-		BaseHeight:  region.f.source.BaseHeight,
-		WorldSeed:   region.f.seed,
-		StartPos:    placeOrigin,
-		BlockCount:  len(template.Palettes[palette]),
-		Random:      random,
+		BaseHeight: func(x, z int32, oceanFloor bool) int32 {
+			kind := "WORLD_SURFACE_WG"
+			if oceanFloor {
+				kind = "OCEAN_FLOOR_WG"
+			}
+			return region.placementHeight(x, z, kind)
+		},
+		WorldSeed:  region.f.seed,
+		StartPos:   placeOrigin,
+		BlockCount: len(template.Palettes[palette]),
+		Random:     random,
 		PlaceFeature: func(feature any, pos [3]int32, rng *java26.Random) bool {
 			return region.PlacePlacedFeature(feature, pos, rng)
 		},
@@ -142,8 +148,8 @@ func placeModernTemplateFeature(region *featureRegion, config map[string]any, or
 	if err != nil {
 		panic(fmt.Errorf("overworld: loading Java template processors: %w", err))
 	}
-	// StructurePlaceSettings.setRandom(random) supplies the same stream to
-	// palette choice and processors; palette was selected above accordingly.
+	// Palette selection and processors using StructurePlaceSettings.getRandom
+	// share the placement stream. RuleProcessor owns a position-seeded stream.
 	chunkX, chunkZ := region.writeOriginX, region.writeOriginZ
 	clip := javastructure.Bounds{
 		Min: [3]int32{(chunkX - 1) * 16, region.MinY(), (chunkZ - 1) * 16},
