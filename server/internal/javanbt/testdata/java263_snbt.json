@@ -1,0 +1,2195 @@
+[
+  {
+    "name": "number_000",
+    "input": "{v:0}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 5,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_001",
+    "input": "{v:1}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 5,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_002",
+    "input": "{v:-1}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_003",
+    "input": "{v:+1}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_004",
+    "input": "{v:01}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "number_005",
+    "input": "{v:00}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "number_006",
+    "input": "{v:0_0}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "number_007",
+    "input": "{v:1__2}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "12"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_008",
+    "input": "{v:1_}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ("
+  },
+  {
+    "name": "number_009",
+    "input": "{v:_1}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            95,
+            49
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_010",
+    "input": "{v:128b}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: Value out of range. Value:\"128\" Radix:10"
+  },
+  {
+    "name": "number_011",
+    "input": "{v:127b}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "127"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_012",
+    "input": "{v:-128b}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "-128"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_013",
+    "input": "{v:-129b}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: Value out of range. Value:\"-129\" Radix:10"
+  },
+  {
+    "name": "number_014",
+    "input": "{v:255ub}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_015",
+    "input": "{v:256ub}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: out of range: 256"
+  },
+  {
+    "name": "number_016",
+    "input": "{v:-0ub}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a non-negative number"
+  },
+  {
+    "name": "number_017",
+    "input": "{v:255sb}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: Value out of range. Value:\"255\" Radix:10"
+  },
+  {
+    "name": "number_018",
+    "input": "{v:1s}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          2,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_019",
+    "input": "{v:32767s}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 10,
+    "value": [
+      10,
+      {
+        "v": [
+          2,
+          "32767"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_020",
+    "input": "{v:32768s}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal b|B"
+  },
+  {
+    "name": "number_021",
+    "input": "{v:65535us}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 11,
+    "value": [
+      10,
+      {
+        "v": [
+          2,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_022",
+    "input": "{v:65536us}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: out of range: 65536"
+  },
+  {
+    "name": "number_023",
+    "input": "{v:2147483647}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 14,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "2147483647"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_024",
+    "input": "{v:2147483648}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "number_025",
+    "input": "{v:-2147483648}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 15,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "-2147483648"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_026",
+    "input": "{v:4294967295ui}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 16,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_027",
+    "input": "{v:4294967296ui}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: String value 4294967296 exceeds range of unsigned int."
+  },
+  {
+    "name": "number_028",
+    "input": "{v:9223372036854775807l}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 24,
+    "value": [
+      10,
+      {
+        "v": [
+          4,
+          "9223372036854775807"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_029",
+    "input": "{v:-9223372036854775808l}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 25,
+    "value": [
+      10,
+      {
+        "v": [
+          4,
+          "-9223372036854775808"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_030",
+    "input": "{v:9223372036854775808l}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: For input string: \"9223372036854775808\""
+  },
+  {
+    "name": "number_031",
+    "input": "{v:18446744073709551615ul}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 26,
+    "value": [
+      10,
+      {
+        "v": [
+          4,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_032",
+    "input": "{v:18446744073709551616ul}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: String value 18446744073709551616 exceeds range of unsigned long."
+  },
+  {
+    "name": "number_033",
+    "input": "{v:0b}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_034",
+    "input": "{v:0B}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_035",
+    "input": "{v:0b101}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "5"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_036",
+    "input": "{v:0b102}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal u|U"
+  },
+  {
+    "name": "number_037",
+    "input": "{v:0x}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a hexadecimal number"
+  },
+  {
+    "name": "number_038",
+    "input": "{v:0xff}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "255"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_039",
+    "input": "{v:0xffb}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "4091"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_040",
+    "input": "{v:0xff b}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 10,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_041",
+    "input": "{v:0xffub}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 10,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_042",
+    "input": "{v:0x80000000}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 14,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "-2147483648"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_043",
+    "input": "{v:0x80000000si}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: For input string: \"80000000\" under radix 16"
+  },
+  {
+    "name": "number_044",
+    "input": "{v:0xffffffff}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 14,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_045",
+    "input": "{v:0xffffffffffffffffl}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 23,
+    "value": [
+      10,
+      {
+        "v": [
+          4,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_046",
+    "input": "{v:-0x1}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal u|U"
+  },
+  {
+    "name": "number_047",
+    "input": "{v:-0x80sb}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 11,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "-128"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_048",
+    "input": "{v:0x1__f}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 10,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "31"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_049",
+    "input": "{v:0o77}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "number_050",
+    "input": "{v:1.}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "3ff0000000000000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_051",
+    "input": "{v:1.0}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "3ff0000000000000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_052",
+    "input": "{v:.5}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "3fe0000000000000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_053",
+    "input": "{v:-.0}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_054",
+    "input": "{v:01.0}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "3ff0000000000000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_055",
+    "input": "{v:00f}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          5,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_056",
+    "input": "{v:1__2.3__4}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 13,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "4028ae147ae147ae"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_057",
+    "input": "{v:1e3}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "408f400000000000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_058",
+    "input": "{v:1e+3}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "408f400000000000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_059",
+    "input": "{v:1e-3}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "3f50624dd2f1a9fc"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_060",
+    "input": "{v:1e}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal +"
+  },
+  {
+    "name": "number_061",
+    "input": "{v:1e_3}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal +"
+  },
+  {
+    "name": "number_062",
+    "input": "{v:1_e3}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ("
+  },
+  {
+    "name": "number_063",
+    "input": "{v:1.0i}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal e|E"
+  },
+  {
+    "name": "number_064",
+    "input": "{v:1.0b}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal e|E"
+  },
+  {
+    "name": "number_065",
+    "input": "{v:1f}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          5,
+          "3f800000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_066",
+    "input": "{v:1D}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "3ff0000000000000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_067",
+    "input": "{v:1e400}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal f|F"
+  },
+  {
+    "name": "number_068",
+    "input": "{v:1e-4000}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 11,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_069",
+    "input": "{v:3.4028235e38f}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 17,
+    "value": [
+      10,
+      {
+        "v": [
+          5,
+          "7f7fffff"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_070",
+    "input": "{v:3.4028236e38f}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Non-finite numbers are not allowed"
+  },
+  {
+    "name": "number_071",
+    "input": "{v:1e-100f}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 11,
+    "value": [
+      10,
+      {
+        "v": [
+          5,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_072",
+    "input": "{v:NaN}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            78,
+            97,
+            78
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_073",
+    "input": "{v:Infinity}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 12,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            73,
+            110,
+            102,
+            105,
+            110,
+            105,
+            116,
+            121
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_074",
+    "input": "{v:-Infinity}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ("
+  },
+  {
+    "name": "number_075",
+    "input": "{v:word}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            119,
+            111,
+            114,
+            100
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_076",
+    "input": "{v:e10}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            101,
+            49,
+            48
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_077",
+    "input": "{v:3word}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "number_078",
+    "input": "{v:-word}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ("
+  },
+  {
+    "name": "number_079",
+    "input": "{v:1 f}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          5,
+          "3f800000"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_080",
+    "input": "{v:- 1}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "-1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_081",
+    "input": "{v:1 . 2 e - 3 f}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 17,
+    "value": [
+      10,
+      {
+        "v": [
+          5,
+          "3a9d4952"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_082",
+    "input": "{v:0 b 1}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_083",
+    "input": "{v:0 x FF}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 10,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "255"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_084",
+    "input": "{v:1 u b}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_085",
+    "input": "{v:1 s i}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_086",
+    "input": "{v:0 1}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Decimal numbers can't start with 0"
+  },
+  {
+    "name": "number_087",
+    "input": "{v:1 2}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "number_088",
+    "input": "{v:0 . 0}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          6,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "number_089",
+    "input": "{v:0xF F}tail",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal u|U"
+  },
+  {
+    "name": "empty",
+    "input": "{} tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 2,
+    "value": [
+      10,
+      {}
+    ]
+  },
+  {
+    "name": "nested_duplicate",
+    "input": "{a:1,a:2,nested:{x:true},list:[1,\"x\",false,{}],}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 48,
+    "value": [
+      10,
+      {
+        "a": [
+          3,
+          "2"
+        ],
+        "list": [
+          9,
+          [
+            [
+              3,
+              "1"
+            ],
+            [
+              8,
+              [
+                120
+              ]
+            ],
+            [
+              1,
+              "0"
+            ],
+            [
+              10,
+              {}
+            ]
+          ]
+        ],
+        "nested": [
+          10,
+          {
+            "x": [
+              1,
+              "1"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "empty_key",
+    "input": "{\"\":1}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "numeric_key",
+    "input": "{+12:true}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 10,
+    "value": [
+      10,
+      {
+        "+12": [
+          1,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "bad_unquoted_key",
+    "input": "{minecraft:x:1}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ("
+  },
+  {
+    "name": "quoted_key",
+    "input": "{\"minecraft:x\":1}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 17,
+    "value": [
+      10,
+      {
+        "minecraft:x": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "empty_value",
+    "input": "{x:}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a valid unquoted string"
+  },
+  {
+    "name": "empty_list",
+    "input": "{x:[]}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "x": [
+          9,
+          []
+        ]
+      }
+    ]
+  },
+  {
+    "name": "empty_arrays",
+    "input": "{b:[B;],i:[I;],l:[L;]}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 22,
+    "value": [
+      10,
+      {
+        "b": [
+          7,
+          []
+        ],
+        "i": [
+          11,
+          []
+        ],
+        "l": [
+          12,
+          []
+        ]
+      }
+    ]
+  },
+  {
+    "name": "array_byte_implicit",
+    "input": "{v:[B;1,-128,127,0xff,255ub,]}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 30,
+    "value": [
+      10,
+      {
+        "v": [
+          7,
+          [
+            "1",
+            "-128",
+            "127",
+            "-1",
+            "-1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "array_byte_signed_overflow",
+    "input": "{v:[B;255]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: Value out of range. Value:\"255\" Radix:10"
+  },
+  {
+    "name": "array_byte_wrong_type",
+    "input": "{v:[B;1s]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Invalid array element type"
+  },
+  {
+    "name": "array_byte_boolean",
+    "input": "{v:[B;true]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal +"
+  },
+  {
+    "name": "array_int_widen",
+    "input": "{v:[I;1b,65535us,0xffffffff,]}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 30,
+    "value": [
+      10,
+      {
+        "v": [
+          11,
+          [
+            "1",
+            "-1",
+            "-1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "array_int_wrong_type",
+    "input": "{v:[I;1l]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Invalid array element type"
+  },
+  {
+    "name": "array_int_float",
+    "input": "{v:[I;1.0]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal u|U"
+  },
+  {
+    "name": "array_int_overflow",
+    "input": "{v:[I;2147483648]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Failed to parse number: For input string: \"2147483648\""
+  },
+  {
+    "name": "array_long_widen",
+    "input": "{v:[L;255ub,65535us,4294967295ui,9223372036854775807,]}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 55,
+    "value": [
+      10,
+      {
+        "v": [
+          12,
+          [
+            "-1",
+            "-1",
+            "-1",
+            "9223372036854775807"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "array_lowercase_prefix",
+    "input": "{v:[b;1]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ("
+  },
+  {
+    "name": "array_whitespace_prefix",
+    "input": "{v:[ B ; 1 , ]}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 15,
+    "value": [
+      10,
+      {
+        "v": [
+          7,
+          [
+            "1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "list_prefix_string",
+    "input": "{v:[B]}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 7,
+    "value": [
+      10,
+      {
+        "v": [
+          9,
+          [
+            [
+              8,
+              [
+                66
+              ]
+            ]
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "array_operation",
+    "input": "{v:[I;bool(1)]}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal +"
+  },
+  {
+    "name": "boolean_case",
+    "input": "{v:TrUe}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "bool_nonzero_byte",
+    "input": "{v:bool(255ub)}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 15,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "bool_float_zero",
+    "input": "{v:bool(-0.0f)}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 15,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "0"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "bool_float_subnormal",
+    "input": "{v:bool(1e-300)}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 16,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "bool_nested",
+    "input": "{v:bool(bool(2),)}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 18,
+    "value": [
+      10,
+      {
+        "v": [
+          1,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "bool_string",
+    "input": "{v:bool(\"true\")}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a number or a boolean"
+  },
+  {
+    "name": "bool_wrong_arity",
+    "input": "{v:bool(1,2)}",
+    "offset": 0,
+    "ok": false,
+    "error": "No such operation: bool/2"
+  },
+  {
+    "name": "bool_zero_arity",
+    "input": "{v:bool()}",
+    "offset": 0,
+    "ok": false,
+    "error": "No such operation: bool/0"
+  },
+  {
+    "name": "bool_uppercase",
+    "input": "{v:BOOL(1)}",
+    "offset": 0,
+    "ok": false,
+    "error": "No such operation: BOOL/1"
+  },
+  {
+    "name": "bool_compound",
+    "input": "{v:bool({x:1})}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a number or a boolean"
+  },
+  {
+    "name": "uuid_full",
+    "input": "{v:uuid(\"12345678-1234-5678-abcd-123456789abc\")}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 48,
+    "value": [
+      10,
+      {
+        "v": [
+          11,
+          [
+            "305419896",
+            "305419896",
+            "-1412623820",
+            "1450744508"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "uuid_short",
+    "input": "{v:uuid(\"1-1-1-1-1\")}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 21,
+    "value": [
+      10,
+      {
+        "v": [
+          11,
+          [
+            "1",
+            "65537",
+            "65536",
+            "1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "uuid_plus",
+    "input": "{v:uuid(\"+1-1-1-1-1\")}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 22,
+    "value": [
+      10,
+      {
+        "v": [
+          11,
+          [
+            "1",
+            "65537",
+            "65536",
+            "1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "uuid_oversized_group",
+    "input": "{v:uuid(\"fffffffff-1-1-1-1\")}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 29,
+    "value": [
+      10,
+      {
+        "v": [
+          11,
+          [
+            "-1",
+            "65537",
+            "65536",
+            "1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "uuid_bmp_digits",
+    "input": "{v:uuid(\"\u0661-\uff21-\uff11-1-1\")}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 26,
+    "value": [
+      10,
+      {
+        "v": [
+          11,
+          [
+            "1",
+            "655361",
+            "65536",
+            "1"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "uuid_negative_last",
+    "input": "{v:uuid(\"1-1-1-1--1\")}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a string representing a valid UUID"
+  },
+  {
+    "name": "uuid_too_long",
+    "input": "{v:uuid(\"000000000-0000-0000-0000-000000000000\")}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a string representing a valid UUID"
+  },
+  {
+    "name": "uuid_non_string",
+    "input": "{v:uuid(1)}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a string representing a valid UUID"
+  },
+  {
+    "name": "unknown_operation",
+    "input": "{v:other(1)}",
+    "offset": 0,
+    "ok": false,
+    "error": "No such operation: other/1"
+  },
+  {
+    "name": "uuid_nested_argument",
+    "input": "{v:uuid(bool(1))}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a string representing a valid UUID"
+  },
+  {
+    "name": "plain_quoted",
+    "input": "{v:\"a'b\"}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            97,
+            39,
+            98
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "single_quoted",
+    "input": "{v:'a\"b'}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            97,
+            34,
+            98
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "escapes",
+    "input": "{v:\"\\b\\s\\t\\n\\f\\r\\\\\\'\\\"\\x41\\u03C0\\U0001F600\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 44,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            8,
+            32,
+            9,
+            10,
+            12,
+            13,
+            92,
+            39,
+            34,
+            65,
+            960,
+            55357,
+            56832
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "escaped_pair",
+    "input": "{v:\"\\uD83D\\uDE00\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 18,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            55357,
+            56832
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "unpaired_high",
+    "input": "{v:\"\\uD800\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 12,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            55296
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "unpaired_low",
+    "input": "{v:\"\\uDC00\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 12,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            56320
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "surrogate_then_text",
+    "input": "{v:\"\\uD800x\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 13,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            55296,
+            120
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "surrogate_then_surrogate",
+    "input": "{v:\"\\uD800\\uD800\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 18,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            55296,
+            55296
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "escape_out_of_range",
+    "input": "{v:\"\\U00110000\"}",
+    "offset": 0,
+    "ok": false,
+    "error": "Invalid Unicode character value: U+00110000"
+  },
+  {
+    "name": "escape_bad_hex",
+    "input": "{v:\"\\uGGGG\"}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a character literal of length 4"
+  },
+  {
+    "name": "escape_bad_letter",
+    "input": "{v:\"\\q\"}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal b"
+  },
+  {
+    "name": "escape_whitespace",
+    "input": "{v:\"\\   n\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 11,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            10
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "escape_hex_whitespace",
+    "input": "{v:\"\\u 0041\"}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a character literal of length 4"
+  },
+  {
+    "name": "named_latin",
+    "input": "{v:\"\\N{ latin capital letter a }\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 34,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            65
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "named_algorithmic",
+    "input": "{v:\"\\N{CJK UNIFIED IDEOGRAPHS 4E00}\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 37,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            19968
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "named_private_use",
+    "input": "{v:\"\\N{SUPPLEMENTARY PRIVATE USE AREA A F0000}\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 48,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            56192,
+            56320
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "named_emoji",
+    "input": "{v:\"\\N{GRINNING FACE}\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 23,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            55357,
+            56832
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "named_unknown",
+    "input": "{v:\"\\N{UNKNOWN CHARACTER}\"}",
+    "offset": 0,
+    "ok": false,
+    "error": "Invalid Unicode character name"
+  },
+  {
+    "name": "named_noncanonical_hex",
+    "input": "{v:\"\\N{CJK UNIFIED IDEOGRAPHS 04E00}\"}",
+    "offset": 0,
+    "ok": false,
+    "error": "Invalid Unicode character name"
+  },
+  {
+    "name": "named_underscore",
+    "input": "{v:\"\\N{LATIN_CAPITAL_LETTER_A}\"}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal }"
+  },
+  {
+    "name": "named_terminal_spaces",
+    "input": "{v:\"\\N {LATIN CAPITAL LETTER A}\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 33,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            65
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "raw_newline",
+    "input": "{v:\"a\nb\"}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 9,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            97,
+            10,
+            98
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "raw_supplementary",
+    "input": "{v:\"\ud83d\ude00\"}tail",
+    "offset": 0,
+    "ok": true,
+    "cursor": 10,
+    "value": [
+      10,
+      {
+        "v": [
+          8,
+          [
+            55357,
+            56832
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "offset_utf8",
+    "input": "\u03c0 {v:1}tail",
+    "offset": 3,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "nbsp",
+    "input": "{v:\u00a01}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a valid unquoted string"
+  },
+  {
+    "name": "nel",
+    "input": "{v:\u00851}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a valid unquoted string"
+  },
+  {
+    "name": "figure_space",
+    "input": "{v:\u20071}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a valid unquoted string"
+  },
+  {
+    "name": "narrow_nbsp",
+    "input": "{v:\u202f1}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected a valid unquoted string"
+  },
+  {
+    "name": "file_separator",
+    "input": "{v:\u001c1}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 6,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "ideographic_space",
+    "input": "{v:\u30001}",
+    "offset": 0,
+    "ok": true,
+    "cursor": 8,
+    "value": [
+      10,
+      {
+        "v": [
+          3,
+          "1"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "unclosed",
+    "input": "{v:[1,2}",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected literal ."
+  },
+  {
+    "name": "prefix_noncompound",
+    "input": "[1,2]",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected compound tag"
+  },
+  {
+    "name": "prefix_scalar",
+    "input": "true",
+    "offset": 0,
+    "ok": false,
+    "error": "Expected compound tag"
+  }
+]

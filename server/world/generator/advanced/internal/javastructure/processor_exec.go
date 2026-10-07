@@ -2,6 +2,7 @@ package javastructure
 
 import (
 	"fmt"
+	"log/slog"
 	"maps"
 	"reflect"
 	"strings"
@@ -406,17 +407,25 @@ func compileBlackstoneReplace() (Processor, error) {
 	}), nil
 }
 func compileJigsawReplace() (Processor, error) {
-	return processor(func(_ ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		if b.State.Name != "minecraft:jigsaw" {
 			return b, true, nil
 		}
-		finalState := b.NBT["final_state"]
-		if finalState == nil {
+		if b.NBT == nil {
+			slog.Warn("Java jigsaw block is missing NBT", "position", ctx.Position)
+			return b, true, nil
+		}
+		finalState, ok := b.NBT["final_state"].(string)
+		if !ok {
 			finalState = "minecraft:air"
 		}
-		state, err := decodeOutputState(finalState)
+		state, err := world.ParseJavaBlockState(finalState)
 		if err != nil {
-			return b, false, err
+			slog.Error("Invalid Java jigsaw final_state", "state", finalState, "position", ctx.Position, "error", err)
+			return b, false, nil
+		}
+		if state.Name == "minecraft:structure_void" {
+			return b, false, nil
 		}
 		b.State = state
 		b.NBT = nil

@@ -1,0 +1,581 @@
+[
+  {
+    "name": "bare",
+    "input": "stone",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "namespace",
+    "input": "minecraft:stone",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "default_namespace",
+    "input": ":stone",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "empty",
+    "input": "",
+    "ok": false,
+    "error": "Unknown block type 'minecraft:'"
+  },
+  {
+    "name": "tag",
+    "input": "#minecraft:planks",
+    "ok": false,
+    "error": "Tags aren't allowed here; only actual blocks are"
+  },
+  {
+    "name": "unknown",
+    "input": "missing_block",
+    "ok": false,
+    "error": "Unknown block type 'minecraft:missing_block'"
+  },
+  {
+    "name": "unknown_namespace",
+    "input": "other:stone",
+    "ok": false,
+    "error": "Unknown block type 'other:stone'"
+  },
+  {
+    "name": "empty_path",
+    "input": "minecraft:",
+    "ok": false,
+    "error": "Unknown block type 'minecraft:'"
+  },
+  {
+    "name": "multiple_colons",
+    "input": "minecraft:stone:foo",
+    "ok": false,
+    "error": "Invalid ID"
+  },
+  {
+    "name": "uppercase",
+    "input": "STONE",
+    "ok": false,
+    "error": "Unknown block type 'minecraft:'"
+  },
+  {
+    "name": "leading_space",
+    "input": " stone",
+    "ok": false,
+    "error": "Unknown block type 'minecraft:'"
+  },
+  {
+    "name": "prefix_uppercase",
+    "input": "stoneJUNK",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "prefix_punctuation",
+    "input": "stone!",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "whitespace_terminates",
+    "input": "oak_log [axis=x]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "y"
+      }
+    }
+  },
+  {
+    "name": "empty_properties",
+    "input": "stone[]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "empty_spaced_properties",
+    "input": "stone[ ]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "trailing_input",
+    "input": "stone[] ignored",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "partial_log",
+    "input": "oak_log[axis=x]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  },
+  {
+    "name": "quoted_single",
+    "input": "oak_log['axis'='x']",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  },
+  {
+    "name": "quoted_double",
+    "input": "oak_log[\"axis\"=\"x\"]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  },
+  {
+    "name": "invalid_escape",
+    "input": "oak_log[axis=\"x\\q\"]",
+    "ok": false,
+    "error": "Invalid escape sequence '\\q' in quoted string"
+  },
+  {
+    "name": "snbt_escape_not_property",
+    "input": "oak_log[axis=\"\\x78\"]",
+    "ok": false,
+    "error": "Invalid escape sequence '\\x' in quoted string"
+  },
+  {
+    "name": "unknown_property",
+    "input": "stone[axis=x]",
+    "ok": false,
+    "error": "Block minecraft:stone does not have property 'axis'"
+  },
+  {
+    "name": "unknown_enum",
+    "input": "oak_log[axis=q]",
+    "ok": false,
+    "error": "Block minecraft:oak_log does not accept 'q' for axis property"
+  },
+  {
+    "name": "wrong_enum_case",
+    "input": "oak_log[axis=X]",
+    "ok": false,
+    "error": "Block minecraft:oak_log does not accept 'X' for axis property"
+  },
+  {
+    "name": "duplicate",
+    "input": "oak_log[axis=x,axis=y]",
+    "ok": false,
+    "error": "Property 'axis' can only be set once for block minecraft:oak_log"
+  },
+  {
+    "name": "duplicate_quoted",
+    "input": "oak_log[axis=x,\"axis\"=y]",
+    "ok": false,
+    "error": "Property 'axis' can only be set once for block minecraft:oak_log"
+  },
+  {
+    "name": "trailing_comma",
+    "input": "oak_log[axis=x,]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  },
+  {
+    "name": "spaced_trailing_comma",
+    "input": "oak_log[axis=x, ]",
+    "ok": false,
+    "error": "Block minecraft:oak_log does not have property ''"
+  },
+  {
+    "name": "unclosed",
+    "input": "oak_log[axis=x",
+    "ok": false,
+    "error": "Expected closing ] for block state properties"
+  },
+  {
+    "name": "missing_equals",
+    "input": "oak_log[axis x]",
+    "ok": false,
+    "error": "Expected value for property 'axis' on block minecraft:oak_log"
+  },
+  {
+    "name": "empty_value",
+    "input": "oak_log[axis=]",
+    "ok": false,
+    "error": "Block minecraft:oak_log does not accept '' for axis property"
+  },
+  {
+    "name": "spaced_fields",
+    "input": "oak_log[ axis = x ]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  },
+  {
+    "name": "boolean_true",
+    "input": "oak_door[open=true]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_door",
+      "properties": {
+        "facing": "north",
+        "half": "lower",
+        "hinge": "left",
+        "open": "true",
+        "powered": "false"
+      }
+    }
+  },
+  {
+    "name": "boolean_uppercase",
+    "input": "oak_door[open=TRUE]",
+    "ok": false,
+    "error": "Block minecraft:oak_door does not accept 'TRUE' for open property"
+  },
+  {
+    "name": "boolean_numeric",
+    "input": "oak_door[open=1]",
+    "ok": false,
+    "error": "Block minecraft:oak_door does not accept '1' for open property"
+  },
+  {
+    "name": "integer_min",
+    "input": "oak_leaves[distance=1]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_leaves",
+      "properties": {
+        "distance": "1",
+        "persistent": "false",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "integer_max",
+    "input": "oak_leaves[distance=7]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_leaves",
+      "properties": {
+        "distance": "7",
+        "persistent": "false",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "integer_below",
+    "input": "oak_leaves[distance=0]",
+    "ok": false,
+    "error": "Block minecraft:oak_leaves does not accept '0' for distance property"
+  },
+  {
+    "name": "integer_above",
+    "input": "oak_leaves[distance=8]",
+    "ok": false,
+    "error": "Block minecraft:oak_leaves does not accept '8' for distance property"
+  },
+  {
+    "name": "integer_plus",
+    "input": "oak_leaves[distance=+1]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_leaves",
+      "properties": {
+        "distance": "1",
+        "persistent": "false",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "integer_leading_zero",
+    "input": "oak_leaves[distance=01]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_leaves",
+      "properties": {
+        "distance": "1",
+        "persistent": "false",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "integer_bmp",
+    "input": "oak_leaves[distance=\"\u0661\"]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_leaves",
+      "properties": {
+        "distance": "1",
+        "persistent": "false",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "integer_fullwidth",
+    "input": "oak_leaves[distance=\"\uff11\"]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_leaves",
+      "properties": {
+        "distance": "1",
+        "persistent": "false",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "integer_supplementary",
+    "input": "oak_leaves[distance=\"\ud835\udfd9\"]",
+    "ok": false,
+    "error": "Block minecraft:oak_leaves does not accept '\ud835\udfd9' for distance property"
+  },
+  {
+    "name": "integer_quoted_space",
+    "input": "oak_leaves[distance=\" 1\"]",
+    "ok": false,
+    "error": "Block minecraft:oak_leaves does not accept ' 1' for distance property"
+  },
+  {
+    "name": "integer_overflow",
+    "input": "oak_leaves[distance=2147483648]",
+    "ok": false,
+    "error": "Block minecraft:oak_leaves does not accept '2147483648' for distance property"
+  },
+  {
+    "name": "integer_negative_zero",
+    "input": "wheat[age=-0]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:wheat",
+      "properties": {
+        "age": "0"
+      }
+    }
+  },
+  {
+    "name": "integer_long_zeros",
+    "input": "wheat[age=000000000000000000000000000000000000000000000000000000000000000000000000000000001]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:wheat",
+      "properties": {
+        "age": "1"
+      }
+    }
+  },
+  {
+    "name": "stair",
+    "input": "oak_stairs[facing=west,half=top]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_stairs",
+      "properties": {
+        "facing": "west",
+        "half": "top",
+        "shape": "straight",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "jigsaw",
+    "input": "jigsaw[orientation=west_up]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:jigsaw",
+      "properties": {
+        "orientation": "west_up"
+      }
+    }
+  },
+  {
+    "name": "redstone",
+    "input": "redstone_wire[north=up,power=15]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:redstone_wire",
+      "properties": {
+        "east": "none",
+        "north": "up",
+        "power": "15",
+        "south": "none",
+        "west": "none"
+      }
+    }
+  },
+  {
+    "name": "rail",
+    "input": "rail[shape=south_east]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:rail",
+      "properties": {
+        "shape": "south_east",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "copper_bulb",
+    "input": "copper_bulb[lit=true,powered=true]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:copper_bulb",
+      "properties": {
+        "lit": "true",
+        "powered": "true"
+      }
+    }
+  },
+  {
+    "name": "adjacent_nbt",
+    "input": "chest[facing=east]{foo:\"bar\",values:[I;1,2]}",
+    "ok": true,
+    "state": {
+      "id": "minecraft:chest",
+      "properties": {
+        "facing": "east",
+        "type": "single",
+        "waterlogged": "false"
+      }
+    }
+  },
+  {
+    "name": "ignored_nbt_suffix",
+    "input": "stone {foo:}",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "malformed_nbt",
+    "input": "stone{foo:}",
+    "ok": false,
+    "error": "Expected a valid unquoted string"
+  },
+  {
+    "name": "nbt_bool",
+    "input": "stone{foo:bool(255ub)}",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "nbt_bad_bool",
+    "input": "stone{foo:BOOL(1)}",
+    "ok": false,
+    "error": "No such operation: BOOL/1"
+  },
+  {
+    "name": "nbt_uuid",
+    "input": "stone{foo:uuid(\"1-1-1-1-1\")}",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "nbt_trailing",
+    "input": "stone{} ignored",
+    "ok": true,
+    "state": {
+      "id": "minecraft:stone",
+      "properties": {}
+    }
+  },
+  {
+    "name": "nbt_property_gap",
+    "input": "oak_log[axis=x] {foo:}",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  },
+  {
+    "name": "property_nbsp",
+    "input": "oak_log[\u00a0axis=x]",
+    "ok": false,
+    "error": "Block minecraft:oak_log does not have property ''"
+  },
+  {
+    "name": "property_nel",
+    "input": "oak_log[\u0085axis=x]",
+    "ok": false,
+    "error": "Block minecraft:oak_log does not have property ''"
+  },
+  {
+    "name": "property_file_separator",
+    "input": "oak_log[\u001caxis=x]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  },
+  {
+    "name": "property_ideographic_space",
+    "input": "oak_log[\u3000axis=x]",
+    "ok": true,
+    "state": {
+      "id": "minecraft:oak_log",
+      "properties": {
+        "axis": "x"
+      }
+    }
+  }
+]

@@ -103,18 +103,11 @@ func (p JigsawPiece) placeWithEnvironment(palette int, clip Bounds, seed int64, 
 	if p.Template != nil && palette >= 0 && palette < len(p.Template.Palettes) { env.BlockCount = len(p.Template.Palettes[palette]) }
 	processors, err := LoadProcessors(p.Processors, p.ProcessorSpecs, env)
 	if err != nil { return Placement{}, err }
+	replacement, err := compileJigsawReplace()
+	if err != nil { return Placement{}, err }
 	defaults := []Processor{
 		processor(func(_ ProcessContext, block Block) (Block, bool, error) { return block, block.State.Name != "minecraft:structure_block", nil }),
-		processor(func(_ ProcessContext, block Block) (Block, bool, error) {
-			if block.State.Name != "minecraft:jigsaw" { return block, true, nil }
-			finalState := block.NBT["final_state"]
-			if finalState == nil { finalState = "minecraft:air" }
-			state, err := decodeOutputState(finalState)
-			if err != nil { return block, false, err }
-			block.State = state
-			block.NBT = nil
-			return block, true, nil
-		}),
+		replacement,
 	}
 	processors = append(defaults, processors...)
 	if p.Projection == TerrainMatching {

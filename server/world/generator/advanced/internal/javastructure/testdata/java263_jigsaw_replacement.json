@@ -1,0 +1,281 @@
+[
+  {
+    "name": "not_jigsaw",
+    "chest": true,
+    "nbtKind": "string",
+    "text": "not_a_block[bad=value]",
+    "keep": true,
+    "state": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "single",
+        "facing": "east"
+      },
+      "id": "minecraft:chest"
+    },
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": true,
+    "lootTable": "minecraft:chests/simple_dungeon"
+  },
+  {
+    "name": "missing_nbt",
+    "chest": false,
+    "nbtKind": "missing",
+    "keep": true,
+    "state": {
+      "properties": {
+        "orientation": "east_up"
+      },
+      "id": "minecraft:jigsaw"
+    },
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "empty_nbt",
+    "chest": false,
+    "nbtKind": "empty",
+    "keep": true,
+    "state": "minecraft:air",
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "wrong_nbt_type",
+    "chest": false,
+    "nbtKind": "int",
+    "text": 123,
+    "keep": true,
+    "state": "minecraft:air",
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "bare_identifier",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "stone",
+    "keep": true,
+    "state": "minecraft:stone",
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "log_axis",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "minecraft:oak_log[axis=x]",
+    "keep": true,
+    "state": {
+      "properties": {
+        "axis": "z"
+      },
+      "id": "minecraft:oak_log"
+    },
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "stair_state",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_stairs[facing=west,half=top]",
+    "keep": true,
+    "state": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "north"
+      },
+      "id": "minecraft:oak_stairs"
+    },
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "quoted_property",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_log[\"axis\"=\"x\"]",
+    "keep": true,
+    "state": {
+      "properties": {
+        "axis": "z"
+      },
+      "id": "minecraft:oak_log"
+    },
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "ignored_replacement_nbt",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "chest[facing=east]{foo:\"bar\",values:[I;1,2],nested:{flag:true}}",
+    "keep": true,
+    "state": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "single",
+        "facing": "south"
+      },
+      "id": "minecraft:chest"
+    },
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "void_is_removed",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "minecraft:structure_void",
+    "keep": false
+  },
+  {
+    "name": "tags_disallowed",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "#minecraft:planks",
+    "keep": false
+  },
+  {
+    "name": "unknown_block",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "minecraft:unknown_block",
+    "keep": false
+  },
+  {
+    "name": "unknown_property",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "stone[axis=x]",
+    "keep": false
+  },
+  {
+    "name": "invalid_value",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_log[axis=q]",
+    "keep": false
+  },
+  {
+    "name": "duplicate_property",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_log[axis=x,axis=y]",
+    "keep": false
+  },
+  {
+    "name": "unclosed_properties",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_log[axis=x",
+    "keep": false
+  },
+  {
+    "name": "identifier_space_terminates",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_log [axis=x]",
+    "keep": true,
+    "state": "minecraft:oak_log",
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "trailing_comma",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_log[axis=x,]",
+    "keep": true,
+    "state": {
+      "properties": {
+        "axis": "z"
+      },
+      "id": "minecraft:oak_log"
+    },
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  },
+  {
+    "name": "space_after_trailing_comma",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "oak_log[axis=x, ]",
+    "keep": false
+  },
+  {
+    "name": "empty_identifier",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "",
+    "keep": false
+  },
+  {
+    "name": "malformed_nbt",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "stone{foo:}",
+    "keep": false
+  },
+  {
+    "name": "valid_nbt_operation",
+    "chest": false,
+    "nbtKind": "string",
+    "text": "stone{flag:bool(1)}",
+    "keep": true,
+    "state": "minecraft:stone",
+    "position": [
+      13,
+      82,
+      17
+    ],
+    "keepNBT": false
+  }
+]
