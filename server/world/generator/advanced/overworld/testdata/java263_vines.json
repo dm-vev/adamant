@@ -1,0 +1,344 @@
+[
+  {
+    "name": "empty",
+    "blocks": [],
+    "placed": false,
+    "next": -5106534569952410475,
+    "result": "minecraft:air"
+  },
+  {
+    "name": "occupied",
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "state": "minecraft:stone"
+      },
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": false,
+    "next": -5106534569952410475,
+    "result": "minecraft:stone"
+  },
+  {
+    "name": "below_only",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": false,
+    "next": -5106534569952410475,
+    "result": "minecraft:air"
+  },
+  {
+    "name": "ceiling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "true",
+        "south": "false",
+        "north": "false",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "north",
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          -1
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "false",
+        "south": "false",
+        "north": "true",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "north_precedence",
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          -1
+        ],
+        "state": "minecraft:stone"
+      },
+      {
+        "position": [
+          0,
+          0,
+          1
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "false",
+        "south": "false",
+        "north": "true",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "south_precedence",
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          1
+        ],
+        "state": "minecraft:stone"
+      },
+      {
+        "position": [
+          -1,
+          0,
+          0
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "false",
+        "south": "true",
+        "north": "false",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "ceiling_precedence",
+    "blocks": [
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": "minecraft:stone"
+      },
+      {
+        "position": [
+          0,
+          0,
+          -1
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "true",
+        "south": "false",
+        "north": "false",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "bottom_slab_ceiling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": {
+          "id": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        }
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "true",
+        "south": "false",
+        "north": "false",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "top_slab_ceiling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": {
+          "id": "minecraft:oak_slab",
+          "properties": {
+            "type": "top"
+          }
+        }
+      },
+      {
+        "position": [
+          0,
+          0,
+          -1
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "false",
+        "south": "false",
+        "north": "true",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "north_trapdoor_back",
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          -1
+        ],
+        "state": {
+          "id": "minecraft:oak_trapdoor",
+          "properties": {
+            "facing": "north",
+            "open": "true"
+          }
+        }
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "false",
+        "south": "false",
+        "north": "true",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  },
+  {
+    "name": "north_trapdoor_front",
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          -1
+        ],
+        "state": {
+          "id": "minecraft:oak_trapdoor",
+          "properties": {
+            "facing": "south",
+            "open": "true"
+          }
+        }
+      }
+    ],
+    "placed": false,
+    "next": -5106534569952410475,
+    "result": "minecraft:air"
+  },
+  {
+    "name": "leaf_collision",
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          -1
+        ],
+        "state": "minecraft:oak_leaves"
+      }
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "result": {
+      "properties": {
+        "west": "false",
+        "up": "false",
+        "south": "false",
+        "north": "true",
+        "east": "false"
+      },
+      "id": "minecraft:vine"
+    }
+  }
+]

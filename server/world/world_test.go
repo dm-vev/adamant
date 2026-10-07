@@ -97,7 +97,7 @@ func TestWorldConstructionResolvesUnloadedSpawnHeight(t *testing.T) {
 }
 
 func TestNeighbourUpdatesDoNotLoadMissingChunks(t *testing.T) {
-	provider := &neighbourUpdateCountingProvider{}
+	provider := &neighbourUpdateCountingProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -138,7 +138,7 @@ func TestNeighbourUpdatesWaitForTrackedChunkReadiness(t *testing.T) {
 }
 
 func TestNeighbourUpdatesRotatePendingFrontAndLimitReadyTail(t *testing.T) {
-	provider := &neighbourUpdateCountingProvider{}
+	provider := &neighbourUpdateCountingProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -235,7 +235,7 @@ func TestSynchronousWorldTicksAdvancePerDimension(t *testing.T) {
 		Config{Provider: provider, Dim: Overworld, Synchronous: true}.New(),
 		Config{Provider: provider, Dim: Nether, Synchronous: true}.New(),
 		Config{Provider: provider, Dim: End, Synchronous: true}.New(),
-		Config{Provider: provider, Dim: testDimension{i: 1029}, Synchronous: true}.New(),
+		Config{Provider: provider, Dim: registeredTestDimension(t), Synchronous: true}.New(),
 	}
 	for _, w := range worlds {
 		defer w.Close()
@@ -281,7 +281,7 @@ func TestSharedProviderClosesAfterLastWorld(t *testing.T) {
 			settings := defaultSettings()
 			provider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
 			owner := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
-			other := Config{Provider: provider, Dim: testDimension{i: 1029}, Synchronous: true}.New()
+			other := Config{Provider: provider, Dim: registeredTestDimension(t), Synchronous: true}.New()
 			t.Cleanup(func() {
 				_ = owner.Close()
 				_ = other.Close()
@@ -351,7 +351,7 @@ func TestIndependentProvidersSharingSettingsCloseIndependently(t *testing.T) {
 }
 
 func TestSharedProviderWithDistinctSettingsClosesOnce(t *testing.T) {
-	provider := &lifecycleProvider{freshSettings: true}
+	provider := &lifecycleProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, freshSettings: true}
 	first := Config{Provider: provider, Synchronous: true}.New()
 	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
 	t.Cleanup(func() {
@@ -375,6 +375,7 @@ func TestSharedProviderWithDistinctSettingsClosesOnce(t *testing.T) {
 
 func TestSharedProviderConstructionRetainedBeforeProviderUse(t *testing.T) {
 	provider := &lifecycleProvider{
+		NopProvider:          NopProvider{WorldData: &WorldDataMemory{}},
 		freshSettings:        true,
 		blockRegistryStarted: make(chan struct{}),
 		releaseBlockRegistry: make(chan struct{}),
@@ -410,6 +411,7 @@ func TestSharedProviderConstructionRetainedBeforeProviderUse(t *testing.T) {
 
 func TestSharedProviderConstructionWaitsForFinalClose(t *testing.T) {
 	provider := &lifecycleProvider{
+		NopProvider:   NopProvider{WorldData: &WorldDataMemory{}},
 		freshSettings: true,
 		closeStarted:  make(chan struct{}),
 		releaseClose:  make(chan struct{}),
@@ -466,9 +468,10 @@ func TestConstructionPanicUnregistersSharedSettingsWorld(t *testing.T) {
 	provider := &lifecycleProvider{NopProvider: NopProvider{Set: settings}}
 	entered, release := make(chan struct{}), make(chan struct{})
 	panicResult := make(chan any)
+	dimension := registerTestDimension(t, 32701, panickingTimeCycleDimension{entered: entered, release: release})
 	go func() {
 		defer func() { panicResult <- recover() }()
-		Config{Provider: provider, Dim: panickingTimeCycleDimension{entered: entered, release: release}, Synchronous: true}.New()
+		Config{Provider: provider, Dim: dimension, Synchronous: true}.New()
 	}()
 	<-entered
 
@@ -667,7 +670,7 @@ func TestSynchronousAdvanceTickTicksViewerlessEntities(t *testing.T) {
 
 func TestLoadedEntityCanBeRemoved(t *testing.T) {
 	pos := ChunkPos{0, 0}
-	provider := &entityLoadProvider{columns: make(map[ChunkPos]*chunk.Column)}
+	provider := &entityLoadProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, columns: make(map[ChunkPos]*chunk.Column)}
 	w := Config{
 		Synchronous: true,
 		Provider:    provider,
@@ -700,7 +703,7 @@ func TestLoadedEntityCanBeRemoved(t *testing.T) {
 
 func TestLoadedEntityMigratesWithoutLeavingDuplicate(t *testing.T) {
 	sourcePos, destinationPos := ChunkPos{0, 0}, ChunkPos{1, 0}
-	provider := &entityLoadProvider{columns: make(map[ChunkPos]*chunk.Column)}
+	provider := &entityLoadProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, columns: make(map[ChunkPos]*chunk.Column)}
 	w := Config{
 		Synchronous: true,
 		Provider:    provider,

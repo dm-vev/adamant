@@ -1,0 +1,1250 @@
+[
+  {
+    "provider": "flower_plain",
+    "xoroshiro": false,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:cornflower",
+        "properties": {}
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:azure_bluet",
+        "properties": {}
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:cornflower",
+        "properties": {}
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:pink_tulip",
+        "properties": {}
+      }
+    ],
+    "next": -5237980416576129062
+  },
+  {
+    "provider": "flower_plain",
+    "xoroshiro": true,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:cornflower",
+        "properties": {}
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:poppy",
+        "properties": {}
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:cornflower",
+        "properties": {}
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      }
+    ],
+    "next": -2644433350256532612
+  },
+  {
+    "provider": "flower_flower_forest",
+    "xoroshiro": false,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:orange_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:white_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:orange_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:orange_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:oxeye_daisy",
+        "properties": {}
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      }
+    ],
+    "next": -5106534569952410475
+  },
+  {
+    "provider": "flower_flower_forest",
+    "xoroshiro": true,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:orange_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:white_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:orange_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:orange_tulip",
+        "properties": {}
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:oxeye_daisy",
+        "properties": {}
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:red_tulip",
+        "properties": {}
+      }
+    ],
+    "next": 1248535248033503029
+  },
+  {
+    "provider": "flower_meadow",
+    "xoroshiro": false,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:oxeye_daisy",
+        "properties": {}
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:oxeye_daisy",
+        "properties": {}
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:poppy",
+        "properties": {}
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:azure_bluet",
+        "properties": {}
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:poppy",
+        "properties": {}
+      }
+    ],
+    "next": -5106534569952410475
+  },
+  {
+    "provider": "flower_meadow",
+    "xoroshiro": true,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:oxeye_daisy",
+        "properties": {}
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:dandelion",
+        "properties": {}
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:oxeye_daisy",
+        "properties": {}
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:poppy",
+        "properties": {}
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:azure_bluet",
+        "properties": {}
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:poppy",
+        "properties": {}
+      }
+    ],
+    "next": 1248535248033503029
+  },
+  {
+    "provider": "cave_vines_body",
+    "xoroshiro": false,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      }
+    ],
+    "next": -6966052082627703457
+  },
+  {
+    "provider": "cave_vines_body",
+    "xoroshiro": true,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:cave_vines_plant",
+        "properties": {
+          "berries": "false"
+        }
+      }
+    ],
+    "next": 138823572707751961
+  },
+  {
+    "provider": "cave_vines_head",
+    "xoroshiro": false,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "24",
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "24",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "23",
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "23",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      }
+    ],
+    "next": -7771300887898959616
+  },
+  {
+    "provider": "cave_vines_head",
+    "xoroshiro": true,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "23",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "24",
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "24",
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "24",
+          "berries": "true"
+        }
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "25",
+          "berries": "false"
+        }
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:cave_vines",
+        "properties": {
+          "age": "23",
+          "berries": "false"
+        }
+      }
+    ],
+    "next": 8240178651012683040
+  },
+  {
+    "provider": "mangrove_propagule",
+    "xoroshiro": false,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "2",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "0",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "1",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "4",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "0",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "2",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "4",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "2",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "0",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      }
+    ],
+    "next": -6966052082627703457
+  },
+  {
+    "provider": "mangrove_propagule",
+    "xoroshiro": true,
+    "seed": 123,
+    "samples": [
+      {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "2",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          8,
+          64,
+          8
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "3",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          123,
+          64,
+          -456
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "2",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          -1,
+          63,
+          -1
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "4",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          16384,
+          70,
+          16384
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "0",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          -100000,
+          72,
+          123456
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "0",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          16777217,
+          0,
+          -16777217
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "4",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          2147483647,
+          64,
+          -2147483648
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "2",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      },
+      {
+        "position": [
+          -3328,
+          64,
+          2240
+        ],
+        "name": "minecraft:mangrove_propagule",
+        "properties": {
+          "age": "0",
+          "hanging": "true",
+          "stage": "0",
+          "waterlogged": "false"
+        }
+      }
+    ],
+    "next": 138823572707751961
+  }
+]

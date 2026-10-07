@@ -1,6 +1,8 @@
 package block
 
 import (
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/item"
@@ -66,6 +68,9 @@ func (s Slab) Instrument() sound.Instrument {
 	if _, ok := s.Block.(BambooMosaic); ok {
 		return sound.Bass()
 	}
+	if _, ok := s.Block.(Wool); ok {
+		return sound.Guitar()
+	}
 	return sound.BassDrum()
 }
 
@@ -79,6 +84,9 @@ func (s Slab) FlammabilityInfo() FlammabilityInfo {
 
 // FuelInfo ...
 func (s Slab) FuelInfo() item.FuelInfo {
+	if _, ok := s.Block.(Wool); ok {
+		return item.FuelInfo{Duration: 50 * 50 * time.Millisecond}
+	}
 	if fuel, ok := s.Block.(item.Fuel); ok {
 		return fuel.FuelInfo()
 	}

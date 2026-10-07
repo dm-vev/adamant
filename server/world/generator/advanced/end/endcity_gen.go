@@ -1,13 +1,17 @@
 package end
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
+	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 type endCityRotation uint8
@@ -21,6 +25,18 @@ const (
 
 func (r endCityRotation) add(o endCityRotation) endCityRotation {
 	return endCityRotation((uint8(r) + uint8(o)) & 3)
+}
+func (r endCityRotation) java() javastructure.Rotation {
+	switch r {
+	case endCityRotClockwise90:
+		return javastructure.Clockwise90
+	case endCityRotClockwise180:
+		return javastructure.Clockwise180
+	case endCityRotCounterClockwise90:
+		return javastructure.CounterClockwise90
+	default:
+		return javastructure.None
+	}
 }
 
 type endCityPos struct {
@@ -40,106 +56,6 @@ func (r endCityRotation) rotatePos(p endCityPos) endCityPos {
 	}
 }
 
-func rotateHorizontalDirection(d cube.Direction, r endCityRotation) cube.Direction {
-	switch r {
-	case endCityRotClockwise90:
-		return d.RotateRight()
-	case endCityRotCounterClockwise90:
-		return d.RotateLeft()
-	case endCityRotClockwise180:
-		return d.Opposite()
-	default:
-		return d
-	}
-}
-
-func rotateAxis(a cube.Axis, r endCityRotation) cube.Axis {
-	switch r {
-	case endCityRotClockwise90, endCityRotCounterClockwise90:
-		if a == cube.X {
-			return cube.Z
-		}
-		if a == cube.Z {
-			return cube.X
-		}
-	}
-	return a
-}
-
-func rotateFace(f cube.Face, r endCityRotation) cube.Face {
-	if f == cube.FaceUp || f == cube.FaceDown {
-		return f
-	}
-	d := cube.North
-	switch f {
-	case cube.FaceNorth:
-		d = cube.North
-	case cube.FaceSouth:
-		d = cube.South
-	case cube.FaceWest:
-		d = cube.West
-	case cube.FaceEast:
-		d = cube.East
-	}
-	d = rotateHorizontalDirection(d, r)
-	switch d {
-	case cube.South:
-		return cube.FaceSouth
-	case cube.West:
-		return cube.FaceWest
-	case cube.East:
-		return cube.FaceEast
-	default:
-		return cube.FaceNorth
-	}
-}
-
-func parseHorizontalDirection(s string) (cube.Direction, bool) {
-	switch s {
-	case "north":
-		return cube.North, true
-	case "south":
-		return cube.South, true
-	case "west":
-		return cube.West, true
-	case "east":
-		return cube.East, true
-	default:
-		return cube.North, false
-	}
-}
-
-func parseAxisString(s string) (cube.Axis, bool) {
-	switch s {
-	case "x":
-		return cube.X, true
-	case "y":
-		return cube.Y, true
-	case "z":
-		return cube.Z, true
-	default:
-		return cube.Y, false
-	}
-}
-
-func parseFaceString(s string) (cube.Face, bool) {
-	switch s {
-	case "up":
-		return cube.FaceUp, true
-	case "down":
-		return cube.FaceDown, true
-	case "north":
-		return cube.FaceNorth, true
-	case "south":
-		return cube.FaceSouth, true
-	case "west":
-		return cube.FaceWest, true
-	case "east":
-		return cube.FaceEast, true
-	default:
-		return cube.FaceUp, false
-	}
-}
 
 type endCityBB struct {
 	minX, minY, minZ int
@@ -185,31 +101,28 @@ func (b *endCityBB) expandTo(o endCityBB) {
 }
 
 type endCityPiece struct {
-	name      string
 	pos       endCityPos
 	rot       endCityRotation
 	overwrite bool
 
 	template      *endCityTemplate
-	stateRIDs     []uint32
 	componentType int
 
 	bb endCityBB
 }
 
 type endCityStructure struct {
-	start  world.ChunkPos
-	pieces []*endCityPiece
-	bb     endCityBB
+	pieces          []*endCityPiece
+	bb              endCityBB
 }
 
 type endCityBuilder struct {
 	shipCreated bool
 }
 
-type endCityGenFunc func(b *endCityBuilder, g *End, depth int, parent *endCityPiece, offset *endCityPos, out *[]*endCityPiece, r *mc112.Rand) bool
+type endCityGenFunc func(b *endCityBuilder, g *End, depth int, parent *endCityPiece, offset *endCityPos, out *[]*endCityPiece, r *endRand) bool
 
-func (b *endCityBuilder) recursiveChildren(g *End, gen endCityGenFunc, depth int, parent *endCityPiece, offset *endCityPos, pieces *[]*endCityPiece, r *mc112.Rand) bool {
+func (b *endCityBuilder) recursiveChildren(g *End, gen endCityGenFunc, depth int, parent *endCityPiece, offset *endCityPos, pieces *[]*endCityPiece, r *endRand) bool {
 	if depth > 8 {
 		return false
 	}
@@ -245,16 +158,11 @@ func (g *End) newEndCityPiece(name string, pos endCityPos, rot endCityRotation, 
 		return nil, err
 	}
 	p := &endCityPiece{
-		name:          name,
 		pos:           pos,
 		rot:           rot,
 		overwrite:     overwrite,
 		template:      t,
 		componentType: 0,
-	}
-	p.stateRIDs, err = g.endCityStateRIDs(t, rot)
-	if err != nil {
-		return nil, err
 	}
 	p.bb = endCityPieceBoundingBox(p, t, rot)
 	return p, nil
@@ -292,7 +200,7 @@ func endCityPieceBoundingBox(piece *endCityPiece, t *endCityTemplate, rot endCit
 	return bb
 }
 
-func endCityHouseTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, offset *endCityPos, out *[]*endCityPiece, r *mc112.Rand) bool {
+func endCityHouseTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, offset *endCityPos, out *[]*endCityPiece, r *endRand) bool {
 	if depth > 8 {
 		return false
 	}
@@ -317,7 +225,7 @@ func endCityHouseTowerGenerator(b *endCityBuilder, g *End, depth int, parent *en
 		}
 		*out = append(*out, roof)
 	case 1:
-		second, err := g.addEndCityPiece(current, endCityPos{-1, 0, -1}, "second_floor_2", rotation, false)
+		second, err := g.addEndCityPiece(current, endCityPos{-1, 0, -1}, "second_floor_1", rotation, false)
 		if err != nil {
 			return false
 		}
@@ -337,7 +245,7 @@ func endCityHouseTowerGenerator(b *endCityBuilder, g *End, depth int, parent *en
 		}
 		*out = append(*out, second)
 		current = second
-		third, err := g.addEndCityPiece(current, endCityPos{-1, 4, -1}, "third_floor_c", rotation, false)
+		third, err := g.addEndCityPiece(current, endCityPos{-1, 4, -1}, "third_floor_2", rotation, false)
 		if err != nil {
 			return false
 		}
@@ -365,7 +273,7 @@ var endCityTowerBridges = []struct {
 	{endCityRotClockwise180, endCityPos{5, -1, 6}},
 }
 
-func endCityTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, _ *endCityPos, out *[]*endCityPiece, r *mc112.Rand) bool {
+func endCityTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, _ *endCityPos, out *[]*endCityPiece, r *endRand) bool {
 	rotation := parent.rot
 
 	baseOffset := endCityPos{3 + int(r.Intn(2)), -3, 3 + int(r.Intn(2))}
@@ -433,7 +341,7 @@ func endCityTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endCity
 	return true
 }
 
-func endCityTowerBridgeGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, _ *endCityPos, out *[]*endCityPiece, r *mc112.Rand) bool {
+func endCityTowerBridgeGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, _ *endCityPos, out *[]*endCityPiece, r *endRand) bool {
 	rotation := parent.rot
 	count := int(r.Intn(4)) + 1
 
@@ -511,7 +419,7 @@ var endCityFatTowerBridges = []struct {
 	{endCityRotClockwise180, endCityPos{8, -1, 12}},
 }
 
-func endCityFatTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, _ *endCityPos, out *[]*endCityPiece, r *mc112.Rand) bool {
+func endCityFatTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endCityPiece, _ *endCityPos, out *[]*endCityPiece, r *endRand) bool {
 	rotation := parent.rot
 
 	base, err := g.addEndCityPiece(parent, endCityPos{-3, 4, -3}, "fat_tower_base", rotation, true)
@@ -557,11 +465,6 @@ func endCityFatTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endC
 	return true
 }
 
-func (g *End) endCityRotation(chunkX, chunkZ int) endCityRotation {
-	seed := int64(int32(chunkX) + int32(chunkZ)*int32(10387313))
-	r := mc112.NewRand(seed)
-	return endCityRotation(r.Intn(4))
-}
 
 func (g *End) endCityYPosForStructure(chunkX, chunkZ int, rotation endCityRotation) (int, error) {
 	temp := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
@@ -585,7 +488,7 @@ func (g *End) endCityYPosForStructure(chunkX, chunkZ int, rotation endCityRotati
 	h2 := int(temp.HighestBlock(7, uint8(7+j)))
 	h3 := int(temp.HighestBlock(uint8(7+i), 7))
 	h4 := int(temp.HighestBlock(uint8(7+i), uint8(7+j)))
-	return min(min(h1, h2), min(h3, h4)), nil
+	return min(min(h1, h2), min(h3, h4)) + 1, nil
 }
 
 func (g *End) isEndCityStart(chunkX, chunkZ int) bool {
@@ -609,16 +512,17 @@ func floorDiv(x, d int) int {
 
 func (g *End) endCityStartChunk(cellX, cellZ int) (int, int) {
 	seed := int64(cellX)*341873128712 + int64(cellZ)*132897987541 + g.seed + 10387313
-	r := mc112.NewRand(seed)
+	r := newEndRand(seed)
 	startX := cellX*20 + int((r.Intn(9)+r.Intn(9))/2)
 	startZ := cellZ*20 + int((r.Intn(9)+r.Intn(9))/2)
 	return startX, startZ
 }
 
-func (g *End) applyEndCityStructures(chunkX, chunkZ int, c *chunk.Chunk) {
+func (g *End) applyEndCityStructures(chunkX, chunkZ int, region *endFeatureRegion, publish bool, result *world.GenerationResult) {
 	cellX, cellZ := floorDiv(chunkX, 20), floorDiv(chunkZ, 20)
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
+	random := g.endCityWorldgenRandom(chunkX, chunkZ).random
 
 	for dx := -1; dx <= 1; dx++ {
 		for dz := -1; dz <= 1; dz++ {
@@ -627,256 +531,163 @@ func (g *End) applyEndCityStructures(chunkX, chunkZ int, c *chunk.Chunk) {
 				continue
 			}
 			s, err := g.endCityStructure(startX, startZ)
-			if err != nil || s == nil {
-				continue
+			if err != nil {
+				panic(err)
 			}
-			if !s.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ) {
+			if s == nil || !s.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ) {
 				continue
 			}
 			for _, p := range s.pieces {
-				if p == nil || !p.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ) {
-					continue
+				if p != nil && p.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ) {
+					g.placeEndCityPiece(chunkX, chunkZ, region, p, &random, publish, result)
 				}
-				g.placeEndCityPiece(chunkX, chunkZ, c, p)
 			}
 		}
 	}
 }
 
-func (g *End) placeEndCityPiece(chunkX, chunkZ int, c *chunk.Chunk, p *endCityPiece) {
-	for _, b := range p.template.Blocks {
-		if b.State < 0 || b.State >= len(p.template.States) {
+func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p *endCityPiece, random *java26.Random, publish bool, result *world.GenerationResult) {
+	c := region.chunks[region.index(chunkX, chunkZ)]
+	origin := [3]int32{int32(p.pos.x), int32(p.pos.y), int32(p.pos.z)}
+	seed := g.seed ^ int64(p.pos.x)*341873128712 ^ int64(p.pos.z)*132897987541
+	blockPlacement, err := p.template.Java.PlaceBlocks(
+		0,
+		origin,
+		p.rot.java(),
+		javastructure.NoMirror,
+		javastructure.Bounds{
+			Min: [3]int32{int32(chunkX << 4), int32(c.Range().Min()), int32(chunkZ << 4)},
+			Max: [3]int32{int32((chunkX << 4) + 15), int32(c.Range().Max()), int32((chunkZ << 4) + 15)},
+		},
+		seed,
+	)
+	if err != nil {
+		panic(err)
+	}
+	for i := range blockPlacement.Blocks {
+		javastructure.SeedRandomizableContainerLoot(&blockPlacement.Blocks[i], random)
+	}
+	registry := c.BlockRegistry()
+	for _, placed := range blockPlacement.Blocks {
+		if placed.Pos[0]>>4 != int32(chunkX) || placed.Pos[2]>>4 != int32(chunkZ) {
 			continue
 		}
-		state := p.template.States[b.State]
-		if state.Name == "minecraft:structure_block" {
+		if placed.State.Name == "minecraft:structure_block" || !p.overwrite && placed.State.Name == "minecraft:air" {
 			continue
 		}
-		if !p.overwrite && state.Name == "minecraft:air" {
-			continue
+		state, err := world.ResolveState(registry, placed.State)
+		if err != nil {
+			panic(err)
 		}
-
-		local := endCityPos{x: b.Pos[0], y: b.Pos[1], z: b.Pos[2]}
-		delta := p.rot.rotatePos(local)
-		wx := p.pos.x + delta.x
-		wy := p.pos.y + delta.y
-		wz := p.pos.z + delta.z
-
-		if wx>>4 != chunkX || wz>>4 != chunkZ {
-			continue
+		region.setLayers(int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2]), state.Block, state.Liquid)
+	}
+	g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
+	for i := range blockPlacement.Blocks {
+		if blockPlacement.Blocks[i].State.Name == "minecraft:structure_block" {
+			blockPlacement.Blocks[i].NBT = nil
 		}
-		if int16(wy) < int16(c.Range().Min()) || int16(wy) > int16(c.Range().Max()) {
-			continue
+	}
+	if publish {
+		for _, payload := range blockPlacement.BlockEntityPayloads() {
+			if payload.Pos[0]>>4 == chunkX && payload.Pos[2]>>4 == chunkZ {
+				result.BlockEntities = append(result.BlockEntities, payload)
+			}
 		}
-
-		rid := p.stateRIDs[b.State]
-		if rid == endCityDynamicRID {
-			rid = g.endCityDynamicRID(state, b.NBT, p.rot)
-		}
-		c.SetBlock(uint8(wx&15), int16(wy), uint8(wz&15), 0, rid)
 	}
 }
 
-const endCityDynamicRID = ^uint32(0)
 
-func (g *End) endCityDynamicRID(state endCityState, nbt map[string]any, rot endCityRotation) uint32 {
-	switch state.Name {
-	case "minecraft:skull":
-		return g.endCitySkullRID(state, nbt, rot)
-	default:
-		return g.airRID
-	}
-}
 
-func (g *End) endCitySkullRID(state endCityState, nbt map[string]any, rot endCityRotation) uint32 {
-	skullType := uint8(0)
-	if nbt != nil {
-		if raw, ok := nbt["SkullType"]; ok {
-			switch v := raw.(type) {
-			case int8:
-				skullType = uint8(v)
-			case uint8:
-				skullType = v
-			case int32:
-				skullType = uint8(v)
-			}
-		}
-	}
-	blockName := "skeleton_skull"
-	switch skullType {
-	case 1:
-		blockName = "wither_skeleton_skull"
-	case 2:
-		blockName = "zombie_head"
-	case 3:
-		blockName = "player_head"
-	case 4:
-		blockName = "creeper_head"
-	case 5:
-		blockName = "dragon_head"
-	case 6:
-		blockName = "piglin_head"
-	}
-
-	facing := ""
-	if state.Properties != nil {
-		facing = state.Properties["facing"]
-	}
-	if facing == "up" {
-		return mustStateRID("minecraft:"+blockName, map[string]any{"facing_direction": int32(1)})
-	}
-	dir, _ := parseHorizontalDirection(facing)
-	dir = rotateHorizontalDirection(dir, rot)
-	return mustStateRID("minecraft:"+blockName, map[string]any{"facing_direction": int32(int(dir) + 2)})
-}
-
-func (g *End) endCityStateRIDs(t *endCityTemplate, rot endCityRotation) ([]uint32, error) {
-	out := make([]uint32, len(t.States))
-	for i, s := range t.States {
-		switch s.Name {
-		case "minecraft:structure_block":
-			out[i] = g.airRID
-			continue
-		case "minecraft:skull":
-			out[i] = endCityDynamicRID
+func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegion, blocks []javastructure.Block, p *endCityPiece, random *java26.Random, publish bool, result *world.GenerationResult) {
+	c := region.chunks[region.index(chunkX, chunkZ)]
+	for _, marker := range blocks {
+		if marker.State.Name != "minecraft:structure_block" || marker.NBT == nil {
 			continue
 		}
-
-		rid, ok := g.endCityRuntimeID(s, rot)
-		if !ok {
-			return nil, fmt.Errorf("unsupported end city state %q", s.Name)
+		mode, _ := marker.NBT["mode"].(string)
+		if !strings.EqualFold(mode, "DATA") {
+			continue
 		}
-		out[i] = rid
-	}
-	return out, nil
-}
-
-func (g *End) endCityRuntimeID(s endCityState, rot endCityRotation) (uint32, bool) {
-	switch s.Name {
-	case "minecraft:air":
-		return g.airRID, true
-	case "minecraft:end_bricks":
-		return world.BlockRuntimeID(block.EndBricks{}), true
-	case "minecraft:obsidian":
-		return g.obsidianRID, true
-	case "minecraft:purpur_block":
-		return world.BlockRuntimeID(block.Purpur{}), true
-	case "minecraft:purpur_pillar":
-		axisStr := ""
-		if s.Properties != nil {
-			axisStr = s.Properties["axis"]
-		}
-		axis, _ := parseAxisString(axisStr)
-		axis = rotateAxis(axis, rot)
-		return mustStateRID("minecraft:purpur_pillar", map[string]any{"pillar_axis": axis.String()}), true
-	case "minecraft:purpur_slab":
-		typ := "bottom"
-		if s.Properties != nil {
-			if v := s.Properties["type"]; v != "" {
-				typ = v
+		metadata, _ := marker.NBT["metadata"].(string)
+		switch {
+		case strings.HasPrefix(metadata, "Chest"):
+			chestPos := [3]int32{marker.Pos[0], marker.Pos[1] - 1, marker.Pos[2]}
+			if !endCityPosInChunk(chestPos, chunkX, chunkZ, c) {
+				continue
 			}
-		}
-		name := "minecraft:purpur_slab"
-		if typ == "double" {
-			name = "minecraft:purpur_double_slab"
-			typ = "bottom"
-		}
-		return mustStateRID(name, map[string]any{"minecraft:vertical_half": typ}), true
-	case "minecraft:purpur_stairs":
-		half := "bottom"
-		facing := "north"
-		if s.Properties != nil {
-			if v := s.Properties["half"]; v != "" {
-				half = v
+			seed := random.NextLong()
+			if !publish {
+				continue
 			}
-			if v := s.Properties["facing"]; v != "" {
-				facing = v
+			chest := javastructure.Block{
+				Pos:   chestPos,
+				State: world.BlockState{Name: "minecraft:chest"},
+				NBT: map[string]any{
+					"id":            "minecraft:chest",
+					"LootTable":     "minecraft:chests/end_city_treasure",
+					"LootTableSeed": seed,
+				},
 			}
-		}
-		dir, _ := parseHorizontalDirection(facing)
-		dir = rotateHorizontalDirection(dir, rot)
-		upsideDown := half == "top"
-		weirdo := int32(3 - int32(dir))
-		return mustStateRID("minecraft:purpur_stairs", map[string]any{"upside_down_bit": upsideDown, "weirdo_direction": weirdo}), true
-	case "minecraft:ladder":
-		facing := "north"
-		if s.Properties != nil {
-			if v := s.Properties["facing"]; v != "" {
-				facing = v
+			result.BlockEntities = append(result.BlockEntities, (javastructure.Placement{Blocks: []javastructure.Block{chest}}).BlockEntityPayloads()...)
+		case strings.HasPrefix(metadata, "Sentry"):
+			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, c) {
+				continue
 			}
-		}
-		dir, _ := parseHorizontalDirection(facing)
-		dir = rotateHorizontalDirection(dir, rot)
-		return mustStateRID("minecraft:ladder", map[string]any{"facing_direction": int32(int(dir) + 2)}), true
-	case "minecraft:end_rod":
-		facing := "up"
-		if s.Properties != nil {
-			if v := s.Properties["facing"]; v != "" {
-				facing = v
+			if !publish {
+				continue
 			}
-		}
-		face, _ := parseFaceString(facing)
-		face = rotateFace(face, rot)
-		facingDir := face
-		if face.Axis() != cube.Y {
-			facingDir = face.Opposite()
-		}
-		return mustStateRID("minecraft:end_rod", map[string]any{"facing_direction": int32(facingDir)}), true
-	case "minecraft:chest":
-		facing := "north"
-		if s.Properties != nil {
-			if v := s.Properties["facing"]; v != "" {
-				facing = v
+			result.Entities = append(result.Entities, entity.NewShulker(world.EntitySpawnOpts{
+				Position: mgl64.Vec3{float64(marker.Pos[0]) + 0.5, float64(marker.Pos[1]), float64(marker.Pos[2]) + 0.5},
+			}, entity.ShulkerBehaviourConfig{}))
+		case strings.HasPrefix(metadata, "Elytra"):
+			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, c) {
+				continue
 			}
-		}
-		dir, _ := parseHorizontalDirection(facing)
-		dir = rotateHorizontalDirection(dir, rot)
-		return mustStateRID("minecraft:chest", map[string]any{"minecraft:cardinal_direction": dir.String()}), true
-	case "minecraft:ender_chest":
-		facing := "north"
-		if s.Properties != nil {
-			if v := s.Properties["facing"]; v != "" {
-				facing = v
+			outward := javastructure.TransformPosition([3]int32{0, 0, 1}, javastructure.NoMirror, p.rot.java())
+			var facing cube.Face
+			switch {
+			case outward[0] > 0:
+				facing = cube.FaceEast
+			case outward[0] < 0:
+				facing = cube.FaceWest
+			case outward[2] > 0:
+				facing = cube.FaceSouth
+			default:
+				facing = cube.FaceNorth
 			}
-		}
-		dir, _ := parseHorizontalDirection(facing)
-		dir = rotateHorizontalDirection(dir, rot)
-		return mustStateRID("minecraft:ender_chest", map[string]any{"minecraft:cardinal_direction": dir.String()}), true
-	case "minecraft:brewing_stand":
-		var a, bBit, cBit bool
-		if s.Properties != nil {
-			a = s.Properties["has_bottle_0"] == "true"
-			bBit = s.Properties["has_bottle_1"] == "true"
-			cBit = s.Properties["has_bottle_2"] == "true"
-		}
-		return mustStateRID("minecraft:brewing_stand", map[string]any{
-			"brewing_stand_slot_a_bit": a,
-			"brewing_stand_slot_b_bit": bBit,
-			"brewing_stand_slot_c_bit": cBit,
-		}), true
-	case "minecraft:stained_glass":
-		colour := "white"
-		if s.Properties != nil {
-			if v := s.Properties["color"]; v != "" {
-				colour = v
+			frame := block.ItemFrame{
+				Facing:    facing.Opposite(),
+				Item:      item.NewStack(item.Elytra{}, 1),
+				DropChance: 1,
 			}
-		}
-		return mustStateRID("minecraft:"+colour+"_stained_glass", nil), true
-	case "minecraft:wall_banner":
-		facing := "north"
-		if s.Properties != nil {
-			if v := s.Properties["facing"]; v != "" {
-				facing = v
+			blockName, properties := frame.EncodeBlock()
+			rid, ok := c.BlockRegistry().StateToRuntimeID(blockName, properties)
+			if !ok {
+				panic("End City item-frame state is not registered")
 			}
+			region.setLayers(int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2]), rid, c.BlockRegistry().AirRuntimeID())
+			if !publish {
+				continue
+			}
+			data := frame.EncodeNBT()
+			data["x"], data["y"], data["z"] = marker.Pos[0], marker.Pos[1], marker.Pos[2]
+			result.BlockEntities = append(result.BlockEntities, chunk.BlockEntity{
+				Pos:  cube.Pos{int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2])},
+				Data: data,
+			})
 		}
-		dir, _ := parseHorizontalDirection(facing)
-		dir = rotateHorizontalDirection(dir, rot)
-		return mustStateRID("minecraft:wall_banner", map[string]any{"facing_direction": int32(int(dir) + 2)}), true
-	default:
-		return 0, false
 	}
 }
 
+func endCityPosInChunk(pos [3]int32, chunkX, chunkZ int, c *chunk.Chunk) bool {
+	return pos[0]>>4 == int32(chunkX) && pos[2]>>4 == int32(chunkZ) &&
+		pos[1] >= int32(c.Range().Min()) && pos[1] <= int32(c.Range().Max())
+}
+
+
+func (g *End) endCityRotation(random *endRand) endCityRotation {
+	return endCityRotation(random.Intn(4))
+}
 func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure, error) {
 	pos := world.ChunkPos{int32(startChunkX), int32(startChunkZ)}
 	if v, ok := g.endCityCache.Load(pos); ok {
@@ -894,7 +705,8 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 		return nil, nil
 	}
 
-	rotation := g.endCityRotation(startChunkX, startChunkZ)
+	structureRandom := g.endCityStartRand(startChunkX, startChunkZ)
+	rotation := g.endCityRotation(structureRandom)
 	y, err := g.endCityYPosForStructure(startChunkX, startChunkZ, rotation)
 	if err != nil {
 		g.endCityCache.Store(pos, (*endCityStructure)(nil))
@@ -909,7 +721,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	builder := &endCityBuilder{}
 	builder.shipCreated = false
 
-	start := endCityPos{x: startChunkX*16 + 8, y: y, z: startChunkZ*16 + 8}
+	start := endCityPos{x: startChunkX*16 + 7, y: y, z: startChunkZ*16 + 7}
 	base, err := g.newEndCityPiece("base_floor", start, rotation, true)
 	if err != nil {
 		g.endCityCache.Store(pos, (*endCityStructure)(nil))
@@ -918,7 +730,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	pieces = append(pieces, base)
 	current := base
 
-	second, err := g.addEndCityPiece(current, endCityPos{-1, 0, -1}, "second_floor", rotation, false)
+	second, err := g.addEndCityPiece(current, endCityPos{-1, 0, -1}, "second_floor_1", rotation, false)
 	if err != nil {
 		g.endCityCache.Store(pos, (*endCityStructure)(nil))
 		return nil, err
@@ -926,7 +738,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	pieces = append(pieces, second)
 	current = second
 
-	third, err := g.addEndCityPiece(current, endCityPos{-1, 4, -1}, "third_floor", rotation, false)
+	third, err := g.addEndCityPiece(current, endCityPos{-1, 4, -1}, "third_floor_1", rotation, false)
 	if err != nil {
 		g.endCityCache.Store(pos, (*endCityStructure)(nil))
 		return nil, err
@@ -942,8 +754,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	pieces = append(pieces, roof)
 	current = roof
 
-	startRand := g.endCityStartRand(startChunkX, startChunkZ)
-	builder.recursiveChildren(g, endCityTowerGenerator, 1, current, nil, &pieces, startRand)
+	builder.recursiveChildren(g, endCityTowerGenerator, 1, current, nil, &pieces, structureRandom)
 
 	maxInt := int(^uint(0) >> 1)
 	minInt := -maxInt - 1
@@ -954,24 +765,23 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 		}
 	}
 
-	s := &endCityStructure{start: pos, pieces: pieces, bb: union}
+	s := &endCityStructure{pieces: pieces, bb: union}
 	g.endCityCache.Store(pos, s)
 	return s, nil
 }
 
-func (g *End) endCityStartRand(chunkX, chunkZ int) *mc112.Rand {
-	j, k := g.endCityRandConstants()
-	seed := int64(chunkX)*j ^ int64(chunkZ)*k ^ g.seed
-	r := mc112.NewRand(seed)
-	r.Int32()
-	return r
+
+func (g *End) endCityWorldgenRandom(chunkX, chunkZ int) *endRand {
+	random := java26.NewXoroshiroRandom(g.seed)
+	decorationSeed := random.SetDecorationSeed(g.seed, int32(chunkX<<4), int32(chunkZ<<4))
+	// 22 is End City's registry-order index in the 26.3 surface_structures step.
+	random.SetFeatureSeed(decorationSeed, 22, 4)
+	return newEndRandWithRandom(random)
 }
 
-func (g *End) endCityRandConstants() (int64, int64) {
-	g.endCityRandOnce.Do(func() {
-		r := mc112.NewRand(g.seed)
-		g.endCityRandJ = r.Long()
-		g.endCityRandK = r.Long()
-	})
-	return g.endCityRandJ, g.endCityRandK
+func (g *End) endCityStartRand(chunkX, chunkZ int) *endRand {
+	random := newEndRand(g.seed)
+	xScale, zScale := random.Long(), random.Long()
+	seed := int64(chunkX)*xScale ^ int64(chunkZ)*zScale ^ g.seed
+	return newEndRand(seed)
 }

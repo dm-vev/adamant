@@ -118,24 +118,35 @@ func (d Dropper) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after wo
 	}
 }
 
-// ScheduledTick dispenses one item if the dropper is still triggered.
 func (d Dropper) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
-	if !d.Triggered {
-		return
-	}
-
-	slots := d.inventory.Slots()
-	nonEmpty := make([]int, 0, len(slots))
-	for slot, stack := range slots {
+	// The scheduled dispense is retained even if the signal falls before it
+	// runs, matching the source block's rising-edge scheduling.
+	slot, count := -1, 0
+	for i := range 9 {
+		stack, _ := d.inventory.Item(i)
 		if !stack.Empty() {
-			nonEmpty = append(nonEmpty, slot)
+			count++
 		}
 	}
-	if len(nonEmpty) == 0 {
+	if count == 0 {
 		return
 	}
-	slot := nonEmpty[r.IntN(len(nonEmpty))]
-	stack := slots[slot]
+	pick := r.IntN(count)
+	for i := range 9 {
+		stack, _ := d.inventory.Item(i)
+		if stack.Empty() {
+			continue
+		}
+		if pick == 0 {
+			slot = i
+			break
+		}
+		pick--
+	}
+	if slot < 0 {
+		return
+	}
+	stack, _ := d.inventory.Item(slot)
 	one := stack.Grow(1 - stack.Count())
 	frontPos := pos.Side(d.Facing)
 	if container, ok := tx.Block(frontPos).(Container); ok {

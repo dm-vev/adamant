@@ -8,7 +8,6 @@ import (
 )
 
 // InfestedDeepslate is a block that hides a silverfish. It looks identical to deepslate.
-// TODO: spawn a silverfish on break (without silk touch) once silverfish are implemented.
 type InfestedDeepslate struct {
 	solid
 	flute
@@ -19,7 +18,7 @@ type InfestedDeepslate struct {
 
 // BreakInfo ...
 func (i InfestedDeepslate) BreakInfo() BreakInfo {
-	return newBreakInfo(1.5, pickaxeHarvestable, pickaxeEffective, silkTouchOnlyDrop(i)).withBlastResistance(0.75)
+	return newBreakInfo(1.5, pickaxeHarvestable, pickaxeEffective, silkTouchOnlyDrop(i)).withBlastResistance(0.75).withBreakHandler(infestedBreakHandler)
 }
 
 // UseOnBlock ...

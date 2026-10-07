@@ -64,18 +64,24 @@ func NewUserDataShapeless(input []Item, output item.Stack, block string) UserDat
 // Multi enables a recipe whose behaviour is hardcoded in the vanilla client and identified by UUID.
 type Multi struct {
 	recipe
-	id uuid.UUID
+	id       uuid.UUID
+	javaIDs  []string
 }
 
 // NewMulti creates a client-defined multi recipe.
 func NewMulti(id uuid.UUID) Multi {
-	return Multi{id: id, recipe: recipe{block: "crafting_table"}}
+	return Multi{id: id, javaIDs: java26MultiRecipeIDsByUUID(id.String()), recipe: recipe{block: "crafting_table"}}
 }
 
 // UUID returns the identifier of the client-defined recipe.
 func (m Multi) UUID() uuid.UUID {
 	return m.id
 }
+
+// JavaIDs returns source-backed Java recipe keys associated with this multi
+// recipe.
+func (m Multi) JavaIDs() []string { return slices.Clone(m.javaIDs) }
+
 
 // SmithingTransform represents a recipe only craftable on a smithing table.
 type SmithingTransform struct {

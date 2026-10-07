@@ -38,6 +38,20 @@ func (p Pumpkin) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *worl
 	return placed(ctx)
 }
 
+// Placed checks construction only when this becomes a carved-pumpkin block,
+// not when an existing carved pumpkin merely changes orientation.
+func (p Pumpkin) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
+	if !p.Carved {
+		return
+	}
+	if old, ok := previous.(Pumpkin); ok && old.Carved {
+		return
+	}
+	if spawn := tx.World().EntityRegistry().Config().GolemPattern; spawn != nil {
+		spawn(tx, pos)
+	}
+}
+
 // BreakInfo ...
 func (p Pumpkin) BreakInfo() BreakInfo {
 	return newBreakInfo(1, alwaysHarvestable, axeEffective, oneOf(p))

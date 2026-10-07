@@ -167,16 +167,59 @@ type Releasable interface {
 	Requirements() []Stack
 }
 
-// Chargeable represents an item that can be charged.
+// Chargeable stores a completed charge for a later use, as a crossbow does.
 type Chargeable interface {
-	// Charge is called when an item is being used.
-	Charge(releaser Releaser, tx *world.Tx, ctx *UseContext, duration time.Duration) bool
-	// ContinueCharge continues the charge.
-	ContinueCharge(releaser Releaser, tx *world.Tx, ctx *UseContext, duration time.Duration)
-	// ReleaseCharge is called when an item is being released.
-	ReleaseCharge(releaser Releaser, tx *world.Tx, ctx *UseContext) bool
-	// CanCharge returns whether the item can currently be charged.
+	// CanCharge checks the ammunition and held-item requirements before charging.
 	CanCharge(releaser Releaser, tx *world.Tx, ctx *UseContext) bool
+	// ContinueCharge updates effects while the item is being charged.
+	ContinueCharge(releaser Releaser, tx *world.Tx, ctx *UseContext, duration time.Duration)
+	// Charge loads the item once its required use duration has elapsed.
+	Charge(releaser Releaser, tx *world.Tx, ctx *UseContext, duration time.Duration) bool
+	// ReleaseCharge fires a previously loaded item, returning whether it fired.
+	ReleaseCharge(releaser Releaser, tx *world.Tx, ctx *UseContext) bool
+}
+
+// UseTickable represents an item that applies an effect on individual use ticks.
+type UseTickable interface {
+	UseTick(tx *world.Tx, user User, stack Stack, ticks int) Stack
+	UseDurationTicks() int
+}
+
+// KineticWeapon is an item that attacks repeatedly while being used, using the Java kinetic-weapon conditions.
+type KineticWeapon interface {
+	// KineticWeaponInfo returns the charge and motion thresholds for this weapon.
+	KineticWeaponInfo() KineticWeaponInfo
+}
+
+// KineticWeaponInfo describes the use-tick conditions for a kinetic weapon.
+type KineticWeaponInfo struct {
+	ContactCooldownTicks int
+	DelayTicks           int
+	Dismount              KineticWeaponCondition
+	Knockback             KineticWeaponCondition
+	Damage                KineticWeaponCondition
+	ForwardMovement       float64
+	DamageMultiplier     float64
+	AttackDuration       float64
+}
+
+// KineticWeaponCondition describes a maximum use duration and minimum attacker or relative speed.
+type KineticWeaponCondition struct {
+	MaxDurationTicks int
+	MinSpeed         float64
+	MinRelativeSpeed float64
+}
+
+// PiercingWeapon is an item whose normal attack stabs every eligible entity along its attack line.
+type PiercingWeapon interface {
+	// PiercingWeaponInfo describes the effects applied to targets hit by the stab.
+	PiercingWeaponInfo() PiercingWeaponInfo
+}
+
+// PiercingWeaponInfo describes the target effects of a piercing attack.
+type PiercingWeaponInfo struct {
+	DealsKnockback bool
+	Dismount       bool
 }
 
 // User represents an entity that is able to use an item in the world, typically entities such as players,

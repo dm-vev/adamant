@@ -1,0 +1,6447 @@
+[
+  {
+    "name": "blob",
+    "config": {
+      "type": "minecraft:block_blob",
+      "state": "minecraft:gold_block",
+      "can_place_on": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:stone"
+      }
+    },
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -7771300887898959616,
+    "blocks": [
+      {
+        "position": [
+          7,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "blob",
+    "config": {
+      "type": "minecraft:block_blob",
+      "state": "minecraft:gold_block",
+      "can_place_on": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:stone"
+      }
+    },
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 8240178651012683040,
+    "blocks": [
+      {
+        "position": [
+          8,
+          3,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          4,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          4,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          4,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          4,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "blob_too_low",
+    "config": {
+      "type": "minecraft:block_blob",
+      "state": "minecraft:gold_block",
+      "can_place_on": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:stone"
+      }
+    },
+    "origin": [
+      8,
+      3,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": false,
+    "next": -5106534569952410475,
+    "blocks": []
+  },
+  {
+    "name": "blob_too_low",
+    "config": {
+      "type": "minecraft:block_blob",
+      "state": "minecraft:gold_block",
+      "can_place_on": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:stone"
+      }
+    },
+    "origin": [
+      8,
+      3,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": false,
+    "next": 1248535248033503029,
+    "blocks": []
+  },
+  {
+    "name": "pile",
+    "config": {
+      "type": "minecraft:block_pile",
+      "state_provider": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -4906044510646341531,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          6,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "pile",
+    "config": {
+      "type": "minecraft:block_pile",
+      "state_provider": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": -6169791378691520530,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          10
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "pile_path",
+    "config": {
+      "type": "minecraft:block_pile",
+      "state_provider": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": false,
+    "floor": "minecraft:dirt_path",
+    "placed": true,
+    "next": -3842854279836812065,
+    "blocks": [
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          6,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "pile_path",
+    "config": {
+      "type": "minecraft:block_pile",
+      "state_provider": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": true,
+    "floor": "minecraft:dirt_path",
+    "placed": true,
+    "next": -4472932354418668835,
+    "blocks": [
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          10
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "pile_too_low",
+    "config": {
+      "type": "minecraft:block_pile",
+      "state_provider": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": false,
+    "next": -5106534569952410475,
+    "blocks": []
+  },
+  {
+    "name": "pile_too_low",
+    "config": {
+      "type": "minecraft:block_pile",
+      "state_provider": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": false,
+    "next": 1248535248033503029,
+    "blocks": []
+  },
+  {
+    "name": "fill_air",
+    "config": {
+      "type": "minecraft:fill_layer",
+      "state": "minecraft:gold_block",
+      "height": 5
+    },
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": [
+      {
+        "position": [
+          0,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "fill_air",
+    "config": {
+      "type": "minecraft:fill_layer",
+      "state": "minecraft:gold_block",
+      "height": 5
+    },
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": [
+      {
+        "position": [
+          0,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          0
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          2
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          3
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          5
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          11
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          12
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          13
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          14
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          0,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          1,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          2,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          3,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          11,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          12,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          13,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          14,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          15,
+          5,
+          15
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "fill_hole",
+    "config": {
+      "type": "minecraft:fill_layer",
+      "state": "minecraft:gold_block",
+      "height": 4
+    },
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": [
+      {
+        "position": [
+          7,
+          4,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "fill_hole",
+    "config": {
+      "type": "minecraft:fill_layer",
+      "state": "minecraft:gold_block",
+      "height": 4
+    },
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": [
+      {
+        "position": [
+          7,
+          4,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "replacement",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:random_block_match",
+            "block": "minecraft:stone",
+            "probability": 0.5
+          },
+          "state": "minecraft:gold_block"
+        },
+        {
+          "target": {
+            "predicate_type": "minecraft:block_match",
+            "block": "minecraft:stone"
+          },
+          "state": "minecraft:diamond_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": 4376377975854828753,
+    "blocks": [
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "replacement",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:random_block_match",
+            "block": "minecraft:stone",
+            "probability": 0.5
+          },
+          "state": "minecraft:gold_block"
+        },
+        {
+          "target": {
+            "predicate_type": "minecraft:block_match",
+            "block": "minecraft:stone"
+          },
+          "state": "minecraft:diamond_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 4378946378199351518,
+    "blocks": [
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "replacement_miss",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:random_block_match",
+            "block": "minecraft:stone",
+            "probability": 0.5
+          },
+          "state": "minecraft:gold_block"
+        },
+        {
+          "target": {
+            "predicate_type": "minecraft:block_match",
+            "block": "minecraft:stone"
+          },
+          "state": "minecraft:diamond_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": []
+  },
+  {
+    "name": "replacement_miss",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:random_block_match",
+            "block": "minecraft:stone",
+            "probability": 0.5
+          },
+          "state": "minecraft:gold_block"
+        },
+        {
+          "target": {
+            "predicate_type": "minecraft:block_match",
+            "block": "minecraft:stone"
+          },
+          "state": "minecraft:diamond_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": []
+  },
+  {
+    "name": "coral_tree",
+    "config": {
+      "type": "minecraft:coral_tree",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      6,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -3758321679654915806,
+    "blocks": [
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          7,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          8,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          9,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          9,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          10,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          10,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          11,
+          8
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "coral_tree",
+    "config": {
+      "type": "minecraft:coral_tree",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      6,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": -5914348844068169214,
+    "blocks": [
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          7,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          8,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          8,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          8,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          8,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          9,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          9,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          9,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          9,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          10,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          10,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          10,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          10,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          11,
+          5
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          11,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          11,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          11,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          12,
+          5
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          12,
+          8
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "coral_tree_blocked",
+    "config": {
+      "type": "minecraft:coral_tree",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": 4376377975854828753,
+    "blocks": []
+  },
+  {
+    "name": "coral_tree_blocked",
+    "config": {
+      "type": "minecraft:coral_tree",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 4378946378199351518,
+    "blocks": []
+  },
+  {
+    "name": "coral_claw",
+    "config": {
+      "type": "minecraft:coral_claw",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      6,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": 7314076204812145092,
+    "blocks": [
+      {
+        "position": [
+          8,
+          6,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          7,
+          5
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          7,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          7,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          8,
+          4
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          8,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          8,
+          5
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          8,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          8,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          8,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          9,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          9,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          10,
+          4
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          10,
+          5
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "coral_claw",
+    "config": {
+      "type": "minecraft:coral_claw",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      6,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": -5914348844068169214,
+    "blocks": [
+      {
+        "position": [
+          7,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          7,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          5,
+          7,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          7,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          7,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          4,
+          8,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          5,
+          8,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          8,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          8,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          8,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          5,
+          9,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          9,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          4,
+          10,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          3,
+          11,
+          9
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "coral_claw_blocked",
+    "config": {
+      "type": "minecraft:coral_claw",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": false,
+    "next": -5106534569952410475,
+    "blocks": []
+  },
+  {
+    "name": "coral_claw_blocked",
+    "config": {
+      "type": "minecraft:coral_claw",
+      "feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "type": "minecraft:weighted",
+            "entries": [
+              {
+                "data": "minecraft:basalt",
+                "weight": 2
+              },
+              {
+                "data": "minecraft:gold_block",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "minecraft:block_predicate_filter",
+            "predicate": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:air"
+            }
+          }
+        ]
+      }
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": false,
+    "next": 1248535248033503029,
+    "blocks": []
+  },
+  {
+    "name": "state_default",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:blockstate_match",
+            "block_state": "minecraft:grass_block"
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": [
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "state_default",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:blockstate_match",
+            "block_state": "minecraft:grass_block"
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": [
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "state_mismatch",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:blockstate_match",
+            "block_state": {
+              "id": "minecraft:grass_block",
+              "properties": {
+                "snowy": "true"
+              }
+            }
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": []
+  },
+  {
+    "name": "state_mismatch",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:blockstate_match",
+            "block_state": {
+              "id": "minecraft:grass_block",
+              "properties": {
+                "snowy": "true"
+              }
+            }
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": []
+  },
+  {
+    "name": "random_state",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:random_blockstate_match",
+            "block_state": "minecraft:grass_block",
+            "probability": 0.5
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": 4376377975854828753,
+    "blocks": []
+  },
+  {
+    "name": "random_state",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:random_blockstate_match",
+            "block_state": "minecraft:grass_block",
+            "probability": 0.5
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": 4378946378199351518,
+    "blocks": [
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "logical_rule",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:all_of",
+            "rules": [
+              {
+                "predicate_type": "minecraft:always_true"
+              },
+              {
+                "predicate_type": "minecraft:any_of",
+                "rules": [
+                  {
+                    "predicate_type": "minecraft:random_block_match",
+                    "block": "minecraft:stone",
+                    "probability": 1
+                  },
+                  {
+                    "predicate_type": "minecraft:not",
+                    "rule": {
+                      "predicate_type": "minecraft:block_match",
+                      "block": "minecraft:dirt"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": [
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "logical_rule",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:all_of",
+            "rules": [
+              {
+                "predicate_type": "minecraft:always_true"
+              },
+              {
+                "predicate_type": "minecraft:any_of",
+                "rules": [
+                  {
+                    "predicate_type": "minecraft:random_block_match",
+                    "block": "minecraft:stone",
+                    "probability": 1
+                  },
+                  {
+                    "predicate_type": "minecraft:not",
+                    "rule": {
+                      "predicate_type": "minecraft:block_match",
+                      "block": "minecraft:dirt"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "floor": "minecraft:grass_block",
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": [
+      {
+        "position": [
+          8,
+          4,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "height_4",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": []
+  },
+  {
+    "name": "height_4",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      4,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": []
+  },
+  {
+    "name": "height_5",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "height_5",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      5,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "height_6",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      6,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": [
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "height_6",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      6,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": [
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "height_7",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "xoroshiro": false,
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": []
+  },
+  {
+    "name": "height_7",
+    "config": {
+      "type": "minecraft:replace_single_block",
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "minecraft:height_match",
+            "min_inclusive": 5,
+            "max_inclusive": 6
+          },
+          "state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "xoroshiro": true,
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": []
+  }
+]

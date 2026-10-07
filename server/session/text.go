@@ -160,12 +160,15 @@ func (s *Session) RemoveScoreboard() {
 	s.currentLines.Store(&lines)
 }
 
-// SendBossBar sends a boss bar to the player with the text passed and the health percentage of the bar.
-// SendBossBar removes any boss bar that might be active before sending the new one.
+// SendBossBar sends a boss bar using the default identifier.
 func (s *Session) SendBossBar(text string, colour uint8, healthPercentage float64) {
-	s.RemoveBossBar()
+	s.SendBossBarID("default", text, colour, healthPercentage)
+}
+
+// SendBossBarID shows or updates the independently identified boss bar.
+func (s *Session) SendBossBarID(id, text string, colour uint8, healthPercentage float64) {
 	s.writePacket(&packet.BossEvent{
-		BossEntityUniqueID: selfEntityRuntimeID,
+		BossEntityUniqueID: s.bossBarEntityID(id),
 		EventType:          packet.BossEventShow,
 		BossBarTitle:       text,
 		HealthPercentage:   float32(healthPercentage),
@@ -173,12 +176,34 @@ func (s *Session) SendBossBar(text string, colour uint8, healthPercentage float6
 	})
 }
 
-// RemoveBossBar removes any boss bar currently active on the player's screen.
-func (s *Session) RemoveBossBar() {
+// RemoveBossBar removes the default boss bar.
+func (s *Session) RemoveBossBar() { s.RemoveBossBarID("default") }
+
+// RemoveBossBarID hides only the boss bar identified by id.
+func (s *Session) RemoveBossBarID(id string) {
 	s.writePacket(&packet.BossEvent{
-		BossEntityUniqueID: selfEntityRuntimeID,
+		BossEntityUniqueID: s.bossBarEntityID(id),
 		EventType:          packet.BossEventHide,
 	})
+}
+
+func (s *Session) bossBarEntityID(id string) int64 {
+	if id == "default" {
+		return selfEntityRuntimeID
+	}
+	s.bossBarMu.Lock()
+	defer s.bossBarMu.Unlock()
+	if entityID, ok := s.bossBarIDs[id]; ok {
+		return entityID
+	}
+	if s.bossBarIDs == nil {
+		s.bossBarIDs = make(map[string]int64)
+		s.nextBossBarID = -(int64(1) << 62)
+	}
+	entityID := s.nextBossBarID
+	s.nextBossBarID++
+	s.bossBarIDs[id] = entityID
+	return entityID
 }
 
 const tickLength = time.Second / 20

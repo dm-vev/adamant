@@ -36,8 +36,7 @@ func (c CopperGolemStatue) BreakInfo() BreakInfo {
 // Activate ...
 func (c CopperGolemStatue) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
 	held, _ := u.HeldItems()
-	if !held.Empty() {
-		// copper golems can't be activated while holding an item.
+	if tool, ok := held.Item().(item.Tool); ok && tool.ToolType() == item.TypeAxe {
 		return false
 	}
 	poses := CopperGolemPoses()
@@ -46,6 +45,7 @@ func (c CopperGolemStatue) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u i
 		nextIndex = 0
 	}
 	c.Pose = poses[nextIndex]
+	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "entity.copper_golem_become_statue", Volume: 1, Pitch: 1})
 	tx.SetBlock(pos, c, nil)
 	return true
 }
@@ -107,15 +107,24 @@ func (c CopperGolemStatue) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) 
 
 // DecodeNBT ...
 func (c CopperGolemStatue) DecodeNBT(data map[string]any) any {
-	c.Pose = CopperGolemPose{pose(nbtconv.Int32(data, "Pose"))}
+	value := nbtconv.Int32(data, "Pose")
+	if value < 0 || value >= int32(len(CopperGolemPoses())) {
+		value = 0
+	}
+	c.Pose = CopperGolemPose{pose(value)}
 	return c
 }
 
 // EncodeNBT ...
 func (c CopperGolemStatue) EncodeNBT() map[string]any {
 	return map[string]any{
-		"Pose": int32(c.Pose.Uint8()),
-		"id":   "CopperGolemStatue",
+		"BlockEntityVersion": int32(0),
+		"Pose":               int32(c.Pose.Uint8()),
+		"Actor": map[string]any{
+			"ActorIdentifier": "minecraft:copper_golem<>",
+			"SaveData":        map[string]any{},
+		},
+		"id": "CopperGolemStatue",
 	}
 }
 

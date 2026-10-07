@@ -1,2 +1,2 @@
-// Package end implements a Minecraft Java Edition 1.12-style End generator.
+// Package end implements Java 26 End world generation.
 package end

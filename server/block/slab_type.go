@@ -1,12 +1,11 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 // encodeSlabBlock encodes the provided block in to an identifier and meta value that can be used to encode the slab.
-// halfFlattened is a temporary hack for a stone_block_slab which has been flattened but double_stone_block_slab
-// has not. This can be removed in 1.21.10 where they have flattened all slab types.
 func encodeSlabBlock(block world.Block, double bool) (id string, suffix string) {
 	suffix = "_slab"
 	if double {
@@ -164,6 +163,8 @@ func encodeSlabBlock(block world.Block, double bool) (id string, suffix string) 
 		if !block.Chiseled {
 			return "tuff_brick", suffix
 		}
+	case Wool:
+		return block.Colour.String() + "_wool", suffix
 	}
 	panic("invalid block used for slab")
 }
@@ -221,6 +222,9 @@ func SlabBlocks() []world.Block {
 	}
 	for _, w := range WoodTypes() {
 		b = append(b, Planks{Wood: w})
+	}
+	for _, c := range item.Colours() {
+		b = append(b, Wool{Colour: c})
 	}
 	b = append(b, PetrifiedOak{})
 	for _, o := range OxidationTypes() {

@@ -27,12 +27,13 @@ import (
 // DB implements a world provider for the Minecraft world format, which
 // is based on a leveldb database.
 type DB struct {
-	conf Config
-	ldb  *leveldb.DB
-	dir  string
-	ldat *leveldat.Data
-	lmu  sync.Mutex
-	set  *world.Settings
+	conf      Config
+	ldb       *leveldb.DB
+	dir       string
+	ldat      *leveldat.Data
+	lmu       sync.Mutex
+	set       *world.Settings
+	endFight  map[string]any
 }
 
 // Open creates a new provider reading and writing from/to files under the path
@@ -67,6 +68,20 @@ func (db *DB) SaveSettings(s *world.Settings) {
 	db.ldat.PutSettings(s)
 }
 
+
+// LoadWorldData reads an opaque Adamant-owned namespaced payload.
+func (db *DB) LoadWorldData(namespace string) ([]byte, error) {
+	db.lmu.Lock()
+	defer db.lmu.Unlock()
+	return db.ldb.Get([]byte("adamant:data:"+namespace), nil)
+}
+
+// SaveWorldData writes an opaque Adamant-owned namespaced payload.
+func (db *DB) SaveWorldData(namespace string, data []byte) error {
+	db.lmu.Lock()
+	defer db.lmu.Unlock()
+	return db.ldb.Put([]byte("adamant:data:"+namespace), data, nil)
+}
 type positionTrackLastID struct {
 	ID      string `nbt:"id"`
 	Version byte   `nbt:"version"`
@@ -333,6 +348,17 @@ func (db *DB) column(k dbKey) (*chunk.Column, error) {
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return nil, fmt.Errorf("read scheduled updates: %w", err)
 	}
+	inhabitedTime, err := db.ldb.Get(k.Sum([]byte(keyAdamantInhabitedTime)...), nil)
+	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
+		return nil, fmt.Errorf("read Adamant inhabited time: %w", err)
+	}
+	if err == nil {
+		if len(inhabitedTime) != 8 {
+			return nil, fmt.Errorf("read Adamant inhabited time: expected 8 bytes, got %d", len(inhabitedTime))
+		}
+		col.InhabitedTime = binary.LittleEndian.Uint64(inhabitedTime)
+	}
+
 	return col, nil
 }
 
@@ -493,7 +519,7 @@ func (db *DB) StoreColumn(pos world.ChunkPos, dim world.Dimension, col *chunk.Co
 
 func (db *DB) storeColumn(k dbKey, col *chunk.Column) error {
 	data := chunk.Encode(col.Chunk, chunk.DiskEncoding)
-	n := 7 + len(data.SubChunks) + len(col.Entities)
+	n := 8 + len(data.SubChunks) + len(col.Entities)
 	batch := leveldb.MakeBatch(n)
 
 	db.storeVersion(batch, k, chunkVersion)
@@ -503,6 +529,9 @@ func (db *DB) storeColumn(k dbKey, col *chunk.Column) error {
 	db.storeEntities(batch, k, col.Entities)
 	db.storeBlockEntities(batch, k, col.BlockEntities)
 	db.storeScheduledUpdates(batch, k, col.Tick, col.ScheduledBlocks)
+	inhabitedTime := make([]byte, 8)
+	binary.LittleEndian.PutUint64(inhabitedTime, col.InhabitedTime)
+	batch.Put(k.Sum([]byte(keyAdamantInhabitedTime)...), inhabitedTime)
 
 	return db.ldb.Write(batch, nil)
 }

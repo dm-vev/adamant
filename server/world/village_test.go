@@ -1,0 +1,45 @@
+package world
+
+import (
+	"testing"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/google/uuid"
+)
+
+func TestNativePOITransitions(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	w := Config{Blocks: registry, Dim: End, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *Tx) {
+		pos := cube.Pos{-1, 255, -17}
+		put := func(name string, properties map[string]any) {
+			rid, ok := registry.StateToRuntimeID(name, properties)
+			if !ok { t.Fatalf("unknown native state %s %v", name, properties) }
+			tx.SetBlock(pos, registry.BlockByRuntimeIDOrAir(rid), nil)
+		}
+		put("minecraft:bed", map[string]any{"head_piece_bit": false})
+		if _, ok := tx.POI(pos); ok { t.Fatal("bed foot registered as home") }
+		put("minecraft:bed", map[string]any{"head_piece_bit": true})
+		if poi, ok := tx.POI(pos); !ok || poi.Kind != Home { t.Fatalf("bed head: %+v, found=%v", poi, ok) }
+		chunkPos := chunkPosFromBlockPos(pos)
+		w.indexPOIChunk(chunkPos, tx.chunk(chunkPos))
+		if _, ok := tx.POI(pos); !ok { t.Fatal("reindex lost home at inclusive upper boundary") }
+		for _, workstation := range []string{"blast_furnace", "smoker"} {
+			put("minecraft:"+workstation, nil)
+			owner := uuid.UUID{1}
+			if !tx.ClaimPOI(pos, owner) { t.Fatalf("could not claim %s", workstation) }
+			put("minecraft:lit_"+workstation, nil)
+			poi, ok := tx.POI(pos)
+			if !ok || poi.Kind != Workstation || poi.Type != "minecraft:"+workstation || !poi.HasOwner || poi.Owner != owner {
+				t.Fatalf("lighting %s lost its claim: %+v, found=%v", workstation, poi, ok)
+			}
+			if tx.ClaimPOI(pos, uuid.UUID{2}) { t.Fatal("claimed occupied workstation") }
+			tx.SetBlock(pos, nil, nil)
+			if _, ok := tx.POI(pos); ok { t.Fatal("air retained a POI") }
+		}
+		put("minecraft:stonecutter_block", nil)
+		if poi, ok := tx.POI(pos); !ok || poi.Kind != Workstation || poi.Type != "minecraft:stonecutter" { t.Fatalf("native stonecutter: %+v, found=%v", poi, ok) }
+	})
+}

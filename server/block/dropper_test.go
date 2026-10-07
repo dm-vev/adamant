@@ -104,3 +104,30 @@ func TestDropperFallingEdgeDoesNotDispense(t *testing.T) {
 		}
 	})
 }
+
+func TestDropperDispensesAfterShortRedstonePulse(t *testing.T) {
+	d := NewDropper()
+	d.Facing = cube.FaceEast
+	_ = d.inventory.SetItem(0, item.NewStack(item.Diamond{}, 2))
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+	pos := cube.Pos{0, 1, 0}
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(pos, d, nil)
+		tx.SetBlock(pos.Side(d.Facing), NewBarrel(), nil)
+		powered, changed := d.RedstonePowerUpdate(pos, tx, 15)
+		if changed { tx.SetBlock(pos, powered, nil) }
+		d.RedstonePowerPostUpdate(pos, tx, d, powered, 0, 15)
+		unpowered, changed := powered.(Dropper).RedstonePowerUpdate(pos, tx, 0)
+		if changed { tx.SetBlock(pos, unpowered, nil) }
+	})
+	for range 6 { w.AdvanceTick() }
+	<-w.Exec(func(tx *world.Tx) {
+		got := tx.Block(pos).(Dropper)
+		source, _ := got.inventory.Item(0)
+		destination := tx.Block(pos.Side(d.Facing)).(Barrel).inventory.Items()
+		if got.Triggered || source.Count() != 1 || len(destination) != 1 || destination[0].Count() != 1 {
+			t.Fatalf("triggered=%v source=%v destination=%v", got.Triggered, source, destination)
+		}
+	})
+}

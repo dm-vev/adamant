@@ -41,6 +41,9 @@ type Session struct {
 	// connWriteMu serializes connection writes to avoid concurrent WritePacket/Flush calls.
 	connWriteMu sync.Mutex
 	handlers    map[uint32]packetHandler
+	bossBarMu sync.Mutex
+	bossBarIDs map[string]int64
+	nextBossBarID int64
 	packets     chan packet.Packet
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
@@ -100,7 +103,8 @@ type Session struct {
 
 	lastChunkPos world.ChunkPos
 
-	recipes map[uint32]recipe.Recipe
+	recipes          map[uint32]recipe.Recipe
+	javaRecipeIDs    map[string][]string
 
 	blobMu                sync.Mutex
 	blobs                 map[uint64][]byte
@@ -220,6 +224,7 @@ func (conf Config) New(conn Conn) *Session {
 
 	s := &Session{}
 	*s = Session{
+		conf:                   conf,
 		openChunkTransactions:  make([]map[uint64]struct{}, 0, 8),
 		closeBackground:        make(chan struct{}),
 		handlers:               map[uint32]packetHandler{},
@@ -232,8 +237,8 @@ func (conf Config) New(conn Conn) *Session {
 		emoteChatMuted:         conf.EmoteChatMuted,
 		conn:                   conn,
 		currentEntityRuntimeID: 1,
-		recipes:                make(map[uint32]recipe.Recipe),
-		conf:                   conf,
+		recipes:          make(map[uint32]recipe.Recipe),
+		javaRecipeIDs:    make(map[string][]string),
 		hudUpdates:             make(map[hud.Element]bool),
 		hiddenHud:              make(map[hud.Element]struct{}),
 		debugShapes:            make(map[int]debug.Shape),
@@ -469,6 +474,12 @@ func sessionOwnerStopped(err error) bool {
 func (s *Session) ClientData() login.ClientData {
 	return s.conn.ClientData()
 }
+// LogError writes an error through the session's configured logger.
+func (s *Session) LogError(message string, args ...any) {
+	if s.conf.Log != nil {
+		s.conf.Log.Error(message, args...)
+	}
+}
 
 // handlePackets continuously handles incoming packets from the connection. It processes them accordingly.
 // Once the connection is closed, handlePackets will return.
@@ -694,6 +705,8 @@ func (s *Session) registerHandlers() {
 		packet.IDPlayerAction:              &PlayerActionHandler{},
 		packet.IDPlayerAuthInput:           &PlayerAuthInputHandler{},
 		packet.IDPlayerSkin:                &PlayerSkinHandler{},
+		packet.IDMapInfoRequest:            &MapInfoRequestHandler{},
+		packet.IDPlayerToggleCrafterSlotRequest: &CrafterSlotToggleHandler{},
 		packet.IDRequestAbility:            &RequestAbilityHandler{},
 		packet.IDRequestChunkRadius:        &RequestChunkRadiusHandler{},
 		packet.IDRespawn:                   &RespawnHandler{},

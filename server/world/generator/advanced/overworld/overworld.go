@@ -1,14 +1,13 @@
 package overworld
 
 import (
-	"math"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 	mcbiome "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/biome"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/genlayer"
@@ -18,14 +17,18 @@ const (
 	javaSeaLevel = 63
 )
 
-// Overworld generates terrain for the overworld using the Minecraft Java Edition 1.12 algorithm.
-//
-// Note: This is an incremental port. Terrain noise, surface replacement, carving, the biome pipeline, and initial
-// population/structures are implemented, but many structures and decorations are still missing.
-//
-// The implementation is concurrency-safe and may be called from multiple generator workers.
+// Overworld generates Java 26.3 terrain and features with Bedrock block states.
+// Immutable terrain previews and worker-local samplers permit concurrent use.
 type Overworld struct {
 	seed int64
+	noise *java26.OverworldNoise
+	zoomSeed int64
+	modernSurface *modernSurface
+	modernStructures *modernStructures
+	modernFeatures *ModernFeatures
+	rawCache *previewCache
+	modernPool sync.Pool
+	motionBlocking sync.Map // native runtime ID -> Java heightmap tag membership
 
 	minLimitPerlinNoise *mc112.NoiseOctaves
 	maxLimitPerlinNoise *mc112.NoiseOctaves
@@ -149,166 +152,43 @@ type scratch struct {
 	surfaceBuf []float64
 }
 
-// New returns a Java Edition 1.12-style overworld generator using the seed provided.
+// New returns a Java 26.3 Overworld generator using the provided seed.
 func New(seed int64) *Overworld {
 	return NewOverworld(seed)
 }
 
-// NewOverworld returns a Java Edition 1.12-style overworld generator using the seed provided.
+// NewOverworld returns a Java 26.3 Overworld generator using the provided seed.
 func NewOverworld(seed int64) *Overworld {
-	r := mc112.NewRand(seed)
-
-	mapGenRand := mc112.NewRand(seed)
-
-	railRID, _ := chunk.StateToRuntimeID("minecraft:rail", nil)
-	webRID, _ := chunk.StateToRuntimeID("minecraft:web", nil)
-	torchRID, _ := chunk.StateToRuntimeID("minecraft:torch", nil)
-
 	g := &Overworld{
-		seed:                seed,
-		minLimitPerlinNoise: mc112.NewNoiseOctaves(r, 16),
-		maxLimitPerlinNoise: mc112.NewNoiseOctaves(r, 16),
-		mainPerlinNoise:     mc112.NewNoiseOctaves(r, 8),
-		surfaceNoise:        mc112.NewNoisePerlin(r, 4),
-		temperatureNoise:    mc112.NewNoisePerlin(mc112.NewRand(1234), 1),
-		grassColorNoise:     mc112.NewNoisePerlin(mc112.NewRand(2345), 1),
-		mesaBandNoise:       mc112.NewNoisePerlin(mc112.NewRand(seed), 1),
-		scaleNoise:          mc112.NewNoiseOctaves(r, 10),
-		depthNoise:          mc112.NewNoiseOctaves(r, 16),
-		forestNoise:         mc112.NewNoiseOctaves(r, 8),
-
-		mapGenJ: mapGenRand.Long(),
-		mapGenK: mapGenRand.Long(),
-
-		airRID:          world.BlockRuntimeID(block.Air{}),
-		stoneRID:        world.BlockRuntimeID(block.Stone{}),
-		dirtRID:         world.BlockRuntimeID(block.Dirt{}),
-		grassRID:        world.BlockRuntimeID(block.Grass{}),
-		myceliumRID:     world.BlockRuntimeID(block.Mycelium{}),
-		podzolRID:       world.BlockRuntimeID(block.Podzol{}),
-		coarseDirtRID:   world.BlockRuntimeID(block.Dirt{Coarse: true}),
-		farmlandRID:     world.BlockRuntimeID(block.Farmland{}),
-		bedrockRID:      world.BlockRuntimeID(block.Bedrock{}),
-		waterRID:        world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
-		lavaRID:         world.BlockRuntimeID(block.Lava{Depth: 8, Still: false}),
-		gravelRID:       world.BlockRuntimeID(block.Gravel{}),
-		sandRID:         world.BlockRuntimeID(block.Sand{}),
-		redSandRID:      world.BlockRuntimeID(block.Sand{Red: true}),
-		sandstoneRID:    world.BlockRuntimeID(block.Sandstone{}),
-		redSandstoneRID: world.BlockRuntimeID(block.Sandstone{Red: true}),
-		terracottaRID:   world.BlockRuntimeID(block.Terracotta{}),
-
-		shortGrassRID:           world.BlockRuntimeID(block.ShortGrass{}),
-		doubleTallGrassLowerRID: world.BlockRuntimeID(block.DoubleTallGrass{Type: block.NormalDoubleTallGrass()}),
-		doubleTallGrassUpperRID: world.BlockRuntimeID(block.DoubleTallGrass{Type: block.NormalDoubleTallGrass(), UpperPart: true}),
-		sunflowerLowerRID:       world.BlockRuntimeID(block.DoubleFlower{Type: block.Sunflower()}),
-		sunflowerUpperRID:       world.BlockRuntimeID(block.DoubleFlower{Type: block.Sunflower(), UpperPart: true}),
-
-		dandelionRID:  world.BlockRuntimeID(block.Flower{Type: block.Dandelion()}),
-		poppyRID:      world.BlockRuntimeID(block.Flower{Type: block.Poppy()}),
-		blueOrchidRID: world.BlockRuntimeID(block.Flower{Type: block.BlueOrchid()}),
-
-		lilyPadRID: world.BlockRuntimeID(block.LilyPad{}),
-		clayRID:    world.BlockRuntimeID(block.Clay{}),
-
-		iceRID:       world.BlockRuntimeID(block.Ice{}),
-		snowLayerRID: world.BlockRuntimeID(block.SnowLayer{Layers: 1}),
-
-		deadBushRID:  world.BlockRuntimeID(block.DeadBush{}),
-		cactusRID:    world.BlockRuntimeID(block.Cactus{}),
-		sugarCaneRID: world.BlockRuntimeID(block.SugarCane{}),
-
-		oakLogRID:     world.BlockRuntimeID(block.Log{Wood: block.OakWood(), Axis: cube.Y}),
-		spruceLogRID:  world.BlockRuntimeID(block.Log{Wood: block.SpruceWood(), Axis: cube.Y}),
-		birchLogRID:   world.BlockRuntimeID(block.Log{Wood: block.BirchWood(), Axis: cube.Y}),
-		jungleLogRID:  world.BlockRuntimeID(block.Log{Wood: block.JungleWood(), Axis: cube.Y}),
-		acaciaLogRID:  world.BlockRuntimeID(block.Log{Wood: block.AcaciaWood(), Axis: cube.Y}),
-		darkOakLogRID: world.BlockRuntimeID(block.Log{Wood: block.DarkOakWood(), Axis: cube.Y}),
-
-		oakLeavesRID:     world.BlockRuntimeID(block.Leaves{Type: block.OakLeaves(), ShouldUpdate: true}),
-		spruceLeavesRID:  world.BlockRuntimeID(block.Leaves{Type: block.SpruceLeaves(), ShouldUpdate: true}),
-		birchLeavesRID:   world.BlockRuntimeID(block.Leaves{Type: block.BirchLeaves(), ShouldUpdate: true}),
-		jungleLeavesRID:  world.BlockRuntimeID(block.Leaves{Type: block.JungleLeaves(), ShouldUpdate: true}),
-		acaciaLeavesRID:  world.BlockRuntimeID(block.Leaves{Type: block.AcaciaLeaves(), ShouldUpdate: true}),
-		darkOakLeavesRID: world.BlockRuntimeID(block.Leaves{Type: block.DarkOakLeaves(), ShouldUpdate: true}),
-
-		oakPlanksRID:     world.BlockRuntimeID(block.Planks{Wood: block.OakWood()}),
-		darkOakPlanksRID: world.BlockRuntimeID(block.Planks{Wood: block.DarkOakWood()}),
-		oakFenceRID:      world.BlockRuntimeID(block.WoodFence{Wood: block.OakWood()}),
-		darkOakFenceRID:  world.BlockRuntimeID(block.WoodFence{Wood: block.DarkOakWood()}),
-		railRID:          railRID,
-		webRID:           webRID,
-		torchRID:         torchRID,
-
-		populationQueue: make(chan populationJob, 65536),
-		previewCache:    newPreviewCache(1024),
-		biomeDataCache:  newBiomeDataCache(2048),
+		seed: seed,
+		noise: java26.NewOverworldNoise(seed),
+		zoomSeed: java26.BiomeZoomSeed(seed),
+		airRID: world.BlockRuntimeID(block.Air{}),
+		stoneRID: world.BlockRuntimeID(block.Stone{}),
+		waterRID: world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
+		lavaRID: world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
+		rawCache: newPreviewCache(128),
+		previewCache: newPreviewCache(128),
 	}
-	g.previewScratch.New = func() any {
-		return make(map[world.ChunkPos]*chunk.Chunk, 9)
-	}
-	g.lakeShapePool.New = func() any {
-		return make([]bool, 16*16*8)
-	}
-
-	for i, c := range item.Colours() {
-		g.stainedTerracottaRIDs[i] = world.BlockRuntimeID(block.StainedTerracotta{Colour: c})
-	}
-	g.initMesaBands()
-
-	for x := -2; x <= 2; x++ {
-		for z := -2; z <= 2; z++ {
-			f := float64(x*x+z*z) + 0.2
-			g.biomeWeights[(x+2)+(z+2)*5] = float64(10.0) / math.Sqrt(f)
-		}
-	}
-
-	g.initBiomeDefs()
-	g.initCarving()
-	g.biomeProvider = newBiomeProvider(seed)
-
-	g.pool.New = func() any {
-		return &scratch{
-			heightMap:  make([]float64, 5*33*5),
-			mainNoise:  make([]float64, 5*33*5),
-			minNoise:   make([]float64, 5*33*5),
-			maxNoise:   make([]float64, 5*33*5),
-			depth:      make([]float64, 5*5*1),
-			surfaceBuf: make([]float64, 16*16),
-		}
-	}
+	g.modernPool.New = func() any { return new(modernTerrainScratch) }
+	g.modernSurface = newModernSurface(seed)
+	g.modernStructures = newModernStructures(seed, modernTerrainSource{generator: g, raw: true})
+	g.modernFeatures = NewModernFeatures(seed, modernTerrainSource{generator: g})
 	return g
 }
 
 // GenerateChunk generates a single overworld chunk at the position passed.
-func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
-	s := g.pool.Get().(*scratch)
-	defer g.pool.Put(s)
-
-	chunkX, chunkZ := int(pos[0]), int(pos[1])
-	biomeData := g.biomeDataForChunk(chunkX, chunkZ)
-
-	var biomesForGeneration [10 * 10]*biomeDef
-	var biomes [16 * 16]*biomeDef
-	for i, id := range biomeData.genIDs {
-		biomesForGeneration[i] = g.biomeDef(id)
+func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+	base := g.terrainColumn(pos, false)
+	*c = *base.c.Clone()
+	result := g.modernFeatures.Decorate(pos, c)
+	if len(base.scheduled) != 0 {
+		updates := make([]chunk.ScheduledBlockUpdate, len(base.scheduled)+len(result.ScheduledBlocks))
+		copy(updates, base.scheduled)
+		copy(updates[len(base.scheduled):], result.ScheduledBlocks)
+		result.ScheduledBlocks = updates
 	}
-	for i, id := range biomeData.biomeIDs {
-		biomes[i] = g.biomeDef(id)
-	}
-
-	g.setBlocksInChunk(chunkX, chunkZ, c, biomesForGeneration[:], s)
-	r := mc112.NewRand(int64(chunkX)*341873128712 + int64(chunkZ)*132897987541)
-	g.replaceBiomeBlocks(chunkX, chunkZ, c, biomes[:], r, s)
-	g.applySwampWaterlilies(chunkX, chunkZ, c, biomeData.biomeIDs[:])
-	g.carve(chunkX, chunkZ, c, biomes[:])
-	popRand := g.chunkPopulationRand(chunkX, chunkZ)
-	villageGenerated := g.generateStructures(chunkX, chunkZ, c, popRand)
-	g.populateLakes(chunkX, chunkZ, c, villageGenerated)
-	g.populateOresInChunk(chunkX, chunkZ, c)
-	g.decorate(chunkX, chunkZ, c)
-	g.freezeAndSnow(chunkX, chunkZ, c, biomeData.biomeIDs[:])
-	g.fillBiomes(c, biomes[:])
+	return result
 }
 
 // DefaultSpawn returns the default overworld spawn position.
@@ -713,9 +593,3 @@ func (g *Overworld) biomeDef(id int) *biomeDef {
 	return &g.biomes[id]
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

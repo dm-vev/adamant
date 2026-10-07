@@ -97,6 +97,25 @@ func TestViewVisibilityHidesArmourPerViewer(t *testing.T) {
 	}
 }
 
+func TestViewEntityArmourPublishesBodyItem(t *testing.T) {
+	s := testSession("body-equipment")
+	s.br = world.DefaultBlockRegistry
+	handle := &world.EntityHandle{}
+	entity := testEquipmentEntity{
+		handle: handle,
+		helmet: item.NewStack(item.Helmet{Tier: item.ArmourTierDiamond{}}, 1),
+		body:   item.NewStack(item.Harness{Colour: item.ColourWhite()}, 1),
+	}
+	s.entityRuntimeIDs[handle] = 2
+	s.entities[2] = handle
+
+	s.ViewEntityArmour(entity)
+	got := (<-s.packets).(*packet.MobArmourEquipment)
+	if got.Helmet.Stack.Count != 1 || got.Body.Stack.Count != 1 {
+		t.Fatalf("armour packet helmet/body counts = %d/%d, want 1/1", got.Helmet.Stack.Count, got.Body.Stack.Count)
+	}
+}
+
 func TestHideSessionlessControllableTwice(t *testing.T) {
 	s := testSession("viewer")
 	handle := &world.EntityHandle{}
@@ -129,6 +148,18 @@ type testControllable struct {
 }
 
 func (c testControllable) H() *world.EntityHandle { return c.handle }
+type testEquipmentEntity struct {
+	world.Entity
+	handle *world.EntityHandle
+	helmet, chestplate, leggings, boots, body item.Stack
+}
+
+func (e testEquipmentEntity) H() *world.EntityHandle { return e.handle }
+func (e testEquipmentEntity) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
+	return e.helmet, e.chestplate, e.leggings, e.boots
+}
+func (e testEquipmentEntity) BodyItem() item.Stack { return e.body }
+
 
 type testArmouredEntity struct {
 	world.Entity

@@ -146,7 +146,7 @@ func (s *Session) sendRecipes() {
 		switch i := i.(type) {
 		case recipe.Shapeless:
 			shapelessRecipes = append(shapelessRecipes, protocol.ShapelessRecipe{
-				RecipeID:        uuid.New().String(),
+				RecipeID:        s.registerJavaRecipeID(i),
 				Priority:        int32(i.Priority()),
 				Input:           stacksToIngredientItems(s.br, i.Input()),
 				Output:          stacksToRecipeStacks(s.br, i.Output()),
@@ -155,7 +155,7 @@ func (s *Session) sendRecipes() {
 			})
 		case recipe.UserDataShapeless:
 			userDataShapelessRecipes = append(userDataShapelessRecipes, protocol.UserDataShapelessRecipe{ShapelessRecipe: protocol.ShapelessRecipe{
-				RecipeID:        uuid.New().String(),
+				RecipeID:        s.registerJavaRecipeID(i),
 				Priority:        int32(i.Priority()),
 				Input:           stacksToIngredientItems(s.br, i.Input()),
 				Output:          stacksToRecipeStacks(s.br, i.Output()),
@@ -163,13 +163,14 @@ func (s *Session) sendRecipes() {
 				RecipeNetworkID: networkID,
 			}})
 		case recipe.Multi:
+			s.registerJavaMultiRecipeID(i)
 			multiRecipes = append(multiRecipes, protocol.MultiRecipe{
 				UUID:            i.UUID(),
 				RecipeNetworkID: networkID,
 			})
 		case recipe.Shaped:
 			shapedRecipes = append(shapedRecipes, protocol.ShapedRecipe{
-				RecipeID:        uuid.New().String(),
+				RecipeID:        s.registerJavaRecipeID(i),
 				Priority:        int32(i.Priority()),
 				Width:           int32(i.Shape().Width()),
 				Height:          int32(i.Shape().Height()),
@@ -182,7 +183,7 @@ func (s *Session) sendRecipes() {
 		case recipe.SmithingTransform:
 			input, output := stacksToIngredientItems(s.br, i.Input()), stacksToRecipeStacks(s.br, i.Output())
 			smithingTransformRecipes = append(smithingTransformRecipes, protocol.SmithingTransformRecipe{
-				RecipeID:        uuid.New().String(),
+				RecipeID:        s.registerJavaRecipeID(i),
 				Base:            input[0],
 				Addition:        input[1],
 				Template:        input[2],
@@ -193,7 +194,7 @@ func (s *Session) sendRecipes() {
 		case recipe.SmithingTrim:
 			input := stacksToIngredientItems(s.br, i.Input())
 			smithingTrimRecipes = append(smithingTrimRecipes, protocol.SmithingTrimRecipe{
-				RecipeID:        uuid.New().String(),
+				RecipeID:        s.registerJavaRecipeID(i),
 				Base:            input[0],
 				Addition:        input[1],
 				Template:        input[2],
@@ -237,6 +238,66 @@ func (s *Session) sendRecipes() {
 		PotionContainerChangeRecipes: potionContainerChange,
 		ClearRecipes:                 true,
 	})
+}
+func (s *Session) registerJavaRecipeID(r recipe.Recipe) string {
+	if s.javaRecipeIDs == nil {
+		s.javaRecipeIDs = make(map[string][]string)
+	}
+	javaIDs := recipe.JavaRecipeIDs(r)
+	id := uuid.New().String()
+	if len(javaIDs) == 1 {
+		id = javaIDs[0]
+	}
+	for _, javaID := range javaIDs {
+		s.javaRecipeIDs[javaID] = append(s.javaRecipeIDs[javaID], id)
+	}
+	return id
+}
+
+func (s *Session) registerJavaMultiRecipeID(r recipe.Multi) {
+	if s.javaRecipeIDs == nil {
+		s.javaRecipeIDs = make(map[string][]string)
+	}
+	packetID := r.UUID().String()
+	for _, javaID := range recipe.JavaRecipeIDs(r) {
+		s.javaRecipeIDs[javaID] = append(s.javaRecipeIDs[javaID], packetID)
+	}
+}
+
+// UnlockRecipes sends newly unlocked Java recipes that have a corresponding
+// recipe in the current Bedrock crafting data. It returns the Java IDs accepted.
+func (s *Session) UnlockRecipes(javaIDs []string) []string {
+	return s.unlockRecipes(javaIDs, packet.UnlockedRecipesTypeNewlyUnlocked)
+}
+
+// SendInitiallyUnlockedRecipes sends persisted recipe unlocks after the player
+// has joined and the crafting data has been sent.
+func (s *Session) SendInitiallyUnlockedRecipes(javaIDs []string) {
+	_ = s.unlockRecipes(javaIDs, packet.UnlockedRecipesTypeInitiallyUnlocked)
+}
+
+func (s *Session) unlockRecipes(javaIDs []string, unlockType uint32) []string {
+	accepted := make([]string, 0, len(javaIDs))
+	packetIDs := make([]string, 0, len(javaIDs))
+	seenPacketIDs := make(map[string]struct{}, len(javaIDs))
+	for _, javaID := range javaIDs {
+		ids, ok := s.javaRecipeIDs[javaID]
+		if !ok {
+			continue
+		}
+		accepted = append(accepted, javaID)
+		for _, packetID := range ids {
+			if _, seen := seenPacketIDs[packetID]; seen {
+				continue
+			}
+			seenPacketIDs[packetID] = struct{}{}
+			packetIDs = append(packetIDs, packetID)
+		}
+	}
+	if len(packetIDs) != 0 {
+		s.writePacket(&packet.UnlockedRecipes{UnlockType: unlockType, Recipes: packetIDs})
+	}
+	return accepted
 }
 
 // sendArmourTrimData sends the armour trim data.
@@ -378,6 +439,10 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 		case protocol.ContainerEnchantingInput, protocol.ContainerEnchantingMaterial:
 			if _, enchanting := tx.Block(*s.openedPos.Load()).(block.EnchantingTable); enchanting {
 				return s.ui, true
+			}
+		case protocol.ContainerCrafterLevelEntity:
+			if _, crafter := tx.Block(*s.openedPos.Load()).(block.Crafter); crafter {
+				return s.openedWindow.Load(), true
 			}
 		case protocol.ContainerFurnaceIngredient, protocol.ContainerFurnaceFuel, protocol.ContainerFurnaceResult,
 			protocol.ContainerBlastFurnaceIngredient, protocol.ContainerSmokerIngredient:
@@ -782,6 +847,9 @@ func (s *Session) HandleInventories(tx *world.Tx, c Controllable, inv, offHand, 
 	s.armour.Inventory().SlotFunc(s.broadcastArmourFunc(c))
 	s.ui = ui
 	s.ui.SlotFunc(s.uiInventoryFunc(c))
+	if unlocker, ok := c.(interface{ UnlockedRecipeIDs() []string }); ok {
+		s.SendInitiallyUnlockedRecipes(unlocker.UnlockedRecipeIDs())
+	}
 }
 
 func (s *Session) broadcastInvFunc(c Controllable) inventory.SlotFunc {

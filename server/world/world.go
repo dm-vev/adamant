@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
@@ -70,6 +71,11 @@ type World struct {
 	// shared Settings, such as the Nether, End and custom dimensions.
 	tick    int64
 	handler atomic.Pointer[Handler]
+	structureReferenceQueryMu sync.Mutex
+	structureReferenceMu sync.Mutex
+	structureReferences map[StructureReference]struct{}
+	structureReferencesLoaded bool
+	structureReferencesErr error
 
 	weather
 
@@ -101,6 +107,7 @@ type World struct {
 	entityCount atomic.Int64
 
 	r *rand.Rand
+	lootSequences map[string]*java26.Random
 
 	// weatherRand is used for out-of-band weather changes to avoid racing the
 	// main world RNG, which is owned by the tick loop.
@@ -116,10 +123,18 @@ type World struct {
 	scheduledUpdates *scheduledTickQueue
 	redstone         *redstoneEngine
 	neighbourUpdates []neighbourUpdate
+	pois             map[cube.Pos]POI
+	raids            map[int64]*Raid
+	raidByRaider     map[uuid.UUID]int64
+	nextRaidID       int64
+	dragonFight      DragonFightController
+	dragonArena      *Loader
+	javaHeightmapTags [2]map[uint32]bool
 
 	scratchRandom        []cube.Pos
 	scratchBlockEntities []cube.Pos
 	scratchLoaderAreas   []loaderActiveArea
+	scratchInhabitedPlayers []inhabitedTimePlayer
 
 	activeColumns     []columnRef
 	activeColumnIndex map[ChunkPos]int
@@ -685,6 +700,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		// Fast way out.
 		return
 	}
+	if b == nil {
+		b = w.conf.Blocks.Air()
+	}
 	if opts == nil {
 		opts = &SetOpts{}
 	}
@@ -775,6 +793,10 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	}
 	if !opts.DisableRedstoneUpdates {
 		w.redstone.invalidateAroundBlockChange(pos, oldBlock, b, RedstoneUpdateCauseBlockUpdate, w.Range())
+	}
+	w.updatePOI(pos, b)
+	if handler, ok := b.(PlacementHandler); ok {
+		handler.Placed(pos, tx, oldBlock)
 	}
 }
 
@@ -903,6 +925,7 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 									c.invalidateTickerBlockEntities()
 									c.invalidateBlockEntityPayloads()
 								}
+								w.updatePOI(nbtPos, b)
 							}
 							if liq != nil {
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 1, w.conf.Blocks.BlockRuntimeID(liq))
@@ -1253,6 +1276,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	w.addEntityColumn(pos, c)
 
 	e := state.entity(tx, handle)
+	handle.finalizeSpawn(e)
 	for v := range c.viewers {
 		// Show the entity to all viewers in the chunk of the entity.
 		showEntity(e, v)
@@ -1747,16 +1771,21 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 		}
 		w.conf.Log.Debug("Updating level.dat values...")
 		w.conf.Provider.SaveSettings(w.set)
+		w.saveVillagePOIs()
+		w.saveRaids()
+		w.saveDragonFight()
+		w.saveLootRandomSequences()
 	}
 }
 
 // saveChunk saves a chunk and its entities to disk after compacting the chunk.
-func (w *World) saveChunk(_ *Tx, pos ChunkPos, c *Column) {
+func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 	// Column generation runs in background workers. Saving is performed on the world transaction goroutine and must
 	// not access columns that are still being generated.
 	if !c.Ready() {
 		return
 	}
+	w.finishGeneration(tx, c)
 	if !w.conf.ReadOnly && c.modified {
 		c.Compact()
 		if err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, w.columnTo(c, pos)); err != nil {
@@ -1769,6 +1798,7 @@ func (w *World) saveChunk(_ *Tx, pos ChunkPos, c *Column) {
 // Afterwards, scheduled updates from that chunk are removed and all entities
 // in it are closed.
 func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
+	w.finishGeneration(tx, c)
 	for _, e := range slices.Clone(c.Entities) {
 		if _, ok := e.Entity(tx); ok {
 			continue
@@ -1856,8 +1886,16 @@ func (w *World) close() {
 		tx.runDeferred()
 		w.Handle(NopHandler{})
 		clear(w.chunkRequests)
+		tx.LoadDragonArena(false)
 
-		w.save(w.closeChunk)(tx)
+		if w.conf.ReadOnly {
+			for pos, c := range w.chunks {
+				w.closeChunk(tx, pos, c)
+			}
+		} else {
+			w.save(w.closeChunk)(tx)
+		}
+		w.saveLootRandomSequences()
 	})
 	w.scheduleMu.Lock()
 	w.closeAcceptingEntityTasks.Store(false)
@@ -2063,6 +2101,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			w.chunkCount.Add(1)
 		}
 		w.chunks[pos] = col
+		w.indexPOIChunk(pos, col)
 		w.reconcileMissingBlockStates(pos)
 
 		// Register all entities contained in this column into the world.
@@ -2151,8 +2190,13 @@ func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) boo
 // finishChunkRequest publishes a ready chunk to all loaders waiting for it.
 // It must run on the world owner.
 func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
+	if !c.Ready() {
+		return
+	}
+	w.indexPOIChunk(pos, c)
+	w.finishGeneration(tx, c)
 	callbacks := w.chunkRequests[pos]
-	if len(callbacks) == 0 || !c.Ready() {
+	if len(callbacks) == 0 {
 		return
 	}
 	delete(w.chunkRequests, pos)
@@ -2257,6 +2301,7 @@ func (w *World) runGenerationTask(task generationTask) {
 		if !w.closed.Load() {
 			w.Do(func(tx *Tx) {
 				task.col.ensureLight(w, task.pos)
+				w.finishGeneration(tx, task.col)
 				w.markGeneratedDerivedBlockStates(task.pos, task.col)
 				w.reconcileMissingBlockStates(task.pos)
 				w.finishChunkRequest(tx, task.pos, task.col)
@@ -2266,7 +2311,7 @@ func (w *World) runGenerationTask(task generationTask) {
 
 	// Perform the actual chunk generation.
 	// The generator implementation is responsible for populating the chunk’s data.
-	w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
+	task.col.generation = w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
 
 	task.col.BlockEntities = w.generatedBlockEntities(task.pos, task.col.Chunk)
 	if task.col.BlockEntities == nil {
@@ -2298,7 +2343,7 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 		// Fast-path: Skip sub chunks whose palette doesn't contain any NBT blocks.
 		paletteHasNBT := false
 		pal := storage.Palette()
-		for i := 0; i < pal.Len(); i++ {
+		for i := range pal.Len() {
 			rid := pal.Value(uint16(i))
 			if w.conf.Blocks.NBTBlock(rid) {
 				paletteHasNBT = true
@@ -2310,9 +2355,9 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 		}
 
 		subY := int(c.SubY(int16(subIndex)))
-		for x := byte(0); x < 16; x++ {
-			for z := byte(0); z < 16; z++ {
-				for y := byte(0); y < 16; y++ {
+		for x := range byte(16) {
+			for z := range byte(16) {
+				for y := range byte(16) {
 					rid := storage.At(x, y, z)
 					if !w.conf.Blocks.NBTBlock(rid) {
 						continue
@@ -2321,25 +2366,7 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 					if _, ok := blockEntities[worldPos]; ok {
 						continue
 					}
-					nbt := map[string]any{}
-					if w.conf.Dim == End {
-						if name, _, ok := w.conf.Blocks.RuntimeIDToState(rid); ok && name == "minecraft:end_gateway" {
-							nbt = map[string]any{
-								"ExitPortal": map[string]any{
-									"X": int32(100),
-									"Y": int32(50),
-									"Z": int32(0),
-								},
-								"ExactTeleport": uint8(1),
-							}
-						} else if name == "minecraft:wall_banner" {
-							// End Cities use purple wall banners (base colour only).
-							nbt = map[string]any{
-								"Base": int32(5),
-							}
-						}
-					}
-					nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), nbt, w.conf.Blocks).(Block)
+					nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), map[string]any{}, w.conf.Blocks).(Block)
 					if blockEntities == nil {
 						blockEntities = make(map[cube.Pos]Block, 8)
 					}
@@ -2493,6 +2520,10 @@ type pendingMissingBlockState struct {
 
 type Column struct {
 	modified bool
+	InhabitedTime uint64
+	// generation is written by the worker before markReady and consumed once
+	// by the world owner before the column is published or saved.
+	generation GenerationResult
 
 	*chunk.Chunk
 	Entities                        []*EntityHandle
@@ -2891,6 +2922,7 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		BlockEntities:   make([]chunk.BlockEntity, 0, len(col.BlockEntities)),
 		ScheduledBlocks: make([]chunk.ScheduledBlockUpdate, 0, len(scheduled)),
 		Tick:            w.scheduledUpdates.currentTick,
+		InhabitedTime:   col.InhabitedTime,
 	}
 	for _, e := range col.Entities {
 		if e.t.EncodeEntity() == "minecraft:player" {
@@ -2900,8 +2932,7 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 			continue
 		}
 
-		data := e.encodeNBT()
-		maps.Copy(data, e.t.EncodeNBT(&e.data))
+		data := MergeNativeEntityNBT(e.encodeNBT(), e.t.EncodeNBT(&e.data))
 		data["identifier"] = e.t.EncodeEntity()
 		c.Entities = append(c.Entities, chunk.Entity{ID: int64(binary.LittleEndian.Uint64(e.id[8:])), Data: data})
 	}
@@ -2939,6 +2970,7 @@ func (w *World) markGeneratedDerivedBlockStates(pos ChunkPos, col *Column) {
 // provider.
 func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 	col := newColumn(c.Chunk)
+	col.InhabitedTime = c.InhabitedTime
 	states := c.Chunk.MissingBlockStates()
 	if len(states) != 0 {
 		col.missingBlockStates = make(map[cube.Pos]pendingMissingBlockState, len(states))
@@ -2976,7 +3008,43 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 			return entityFromData(t, e.ID, e.Data)
 		}))
 	}
-	for _, be := range c.BlockEntities {
+	w.decodeBlockEntities(col, c.BlockEntities)
+	scheduled, savedTick := make([]scheduledTick, 0, len(c.ScheduledBlocks)), c.Tick
+	for _, t := range c.ScheduledBlocks {
+		bl := w.conf.Blocks.BlockByRuntimeIDOrAir(t.Block)
+		scheduled = append(scheduled, scheduledTick{
+			pos:   t.Pos,
+			b:     bl,
+			btype: scheduledTickType(w.conf.Blocks, bl),
+			t:     w.scheduledUpdates.currentTick + (t.Tick - savedTick),
+		})
+	}
+	w.scheduledUpdates.add(scheduled)
+	col.markReady()
+	return col
+}
+
+// finishGeneration transfers generated payloads to owner-thread world state.
+// Clear the payload before adding entities: AddEntity may request this column.
+func (w *World) finishGeneration(tx *Tx, c *Column) {
+	if !c.Ready() {
+		return
+	}
+	result := c.generation
+	c.generation = GenerationResult{}
+	w.decodeBlockEntities(c, result.BlockEntities)
+	for _, update := range result.ScheduledBlocks {
+		w.scheduleBlockUpdate(update.Pos, w.conf.Blocks.BlockByRuntimeIDOrAir(update.Block), time.Duration(update.Tick)*time.Second/20)
+	}
+	for _, e := range result.Entities {
+		tx.AddEntity(e)
+	}
+}
+
+// decodeBlockEntities uses the same registry and position tracking for saved
+// and generated block entities.
+func (w *World) decodeBlockEntities(c *Column, entities []chunk.BlockEntity) {
+	for _, be := range entities {
 		rid := c.Chunk.Block(uint8(be.Pos[0]), int16(be.Pos[1]), uint8(be.Pos[2]), 0)
 		b, ok := w.conf.Blocks.BlockByRuntimeID(rid)
 		if !ok {
@@ -2992,19 +3060,6 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 		if tracked, ok := decoded.(PositionTrackingBlock); ok && tracked.TrackingHandle() != 0 {
 			decoded = tracked.WithTrackingHandle(w.TrackPosition(be.Pos, tracked.TrackingHandle()))
 		}
-		col.BlockEntities[be.Pos] = decoded
+		c.BlockEntities[be.Pos] = decoded
 	}
-	scheduled, savedTick := make([]scheduledTick, 0, len(c.ScheduledBlocks)), c.Tick
-	for _, t := range c.ScheduledBlocks {
-		bl := w.conf.Blocks.BlockByRuntimeIDOrAir(t.Block)
-		scheduled = append(scheduled, scheduledTick{
-			pos:   t.Pos,
-			b:     bl,
-			bhash: w.conf.Blocks.BlockHash(bl),
-			t:     w.scheduledUpdates.currentTick + (t.Tick - savedTick),
-		})
-	}
-	w.scheduledUpdates.add(scheduled)
-	col.markReady()
-	return col
 }

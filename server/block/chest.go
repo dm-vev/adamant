@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"strings"
@@ -28,6 +29,8 @@ type Chest struct {
 	// CustomName is the custom name of the chest. This name is displayed when the chest is opened, and may
 	// include colour codes.
 	CustomName string
+	lootTable string
+	lootSeed int64
 
 	paired       bool
 	pairX, pairZ int
@@ -65,8 +68,48 @@ func (c Chest) ContainerSize() int {
 // Inventory returns the inventory of the chest. The size of the inventory will be 27 or 54, depending on
 // whether the chest is single or double.
 func (c Chest) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
+	if c.lootTable != "" {
+		if err := c.GenerateLoot(tx, pos); err != nil { panic(err) }
+	}
 	inv, _ := c.tryPair(tx, pos)
 	return inv
+}
+
+// GenerateLoot resolves an unopened source loot table exactly once and stores
+// the resulting inventory on the chest actor.
+func (c Chest) GenerateLoot(tx *world.Tx, pos cube.Pos) error {
+	if c.lootTable == "" { return nil }
+	sequence, err := loot.RandomSequence(c.lootTable)
+	if err != nil { return err }
+	random := tx.LootRandomSequence(sequence, c.lootSeed)
+	stacks, err := loot.Generate(c.lootTable, c.lootSeed, loot.Context{
+		Random: random,
+		RandomSequence: tx.LootRandomSequence,
+		Block: "minecraft:chest",
+		Origin: pos.Vec3Centre(),
+	})
+	if err != nil { return err }
+	parts := make([]item.Stack, 0, len(stacks))
+	for _, stack := range stacks {
+		for !stack.Empty() {
+			count := min(stack.Count(), stack.MaxCount())
+			parts = append(parts, stack.Grow(count-stack.Count()))
+			stack = stack.Grow(-count)
+		}
+	}
+	slots := c.inventory.Slots()
+	free := make([]int, 0, len(slots))
+	for slot, stack := range slots { if stack.Empty() { free = append(free, slot) } }
+	if len(parts) > len(free) { return fmt.Errorf("loot table %q produced %d stacks for %d empty chest slots", c.lootTable, len(parts), len(free)) }
+	for _, stack := range parts {
+		freeIndex := int(random.NextInt(int32(len(free))))
+		slot := free[freeIndex]
+		free = append(free[:freeIndex], free[freeIndex+1:]...)
+		if err := c.inventory.SetItem(slot, stack); err != nil { return err }
+	}
+	c.lootTable, c.lootSeed = "", 0
+	tx.SetBlock(pos, c, nil)
+	return nil
 }
 
 // tryPair attempts to pair the inventories of this chest with a potential
@@ -125,6 +168,11 @@ func (c Chest) close(tx *world.Tx, pos cube.Pos) {
 	tx.ReleaseViewers(viewers)
 	tx.PlaySound(pos.Vec3Centre(), sound.ChestClose{})
 }
+// StartOpen displays the chest opening animation and sound for a non-player container user.
+func (c Chest) StartOpen(tx *world.Tx, pos cube.Pos) { c.open(tx, pos) }
+
+// StopOpen displays the chest closing animation and sound for a non-player container user.
+func (c Chest) StopOpen(tx *world.Tx, pos cube.Pos) { c.close(tx, pos) }
 
 // AddViewer adds a viewer to the chest, so that it is updated whenever the inventory of the chest is changed.
 func (c Chest) AddViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
@@ -317,6 +365,8 @@ func (c Chest) DecodeNBT(data map[string]any) any {
 	c = NewChest()
 	c.Facing = facing
 	c.CustomName = nbtconv.String(data, "CustomName")
+	c.lootTable = nbtconv.String(data, "LootTable")
+	c.lootSeed = nbtconv.Int64(data, "LootTableSeed")
 
 	pairX, ok := data["pairx"]
 	pairZ, ok2 := data["pairz"]
@@ -336,10 +386,10 @@ func (c Chest) DecodeNBT(data map[string]any) any {
 // EncodeNBT ...
 func (c Chest) EncodeNBT() map[string]any {
 	if c.inventory == nil {
-		facing, customName := c.Facing, c.CustomName
+		facing, customName, lootTable, lootSeed := c.Facing, c.CustomName, c.lootTable, c.lootSeed
 		//noinspection GoAssignmentToReceiver
 		c = NewChest()
-		c.Facing, c.CustomName = facing, customName
+		c.Facing, c.CustomName, c.lootTable, c.lootSeed = facing, customName, lootTable, lootSeed
 	}
 	m := map[string]any{
 		"Items": nbtconv.InvToNBT(c.inventory),
@@ -352,6 +402,10 @@ func (c Chest) EncodeNBT() map[string]any {
 	if c.paired {
 		m["pairx"] = int32(c.pairX)
 		m["pairz"] = int32(c.pairZ)
+	}
+	if c.lootTable != "" {
+		m["LootTable"] = c.lootTable
+		m["LootTableSeed"] = c.lootSeed
 	}
 	return m
 }

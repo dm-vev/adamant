@@ -16,7 +16,7 @@ func BenchmarkPopulateLoadQueue(b *testing.B) {
 		}
 		b.ReportAllocs()
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			loader.loadQueue = legacyLoadQueue(loader.r, loader.pos, loader.loaded, loader.loadQueue[:0])
 		}
 	})
@@ -27,10 +27,10 @@ func BenchmarkPopulateLoadQueue(b *testing.B) {
 			pos:    ChunkPos{128, -64},
 			loaded: make(map[ChunkPos]*Column),
 		}
-		_ = loaderOffsets(radius)
+		_ = loaderOffsets(radius, false)
 		b.ReportAllocs()
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			loader.populateLoadQueue()
 		}
 	})

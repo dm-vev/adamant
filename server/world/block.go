@@ -169,6 +169,13 @@ type NeighbourUpdateTicker interface {
 	NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *Tx)
 }
 
+// PlacementHandler receives a foreground block replacement after its state
+// and viewer updates have been applied. Implementations may replace blocks
+// again, for example when completing a constructed mob.
+type PlacementHandler interface {
+	Placed(pos cube.Pos, tx *Tx, previous Block)
+}
+
 // NBTer represents either an item or a block which may decode NBT data and encode to NBT data. Typically,
 // this is done to store additional data.
 type NBTer interface {

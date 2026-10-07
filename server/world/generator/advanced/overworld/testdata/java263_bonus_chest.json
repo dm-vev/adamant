@@ -1,0 +1,4250 @@
+[
+  {
+    "terrain": "stone",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          0,
+          5,
+          0
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          1,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          0,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -1,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          -32,
+          5,
+          17
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -32,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -31,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -32,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -33,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -32,
+          5,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          12,
+          5,
+          4
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          13,
+          5,
+          5
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          12,
+          5,
+          6
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          11,
+          5,
+          5
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          -20,
+          5,
+          21
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -20,
+          5,
+          20
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -19,
+          5,
+          21
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -20,
+          5,
+          22
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -21,
+          5,
+          21
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -20,
+          5,
+          21
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          3
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          18
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          19
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          18
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          2,
+          5,
+          11
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          3,
+          5,
+          12
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          2,
+          5,
+          13
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          1,
+          5,
+          12
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          -30,
+          5,
+          28
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -30,
+          5,
+          27
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -29,
+          5,
+          28
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -30,
+          5,
+          29
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -31,
+          5,
+          28
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -30,
+          5,
+          28
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          15,
+          5,
+          0
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          16,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          15,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          14,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          -17,
+          5,
+          17
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -17,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -16,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -17,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -18,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -17,
+          5,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          14
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          15
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          15
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "stone",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          31
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          30
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          31
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          32
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          31
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          31
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "leaves",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": false,
+    "next": -655101936082782086,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": false,
+    "next": -655101936082782086,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": false,
+    "next": 4564113396893194621,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": false,
+    "next": 4564113396893194621,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": false,
+    "next": 1674084292433445352,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": false,
+    "next": 1674084292433445352,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": false,
+    "next": 8260529273901070605,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": false,
+    "next": 8260529273901070605,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": false,
+    "next": -3480085076388850438,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": false,
+    "next": -3480085076388850438,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": false,
+    "next": -3017765228418459171,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaves",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": false,
+    "next": -3017765228418459171,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          23
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          25
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          23
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          25
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          23
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          25
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          23
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          25
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          23
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          25
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "leaf_hole",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          23
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          25
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          24
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          24
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          0,
+          5,
+          0
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          1,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          0,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -1,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          -32,
+          5,
+          17
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -32,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -31,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -32,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -33,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -32,
+          5,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          12,
+          5,
+          4
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          13,
+          5,
+          5
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          12,
+          5,
+          6
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          11,
+          5,
+          5
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          -20,
+          5,
+          21
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -20,
+          5,
+          20
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -19,
+          5,
+          21
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -20,
+          5,
+          22
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -21,
+          5,
+          21
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -20,
+          5,
+          21
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          3
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          18
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          19
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          18
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          2,
+          5,
+          11
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          3,
+          5,
+          12
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          2,
+          5,
+          13
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          1,
+          5,
+          12
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          -30,
+          5,
+          28
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -30,
+          5,
+          27
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -29,
+          5,
+          28
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -30,
+          5,
+          29
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -31,
+          5,
+          28
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -30,
+          5,
+          28
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          15,
+          5,
+          0
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          16,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          15,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          14,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          -17,
+          5,
+          17
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -17,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -16,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -17,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -18,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -17,
+          5,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          14
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          15
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          15
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "flowers",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          31
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          30
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          31
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          32
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          31
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          31
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          0,
+          5,
+          0
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          1,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          0,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -1,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          0,
+          5,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          -32,
+          5,
+          17
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -32,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -31,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -32,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -33,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -32,
+          5,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          12,
+          5,
+          4
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          13,
+          5,
+          5
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          12,
+          5,
+          6
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          11,
+          5,
+          5
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          12,
+          5,
+          5
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          -20,
+          5,
+          21
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -20,
+          5,
+          20
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -19,
+          5,
+          21
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -20,
+          5,
+          22
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -21,
+          5,
+          21
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -20,
+          5,
+          21
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          3
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          2
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          18
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          19
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          18
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          2,
+          5,
+          11
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          3,
+          5,
+          12
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          2,
+          5,
+          13
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          1,
+          5,
+          12
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          2,
+          5,
+          12
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          -30,
+          5,
+          28
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -30,
+          5,
+          27
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -29,
+          5,
+          28
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -30,
+          5,
+          29
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -31,
+          5,
+          28
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -30,
+          5,
+          28
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          15,
+          5,
+          0
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          16,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          15,
+          5,
+          2
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          14,
+          5,
+          1
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          15,
+          5,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          -17,
+          5,
+          17
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -17,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -16,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -17,
+          5,
+          18
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -18,
+          5,
+          17
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -17,
+          5,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          8,
+          5,
+          14
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          9,
+          5,
+          15
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          8,
+          5,
+          16
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          7,
+          5,
+          15
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          5,
+          15
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "fence",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          5,
+          31
+        ],
+        "state": "minecraft:chest"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          30
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -23,
+          5,
+          31
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -24,
+          5,
+          32
+        ],
+        "state": "minecraft:torch"
+      },
+      {
+        "position": [
+          -25,
+          5,
+          31
+        ],
+        "state": "minecraft:torch"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          5,
+          31
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          0,
+          6,
+          1
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          0,
+          6,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          -32,
+          6,
+          17
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -32,
+          6,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          12,
+          6,
+          5
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          12,
+          6,
+          5
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          -20,
+          6,
+          21
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -20,
+          6,
+          21
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          8,
+          6,
+          2
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          6,
+          2
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          6,
+          18
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          6,
+          18
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          2,
+          6,
+          12
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          2,
+          6,
+          12
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          -30,
+          6,
+          28
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -30,
+          6,
+          28
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          15,
+          6,
+          1
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          15,
+          6,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          -17,
+          6,
+          17
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -17,
+          6,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          8,
+          6,
+          15
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          6,
+          15
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "water",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          6,
+          31
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          6,
+          31
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -655101936082782086,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -655101936082782086,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 4564113396893194621,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 4564113396893194621,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 1674084292433445352,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 1674084292433445352,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 8260529273901070605,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 8260529273901070605,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -3480085076388850438,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -3480085076388850438,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -3017765228418459171,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "ceiling",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -3017765228418459171,
+    "blocks": [],
+    "actors": []
+  },
+  {
+    "terrain": "empty",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          0,
+          0,
+          1
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          0,
+          0,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": 0,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 1927512926176735975,
+    "blocks": [
+      {
+        "position": [
+          -32,
+          0,
+          17
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -32,
+          0,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -655101936082782086
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          12,
+          0,
+          5
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          12,
+          0,
+          5
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": 0,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 5215666976438462143,
+    "blocks": [
+      {
+        "position": [
+          -20,
+          0,
+          21
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -20,
+          0,
+          21
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 4564113396893194621
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          8,
+          0,
+          2
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          0,
+          2
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": 123,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 7830028867000074426,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          0,
+          18
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          0,
+          18
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 1674084292433445352
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          2,
+          0,
+          12
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          2,
+          0,
+          12
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": 123,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -6645826650726034443,
+    "blocks": [
+      {
+        "position": [
+          -30,
+          0,
+          28
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -30,
+          0,
+          28
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": 8260529273901070605
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          15,
+          0,
+          1
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          15,
+          0,
+          1
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": -1,
+    "xoroshiro": false,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": 4403664655197798852,
+    "blocks": [
+      {
+        "position": [
+          -17,
+          0,
+          17
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -17,
+          0,
+          17
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3480085076388850438
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      0,
+      9,
+      0
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          8,
+          0,
+          15
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          8,
+          0,
+          15
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  },
+  {
+    "terrain": "empty",
+    "seed": -1,
+    "xoroshiro": true,
+    "origin": [
+      -17,
+      9,
+      19
+    ],
+    "placed": true,
+    "next": -1930411970093212544,
+    "blocks": [
+      {
+        "position": [
+          -24,
+          0,
+          31
+        ],
+        "state": "minecraft:chest"
+      }
+    ],
+    "actors": [
+      {
+        "position": [
+          -24,
+          0,
+          31
+        ],
+        "loot": "minecraft:chests/spawn_bonus_chest",
+        "seed": -3017765228418459171
+      }
+    ]
+  }
+]

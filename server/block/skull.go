@@ -23,6 +23,11 @@ type Skull struct {
 	// Attach is the attachment of the Skull. It is either of the type WallAttachment or StandingAttachment.
 	//blockhash:facing_only
 	Attach Attachment
+
+	// Powered controls the native block actor's mouth animation.
+	Powered bool
+	// AnimationTicks retains the native block actor's saved animation phase.
+	AnimationTicks int32
 }
 
 // Helmet ...
@@ -65,6 +70,18 @@ func (s Skull) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 	place(tx, pos, s, user, ctx)
 	return placed(ctx)
 }
+// Placed completes a Wither construction pattern when a Wither Skeleton Skull is placed.
+func (s Skull) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
+	if s.Type != WitherSkeletonSkull() {
+		return
+	}
+	if _, same := previous.(Skull); same {
+		return
+	}
+	if spawn := tx.World().EntityRegistry().Config().WitherPattern; spawn != nil {
+		spawn(tx, pos)
+	}
+}
 
 // SideClosed ...
 func (Skull) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
@@ -96,12 +113,17 @@ func (s Skull) DecodeNBT(data map[string]interface{}) interface{} {
 		}
 	}
 	s.Attach.o = cube.OrientationFromYaw(float64(nbtconv.Float32(data, "Rotation")))
+	s.Powered = nbtconv.Uint8(data, "DoingAnimation") != 0
+	s.AnimationTicks = nbtconv.Int32(data, "MouthTickCount")
 	return s
 }
 
 // EncodeNBT ...
 func (s Skull) EncodeNBT() map[string]interface{} {
-	return map[string]interface{}{"id": "Skull", "SkullType": uint8(255), "Rotation": float32(s.Attach.o.Yaw())}
+	return map[string]interface{}{
+		"id": "Skull", "SkullType": uint8(255), "Rotation": float32(s.Attach.o.Yaw()),
+		"DoingAnimation": boolByte(s.Powered), "MouthTickCount": s.AnimationTicks,
+	}
 }
 
 // EncodeBlock ...

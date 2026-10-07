@@ -1,2 +1,2 @@
-// Package nether implements a Minecraft Java Edition 1.12-style Nether generator.
+// Package nether implements the Java Edition 26.3 Nether generator.
 package nether

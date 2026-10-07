@@ -17,6 +17,9 @@ type Loader struct {
 	r      int
 	w      *World
 	viewer Viewer
+	// square/forceActive are used by source-defined arena tickets, not player views.
+	square      bool
+	forceActive bool
 
 	mu        sync.RWMutex
 	changeMu  sync.Mutex
@@ -286,6 +289,10 @@ func (l *Loader) evictUnused(tx *Tx) {
 
 // withinLoadRadius checks if a chunk position is within the Loader's radius.
 func (l *Loader) withinLoadRadius(pos ChunkPos) bool {
+	if l.square {
+		dx, dz := pos[0]-l.pos[0], pos[1]-l.pos[1]
+		return max(dx, -dx, dz, -dz) <= int32(l.r)
+	}
 	return chunkDistance(pos, l.pos) <= int32(l.r)
 }
 
@@ -329,7 +336,7 @@ func (l *Loader) removeQueued(pos ChunkPos) {
 // from the middle outwards.
 func (l *Loader) populateLoadQueue() {
 	l.loadQueue = l.loadQueue[:0]
-	for _, offset := range loaderOffsets(l.r) {
+	for _, offset := range loaderOffsets(l.r, l.square) {
 		pos := ChunkPos{offset[0] + l.pos[0], offset[1] + l.pos[1]}
 		if _, ok := l.loaded[pos]; ok {
 			continue
@@ -341,8 +348,12 @@ func (l *Loader) populateLoadQueue() {
 	}
 }
 
-func loaderOffsets(radius int) []ChunkPos {
-	if offsets, ok := loaderOffsetCache.Load(radius); ok {
+func loaderOffsets(radius int, square bool) []ChunkPos {
+	key := struct {
+		radius int
+		square bool
+	}{radius, square}
+	if offsets, ok := loaderOffsetCache.Load(key); ok {
 		return offsets.([]ChunkPos)
 	}
 
@@ -350,7 +361,10 @@ func loaderOffsets(radius int) []ChunkPos {
 	queue := make(map[int32][]ChunkPos, radius+1)
 	for x := -r; x <= r; x++ {
 		for z := -r; z <= r; z++ {
-			distance := int32(math.Round(math.Hypot(float64(x), float64(z))))
+			distance := max(x, -x, z, -z)
+			if !square {
+				distance = int32(math.Round(math.Hypot(float64(x), float64(z))))
+			}
 			if distance > r {
 				continue
 			}
@@ -359,15 +373,24 @@ func loaderOffsets(radius int) []ChunkPos {
 	}
 
 	offsets := make([]ChunkPos, 0, len(queue)*8)
-	for i := int32(0); i <= r; i++ {
+	for i := range r + 1 {
 		offsets = append(offsets, queue[i]...)
 	}
-	actual, _ := loaderOffsetCache.LoadOrStore(radius, offsets)
+	actual, _ := loaderOffsetCache.LoadOrStore(key, offsets)
 	return actual.([]ChunkPos)
 }
 
 func (l *Loader) activeArea(simRadius int32) loaderActiveArea {
 	l.mu.Lock()
+	if l.forceActive {
+		radius := int32(l.r)
+		area := loaderActiveArea{pos: l.pos, radius: radius, radiusSq: int64(radius) * int64(radius)}
+		if l.square {
+			area.radiusSq *= 2
+		}
+		l.mu.Unlock()
+		return area
+	}
 	target := simRadius
 	if target < 0 {
 		target = 0

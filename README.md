@@ -37,6 +37,8 @@ The registered 89 biome definitions match the pinned BDS's initial climate, wate
 
 An offline BDS/Adamant handshake matched all 2,076 item definitions, all 89 biome definitions and the compared world settings at seed `-9223372036854775808`. Both saved `level.dat` files retained that exact seed. This verifies initial metadata and saved settings, not terrain or gameplay parity.
 
+Java-only knowledge books use the existing custom-item/resource-pack path as `adamant:knowledge_book`; Java NBT retains `minecraft:knowledge_book`. This adds one item without replacing a native BDS ID (the pinned native maximum is 883; the custom ID is 2076). A runtime probe verified recipe preservation through encoded native NBT and back to Java NBT, and built the generated pack with the pinned Java 16×16 texture. Clients need that resource pack; visual rendering and use input on an actual Bedrock client remain unverified.
+
 ### World seed and saved settings
 
 `World.Seed` selects a new world's seed in all three dimensions. Once a world exists, `level.dat.RandomSeed` is authoritative, including zero; changing configuration does not change future terrain. `world.Settings.SeedSet` distinguishes a stored zero from an uninitialised provider. `server.Config.Generator` now receives `(dimension, resolvedSeed)` instead of capturing an unrelated configuration seed.
@@ -56,6 +58,9 @@ The embedded palette contains **22,079 persisted states across 1,477 block ident
 - Generated chunks reconstruct the same derived properties before they are committed as complete states.
 - Stair neighbour rules are checked against 112 BDS scenarios, including orientation, half and material-dependent corner suppression. Physical corner collision and projectile/ray shape are separate: captured BDS arrows use the straight stair outline even at corners. Explosion and firework exposure retain their existing collision-shape behaviour.
 - State lookup distinguishes property names, types and string boundaries; invalid supplied properties are not silently replaced with defaults.
+- Shared Java state translation handles standing and wall orientations for normal, soul and redstone torches. Runtime probes checked all 15 placements against native attachment directions and the reverse Java state.
+- `Tx.JavaMotionBlockingHeight` uses shared Java block tags, with separate leaf-inclusive and no-leaves classifications cached by runtime ID. A live synchronous End world verified empty columns, solid blocks, leaves, non-blocking torches, removal and the inclusive Y=255 boundary at negative chunk coordinates. Block removal canonicalises `nil` to the registry's air block before actor and POI updates.
+- Village POIs recognise native bed-head states and lit smoker/blast-furnace variants. A live-world probe reproduced missing bed POIs before the fix, then verified home/workstation classification and removal at the End's upper build limit.
 
 Custom `MissingStateReconstructor` implementations must preserve explicit properties and assign a lower `ReconstructionOrder` to derived-state dependencies. Same-order neighbours may be read for base properties, not unresolved derived geometry. Ray callers now choose `trace.RayShape` or `trace.CollisionShape` explicitly.
 
@@ -67,11 +72,15 @@ The world installs this data once on its owner goroutine before publishing or sa
 
 Runtime verification under the race detector covered synchronous and background generation, an End crystal with a beam target, gateway NBT, disk reopening without a generator, and a generated water update that flowed on its third tick. Regression tests also cover shutdown while a generation worker is still running. Flat generation fills biomes through the dimension's inclusive upper boundary, including Overworld Y=319.
 
+Generated beds, banners, dragon heads and copper-golem statues were checked through native chunk installation and LevelDB reopening. Rotated/mirrored placements retain bed colour and occupancy, banner pattern layers, head rotation and powered state, statue pose/facing, and the separate water layer. Four consecutive-tick bed occupancy transitions converge on both halves without stale neighbour updates reversing the head state; chained updates retain the existing per-tick budget and unloaded-chunk safeguards.
+
+A separate capture from BDS **1.26.52.3 / build 51798919** verified powered and unpowered dragon-head NBT: the native flag is `DoingAnimation`, not `MouthMoving`. The decoder and encoder retain `MouthTickCount` as well. This checks actor persistence, not Bedrock-client animation rendering.
+
 ### Java 26.3 generation kernel
 
-`server/world/generator/advanced/internal/java26` ports Java's legacy and Xoroshiro random sources, float32 noise stacks, blended terrain noise, terrain splines, climate search, three-dimensional biome zoom, Overworld density graph, noodle caves, ore-vein fields and aquifers. The climate tree contains all 7,594 Java parameter records and uses Java's 19-child search tree; biome identities are translated separately to Bedrock registry IDs.
+`server/internal/java26` ports Java's legacy and Xoroshiro random sources, float32 noise stacks, blended terrain noise, terrain splines, climate search, three-dimensional biome zoom, Overworld density graph, noodle caves, ore-vein fields and aquifers. The climate tree contains all 7,594 Java parameter records and uses Java's 19-child search tree; biome identities are translated separately to Bedrock registry IDs.
 
-The Overworld cutover is still in progress: the verified kernel does not yet replace the default generator's complete terrain, surfaces, structures and feature pipeline. These checks are not a claim of complete generation or gameplay parity.
+The kernel is wired into the modern Overworld generator, but end-to-end surface, structure, carver and placed-feature parity is not yet established. Kernel comparisons alone do not establish complete generation or gameplay parity.
 
 Verification against executed Java 26.3 classes:
 
@@ -80,8 +89,82 @@ Verification against executed Java 26.3 classes:
 - 280 Overworld router fields across 35 sampled positions agree within `1e-6`; the largest observed absolute difference was `7.450580596923828e-9`.
 - 35 biome-zoom probes agree, including negative coordinates.
 - Fifteen complete Overworld density/aquifer chunks across seeds `0`, `1` and `-1` match all **1,474,560** material decisions and fluid-update flags. This excludes surface rules, structures, carvers and placed features.
+- Eight seeds cover 80 End-spike layouts and **490,568** cylinder/cage material and connection decisions with no mismatches. The oracle stops before crystal construction, so the 160 subsequent pedestal/fire cells are excluded.
+
+The figures above are historical oracle runs and have not been repeated after the latest integration. The latest executed Java `Mth` comparison matched all **65,536** sine-table values and 13 sine/cosine boundary probes, including double-precision indexing and Java's NaN/infinity narrowing. The former float-index expression disagreed on 29 of 100,000 sampled float arguments. Modern carvers, relevant feature consumers and dragon math now share the lookup implementation; source `Math.sin/cos` paths retain analytic trig.
+
+Executed Java `IntProvider` sequences cover 11 provider configurations with both legacy and Xoroshiro random sources: **352 sampled values plus 22 following-stream checks**. These include nested weighted/clamped providers, Gaussian sampling, triangular/trapezoidal distributions and zero-weight entries. Zero-weight entries are valid but never selected; an all-zero weighted list remains invalid.
+
+The `solid` placement predicate uses an immutable table exported from the executed Java 26.3 block registry, not native collision-box guesses. All **1,286 block types** were invariant across their source states, and the Go lookup matched every exported value. `bash cmd/vanilla-solid-export/generate.sh` regenerates it from the pinned mapped classes, client resources and manifest libraries; the exporter verifies the source version and rejects a future state-dependent result.
+
+The same exporter now records typed default properties for all 1,286 Java blocks. The codec fills omitted properties without changing explicit values or mutating the input map; bare source block names no longer select arbitrary native palette defaults.
+
+Generation shape metadata distinguishes vine attachment (a full support **or collision** face), sturdy faces, centre support, full/empty collision volumes and replaceability. All six fields matched **35,723 executed Java block states**, with zero measured allocations per lookup; **398 states** distinguish attachment from sturdy-face support. `has_sturdy_face`, block piles, vines, bonus-chest torches and sculk use the source metadata rather than native collision approximations. The export models fresh generation with no active moving pistons or open shulkers; it is not a runtime entity-dependent shape API.
+
+Placement regressions match the executed Java `FeaturePlacer` for **14 emitted positions/feature draws and four following-stream values** across both random algorithms. Modifier expansion is depth-first, rarity filters consume Java float draws, and feature execution remains interleaved with placement sampling. Eight coordinate probes match both noise-count modifiers, including negative counts and exact threshold equality; biome-information noise discards its coordinate offset as Java does. A separate Java cuboid probe matches all six face centres with edges and interior excluded.
+
+Layered-count placement matches **18 emitted positions and four following-stream values** from Java with constant/uniform counts and both random algorithms. Real chunk fixtures check split-layer fluids, native/source name aliases and heightmap cache invalidation. Four selector families match **16 Java selections and following-stream checks**; sequence stops at the first failed placement, while overlay evaluates every child. A nested empty rule-based provider continues to the next matching rule rather than replacing the block with an invented fallback.
+
+Disk placement now samples an optional provider separately at each accepted target, visiting X before Z and each column top-down. Executed Java comparisons cover **56 weighted material choices and four following-stream values**, plus a nine-cell contextual provider result, an empty optional provider and a rejected-target/no-draw case. This does not establish Java's deferred chunk postprocessing, which requires a persisted queue, neighboring FULL chunks and fluid/shape updates not yet represented by `GenerationResult`.
+
+The eight builtin `block_state_provider` resources are now embedded and resolved as provider references, separately from literal block-state strings. Six providers match **108 executed Java states and 12 following-stream values**: three flower-noise providers, both cave-vine providers and hanging mangrove propagules. The probes include the low-threshold branch, negative coordinates, float-coordinate precision boundaries and signed-coordinate boundaries. Named optional tree-soil providers use their data-driven rules instead of hard-coded names. A direct generation run at seed `-1`, chunk `(1024,1024)`, reproduced the missing `flower_plain` registry failure before the fix and completed afterward.
+
+`stepped_column_cluster` matches **109 executed Java block states, eight following-stream values and eight height-predicate boundary outcomes**. Height anchors use each dimension's sea level and an exclusive upper generation bound. `single_block_pillar` and `projected_random_patchy_square` match **130 block states and 16 following-stream values**, including upward/downward growth, blocked origins, zero continuation chance, build-height termination, optional projected states and cap placement. Cap comparisons exposed and removed an incorrect air-only restriction in `simple_block`.
+
+After these fixes, direct generator entrypoints completed all **27 columns** for seeds `0`, `1`, `-1`, chunks `(0,0)`, `(-1,-17)`, `(1024,1024)` and all three dimensions. This is execution coverage, not source chunk-layout parity or deferred postprocessing coverage.
+
+The `block_blob`, `block_pile`, `fill_layer`, `replace_single_block`, `coral_tree` and `coral_claw` paths match **648 final Java block writes and 42 following-stream values** in source-oracle fixtures. These cover both RNG algorithms, placement failures, dirt-path piles, occupied fill layers, state-sensitive/random/logical replacement rules and inclusive height boundaries. Replacement height rules use absolute integers, not generation anchors.
+
+Builtin `would_survive` predicates now use the requested plant state, Java support tags and neighboring fluids. **31 executed Java outcomes** cover all **13 builtin predicate states**, invalid soils, cactus obstructions/liquids, sugar-cane adjacency and hanging propagules. Bubble-column translation preserves both drag directions and source water in the native secondary layer; a public-codec smoke exercised both directions. Vine placement matches **13 executed Java scenarios** for occupied origins, attachment precedence, slabs, oriented trapdoors and leaf collision support, including the following RNG state. Expected vine states are compared after native palette projection.
+
+The `the_void` biome previously panicked on its unsupported `void_start_platform` feature. Platform placement now matches **75 executed Java scenarios and 3,267 source block writes**, covering neighboring/outside chunks, negative coordinates and three origin heights. A public `ModernFeatures.Decorate` smoke checked 6,400 plane cells across 25 void columns: exactly 1,089 platform blocks with one central cobblestone. The builtin `no_op` feature succeeds without modifying blocks or consuming randomness, as the executed Java implementation does.
+
+Bonus-chest placement matches **96 executed Java scenarios**, 264 final block writes, 72 loot actors and both RNG streams. A public decorator smoke placed a chest and four torches on centre-supporting fences, checked the following RNG value and preserved the deferred loot table/seed through native chest NBT serialization.
+
+Sculk patches match **28 executed Java scenarios and 5,968 final block writes**, including both RNG algorithms, dry/flooded terrain, initial sculk/veins, replaceable grass, flowers, fire, zero rounds and rejected starting states. The comparison corrected cursor-neighbor ordering, spread precedence and native fluid identity: `liquid_depth`, not the Bedrock block name alone, distinguishes source from flowing water/lava. A public `ModernFeatures.Decorate` smoke checked all **229,376 target-column cells** and 28 following-stream values.
+
+Template features are connected to the feature dispatcher. **48 executed Java scenarios and 1,548 final block writes** cover both desert-well templates, rotations, missing-template failure, dry/wet starting terrain and inline archaeology loot processors. A public decorator smoke checked **196,608 cells, 12 loot actors and 48 following-stream values**. Rule processors use a position-seeded Legacy stream, independent of the placement RNG. These cases do not establish general template fluid-fill, neighbor-shape updates or deferred chunk postprocessing parity.
+
+Diamond-ore loot with Fortune III now matches the pinned Java Xoroshiro stream and source ore-bonus formula for 16 seeds (14 mismatches before the correction). A single eligible pool entry no longer consumes a selection draw. Enchantment modifiers preserve unmentioned enchantments and implement additive replacement without losing JSON numeric component values.
+
+Six effective-difficulty boundaries were checked against the actual Java `DifficultyInstance` class. The capped Easy result is **1.5**, not 1.625; the source arithmetic was unchanged and the incorrect regression expectation was corrected.
+
+The shared block-state codec roundtrips all 36 surface materials and all eight snow-layer thicknesses against the pinned native palette. Full snow and layered snow remain distinct; uncoloured terracotta maps to native hardened clay. This is codec coverage, not complete terrain-chunk parity.
+
+The embedded-template/feature-state corpus now checks **1,926 distinct source states**, **1,511 templates** and **513 feature configurations**, reaching 1,645 native primary states. It includes builtin bare block-name references, identified against the executed source registry. Native-only torch directions, ceiling skull attachments, horizontal jigsaw rotations and structure modes are explicitly rejected when Java cannot represent them. This is not coverage of every builtin Java state, nor proof that Java-only gameplay properties survive native palette projection.
+
+A public codec smoke preserved all **28 wall-head type/facing combinations** and decoded free water/lava from the native secondary layer. Wall heads retain their wall-specific Java identifier rather than acquiring a standing head's default rotation.
+
+An isolated BDS 1.26.52.3 build 51798919 capture established that leaf litter defaults to `growth=0`; native loot commands returned one through eight items for `growth=0..7`. The codec now maps Java's one through four segments to `growth=0..3`, rather than shifting their counts by one. Reading the saved native column through the public codec preserved those four counts and rejected native five-through-eight-segment states instead of silently clamping them. Java's north-facing default remains distinct from BDS's south-facing default.
+
+Feature pool elements execute their held placed feature through the structure decoration region rather than being discarded or treated as templates. An isolated real-executor smoke placed an acacia tree with seven logs and 59 leaves; it is an execution check, not a Java layout comparison.
+
+A strict live-world generation smoke generated seeds `0`, `1` and `-1` at `(0,0)`, `(-1,-17)` and `(1024,1024)` in all three dimensions: **27 sampled columns** without generation error logs. This exercises the integrated placement pipeline, contextual rule-based state providers, nested placed-feature holders and layered/heightmap placement; it is not a source chunk-layout comparison.
 
 Reference executables, decompiled sources and temporary oracle programs are not committed. A PDB may only supply RVAs for an executable with the matching CodeView GUID and age; the supplied 26.51.1 symbols do not match the pinned 1.26.52.3 executable.
+
+### Gameplay integration checks
+
+Live in-memory worlds exercised:
+
+- End-gateway creation of a paired destination and fallback island, preservation of ordinary entity velocity/rotation, and the 40-tick reuse cooldown.
+- Dragon death leaving 19 gateway slots, placing the first dragon egg and 20 exit-portal cells; a four-crystal respawn ritual and restoration of the portal when a participating crystal is destroyed. Fight state was saved through the provider on close.
+- Four dried-ghast hydration transitions, each after 5,000 scheduled ticks, retaining water and spawning a baby happy ghast.
+- Nine registered mob species with expected health, mutable movement speed and application/removal of Speed I. A size-64 phantom retains 20 health rather than scaling health with its size.
+- A source-NBT shulker with byte-valued attachment, peek and colour fields restores east attachment, peek 73, colour 5 and health 18 in a live world.
+- All 16 native suspicious-sand/gravel palette states retain brushing progress without exposing Bedrock's `hanging` flag as a Java property. Ten timed strokes restore sand/gravel and release one buried diamond in each live interaction.
+- Loot random streams resume independently after world close/reopen in the Overworld, Nether, End and a registered custom dimension sharing one in-memory provider. This is process-lifetime storage, not a disk-restart claim. Custom dimension persistence uses registered numeric IDs, not formatted Go values.
+- Default-registered crafting through a powered crafter consumes nine iron ingots for one iron block. A live dispenser creates one small fireball, and a two-tick pulse still makes a dropper transfer exactly one diamond; all three paths were checked after 12 world ticks.
+
+Biome spawn settings decode the heterogeneous Java environment-attribute map without treating unrelated scalar attributes as spawn records. A runtime probe matched all 15 Badlands rows, including weights and scalar/uniform count bounds, and retained empty Deep Dark/Void spawn tables. This verifies source data loading, not the complete natural-spawn algorithm.
+
+Native LevelDB map reopening now covers creation, cross-dimension scaling, locking and independent cloning with four distinct Java/native ID pairs. Scaling retains the source dimension and tracking flags but starts with a blank coarser grid; locking preserves explored pixels and decorations. Transparent native pixels remain unexplored Java pixels rather than becoming black.
+
+A real offline gophertunnel client received `CraftingData` with 1,125 shaped, 1,899 shapeless and 18 concrete smithing-trim recipes. The packet preserves the acacia pressure-plate source ID and distinct full bolt/coast trim IDs. Bedrock-only compass map upgrades are not Java operations and are no longer advertised.
+
+Nether portal travel uses the source search radius of 16 blocks into the Nether and 128 into the Overworld. A queued Ender Pearl transfer with an intentionally panicking destination spawn handler restored source ownership and the exact original position. This checks the rollback path, not complete portal geometry or travel parity.
+
+Startup also exercises shrieker, bookshelf, vault and trial-spawner registration against the pinned native palette; Java-only actor state is not added as invented native block-state properties. These checks do not establish complete AI/ecology or loot-function coverage, and do not verify rendering or input on a Bedrock client.
 
 ## Getting Started
 Requirements: **Go 1.26+**

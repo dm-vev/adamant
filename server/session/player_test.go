@@ -650,122 +650,188 @@ func TestBannerMultiRecipeRejectsForgedPatterns(t *testing.T) {
 }
 
 func TestMapMultiRecipesApplyStateTransitions(t *testing.T) {
-	registerCraftingMaps()
-	tests := []struct {
-		name     string
-		id       string
-		large    bool
-		input    []item.Stack
-		expected item.Stack
-	}{
-		{
-			name:  "extend crafting",
-			id:    mapExtendingMultiRecipe,
-			large: true,
-			input: func() []item.Stack {
-				grid := make([]item.Stack, 9)
-				for slot := range grid {
-					grid[slot] = item.NewStack(item.Paper{}, 1)
-				}
-				grid[4] = craftingMapStack(0, 2, false, false)
-				return grid
-			}(),
-			expected: craftingMapStack(0, 2, false, false).WithItem(craftingMapItem{Meta: 0, UUID: 42, Scale: 2, ScaleDirection: 1}),
-		},
-		{
-			name:     "extend cartography",
-			id:       mapExtendingCartographyMultiRecipe,
-			input:    []item.Stack{craftingMapStack(2, 1, true, false), item.NewStack(item.Paper{}, 1)},
-			expected: craftingMapStack(2, 1, true, false).WithItem(craftingMapItem{Meta: 2, UUID: 42, Scale: 1, DisplayPlayers: true, ScaleDirection: 1}),
-		},
-		{
-			name:     "upgrade crafting",
-			id:       mapUpgradingMultiRecipe,
-			input:    []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(item.Compass{}, 1)},
-			expected: craftingMapStack(2, 2, true, false),
-		},
-		{
-			name:     "upgrade cartography",
-			id:       mapUpgradingCartographyMultiRecipe,
-			input:    []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(item.Compass{}, 1)},
-			expected: craftingMapStack(2, 2, true, false),
-		},
-		{
-			name:     "lock cartography",
-			id:       mapLockingMultiRecipe,
-			input:    []item.Stack{craftingMapStack(2, 2, true, false), item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)},
-			expected: craftingMapStack(5, 2, true, true),
-		},
-		{
-			name:     "clone crafting",
-			id:       mapCloningMultiRecipe,
-			input:    []item.Stack{craftingMapStack(5, 2, true, false), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1)},
-			expected: craftingMapStack(5, 2, true, false).Grow(2),
-		},
-		{
-			name:     "clone cartography",
-			id:       mapCloningCartographyMultiRecipe,
-			input:    []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1)},
-			expected: craftingMapStack(0, 2, false, false).Grow(1),
-		},
+	base := world.MapData{
+		ID: 42, Dimension: 0, CenterX: 64, CenterZ: 64, Scale: 2, Tracking: true,
+		Colors: make([]byte, 128*128),
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s := craftingTestSession()
-			if test.large {
-				s.openedContainerID.Store(1)
-			}
-			result := craftValidMulti(t, s, test.id, multiResultItem(test.expected), test.input)
-			if !result.Equal(test.expected) {
-				t.Fatalf("map result = %v, want %v", result, test.expected)
-			}
-		})
-	}
-}
+	base.Colors[17] = 7
 
-func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
-	registerCraftingMaps()
-	tests := []struct {
-		name  string
-		id    string
-		input []item.Stack
-	}{
-		{"extend locked", mapExtendingCartographyMultiRecipe, []item.Stack{craftingMapStack(5, 2, true, false), item.NewStack(item.Paper{}, 1)}},
-		{"extend maximum scale", mapExtendingCartographyMultiRecipe, []item.Stack{craftingMapStack(0, 4, false, false), item.NewStack(item.Paper{}, 1)}},
-		{"extend pending map", mapExtendingCartographyMultiRecipe, []item.Stack{item.NewStack(craftingMapItem{Meta: 0, UUID: 42, Scale: 2, ScaleDirection: 1}, 1), item.NewStack(item.Paper{}, 1)}},
-		{"upgrade locator", mapUpgradingCartographyMultiRecipe, []item.Stack{craftingMapStack(2, 2, true, false), item.NewStack(item.Compass{}, 1)}},
-		{"lock locked", mapLockingMultiRecipe, []item.Stack{craftingMapStack(5, 2, true, false), item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)}},
-		{"map without state API", mapExtendingCartographyMultiRecipe, []item.Stack{item.NewStack(craftingNamedItem("minecraft:filled_map"), 1), item.NewStack(item.Paper{}, 1)}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s := craftingTestSession()
-			setCraftingInput(t, s, test.input)
-			err := craftingTestHandler().handleRequest(multiCraftingRequest(s, test.id, multiResultItem(test.input[0]), nonEmptySlots(test.input)...), s, nil, nil)
-			requireRejectedCraft(t, s, err, test.input)
-		})
-	}
-
-	t.Run("tampered transition result", func(t *testing.T) {
-		s := craftingTestSession()
-		input := []item.Stack{craftingMapStack(0, 2, false, false), item.NewStack(item.Compass{}, 1)}
-		setCraftingInput(t, s, input)
-		forged := craftingMapStack(2, 2, true, false).WithCustomName("forged")
-		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, mapUpgradingCartographyMultiRecipe, multiResultItem(forged), 0, 1), s, nil, nil)
-		requireRejectedCraft(t, s, err, input)
-	})
-
-	t.Run("invalid extending arrangement", func(t *testing.T) {
-		s := largeCraftingTestSession()
+	t.Run("extend crafting creates a coarser independent map", func(t *testing.T) {
 		input := make([]item.Stack, 9)
 		for slot := range input {
 			input[slot] = item.NewStack(item.Paper{}, 1)
 		}
-		input[0] = craftingMapStack(0, 2, false, false)
+		input[4] = craftingMapStack()
+		data := base
+		data.Scale = 1
+		w, provider := mapCraftingWorld(t, data)
+		result := craftMapValidMulti(t, w, craftingTestSession(), mapExtendingMultiRecipe, craftingMapStack(), input)
+		requireMapTransition(t, result, 43)
+		got, err := w.MapData(43)
+		if err != nil || got.Scale != 2 || got.ParentID != 42 || got.Colors[17] != 0 {
+			t.Fatalf("scaled map = %#v, err %v; want new blank scale-2 child", got, err)
+		}
+		source, err := provider.LoadMap(42)
+		if err != nil || source.Scale != 1 || source.Colors[17] != 7 {
+			t.Fatalf("source map changed during scaling: %#v, err %v", source, err)
+		}
+	})
+
+	t.Run("extend cartography creates a coarser independent map", func(t *testing.T) {
+		data := base
+		data.Scale = 1
+		w, _ := mapCraftingWorld(t, data)
+		result := craftMapValidMulti(t, w, craftingTestSession(), mapExtendingCartographyMultiRecipe, craftingMapStack(),
+			[]item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)})
+		requireMapTransition(t, result, 43)
+		got, err := w.MapData(43)
+		if err != nil || got.Scale != 2 || got.ParentID != 42 {
+			t.Fatalf("scaled map = %#v, err %v; want scale 2 child of map 42", got, err)
+		}
+	})
+
+	t.Run("lock cartography creates an independent locked copy", func(t *testing.T) {
+		w, provider := mapCraftingWorld(t, base)
+		result := craftMapValidMulti(t, w, craftingTestSession(), mapLockingMultiRecipe, craftingMapStack(),
+			[]item.Stack{craftingMapStack(), item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)})
+		requireMapTransition(t, result, 43)
+		got, err := w.MapData(43)
+		source, sourceErr := provider.LoadMap(42)
+		if err != nil || sourceErr != nil || !got.Locked || got.ParentID != 42 || got.Colors[17] != 7 ||
+			source.Locked || source.Colors[17] != 7 {
+			t.Fatalf("locked map = %#v (err %v), source = %#v (err %v)", got, err, source, sourceErr)
+		}
+	})
+
+	t.Run("clone crafting preserves saved map identity", func(t *testing.T) {
+		input := []item.Stack{craftingMapStack(), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1)}
+		expected := craftingMapStack().Grow(2)
+		result := craftValidMulti(t, craftingTestSession(), mapCloningMultiRecipe, multiResultItem(expected), input)
+		if !result.Equal(expected) {
+			t.Fatalf("map clone result = %v, want %v", result, expected)
+		}
+	})
+
+	t.Run("clone cartography preserves saved map identity", func(t *testing.T) {
+		input := []item.Stack{craftingMapStack(), item.NewStack(craftingNamedItem("minecraft:empty_map"), 1)}
+		expected := craftingMapStack().Grow(1)
+		result := craftValidMulti(t, craftingTestSession(), mapCloningCartographyMultiRecipe, multiResultItem(expected), input)
+		if !result.Equal(expected) {
+			t.Fatalf("map clone result = %v, want %v", result, expected)
+		}
+	})
+}
+
+func TestMapMultiRecipesRejectImpossibleTransitions(t *testing.T) {
+	t.Run("extend locked map", func(t *testing.T) {
+		data := world.MapData{ID: 42, Scale: 1, Locked: true, Colors: make([]byte, 128*128)}
+		w, _ := mapCraftingWorld(t, data)
+		s := craftingTestSession()
+		input := []item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)}
 		setCraftingInput(t, s, input)
-		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingMultiRecipe, multiResultItem(input[0]), nonEmptySlots(input)...), s, nil, nil)
+		var craftErr error
+		if err := w.Do(func(tx *world.Tx) {
+			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1), s, tx, nil)
+		}).Wait(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		requireRejectedCraft(t, s, craftErr, input)
+	})
+
+	t.Run("extend maximum scale", func(t *testing.T) {
+		data := world.MapData{ID: 42, Scale: 4, Colors: make([]byte, 128*128)}
+		w, _ := mapCraftingWorld(t, data)
+		s := craftingTestSession()
+		input := []item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)}
+		setCraftingInput(t, s, input)
+		var craftErr error
+		if err := w.Do(func(tx *world.Tx) {
+			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1), s, tx, nil)
+		}).Wait(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		requireRejectedCraft(t, s, craftErr, input)
+	})
+
+	t.Run("lock already locked map", func(t *testing.T) {
+		data := world.MapData{ID: 42, Scale: 1, Locked: true, Colors: make([]byte, 128*128)}
+		w, _ := mapCraftingWorld(t, data)
+		s := craftingTestSession()
+		input := []item.Stack{craftingMapStack(), item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)}
+		setCraftingInput(t, s, input)
+		var craftErr error
+		if err := w.Do(func(tx *world.Tx) {
+			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapLockingMultiRecipe, multiResultItem(input[0]), 0, 1), s, tx, nil)
+		}).Wait(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		requireRejectedCraft(t, s, craftErr, input)
+	})
+
+	t.Run("forged scale result does not create a map", func(t *testing.T) {
+		data := world.MapData{ID: 42, Scale: 1, Colors: make([]byte, 128*128)}
+		w, provider := mapCraftingWorld(t, data)
+		s := craftingTestSession()
+		input := []item.Stack{craftingMapStack(), item.NewStack(item.Paper{}, 1)}
+		setCraftingInput(t, s, input)
+		forged := craftingMapStack().WithCustomName("forged")
+		var craftErr error
+		if err := w.Do(func(tx *world.Tx) {
+			craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(forged), 0, 1), s, tx, nil)
+		}).Wait(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		requireRejectedCraft(t, s, craftErr, input)
+		if _, err := provider.LoadMap(43); err == nil {
+			t.Fatal("rejected map craft persisted a new map")
+		}
+	})
+
+	t.Run("map without saved state", func(t *testing.T) {
+		s := craftingTestSession()
+		input := []item.Stack{item.NewStack(item.FilledMap{}, 1), item.NewStack(item.Paper{}, 1)}
+		setCraftingInput(t, s, input)
+		err := craftingTestHandler().handleRequest(multiCraftingRequest(s, mapExtendingCartographyMultiRecipe, multiResultItem(input[0]), 0, 1), s, nil, nil)
 		requireRejectedCraft(t, s, err, input)
 	})
+}
+
+func mapCraftingWorld(t *testing.T, source world.MapData) (*world.World, *mapCraftingProvider) {
+	t.Helper()
+	provider := newMapCraftingProvider()
+	provider.maps[source.ID] = source
+	provider.nextID = source.ID
+	w := (world.Config{Provider: provider, Synchronous: true}).New()
+	t.Cleanup(func() { _ = w.Close() })
+	return w, provider
+}
+
+
+func craftMapValidMulti(t *testing.T, w *world.World, s *Session, id string, expected item.Stack, input []item.Stack) item.Stack {
+	t.Helper()
+	if len(input) == 9 {
+		s.openedContainerID.Store(1)
+	}
+	setCraftingInput(t, s, input)
+	var craftErr error
+	if err := w.Do(func(tx *world.Tx) {
+		craftErr = craftingTestHandler().handleRequest(multiCraftingRequest(s, id, multiResultItem(expected), nonEmptySlots(input)...), s, tx, nil)
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if craftErr != nil {
+		t.Fatal(craftErr)
+	}
+	crafted, _ := s.ui.Item(craftingResult)
+	return crafted
+}
+
+func requireMapTransition(t *testing.T, result item.Stack, id int64) {
+	t.Helper()
+	mapItem, ok := result.Item().(item.FilledMap)
+	if !ok || !mapItem.HasNativeID || mapItem.NativeID != id || !mapItem.HasJavaID || mapItem.JavaID != int32(id) {
+		t.Fatalf("map result = %#v, want filled map with native and Java ID %d", result.Item(), id)
+	}
 }
 
 func TestRepairMultiRecipeStripsDataAndRetainsCurses(t *testing.T) {
@@ -838,66 +904,50 @@ func (craftingStackableDurable) DurabilityInfo() item.DurabilityInfo {
 	return item.DurabilityInfo{MaxDurability: 100, BrokenItem: func() item.Stack { return item.Stack{} }}
 }
 
-type craftingMapItem struct {
-	Meta           int16
-	UUID           int64
-	Scale          int32
-	DisplayPlayers bool
-	ScaleDirection int32
-	PendingMapLock bool
+type mapCraftingProvider struct {
+	world.NopProvider
+	mu     sync.Mutex
+	maps   map[int64]world.MapData
+	nextID int64
 }
 
-func (m craftingMapItem) EncodeItem() (string, int16) { return "minecraft:filled_map", m.Meta }
-
-func (m craftingMapItem) EncodeNBT() map[string]any {
-	data := map[string]any{"map_uuid": m.UUID, "map_scale": m.Scale}
-	if m.DisplayPlayers {
-		data["map_display_players"] = byte(1)
+func newMapCraftingProvider() *mapCraftingProvider {
+	return &mapCraftingProvider{
+		NopProvider: world.NopProvider{},
+		maps:        make(map[int64]world.MapData),
+		nextID:      42,
 	}
-	if m.ScaleDirection != 0 {
-		data["map_scale_direction"] = m.ScaleDirection
+}
+
+func (p *mapCraftingProvider) LoadMap(id int64) (world.MapData, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	data, ok := p.maps[id]
+	if !ok {
+		return world.MapData{}, world.ErrInvalidMapData
 	}
-	if m.PendingMapLock {
-		data["map_to_lock"] = byte(1)
-	}
-	return data
+	return data, nil
 }
 
-func (m craftingMapItem) DecodeNBT(data map[string]any) any {
-	m.UUID = testNBTInt64(data["map_uuid"])
-	m.Scale = int32(testNBTInt64(data["map_scale"]))
-	m.DisplayPlayers = testNBTInt64(data["map_display_players"]) != 0
-	m.ScaleDirection = int32(testNBTInt64(data["map_scale_direction"]))
-	m.PendingMapLock = testNBTInt64(data["map_to_lock"]) != 0
-	return m
+func (p *mapCraftingProvider) StoreMap(data world.MapData) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.maps[data.ID] = data
+	return nil
 }
 
-var registerCraftingMapsOnce sync.Once
-
-func registerCraftingMaps() {
-	registerCraftingMapsOnce.Do(func() {
-		world.RegisterItem(craftingMapItem{Meta: 0})
-		world.RegisterItem(craftingMapItem{Meta: 2})
-		world.RegisterItem(craftingMapItem{Meta: 5})
-	})
+func (p *mapCraftingProvider) AllocateMapID() (int64, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.nextID++
+	return p.nextID, nil
 }
 
-func craftingMapStack(meta int16, scale int32, displayPlayers, pendingLock bool) item.Stack {
-	return item.NewStack(craftingMapItem{Meta: meta, UUID: 42, Scale: scale, DisplayPlayers: displayPlayers, PendingMapLock: pendingLock}, 1)
-}
+func (p *mapCraftingProvider) JavaMapID(id int64) (int32, error) { return int32(id), nil }
+func (p *mapCraftingProvider) NativeMapID(id int32) (int64, error) { return int64(id), nil }
 
-func testNBTInt64(value any) int64 {
-	switch value := value.(type) {
-	case byte:
-		return int64(value)
-	case int16:
-		return int64(value)
-	case int32:
-		return int64(value)
-	case int64:
-		return value
-	}
-	return 0
+func craftingMapStack() item.Stack {
+	return item.NewStack(item.FilledMap{NativeID: 42, HasNativeID: true}, 1)
 }
 
 func craftValidMulti(t *testing.T, s *Session, id string, result protocol.StackRequestItem, input []item.Stack) item.Stack {

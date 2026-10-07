@@ -514,6 +514,23 @@ func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
 	}
 }
 
+func TestPortalDestinationNetherSearchBoundary(t *testing.T) {
+	for _, test := range []struct {
+		x int
+		found bool
+	}{{-17, false}, {-16, true}, {16, true}, {17, false}} {
+		w := world.Config{Dim: world.Nether, Synchronous: true}.New()
+		mustDo(t, w, func(tx *world.Tx) {
+			buildActivePortal(tx, cube.Pos{test.x, 64, 0})
+			_, found := NewPortalTravelComputer().destinationSpawn(tx, world.Overworld, cube.Pos{0, 64, 0})
+			if found != test.found {
+				t.Errorf("portal at x=%d found=%t, want %t", test.x, found, test.found)
+			}
+		})
+		_ = w.Close()
+	}
+}
+
 func TestPortalTravelRegistersEntityInDestinationChunk(t *testing.T) {
 	source := world.Config{Synchronous: true}.New()
 	destination := world.Config{Dim: world.Nether, Synchronous: true}.New()

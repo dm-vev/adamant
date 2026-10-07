@@ -1,0 +1,569 @@
+[
+  {
+    "name": "spruce_sapling",
+    "state": "minecraft:spruce_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "sugar_cane",
+    "state": "minecraft:sugar_cane",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      },
+      {
+        "position": [
+          1,
+          -1,
+          0
+        ],
+        "state": "minecraft:water"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "acacia_sapling",
+    "state": "minecraft:acacia_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "cherry_sapling",
+    "state": "minecraft:cherry_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "birch_sapling",
+    "state": "minecraft:birch_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "poplar_sapling",
+    "state": "minecraft:poplar_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "oak_sapling",
+    "state": "minecraft:oak_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "cactus",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "firefly_bush",
+    "state": "minecraft:firefly_bush",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "jungle_sapling",
+    "state": "minecraft:jungle_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "pale_oak_sapling",
+    "state": "minecraft:pale_oak_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "mangrove_propagule",
+    "state": "minecraft:mangrove_propagule",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "dark_oak_sapling",
+    "state": "minecraft:dark_oak_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:grass_block"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "sapling_sand",
+    "state": "minecraft:oak_sapling",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "firefly_sand",
+    "state": "minecraft:firefly_bush",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cactus_dirt",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:dirt"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cactus_solid_side",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          1,
+          0,
+          0
+        ],
+        "state": "minecraft:stone"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cactus_lava_side",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          1,
+          0,
+          0
+        ],
+        "state": "minecraft:lava"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cactus_water_above",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": "minecraft:water"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cactus_bubble_above",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": "minecraft:bubble_column"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cactus_water_side",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          1,
+          0,
+          0
+        ],
+        "state": "minecraft:water"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "cactus_stack",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:cactus"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "cane_dry",
+    "state": "minecraft:sugar_cane",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cane_high_water",
+    "state": "minecraft:sugar_cane",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          1,
+          0,
+          0
+        ],
+        "state": "minecraft:water"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cane_ice",
+    "state": "minecraft:sugar_cane",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          1,
+          -1,
+          0
+        ],
+        "state": "minecraft:ice"
+      }
+    ],
+    "survives": false
+  },
+  {
+    "name": "cane_stack",
+    "state": "minecraft:sugar_cane",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sugar_cane"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "mangrove_clay",
+    "state": "minecraft:mangrove_propagule",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:clay"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "cactus_waterlogged_above",
+    "state": "minecraft:cactus",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": {
+          "id": "minecraft:oak_slab",
+          "properties": {
+            "waterlogged": "true",
+            "type": "bottom"
+          }
+        }
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "cane_waterlogged_neighbor",
+    "state": "minecraft:sugar_cane",
+    "blocks": [
+      {
+        "position": [
+          0,
+          -1,
+          0
+        ],
+        "state": "minecraft:sand"
+      },
+      {
+        "position": [
+          1,
+          -1,
+          0
+        ],
+        "state": {
+          "id": "minecraft:oak_slab",
+          "properties": {
+            "waterlogged": "true",
+            "type": "bottom"
+          }
+        }
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "hanging_mangrove_leaves",
+    "state": {
+      "id": "minecraft:mangrove_propagule",
+      "properties": {
+        "hanging": "true"
+      }
+    },
+    "blocks": [
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": "minecraft:mangrove_leaves"
+      }
+    ],
+    "survives": true
+  },
+  {
+    "name": "hanging_oak_leaves",
+    "state": {
+      "id": "minecraft:mangrove_propagule",
+      "properties": {
+        "hanging": "true"
+      }
+    },
+    "blocks": [
+      {
+        "position": [
+          0,
+          1,
+          0
+        ],
+        "state": "minecraft:oak_leaves"
+      }
+    ],
+    "survives": false
+  }
+]

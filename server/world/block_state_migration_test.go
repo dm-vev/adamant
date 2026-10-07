@@ -45,12 +45,13 @@ type migrationTestGenerator struct {
 	stoneRID uint32
 }
 
-func (g migrationTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk) {
+func (g migrationTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk) GenerationResult {
 	if pos == (ChunkPos{0, 0}) {
 		c.SetBlock(15, 0, 8, 0, g.blockRID)
 	} else if pos == (ChunkPos{1, 0}) {
 		c.SetBlock(0, 0, 8, 0, g.stoneRID)
 	}
+	return GenerationResult{}
 }
 func (migrationTestGenerator) DefaultSpawn(Dimension) cube.Pos { return cube.Pos{} }
 
@@ -119,11 +120,12 @@ type migrationDependencyGenerator struct {
 	dependentRID uint32
 }
 
-func (g migrationDependencyGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk) {
-	g.migrationTestGenerator.GenerateChunk(pos, c)
+func (g migrationDependencyGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk) GenerationResult {
+	result := g.migrationTestGenerator.GenerateChunk(pos, c)
 	if pos == (ChunkPos{0, 0}) {
 		c.SetBlock(14, 0, 8, 0, g.dependentRID)
 	}
+	return result
 }
 
 func TestMissingStateDependencyWaitsForBoundaryReconstruction(t *testing.T) {
@@ -139,7 +141,7 @@ func TestMissingStateDependencyWaitsForBoundaryReconstruction(t *testing.T) {
 	blockRID, _ := registry.StateToRuntimeID(migrationTestBlockName, nil)
 	dependentRID, _ := registry.StateToRuntimeID("test:state_migration_dependency", nil)
 	stoneRID, _ := registry.StateToRuntimeID("minecraft:stone", nil)
-	provider := &migrationTestProvider{registry: registry, columns: make(map[ChunkPos]chunk.SerialisedData)}
+	provider := &migrationTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, registry: registry, columns: make(map[ChunkPos]chunk.SerialisedData)}
 	w := Config{
 		Blocks: registry, Provider: provider, Synchronous: true,
 		Generator: migrationDependencyGenerator{migrationTestGenerator{blockRID: blockRID, stoneRID: stoneRID}, dependentRID},
@@ -225,7 +227,7 @@ func TestDiskMissingStateMigrationTracksPaletteEntriesAndChunkBoundaries(t *test
 			}
 			neighbour := chunk.New(registry, Overworld.Range())
 			neighbour.SetBlock(0, 0, 8, 0, stoneRID)
-			provider := &migrationTestProvider{registry: registry, columns: map[ChunkPos]chunk.SerialisedData{
+			provider := &migrationTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, registry: registry, columns: map[ChunkPos]chunk.SerialisedData{
 				{0, 0}: chunk.Encode(primary, chunk.DiskEncoding),
 				{1, 0}: chunk.Encode(neighbour, chunk.DiskEncoding),
 			}}

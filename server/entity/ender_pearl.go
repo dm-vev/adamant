@@ -1,8 +1,11 @@
 package entity
 
 import (
+	"hash/fnv"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -39,6 +42,16 @@ func teleport(e *Ent, tx *world.Tx, target trace.Result) {
 		return
 	}
 	owner, _ := behaviour.Owner().Entity(tx)
+	if owner == nil {
+		return
+	}
+	uuid := e.H().UUID()
+	hash := fnv.New64a()
+	_, _ = hash.Write(uuid[:])
+	random := java26.NewLegacyRandom(int64(hash.Sum64()))
+	if random.NextFloat() < .05 {
+		tx.AddEntity(NewEndermite(world.EntitySpawnOpts{Position: target.Position(), SpawnReason: "ender_pearl"}))
+	}
 	if user, ok := owner.(teleporter); ok {
 		tx.PlaySound(user.Position(), sound.Teleport{})
 		user.Teleport(target.Position())

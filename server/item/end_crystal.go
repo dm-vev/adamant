@@ -14,32 +14,26 @@ type endCrystalSupport interface {
 	SupportsEndCrystal() bool
 }
 
-// UseOnBlock places an End crystal on top of a supporting block if the two blocks above it are air and no other
-// entities intersect the space the crystal is placed in. The face clicked is ignored.
+// UseOnBlock places a crystal above obsidian or bedrock. Only the immediately
+// adjacent block must be air; the two-block-high entity box must be unoccupied.
 func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
 	support, ok := tx.Block(pos).(endCrystalSupport)
 	if !ok || !support.SupportsEndCrystal() {
 		return false
 	}
 
-	above, twoAbove := pos.Side(cube.FaceUp), pos.Side(cube.FaceUp).Side(cube.FaceUp)
-	if above.OutOfBounds(tx.Range()) || twoAbove.OutOfBounds(tx.Range()) {
+	above := pos.Side(cube.FaceUp)
+	if above.OutOfBounds(tx.Range()) {
 		return false
 	}
-	if tx.Block(above) != air() || tx.Block(twoAbove) != air() {
+	if tx.Block(above) != air() {
 		return false
 	}
 	if _, liquid := tx.Liquid(above); liquid {
 		return false
 	}
-	if _, liquid := tx.Liquid(twoAbove); liquid {
-		return false
-	}
 
-	// Vanilla anchors the entity check at the clicked block, spanning it and the
-	// air block above. Any intersecting entity blocks placement, including the
-	// placing player.
-	box := cube.Box(0, 0, 0, 1, 2, 1).Translate(pos.Vec3())
+	box := cube.Box(0, 0, 0, 1, 2, 1).Translate(above.Vec3())
 	for entity := range tx.EntitiesWithin(box.Grow(2)) {
 		if entity.H().Type().BBox(entity).Translate(entity.Position()).IntersectsWith(box) {
 			return false
@@ -50,12 +44,11 @@ func (EndCrystal) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.
 	if create == nil {
 		return false
 	}
-	showBase := true
-	if name, _ := tx.Block(pos).EncodeBlock(); name == "minecraft:bedrock" {
-		showBase = false
-	}
 	opts := world.EntitySpawnOpts{Position: above.Vec3Middle()}
-	tx.AddEntity(create(opts, showBase))
+	tx.AddEntity(create(opts, false))
+	if fight := tx.DragonFight(); fight != nil {
+		fight.TryRespawn(tx)
+	}
 	ctx.SubtractFromCount(1)
 	return true
 }

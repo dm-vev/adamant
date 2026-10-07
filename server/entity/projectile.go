@@ -181,13 +181,21 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return nil
 	}
 	vel := e.Velocity()
+	startPos := e.Position()
 	m, result := lt.tickMovement(e, tx)
 	e.data.Pos, e.data.Vel, e.data.Rot = m.pos, m.vel, m.rot
-
 	lt.collisionPos, lt.collided, lt.ageCollided = cube.Pos{}, false, 0
 
 	if result == nil {
 		return m
+	}
+
+	if entityResult, ok := result.(trace.EntityResult); ok {
+		if deflector, ok := entityResult.Entity().(interface {
+			DeflectProjectile(*Ent, *Movement, mgl64.Vec3) bool
+		}); ok && deflector.DeflectProjectile(e, m, vel) {
+			return m
+		}
 	}
 
 	for i := 0; i < lt.conf.ParticleCount; i++ {
@@ -201,12 +209,24 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	case trace.EntityResult:
 		target := r.Entity()
 		if l, ok := target.(Living); ok {
+			part := ""
+			if dragon, ok := target.(interface {
+				PartHitFrom(mgl64.Vec3, mgl64.Vec3, float64) (string, mgl64.Vec3, bool)
+				HurtPart(string, float64, world.DamageSource) (float64, bool)
+			}); ok {
+				delta := m.pos.Sub(startPos)
+				var hit bool
+				part, _, hit = dragon.PartHitFrom(startPos, delta, delta.Len())
+				if !hit {
+					return m
+				}
+			}
 			if lt.conf.Damage >= 0 {
-				lt.hitEntity(l, e, vel, tx)
+				lt.hitEntity(l, e, vel, part, tx)
 			}
 			lt.collidedEntities = append(lt.collidedEntities, l.H())
 		} else if d, ok := target.(Destructible); ok {
-			owner, _ := lt.conf.Owner.Entity(tx)
+			owner := lt.owner(tx)
 			src := ProjectileDamageSource{Projectile: e, Owner: owner}
 			d.Destroy(tx, src, owner)
 			lt.collidedEntities = append(lt.collidedEntities, target.H())
@@ -313,8 +333,16 @@ func (lt *ProjectileBehaviour) hitBlockSurviving(e *Ent, r trace.BlockResult, m 
 // hitEntity is called when a projectile hits a Living. It deals damage to the
 // entity and knocks it back. Additionally, it applies any potion effects and
 // fire if applicable.
-func (lt *ProjectileBehaviour) hitEntity(l Living, e *Ent, vel mgl64.Vec3, tx *world.Tx) {
+func (lt *ProjectileBehaviour) owner(tx *world.Tx) world.Entity {
+	if lt.conf.Owner == nil {
+		return nil
+	}
 	owner, _ := lt.conf.Owner.Entity(tx)
+	return owner
+}
+
+func (lt *ProjectileBehaviour) hitEntity(l Living, e *Ent, vel mgl64.Vec3, part string, tx *world.Tx) {
+	owner := lt.owner(tx)
 	src := ProjectileDamageSource{Projectile: e, Owner: owner}
 	var dmg float64
 	if lt.conf.damageCalculator == nil {
@@ -325,8 +353,15 @@ func (lt *ProjectileBehaviour) hitEntity(l Living, e *Ent, vel mgl64.Vec3, tx *w
 	} else {
 		dmg = lt.conf.damageCalculator(lt.conf.Damage, vel.Len(), lt.conf.Critical, lt.conf.powerLevel)
 	}
-	// TODO: Piercing arrows should bypass shield blocking when shields are implemented.
-	if _, vulnerable := l.Hurt(dmg, src); vulnerable {
+	var vulnerable bool
+	if part != "" {
+		_, vulnerable = l.(interface {
+			HurtPart(string, float64, world.DamageSource) (float64, bool)
+		}).HurtPart(part, dmg, src)
+	} else {
+		_, vulnerable = l.Hurt(dmg, src)
+	}
+	if vulnerable {
 		l.KnockBack(l.Position().Sub(vel), 0.45+lt.conf.KnockBackForceAddend, 0.3608+lt.conf.KnockBackHeightAddend)
 
 		for _, eff := range lt.conf.Potion.Effects() {

@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/portal"
 )
 
 // EndPortal is the translucent block that teleports the player to and from the End. It is created by inserting an Eye
@@ -41,15 +40,6 @@ func (EndPortal) EncodeNBT() map[string]any {
 // DecodeNBT decodes the End portal block actor.
 func (e EndPortal) DecodeNBT(map[string]any) any {
 	return e
-}
-
-// NeighbourUpdateTick removes the connected portal blocks if the surrounding frame ring is no longer complete,
-// like breaking the frame of a nether portal.
-func (EndPortal) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if portal.EndPortalRingIntact(tx, pos) {
-		return
-	}
-	portal.DeactivateEndPortal(tx, pos)
 }
 
 // EntityInside ...

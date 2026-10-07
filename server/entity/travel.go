@@ -43,8 +43,6 @@ func NewPortalTravelComputer() *PortalTravelComputer {
 	return &PortalTravelComputer{Instantaneous: func(world.Dimension, world.Dimension) bool { return true }, Cooldown: time.Second * 15}
 }
 
-const portalSearchRadius = 128
-
 type portalTravelComputerProvider interface {
 	PortalTravelComputer() *PortalTravelComputer
 }
@@ -280,14 +278,18 @@ func (t *PortalTravelComputer) destinationSpawn(tx *world.Tx, sourceDim world.Di
 		}
 		return tx.World().Spawn().Vec3Middle(), true
 	}
+	radius := 128
+	if tx.World().Dimension() == world.Nether {
+		radius = 16
+	}
 	if !t.CreatePortal {
-		n, ok := portal.FindNetherPortal(tx, pos, portalSearchRadius)
+		n, ok := portal.FindNetherPortal(tx, pos, radius)
 		if !ok {
 			return mgl64.Vec3{}, false
 		}
 		return n.Spawn().Vec3Middle(), true
 	}
-	if n, ok := portal.FindOrCreateNetherPortal(tx, pos, portalSearchRadius); ok {
+	if n, ok := portal.FindOrCreateNetherPortal(tx, pos, radius); ok {
 		return n.Spawn().Vec3Middle(), true
 	}
 	return mgl64.Vec3{}, false

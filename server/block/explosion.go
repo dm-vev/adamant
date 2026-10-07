@@ -26,6 +26,9 @@ type ExplosionConfig struct {
 	// SpawnFire will cause the explosion to randomly start fires in 1/3 of all destroyed air blocks that are
 	// above opaque blocks.
 	SpawnFire bool
+	// NoBlockDamage preserves blocks and suppresses fire while retaining entity
+	// damage, knockback, sound and particles (Java's NONE interaction).
+	NoBlockDamage bool
 	// SuppressUnderwaterImpact prevents the explosion from affecting entities through liquid layers. Bedrock Edition
 	// applies this to every explosion.
 	SuppressUnderwaterImpact bool
@@ -153,54 +156,57 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 			affectedEntities = append(affectedEntities, e)
 		}
 
-		estimatedBlocks := max(32, min(4096, int(size*size*size*16)))
-		if _, ok := tx.Liquid(cube.PosFromVec3(explosionPos)); ok {
-			// Liquids such as water stop a regular TNT blast at the source, so avoid reserving space for a full blast.
-			estimatedBlocks = 32
-		}
-		affectedBlocks := make([]cube.Pos, 0, estimatedBlocks)
-		blockCache := make(map[cube.Pos]explosionBlockInfo, estimatedBlocks)
-		for _, ray := range rays {
-			pos := explosionPos
-			for blastForce := size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
-				current := cube.PosFromVec3(pos)
-				info, ok := blockCache[current]
-				if !ok {
-					currentBlock := tx.Block(current)
-					if l, ok := tx.Liquid(current); ok {
-						info.resistance = l.BlastResistance()
-						info.flags = explosionBlockResists
-					} else if i, ok := currentBlock.(Breakable); ok {
-						info.resistance = i.BreakInfo().BlastResistance
-						info.flags = explosionBlockResists
-					} else if _, ok = currentBlock.(Air); !ok {
-						info.flags = explosionBlockStopsRay
+		var affectedBlocks []cube.Pos
+		if !c.NoBlockDamage {
+			estimatedBlocks := max(32, min(4096, int(size*size*size*16)))
+			if _, ok := tx.Liquid(cube.PosFromVec3(explosionPos)); ok {
+				estimatedBlocks = 32
+			}
+			affectedBlocks = make([]cube.Pos, 0, estimatedBlocks)
+			blockCache := make(map[cube.Pos]explosionBlockInfo, estimatedBlocks)
+			for _, ray := range rays {
+				pos := explosionPos
+				for blastForce := size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
+					current := cube.PosFromVec3(pos)
+					info, ok := blockCache[current]
+					if !ok {
+						currentBlock := tx.Block(current)
+						if l, ok := tx.Liquid(current); ok {
+							info.resistance = l.BlastResistance()
+							info.flags = explosionBlockResists
+						} else if i, ok := currentBlock.(Breakable); ok {
+							info.resistance = i.BreakInfo().BlastResistance
+							info.flags = explosionBlockResists
+						} else if _, ok = currentBlock.(Air); !ok {
+							info.flags = explosionBlockStopsRay
+						}
+						blockCache[current] = info
 					}
-					blockCache[current] = info
-				}
-				if info.flags&explosionBlockStopsRay != 0 {
-					// Completely stop the ray if the current block is not air and unbreakable.
-					break
-				}
-
-				pos = pos.Add(ray)
-				// Air offers no resistance to the ray, only blocks and liquids reduce its force beyond the step decay.
-				if info.flags&explosionBlockResists != 0 {
-					blastForce -= (info.resistance + 0.3) * 0.3
-				}
-				if blastForce > 0 && info.flags&explosionBlockAffected == 0 {
-					info.flags |= explosionBlockAffected
-					blockCache[current] = info
-					affectedBlocks = append(affectedBlocks, current)
+					if info.flags&explosionBlockStopsRay != 0 {
+						break
+					}
+					pos = pos.Add(ray)
+					if info.flags&explosionBlockResists != 0 {
+						blastForce -= (info.resistance + 0.3) * 0.3
+					}
+					if blastForce > 0 && info.flags&explosionBlockAffected == 0 {
+						info.flags |= explosionBlockAffected
+						blockCache[current] = info
+						affectedBlocks = append(affectedBlocks, current)
+					}
 				}
 			}
 		}
 
 		ctx := tx.Event()
-		spawnFire := c.SpawnFire
+		spawnFire := c.SpawnFire && !c.NoBlockDamage
 		itemDropChance := c.ItemDropChance
 		if tx.World().Handler().HandleExplosion(ctx, src, &affectedEntities, &affectedBlocks, &itemDropChance, &spawnFire); ctx.Cancelled() {
 			return
+		}
+		if c.NoBlockDamage {
+			affectedBlocks = nil
+			spawnFire = false
 		}
 
 		for _, e := range affectedEntities {

@@ -28,6 +28,33 @@ func TestExplosionAffectsEntityAtExactOrigin(t *testing.T) {
 	}
 }
 
+func TestExplosionNoBlockDamagePreservesTerrainAndEntityImpact(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+	record := new(exactOriginExplosionRecord)
+	<-w.Exec(func(tx *world.Tx) {
+		origin := mgl64.Vec3{0.5, 5.5, 0.5}
+		floor := cube.Pos{0, 4, 0}
+		side := cube.Pos{1, 5, 0}
+		tx.SetBlock(floor, Stone{}, nil)
+		tx.SetBlock(side, Glass{}, nil)
+		tx.AddEntity(world.EntitySpawnOpts{Position: origin}.New(exactOriginExplosionEntityType{}, exactOriginExplosionEntityConfig{record}))
+		ExplosionConfig{RandSource: rand.NewPCG(1, 2), NoBlockDamage: true, SpawnFire: true}.Explode(tx, exactOriginExplosionSource{pos: origin, size: 6})
+		if _, ok := tx.Block(floor).(Stone); !ok {
+			t.Fatal("non-destructive explosion removed its floor")
+		}
+		if _, ok := tx.Block(side).(Glass); !ok {
+			t.Fatal("non-destructive explosion broke adjacent glass")
+		}
+		if _, ok := tx.Block(cube.PosFromVec3(origin)).(Air); !ok {
+			t.Fatal("non-destructive explosion placed fire")
+		}
+	})
+	if record.calls != 1 || record.impact != 1 {
+		t.Fatalf("non-destructive explosion calls/impact = %v/%v, want 1/1", record.calls, record.impact)
+	}
+}
+
 func TestConcurrentExplosionsLockSharedRandSource(t *testing.T) {
 	source := &concurrentExplosionSource{}
 	w1 := world.Config{Synchronous: true}.New()

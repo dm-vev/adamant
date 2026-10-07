@@ -12,6 +12,11 @@ import (
 )
 
 // EndCrystalType is a world.EntityType implementation for End Crystals.
+
+// NewEndCrystal creates a worldless end crystal handle with the supplied state.
+func NewEndCrystal(opts world.EntitySpawnOpts, conf EndCrystalBehaviourConfig) *world.EntityHandle {
+	return opts.New(EndCrystalType, conf)
+}
 var EndCrystalType endCrystalType
 
 type endCrystalType struct{}
@@ -36,42 +41,28 @@ func (endCrystalType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		conf.ShowBase = nbtconv.Bool(m, "ShowBottom")
 	}
 	conf.ExplosionSize = nbtconv.Float64(m, "ExplosionSize")
+	conf.PermanentlyInvulnerable = nbtconv.Bool(m, "Invulnerable")
 	decodeTarget := func(prefix string) (mgl64.Vec3, bool) {
-		if _, ok := m[prefix+"X"]; !ok {
-			return mgl64.Vec3{}, false
-		}
-		if _, ok := m[prefix+"Y"]; !ok {
-			return mgl64.Vec3{}, false
-		}
-		if _, ok := m[prefix+"Z"]; !ok {
-			return mgl64.Vec3{}, false
-		}
-		return mgl64.Vec3{
-			float64(nbtconv.Int32(m, prefix+"X")),
-			float64(nbtconv.Int32(m, prefix+"Y")),
-			float64(nbtconv.Int32(m, prefix+"Z")),
-		}, true
+		if _, ok := m[prefix+"X"]; !ok { return mgl64.Vec3{}, false }
+		if _, ok := m[prefix+"Y"]; !ok { return mgl64.Vec3{}, false }
+		if _, ok := m[prefix+"Z"]; !ok { return mgl64.Vec3{}, false }
+		return mgl64.Vec3{float64(nbtconv.Int32(m,prefix+"X")),float64(nbtconv.Int32(m,prefix+"Y")),float64(nbtconv.Int32(m,prefix+"Z"))},true
 	}
 	target, ok := decodeTarget("BlockTarget")
-	if !ok {
-		target, ok = decodeTarget("BeamTarget")
-	}
-	if ok {
-		conf.BeamTarget = &target
-	}
+	if !ok { target, ok = decodeTarget("BeamTarget") }
+	if ok { conf.BeamTarget = &target }
 	data.Data = conf.New()
 }
 
 func (endCrystalType) EncodeNBT(data *world.EntityData) map[string]any {
 	behaviour := data.Data.(*EndCrystalBehaviour)
 	m := map[string]any{
-		"ShowBottom":    boolByte(behaviour.ShowBase()),
+		"ShowBottom": boolByte(behaviour.ShowBase()),
 		"ExplosionSize": behaviour.explosionSize,
+		"Invulnerable": boolByte(behaviour.permanentlyInvulnerable),
 	}
 	if target, ok := behaviour.beamTargetPos(); ok {
-		m["BlockTargetX"] = int32(target[0])
-		m["BlockTargetY"] = int32(target[1])
-		m["BlockTargetZ"] = int32(target[2])
+		m["BlockTargetX"] = int32(target[0]); m["BlockTargetY"] = int32(target[1]); m["BlockTargetZ"] = int32(target[2])
 	}
 	return m
 }
@@ -81,7 +72,7 @@ type EndCrystal struct {
 	*Ent
 }
 
-// Destroy destroys the end crystal, triggering its explosion behaviour unless it was destroyed by the void.
+// Destroy destroys the end crystal, omitting a second explosion for void and explosion damage.
 func (e *EndCrystal) Destroy(tx *world.Tx, src world.DamageSource, _ world.Entity) bool {
 	return e.behaviour().Destroy(e.Ent, tx, src)
 }
@@ -104,6 +95,28 @@ func (e *EndCrystal) BeamTarget() (mgl64.Vec3, bool) {
 	return e.behaviour().BeamTarget()
 }
 
+// SetBeamTarget updates or clears the crystal beam and publishes its metadata.
+func (e *EndCrystal) SetBeamTarget(pos *cube.Pos) {
+	b := e.behaviour()
+	if pos == nil {
+		if !b.hasBeamTarget {
+			return
+		}
+		b.hasBeamTarget = false
+	} else {
+		if b.hasBeamTarget && b.beamTarget == *pos {
+			return
+		}
+		b.beamTarget, b.hasBeamTarget = *pos, true
+	}
+	e.updateState()
+}
+
+// SetPermanentlyInvulnerable controls the protection used during dragon respawn.
+func (e *EndCrystal) SetPermanentlyInvulnerable(invulnerable bool) {
+	e.behaviour().permanentlyInvulnerable = invulnerable
+}
+
 func (e *EndCrystal) behaviour() *EndCrystalBehaviour {
 	return e.Behaviour().(*EndCrystalBehaviour)
 }
@@ -116,10 +129,11 @@ var endCrystalConf = EndCrystalBehaviourConfig{
 
 // EndCrystalBehaviourConfig holds configuration for the end crystal behaviour.
 type EndCrystalBehaviourConfig struct {
-	Stationary    StationaryBehaviourConfig
+	Stationary StationaryBehaviourConfig
 	ExplosionSize float64
-	ShowBase      bool
-	BeamTarget    *mgl64.Vec3
+	ShowBase bool
+	BeamTarget *mgl64.Vec3
+	PermanentlyInvulnerable bool
 }
 
 // Apply applies the configuration to the entity data.
@@ -133,37 +147,34 @@ func (conf EndCrystalBehaviourConfig) New() *EndCrystalBehaviour {
 		conf.ExplosionSize = 6
 	}
 	behaviour := &EndCrystalBehaviour{
-		stationary:    conf.Stationary.New(),
+		stationary: conf.Stationary.New(),
 		explosionSize: conf.ExplosionSize,
-		showBase:      conf.ShowBase,
+		showBase: conf.ShowBase,
+		permanentlyInvulnerable: conf.PermanentlyInvulnerable,
 	}
-	if conf.BeamTarget != nil {
-		behaviour.beamTarget = cube.PosFromVec3(*conf.BeamTarget)
-		behaviour.hasBeamTarget = true
-	}
+	if conf.BeamTarget != nil { behaviour.beamTarget = cube.PosFromVec3(*conf.BeamTarget); behaviour.hasBeamTarget = true }
 	return behaviour
 }
 
 // EndCrystalBehaviour implements the behaviour of an end crystal entity.
 type EndCrystalBehaviour struct {
-	stationary    *StationaryBehaviour
+	stationary *StationaryBehaviour
 	explosionSize float64
-	showBase      bool
-	beamTarget    cube.Pos
+	showBase bool
+	permanentlyInvulnerable bool
+	beamTarget cube.Pos
 	hasBeamTarget bool
-	exploded      bool
+	exploded bool
 }
 
-// Tick ticks the underlying stationary behaviour and starts fire at supported End crystals in the End.
+// Tick creates the source fire block beneath End crystals while a fight exists.
 func (b *EndCrystalBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if tx.World().Dimension() == world.End {
+	if tx.DragonFight() != nil {
 		pos := cube.PosFromVec3(e.Position())
-		if _, air := tx.Block(pos.Side(cube.FaceDown)).(block.Air); !air {
-			if _, air := tx.Block(pos).(block.Air); air {
-				fire := block.Fire{}
-				tx.SetBlock(pos, fire, nil)
-				tx.ScheduleBlockUpdate(pos, fire, time.Duration(30+rand.IntN(10))*time.Second/20)
-			}
+		if _, air := tx.Block(pos).(block.Air); air {
+			fire := block.Fire{}
+			tx.SetBlock(pos, fire, nil)
+			tx.ScheduleBlockUpdate(pos, fire, time.Duration(30+rand.IntN(10))*time.Second/20)
 		}
 	}
 	return b.stationary.Tick(e, tx)
@@ -171,17 +182,28 @@ func (b *EndCrystalBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // Destroy destroys the end crystal if it hasn't been destroyed yet.
 func (b *EndCrystalBehaviour) Destroy(e *Ent, tx *world.Tx, src world.DamageSource) bool {
-	if b.exploded {
-		return false
+	if b.exploded { return false }
+	if b.permanentlyInvulnerable {
+		if _, void := src.(VoidDamageSource); !void { return false }
+	}
+	switch source := src.(type) {
+	case AttackDamageSource:
+		if _, dragon := source.Attacker.(*EnderDragon); dragon { return false }
+	case ProjectileDamageSource:
+		if _, dragon := source.Owner.(*EnderDragon); dragon { return false }
 	}
 	b.exploded = true
+	crystal := &EndCrystal{Ent: e}
+	explosion := world.NewEntityExplosionSource(crystal, b.explosionSize)
 	_ = e.CloseIn(tx)
-	if _, void := src.(VoidDamageSource); void {
-		return true
+	_, void := src.(VoidDamageSource)
+	_, alreadyExploding := src.(ExplosionDamageSource)
+	if !void && !alreadyExploding {
+		block.ExplosionConfig{}.Explode(tx, explosion)
 	}
-	block.ExplosionConfig{
-		SuppressUnderwaterImpact: true,
-	}.Explode(tx, world.NewEntityExplosionSource(e, b.explosionSize))
+	if fight := tx.DragonFight(); fight != nil {
+		fight.OnCrystalDestroyed(tx, crystal, cube.PosFromVec3(e.Position()), src)
+	}
 	return true
 }
 

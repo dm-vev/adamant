@@ -5,7 +5,6 @@ import (
 )
 
 // InfestedStoneBricks is a block that hides a silverfish. It looks identical to stone bricks.
-// TODO: spawn a silverfish on break (without silk touch) once silverfish are implemented.
 type InfestedStoneBricks struct {
 	solid
 	flute
@@ -16,7 +15,7 @@ type InfestedStoneBricks struct {
 
 // BreakInfo ...
 func (i InfestedStoneBricks) BreakInfo() BreakInfo {
-	return newBreakInfo(0.75, pickaxeHarvestable, pickaxeEffective, silkTouchOnlyDrop(i)).withBlastResistance(0.75)
+	return newBreakInfo(0.75, pickaxeHarvestable, pickaxeEffective, silkTouchOnlyDrop(i)).withBlastResistance(0.75).withBreakHandler(infestedBreakHandler)
 }
 
 // EncodeItem ...

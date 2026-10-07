@@ -169,6 +169,7 @@ func init() {
 	world.RegisterBlock(TuffBricks{})
 	world.RegisterBlock(TuffBricks{Chiseled: true})
 	world.RegisterBlock(PolishedTuff{})
+	registerAll(allSuspiciousBlocks())
 	world.RegisterBlock(ShortGrass{})
 	world.RegisterBlock(Fern{})
 	world.RegisterBlock(CactusFlower{})
@@ -186,6 +187,11 @@ func init() {
 	world.RegisterBlock(NetherReactor{})
 	world.RegisterBlock(PowderSnow{})
 	world.RegisterBlock(Sculk{})
+	for _, canSummon := range []bool{false, true} {
+		for _, shrieking := range []bool{false, true} {
+			world.RegisterBlock(SculkShrieker{CanSummon: canSummon, Shrieking: shrieking})
+		}
+	}
 	world.RegisterBlock(StructureVoid{})
 	world.RegisterBlock(Target{})
 	world.RegisterBlock(Torchflower{})
@@ -332,6 +338,11 @@ func init() {
 	registerAll(allHugeMushroomBlocks(MushroomStemBlock()))
 	registerAll(allWool())
 	registerAll(allDecoratedPots())
+	registerAll(allChiseledBookshelves())
+	registerAll(allCopperChests())
+	registerAll(allVaults())
+	registerAll(allCrafters())
+	registerAll(allTrialSpawners())
 	registerAll(allCopper())
 	registerAll(allCopperBars())
 	registerAll(allCopperChains())
@@ -407,6 +418,8 @@ func init() {
 	world.RegisterItem(ChorusFlower{})
 	world.RegisterItem(ChorusPlant{})
 	world.RegisterItem(ChiseledQuartz{})
+	world.RegisterItem(NewChiseledBookshelf())
+	world.RegisterItem(Crafter{})
 	world.RegisterItem(Clay{})
 	world.RegisterItem(ClientRequestPlaceholderBlock{})
 	world.RegisterItem(Coal{})
@@ -449,6 +462,8 @@ func init() {
 	world.RegisterItem(EndRod{})
 	world.RegisterItem(EndStone{})
 	world.RegisterItem(MobSpawner{})
+	world.RegisterItem(Vault{})
+	world.RegisterItem(TrialSpawner{})
 	world.RegisterItem(EnderChest{})
 	for _, t := range ShulkerBoxTypes() {
 		world.RegisterItem(ShulkerBox{Type: t})
@@ -567,6 +582,7 @@ func init() {
 	world.RegisterItem(SeaLantern{})
 	world.RegisterItem(SeaPickle{})
 	world.RegisterItem(Sculk{})
+	world.RegisterItem(SculkShrieker{})
 	for _, m := range ShelfMaterials() {
 		world.RegisterItem(Shelf{Material: m})
 	}
@@ -786,6 +802,9 @@ func init() {
 			world.RegisterItem(Copper{Type: c, Oxidation: o})
 			world.RegisterItem(Copper{Type: c, Oxidation: o, Waxed: true})
 		}
+	}
+	for _, item := range allCopperChestItems() {
+		world.RegisterItem(item)
 	}
 }
 

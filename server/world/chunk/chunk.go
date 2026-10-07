@@ -245,6 +245,11 @@ func (chunk *Chunk) Range() cube.Range {
 	return chunk.r
 }
 
+// BlockRegistry returns the registry defining this chunk's block runtime IDs.
+func (chunk *Chunk) BlockRegistry() BlockRegistry {
+	return chunk.br
+}
+
 // Sub returns a list of all sub chunks present in the chunk.
 func (chunk *Chunk) Sub() []*SubChunk {
 	return chunk.sub

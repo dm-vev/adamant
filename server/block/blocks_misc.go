@@ -1,61 +1,6 @@
 package block
 
-import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
-)
-
-// DriedGhast is a decorative block with a facing direction.
-type DriedGhast struct {
-	transparent
-	solid
-
-	Facing      cube.Direction
-	Rehydration int
-}
-
-// UseOnBlock ...
-func (d DriedGhast) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) (used bool) {
-	pos, _, used = firstReplaceable(tx, pos, face, d)
-	if !used {
-		return
-	}
-	d.Facing = user.Rotation().Direction().Opposite()
-	d.Rehydration = 0
-
-	place(tx, pos, d, user, ctx)
-	return placed(ctx)
-}
-
-// BreakInfo ...
-func (d DriedGhast) BreakInfo() BreakInfo {
-	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(d))
-}
-
-// EncodeItem ...
-func (DriedGhast) EncodeItem() (name string, meta int16) {
-	return "minecraft:dried_ghast", 0
-}
-
-// EncodeBlock ...
-func (d DriedGhast) EncodeBlock() (string, map[string]any) {
-	return "minecraft:dried_ghast", map[string]any{
-		"minecraft:cardinal_direction": d.Facing.String(),
-		"rehydration_level":            int32(d.Rehydration),
-	}
-}
-
-// allDriedGhast returns all dried ghast states.
-func allDriedGhast() (b []world.Block) {
-	for _, d := range cube.Directions() {
-		for i := 0; i <= 3; i++ {
-			b = append(b, DriedGhast{Facing: d, Rehydration: i})
-		}
-	}
-	return
-}
+import "github.com/df-mc/dragonfly/server/item"
 
 // HeavyCore is a decorative block.
 type HeavyCore struct {

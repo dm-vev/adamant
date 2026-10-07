@@ -1,12 +1,14 @@
 package world
 
 import (
+	"errors"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/google/uuid"
 	"io"
 	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
 )
@@ -34,9 +36,42 @@ type Provider interface {
 	StoreColumn(pos ChunkPos, dim Dimension, col *chunk.Column) error
 }
 
+// WorldDataMemory stores provider-owned namespaced payloads in memory.
+// It provides process-lifetime persistence only, as appropriate for NopProvider.
+type WorldDataMemory struct {
+	mu   sync.Mutex
+	data map[string][]byte
+}
+
+func (m *WorldDataMemory) load(namespace string) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	data, ok := m.data[namespace]
+	if !ok {
+		return nil, leveldb.ErrNotFound
+	}
+	return slices.Clone(data), nil
+}
+
+func (m *WorldDataMemory) save(namespace string, data []byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.data == nil {
+		m.data = make(map[string][]byte)
+	}
+	m.data[namespace] = slices.Clone(data)
+}
+
 type positionTrackingProvider interface {
 	LoadPositionTrackingData() (PositionTrackingData, error)
 	SavePositionTrackingData(PositionTrackingData) error
+}
+
+// worldDataProvider stores opaque namespaced world-owned state. Namespaces
+// must be stable and distinct for each persisted subsystem.
+type worldDataProvider interface {
+	LoadWorldData(namespace string) ([]byte, error)
+	SaveWorldData(namespace string, data []byte) error
 }
 
 type providerKey struct{ provider Provider }
@@ -206,12 +241,36 @@ func providerIdentity(provider Provider) (providerKey, bool) {
 // Compile time check to make sure NopProvider implements Provider.
 var _ Provider = (*NopProvider)(nil)
 
-// NopProvider implements a Provider that does not perform any disk I/O. It generates values on the run and
-// dynamically, instead of reading and writing data, and otherwise returns empty values. A Settings struct can be passed
-// to initialise a world with specific settings. Since Settings is a pointer, using the same NopProvider for multiple
-// worlds means those worlds will share the same settings.
+// NopProvider implements a Provider that does not perform disk I/O. It
+// generates values dynamically and stores namespaced world data in memory for
+// the process lifetime. A Settings pointer may be passed to share world state;
+// when WorldData is nil, the in-memory world data store is owned by Settings.
 type NopProvider struct {
-	Set *Settings
+	Set       *Settings
+	WorldData *WorldDataMemory
+}
+
+func (n NopProvider) LoadWorldData(namespace string) ([]byte, error) {
+	store := n.WorldData
+	if store == nil && n.Set != nil {
+		store = &n.Set.worldData
+	}
+	if store == nil {
+		return nil, leveldb.ErrNotFound
+	}
+	return store.load(namespace)
+}
+
+func (n NopProvider) SaveWorldData(namespace string, data []byte) error {
+	store := n.WorldData
+	if store == nil && n.Set != nil {
+		store = &n.Set.worldData
+	}
+	if store == nil {
+		return errors.New("nil in-memory world data store")
+	}
+	store.save(namespace, data)
+	return nil
 }
 
 func (n NopProvider) Settings() *Settings {

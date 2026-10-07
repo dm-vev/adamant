@@ -35,11 +35,22 @@ func (j Jukebox) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 			notifyComparatorUpdate(pos, tx)
 			_ = h.inventory.SetItem(sourceSlot, sourceStack.Grow(-1))
 			tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscPlay{DiscType: m.DiscType})
+			updateJukeboxDancers(tx, pos, true)
 			return true
 		}
 	}
 
 	return false
+}
+func updateJukeboxDancers(tx *world.Tx, pos cube.Pos, playing bool) {
+	for e := range tx.Entities() {
+		dancer, ok := e.(interface {
+			SetJukeboxPlaying(cube.Pos, bool)
+		})
+		if ok && e.Position().Sub(pos.Vec3Centre()).Len() <= 32 {
+			dancer.SetJukeboxPlaying(pos, playing)
+		}
+	}
 }
 
 // ExtractItem ...
@@ -55,6 +66,7 @@ func (j Jukebox) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 	tx.SetBlock(pos, j, nil)
 	notifyComparatorUpdate(pos, tx)
 	tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscEnd{})
+	updateJukeboxDancers(tx, pos, false)
 	return true
 }
 
@@ -67,6 +79,7 @@ func (j Jukebox) FuelInfo() item.FuelInfo {
 func (j Jukebox) BreakInfo() BreakInfo {
 	return newBreakInfo(2, alwaysHarvestable, axeEffective, oneOf(Jukebox{})).withBlastResistance(6).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
 		if _, hasDisc := j.Disc(); hasDisc {
+			updateJukeboxDancers(tx, pos, false)
 			dropItem(tx, j.Item, pos.Vec3())
 			tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscEnd{})
 		}
@@ -89,6 +102,7 @@ func (j Jukebox) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, 
 		tx.SetBlock(pos, j, nil)
 		notifyComparatorUpdate(pos, tx)
 		tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscEnd{})
+		updateJukeboxDancers(tx, pos, false)
 	} else if held, _ := u.HeldItems(); !held.Empty() {
 		if m, ok := held.Item().(item.MusicDisc); ok {
 			j.Item = held
@@ -99,6 +113,7 @@ func (j Jukebox) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, 
 			ctx.SubtractFromCount(1)
 
 			tx.PlaySound(pos.Vec3Centre(), sound.MusicDiscPlay{DiscType: m.DiscType})
+			updateJukeboxDancers(tx, pos, true)
 			if u, ok := u.(jukeboxUser); ok {
 				u.SendJukeboxPopup(fmt.Sprintf("Now playing: %v - %v", m.DiscType.Author(), m.DiscType.DisplayName()))
 			}

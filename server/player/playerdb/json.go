@@ -52,6 +52,11 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 		EnderChestInventory: inventory.New(27, nil),
 		OffHand:             inventory.New(1, nil),
 		Armour:              inventory.NewArmour(nil),
+		UnlockedRecipes:     d.UnlockedRecipes,
+		RaidOmenPosition:    d.RaidOmenPosition,
+		HasRaidOmenPosition: d.HasRaidOmenPosition,
+		ShoulderLeft:        d.ShoulderLeft,
+		ShoulderRight:       d.ShoulderRight,
 	}
 	echest := make([]item.Stack, 27)
 	decodeItems(d.EnderChestInventory, echest, br)
@@ -116,6 +121,11 @@ func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 		}),
 		EnderChestInventory: encodeItems(d.EnderChestInventory.Slots()),
 		Dimension:           int32(dim),
+		UnlockedRecipes:     d.UnlockedRecipes,
+		RaidOmenPosition:    d.RaidOmenPosition,
+		HasRaidOmenPosition: d.HasRaidOmenPosition,
+		ShoulderLeft:        d.ShoulderLeft,
+		ShoulderRight:       d.ShoulderRight,
 	}
 }
 
@@ -139,6 +149,11 @@ type jsonData struct {
 	FireTicks                        int64
 	FallDistance                     float64
 	Dimension                        int32
+	UnlockedRecipes     []string
+	RaidOmenPosition    cube.Pos
+	HasRaidOmenPosition bool
+	ShoulderLeft        map[string]any
+	ShoulderRight       map[string]any
 }
 
 type jsonInventoryData struct {

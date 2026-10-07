@@ -6,6 +6,10 @@ import (
 	"math/rand/v2"
 	"runtime"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/google/uuid"
 )
 
 type blockRegistrySetter interface {
@@ -144,6 +148,17 @@ func (conf Config) New() *World {
 		s.Spawn = conf.Generator.DefaultSpawn(conf.Dim)
 		conf.Provider = NopProvider{Set: s}
 	}
+	switch provider := conf.Provider.(type) {
+	case NopProvider:
+		if provider.Set == nil {
+			provider.Set = defaultSettings()
+			conf.Provider = provider
+		}
+	case *NopProvider:
+		if provider.Set == nil {
+			provider.Set = defaultSettings()
+		}
+	}
 	if conf.RandomTickSpeed == 0 {
 		conf.RandomTickSpeed = 3
 	}
@@ -199,6 +214,10 @@ func (conf Config) New() *World {
 		scheduledUpdates:  newScheduledTickQueue(currentTick),
 		redstone:          newRedstoneEngine(currentTick),
 		entities:          make(map[*EntityHandle]*entityState),
+		lootSequences:     make(map[string]*java26.Random),
+		pois:              make(map[cube.Pos]POI),
+		raids:             make(map[int64]*Raid),
+		raidByRaider:      make(map[uuid.UUID]int64),
 		viewers:           make(map[*Loader]Viewer),
 		chunks:            make(map[ChunkPos]*Column),
 		chunkRequests:     make(map[ChunkPos][]chunkCallback),
@@ -217,6 +236,9 @@ func (conf Config) New() *World {
 		activeColumnIndex: make(map[ChunkPos]int),
 		entityColumnIndex: make(map[ChunkPos]int),
 	}
+	w.loadLootRandomSequences()
+	w.loadVillagePOIs()
+	w.loadRaids()
 	if s.worlds == nil {
 		s.worlds = make(map[*World]struct{})
 	}
@@ -227,6 +249,9 @@ func (conf Config) New() *World {
 	s.worlds[w] = struct{}{}
 	s.Unlock()
 	settingsLocked = false
+	if err := w.loadDragonFight(); err != nil {
+		panic(err)
+	}
 	w.weather = weather{w: w}
 	var h Handler = NopHandler{}
 	w.handler.Store(&h)

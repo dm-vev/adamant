@@ -16,6 +16,7 @@ type Settings struct {
 	worlds                map[*World]struct{}
 	fallDamageVersion     uint64
 	fallDamageDispatching bool
+	worldData             WorldDataMemory
 
 	// Name is the display name of the World.
 	Name string

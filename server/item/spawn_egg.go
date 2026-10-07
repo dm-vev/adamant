@@ -69,6 +69,37 @@ type emptyEntityConfig struct{}
 
 func (emptyEntityConfig) Apply(_ *world.EntityData) {}
 
-var spawnEggItems = map[string]string{
-	"minecraft:cow": "minecraft:cow_spawn_egg",
+var spawnEggEntities = [...]string{
+	"minecraft:chicken", "minecraft:cow", "minecraft:pig", "minecraft:sheep", "minecraft:camel", "minecraft:donkey",
+	"minecraft:horse", "minecraft:mule", "minecraft:cat", "minecraft:parrot", "minecraft:wolf", "minecraft:armadillo",
+	"minecraft:bat", "minecraft:bee", "minecraft:fox", "minecraft:goat", "minecraft:llama", "minecraft:ocelot",
+	"minecraft:panda", "minecraft:polar_bear", "minecraft:rabbit", "minecraft:axolotl", "minecraft:cod", "minecraft:dolphin",
+	"minecraft:frog", "minecraft:glow_squid", "minecraft:nautilus", "minecraft:pufferfish", "minecraft:salmon", "minecraft:squid",
+	"minecraft:tadpole", "minecraft:tropical_fish", "minecraft:turtle", "minecraft:allay", "minecraft:mooshroom", "minecraft:sniffer",
+	"minecraft:sulfur_cube", "minecraft:copper_golem", "minecraft:iron_golem", "minecraft:snow_golem", "minecraft:trader_llama",
+	"minecraft:villager", "minecraft:wandering_trader", "minecraft:bogged", "minecraft:camel_husk", "minecraft:drowned",
+	"minecraft:husk", "minecraft:parched", "minecraft:skeleton", "minecraft:skeleton_horse", "minecraft:stray", "minecraft:wither",
+	"minecraft:wither_skeleton", "minecraft:zombie", "minecraft:zombie_horse", "minecraft:zombie_nautilus", "minecraft:zombie_villager",
+	"minecraft:cave_spider", "minecraft:spider", "minecraft:breeze", "minecraft:creaking", "minecraft:creeper",
+	"minecraft:elder_guardian", "minecraft:guardian", "minecraft:phantom", "minecraft:silverfish", "minecraft:slime", "minecraft:warden",
+	"minecraft:witch", "minecraft:evoker", "minecraft:pillager", "minecraft:ravager", "minecraft:vindicator", "minecraft:vex",
+	"minecraft:blaze", "minecraft:ghast", "minecraft:happy_ghast", "minecraft:hoglin", "minecraft:magma_cube", "minecraft:piglin",
+	"minecraft:piglin_brute", "minecraft:strider", "minecraft:zoglin", "minecraft:zombified_piglin", "minecraft:ender_dragon",
+	"minecraft:enderman", "minecraft:endermite", "minecraft:shulker",
+}
+
+var spawnEggItems = func() map[string]string {
+	items := make(map[string]string, len(spawnEggEntities))
+	for _, entity := range spawnEggEntities {
+		items[entity] = entity + "_spawn_egg"
+		if alias, ok := spawnEggItemAliases[entity]; ok {
+			items[entity] = alias
+		}
+	}
+	return items
+}()
+
+// spawnEggItemAliases maps Java spawn egg item IDs to Bedrock's item registry names.
+var spawnEggItemAliases = map[string]string{
+	"minecraft:zombified_piglin": "minecraft:zombie_pigman_spawn_egg",
 }

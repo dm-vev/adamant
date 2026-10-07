@@ -1,0 +1,83 @@
+package entity
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/world"
+)
+
+type javaNBTConfig struct {
+	typeOf world.EntityType
+	data   map[string]any
+}
+
+func (c javaNBTConfig) Apply(data *world.EntityData) {
+	data.NativeNBT = world.CloneNativeEntityNBT(c.data)
+	c.typeOf.DecodeNBT(c.data, data)
+}
+
+// NewFromJavaNBT constructs a worldless entity handle from Java entity NBT.
+// opts supplies the absolute, already-transformed position and rotation; all
+// type-specific fields are decoded by the registered entity type.
+func NewFromJavaNBT(data map[string]any, opts world.EntitySpawnOpts) (*world.EntityHandle, error) {
+	id, ok := data["id"].(string)
+	if !ok || id == "" {
+		return nil, fmt.Errorf("Java entity NBT has no string id")
+	}
+	if len(id) > len("minecraft:") && !strings.HasPrefix(id, "minecraft:") {
+		return nil, fmt.Errorf("unsupported Java entity namespace in %q", id)
+	}
+	if err := validateJavaEntityEquipment(id, data); err != nil {
+		return nil, err
+	}
+	t, ok := DefaultRegistry.Lookup(id)
+	if id == "minecraft:end_crystal" {
+		t, ok = EndCrystalType, true
+	}
+	if !ok {
+		return nil, fmt.Errorf("unsupported Java entity type %q", id)
+	}
+	return opts.New(t, javaNBTConfig{typeOf: t, data: data}), nil
+}
+
+// NewFromBucket constructs a mob from the entity data retained by its bucket.
+// The bucket flag is set before the registered type decodes its NBT.
+func NewFromBucket(opts world.EntitySpawnOpts, entityID string, data map[string]any) *world.EntityHandle {
+	nbt := make(map[string]any, len(data)+2)
+	for key, value := range data {
+		nbt[key] = value
+	}
+	nbt["id"] = entityID
+	nbt["FromBucket"] = true
+	handle, err := NewFromJavaNBT(nbt, opts)
+	if err != nil {
+		return nil
+	}
+	return handle
+}
+func validateJavaEntityEquipment(id string, data map[string]any) error {
+	if id != "minecraft:wolf" {
+		return nil
+	}
+	equipment, ok := data["equipment"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	body, ok := equipment["body"].(map[string]any)
+	if !ok {
+		body, ok = equipment["minecraft:body"].(map[string]any)
+	}
+	if !ok {
+		return nil
+	}
+	stack, err := item.StackFromJavaNBT(body)
+	if err != nil {
+		return fmt.Errorf("invalid wolf body armor: %w", err)
+	}
+	if _, ok := stack.Item().(item.WolfArmor); !ok && !stack.Empty() {
+		return fmt.Errorf("wolf body equipment is %T, want wolf armor", stack.Item())
+	}
+	return nil
+}

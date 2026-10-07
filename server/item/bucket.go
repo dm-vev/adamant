@@ -97,6 +97,46 @@ func (b Bucket) FuelInfo() FuelInfo {
 	}
 	return FuelInfo{}
 }
+// UseOnEntity captures a bucketable entity into its filled bucket item.
+func (b Bucket) UseOnEntity(target world.Entity, tx *world.Tx, _ User, ctx *UseContext) bool {
+	if b.Empty() {
+		if milkable, ok := target.(interface {
+			Milk(*world.Tx) bool
+			MilkSound() world.Sound
+		}); ok && milkable.Milk(tx) {
+			ctx.NewItem = NewStack(Bucket{Content: MilkBucketContent()}, 1)
+			ctx.ReplaceHeldItem = true
+			ctx.SubtractFromCount(1)
+			tx.PlaySound(target.Position(), milkable.MilkSound())
+			return true
+		}
+	}
+	mob, ok := target.(interface {
+		CanBePickedUpWithBucket(Bucket) bool
+		BucketItem() Stack
+		SaveToBucket(Stack) Stack
+		BucketPickupSound() world.Sound
+	})
+	if !ok || !mob.CanBePickedUpWithBucket(b) {
+		return false
+	}
+	filled := mob.SaveToBucket(mob.BucketItem())
+	if filled.Empty() {
+		return false
+	}
+	closer, ok := target.(interface{ CloseIn(*world.Tx) error })
+	if !ok {
+		return false
+	}
+	if err := closer.CloseIn(tx); err != nil {
+		return false
+	}
+	ctx.NewItem = filled
+	ctx.ReplaceHeldItem = true
+	ctx.SubtractFromCount(1)
+	tx.PlaySound(target.Position(), mob.BucketPickupSound())
+	return true
+}
 
 // UseOnBlock handles the bucket filling and emptying logic.
 func (b Bucket) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
@@ -107,11 +147,7 @@ func (b Bucket) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 		return b.fillFrom(pos, tx, ctx)
 	}
 	liq := b.Content.liquid.WithDepth(8, false)
-	if bl := tx.Block(pos); canDisplace(bl, liq) || replaceableWith(bl, liq) {
-		tx.SetLiquid(pos, liq)
-	} else if bl := tx.Block(pos.Side(face)); canDisplace(bl, liq) || replaceableWith(bl, liq) {
-		tx.SetLiquid(pos.Side(face), liq)
-	} else {
+	if !b.placeLiquid(pos, liq, tx) && !b.placeLiquid(pos.Side(face), liq, tx) {
 		return false
 	}
 
@@ -120,6 +156,20 @@ func (b Bucket) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	ctx.NewItemSurvivalOnly = true
 	ctx.SubtractFromCount(1)
 	return true
+}
+
+func (b Bucket) placeLiquid(pos cube.Pos, liq world.Liquid, tx *world.Tx) bool {
+	block := tx.Block(pos)
+	if receiver, ok := block.(interface {
+		ReceiveLiquid(cube.Pos, *world.Tx, world.Liquid) bool
+	}); ok && receiver.ReceiveLiquid(pos, tx, liq) {
+		return true
+	}
+	if canDisplace(block, liq) || replaceableWith(block, liq) {
+		tx.SetLiquid(pos, liq)
+		return true
+	}
+	return false
 }
 
 // fillFrom fills a bucket from the liquid at the position passed in the world. If there is no liquid or if

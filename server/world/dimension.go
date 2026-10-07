@@ -42,6 +42,16 @@ func DimensionID(dim Dimension) (int, bool) {
 	return dimensionReg.LookupID(dim)
 }
 
+// dimensionStorageKey returns the registered numeric ID for persisted world
+// data. Custom dimensions must be registered before use in a persisted World.
+func dimensionStorageKey(dim Dimension) string {
+	id, ok := DimensionID(dim)
+	if !ok {
+		panic(fmt.Sprintf("world: cannot persist data for unregistered dimension %T", dim))
+	}
+	return fmt.Sprintf("%d", id)
+}
+
 type dimensionRegistry struct {
 	mu         sync.RWMutex
 	dimensions map[int]Dimension
@@ -129,7 +139,8 @@ func (reg *dimensionRegistry) RegisterDimension(id int, name string, dim Dimensi
 	return nil
 }
 
-// RegisterDimension registers a custom dimension.
+// RegisterDimension registers a custom dimension. Register it before creating
+// Worlds that persist data; its ID is the stable persistence identity.
 func RegisterDimension(id int, name string, dim Dimension) error {
 	return dimensionReg.RegisterDimension(id, name, dim)
 }

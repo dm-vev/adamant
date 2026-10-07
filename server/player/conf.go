@@ -38,6 +38,7 @@ type Config struct {
 	Exhaustion, Saturation float64
 	AirSupply              int
 	MaxAirSupply           int
+	TimeSinceRest          int32
 	EnchantmentSeed        int64
 	Experience             int
 	HeldSlot               int
@@ -48,6 +49,11 @@ type Config struct {
 	FireTicks              int64
 	FallDistance           float64
 	Effects                []effect.Effect
+	UnlockedRecipes        []string
+	RaidOmenPosition       cube.Pos
+	HasRaidOmenPosition    bool
+	ShoulderLeft           map[string]any
+	ShoulderRight          map[string]any
 }
 
 // Apply applies fields from a Config to a world.EntityData, filling out empty
@@ -58,6 +64,15 @@ func (cfg Config) Apply(data *world.EntityData) {
 	data.Name, data.Pos, data.Rot = conf.Name, conf.Position, conf.Rotation
 	slot := new(uint32)
 	atomic.StoreUint32(slot, uint32(conf.HeldSlot))
+	unlockedRecipes := make(map[string]struct{}, len(conf.UnlockedRecipes))
+	for _, id := range conf.UnlockedRecipes {
+		unlockedRecipes[id] = struct{}{}
+	}
+	var raidOmenPos *cube.Pos
+	if conf.HasRaidOmenPosition {
+		pos := conf.RaidOmenPosition
+		raidOmenPos = &pos
+	}
 	pdata := &playerData{
 		xuid:                conf.XUID,
 		ui:                  inventory.New(54, nil),
@@ -84,11 +99,15 @@ func (cfg Config) Apply(data *world.EntityData) {
 		scale:               1.0,
 		airSupplyTicks:      conf.AirSupply,
 		maxAirSupplyTicks:   conf.MaxAirSupply,
+		timeSinceRest:       conf.TimeSinceRest,
 		breathing:           true,
 		nameTag:             conf.Name,
 		alwaysShowNameTag:   true,
 		fireTicks:           conf.FireTicks,
 		fallDistance:        conf.FallDistance,
+		raidOmenPosition:    raidOmenPos,
+		shoulderLeft:       cfg.ShoulderLeft,
+		shoulderRight:      cfg.ShoulderRight,
 	}
 	playerUUID := conf.UUID
 	pdata.portalTravel = entity.NewPortalTravelComputer()

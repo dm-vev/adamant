@@ -8,6 +8,10 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
+func init() {
+	world.DefaultBlockRegistry.Finalize()
+}
+
 // Chunk contents must not depend on worker scheduling. Compare runs using the
 // same registry, not pinned hashes of runtime IDs that change with the palette.
 // This checks determinism, not equivalence to any Java or Bedrock release.

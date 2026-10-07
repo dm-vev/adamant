@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -109,22 +110,34 @@ func (d Dispenser) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after 
 }
 
 func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
-	if !d.Triggered {
-		return
-	}
-
-	slots := d.inventory.Slots()
-	nonEmpty := make([]int, 0, len(slots))
-	for slot, stack := range slots {
+	// Java schedules the tick on the rising edge and does not cancel it when
+	// power falls again before the scheduled tick runs.
+	slot, count := -1, 0
+	for i := range 9 {
+		stack, _ := d.inventory.Item(i)
 		if !stack.Empty() {
-			nonEmpty = append(nonEmpty, slot)
+			count++
 		}
 	}
-	if len(nonEmpty) == 0 {
+	if count == 0 {
 		return
 	}
-	slot := nonEmpty[r.IntN(len(nonEmpty))]
-	stack := slots[slot]
+	pick := r.IntN(count)
+	for i := range 9 {
+		stack, _ := d.inventory.Item(i)
+		if stack.Empty() {
+			continue
+		}
+		if pick == 0 {
+			slot = i
+			break
+		}
+		pick--
+	}
+	if slot < 0 {
+		return
+	}
+	stack, _ := d.inventory.Item(slot)
 	direction := pos.Side(d.Facing).Vec3Centre().Sub(pos.Vec3Centre())
 	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre().Add(direction.Mul(0.7)), Velocity: direction.Mul(1.1)}
 
@@ -188,13 +201,80 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 			d.eject(tx, opts, stack.Grow(1-stack.Count()))
 		}
 	case item.FireCharge:
+		tx.AddEntity(tx.World().EntityRegistry().Config().SmallFireball(opts, nil))
+	case item.WindCharge:
+		tx.AddEntity(tx.World().EntityRegistry().Config().WindCharge(opts, nil))
+	case item.Arrow:
+		tx.AddEntity(tx.World().EntityRegistry().Config().Arrow(opts, world.ArrowSpawnConfig{
+			Damage: 2, Tip: held.Tip, ObtainArrowOnPickup: true,
+		}))
+	case item.BottleOfEnchanting:
+		tx.AddEntity(tx.World().EntityRegistry().Config().BottleOfEnchanting(opts, nil))
+	case item.SplashPotion:
+		tx.AddEntity(tx.World().EntityRegistry().Config().SplashPotion(opts, held.Type, nil))
+	case item.LingeringPotion:
+		tx.AddEntity(tx.World().EntityRegistry().Config().LingeringPotion(opts, held.Type, nil))
+	case item.Firework:
+		tx.AddEntity(tx.World().EntityRegistry().Config().Firework(opts, held, nil, 1, 0, false))
+	case item.ArmourStand:
 		front := pos.Side(d.Facing)
-		_, wasFire := tx.Block(front).(Fire)
-		Fire{}.Start(tx, front)
-		_, isFire := tx.Block(front).(Fire)
-		if wasFire || !isFire {
+		opts.Position = front.Vec3Middle()
+		opts.Rotation = cube.Rotation{math.Atan2(direction[2], direction[0])*180/math.Pi + 90, 0}
+		create := tx.World().EntityRegistry().Config().ArmourStand
+		if create == nil {
 			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		} else {
+			tx.AddEntity(create(opts))
 		}
+	case TNT:
+		create := tx.World().EntityRegistry().Config().TNT
+		if create == nil {
+			d.eject(tx, opts, stack.Grow(1-stack.Count()))
+		} else {
+			tx.AddEntity(create(world.EntitySpawnOpts{Position: pos.Side(d.Facing).Vec3Middle()}, 4*time.Second))
+		}
+	case item.SpawnEgg, item.Harness:
+		behavior := held.(interface {
+			UseOnEntity(world.Entity, *world.Tx, item.User, *item.UseContext) bool
+		})
+		front := pos.Side(d.Facing)
+		box := cube.Box(float64(front.X()), float64(front.Y()), float64(front.Z()), float64(front.X()+1), float64(front.Y()+1), float64(front.Z()+1))
+		for entity := range tx.EntitiesWithin(box) {
+			ctx := &item.UseContext{}
+			if behavior.UseOnEntity(entity, tx, nil, ctx) {
+				left := stack.Damage(ctx.Damage).Grow(-ctx.CountSub)
+				if !ctx.NewItem.Empty() {
+					if left.Empty() {
+						left = ctx.NewItem
+					} else {
+						d.eject(tx, opts, ctx.NewItem)
+					}
+				}
+				_ = d.inventory.SetItem(slot, left)
+				notifyComparatorUpdate(pos, tx)
+				return
+			}
+		}
+		d.eject(tx, opts, stack.Grow(1-stack.Count()))
+	case item.Bucket, item.MobBucket, item.FishBucket, item.BoneMeal, item.FlintAndSteel, item.GlassBottle:
+		behavior := held.(interface {
+			UseOnBlock(cube.Pos, cube.Face, mgl64.Vec3, *world.Tx, item.User, *item.UseContext) bool
+		})
+		ctx := &item.UseContext{}
+		if behavior.UseOnBlock(pos.Side(d.Facing), d.Facing, pos.Side(d.Facing).Vec3Centre(), tx, nil, ctx) {
+			left := stack.Damage(ctx.Damage).Grow(-ctx.CountSub)
+			if !ctx.NewItem.Empty() {
+				if left.Empty() {
+					left = ctx.NewItem
+				} else {
+					d.eject(tx, opts, ctx.NewItem)
+				}
+			}
+			_ = d.inventory.SetItem(slot, left)
+			notifyComparatorUpdate(pos, tx)
+			return
+		}
+		d.eject(tx, opts, stack.Grow(1-stack.Count()))
 	default:
 		d.eject(tx, opts, stack.Grow(1-stack.Count()))
 	}

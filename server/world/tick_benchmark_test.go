@@ -36,18 +36,19 @@ func newBenchmarkTerrainGenerator() benchmarkTerrainGenerator {
 	}
 }
 
-func (g benchmarkTerrainGenerator) GenerateChunk(_ ChunkPos, c *chunk.Chunk) {
+func (g benchmarkTerrainGenerator) GenerateChunk(_ ChunkPos, c *chunk.Chunk) GenerationResult {
 	const surfaceY = 64
 
 	minY := int(c.Range().Min())
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
+	for x := range uint8(16) {
+		for z := range uint8(16) {
 			for y := minY; y < surfaceY; y++ {
 				c.SetBlock(x, int16(y), z, 0, g.stoneRID)
 			}
 			c.SetBlock(x, surfaceY, z, 0, g.grassRID)
 		}
 	}
+	return GenerationResult{}
 }
 
 func (benchmarkTerrainGenerator) DefaultSpawn(Dimension) cube.Pos {

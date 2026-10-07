@@ -67,6 +67,10 @@ func registerVanilla() {
 		panic(err)
 	}
 	for _, id := range craftingRecipes.Multi {
+		// Java maps always support tracking; Bedrock-only compass upgrades have no source operation.
+		if id == "98c84b38-1085-46bd-b1ce-dd38c159e6cc" || id == "aecd2294-4b94-434b-8667-4499bb2c9327" {
+			continue
+		}
 		if parsed, err := uuid.Parse(id); err == nil {
 			Register(NewMulti(parsed))
 		}
@@ -144,6 +148,22 @@ func registerVanilla() {
 		if !ok {
 			// This can be expected to happen - refer to the comment above.
 			continue
+		}
+		if len(input) == 3 {
+			if templates, ok := input[2].(ItemTag); ok && templates.Tag() == "minecraft:trim_templates" {
+				for _, templateName := range templates.items {
+					template, found := world.ItemByName(templateName, 0)
+					if !found {
+						continue
+					}
+					Register(SmithingTrim{recipe{
+						input:    []Item{input[0], input[1], item.NewStack(template, 1)},
+						block:    s.Block,
+						priority: uint32(s.Priority),
+					}})
+				}
+				continue
+			}
 		}
 		Register(SmithingTrim{recipe{
 			input:    input,

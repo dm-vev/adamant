@@ -394,37 +394,43 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 		// Don't view the items of the entity if the entity is the Controllable entity of the session.
 		return
 	}
-	armoured, ok := e.(interface {
-		Armour() *inventory.Armour
-	})
-	if !ok {
-		if b, ok2 := e.(*entity.Ent); ok2 {
-			if armoured, ok = b.Behaviour().(interface {
-				Armour() *inventory.Armour
-			}); !ok {
-				return
-			}
-		} else {
-			return
+	var helm, chestplate, leggings, boots, body item.Stack
+	var equipment any = e
+	bodyItem, hasBody := e.(interface{ BodyItem() item.Stack })
+	if b, ok := e.(*entity.Ent); ok {
+		equipment = b.Behaviour()
+		if !hasBody {
+			bodyItem, hasBody = equipment.(interface{ BodyItem() item.Stack })
 		}
 	}
-
-	inv := armoured.Armour()
-	if inv == nil {
+	if armoured, ok := equipment.(interface {
+		EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack)
+	}); ok {
+		helm, chestplate, leggings, boots = armoured.EquipmentArmour()
+	} else if armoured, ok := equipment.(interface {
+		Armour() *inventory.Armour
+	}); ok {
+		if inv := armoured.Armour(); inv != nil {
+			helm, chestplate, leggings, boots = inv.Helmet(), inv.Chestplate(), inv.Leggings(), inv.Boots()
+		}
+	} else if !hasBody {
 		return
 	}
-	helm, chestplate, leggings, boots := inv.Helmet(), inv.Chestplate(), inv.Leggings(), inv.Boots()
+	if hasBody {
+		body = bodyItem.BodyItem()
+	}
 	if s.viewLayer != nil && s.viewLayer.Visibility(e) == world.EnforceInvisible() {
-		helm, chestplate, leggings, boots = item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}
+		helm, chestplate, leggings, boots, body = item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}, item.Stack{}
 	}
 
-	// Show the entity's armour
+	// Show the entity's armour and body equipment.
 	s.writePacket(&packet.MobArmourEquipment{
 		EntityRuntimeID: runtimeID,
 		Helmet:          instanceFromItem(s.br, helm),
 		Chestplate:      instanceFromItem(s.br, chestplate),
 		Leggings:        instanceFromItem(s.br, leggings),
 		Boots:           instanceFromItem(s.br, boots),
+		Body:            instanceFromItem(s.br, body),
 	})
 }
 
@@ -1416,6 +1422,105 @@ func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, 
 	s.sendInv(inv, uint32(nextID))
 }
 
+// OpenMerchant opens the Bedrock merchant UI for an entity and sends its current offers.
+func (s *Session) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *world.Tx) {
+	if s.containerOpened.Load() {
+		if opened := s.openedEntity.Load(); opened != nil && opened == e.H() {
+			return
+		}
+	}
+	user, ok := s.ent.Entity(tx)
+	if !ok {
+		return
+	}
+	offers, err := merchantOffersFor(merchant, user)
+	if err != nil {
+		s.notifyMerchantError(user, "failed to load merchant offers", err)
+		return
+	}
+	serializedOffers, err := serializeMerchantOffers(offers)
+	if err != nil {
+		s.notifyMerchantError(user, "failed to serialize merchant offers", err)
+		return
+	}
+	s.closeCurrentContainer(tx, false)
+	nextID := s.nextWindowID()
+	pos := e.Position()
+	openPos := cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
+	s.containerOpened.Store(true)
+	s.openedWindow.Store(inventory.New(1, nil))
+	s.openedEntity.Store(e.H())
+	s.openedPos.Store(&openPos)
+	s.openedContainerID.Store(uint32(protocol.ContainerTypeTrade))
+	s.writePacket(&packet.ContainerOpen{
+		WindowID:                nextID,
+		ContainerType:           protocol.ContainerTypeTrade,
+		ContainerPosition:       protocol.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
+		ContainerEntityUniqueID: int64(s.entityRuntimeID(e)),
+	})
+	s.sendMerchantOffers(e, merchant, user, offers, serializedOffers)
+}
+
+func (s *Session) sendMerchantOffers(e world.Entity, merchant entity.Merchant, user world.Entity, offers []entity.MerchantOffer, serializedOffers []byte) {
+	level := merchant.MerchantLevel() - 1
+	if level < 0 {
+		level = 0
+	}
+	s.writePacket(&packet.UpdateTrade{
+		WindowID:          byte(s.openedWindowID.Load()),
+		WindowType:        15,
+		Size:              int32(len(offers)),
+		TradeTier:         int32(level),
+		VillagerUniqueID:  int64(s.entityRuntimeID(e)),
+		EntityUniqueID:    int64(s.entityRuntimeID(user)),
+		DisplayName:       merchant.MerchantProfession(),
+		NewTradeUI:        true,
+		DemandBasedPrices: true,
+		SerialisedOffers:  serializedOffers,
+	})
+}
+
+func merchantOffersFor(merchant entity.Merchant, user world.Entity) ([]entity.MerchantOffer, error) {
+	return merchant.MerchantOffersFor(user)
+}
+
+func (s *Session) notifyMerchantError(user world.Entity, message string, err error) {
+	if s.conf.Log != nil {
+		s.conf.Log.Error(message, "err", err)
+	}
+	if messenger, ok := user.(interface{ Message(...any) }); ok {
+		messenger.Message("Merchant offers are temporarily unavailable.")
+	}
+}
+
+func serializeMerchantOffers(offers []entity.MerchantOffer) ([]byte, error) {
+	recipes := make([]any, len(offers))
+	for i, offer := range offers {
+		rewardXP := byte(0)
+		if offer.RewardXP {
+			rewardXP = 1
+		}
+		recipes[i] = map[string]any{
+			"buyA":            item.WriteNBT(offer.Input, true),
+			"buyB":            item.WriteNBT(offer.SecondaryInput, true),
+			"sell":            item.WriteNBT(offer.Output, true),
+			"uses":            int32(offer.Uses),
+			"maxUses":         int32(offer.MaxUses),
+			"rewardExp":       rewardXP,
+			"tier":            int32(offer.Tier),
+			"traderExp":       int32(offer.XP),
+			"priceMultiplier": offer.PriceMultiplier,
+			"demand":          int32(offer.Demand),
+			"specialPrice":    int32(offer.SpecialPrice),
+		}
+	}
+	var buf bytes.Buffer
+	if err := nbt.NewEncoderWithEncoding(&buf, nbt.NetworkLittleEndian).Encode(map[string]any{"Recipes": recipes}); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // openNormalContainer opens a normal container that can hold items in it server-side.
 func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world.Tx) {
 	b.AddViewer(s, tx, pos) // Paired chests might update the block here.
@@ -1439,7 +1544,10 @@ func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world
 		containerType = protocol.ContainerTypeSmoker
 	case block.Hopper:
 		containerType = protocol.ContainerTypeHopper
+	case block.Crafter:
+		containerType = protocol.ContainerTypeCrafter
 	}
+	s.openedContainerID.Store(uint32(containerType))
 
 	s.writePacket(&packet.ContainerOpen{
 		WindowID:                nextID,
@@ -1448,6 +1556,12 @@ func (s *Session) openNormalContainer(b block.Container, pos cube.Pos, tx *world
 		ContainerEntityUniqueID: -1,
 	})
 	s.sendInv(b.Inventory(tx, pos), uint32(nextID))
+	if crafter, ok := b.(block.Crafter); ok {
+		for slot := range 9 {
+			s.ViewCrafterSlotState(slot, crafter.DisabledSlots&(1<<slot) != 0)
+		}
+		s.ViewCrafterTriggered(crafter.Triggered)
+	}
 }
 
 // ViewSlotChange ...
@@ -1464,6 +1578,30 @@ func (s *Session) ViewSlotChange(slot int, newItem item.Stack) {
 		Slot:     uint32(slot),
 		NewItem:  instanceFromItem(s.br, newItem),
 	})
+}
+
+// ViewCrafterSlotState sends the disabled/enabled state for one native Crafter slot.
+func (s *Session) ViewCrafterSlotState(slot int, disabled bool) {
+	if !s.containerOpened.Load() || s.openedContainerID.Load() != uint32(protocol.ContainerTypeCrafter) {
+		return
+	}
+	value := int32(0)
+	if disabled {
+		value = 1
+	}
+	s.writePacket(&packet.ContainerSetData{WindowID: byte(s.openedWindowID.Load()), Key: int32(slot), Value: value})
+}
+
+// ViewCrafterTriggered sends the native Crafter's redstone data property.
+func (s *Session) ViewCrafterTriggered(triggered bool) {
+	if !s.containerOpened.Load() || s.openedContainerID.Load() != uint32(protocol.ContainerTypeCrafter) {
+		return
+	}
+	value := int32(0)
+	if triggered {
+		value = 1
+	}
+	s.writePacket(&packet.ContainerSetData{WindowID: byte(s.openedWindowID.Load()), Key: 9, Value: value})
 }
 
 // ViewBlockAction ...

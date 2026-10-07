@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // ticker implements World ticking methods.
@@ -139,6 +140,7 @@ func (t ticker) tick(tx *Tx) {
 		tryAdvanceDay = w.set.RequiredSleepTicks <= 0
 	}
 	w.set.Unlock()
+	t.tickInhabitedTime(w, loaders)
 
 	if tryAdvanceDay {
 		t.tryAdvanceDay(tx, timeCycle)
@@ -159,19 +161,74 @@ func (t ticker) tick(tx *Tx) {
 		w.tickLightning(tx)
 	}
 
+	if w.dragonFight != nil {
+		w.dragonFight.Tick(tx)
+	}
 	t.tickEntities(tx, tick)
+	if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
+		spawnTick(tx)
+	}
+	tx.TickRaids()
 	w.scheduledUpdates.tick(tx, tick)
 	t.tickBlocksRandomly(tx, loaders, tick)
 	t.performNeighbourUpdates(tx)
 	w.redstone.tick(tx, tick)
 }
 
+type inhabitedTimePlayer struct {
+	pos  mgl64.Vec3
+	area loaderActiveArea
+}
+
+// tickInhabitedTime follows the server's player-based chunk ticking rules:
+// only real, non-spectator player viewers can age a nearby chunk, and chunks
+// outside a loader's simulation area or the 128-block player radius do not age.
+func (t ticker) tickInhabitedTime(w *World, loaders []*Loader) {
+	if len(w.activeColumns) == 0 {
+		return
+	}
+	simRadius := int32(w.tickRange())
+	players := w.scratchInhabitedPlayers[:0]
+	for _, loader := range loaders {
+		player, ok := loader.viewer.(interface {
+			GameMode() GameMode
+			Position() mgl64.Vec3
+			H() *EntityHandle
+		})
+		if !ok || player.H() == nil || player.GameMode() == GameModeSpectator {
+			continue
+		}
+		area := loader.activeArea(simRadius)
+		if area.radius == 0 {
+			continue
+		}
+		players = append(players, inhabitedTimePlayer{pos: player.Position(), area: area})
+	}
+	w.scratchInhabitedPlayers = players
+	for _, ref := range w.activeColumns {
+		for _, player := range players {
+			area := player.area
+			dx, dz := int64(ref.pos[0])-int64(area.pos[0]), int64(ref.pos[1])-int64(area.pos[1])
+			if dx*dx+dz*dz > area.radiusSq {
+				continue
+			}
+			chunkX, chunkZ := float64(ref.pos[0])*16+8, float64(ref.pos[1])*16+8
+			x, z := player.pos[0]-chunkX, player.pos[2]-chunkZ
+			if x*x+z*z < 128*128 {
+				ref.col.InhabitedTime++
+				break
+			}
+		}
+	}
+}
+
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.
 func (t ticker) performNeighbourUpdates(tx *Tx) {
 	w := tx.World()
-	snapshot := len(w.neighbourUpdates)
 	examined, processed, retained := 0, 0, 0
-	for examined < snapshot && processed < maxNeighbourUpdatesPerTick {
+	// Finish updates produced by this chain before a later tick can change its
+	// source again. Keep the existing budget and deferred-chunk fairness.
+	for examined < len(w.neighbourUpdates) && processed < maxNeighbourUpdatesPerTick {
 		update := w.neighbourUpdates[examined]
 		examined++
 		pos, changedNeighbour := update.pos, update.neighbour
@@ -558,25 +615,27 @@ func (g *randUint4) uint4(r *rand.Rand) uint8 {
 // block updates are both position and block type specific.
 type scheduledTickQueue struct {
 	ticks         []scheduledTick
-	furthestTicks map[scheduledTickIndex]int64
+	scheduledTicks map[scheduledTickIndex]int64
+	pendingTicks   []scheduledTick
+	processing     bool
 	currentTick   int64
 }
 
 type scheduledTick struct {
 	pos   cube.Pos
 	b     Block
-	bhash uint64
+	btype string
 	t     int64
 }
 
 type scheduledTickIndex struct {
-	pos  cube.Pos
-	hash uint64
+	pos      cube.Pos
+	typeName string
 }
 
 // newScheduledTickQueue creates a queue for scheduled block ticks.
 func newScheduledTickQueue(tick int64) *scheduledTickQueue {
-	return &scheduledTickQueue{furthestTicks: make(map[scheduledTickIndex]int64), currentTick: tick}
+	return &scheduledTickQueue{scheduledTicks: make(map[scheduledTickIndex]int64), currentTick: tick}
 }
 
 // tick processes scheduled ticks, calling ScheduledTicker.ScheduledTick for any
@@ -590,42 +649,61 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64) {
 
 	w := tx.World()
 	ticks := queue.ticks
+	queue.processing = true
 	dst := 0
-	for _, t := range ticks {
+	for i := range ticks {
+		t := ticks[i]
 		if t.t > tick {
 			ticks[dst] = t
 			dst++
 			continue
 		}
+		index := scheduledTickIndex{pos: t.pos, typeName: t.btype}
+		if queue.scheduledTicks[index] == t.t {
+			delete(queue.scheduledTicks, index)
+		}
 		b := tx.Block(t.pos)
-		if ticker, ok := b.(ScheduledTicker); ok && w.conf.Blocks.BlockHash(b) == t.bhash {
+		if ticker, ok := b.(ScheduledTicker); ok && scheduledTickType(w.conf.Blocks, b) == t.btype {
 			ticker.ScheduledTick(t.pos, tx, w.r)
-		} else if liquid, ok := tx.additionalLiquid(t.pos); ok && w.conf.Blocks.BlockHash(liquid) == t.bhash {
+		} else if liquid, ok := tx.additionalLiquid(t.pos); ok && scheduledTickType(w.conf.Blocks, liquid) == t.btype {
 			if ticker, ok := liquid.(ScheduledTicker); ok {
 				ticker.ScheduledTick(t.pos, tx, w.r)
 			}
 		}
 	}
-	for index, furthest := range queue.furthestTicks {
-		if furthest <= tick {
-			delete(queue.furthestTicks, index)
-		}
-	}
-	queue.ticks = ticks[:dst]
+	queue.processing = false
+	queue.ticks = append(ticks[:dst], queue.pendingTicks...)
+	queue.pendingTicks = queue.pendingTicks[:0]
 }
 
 // schedule schedules a block update at the position passed for the block type
-// passed after a specific delay. A block update is only scheduled if no block
-// update with the same position and block type is already scheduled at a later
-// time than the newly scheduled update.
+// passed after a specific delay. Only the first pending update for a block type
+// at a position is kept, matching the source tick queue's unique-tick behavior.
 func (queue *scheduledTickQueue) schedule(br BlockRegistry, pos cube.Pos, b Block, delay time.Duration) {
 	resTick := queue.currentTick + int64(max(delay/(time.Second/20), 1))
-	index := scheduledTickIndex{pos: pos, hash: br.BlockHash(b)}
-	if t, ok := queue.furthestTicks[index]; ok && t >= resTick && t > queue.currentTick {
+	typeName := scheduledTickType(br, b)
+	index := scheduledTickIndex{pos: pos, typeName: typeName}
+	if _, ok := queue.scheduledTicks[index]; ok {
 		return
 	}
-	queue.furthestTicks[index] = resTick
-	queue.ticks = append(queue.ticks, scheduledTick{pos: pos, t: resTick, b: b, bhash: index.hash})
+	queue.scheduledTicks[index] = resTick
+	t := scheduledTick{pos: pos, t: resTick, b: b, btype: typeName}
+	if queue.processing {
+		queue.pendingTicks = append(queue.pendingTicks, t)
+	} else {
+		queue.ticks = append(queue.ticks, t)
+	}
+}
+
+// scheduledTickType returns the Java block type represented by a native block
+// state. Scheduled ticks identify a block type, not an individual state.
+func scheduledTickType(registry BlockRegistry, b Block) string {
+	rid := registry.BlockRuntimeID(b)
+	name, properties, ok := registry.RuntimeIDToState(rid)
+	if !ok {
+		panic("scheduled tick: registry cannot resolve block runtime ID")
+	}
+	return javaBlockTypeForNative(name, properties)
 }
 
 // fromChunk returns all scheduled ticks positioned within a ChunkPos.
@@ -644,26 +722,25 @@ func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
 	queue.ticks = slices.DeleteFunc(queue.ticks, func(tick scheduledTick) bool {
 		return chunkPosFromBlockPos(tick.pos) == pos
 	})
-	// Also remove any furthest tick entries that belong to this chunk to avoid
-	// retaining references after the chunk is closed.
-	for index := range queue.furthestTicks {
+	queue.pendingTicks = slices.DeleteFunc(queue.pendingTicks, func(tick scheduledTick) bool {
+		return chunkPosFromBlockPos(tick.pos) == pos
+	})
+	for index := range queue.scheduledTicks {
 		if chunkPosFromBlockPos(index.pos) == pos {
-			delete(queue.furthestTicks, index)
+			delete(queue.scheduledTicks, index)
 		}
 	}
 }
 
-// add adds a slice of scheduled ticks to the queue. It assumes no duplicate
-// ticks are present in the slice.
+// add adds saved scheduled ticks to the queue, retaining the first tick for
+// each position and type just like schedule.
 func (queue *scheduledTickQueue) add(ticks []scheduledTick) {
 	for _, t := range ticks {
-		queue.ticks = append(queue.ticks, t)
-		index := scheduledTickIndex{pos: t.pos, hash: t.bhash}
-		if existing, ok := queue.furthestTicks[index]; !ok || t.t > existing {
-			// Make sure we find the furthest tick for each of the ticks added.
-			// Some ticks may have the same block and position, in which case we
-			// need to set the furthest tick.
-			queue.furthestTicks[index] = t.t
+		index := scheduledTickIndex{pos: t.pos, typeName: t.btype}
+		if _, exists := queue.scheduledTicks[index]; exists {
+			continue
 		}
+		queue.scheduledTicks[index] = t.t
+		queue.ticks = append(queue.ticks, t)
 	}
 }

@@ -275,7 +275,7 @@ func TestRedstoneEngineRemoveChunkClearsTransientStateInChunk(t *testing.T) {
 
 func TestRedstoneDirtyUnloadedNeighbourReconcilesAfterReload(t *testing.T) {
 	sourcePos, sinkPos := cube.Pos{15, 64, 0}, cube.Pos{16, 64, 0}
-	provider := &redstoneReloadProvider{columns: make(map[ChunkPos]*chunk.Column)}
+	provider := &redstoneReloadProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, columns: make(map[ChunkPos]*chunk.Column)}
 	w := Config{Synchronous: true, Blocks: redstoneCancellationTestRegistry(), Provider: provider}.New()
 	defer w.Close()
 
@@ -643,70 +643,56 @@ func TestDirectSourceDoesNotWeakPowerConductor(t *testing.T) {
 
 func TestScheduledTickQueueDuplicateScheduling(t *testing.T) {
 	tests := []struct {
-		name      string
-		delays    []time.Duration
-		wantTicks []int64
+		name     string
+		delays   []time.Duration
+		wantTick int64
 	}{
-		{name: "keeps earlier tick when later tick is scheduled", delays: []time.Duration{time.Second / 20, time.Second / 10}, wantTicks: []int64{101, 102}},
-		{name: "ignores earlier tick behind later tick", delays: []time.Duration{time.Second / 10, time.Second / 20}, wantTicks: []int64{102}},
+		{name: "keeps first earlier tick", delays: []time.Duration{time.Second / 20, time.Second / 10}, wantTick: 101},
+		{name: "keeps first later tick", delays: []time.Duration{time.Second / 10, time.Second / 20}, wantTick: 102},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			registry := scheduledTickTestRegistry()
+			registry.Finalize()
 			queue := newScheduledTickQueue(100)
 			pos := cube.Pos{8, 64, 8}
 			b := scheduledTickTestBlock{}
 
 			for _, delay := range test.delays {
-				queue.schedule(DefaultBlockRegistry, pos, b, delay)
+				queue.schedule(registry, pos, b, delay)
 			}
 
-			index := scheduledTickIndex{pos: pos, hash: DefaultBlockRegistry.BlockHash(b)}
-			if got, want := queue.furthestTicks[index], int64(102); got != want {
-				t.Fatalf("furthest tick = %d, want %d", got, want)
+			index := scheduledTickIndex{pos: pos, typeName: scheduledTickType(registry, b)}
+			if got, want := queue.scheduledTicks[index], test.wantTick; got != want {
+				t.Fatalf("scheduled tick = %d, want %d", got, want)
 			}
 			ticks := queue.fromChunk(chunkPosFromBlockPos(pos))
-			if len(ticks) != len(test.wantTicks) {
-				t.Fatalf("active ticks = %v, want %v", ticks, test.wantTicks)
-			}
-			for i, want := range test.wantTicks {
-				if got := ticks[i].t; got != want {
-					t.Fatalf("active tick %d = %d, want %d; ticks=%v", i, got, want, ticks)
-				}
+			if len(ticks) != 1 || ticks[0].t != test.wantTick {
+				t.Fatalf("active ticks = %v, want only tick %d", ticks, test.wantTick)
 			}
 		})
 	}
 }
 
 func TestScheduledTickQueueRemoveChunkClearsSchedule(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	registry.Finalize()
 	queue := newScheduledTickQueue(100)
 	pos := cube.Pos{8, 64, 8}
 	b := scheduledTickTestBlock{}
 
-	queue.schedule(DefaultBlockRegistry, pos, b, time.Second)
+	queue.schedule(registry, pos, b, time.Second)
 	queue.removeChunk(chunkPosFromBlockPos(pos))
 
 	if len(queue.ticks) != 0 {
 		t.Fatalf("ticks after removeChunk = %v, want empty", queue.ticks)
 	}
-	if len(queue.furthestTicks) != 0 {
-		t.Fatalf("furthest ticks after removeChunk = %v, want empty", queue.furthestTicks)
+	if len(queue.scheduledTicks) != 0 {
+		t.Fatalf("scheduled ticks after removeChunk = %v, want empty", queue.scheduledTicks)
 	}
 }
 
-func TestScheduledTickQueueCanRescheduleWhileCurrentTickIsDue(t *testing.T) {
-	queue := newScheduledTickQueue(100)
-	pos := cube.Pos{8, 64, 8}
-	b := scheduledTickTestBlock{}
-	index := scheduledTickIndex{pos: pos, hash: DefaultBlockRegistry.BlockHash(b)}
-	queue.furthestTicks[index] = 100
-
-	queue.schedule(DefaultBlockRegistry, pos, b, time.Second/2)
-	if got, want := queue.furthestTicks[index], int64(110); got != want {
-		t.Fatalf("rescheduled tick = %d, want %d", got, want)
-	}
-}
-
-func TestScheduledTickQueueExecutesEarlierDueTickBeforeLaterTick(t *testing.T) {
+func TestScheduledTickQueueCanRescheduleFromScheduledCallback(t *testing.T) {
 	registry := scheduledTickTestRegistry()
 	w := Config{Synchronous: true, Blocks: registry}.New()
 	defer w.Close()
@@ -714,48 +700,63 @@ func TestScheduledTickQueueExecutesEarlierDueTickBeforeLaterTick(t *testing.T) {
 	queue := newScheduledTickQueue(100)
 	pos := cube.Pos{8, 64, 8}
 	b := scheduledTickTestBlock{}
-	index := scheduledTickIndex{pos: pos, hash: registry.BlockHash(b)}
-
 	ticks := 0
 	scheduledTickTestBlockTicks = &ticks
+	scheduledTickTestBlockReschedule = func(pos cube.Pos, tx *Tx) {
+		if ticks == 1 {
+			queue.schedule(registry, pos, b, time.Second/20)
+		}
+	}
 	t.Cleanup(func() {
 		scheduledTickTestBlockTicks = nil
+		scheduledTickTestBlockReschedule = nil
 	})
 
-	var (
-		ticksAfterFirst, ticksAfterSecond   int
-		activeAfterFirst, activeAfterSecond []scheduledTick
-		furthestAfterFirst                  int64
-		hasFurthestAfterFirst               bool
-	)
+	var activeAfterFirst, activeAfterSecond []scheduledTick
 	runWorld(w, func(tx *Tx) {
 		tx.SetBlock(pos, b, nil)
 		queue.schedule(registry, pos, b, time.Second/20)
-		queue.schedule(registry, pos, b, time.Second/10)
-
 		queue.tick(tx, 101)
-		ticksAfterFirst = ticks
 		activeAfterFirst = queue.fromChunk(chunkPosFromBlockPos(pos))
-		furthestAfterFirst, hasFurthestAfterFirst = queue.furthestTicks[index]
-
 		queue.tick(tx, 102)
-		ticksAfterSecond = ticks
 		activeAfterSecond = queue.fromChunk(chunkPosFromBlockPos(pos))
 	})
-	if ticksAfterFirst != 1 {
-		t.Fatalf("earlier due tick executed %d time(s), want 1", ticksAfterFirst)
-	}
-	if !hasFurthestAfterFirst || furthestAfterFirst != 102 {
-		t.Fatalf("furthest tick after earlier tick = %d, %t; want 102, true", furthestAfterFirst, hasFurthestAfterFirst)
+	if ticks != 2 {
+		t.Fatalf("scheduled callback executed %d times, want 2", ticks)
 	}
 	if len(activeAfterFirst) != 1 || activeAfterFirst[0].t != 102 {
-		t.Fatalf("active ticks after earlier tick = %v, want only tick 102", activeAfterFirst)
-	}
-	if ticksAfterSecond != 2 {
-		t.Fatalf("later scheduled tick execution count = %d, want 2", ticksAfterSecond)
+		t.Fatalf("active ticks after callback rescheduled = %v, want only tick 102", activeAfterFirst)
 	}
 	if len(activeAfterSecond) != 0 {
-		t.Fatalf("active ticks after later tick = %v, want empty", activeAfterSecond)
+		t.Fatalf("active ticks after second callback = %v, want empty", activeAfterSecond)
+	}
+}
+
+func TestScheduledTickCancelledWhenNativePropertyChangesJavaBlockType(t *testing.T) {
+	registry := NewBlockRegistry()
+	head := scheduledTickTypeVariant{head: true}
+	stem := scheduledTickTypeVariant{}
+	for _, block := range []scheduledTickTypeVariant{head, stem} {
+		name, properties := block.EncodeBlock()
+		registry.RegisterBlockState(BlockState{Name: name, Properties: properties})
+		registry.RegisterBlock(block)
+	}
+	registry.Finalize()
+	w := Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+
+	pos := cube.Pos{8, 64, 8}
+	queue := newScheduledTickQueue(100)
+	ticks := 0
+	head.ticks = &ticks
+	runWorld(w, func(tx *Tx) {
+		tx.SetBlock(pos, head, nil)
+		queue.schedule(registry, pos, head, time.Second/20)
+		tx.SetBlock(pos, stem, nil)
+		queue.tick(tx, 101)
+	})
+	if ticks != 0 {
+		t.Fatalf("scheduled tick ran %d times after native state changed Java block type, want 0", ticks)
 	}
 }
 
@@ -766,7 +767,7 @@ func TestScheduledTicksAdvancePerDimension(t *testing.T) {
 		Config{Provider: provider, Blocks: registry, Dim: Overworld, Synchronous: true}.New(),
 		Config{Provider: provider, Blocks: registry, Dim: Nether, Synchronous: true}.New(),
 		Config{Provider: provider, Blocks: registry, Dim: End, Synchronous: true}.New(),
-		Config{Provider: provider, Blocks: registry, Dim: testDimension{i: 1029}, Synchronous: true}.New(),
+		Config{Provider: provider, Blocks: registry, Dim: registeredTestDimension(t), Synchronous: true}.New(),
 	}
 	for _, w := range worlds {
 		defer w.Close()
@@ -808,17 +809,44 @@ func TestScheduledTicksAdvancePerDimension(t *testing.T) {
 type scheduledTickTestBlock struct{}
 
 // Test counters below are package-level because block instances are registry values; tests using them must stay serial.
-var scheduledTickTestBlockTicks *int
+var (
+	scheduledTickTestBlockTicks      *int
+	scheduledTickTestBlockReschedule func(cube.Pos, *Tx)
+)
 
-func (scheduledTickTestBlock) ScheduledTick(cube.Pos, *Tx, *rand.Rand) {
+func (scheduledTickTestBlock) ScheduledTick(pos cube.Pos, tx *Tx, _ *rand.Rand) {
 	if scheduledTickTestBlockTicks != nil {
 		(*scheduledTickTestBlockTicks)++
+	}
+	if scheduledTickTestBlockReschedule != nil {
+		scheduledTickTestBlockReschedule(pos, tx)
 	}
 }
 func (scheduledTickTestBlock) EncodeBlock() (string, map[string]any) {
 	return "test:scheduled_tick", nil
 }
 func (scheduledTickTestBlock) Hash() (uint64, uint64) { return 1 << 40, 0 }
+
+type scheduledTickTypeVariant struct {
+	head  bool
+	ticks *int
+}
+
+func (b scheduledTickTypeVariant) ScheduledTick(cube.Pos, *Tx, *rand.Rand) {
+	if b.ticks != nil {
+		(*b.ticks)++
+	}
+}
+func (b scheduledTickTypeVariant) EncodeBlock() (string, map[string]any) {
+	return "minecraft:big_dripleaf", map[string]any{"big_dripleaf_head": b.head}
+}
+func (b scheduledTickTypeVariant) Hash() (uint64, uint64) {
+	if b.head {
+		return 1 << 58, 1
+	}
+	return 1 << 58, 0
+}
+func (scheduledTickTypeVariant) Model() BlockModel { return nil }
 func (scheduledTickTestBlock) Model() BlockModel      { return nil }
 
 func scheduledTickTestRegistry() BlockRegistry {

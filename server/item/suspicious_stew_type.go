@@ -9,71 +9,72 @@ import (
 // StewType represents a type of suspicious stew.
 type StewType struct {
 	stewType
+	duration time.Duration
 }
 
 // NightVisionPoppyStew returns suspicious stew night vision effect.
 func NightVisionPoppyStew() StewType {
-	return StewType{0}
+	return StewType{stewType: 0}
 }
 
 // JumpBoostStew returns suspicious stew jump boost effect.
 func JumpBoostStew() StewType {
-	return StewType{1}
+	return StewType{stewType: 1}
 }
 
 // WeaknessStew returns suspicious stew weakness effect.
 func WeaknessStew() StewType {
-	return StewType{2}
+	return StewType{stewType: 2}
 }
 
 // BlindnessBluetStew returns suspicious stew blindness effect.
 func BlindnessBluetStew() StewType {
-	return StewType{3}
+	return StewType{stewType: 3}
 }
 
 // PoisonStew returns suspicious stew poison effect.
 func PoisonStew() StewType {
-	return StewType{4}
+	return StewType{stewType: 4}
 }
 
 // SaturationDandelionStew returns suspicious stew saturation effect.
 func SaturationDandelionStew() StewType {
-	return StewType{5}
+	return StewType{stewType: 5}
 }
 
 // SaturationOrchidStew returns suspicious stew saturation effect.
 func SaturationOrchidStew() StewType {
-	return StewType{6}
+	return StewType{stewType: 6}
 }
 
 // FireResistanceStew returns suspicious stew fire resistance effect.
 func FireResistanceStew() StewType {
-	return StewType{7}
+	return StewType{stewType: 7}
 }
 
 // RegenerationStew returns suspicious stew regeneration effect.
 func RegenerationStew() StewType {
-	return StewType{8}
+	return StewType{stewType: 8}
 }
 
 // WitherStew returns suspicious stew wither effect.
 func WitherStew() StewType {
-	return StewType{9}
+	return StewType{stewType: 9}
 }
 
 // NightVisionTorchflowerStew returns suspicious stew night vision effect.
 func NightVisionTorchflowerStew() StewType {
-	return StewType{10}
+	return StewType{stewType: 10}
 }
 
 // BlindnessEyeblossomStew returns suspicious stew blindness effect.
 func BlindnessEyeblossomStew() StewType {
-	return StewType{11}
+	return StewType{stewType: 11}
 }
 
 // NauseaStew returns suspicious stew nausea effect.
 func NauseaStew() StewType {
-	return StewType{12}
+	return StewType{stewType: 12}
 }
 
 // StewTypes ...
@@ -88,33 +89,48 @@ func (s stewType) Uint8() uint8 {
 	return uint8(s)
 }
 
+// WithDuration returns a stew type with a custom Java effect duration.
+func (s StewType) WithDuration(duration time.Duration) StewType {
+	if duration <= 0 {
+		panic("stew effect duration must be positive")
+	}
+	s.duration = duration
+	return s
+}
+
 // Effects returns suspicious stew effects.
-func (s stewType) Effects() []effect.Effect {
+func (s StewType) Effects() []effect.Effect {
 	var effects []effect.Effect
 	switch s.Uint8() {
 	case 0, 10:
-		effects = append(effects, effect.New(effect.NightVision, 1, time.Second*5))
+		effects = append(effects, effect.New(effect.NightVision, 1, stewDuration(time.Second*5, s.duration)))
 	case 1:
-		effects = append(effects, effect.New(effect.JumpBoost, 1, time.Second*5))
+		effects = append(effects, effect.New(effect.JumpBoost, 1, stewDuration(time.Second*5, s.duration)))
 	case 2:
-		effects = append(effects, effect.New(effect.Weakness, 1, time.Second*7))
+		effects = append(effects, effect.New(effect.Weakness, 1, stewDuration(time.Second*7, s.duration)))
 	case 3, 11:
-		effects = append(effects, effect.New(effect.Blindness, 1, time.Second*6))
+		effects = append(effects, effect.New(effect.Blindness, 1, stewDuration(time.Second*6, s.duration)))
 	case 4:
-		effects = append(effects, effect.New(effect.Poison, 1, time.Second*11))
+		effects = append(effects, effect.New(effect.Poison, 1, stewDuration(time.Second*11, s.duration)))
 	case 5, 6:
 		effects = append(effects, effect.New(effect.Saturation, 1, time.Second*3/10))
 	case 7:
-		effects = append(effects, effect.New(effect.FireResistance, 1, time.Second*3))
+		effects = append(effects, effect.New(effect.FireResistance, 1, stewDuration(time.Second*3, s.duration)))
 	case 8:
-		effects = append(effects, effect.New(effect.Regeneration, 1, time.Second*7))
+		effects = append(effects, effect.New(effect.Regeneration, 1, stewDuration(time.Second*7, s.duration)))
 	case 9:
-		effects = append(effects, effect.New(effect.Wither, 1, time.Second*7))
+		effects = append(effects, effect.New(effect.Wither, 1, stewDuration(time.Second*7, s.duration)))
 	case 12:
-		effects = append(effects, effect.New(effect.Nausea, 1, time.Second*7))
+		effects = append(effects, effect.New(effect.Nausea, 1, stewDuration(time.Second*7, s.duration)))
 	default:
 		panic("should never happen")
 	}
 
 	return effects
+}
+func stewDuration(defaultDuration, override time.Duration) time.Duration {
+	if override > 0 {
+		return override
+	}
+	return defaultDuration
 }

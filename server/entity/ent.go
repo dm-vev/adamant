@@ -106,6 +106,16 @@ func (e *Ent) Teleport(pos mgl64.Vec3) {
 	e.tx.ReleaseViewers(viewers)
 }
 
+// TeleportThroughGateway preserves ordinary entities' motion and rotation.
+// Thrown ender pearls use the source transition with absolute zero motion.
+func (e *Ent) TeleportThroughGateway(pos mgl64.Vec3) {
+	if e.H().Type() == EnderPearlType {
+		e.data.Vel = mgl64.Vec3{}
+		e.data.Rot = cube.Rotation{}
+	}
+	e.Teleport(pos)
+}
+
 // Displace moves the entity by a relative delta.
 func (e *Ent) Displace(deltaPos mgl64.Vec3) {
 	e.Teleport(e.Position().Add(deltaPos))

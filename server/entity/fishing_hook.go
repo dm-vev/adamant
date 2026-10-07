@@ -5,6 +5,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/fishing"
+	loottable "github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
@@ -72,21 +73,41 @@ func (b *FishingHookBehaviour) Owner() *world.EntityHandle {
 }
 
 // Reel resolves the result of reeling in the fishing hook.
-func (b *FishingHookBehaviour) Reel(e *Ent, tx *world.Tx) (loot item.Stack, experience int, pulled world.Entity) {
+func (b *FishingHookBehaviour) Reel(e *Ent, tx *world.Tx) (loot item.Stack, experience int, pulled world.Entity, err error) {
 	if b.fishReady {
-		loot = fishing.Loot(b.luckLevel, b.lureLevel)
-		if !loot.Empty() {
-			experience = rand.IntN(3) + 1
-		}
+		sequence, sequenceErr := loottable.RandomSequence("minecraft:gameplay/fishing")
+		if sequenceErr != nil { return item.Stack{}, 0, nil, sequenceErr }
+		random := tx.LootRandomSequence(sequence, 0)
+		loot, err = fishing.LootWithRandom(b.luckLevel, b.openWater(e, tx), random)
+		if err != nil { return item.Stack{}, 0, nil, err }
+		if !loot.Empty() { experience = rand.IntN(3) + 1 }
 		b.fishReady = false
 	}
 	if b.target != nil {
-		if ent, ok := b.target.Entity(tx); ok {
-			pulled = ent
-		}
+		if ent, ok := b.target.Entity(tx); ok { pulled = ent }
 		b.target = nil
 	}
 	return
+}
+
+func (b *FishingHookBehaviour) openWater(e *Ent, tx *world.Tx) bool {
+	origin := cube.PosFromVec3(e.Position())
+	for x := -2; x <= 2; x++ {
+		for z := -2; z <= 2; z++ {
+			bottom := origin.Add(cube.Pos{x, -1, z})
+			liquid, ok := tx.Liquid(bottom)
+			if !ok || liquid.LiquidType() != "water" { return false }
+			for y := range 3 {
+				pos := origin.Add(cube.Pos{x, y, z})
+				block := tx.Block(pos)
+				encoded, ok := block.(interface{ EncodeBlock() (string, map[string]any) })
+				if !ok { return false }
+				name, _ := encoded.EncodeBlock()
+				if name != "minecraft:air" && name != "minecraft:water" { return false }
+			}
+		}
+	}
+	return true
 }
 
 // Tick ticks the fishing hook behaviour, updating its movement and state.

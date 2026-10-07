@@ -1,0 +1,986 @@
+{
+  "clusters": [
+    {
+      "mode": "columns",
+      "xoroshiro": false,
+      "seed": 123,
+      "placed": true,
+      "next": 1210033231312349320,
+      "blocks": [
+        {
+          "position": [
+            8,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            5,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            5,
+            10
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            5,
+            10
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            5,
+            10
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            6,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            6,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            6,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            6,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            6,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            6,
+            10
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            6,
+            10
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            6,
+            10
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            7,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            7,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            7,
+            10
+          ],
+          "name": "minecraft:gold_block"
+        }
+      ]
+    },
+    {
+      "mode": "columns",
+      "xoroshiro": false,
+      "seed": 9,
+      "placed": true,
+      "next": 6064359404705973573,
+      "blocks": [
+        {
+          "position": [
+            7,
+            4,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            5,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            5,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            5,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            5,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            7,
+            5,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            5,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            6,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            6,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            6,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            6,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            6,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            6,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            6,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            7,
+            6,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            6,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            6,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            6,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            7,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            7,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            7,
+            7,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            7,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            7,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            7,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            7,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            8,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            8,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            8,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            8,
+            9
+          ],
+          "name": "minecraft:basalt"
+        }
+      ]
+    },
+    {
+      "mode": "columns",
+      "xoroshiro": true,
+      "seed": 123,
+      "placed": true,
+      "next": -6645826650726034443,
+      "blocks": [
+        {
+          "position": [
+            7,
+            5,
+            6
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            6
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            5,
+            6
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            5,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            7,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            5,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            5,
+            10
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            5,
+            10
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            10,
+            5,
+            10
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            7,
+            6,
+            6
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            6,
+            6
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            6,
+            6
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            6,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            6,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            6,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            6,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            10,
+            6,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            6,
+            10
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            7,
+            6
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            7,
+            7
+          ],
+          "name": "minecraft:basalt"
+        }
+      ]
+    },
+    {
+      "mode": "columns",
+      "xoroshiro": true,
+      "seed": 9,
+      "placed": true,
+      "next": 6134640537416740221,
+      "blocks": [
+        {
+          "position": [
+            7,
+            4,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            6,
+            5,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            5,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            5,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            6,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            5,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            6,
+            5,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            5,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            5,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            6,
+            6,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            6,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            6,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            6,
+            6,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            6,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            6,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            6,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            6,
+            6,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            7,
+            6,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            6,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            6,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            7,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            7,
+            7
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            6,
+            7,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            7,
+            7,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            8,
+            7,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            7,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            7,
+            9
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            8,
+            8,
+            7
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            7,
+            8,
+            8
+          ],
+          "name": "minecraft:basalt"
+        },
+        {
+          "position": [
+            9,
+            8,
+            8
+          ],
+          "name": "minecraft:gold_block"
+        },
+        {
+          "position": [
+            9,
+            8,
+            9
+          ],
+          "name": "minecraft:gold_block"
+        }
+      ]
+    },
+    {
+      "mode": "blocked_origin",
+      "xoroshiro": false,
+      "seed": 123,
+      "placed": false,
+      "next": -5106534569952410475,
+      "blocks": []
+    },
+    {
+      "mode": "blocked_origin",
+      "xoroshiro": true,
+      "seed": 123,
+      "placed": false,
+      "next": 1248535248033503029,
+      "blocks": []
+    },
+    {
+      "mode": "zero_reach",
+      "xoroshiro": false,
+      "seed": 123,
+      "placed": false,
+      "next": 4775521195821725379,
+      "blocks": []
+    },
+    {
+      "mode": "zero_reach",
+      "xoroshiro": true,
+      "seed": 123,
+      "placed": false,
+      "next": 7309820480913739798,
+      "blocks": []
+    }
+  ],
+  "heights": [
+    {
+      "kind": "bounds",
+      "y": -1,
+      "matches": false
+    },
+    {
+      "kind": "bounds",
+      "y": 0,
+      "matches": true
+    },
+    {
+      "kind": "bounds",
+      "y": 31,
+      "matches": true
+    },
+    {
+      "kind": "bounds",
+      "y": 32,
+      "matches": false
+    },
+    {
+      "kind": "sea",
+      "y": 60,
+      "matches": false
+    },
+    {
+      "kind": "sea",
+      "y": 61,
+      "matches": true
+    },
+    {
+      "kind": "sea",
+      "y": 65,
+      "matches": true
+    },
+    {
+      "kind": "sea",
+      "y": 66,
+      "matches": false
+    }
+  ]
+}

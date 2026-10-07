@@ -10,7 +10,7 @@ import (
 )
 
 func TestPositionTrackingDimensionAndWorldIdentity(t *testing.T) {
-	sharedProvider := &lifecycleProvider{freshSettings: true}
+	sharedProvider := &lifecycleProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, freshSettings: true}
 	overworld := Config{Provider: sharedProvider, Dim: Overworld, Synchronous: true}.New()
 	nether := Config{Provider: sharedProvider, Dim: Nether, Synchronous: true}.New()
 	independentProvider := &lifecycleProvider{NopProvider: NopProvider{Set: overworld.set}}
@@ -73,7 +73,7 @@ func TestPositionTrackingCleanupIsBounded(t *testing.T) {
 }
 
 func TestPositionTrackingConcurrentWorldClose(t *testing.T) {
-	provider := &lifecycleProvider{freshSettings: true}
+	provider := &lifecycleProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, freshSettings: true}
 	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
 	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
 	first.TrackPosition(cube.Pos{1, 64, 1}, 0)
@@ -180,7 +180,7 @@ func clonePositionTrackingData(data PositionTrackingData) PositionTrackingData {
 }
 
 func TestPositionTrackingSaveSerialisesSnapshotAndWrite(t *testing.T) {
-	provider := &trackingTestProvider{firstSaveStarted: make(chan struct{}), releaseFirstSave: make(chan struct{})}
+	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, firstSaveStarted: make(chan struct{}), releaseFirstSave: make(chan struct{})}
 	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
 	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
 	released := false
@@ -229,7 +229,7 @@ func TestPositionTrackingSaveSerialisesSnapshotAndWrite(t *testing.T) {
 
 func TestPositionTrackingFailedLoadPreservesProviderData(t *testing.T) {
 	want := PositionTrackingData{Next: 7, Entries: []PositionTrackingEntry{{Handle: 7, Position: cube.Pos{7, 70, 7}, Active: true}}}
-	provider := &trackingTestProvider{data: want, loadErr: errors.New("temporary read failure"), failLoads: -1}
+	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, data: want, loadErr: errors.New("temporary read failure"), failLoads: -1}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	w.Save()
 	if err := w.Close(); err != nil {
@@ -247,7 +247,7 @@ func TestPositionTrackingFailedLoadPreservesProviderData(t *testing.T) {
 
 func TestPositionTrackingTransientLoadRecoversBeforeSave(t *testing.T) {
 	want := PositionTrackingData{Next: 4, Entries: []PositionTrackingEntry{{Handle: 4, Position: cube.Pos{4, 70, 4}, Active: true}}}
-	provider := &trackingTestProvider{data: want, loadErr: errors.New("temporary read failure"), failLoads: 1}
+	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, data: want, loadErr: errors.New("temporary read failure"), failLoads: 1}
 	w := Config{Provider: provider, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
@@ -267,6 +267,7 @@ func TestPositionTrackingTransientLoadRecoversBeforeSave(t *testing.T) {
 func TestPositionTrackingFailedLoadBlocksAllocationUntilRecovery(t *testing.T) {
 	stored := cube.Pos{3, 70, 3}
 	provider := &trackingTestProvider{
+		NopProvider: NopProvider{WorldData: &WorldDataMemory{}},
 		data:      PositionTrackingData{Next: 3, Entries: []PositionTrackingEntry{{Handle: 3, Position: stored, Active: true}}},
 		loadErr:   errors.New("temporary read failure"),
 		failLoads: 2,
@@ -290,6 +291,7 @@ func TestPositionTrackingFailedLoadBlocksAllocationUntilRecovery(t *testing.T) {
 func TestPositionTrackingFailedLoadPreservesLoadedHandleUntilRecovery(t *testing.T) {
 	pos := cube.Pos{7, 70, 7}
 	provider := &trackingTestProvider{
+		NopProvider: NopProvider{WorldData: &WorldDataMemory{}},
 		data:      PositionTrackingData{Next: 7, Entries: []PositionTrackingEntry{{Handle: 7, Position: pos, Active: true}}},
 		loadErr:   errors.New("temporary read failure"),
 		failLoads: 2,
@@ -310,7 +312,7 @@ func TestPositionTrackingFailedLoadPreservesLoadedHandleUntilRecovery(t *testing
 }
 
 func TestPositionTrackingFinalCloseSavesLatestOnce(t *testing.T) {
-	provider := &trackingTestProvider{}
+	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
 	first := Config{Provider: provider, Dim: Overworld, Synchronous: true}.New()
 	second := Config{Provider: provider, Dim: Nether, Synchronous: true}.New()
 
@@ -332,7 +334,7 @@ func TestPositionTrackingFinalCloseSavesLatestOnce(t *testing.T) {
 }
 
 func TestPositionTrackingWritableChangesSaveWhenReadOnlyWorldClosesLast(t *testing.T) {
-	provider := &trackingTestProvider{}
+	provider := &trackingTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
 	writable := Config{Provider: provider, Synchronous: true}.New()
 	readOnly := Config{Provider: provider, Dim: Nether, ReadOnly: true, Synchronous: true}.New()
 

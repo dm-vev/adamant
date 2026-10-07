@@ -177,7 +177,7 @@ func (g *Generator) runPopulationJob(job populationJob) {
 	}
 }
 
-func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
+func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
 	r := rand.NewRandom(0xdeadbeef ^ (int64(pos[0]) << 8) ^ int64(pos[1]) ^ g.seed)
 
 	noise := g.noise.getFastNoise3D(16, 128, 16, 4, 8, 4, int64(pos[0])*16, 0, int64(pos[1])*16)
@@ -338,6 +338,7 @@ func (g *Generator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) {
 		random: *r,
 	}
 	g.populationQueue <- job
+	return world.GenerationResult{}
 }
 
 // DefaultSpawn returns the default overworld spawn position.

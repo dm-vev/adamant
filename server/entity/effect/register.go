@@ -42,9 +42,11 @@ func init() {
 	Register(25, FatalPoison)
 	Register(26, ConduitPower)
 	Register(27, SlowFalling)
-	// TODO: (28) Bad omen. (Requires villages ...)
-	// TODO: (29) Hero of the village. (Requires villages ...)
+	Register(28, BadOmen)
+	Register(29, HeroOfTheVillage)
 	Register(30, Darkness)
+	Register(31, RaidOmen)
+	Register(32, TrialOmen)
 }
 
 var (

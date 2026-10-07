@@ -22,6 +22,8 @@ type Bed struct {
 	Facing cube.Direction
 	// Head is true if the bed is the head side.
 	Head bool
+	// Occupied is the saved block state; an occupant handle may be absent after loading.
+	Occupied bool
 	// Sleeper is the user that is using the bed. It is only set for the Head part of the bed.
 	Sleeper *world.EntityHandle
 }
@@ -155,7 +157,7 @@ func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *i
 			return true
 		}
 	}
-	if headSide.Sleeper != nil {
+	if headSide.Occupied {
 		s.Messaget(chat.MessageBedIsOccupied)
 		return true
 	}
@@ -193,9 +195,18 @@ type velocityEntity interface {
 }
 
 // NeighbourUpdateTick ...
-func (b Bed) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if _, _, ok := b.side(pos, tx); !ok {
+func (b Bed) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
+	side, sidePos, ok := b.side(pos, tx)
+	if changed != sidePos {
+		return
+	}
+	if !ok || side.Head == b.Head || side.Colour != b.Colour {
 		breakBlockNoDrops(b, pos, tx)
+		return
+	}
+	if b.Occupied != side.Occupied {
+		b.Occupied = side.Occupied
+		tx.SetBlock(pos, b, nil)
 	}
 }
 
@@ -208,7 +219,7 @@ func (b Bed) EncodeItem() (name string, meta int16) {
 func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:bed", map[string]interface{}{
 		"direction":      int32(horizontalDirection(b.Facing)),
-		"occupied_bit":   boolByte(b.Sleeper != nil),
+		"occupied_bit":   boolByte(b.Occupied),
 		"head_piece_bit": boolByte(b.Head),
 	}
 }
@@ -254,8 +265,10 @@ func (b Bed) side(pos cube.Pos, tx *world.Tx) (Bed, cube.Pos, bool) {
 // allBeds returns all possible beds.
 func allBeds() (beds []world.Block) {
 	for _, d := range cube.Directions() {
-		beds = append(beds, Bed{Facing: d})
-		beds = append(beds, Bed{Facing: d, Head: true})
+		for _, occupied := range []bool{false, true} {
+			beds = append(beds, Bed{Facing: d, Occupied: occupied})
+			beds = append(beds, Bed{Facing: d, Head: true, Occupied: occupied})
+		}
 	}
 	return
 }

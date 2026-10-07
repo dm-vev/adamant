@@ -22,6 +22,11 @@ type Activatable interface {
 	Activate(pos cube.Pos, clickedFace cube.Face, tx *world.Tx, u item.User, ctx *item.UseContext) bool
 }
 
+// HitActivatable is implemented by blocks whose activation depends on the exact hit position.
+type HitActivatable interface {
+	ActivateAt(pos cube.Pos, clickedFace cube.Face, hitPos mgl64.Vec3, tx *world.Tx, u item.User, ctx *item.UseContext) bool
+}
+
 // Pickable represents a block that may give a different item then the block itself when picked.
 type Pickable interface {
 	// Pick returns the item that is picked when the block is picked.

@@ -24,8 +24,6 @@ const (
 	mapLockingMultiRecipe              = "602234e4-cac1-4353-8bb7-b1ebff70024b"
 	mapCloningMultiRecipe              = "85939755-ba10-4d9d-a4cc-efb7a8e943c4"
 	mapExtendingCartographyMultiRecipe = "8b36268c-1829-483c-a0f1-993b7156a8f2"
-	mapUpgradingCartographyMultiRecipe = "98c84b38-1085-46bd-b1ce-dd38c159e6cc"
-	mapUpgradingMultiRecipe            = "aecd2294-4b94-434b-8667-4499bb2c9327"
 	bannerDuplicateMultiRecipe         = "b5c5d105-75a2-4076-af2b-923ea2bf4bf0"
 	bookCloningMultiRecipe             = "d1ca6b84-338e-4f2f-9c6b-76cc8b4bd98d"
 	mapExtendingMultiRecipe            = "d392b075-4ba1-40ae-8789-af868d56f6ce"
@@ -217,7 +215,7 @@ func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) err
 		}
 	}
 
-	output, err := multiCraftResult(craft, s.br)
+	output, err := multiCraftResult(craft, tx)
 	if err != nil {
 		return err
 	}
@@ -236,18 +234,26 @@ func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) err
 	return h.createResults(s, tx, output)
 }
 
-func multiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, error) {
-	output, err := deriveMultiCraftResult(craft, br)
+func multiCraftResult(craft *multiCraft, tx *world.Tx) (item.Stack, error) {
+	output, err := deriveMultiCraftResult(craft)
 	if err != nil {
 		return item.Stack{}, err
 	}
 	if !requestedMultiResultMatches(output, *craft.result) {
 		return item.Stack{}, fmt.Errorf("multi recipe result does not match server-derived output")
 	}
+	switch craft.recipe.UUID().String() {
+	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe, mapLockingMultiRecipe:
+		for _, stack := range craft.input {
+			if _, ok := stack.Item().(item.FilledMap); ok {
+				return changedMapResult(stack, craft.recipe.UUID().String(), tx)
+			}
+		}
+	}
 	return output, nil
 }
 
-func deriveMultiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Stack, error) {
+func deriveMultiCraftResult(craft *multiCraft) (item.Stack, error) {
 	inputs := make([]item.Stack, 0, len(craft.input))
 	for _, stack := range craft.input {
 		if !stack.Empty() {
@@ -291,8 +297,7 @@ func deriveMultiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Sta
 			return item.Stack{}, fmt.Errorf("firework multi recipe supplied invalid inputs")
 		}
 		return item.NewStack(item.Firework{Duration: time.Duration(gunpowder+1) * 500 * time.Millisecond, Explosions: explosions}, count), nil
-	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe, mapCloningMultiRecipe, mapCloningCartographyMultiRecipe,
-		mapUpgradingMultiRecipe, mapUpgradingCartographyMultiRecipe, mapLockingMultiRecipe:
+	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe, mapCloningMultiRecipe, mapCloningCartographyMultiRecipe, mapLockingMultiRecipe:
 		var source item.Stack
 		counts := map[string]int{}
 		for _, stack := range inputs {
@@ -315,8 +320,6 @@ func deriveMultiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Sta
 		case mapCloningCartographyMultiRecipe:
 			valid = valid && len(inputs) == 2 && counts["minecraft:empty_map"] == 1
 			outputCount *= 2
-		case mapUpgradingMultiRecipe, mapUpgradingCartographyMultiRecipe:
-			valid = valid && len(inputs) == 2 && counts["minecraft:compass"] == 1
 		case mapLockingMultiRecipe:
 			valid = valid && len(inputs) == 2 && counts["minecraft:glass_pane"] == 1
 		}
@@ -329,7 +332,7 @@ func deriveMultiCraftResult(craft *multiCraft, br world.BlockRegistry) (item.Sta
 		if id == mapCloningMultiRecipe || id == mapCloningCartographyMultiRecipe {
 			return withCount(source, outputCount)
 		}
-		return changedMapResult(source, id, br)
+		return withCount(source, 1)
 	case bookCloningMultiRecipe:
 		var source item.Stack
 		writable := 0
@@ -488,96 +491,46 @@ func mapCentredInPaper(grid []item.Stack) bool {
 	return true
 }
 
-func changedMapResult(source item.Stack, operation string, br world.BlockRegistry) (item.Stack, error) {
-	name, meta := source.Item().EncodeItem()
-	nbter, ok := source.Item().(world.NBTer)
+func changedMapResult(source item.Stack, operation string, tx *world.Tx) (item.Stack, error) {
+	mapItem, ok := source.Item().(item.FilledMap)
 	if !ok {
-		return item.Stack{}, fmt.Errorf("filled map does not expose map NBT state")
+		return item.Stack{}, fmt.Errorf("map transition requires one filled map")
 	}
-	data := maps.Clone(nbter.EncodeNBT())
-	if _, ok := nbtInteger(data["map_uuid"]); !ok {
-		return item.Stack{}, fmt.Errorf("filled map has no valid map UUID")
+	if tx == nil {
+		return item.Stack{}, world.ErrMapDataUnavailable
+	}
+	mapID := mapItem.NativeID
+	if !mapItem.HasNativeID {
+		if !mapItem.HasJavaID {
+			return item.Stack{}, fmt.Errorf("filled map has no valid map ID")
+		}
+		var err error
+		mapID, err = tx.World().MapIDByJavaID(mapItem.JavaID)
+		if err != nil {
+			return item.Stack{}, err
+		}
 	}
 
-	targetMeta := meta
+	var data world.MapData
+	var err error
 	switch operation {
 	case mapExtendingMultiRecipe, mapExtendingCartographyMultiRecipe:
-		if meta != 0 && meta != 2 || nbtTruthy(data["map_to_lock"]) || nbtTruthy(data["map_scale_direction"]) {
-			return item.Stack{}, fmt.Errorf("map cannot be extended in its current state")
-		}
-		if raw, exists := data["map_scale"]; exists {
-			scale, valid := nbtInteger(raw)
-			if !valid || scale < 0 || scale >= 4 {
-				return item.Stack{}, fmt.Errorf("map cannot be extended beyond scale 4")
-			}
-		}
-		data["map_scale_direction"] = int32(1)
-	case mapUpgradingMultiRecipe, mapUpgradingCartographyMultiRecipe:
-		if meta != 0 || nbtTruthy(data["map_display_players"]) {
-			return item.Stack{}, fmt.Errorf("map already displays player positions")
-		}
-		targetMeta, data["map_display_players"] = 2, byte(1)
+		data, err = tx.ScaleMap(mapID)
 	case mapLockingMultiRecipe:
-		if meta != 0 && meta != 2 || nbtTruthy(data["map_to_lock"]) {
-			return item.Stack{}, fmt.Errorf("map is already locked or cannot be locked")
-		}
-		targetMeta, data["map_to_lock"] = 5, byte(1)
+		data, err = tx.LockMap(mapID)
 	default:
 		return item.Stack{}, fmt.Errorf("unsupported map operation %v", operation)
 	}
-
-	target, ok := world.ItemByName(name, targetMeta)
-	if !ok {
-		return item.Stack{}, fmt.Errorf("filled map metadata %v is not registered", targetMeta)
+	if err != nil {
+		return item.Stack{}, err
 	}
-	targetNBT, ok := target.(world.NBTer)
-	if !ok {
-		return item.Stack{}, fmt.Errorf("filled map metadata %v does not expose map NBT state", targetMeta)
+	result := item.FilledMap{
+		NativeID: data.ID, HasNativeID: true,
+		JavaID: data.JavaID, HasJavaID: data.HasJavaID,
 	}
-	decoded, ok := world.DecodeNBT(targetNBT, data, br).(world.Item)
-	if !ok {
-		return item.Stack{}, fmt.Errorf("filled map NBT decoded to a non-item")
-	}
-	output := source.WithItem(decoded).Grow(1 - source.Count())
-	if output.Equal(source.Grow(1 - source.Count())) {
-		return item.Stack{}, fmt.Errorf("map operation did not change the map")
-	}
-	return output, nil
+	return source.WithItem(result).Grow(1 - source.Count()), nil
 }
 
-func nbtInteger(value any) (int64, bool) {
-	switch value := value.(type) {
-	case byte:
-		return int64(value), true
-	case int8:
-		return int64(value), true
-	case int16:
-		return int64(value), true
-	case int32:
-		return int64(value), true
-	case int64:
-		return value, true
-	case int:
-		return int64(value), true
-	case uint16:
-		return int64(value), true
-	case uint32:
-		return int64(value), true
-	case uint64:
-		if value <= math.MaxInt64 {
-			return int64(value), true
-		}
-	}
-	return 0, false
-}
-
-func nbtTruthy(value any) bool {
-	if value, ok := value.(bool); ok {
-		return value
-	}
-	integer, ok := nbtInteger(value)
-	return ok && integer != 0
-}
 
 func validBannerDuplicateGrid(grid []item.Stack) bool {
 	width := 0

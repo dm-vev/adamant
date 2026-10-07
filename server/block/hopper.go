@@ -183,12 +183,14 @@ func (h Hopper) insertItem(pos cube.Pos, tx *world.Tx) bool {
 	}
 
 	if container, ok := dest.(Container); ok {
-		for sourceSlot, sourceStack := range h.inventory.Slots() {
+		inv := container.Inventory(tx, destPos)
+		for sourceSlot := range h.inventory.Size() {
+			sourceStack, _ := h.inventory.Item(sourceSlot)
 			if sourceStack.Empty() {
 				continue
 			}
 
-			_, err := container.Inventory(tx, destPos).AddItem(sourceStack.Grow(-sourceStack.Count() + 1))
+			_, err := inv.AddItem(sourceStack.Grow(-sourceStack.Count() + 1))
 			if err != nil {
 				// The destination is full.
 				return false
@@ -224,9 +226,10 @@ func (h Hopper) extractItem(pos cube.Pos, tx *world.Tx) bool {
 	}
 
 	if containerOrigin, ok := origin.(Container); ok {
-		for slot, stack := range containerOrigin.Inventory(tx, originPos).Slots() {
+		inv := containerOrigin.Inventory(tx, originPos)
+		for slot := range inv.Size() {
+			stack, _ := inv.Item(slot)
 			if stack.Empty() {
-				// We don't have any items to extract.
 				continue
 			}
 
@@ -236,7 +239,7 @@ func (h Hopper) extractItem(pos cube.Pos, tx *world.Tx) bool {
 				continue
 			}
 
-			_ = containerOrigin.Inventory(tx, originPos).SetItem(slot, stack.Grow(-1))
+			_ = inv.SetItem(slot, stack.Grow(-1))
 			notifyComparatorUpdate(originPos, tx)
 
 			if hopper, ok := origin.(Hopper); ok {

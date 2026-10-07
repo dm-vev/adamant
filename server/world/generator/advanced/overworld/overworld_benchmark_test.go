@@ -3,7 +3,6 @@ package overworld
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -21,7 +20,7 @@ func BenchmarkGenerate1000Chunks(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for _, pos := range positions {
-			c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
+			c := chunk.New(world.DefaultBlockRegistry, world.Overworld.Range())
 			g.GenerateChunk(pos, c)
 		}
 	}

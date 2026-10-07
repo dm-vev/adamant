@@ -13,6 +13,7 @@ import (
 type MovementComputer struct {
 	Gravity, Drag     float64
 	DragBeforeGravity bool
+	NoBlockCollisions  bool
 
 	onGround             bool
 	collidedHorizontally bool
@@ -168,7 +169,10 @@ func (c *MovementComputer) checkCollision(tx *world.Tx, e world.Entity, pos, vel
 
 	// Entities only ever have a single bounding box.
 	entityBBox := e.H().Type().BBox(e).Translate(pos)
-	blocks := blockBBoxsAround(tx, entityBBox.Extend(vel))
+	var blocks []cube.BBox
+	if !c.NoBlockCollisions {
+		blocks = blockBBoxsAround(tx, entityBBox.Extend(vel))
+	}
 	var entities []cube.BBox
 	if c.CollideEntities {
 		entities = entityBBoxsAround(tx, e, entityBBox.Extend(vel))

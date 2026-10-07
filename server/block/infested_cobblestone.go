@@ -1,7 +1,6 @@
 package block
 
 // InfestedCobblestone is a block that hides a silverfish. It looks identical to cobblestone.
-// TODO: spawn a silverfish on break (without silk touch) once silverfish are implemented.
 type InfestedCobblestone struct {
 	solid
 	flute
@@ -9,7 +8,7 @@ type InfestedCobblestone struct {
 
 // BreakInfo ...
 func (i InfestedCobblestone) BreakInfo() BreakInfo {
-	return newBreakInfo(1, pickaxeHarvestable, pickaxeEffective, silkTouchOnlyDrop(i)).withBlastResistance(0.75)
+	return newBreakInfo(1, pickaxeHarvestable, pickaxeEffective, silkTouchOnlyDrop(i)).withBlastResistance(0.75).withBreakHandler(infestedBreakHandler)
 }
 
 // EncodeItem ...

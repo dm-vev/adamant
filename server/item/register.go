@@ -10,6 +10,14 @@ import (
 func init() {
 	world.RegisterItem(AmethystShard{})
 	world.RegisterItem(Apple{})
+	world.RegisterItem(Bundle{})
+	for _, colour := range Colours() {
+		world.RegisterItem(Bundle{Colour: colour, Dyed: true})
+		world.RegisterItem(Harness{Colour: colour})
+		world.RegisterItem(Cushion{Colour: colour})
+	}
+	world.RegisterItem(ArmadilloScute{})
+	world.RegisterItem(WolfArmor{})
 	world.RegisterItem(ArmourStand{})
 	world.RegisterItem(Arrow{})
 	world.RegisterItem(BakedPotato{})
@@ -30,11 +38,18 @@ func init() {
 	world.RegisterItem(Bread{})
 	world.RegisterItem(Brick{})
 	world.RegisterItem(Bucket{})
+	for _, entity := range []string{"minecraft:axolotl", "minecraft:sulfur_cube", "minecraft:tadpole"} {
+		world.RegisterItem(MobBucket{Entity: entity})
+	}
+	for _, entity := range []string{"minecraft:cod", "minecraft:pufferfish", "minecraft:salmon", "minecraft:tropical_fish"} {
+		world.RegisterItem(FishBucket{MobBucket: MobBucket{Entity: entity}})
+	}
 	world.RegisterItem(CarrotOnAStick{})
 	world.RegisterItem(Charcoal{})
 	world.RegisterItem(Chicken{Cooked: true})
 	world.RegisterItem(Chicken{})
 	world.RegisterItem(ClayBall{})
+	world.RegisterItem(Brush{})
 	world.RegisterItem(Clock{})
 	world.RegisterItem(Coal{})
 	world.RegisterItem(Cod{Cooked: true})
@@ -55,6 +70,8 @@ func init() {
 	world.RegisterItem(DriedKelp{})
 	world.RegisterItem(EchoShard{})
 	world.RegisterItem(Egg{})
+	world.RegisterItem(Egg{Variant: EggBlue})
+	world.RegisterItem(Egg{Variant: EggBrown})
 	world.RegisterItem(Elytra{})
 	world.RegisterItem(Emerald{})
 	world.RegisterItem(EnchantedApple{})
@@ -81,6 +98,8 @@ func init() {
 	world.RegisterItem(FishingRod{})
 	world.RegisterItem(HeartOfTheSea{})
 	world.RegisterItem(HeavyCore{})
+	world.RegisterItem(KnowledgeBook{})
+	world.RegisterItem(FilledMap{})
 	world.RegisterItem(NameTag{})
 	world.RegisterItem(Honeycomb{})
 	world.RegisterItem(InkSac{Glowing: true})
@@ -106,11 +125,17 @@ func init() {
 	world.RegisterItem(Mutton{Cooked: true})
 	world.RegisterItem(Mutton{})
 	world.RegisterItem(NautilusShell{})
+	for material := NautilusArmorCopper; material <= NautilusArmorNetherite; material++ {
+		world.RegisterItem(NautilusArmor{Material: material})
+	}
 	world.RegisterItem(NetherBrick{})
 	world.RegisterItem(NetherQuartz{})
 	world.RegisterItem(NetherStar{})
 	world.RegisterItem(NetheriteIngot{})
 	world.RegisterItem(NetheriteScrap{})
+	world.RegisterItem(OminousBottle{})
+	world.RegisterItem(TrialKey{})
+	world.RegisterItem(OminousTrialKey{})
 	world.RegisterItem(Paper{})
 	world.RegisterItem(PhantomMembrane{})
 	world.RegisterItem(PoisonousPotato{})
@@ -121,6 +146,8 @@ func init() {
 	world.RegisterItem(PrismarineShard{})
 	world.RegisterItem(Pufferfish{})
 	world.RegisterItem(PumpkinPie{})
+	world.RegisterItem(PitcherPod{})
+	world.RegisterItem(TorchflowerSeeds{})
 	world.RegisterItem(Saddle{})
 	world.RegisterItem(RabbitFoot{})
 	world.RegisterItem(RabbitHide{})
@@ -152,10 +179,15 @@ func init() {
 	world.RegisterItem(TropicalFish{})
 	world.RegisterItem(TurtleShell{})
 	world.RegisterItem(Trident{})
+	for _, t := range ToolTiers() {
+		world.RegisterItem(Spear{Tier: t})
+	}
 	world.RegisterItem(WarpedFungusOnAStick{})
 	world.RegisterItem(Wheat{})
 	world.RegisterItem(WrittenBook{})
-	world.RegisterItem(SpawnEgg{Entity: "minecraft:cow"})
+	for _, entity := range spawnEggEntities {
+		world.RegisterItem(SpawnEgg{Entity: entity})
+	}
 	for _, t := range ArmourTiers() {
 		world.RegisterItem(Helmet{Tier: t})
 		world.RegisterItem(Chestplate{Tier: t})

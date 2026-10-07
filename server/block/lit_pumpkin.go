@@ -32,6 +32,16 @@ func (l LitPumpkin) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *w
 	return placed(ctx)
 }
 
+// Placed applies the same construction trigger as the carved-pumpkin block.
+func (l LitPumpkin) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
+	if _, same := previous.(LitPumpkin); same {
+		return
+	}
+	if spawn := tx.World().EntityRegistry().Config().GolemPattern; spawn != nil {
+		spawn(tx, pos)
+	}
+}
+
 // BreakInfo ...
 func (l LitPumpkin) BreakInfo() BreakInfo {
 	return newBreakInfo(1, alwaysHarvestable, axeEffective, oneOf(l))

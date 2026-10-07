@@ -8,6 +8,7 @@ import (
 // BossBar represents a boss bar that may be sent to a player. It is shown as a purple bar with text above
 // it. The health shown by the bar may be changed.
 type BossBar struct {
+	id     string
 	text   string
 	health float64
 	c      Colour
@@ -18,9 +19,22 @@ type BossBar struct {
 // By default, the boss bar will have a full health bar. To change this, use BossBar.WithHealthPercentage().
 // The default colour of the BossBar is Purple. This can be changed using BossBar.WithColour.
 func New(text ...any) BossBar {
-	return BossBar{text: format(text), health: 1, c: Purple()}
+	return BossBar{id: "default", text: format(text), health: 1, c: Purple()}
 }
 
+
+// WithID returns a copy of the boss bar with a stable identifier. Bars with
+// different identifiers are independent and may be displayed simultaneously.
+func (bar BossBar) WithID(id string) BossBar {
+	if id == "" {
+		panic("boss bar: identifier must not be empty")
+	}
+	bar.id = id
+	return bar
+}
+
+// ID returns the stable identifier of the boss bar.
+func (bar BossBar) ID() string { return bar.id }
 // Text returns the text of the boss bar: The text passed when creating the bar using New().
 func (bar BossBar) Text() string {
 	return bar.text

@@ -56,21 +56,28 @@ func TestAllDispenserStates(t *testing.T) {
 	}
 }
 
-func TestDispenserConsumesOneAndKeepsPoweredState(t *testing.T) {
+func TestDispenserShootsFireChargeAndKeepsPoweredState(t *testing.T) {
+	typ := dispenserTestEntityType{}
+	entities := world.EntityRegistryConfig{SmallFireball: func(opts world.EntitySpawnOpts, _ world.Entity) *world.EntityHandle {
+		return opts.New(typ, dispenserTestEntityConfig{})
+	}}.New([]world.EntityType{typ})
 	d := NewDispenser()
 	d.Facing, d.Triggered = cube.FaceEast, true
 	_ = d.inventory.SetItem(0, item.NewStack(item.FireCharge{}, 2))
-	w := world.Config{Synchronous: true}.New()
+	w := world.Config{Synchronous: true, Entities: entities}.New()
 	defer w.Close()
 	pos := cube.Pos{0, 1, 0}
 	<-w.Exec(func(tx *world.Tx) {
 		tx.SetBlock(pos, d, nil)
-		tx.SetBlock(pos.Side(d.Facing).Side(cube.FaceDown), Stone{}, nil)
 		d.ScheduledTick(pos, tx, rand.New(rand.NewPCG(1, 2)))
 		got := tx.Block(pos).(Dispenser)
 		stack, _ := got.inventory.Item(0)
-		if _, ok := tx.Block(pos.Side(d.Facing)).(Fire); !got.Triggered || stack.Count() != 1 || !ok {
-			t.Fatalf("triggered=%v stack=%v front=%T", got.Triggered, stack, tx.Block(pos.Side(d.Facing)))
+		spawned := 0
+		for e := range tx.Entities() {
+			if e.H().Type() == typ { spawned++ }
+		}
+		if !got.Triggered || stack.Count() != 1 || spawned != 1 {
+			t.Fatalf("triggered=%v stack=%v small fireballs=%d", got.Triggered, stack, spawned)
 		}
 	})
 }
@@ -97,10 +104,14 @@ func TestDispenserFallingEdgeDoesNotConsume(t *testing.T) {
 }
 
 func TestDispenserFiresOncePerPoweredEdge(t *testing.T) {
+	typ := dispenserTestEntityType{}
+	entities := world.EntityRegistryConfig{SmallFireball: func(opts world.EntitySpawnOpts, _ world.Entity) *world.EntityHandle {
+		return opts.New(typ, dispenserTestEntityConfig{})
+	}}.New([]world.EntityType{typ})
 	d := NewDispenser()
 	d.Facing = cube.FaceEast
 	_ = d.inventory.SetItem(0, item.NewStack(item.FireCharge{}, 2))
-	w := world.Config{Synchronous: true}.New()
+	w := world.Config{Synchronous: true, Entities: entities}.New()
 	defer w.Close()
 	pos := cube.Pos{0, 1, 0}
 	sourcePos := pos.Side(cube.FaceWest)

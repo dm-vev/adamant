@@ -1,0 +1,827 @@
+[
+  {
+    "origin": [
+      -17,
+      0,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      0,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      15,
+      0,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      31,
+      0,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      47,
+      0,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      0,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      0,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 64,
+    "digest": "f23ab0d5234f6961b35347188160b3b0c8bfa729d2df884127c10df2178137be"
+  },
+  {
+    "origin": [
+      15,
+      0,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 128,
+    "digest": "efd389d9092b5f534d429cb77f03d6fb3206e1124695b4e0e26748fc4553549a"
+  },
+  {
+    "origin": [
+      31,
+      0,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 72,
+    "digest": "e81443aa29f6c0424c5cb390603ec9677ef0d7522860c4a2b4e8dd8554cf81f0"
+  },
+  {
+    "origin": [
+      47,
+      0,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      0,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      0,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 128,
+    "digest": "bbe123ef051bc3ca5f3e885866c3282b5b23a73e6c8e53ba70140b139bb88ac1"
+  },
+  {
+    "origin": [
+      15,
+      0,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 256,
+    "digest": "a048217d412399e9880cfcbb803326ede98b79b53c4fe6fed9cf88cd8f179e0c"
+  },
+  {
+    "origin": [
+      31,
+      0,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 144,
+    "digest": "65346560860924ac75b87f50ed6f6323fc558413e90e9e45c1f7ab2c04e281a7"
+  },
+  {
+    "origin": [
+      47,
+      0,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      0,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      0,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 72,
+    "digest": "33e542eaf61bc9908ff6b29fe3ba2f64e469f1d010c7441f6d68054e73b68f81"
+  },
+  {
+    "origin": [
+      15,
+      0,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 144,
+    "digest": "7ac9d3391599b2d59d16931370b63863cb2e0453964cadfbda766f37b971c928"
+  },
+  {
+    "origin": [
+      31,
+      0,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 81,
+    "digest": "8458ba4d3e2d0288ceba175d4c2c5533893b38cf57b7068240061a15dd9ef31a"
+  },
+  {
+    "origin": [
+      47,
+      0,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      0,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      0,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      15,
+      0,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      31,
+      0,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      47,
+      0,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      -64,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      -64,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      15,
+      -64,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      31,
+      -64,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      47,
+      -64,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      -64,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      -64,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 64,
+    "digest": "59fe5ad8903b669ddd499cce4f0de2f13785d4d84c328ea47288035122919370"
+  },
+  {
+    "origin": [
+      15,
+      -64,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 128,
+    "digest": "2cfe5cfbb948694b4ed35efa2ce662494f94eee3f2214e4c1e1d31619dd658cd"
+  },
+  {
+    "origin": [
+      31,
+      -64,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 72,
+    "digest": "45a5943515985591c7f11dfad7e85d579a3a31d12022d8354f8bfd3ca8c6c402"
+  },
+  {
+    "origin": [
+      47,
+      -64,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      -64,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      -64,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 128,
+    "digest": "05cc8f0642b74767e9195d5078ecfbf74dc1acac8b2d312de3b0dd60aa3a0f76"
+  },
+  {
+    "origin": [
+      15,
+      -64,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 256,
+    "digest": "a0111f35a27d28dc923595f0046176b09506f369a51e662e7cd57f6eff3e0282"
+  },
+  {
+    "origin": [
+      31,
+      -64,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 144,
+    "digest": "31d27a2020cf1fc1f570b7bab80c3e8b15fbc33cc342ced23d6af03660992ea6"
+  },
+  {
+    "origin": [
+      47,
+      -64,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      -64,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      -64,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 72,
+    "digest": "aa32e1328585f6ca0d64c6fa984837c0dd12367e0b8d533ca7a70bc724966283"
+  },
+  {
+    "origin": [
+      15,
+      -64,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 144,
+    "digest": "f00435dde166da26475e82e7b6eb7465ccc8310018a803339f0bf69a9075dc46"
+  },
+  {
+    "origin": [
+      31,
+      -64,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 81,
+    "digest": "cd27801dce3339ab3b4b608ef1d4ca735ca3ffac63449e29046bf0f767eb56d6"
+  },
+  {
+    "origin": [
+      47,
+      -64,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      -64,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      -64,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      15,
+      -64,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      31,
+      -64,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      47,
+      -64,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      21,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      21,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      15,
+      21,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      31,
+      21,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      47,
+      21,
+      -25
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      21,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      21,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 64,
+    "digest": "2cc3fc0795ec81b7c6cbf54f536e1d336a1080598f1821e7e4659e1cb2bfa354"
+  },
+  {
+    "origin": [
+      15,
+      21,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 128,
+    "digest": "bf1de7e863d6b6c58fac3e6c81f7f833fe9c18014dee2fef0421b0339e199e74"
+  },
+  {
+    "origin": [
+      31,
+      21,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 72,
+    "digest": "1dbe6676d0cb2e0a66601991b0533833e7c37c9ececb55e3339f4f962ecfac19"
+  },
+  {
+    "origin": [
+      47,
+      21,
+      -9
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      21,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      21,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 128,
+    "digest": "829d58ad1e7081aedb83b8df433765dab76ddd0fb561609e040fe9e881269f38"
+  },
+  {
+    "origin": [
+      15,
+      21,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 256,
+    "digest": "60a71137bbc2706996380f1091790bf3b92b6de6dda74881da5b993cebb637ad"
+  },
+  {
+    "origin": [
+      31,
+      21,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 144,
+    "digest": "60d699c5f6034d65e55acfdbc092d960acde443093630c7542b9081a69168ff3"
+  },
+  {
+    "origin": [
+      47,
+      21,
+      7
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      21,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      21,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 72,
+    "digest": "c194d7598cb57ab2f09561d3735c2eabf0c42f6f9618f55d6a5868902fd14603"
+  },
+  {
+    "origin": [
+      15,
+      21,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 144,
+    "digest": "4970bdab6e4b68d0fcffbd43f31968721ac22a935de6cbc12e3f777f775faefa"
+  },
+  {
+    "origin": [
+      31,
+      21,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 81,
+    "digest": "91b4fffb4278d522f163a98d6a7389ce8360f053d266665bc41baf36368ceeb5"
+  },
+  {
+    "origin": [
+      47,
+      21,
+      23
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -17,
+      21,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      -1,
+      21,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      15,
+      21,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      31,
+      21,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "origin": [
+      47,
+      21,
+      39
+    ],
+    "placed": true,
+    "next": -5106534569952410475,
+    "count": 0,
+    "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

@@ -44,4 +44,5 @@ func init() {
 	item.RegisterEnchantment(38, WindBurst)
 	item.RegisterEnchantment(39, Density)
 	item.RegisterEnchantment(40, Breach)
+	item.RegisterEnchantment(41, Lunge)
 }

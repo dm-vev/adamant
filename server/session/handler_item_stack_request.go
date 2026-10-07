@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -153,7 +154,150 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 
 // handleTake handles a Take stack request action.
 func (h *ItemStackRequestHandler) handleTake(a *protocol.TakeStackRequestAction, s *Session, tx *world.Tx, c Controllable) error {
-	return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx, c)
+	switch a.Source.Container.ContainerID {
+	case protocol.ContainerTradeResultPreview, protocol.ContainerTradeTwoResultPreview:
+		return h.handleMerchantTrade(a.Source, a.Destination, a.Count, s, tx, c)
+	default:
+		return h.handleTransfer(a.Source, a.Destination, a.Count, s, tx, c)
+	}
+}
+
+func (h *ItemStackRequestHandler) handleMerchantTrade(from, to protocol.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable) error {
+	if !s.containerOpened.Load() || byte(s.openedContainerID.Load()) != protocol.ContainerTypeTrade {
+		return fmt.Errorf("no merchant window is open")
+	}
+	handle := s.openedEntity.Load()
+	if handle == nil {
+		return fmt.Errorf("merchant window has no entity")
+	}
+	target, ok := handle.Entity(tx)
+	if !ok {
+		return fmt.Errorf("merchant is no longer in the world")
+	}
+	merchant, ok := target.(entity.Merchant)
+	if !ok {
+		return fmt.Errorf("opened entity is not a merchant")
+	}
+	offers, err := merchantOffersFor(merchant, c)
+	if err != nil {
+		s.notifyMerchantError(c, "failed to load merchant offers for trade", err)
+		return err
+	}
+	index := int(from.Slot)
+	if index < 0 || index >= len(offers) {
+		return fmt.Errorf("merchant offer %d is out of range", index)
+	}
+	offer := offers[index]
+	if offer.Uses >= offer.MaxUses || offer.Input.Empty() || offer.Output.Empty() || int(count) != offer.Output.Count() {
+		return fmt.Errorf("merchant offer %d is unavailable", index)
+	}
+
+	originals := s.inv.Slots()
+	remaining := append([]item.Stack(nil), originals...)
+	baseCount := offer.Input.Count()
+	demandProduct := int32(baseCount) * int32(offer.Demand)
+	demandPrice := int(math.Floor(float64(float32(demandProduct) * offer.PriceMultiplier)))
+	price := baseCount + max(0, demandPrice) + offer.SpecialPrice
+	price = min(max(price, 1), offer.Input.MaxCount())
+	inputA := offer.Input.Grow(price - baseCount)
+	for _, cost := range [2]item.Stack{inputA, offer.SecondaryInput} {
+		if cost.Empty() {
+			continue
+		}
+		needed := cost.Count()
+		for slot, stack := range remaining {
+			if stack.Empty() || !stack.Comparable(cost) {
+				continue
+			}
+			removed := min(needed, stack.Count())
+			remaining[slot] = stack.Grow(-removed)
+			needed -= removed
+			if needed == 0 {
+				break
+			}
+		}
+		if needed != 0 {
+			return fmt.Errorf("merchant trade inputs are missing")
+		}
+	}
+
+	destInventory, ok := s.invByID(int32(to.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown trade result destination %v", to.Container.ContainerID)
+	}
+	destination, err := h.itemInSlot(to, s, tx)
+	if err != nil {
+		return err
+	}
+	if destInventory == s.inv {
+		slot := int(to.Slot)
+		if slot < 0 || slot >= len(remaining) {
+			return fmt.Errorf("trade destination slot is out of range")
+		}
+		destination = remaining[slot]
+	}
+	if !destination.Empty() && (!destination.Comparable(offer.Output) || destination.Count()+offer.Output.Count() > destination.MaxCount()) {
+		return fmt.Errorf("merchant result does not fit in destination")
+	}
+	result := offer.Output
+	if !destination.Empty() {
+		result = destination.Grow(offer.Output.Count())
+	}
+
+	context := event.C(inventory.Holder(c))
+	for slot, after := range remaining {
+		before := originals[slot]
+		if before.Equal(after) {
+			continue
+		}
+		taken := before.Grow(-after.Count())
+		if err := ensureUnlockedForCrafting(taken); err != nil {
+			return err
+		}
+		if err := call(context, slot, taken, s.inv.Handler().HandleTake); err != nil {
+			return err
+		}
+	}
+	if err := call(context, int(to.Slot), offer.Output, destInventory.Handler().HandlePlace); err != nil {
+		return err
+	}
+	completed, err := merchant.CompleteMerchantTrade(tx, c, index)
+	if err != nil {
+		s.notifyMerchantError(c, "failed to complete merchant trade", err)
+		return err
+	}
+	if !completed {
+		return fmt.Errorf("merchant rejected offer %d", index)
+	}
+	for slot, after := range remaining {
+		if originals[slot].Equal(after) {
+			continue
+		}
+		source := protocol.StackRequestSlotInfo{
+			Container: protocol.FullContainerName{ContainerID: protocol.ContainerCombinedHotBarAndInventory},
+			Slot:      uint8(slot),
+		}
+		if err := h.setItemInSlot(source, after, s, tx); err != nil {
+			return err
+		}
+	}
+	if err := h.setItemInSlot(to, result, s, tx); err != nil {
+		return err
+	}
+	updatedOffers, err := merchantOffersFor(merchant, c)
+	if err != nil {
+		s.notifyMerchantError(c, "failed to reload merchant offers", err)
+		s.closeCurrentContainer(tx, false)
+		return nil
+	}
+	serializedOffers, err := serializeMerchantOffers(updatedOffers)
+	if err != nil {
+		s.notifyMerchantError(c, "failed to serialize updated merchant offers", err)
+		s.closeCurrentContainer(tx, false)
+		return nil
+	}
+	s.sendMerchantOffers(target, merchant, c, updatedOffers, serializedOffers)
+	return nil
 }
 
 // handlePlace handles a Place stack request action.
@@ -167,9 +311,18 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to protocol.StackRequestS
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
 	i, _ := h.itemInSlot(from, s, tx)
+	if i.Count() < int(count) {
+		return fmt.Errorf("client tried subtracting %v from item count, but there are only %v", count, i.Count())
+	}
 	dest, _ := h.itemInSlot(to, s, tx)
 	if err := ensureUnlockedForInventoryMove(i, from, to, s, tx); err != nil {
 		return err
+	}
+	if destinationBundle, ok := dest.Item().(item.Bundle); ok {
+		return h.handleBundleInsert(from, to, count, s, tx, c, i, dest, destinationBundle)
+	}
+	if sourceBundle, ok := i.Item().(item.Bundle); ok && !dest.Empty() {
+		return h.handleBundleExtract(from, to, count, s, tx, c, i, dest, sourceBundle)
 	}
 	if !i.Comparable(dest) {
 		return fmt.Errorf("client tried transferring %v to %v, but the stacks are incomparable", i, dest)
@@ -206,6 +359,74 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to protocol.StackRequestS
 	if err := h.setItemInSlot(to, dest.Grow(int(count)), s, tx); err != nil {
 		return err
 	}
+	h.collectRewards(s, invA, int(from.Slot), tx, c)
+	return nil
+}
+func (h *ItemStackRequestHandler) handleBundleInsert(from, to protocol.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, incoming, bundleStack item.Stack, bundle item.Bundle) error {
+	updated, remaining := bundle.Insert(bundleStack, incoming, int(count))
+	if remaining.Count() == incoming.Count() {
+		return fmt.Errorf("item does not fit in bundle")
+	}
+	moved := incoming.Grow(-remaining.Count())
+	invA, ok := s.invByID(int32(from.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown source container %v", from.Container.ContainerID)
+	}
+	invB, ok := s.invByID(int32(to.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown destination container %v", to.Container.ContainerID)
+	}
+	ctx := event.C(inventory.Holder(c))
+	_ = call(ctx, int(from.Slot), moved, invA.Handler().HandleTake)
+	if err := call(ctx, int(to.Slot), moved, invB.Handler().HandlePlace); err != nil {
+		return err
+	}
+	if err := h.setItemInSlot(from, remaining, s, tx); err != nil {
+		return err
+	}
+	if err := h.setItemInSlot(to, updated, s, tx); err != nil {
+		return err
+	}
+	tx.PlaySound(c.Position(), sound.Custom{Name: "item.bundle.insert", Volume: 0.8, Pitch: 1})
+	h.collectRewards(s, invA, int(from.Slot), tx, c)
+	return nil
+}
+
+func (h *ItemStackRequestHandler) handleBundleExtract(from, to protocol.StackRequestSlotInfo, count byte, s *Session, tx *world.Tx, c Controllable, bundleStack, destination item.Stack, bundle item.Bundle) error {
+	updated, extracted, ok := bundle.RemoveFirstCount(bundleStack, int(count))
+	if !ok {
+		return fmt.Errorf("bundle is empty")
+	}
+	if !destination.Empty() && !destination.Comparable(extracted) {
+		return fmt.Errorf("bundle content is incomparable with destination stack")
+	}
+	if !destination.Empty() && destination.Count()+extracted.Count() > destination.MaxCount() {
+		return fmt.Errorf("bundle content exceeds destination stack limit")
+	}
+	placed := extracted
+	if !destination.Empty() {
+		placed = destination.Grow(extracted.Count())
+	}
+	invA, ok := s.invByID(int32(from.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown source container %v", from.Container.ContainerID)
+	}
+	invB, ok := s.invByID(int32(to.Container.ContainerID), tx)
+	if !ok {
+		return fmt.Errorf("unknown destination container %v", to.Container.ContainerID)
+	}
+	ctx := event.C(inventory.Holder(c))
+	_ = call(ctx, int(from.Slot), extracted, invA.Handler().HandleTake)
+	if err := call(ctx, int(to.Slot), extracted, invB.Handler().HandlePlace); err != nil {
+		return err
+	}
+	if err := h.setItemInSlot(from, updated, s, tx); err != nil {
+		return err
+	}
+	if err := h.setItemInSlot(to, placed, s, tx); err != nil {
+		return err
+	}
+	tx.PlaySound(c.Position(), sound.Custom{Name: "item.bundle.remove_one", Volume: 0.8, Pitch: 1})
 	h.collectRewards(s, invA, int(from.Slot), tx, c)
 	return nil
 }
@@ -501,6 +722,15 @@ func (h *ItemStackRequestHandler) setItemInSlot(slot protocol.StackRequestSlotIn
 	before, err := inv.Item(sl)
 	if err != nil {
 		return err
+	}
+	if inv == s.openedWindow.Load() && !i.Empty() {
+		if pos := s.openedPos.Load(); pos != nil {
+			if crafter, ok := tx.Block(*pos).(block.Crafter); ok && crafter.DisabledSlots&(1<<sl) != 0 {
+				crafter.DisabledSlots &^= 1 << sl
+				tx.SetBlock(*pos, crafter, nil)
+				crafter.NotifySlotState(sl)
+			}
+		}
 	}
 	if err := inv.SetItem(sl, i); err != nil {
 		return err

@@ -31,66 +31,69 @@ func NewEndGateway() EndGateway {
 	}
 }
 
-// Tick advances the gateway's internal state and teleports entities when active.
+// Tick advances the gateway beam and its periodic cooldown.
 func (e EndGateway) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 	if e.age == nil || e.teleportCooldown == nil {
-		// Should never happen for properly initialised block entities.
 		return
 	}
-	e.age.Add(1)
-
-	if cd := e.teleportCooldown.Load(); cd > 0 {
+	age := e.age.Add(1)
+	cooling := e.teleportCooldown.Load() > 0
+	if cooling {
 		e.teleportCooldown.Add(-1)
-		return
-	}
-
-	if e.age.Load()%2400 == 0 {
-		// Mimic vanilla behaviour: periodically enter a short cooldown.
+	} else if age%2400 == 0 {
 		e.teleportCooldown.Store(40)
-		return
 	}
-
-	box := cube.Box(float64(pos.X()), float64(pos.Y()), float64(pos.Z()), float64(pos.X()+1), float64(pos.Y()+1), float64(pos.Z()+1))
-	for ent := range tx.EntitiesWithin(box) {
-		teleportable, ok := ent.(interface{ Teleport(mgl64.Vec3) })
-		if !ok {
-			continue
-		}
-		if dead, ok := ent.(interface{ Dead() bool }); ok && dead.Dead() {
-			continue
-		}
-
-		dest := e.destination(tx)
-		if dest == nil {
-			continue
-		}
-		teleportable.Teleport(dest.Vec3Middle())
-		e.teleportCooldown.Store(40)
-		return
+	tx.SetBlockEntity(pos, e)
+	if age == 200 || cooling != (e.teleportCooldown.Load() > 0) {
+		tx.SetBlock(pos, e, nil)
 	}
 }
 
-func (e EndGateway) destination(tx *world.Tx) *cube.Pos {
-	if tx.World().Dimension() != world.End {
-		return nil
+// EntityInside uses the collision visitor rather than testing entity centres,
+// so an entity touching the gateway with the edge of its box can enter.
+func (e EndGateway) EntityInside(pos cube.Pos, tx *world.Tx, ent world.Entity) {
+	if e.teleportCooldown == nil || e.teleportCooldown.Load() > 0 {
+		return
+	}
+	if dead, ok := ent.(interface{ Dead() bool }); ok && dead.Dead() {
+		return
+	}
+	if rider, ok := ent.(interface{ Riding() *world.EntityHandle }); ok && rider.Riding() != nil {
+		return
+	}
+	teleportable, ok := ent.(interface{ Teleport(mgl64.Vec3) })
+	if !ok {
+		return
+	}
+	e.teleportCooldown.Store(40)
+	destination, found := e.destination(tx, pos)
+	tx.SetBlock(pos, e, nil)
+	if !found {
+		return
+	}
+	if traveller, ok := ent.(interface{ TeleportThroughGateway(mgl64.Vec3) }); ok {
+		traveller.TeleportThroughGateway(destination.Vec3Middle())
+	} else {
+		teleportable.Teleport(destination.Vec3Middle())
+	}
+}
+
+func (e *EndGateway) destination(tx *world.Tx, entry cube.Pos) (cube.Pos, bool) {
+	if !e.hasExitPortal && tx.World().Dimension() == world.End {
+		exit := gatewayFindOrCreateExit(tx, entry).Add(cube.Pos{0, 10, 0})
+		paired := NewEndGateway()
+		paired.exitPortal, paired.hasExitPortal = entry, true
+		GenerateEndGateway(tx, exit, paired)
+		e.exitPortal, e.hasExitPortal = exit, true
 	}
 	if !e.hasExitPortal {
-		spawn := tx.World().Spawn()
-		return &spawn
+		return cube.Pos{}, false
 	}
 	if e.exactTeleport {
-		dest := e.exitPortal
-		return &dest
+		return e.exitPortal, true
 	}
-
-	x, z := e.exitPortal.X(), e.exitPortal.Z()
-	y := tx.HighestBlock(x, z)
-	if y < tx.Range().Min() {
-		dest := e.exitPortal
-		return &dest
-	}
-	dest := cube.Pos{x, min(tx.Range().Max(), y+1), z}
-	return &dest
+	pos := gatewayTallestBlock(tx, e.exitPortal.Add(cube.Pos{0, 2, 0}), 5, false).Side(cube.FaceUp)
+	return pos, true
 }
 
 // EncodeNBT ...

@@ -1,12 +1,14 @@
 package player
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
 	"math/rand/v2"
 	"net"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -43,6 +45,9 @@ import (
 )
 
 type playerData struct {
+	unlockedRecipes  map[string]struct{}
+	raidOmenPosition *cube.Pos
+	shoulderLeft, shoulderRight map[string]any
 	xuid              string
 	locale            language.Tag
 	nameTag, scoreTag string
@@ -66,10 +71,12 @@ type playerData struct {
 
 	sleeping bool
 	sleepPos cube.Pos
+	timeSinceRest int32
 
 	usingSince               time.Time
 	usingTicks               int64
 	usingStack               item.Stack
+	kineticRecent            map[*world.EntityHandle]int64
 	usingSlot                uint32
 	itemUseTick              int64
 	itemUseCompleteTick      int64
@@ -355,13 +362,18 @@ func (p *Player) RemoveScoreboard() {
 // player's screen.
 // The boss bar may be removed by calling Player.RemoveBossBar().
 func (p *Player) SendBossBar(bar bossbar.BossBar) {
-	p.session().SendBossBar(bar.Text(), bar.Colour().Uint8(), bar.HealthPercentage())
+	p.session().SendBossBarID(bar.ID(), bar.Text(), bar.Colour().Uint8(), bar.HealthPercentage())
 }
 
 // RemoveBossBar removes any boss bar currently active on the player's screen. If no boss bar is currently
 // present, nothing happens.
 func (p *Player) RemoveBossBar() {
 	p.session().RemoveBossBar()
+}
+
+// RemoveBossBarID removes only the boss bar with the identifier passed.
+func (p *Player) RemoveBossBarID(id string) {
+	p.session().RemoveBossBarID(id)
 }
 
 // Chat writes a message in the global chat (chat.Global). The message is prefixed with the name of the
@@ -679,6 +691,7 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if p.Handler().HandleHurt(ctx, &damageLeft, immune, &immunity, src); ctx.Cancelled() {
 		return 0, false
 	}
+	p.ReleaseShoulderParrots()
 	p.setAttackImmunity(immunity, totalDamage)
 
 	if a := p.Absorption(); a > 0 {
@@ -1381,7 +1394,7 @@ func (p *Player) Sleep(pos cube.Pos) {
 
 func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
 	b, ok := tx.Block(pos).(block.Bed)
-	if !ok || b.Sleeper != nil {
+	if !ok || b.Occupied {
 		// The player cannot sleep here.
 		return
 	}
@@ -1391,13 +1404,14 @@ func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
 		return
 	}
 
-	b.Sleeper = p.H()
+	b.Sleeper, b.Occupied = p.H(), true
 	tx.SetBlock(pos, b, nil)
 
 	tx.World().SetRequiredSleepDuration(time.Millisecond * 5050)
 
 	p.data.Pos = pos.Vec3Middle().Add(mgl64.Vec3{0, 0.5625})
 	p.sleeping = true
+	p.timeSinceRest = 0
 	p.sleepPos = pos
 
 	p.session().SendPlayerSpawn(pos.Vec3())
@@ -1447,7 +1461,7 @@ func (p *Player) wakeInTx(tx *world.Tx) {
 
 	pos := p.sleepPos
 	if b, ok := tx.Block(pos).(block.Bed); ok {
-		b.Sleeper = nil
+		b.Sleeper, b.Occupied = nil, false
 		tx.SetBlock(pos, b, nil)
 	}
 }
@@ -1459,6 +1473,10 @@ func (p *Player) Sleeping() (cube.Pos, bool) {
 		return cube.Pos{}, false
 	}
 	return p.sleepPos, true
+}
+// TimeSinceRest returns awake ticks since the player last started sleeping.
+func (p *Player) TimeSinceRest() int32 {
+	return p.timeSinceRest
 }
 
 // SendSleepingIndicator displays a notification to the player on the amount of sleeping players in the world.
@@ -1747,7 +1765,10 @@ func (p *Player) StopFishing(tx *world.Tx, reel bool) bool {
 	}
 	damage := false
 	if reel {
-		loot, xp, pulled := behaviour.Reel(hook, tx)
+		loot, xp, pulled, reelErr := behaviour.Reel(hook, tx)
+		if reelErr != nil {
+			p.session().LogError("failed to resolve Java fishing loot", "err", reelErr)
+		}
 		hookPos := hook.Position()
 		if !loot.Empty() {
 			dropPos := hookPos
@@ -1822,6 +1843,15 @@ func (p *Player) UseItem() {
 			p.startItemUse(i)
 		}
 		p.handleUseContext(useCtx)
+	case item.KineticWeapon:
+		p.startItemUse(i)
+		if spear, ok := it.(item.Spear); ok {
+			name := "item.spear.use"
+			if spear.Tier == item.ToolTierWood {
+				name = "item.spear_wood.use"
+			}
+			p.PlaySound(sound.Custom{Name: name, Volume: 1, Pitch: 1})
+		}
 	case item.Usable:
 		useCtx := p.useContext()
 		if !usable.Use(p.tx, p, useCtx) {
@@ -1857,6 +1887,15 @@ func (p *Player) ReleaseItem() {
 	}
 	dur := p.useDuration()
 	p.cancelItemUse()
+	if _, kinetic := i.Item().(item.KineticWeapon); kinetic {
+		ctx := NewEventContext(p.tx, p)
+		if p.Handler().HandleItemRelease(ctx, i, dur); ctx.Cancelled() {
+			p.resyncInventory()
+			return
+		}
+		p.completeItemUse()
+		return
+	}
 	if !p.canRelease() || !p.GameMode().AllowsInteraction() {
 		p.resyncInventory()
 		return
@@ -1888,6 +1927,12 @@ func (p *Player) startItemUse(stack item.Stack) {
 	p.usingSince = time.Now()
 	p.usingTicks = 0
 	p.usingStack = stack
+	if _, ok := stack.Item().(item.KineticWeapon); ok {
+		if p.kineticRecent == nil {
+			p.kineticRecent = make(map[*world.EntityHandle]int64)
+		}
+		clear(p.kineticRecent)
+	}
 	p.usingSlot = atomic.LoadUint32(p.heldSlot)
 	p.itemUseRecentlyCompleted = false
 	p.updateState()
@@ -1900,6 +1945,7 @@ func (p *Player) cancelItemUse() {
 	p.usingItem = false
 	p.usingTicks = 0
 	p.usingStack = item.Stack{}
+	clear(p.kineticRecent)
 	p.updateState()
 }
 
@@ -1907,6 +1953,7 @@ func (p *Player) completeItemUse() {
 	p.usingItem = false
 	p.usingTicks = 0
 	p.usingStack = item.Stack{}
+	clear(p.kineticRecent)
 	p.itemUseCompleteTick = p.itemUseTick
 	p.itemUseCompletedStack, _ = p.HeldItems()
 	p.itemUseCompletedSlot = atomic.LoadUint32(p.heldSlot)
@@ -2082,22 +2129,26 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 	}
 	i, left := p.HeldItems()
 	b := p.tx.Block(pos)
-	if act, ok := b.(block.Activatable); ok {
-		// If a player is sneaking, it will not activate the block clicked, unless it is not holding any
-		// items, in which case the block will be activated as usual.
-		if !p.Sneaking() || i.Empty() {
-			// The block was activated: Blocks such as doors must always have precedence over the item being
-			// used.
-			if useCtx := p.useContext(); act.Activate(pos, face, p.tx, p, useCtx) {
-				p.SwingArm()
-				if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() {
-					p.SetHeldItems(useCtx.NewItem, left)
-					return
-				}
-				p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
-				p.addNewItem(useCtx)
+	// Hit-dependent blocks are given the exact packet click position before ordinary
+	// activation or item use, so they can choose a precise slot.
+	hitAct, hitDependent := b.(block.HitActivatable)
+	if hitDependent || !p.Sneaking() || i.Empty() {
+		useCtx := p.useContext()
+		activated := false
+		if hitDependent {
+			activated = hitAct.ActivateAt(pos, face, clickPos, p.tx, p, useCtx)
+		} else if act, ok := b.(block.Activatable); ok {
+			activated = act.Activate(pos, face, p.tx, p, useCtx)
+		}
+		if activated {
+			p.SwingArm()
+			if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() {
+				p.SetHeldItems(useCtx.NewItem, left)
 				return
 			}
+			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
+			p.addNewItem(useCtx)
+			return
 		}
 	}
 	if i.Empty() {
@@ -2146,7 +2197,10 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 
 	if usable, ok := i.Item().(item.UsableOnEntity); ok {
 		if usable.UseOnEntity(e, p.tx, p, useCtx) {
-			p.SwingArm()
+			if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() && i.Count() == 1 {
+				p.SetHeldItems(useCtx.NewItem, left)
+				return true
+			}
 			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 			p.addNewItem(useCtx)
 			return true
@@ -2179,9 +2233,22 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 // within range of the player.
 // The damage dealt to the entity will depend on the item held by the player and any effects the player may
 // have.
-// If the player cannot reach the entity at its position, the method returns immediately.
+// If the player cannot reach the target or a dragon part along the look ray, the method returns immediately.
 func (p *Player) AttackEntity(e world.Entity) bool {
-	if !p.canReach(e.Position()) {
+	held, _ := p.HeldItems()
+	_, piercing := held.Item().(item.PiercingWeapon)
+	reach := 8.0
+	if p.GameMode().CreativeInventory() || piercing {
+		reach = 14
+	}
+	if target, ok := e.(interface {
+		PartHitFrom(mgl64.Vec3, mgl64.Vec3, float64) (string, mgl64.Vec3, bool)
+	}); ok {
+		_, hitPos, hit := target.PartHitFrom(entity.EyePosition(p), p.Rotation().Vec3(), reach)
+		if !hit || (!piercing && !p.canReach(hitPos)) {
+			return false
+		}
+	} else if !piercing && !p.canReach(e.Position()) {
 		return false
 	}
 
@@ -2197,7 +2264,9 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		critical       = !p.Sprinting() && !p.Flying() && p.FallDistance() > 0 && !slowFalling && !blind
 	)
 
-	held, _ := p.HeldItems()
+	if piercing, ok := held.Item().(item.PiercingWeapon); ok {
+		return p.attackPiercingWeapon(piercing.PiercingWeaponInfo())
+	}
 	if k, ok := held.Enchantment(enchantment.Knockback); ok {
 		inc := enchantment.Knockback.Force(k.Level())
 		force += inc
@@ -3056,6 +3125,11 @@ func (p *Player) Drop(s item.Stack) int {
 	return s.Count()
 }
 
+// DropItemAt spawns an item stack at an explicit position and velocity without treating it as a player drop.
+func (p *Player) DropItemAt(pos mgl64.Vec3, stack item.Stack, velocity mgl64.Vec3) {
+	p.tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: pos, Velocity: velocity}, stack))
+}
+
 // OpenBlockContainer opens a block container, such as a chest, at the position passed. If no container was
 // present at that location, OpenBlockContainer does nothing.
 // OpenBlockContainer will also do nothing if the player has no session connected to it.
@@ -3069,6 +3143,13 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx) {
 	if p.session() != session.Nop {
 		p.session().OpenEntityContainer(e, inv, containerType, tx)
+	}
+}
+
+// OpenMerchant opens a merchant interface when the player has an active session.
+func (p *Player) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *world.Tx) {
+	if p.session() != session.Nop {
+		p.session().OpenMerchant(e, merchant, tx)
 	}
 }
 
@@ -3104,9 +3185,21 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)
 	p.itemUseTick = current
 	if p.Dead() {
+		p.ReleaseShoulderParrots()
 		p.cancelItemUse()
 		return
 	}
+	if p.sleeping {
+		p.timeSinceRest = 0
+	} else if p.timeSinceRest < int32(^uint32(0)>>1) {
+		p.timeSinceRest++
+	}
+	blockName, _ := p.tx.Block(cube.PosFromVec3(p.Position())).EncodeBlock()
+	if p.insideOfWater() || p.Flying() || p.sleeping || p.fallDistance > 0.5 || blockName == "minecraft:powder_snow" {
+		p.ReleaseShoulderParrots()
+	}
+	p.tickCarriedMaps(current)
+	p.tickMapFrames(current)
 	if _, ok := p.tx.Liquid(cube.PosFromVec3(p.Position())); !ok {
 		p.StopSwimming()
 		if _, ok := p.Armour().Helmet().Item().(item.TurtleShell); ok {
@@ -3191,7 +3284,190 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		p.data.Vel = mgl64.Vec3{}
 	}
 
+	p.tryLandParrotOnShoulder()
 	p.portalTravel.StopPortalContact()
+}
+func (p *Player) tryLandParrotOnShoulder() {
+	if (p.shoulderLeft != nil && p.shoulderRight != nil) || !p.OnGround() || p.Flying() || p.Gliding() || p.sleeping || p.insideOfWater() {
+		return
+	}
+	for e := range p.tx.Entities() {
+		if e.Position().Sub(p.Position()).Len() > 1.5 {
+			continue
+		}
+		parrot, ok := e.(interface {
+			SetOnShoulder(world.Entity) map[string]any
+		})
+		if !ok {
+			continue
+		}
+		data := parrot.SetOnShoulder(p)
+		if data == nil {
+			continue
+		}
+		if p.shoulderLeft == nil {
+			p.shoulderLeft = data
+		} else {
+			p.shoulderRight = data
+		}
+		p.tx.RemoveEntity(e)
+		return
+	}
+}
+
+// ShoulderEntities returns the saved native entity compounds currently riding
+// the player's shoulders. The returned maps must be treated as read-only.
+func (p *Player) ShoulderEntities() (left, right map[string]any) {
+	return p.shoulderLeft, p.shoulderRight
+}
+// ReleaseShoulderParrots reintroduces saved shoulder entities into the world.
+// It is also called automatically for source dismount conditions.
+func (p *Player) ReleaseShoulderParrots() {
+	if p.tx == nil {
+		return
+	}
+	spawn := p.tx.World().EntityRegistry().Config().SpawnMobFromNBT
+	if spawn == nil {
+		return
+	}
+	release := func(data map[string]any, side float64) map[string]any {
+		if data == nil {
+			return nil
+		}
+		id, _ := data["id"].(string)
+		if id == "" {
+			return data
+		}
+		yaw := p.Rotation().Yaw() * math.Pi / 180
+		pos := p.Position().Add(mgl64.Vec3{side * math.Cos(yaw) * .3, 1.0, side * math.Sin(yaw) * .3})
+		velocity := mgl64.Vec3{-math.Sin(yaw) * .2, .5, math.Cos(yaw) * .2}
+		opts := world.EntitySpawnOpts{Position: pos, Rotation: p.Rotation(), Velocity: velocity}
+		if h := spawn(id, opts, world.CloneNativeEntityNBT(data)); h != nil {
+			p.tx.AddEntity(h)
+			return nil
+		}
+		return data
+	}
+	p.shoulderLeft = release(p.shoulderLeft, -1)
+	p.shoulderRight = release(p.shoulderRight, 1)
+}
+
+func (p *Player) tickCarriedMaps(current int64) {
+	var seen [64]int64
+	seenCount := 0
+	for _, inv := range [...]*inventory.Inventory{p.inv, p.offHand, p.armour.Inventory()} {
+		for slot := range inv.Size() {
+			stack, err := inv.Item(slot)
+			if err == nil { p.tickCarriedMapStack(stack, current, &seen, &seenCount) }
+		}
+	}
+}
+
+func (p *Player) tickCarriedMapStack(stack item.Stack, current int64, seen *[64]int64, seenCount *int) {
+	mapItem, ok := stack.Item().(item.FilledMap)
+	if !ok { return }
+	mapID := mapItem.NativeID
+	if !mapItem.HasNativeID {
+		if !mapItem.HasJavaID { return }
+		var err error
+		mapID, err = p.tx.World().MapIDByJavaID(mapItem.JavaID)
+		if err != nil { return }
+	}
+	for _, existing := range seen[:*seenCount] {
+		if existing == mapID { return }
+	}
+	if *seenCount < len(seen) {
+		seen[*seenCount] = mapID
+		*seenCount++
+	}
+	data, err := p.tx.UpdateMap(mapID, cube.PosFromVec3(p.Position()))
+	if err != nil { return }
+	if data.ColorsChanged || current%5 == 0 {
+		if data.Tracking { data.TrackedObjects = p.trackedMapObjects(mapID) }
+		if s := p.session(); s != session.Nop { _ = s.ViewMapData(data) }
+	}
+}
+func (p *Player) tickMapFrames(current int64) {
+	if current%5 != 0 { return }
+	for entity := range p.tx.Entities() {
+		carrier, ok := entity.(interface {
+			UUID() uuid.UUID
+			Inventory() *inventory.Inventory
+			HeldItems() (item.Stack, item.Stack)
+		})
+		if !ok { continue }
+		if dead, ok := entity.(interface{ Dead() bool }); ok && dead.Dead() { continue }
+		otherID, ownID := carrier.UUID(), p.UUID()
+		if bytes.Compare(otherID[:], ownID[:]) < 0 { return }
+	}
+	p.tx.ForEachMapFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
+		mapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID)
+		if !ok { return }
+		data, err := p.tx.World().MapData(mapID)
+		dimensionID, ok := world.DimensionID(p.tx.World().Dimension())
+		if err != nil || !ok || !data.Tracking || data.Dimension != int32(dimensionID) { return }
+		data.TrackedObjects = p.trackedMapObjects(mapID)
+		viewers := p.tx.Viewers(pos.Vec3Centre())
+		for _, viewer := range viewers {
+			if session, ok := viewer.(interface{ ViewMapData(world.MapData) error }); ok { _ = session.ViewMapData(data) }
+		}
+		p.tx.ReleaseViewers(viewers)
+	})
+}
+
+
+
+func (p *Player) trackedMapObjects(mapID int64) []world.MapTrackedObject {
+	objects := make([]world.MapTrackedObject, 0, 8)
+	for entity := range p.tx.Entities() {
+		carrier, ok := entity.(interface {
+			Inventory() *inventory.Inventory
+			Armour() *inventory.Armour
+			HeldItems() (item.Stack, item.Stack)
+		})
+		if !ok { continue }
+		if invisible, ok := entity.(interface{ Invisible() bool }); ok && invisible.Invisible() { continue }
+		if playerCarriesMap(p.tx, carrier, mapID) {
+			objects = append(objects, world.MapTrackedObject{Entity:entity.H()})
+		}
+	}
+	p.tx.ForEachMapFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
+		if frameMapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID); ok && frameMapID == mapID {
+			framePos := pos
+			objects = append(objects, world.MapTrackedObject{Block:&framePos})
+		}
+	})
+	return objects
+}
+
+func playerCarriesMap(tx *world.Tx, carrier interface {
+	Inventory() *inventory.Inventory
+	Armour() *inventory.Armour
+	HeldItems() (item.Stack, item.Stack)
+}, mapID int64) bool {
+	main, offHand := carrier.HeldItems()
+	if carriedMapMatches(tx, main, mapID) || carriedMapMatches(tx, offHand, mapID) { return true }
+	for _, inv := range [...]*inventory.Inventory{carrier.Inventory(), carrier.Armour().Inventory()} {
+		for slot := range inv.Size() {
+			stack, err := inv.Item(slot)
+			if err == nil && carriedMapMatches(tx, stack, mapID) { return true }
+		}
+	}
+	return false
+}
+
+func carriedMapMatches(tx *world.Tx, stack item.Stack, mapID int64) bool {
+	mapItem, ok := stack.Item().(item.FilledMap)
+	if !ok { return false }
+	id, ok := resolveMapID(tx, mapItem.NativeID, mapItem.HasNativeID, mapItem.JavaID, mapItem.HasJavaID)
+	return ok && id == mapID
+}
+
+func resolveMapID(tx *world.Tx, nativeID int64, hasNativeID bool, javaID int32, hasJavaID bool) (int64, bool) {
+	if hasNativeID { return nativeID, true }
+	if !hasJavaID { return 0, false }
+	id, err := tx.World().MapIDByJavaID(javaID)
+	return id, err == nil
 }
 
 func (p *Player) tickItemUse(current int64) {
@@ -3214,7 +3490,19 @@ func (p *Player) tickItemUse(current int64) {
 		p.tryConsumeItem(usable, held)
 	case item.Chargeable:
 		p.tryChargeItem(usable)
-	}
+	case item.KineticWeapon:
+		p.tryKineticWeapon(usable)
+	case item.UseTickable:
+		updated := usable.UseTick(p.tx, p, held, int(p.usingTicks))
+		if !held.Equal(updated) {
+			_, left := p.HeldItems()
+			p.SetHeldItems(updated, left)
+		}
+		p.usingStack = updated
+		if duration := usable.UseDurationTicks(); duration > 0 && p.usingTicks >= int64(duration) {
+			p.completeItemUse()
+		}
+}
 }
 
 // TravelThroughPortal handles the player touching a portal block.
@@ -3929,6 +4217,11 @@ func (p *Player) quit(msg string) {
 // gets disconnected and the player provider needs to save the data.
 func (p *Player) Data() Config {
 	hunger := p.hunger.snapshot()
+	raidOmenPos := cube.Pos{}
+	hasRaidOmenPos := p.raidOmenPosition != nil
+	if hasRaidOmenPos {
+		raidOmenPos = *p.raidOmenPosition
+	}
 	return Config{
 		Session:             p.s,
 		Skin:                p.skin,
@@ -3948,6 +4241,7 @@ func (p *Player) Data() Config {
 		Saturation:          hunger.saturationLevel,
 		AirSupply:           p.airSupplyTicks,
 		MaxAirSupply:        p.maxAirSupplyTicks,
+		TimeSinceRest:       p.timeSinceRest,
 		EnchantmentSeed:     p.enchantSeed,
 		Experience:          p.experience.Experience(),
 		HeldSlot:            int(atomic.LoadUint32(p.heldSlot)),
@@ -3958,7 +4252,85 @@ func (p *Player) Data() Config {
 		FireTicks:           p.fireTicks,
 		FallDistance:        p.fallDistance,
 		Effects:             p.Effects(),
+		UnlockedRecipes:     p.unlockedRecipeIDs(),
+		RaidOmenPosition:    raidOmenPos,
+		ShoulderLeft:       p.shoulderLeft,
+		ShoulderRight:      p.shoulderRight,
+		HasRaidOmenPosition: hasRaidOmenPos,
 	}
+}
+
+func (p *Player) unlockedRecipeIDs() []string {
+	ids := make([]string, 0, len(p.unlockedRecipes))
+	for id := range p.unlockedRecipes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// UnlockRecipes adds only recipes recognised by the session's Java-to-client
+// recipe mapping to the player's persistent unlock state.
+func (p *Player) UnlockRecipes(ids []string) {
+	for _, id := range p.session().UnlockRecipes(ids) {
+		p.unlockedRecipes[id] = struct{}{}
+	}
+}
+
+// UnlockedRecipeIDs returns the player's persisted Java recipe keys.
+func (p *Player) UnlockedRecipeIDs() []string { return p.unlockedRecipeIDs() }
+
+// RaidOmenPosition returns the village position recorded when Bad Omen became
+// Raid Omen. The position is zero when there is no pending Raid Omen.
+func (p *Player) RaidOmenPosition() cube.Pos {
+	if p.raidOmenPosition == nil {
+		return cube.Pos{}
+	}
+	return *p.raidOmenPosition
+}
+
+// RaidOmenLevel returns the current Raid Omen level, or zero when absent.
+func (p *Player) RaidOmenLevel() int {
+	for _, eff := range p.Effects() {
+		if eff.Type() == effect.RaidOmen {
+			return eff.Level()
+		}
+	}
+	return 0
+}
+// GrantHeroOfTheVillage grants the raid victory effect for the specified number
+// of game ticks.
+func (p *Player) GrantHeroOfTheVillage(_ *world.Tx, durationTicks int) {
+	if durationTicks <= 0 {
+		return
+	}
+	p.AddEffect(effect.New(effect.HeroOfTheVillage, 1, time.Duration(durationTicks)*time.Second/20))
+}
+
+
+// TryActivateBadOmen converts Bad Omen to Raid Omen when a raid can begin at
+// the player's current position.
+func (p *Player) TryActivateBadOmen(tx *world.Tx, amplifier int) bool {
+	if p.GameMode() == world.GameModeSpectator || tx.World().Difficulty() == world.DifficultyPeaceful {
+		return false
+	}
+	pos := cube.PosFromVec3(p.Position())
+	if !tx.TryApplyBadOmen(p, pos, amplifier) {
+		return false
+	}
+	p.raidOmenPosition = &pos
+	p.AddEffect(effect.New(effect.RaidOmen, amplifier+1, effect.RaidOmenDuration))
+	return true
+}
+
+// ActivateRaidOmen attempts to start or extend the raid at the stored position.
+func (p *Player) ActivateRaidOmen(tx *world.Tx) bool {
+	if p.raidOmenPosition == nil || p.GameMode() == world.GameModeSpectator {
+		return false
+	}
+	_ = tx.TryApplyRaidOmen(p)
+	p.raidOmenPosition = nil
+	return true
 }
 
 // session returns the network session of the player. If it has one, it is returned. If not, a no-op session

@@ -29,6 +29,15 @@ type ItemFrame struct {
 	// Glowing makes the frame the glowing variant.
 	Glowing bool
 }
+func (i ItemFrame) MapFrameData() (world.MapFrameInfo, bool) {
+	mapItem, ok := i.Item.Item().(item.FilledMap)
+	if !ok { return world.MapFrameInfo{}, false }
+	return world.MapFrameInfo{
+		NativeID:mapItem.NativeID, HasNativeID:mapItem.HasNativeID,
+		JavaID:mapItem.JavaID, HasJavaID:mapItem.HasJavaID,
+	}, true
+}
+
 
 // Activate ...
 func (i ItemFrame) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx *item.UseContext) bool {

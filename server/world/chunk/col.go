@@ -10,6 +10,9 @@ type Column struct {
 	BlockEntities   []BlockEntity
 	Tick            int64
 	ScheduledBlocks []ScheduledBlockUpdate
+	// InhabitedTime is the number of ticks this chunk has been inhabited by a
+	// non-spectator player while within the world simulation area.
+	InhabitedTime uint64
 }
 
 type BlockEntity struct {

@@ -17,6 +17,11 @@ type Item interface {
 	Empty() bool
 }
 
+// encodedBlockItem identifies a vanilla block item without importing the block package into recipes.
+type encodedBlockItem string
+
+func (i encodedBlockItem) EncodeItem() (string, int16) { return string(i), 0 }
+
 // blockState is the exact encoded state of a block in recipe NBT.
 type blockState struct {
 	Name       string         `nbt:"name"`

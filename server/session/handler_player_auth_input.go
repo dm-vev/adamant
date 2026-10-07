@@ -74,7 +74,11 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 					allowVehicleInput = controller.ControlsVehicle(c)
 				}
 				if allowVehicleInput {
-					input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
+					if withRider, ok := ridden.(entity.VehicleInputWithRider); ok {
+						withRider.SetVehicleInputFrom(c, float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
+					} else {
+						input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
+					}
 				}
 			}
 		}
@@ -141,7 +145,9 @@ func (h PlayerAuthInputHandler) handleActions(pk *packet.PlayerAuthInput, s *Ses
 
 // handleInputFlags handles the toggleable input flags set in a PlayerAuthInput packet.
 func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *Session, tx *world.Tx, c Controllable) {
-	dismountedByJump := h.tryDismount(flags, tx, c)
+ dashedByJump := h.tryDash(flags, tx, c)
+ jumpedByVehicle := !dashedByJump && h.tryRideJump(flags, tx, c)
+ dismountedByJump := !dashedByJump && !jumpedByVehicle && h.tryDismount(flags, tx, c)
 	if flags.Load(packet.InputFlagStartSprinting) {
 		c.StartSprinting()
 	}
@@ -167,7 +173,7 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *S
 	if flags.Load(packet.InputFlagStopGliding) {
 		c.StopGliding()
 	}
-	if flags.Load(packet.InputFlagStartJumping) && !dismountedByJump {
+	if flags.Load(packet.InputFlagStartJumping) && !dismountedByJump && !dashedByJump {
 		c.Jump()
 	}
 	if flags.Load(packet.InputFlagStartCrawling) {
@@ -197,6 +203,44 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *S
 			c.StopFlying()
 		}
 	}
+}
+
+func (h PlayerAuthInputHandler) tryRideJump(flags protocol.InputFlags, tx *world.Tx, c Controllable) bool {
+	if !flags.Load(packet.InputFlagStartJumping) {
+		return false
+	}
+	rider, ok := c.(entity.Rider)
+	if !ok || rider.Riding() == nil {
+		return false
+	}
+	ridden, ok := rider.Riding().Entity(tx)
+	if !ok {
+		return false
+	}
+	jumper, ok := ridden.(interface{ RideJump() bool })
+	return ok && jumper.RideJump()
+}
+
+func (h PlayerAuthInputHandler) tryDash(flags protocol.InputFlags, tx *world.Tx, c Controllable) bool {
+	if !flags.Load(packet.InputFlagStartJumping) {
+		return false
+	}
+	rider, ok := c.(entity.Rider)
+	if !ok {
+		return false
+	}
+	handle := rider.Riding()
+	if handle == nil {
+		return false
+	}
+	ridden, ok := handle.Entity(tx)
+	if !ok {
+		return false
+	}
+	dashable, ok := ridden.(interface {
+		Dash(*world.Tx, world.Entity) bool
+	})
+	return ok && dashable.Dash(tx, c)
 }
 
 func (h PlayerAuthInputHandler) tryDismount(flags protocol.InputFlags, tx *world.Tx, c Controllable) bool {

@@ -15,6 +15,11 @@ type (
 		Attacker world.Entity
 	}
 
+	// SpearDamageSource is used for Java spear kinetic and thrust attacks.
+	SpearDamageSource struct {
+		AttackDamageSource
+	}
+
 	// MaceSmashDamageSource is used for mace smash attacks that scale armour
 	// effectiveness based on the Breach enchantment.
 	MaceSmashDamageSource struct {
@@ -42,7 +47,7 @@ type (
 
 	// LightningDamageSource is used for damage caused by being struck by
 	// lightning.
-	LightningDamageSource struct{}
+	LightningDamageSource struct{ BoltUUID string }
 
 	// ProjectileDamageSource is used for damage caused by a projectile.
 	ProjectileDamageSource struct {

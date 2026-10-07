@@ -66,6 +66,32 @@ func TestDimensionRegistryBuiltInIDs(t *testing.T) {
 	}
 }
 
+const persistedTestDimensionID = 32700
+
+func registeredTestDimension(t *testing.T) Dimension {
+	return registerTestDimension(t, persistedTestDimensionID, testDimension{i: 1029})
+}
+
+func registerTestDimension(t *testing.T, id int, dim Dimension) Dimension {
+	t.Helper()
+	if err := RegisterDimension(id, fmt.Sprintf("test-%d", id), dim); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		dimensionReg.mu.Lock()
+		delete(dimensionReg.dimensions, id)
+		delete(dimensionReg.ids, dim)
+		for i := range dimensionReg.custom {
+			if dimensionReg.custom[i].ID == id {
+				dimensionReg.custom = append(dimensionReg.custom[:i], dimensionReg.custom[i+1:]...)
+				break
+			}
+		}
+		dimensionReg.mu.Unlock()
+	})
+	return dim
+}
+
 type testDimension struct{ i int }
 
 func (testDimension) Range() cube.Range                 { return cube.Range{-64, 319} }

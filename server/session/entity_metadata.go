@@ -45,6 +45,18 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 }
 
 func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
+	if parrot, ok := e.(*entity.Parrot); ok {
+		m[protocol.EntityDataKeyVariant] = int32(parrot.Variant())
+		if parrot.Tamed() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagTamed)
+		}
+		if parrot.Party() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagDancing)
+		}
+		if parrot.Sitting() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSitting)
+		}
+	}
 	if sn, ok := e.(sneaker); ok && sn.Sneaking() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSneaking)
 		if b, ok := e.(blocker); ok {

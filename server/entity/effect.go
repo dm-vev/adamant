@@ -107,7 +107,11 @@ func (m *EffectManager) Tick(entity Living, tx *world.Tx) {
 		eff.Type().(effect.LastingType).End(entity, eff.Level())
 	}
 	for _, eff := range toApply {
-		eff.Type().Apply(entity, eff)
+		if contextual, ok := eff.Type().(interface{ ApplyWithTx(world.Entity, effect.Effect, *world.Tx) }); ok {
+			contextual.ApplyWithTx(entity, eff, tx)
+		} else {
+			eff.Type().Apply(entity, eff)
+		}
 	}
 
 	if update {

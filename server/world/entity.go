@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -68,6 +69,9 @@ type EntityHandle struct {
 	closeOnce    sync.Once
 
 	data EntityData
+	spawnReason string
+	spawnSeed   int64
+	spawnGroup  *EntitySpawnGroup
 
 	// TODO Handler? Handle world change here?
 }
@@ -86,6 +90,24 @@ type EntitySpawnOpts struct {
 	ID uuid.UUID
 	// NameTag is the name tag that the entity is spawned with.
 	NameTag string
+	// SpawnReason requests Java mob initialisation on first insertion into a
+	// world. Leave it empty for restored entities or fully specified templates.
+	SpawnReason string
+	// SpawnSeed supplies the independent spawn random stream. It is not the
+	// structure decoration stream used for processors and loot.
+	SpawnSeed int64
+	// SpawnGroup carries species-specific cohort data between sequential spawns
+	// on the same world thread. It is not retained by a published entity.
+	SpawnGroup *EntitySpawnGroup
+	// SpawnData retains the selected Java weighted spawn entry beside its
+	// embedded entity compound during structure-driven entity construction.
+	SpawnData map[string]any
+}
+
+// EntitySpawnGroup is the mutable group context shared by a spawn batch.
+// Species own the concrete Data value, as with Java SpawnGroupData.
+type EntitySpawnGroup struct {
+	Data any
 }
 
 // New creates an EntityHandle using an EntityType and EntityConfig passed. The
@@ -104,13 +126,45 @@ func (opts EntitySpawnOpts) New(t EntityType, conf EntityConfig) *EntityHandle {
 		cond:      sync.NewCond(&sync.Mutex{}),
 		worldless: &atomic.Bool{},
 		closed:    make(chan struct{}),
-		data:      EntityData{AlwaysShowNameTag: true},
+		data:      EntityData{AlwaysShowNameTag: true, SpawnReason: opts.SpawnReason},
+		spawnReason: opts.SpawnReason,
+		spawnSeed: opts.SpawnSeed,
+		spawnGroup: opts.SpawnGroup,
 	}
 	handle.worldless.Store(true)
 	handle.data.Pos, handle.data.Rot, handle.data.Vel = opts.Position, opts.Rotation, opts.Velocity
 	handle.data.Name = opts.NameTag
 	conf.Apply(&handle.data)
 	return handle
+}
+
+// finalizeSpawn consumes pending initialisation before viewers see the entity.
+// Clearing first prevents transfers or re-entrant insertion from repeating it.
+func (e *EntityHandle) finalizeSpawn(entity Entity) {
+	if e.spawnReason == "" {
+		e.spawnGroup = nil
+		return
+	}
+	reason, seed := e.spawnReason, e.spawnSeed
+	e.spawnReason, e.spawnSeed = "", 0
+	defer func() { e.spawnGroup = nil }()
+	if finalizer, ok := entity.(interface {
+		FinalizeSpawn(string, *java26.Random)
+	}); ok {
+		random := java26.NewXoroshiroRandom(seed)
+		finalizer.FinalizeSpawn(reason, &random)
+	}
+}
+
+// SpawnGroup returns the current cohort context. It is only valid during the
+// entity's owner-thread FinalizeSpawn callback.
+func (e *EntityHandle) SpawnGroup() *EntitySpawnGroup {
+	return e.spawnGroup
+}
+// SpawnReason reports the reason this entity was created, including after it is
+// restored from the world's provider.
+func (e *EntityHandle) SpawnReason() string {
+	return e.data.SpawnReason
 }
 
 // NewEntity creates an EntityHandle using an EntityType and EntityConfig
@@ -417,18 +471,22 @@ func (e *EntityHandle) notifyWorldChangedLocked() {
 // decodeNBT decodes the position, velocity, rotation, age, on-fire duration and
 // name tag of an entity.
 func (e *EntityHandle) decodeNBT(m map[string]any) {
+	e.data.NativeNBT = CloneNativeEntityNBT(m)
 	e.data.Pos = readVec3(m, "Pos")
 	e.data.Vel = readVec3(m, "Motion")
 	e.data.Rot = readRotation(m)
 	e.data.Age = time.Duration(readInt16(m, "Age")) * (time.Second / 20)
 	e.data.FireDuration = time.Duration(readInt16(m, "Fire")) * time.Second / 20
 	e.data.Name, _ = m["NameTag"].(string)
+	if javaData, ok := m["adamant:java"].(map[string]any); ok {
+		e.data.SpawnReason, _ = javaData["SpawnReason"].(string)
+	}
 }
 
 // encodeNBT encodes the position, velocity, rotation, age, on-fire duration and
 // name tag of an entity.
 func (e *EntityHandle) encodeNBT() map[string]any {
-	return map[string]any{
+	data := MergeNativeEntityNBT(e.data.NativeNBT, map[string]any{
 		"Pos":     []float32{float32(e.data.Pos[0]), float32(e.data.Pos[1]), float32(e.data.Pos[2])},
 		"Motion":  []float32{float32(e.data.Vel[0]), float32(e.data.Vel[1]), float32(e.data.Vel[2])},
 		"Yaw":     float32(e.data.Rot[0]),
@@ -436,18 +494,34 @@ func (e *EntityHandle) encodeNBT() map[string]any {
 		"Fire":    int16(e.data.FireDuration.Seconds() * 20),
 		"Age":     int16(min(e.data.Age/(time.Second/20), math.MaxInt16)),
 		"NameTag": e.data.Name,
+	})
+	if e.data.SpawnReason != "" {
+		javaData, _ := data["adamant:java"].(map[string]any)
+		javaData = CloneNativeEntityNBT(javaData)
+		if javaData == nil {
+			javaData = make(map[string]any)
+		}
+		javaData["SpawnReason"] = e.data.SpawnReason
+		data["adamant:java"] = javaData
 	}
+	return data
 }
+
 
 // EntityData holds data shared by every entity. It is kept in an EntityHandle.
 type EntityData struct {
 	Pos, Vel          mgl64.Vec3
 	Rot               cube.Rotation
 	Name              string
+	SpawnReason       string
 	AlwaysShowNameTag bool
 	FireDuration      time.Duration
 	Age               time.Duration
 	Riding            *EntityHandle
+
+	// NativeNBT retains the original actor payload so entity serializers can
+	// update known fields without discarding fields unknown to this server.
+	NativeNBT map[string]any
 
 	Data any
 }
@@ -526,7 +600,27 @@ type EntityRegistry struct {
 // EntityRegistryConfig must be filled out for the behaviour of these blocks and
 // items not to fail.
 type EntityRegistryConfig struct {
+	// SpawnMob creates a concrete registered living mob for a Java entity ID.
+	// It returns nil for an ID without an implementation.
+	SpawnMob func(id string, opts EntitySpawnOpts) *EntityHandle
+	// SpawnMobFromNBT creates a concrete mob and applies its species codec
+	// before the handle is published in a world.
+	SpawnMobFromNBT func(id string, opts EntitySpawnOpts, data map[string]any) *EntityHandle
+	// OminousItemSpawner creates a persistent item-spawner entity for trial spawners.
+	OminousItemSpawner func(opts EntitySpawnOpts, stack any, delay int64) *EntityHandle
+	// NaturalSpawnTick runs source-defined natural ecology once per world tick.
+	NaturalSpawnTick func(*Tx)
 	Item               func(opts EntitySpawnOpts, it any) *EntityHandle
+	NewFromBucket      func(opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle
+	EnderDragon        func(opts EntitySpawnOpts) *EntityHandle
+	DragonFight        func(seed int64, data DragonFightData) DragonFightController
+	// GolemPattern attempts source-defined constructed-mob patterns after a
+	// carved pumpkin or jack-o'-lantern replaces a different block type.
+	GolemPattern       func(tx *Tx, pos cube.Pos) bool
+	// WardenShrieker handles activation and Warden summoning at a shrieker.
+	WardenShrieker func(tx *Tx, pos cube.Pos) bool
+	// WitherPattern attempts the source skull-and-soul-sand construction pattern.
+	WitherPattern func(tx *Tx, pos cube.Pos) bool
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
 	TNT                func(opts EntitySpawnOpts, fuse time.Duration) *EntityHandle
 	Boat               func(opts EntitySpawnOpts, variant int) *EntityHandle
@@ -539,16 +633,24 @@ type EntityRegistryConfig struct {
 	Arrow              func(opts EntitySpawnOpts, conf ArrowSpawnConfig) *EntityHandle
 	Trident            func(opts EntitySpawnOpts, owner Entity, stack any, loyalty, impaling int, channeling bool) *EntityHandle
 	Egg                func(opts EntitySpawnOpts, owner Entity) *EntityHandle
+	EggVariant         func(opts EntitySpawnOpts, owner Entity, variant int) *EntityHandle
 	EnderPearl         func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	Firework           func(opts EntitySpawnOpts, firework Item, owner Entity, sidewaysVelocityMultiplier, upwardsAcceleration float64, attached bool) *EntityHandle
 	LingeringPotion    func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Snowball           func(opts EntitySpawnOpts, owner Entity) *EntityHandle
+	SmallFireball       func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	WindCharge         func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	SplashPotion       func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Lightning          func(opts EntitySpawnOpts) *EntityHandle
 	EndCrystal         func(opts EntitySpawnOpts, showBase bool) *EntityHandle
+	Shulker            func(opts EntitySpawnOpts) *EntityHandle
+	ShulkerBullet      func(opts EntitySpawnOpts, owner, target *EntityHandle) *EntityHandle
+	Cushion            func(opts EntitySpawnOpts, color int) *EntityHandle
 	ArmourStand        func(opts EntitySpawnOpts) *EntityHandle
 	FishingHook        func(opts EntitySpawnOpts, owner Entity, rod any) *EntityHandle
+	// RaidSpawner creates a registered raider with its raid wave metadata before
+	// the entity is published to world viewers.
+	RaidSpawner func(opts EntitySpawnOpts, entityID string, raidID int64, wave int, leader bool) *EntityHandle
 }
 
 // ArrowSpawnConfig holds the options used to spawn an arrow entity.

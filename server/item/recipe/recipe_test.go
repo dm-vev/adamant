@@ -66,3 +66,4 @@ func TestOutputItemDecodesRecipeNBT(t *testing.T) {
 		t.Fatalf("decoded output = %#v, want recipe data page", stack.Item())
 	}
 }
+

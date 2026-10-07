@@ -1,0 +1,1724 @@
+[
+  {
+    "name": "up",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "up",
+      "chance_to_continue": 0.7,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": 4376377975854828753,
+    "blocks": [
+      {
+        "position": [
+          8,
+          9,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "down",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "down",
+      "chance_to_continue": 1,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": -5237980416576129062,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          7,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          8,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          9,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          10,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "blocked",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "down",
+      "chance_to_continue": 1,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": -5106534569952410475,
+    "blocks": [
+      {
+        "position": [
+          8,
+          11,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "zero_chance",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "up",
+      "chance_to_continue": 0,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": 4376377975854828753,
+    "blocks": [
+      {
+        "position": [
+          8,
+          9,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "upper_bound",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      30,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "up",
+      "chance_to_continue": 1,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": -7855924605484378299,
+    "blocks": [
+      {
+        "position": [
+          8,
+          30,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          31,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "patch",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "config": {
+      "type": "minecraft:projected_random_patchy_square",
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "size": 2,
+      "project_through": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "max_projection_height": 3
+    },
+    "placed": true,
+    "next": 2818517680934561261,
+    "blocks": [
+      {
+        "position": [
+          7,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "zero_projection",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "config": {
+      "type": "minecraft:projected_random_patchy_square",
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "size": 2,
+      "project_through": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "max_projection_height": 0
+    },
+    "placed": true,
+    "next": 2818517680934561261,
+    "blocks": [
+      {
+        "position": [
+          7,
+          6,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          6,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          6,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          6,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "optional_patch",
+    "xoroshiro": false,
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "config": {
+      "type": "minecraft:projected_random_patchy_square",
+      "block": {
+        "type": "minecraft:rule_based",
+        "rules": [
+          {
+            "if_true": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:stone",
+              "offset": [
+                0,
+                -1,
+                0
+              ]
+            },
+            "then": {
+              "type": "minecraft:weighted",
+              "entries": [
+                {
+                  "data": "minecraft:basalt",
+                  "weight": 2
+                },
+                {
+                  "data": "minecraft:gold_block",
+                  "weight": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "size": 2,
+      "project_through": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "max_projection_height": 3
+    },
+    "placed": true,
+    "next": 2818517680934561261,
+    "blocks": [
+      {
+        "position": [
+          7,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          10
+        ],
+        "name": "minecraft:basalt"
+      }
+    ]
+  },
+  {
+    "name": "up",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "up",
+      "chance_to_continue": 0.7,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": 138823572707751961,
+    "blocks": [
+      {
+        "position": [
+          8,
+          10,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          11,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          12,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          13,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "down",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "down",
+      "chance_to_continue": 1,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": -2644433350256532612,
+    "blocks": [
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          7,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          8,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          9,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          10,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "blocked",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "down",
+      "chance_to_continue": 1,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": 1248535248033503029,
+    "blocks": [
+      {
+        "position": [
+          8,
+          11,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "zero_chance",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      10,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "up",
+      "chance_to_continue": 0,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": 4378946378199351518,
+    "blocks": [
+      {
+        "position": [
+          8,
+          9,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "upper_bound",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      30,
+      8
+    ],
+    "config": {
+      "type": "minecraft:single_block_pillar",
+      "direction": "up",
+      "chance_to_continue": 1,
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "can_replace": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "cap_feature": {
+        "feature": {
+          "type": "minecraft:simple_block",
+          "to_place": {
+            "id": "minecraft:diamond_block"
+          }
+        },
+        "placement": []
+      }
+    },
+    "placed": true,
+    "next": 8740653052173518096,
+    "blocks": [
+      {
+        "position": [
+          8,
+          30,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          31,
+          8
+        ],
+        "name": "minecraft:diamond_block"
+      }
+    ]
+  },
+  {
+    "name": "patch",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "config": {
+      "type": "minecraft:projected_random_patchy_square",
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "size": 2,
+      "project_through": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "max_projection_height": 3
+    },
+    "placed": true,
+    "next": 7029390918854110340,
+    "blocks": [
+      {
+        "position": [
+          7,
+          4,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "zero_projection",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "config": {
+      "type": "minecraft:projected_random_patchy_square",
+      "block": {
+        "type": "minecraft:weighted",
+        "entries": [
+          {
+            "data": "minecraft:basalt",
+            "weight": 2
+          },
+          {
+            "data": "minecraft:gold_block",
+            "weight": 1
+          }
+        ]
+      },
+      "size": 2,
+      "project_through": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "max_projection_height": 0
+    },
+    "placed": true,
+    "next": 7029390918854110340,
+    "blocks": [
+      {
+        "position": [
+          7,
+          6,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          6,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          6,
+          7
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          6,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          6,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          6,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          6,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          7,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          6,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          6,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          8,
+          6,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  },
+  {
+    "name": "optional_patch",
+    "xoroshiro": true,
+    "origin": [
+      8,
+      7,
+      8
+    ],
+    "config": {
+      "type": "minecraft:projected_random_patchy_square",
+      "block": {
+        "type": "minecraft:rule_based",
+        "rules": [
+          {
+            "if_true": {
+              "type": "minecraft:matching_blocks",
+              "blocks": "minecraft:stone",
+              "offset": [
+                0,
+                -1,
+                0
+              ]
+            },
+            "then": {
+              "type": "minecraft:weighted",
+              "entries": [
+                {
+                  "data": "minecraft:basalt",
+                  "weight": 2
+                },
+                {
+                  "data": "minecraft:gold_block",
+                  "weight": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "size": 2,
+      "project_through": {
+        "type": "minecraft:matching_blocks",
+        "blocks": "minecraft:air"
+      },
+      "max_projection_height": 3
+    },
+    "placed": true,
+    "next": 7029390918854110340,
+    "blocks": [
+      {
+        "position": [
+          7,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          6
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          10,
+          5,
+          6
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          7
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          8
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          8
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          6,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          9,
+          5,
+          9
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          10,
+          5,
+          9
+        ],
+        "name": "minecraft:gold_block"
+      },
+      {
+        "position": [
+          7,
+          5,
+          10
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          8,
+          5,
+          10
+        ],
+        "name": "minecraft:basalt"
+      },
+      {
+        "position": [
+          9,
+          5,
+          10
+        ],
+        "name": "minecraft:gold_block"
+      }
+    ]
+  }
+]

@@ -36,6 +36,9 @@ const (
 	// these checksums are used for.
 	keyChecksums = ';' // 3b
 
+	// keyAdamantInhabitedTime stores Java-compatible local difficulty age in
+	// Adamant-owned LevelDB data; it is not a Bedrock-native chunk field.
+	keyAdamantInhabitedTime = "adamant:inhabited_time"
 	keyEntityIdentifiers = "digp"
 
 	keyEntity = "actorprefix"
