@@ -13,10 +13,10 @@ func TestRuleProcessorMatchesBeforeStateRotation(t *testing.T) {
 	}}}}
 	processor, err := compileRuleProcessor(map[string]any{"rules": []any{map[string]any{
 		"input_predicate": map[string]any{"predicate_type": "minecraft:blockstate_match", "block_state": map[string]any{
-			"Name": "minecraft:oak_stairs", "Properties": map[string]any{"facing": "north", "half": "bottom", "shape": "straight", "waterlogged": false},
+			"id": "minecraft:oak_stairs", "properties": map[string]any{"facing": "north", "half": "bottom", "shape": "straight", "waterlogged": false},
 		}},
 		"location_predicate": map[string]any{"predicate_type": "minecraft:always_true"},
-		"output_state":       map[string]any{"Name": "minecraft:birch_stairs", "Properties": map[string]any{"facing": "north", "half": "bottom", "shape": "straight", "waterlogged": false}},
+		"output_state":       map[string]any{"id": "minecraft:birch_stairs", "properties": map[string]any{"facing": "north", "half": "bottom", "shape": "straight", "waterlogged": false}},
 	}}}, ProcessorEnvironment{})
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func TestGravityThenHeightRuleUsesMovedPosition(t *testing.T) {
 	rule, err := compileRuleProcessor(map[string]any{"rules": []any{map[string]any{
 		"input_predicate":    map[string]any{"predicate_type": "minecraft:height_match", "min_inclusive": 17, "max_inclusive": 17},
 		"location_predicate": map[string]any{"predicate_type": "minecraft:always_true"},
-		"output_state":       map[string]any{"Name": "minecraft:birch_log", "Properties": map[string]any{"axis": "x"}},
+		"output_state":       map[string]any{"id": "minecraft:birch_log", "properties": map[string]any{"axis": "x"}},
 	}}}, ProcessorEnvironment{})
 	if err != nil {
 		t.Fatal(err)

@@ -2,6 +2,7 @@ package javastructure
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -90,28 +91,45 @@ func compileGravity(config map[string]any, env ProcessorEnvironment) (Processor,
 }
 
 func compileRuleProcessor(config map[string]any, env ProcessorEnvironment) (Processor, error) {
-	rules, ok := config["rules"].([]any)
+	rawRules, ok := config["rules"].([]any)
 	if !ok {
 		return Processor{}, fmt.Errorf("Java rule processor has no rules")
+	}
+	rules := make([]struct {
+		config, input, location map[string]any
+		state world.BlockState
+	}, len(rawRules))
+	for i, raw := range rawRules {
+		rule, ok := raw.(map[string]any)
+		if !ok {
+			return Processor{}, fmt.Errorf("malformed Java processor rule")
+		}
+		input, _ := rule["input_predicate"].(map[string]any)
+		location, _ := rule["location_predicate"].(map[string]any)
+		var err error
+		rules[i].config = rule
+		rules[i].input, err = compileStateRule(input)
+		if err != nil {
+			return Processor{}, err
+		}
+		rules[i].location, err = compileStateRule(location)
+		if err != nil {
+			return Processor{}, err
+		}
+		rules[i].state, err = decodeOutputState(rule["output_state"])
+		if err != nil {
+			return Processor{}, err
+		}
 	}
 	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		localRandom := java26.NewLegacyRandom(javaBlockPositionSeed(b.Pos))
 		random := &localRandom
-		for _, raw := range rules {
-			rule, ok := raw.(map[string]any)
-			if !ok {
-				return b, false, fmt.Errorf("malformed Java processor rule")
-			}
-			input, _ := rule["input_predicate"].(map[string]any)
-			location, _ := rule["location_predicate"].(map[string]any)
-			if !testBlockRule(input, b, random) || !testLocationRule(location, ctx, env, random) || !testPositionRule(rule["position_predicate"], ctx, random) {
+		for _, compiled := range rules {
+			rule := compiled.config
+			if !testBlockRule(compiled.input, b, random) || !testLocationRule(compiled.location, ctx, env, random) || !testPositionRule(rule["position_predicate"], ctx, random) {
 				continue
 			}
-			state, err := decodeOutputState(rule["output_state"])
-			if err != nil {
-				return b, false, err
-			}
-			b.State = state
+			b.State = compiled.state
 			if outputNBT, ok := rule["output_nbt"].(map[string]any); ok {
 				b.NBT = mergeNBT(b.NBT, outputNBT)
 			}
@@ -136,6 +154,62 @@ func testBlockRule(predicate map[string]any, b Block, r *java26.Random) bool {
 	return testStateRule(predicate, b.State, b.Pos, r)
 }
 
+// compileStateRule replaces encoded states with immutable, default-completed
+// values once per processor, rather than allocating property maps per block.
+// Only modified predicate paths are copied; the resource remains unchanged.
+func compileStateRule(predicate map[string]any) (map[string]any, error) {
+	if predicate == nil {
+		return nil, nil
+	}
+	kind := strings.TrimPrefix(stringConfigValue(predicate["predicate_type"]), "minecraft:")
+	switch kind {
+	case "blockstate_match", "random_blockstate_match":
+		state, err := decodeOutputState(predicate["block_state"])
+		if err != nil {
+			return nil, err
+		}
+		compiled := maps.Clone(predicate)
+		compiled["block_state"] = state
+		return compiled, nil
+	case "all_of", "any_of":
+		children, ok := predicate["rules"].([]any)
+		if !ok {
+			return nil, fmt.Errorf("Java %s predicate has no rules", kind)
+		}
+		compiledChildren := make([]any, len(children))
+		for i, raw := range children {
+			child, ok := raw.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("malformed Java %s child predicate", kind)
+			}
+			compiled, err := compileStateRule(child)
+			if err != nil {
+				return nil, err
+			}
+			compiledChildren[i] = compiled
+		}
+		compiled := maps.Clone(predicate)
+		compiled["rules"] = compiledChildren
+		return compiled, nil
+	case "not":
+		child, ok := predicate["rule"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("Java not predicate has no rule")
+		}
+		compiledChild, err := compileStateRule(child)
+		if err != nil {
+			return nil, err
+		}
+		compiled := maps.Clone(predicate)
+		compiled["rule"] = compiledChild
+		return compiled, nil
+	case "always_true", "block_match", "random_block_match", "height_match", "tag_match":
+		return predicate, nil
+	default:
+		return nil, fmt.Errorf("unsupported Java rule predicate %q", kind)
+	}
+}
+
 func testStateRule(predicate map[string]any, state world.BlockState, pos [3]int32, r *java26.Random) bool {
 	if predicate == nil {
 		return true
@@ -145,8 +219,6 @@ func testStateRule(predicate map[string]any, state world.BlockState, pos [3]int3
 	switch typeName {
 	case "always_true":
 		return true
-	case "always_false":
-		return false
 	case "block_match":
 		return world.NormaliseBlockName(stringConfigValue(predicate["block"])) == world.NormaliseBlockName(state.Name)
 	case "random_block_match":
@@ -155,8 +227,8 @@ func testStateRule(predicate map[string]any, state world.BlockState, pos [3]int3
 		}
 		return r.NextFloat() < asFloat32(predicate["probability"])
 	case "blockstate_match", "random_blockstate_match":
-		expected, err := decodeOutputState(predicate["block_state"])
-		if err != nil || world.NormaliseBlockName(expected.Name) != world.NormaliseBlockName(state.Name) || !equalProperties(expected.Properties, state.Properties) {
+		expected, ok := predicate["block_state"].(world.BlockState)
+		if !ok || expected.Name != world.NormaliseBlockName(state.Name) || !equalProperties(expected.Properties, javadata.BlockPropertiesWithDefaults(state.Name, state.Properties)) {
 			return false
 		}
 		if typeName == "random_blockstate_match" {
@@ -205,6 +277,9 @@ func testPositionRule(raw any, ctx ProcessContext, r *java26.Random) bool {
 		return false
 	}
 	kind := strings.TrimPrefix(stringConfigValue(predicate["predicate_type"]), "minecraft:")
+	if kind == "always_true" {
+		return true
+	}
 	if kind != "axis_aligned_linear_pos" && kind != "linear_pos" {
 		return false
 	}
@@ -239,8 +314,6 @@ func testLocationRule(predicate map[string]any, ctx ProcessContext, env Processo
 	switch strings.TrimPrefix(typeName, "minecraft:") {
 	case "always_true":
 		return true
-	case "always_false":
-		return false
 	}
 	if env.BaseBlock == nil {
 		return false
@@ -576,24 +649,23 @@ func mergeConfigWithoutType(config map[string]any) map[string]any {
 	return out
 }
 func decodeOutputState(value any) (world.BlockState, error) {
-	if name, ok := value.(string); ok {
-		return world.BlockState{Name: name}, nil
+	var state world.BlockState
+	switch encoded := value.(type) {
+	case string:
+		state.Name = encoded
+	case map[string]any:
+		state.Name, _ = encoded["id"].(string)
+		properties, _ := encoded["properties"].(map[string]any)
+		state.Properties = world.DecodeStateProperties(properties)
+	default:
+		return state, fmt.Errorf("invalid Java processor block state %T", value)
 	}
-	if m, ok := value.(map[string]any); ok {
-		name, _ := m["Name"].(string)
-		if name == "" {
-			name, _ = m["name"].(string)
-		}
-		props, _ := m["Properties"].(map[string]any)
-		if props == nil {
-			props, _ = m["properties"].(map[string]any)
-		}
-		if name == "" {
-			return world.BlockState{}, fmt.Errorf("Java processor output state has no name")
-		}
-		return world.BlockState{Name: name, Properties: world.DecodeStateProperties(props)}, nil
+	if state.Name == "" {
+		return state, fmt.Errorf("Java processor block state has no id")
 	}
-	return world.BlockState{}, fmt.Errorf("invalid Java processor output state %T", value)
+	state.Name = world.NormaliseBlockName(state.Name)
+	state.Properties = javadata.BlockPropertiesWithDefaults(state.Name, state.Properties)
+	return state, nil
 }
 func javaBlockPositionSeed(pos [3]int32) int64 {
 	seed := int64(pos[0]*3129871) ^ int64(pos[2])*116129781 ^ int64(pos[1])

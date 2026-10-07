@@ -1,0 +1,807 @@
+[
+  {
+    "name": "bare_default_state",
+    "config": {
+      "rules": [
+        {
+          "input_predicate": {
+            "predicate_type": "minecraft:blockstate_match",
+            "block_state": "minecraft:oak_stairs"
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:birch_stairs"
+        }
+      ]
+    },
+    "input": "minecraft:oak_stairs",
+    "position": [
+      1,
+      80,
+      2
+    ],
+    "rotation": 1,
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "east"
+      },
+      "id": "minecraft:birch_stairs"
+    },
+    "outputPosition": [
+      -2,
+      80,
+      1
+    ]
+  },
+  {
+    "name": "partial_object_state",
+    "config": {
+      "rules": [
+        {
+          "input_predicate": {
+            "predicate_type": "minecraft:blockstate_match",
+            "block_state": {
+              "id": "minecraft:oak_stairs",
+              "properties": {
+                "facing": "south"
+              }
+            }
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:birch_stairs",
+            "properties": {
+              "half": "top"
+            }
+          }
+        }
+      ]
+    },
+    "input": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "south"
+      },
+      "id": "minecraft:oak_stairs"
+    },
+    "position": [
+      1,
+      80,
+      2
+    ],
+    "rotation": 1,
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "east"
+      },
+      "id": "minecraft:birch_stairs"
+    },
+    "outputPosition": [
+      -2,
+      80,
+      1
+    ]
+  },
+  {
+    "name": "explicit_always_true_position",
+    "config": {
+      "rules": [
+        {
+          "input_predicate": {
+            "predicate_type": "minecraft:blockstate_match",
+            "block_state": "minecraft:stone"
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "position_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "input": "minecraft:stone",
+    "position": [
+      1,
+      80,
+      2
+    ],
+    "rotation": 0,
+    "output": "minecraft:gold_block",
+    "outputPosition": [
+      1,
+      80,
+      2
+    ]
+  },
+  {
+    "name": "state_mismatch_preserves_rule_rng",
+    "config": {
+      "rules": [
+        {
+          "input_predicate": {
+            "predicate_type": "minecraft:random_blockstate_match",
+            "block_state": "minecraft:oak_stairs",
+            "probability": 0.5
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:diamond_block"
+        },
+        {
+          "input_predicate": {
+            "predicate_type": "minecraft:random_block_match",
+            "block": "minecraft:oak_stairs",
+            "probability": 0.5
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:gold_block"
+        }
+      ]
+    },
+    "input": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "south"
+      },
+      "id": "minecraft:oak_stairs"
+    },
+    "position": [
+      1,
+      80,
+      2
+    ],
+    "rotation": 1,
+    "output": "minecraft:gold_block",
+    "outputPosition": [
+      -2,
+      80,
+      1
+    ]
+  },
+  {
+    "name": "nested_canonical_state",
+    "config": {
+      "rules": [
+        {
+          "input_predicate": {
+            "predicate_type": "minecraft:all_of",
+            "rules": [
+              {
+                "predicate_type": "minecraft:not",
+                "rule": {
+                  "predicate_type": "minecraft:random_blockstate_match",
+                  "block_state": {
+                    "id": "minecraft:oak_stairs",
+                    "properties": {
+                      "facing": "south"
+                    }
+                  },
+                  "probability": 1.0
+                }
+              },
+              {
+                "predicate_type": "minecraft:any_of",
+                "rules": [
+                  {
+                    "predicate_type": "minecraft:block_match",
+                    "block": "minecraft:stone"
+                  },
+                  {
+                    "predicate_type": "minecraft:blockstate_match",
+                    "block_state": "minecraft:oak_stairs"
+                  }
+                ]
+              }
+            ]
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:birch_stairs"
+        }
+      ]
+    },
+    "input": "minecraft:oak_stairs",
+    "position": [
+      1,
+      80,
+      2
+    ],
+    "rotation": 1,
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "east"
+      },
+      "id": "minecraft:birch_stairs"
+    },
+    "outputPosition": [
+      -2,
+      80,
+      1
+    ]
+  },
+  {
+    "name": "trial_bulb_x_0",
+    "config": {
+      "processor_type": "minecraft:rule",
+      "rules": [
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.1
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_oxidized_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.33333334
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_weathered_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.5
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_exposed_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        }
+      ]
+    },
+    "input": "minecraft:waxed_copper_bulb",
+    "position": [
+      0,
+      80,
+      0
+    ],
+    "rotation": 0,
+    "output": {
+      "properties": {
+        "powered": "false",
+        "lit": "true"
+      },
+      "id": "minecraft:waxed_oxidized_copper_bulb"
+    },
+    "outputPosition": [
+      0,
+      80,
+      0
+    ]
+  },
+  {
+    "name": "trial_bulb_x_1",
+    "config": {
+      "processor_type": "minecraft:rule",
+      "rules": [
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.1
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_oxidized_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.33333334
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_weathered_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.5
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_exposed_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        }
+      ]
+    },
+    "input": "minecraft:waxed_copper_bulb",
+    "position": [
+      1,
+      80,
+      0
+    ],
+    "rotation": 0,
+    "output": {
+      "properties": {
+        "powered": "false",
+        "lit": "true"
+      },
+      "id": "minecraft:waxed_exposed_copper_bulb"
+    },
+    "outputPosition": [
+      1,
+      80,
+      0
+    ]
+  },
+  {
+    "name": "trial_bulb_x_2",
+    "config": {
+      "processor_type": "minecraft:rule",
+      "rules": [
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.1
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_oxidized_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.33333334
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_weathered_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.5
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_exposed_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        }
+      ]
+    },
+    "input": "minecraft:waxed_copper_bulb",
+    "position": [
+      2,
+      80,
+      0
+    ],
+    "rotation": 0,
+    "output": {
+      "properties": {
+        "powered": "false",
+        "lit": "true"
+      },
+      "id": "minecraft:waxed_weathered_copper_bulb"
+    },
+    "outputPosition": [
+      2,
+      80,
+      0
+    ]
+  },
+  {
+    "name": "trial_bulb_x_7",
+    "config": {
+      "processor_type": "minecraft:rule",
+      "rules": [
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.1
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_oxidized_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.33333334
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_weathered_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:waxed_copper_bulb",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.5
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:waxed_exposed_copper_bulb",
+            "properties": {
+              "lit": "true",
+              "powered": "false"
+            }
+          }
+        }
+      ]
+    },
+    "input": "minecraft:waxed_copper_bulb",
+    "position": [
+      7,
+      80,
+      0
+    ],
+    "rotation": 0,
+    "output": "minecraft:waxed_copper_bulb",
+    "outputPosition": [
+      7,
+      80,
+      0
+    ]
+  },
+  {
+    "name": "zombie_pane_state_identity",
+    "config": {
+      "processor_type": "minecraft:rule",
+      "rules": [
+        {
+          "input_predicate": {
+            "block": "minecraft:cobblestone",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.8
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:mossy_cobblestone"
+        },
+        {
+          "input_predicate": {
+            "predicate_type": "minecraft:tag_match",
+            "tag": "minecraft:doors"
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:air"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:torch",
+            "predicate_type": "minecraft:block_match"
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:air"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:wall_torch",
+            "predicate_type": "minecraft:block_match"
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:air"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:cobblestone",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.07
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:mossy_cobblestone",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.07
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:white_terracotta",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.07
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:oak_log",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.05
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:oak_planks",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.1
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:oak_stairs",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.1
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:stripped_oak_log",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.02
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:glass_pane",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.5
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:cobweb"
+        },
+        {
+          "input_predicate": {
+            "block_state": {
+              "id": "minecraft:glass_pane",
+              "properties": {
+                "east": "false",
+                "north": "true",
+                "south": "true",
+                "waterlogged": "false",
+                "west": "false"
+              }
+            },
+            "predicate_type": "minecraft:blockstate_match"
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:brown_stained_glass_pane",
+            "properties": {
+              "east": "false",
+              "north": "true",
+              "south": "true",
+              "waterlogged": "false",
+              "west": "false"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block_state": {
+              "id": "minecraft:glass_pane",
+              "properties": {
+                "east": "true",
+                "north": "false",
+                "south": "false",
+                "waterlogged": "false",
+                "west": "true"
+              }
+            },
+            "predicate_type": "minecraft:blockstate_match"
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": {
+            "id": "minecraft:brown_stained_glass_pane",
+            "properties": {
+              "east": "true",
+              "north": "false",
+              "south": "false",
+              "waterlogged": "false",
+              "west": "true"
+            }
+          }
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:wheat",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.3
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:carrots"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:wheat",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.2
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:potatoes"
+        },
+        {
+          "input_predicate": {
+            "block": "minecraft:wheat",
+            "predicate_type": "minecraft:random_block_match",
+            "probability": 0.1
+          },
+          "location_predicate": {
+            "predicate_type": "minecraft:always_true"
+          },
+          "output_state": "minecraft:beetroots"
+        }
+      ]
+    },
+    "input": {
+      "properties": {
+        "west": "false",
+        "waterlogged": "false",
+        "south": "true",
+        "north": "true",
+        "east": "false"
+      },
+      "id": "minecraft:glass_pane"
+    },
+    "position": [
+      2,
+      80,
+      2
+    ],
+    "rotation": 1,
+    "output": {
+      "properties": {
+        "west": "true",
+        "waterlogged": "false",
+        "south": "false",
+        "north": "false",
+        "east": "true"
+      },
+      "id": "minecraft:brown_stained_glass_pane"
+    },
+    "outputPosition": [
+      -2,
+      80,
+      2
+    ]
+  }
+]
