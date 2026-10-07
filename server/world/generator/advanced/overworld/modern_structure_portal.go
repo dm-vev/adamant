@@ -43,10 +43,10 @@ func (p modernRuinedPortal) Place(clip javastructure.Bounds, env javastructure.P
 	if err != nil {
 		return javastructure.Placement{}, err
 	}
-	processors = append(processors, func(_ javastructure.ProcessContext, block javastructure.Block) (javastructure.Block, bool, error) {
+	processors = append(processors, javastructure.Processor{Process: func(_ javastructure.ProcessContext, block javastructure.Block) (javastructure.Block, bool, error) {
 		javastructure.SeedRandomizableContainerLoot(&block, env.Random)
 		return block, true, nil
-	})
+	}})
 	placement, err := p.template.Place(0, placeOrigin, p.rotation, p.mirror, clip, p.seed, processors...)
 	if err != nil {
 		return javastructure.Placement{}, err

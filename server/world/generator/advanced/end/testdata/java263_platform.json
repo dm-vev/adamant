@@ -1,0 +1,802 @@
+[
+  {
+    "position": [
+      98,
+      48,
+      -2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      98,
+      49,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      50,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      51,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      48,
+      -2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      99,
+      49,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      50,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      51,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      48,
+      -2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      100,
+      49,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      50,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      51,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      48,
+      -2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      101,
+      49,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      50,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      51,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      48,
+      -2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      102,
+      49,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      50,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      51,
+      -2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      48,
+      -1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      98,
+      49,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      50,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      51,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      48,
+      -1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      99,
+      49,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      50,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      51,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      48,
+      -1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      100,
+      49,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      50,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      51,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      48,
+      -1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      101,
+      49,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      50,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      51,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      48,
+      -1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      102,
+      49,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      50,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      51,
+      -1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      48,
+      0
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      98,
+      49,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      50,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      51,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      48,
+      0
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      99,
+      49,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      50,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      51,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      48,
+      0
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      100,
+      49,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      50,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      51,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      48,
+      0
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      101,
+      49,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      50,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      51,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      48,
+      0
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      102,
+      49,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      50,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      51,
+      0
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      48,
+      1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      98,
+      49,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      50,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      51,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      48,
+      1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      99,
+      49,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      50,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      51,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      48,
+      1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      100,
+      49,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      50,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      51,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      48,
+      1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      101,
+      49,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      50,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      51,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      48,
+      1
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      102,
+      49,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      50,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      51,
+      1
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      48,
+      2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      98,
+      49,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      50,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      98,
+      51,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      48,
+      2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      99,
+      49,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      50,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      99,
+      51,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      48,
+      2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      100,
+      49,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      50,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      100,
+      51,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      48,
+      2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      101,
+      49,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      50,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      101,
+      51,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      48,
+      2
+    ],
+    "block": "minecraft:obsidian"
+  },
+  {
+    "position": [
+      102,
+      49,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      50,
+      2
+    ],
+    "block": "minecraft:air"
+  },
+  {
+    "position": [
+      102,
+      51,
+      2
+    ],
+    "block": "minecraft:air"
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "kind": "island",
+    "seed": 0,
+    "xoroshiro": false,
+    "count": 0,
+    "nextLong": -3109364765729502342
+  },
+  {
+    "kind": "island",
+    "seed": 4608,
+    "xoroshiro": false,
+    "count": 1,
+    "nextLong": -7500074217518539279
+  },
+  {
+    "kind": "island",
+    "seed": 4609,
+    "xoroshiro": false,
+    "count": 2,
+    "nextLong": -4372532132106311995
+  },
+  {
+    "kind": "gateway",
+    "seed": 0,
+    "xoroshiro": false,
+    "count": 0,
+    "nextLong": -3109364765729502342
+  },
+  {
+    "kind": "gateway",
+    "seed": 5184,
+    "xoroshiro": false,
+    "count": 1,
+    "nextLong": -7700951187570226686
+  },
+  {
+    "kind": "island",
+    "seed": 0,
+    "xoroshiro": true,
+    "count": 0,
+    "nextLong": -3694039286755638414
+  },
+  {
+    "kind": "island",
+    "seed": 18,
+    "xoroshiro": true,
+    "count": 1,
+    "nextLong": -208165843563674327
+  },
+  {
+    "kind": "island",
+    "seed": 30,
+    "xoroshiro": true,
+    "count": 2,
+    "nextLong": -5092745523393626837
+  },
+  {
+    "kind": "gateway",
+    "seed": 0,
+    "xoroshiro": true,
+    "count": 0,
+    "nextLong": -3694039286755638414
+  },
+  {
+    "kind": "gateway",
+    "seed": 111,
+    "xoroshiro": true,
+    "count": 1,
+    "nextLong": 3500609826288335747
+  }
+]

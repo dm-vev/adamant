@@ -63,7 +63,7 @@ func TestProcessorReplacementRefreshesStateActor(t *testing.T) {
 				t.Fatal(err)
 			}
 			template := Template{Size: [3]int32{1, 1, 1}, Palettes: [][]Block{{{State: tc.from, NativeBlock: native}}}}
-			placed, err := template.Place(0, [3]int32{}, None, NoMirror, Bounds{Min: [3]int32{-1, -1, -1}, Max: [3]int32{1, 1, 1}}, 1, func(_ ProcessContext, b Block) (Block, bool, error) { b.State = tc.to; return b, true, nil })
+			placed, err := template.Place(0, [3]int32{}, None, NoMirror, Bounds{Min: [3]int32{-1, -1, -1}, Max: [3]int32{1, 1, 1}}, 1, Processor{Process: func(_ ProcessContext, b Block) (Block, bool, error) { b.State = tc.to; return b, true, nil }})
 			if err != nil {
 				t.Fatal(err)
 			}

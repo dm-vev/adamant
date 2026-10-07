@@ -771,18 +771,7 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 	if err != nil {
 		panic(err)
 	}
-	payloadBlocks := make([]javastructure.Block, 0)
-	for _, block := range placement.Blocks {
-		pos := featurePos{block.Pos[0], block.Pos[1], block.Pos[2]}
-		state, err := block.ResolveNative(region.c.BlockRegistry(), region.nativeState(pos))
-		if err != nil {
-			panic(err)
-		}
-		accepted := region.Set(pos, state)
-		if accepted && featureInsideTarget(region.target, pos) && (block.NativeBlock != nil || len(block.NBT) != 0) {
-			payloadBlocks = append(payloadBlocks, block)
-		}
-	}
+	payloadBlocks := applyTemplateFluids(region, placement.Blocks)
 	region.result.BlockEntities = append(region.result.BlockEntities, (javastructure.Placement{Blocks: payloadBlocks}).BlockEntityPayloads()...)
 	entities := make([]javastructure.Entity, 0, len(placement.Entities))
 	for _, record := range placement.Entities {

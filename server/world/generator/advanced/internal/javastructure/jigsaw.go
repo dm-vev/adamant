@@ -104,8 +104,8 @@ func (p JigsawPiece) placeWithEnvironment(palette int, clip Bounds, seed int64, 
 	processors, err := LoadProcessors(p.Processors, p.ProcessorSpecs, env)
 	if err != nil { return Placement{}, err }
 	defaults := []Processor{
-		func(_ ProcessContext, block Block) (Block, bool, error) { return block, block.State.Name != "minecraft:structure_block", nil },
-		func(_ ProcessContext, block Block) (Block, bool, error) {
+		processor(func(_ ProcessContext, block Block) (Block, bool, error) { return block, block.State.Name != "minecraft:structure_block", nil }),
+		processor(func(_ ProcessContext, block Block) (Block, bool, error) {
 			if block.State.Name != "minecraft:jigsaw" { return block, true, nil }
 			finalState := block.NBT["final_state"]
 			if finalState == nil { finalState = "minecraft:air" }
@@ -114,7 +114,7 @@ func (p JigsawPiece) placeWithEnvironment(palette int, clip Bounds, seed int64, 
 			block.State = state
 			block.NBT = nil
 			return block, true, nil
-		},
+		}),
 	}
 	processors = append(defaults, processors...)
 	if p.Projection == TerrainMatching {
@@ -123,10 +123,10 @@ func (p JigsawPiece) placeWithEnvironment(palette int, clip Bounds, seed int64, 
 		processors = append(processors, gravity)
 	}
 	if env.Random != nil {
-		processors = append(processors, func(_ ProcessContext, block Block) (Block, bool, error) {
+		processors = append(processors, processor(func(_ ProcessContext, block Block) (Block, bool, error) {
 			SeedRandomizableContainerLoot(&block, env.Random)
 			return block, true, nil
-		})
+		}))
 	}
 	if env.SkipEntities { return p.Template.PlaceBlocks(palette, p.Origin, p.Rotation, p.Mirror, clip, seed, processors...) }
 	return p.Place(palette, clip, seed, processors...)

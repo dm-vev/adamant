@@ -2068,29 +2068,7 @@ func needsWaterLayer(name string, props map[string]any) bool {
 
 
 func hasJavaWaterloggedProperty(name string) bool {
-	if strings.HasSuffix(name, "_slab") || strings.HasSuffix(name, "_stairs") || strings.HasSuffix(name, "_trapdoor") ||
-		strings.HasSuffix(name, "_fence") || strings.HasSuffix(name, "_fence_gate") || strings.HasSuffix(name, "_wall") ||
-		strings.HasSuffix(name, "_sign") || strings.HasSuffix(name, "_coral") || strings.HasSuffix(name, "_coral_fan") ||
-		strings.HasSuffix(name, "_coral_wall_fan") || strings.HasSuffix(name, "_pane") || strings.HasSuffix(name, "_bars") ||
-		strings.HasSuffix(name, "_chain") || strings.HasSuffix(name, "_lantern") || strings.HasSuffix(name, "_candle") ||
-		strings.HasSuffix(name, "_campfire") || strings.HasSuffix(name, "_leaves") || strings.HasSuffix(name, "_chest") ||
-		strings.HasSuffix(name, "_grate") || strings.HasSuffix(name, "_propagule") || strings.HasSuffix(name, "_shelf") {
-		return true
-	}
-	switch name {
-	case "minecraft:conduit", "minecraft:light", "minecraft:lightning_rod", "minecraft:scaffolding",
-		"minecraft:pointed_dripstone", "minecraft:sulfur_spike", "minecraft:big_dripleaf", "minecraft:big_dripleaf_stem",
-		"minecraft:small_dripleaf", "minecraft:sea_pickle", "minecraft:amethyst_cluster",
-		"minecraft:large_amethyst_bud", "minecraft:medium_amethyst_bud", "minecraft:small_amethyst_bud",
-		"minecraft:mangrove_roots", "minecraft:muddy_mangrove_roots", "minecraft:glow_lichen",
-		"minecraft:resin_clump", "minecraft:sculk_vein", "minecraft:sculk_sensor",
-		"minecraft:calibrated_sculk_sensor", "minecraft:sculk_shrieker",
-		"minecraft:barrier", "minecraft:decorated_pot", "minecraft:dried_ghast",
-		"minecraft:ladder", "minecraft:rail",
-		"minecraft:hanging_roots", "minecraft:heavy_core", "minecraft:copper_golem_statue":
-		return true
-	}
-	return false
+	return javadata.BlockHasProperty(name, "waterlogged")
 }
 
 func isLeafBlock(name string) bool {

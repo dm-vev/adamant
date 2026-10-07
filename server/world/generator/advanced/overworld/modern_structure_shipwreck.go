@@ -21,7 +21,7 @@ func (p modernShipwreckPiece) Place(clip javastructure.Bounds,env javastructure.
 	if env.Random==nil||env.BaseBlock==nil{return javastructure.Placement{},fmt.Errorf("shipwreck requires base-block and placement random queries")}
 	pivot:=[3]int32{4,0,15};transformed:=javastructure.TransformPosition(pivot,javastructure.NoMirror,p.rotation);origin:=p.origin
 	for axis:=range 3{origin[axis]+=pivot[axis]-transformed[axis]}
-	ignore:=func(_ javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){return b,b.State.Name!="minecraft:air"&&b.State.Name!="minecraft:structure_block",nil}
+	ignore:=javastructure.Processor{Process: func(_ javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){return b,b.State.Name!="minecraft:air"&&b.State.Name!="minecraft:structure_block",nil}}
 	placed,err:=p.template.Place(0,origin,p.rotation,javastructure.NoMirror,clip,p.seed,ignore);if err!=nil{return javastructure.Placement{},err}
 	for i:=range placed.Blocks{javastructure.SeedRandomizableContainerLoot(&placed.Blocks[i],env.Random)}
 	inside:=func(pos [3]int32)bool{return pos[0]>=clip.Min[0]&&pos[0]<=clip.Max[0]&&pos[1]>=clip.Min[1]&&pos[1]<=clip.Max[1]&&pos[2]>=clip.Min[2]&&pos[2]<=clip.Max[2]}

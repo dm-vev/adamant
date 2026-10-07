@@ -17,9 +17,9 @@ func(p modernOceanRuinPiece)Place(clip javastructure.Bounds,env javastructure.Pr
 	if env.Random==nil{return javastructure.Placement{},fmt.Errorf("ocean ruin requires placement random")}
 	var capSelected map[int]struct{}
 	processors:=[]javastructure.Processor{
-		func(ctx javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){r:=java26.NewLegacyRandom(modernJavaPositionSeed(ctx.Position));return b,r.NextFloat()<=p.integrity,nil},
-		func(_ javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){return b,b.State.Name!="minecraft:air"&&b.State.Name!="minecraft:structure_block",nil},
-		func(ctx javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){if _,ok:=capSelected[ctx.BlockIndex];!ok{return b,true,nil};candidate:="minecraft:gravel";replacement,loot:="minecraft:suspicious_gravel","minecraft:archaeology/ocean_ruin_cold";if p.warm{candidate,replacement,loot="minecraft:sand","minecraft:suspicious_sand","minecraft:archaeology/ocean_ruin_warm"};if b.State.Name!=candidate{return b,true,nil};b.State=world.BlockState{Name:replacement};b.NBT=map[string]any{"id":"minecraft:brushable_block","LootTable":loot};return b,true,nil},
+		{Process: func(ctx javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){r:=java26.NewLegacyRandom(modernJavaPositionSeed(ctx.Position));return b,r.NextFloat()<=p.integrity,nil}},
+		{Process: func(_ javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){return b,b.State.Name!="minecraft:air"&&b.State.Name!="minecraft:structure_block",nil}},
+		{Process: func(ctx javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){if _,ok:=capSelected[ctx.BlockIndex];!ok{return b,true,nil};candidate:="minecraft:gravel";replacement,loot:="minecraft:suspicious_gravel","minecraft:archaeology/ocean_ruin_cold";if p.warm{candidate,replacement,loot="minecraft:sand","minecraft:suspicious_sand","minecraft:archaeology/ocean_ruin_warm"};if b.State.Name!=candidate{return b,true,nil};b.State=world.BlockState{Name:replacement};b.NBT=map[string]any{"id":"minecraft:brushable_block","LootTable":loot};return b,true,nil}},
 	}
 	origin:=p.origin
 	if env.BaseHeight==nil||env.BaseBlock==nil{return javastructure.Placement{},fmt.Errorf("ocean ruin requires terrain queries")}

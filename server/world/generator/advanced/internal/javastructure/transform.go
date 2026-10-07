@@ -142,15 +142,27 @@ type ProcessContext struct {
 	Mirror                             Mirror
 }
 
-// Processor implements one Java template processor in the caller's world-generation context.
-// Returning keep=false omits the block. Implementations must derive randomness from Seed and Position.
-type Processor func(ProcessContext, Block) (block Block, keep bool, err error)
+// Processor implements one Java template processor. EvaluatesEntirePieceState
+// disables Java's initial chunk-local filtering before per-block processing.
+type Processor struct {
+	Process func(ProcessContext, Block) (block Block, keep bool, err error)
+	// finalize runs after every per-block processor, before state transforms and clipping.
+	// Original palette indices avoid copying complete contexts for surviving records.
+	finalize func(ProcessContext, []Block, []int, []Block) ([]Block, error)
+	EvaluatesEntirePieceState bool
+}
+
+func processor(fn func(ProcessContext, Block) (Block, bool, error)) Processor {
+	return Processor{Process: fn}
+}
 
 // Placement contains the transformed records intersecting a requested chunk/cuboid.
 type Placement struct { Blocks []Block; Entities []Entity }
 
-// Place selects one palette, transforms its block and entity positions, clips to bounds, and runs processors in order.
-// The origin is the world position of the untransformed template origin. Bounds are inclusive.
+// Place selects one palette, transforms block positions, processes records in order,
+// then transforms states and applies the final clip. As in Java, processors marked
+// EvaluatesEntirePieceState disable the earlier chunk-local processing filter.
+// The origin is the world position of the untransformed template origin; bounds are inclusive.
 func (t *Template) Place(palette int, origin [3]int32, rotation Rotation, mirror Mirror, clip Bounds, seed int64, processors ...Processor) (Placement, error) {
 	return t.place(palette, origin, rotation, mirror, clip, seed, true, processors...)
 }
@@ -168,48 +180,79 @@ func (t *Template) place(palette int, origin [3]int32, rotation Rotation, mirror
 		return Placement{}, fmt.Errorf("java structure: palette %d outside [0,%d)", palette, len(t.Palettes))
 	}
 	out := Placement{Blocks: make([]Block, 0, len(t.Palettes[palette]))}
+	processEntirePiece, hasFinalizer := false, false
+	for _, processor := range processors {
+		processEntirePiece = processEntirePiece || processor.EvaluatesEntirePieceState
+		hasFinalizer = hasFinalizer || processor.finalize != nil
+	}
+	var originalIndices []int
+	if hasFinalizer {
+		originalIndices = make([]int, 0, len(t.Palettes[palette]))
+	}
 	for blockIndex, source := range t.Palettes[palette] {
 		pos := TransformPosition(source.Pos, mirror, rotation)
 		for axis := range 3 {
 			pos[axis] += origin[axis]
 		}
-		if !inside(pos, clip) {
+		if !processEntirePiece && !inside(pos, clip) {
 			continue
 		}
 		block := source
 		block.Pos = pos
-		block.State = TransformState(source.State, mirror, rotation)
 		ctx := ProcessContext{
 			Origin: origin, Position: pos, RelativePosition: source.Pos, BlockIndex: blockIndex,
 			Seed: seed, Rotation: rotation, Mirror: mirror,
 		}
 		keep := true
 		for _, processor := range processors {
-			if processor == nil {
+			if processor.Process == nil {
 				continue
 			}
+			ctx.Position = block.Pos
 			var err error
-			block, keep, err = processor(ctx, block)
+			block, keep, err = processor.Process(ctx, block)
 			if err != nil {
-				return Placement{}, fmt.Errorf("java structure processor at %v: %w", pos, err)
+				return Placement{}, fmt.Errorf("java structure processor at %v: %w", ctx.Position, err)
 			}
 			if !keep {
 				break
 			}
 		}
-		if keep && inside(block.Pos, clip) {
-			nativeBlock, adapted, err := NativeBlockForJavaState(block.State)
-			if err != nil {
-				return Placement{}, fmt.Errorf("java structure state at %v: %w", pos, err)
-			}
-			if adapted {
-				block.NativeBlock = nativeBlock
-			} else if stateDerivedActor(block.NativeBlock) {
-				block.NativeBlock = nil
-			}
+		if keep {
 			out.Blocks = append(out.Blocks, block)
+			if hasFinalizer {
+				originalIndices = append(originalIndices, blockIndex)
+			}
 		}
 	}
+	for _, processor := range processors {
+		if processor.finalize != nil {
+			var err error
+			ctx := ProcessContext{Origin: origin, Seed: seed, Rotation: rotation, Mirror: mirror}
+			out.Blocks, err = processor.finalize(ctx, t.Palettes[palette], originalIndices, out.Blocks)
+			if err != nil {
+				return Placement{}, fmt.Errorf("java structure finalizer at %v: %w", origin, err)
+			}
+		}
+	}
+	placed := out.Blocks[:0]
+	for _, block := range out.Blocks {
+		if !inside(block.Pos, clip) {
+			continue
+		}
+		block.State = TransformState(block.State, mirror, rotation)
+		nativeBlock, adapted, err := NativeBlockForJavaState(block.State)
+		if err != nil {
+			return Placement{}, fmt.Errorf("java structure state at %v: %w", block.Pos, err)
+		}
+		if adapted {
+			block.NativeBlock = nativeBlock
+		} else if stateDerivedActor(block.NativeBlock) {
+			block.NativeBlock = nil
+		}
+		placed = append(placed, block)
+	}
+	out.Blocks = placed
 	if includeEntities {
 		out.Entities = t.PlaceEntities(origin, rotation, mirror, clip, seed)
 	}

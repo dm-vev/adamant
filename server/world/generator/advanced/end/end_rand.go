@@ -22,12 +22,18 @@ func (r *endRand) Bool() bool {
 	return r.random.NextBoolean()
 }
 
-func (r *endRand) OneIn14() bool {
-	return r.random.NextInt(14) == 0
+func (r *endRand) islandCount() int {
+	if r.random.NextFloat() >= float32(1)/14 {
+		return 0
+	}
+	if r.random.NextInt(4) == 3 {
+		return 2
+	}
+	return 1
 }
 
 func (r *endRand) OneIn700() bool {
-	return r.random.NextInt(700) == 0
+	return r.random.NextFloat() < float32(1)/700
 }
 
 func (r *endRand) Long() int64 {

@@ -339,16 +339,14 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 	distSq := int64(chunkX)*int64(chunkX) + int64(chunkZ)*int64(chunkZ)
 	if distSq <= 4096 {
 		g.generateCentralStructures(origin, targetX, targetZ, result, g.endFeatureRandom(chunkX, chunkZ, 1, 4))
+		g.generateEndPlatform(origin)
 		return
 	}
 
 	height := g.islandHeightValue(chunkX, chunkZ, 1, 1)
 	rawRandom := g.endFeatureRandom(chunkX, chunkZ, 0, 0)
-	if height < -20 && rawRandom.OneIn14() {
-		featureCount := 1
-		if rawRandom.Intn(4) == 0 {
-			featureCount++
-		}
+	if height < -20 {
+		featureCount := rawRandom.islandCount()
 		for range featureCount {
 			x := int(rawRandom.Intn(16))
 			z := int(rawRandom.Intn(16))
@@ -425,6 +423,27 @@ func (g *End) generateEndGatewayStructure(origin endFeatureOrigin, worldX, world
 	}
 }
 
+// generateEndPlatform places end_platform's fixed (100,49,0) origin in the
+// central End biome's top-layer stage. Its foundation is one block below it.
+func (g *End) generateEndPlatform(origin endFeatureOrigin) {
+	if origin.chunkX != 6 || origin.chunkZ != 0 {
+		return
+	}
+	for z := -2; z <= 2; z++ {
+		for x := 98; x <= 102; x++ {
+			for y := 48; y <= 51; y++ {
+				rid := g.airRID
+				if y == 48 {
+					rid = g.obsidianRID
+				}
+				if origin.block(x, y, z) != rid {
+					origin.setBlock(x, y, z, rid)
+				}
+			}
+		}
+	}
+}
+
 func (g *End) generateEndIsland(origin endFeatureOrigin, centreX, centreY, centreZ int, r *endRand) {
 	minY, maxY := origin.region.minY, origin.region.maxY
 	f := float64(r.Intn(3)) + 4
@@ -494,14 +513,11 @@ func (g *End) growChorusRecursive(region endFeatureOrigin, x, y, z int, r *endRa
 }
 
 func (g *End) isAir(region endFeatureOrigin, x, y, z int) bool {
-	if y < region.region.minY || y > region.region.maxY {
-		return false
-	}
 	return region.block(x, y, z) == g.airRID
 }
 
 func (g *End) areAllHorizontalNeighborsAir(region endFeatureOrigin, x, y, z, excluding int) bool {
-	dirs := [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+	dirs := [4][2]int{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
 	for i, d := range dirs {
 		if i != excluding && !g.isAir(region, x+d[0], y, z+d[1]) {
 			return false
@@ -513,13 +529,13 @@ func (g *End) areAllHorizontalNeighborsAir(region endFeatureOrigin, x, y, z, exc
 func randomHorizontal(r *endRand) (dx, dz, opposite int) {
 	switch r.Intn(4) {
 	case 0:
-		return 1, 0, 1 // +X opposite is -X
+		return 0, -1, 2 // North, opposite South.
 	case 1:
-		return -1, 0, 0 // -X opposite is +X
+		return 1, 0, 3 // East, opposite West.
 	case 2:
-		return 0, 1, 3 // +Z opposite is -Z
+		return 0, 1, 0 // South, opposite North.
 	default:
-		return 0, -1, 2 // -Z opposite is +Z
+		return -1, 0, 1 // West, opposite East.
 	}
 }
 

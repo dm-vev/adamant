@@ -2,6 +2,7 @@ package javastructure
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -48,7 +49,7 @@ func LoadProcessors(names []string, inline []ProcessorSpec, env ProcessorEnviron
 func compileProcessor(spec ProcessorSpec, env ProcessorEnvironment) (Processor, error) {
 	switch spec.Type {
 	case "nop":
-		return func(_ ProcessContext, b Block) (Block, bool, error) { return b, true, nil }, nil
+		return processor(func(_ ProcessContext, b Block) (Block, bool, error) { return b, true, nil }), nil
 	case "rule":
 		return compileRuleProcessor(spec.Config, env)
 	case "block_ignore":
@@ -70,7 +71,7 @@ func compileProcessor(spec ProcessorSpec, env ProcessorEnvironment) (Processor, 
 	case "capped":
 		return compileCappedProcessor(spec.Config, env)
 	default:
-		return nil, fmt.Errorf("unsupported Java structure processor %q", spec.Type)
+		return Processor{}, fmt.Errorf("unsupported Java structure processor %q", spec.Type)
 	}
 }
 
@@ -78,22 +79,22 @@ func compileGravity(config map[string]any, env ProcessorEnvironment) (Processor,
 	offset := asInt32(config["offset"])
 	heightmap, _ := config["heightmap"].(string)
 	oceanFloor := strings.Contains(strings.ToLower(heightmap), "ocean_floor")
-	return func(ctx ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		if env.BaseHeight == nil {
 			return b, false, fmt.Errorf("Java gravity processor requires base-height queries")
 		}
 		height := env.BaseHeight(b.Pos[0], b.Pos[2], oceanFloor)
 		b.Pos[1] = height + offset + ctx.RelativePosition[1]
 		return b, true, nil
-	}, nil
+	}), nil
 }
 
 func compileRuleProcessor(config map[string]any, env ProcessorEnvironment) (Processor, error) {
 	rules, ok := config["rules"].([]any)
 	if !ok {
-		return nil, fmt.Errorf("Java rule processor has no rules")
+		return Processor{}, fmt.Errorf("Java rule processor has no rules")
 	}
-	return func(ctx ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		localRandom := java26.NewLegacyRandom(javaBlockPositionSeed(b.Pos))
 		random := &localRandom
 		for _, raw := range rules {
@@ -103,7 +104,7 @@ func compileRuleProcessor(config map[string]any, env ProcessorEnvironment) (Proc
 			}
 			input, _ := rule["input_predicate"].(map[string]any)
 			location, _ := rule["location_predicate"].(map[string]any)
-			if !testBlockRule(input, b, random) || !testLocationRule(location, ctx, env) || !testPositionRule(rule["position_predicate"], ctx, random) {
+			if !testBlockRule(input, b, random) || !testLocationRule(location, ctx, env, random) || !testPositionRule(rule["position_predicate"], ctx, random) {
 				continue
 			}
 			state, err := decodeOutputState(rule["output_state"])
@@ -128,10 +129,14 @@ func compileRuleProcessor(config map[string]any, env ProcessorEnvironment) (Proc
 			return b, true, nil
 		}
 		return b, true, nil
-	}, nil
+	}), nil
 }
 
 func testBlockRule(predicate map[string]any, b Block, r *java26.Random) bool {
+	return testStateRule(predicate, b.State, b.Pos, r)
+}
+
+func testStateRule(predicate map[string]any, state world.BlockState, pos [3]int32, r *java26.Random) bool {
 	if predicate == nil {
 		return true
 	}
@@ -143,21 +148,49 @@ func testBlockRule(predicate map[string]any, b Block, r *java26.Random) bool {
 	case "always_false":
 		return false
 	case "block_match":
-		name, _ := predicate["block"].(string)
-		return b.State.Name == name
+		return world.NormaliseBlockName(stringConfigValue(predicate["block"])) == world.NormaliseBlockName(state.Name)
 	case "random_block_match":
-		name, _ := predicate["block"].(string)
-		if b.State.Name != name {
+		if world.NormaliseBlockName(stringConfigValue(predicate["block"])) != world.NormaliseBlockName(state.Name) {
 			return false
 		}
 		return r.NextFloat() < asFloat32(predicate["probability"])
-	case "block_state_match":
-		state, err := decodeOutputState(predicate["block_state"])
-		return err == nil && state.Name == b.State.Name && equalProperties(state.Properties, b.State.Properties)
+	case "blockstate_match", "random_blockstate_match":
+		expected, err := decodeOutputState(predicate["block_state"])
+		if err != nil || world.NormaliseBlockName(expected.Name) != world.NormaliseBlockName(state.Name) || !equalProperties(expected.Properties, state.Properties) {
+			return false
+		}
+		if typeName == "random_blockstate_match" {
+			return r.NextFloat() < asFloat32(predicate["probability"])
+		}
+		return true
+	case "height_match":
+		y := int(pos[1])
+		return intConfigValue(predicate["min_inclusive"]) <= y && y <= intConfigValue(predicate["max_inclusive"])
 	case "tag_match":
-		tag, _ := predicate["tag"].(string)
-		match, err := javadata.BlockTagContains(tag, b.State.Name)
+		match, err := javadata.BlockTagContains(stringConfigValue(predicate["tag"]), world.NormaliseBlockName(state.Name))
 		return err == nil && match
+	case "all_of", "any_of":
+		rules, ok := predicate["rules"].([]any)
+		if !ok {
+			return false
+		}
+		for _, raw := range rules {
+			child, ok := raw.(map[string]any)
+			if !ok {
+				return false
+			}
+			matched := testStateRule(child, state, pos, r)
+			if typeName == "all_of" && !matched {
+				return false
+			}
+			if typeName == "any_of" && matched {
+				return true
+			}
+		}
+		return typeName == "all_of"
+	case "not":
+		child, ok := predicate["rule"].(map[string]any)
+		return ok && !testStateRule(child, state, pos, r)
 	default:
 		return false
 	}
@@ -172,17 +205,21 @@ func testPositionRule(raw any, ctx ProcessContext, r *java26.Random) bool {
 		return false
 	}
 	kind := strings.TrimPrefix(stringConfigValue(predicate["predicate_type"]), "minecraft:")
-	if kind != "axis_aligned_linear_pos" {
+	if kind != "axis_aligned_linear_pos" && kind != "linear_pos" {
 		return false
 	}
-	axis := strings.TrimPrefix(stringConfigValue(predicate["axis"]), "minecraft:")
-	if axis == "" {
-		axis = "y"
-	}
-	index := map[string]int{"x": 0, "y": 1, "z": 2}[axis]
-	distance := ctx.Position[index] - ctx.Origin[index]
-	if distance < 0 {
-		distance = -distance
+	dx, dy, dz := ctx.Position[0]-ctx.Origin[0], ctx.Position[1]-ctx.Origin[1], ctx.Position[2]-ctx.Origin[2]
+	distance := absInt32(dx) + absInt32(dy) + absInt32(dz)
+	if kind == "axis_aligned_linear_pos" {
+		axis := strings.TrimPrefix(stringConfigValue(predicate["axis"]), "minecraft:")
+		if axis == "" {
+			axis = "y"
+		}
+		index, ok := map[string]int{"x": 0, "y": 1, "z": 2}[axis]
+		if !ok {
+			return false
+		}
+		distance = absInt32(ctx.Position[index] - ctx.Origin[index])
 	}
 	minDistance, maxDistance := int32(intConfigValue(predicate["min_dist"])), int32(intConfigValue(predicate["max_dist"]))
 	if maxDistance <= minDistance {
@@ -194,47 +231,46 @@ func testPositionRule(raw any, ctx ProcessContext, r *java26.Random) bool {
 	return r.NextFloat() <= probability
 }
 
-func testLocationRule(predicate map[string]any, ctx ProcessContext, env ProcessorEnvironment) bool {
+func testLocationRule(predicate map[string]any, ctx ProcessContext, env ProcessorEnvironment, random *java26.Random) bool {
 	if predicate == nil {
 		return true
 	}
 	typeName, _ := predicate["predicate_type"].(string)
-	typeName = strings.TrimPrefix(typeName, "minecraft:")
-	switch typeName {
+	switch strings.TrimPrefix(typeName, "minecraft:") {
 	case "always_true":
 		return true
 	case "always_false":
 		return false
-	case "block_match":
-		if env.BaseBlock == nil {
-			return false
-		}
-		name, _ := predicate["block"].(string)
-		actual, _ := env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2]).EncodeBlock()
-		return actual == name
-	case "block_tag_match":
-		if env.BaseBlock == nil {
-			return false
-		}
-		tag, _ := predicate["tag"].(string)
-		actual, _ := env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2]).EncodeBlock()
-		match, err := javadata.BlockTagContains(tag, actual)
-		return err == nil && match
-	case "biome":
-		if env.JavaBiomeAt == nil {
-			return false
-		}
-		biome, _ := predicate["biome"].(string)
-		return strings.TrimPrefix(env.JavaBiomeAt(ctx.Position[0], ctx.Position[1], ctx.Position[2]), "minecraft:") == strings.TrimPrefix(biome, "minecraft:")
-	default:
+	}
+	if env.BaseBlock == nil {
 		return false
 	}
+	native := env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2])
+	if native == nil {
+		return false
+	}
+	nativeState, err := world.ResolveBlock(world.DefaultBlockRegistry, native)
+	if err != nil {
+		return false
+	}
+	state, err := world.JavaState(world.DefaultBlockRegistry, nativeState)
+	if err != nil {
+		return false
+	}
+	return testStateRule(predicate, state, ctx.Position, random)
 }
+func absInt32(value int32) int32 {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
 
 func compileBlockIgnore(config map[string]any) (Processor, error) {
 	values, ok := config["blocks"].([]any)
 	if !ok {
-		return nil, fmt.Errorf("Java block_ignore has no blocks")
+		return Processor{}, fmt.Errorf("Java block_ignore has no blocks")
 	}
 	ignored := make(map[string]struct{}, len(values))
 	for _, v := range values {
@@ -242,10 +278,10 @@ func compileBlockIgnore(config map[string]any) (Processor, error) {
 			ignored[name] = struct{}{}
 		}
 	}
-	return func(_ ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(_ ProcessContext, b Block) (Block, bool, error) {
 		_, drop := ignored[b.State.Name]
 		return b, !drop, nil
-	}, nil
+	}), nil
 }
 func compileBlockRot(config map[string]any, env ProcessorEnvironment) (Processor, error) {
 	probability := asFloat32(config["integrity"])
@@ -261,7 +297,7 @@ func compileBlockRot(config map[string]any, env ProcessorEnvironment) (Processor
 			}
 		}
 	}
-	return func(ctx ProcessContext, block Block) (Block, bool, error) {
+	return processor(func(ctx ProcessContext, block Block) (Block, bool, error) {
 		if tag != "" {
 			match, err := javadata.BlockTagContains(tag, block.State.Name)
 			if err != nil {
@@ -277,11 +313,11 @@ func compileBlockRot(config map[string]any, env ProcessorEnvironment) (Processor
 			}
 		}
 		return block, processorRandom(env, ctx.Position).NextFloat() <= probability, nil
-	}, nil
+	}), nil
 }
 func compileBlackstoneReplace() (Processor, error) {
 	replacements := map[string]string{"minecraft:cobblestone": "minecraft:blackstone", "minecraft:mossy_cobblestone": "minecraft:blackstone", "minecraft:stone": "minecraft:polished_blackstone", "minecraft:stone_bricks": "minecraft:polished_blackstone_bricks", "minecraft:mossy_stone_bricks": "minecraft:polished_blackstone_bricks", "minecraft:cobblestone_stairs": "minecraft:blackstone_stairs", "minecraft:mossy_cobblestone_stairs": "minecraft:blackstone_stairs", "minecraft:stone_stairs": "minecraft:polished_blackstone_stairs", "minecraft:stone_brick_stairs": "minecraft:polished_blackstone_brick_stairs", "minecraft:mossy_stone_brick_stairs": "minecraft:polished_blackstone_brick_stairs", "minecraft:cobblestone_slab": "minecraft:blackstone_slab", "minecraft:mossy_cobblestone_slab": "minecraft:blackstone_slab", "minecraft:smooth_stone_slab": "minecraft:polished_blackstone_slab", "minecraft:stone_slab": "minecraft:polished_blackstone_slab", "minecraft:stone_brick_slab": "minecraft:polished_blackstone_brick_slab", "minecraft:mossy_stone_brick_slab": "minecraft:polished_blackstone_brick_slab", "minecraft:stone_brick_wall": "minecraft:polished_blackstone_brick_wall", "minecraft:mossy_stone_brick_wall": "minecraft:polished_blackstone_brick_wall", "minecraft:cobblestone_wall": "minecraft:blackstone_wall", "minecraft:mossy_cobblestone_wall": "minecraft:blackstone_wall", "minecraft:chiseled_stone_bricks": "minecraft:chiseled_polished_blackstone", "minecraft:cracked_stone_bricks": "minecraft:cracked_polished_blackstone_bricks", "minecraft:iron_bars": "minecraft:iron_chain"}
-	return func(_ ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(_ ProcessContext, b Block) (Block, bool, error) {
 		name, ok := replacements[b.State.Name]
 		if !ok {
 			return b, true, nil
@@ -294,10 +330,10 @@ func compileBlackstoneReplace() (Processor, error) {
 		}
 		b.State = world.BlockState{Name: name, Properties: properties}
 		return b, true, nil
-	}, nil
+	}), nil
 }
 func compileJigsawReplace() (Processor, error) {
-	return func(_ ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(_ ProcessContext, b Block) (Block, bool, error) {
 		if b.State.Name != "minecraft:jigsaw" {
 			return b, true, nil
 		}
@@ -312,25 +348,25 @@ func compileJigsawReplace() (Processor, error) {
 		b.State = state
 		b.NBT = nil
 		return b, true, nil
-	}, nil
+	}), nil
 }
 func compileProtectedBlocks(config map[string]any, env ProcessorEnvironment) (Processor, error) {
 	tag, _ := config["value"].(string)
 	if tag == "" {
-		return nil, fmt.Errorf("Java protected_blocks processor missing value tag")
+		return Processor{}, fmt.Errorf("Java protected_blocks processor missing value tag")
 	}
-	return func(ctx ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		if env.BaseBlock == nil {
 			return b, true, nil
 		}
 		base, _ := env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2]).EncodeBlock()
 		protected, err := javadata.BlockTagContains(tag, base)
 		return b, !protected, err
-	}, nil
+	}), nil
 }
 func compileBlockAge(config map[string]any, env ProcessorEnvironment) (Processor, error) {
 	mossiness := asFloat32(config["mossiness"])
-	return func(ctx ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		random := processorRandom(env, ctx.Position)
 		state := b.State
 		switch state.Name {
@@ -392,7 +428,7 @@ func compileBlockAge(config map[string]any, env ProcessorEnvironment) (Processor
 		}
 		b.State = state
 		return b, true, nil
-	}, nil
+	}), nil
 }
 func randomAgedStairProperties(random *java26.Random) map[string]any {
 	facing := "north"
@@ -425,7 +461,7 @@ func agedSlabProperties(source map[string]any) map[string]any {
 }
 
 func compileLavaSubmerged(env ProcessorEnvironment) (Processor, error) {
-	return func(ctx ProcessContext, b Block) (Block, bool, error) {
+	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
 		if env.BaseBlock == nil {
 			return b, true, fmt.Errorf("Java lava-submerged processor requires base-block queries")
 		}
@@ -443,47 +479,66 @@ func compileLavaSubmerged(env ProcessorEnvironment) (Processor, error) {
 		}
 		b.State = world.BlockState{Name: "minecraft:lava"}
 		return b, true, nil
-	}, nil
+	}), nil
 }
 
 func compileCappedProcessor(config map[string]any, env ProcessorEnvironment) (Processor, error) {
 	delegateConfig, ok := config["delegate"].(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("Java capped processor has no delegate")
+		return Processor{}, fmt.Errorf("Java capped processor has no delegate")
 	}
 	processorType, _ := delegateConfig["processor_type"].(string)
 	processorType = strings.TrimPrefix(processorType, "minecraft:")
 	delegateConfig = mergeConfigWithoutType(delegateConfig)
 	compiled, err := compileProcessor(ProcessorSpec{Type: processorType, Config: delegateConfig}, env)
 	if err != nil {
-		return nil, err
+		return Processor{}, err
 	}
-	randomSource := java26.NewLegacyRandom(env.WorldSeed)
-	random := randomSource.ForkPositional().At(env.StartPos[0], env.StartPos[1], env.StartPos[2])
-	limit := cappedLimit(config["limit"], &random)
-	if limit < 0 {
-		return nil, fmt.Errorf("Java capped processor has negative limit %d", limit)
-	}
-	if limit > env.BlockCount {
-		limit = env.BlockCount
-	}
-	indices := make([]int, env.BlockCount)
-	for index := range indices {
-		indices[index] = index
-	}
-	for index := len(indices) - 1; index > 0; index-- {
-		swap := int(random.NextInt(int32(index + 1)))
-		indices[index], indices[swap] = indices[swap], indices[index]
-	}
-	selected := make(map[int]struct{}, limit)
-	for _, index := range indices[:limit] {
-		selected[index] = struct{}{}
-	}
-	return func(ctx ProcessContext, b Block) (Block, bool, error) {
-		if _, ok := selected[ctx.BlockIndex]; !ok {
-			return b, true, nil
-		}
-		return compiled(ctx, b)
+	return Processor{
+		EvaluatesEntirePieceState: true,
+		finalize: func(ctx ProcessContext, original []Block, originalIndices []int, blocks []Block) ([]Block, error) {
+			if len(blocks) == 0 || len(originalIndices) != len(blocks) {
+				return blocks, nil
+			}
+			randomSource := java26.NewLegacyRandom(env.WorldSeed)
+			origin := ctx.Origin
+			random := randomSource.ForkPositional().At(origin[0], origin[1], origin[2])
+			limit := cappedLimit(config["limit"], &random)
+			if limit < 0 {
+				return nil, fmt.Errorf("Java capped processor has negative limit %d", limit)
+			}
+			limit = min(limit, len(blocks))
+			if limit == 0 || compiled.Process == nil {
+				return blocks, nil
+			}
+			indices := make([]int, len(blocks))
+			for index := range indices {
+				indices[index] = index
+			}
+			for index := len(indices) - 1; index > 0; index-- {
+				swap := int(random.NextInt(int32(index + 1)))
+				indices[index], indices[swap] = indices[swap], indices[index]
+			}
+			replaced := 0
+			for _, index := range indices {
+				before := blocks[index]
+				ctx.BlockIndex = originalIndices[index]
+				ctx.RelativePosition = original[ctx.BlockIndex].Pos
+				ctx.Position = before.Pos
+				after, keep, err := compiled.Process(ctx, before)
+				if err != nil {
+					return nil, err
+				}
+				if keep && (before.Pos != after.Pos || before.State.Name != after.State.Name || !equalProperties(before.State.Properties, after.State.Properties) || !reflect.DeepEqual(before.NBT, after.NBT)) {
+					blocks[index] = after
+					replaced++
+					if replaced == limit {
+						break
+					}
+				}
+			}
+			return blocks, nil
+		},
 	}, nil
 }
 

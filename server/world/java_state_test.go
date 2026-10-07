@@ -168,3 +168,32 @@ func TestJavaBubbleColumnDirectionAndWater(t *testing.T) {
 		}
 	}
 }
+
+func TestJavaWaterloggingUsesSourcePropertyCapability(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, name := range []string{"minecraft:campfire", "minecraft:candle", "minecraft:chest", "minecraft:lantern"} {
+		state, err := ResolveState(registry, BlockState{Name: name, Properties: map[string]any{"waterlogged": true}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		back, err := JavaState(registry, state)
+		if err != nil || back.Name != name || back.Properties["waterlogged"] != true {
+			t.Errorf("waterlogged %s roundtrip=%+v error=%v", name, back, err)
+		}
+	}
+	water, err := ResolveState(registry, BlockState{Name: "minecraft:water"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"minecraft:oak_fence_gate", "minecraft:muddy_mangrove_roots"} {
+		state, err := ResolveState(registry, BlockState{Name: name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		state.Liquid = water.Block
+		if converted, err := JavaState(registry, state); err == nil {
+			t.Errorf("native water layer on non-waterloggable Java block %s accepted as %+v", name, converted)
+		}
+	}
+}
