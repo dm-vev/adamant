@@ -66,10 +66,11 @@ func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
 	_, _ = buf.Write([]byte{SubChunkVersion, byte(len(s.storages)), uint8(ind + (c.r[0] >> 4))})
 	for _, storage := range s.storages {
 		pe := paletteEncoding(BlockPaletteEncoding{Blocks: c.br})
-		if e.network() == 0 && len(storage.missingStateEntries) != 0 {
+		if e.network() == 0 && (len(storage.missingStateEntries) != 0 || len(storage.javaStateIDs) != 0) {
 			pe = blockPaletteMigrationEncoding{
 				BlockPaletteEncoding: BlockPaletteEncoding{Blocks: c.br},
 				migration:            &paletteStateMigration{entries: storage.missingStateEntries},
+				javaIDs:              storage.javaStateIDs,
 			}
 		}
 		encodePalettedStorage(buf, storage, nil, e, pe)

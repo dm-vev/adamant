@@ -17,17 +17,17 @@ type templateFeatureSource struct {
 	air, stone, water world.NativeState
 }
 
-func (s templateFeatureSource) BaseState(x, y, z int32) (uint32, uint32) {
+func (s templateFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	state := s.air
 	if y == 79 {
 		state = s.stone
 	} else if y == 80 && s.wet {
 		state = s.water
 	}
-	return state.Block, state.Liquid
+	return state
 }
 func (s templateFeatureSource) BaseBlock(x, y, z int32) world.Block {
-	rid, _ := s.BaseState(x, y, z)
+	rid := s.BaseState(x, y, z).Block
 	b, _ := world.DefaultBlockRegistry.BlockByRuntimeID(rid)
 	return b
 }
@@ -72,9 +72,7 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 			for x := uint8(0); x < 16; x++ {
 				for z := uint8(0); z < 16; z++ {
 					for y := int16(79); y <= 80; y++ {
-						primary, liquid := source.BaseState(int32(x), int32(y), int32(z))
-						c.SetBlock(x, y, z, 0, primary)
-						c.SetBlock(x, y, z, 1, liquid)
+						world.SetNativeState(c, x, y, z, source.BaseState(int32(x), int32(y), int32(z)))
 					}
 				}
 			}

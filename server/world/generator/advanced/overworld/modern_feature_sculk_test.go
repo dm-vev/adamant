@@ -15,7 +15,7 @@ type sculkFeatureSource struct {
 	states  map[string]world.NativeState
 }
 
-func (s sculkFeatureSource) BaseState(x, y, z int32) (uint32, uint32) {
+func (s sculkFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	name := "air"
 	if y >= 0 && y < 32 && s.terrain != "empty" {
 		switch {
@@ -48,8 +48,7 @@ func (s sculkFeatureSource) BaseState(x, y, z int32) (uint32, uint32) {
 			name = "water"
 		}
 	}
-	state := s.states[name]
-	return state.Block, state.Liquid
+	return s.states[name]
 }
 func TestSculkPatchMatchesJava263(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_sculk.json")
@@ -96,9 +95,7 @@ func TestSculkPatchMatchesJava263(t *testing.T) {
 			for x := uint8(0); x < 16; x++ {
 				for z := uint8(0); z < 16; z++ {
 					for y := int16(0); y < 32; y++ {
-						primary, liquid := source.BaseState(int32(x), int32(y), int32(z))
-						region.c.SetBlock(x, y, z, 0, primary)
-						region.c.SetBlock(x, y, z, 1, liquid)
+						world.SetNativeState(region.c, x, y, z, source.BaseState(int32(x), int32(y), int32(z)))
 					}
 				}
 			}

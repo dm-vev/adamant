@@ -7,6 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -297,6 +298,17 @@ func (b Block) ResolveNative(registry chunk.BlockRegistry, existing ...world.Nat
 				state.Liquid = fluid
 			}
 		}
+	}
+	if stateDerivedActor(b.NativeBlock) {
+		source := b.State
+		if !hasWaterlogged && state.Liquid != registry.AirRuntimeID() && javadata.BlockHasProperty(source.Name, "waterlogged") {
+			source.Properties = world.DecodeStateProperties(source.Properties)
+			if source.Properties == nil {
+				source.Properties = make(map[string]any, 1)
+			}
+			source.Properties["waterlogged"] = true
+		}
+		return state.WithJavaState(registry, source)
 	}
 	return state, nil
 }

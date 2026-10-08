@@ -620,16 +620,12 @@ func (c *modernStructureContext) place(pos world.ChunkPos, ch *chunk.Chunk) *mod
 			}
 			for _, placed := range placement.Blocks {
 				x, y, z := uint8(placed.Pos[0]&15), int16(placed.Pos[1]), uint8(placed.Pos[2]&15)
-				current := world.NativeState{
-					Block: ch.Block(x, y, z, 0),
-					Liquid: ch.Block(x, y, z, 1),
-				}
+				current := world.NativeStateAt(ch, x, y, z)
 				state, err := placed.ResolveNative(registry, current)
 				if err != nil {
 					panic(err)
 				}
-				ch.SetBlock(x, y, z, 0, state.Block)
-				ch.SetBlock(x, y, z, 1, state.Liquid)
+				world.SetNativeState(ch, x, y, z, state)
 			}
 			payloads.blockEntities = append(payloads.blockEntities, placement.BlockEntityPayloads()...)
 			payloads.entities = append(payloads.entities, placement.Entities...)

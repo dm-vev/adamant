@@ -14,7 +14,9 @@ type pillarAirSource struct {
 	air uint32
 }
 
-func (s pillarAirSource) BaseState(_, _, _ int32) (uint32, uint32) { return s.air, s.air }
+func (s pillarAirSource) BaseState(_, _, _ int32) world.NativeState {
+	return world.NativeState{Block: s.air, Liquid: s.air}
+}
 func TestPillarFeaturesMatchJava263(t *testing.T) {
 	checkFeatureOracle(t, "testdata/java263_pillar.json")
 }

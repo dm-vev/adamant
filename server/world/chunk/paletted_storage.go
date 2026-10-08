@@ -36,6 +36,7 @@ type PalettedStorage struct {
 	// point to block states.
 	palette             *Palette
 	missingStateEntries map[uint16]missingStateEntry
+	javaStateIDs        map[uint16]uint32
 	// indices contains all indices in the PalettedStorage and changes only when the whole storage is resized.
 	indices []uint32
 }
@@ -60,10 +61,10 @@ func emptyStorage(v uint32) *PalettedStorage {
 	return newPalettedStorage([]uint32{}, newPalette(0, []uint32{v}))
 }
 
-// Clone returns an independent copy of the PalettedStorage.
 func (storage *PalettedStorage) Clone() *PalettedStorage {
 	clone := newPalettedStorage(slices.Clone(storage.indices), storage.palette.Clone())
 	clone.missingStateEntries = maps.Clone(storage.missingStateEntries)
+	clone.javaStateIDs = maps.Clone(storage.javaStateIDs)
 	return clone
 }
 
@@ -80,19 +81,91 @@ func (storage *PalettedStorage) At(x, y, z byte) uint32 {
 // Set sets a value at a specific x, y and z. The Palette and PalettedStorage are expanded
 // automatically to make space for the value, should that be needed.
 func (storage *PalettedStorage) Set(x, y, z byte, v uint32) {
+	x, y, z = x&15, y&15, z&15
 	index := storage.palette.Index(v)
+	if len(storage.javaStateIDs) != 0 {
+		current := storage.paletteIndex(x, y, z)
+		_, currentHasJava := storage.javaStateIDs[current]
+		targetHasJava := false
+		if index != -1 {
+			_, targetHasJava = storage.javaStateIDs[uint16(index)]
+		}
+		if currentHasJava || targetHasJava {
+			hasSource := storage.palette.Value(current) == v
+			index = int16(storage.paletteIndexForMetadata(v, 0, current, hasSource))
+		}
+	}
 	if index == -1 {
-		// The runtime ID was not yet available in the palette. We add it, then check if the block storage
-		// needs to be resized for the palette pointers to fit.
 		index = storage.addNew(v)
 	}
-	storage.setPaletteIndex(x&15, y&15, z&15, uint16(index))
+	storage.setPaletteIndex(x, y, z, uint16(index))
+}
+
+// JavaStateID returns the source Java state ID at a position, or zero when absent.
+func (storage *PalettedStorage) JavaStateID(x, y, z byte) uint32 {
+	return storage.javaStateIDs[storage.paletteIndex(x&15, y&15, z&15)]
+}
+
+// SetJavaStateID attaches source metadata to the current native state without changing it.
+func (storage *PalettedStorage) SetJavaStateID(x, y, z byte, id uint32) {
+	x, y, z = x&15, y&15, z&15
+	current := storage.paletteIndex(x, y, z)
+	if storage.javaStateIDs[current] == id {
+		return
+	}
+	rid := storage.palette.Value(current)
+	index := storage.paletteIndexForMetadata(rid, id, current, true)
+	storage.setPaletteIndex(x, y, z, index)
+}
+
+func (storage *PalettedStorage) paletteIndexForMetadata(rid, javaID uint32, sourceIndex uint16, hasSource bool) uint16 {
+	var missing missingStateEntry
+	wantMissing := false
+	if hasSource {
+		missing, wantMissing = storage.missingStateEntries[sourceIndex]
+	}
+	for index, value := range storage.palette.values {
+		candidateIndex := uint16(index)
+		if value != rid || storage.javaStateIDs[candidateIndex] != javaID {
+			continue
+		}
+		candidate, hasMissing := storage.missingStateEntries[candidateIndex]
+		if hasMissing == wantMissing && (!hasMissing || (slices.Equal(candidate.properties, missing.properties) && candidate.state.Name == missing.state.Name && candidate.state.Version == missing.state.Version && maps.Equal(candidate.state.State, missing.state.State))) {
+			return candidateIndex
+		}
+	}
+	index, resize := storage.palette.Add(rid)
+	if resize {
+		storage.resize(storage.palette.size)
+	}
+	newIndex := uint16(index)
+	if wantMissing {
+		if storage.missingStateEntries == nil {
+			storage.missingStateEntries = make(map[uint16]missingStateEntry)
+		}
+		storage.missingStateEntries[newIndex] = missing
+	}
+	if javaID != 0 {
+		if storage.javaStateIDs == nil {
+			storage.javaStateIDs = make(map[uint16]uint32)
+		}
+		storage.javaStateIDs[newIndex] = javaID
+	}
+	return newIndex
 }
 
 // SetPaletteIndex sets a precomputed palette index at x, y and z.
 // x, y and z are masked to 0..15.
 func (storage *PalettedStorage) SetPaletteIndex(x, y, z byte, index uint16) {
-	storage.setPaletteIndex(x&15, y&15, z&15, index)
+	x, y, z = x&15, y&15, z&15
+	current := storage.paletteIndex(x, y, z)
+	targetRID := storage.palette.Value(index)
+	_, currentHasJava := storage.javaStateIDs[current]
+	_, targetHasJava := storage.javaStateIDs[index]
+	if currentHasJava || targetHasJava {
+		index = storage.paletteIndexForMetadata(targetRID, 0, index, true)
+	}
+	storage.setPaletteIndex(x, y, z, index)
 }
 
 // Equal checks if two PalettedStorages are equal value wise. False is returned
@@ -119,7 +192,7 @@ func (storage *PalettedStorage) Equal(other *PalettedStorage) bool {
 	}
 	paletteA := unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(storage.palette.values))), len(storage.palette.values)*uint32ByteSize)
 	paletteB := unsafe.Slice((*byte)(unsafe.Pointer(unsafe.SliceData(other.palette.values))), len(other.palette.values)*uint32ByteSize)
-	return bytes.Equal(paletteA, paletteB)
+	return bytes.Equal(paletteA, paletteB) && maps.Equal(storage.javaStateIDs, other.javaStateIDs)
 }
 
 // addNew adds a new value to the PalettedStorage's Palette and returns its index. If needed, the storage is resized.
@@ -225,6 +298,7 @@ func (storage *PalettedStorage) resize(newPaletteSize paletteSize) {
 		}
 	}
 	newStorage.missingStateEntries = storage.missingStateEntries
+	newStorage.javaStateIDs = storage.javaStateIDs
 	// Set the new storage.
 	*storage = *newStorage
 }
@@ -303,6 +377,15 @@ func (storage *PalettedStorage) compact() {
 			}
 		}
 		newStorage.missingStateEntries = entries
+	}
+	if len(storage.javaStateIDs) != 0 {
+		ids := make(map[uint16]uint32, len(storage.javaStateIDs))
+		for index, id := range storage.javaStateIDs {
+			if int(index) < len(usedIndices) && usedIndices[index] {
+				ids[conversion[index]] = id
+			}
+		}
+		newStorage.javaStateIDs = ids
 	}
 	*storage = *newStorage
 }

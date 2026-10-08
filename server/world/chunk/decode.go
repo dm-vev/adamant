@@ -164,7 +164,7 @@ func decodeSubChunk(buf *bytes.Buffer, c *Chunk, index *byte, e Encoding) (*SubC
 }
 
 func decodeBlockStorage(buf *bytes.Buffer, e Encoding, br BlockRegistry) (*PalettedStorage, error) {
-	migration := paletteStateMigration{}
+	migration := paletteStateMigration{decodeJava: e.network() == 0}
 	storage, err := decodePalettedStorage(buf, e, blockPaletteMigrationEncoding{
 		BlockPaletteEncoding: BlockPaletteEncoding{Blocks: br},
 		migration:            &migration,
@@ -173,6 +173,7 @@ func decodeBlockStorage(buf *bytes.Buffer, e Encoding, br BlockRegistry) (*Palet
 		return nil, err
 	}
 	storage.missingStateEntries = migration.entries
+	storage.javaStateIDs = migration.javaStateIDs
 	return storage, nil
 }
 

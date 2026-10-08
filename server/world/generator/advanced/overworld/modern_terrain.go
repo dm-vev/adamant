@@ -110,16 +110,16 @@ func (s modernTerrainSource) JavaBiomeAt(x, y, z int32) string {
 	return s.JavaNoiseBiomeAt(qx, qy, qz)
 }
 
-func (s modernTerrainSource) BaseState(x, y, z int32) (uint32, uint32) {
+func (s modernTerrainSource) BaseState(x, y, z int32) world.NativeState {
 	if y < modernMinY || y > modernMaxY {
-		return s.generator.airRID, s.generator.airRID
+		return world.NativeState{Block: s.generator.airRID, Liquid: s.generator.airRID}
 	}
 	entry := s.generator.terrainColumn(world.ChunkPos{x >> 4, z >> 4}, s.raw)
-	return entry.c.Block(uint8(x&15), int16(y), uint8(z&15), 0), entry.c.Block(uint8(x&15), int16(y), uint8(z&15), 1)
+	return world.NativeStateAt(entry.c, uint8(x&15), int16(y), uint8(z&15))
 }
 
 func (s modernTerrainSource) BaseBlock(x, y, z int32) world.Block {
-	rid, _ := s.BaseState(x, y, z)
+	rid := s.BaseState(x, y, z).Block
 	b, ok := world.BlockByRuntimeID(rid)
 	if !ok {
 		panic(fmt.Sprintf("overworld: invalid base runtime ID %d at %d,%d,%d", rid, x, y, z))

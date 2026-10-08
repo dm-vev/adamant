@@ -81,6 +81,7 @@ func (chunk *Chunk) CanonicalizeMissingBlockState(pos cube.Pos, layer uint8) boo
 	storage := sub.storages[layer]
 	x, y, z := byte(int(pos[0])&15), byte(pos[1]), byte(int(pos[2])&15)
 	paletteIndex := storage.paletteIndex(x, y, z)
+	javaStateID := storage.JavaStateID(x, y, z)
 	if _, partial := storage.missingStateEntries[paletteIndex]; !partial {
 		chunk.clearMissingBlockState(pos, layer)
 		return true
@@ -90,6 +91,7 @@ func (chunk *Chunk) CanonicalizeMissingBlockState(pos cube.Pos, layer uint8) boo
 		if candidate == rid {
 			if _, partial := storage.missingStateEntries[uint16(index)]; !partial {
 				storage.setPaletteIndex(x, y, z, uint16(index))
+				storage.SetJavaStateID(x, y, z, javaStateID)
 				chunk.clearMissingBlockState(pos, layer)
 				return true
 			}
@@ -103,6 +105,7 @@ func (chunk *Chunk) CanonicalizeMissingBlockState(pos cube.Pos, layer uint8) boo
 		storage.resize(storage.palette.size)
 	}
 	storage.setPaletteIndex(x, y, z, uint16(index))
+	storage.SetJavaStateID(x, y, z, javaStateID)
 	chunk.clearMissingBlockState(pos, layer)
 	return true
 }
@@ -265,16 +268,36 @@ func (chunk *Chunk) Block(x uint8, y int16, z uint8, layer uint8) uint32 {
 	return sub.storages[layer].At(x, uint8(y), z)
 }
 
+// JavaStateID returns the source Java state ID for the primary block cell, or zero when absent.
+func (chunk *Chunk) JavaStateID(x uint8, y int16, z uint8) uint32 {
+	sub := chunk.sub[chunk.SubIndex(y)]
+	if len(sub.storages) == 0 {
+		return 0
+	}
+	return sub.storages[0].JavaStateID(x, uint8(y), z)
+}
+
+// SetJavaStateID attaches source Java metadata to the primary block cell without changing its native state.
+func (chunk *Chunk) SetJavaStateID(x uint8, y int16, z uint8, id uint32) {
+	sub := chunk.sub[chunk.SubIndex(y)]
+	if id == 0 && len(sub.storages) == 0 {
+		return
+	}
+	sub.Layer(0).SetJavaStateID(x, uint8(y), z, id)
+}
+
 // SetBlock sets the runtime ID of a block at a given x, y and z in a chunk at the given layer. If no
 // SubChunk exists at the given y, a new SubChunk is created and the block is set.
 func (chunk *Chunk) SetBlock(x uint8, y int16, z uint8, layer uint8, block uint32) {
 	sub := chunk.sub[chunk.SubIndex(y)]
+	if layer != 0 && len(sub.storages) != 0 {
+		sub.storages[0].SetJavaStateID(x, uint8(y), z, 0)
+	}
+	if uint8(len(sub.storages)) <= layer && block == chunk.air {
+		// Air was set at n layer, but there were less than n layers, so there already was air there.
+		return
+	}
 	if uint8(len(sub.storages)) <= layer {
-		if block == chunk.air {
-			// Air was set at n layer, but there were less than n layers, so there already was air there.
-			// Don't do anything with this, just return.
-			return
-		}
 		sub.Layer(layer).Set(x, uint8(y), z, block)
 		chunk.recalculateHeightMap = true
 		return

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -64,13 +65,16 @@ type missingStateEntry struct {
 }
 
 type paletteStateMigration struct {
-	index   uint16
-	entries map[uint16]missingStateEntry
+	index        uint16
+	entries      map[uint16]missingStateEntry
+	javaStateIDs map[uint16]uint32
+	decodeJava   bool
 }
 
 type blockPaletteMigrationEncoding struct {
 	BlockPaletteEncoding
 	migration *paletteStateMigration
+	javaIDs   map[uint16]uint32
 }
 
 func (bpe BlockPaletteEncoding) encode(buf *bytes.Buffer, v uint32) {
@@ -86,31 +90,70 @@ func (bpe BlockPaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
 }
 
 func (bpe blockPaletteMigrationEncoding) encode(buf *bytes.Buffer, v uint32) {
-	if entry, ok := bpe.migration.entries[bpe.migration.index]; ok {
-		_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(entry.state)
-	} else {
-		bpe.BlockPaletteEncoding.encode(buf, v)
+	index := bpe.migration.index
+	entry, ok := bpe.migration.entries[index]
+	if !ok {
+		entry = missingStateEntry{state: bpe.BlockPaletteEncoding.EncodeBlockState(v)}
 	}
+	native := map[string]any{
+		"name": entry.state.Name, "states": entry.state.State, "version": entry.state.Version,
+	}
+	if id := bpe.javaIDs[index]; id != 0 {
+		if name, properties, found := javadata.BlockStateFromID(id); found {
+			native["adamant:java"] = map[string]any{"name": name, "properties": properties}
+		}
+	}
+	_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(native)
 	bpe.migration.index++
 }
 
 func (bpe blockPaletteMigrationEncoding) decode(buf *bytes.Buffer) (uint32, error) {
+	index := bpe.migration.index
 	var m map[string]any
 	if err := nbt.NewDecoderWithEncoding(buf, nbt.LittleEndian).Decode(&m); err != nil {
-		return 0, fmt.Errorf("error decoding block palette entry: %w", err)
+		return 0, fmt.Errorf("error decoding block palette entry %d: %w", index, err)
+	}
+	var javaID uint32
+	if bpe.migration.decodeJava {
+		if extension, exists := m["adamant:java"]; exists {
+			javaState, ok := extension.(map[string]any)
+			if !ok {
+				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: expected compound", index)
+			}
+			name, ok := javaState["name"].(string)
+			if !ok {
+				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: missing string name", index)
+			}
+			properties, ok := javaState["properties"].(map[string]any)
+			if !ok {
+				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: missing properties compound", index)
+			}
+			var err error
+			javaID, err = javadata.BlockStateID(name, properties)
+			if err != nil {
+				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: %w", index, err)
+			}
+			delete(m, "adamant:java")
+		}
 	}
 	rid, missing, entry, err := bpe.BlockPaletteEncoding.decodeBlockState(m)
+	if err != nil {
+		return 0, fmt.Errorf("error decoding block palette entry %d: %w", index, err)
+	}
 	if len(missing) != 0 {
 		if bpe.migration.entries == nil {
 			bpe.migration.entries = make(map[uint16]missingStateEntry)
 		}
-		bpe.migration.entries[bpe.migration.index] = missingStateEntry{
-			properties: missing,
-			state:      entry,
+		bpe.migration.entries[index] = missingStateEntry{properties: missing, state: entry}
+	}
+	if javaID != 0 {
+		if bpe.migration.javaStateIDs == nil {
+			bpe.migration.javaStateIDs = make(map[uint16]uint32)
 		}
+		bpe.migration.javaStateIDs[index] = javaID
 	}
 	bpe.migration.index++
-	return rid, err
+	return rid, nil
 }
 
 func (bpe BlockPaletteEncoding) EncodeBlockState(v uint32) blockEntry {

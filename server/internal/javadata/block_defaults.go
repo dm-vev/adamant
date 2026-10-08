@@ -2,10 +2,10 @@ package javadata
 
 import (
 	"fmt"
+	"github.com/df-mc/dragonfly/server/internal/java26"
+	"math"
 	"sort"
 	"strings"
-
-	"github.com/df-mc/dragonfly/server/internal/java26"
 )
 
 type javaPropertyDomain struct {
@@ -113,4 +113,192 @@ func blockDefaultProperties(name string) map[string]any {
 		return nil
 	}
 	return javaBlockDefaultProperties[index]
+}
+
+type blockStateCodec struct {
+	offset uint32
+	stride []uint32
+	count  uint32
+}
+
+var javaBlockStateCodecs = make([]blockStateCodec, len(javaBlockPropertyDomains))
+var javaBlockStateCount uint32
+var javaBlockQualifiedNames = make([]string, len(javaSolidBlockNames))
+
+func init() {
+	for i, name := range javaSolidBlockNames {
+		javaBlockQualifiedNames[i] = "minecraft:" + name
+	}
+	for blockIndex, propertyIDs := range javaBlockPropertyDomains {
+		codec := blockStateCodec{offset: javaBlockStateCount, stride: make([]uint32, len(propertyIDs)), count: 1}
+		for i, propertyID := range propertyIDs {
+			codec.stride[i] = codec.count
+			domain := &javaPropertyDomains[propertyID]
+			size := uint32(2)
+			switch domain.kind {
+			case 's':
+				size = uint32(len(domain.values))
+			case 'i':
+				size = uint32(int64(domain.max)-int64(domain.min)) + 1
+			}
+			codec.count *= size
+		}
+		javaBlockStateCodecs[blockIndex] = codec
+		javaBlockStateCount += codec.count
+	}
+}
+
+// BlockStateID returns a canonical, process-local ID for a Java block state.
+// ID zero is reserved for states without Java metadata.
+func BlockStateID(name string, properties map[string]any) (uint32, error) {
+	block, ok := javaBlockIndex(name)
+	if !ok {
+		return 0, fmt.Errorf("unknown Java block %q", name)
+	}
+	domains := javaBlockPropertyDomains[block]
+	defaults := javaBlockDefaultProperties[block]
+	codec := &javaBlockStateCodecs[block]
+	var state uint32
+	matched := 0
+	for i, propertyID := range domains {
+		domain := &javaPropertyDomains[propertyID]
+		value, exists := properties[domain.name]
+		if exists {
+			matched++
+		} else {
+			value = defaults[domain.name]
+		}
+		index, err := propertyValueIndex(domain, value)
+		if err != nil {
+			return 0, fmt.Errorf("invalid value for %s.%s", name, domain.name)
+		}
+		state += index * codec.stride[i]
+	}
+	if matched != len(properties) {
+		for property := range properties {
+			if blockPropertyDomain(name, property) == nil {
+				return 0, fmt.Errorf("unknown property %q for %s", property, name)
+			}
+		}
+	}
+	return codec.offset + state + 1, nil
+}
+
+// BlockStateFromID decodes a canonical process-local block-state ID.
+func BlockStateFromID(id uint32) (name string, properties map[string]any, ok bool) {
+	if id == 0 {
+		return "", nil, false
+	}
+	value := id - 1
+	block := sort.Search(len(javaBlockStateCodecs), func(i int) bool {
+		codec := &javaBlockStateCodecs[i]
+		return codec.offset+codec.count > value
+	})
+	if block == len(javaBlockStateCodecs) {
+		return "", nil, false
+	}
+	codec := &javaBlockStateCodecs[block]
+	value -= codec.offset
+	properties = make(map[string]any, len(javaBlockPropertyDomains[block]))
+	for i, propertyID := range javaBlockPropertyDomains[block] {
+		domain := &javaPropertyDomains[propertyID]
+		size := uint32(2)
+		switch domain.kind {
+		case 's':
+			size = uint32(len(domain.values))
+		case 'i':
+			size = uint32(int64(domain.max)-int64(domain.min)) + 1
+		}
+		index := value / codec.stride[i] % size
+		switch domain.kind {
+		case 's':
+			properties[domain.name] = domain.values[index]
+		case 'b':
+			properties[domain.name] = index != 0
+		case 'i':
+			properties[domain.name] = int32(int64(domain.min) + int64(index))
+		}
+	}
+	return javaBlockQualifiedNames[block], properties, true
+}
+
+func propertyValueIndex(domain *javaPropertyDomain, value any) (uint32, error) {
+	switch domain.kind {
+	case 'b':
+		switch v := value.(type) {
+		case bool:
+			if v {
+				return 1, nil
+			}
+			return 0, nil
+		case string:
+			if v == "true" {
+				return 1, nil
+			}
+			if v == "false" {
+				return 0, nil
+			}
+		case uint8:
+			if v == 0 || v == 1 {
+				return uint32(v), nil
+			}
+		}
+	case 'i':
+		if n, ok := integerPropertyValue(value, domain); ok {
+			return uint32(n - int64(domain.min)), nil
+		}
+		if v, ok := value.(string); ok {
+			n, err := java26.ParseSignedInteger(v, 10, 32)
+			if err == nil && int32(n) >= domain.min && int32(n) <= domain.max {
+				return uint32(int64(n) - int64(domain.min)), nil
+			}
+		}
+	case 's':
+		if v, ok := value.(string); ok {
+			i := sort.SearchStrings(domain.values, v)
+			if i < len(domain.values) && domain.values[i] == v {
+				return uint32(i), nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("invalid value")
+}
+
+func integerPropertyValue(value any, domain *javaPropertyDomain) (int64, bool) {
+	inDomain := func(n int64) (int64, bool) {
+		return n, n >= int64(domain.min) && n <= int64(domain.max)
+	}
+	switch v := value.(type) {
+	case int:
+		return inDomain(int64(v))
+	case int8:
+		return inDomain(int64(v))
+	case int16:
+		return inDomain(int64(v))
+	case int32:
+		return inDomain(int64(v))
+	case int64:
+		return inDomain(v)
+	case uint:
+		if uint64(v) <= uint64(domain.max) {
+			return inDomain(int64(v))
+		}
+	case uint8:
+		return inDomain(int64(v))
+	case uint16:
+		return inDomain(int64(v))
+	case uint32:
+		if uint64(v) <= uint64(domain.max) {
+			return inDomain(int64(v))
+		}
+	case uint64:
+		if v <= uint64(domain.max) {
+			return inDomain(int64(v))
+		}
+	case float64:
+		if !math.IsNaN(v) && !math.IsInf(v, 0) && math.Trunc(v) == v && v >= float64(domain.min) && v <= float64(domain.max) {
+			return int64(v), true
+		}
+	}
+	return 0, false
 }

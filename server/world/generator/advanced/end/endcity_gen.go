@@ -575,11 +575,11 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 		if placed.State.Name == "minecraft:structure_block" || !p.overwrite && placed.State.Name == "minecraft:air" {
 			continue
 		}
-		state, err := world.ResolveState(registry, placed.State)
+		state, err := placed.ResolveNative(registry)
 		if err != nil {
 			panic(err)
 		}
-		region.setLayers(int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2]), state.Block, state.Liquid)
+		region.setLayers(int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2]), state)
 	}
 	g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
 	for i := range blockPlacement.Blocks {
@@ -665,7 +665,7 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			if !ok {
 				panic("End City item-frame state is not registered")
 			}
-			region.setLayers(int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2]), rid, c.BlockRegistry().AirRuntimeID())
+			region.setLayers(int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2]), world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
 			if !publish {
 				continue
 			}

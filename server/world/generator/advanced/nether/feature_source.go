@@ -59,7 +59,7 @@ func (s *netherFeatureSource) BaseBlock(x, y, z int32) world.Block {
 		}
 		return b
 	}
-	rid, _ := s.BaseState(x, y, z)
+	rid := s.BaseState(x, y, z).Block
 	b, ok := world.BlockByRuntimeID(rid)
 	if !ok {
 		panic("nether: Java feature source encountered unknown block runtime ID")
@@ -67,13 +67,13 @@ func (s *netherFeatureSource) BaseBlock(x, y, z int32) world.Block {
 	return b
 }
 
-func (s *netherFeatureSource) BaseState(x, y, z int32) (uint32, uint32) {
+func (s *netherFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	if y < 0 || y > 127 {
 		air := world.BlockRuntimeID(block.Air{})
-		return air, air
+		return world.NativeState{Block: air, Liquid: air}
 	}
 	c := s.baseChunk(world.ChunkPos{x >> 4, z >> 4})
-	return c.Block(uint8(x&15), int16(y), uint8(z&15), 0), c.Block(uint8(x&15), int16(y), uint8(z&15), 1)
+	return world.NativeStateAt(c, uint8(x&15), int16(y), uint8(z&15))
 }
 
 func (s *netherFeatureSource) BaseHeight(x, z int32, oceanFloor bool) int32 {

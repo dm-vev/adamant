@@ -90,7 +90,12 @@ func TestStateAdapterCorpus(t *testing.T) {
 			failures++
 			return
 		}
-		again, err := world.ResolveState(registry, java)
+		roundTrip := Block{State: java}
+		roundTrip.NativeBlock, _, err = NativeBlockForJavaState(java)
+		if err != nil {
+			t.Fatalf("%s state %s: reverse actor state: %v", source, key, err)
+		}
+		again, err := roundTrip.ResolveNative(registry)
 		if err != nil || again != native {
 			if failures < 40 {
 				t.Errorf("%s state %s: round trip produced %#v, want %#v (error %v)", source, key, again, native, err)

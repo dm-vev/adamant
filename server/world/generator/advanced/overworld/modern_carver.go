@@ -225,7 +225,7 @@ func carveEllipsoid(c *chunk.Chunk, target world.ChunkPos, x, y, z, horizontalRa
 }
 
 func carverNativeState(c *chunk.Chunk, x, y, z int32) world.NativeState {
-	return world.NativeState{Block: c.Block(uint8(x&15), int16(y), uint8(z&15), 0), Liquid: c.Block(uint8(x&15), int16(y), uint8(z&15), 1)}
+	return world.NativeStateAt(c, uint8(x&15), int16(y), uint8(z&15))
 }
 
 func resolveCarverMaterial(c *chunk.Chunk, material world.Block) world.NativeState {

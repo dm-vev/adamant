@@ -56,13 +56,9 @@ func (r *featureRegion) nativeState(p featurePos) world.NativeState {
 		return state
 	}
 	if featureInsideTarget(r.target, p) && p.y >= r.MinY() && p.y <= r.MaxY() {
-		return world.NativeState{
-			Block:  r.c.Block(uint8(p.x&15), int16(p.y), uint8(p.z&15), 0),
-			Liquid: r.c.Block(uint8(p.x&15), int16(p.y), uint8(p.z&15), 1),
-		}
+		return world.NativeStateAt(r.c, uint8(p.x&15), int16(p.y), uint8(p.z&15))
 	}
-	block, liquid := r.f.source.BaseState(p.x, p.y, p.z)
-	return world.NativeState{Block: block, Liquid: liquid}
+	return r.f.source.BaseState(p.x, p.y, p.z)
 }
 
 func (r *featureRegion) Block(p featurePos) world.Block {
@@ -95,8 +91,7 @@ func (r *featureRegion) Set(p featurePos, state world.NativeState) bool {
 	r.invalidatePlacementHeight(p)
 	if featureInsideTarget(r.target, p) {
 		x, z := uint8(p.x&15), uint8(p.z&15)
-		r.c.SetBlock(x, int16(p.y), z, 0, state.Block)
-		r.c.SetBlock(x, int16(p.y), z, 1, state.Liquid)
+		world.SetNativeState(r.c, x, int16(p.y), z, state)
 	}
 	return true
 }

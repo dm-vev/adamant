@@ -24,7 +24,7 @@ type ModernFeatureSource interface {
 	SeaLevel() int32
 	BaseBlock(x, y, z int32) world.Block
 	JavaFeatureBiomeNames() []string
-	BaseState(x, y, z int32) (blockRID, liquidRID uint32)
+	BaseState(x, y, z int32) world.NativeState
 	PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement))
 }
 

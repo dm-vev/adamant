@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -25,23 +26,87 @@ func DecodeStateProperties(properties map[string]any) map[string]any {
 }
 
 // NativeState stores a Bedrock block and its optional liquid layer.
-// Both IDs are registry-local and Liquid is the registry's air ID when clear.
+// Both native IDs are registry-local. JavaStateID retains source properties
+// that cannot be recovered from those layers; zero means the projection is exact.
 type NativeState struct {
-	Block  uint32
-	Liquid uint32
+	Block       uint32
+	Liquid      uint32
+	JavaStateID uint32
+}
+
+// NativeStateAt reads both native layers and their retained source identity.
+func NativeStateAt(c *chunk.Chunk, x uint8, y int16, z uint8) NativeState {
+	return NativeState{Block: c.Block(x, y, z, 0), Liquid: c.Block(x, y, z, 1), JavaStateID: c.JavaStateID(x, y, z)}
+}
+
+// SetNativeState publishes both layers before attaching their source identity.
+func SetNativeState(c *chunk.Chunk, x uint8, y int16, z uint8, state NativeState) {
+	c.SetBlock(x, y, z, 0, state.Block)
+	c.SetBlock(x, y, z, 1, state.Liquid)
+	c.SetJavaStateID(x, y, z, state.JavaStateID)
 }
 
 // ResolveState translates a Java block state to its Bedrock palette
 // representation. Java properties are never passed directly to the native
 // registry: the adapter maps each supported state family explicitly.
 func ResolveState(registry chunk.BlockRegistry, state BlockState) (NativeState, error) {
-	return resolveJavaState(registry, state)
+	native, err := resolveJavaState(registry, state)
+	if err != nil {
+		return NativeState{}, err
+	}
+	return native.WithJavaState(registry, state)
 }
 
 // JavaState returns the Java block-state view of a native block and liquid
 // layer, for Java-side tags and predicates.
 func JavaState(registry chunk.BlockRegistry, state NativeState) (BlockState, error) {
+	id := state.JavaStateID
+	if id == 0 {
+		id = nativeJavaStateID(registry, state)
+	}
+	if id != 0 {
+		name, properties, ok := javadata.BlockStateFromID(id)
+		if !ok {
+			return BlockState{}, fmt.Errorf("java state codec: invalid retained state ID %d", id)
+		}
+		return BlockState{Name: name, Properties: properties}, nil
+	}
 	return reverseNativeState(registry, state)
+}
+
+// WithJavaState attaches the known source state to its native projection. It
+// omits metadata when the native layers already identify the complete source
+// state. Actor-backed projections may supply their source state here as well.
+func (state NativeState) WithJavaState(registry chunk.BlockRegistry, source BlockState) (NativeState, error) {
+	id, err := javadata.BlockStateID(NormaliseBlockName(source.Name), source.Properties)
+	if err != nil {
+		return NativeState{}, err
+	}
+	state.JavaStateID = 0
+	if nativeJavaStateID(registry, state) != id {
+		state.JavaStateID = id
+	}
+	return state, nil
+}
+
+// nativeJavaStateID caches the canonical inverse by registry-local layer pair,
+// avoiding repeated inverse-map allocation for every generated placement.
+func nativeJavaStateID(registry chunk.BlockRegistry, state NativeState) uint32 {
+	key := uint64(state.Block)<<32 | uint64(state.Liquid)
+	basic, cache := registry.(*BasicBlockRegistry)
+	if cache {
+		if id, ok := basic.javaStateIDs.Load(key); ok {
+			return id.(uint32)
+		}
+	}
+	var id uint32
+	if source, err := reverseNativeState(registry, state); err == nil {
+		id, _ = javadata.BlockStateID(source.Name, source.Properties)
+	}
+	if cache {
+		basic.javaStateIDs.Store(key, id)
+	}
+	return id
 }
 
 // ResolveBlock resolves a Dragonfly block's own native encoder without applying

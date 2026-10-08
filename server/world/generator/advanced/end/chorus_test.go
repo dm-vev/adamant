@@ -68,7 +68,7 @@ func TestChorusPlantMatchesJava263(t *testing.T) {
 			}
 			written := 0
 			for _, overlay := range region.overlays {
-				written += len(overlay) / 2
+				written += len(overlay)
 			}
 			if written != len(tc.Writes) {
 				t.Errorf("written positions=%d source=%d", written, len(tc.Writes))

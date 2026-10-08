@@ -108,6 +108,13 @@ func TestJavaDoorOpenIndependentOfPower(t *testing.T) {
 				if got, _ := boolProperty(native["open_bit"]); got != open {
 					t.Fatalf("%s open=%v powered=%v encoded %v", name, open, powered, native)
 				}
+				back, err := JavaState(registry, state)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if back.Properties["open"] != open || back.Properties["powered"] != powered {
+					t.Fatalf("%s lost independent source state: %+v", name, back)
+				}
 			}
 		}
 	}
@@ -332,5 +339,43 @@ func TestJavaPortalAndEggStateProperties(t *testing.T) {
 		if err != nil || back.Name != state.Name || back.Properties[row.key] != row.value {
 			t.Fatalf("%s property lost: %+v, error %v", row.name, back, err)
 		}
+	}
+}
+
+func TestJavaRetainedLeafDistance(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	var nativeID uint32
+	for distance := int32(1); distance <= 7; distance++ {
+		source := BlockState{Name: "minecraft:oak_leaves", Properties: map[string]any{"distance": distance}}
+		native, err := ResolveState(registry, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if distance == 1 {
+			nativeID = native.Block
+		} else if native.Block != nativeID {
+			t.Fatal("source leaf distance changed the native palette state")
+		}
+		back, err := JavaState(registry, native)
+		if err != nil || back.Properties["distance"] != distance {
+			t.Fatalf("leaf distance %d became %+v: %v", distance, back, err)
+		}
+	}
+}
+
+func TestJavaInverseIncludesUnrepresentedDefaults(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	native, err := ResolveState(registry, BlockState{Name: "minecraft:mangrove_propagule", Properties: map[string]any{"hanging": true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The native palette has no growth stage. Its source view must nevertheless
+	// supply the Java stage used by growth predicates.
+	native.JavaStateID = 0
+	back, err := JavaState(registry, native)
+	if err != nil || back.Properties["stage"] != int32(0) || back.Properties["hanging"] != true {
+		t.Fatalf("incomplete propagule source state: %+v: %v", back, err)
 	}
 }

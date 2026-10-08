@@ -1,6 +1,9 @@
 package end
 
-import "github.com/df-mc/dragonfly/server/world/chunk"
+import (
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
+)
 
 const endReplayRadius = 1
 // Each replayed origin needs a one-chunk read/write halo, making a five-chunk raw region.
@@ -8,7 +11,7 @@ const endFeatureRadius = 4*endReplayRadius + 1
 const endFeatureChunkCount = endFeatureRadius * endFeatureRadius
 type endFeatureRegion struct {
 	chunks   [endFeatureChunkCount]*chunk.Chunk
-	overlays [endFeatureChunkCount]map[uint32]uint32
+	overlays [endFeatureChunkCount]map[uint32]world.NativeState
 	minChunkX, minChunkZ int
 	minY, maxY int
 	airRID uint32
@@ -61,20 +64,20 @@ func (r *endFeatureRegion) block(worldX, worldY, worldZ int) uint32 {
 	}
 	i := r.index(chunkX, chunkZ)
 	local, localZ := uint8(worldX&15), uint8(worldZ&15)
-	key := (uint32(worldY-r.minY)<<8 | uint32(localZ)<<4 | uint32(local)) << 1
+	key := uint32(worldY-r.minY)<<8 | uint32(localZ)<<4 | uint32(local)
 	if overlay := r.overlays[i]; overlay != nil {
-		if rid, ok := overlay[key]; ok {
-			return rid
+		if state, ok := overlay[key]; ok {
+			return state.Block
 		}
 	}
 	return r.chunks[i].Block(local, int16(worldY), localZ, 0)
 }
 
 func (r *endFeatureRegion) setBlock(worldX, worldY, worldZ int, rid uint32) bool {
-	return r.setLayers(worldX, worldY, worldZ, rid, r.airRID)
+	return r.setLayers(worldX, worldY, worldZ, world.NativeState{Block: rid, Liquid: r.airRID})
 }
 
-func (r *endFeatureRegion) setLayers(worldX, worldY, worldZ int, blockRID, liquidRID uint32) bool {
+func (r *endFeatureRegion) setLayers(worldX, worldY, worldZ int, state world.NativeState) bool {
 	if worldY < r.minY || worldY > r.maxY {
 		return false
 	}
@@ -84,11 +87,10 @@ func (r *endFeatureRegion) setLayers(worldX, worldY, worldZ int, blockRID, liqui
 	}
 	i := r.index(chunkX, chunkZ)
 	if r.overlays[i] == nil {
-		r.overlays[i] = make(map[uint32]uint32)
+		r.overlays[i] = make(map[uint32]world.NativeState)
 	}
-	key := (uint32(worldY-r.minY)<<8 | uint32(worldZ&15)<<4 | uint32(worldX&15)) << 1
-	r.overlays[i][key] = blockRID
-	r.overlays[i][key|1] = liquidRID
+	key := uint32(worldY-r.minY)<<8 | uint32(worldZ&15)<<4 | uint32(worldX&15)
+	r.overlays[i][key] = state
 	return true
 }
 
@@ -103,13 +105,11 @@ func (r *endFeatureRegion) highestBlock(worldX, worldZ int) int {
 
 func (r *endFeatureRegion) publishTarget(targetX, targetZ int, target *chunk.Chunk) {
 	i := r.index(targetX, targetZ)
-	for key, rid := range r.overlays[i] {
-		layer := uint8(key & 1)
-		pos := key >> 1
+	for pos, state := range r.overlays[i] {
 		y := r.minY + int(pos>>8)
 		z := int(pos>>4) & 15
 		x := int(pos) & 15
-		target.SetBlock(uint8(x), int16(y), uint8(z), layer, rid)
+		world.SetNativeState(target, uint8(x), int16(y), uint8(z), state)
 	}
 }
 
