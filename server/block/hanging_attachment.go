@@ -2,8 +2,8 @@ package block
 
 import "github.com/df-mc/dragonfly/server/block/cube"
 
-// HangingAttachment describes how a hanging sign is attached. It may be mounted to the side of a block, hang
-// underneath a block by chains, or be attached underneath a block with the 16-direction ceiling variant.
+// HangingAttachment describes a wall or ceiling hanging sign. Ceiling signs
+// retain their sixteen-step rotation independently of the chain attachment.
 type HangingAttachment struct {
 	ceiling  bool
 	attached bool
@@ -18,7 +18,7 @@ func WallHangingAttachment(facing cube.Direction) HangingAttachment {
 
 // CeilingHangingAttachment returns a HangingAttachment for a hanging sign hanging underneath a block.
 func CeilingHangingAttachment(facing cube.Direction) HangingAttachment {
-	return HangingAttachment{ceiling: true, facing: facing}
+	return HangingAttachment{ceiling: true, o: WallAttachment(facing).Rotation().Orientation()}
 }
 
 // AttachedCeilingHangingAttachment returns a HangingAttachment for a hanging sign attached underneath a block using
@@ -33,14 +33,14 @@ func (a HangingAttachment) Uint8() uint8 {
 		return uint8(a.facing)
 	}
 	if !a.attached {
-		return 4 | uint8(a.facing)
+		return 4 + uint8(a.o)
 	}
-	return 8 + uint8(a.o)
+	return 20 + uint8(a.o)
 }
 
 // Rotation returns the rotation of the HangingAttachment.
 func (a HangingAttachment) Rotation() cube.Rotation {
-	if a.attached {
+	if a.ceiling {
 		return cube.Rotation{a.o.Yaw()}
 	}
 	return WallAttachment(a.facing).Rotation()

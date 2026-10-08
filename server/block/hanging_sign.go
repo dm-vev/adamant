@@ -171,8 +171,12 @@ func (h HangingSign) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // EncodeBlock encodes the Bedrock block state of the hanging sign.
 func (h HangingSign) EncodeBlock() (name string, properties map[string]any) {
 	var facing, ground int32
-	if h.Attach.attached {
-		ground = int32(h.Attach.o)
+	if h.Attach.ceiling {
+		if h.Attach.attached || h.Attach.o%4 != 0 {
+			ground = int32(h.Attach.o)
+		} else {
+			facing = [...]int32{3, 4, 2, 5}[h.Attach.o/4]
+		}
 	} else {
 		facing = int32(h.Attach.facing.Face())
 	}
@@ -230,10 +234,10 @@ func allHangingSigns() (signs []world.Block) {
 	for _, w := range WoodTypes() {
 		for _, d := range cube.Directions() {
 			signs = append(signs, HangingSign{Wood: w, Attach: WallHangingAttachment(d)})
-			signs = append(signs, HangingSign{Wood: w, Attach: CeilingHangingAttachment(d)})
 		}
-		for o := cube.Orientation(0); o <= 15; o++ {
+		for o := range cube.Orientation(16) {
 			signs = append(signs, HangingSign{Wood: w, Attach: AttachedCeilingHangingAttachment(o)})
+			signs = append(signs, HangingSign{Wood: w, Attach: HangingAttachment{ceiling: true, o: o}})
 		}
 	}
 	return

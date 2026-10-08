@@ -66,9 +66,14 @@ func BambooWood() WoodType {
 	return WoodType{11}
 }
 
+// PoplarWood returns poplar wood material.
+func PoplarWood() WoodType {
+	return WoodType{12}
+}
+
 // WoodTypes returns a list of all wood types
 func WoodTypes() []WoodType {
-	return []WoodType{OakWood(), SpruceWood(), BirchWood(), JungleWood(), AcaciaWood(), DarkOakWood(), CrimsonWood(), WarpedWood(), MangroveWood(), CherryWood(), PaleOakWood(), BambooWood()}
+	return []WoodType{OakWood(), SpruceWood(), BirchWood(), JungleWood(), AcaciaWood(), DarkOakWood(), CrimsonWood(), WarpedWood(), MangroveWood(), CherryWood(), PaleOakWood(), BambooWood(), PoplarWood()}
 }
 
 type wood uint8
@@ -105,6 +110,8 @@ func (w wood) Name() string {
 		return "Pale Oak Wood"
 	case 11:
 		return "Bamboo Wood"
+	case 12:
+		return "Poplar Wood"
 	}
 	panic("unknown wood type")
 }
@@ -136,6 +143,8 @@ func (w wood) String() string {
 		return "pale_oak"
 	case 11:
 		return "bamboo"
+	case 12:
+		return "poplar"
 	}
 	panic("unknown wood type")
 }
@@ -143,30 +152,4 @@ func (w wood) String() string {
 // Flammable returns whether the wood type is flammable.
 func (w wood) Flammable() bool {
 	return w != CrimsonWood().wood && w != WarpedWood().wood
-}
-
-// Leaves returns the leaves type belonging to the wood type.
-func (w WoodType) Leaves() (LeavesType, bool) {
-	switch w {
-	case OakWood():
-		return OakLeaves(), true
-	case SpruceWood():
-		return SpruceLeaves(), true
-	case BirchWood():
-		return BirchLeaves(), true
-	case JungleWood():
-		return JungleLeaves(), true
-	case AcaciaWood():
-		return AcaciaLeaves(), true
-	case DarkOakWood():
-		return DarkOakLeaves(), true
-	case MangroveWood():
-		return MangroveLeaves(), true
-	case CherryWood():
-		return CherryLeaves(), true
-	case PaleOakWood():
-		return PaleOakLeaves(), true
-	default:
-		return LeavesType{}, false
-	}
 }

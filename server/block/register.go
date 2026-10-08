@@ -690,9 +690,6 @@ func init() {
 		world.RegisterItem(Wool{Colour: c})
 	}
 	for _, w := range WoodTypes() {
-		if t, ok := w.Leaves(); ok {
-			world.RegisterItem(Leaves{Type: t, Persistent: true})
-		}
 		if w != BambooWood() {
 			world.RegisterItem(Log{Wood: w, Stripped: true})
 			world.RegisterItem(Log{Wood: w})
@@ -707,8 +704,9 @@ func init() {
 		world.RegisterItem(WoodFence{Wood: w})
 		world.RegisterItem(WoodTrapdoor{Wood: w})
 	}
-	world.RegisterItem(Leaves{Type: AzaleaLeaves(), Persistent: true})
-	world.RegisterItem(Leaves{Type: FloweringAzaleaLeaves(), Persistent: true})
+	for _, t := range LeavesTypes() {
+		world.RegisterItem(Leaves{Type: t, Persistent: true})
+	}
 	for _, ore := range OreTypes() {
 		world.RegisterItem(CoalOre{Type: ore})
 		world.RegisterItem(CopperOre{Type: ore})

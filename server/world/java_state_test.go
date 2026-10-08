@@ -379,3 +379,59 @@ func TestJavaInverseIncludesUnrepresentedDefaults(t *testing.T) {
 		t.Fatalf("incomplete propagule source state: %+v: %v", back, err)
 	}
 }
+
+func TestJavaHangingSignAttachments(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, tc := range []struct {
+		name       string
+		properties map[string]any
+		facing     int32
+		rotation   int32
+		attached   uint8
+		hanging    uint8
+	}{
+		{"oak_wall_hanging_sign", map[string]any{"facing": "north"}, 2, 0, 0, 0},
+		{"oak_wall_hanging_sign", map[string]any{"facing": "south"}, 3, 0, 0, 0},
+		{"oak_wall_hanging_sign", map[string]any{"facing": "west"}, 4, 0, 0, 0},
+		{"oak_wall_hanging_sign", map[string]any{"facing": "east"}, 5, 0, 0, 0},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(0), "attached": false}, 3, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(4), "attached": false}, 4, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(8), "attached": false}, 2, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(12), "attached": false}, 5, 0, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(5), "attached": false}, 0, 5, 0, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(8), "attached": true}, 0, 8, 1, 1},
+		{"oak_hanging_sign", map[string]any{"rotation": int32(5), "attached": true}, 0, 5, 1, 1},
+	} {
+		for _, wet := range []bool{false, true} {
+			tc.properties["waterlogged"] = wet
+			source := BlockState{Name: "minecraft:" + tc.name, Properties: tc.properties}
+			state, err := ResolveState(registry, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			name, properties, _ := registry.RuntimeIDToState(state.Block)
+			if name != "minecraft:oak_hanging_sign" || properties["facing_direction"] != tc.facing ||
+				properties["ground_sign_direction"] != tc.rotation || properties["attached_bit"] != tc.attached ||
+				properties["hanging"] != tc.hanging {
+				t.Fatalf("%+v: native attachment = %s %v", source, name, properties)
+			}
+			if (state.Liquid != registry.AirRuntimeID()) != wet {
+				t.Fatalf("%+v: native liquid layer = %d", source, state.Liquid)
+			}
+			// Decode the native attachment itself, not retained source metadata.
+			back, err := JavaState(registry, NativeState{Block: state.Block, Liquid: state.Liquid})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if back.Name != source.Name {
+				t.Fatalf("native attachment %v decoded to %s, want %s", properties, back.Name, source.Name)
+			}
+			for key, value := range source.Properties {
+				if back.Properties[key] != value {
+					t.Fatalf("%+v: reverse %s = %v, want %v", source, key, back.Properties[key], value)
+				}
+			}
+		}
+	}
+}

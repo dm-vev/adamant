@@ -247,6 +247,15 @@ func TestStateAdapterCorpus(t *testing.T) {
 			}
 			continue
 		}
+		if strings.HasSuffix(name, "_hanging_sign") && properties["hanging"] == uint8(0) && properties["facing_direction"].(int32) < 2 {
+			if _, reached := reachableNative[rid]; reached {
+				t.Errorf("Java forward mapping selected nonrepresentable vertical wall hanging sign %d", rid)
+			}
+			if _, err := world.JavaState(registry, world.NativeState{Block: rid, Liquid: registry.AirRuntimeID()}); err == nil {
+				t.Errorf("native vertical wall hanging sign was accepted as a Java state: %s %v", name, properties)
+			}
+			continue
+		}
 		if name == "minecraft:structure_block" && (properties["structure_block_type"] == "export" || properties["structure_block_type"] == "invalid") {
 			if _, reached := reachableNative[rid]; reached {
 				t.Errorf("Java forward mapping selected native-only structure mode %v", properties)

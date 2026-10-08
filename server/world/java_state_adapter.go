@@ -242,6 +242,9 @@ func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps m
 	if strings.HasPrefix(javaName, "minecraft:potted_") && !hasNativeBlock(registry, javaName) {
 		name = "minecraft:flower_pot"
 	}
+	if strings.HasSuffix(javaName, "_wall_hanging_sign") {
+		name = strings.TrimSuffix(javaName, "_wall_hanging_sign") + "_hanging_sign"
+	}
 	if javaName == "minecraft:oak_sign" && !hasNativeBlock(registry, javaName) {
 		if javaProps["rotation"] != nil {
 			name = "minecraft:standing_sign"
@@ -364,6 +367,26 @@ func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps m
 	switch javaName {
 	case "minecraft:torch", "minecraft:soul_torch", "minecraft:redstone_torch", "minecraft:copper_torch":
 		out["torch_facing_direction"] = "top"
+	}
+	if strings.HasSuffix(javaName, "_hanging_sign") {
+		wall := strings.HasSuffix(javaName, "_wall_hanging_sign")
+		out["hanging"] = nativeBool(!wall, schema["hanging"])
+		if wall {
+			out["attached_bit"] = nativeBool(false, schema["attached_bit"])
+			out["ground_sign_direction"] = int32(0)
+		} else {
+			rotation, ok := intProperty(javaProps["rotation"])
+			if !ok || rotation < 0 || rotation > 15 {
+				return "", nil, fmt.Errorf("java state codec: invalid hanging sign rotation %v", javaProps["rotation"])
+			}
+			attached, _ := boolProperty(javaProps["attached"])
+			out["facing_direction"] = int32(0)
+			out["ground_sign_direction"] = int32(rotation)
+			if !attached && rotation%4 == 0 {
+				out["facing_direction"] = [...]int32{3, 4, 2, 5}[rotation/4]
+				out["ground_sign_direction"] = int32(0)
+			}
+		}
 	}
 	if javaName == "minecraft:sea_pickle" {
 		waterlogged, _ := boolProperty(javaProps["waterlogged"])
@@ -1529,6 +1552,9 @@ func nativeJigsawOrientation(properties map[string]any) (string, error) {
 }
 
 func javaProperties(nativeName, javaName string, nativeProps map[string]any) (map[string]any, error) {
+	if strings.HasSuffix(nativeName, "_hanging_sign") {
+		return javaHangingSignProperties(nativeName, nativeProps)
+	}
 	out := make(map[string]any, len(nativeProps)+2)
 	for key, value := range nativeProps {
 		switch {
@@ -1576,7 +1602,7 @@ func javaProperties(nativeName, javaName string, nativeProps map[string]any) (ma
 				out["facing"] = facing
 			}
 		case key == "ground_sign_direction":
-			if isStandingSign(nativeName) || strings.HasSuffix(nativeName, "_hanging_sign") || isBanner(nativeName) || isSkull(nativeName) {
+			if isStandingSign(nativeName) || isBanner(nativeName) || isSkull(nativeName) {
 				out["rotation"] = intPropertyValue(value)
 			}
 		case key == "rotation":
@@ -2263,11 +2289,34 @@ func isNativeDoubleSlab(name string) bool {
 	return strings.HasSuffix(name, "_double_slab") || strings.HasSuffix(name, "double_cut_copper_slab")
 }
 
+// javaHangingSignProperties ignores inactive native orientation fields. Wall
+// signs use facing_direction; ceiling signs use either a cardinal facing or
+// the sixteen-step ground rotation.
+func javaHangingSignProperties(name string, properties map[string]any) (map[string]any, error) {
+	if !nativeBoolValue(properties["hanging"]) {
+		facing, ok := nativeFacing("facing_direction", properties["facing_direction"])
+		if !ok || facing == "up" || facing == "down" {
+			return nil, fmt.Errorf("java state codec: native wall hanging sign %s has non-horizontal facing %v", name, properties["facing_direction"])
+		}
+		return map[string]any{"facing": facing}, nil
+	}
+	attached := nativeBoolValue(properties["attached_bit"])
+	rotation := intPropertyValue(properties["ground_sign_direction"])
+	facing := intPropertyValue(properties["facing_direction"])
+	if !attached && facing >= 2 && facing <= 5 {
+		rotation = [...]int32{8, 0, 4, 12}[facing-2]
+	}
+	return map[string]any{"attached": attached, "rotation": rotation}, nil
+}
+
 // javaBlockTypeForNative selects the Java block type represented by a native
 // block state. The returned type may depend on native properties even when
 // those properties do not exist in Java's state model.
 func javaBlockTypeForNative(name string, properties map[string]any) string {
 	javaName := javaNameForNative(name)
+	if strings.HasSuffix(name, "_hanging_sign") && !nativeBoolValue(properties["hanging"]) {
+		return strings.TrimSuffix(javaName, "_hanging_sign") + "_wall_hanging_sign"
+	}
 	if isSkull(name) {
 		facing := intPropertyValue(properties["facing_direction"])
 		if facing >= 2 && facing <= 5 {
