@@ -28,6 +28,7 @@ func init() {
 	world.RegisterBlock(Bookshelf{})
 	world.RegisterBlock(Bricks{})
 	registerAll(allBubbleColumns())
+	registerAll(allCreakingHearts())
 	world.RegisterBlock(BrownMushroom{})
 	world.RegisterBlock(Calcite{})
 	world.RegisterBlock(Cinnabar{})
@@ -187,6 +188,8 @@ func init() {
 	world.RegisterBlock(NetherReactor{})
 	world.RegisterBlock(PowderSnow{})
 	world.RegisterBlock(Sculk{})
+	registerAll(allSculkSensors())
+	registerAll(allCalibratedSculkSensors())
 	for _, canSummon := range []bool{false, true} {
 		for _, shrieking := range []bool{false, true} {
 			world.RegisterBlock(SculkShrieker{CanSummon: canSummon, Shrieking: shrieking})
@@ -582,6 +585,8 @@ func init() {
 	world.RegisterItem(SeaLantern{})
 	world.RegisterItem(SeaPickle{})
 	world.RegisterItem(Sculk{})
+	world.RegisterItem(SculkSensor{})
+	world.RegisterItem(CalibratedSculkSensor{})
 	world.RegisterItem(SculkShrieker{})
 	for _, m := range ShelfMaterials() {
 		world.RegisterItem(Shelf{Material: m})

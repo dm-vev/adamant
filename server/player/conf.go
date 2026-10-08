@@ -54,6 +54,8 @@ type Config struct {
 	HasRaidOmenPosition    bool
 	ShoulderLeft           map[string]any
 	ShoulderRight          map[string]any
+	// JavaState retains source-only player data not represented by Bedrock.
+	JavaState map[string]any
 }
 
 // Apply applies fields from a Config to a world.EntityData, filling out empty
@@ -106,8 +108,10 @@ func (cfg Config) Apply(data *world.EntityData) {
 		fireTicks:           conf.FireTicks,
 		fallDistance:        conf.FallDistance,
 		raidOmenPosition:    raidOmenPos,
-		shoulderLeft:       cfg.ShoulderLeft,
-		shoulderRight:      cfg.ShoulderRight,
+		shoulderLeft:        cfg.ShoulderLeft,
+		shoulderRight:       cfg.ShoulderRight,
+		javaState:           world.CloneNativeEntityNBT(conf.JavaState),
+		wardenSpawnTracker:  decodePlayerWardenTracker(conf.JavaState),
 	}
 	playerUUID := conf.UUID
 	pdata.portalTravel = entity.NewPortalTravelComputer()

@@ -61,6 +61,7 @@ func init() {
 		BlazeType,
 		MagmaCubeType,
 		BreezeType,
+		CreakingType,
 		BreezeWindChargeType,
 		OminousItemSpawnerType,
 		RavagerType,
@@ -144,11 +145,11 @@ var conf = world.EntityRegistryConfig{
 	SpawnMob:         spawnMob,
 	NaturalSpawnTick: NaturalSpawnTick,
 	SpawnMobFromNBT:  spawnMobFromNBT,
+	ExperienceOrbs:   NewExperienceOrbs,
 	SmallFireball:    NewSmallFireball,
 	OminousItemSpawner: func(opts world.EntitySpawnOpts, stack any, delay int64) *world.EntityHandle {
 		return NewOminousItemSpawner(opts, stack.(item.Stack), delay)
 	},
-	WardenShrieker:     tryActivateWardenShrieker,
 	WitherPattern:      trySpawnWitherPattern,
 	TNT:                NewTNT,
 	Egg:                NewEgg,

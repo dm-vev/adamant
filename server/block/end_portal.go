@@ -44,6 +44,9 @@ func (e EndPortal) DecodeNBT(map[string]any) any {
 
 // EntityInside ...
 func (EndPortal) EntityInside(_ cube.Pos, tx *world.Tx, e world.Entity) {
+	if traveller, ok := e.(interface{ CanUsePortal() bool }); ok && !traveller.CanUsePortal() {
+		return
+	}
 	if t, ok := e.(portalTraveller); ok {
 		t.TravelThroughPortal(tx, world.End)
 	}

@@ -45,15 +45,17 @@ import (
 )
 
 type playerData struct {
-	unlockedRecipes  map[string]struct{}
-	raidOmenPosition *cube.Pos
+	unlockedRecipes             map[string]struct{}
+	raidOmenPosition            *cube.Pos
 	shoulderLeft, shoulderRight map[string]any
-	xuid              string
-	locale            language.Tag
-	nameTag, scoreTag string
-	alwaysShowNameTag bool
-	absorptionHealth  float64
-	scale             float64
+	javaState                   map[string]any
+	wardenSpawnTracker          *world.WardenSpawnTracker
+	xuid                        string
+	locale                      language.Tag
+	nameTag, scoreTag           string
+	alwaysShowNameTag           bool
+	absorptionHealth            float64
+	scale                       float64
 
 	gameMode world.GameMode
 	skin     skin.Skin
@@ -69,8 +71,8 @@ type playerData struct {
 
 	blockingDelayTicks int64
 
-	sleeping bool
-	sleepPos cube.Pos
+	sleeping      bool
+	sleepPos      cube.Pos
 	timeSinceRest int32
 
 	usingSince               time.Time
@@ -84,9 +86,12 @@ type playerData struct {
 	itemUseCompletedSlot     uint32
 	itemUseRecentlyCompleted bool
 
-	glideTicks   int64
-	fireTicks    int64
-	fallDistance float64
+	glideTicks                           int64
+	fireTicks                            int64
+	fallDistance                         float64
+	moveEventDistance, nextMoveEventStep float32
+	movementSupport                      cube.Pos
+	hasMovementSupport, onGroundNoBlocks bool
 
 	breathing         bool
 	airSupplyTicks    int
@@ -155,6 +160,15 @@ func (p *Player) Tx() *world.Tx {
 
 func (p *Player) bindTx(tx *world.Tx) {
 	p.tx = tx
+}
+
+func (p *Player) emitGameEvent(event world.GameEvent, position mgl64.Vec3, affected world.Block) {
+	if p.tx == nil {
+		return
+	}
+	p.tx.EmitGameEvent(event, position, world.GameEventContext{
+		Source: p, AffectedState: affected, Sneaking: p.Sneaking(), Spectator: p.GameMode() == world.GameModeSpectator,
+	})
 }
 
 // BindTransaction allows external callers operating inside a world transaction to
@@ -601,6 +615,11 @@ func (p *Player) updateFallState(distanceThisTick float64) {
 	switch {
 	case p.OnGround():
 		p.fallDistance -= distanceThisTick
+		if p.fallDistance > 0 {
+			low, _ := p.blocksUnder()
+			support := cube.Pos{low[0], low[1] - 1, low[2]}
+			p.emitGameEvent(world.GameEventHitGround, p.Position(), p.tx.Block(support))
+		}
 		if p.fallDistance > 3 {
 			p.fall(p.fallDistance)
 		}
@@ -717,6 +736,9 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	}
 
 	p.addHealth(-damageLeft)
+	if damageLeft > 0 {
+		p.emitGameEvent(world.GameEventEntityDamage, p.Position(), nil)
+	}
 
 	if src.ReducedByArmour() {
 		p.Exhaust(0.1)
@@ -1474,6 +1496,7 @@ func (p *Player) Sleeping() (cube.Pos, bool) {
 	}
 	return p.sleepPos, true
 }
+
 // TimeSinceRest returns awake ticks since the player last started sleeping.
 func (p *Player) TimeSinceRest() int32 {
 	return p.timeSinceRest
@@ -1578,6 +1601,16 @@ func (p *Player) Inventory() *inventory.Inventory {
 // chestplate, leggings and boots respectively.
 func (p *Player) Armour() *inventory.Armour {
 	return p.armour
+}
+
+// WearingCreakingDisguise reports whether the player's helmet is a carved pumpkin.
+func (p *Player) WearingCreakingDisguise() bool {
+	helmet := p.Armour().Helmet()
+	if helmet.Empty() {
+		return false
+	}
+	name, _ := helmet.Item().EncodeItem()
+	return name == "minecraft:carved_pumpkin"
 }
 
 // HeldItems returns the items currently held in the hands of the player. The first item stack returned is the
@@ -1857,6 +1890,13 @@ func (p *Player) UseItem() {
 		if !usable.Use(p.tx, p, useCtx) {
 			return
 		}
+		if _, ok := it.(item.FishingRod); ok {
+			event := world.GameEventItemInteractFinish
+			if p.IsFishing() {
+				event = world.GameEventItemInteractStart
+			}
+			p.emitGameEvent(event, p.Position(), nil)
+		}
 		// We only swing the player's arm if the item held actually does something. If it doesn't, there is no
 		// reason to swing the arm.
 		p.SwingArm()
@@ -1935,6 +1975,7 @@ func (p *Player) startItemUse(stack item.Stack) {
 	}
 	p.usingSlot = atomic.LoadUint32(p.heldSlot)
 	p.itemUseRecentlyCompleted = false
+	p.emitGameEvent(world.GameEventItemInteractStart, p.Position(), nil)
 	p.updateState()
 }
 
@@ -1946,14 +1987,15 @@ func (p *Player) cancelItemUse() {
 	p.usingTicks = 0
 	p.usingStack = item.Stack{}
 	clear(p.kineticRecent)
+	p.emitGameEvent(world.GameEventItemInteractFinish, p.Position(), nil)
 	p.updateState()
 }
-
 func (p *Player) completeItemUse() {
 	p.usingItem = false
 	p.usingTicks = 0
 	p.usingStack = item.Stack{}
 	clear(p.kineticRecent)
+	p.emitGameEvent(world.GameEventItemInteractFinish, p.Position(), nil)
 	p.itemUseCompleteTick = p.itemUseTick
 	p.itemUseCompletedStack, _ = p.HeldItems()
 	p.itemUseCompletedSlot = atomic.LoadUint32(p.heldSlot)
@@ -2004,6 +2046,18 @@ func (p *Player) tryConsumeItem(consumable item.Consumable, stack item.Stack) {
 	useCtx := p.useContext()
 	useCtx.CountSub, useCtx.NewItem = 1, consumable.Consume(p.tx, p)
 	p.handleUseContext(useCtx)
+	gameEvent := world.GameEventEat
+	switch consumed := stack.Item().(type) {
+	case item.Potion:
+		gameEvent = world.GameEventDrink
+	case item.HoneyBottle, item.OminousBottle:
+		gameEvent = world.GameEventDrink
+	case item.Bucket:
+		if consumed.Content.String() == "milk" {
+			gameEvent = world.GameEventDrink
+		}
+	}
+	p.emitGameEvent(gameEvent, p.Position(), nil)
 	p.tx.PlaySound(p.Position().Add(mgl64.Vec3{0, 1.5}), sound.Burp{})
 	p.completeItemUse()
 }
@@ -2161,6 +2215,9 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 		if !ib.UseOnBlock(pos, face, clickPos, p.tx, p, useCtx) {
 			return
 		}
+		if _, ok := i.Item().(item.BoneMeal); ok {
+			p.emitGameEvent(world.GameEventItemInteractFinish, p.Position(), nil)
+		}
 		p.SwingArm()
 		p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 		p.addNewItem(useCtx)
@@ -2174,7 +2231,11 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 		if replaceable, ok := p.tx.Block(replacedPos).(block.Replaceable); !ok || !replaceable.ReplaceableBy(ib) || replacedPos.OutOfBounds(p.tx.Range()) {
 			return
 		}
-		if !p.placeBlock(replacedPos, ib, false) || p.GameMode().CreativeInventory() {
+		if !p.placeBlock(replacedPos, ib, false) {
+			return
+		}
+		p.emitGameEvent(world.GameEventBlockPlace, replacedPos.Vec3Centre(), p.tx.Block(replacedPos))
+		if p.GameMode().CreativeInventory() {
 			return
 		}
 		p.SetHeldItems(p.subtractItem(i, 1), left)
@@ -2199,10 +2260,12 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 		if usable.UseOnEntity(e, p.tx, p, useCtx) {
 			if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() && i.Count() == 1 {
 				p.SetHeldItems(useCtx.NewItem, left)
+				p.emitGameEvent(world.GameEventEntityInteract, e.Position(), nil)
 				return true
 			}
 			p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 			p.addNewItem(useCtx)
+			p.emitGameEvent(world.GameEventEntityInteract, e.Position(), nil)
 			return true
 		}
 	}
@@ -2223,6 +2286,7 @@ func (p *Player) UseItemOnEntity(e world.Entity) bool {
 	if !used {
 		return true
 	}
+	p.emitGameEvent(world.GameEventEntityInteract, e.Position(), nil)
 	p.SwingArm()
 	p.SetHeldItems(p.subtractItem(p.damageItem(i, useCtx.Damage), useCtx.CountSub), left)
 	p.addNewItem(useCtx)
@@ -2647,11 +2711,13 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 		return
 	}
 	held, _ := p.HeldItems()
-	drops := p.drops(held, b)
+	drops := p.drops(pos, held, b)
 
 	xp := 0
 	if breakable, ok := b.(block.Breakable); ok && !p.GameMode().CreativeInventory() {
-		if _, hasSilkTouch := held.Enchantment(enchantment.SilkTouch); !hasSilkTouch {
+		if source, ok := b.(interface{ SourceExperience(*world.Tx) int }); ok {
+			xp = source.SourceExperience(p.tx)
+		} else if _, hasSilkTouch := held.Enchantment(enchantment.SilkTouch); !hasSilkTouch {
 			xp = breakable.BreakInfo().XPDrops.RandomValue()
 		}
 	}
@@ -2664,7 +2730,11 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 	held, left := p.HeldItems()
 
 	p.SwingArm()
+	if destroyer, ok := b.(world.PlayerBlockDestroyer); ok {
+		destroyer.PlayerWillDestroy(pos, p.tx, entity.AttackDamageSource{Attacker: p})
+	}
 	p.tx.SetBlock(pos, nil, nil)
+	p.emitGameEvent(world.GameEventBlockDestroy, pos.Vec3Centre(), b)
 	p.tx.AddParticle(pos.Vec3Centre(), particle.BlockBreak{Block: b})
 
 	if breakable, ok := b.(block.Breakable); ok {
@@ -2693,7 +2763,7 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 }
 
 // drops returns the drops that the player can get from the block passed using the item held.
-func (p *Player) drops(held item.Stack, b world.Block) []item.Stack {
+func (p *Player) drops(pos cube.Pos, held item.Stack, b world.Block) []item.Stack {
 	t, ok := held.Item().(item.Tool)
 	if !ok {
 		t = item.ToolNone{}
@@ -2701,7 +2771,13 @@ func (p *Player) drops(held item.Stack, b world.Block) []item.Stack {
 	var drops []item.Stack
 	if breakable, ok := b.(block.Breakable); ok && breakable.BreakInfo().Harvestable(t) {
 		if !p.GameMode().CreativeInventory() || dropsInCreative(b) {
-			drops = breakable.BreakInfo().Drops(t, held.Enchantments())
+			if source, ok := b.(interface {
+				SourceDrops(cube.Pos, *world.Tx, item.Stack, world.Entity, float64) []item.Stack
+			}); ok {
+				drops = source.SourceDrops(pos, p.tx, held, p, 0)
+			} else {
+				drops = breakable.BreakInfo().Drops(t, held.Enchantments())
+			}
 		}
 	} else if it, ok := b.(world.Item); ok && !p.GameMode().CreativeInventory() {
 		drops = []item.Stack{item.NewStack(it, 1)}
@@ -2884,6 +2960,7 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	}
 
 	p.onGround = p.checkOnGround(deltaPos)
+	p.emitMovementGameEvents(deltaPos)
 	p.updateFallState(deltaPos.Y())
 
 	if p.Swimming() {
@@ -2912,6 +2989,7 @@ func (p *Player) Displace(deltaPos mgl64.Vec3) {
 	p.data.Pos, p.data.Vel = res, velocity
 	p.checkBlockCollisions(deltaPos)
 	p.onGround = p.checkOnGround(deltaPos)
+	p.emitMovementGameEvents(deltaPos)
 	p.updateFallState(deltaPos[1])
 }
 
@@ -3183,6 +3261,7 @@ func (p *Player) Latency() time.Duration {
 // Tick ticks the entity, performing actions such as checking if the player is still breaking a block.
 func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.bindTx(tx)
+	p.wardenSpawnTracker.Tick()
 	p.itemUseTick = current
 	if p.Dead() {
 		p.ReleaseShoulderParrots()
@@ -3320,6 +3399,7 @@ func (p *Player) tryLandParrotOnShoulder() {
 func (p *Player) ShoulderEntities() (left, right map[string]any) {
 	return p.shoulderLeft, p.shoulderRight
 }
+
 // ReleaseShoulderParrots reintroduces saved shoulder entities into the world.
 // It is also called automatically for source dismount conditions.
 func (p *Player) ReleaseShoulderParrots() {
@@ -3358,64 +3438,92 @@ func (p *Player) tickCarriedMaps(current int64) {
 	for _, inv := range [...]*inventory.Inventory{p.inv, p.offHand, p.armour.Inventory()} {
 		for slot := range inv.Size() {
 			stack, err := inv.Item(slot)
-			if err == nil { p.tickCarriedMapStack(stack, current, &seen, &seenCount) }
+			if err == nil {
+				p.tickCarriedMapStack(stack, current, &seen, &seenCount)
+			}
 		}
 	}
 }
 
 func (p *Player) tickCarriedMapStack(stack item.Stack, current int64, seen *[64]int64, seenCount *int) {
 	mapItem, ok := stack.Item().(item.FilledMap)
-	if !ok { return }
+	if !ok {
+		return
+	}
 	mapID := mapItem.NativeID
 	if !mapItem.HasNativeID {
-		if !mapItem.HasJavaID { return }
+		if !mapItem.HasJavaID {
+			return
+		}
 		var err error
 		mapID, err = p.tx.World().MapIDByJavaID(mapItem.JavaID)
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 	}
 	for _, existing := range seen[:*seenCount] {
-		if existing == mapID { return }
+		if existing == mapID {
+			return
+		}
 	}
 	if *seenCount < len(seen) {
 		seen[*seenCount] = mapID
 		*seenCount++
 	}
 	data, err := p.tx.UpdateMap(mapID, cube.PosFromVec3(p.Position()))
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if data.ColorsChanged || current%5 == 0 {
-		if data.Tracking { data.TrackedObjects = p.trackedMapObjects(mapID) }
-		if s := p.session(); s != session.Nop { _ = s.ViewMapData(data) }
+		if data.Tracking {
+			data.TrackedObjects = p.trackedMapObjects(mapID)
+		}
+		if s := p.session(); s != session.Nop {
+			_ = s.ViewMapData(data)
+		}
 	}
 }
 func (p *Player) tickMapFrames(current int64) {
-	if current%5 != 0 { return }
+	if current%5 != 0 {
+		return
+	}
 	for entity := range p.tx.Entities() {
 		carrier, ok := entity.(interface {
 			UUID() uuid.UUID
 			Inventory() *inventory.Inventory
 			HeldItems() (item.Stack, item.Stack)
 		})
-		if !ok { continue }
-		if dead, ok := entity.(interface{ Dead() bool }); ok && dead.Dead() { continue }
+		if !ok {
+			continue
+		}
+		if dead, ok := entity.(interface{ Dead() bool }); ok && dead.Dead() {
+			continue
+		}
 		otherID, ownID := carrier.UUID(), p.UUID()
-		if bytes.Compare(otherID[:], ownID[:]) < 0 { return }
+		if bytes.Compare(otherID[:], ownID[:]) < 0 {
+			return
+		}
 	}
 	p.tx.ForEachMapFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
 		mapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID)
-		if !ok { return }
+		if !ok {
+			return
+		}
 		data, err := p.tx.World().MapData(mapID)
 		dimensionID, ok := world.DimensionID(p.tx.World().Dimension())
-		if err != nil || !ok || !data.Tracking || data.Dimension != int32(dimensionID) { return }
+		if err != nil || !ok || !data.Tracking || data.Dimension != int32(dimensionID) {
+			return
+		}
 		data.TrackedObjects = p.trackedMapObjects(mapID)
 		viewers := p.tx.Viewers(pos.Vec3Centre())
 		for _, viewer := range viewers {
-			if session, ok := viewer.(interface{ ViewMapData(world.MapData) error }); ok { _ = session.ViewMapData(data) }
+			if session, ok := viewer.(interface{ ViewMapData(world.MapData) error }); ok {
+				_ = session.ViewMapData(data)
+			}
 		}
 		p.tx.ReleaseViewers(viewers)
 	})
 }
-
-
 
 func (p *Player) trackedMapObjects(mapID int64) []world.MapTrackedObject {
 	objects := make([]world.MapTrackedObject, 0, 8)
@@ -3425,16 +3533,20 @@ func (p *Player) trackedMapObjects(mapID int64) []world.MapTrackedObject {
 			Armour() *inventory.Armour
 			HeldItems() (item.Stack, item.Stack)
 		})
-		if !ok { continue }
-		if invisible, ok := entity.(interface{ Invisible() bool }); ok && invisible.Invisible() { continue }
+		if !ok {
+			continue
+		}
+		if invisible, ok := entity.(interface{ Invisible() bool }); ok && invisible.Invisible() {
+			continue
+		}
 		if playerCarriesMap(p.tx, carrier, mapID) {
-			objects = append(objects, world.MapTrackedObject{Entity:entity.H()})
+			objects = append(objects, world.MapTrackedObject{Entity: entity.H()})
 		}
 	}
 	p.tx.ForEachMapFrame(func(pos cube.Pos, frame world.MapFrameInfo) {
 		if frameMapID, ok := resolveMapID(p.tx, frame.NativeID, frame.HasNativeID, frame.JavaID, frame.HasJavaID); ok && frameMapID == mapID {
 			framePos := pos
-			objects = append(objects, world.MapTrackedObject{Block:&framePos})
+			objects = append(objects, world.MapTrackedObject{Block: &framePos})
 		}
 	})
 	return objects
@@ -3446,11 +3558,15 @@ func playerCarriesMap(tx *world.Tx, carrier interface {
 	HeldItems() (item.Stack, item.Stack)
 }, mapID int64) bool {
 	main, offHand := carrier.HeldItems()
-	if carriedMapMatches(tx, main, mapID) || carriedMapMatches(tx, offHand, mapID) { return true }
+	if carriedMapMatches(tx, main, mapID) || carriedMapMatches(tx, offHand, mapID) {
+		return true
+	}
 	for _, inv := range [...]*inventory.Inventory{carrier.Inventory(), carrier.Armour().Inventory()} {
 		for slot := range inv.Size() {
 			stack, err := inv.Item(slot)
-			if err == nil && carriedMapMatches(tx, stack, mapID) { return true }
+			if err == nil && carriedMapMatches(tx, stack, mapID) {
+				return true
+			}
 		}
 	}
 	return false
@@ -3458,14 +3574,20 @@ func playerCarriesMap(tx *world.Tx, carrier interface {
 
 func carriedMapMatches(tx *world.Tx, stack item.Stack, mapID int64) bool {
 	mapItem, ok := stack.Item().(item.FilledMap)
-	if !ok { return false }
+	if !ok {
+		return false
+	}
 	id, ok := resolveMapID(tx, mapItem.NativeID, mapItem.HasNativeID, mapItem.JavaID, mapItem.HasJavaID)
 	return ok && id == mapID
 }
 
 func resolveMapID(tx *world.Tx, nativeID int64, hasNativeID bool, javaID int32, hasJavaID bool) (int64, bool) {
-	if hasNativeID { return nativeID, true }
-	if !hasJavaID { return 0, false }
+	if hasNativeID {
+		return nativeID, true
+	}
+	if !hasJavaID {
+		return 0, false
+	}
 	id, err := tx.World().MapIDByJavaID(javaID)
 	return id, err == nil
 }
@@ -3502,7 +3624,7 @@ func (p *Player) tickItemUse(current int64) {
 		if duration := usable.UseDurationTicks(); duration > 0 && p.usingTicks >= int64(duration) {
 			p.completeItemUse()
 		}
-}
+	}
 }
 
 // TravelThroughPortal handles the player touching a portal block.
@@ -4254,8 +4376,9 @@ func (p *Player) Data() Config {
 		Effects:             p.Effects(),
 		UnlockedRecipes:     p.unlockedRecipeIDs(),
 		RaidOmenPosition:    raidOmenPos,
-		ShoulderLeft:       p.shoulderLeft,
-		ShoulderRight:      p.shoulderRight,
+		ShoulderLeft:        p.shoulderLeft,
+		ShoulderRight:       p.shoulderRight,
+		JavaState:           encodePlayerJavaState(p),
 		HasRaidOmenPosition: hasRaidOmenPos,
 	}
 }
@@ -4298,6 +4421,7 @@ func (p *Player) RaidOmenLevel() int {
 	}
 	return 0
 }
+
 // GrantHeroOfTheVillage grants the raid victory effect for the specified number
 // of game ticks.
 func (p *Player) GrantHeroOfTheVillage(_ *world.Tx, durationTicks int) {
@@ -4306,7 +4430,6 @@ func (p *Player) GrantHeroOfTheVillage(_ *world.Tx, durationTicks int) {
 	}
 	p.AddEffect(effect.New(effect.HeroOfTheVillage, 1, time.Duration(durationTicks)*time.Second/20))
 }
-
 
 // TryActivateBadOmen converts Bad Omen to Raid Omen when a raid can begin at
 // the player's current position.
@@ -4410,6 +4533,13 @@ func (p *Player) broadcastArmour(_ int, before, after item.Stack) {
 	if before.Comparable(after) && before.Empty() == after.Empty() {
 		// Only send armour if the type of the armour changed.
 		return
+	}
+	if p.tx != nil && p.GameMode() != world.GameModeSpectator {
+		event := world.GameEventEquip
+		if after.Empty() {
+			event = world.GameEventUnequip
+		}
+		p.emitGameEvent(event, p.Position(), nil)
 	}
 	viewers, release := p.viewers()
 	// Armour changes are similarly noisy in PvP encounters; reusing the pooled slice keeps repeated swaps cheap.

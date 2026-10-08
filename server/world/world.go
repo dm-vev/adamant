@@ -2,7 +2,6 @@ package world
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"iter"
@@ -14,8 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
@@ -69,13 +68,13 @@ type World struct {
 	providerUse *providerRef
 	// tick is the per-world tick counter used by worlds that do not advance the
 	// shared Settings, such as the Nether, End and custom dimensions.
-	tick    int64
-	handler atomic.Pointer[Handler]
+	tick                      int64
+	handler                   atomic.Pointer[Handler]
 	structureReferenceQueryMu sync.Mutex
-	structureReferenceMu sync.Mutex
-	structureReferences map[StructureReference]struct{}
+	structureReferenceMu      sync.Mutex
+	structureReferences       map[StructureReference]struct{}
 	structureReferencesLoaded bool
-	structureReferencesErr error
+	structureReferencesErr    error
 
 	weather
 
@@ -99,15 +98,20 @@ type World struct {
 	// to reuse the same Go object across ticks instead of re-opening it each
 	// iteration, which significantly reduces pressure on the garbage collector
 	// and CPU usage during the entity pipeline.
-	entities map[*EntityHandle]*entityState
+	entities           map[*EntityHandle]*entityState
+	entitiesByUUID     map[uuid.UUID]*EntityHandle
+	entitiesByUniqueID map[int64]*EntityHandle
 
 	// chunkCount and entityCount track the map sizes so callers outside the world
 	// goroutine can read counts without racing map mutations.
 	chunkCount  atomic.Int64
 	entityCount atomic.Int64
 
-	r *rand.Rand
-	lootSequences map[string]*java26.Random
+	r               *rand.Rand
+	lootSequences   map[string]*java26.Random
+	javaRandom      java26.Random
+	javaRandomReady bool
+	gameEventBlocks map[uint32]uint8
 
 	// weatherRand is used for out-of-band weather changes to avoid racing the
 	// main world RNG, which is owned by the tick loop.
@@ -120,20 +124,20 @@ type World struct {
 	// position at which an update is scheduled. If the current tick exceeds the
 	// tick value passed, the block update will be performed and the entry will
 	// be removed from the map.
-	scheduledUpdates *scheduledTickQueue
-	redstone         *redstoneEngine
-	neighbourUpdates []neighbourUpdate
-	pois             map[cube.Pos]POI
-	raids            map[int64]*Raid
-	raidByRaider     map[uuid.UUID]int64
-	nextRaidID       int64
-	dragonFight      DragonFightController
-	dragonArena      *Loader
+	scheduledUpdates  *scheduledTickQueue
+	redstone          *redstoneEngine
+	neighbourUpdates  []neighbourUpdate
+	pois              map[cube.Pos]POI
+	raids             map[int64]*Raid
+	raidByRaider      map[uuid.UUID]int64
+	nextRaidID        int64
+	dragonFight       DragonFightController
+	dragonArena       *Loader
 	javaHeightmapTags [2]map[uint32]bool
 
-	scratchRandom        []cube.Pos
-	scratchBlockEntities []cube.Pos
-	scratchLoaderAreas   []loaderActiveArea
+	scratchRandom           []cube.Pos
+	scratchBlockEntities    []cube.Pos
+	scratchLoaderAreas      []loaderActiveArea
 	scratchInhabitedPlayers []inhabitedTimePlayer
 
 	activeColumns     []columnRef
@@ -723,6 +727,9 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		}
 	}
 	b = w.replacePositionTrackingBlock(pos, oldBlock, b)
+	if handler, ok := oldBlock.(BlockRemovalHandler); ok {
+		handler.Removed(pos, tx, b)
+	}
 
 	var before uint32
 	if rid != w.conf.Blocks.AirRuntimeID() && !opts.DisableLiquidDisplacement {
@@ -910,6 +917,9 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 									}
 								}
 								b = w.replacePositionTrackingBlock(nbtPos, oldBlock, b)
+								if handler, ok := oldBlock.(BlockRemovalHandler); ok {
+									handler.Removed(nbtPos, tx, b)
+								}
 								rid := w.conf.Blocks.BlockRuntimeID(b)
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 0, rid)
 								c.invalidateRandomTickSubChunks()
@@ -1268,6 +1278,8 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		w.entityCount.Add(1)
 	}
 	w.entities[handle] = state
+	w.entitiesByUUID[handle.id] = handle
+	w.entitiesByUniqueID[handle.UniqueID()] = handle
 	handle.state = state
 
 	c := tx.chunk(pos)
@@ -1313,6 +1325,8 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 		v.HideEntity(e)
 	}
 	delete(w.entities, handle)
+	delete(w.entitiesByUUID, handle.id)
+	delete(w.entitiesByUniqueID, handle.UniqueID())
 	w.entityCount.Add(-1)
 	handle.state = nil
 	handle.unsetAndLockWorld()
@@ -1806,6 +1820,8 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		if c.removeEntity(e) {
 			if _, ok := w.entities[e]; ok {
 				delete(w.entities, e)
+				delete(w.entitiesByUUID, e.id)
+				delete(w.entitiesByUniqueID, e.UniqueID())
 				w.entityCount.Add(-1)
 			}
 		}
@@ -1844,6 +1860,8 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		}
 		if _, ok := w.entities[e]; ok {
 			delete(w.entities, e)
+			delete(w.entitiesByUUID, e.id)
+			delete(w.entitiesByUniqueID, e.UniqueID())
 			w.entityCount.Add(-1)
 		}
 		e.state = nil
@@ -2120,6 +2138,8 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 				isItem:            e.t.EncodeEntity() == "minecraft:item",
 			}
 			w.entities[e] = state
+			w.entitiesByUUID[e.id] = e
+			w.entitiesByUniqueID[e.UniqueID()] = e
 			e.state = state
 			e.markWorldReady(w)
 		}
@@ -2519,7 +2539,7 @@ type pendingMissingBlockState struct {
 // viewers and loaders.
 
 type Column struct {
-	modified bool
+	modified      bool
 	InhabitedTime uint64
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
@@ -2934,7 +2954,7 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 
 		data := MergeNativeEntityNBT(e.encodeNBT(), e.t.EncodeNBT(&e.data))
 		data["identifier"] = e.t.EncodeEntity()
-		c.Entities = append(c.Entities, chunk.Entity{ID: int64(binary.LittleEndian.Uint64(e.id[8:])), Data: data})
+		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: data})
 	}
 	for pos, be := range col.BlockEntities {
 		c.BlockEntities = append(c.BlockEntities, chunk.BlockEntity{Pos: pos, Data: be.(NBTer).EncodeNBT()})

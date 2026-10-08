@@ -87,7 +87,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			s.writePacket(&packet.PlayerList{Entries: []protocol.PlayerListEntry{{
 				ActionType:     protocol.PlayerListActionAdd,
 				UUID:           v.UUID(),
-				EntityUniqueID: int64(runtimeID),
+				EntityUniqueID: s.entityUniqueID(e),
 				Username:       v.Name(),
 				BuildPlatform:  int32(protocol.DeviceUnknown),
 				Skin:           skinToProtocol(v.Skin()),
@@ -107,7 +107,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			EntityLinks:     links,
 			BuildPlatform:   int32(protocol.DeviceUnknown),
 			AbilityData: protocol.AbilityData{
-				EntityUniqueID: int64(runtimeID),
+				EntityUniqueID: s.entityUniqueID(e),
 				Layers: []protocol.AbilityLayer{{
 					Type:      protocol.AbilityLayerTypeBase,
 					Abilities: protocol.AbilityCount - 1,
@@ -127,7 +127,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		switch e.H().Type() {
 		case entity.ItemType:
 			s.writePacket(&packet.AddItemActor{
-				EntityUniqueID:  int64(runtimeID),
+				EntityUniqueID:  s.entityUniqueID(e),
 				EntityRuntimeID: runtimeID,
 				Item:            instanceFromItem(s.br, v.Behaviour().(*entity.ItemBehaviour).Item()),
 				Position:        vec64To32(entityNetworkPosition(e, v.Position())),
@@ -151,17 +151,18 @@ func (s *Session) ViewEntity(e world.Entity) {
 	}
 
 	s.writePacket(&packet.AddActor{
-		EntityUniqueID:  int64(runtimeID),
-		EntityRuntimeID: runtimeID,
-		EntityType:      id,
-		EntityMetadata:  metadata,
-		EntityLinks:     links,
-		Position:        vec64To32(entityNetworkPosition(e, e.Position())),
-		Velocity:        vec64To32(vel),
-		Pitch:           float32(pitch),
-		Yaw:             float32(yaw),
-		HeadYaw:         float32(yaw),
-		BodyYaw:         float32(yaw),
+		EntityUniqueID:   s.entityUniqueID(e),
+		EntityRuntimeID:  runtimeID,
+		EntityType:       id,
+		EntityMetadata:   metadata,
+		EntityProperties: entityProperties(e),
+		EntityLinks:      links,
+		Position:         vec64To32(entityNetworkPosition(e, e.Position())),
+		Velocity:         vec64To32(vel),
+		Pitch:            float32(pitch),
+		Yaw:              float32(yaw),
+		HeadYaw:          float32(yaw),
+		BodyYaw:          float32(yaw),
 	})
 }
 
@@ -190,11 +191,22 @@ func (s *Session) ViewEntityLinkType(ridden, rider *world.EntityHandle, linkType
 		}
 	}
 	s.writePacket(&packet.SetActorLink{EntityLink: protocol.EntityLink{
-		RiddenEntityUniqueID: int64(riddenID),
-		RiderEntityUniqueID:  int64(riderID),
+		RiddenEntityUniqueID: s.handleUniqueID(ridden),
+		RiderEntityUniqueID:  s.handleUniqueID(rider),
 		Type:                 pkType,
 		RiderInitiated:       true,
 	}})
+}
+
+func (s *Session) entityUniqueID(e world.Entity) int64 {
+	return s.handleUniqueID(e.H())
+}
+
+func (s *Session) handleUniqueID(h *world.EntityHandle) int64 {
+	if h == s.ent {
+		return int64(selfEntityRuntimeID)
+	}
+	return h.UniqueID()
 }
 
 // ViewEntityGameMode ...
@@ -208,7 +220,7 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 	}
 	s.writePacket(&packet.UpdatePlayerGameType{
 		GameType:       GameTypeFromMode(c.GameMode()),
-		PlayerUniqueID: int64(s.entityRuntimeID(c)),
+		PlayerUniqueID: s.entityUniqueID(c),
 	})
 }
 
@@ -229,7 +241,7 @@ func (s *Session) HideEntity(e world.Entity) {
 		// The entity was already removed some other way. We don't need to send a packet.
 		return
 	}
-	s.writePacket(&packet.RemoveActor{EntityUniqueID: int64(id)})
+	s.writePacket(&packet.RemoveActor{EntityUniqueID: s.handleUniqueID(e.H())})
 }
 
 // ViewEntityMovement ...
@@ -467,6 +479,51 @@ func (s *Session) ViewSleepingPlayers(sleeping, max int) {
 // ViewParticle ...
 func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 	switch pa := p.(type) {
+	case particle.CreakingTrail:
+		buf := bytes.NewBuffer(nil)
+		_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(map[string]any{
+			"CreakingAmount": pa.CreakingAmount,
+			"CreakingX":      float32(pa.Creaking.X()),
+			"CreakingY":      float32(pa.Creaking.Y()),
+			"CreakingZ":      float32(pa.Creaking.Z()),
+			"HeartAmount":    pa.HeartAmount,
+			"HeartX":         float32(pa.Heart.X()),
+			"HeartY":         float32(pa.Heart.Y()),
+			"HeartZ":         float32(pa.Heart.Z()),
+		})
+		data := buf.Bytes()
+		s.writePacket(&packet.LevelEventGeneric{
+			EventID:             packet.LevelEventParticleCreakingHeartTrail,
+			SerialisedEventData: data[2 : len(data)-1],
+		})
+	case particle.VibrationSignal:
+		type vibrationVector struct {
+			Type string  `nbt:"type"`
+			X    float32 `nbt:"x"`
+			Y    float32 `nbt:"y"`
+			Z    float32 `nbt:"z"`
+		}
+		type vibrationPayload struct {
+			Origin     vibrationVector `nbt:"origin"`
+			Speed      float32         `nbt:"speed"`
+			Target     vibrationVector `nbt:"target"`
+			TimeToLive float32         `nbt:"timeToLive"`
+		}
+		vector := func(v mgl64.Vec3) vibrationVector {
+			return vibrationVector{Type: "vec3", X: float32(v.X()), Y: float32(v.Y()), Z: float32(v.Z())}
+		}
+		buf := bytes.NewBuffer(nil)
+		_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(vibrationPayload{
+			Origin:     vector(pos),
+			Speed:      float32(20),
+			Target:     vector(pa.Destination),
+			TimeToLive: float32(max(0, pa.TravelTicks)) / 20,
+		})
+		data := buf.Bytes()
+		s.writePacket(&packet.LevelEventGeneric{
+			EventID:             packet.LevelEventParticlesVibrationSignal,
+			SerialisedEventData: data[2 : len(data)-1],
+		})
 	case particle.DragonEggTeleport:
 		xSign, ySign, zSign := 0, 0, 0
 		if pa.Diff.X() < 0 {
@@ -634,9 +691,17 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		Position:              vec64To32(pos),
 		EntityType:            ":",
 		ExtraData:             -1,
+		EntityUniqueID:        -1,
 		DisableRelativeVolume: disableRelative,
 	}
 	switch so := t.(type) {
+	case sound.NativeEvent:
+		pk.SoundType = so.SoundType
+		pk.EntityType = so.EntityType
+		pk.ExtraData = so.ExtraData
+		if so.EntityUniqueID != 0 {
+			pk.EntityUniqueID = so.EntityUniqueID
+		}
 	case sound.LodestoneCompassLink:
 		pk.SoundType = packet.SoundEventLinkCompassToLodestone
 	case sound.EquipItem:
@@ -1280,8 +1345,9 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 // ViewEntityState ...
 func (s *Session) ViewEntityState(e world.Entity) {
 	s.writePacket(&packet.SetActorData{
-		EntityRuntimeID: s.entityRuntimeID(e),
-		EntityMetadata:  s.entityMetadata(e),
+		EntityRuntimeID:  s.entityRuntimeID(e),
+		EntityMetadata:   s.entityMetadata(e),
+		EntityProperties: entityProperties(e),
 	})
 }
 
@@ -1417,7 +1483,7 @@ func (s *Session) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, 
 		WindowID:                nextID,
 		ContainerType:           containerType,
 		ContainerPosition:       protocol.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
-		ContainerEntityUniqueID: int64(s.entityRuntimeID(e)),
+		ContainerEntityUniqueID: s.entityUniqueID(e),
 	})
 	s.sendInv(inv, uint32(nextID))
 }
@@ -1456,7 +1522,7 @@ func (s *Session) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *wor
 		WindowID:                nextID,
 		ContainerType:           protocol.ContainerTypeTrade,
 		ContainerPosition:       protocol.BlockPos{int32(openPos[0]), int32(openPos[1]), int32(openPos[2])},
-		ContainerEntityUniqueID: int64(s.entityRuntimeID(e)),
+		ContainerEntityUniqueID: s.entityUniqueID(e),
 	})
 	s.sendMerchantOffers(e, merchant, user, offers, serializedOffers)
 }
@@ -1471,8 +1537,8 @@ func (s *Session) sendMerchantOffers(e world.Entity, merchant entity.Merchant, u
 		WindowType:        15,
 		Size:              int32(len(offers)),
 		TradeTier:         int32(level),
-		VillagerUniqueID:  int64(s.entityRuntimeID(e)),
-		EntityUniqueID:    int64(s.entityRuntimeID(user)),
+		VillagerUniqueID:  s.entityUniqueID(e),
+		EntityUniqueID:    s.entityUniqueID(user),
 		DisplayName:       merchant.MerchantProfession(),
 		NewTradeUI:        true,
 		DemandBasedPrices: true,
@@ -1814,8 +1880,8 @@ func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
 			linkType = byte(protocol.EntityLinkPassenger)
 		}
 		out = append(out, protocol.EntityLink{
-			RiddenEntityUniqueID:   int64(riddenID),
-			RiderEntityUniqueID:    int64(riderID),
+			RiddenEntityUniqueID:   s.handleUniqueID(link.Ridden),
+			RiderEntityUniqueID:    s.handleUniqueID(link.Rider),
 			Type:                   linkType,
 			Immediate:              link.Immediate,
 			RiderInitiated:         link.RiderInitiated,

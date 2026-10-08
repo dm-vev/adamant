@@ -28,9 +28,9 @@ func (p Placement) BlockEntityPayloads() []chunk.BlockEntity {
 					panic(err)
 				}
 				for key, value := range data {
-					// Banner pattern layers come from the source actor; position,
-					// colour, pose and rotation come from the transformed state.
-					if key == "Patterns" {
+					// Converted source patterns and listener/comparator memory
+					// take precedence over the state actor's empty defaults.
+					if key == "Patterns" || key == "adamant:java" {
 						if _, exists := converted[key]; exists {
 							continue
 						}

@@ -57,6 +57,30 @@ func (b Bed) WithFacing(facing cube.Direction) world.Block {
 }
 
 // FacingDirection returns the horizontal direction the block faces.
+func (b BeeNest) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b BeeNest) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
+func (b Beehive) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b Beehive) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
 func (b Bell) FacingDirection() cube.Direction {
 	return b.Facing
 }
@@ -105,6 +129,18 @@ func (b Chest) WithFacing(facing cube.Direction) world.Block {
 }
 
 // FacingDirection returns the horizontal direction the block faces.
+func (b ChiseledBookshelf) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b ChiseledBookshelf) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
 func (b CocoaBean) FacingDirection() cube.Direction {
 	return b.Facing
 }
@@ -112,6 +148,18 @@ func (b CocoaBean) FacingDirection() cube.Direction {
 // WithFacing returns a copy of the block with its facing set to facing. It does not update any
 // other blocks that the block may be part of, such as the second half of a bed or door.
 func (b CocoaBean) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
+func (b CopperChest) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b CopperChest) WithFacing(facing cube.Direction) world.Block {
 	b.Facing = facing
 	return b
 }
@@ -429,6 +477,18 @@ func (b TripwireHook) WithFacing(facing cube.Direction) world.Block {
 }
 
 // FacingDirection returns the horizontal direction the block faces.
+func (b Vault) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b Vault) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
 func (b Wildflowers) FacingDirection() cube.Direction {
 	return b.Facing
 }
@@ -549,6 +609,17 @@ func (b CoralFan) PillarAxis() cube.Axis {
 
 // WithAxis returns a copy of the block with its axis set to axis.
 func (b CoralFan) WithAxis(axis cube.Axis) world.Block {
+	b.Axis = axis
+	return b
+}
+
+// PillarAxis returns the axis the block is oriented along.
+func (b CreakingHeart) PillarAxis() cube.Axis {
+	return b.Axis
+}
+
+// WithAxis returns a copy of the block with its axis set to axis.
+func (b CreakingHeart) WithAxis(axis cube.Axis) world.Block {
 	b.Axis = axis
 	return b
 }

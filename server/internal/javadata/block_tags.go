@@ -9,7 +9,7 @@ import (
 type compiledTag struct {
 	members map[string]struct{}
 	ordered []string
-	err error
+	err     error
 }
 
 type tagKey struct {
@@ -35,6 +35,15 @@ func BiomeTagContains(tag, biome string) (bool, error) {
 // BlockTagMembers returns the ordered, recursively expanded vanilla block-tag entries.
 func BlockTagMembers(tag string) ([]string, error) {
 	compiled, err := compileTag(tagKey{kind: "block_tag", name: normalizeTagName(tag)})
+	if err != nil {
+		return nil, err
+	}
+	return append([]string(nil), compiled.ordered...), nil
+}
+
+// GameEventTagMembers returns the ordered, recursively expanded source game-event tag.
+func GameEventTagMembers(tag string) ([]string, error) {
+	compiled, err := compileTag(tagKey{kind: "game_event_tag", name: normalizeTagName(tag)})
 	if err != nil {
 		return nil, err
 	}

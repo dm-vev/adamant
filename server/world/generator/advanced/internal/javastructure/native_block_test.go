@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 func TestBannerPatternsSurviveStateRotation(t *testing.T) {
@@ -14,7 +15,7 @@ func TestBannerPatternsSurviveStateRotation(t *testing.T) {
 	registry.Finalize()
 	source := Block{State: world.BlockState{Name: "minecraft:blue_wall_banner", Properties: map[string]any{"facing": "north"}}, NBT: map[string]any{
 		"id":       "minecraft:banner",
-		"patterns": []any{map[string]any{"pattern": "minecraft:stripe_top", "color": "red"}, map[string]any{"pattern": "minecraft:border", "color": "black"}},
+		"patterns": []map[string]any{{"pattern": "minecraft:stripe_top", "color": "red"}, {"pattern": "minecraft:border", "color": "black"}},
 	}}
 	template := Template{Size: [3]int32{1, 1, 1}, Palettes: [][]Block{{source}}}
 	placed, err := template.Place(0, [3]int32{8, 64, 8}, Clockwise90, NoMirror, Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 100, 15}}, 1)
@@ -110,5 +111,134 @@ func TestActorRotationMatchesJavaMirrors(t *testing.T) {
 				t.Fatalf("native skull yaw = %v, want %v", got, tc.yaw)
 			}
 		})
+	}
+}
+
+func TestCalibratedSensorRotationPreservesPendingVibration(t *testing.T) {
+	registry := world.DefaultBlockRegistry
+	registry.Finalize()
+	listener := world.VibrationData{
+		HasCurrent: true, TravelTime: 3,
+		Current: world.VibrationInfo{Event: world.GameEventEquip, Distance: 4.25, Position: mgl64.Vec3{4.25, 64.5, 8.5}},
+	}
+	source := Block{
+		State: world.BlockState{Name: "minecraft:calibrated_sculk_sensor", Properties: map[string]any{
+			"facing": "north", "sculk_sensor_phase": "active", "power": int32(11), "waterlogged": true,
+		}},
+		NBT: map[string]any{
+			"id": "minecraft:calibrated_sculk_sensor", "last_vibration_frequency": int32(7), "listener": listener.EncodeNBT(),
+		},
+	}
+	template := Template{Size: [3]int32{1, 1, 1}, Palettes: [][]Block{{source}}}
+	placed, err := template.Place(0, [3]int32{8, 64, 8}, Clockwise90, NoMirror, Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 100, 15}}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := placed.Blocks[0].ResolveNative(registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	water, ok := world.WaterSourceRuntimeID(registry)
+	if !ok || state.Liquid != water {
+		t.Fatal("state-derived sensor lost its water layer")
+	}
+	base, _ := registry.BlockByRuntimeID(state.Block)
+	restored := base.(world.NBTer).DecodeNBT(placed.BlockEntityPayloads()[0].Data).(block.CalibratedSculkSensor)
+	pos := cube.Pos{8, 64, 8}
+	if restored.Facing != cube.East || restored.RedstonePower(pos, nil, cube.FaceNorth) != 11 || restored.ComparatorOutput(nil, pos) != 7 {
+		t.Fatalf("rotated active sensor lost its signal outputs: facing=%v power=%d comparator=%d", restored.Facing, restored.JavaPower(), restored.ComparatorOutput(nil, pos))
+	}
+	if !restored.VibrationData().HasCurrent {
+		t.Fatal("state overlay erased the saved travelling vibration")
+	}
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -1; x <= 1; x++ {
+			for z := -1; z <= 1; z++ {
+				tx.Block(cube.Pos{x * 16, 64, z * 16})
+			}
+		}
+		tx.SetBlock(pos, restored, nil)
+	})
+	for range 3 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		sensor := tx.Block(pos).(block.CalibratedSculkSensor)
+		if sensor.VibrationData().HasCurrent {
+			t.Fatal("restored vibration did not finish travelling")
+		}
+		if sensor.JavaPower() != 11 || sensor.ComparatorOutput(tx, pos) != 7 {
+			t.Fatal("arrival during the active phase incorrectly reactivated the sensor")
+		}
+	})
+}
+
+func TestTypedTemplateInventoryRetainsSlots(t *testing.T) {
+	registry := world.DefaultBlockRegistry
+	registry.Finalize()
+	source := Block{
+		State: world.BlockState{Name: "minecraft:furnace", Properties: map[string]any{"facing": "north", "lit": "false"}},
+		NBT: map[string]any{"id": "minecraft:furnace", "Items": []map[string]any{
+			{"Slot": int8(1), "id": "minecraft:coal", "count": int32(2)},
+			{"id": "minecraft:iron_ore", "count": int32(4)},
+		}},
+	}
+	template := Template{Size: [3]int32{1, 1, 1}, Palettes: [][]Block{{source}}}
+	placed, err := template.Place(0, [3]int32{8, 64, 8}, Clockwise90, NoMirror, Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 100, 15}}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := placed.Blocks[0].ResolveNative(registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, _ := registry.BlockByRuntimeID(state.Block)
+	furnace := base.(world.NBTer).DecodeNBT(placed.BlockEntityPayloads()[0].Data).(block.Furnace)
+	for slot, want := range []struct {
+		name  string
+		count int
+	}{{"minecraft:iron_ore", 4}, {"minecraft:coal", 2}} {
+		stack, err := furnace.Inventory(nil, cube.Pos{}).Item(slot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if stack.Empty() {
+			t.Fatalf("source inventory lost slot %d", slot)
+		}
+		name, _ := stack.Item().EncodeItem()
+		if name != want.name || stack.Count() != want.count {
+			t.Fatalf("slot %d = %s x%d, want %s x%d", slot, name, stack.Count(), want.name, want.count)
+		}
+	}
+}
+
+func TestBookshelfSourceSlotPrecedence(t *testing.T) {
+	state := world.BlockState{Name: "minecraft:chiseled_bookshelf", Properties: map[string]any{"facing": "north"}}
+	payload, err := JavaBlockEntityPayload(state, [3]int32{}, map[string]any{
+		"id": "minecraft:chiseled_bookshelf",
+		"Items": []map[string]any{
+			{"Slot": int8(0), "id": "minecraft:book", "count": int32(1)},
+			{"id": "minecraft:writable_book", "count": int32(1)},
+			{"Slot": int8(6), "id": "minecraft:book", "count": int32(1)},
+			{"Slot": int8(-1), "id": "minecraft:book", "count": int32(1)},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	shelf := block.NewChiseledBookshelf().DecodeNBT(payload).(block.ChiseledBookshelf)
+	if shelf.Items[0].Empty() {
+		t.Fatal("default source slot zero lost its book")
+	}
+	name, _ := shelf.Items[0].Item().EncodeItem()
+	if name != "minecraft:writable_book" {
+		t.Fatalf("last item in source slot zero lost precedence: %s", name)
+	}
+	for slot := 1; slot < len(shelf.Items); slot++ {
+		if !shelf.Items[slot].Empty() {
+			t.Fatalf("unexpected book in slot %d", slot)
+		}
 	}
 }

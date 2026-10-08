@@ -23,6 +23,8 @@ func spawnMob(id string, opts world.EntitySpawnOpts) *world.EntityHandle {
 		return NewBreeze(opts)
 	case "minecraft:camel":
 		return NewCamel(opts)
+	case "minecraft:creaking":
+		return NewCreaking(opts)
 	case "minecraft:camel_husk":
 		return NewCamelHusk(opts)
 	case "minecraft:cat":

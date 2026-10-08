@@ -84,6 +84,7 @@ const (
 	hashCoralFan
 	hashCoralWallFan
 	hashCraftingTable
+	hashCreakingHeart
 	hashCrimsonRoots
 	hashDaylightDetector
 	hashDeadBush
@@ -643,6 +644,10 @@ func (c CoralWallFan) Hash() (uint64, uint64) {
 
 func (CraftingTable) Hash() (uint64, uint64) {
 	return hashCraftingTable, 0
+}
+
+func (h CreakingHeart) Hash() (uint64, uint64) {
+	return hashCreakingHeart, uint64(h.Axis) | uint64(h.State)<<2 | uint64(boolByte(h.Natural))<<4
 }
 
 func (CrimsonRoots) Hash() (uint64, uint64) {

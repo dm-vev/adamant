@@ -151,12 +151,15 @@ func (l Lectern) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 // EncodeNBT ...
 func (l Lectern) EncodeNBT() map[string]any {
 	m := map[string]any{
-		"hasBook": boolByte(!l.Book.Empty()),
-		"page":    int32(l.Page),
-		"id":      "Lectern",
+		"id":                 "Lectern",
+		"BlockEntityVersion": int32(0),
+	}
+	if !l.Book.Empty() {
+		m["book"] = item.WriteNBT(l.Book, true)
 	}
 	if r, ok := l.Book.Item().(readableBook); ok {
-		m["book"] = item.WriteNBT(l.Book, true)
+		m["hasBook"] = uint8(1)
+		m["page"] = int32(l.Page)
 		m["totalPages"] = int32(r.TotalPages())
 	}
 	return m

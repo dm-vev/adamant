@@ -52,6 +52,9 @@ func (e EndGateway) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 // EntityInside uses the collision visitor rather than testing entity centres,
 // so an entity touching the gateway with the edge of its box can enter.
 func (e EndGateway) EntityInside(pos cube.Pos, tx *world.Tx, ent world.Entity) {
+	if traveller, ok := ent.(interface{ CanUsePortal() bool }); ok && !traveller.CanUsePortal() {
+		return
+	}
 	if e.teleportCooldown == nil || e.teleportCooldown.Load() > 0 {
 		return
 	}

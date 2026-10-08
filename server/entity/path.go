@@ -41,6 +41,10 @@ func (h *pathHeap) Pop() any {
 }
 
 func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allowDoors bool) []cube.Pos {
+	return findPathWithEvaluator(tx, start, goal, maxNodes, allowWater, allowDoors, nil)
+}
+
+func findPathWithEvaluator(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allowDoors bool, allowed func(cube.Pos) bool) []cube.Pos {
 	if start == goal {
 		return nil
 	}
@@ -74,6 +78,9 @@ func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allo
 		for _, dir := range []cube.Face{cube.FaceNorth, cube.FaceSouth, cube.FaceEast, cube.FaceWest} {
 			next, ok := nextStep(tx, current.pos, dir, allowWater, allowDoors)
 			if !ok {
+				continue
+			}
+			if allowed != nil && !allowed(next) {
 				continue
 			}
 			if _, ok := closed[next]; ok {

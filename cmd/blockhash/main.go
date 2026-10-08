@@ -275,7 +275,7 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ".Uint8())", 1
 	case "BambooLeafSize":
 		return "uint64(" + s + ".Uint8())", 2
-	case "Axis":
+	case "Axis", "CreakingHeartState":
 		return "uint64(" + s + ")", 2
 	case "Direction":
 		// Some vanilla block states also retain the unknownDirection sentinel (4).

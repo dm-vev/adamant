@@ -214,6 +214,8 @@ func (conf Config) New() *World {
 		scheduledUpdates:  newScheduledTickQueue(currentTick),
 		redstone:          newRedstoneEngine(currentTick),
 		entities:          make(map[*EntityHandle]*entityState),
+		entitiesByUUID: make(map[uuid.UUID]*EntityHandle),
+		entitiesByUniqueID: make(map[int64]*EntityHandle),
 		lootSequences:     make(map[string]*java26.Random),
 		pois:              make(map[cube.Pos]POI),
 		raids:             make(map[int64]*Raid),

@@ -176,6 +176,19 @@ type PlacementHandler interface {
 	Placed(pos cube.Pos, tx *Tx, previous Block)
 }
 
+// BlockRemovalHandler receives a foreground replacement while the old block
+// actor is still available. State-only changes also call Removed; the actor
+// decides whether the replacement preserves its lifecycle.
+type BlockRemovalHandler interface {
+	Removed(pos cube.Pos, tx *Tx, replacement Block)
+}
+
+// PlayerBlockDestroyer runs after a player break is accepted but before the
+// actor is removed. The damage source preserves responsibility for linked mobs.
+type PlayerBlockDestroyer interface {
+	PlayerWillDestroy(pos cube.Pos, tx *Tx, source DamageSource)
+}
+
 // NBTer represents either an item or a block which may decode NBT data and encode to NBT data. Typically,
 // this is done to store additional data.
 type NBTer interface {

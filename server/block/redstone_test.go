@@ -949,7 +949,7 @@ func (h *redstoneSoundTestHandler) HandleSound(_ *world.Context, s world.Sound, 
 
 func redstoneTNTTestEntityRegistry() world.EntityRegistry {
 	return world.EntityRegistryConfig{
-		TNT: func(opts world.EntitySpawnOpts, _ time.Duration) *world.EntityHandle {
+		TNT: func(opts world.EntitySpawnOpts, _ time.Duration, _ world.Entity) *world.EntityHandle {
 			return opts.New(redstoneTNTTestEntityType{}, redstoneTNTTestEntityConfig{})
 		},
 	}.New([]world.EntityType{redstoneTNTTestEntityType{}})

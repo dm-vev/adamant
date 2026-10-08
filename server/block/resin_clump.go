@@ -22,6 +22,11 @@ type ResinClump struct {
 	East  bool
 }
 
+// SideClosed allows water to flow through the clump's empty collision shape.
+func (ResinClump) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool { return false }
+
+var _ world.LiquidDisplacer = ResinClump{}
+
 // BreakInfo ...
 func (r ResinClump) BreakInfo() BreakInfo {
 	return newBreakInfo(0.2, func(t item.Tool) bool {

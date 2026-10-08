@@ -61,6 +61,15 @@ func (e *Ent) Behaviour() Behaviour {
 	return e.data.Data.(Behaviour)
 }
 
+// ProjectileOwner exposes the projectile behaviour's owner without retaining
+// a transaction-bound entity in delayed game events.
+func (e *Ent) ProjectileOwner() *world.EntityHandle {
+	if owned, ok := e.Behaviour().(interface{ Owner() *world.EntityHandle }); ok {
+		return owned.Owner()
+	}
+	return nil
+}
+
 // Explode propagates the explosion behaviour of the underlying Behaviour.
 func (e *Ent) Explode(src world.ExplosionSource, impact float64) {
 	if expl, ok := e.Behaviour().(interface {

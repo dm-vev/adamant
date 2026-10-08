@@ -159,10 +159,11 @@ func (Bell) EncodeItem() (name string, meta int16) {
 // EncodeNBT ...
 func (b Bell) EncodeNBT() map[string]any {
 	return map[string]any{
-		"id":        "Bell",
-		"Ringing":   boolByte(b.Toggle),
-		"Ticks":     int32(b.ringTicks),
-		"Direction": int32(b.ringFace()),
+		"id":                 "Bell",
+		"BlockEntityVersion": int32(0),
+		"Ringing":            boolByte(b.Toggle),
+		"Ticks":              int32(b.ringTicks),
+		"Direction":          int32(b.ringFace()),
 	}
 }
 
@@ -170,7 +171,7 @@ func (b Bell) EncodeNBT() map[string]any {
 func (b Bell) DecodeNBT(data map[string]any) any {
 	b.Toggle = nbtconv.Bool(data, "Ringing")
 	b.ringTicks = int(nbtconv.Int32(data, "Ticks"))
-	b.ringDirection = b.validRingFace(cube.Face(nbtconv.Int32(data, "Direction")))
+	b.ringDirection = cube.Face(nbtconv.Int32(data, "Direction"))
 	return b
 }
 
@@ -184,14 +185,10 @@ func (b Bell) canRing(face cube.Face) bool {
 }
 
 func (b Bell) ringFace() cube.Face {
-	return b.validRingFace(b.ringDirection)
-}
-
-func (b Bell) validRingFace(face cube.Face) cube.Face {
-	if b.canRing(face) {
-		return face
+	if b.ringDirection < cube.FaceNorth || b.ringDirection > cube.FaceEast {
+		return cube.Face(255)
 	}
-	return b.Facing.Face().RotateRight()
+	return b.ringDirection
 }
 
 func bellSupportSolid(tx *world.Tx, pos cube.Pos, face cube.Face) bool {

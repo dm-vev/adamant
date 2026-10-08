@@ -53,6 +53,12 @@ type Settings struct {
 	TickRange int32
 	// FallDamage specifies if entities take damage from falling in this World.
 	FallDamage bool
+	// SpawnMobs and SpawnMonsters are the Java spawn_mobs and spawn_monsters
+	// rules. Heart protectors require both, independently of difficulty.
+	SpawnMobs     bool
+	SpawnMonsters bool
+	// SpawnWardens is Java's independent spawn_wardens gamerule.
+	SpawnWardens bool
 	// PlayersSleepingPercentage determines the percentage of players that must sleep to skip the night.
 	PlayersSleepingPercentage int32
 	// RequiredSleepTicks is the number of ticks that players must sleep for in order for the time to change to day.
@@ -71,6 +77,9 @@ func defaultSettings() *Settings {
 		ThunderTime:               int64(rand.IntN(8400)+600) * 20,
 		TickRange:                 6,
 		FallDamage:                true,
+		SpawnMobs:                 true,
+		SpawnMonsters:             true,
+		SpawnWardens:              true,
 		PlayersSleepingPercentage: 100,
 	}
 }
@@ -108,6 +117,9 @@ func (s *Settings) Snapshot() *Settings {
 		Difficulty:                s.Difficulty,
 		TickRange:                 s.TickRange,
 		FallDamage:                s.FallDamage,
+		SpawnMobs:                 s.SpawnMobs,
+		SpawnMonsters:             s.SpawnMonsters,
+		SpawnWardens:              s.SpawnWardens,
 		PlayersSleepingPercentage: s.PlayersSleepingPercentage,
 		RequiredSleepTicks:        s.RequiredSleepTicks,
 	}

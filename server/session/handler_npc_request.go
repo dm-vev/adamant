@@ -16,6 +16,7 @@ type NPCRequestHandler struct {
 
 	dialogue        *dialogue.Dialogue
 	entityRuntimeID uint64
+	entityUniqueID  uint64
 }
 
 // Handle ...
@@ -41,6 +42,7 @@ func (h *NPCRequestHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c 
 		if h.dialogue == dialoguePtr {
 			h.dialogue = nil
 			h.entityRuntimeID = 0
+			h.entityUniqueID = 0
 		}
 		h.mu.Unlock()
 	}

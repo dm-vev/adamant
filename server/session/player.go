@@ -555,6 +555,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 	h.mu.Lock()
 	h.dialogue = &dialogueCopy
 	h.entityRuntimeID = entityRuntimeID
+	h.entityUniqueID = uint64(s.entityUniqueID(e))
 	h.mu.Unlock()
 
 	metadata := s.parseEntityMetadata(e)
@@ -576,7 +577,7 @@ func (s *Session) SendDialogue(d dialogue.Dialogue, e world.Entity) {
 		EntityMetadata:  metadata,
 	})
 	s.writePacket(&packet.NPCDialogue{
-		EntityUniqueID: entityRuntimeID,
+		EntityUniqueID: uint64(s.entityUniqueID(e)),
 		ActionType:     packet.NPCDialogueActionOpen,
 		Dialogue:       d.Body(),
 		SceneName:      "default",
@@ -598,7 +599,9 @@ func (s *Session) CloseDialogue() {
 	}
 	h.mu.Lock()
 	entityRuntimeID := h.entityRuntimeID
+	entityUniqueID := h.entityUniqueID
 	h.entityRuntimeID = 0
+	h.entityUniqueID = 0
 	h.dialogue = nil
 	h.mu.Unlock()
 	if entityRuntimeID == 0 {
@@ -606,7 +609,7 @@ func (s *Session) CloseDialogue() {
 	}
 
 	s.writePacket(&packet.NPCDialogue{
-		EntityUniqueID: entityRuntimeID,
+		EntityUniqueID: entityUniqueID,
 		ActionType:     packet.NPCDialogueActionClose,
 	})
 }

@@ -68,7 +68,7 @@ type EntityHandle struct {
 	worldChanged chan struct{}
 	closeOnce    sync.Once
 
-	data EntityData
+	data        EntityData
 	spawnReason string
 	spawnSeed   int64
 	spawnGroup  *EntitySpawnGroup
@@ -121,15 +121,15 @@ func (opts EntitySpawnOpts) New(t EntityType, conf EntityConfig) *EntityHandle {
 		clear(opts.ID[:8])
 	}
 	handle := &EntityHandle{
-		id:        opts.ID,
-		t:         t,
-		cond:      sync.NewCond(&sync.Mutex{}),
-		worldless: &atomic.Bool{},
-		closed:    make(chan struct{}),
-		data:      EntityData{AlwaysShowNameTag: true, SpawnReason: opts.SpawnReason},
+		id:          opts.ID,
+		t:           t,
+		cond:        sync.NewCond(&sync.Mutex{}),
+		worldless:   &atomic.Bool{},
+		closed:      make(chan struct{}),
+		data:        EntityData{AlwaysShowNameTag: true, SpawnReason: opts.SpawnReason},
 		spawnReason: opts.SpawnReason,
-		spawnSeed: opts.SpawnSeed,
-		spawnGroup: opts.SpawnGroup,
+		spawnSeed:   opts.SpawnSeed,
+		spawnGroup:  opts.SpawnGroup,
 	}
 	handle.worldless.Store(true)
 	handle.data.Pos, handle.data.Rot, handle.data.Vel = opts.Position, opts.Rotation, opts.Velocity
@@ -161,6 +161,7 @@ func (e *EntityHandle) finalizeSpawn(entity Entity) {
 func (e *EntityHandle) SpawnGroup() *EntitySpawnGroup {
 	return e.spawnGroup
 }
+
 // SpawnReason reports the reason this entity was created, including after it is
 // restored from the world's provider.
 func (e *EntityHandle) SpawnReason() string {
@@ -241,6 +242,12 @@ func (e *EntityHandle) mustEntity(tx *Tx) Entity {
 // UUID returns the identifier of the EntityHandle.
 func (e *EntityHandle) UUID() uuid.UUID {
 	return e.id
+}
+
+// UniqueID returns the signed Bedrock actor identity used by the world provider.
+// It is distinct from a session's entity runtime ID.
+func (e *EntityHandle) UniqueID() int64 {
+	return int64(binary.LittleEndian.Uint64(e.id[8:]))
 }
 
 // Closed reports whether the EntityHandle has been closed.
@@ -480,6 +487,15 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 	e.data.Name, _ = m["NameTag"].(string)
 	if javaData, ok := m["adamant:java"].(map[string]any); ok {
 		e.data.SpawnReason, _ = javaData["SpawnReason"].(string)
+		if words, ok := javaData["UUID"].([]int32); ok && len(words) == 4 {
+			var id uuid.UUID
+			for i, word := range words {
+				binary.BigEndian.PutUint32(id[i*4:], uint32(word))
+			}
+			if binary.LittleEndian.Uint64(id[8:]) == binary.LittleEndian.Uint64(e.id[8:]) {
+				e.id = id
+			}
+		}
 	}
 }
 
@@ -495,18 +511,26 @@ func (e *EntityHandle) encodeNBT() map[string]any {
 		"Age":     int16(min(e.data.Age/(time.Second/20), math.MaxInt16)),
 		"NameTag": e.data.Name,
 	})
-	if e.data.SpawnReason != "" {
+	if e.data.SpawnReason != "" || binary.BigEndian.Uint64(e.id[:8]) != 0 {
 		javaData, _ := data["adamant:java"].(map[string]any)
 		javaData = CloneNativeEntityNBT(javaData)
 		if javaData == nil {
 			javaData = make(map[string]any)
 		}
-		javaData["SpawnReason"] = e.data.SpawnReason
+		if e.data.SpawnReason != "" {
+			javaData["SpawnReason"] = e.data.SpawnReason
+		}
+		if binary.BigEndian.Uint64(e.id[:8]) != 0 {
+			words := make([]int32, 4)
+			for i := range words {
+				words[i] = int32(binary.BigEndian.Uint32(e.id[i*4:]))
+			}
+			javaData["UUID"] = words
+		}
 		data["adamant:java"] = javaData
 	}
 	return data
 }
-
 
 // EntityData holds data shared by every entity. It is kept in an EntityHandle.
 type EntityData struct {
@@ -610,19 +634,19 @@ type EntityRegistryConfig struct {
 	OminousItemSpawner func(opts EntitySpawnOpts, stack any, delay int64) *EntityHandle
 	// NaturalSpawnTick runs source-defined natural ecology once per world tick.
 	NaturalSpawnTick func(*Tx)
-	Item               func(opts EntitySpawnOpts, it any) *EntityHandle
-	NewFromBucket      func(opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle
-	EnderDragon        func(opts EntitySpawnOpts) *EntityHandle
-	DragonFight        func(seed int64, data DragonFightData) DragonFightController
+	Item             func(opts EntitySpawnOpts, it any) *EntityHandle
+	// ExperienceOrbs creates the source denominations for a block's XP reward.
+	ExperienceOrbs func(pos mgl64.Vec3, amount int) []*EntityHandle
+	NewFromBucket  func(opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle
+	EnderDragon    func(opts EntitySpawnOpts) *EntityHandle
+	DragonFight    func(seed int64, data DragonFightData) DragonFightController
 	// GolemPattern attempts source-defined constructed-mob patterns after a
 	// carved pumpkin or jack-o'-lantern replaces a different block type.
-	GolemPattern       func(tx *Tx, pos cube.Pos) bool
-	// WardenShrieker handles activation and Warden summoning at a shrieker.
-	WardenShrieker func(tx *Tx, pos cube.Pos) bool
+	GolemPattern func(tx *Tx, pos cube.Pos) bool
 	// WitherPattern attempts the source skull-and-soul-sand construction pattern.
-	WitherPattern func(tx *Tx, pos cube.Pos) bool
+	WitherPattern      func(tx *Tx, pos cube.Pos) bool
 	FallingBlock       func(opts EntitySpawnOpts, bl Block) *EntityHandle
-	TNT                func(opts EntitySpawnOpts, fuse time.Duration) *EntityHandle
+	TNT                func(opts EntitySpawnOpts, fuse time.Duration, owner Entity) *EntityHandle
 	Boat               func(opts EntitySpawnOpts, variant int) *EntityHandle
 	ChestBoat          func(opts EntitySpawnOpts, variant int) *EntityHandle
 	Minecart           func(opts EntitySpawnOpts) *EntityHandle
@@ -638,7 +662,7 @@ type EntityRegistryConfig struct {
 	Firework           func(opts EntitySpawnOpts, firework Item, owner Entity, sidewaysVelocityMultiplier, upwardsAcceleration float64, attached bool) *EntityHandle
 	LingeringPotion    func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Snowball           func(opts EntitySpawnOpts, owner Entity) *EntityHandle
-	SmallFireball       func(opts EntitySpawnOpts, owner Entity) *EntityHandle
+	SmallFireball      func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	WindCharge         func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	SplashPotion       func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Lightning          func(opts EntitySpawnOpts) *EntityHandle

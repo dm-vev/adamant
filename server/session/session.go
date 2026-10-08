@@ -39,12 +39,12 @@ type Session struct {
 	ent  *world.EntityHandle
 	conn Conn
 	// connWriteMu serializes connection writes to avoid concurrent WritePacket/Flush calls.
-	connWriteMu sync.Mutex
-	handlers    map[uint32]packetHandler
-	bossBarMu sync.Mutex
-	bossBarIDs map[string]int64
+	connWriteMu   sync.Mutex
+	handlers      map[uint32]packetHandler
+	bossBarMu     sync.Mutex
+	bossBarIDs    map[string]int64
 	nextBossBarID int64
-	packets     chan packet.Packet
+	packets       chan packet.Packet
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
@@ -103,8 +103,8 @@ type Session struct {
 
 	lastChunkPos world.ChunkPos
 
-	recipes          map[uint32]recipe.Recipe
-	javaRecipeIDs    map[string][]string
+	recipes       map[uint32]recipe.Recipe
+	javaRecipeIDs map[string][]string
 
 	blobMu                sync.Mutex
 	blobs                 map[uint64][]byte
@@ -237,8 +237,8 @@ func (conf Config) New(conn Conn) *Session {
 		emoteChatMuted:         conf.EmoteChatMuted,
 		conn:                   conn,
 		currentEntityRuntimeID: 1,
-		recipes:          make(map[uint32]recipe.Recipe),
-		javaRecipeIDs:    make(map[string][]string),
+		recipes:                make(map[uint32]recipe.Recipe),
+		javaRecipeIDs:          make(map[string][]string),
 		hudUpdates:             make(map[hud.Element]bool),
 		hiddenHud:              make(map[hud.Element]struct{}),
 		debugShapes:            make(map[int]debug.Shape),
@@ -297,6 +297,10 @@ func (s *Session) SetHandle(handle *world.EntityHandle, skin skin.Skin) {
 	s.joinSkin = skin
 	sessions.Add(s)
 }
+
+// ViewerEntity identifies the observer for source-defined particle range checks.
+// The handle must be opened in the emitting world's transaction before use.
+func (s *Session) ViewerEntity() *world.EntityHandle { return s.ent }
 
 // Spawn makes the Controllable passed spawn in the world.World.
 // The function passed will be called when the session stops running.
@@ -474,6 +478,7 @@ func sessionOwnerStopped(err error) bool {
 func (s *Session) ClientData() login.ClientData {
 	return s.conn.ClientData()
 }
+
 // LogError writes an error through the session's configured logger.
 func (s *Session) LogError(message string, args ...any) {
 	if s.conf.Log != nil {
@@ -680,41 +685,41 @@ func (s *Session) handlePacket(pk packet.Packet, tx *world.Tx, c Controllable) (
 // registerHandlers registers all packet handlers found in the packetHandler package.
 func (s *Session) registerHandlers() {
 	s.handlers = map[uint32]packetHandler{
-		packet.IDActorEvent:                nil,
-		packet.IDAdventureSettings:         nil, // Deprecated, the client still sends this though.
-		packet.IDAnimate:                   nil,
-		packet.IDAnvilDamage:               nil,
-		packet.IDBlockActorData:            &BlockActorDataHandler{},
-		packet.IDBlockPickRequest:          &BlockPickRequestHandler{},
-		packet.IDBookEdit:                  &BookEditHandler{},
-		packet.IDBossEvent:                 nil,
-		packet.IDClientCacheBlobStatus:     &ClientCacheBlobStatusHandler{},
-		packet.IDCommandRequest:            &CommandRequestHandler{},
-		packet.IDContainerClose:            &ContainerCloseHandler{},
-		packet.IDEmote:                     &EmoteHandler{},
-		packet.IDEmoteList:                 nil,
-		packet.IDFilterText:                nil,
-		packet.IDInteract:                  &InteractHandler{},
-		packet.IDInventoryTransaction:      &InventoryTransactionHandler{},
-		packet.IDItemStackRequest:          &ItemStackRequestHandler{changes: map[byte]map[byte]changeInfo{}, responseChanges: map[int32]map[*inventory.Inventory]map[byte]responseChange{}},
-		packet.IDLecternUpdate:             &LecternUpdateHandler{},
-		packet.IDMobEquipment:              &MobEquipmentHandler{},
-		packet.IDModalFormResponse:         &ModalFormResponseHandler{forms: make(map[uint32]form.Form)},
-		packet.IDMovePlayer:                nil,
-		packet.IDNPCRequest:                &NPCRequestHandler{},
-		packet.IDPlayerAction:              &PlayerActionHandler{},
-		packet.IDPlayerAuthInput:           &PlayerAuthInputHandler{},
-		packet.IDPlayerSkin:                &PlayerSkinHandler{},
-		packet.IDMapInfoRequest:            &MapInfoRequestHandler{},
+		packet.IDActorEvent:                     nil,
+		packet.IDAdventureSettings:              nil, // Deprecated, the client still sends this though.
+		packet.IDAnimate:                        nil,
+		packet.IDAnvilDamage:                    nil,
+		packet.IDBlockActorData:                 &BlockActorDataHandler{},
+		packet.IDBlockPickRequest:               &BlockPickRequestHandler{},
+		packet.IDBookEdit:                       &BookEditHandler{},
+		packet.IDBossEvent:                      nil,
+		packet.IDClientCacheBlobStatus:          &ClientCacheBlobStatusHandler{},
+		packet.IDCommandRequest:                 &CommandRequestHandler{},
+		packet.IDContainerClose:                 &ContainerCloseHandler{},
+		packet.IDEmote:                          &EmoteHandler{},
+		packet.IDEmoteList:                      nil,
+		packet.IDFilterText:                     nil,
+		packet.IDInteract:                       &InteractHandler{},
+		packet.IDInventoryTransaction:           &InventoryTransactionHandler{},
+		packet.IDItemStackRequest:               &ItemStackRequestHandler{changes: map[byte]map[byte]changeInfo{}, responseChanges: map[int32]map[*inventory.Inventory]map[byte]responseChange{}},
+		packet.IDLecternUpdate:                  &LecternUpdateHandler{},
+		packet.IDMobEquipment:                   &MobEquipmentHandler{},
+		packet.IDModalFormResponse:              &ModalFormResponseHandler{forms: make(map[uint32]form.Form)},
+		packet.IDMovePlayer:                     nil,
+		packet.IDNPCRequest:                     &NPCRequestHandler{},
+		packet.IDPlayerAction:                   &PlayerActionHandler{},
+		packet.IDPlayerAuthInput:                &PlayerAuthInputHandler{},
+		packet.IDPlayerSkin:                     &PlayerSkinHandler{},
+		packet.IDMapInfoRequest:                 &MapInfoRequestHandler{},
 		packet.IDPlayerToggleCrafterSlotRequest: &CrafterSlotToggleHandler{},
-		packet.IDRequestAbility:            &RequestAbilityHandler{},
-		packet.IDRequestChunkRadius:        &RequestChunkRadiusHandler{},
-		packet.IDRespawn:                   &RespawnHandler{},
-		packet.IDSetPlayerInventoryOptions: nil,
-		packet.IDSubChunkRequest:           &SubChunkRequestHandler{},
-		packet.IDText:                      &TextHandler{},
-		packet.IDServerBoundLoadingScreen:  &ServerBoundLoadingScreenHandler{},
-		packet.IDServerBoundDiagnostics:    &ServerBoundDiagnosticsHandler{},
+		packet.IDRequestAbility:                 &RequestAbilityHandler{},
+		packet.IDRequestChunkRadius:             &RequestChunkRadiusHandler{},
+		packet.IDRespawn:                        &RespawnHandler{},
+		packet.IDSetPlayerInventoryOptions:      nil,
+		packet.IDSubChunkRequest:                &SubChunkRequestHandler{},
+		packet.IDText:                           &TextHandler{},
+		packet.IDServerBoundLoadingScreen:       &ServerBoundLoadingScreenHandler{},
+		packet.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
 	}
 	s.handlers[packet.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
 }
@@ -764,4 +769,26 @@ func (s *Session) sendAvailableEntities(w *world.World) {
 		return
 	}
 	s.writePacket(&packet.AvailableActorIdentifiers{SerialisedEntityIdentifiers: serialisedEntityData})
+
+	for _, t := range w.EntityRegistry().Types() {
+		if t.EncodeEntity() == "minecraft:creaking" {
+			s.writePacket(&packet.SyncActorProperty{PropertyData: map[string]any{
+				"type": "minecraft:creaking",
+				"properties": []any{
+					map[string]any{
+						"name": "minecraft:creaking_state",
+						"type": int32(3),
+						"enum": []any{"neutral", "hostile_observed", "hostile_unobserved", "twitching", "crumbling"},
+					},
+					map[string]any{
+						"name": "minecraft:creaking_swaying_ticks",
+						"type": int32(0),
+						"min":  int32(0),
+						"max":  int32(6),
+					},
+				},
+			}})
+			break
+		}
+	}
 }

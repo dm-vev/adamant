@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -13,10 +14,14 @@ import (
 func JavaBlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string]any) (map[string]any, error) {
 	data := cloneNBT(nbt)
 	id, ok := data["id"].(string)
-	if !ok || id == "" { return nil, fmt.Errorf("Java block entity has no string id") }
+	if !ok || id == "" {
+		return nil, fmt.Errorf("Java block entity has no string id")
+	}
 	id = strings.TrimPrefix(id, "minecraft:")
 	bedrockID, supported := javaBlockEntityIDs[id]
-	if !supported { return nil, fmt.Errorf("unsupported Java block entity %q", id) }
+	if !supported {
+		return nil, fmt.Errorf("unsupported Java block entity %q", id)
+	}
 	data["id"] = bedrockID
 	data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
 	if id == "chiseled_bookshelf" {
@@ -64,6 +69,65 @@ func JavaBlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string
 		data["Items"] = converted
 	}
 	switch id {
+	case "bell":
+		// Java's BellBlockEntity has no saved ringing state; native Bell actors
+		// still require their reset transient fields and unset direction marker.
+		data = (block.Bell{}).EncodeNBT()
+		data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
+	case "lectern":
+		actor := block.Lectern{}
+		if raw, exists := data["Book"]; exists {
+			book, ok := raw.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("Java lectern Book has type %T, want compound", raw)
+			}
+			stack, err := item.StackFromJavaNBT(book)
+			if err != nil {
+				return nil, fmt.Errorf("Java lectern Book: %w", err)
+			}
+			actor.Book = stack
+			if pages, ok := stack.Item().(interface{ TotalPages() int }); ok {
+				page := int64(0)
+				if raw, exists := data["Page"]; exists {
+					var valid bool
+					page, valid = javaNBTInt(raw)
+					if !valid {
+						return nil, fmt.Errorf("Java lectern Page has type %T, want integer", raw)
+					}
+				}
+				actor.Page = int(min(max(page, 0), int64(pages.TotalPages()-1)))
+			}
+		}
+		data = actor.EncodeNBT()
+		data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
+	case "creaking_heart":
+		if link, exists := data["creaking"]; exists {
+			data["adamant:java"] = map[string]any{"creaking": link}
+		}
+		actor := (block.CreakingHeart{}).DecodeNBT(data).(block.CreakingHeart)
+		data = actor.EncodeNBT()
+		data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
+	case "sculk_shrieker":
+		actor := (block.SculkShrieker{}).DecodeNBT(data).(block.SculkShrieker)
+		data = actor.EncodeNBT()
+		data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
+	case "sculk_sensor", "calibrated_sculk_sensor":
+		actor, adapted, err := NativeBlockForJavaState(state)
+		if err != nil {
+			return nil, err
+		}
+		if !adapted {
+			return nil, fmt.Errorf("Java sensor actor has incompatible state %q", state.Name)
+		}
+		source := data
+		data = actor.(world.NBTer).EncodeNBT()
+		java := data["adamant:java"].(map[string]any)
+		for _, key := range [...]string{"last_vibration_frequency", "listener"} {
+			if value, exists := source[key]; exists {
+				java[key] = value
+			}
+		}
+		data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
 	case "mob_spawner":
 		convertSpawner(data)
 	case "sign", "hanging_sign":
@@ -91,15 +155,19 @@ var javaBlockEntityIDs = map[string]string{
 	"furnace": "Furnace", "smoker": "Smoker", "blast_furnace": "BlastFurnace",
 	"brewing_stand": "BrewingStand", "hopper": "Hopper", "dispenser": "Dispenser", "dropper": "Dropper",
 	"chiseled_bookshelf": "ChiseledBookshelf",
-	"shulker_box": "ShulkerBox", "sign": "Sign", "hanging_sign": "Sign", "mob_spawner": "MobSpawner",
+	"shulker_box":        "ShulkerBox", "sign": "Sign", "hanging_sign": "Sign", "mob_spawner": "MobSpawner",
 	"banner": "Banner", "bee_nest": "Beehive", "beehive": "Beehive", "brushable_block": "BrushableBlock",
 	"decorated_pot": "DecoratedPot", "campfire": "Campfire", "end_gateway": "EndGateway", "skull": "Skull",
 	"trial_spawner": "TrialSpawner", "vault": "Vault",
 	"bed": "Bed", "copper_golem_statue": "CopperGolemStatue",
+	"creaking_heart": "CreakingHeart", "comparator": "Comparator", "bell": "Bell",
+	"sculk_shrieker": "SculkShrieker",
+	"sculk_sensor":   "SculkSensor", "calibrated_sculk_sensor": "CalibratedSculkSensor",
+	"lectern": "Lectern",
 }
 
 func convertChiseledBookshelfItems(raw any) ([]any, error) {
-	items, ok := raw.([]any)
+	count, ok := templateListLen(raw)
 	if !ok {
 		return nil, fmt.Errorf("Items has type %T, want list", raw)
 	}
@@ -109,13 +177,13 @@ func convertChiseledBookshelfItems(raw any) ([]any, error) {
 			"Name": "", "Count": byte(0), "Damage": int16(0), "WasPickedUp": byte(0),
 		}
 	}
-	occupied := [6]bool{}
-	for index, rawItem := range items {
+	for index := range count {
+		rawItem, _ := templateListValue(raw, index)
 		entry, ok := rawItem.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("item %d has type %T, want compound", index, rawItem)
 		}
-		slot := int64(index)
+		slot := int64(0)
 		if rawSlot, exists := entry["Slot"]; exists {
 			var valid bool
 			slot, valid = javaNBTInt(rawSlot)
@@ -123,13 +191,10 @@ func convertChiseledBookshelfItems(raw any) ([]any, error) {
 				return nil, fmt.Errorf("item %d Slot has type %T, want integer", index, rawSlot)
 			}
 		}
-		if slot < 0 || slot >= int64(len(out)) {
-			return nil, fmt.Errorf("item %d has invalid bookshelf slot %d", index, slot)
+		slot = int64(uint8(slot))
+		if slot >= int64(len(out)) {
+			continue
 		}
-		if occupied[slot] {
-			return nil, fmt.Errorf("duplicate bookshelf slot %d", slot)
-		}
-		occupied[slot] = true
 		stack, err := item.StackFromJavaNBT(entry)
 		if err != nil {
 			return nil, fmt.Errorf("item %d: %w", index, err)
@@ -144,21 +209,35 @@ func convertChiseledBookshelfItems(raw any) ([]any, error) {
 	return out, nil
 }
 
-	
 func convertJavaItems(raw any) ([]any, error) {
-	items, ok := raw.([]any)
-	if !ok { return nil, fmt.Errorf("Items has type %T, want list", raw) }
-	out := make([]any, 0, len(items))
-	for i, value := range items {
+	count, ok := templateListLen(raw)
+	if !ok {
+		return nil, fmt.Errorf("Items has type %T, want list", raw)
+	}
+	out := make([]any, 0, count)
+	for i := range count {
+		value, _ := templateListValue(raw, i)
 		entry, ok := value.(map[string]any)
-		if !ok { return nil, fmt.Errorf("item %d has type %T, want compound", i, value) }
+		if !ok {
+			return nil, fmt.Errorf("item %d has type %T, want compound", i, value)
+		}
 		stack, err := item.StackFromJavaNBT(entry)
-		if err != nil { return nil, fmt.Errorf("item %d: %w", i, err) }
-		if stack.Empty() { continue }
+		if err != nil {
+			return nil, fmt.Errorf("item %d: %w", i, err)
+		}
+		if stack.Empty() {
+			continue
+		}
 		encoded := item.WriteNBT(stack, true)
-		slot, exists := entry["Slot"]
-		if !exists { slot = int8(i) }
-		encoded["Slot"] = slot
+		slot := int64(0)
+		if rawSlot, exists := entry["Slot"]; exists {
+			var valid bool
+			slot, valid = javaNBTInt(rawSlot)
+			if !valid {
+				return nil, fmt.Errorf("item %d Slot has type %T, want integer", i, rawSlot)
+			}
+		}
+		encoded["Slot"] = uint8(slot)
 		out = append(out, encoded)
 	}
 	return out, nil
@@ -167,38 +246,66 @@ func convertJavaItems(raw any) ([]any, error) {
 func convertSpawner(data map[string]any) {
 	if spawn, ok := data["SpawnData"].(map[string]any); ok {
 		entity, _ := spawn["entity"].(map[string]any)
-		if entity == nil { entity = spawn }
-		if id, ok := entity["id"].(string); ok { data["EntityIdentifier"] = id }
+		if entity == nil {
+			entity = spawn
+		}
+		if id, ok := entity["id"].(string); ok {
+			data["EntityIdentifier"] = id
+		}
 	}
-	if potentials, ok := data["SpawnPotentials"].([]any); ok {
-		for _, raw := range potentials {
+	if count, ok := templateListLen(data["SpawnPotentials"]); ok {
+		for i := range count {
+			raw, _ := templateListValue(data["SpawnPotentials"], i)
 			potential, ok := raw.(map[string]any)
-			if !ok { continue }
+			if !ok {
+				continue
+			}
 			weighted, _ := potential["data"].(map[string]any)
 			entity, _ := weighted["entity"].(map[string]any)
-			if entity == nil { entity = weighted }
+			if entity == nil {
+				entity = weighted
+			}
 			id, _ := entity["id"].(string)
-			if id != "" { potential["EntityIdentifier"] = id }
-			if weight, exists := potential["weight"]; exists { potential["Weight"] = weight }
+			if id != "" {
+				potential["EntityIdentifier"] = id
+			}
+			if weight, exists := potential["weight"]; exists {
+				potential["Weight"] = weight
+			}
 		}
 	}
 }
 
 func convertSign(data map[string]any) {
 	front, _ := data["front_text"].(map[string]any)
-	if front == nil { front, _ = data["FrontText"].(map[string]any) }
+	if front == nil {
+		front, _ = data["FrontText"].(map[string]any)
+	}
 	back, _ := data["back_text"].(map[string]any)
-	if back == nil { back, _ = data["BackText"].(map[string]any) }
-	if front != nil { data["FrontText"] = bedrockSignText(front) }
-	if back != nil { data["BackText"] = bedrockSignText(back) }
-	if waxed, ok := data["is_waxed"]; ok { data["IsWaxed"] = waxed }
+	if back == nil {
+		back, _ = data["BackText"].(map[string]any)
+	}
+	if front != nil {
+		data["FrontText"] = bedrockSignText(front)
+	}
+	if back != nil {
+		data["BackText"] = bedrockSignText(back)
+	}
+	if waxed, ok := data["is_waxed"]; ok {
+		data["IsWaxed"] = waxed
+	}
 }
 
 func bedrockSignText(src map[string]any) map[string]any {
 	out := cloneNBT(src)
-	if messages, ok := src["messages"].([]any); ok {
-		lines := make([]string, 0, len(messages))
-		for _, raw := range messages { if text, ok := raw.(string); ok { lines = append(lines, text) } }
+	if count, ok := templateListLen(src["messages"]); ok {
+		lines := make([]string, 0, count)
+		for i := range count {
+			raw, _ := templateListValue(src["messages"], i)
+			if text, ok := raw.(string); ok {
+				lines = append(lines, text)
+			}
+		}
 		out["Text"] = strings.Join(lines, "\n")
 	}
 	if colour, ok := src["color"].(string); ok {
@@ -206,17 +313,24 @@ func bedrockSignText(src map[string]any) map[string]any {
 			out["SignTextColor"] = rgba
 		}
 	}
-	if glowing, ok := src["has_glowing_text"]; ok { out["IgnoreLighting"] = glowing }
-	if owner, ok := src["allowed_player_editor"]; ok { out["TextOwner"] = owner }
+	if glowing, ok := src["has_glowing_text"]; ok {
+		out["IgnoreLighting"] = glowing
+	}
+	if owner, ok := src["allowed_player_editor"]; ok {
+		out["TextOwner"] = owner
+	}
 	return out
 }
 
 func convertBanner(data map[string]any, stateName string) {
-	if patterns, ok := data["patterns"].([]any); ok {
-		converted := make([]any, 0, len(patterns))
-		for _, raw := range patterns {
+	if count, ok := templateListLen(data["patterns"]); ok {
+		converted := make([]any, 0, count)
+		for i := range count {
+			raw, _ := templateListValue(data["patterns"], i)
 			p, ok := raw.(map[string]any)
-			if !ok { continue }
+			if !ok {
+				continue
+			}
 			layer := map[string]any{}
 			if pattern, ok := p["pattern"].(string); ok {
 				layer["Pattern"] = javaBannerPattern(pattern)
@@ -262,7 +376,9 @@ func javaBannerPattern(name string) string {
 		"triangle_bottom": "bt", "triangle_top": "tt", "triangles_bottom": "bts", "triangles_top": "tts",
 		"globe": "glb", "piglin": "pig", "flow": "flw", "guster": "gus",
 	}
-	if pattern, ok := patterns[name]; ok { return pattern }
+	if pattern, ok := patterns[name]; ok {
+		return pattern
+	}
 	return name
 }
 
@@ -301,15 +417,18 @@ func convertBeehive(data map[string]any) error {
 		data["FlowerPos"] = converted
 		delete(data, "flower_pos")
 	}
-	bees, ok := data["Bees"].([]any)
+	bees := data["Bees"]
+	count, ok := templateListLen(bees)
 	if !ok {
-		bees, ok = data["bees"].([]any)
+		bees = data["bees"]
+		count, ok = templateListLen(bees)
 	}
 	if !ok {
 		return nil
 	}
-	occupants := make([]any, 0, len(bees))
-	for i, raw := range bees {
+	occupants := make([]any, 0, count)
+	for i := range count {
+		raw, _ := templateListValue(bees, i)
 		bee, ok := raw.(map[string]any)
 		if !ok {
 			return fmt.Errorf("bee %d has type %T, want compound", i, raw)
@@ -329,7 +448,7 @@ func convertBeehive(data map[string]any) error {
 		}
 		occupants = append(occupants, map[string]any{
 			"ActorIdentifier": entityID,
-			"SaveData": entityData,
+			"SaveData":        entityData,
 			"TicksLeftToStay": int32(max(int64(0), minimum-ticks)),
 		})
 	}
@@ -346,7 +465,9 @@ func convertBrushable(data map[string]any) error {
 	}
 	if itemData, ok := data["item"].(map[string]any); ok {
 		stack, err := item.StackFromJavaNBT(itemData)
-		if err != nil { return fmt.Errorf("item: %w", err) }
+		if err != nil {
+			return fmt.Errorf("item: %w", err)
+		}
 		data["Item"] = item.WriteNBT(stack, true)
 	}
 	return nil
@@ -355,7 +476,9 @@ func convertBrushable(data map[string]any) error {
 func convertDecoratedPot(data map[string]any) error {
 	if itemData, ok := data["item"].(map[string]any); ok {
 		stack, err := item.StackFromJavaNBT(itemData)
-		if err != nil { return fmt.Errorf("item: %w", err) }
+		if err != nil {
+			return fmt.Errorf("item: %w", err)
+		}
 		data["item"] = item.WriteNBT(stack, true)
 	}
 	return nil
@@ -377,6 +500,12 @@ func cloneNBTValue(value any) any {
 		out := make([]any, len(v))
 		for i, item := range v {
 			out[i] = cloneNBTValue(item)
+		}
+		return out
+	case []map[string]any:
+		out := make([]map[string]any, len(v))
+		for i, compound := range v {
+			out[i] = cloneNBT(compound)
 		}
 		return out
 	case []byte:

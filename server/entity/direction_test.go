@@ -2,6 +2,7 @@ package entity
 
 import (
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -24,7 +25,7 @@ func TestExplosionImpulseAddsToEntityTypeVelocity(t *testing.T) {
 		name string
 		new  func(world.EntitySpawnOpts) *world.EntityHandle
 	}{
-		{"TNT", func(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(TNTType, tntConf) }},
+		{"TNT", func(opts world.EntitySpawnOpts) *world.EntityHandle { return NewTNT(opts, 4*time.Second, nil) }},
 		{"projectile", func(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(ArrowType, arrowConf) }},
 		{"minecart", func(opts world.EntitySpawnOpts) *world.EntityHandle { return opts.New(MinecartType, minecartConf) }},
 	} {

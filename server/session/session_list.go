@@ -87,13 +87,12 @@ func (l *sessionList) Lookup(id uuid.UUID) (*Session, bool) {
 }
 
 func (l *sessionList) sendSessionTo(s, to *Session) {
-	runtimeID := l.runtimeID(s, to)
 
 	to.writePacket(&packet.PlayerList{
 		Entries: []protocol.PlayerListEntry{{
 			ActionType:     protocol.PlayerListActionAdd,
 			UUID:           s.ent.UUID(),
-			EntityUniqueID: int64(runtimeID),
+			EntityUniqueID: s.ent.UniqueID(),
 			Username:       s.conn.IdentityData().DisplayName,
 			XUID:           s.conn.IdentityData().XUID,
 			BuildPlatform:  int32(protocol.DeviceUnknown),

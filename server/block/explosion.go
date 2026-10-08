@@ -57,6 +57,11 @@ type Explodable interface {
 	Explode(src world.ExplosionSource, pos cube.Pos, tx *world.Tx)
 }
 
+// ExplosionHitHandler runs before an explosion removes a block or rolls its drops.
+type ExplosionHitHandler interface {
+	OnExplosionHit(src world.ExplosionSource, pos cube.Pos, tx *world.Tx)
+}
+
 type explosionBlockInfo struct {
 	resistance float64
 	flags      uint8
@@ -227,6 +232,9 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 		}
 		for _, pos := range affectedBlocks {
 			bl := tx.Block(pos)
+			if hit, ok := bl.(ExplosionHitHandler); ok {
+				hit.OnExplosionHit(src, pos, tx)
+			}
 			if explodable, ok := bl.(Explodable); ok {
 				explodable.Explode(src, pos, tx)
 			} else if breakable, ok := bl.(Breakable); ok {
@@ -236,7 +244,19 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 				if breakHandler != nil {
 					breakHandler(pos, tx, nil)
 				}
-				if itemDropChance > r.Float64() {
+				if source, ok := bl.(interface {
+					SourceDrops(cube.Pos, *world.Tx, item.Stack, world.Entity, float64) []item.Stack
+				}); ok && itemDropChance >= 0 {
+					if itemDropChance > 0 {
+						radius := 0.0
+						if itemDropChance < 1 {
+							radius = 1 / itemDropChance
+						}
+						for _, drop := range source.SourceDrops(pos, tx, item.Stack{}, nil, radius) {
+							dropItem(tx, drop, pos.Vec3Centre())
+						}
+					}
+				} else if itemDropChance > r.Float64() {
 					for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
 						dropItem(tx, drop, pos.Vec3Centre())
 					}

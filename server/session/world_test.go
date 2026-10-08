@@ -3,6 +3,7 @@ package session
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
@@ -118,7 +119,9 @@ func TestViewEntityArmourPublishesBodyItem(t *testing.T) {
 
 func TestHideSessionlessControllableTwice(t *testing.T) {
 	s := testSession("viewer")
-	handle := &world.EntityHandle{}
+	const uniqueID = 17
+	handle := world.EntitySpawnOpts{ID: [16]byte{8: uniqueID}}.New(entity.TextType, entity.StationaryBehaviourConfig{})
+	t.Cleanup(func() { _ = handle.Close() })
 	entity := testControllable{Controllable: nil, handle: handle}
 	const runtimeID = 2
 	s.entityRuntimeIDs[handle] = runtimeID
@@ -137,8 +140,8 @@ func TestHideSessionlessControllableTwice(t *testing.T) {
 		t.Fatalf("got %d remove packets, want 1", got)
 	}
 	removed := (<-s.packets).(*packet.RemoveActor)
-	if removed.EntityUniqueID != runtimeID {
-		t.Fatalf("removed runtime ID %d, want %d", removed.EntityUniqueID, runtimeID)
+	if removed.EntityUniqueID != uniqueID {
+		t.Fatalf("removed actor ID %d, want %d (runtime ID is %d)", removed.EntityUniqueID, uniqueID, runtimeID)
 	}
 }
 

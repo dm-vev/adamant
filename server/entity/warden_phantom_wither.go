@@ -58,37 +58,10 @@ func witherSoulMaterial(b world.Block) bool {
 	}
 }
 
-func tryActivateWardenShrieker(tx *world.Tx, pos cube.Pos) bool {
-	shrieker, ok := tx.Block(pos).(block.SculkShrieker)
-	if !ok || shrieker.Cooldown > 0 {
-		return false
-	}
-	shrieker.Cooldown = 40
-	shrieker.WarningLevel = min(4, shrieker.WarningLevel+1)
-	tx.SetBlock(pos, shrieker, nil)
-	if shrieker.WarningLevel < 4 {
-		return true
-	}
-	if !shrieker.CanSummon {
-		return true
-	}
-	for player := range tx.EntitiesWithin(cube.Box(-8, -8, -8, 8, 8, 8).Translate(pos.Vec3())) {
-		if player.H().Type().EncodeEntity() != "minecraft:player" {
-			continue
-		}
-		origin := pos.Vec3Middle().Add(mgl64.Vec3{0, 1, 0})
-		tx.AddEntity(world.EntitySpawnOpts{Position: origin, SpawnReason: "sculk_shrieker"}.New(WardenType, wardenConfig{anger: 150}))
-		shrieker.WarningLevel = 0
-		tx.SetBlock(pos, shrieker, nil)
-		return true
-	}
-	return false
-}
-
 const (
-	wardenBaseMovementSpeed = float64(float32(0.3))
+	wardenBaseMovementSpeed  = float64(float32(0.3))
 	phantomBaseMovementSpeed = 0.7
-	witherBaseMovementSpeed = float64(float32(0.6))
+	witherBaseMovementSpeed  = float64(float32(0.6))
 )
 
 var WardenType wardenType
@@ -360,7 +333,7 @@ func (w *Warden) AddEffect(e effect.Effect) {
 func (w *Warden) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
 func (w *Warden) Effects() []effect.Effect   { return w.state().effects.Effects() }
 func (w *Warden) Speed() float64             { return w.state().speed }
-func (w *Warden) SetSpeed(v float64)          { w.state().speed = max(0, min(1024, v)) }
+func (w *Warden) SetSpeed(v float64)         { w.state().speed = max(0, min(1024, v)) }
 func (w *Warden) viewAction(a world.EntityAction) {
 	v := w.tx.Viewers(w.Position())
 	for _, x := range v {
@@ -492,7 +465,7 @@ func (p *Phantom) AddEffect(e effect.Effect) {
 func (p *Phantom) RemoveEffect(t effect.Type) { p.state().effects.Remove(t, p) }
 func (p *Phantom) Effects() []effect.Effect   { return p.state().effects.Effects() }
 func (p *Phantom) Speed() float64             { return p.state().speed }
-func (p *Phantom) SetSpeed(v float64)          { p.state().speed = max(0, min(1024, v)) }
+func (p *Phantom) SetSpeed(v float64)         { p.state().speed = max(0, min(1024, v)) }
 func (p *Phantom) viewAction(a world.EntityAction) {
 	v := p.tx.Viewers(p.Position())
 	for _, x := range v {
@@ -606,7 +579,7 @@ var WitherType witherType
 
 type witherType struct{}
 
-func (witherType) EncodeEntity() string { return "minecraft:wither" }
+func (witherType) EncodeEntity() string        { return "minecraft:wither" }
 func (witherType) BBox(world.Entity) cube.BBox { return cube.Box(-.49, 0, -.49, .49, 3.5, .49) }
 func (witherType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
@@ -894,7 +867,7 @@ func (w *Wither) AddEffect(e effect.Effect) {
 func (w *Wither) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
 func (w *Wither) Effects() []effect.Effect   { return w.state().effects.Effects() }
 func (w *Wither) Speed() float64             { return w.state().speed }
-func (w *Wither) SetSpeed(v float64)          { w.state().speed = max(0, min(1024, v)) }
+func (w *Wither) SetSpeed(v float64)         { w.state().speed = max(0, min(1024, v)) }
 func (w *Wither) viewAction(a world.EntityAction) {
 	v := w.tx.Viewers(w.Position())
 	for _, x := range v {

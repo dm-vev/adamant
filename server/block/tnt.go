@@ -31,7 +31,7 @@ func (t TNT) RedstonePowerAction(pos cube.Pos, tx *world.Tx, oldPower, newPower 
 // ProjectileHit ...
 func (t TNT) ProjectileHit(pos cube.Pos, tx *world.Tx, e world.Entity, _ cube.Face) {
 	if f, ok := e.(flammableEntity); ok && f.OnFireDuration() > 0 {
-		t.Ignite(pos, tx, nil)
+		t.Ignite(pos, tx, e)
 	}
 }
 
@@ -39,7 +39,7 @@ func (t TNT) ProjectileHit(pos cube.Pos, tx *world.Tx, e world.Entity, _ cube.Fa
 func (t TNT) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	held, _ := u.HeldItems()
 	if _, ok := held.Enchantment(enchantment.FireAspect); ok {
-		t.Ignite(pos, tx, nil)
+		t.Ignite(pos, tx, u)
 		ctx.DamageItem(1)
 		return true
 	}
@@ -47,14 +47,14 @@ func (t TNT) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx 
 }
 
 // Ignite ...
-func (t TNT) Ignite(pos cube.Pos, tx *world.Tx, _ world.Entity) bool {
-	spawnTnt(pos, tx, time.Second*4)
+func (t TNT) Ignite(pos cube.Pos, tx *world.Tx, owner world.Entity) bool {
+	spawnTnt(pos, tx, time.Second*4, owner)
 	return true
 }
 
 // Explode ...
-func (t TNT) Explode(_ world.ExplosionSource, pos cube.Pos, tx *world.Tx) {
-	spawnTnt(pos, tx, time.Second/2+time.Duration(rand.IntN(int(time.Second+time.Second/2))))
+func (t TNT) Explode(src world.ExplosionSource, pos cube.Pos, tx *world.Tx) {
+	spawnTnt(pos, tx, time.Second/2+time.Duration(rand.IntN(int(time.Second+time.Second/2))), world.ExplosionCausingEntity(src, tx))
 }
 
 // BreakInfo ...
@@ -78,9 +78,9 @@ func (t TNT) EncodeBlock() (name string, properties map[string]interface{}) {
 }
 
 // spawnTnt creates a new TNT entity at the given position with the given fuse duration.
-func spawnTnt(pos cube.Pos, tx *world.Tx, fuse time.Duration) {
+func spawnTnt(pos cube.Pos, tx *world.Tx, fuse time.Duration, owner world.Entity) {
 	tx.PlaySound(pos.Vec3Centre(), sound.TNT{})
 	tx.SetBlock(pos, nil, nil)
 	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre()}
-	tx.AddEntity(tx.World().EntityRegistry().Config().TNT(opts, fuse))
+	tx.AddEntity(tx.World().EntityRegistry().Config().TNT(opts, fuse, owner))
 }

@@ -13,7 +13,9 @@ import (
 // world. The data held here is usually saved in a level.dat file of the world.
 // Data may be used in LevelDat.Unmarshal to collect the data of the level.dat.
 type Data struct {
-	BaseGameVersion                string `nbt:"baseGameVersion"`
+	// Java retains source-only rules without inventing native Bedrock tags.
+	Java                           map[string]any `nbt:"adamant:java"`
+	BaseGameVersion                string         `nbt:"baseGameVersion"`
 	BiomeOverride                  string
 	ConfirmedPlatformLockedContent bool
 	CentreMapsToOrigin             bool  `nbt:"CenterMapsToOrigin"`
@@ -232,6 +234,14 @@ func (d *Data) Settings() *world.Settings {
 	d.WorldStartCount += 1
 	difficulty, _ := world.DifficultyByID(int(d.Difficulty))
 	mode, _ := world.GameModeByID(int(d.GameType))
+	spawnMonsters := true
+	if value, present := d.Java["spawn_monsters"].(byte); present {
+		spawnMonsters = value != 0
+	}
+	spawnWardens := true
+	if value, present := d.Java["spawn_wardens"].(byte); present {
+		spawnWardens = value != 0
+	}
 	return &world.Settings{
 		Name:                      d.LevelName,
 		Seed:                      d.RandomSeed,
@@ -249,6 +259,9 @@ func (d *Data) Settings() *world.Settings {
 		Difficulty:                difficulty,
 		TickRange:                 d.ServerChunkTickRange,
 		FallDamage:                d.FallDamage,
+		SpawnMobs:                 d.DoMobSpawning,
+		SpawnMonsters:             spawnMonsters,
+		SpawnWardens:              spawnWardens,
 		PlayersSleepingPercentage: d.PlayersSleepingPercentage,
 	}
 }
@@ -275,6 +288,18 @@ func (d *Data) PutSettings(s *world.Settings) {
 	d.CurrentTick = s.CurrentTick
 	d.ServerChunkTickRange = s.TickRange
 	d.FallDamage = s.FallDamage
+	d.DoMobSpawning = s.SpawnMobs
+	if d.Java == nil {
+		d.Java = make(map[string]any)
+	}
+	d.Java["spawn_monsters"] = byte(0)
+	if s.SpawnMonsters {
+		d.Java["spawn_monsters"] = byte(1)
+	}
+	d.Java["spawn_wardens"] = byte(0)
+	if s.SpawnWardens {
+		d.Java["spawn_wardens"] = byte(1)
+	}
 	d.PlayersSleepingPercentage = s.PlayersSleepingPercentage
 	mode, _ := world.GameModeID(s.DefaultGameMode)
 	d.GameType = int32(mode)

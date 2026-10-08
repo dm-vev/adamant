@@ -16,7 +16,7 @@ import (
 // whose state properties are stored in a Bedrock block actor.
 func NativeBlockForJavaState(state world.BlockState) (world.Block, bool, error) {
 	name := world.NormaliseBlockName(state.Name)
-	if native, adapted, err := nativeDecorativeActor(state, strings.TrimPrefix(name, "minecraft:")); adapted || err != nil {
+	if native, adapted, err := nativeStateActor(state, strings.TrimPrefix(name, "minecraft:")); adapted || err != nil {
 		return native, adapted, err
 	}
 	if !strings.HasSuffix(name, "_copper_golem_statue") && name != "minecraft:copper_golem_statue" {
@@ -74,8 +74,38 @@ var nativeActorSkulls = map[string]block.SkullType{
 	"dragon_head": block.DragonHead(), "piglin_head": block.PiglinHead(),
 }
 
-func nativeDecorativeActor(state world.BlockState, name string) (world.Block, bool, error) {
+func nativeStateActor(state world.BlockState, name string) (world.Block, bool, error) {
 	switch {
+	case name == "sculk_sensor", name == "calibrated_sculk_sensor":
+		phase := block.SculkSensorInactive
+		if raw, exists := state.Properties["sculk_sensor_phase"]; exists {
+			switch raw {
+			case "inactive":
+			case "active":
+				phase = block.SculkSensorActive
+			case "cooldown":
+				phase = block.SculkSensorCooldown
+			default:
+				return nil, false, fmt.Errorf("java sensor: invalid phase %v", raw)
+			}
+		}
+		var power int64
+		if raw, exists := state.Properties["power"]; exists {
+			var valid bool
+			power, valid = integer(raw)
+			if !valid || power < 0 || power > 15 {
+				return nil, false, fmt.Errorf("java sensor: invalid power %v", raw)
+			}
+		}
+		sensor := block.NewSculkSensorState(phase, int(power), 0)
+		if name == "sculk_sensor" {
+			return sensor, true, nil
+		}
+		facing, err := actorDirection(state)
+		if err != nil {
+			return nil, false, err
+		}
+		return block.CalibratedSculkSensor{SculkSensor: sensor, Facing: facing}, true, nil
 	case strings.HasSuffix(name, "_bed"):
 		colour, ok := javaColorIDs[strings.TrimSuffix(name, "_bed")]
 		if !ok {
@@ -186,7 +216,8 @@ func actorOptionalBool(state world.BlockState, key string) (bool, error) {
 
 func stateDerivedActor(native world.Block) bool {
 	switch native.(type) {
-	case block.CopperGolemStatue, block.Bed, block.Banner, block.Skull:
+	case block.CopperGolemStatue, block.Bed, block.Banner, block.Skull,
+		block.SculkSensor, block.CalibratedSculkSensor:
 		return true
 	}
 	return false

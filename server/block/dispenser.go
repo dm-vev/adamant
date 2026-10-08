@@ -231,7 +231,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		if create == nil {
 			d.eject(tx, opts, stack.Grow(1-stack.Count()))
 		} else {
-			tx.AddEntity(create(world.EntitySpawnOpts{Position: pos.Side(d.Facing).Vec3Middle()}, 4*time.Second))
+			tx.AddEntity(create(world.EntitySpawnOpts{Position: pos.Side(d.Facing).Vec3Middle()}, 4*time.Second, nil))
 		}
 	case item.SpawnEgg, item.Harness:
 		behavior := held.(interface {

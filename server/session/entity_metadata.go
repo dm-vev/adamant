@@ -44,6 +44,37 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 	return m
 }
 
+type creakingState interface {
+	CreakingState() (state int32, swayTicks int32)
+}
+
+func entityProperties(e world.Entity) protocol.EntityProperties {
+	state, swayTicks, ok := creakingProperties(e)
+	if !ok {
+		if beh, hasBehaviour := e.(interface{ Behaviour() entity.Behaviour }); hasBehaviour {
+			state, swayTicks, ok = creakingProperties(beh.Behaviour())
+		}
+	}
+	if !ok {
+		return protocol.EntityProperties{}
+	}
+	return protocol.EntityProperties{
+		IntegerProperties: []protocol.IntegerEntityProperty{
+			{Index: 0, Value: state},
+			{Index: 1, Value: swayTicks},
+		},
+	}
+}
+
+func creakingProperties(e any) (state, swayTicks int32, ok bool) {
+	c, ok := e.(creakingState)
+	if !ok {
+		return 0, 0, false
+	}
+	state, swayTicks = c.CreakingState()
+	return state, swayTicks, true
+}
+
 func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if parrot, ok := e.(*entity.Parrot); ok {
 		m[protocol.EntityDataKeyVariant] = int32(parrot.Variant())
@@ -130,10 +161,10 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if f, ok := e.(firework); ok {
 		m[protocol.EntityDataKeyDisplayFirework] = item.WriteNBT(item.NewStack(f.Firework(), 1), false)
 		if o, ok := e.(owned); ok && f.Attached() && o.Owner() != nil {
-			m[protocol.EntityDataKeyCustomDisplay] = int64(s.handleRuntimeID(o.Owner()))
+			m[protocol.EntityDataKeyCustomDisplay] = s.handleUniqueID(o.Owner())
 		}
 	} else if o, ok := e.(owned); ok && o.Owner() != nil {
-		m[protocol.EntityDataKeyOwner] = int64(s.handleRuntimeID(o.Owner()))
+		m[protocol.EntityDataKeyOwner] = s.handleUniqueID(o.Owner())
 	}
 	if sc, ok := e.(scaled); ok {
 		m[protocol.EntityDataKeyScale] = float32(sc.Scale())

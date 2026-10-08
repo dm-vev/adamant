@@ -57,6 +57,7 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 		HasRaidOmenPosition: d.HasRaidOmenPosition,
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
+		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
 	}
 	echest := make([]item.Stack, 27)
 	decodeItems(d.EnderChestInventory, echest, br)
@@ -126,6 +127,7 @@ func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 		HasRaidOmenPosition: d.HasRaidOmenPosition,
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
+		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
 	}
 }
 
@@ -149,11 +151,12 @@ type jsonData struct {
 	FireTicks                        int64
 	FallDistance                     float64
 	Dimension                        int32
-	UnlockedRecipes     []string
-	RaidOmenPosition    cube.Pos
-	HasRaidOmenPosition bool
-	ShoulderLeft        map[string]any
-	ShoulderRight       map[string]any
+	UnlockedRecipes                  []string
+	RaidOmenPosition                 cube.Pos
+	HasRaidOmenPosition              bool
+	ShoulderLeft                     map[string]any
+	ShoulderRight                    map[string]any
+	JavaState                        map[string]any `json:"adamant:java,omitempty"`
 }
 
 type jsonInventoryData struct {

@@ -51,7 +51,7 @@ func (s *Session) ViewMapData(data world.MapData) error {
 		if object.Entity != nil {
 			if id := s.handleRuntimeID(object.Entity); id != 0 {
 				trackedObjects = append(trackedObjects, protocol.MapTrackedObject{
-					Type:protocol.MapObjectTypeEntity, EntityUniqueID:protocol.Option(int64(id)),
+					Type: protocol.MapObjectTypeEntity, EntityUniqueID: protocol.Option(s.handleUniqueID(object.Entity)),
 				})
 			}
 		} else if object.Block != nil {
