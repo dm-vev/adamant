@@ -26,9 +26,69 @@ type GenerationResult struct {
 	// BlockEntities overrides the default NBT of blocks placed in the chunk.
 	// Positions are absolute world coordinates and must refer to NBT blocks.
 	BlockEntities []chunk.BlockEntity
-	// ScheduledBlocks contains initial updates for generated blocks. Tick is
-	// a relative delay from owner-thread publication, not an absolute tick.
-	ScheduledBlocks []chunk.ScheduledBlockUpdate
+	// ScheduledTicks contains zero-delay block or fluid updates for generated
+	// positions. The World publishes them on its owner goroutine.
+	ScheduledTicks []chunk.ScheduledTick
+
+	scheduledTickIndices map[generatedTickIndex]struct{}
+	scheduledTickCount   int
+}
+
+type generatedTickIndex struct {
+	pos      cube.Pos
+	kind     chunk.ScheduledTickKind
+	typeName string
+}
+
+func generatedTickIndexOf(pos cube.Pos, kind chunk.ScheduledTickKind, typeName string) generatedTickIndex {
+	return generatedTickIndex{pos: pos, kind: kind, typeName: typeName}
+}
+
+func (result *GenerationResult) rebuildScheduledTickIndex() {
+	result.scheduledTickIndices = make(map[generatedTickIndex]struct{}, len(result.ScheduledTicks))
+	for _, tick := range result.ScheduledTicks {
+		result.scheduledTickIndices[generatedTickIndexOf(tick.Pos, tick.Kind, tick.Type)] = struct{}{}
+	}
+	result.scheduledTickCount = len(result.ScheduledTicks)
+}
+
+// HasScheduledTick reports whether a generated tick for the registry type and
+// position is already present. Kind keeps block and fluid identities distinct.
+func (result *GenerationResult) HasScheduledTick(pos cube.Pos, kind chunk.ScheduledTickKind, typeName string) bool {
+	index := generatedTickIndexOf(pos, kind, typeName)
+	if result.scheduledTickIndices != nil && result.scheduledTickCount == len(result.ScheduledTicks) {
+		_, exists := result.scheduledTickIndices[index]
+		return exists
+	}
+	for _, tick := range result.ScheduledTicks {
+		if tick.Pos == pos && tick.Kind == kind && tick.Type == typeName {
+			return true
+		}
+	}
+	return false
+}
+
+// ScheduleTick appends a generated tick unless the same type is already
+// scheduled at its position. The first schedule retains its priority and order.
+func (result *GenerationResult) ScheduleTick(tick chunk.ScheduledTick) {
+	switch tick.Kind {
+	case chunk.BlockTick, chunk.FluidTick:
+	default:
+		panic("generated tick: invalid kind")
+	}
+	if tick.Type == "" {
+		panic("generated tick: empty registry type")
+	}
+	if result.scheduledTickIndices == nil || result.scheduledTickCount != len(result.ScheduledTicks) {
+		result.rebuildScheduledTickIndex()
+	}
+	index := generatedTickIndexOf(tick.Pos, tick.Kind, tick.Type)
+	if _, exists := result.scheduledTickIndices[index]; exists {
+		return
+	}
+	result.ScheduledTicks = append(result.ScheduledTicks, tick)
+	result.scheduledTickIndices[index] = struct{}{}
+	result.scheduledTickCount = len(result.ScheduledTicks)
 }
 
 // NopGenerator is the default generator a world. It places no blocks in the world which results in a void

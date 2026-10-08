@@ -57,6 +57,7 @@ var javaToNativeBlockNames = map[string]string{
 	"minecraft:wall_torch":                   "minecraft:torch",
 	"minecraft:soul_wall_torch":              "minecraft:soul_torch",
 	"minecraft:redstone_wall_torch":          "minecraft:redstone_torch",
+	"minecraft:copper_wall_torch":            "minecraft:copper_torch",
 	"minecraft:dirt_path":                    "minecraft:grass_path",
 	"minecraft:terracotta":                   "minecraft:hardened_clay",
 	"minecraft:snow_block":                   "minecraft:snow",
@@ -65,6 +66,14 @@ var javaToNativeBlockNames = map[string]string{
 	"minecraft:bricks":                       "minecraft:brick_block",
 	"minecraft:cobblestone_stairs":           "minecraft:stone_stairs",
 	"minecraft:light_gray_glazed_terracotta": "minecraft:silver_glazed_terracotta",
+	"minecraft:stone_stairs":                 "minecraft:normal_stone_stairs",
+	"minecraft:end_stone_brick_stairs":       "minecraft:end_brick_stairs",
+	"minecraft:prismarine_brick_stairs":      "minecraft:prismarine_bricks_stairs",
+	"minecraft:nether_bricks":                "minecraft:nether_brick",
+	"minecraft:red_nether_bricks":            "minecraft:red_nether_brick",
+	"minecraft:nether_portal":                "minecraft:portal",
+	"minecraft:frogspawn":                    "minecraft:frog_spawn",
+	"minecraft:slime_block":                  "minecraft:slime",
 	"minecraft:oak_button":                   "minecraft:wooden_button",
 	"minecraft:oak_door":                     "minecraft:wooden_door",
 	"minecraft:oak_fence_gate":               "minecraft:fence_gate",
@@ -117,6 +126,14 @@ var nativeToJavaBlockNames = map[string]string{
 	"minecraft:brick_block":                  "minecraft:bricks",
 	"minecraft:stone_stairs":                 "minecraft:cobblestone_stairs",
 	"minecraft:silver_glazed_terracotta":     "minecraft:light_gray_glazed_terracotta",
+	"minecraft:normal_stone_stairs":          "minecraft:stone_stairs",
+	"minecraft:end_brick_stairs":             "minecraft:end_stone_brick_stairs",
+	"minecraft:prismarine_bricks_stairs":     "minecraft:prismarine_brick_stairs",
+	"minecraft:nether_brick":                 "minecraft:nether_bricks",
+	"minecraft:red_nether_brick":             "minecraft:red_nether_bricks",
+	"minecraft:portal":                       "minecraft:nether_portal",
+	"minecraft:frog_spawn":                   "minecraft:frogspawn",
+	"minecraft:slime":                        "minecraft:slime_block",
 	"minecraft:wooden_button":                "minecraft:oak_button",
 	"minecraft:wooden_door":                  "minecraft:oak_door",
 	"minecraft:fence_gate":                   "minecraft:oak_fence_gate",
@@ -191,9 +208,11 @@ func resolveJavaState(registry chunk.BlockRegistry, state BlockState) (NativeSta
 }
 
 func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps map[string]any) (string, map[string]any, error) {
+	// Available aliases also disambiguate identifiers shared by both palettes:
+	// native stone_stairs are Java cobblestone_stairs, not Java stone_stairs.
 	name := javaName
-	if javaName == "minecraft:snow" {
-		name = "minecraft:snow_layer"
+	if alias := javaToNativeBlockNames[javaName]; alias != "" && hasNativeBlock(registry, alias) {
+		name = alias
 	}
 	if strings.HasPrefix(javaName, "minecraft:cave_vines") {
 		berries, _ := boolProperty(javaProps["berries"])
@@ -219,9 +238,6 @@ func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps m
 		if inverted, _ := boolProperty(javaProps["inverted"]); inverted {
 			name = "minecraft:daylight_detector_inverted"
 		}
-	}
-	if !hasNativeBlock(registry, name) {
-		name = javaToNativeBlockNames[javaName]
 	}
 	if strings.HasPrefix(javaName, "minecraft:potted_") && !hasNativeBlock(registry, javaName) {
 		name = "minecraft:flower_pot"
@@ -277,11 +293,6 @@ func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps m
 	if javaName == "minecraft:small_dripleaf" && !hasNativeBlock(registry, javaName) {
 		name = "minecraft:small_dripleaf_block"
 	}
-	if javaName == "minecraft:stonecutter" {
-		// Bedrock registers the facing-capable workstation as stonecutter_block;
-		// the legacy stonecutter name has no Java-facing state.
-		name = "minecraft:stonecutter_block"
-	}
 	if javaName == "minecraft:light" && !hasNativeBlock(registry, javaName) {
 		level, ok := intProperty(javaProps["level"])
 		if !ok {
@@ -296,7 +307,11 @@ func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps m
 		return "", nil, fmt.Errorf("java state codec: unsupported synthetic Java block name %q", javaName)
 	}
 	if slabType, ok := stringProperty(javaProps["type"]); ok && slabType == "double" && strings.HasSuffix(javaName, "_slab") {
-		name = strings.TrimSuffix(name, "_slab") + "_double_slab"
+		if strings.HasSuffix(name, "cut_copper_slab") {
+			name = strings.TrimSuffix(name, "cut_copper_slab") + "double_cut_copper_slab"
+		} else {
+			name = strings.TrimSuffix(name, "_slab") + "_double_slab"
+		}
 		if !hasNativeBlock(registry, name) {
 			return "", nil, fmt.Errorf("java state codec: no native double-slab block for %q", javaName)
 		}
@@ -347,8 +362,12 @@ func nativeBlockState(registry chunk.BlockRegistry, javaName string, javaProps m
 		out[target] = mapped
 	}
 	switch javaName {
-	case "minecraft:torch", "minecraft:soul_torch", "minecraft:redstone_torch":
+	case "minecraft:torch", "minecraft:soul_torch", "minecraft:redstone_torch", "minecraft:copper_torch":
 		out["torch_facing_direction"] = "top"
+	}
+	if javaName == "minecraft:sea_pickle" {
+		waterlogged, _ := boolProperty(javaProps["waterlogged"])
+		out["dead_bit"] = nativeBool(!waterlogged, schema["dead_bit"])
 	}
 	if name == "minecraft:cauldron" {
 		switch javaName {
@@ -455,6 +474,16 @@ func hasNativeBlock(registry chunk.BlockRegistry, name string) bool {
 }
 
 func mapJavaProperty(javaName, nativeName, key string, value any, javaProps, schema map[string]any) (target string, mapped any, consume bool, err error) {
+	if javaName == "minecraft:nether_portal" && key == "axis" {
+		return "portal_axis", valueForSchema(value, schema["portal_axis"]), false, nil
+	}
+	if javaName == "minecraft:sea_pickle" && key == "pickles" {
+		count, ok := intProperty(value)
+		if !ok || count < 1 || count > 4 {
+			return "", nil, false, fmt.Errorf("java state codec: invalid sea pickle count %v", value)
+		}
+		return "cluster_count", int32(count - 1), false, nil
+	}
 	if javaName == "minecraft:jigsaw" && key == "orientation" {
 		orientation, ok := stringProperty(value)
 		if !ok {
@@ -1166,10 +1195,10 @@ func mapJavaProperty(javaName, nativeName, key string, value any, javaProps, sch
 			return "active", nativeBool(b, schema["active"]), false, nil
 		}
 	}
-	if javaName == "minecraft:turtle_egg" && (key == "eggs" || key == "hatch") {
+	if javaName == "minecraft:turtle_egg" && (key == "eggs" || key == "hatch") || javaName == "minecraft:sniffer_egg" && key == "hatch" {
 		n, ok := intProperty(value)
 		if !ok {
-			return "", nil, false, fmt.Errorf("java state codec: invalid turtle egg %s %v", key, value)
+			return "", nil, false, fmt.Errorf("java state codec: invalid %s property %s=%v", javaName, key, value)
 		}
 		if key == "eggs" {
 			if n < 1 || n > 4 {
@@ -1178,7 +1207,7 @@ func mapJavaProperty(javaName, nativeName, key string, value any, javaProps, sch
 			return "turtle_egg_count", [...]string{"", "one_egg", "two_egg", "three_egg", "four_egg"}[n], false, nil
 		}
 		if n < 0 || n > 2 {
-			return "", nil, false, fmt.Errorf("java state codec: unsupported turtle egg hatch %d", n)
+			return "", nil, false, fmt.Errorf("java state codec: unsupported %s hatch %d", javaName, n)
 		}
 		return "cracked_state", [...]string{"no_cracks", "cracked", "max_cracked"}[n], false, nil
 	}
@@ -1302,7 +1331,7 @@ var javaPropertyNativeKeys = map[string]string{
 	"conditional": "conditional_bit", "enabled": "enabled_bit", "occupied": "occupied_bit", "part": "head_piece_bit", "disarmed": "disarmed_bit",
 	"short": "short", "waterlogged": "waterlogged_bit", "leaves": "leaves", "vertical_direction": "vertical_direction",
 	"axis":     "pillar_axis",
-	"pickles":  "cluster_count",
+	"eye":      "end_portal_eye_bit",
 	"charges":  "respawn_anchor_charge",
 	"unstable": "explode_bit",
 	"dusted":   "brushed_progress",
@@ -1335,10 +1364,10 @@ func reverseNativeState(registry chunk.BlockRegistry, state NativeState) (BlockS
 		typeName = nativePlantStemJavaType(name, properties)
 	}
 	javaName := javaNameForNative(name)
-	if isSkull(name) || name == "minecraft:torch" || name == "minecraft:soul_torch" || name == "minecraft:redstone_torch" || name == "minecraft:unlit_redstone_torch" || name == "minecraft:lit_redstone_torch" || name == "minecraft:cauldron" || name == "minecraft:big_dripleaf" || name == "minecraft:melon_stem" || name == "minecraft:pumpkin_stem" {
+	if isSkull(name) || name == "minecraft:torch" || name == "minecraft:soul_torch" || name == "minecraft:copper_torch" || name == "minecraft:redstone_torch" || name == "minecraft:unlit_redstone_torch" || name == "minecraft:lit_redstone_torch" || name == "minecraft:cauldron" || name == "minecraft:big_dripleaf" || name == "minecraft:melon_stem" || name == "minecraft:pumpkin_stem" {
 		javaName = typeName
 	}
-	if name == "minecraft:torch" || name == "minecraft:soul_torch" || name == "minecraft:redstone_torch" || name == "minecraft:unlit_redstone_torch" || name == "minecraft:lit_redstone_torch" {
+	if name == "minecraft:torch" || name == "minecraft:soul_torch" || name == "minecraft:copper_torch" || name == "minecraft:redstone_torch" || name == "minecraft:unlit_redstone_torch" || name == "minecraft:lit_redstone_torch" {
 		switch nativePropertyText(properties, "torch_facing_direction") {
 		case "north", "south", "east", "west":
 		case "top":
@@ -1415,7 +1444,7 @@ func reverseNativeState(registry chunk.BlockRegistry, state NativeState) (BlockS
 		}
 		delete(javaProps, "sea_grass_type")
 	}
-	if strings.HasSuffix(name, "_double_slab") {
+	if isNativeDoubleSlab(name) {
 		javaProps["type"] = "double"
 		delete(javaProps, "half")
 	}
@@ -1556,8 +1585,16 @@ func javaProperties(nativeName, javaName string, nativeProps map[string]any) (ma
 			}
 		case key == "pillar_axis":
 			out["axis"] = value
+		case key == "portal_axis":
+			axis, ok := stringProperty(value)
+			if !ok || axis != "x" && axis != "z" {
+				return nil, fmt.Errorf("java state codec: native portal axis %v has no Java block-state representation", value)
+			}
+			out["axis"] = axis
+		case key == "end_portal_eye_bit":
+			out["eye"] = nativeBoolValue(value)
 		case key == "minecraft:vertical_half":
-			if strings.HasSuffix(nativeName, "_double_slab") {
+			if isNativeDoubleSlab(nativeName) {
 				out["type"] = "double"
 			} else if strings.HasSuffix(javaName, "_slab") {
 				out["type"] = value
@@ -1958,7 +1995,7 @@ func javaProperties(nativeName, javaName string, nativeProps map[string]any) (ma
 				out["attachment"] = value
 			}
 		case key == "cluster_count":
-			out["pickles"] = intPropertyValue(value)
+			out["pickles"] = intPropertyValue(value) + 1
 		case key == "dead_bit":
 			if javaName != "minecraft:sea_pickle" {
 				return nil, fmt.Errorf("java state codec: unsupported dead_bit on %s", nativeName)
@@ -2206,6 +2243,9 @@ func javaNameForNative(name string) string {
 		}
 		return wood + "_sign"
 	}
+	if strings.HasSuffix(name, "double_cut_copper_slab") {
+		return strings.TrimSuffix(name, "double_cut_copper_slab") + "cut_copper_slab"
+	}
 	if strings.HasSuffix(name, "_double_slab") {
 		baseName := strings.TrimSuffix(name, "_double_slab") + "_slab"
 		if javaName := nativeToJavaBlockNames[baseName]; javaName != "" {
@@ -2217,6 +2257,10 @@ func javaNameForNative(name string) string {
 		return "minecraft:light"
 	}
 	return name
+}
+
+func isNativeDoubleSlab(name string) bool {
+	return strings.HasSuffix(name, "_double_slab") || strings.HasSuffix(name, "double_cut_copper_slab")
 }
 
 // javaBlockTypeForNative selects the Java block type represented by a native
@@ -2236,7 +2280,7 @@ func javaBlockTypeForNative(name string, properties map[string]any) string {
 		}
 	}
 	switch name {
-	case "minecraft:torch", "minecraft:soul_torch", "minecraft:redstone_torch", "minecraft:unlit_redstone_torch", "minecraft:lit_redstone_torch":
+	case "minecraft:torch", "minecraft:soul_torch", "minecraft:copper_torch", "minecraft:redstone_torch", "minecraft:unlit_redstone_torch", "minecraft:lit_redstone_torch":
 		switch nativePropertyText(properties, "torch_facing_direction") {
 		case "north", "south", "east", "west":
 			switch {
@@ -2244,6 +2288,8 @@ func javaBlockTypeForNative(name string, properties map[string]any) string {
 				return "minecraft:redstone_wall_torch"
 			case name == "minecraft:soul_torch":
 				return "minecraft:soul_wall_torch"
+			case name == "minecraft:copper_torch":
+				return "minecraft:copper_wall_torch"
 			default:
 				return "minecraft:wall_torch"
 			}

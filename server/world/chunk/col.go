@@ -5,11 +5,10 @@ import (
 )
 
 type Column struct {
-	Chunk           *Chunk
-	Entities        []Entity
-	BlockEntities   []BlockEntity
-	Tick            int64
-	ScheduledBlocks []ScheduledBlockUpdate
+	Chunk          *Chunk
+	Entities       []Entity
+	BlockEntities  []BlockEntity
+	ScheduledTicks []SavedScheduledTick
 	// InhabitedTime is the number of ticks this chunk has been inhabited by a
 	// non-spectator player while within the world simulation area.
 	InhabitedTime uint64
@@ -25,8 +24,28 @@ type Entity struct {
 	Data map[string]any
 }
 
-type ScheduledBlockUpdate struct {
-	Pos   cube.Pos
-	Block uint32
-	Tick  int64
+// ScheduledTickKind identifies the Java registry used by a scheduled tick.
+type ScheduledTickKind uint8
+
+const (
+	BlockTick ScheduledTickKind = iota
+	FluidTick
+)
+
+// ScheduledTick is a worldless generated tick. Type is the Java registry ID,
+// and Priority uses Java TickPriority values (-3 through 3).
+type ScheduledTick struct {
+	Pos      cube.Pos
+	Kind     ScheduledTickKind
+	Type     string
+	Priority int32
+}
+
+// SavedScheduledTick retains a paused delay and the native block state needed
+// by BDS pending-tick storage. Type may be empty for records written by BDS;
+// the World then derives Java tick identity from NativeBlock.
+type SavedScheduledTick struct {
+	ScheduledTick
+	Delay       int32
+	NativeBlock uint32
 }

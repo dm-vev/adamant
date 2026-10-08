@@ -27,13 +27,13 @@ import (
 // DB implements a world provider for the Minecraft world format, which
 // is based on a leveldb database.
 type DB struct {
-	conf      Config
-	ldb       *leveldb.DB
-	dir       string
-	ldat      *leveldat.Data
-	lmu       sync.Mutex
-	set       *world.Settings
-	endFight  map[string]any
+	conf     Config
+	ldb      *leveldb.DB
+	dir      string
+	ldat     *leveldat.Data
+	lmu      sync.Mutex
+	set      *world.Settings
+	endFight map[string]any
 }
 
 // Open creates a new provider reading and writing from/to files under the path
@@ -68,7 +68,6 @@ func (db *DB) SaveSettings(s *world.Settings) {
 	db.ldat.PutSettings(s)
 }
 
-
 // LoadWorldData reads an opaque Adamant-owned namespaced payload.
 func (db *DB) LoadWorldData(namespace string) ([]byte, error) {
 	db.lmu.Lock()
@@ -82,6 +81,7 @@ func (db *DB) SaveWorldData(namespace string, data []byte) error {
 	defer db.lmu.Unlock()
 	return db.ldb.Put([]byte("adamant:data:"+namespace), data, nil)
 }
+
 type positionTrackLastID struct {
 	ID      string `nbt:"id"`
 	Version byte   `nbt:"version"`
@@ -344,7 +344,7 @@ func (db *DB) column(k dbKey) (*chunk.Column, error) {
 		// Same as with entities, an ErrNotFound is fine here.
 		return nil, fmt.Errorf("read block entities: %w", err)
 	}
-	col.ScheduledBlocks, col.Tick, err = db.scheduledUpdates(k)
+	col.ScheduledTicks, err = db.scheduledUpdates(k)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return nil, fmt.Errorf("read scheduled updates: %w", err)
 	}
@@ -483,28 +483,58 @@ func (db *DB) blockEntities(k dbKey) ([]chunk.BlockEntity, error) {
 	return blockEntities, nil
 }
 
-func (db *DB) scheduledUpdates(k dbKey) ([]chunk.ScheduledBlockUpdate, int64, error) {
+func (db *DB) scheduledUpdates(k dbKey) ([]chunk.SavedScheduledTick, error) {
 	data, err := db.ldb.Get(k.Sum(keyPendingScheduledTicks), nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	var m scheduledUpdates
-	if err := nbt.UnmarshalEncoding(data, &m, nbt.LittleEndian); err != nil {
-		return nil, 0, fmt.Errorf("read nbt: %s", err.Error())
+	var saved scheduledUpdatesData
+	if err := nbt.UnmarshalEncoding(data, &saved, nbt.LittleEndian); err != nil {
+		return nil, fmt.Errorf("read nbt: %w", err)
 	}
-	updates := make([]chunk.ScheduledBlockUpdate, len(m.TickList))
-	for i, tick := range m.TickList {
-		t, _ := tick["time"].(int64)
-		bl, _ := tick["blockState"].(map[string]any)
-		bpe := chunk.BlockPaletteEncoding{Blocks: db.conf.Blocks}
-		block, err := bpe.DecodeBlockState(bl)
+
+	updates := make([]chunk.SavedScheduledTick, 0, len(saved.TickList))
+	bpe := chunk.BlockPaletteEncoding{Blocks: db.conf.Blocks}
+	for _, entry := range saved.TickList {
+		pos, err := scheduledTickPosition(entry)
 		if err != nil {
-			db.conf.Log.Error("read scheduled updates: decode block state: " + err.Error())
-			continue
+			return nil, err
 		}
-		updates[i] = chunk.ScheduledBlockUpdate{Pos: blockPosFromNBT(tick), Block: block, Tick: t}
+		trigger, ok := entry["time"].(int64)
+		if !ok {
+			return nil, fmt.Errorf("read scheduled tick at %v: invalid time field", pos)
+		}
+		state, ok := entry["blockState"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("read scheduled tick at %v: invalid blockState field", pos)
+		}
+		block, err := bpe.DecodeBlockState(state)
+		if err != nil {
+			return nil, fmt.Errorf("read scheduled tick at %v: decode block state: %w", pos, err)
+		}
+		tick := chunk.ScheduledTick{Pos: pos}
+		switch state["name"] {
+		case "minecraft:water", "minecraft:flowing_water", "minecraft:lava", "minecraft:flowing_lava":
+			tick.Kind = chunk.FluidTick
+		}
+		if java, ok := entry["adamant:java"].(map[string]any); ok && len(java) != 0 {
+			var typeOK, kindOK, priorityOK bool
+			tick.Type, typeOK = java["type"].(string)
+			kind, validKind := java["kind"].(uint8)
+			tick.Kind = chunk.ScheduledTickKind(kind)
+			kindOK = validKind && (tick.Kind == chunk.BlockTick || tick.Kind == chunk.FluidTick)
+			tick.Priority, priorityOK = java["priority"].(int32)
+			if !typeOK || tick.Type == "" || !kindOK || !priorityOK {
+				return nil, fmt.Errorf("read scheduled tick at %v: invalid Java tick metadata", pos)
+			}
+		}
+		updates = append(updates, chunk.SavedScheduledTick{
+			ScheduledTick: tick,
+			Delay:         int32(trigger - int64(saved.CurrentTick)),
+			NativeBlock:   block,
+		})
 	}
-	return updates, int64(m.CurrentTick), nil
+	return updates, nil
 }
 
 // StoreColumn stores a world.Column at a position and dimension in the DB. An
@@ -528,7 +558,7 @@ func (db *DB) storeColumn(k dbKey, col *chunk.Column) error {
 	db.storeFinalisation(batch, k, finalisationPopulated)
 	db.storeEntities(batch, k, col.Entities)
 	db.storeBlockEntities(batch, k, col.BlockEntities)
-	db.storeScheduledUpdates(batch, k, col.Tick, col.ScheduledBlocks)
+	db.storeScheduledUpdates(batch, k, col.ScheduledTicks)
 	inhabitedTime := make([]byte, 8)
 	binary.LittleEndian.PutUint64(inhabitedTime, col.InhabitedTime)
 	batch.Put(k.Sum([]byte(keyAdamantInhabitedTime)...), inhabitedTime)
@@ -631,30 +661,67 @@ func (db *DB) storeBlockEntities(batch *leveldb.Batch, k dbKey, blockEntities []
 	batch.Put(k.Sum(keyBlockEntities), buf.Bytes())
 }
 
-func (db *DB) storeScheduledUpdates(batch *leveldb.Batch, k dbKey, tick int64, updates []chunk.ScheduledBlockUpdate) {
+func (db *DB) storeScheduledUpdates(batch *leveldb.Batch, k dbKey, updates []chunk.SavedScheduledTick) {
 	if len(updates) == 0 {
 		batch.Delete(k.Sum(keyPendingScheduledTicks))
 		return
 	}
-	list := make([]map[string]any, len(updates))
-	bpe := chunk.BlockPaletteEncoding{Blocks: db.conf.Blocks}
-	for i, update := range updates {
-		list[i] = map[string]any{
-			"x": int32(update.Pos[0]), "y": int32(update.Pos[1]), "z": int32(update.Pos[2]),
-			"time": update.Tick, "blockState": bpe.EncodeBlockState(update.Block),
+	entries := make([]scheduledTickNBT, len(updates))
+	palette := chunk.BlockPaletteEncoding{Blocks: db.conf.Blocks}
+	for i, tick := range updates {
+		if tick.Kind != chunk.BlockTick && tick.Kind != chunk.FluidTick {
+			panic(fmt.Sprintf("store scheduled updates: invalid tick kind %d", tick.Kind))
+		}
+		var java map[string]any
+		if tick.Type != "" {
+			java = map[string]any{
+				"type": tick.Type, "kind": uint8(tick.Kind), "priority": tick.Priority,
+			}
+		}
+		entries[i] = scheduledTickNBT{
+			BlockState: palette.EncodeBlockState(tick.NativeBlock),
+			Time:       int64(tick.Delay),
+			X:          int32(tick.Pos[0]), Y: int32(tick.Pos[1]), Z: int32(tick.Pos[2]),
+			Java: java,
 		}
 	}
-	b, err := nbt.MarshalEncoding(scheduledUpdates{CurrentTick: int32(tick), TickList: list}, nbt.LittleEndian)
+	// BDS stores currentTick as an int and time as a long. Rebasing both to
+	// zero retains paused delays; Java-only queue identity stays outside states.
+	data, err := nbt.MarshalEncoding(scheduledUpdatesNBT{TickList: entries}, nbt.LittleEndian)
 	if err != nil {
 		db.conf.Log.Error("store scheduled updates: encode nbt: " + err.Error())
 		return
 	}
-	batch.Put(k.Sum(keyPendingScheduledTicks), b)
+	batch.Put(k.Sum(keyPendingScheduledTicks), data)
 }
 
-type scheduledUpdates struct {
+type scheduledTickNBT struct {
+	BlockState any            `nbt:"blockState"`
+	Time       int64          `nbt:"time"`
+	X          int32          `nbt:"x"`
+	Y          int32          `nbt:"y"`
+	Z          int32          `nbt:"z"`
+	Java       map[string]any `nbt:"adamant:java"`
+}
+
+type scheduledUpdatesNBT struct {
+	CurrentTick int32              `nbt:"currentTick"`
+	TickList    []scheduledTickNBT `nbt:"tickList"`
+}
+
+type scheduledUpdatesData struct {
 	CurrentTick int32            `nbt:"currentTick"`
 	TickList    []map[string]any `nbt:"tickList"`
+}
+
+func scheduledTickPosition(data map[string]any) (cube.Pos, error) {
+	x, xOK := data["x"].(int32)
+	y, yOK := data["y"].(int32)
+	z, zOK := data["z"].(int32)
+	if !xOK || !yOK || !zOK {
+		return cube.Pos{}, fmt.Errorf("read scheduled tick: invalid position fields")
+	}
+	return cube.Pos{int(x), int(y), int(z)}, nil
 }
 
 // NewColumnIterator returns a ColumnIterator that may be used to iterate over all

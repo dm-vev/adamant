@@ -5,9 +5,9 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 	mcbiome "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/biome"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld/internal/genlayer"
@@ -20,15 +20,15 @@ const (
 // Overworld generates Java 26.3 terrain and features with Bedrock block states.
 // Immutable terrain previews and worker-local samplers permit concurrent use.
 type Overworld struct {
-	seed int64
-	noise *java26.OverworldNoise
-	zoomSeed int64
-	modernSurface *modernSurface
+	seed             int64
+	noise            *java26.OverworldNoise
+	zoomSeed         int64
+	modernSurface    *modernSurface
 	modernStructures *modernStructures
-	modernFeatures *ModernFeatures
-	rawCache *previewCache
-	modernPool sync.Pool
-	motionBlocking sync.Map // native runtime ID -> Java heightmap tag membership
+	modernFeatures   *ModernFeatures
+	rawCache         *previewCache
+	modernPool       sync.Pool
+	motionBlocking   sync.Map // native runtime ID -> Java heightmap tag membership
 
 	minLimitPerlinNoise *mc112.NoiseOctaves
 	maxLimitPerlinNoise *mc112.NoiseOctaves
@@ -160,14 +160,14 @@ func New(seed int64) *Overworld {
 // NewOverworld returns a Java 26.3 Overworld generator using the provided seed.
 func NewOverworld(seed int64) *Overworld {
 	g := &Overworld{
-		seed: seed,
-		noise: java26.NewOverworldNoise(seed),
-		zoomSeed: java26.BiomeZoomSeed(seed),
-		airRID: world.BlockRuntimeID(block.Air{}),
-		stoneRID: world.BlockRuntimeID(block.Stone{}),
-		waterRID: world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
-		lavaRID: world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
-		rawCache: newPreviewCache(128),
+		seed:         seed,
+		noise:        java26.NewOverworldNoise(seed),
+		zoomSeed:     java26.BiomeZoomSeed(seed),
+		airRID:       world.BlockRuntimeID(block.Air{}),
+		stoneRID:     world.BlockRuntimeID(block.Stone{}),
+		waterRID:     world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
+		lavaRID:      world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
+		rawCache:     newPreviewCache(128),
 		previewCache: newPreviewCache(128),
 	}
 	g.modernPool.New = func() any { return new(modernTerrainScratch) }
@@ -183,10 +183,14 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 	*c = *base.c.Clone()
 	result := g.modernFeatures.Decorate(pos, c)
 	if len(base.scheduled) != 0 {
-		updates := make([]chunk.ScheduledBlockUpdate, len(base.scheduled)+len(result.ScheduledBlocks))
-		copy(updates, base.scheduled)
-		copy(updates[len(base.scheduled):], result.ScheduledBlocks)
-		result.ScheduledBlocks = updates
+		decorationTicks := result.ScheduledTicks
+		result.ScheduledTicks = make([]chunk.ScheduledTick, 0, len(base.scheduled)+len(decorationTicks))
+		for _, tick := range base.scheduled {
+			result.ScheduleTick(tick)
+		}
+		for _, tick := range decorationTicks {
+			result.ScheduleTick(tick)
+		}
 	}
 	return result
 }
@@ -592,4 +596,3 @@ func (g *Overworld) biomeDef(id int) *biomeDef {
 	}
 	return &g.biomes[id]
 }
-

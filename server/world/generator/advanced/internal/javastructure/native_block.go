@@ -68,6 +68,7 @@ func NativeBlockForJavaState(state world.BlockState) (world.Block, bool, error) 
 }
 
 var nativeActorColours = item.Colours()
+var nativeActorShulkers = block.ShulkerBoxTypes()
 var nativeActorSkulls = map[string]block.SkullType{
 	"skeleton_skull": block.SkeletonSkull(), "wither_skeleton_skull": block.WitherSkeletonSkull(),
 	"zombie_head": block.ZombieHead(), "player_head": block.PlayerHead(), "creeper_head": block.CreeperHead(),
@@ -106,6 +107,34 @@ func nativeStateActor(state world.BlockState, name string) (world.Block, bool, e
 			return nil, false, err
 		}
 		return block.CalibratedSculkSensor{SculkSensor: sensor, Facing: facing}, true, nil
+	case name == "shulker_box", strings.HasSuffix(name, "_shulker_box"):
+		typ := block.NormalShulkerBox()
+		if name != "shulker_box" {
+			colour, ok := javaColorIDs[strings.TrimSuffix(name, "_shulker_box")]
+			if !ok {
+				return nil, false, nil
+			}
+			typ = nativeActorShulkers[int(colour)+1]
+		}
+		facing := cube.FaceUp
+		if raw, exists := state.Properties["facing"]; exists {
+			switch raw {
+			case "down":
+				facing = cube.FaceDown
+			case "up":
+			case "north":
+				facing = cube.FaceNorth
+			case "south":
+				facing = cube.FaceSouth
+			case "west":
+				facing = cube.FaceWest
+			case "east":
+				facing = cube.FaceEast
+			default:
+				return nil, false, fmt.Errorf("java shulker box: invalid facing %v", raw)
+			}
+		}
+		return block.ShulkerBox{Type: typ, Facing: facing}, true, nil
 	case strings.HasSuffix(name, "_bed"):
 		colour, ok := javaColorIDs[strings.TrimSuffix(name, "_bed")]
 		if !ok {
@@ -217,7 +246,7 @@ func actorOptionalBool(state world.BlockState, key string) (bool, error) {
 func stateDerivedActor(native world.Block) bool {
 	switch native.(type) {
 	case block.CopperGolemStatue, block.Bed, block.Banner, block.Skull,
-		block.SculkSensor, block.CalibratedSculkSensor:
+		block.SculkSensor, block.CalibratedSculkSensor, block.ShulkerBox:
 		return true
 	}
 	return false

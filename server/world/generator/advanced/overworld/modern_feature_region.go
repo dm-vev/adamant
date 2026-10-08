@@ -308,11 +308,9 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 			if err != nil {
 				panic(err)
 			}
-			tick := int64(5)
-			if normalizeJavaResource(javaState.Name) == "lava" {
-				tick = 30
-			}
-			region.result.ScheduledBlocks = append(region.result.ScheduledBlocks, chunk.ScheduledBlockUpdate{Pos: cube.Pos{int(origin.x), int(origin.y), int(origin.z)}, Block: region.scheduledBlockID(state), Tick: tick})
+			region.result.ScheduleTick(chunk.ScheduledTick{
+				Pos: cube.Pos{int(origin.x), int(origin.y), int(origin.z)}, Kind: chunk.BlockTick, Type: javaState.Name,
+			})
 		}
 		return placed
 	case "freeze_top_layer":
@@ -568,11 +566,9 @@ func placeModernSpringRegion(region *featureRegion, config map[string]any, p fea
 		panic(err)
 	}
 	if javaState.Name == "minecraft:water" || javaState.Name == "minecraft:lava" {
-		tick := int64(5)
-		if javaState.Name == "minecraft:lava" {
-			tick = 30
-		}
-		region.result.ScheduledBlocks = append(region.result.ScheduledBlocks, chunk.ScheduledBlockUpdate{Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Block: region.scheduledBlockID(state), Tick: tick})
+		region.result.ScheduleTick(chunk.ScheduledTick{
+			Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.FluidTick, Type: javaState.Name,
+		})
 	}
 	return placed
 }

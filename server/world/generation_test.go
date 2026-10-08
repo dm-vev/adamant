@@ -29,9 +29,9 @@ func (g *payloadGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) wor
 	target := mgl64.Vec3{20, 90, -30}
 	g.handle = (world.EntitySpawnOpts{Position: mgl64.Vec3{34.5, 70, 2.5}}).New(entity.EndCrystalType, entity.EndCrystalBehaviourConfig{ShowBase: true, BeamTarget: &target})
 	return world.GenerationResult{
-		Entities:        []*world.EntityHandle{g.handle},
-		BlockEntities:   []chunk.BlockEntity{{Pos: cube.Pos{36, 64, 4}, Data: generatedGatewayNBT()}},
-		ScheduledBlocks: []chunk.ScheduledBlockUpdate{{Pos: cube.Pos{40, 64, 8}, Block: water, Tick: 3}},
+		Entities:       []*world.EntityHandle{g.handle},
+		BlockEntities:  []chunk.BlockEntity{{Pos: cube.Pos{36, 64, 4}, Data: generatedGatewayNBT()}},
+		ScheduledTicks: []chunk.ScheduledTick{{Pos: cube.Pos{40, 64, 8}, Kind: chunk.FluidTick, Type: "minecraft:water"}},
 	}
 }
 
@@ -39,6 +39,30 @@ func generatedGatewayNBT() map[string]any {
 	return map[string]any{
 		"Age": int64(73), "TeleportCooldown": int32(11), "ExactTeleport": uint8(1),
 		"ExitPortal": map[string]any{"X": int32(-500), "Y": int32(72), "Z": int32(600)},
+	}
+}
+func TestGeneratedTickCollectorDeduplicatesByKindTypeAndPosition(t *testing.T) {
+	pos := cube.Pos{8, 64, 8}
+	result := world.GenerationResult{}
+	first := chunk.ScheduledTick{Pos: pos, Kind: chunk.BlockTick, Type: "minecraft:water", Priority: 0}
+	result.ScheduleTick(first)
+	result.ScheduleTick(chunk.ScheduledTick{Pos: pos, Kind: chunk.BlockTick, Type: "minecraft:water", Priority: -2})
+	result.ScheduleTick(chunk.ScheduledTick{Pos: pos, Kind: chunk.BlockTick, Type: "minecraft:lava"})
+	result.ScheduleTick(chunk.ScheduledTick{Pos: pos, Kind: chunk.FluidTick, Type: "minecraft:water"})
+
+	if !result.HasScheduledTick(pos, chunk.BlockTick, "minecraft:water") {
+		t.Fatal("generated collector lost the first source block tick")
+	}
+	if result.HasScheduledTick(pos, chunk.FluidTick, "minecraft:lava") {
+		t.Fatal("generated collector reported an unscheduled fluid type")
+	}
+	want := []chunk.ScheduledTick{
+		first,
+		{Pos: pos, Kind: chunk.BlockTick, Type: "minecraft:lava"},
+		{Pos: pos, Kind: chunk.FluidTick, Type: "minecraft:water"},
+	}
+	if !reflect.DeepEqual(result.ScheduledTicks, want) {
+		t.Fatalf("generated scheduled ticks = %#v, want stable first-occurrence order %#v", result.ScheduledTicks, want)
 	}
 }
 
@@ -114,8 +138,8 @@ func TestGeneratedPayloadPersistsWithoutDuplicateActivation(t *testing.T) {
 				w.AdvanceTick()
 				task := w.Do(func(tx *world.Tx) {
 					_, flowing := tx.Block(cube.Pos{40, 63, 8}).(block.Water)
-					if flowing != (i == 2) {
-						t.Errorf("water below source after tick %d = %t, want %t", i+1, flowing, i == 2)
+					if !flowing {
+						t.Errorf("water below source after tick %d = %t, want true", i+1, flowing)
 					}
 				})
 				<-task.Done()

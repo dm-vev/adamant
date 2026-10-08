@@ -156,12 +156,10 @@ func (tx *Tx) BuildStructure(pos cube.Pos, s Structure) {
 	tx.buildStructure(pos, s)
 }
 
-// ScheduleBlockUpdate schedules a block update at the position passed for the
-// block type passed after a specific delay. If the block at that position does
-// not handle block updates, nothing will happen.
-// Block updates are both block and position specific. A block update is only
-// scheduled if no block update with the same position and block type is
-// already scheduled at a later time than the newly scheduled update.
+// ScheduleBlockUpdate schedules a block or fluid update at the position passed
+// after a specific delay. If the type does not handle scheduled ticks, nothing
+// will happen. Liquids are stored in the separate fluid queue.
+// Tick identity is type- and position-specific; the first pending tick is kept.
 func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
 	tx.World().scheduleBlockUpdate(pos, b, delay)
 }

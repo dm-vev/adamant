@@ -64,6 +64,18 @@ func TestSynchronousWorldAdvanceTick(t *testing.T) {
 	}
 }
 
+func TestWorldTickAdvancesRaidCelebration(t *testing.T) {
+	w := Config{Synchronous: true}.New()
+	defer w.Close()
+	raid := &Raid{id: 1, status: RaidVictory, celebrationTicks: 10}
+	w.raids[raid.id] = raid
+
+	w.AdvanceTick()
+	if raid.celebrationTicks != 11 {
+		t.Fatalf("raid celebration ticks after world tick = %d, want 11", raid.celebrationTicks)
+	}
+}
+
 func TestWorldConstructionResolvesUnloadedSpawnHeight(t *testing.T) {
 	for _, synchronous := range []bool{false, true} {
 		name := "asynchronous"

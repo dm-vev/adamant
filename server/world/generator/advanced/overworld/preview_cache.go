@@ -11,23 +11,23 @@ import (
 // previewCache stores recently generated terrain previews used by decoration.
 // Entries are immutable and safe to share between chunk generations.
 type previewCache struct {
-	mu    sync.Mutex
-	cap   int
-	order *list.List
-	index map[world.ChunkPos]*list.Element
+	mu      sync.Mutex
+	cap     int
+	order   *list.List
+	index   map[world.ChunkPos]*list.Element
 	flights map[world.ChunkPos]*previewFlight
 }
 
 type previewCacheEntry struct {
-	pos world.ChunkPos
-	c   *chunk.Chunk
-	scheduled []chunk.ScheduledBlockUpdate
+	pos        world.ChunkPos
+	c          *chunk.Chunk
+	scheduled  []chunk.ScheduledTick
 	structures *modernStructureContext
 }
 
 type previewFlight struct {
-	done chan struct{}
-	entry *previewCacheEntry
+	done    chan struct{}
+	entry   *previewCacheEntry
 	failure any
 }
 
@@ -36,9 +36,9 @@ func newPreviewCache(capacity int) *previewCache {
 		capacity = 1
 	}
 	return &previewCache{
-		cap:   capacity,
-		order: list.New(),
-		index: make(map[world.ChunkPos]*list.Element, capacity),
+		cap:     capacity,
+		order:   list.New(),
+		index:   make(map[world.ChunkPos]*list.Element, capacity),
 		flights: make(map[world.ChunkPos]*previewFlight),
 	}
 }

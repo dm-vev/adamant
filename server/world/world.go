@@ -120,20 +120,20 @@ type World struct {
 
 	tps atomic.Uint64
 
-	// scheduledUpdates is a map of tick time values indexed by the block
-	// position at which an update is scheduled. If the current tick exceeds the
-	// tick value passed, the block update will be performed and the entry will
-	// be removed from the map.
-	scheduledUpdates  *scheduledTickQueue
-	redstone          *redstoneEngine
-	neighbourUpdates  []neighbourUpdate
-	pois              map[cube.Pos]POI
-	raids             map[int64]*Raid
-	raidByRaider      map[uuid.UUID]int64
-	nextRaidID        int64
-	dragonFight       DragonFightController
-	dragonArena       *Loader
-	javaHeightmapTags [2]map[uint32]bool
+	// Scheduled updates are partitioned by native registry: blocks drain before
+	// fluids, and each queue owns ticks by their scheduled position.
+	scheduledBlockTicks *scheduledTickQueue
+	scheduledFluidTicks *scheduledTickQueue
+	scheduledTickBlocks map[scheduledTickTypeKey]Block
+	redstone            *redstoneEngine
+	neighbourUpdates    []neighbourUpdate
+	pois                map[cube.Pos]POI
+	raids               map[int64]*Raid
+	raidByRaider        map[uuid.UUID]int64
+	nextRaidID          int64
+	dragonFight         DragonFightController
+	dragonArena         *Loader
+	javaHeightmapTags   [2]map[uint32]bool
 
 	scratchRandom           []cube.Pos
 	scratchBlockEntities    []cube.Pos
@@ -1622,17 +1622,80 @@ func (w *World) dispatchFallDamage() {
 	}
 }
 
-// scheduleBlockUpdate schedules a block update at the position passed for the
-// block type passed after a specific delay. If the block at that position does
-// not handle block updates, nothing will happen.
-// Block updates are both block and position specific. A block update is only
-// scheduled if no block update with the same position and block type is
-// already scheduled at a later time than the newly scheduled update.
+// scheduleBlockUpdate schedules a live update after a specific delay. Liquids
+// are stored in the distinct fluid queue; other blocks use the block queue.
 func (w *World) scheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
 	if pos.OutOfBounds(w.Range()) {
 		return
 	}
-	w.scheduledUpdates.schedule(w.conf.Blocks, pos, b, delay)
+	queue := w.scheduledBlockTicks
+	if _, ok := b.(Liquid); ok {
+		queue = w.scheduledFluidTicks
+	}
+	if queue.schedule(w.conf.Blocks, pos, b, delay) {
+		w.markScheduledTickColumnModified(pos)
+	}
+}
+
+func (w *World) markScheduledTickColumnModified(pos cube.Pos) {
+	if col, ok := w.chunks[chunkPosFromBlockPos(pos)]; ok {
+		col.modified = true
+	}
+}
+
+// resolveScheduledTickBlock maps a Java registry type back to a registered
+// block implementation for dispatching a persisted or generated tick.
+func (w *World) resolveScheduledTickBlock(tick chunk.ScheduledTick) (Block, bool) {
+	if tick.Kind != chunk.BlockTick && tick.Kind != chunk.FluidTick {
+		return nil, false
+	}
+	key := scheduledTickTypeKey{kind: tick.Kind, typeName: tick.Type}
+	if b, ok := w.scheduledTickBlocks[key]; ok {
+		return b, true
+	}
+	for rid := uint32(0); rid < uint32(w.conf.Blocks.BlockCount()); rid++ {
+		b, ok := w.conf.Blocks.BlockByRuntimeID(rid)
+		if !ok {
+			continue
+		}
+		var typeName string
+		if tick.Kind == chunk.FluidTick {
+			liquid, ok := b.(Liquid)
+			if !ok {
+				continue
+			}
+			typeName = scheduledFluidTickType(liquid)
+		} else {
+			typeName = scheduledTickType(w.conf.Blocks, b)
+		}
+		if typeName == tick.Type {
+			if w.scheduledTickBlocks == nil {
+				w.scheduledTickBlocks = make(map[scheduledTickTypeKey]Block)
+			}
+			w.scheduledTickBlocks[key] = b
+			return b, true
+		}
+	}
+	return nil, false
+}
+
+// scheduleGeneratedTick installs a worldless generation result on the owner
+// thread. Source ProtoChunkTicks converts every generated delay to zero.
+func (w *World) scheduleGeneratedTick(tick chunk.ScheduledTick) {
+	if tick.Pos.OutOfBounds(w.Range()) {
+		return
+	}
+	b, ok := w.resolveScheduledTickBlock(tick)
+	if !ok {
+		panic(fmt.Sprintf("generated tick: unknown %v type %q", tick.Kind, tick.Type))
+	}
+	queue := w.scheduledBlockTicks
+	if tick.Kind == chunk.FluidTick {
+		queue = w.scheduledFluidTicks
+	}
+	if queue.scheduleAt(w.conf.Blocks, tick.Pos, b, queue.currentTick, tick.Priority) {
+		w.markScheduledTickColumnModified(tick.Pos)
+	}
 }
 
 // doBlockUpdatesAround schedules block updates directly around and on the
@@ -1827,7 +1890,8 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		}
 	}
 	w.saveChunk(tx, pos, c)
-	w.scheduledUpdates.removeChunk(pos)
+	w.scheduledBlockTicks.removeChunk(pos)
+	w.scheduledFluidTicks.removeChunk(pos)
 	w.redstone.removeChunk(pos)
 	w.removeActiveColumn(pos)
 	w.removeEntityColumn(pos)
@@ -2935,14 +2999,18 @@ func (c *Column) ensureLight(w *World, pos ChunkPos) {
 // columnTo converts a Column to a chunk.Column so that it can be written to
 // a provider.
 func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
-	scheduled := w.scheduledUpdates.fromChunk(pos)
+	scheduled := make([]chunk.SavedScheduledTick, 0, 8)
+	scheduled = append(scheduled, w.scheduledBlockTicks.fromChunk(pos)...)
+	scheduled = append(scheduled, w.scheduledFluidTicks.fromChunk(pos)...)
+	for i := range scheduled {
+		scheduled[i].NativeBlock = w.nativeScheduledTickState(col, scheduled[i].ScheduledTick)
+	}
 	c := &chunk.Column{
-		Chunk:           col.Chunk,
-		Entities:        make([]chunk.Entity, 0, len(col.Entities)),
-		BlockEntities:   make([]chunk.BlockEntity, 0, len(col.BlockEntities)),
-		ScheduledBlocks: make([]chunk.ScheduledBlockUpdate, 0, len(scheduled)),
-		Tick:            w.scheduledUpdates.currentTick,
-		InhabitedTime:   col.InhabitedTime,
+		Chunk:          col.Chunk,
+		Entities:       make([]chunk.Entity, 0, len(col.Entities)),
+		BlockEntities:  make([]chunk.BlockEntity, 0, len(col.BlockEntities)),
+		ScheduledTicks: scheduled,
+		InhabitedTime:  col.InhabitedTime,
 	}
 	for _, e := range col.Entities {
 		if e.t.EncodeEntity() == "minecraft:player" {
@@ -2959,10 +3027,34 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 	for pos, be := range col.BlockEntities {
 		c.BlockEntities = append(c.BlockEntities, chunk.BlockEntity{Pos: pos, Data: be.(NBTer).EncodeNBT()})
 	}
-	for _, t := range scheduled {
-		c.ScheduledBlocks = append(c.ScheduledBlocks, chunk.ScheduledBlockUpdate{Pos: t.pos, Block: w.conf.Blocks.BlockRuntimeID(t.b), Tick: t.t})
-	}
+	// Scheduled ticks are emitted above in per-queue insertion order. Their
+	// positions, rather than the generated source column, determine ownership.
 	return c
+}
+
+// nativeScheduledTickState keeps the actual native state when it still matches
+// the queued Java type. A stale tick retains its old type rather than ticking a
+// different block after the save is opened by BDS.
+func (w *World) nativeScheduledTickState(col *Column, tick chunk.ScheduledTick) uint32 {
+	if tick.Kind == chunk.BlockTick {
+		b := w.blockInChunk(col, tick.Pos)
+		if scheduledTickType(w.conf.Blocks, b) == tick.Type {
+			return w.conf.Blocks.BlockRuntimeID(b)
+		}
+	} else {
+		for layer := uint8(0); layer < 2; layer++ {
+			rid := col.Block(uint8(tick.Pos[0]&15), int16(tick.Pos[1]), uint8(tick.Pos[2]&15), layer)
+			b, ok := w.conf.Blocks.BlockByRuntimeID(rid)
+			if liquid, isLiquid := b.(Liquid); ok && isLiquid && scheduledFluidTickMatches(liquid, tick.Type) {
+				return rid
+			}
+		}
+	}
+	b, ok := w.resolveScheduledTickBlock(tick)
+	if !ok {
+		panic(fmt.Sprintf("save scheduled tick: unknown %v type %q", tick.Kind, tick.Type))
+	}
+	return w.conf.Blocks.BlockRuntimeID(b)
 }
 func (w *World) markGeneratedDerivedBlockStates(pos ChunkPos, col *Column) {
 	col.Chunk.MarkGeneratedBlockStates(func(runtimeID uint32) []string {
@@ -3029,17 +3121,47 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 		}))
 	}
 	w.decodeBlockEntities(col, c.BlockEntities)
-	scheduled, savedTick := make([]scheduledTick, 0, len(c.ScheduledBlocks)), c.Tick
-	for _, t := range c.ScheduledBlocks {
-		bl := w.conf.Blocks.BlockByRuntimeIDOrAir(t.Block)
-		scheduled = append(scheduled, scheduledTick{
-			pos:   t.Pos,
-			b:     bl,
-			btype: scheduledTickType(w.conf.Blocks, bl),
-			t:     w.scheduledUpdates.currentTick + (t.Tick - savedTick),
-		})
+	blockTicks := make([]scheduledTick, 0, len(c.ScheduledTicks))
+	fluidTicks := make([]scheduledTick, 0, len(c.ScheduledTicks))
+	for _, saved := range c.ScheduledTicks {
+		update := saved.ScheduledTick
+		var b Block
+		var ok bool
+		if update.Type == "" {
+			b, ok = w.conf.Blocks.BlockByRuntimeID(saved.NativeBlock)
+		} else {
+			b, ok = w.resolveScheduledTickBlock(update)
+		}
+		if !ok {
+			w.conf.Log.Error("read column: cannot resolve scheduled tick type", "type", update.Type, "kind", update.Kind, "position", update.Pos)
+			continue
+		}
+		typeName := update.Type
+		if typeName == "" {
+			if liquid, fluid := b.(Liquid); fluid {
+				update.Kind = chunk.FluidTick
+				typeName = scheduledFluidTickType(liquid)
+			} else {
+				typeName = scheduledTickType(w.conf.Blocks, b)
+			}
+		}
+		tick := scheduledTick{
+			pos:      update.Pos,
+			btype:    typeName,
+			t:        w.scheduledBlockTicks.currentTick + int64(saved.Delay),
+			priority: update.Priority,
+		}
+		switch update.Kind {
+		case chunk.BlockTick:
+			blockTicks = append(blockTicks, tick)
+		case chunk.FluidTick:
+			fluidTicks = append(fluidTicks, tick)
+		default:
+			w.conf.Log.Error("read column: invalid scheduled tick kind", "kind", update.Kind, "position", update.Pos)
+		}
 	}
-	w.scheduledUpdates.add(scheduled)
+	w.scheduledBlockTicks.add(blockTicks)
+	w.scheduledFluidTicks.add(fluidTicks)
 	col.markReady()
 	return col
 }
@@ -3053,8 +3175,8 @@ func (w *World) finishGeneration(tx *Tx, c *Column) {
 	result := c.generation
 	c.generation = GenerationResult{}
 	w.decodeBlockEntities(c, result.BlockEntities)
-	for _, update := range result.ScheduledBlocks {
-		w.scheduleBlockUpdate(update.Pos, w.conf.Blocks.BlockByRuntimeIDOrAir(update.Block), time.Duration(update.Tick)*time.Second/20)
+	for _, update := range result.ScheduledTicks {
+		w.scheduleGeneratedTick(update)
 	}
 	for _, e := range result.Entities {
 		tx.AddEntity(e)

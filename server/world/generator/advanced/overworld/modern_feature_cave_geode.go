@@ -4,16 +4,18 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 // placeModernGeode ports GeodeFeature.place. Candidate points and voxel traversal
 // retain Java's iteration order because provider sampling is part of the RNG contract.
 func placeModernGeode(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
 	blocks, ok := config["blocks"].(map[string]any)
-	if !ok { panic("overworld: malformed Java geode blocks") }
+	if !ok {
+		panic("overworld: malformed Java geode blocks")
+	}
 	layers, _ := config["layers"].(map[string]any)
 	crack, _ := config["crack"].(map[string]any)
 	noiseRandom := java26.NewLegacyRandom(region.f.seed)
@@ -39,131 +41,247 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 	innerCrust := 1 / math.Sqrt(middle+crackAdjustment)
 	outerCrust := 1 / math.Sqrt(outerLayer+crackAdjustment)
 	crackExtra := 0.0
-	if numPoints > 3 { crackExtra = crackAdjustment }
+	if numPoints > 3 {
+		crackExtra = crackAdjustment
+	}
 	crackSize := 1 / math.Sqrt(baseCrackSize+random.NextDouble()/2+crackExtra)
 	shouldCrack := float64(random.NextFloat()) < crackChance
-	type geodePoint struct { p featurePos; offset int32 }
+	type geodePoint struct {
+		p      featurePos
+		offset int32
+	}
 	points := make([]geodePoint, 0, numPoints)
 	invalid := 0
-	invalidRaw, ok := blocks["invalid_blocks"].(string); if !ok { panic("overworld: malformed Java geode invalid blocks") }
+	invalidRaw, ok := blocks["invalid_blocks"].(string)
+	if !ok {
+		panic("overworld: malformed Java geode invalid blocks")
+	}
 	invalidTag := normalizeJavaResource(invalidRaw)
 	for range numPoints {
 		x, y, z := geodeIntProvider(config["outer_wall_distance"], 4, 5, random), geodeIntProvider(config["outer_wall_distance"], 4, 5, random), geodeIntProvider(config["outer_wall_distance"], 4, 5, random)
-		p := featurePos{origin.x+x, origin.y+y, origin.z+z}
+		p := featurePos{origin.x + x, origin.y + y, origin.z + z}
 		name, _ := region.State(p)
-		if featureRegionAir(region,p) || javaBlockTagContains(invalidTag, normalizeJavaResource(name)) { invalid++; if invalid > invalidThreshold { return false } }
+		if featureRegionAir(region, p) || javaBlockTagContains(invalidTag, normalizeJavaResource(name)) {
+			invalid++
+			if invalid > invalidThreshold {
+				return false
+			}
+		}
 		points = append(points, geodePoint{p, geodeIntProvider(pointOffset, 1, 2, random)})
 	}
-	type point3 struct { x,y,z int32 }
+	type point3 struct{ x, y, z int32 }
 	crackPoints := make([]point3, 0, 3)
 	if shouldCrack {
-		v := random.NextInt(4); d := int32(numPoints*2+1)
-		switch v { case 0: crackPoints = append(crackPoints, point3{origin.x+d,origin.y+7,origin.z},point3{origin.x+d,origin.y+5,origin.z},point3{origin.x+d,origin.y+1,origin.z})
-		case 1: crackPoints = append(crackPoints, point3{origin.x,origin.y+7,origin.z+d},point3{origin.x,origin.y+5,origin.z+d},point3{origin.x,origin.y+1,origin.z+d})
-		case 2: crackPoints = append(crackPoints, point3{origin.x+d,origin.y+7,origin.z+d},point3{origin.x+d,origin.y+5,origin.z+d},point3{origin.x+d,origin.y+1,origin.z+d})
-		default: crackPoints = append(crackPoints, point3{origin.x,origin.y+7,origin.z},point3{origin.x,origin.y+5,origin.z},point3{origin.x,origin.y+1,origin.z}) }
+		v := random.NextInt(4)
+		d := int32(numPoints*2 + 1)
+		switch v {
+		case 0:
+			crackPoints = append(crackPoints, point3{origin.x + d, origin.y + 7, origin.z}, point3{origin.x + d, origin.y + 5, origin.z}, point3{origin.x + d, origin.y + 1, origin.z})
+		case 1:
+			crackPoints = append(crackPoints, point3{origin.x, origin.y + 7, origin.z + d}, point3{origin.x, origin.y + 5, origin.z + d}, point3{origin.x, origin.y + 1, origin.z + d})
+		case 2:
+			crackPoints = append(crackPoints, point3{origin.x + d, origin.y + 7, origin.z + d}, point3{origin.x + d, origin.y + 5, origin.z + d}, point3{origin.x + d, origin.y + 1, origin.z + d})
+		default:
+			crackPoints = append(crackPoints, point3{origin.x, origin.y + 7, origin.z}, point3{origin.x, origin.y + 5, origin.z}, point3{origin.x, origin.y + 1, origin.z})
+		}
 	}
 	cannotRaw, ok := blocks["cannot_replace"].(string)
-	if !ok { panic("overworld: malformed Java geode cannot_replace") }
+	if !ok {
+		panic("overworld: malformed Java geode cannot_replace")
+	}
 	cannotTag := normalizeJavaResource(cannotRaw)
 	altChance := geodeFloatDefault(config["use_alternate_layer0_chance"], 0)
 	potential := make([]featurePos, 0)
-	for x:=origin.x+int32(minOffset); x<=origin.x+int32(maxOffset); x++ { for y:=origin.y+int32(minOffset); y<=origin.y+int32(maxOffset); y++ { for z:=origin.z+int32(minOffset); z<=origin.z+int32(maxOffset); z++ {
-		p:=featurePos{x,y,z}; noiseOffset:=float64(noise.Sample(float64(x),float64(y),float64(z)))*noiseMultiplier; shell:=0.0
-		for _,q:=range points { dx,dy,dz:=float64(x-q.p.x),float64(y-q.p.y),float64(z-q.p.z); shell += 1/math.Sqrt(dx*dx+dy*dy+dz*dz+float64(q.offset))+noiseOffset }
-		if shell < outerCrust { continue }
-		stateProvider:=any(nil); isAir:=false;sampled:=false
-		var sampledState world.NativeState
-		var sampledActor world.Block
-		if shell>=innerAir { stateProvider=blocks["filling_provider"]
-		} else {
-			crackDistance:=0.0; for _,q:=range crackPoints { dx,dy,dz:=float64(x-q.x),float64(y-q.y),float64(z-q.z); crackDistance+=1/math.Sqrt(dx*dx+dy*dy+dz*dz+float64(crackOffset))+noiseOffset }
-			if shouldCrack && crackDistance >= crackSize {
-				isAir = true
-			} else if shell >= innermost {
-				alternate := float64(random.NextFloat()) < altChance
-				if alternate { stateProvider = blocks["alternate_inner_layer_provider"] } else { stateProvider = blocks["inner_layer_provider"] }
-				var sampleOK bool
-				sampledState,sampledActor,sampleOK=region.SampleNativeState(stateProvider,p,random)
-				if !sampleOK { panic("overworld: unresolved Java geode block provider") }
-				sampled=true
-				if (!requireAlternate || alternate) && float64(random.NextFloat()) < placementChance { potential = append(potential, p) }
-			} else if shell >= innerCrust {
-				stateProvider = blocks["middle_layer_provider"]
-			} else {
-				stateProvider = blocks["outer_layer_provider"]
-			}
-		}
-		name, _ := region.State(p)
-		canReplace := !javaBlockTagContains(cannotTag, normalizeJavaResource(name))
-		if isAir {
-			airState, ok := featureStateRID(region.c, map[string]any{"id":"minecraft:air"})
-			if ok && canReplace { region.Set(p, airState) }
-			for _, d := range [][3]int32{{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}} {
-				adjacent := featurePos{p.x+d[0],p.y+d[1],p.z+d[2]}
-				adjacentState := region.nativeState(adjacent)
-				fluidRID := adjacentState.Liquid
-				if fluidRID == region.c.BlockRegistry().AirRuntimeID() {
-					fluidRID = adjacentState.Block
+	for x := origin.x + int32(minOffset); x <= origin.x+int32(maxOffset); x++ {
+		for y := origin.y + int32(minOffset); y <= origin.y+int32(maxOffset); y++ {
+			for z := origin.z + int32(minOffset); z <= origin.z+int32(maxOffset); z++ {
+				p := featurePos{x, y, z}
+				noiseOffset := float64(noise.Sample(float64(x), float64(y), float64(z))) * noiseMultiplier
+				shell := 0.0
+				for _, q := range points {
+					dx, dy, dz := float64(x-q.p.x), float64(y-q.p.y), float64(z-q.p.z)
+					shell += 1/math.Sqrt(dx*dx+dy*dy+dz*dz+float64(q.offset)) + noiseOffset
 				}
-				fluidName, _, found := region.c.BlockRegistry().RuntimeIDToState(fluidRID)
-				if !found { panic("overworld: invalid Java geode adjacent fluid runtime ID") }
-				fluidName = normalizeJavaResource(fluidName)
-				if fluidName != "water" && fluidName != "lava" { continue }
-				if featureInsideTarget(region.target,adjacent) { region.result.ScheduledBlocks = append(region.result.ScheduledBlocks, chunk.ScheduledBlockUpdate{Pos:cube.Pos{int(adjacent.x),int(adjacent.y),int(adjacent.z)},Block:fluidRID,Tick:0}) }
+				if shell < outerCrust {
+					continue
+				}
+				stateProvider := any(nil)
+				isAir := false
+				sampled := false
+				var sampledState world.NativeState
+				var sampledActor world.Block
+				if shell >= innerAir {
+					stateProvider = blocks["filling_provider"]
+				} else {
+					crackDistance := 0.0
+					for _, q := range crackPoints {
+						dx, dy, dz := float64(x-q.x), float64(y-q.y), float64(z-q.z)
+						crackDistance += 1/math.Sqrt(dx*dx+dy*dy+dz*dz+float64(crackOffset)) + noiseOffset
+					}
+					if shouldCrack && crackDistance >= crackSize {
+						isAir = true
+					} else if shell >= innermost {
+						alternate := float64(random.NextFloat()) < altChance
+						if alternate {
+							stateProvider = blocks["alternate_inner_layer_provider"]
+						} else {
+							stateProvider = blocks["inner_layer_provider"]
+						}
+						var sampleOK bool
+						sampledState, sampledActor, sampleOK = region.SampleNativeState(stateProvider, p, random)
+						if !sampleOK {
+							panic("overworld: unresolved Java geode block provider")
+						}
+						sampled = true
+						if (!requireAlternate || alternate) && float64(random.NextFloat()) < placementChance {
+							potential = append(potential, p)
+						}
+					} else if shell >= innerCrust {
+						stateProvider = blocks["middle_layer_provider"]
+					} else {
+						stateProvider = blocks["outer_layer_provider"]
+					}
+				}
+				name, _ := region.State(p)
+				canReplace := !javaBlockTagContains(cannotTag, normalizeJavaResource(name))
+				if isAir {
+					airState, ok := featureStateRID(region.c, map[string]any{"id": "minecraft:air"})
+					if ok && canReplace {
+						region.Set(p, airState)
+					}
+					for _, d := range [][3]int32{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}} {
+						adjacent := featurePos{p.x + d[0], p.y + d[1], p.z + d[2]}
+						adjacentState := region.nativeState(adjacent)
+						fluidRID := adjacentState.Liquid
+						if fluidRID == region.c.BlockRegistry().AirRuntimeID() {
+							fluidRID = adjacentState.Block
+						}
+						fluidName, _, found := region.c.BlockRegistry().RuntimeIDToState(fluidRID)
+						if !found {
+							panic("overworld: invalid Java geode adjacent fluid runtime ID")
+						}
+						fluidName = normalizeJavaResource(fluidName)
+						if fluidName != "water" && fluidName != "lava" {
+							continue
+						}
+						if featureInsideTarget(region.target, adjacent) {
+							region.result.ScheduleTick(chunk.ScheduledTick{
+								Pos: cube.Pos{int(adjacent.x), int(adjacent.y), int(adjacent.z)}, Kind: chunk.FluidTick, Type: "minecraft:" + fluidName,
+							})
+						}
+					}
+				} else {
+					if !sampled {
+						var sampleOK bool
+						sampledState, sampledActor, sampleOK = region.SampleNativeState(stateProvider, p, random)
+						if !sampleOK {
+							panic("overworld: unresolved Java geode block provider")
+						}
+					}
+					if canReplace {
+						region.SetNativeBlock(p, sampledState, sampledActor)
+					}
+				}
 			}
-		} else {
-			if !sampled {
-				var sampleOK bool
-				sampledState,sampledActor,sampleOK=region.SampleNativeState(stateProvider,p,random)
-				if !sampleOK { panic("overworld: unresolved Java geode block provider") }
-			}
-			if canReplace { region.SetNativeBlock(p,sampledState,sampledActor) }
 		}
-	} } }
-	placements, ok := blocks["inner_placements"].([]any); if !ok { panic("overworld: malformed Java geode inner placements") }
+	}
+	placements, ok := blocks["inner_placements"].([]any)
+	if !ok {
+		panic("overworld: malformed Java geode inner placements")
+	}
 	waterState := featureRequireState(region, "minecraft:water")
-	for _,p:=range potential {
-		if len(placements)==0 { panic("overworld: empty Java geode inner placements") }
-		placement:=placements[random.NextInt(int32(len(placements)))]; state,ok:=placement.(string); if !ok { panic("overworld: malformed Java geode inner placement") }
-		for _,d:=range [][3]int32{{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}} {
-			q:=featurePos{p.x+d[0],p.y+d[1],p.z+d[2]}; name,_:=region.State(q)
-			if name!="minecraft:air" && name!="minecraft:cave_air" && name!="minecraft:void_air" && name!="minecraft:water" { continue }
+	for _, p := range potential {
+		if len(placements) == 0 {
+			panic("overworld: empty Java geode inner placements")
+		}
+		placement := placements[random.NextInt(int32(len(placements)))]
+		state, ok := placement.(string)
+		if !ok {
+			panic("overworld: malformed Java geode inner placement")
+		}
+		for _, d := range [][3]int32{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}} {
+			q := featurePos{p.x + d[0], p.y + d[1], p.z + d[2]}
+			name, _ := region.State(q)
+			if name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" && name != "minecraft:water" {
+				continue
+			}
 			stateName := normalizeJavaResource(state)
 			properties := map[string]any{}
-			if stateName != "small_amethyst_bud" && stateName != "medium_amethyst_bud" && stateName != "large_amethyst_bud" && stateName != "amethyst_cluster" { panic("overworld: unsupported Java geode placement "+state) }
-			properties["facing"] = faceForGeode(d, []string{"down","up","north","south","west","east"})
-			nativeState:=region.nativeState(q)
+			if stateName != "small_amethyst_bud" && stateName != "medium_amethyst_bud" && stateName != "large_amethyst_bud" && stateName != "amethyst_cluster" {
+				panic("overworld: unsupported Java geode placement " + state)
+			}
+			properties["facing"] = faceForGeode(d, []string{"down", "up", "north", "south", "west", "east"})
+			nativeState := region.nativeState(q)
 			properties["waterlogged"] = nativeState.Block == waterState.Block || nativeState.Liquid == waterState.Block
-			rid, found := featureStateRID(region.c, map[string]any{"id":"minecraft:"+stateName,"properties":properties})
-			if !found { panic("overworld: unregistered Java geode crystal state") }
-			if !javaBlockTagContains(cannotTag, normalizeJavaResource(name)) { region.Set(q,rid) }
+			rid, found := featureStateRID(region.c, map[string]any{"id": "minecraft:" + stateName, "properties": properties})
+			if !found {
+				panic("overworld: unregistered Java geode crystal state")
+			}
+			if !javaBlockTagContains(cannotTag, normalizeJavaResource(name)) {
+				region.Set(q, rid)
+			}
 			break
 		}
 	}
 	return true
 }
 
-func faceForGeode(d [3]int32, names []string) string { if d[1]<0{return names[0]};if d[1]>0{return names[1]};if d[2]<0{return names[2]};if d[2]>0{return names[3]};if d[0]<0{return names[4]};return names[5] }
-func geodeFloatDefault(v any, d float64) float64 { if n,ok:=v.(float64);ok{return n};return d }
-func geodeIntDefault(v any,d int) int { if n,ok:=v.(float64);ok{return int(n)};return d }
+func faceForGeode(d [3]int32, names []string) string {
+	if d[1] < 0 {
+		return names[0]
+	}
+	if d[1] > 0 {
+		return names[1]
+	}
+	if d[2] < 0 {
+		return names[2]
+	}
+	if d[2] > 0 {
+		return names[3]
+	}
+	if d[0] < 0 {
+		return names[4]
+	}
+	return names[5]
+}
+func geodeFloatDefault(v any, d float64) float64 {
+	if n, ok := v.(float64); ok {
+		return n
+	}
+	return d
+}
+func geodeIntDefault(v any, d int) int {
+	if n, ok := v.(float64); ok {
+		return int(n)
+	}
+	return d
+}
 func geodeIntProvider(v any, min, max int, random *java26.Random) int32 {
-	if n,ok:=v.(float64);ok{return int32(n)}
-	if p,ok:=v.(map[string]any);ok {
+	if n, ok := v.(float64); ok {
+		return int32(n)
+	}
+	if p, ok := v.(map[string]any); ok {
 		switch p["type"] {
 		case "minecraft:uniform":
-			min=geodeIntDefault(p["min_inclusive"],min);max=geodeIntDefault(p["max_inclusive"],max)
+			min = geodeIntDefault(p["min_inclusive"], min)
+			max = geodeIntDefault(p["max_inclusive"], max)
 		case "minecraft:constant":
-			return int32(geodeIntDefault(p["value"],min))
+			return int32(geodeIntDefault(p["value"], min))
 		default:
 			panic("overworld: unsupported Java geode integer provider")
 		}
 	}
-	if min==max{return int32(min)}
-	return int32(min)+random.NextInt(int32(max-min+1))
+	if min == max {
+		return int32(min)
+	}
+	return int32(min) + random.NextInt(int32(max-min+1))
 }
 func geodeProviderMax(v any, fallback int) int {
-	if p,ok:=v.(map[string]any);ok {if max,ok:=p["max_inclusive"].(float64);ok{return int(max)}}
+	if p, ok := v.(map[string]any); ok {
+		if max, ok := p["max_inclusive"].(float64); ok {
+			return int(max)
+		}
+	}
 	return fallback
 }
 
@@ -195,4 +313,3 @@ func placeModernCaveFamily(region *featureRegion, typeName string, config map[st
 	}
 	return false, false
 }
-

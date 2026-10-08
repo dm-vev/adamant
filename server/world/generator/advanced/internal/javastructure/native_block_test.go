@@ -242,3 +242,60 @@ func TestBookshelfSourceSlotPrecedence(t *testing.T) {
 		}
 	}
 }
+
+func TestShulkerTemplateFacingAndContents(t *testing.T) {
+	registry := world.DefaultBlockRegistry
+	registry.Finalize()
+	for _, tc := range []struct {
+		name, facing string
+		mirror       Mirror
+		rotation     Rotation
+		wantFace     cube.Face
+		wantType     block.ShulkerBoxType
+		contents     bool
+	}{
+		{"shulker_box", "down", NoMirror, Clockwise90, cube.FaceDown, block.NormalShulkerBox(), false},
+		{"blue_shulker_box", "north", NoMirror, Clockwise90, cube.FaceEast, block.BlueShulkerBox(), true},
+		{"light_gray_shulker_box", "up", LeftRight, Clockwise90, cube.FaceUp, block.LightGrayShulkerBox(), false},
+		{"white_shulker_box", "south", LeftRight, None, cube.FaceNorth, block.WhiteShulkerBox(), false},
+		{"red_shulker_box", "west", FrontBack, None, cube.FaceEast, block.RedShulkerBox(), false},
+		{"green_shulker_box", "east", NoMirror, Clockwise90, cube.FaceSouth, block.GreenShulkerBox(), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := Block{State: world.BlockState{Name: "minecraft:" + tc.name, Properties: map[string]any{"facing": tc.facing}}}
+			if tc.contents {
+				source.NBT = map[string]any{
+					"id":    "minecraft:shulker_box",
+					"Items": []map[string]any{{"id": "minecraft:diamond", "count": int32(3), "Slot": int8(7)}},
+				}
+			}
+			template := Template{Size: [3]int32{1, 1, 1}, Palettes: [][]Block{{source}}}
+			placed, err := template.Place(0, [3]int32{8, 64, 8}, tc.rotation, tc.mirror, Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 100, 15}}, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			state, err := placed.Blocks[0].ResolveNative(registry)
+			if err != nil {
+				t.Fatal(err)
+			}
+			base, _ := registry.BlockByRuntimeID(state.Block)
+			restored := base.(world.NBTer).DecodeNBT(placed.BlockEntityPayloads()[0].Data).(block.ShulkerBox)
+			if restored.Facing != tc.wantFace || restored.Type != tc.wantType {
+				t.Fatalf("native shulker = type %v, facing %v; want type %v, facing %v", restored.Type, restored.Facing, tc.wantType, tc.wantFace)
+			}
+			if tc.contents {
+				stack, err := restored.Inventory(nil, cube.Pos{8, 64, 8}).Item(7)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if stack.Empty() {
+					t.Fatal("state actor discarded the source inventory")
+				}
+				name, _ := stack.Item().EncodeItem()
+				if stack.Count() != 3 || name != "minecraft:diamond" {
+					t.Fatalf("slot 7 = %d %s, want 3 diamonds", stack.Count(), name)
+				}
+			}
+		})
+	}
+}

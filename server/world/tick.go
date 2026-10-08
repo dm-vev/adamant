@@ -4,9 +4,11 @@ import (
 	"math"
 	"math/rand/v2"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -140,6 +142,10 @@ func (t ticker) tick(tx *Tx) {
 		tryAdvanceDay = w.set.RequiredSleepTicks <= 0
 	}
 	w.set.Unlock()
+	// Both Java registries share the same game-time clock, even though the
+	// block queue drains before the fluid queue.
+	w.scheduledBlockTicks.currentTick = tick
+	w.scheduledFluidTicks.currentTick = tick
 	t.tickInhabitedTime(w, loaders)
 
 	if tryAdvanceDay {
@@ -169,7 +175,8 @@ func (t ticker) tick(tx *Tx) {
 		spawnTick(tx)
 	}
 	tx.TickRaids()
-	w.scheduledUpdates.tick(tx, tick)
+	w.scheduledBlockTicks.tick(tx, tick, loaders...)
+	w.scheduledFluidTicks.tick(tx, tick, loaders...)
 	t.tickBlocksRandomly(tx, loaders, tick)
 	t.performNeighbourUpdates(tx)
 	w.redstone.tick(tx, tick)
@@ -611,21 +618,33 @@ func (g *randUint4) uint4(r *rand.Rand) uint8 {
 	return uint8(val)
 }
 
-// scheduledTickQueue implements a queue for scheduled block updates. Scheduled
-// block updates are both position and block type specific.
+// scheduledTickQueue stores one Java tick registry's scheduled updates.
 type scheduledTickQueue struct {
-	ticks         []scheduledTick
-	scheduledTicks map[scheduledTickIndex]int64
-	pendingTicks   []scheduledTick
-	processing     bool
-	currentTick   int64
+	ticks           []scheduledTick
+	dispatch        []scheduledTick
+	run             []scheduledTick
+	groups          []scheduledTickGroup
+	groupHeap       []int
+	selectedIndices []int
+	scheduledTicks  map[scheduledTickIndex]int64
+	pendingTicks    []scheduledTick
+	processing      bool
+	fluid           bool
+	currentTick     int64
+	nextOrder       int64
 }
 
 type scheduledTick struct {
-	pos   cube.Pos
-	b     Block
-	btype string
-	t     int64
+	pos        cube.Pos
+	btype      string
+	t          int64
+	priority   int32
+	order      int64
+	queueIndex int
+}
+
+type scheduledTickGroup struct {
+	end, next int
 }
 
 type scheduledTickIndex struct {
@@ -633,70 +652,278 @@ type scheduledTickIndex struct {
 	typeName string
 }
 
-// newScheduledTickQueue creates a queue for scheduled block ticks.
-func newScheduledTickQueue(tick int64) *scheduledTickQueue {
-	return &scheduledTickQueue{scheduledTicks: make(map[scheduledTickIndex]int64), currentTick: tick}
+type scheduledTickTypeKey struct {
+	kind     chunk.ScheduledTickKind
+	typeName string
 }
 
-// tick processes scheduled ticks, calling ScheduledTicker.ScheduledTick for any
-// block update that is scheduled for the tick passed, and removing it from the
-// queue.
-func (queue *scheduledTickQueue) tick(tx *Tx, tick int64) {
+const maxScheduledTicksPerTick = 65536
+
+// newScheduledTickQueue creates a queue for block ticks.
+func newScheduledTickQueue(tick int64) *scheduledTickQueue {
+	return newScheduledTickQueueForKind(tick, false)
+}
+
+// newScheduledFluidTickQueue creates a queue for fluid ticks.
+func newScheduledFluidTickQueue(tick int64) *scheduledTickQueue {
+	return newScheduledTickQueueForKind(tick, true)
+}
+
+func newScheduledTickQueueForKind(tick int64, fluid bool) *scheduledTickQueue {
+	return &scheduledTickQueue{
+		scheduledTicks: make(map[scheduledTickIndex]int64),
+		currentTick:    tick,
+		fluid:          fluid,
+	}
+}
+
+// tick collects at most one source tick budget from loaded, ticking chunks,
+// then dispatches the collected batch. Fluid ticks run after the block queue.
+func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 	queue.currentTick = tick
 	if len(queue.ticks) == 0 {
 		return
 	}
 
 	w := tx.World()
+	areas := w.scratchLoaderAreas[:0]
+	if !w.conf.Synchronous {
+		simulationRadius := int32(w.tickRange())
+		if len(loaders) != 0 {
+			for _, loader := range loaders {
+				areas = append(areas, loader.activeArea(simulationRadius))
+			}
+		} else {
+			for loader := range w.viewers {
+				areas = append(areas, loader.activeArea(simulationRadius))
+			}
+		}
+	}
+	queue.dispatch = queue.dispatch[:0]
 	ticks := queue.ticks
-	queue.processing = true
-	dst := 0
-	for i := range ticks {
-		t := ticks[i]
-		if t.t > tick {
-			ticks[dst] = t
-			dst++
+	for i, t := range ticks {
+		pos := chunkPosFromBlockPos(t.pos)
+		if t.t > tick || !w.scheduledTickChunkEligible(pos, areas) {
 			continue
 		}
-		index := scheduledTickIndex{pos: t.pos, typeName: t.btype}
-		if queue.scheduledTicks[index] == t.t {
-			delete(queue.scheduledTicks, index)
+		t.queueIndex = i
+		queue.dispatch = append(queue.dispatch, t)
+	}
+	slices.SortFunc(queue.dispatch, func(a, b scheduledTick) int {
+		aPos, bPos := chunkPosFromBlockPos(a.pos), chunkPosFromBlockPos(b.pos)
+		if aPos[0] < bPos[0] {
+			return -1
+		}
+		if aPos[0] > bPos[0] {
+			return 1
+		}
+		if aPos[1] < bPos[1] {
+			return -1
+		}
+		if aPos[1] > bPos[1] {
+			return 1
+		}
+		return compareScheduledTickDrainOrder(a, b)
+	})
+
+	queue.groups = queue.groups[:0]
+	queue.groupHeap = queue.groupHeap[:0]
+	for start := 0; start < len(queue.dispatch); {
+		pos := chunkPosFromBlockPos(queue.dispatch[start].pos)
+		end := start + 1
+		for end < len(queue.dispatch) && chunkPosFromBlockPos(queue.dispatch[end].pos) == pos {
+			end++
+		}
+		group := len(queue.groups)
+		queue.groups = append(queue.groups, scheduledTickGroup{end: end, next: start})
+		queue.pushScheduledTickGroup(group)
+		start = end
+	}
+
+	queue.run = queue.run[:0]
+	queue.selectedIndices = queue.selectedIndices[:0]
+	for len(queue.groupHeap) != 0 && len(queue.run) < maxScheduledTicksPerTick {
+		group := queue.popScheduledTickGroup()
+		current := &queue.groups[group]
+		t := queue.dispatch[current.next]
+		queue.run = append(queue.run, t)
+		queue.selectedIndices = append(queue.selectedIndices, t.queueIndex)
+		current.next++
+		if current.next < current.end {
+			queue.pushScheduledTickGroup(group)
+		}
+	}
+	if len(queue.run) != 0 {
+		slices.Sort(queue.selectedIndices)
+		dst, selected := 0, 0
+		for i, t := range ticks {
+			if selected < len(queue.selectedIndices) && queue.selectedIndices[selected] == i {
+				selected++
+				continue
+			}
+			ticks[dst] = t
+			dst++
+		}
+		queue.ticks = ticks[:dst]
+	}
+
+	// LevelChunkTicks.poll removes every collected identity during collection,
+	// before any callback can schedule a replacement of another collected tick.
+	for _, t := range queue.run {
+		delete(queue.scheduledTicks, scheduledTickIndex{pos: t.pos, typeName: t.btype})
+		if col, ok := w.chunks[chunkPosFromBlockPos(t.pos)]; ok {
+			col.modified = true
+		}
+	}
+
+	queue.processing = true
+	for _, t := range queue.run {
+		if queue.fluid {
+			liquid, ok := tx.Liquid(t.pos)
+			if !ok || !scheduledFluidTickMatches(liquid, t.btype) {
+				continue
+			}
+			if ticker, ok := liquid.(ScheduledTicker); ok {
+				ticker.ScheduledTick(t.pos, tx, w.r)
+			}
+			continue
 		}
 		b := tx.Block(t.pos)
 		if ticker, ok := b.(ScheduledTicker); ok && scheduledTickType(w.conf.Blocks, b) == t.btype {
 			ticker.ScheduledTick(t.pos, tx, w.r)
-		} else if liquid, ok := tx.additionalLiquid(t.pos); ok && scheduledTickType(w.conf.Blocks, liquid) == t.btype {
-			if ticker, ok := liquid.(ScheduledTicker); ok {
-				ticker.ScheduledTick(t.pos, tx, w.r)
-			}
 		}
 	}
 	queue.processing = false
-	queue.ticks = append(ticks[:dst], queue.pendingTicks...)
+	queue.ticks = append(queue.ticks, queue.pendingTicks...)
 	queue.pendingTicks = queue.pendingTicks[:0]
+	queue.dispatch = queue.dispatch[:0]
+	queue.run = queue.run[:0]
+	queue.groups = queue.groups[:0]
+	queue.groupHeap = queue.groupHeap[:0]
+	queue.selectedIndices = queue.selectedIndices[:0]
+	w.scratchLoaderAreas = areas[:0]
 }
 
-// schedule schedules a block update at the position passed for the block type
-// passed after a specific delay. Only the first pending update for a block type
-// at a position is kept, matching the source tick queue's unique-tick behavior.
-func (queue *scheduledTickQueue) schedule(br BlockRegistry, pos cube.Pos, b Block, delay time.Duration) {
-	resTick := queue.currentTick + int64(max(delay/(time.Second/20), 1))
-	typeName := scheduledTickType(br, b)
-	index := scheduledTickIndex{pos: pos, typeName: typeName}
-	if _, ok := queue.scheduledTicks[index]; ok {
-		return
+func (w *World) scheduledTickChunkEligible(pos ChunkPos, areas []loaderActiveArea) bool {
+	if !w.chunkLoaded(pos) {
+		return false
 	}
-	queue.scheduledTicks[index] = resTick
-	t := scheduledTick{pos: pos, t: resTick, b: b, btype: typeName}
+	return w.conf.Synchronous || columnWithinAreas(pos, areas)
+}
+
+func compareScheduledTickDrainOrder(a, b scheduledTick) int {
+	if a.t < b.t {
+		return -1
+	}
+	if a.t > b.t {
+		return 1
+	}
+	if a.priority < b.priority {
+		return -1
+	}
+	if a.priority > b.priority {
+		return 1
+	}
+	if a.order < b.order {
+		return -1
+	}
+	if a.order > b.order {
+		return 1
+	}
+	return 0
+}
+
+func (queue *scheduledTickQueue) scheduledTickGroupLess(a, b int) bool {
+	aTick := queue.dispatch[queue.groups[a].next]
+	bTick := queue.dispatch[queue.groups[b].next]
+	if aTick.priority != bTick.priority {
+		return aTick.priority < bTick.priority
+	}
+	if aTick.order != bTick.order {
+		return aTick.order < bTick.order
+	}
+	aPos, bPos := chunkPosFromBlockPos(aTick.pos), chunkPosFromBlockPos(bTick.pos)
+	if aPos[0] != bPos[0] {
+		return aPos[0] < bPos[0]
+	}
+	return aPos[1] < bPos[1]
+}
+
+func (queue *scheduledTickQueue) pushScheduledTickGroup(group int) {
+	queue.groupHeap = append(queue.groupHeap, group)
+	index := len(queue.groupHeap) - 1
+	for index > 0 {
+		parent := (index - 1) / 2
+		if !queue.scheduledTickGroupLess(queue.groupHeap[index], queue.groupHeap[parent]) {
+			break
+		}
+		queue.groupHeap[index], queue.groupHeap[parent] = queue.groupHeap[parent], queue.groupHeap[index]
+		index = parent
+	}
+}
+
+func (queue *scheduledTickQueue) popScheduledTickGroup() int {
+	root := queue.groupHeap[0]
+	last := len(queue.groupHeap) - 1
+	queue.groupHeap[0] = queue.groupHeap[last]
+	queue.groupHeap = queue.groupHeap[:last]
+	for index := 0; ; {
+		left := index*2 + 1
+		if left >= len(queue.groupHeap) {
+			break
+		}
+		best := left
+		right := left + 1
+		if right < len(queue.groupHeap) && queue.scheduledTickGroupLess(queue.groupHeap[right], queue.groupHeap[left]) {
+			best = right
+		}
+		if !queue.scheduledTickGroupLess(queue.groupHeap[best], queue.groupHeap[index]) {
+			break
+		}
+		queue.groupHeap[index], queue.groupHeap[best] = queue.groupHeap[best], queue.groupHeap[index]
+		index = best
+	}
+	return root
+}
+
+// schedule schedules a live update after the requested delay in ticks. Only
+// the first pending update for a type at a position is kept.
+func (queue *scheduledTickQueue) schedule(br BlockRegistry, pos cube.Pos, b Block, delay time.Duration) bool {
+	due := queue.currentTick + int64(max(delay/(time.Second/20), 0))
+	return queue.scheduleAt(br, pos, b, due, 0)
+}
+
+// scheduleAt inserts a tick at its absolute trigger tick. Generated ticks use
+// the current tick directly, matching ProtoChunkTicks' zero-delay semantics.
+func (queue *scheduledTickQueue) scheduleAt(br BlockRegistry, pos cube.Pos, b Block, due int64, priority int32) bool {
+	var typeName string
+	if queue.fluid {
+		liquid, ok := b.(Liquid)
+		if !ok {
+			panic("scheduled fluid tick: type is not a liquid")
+		}
+		typeName = scheduledFluidTickType(liquid)
+	} else {
+		typeName = scheduledTickType(br, b)
+	}
+	index := scheduledTickIndex{pos: pos, typeName: typeName}
+	if _, exists := queue.scheduledTicks[index]; exists {
+		return false
+	}
+	priority = normalizeScheduledTickPriority(priority)
+	t := scheduledTick{pos: pos, t: due, btype: typeName, priority: priority, order: queue.nextOrder}
+	queue.nextOrder++
+	queue.scheduledTicks[index] = due
 	if queue.processing {
 		queue.pendingTicks = append(queue.pendingTicks, t)
 	} else {
 		queue.ticks = append(queue.ticks, t)
 	}
+	return true
 }
 
-// scheduledTickType returns the Java block type represented by a native block
-// state. Scheduled ticks identify a block type, not an individual state.
+// scheduledTickType returns the Java registry type represented by a native
+// block state. Scheduled ticks identify a type, not an individual state.
 func scheduledTickType(registry BlockRegistry, b Block) string {
 	rid := registry.BlockRuntimeID(b)
 	name, properties, ok := registry.RuntimeIDToState(rid)
@@ -706,15 +933,75 @@ func scheduledTickType(registry BlockRegistry, b Block) string {
 	return javaBlockTypeForNative(name, properties)
 }
 
-// fromChunk returns all scheduled ticks positioned within a ChunkPos.
-func (queue *scheduledTickQueue) fromChunk(pos ChunkPos) []scheduledTick {
-	m := make([]scheduledTick, 0, 8)
-	for _, t := range queue.ticks {
-		if pos == chunkPosFromBlockPos(t.pos) {
-			m = append(m, t)
+func scheduledFluidTickType(liquid Liquid) string {
+	name := liquid.LiquidType()
+	if name == "" {
+		panic("scheduled fluid tick: empty liquid type")
+	}
+	if !strings.Contains(name, ":") {
+		name = "minecraft:" + name
+	}
+	// Java LiquidBlock maps level zero to the source fluid. Bedrock's
+	// water/flowing_water names independently encode the native Still flag.
+	if liquid.LiquidDepth() != 8 || liquid.LiquidFalling() {
+		switch name {
+		case "minecraft:water":
+			return "minecraft:flowing_water"
+		case "minecraft:lava":
+			return "minecraft:flowing_lava"
 		}
 	}
-	return m
+	return name
+}
+func scheduledFluidTickMatches(liquid Liquid, typeName string) bool {
+	name := liquid.LiquidType()
+	if name == "" {
+		panic("scheduled fluid tick: empty liquid type")
+	}
+	if !strings.Contains(name, ":") {
+		name = "minecraft:" + name
+	}
+	if name == "minecraft:water" {
+		return typeName == "minecraft:water" || typeName == "minecraft:flowing_water"
+	}
+	if name == "minecraft:lava" {
+		return typeName == "minecraft:lava" || typeName == "minecraft:flowing_lava"
+	}
+	return name == typeName
+}
+
+func normalizeScheduledTickPriority(priority int32) int32 {
+	if priority < -3 {
+		return -3
+	}
+	if priority > 3 {
+		return 3
+	}
+	return priority
+}
+
+// fromChunk returns the ticks owned by the chunk containing each scheduled
+// position, retaining insertion order for native saved-tick list order.
+func (queue *scheduledTickQueue) fromChunk(pos ChunkPos) []chunk.SavedScheduledTick {
+	ticks := make([]chunk.SavedScheduledTick, 0, 8)
+	kind := chunk.BlockTick
+	if queue.fluid {
+		kind = chunk.FluidTick
+	}
+	for _, t := range queue.ticks {
+		if pos == chunkPosFromBlockPos(t.pos) {
+			ticks = append(ticks, chunk.SavedScheduledTick{
+				ScheduledTick: chunk.ScheduledTick{
+					Pos:      t.pos,
+					Kind:     kind,
+					Type:     t.btype,
+					Priority: t.priority,
+				},
+				Delay: int32(t.t - queue.currentTick),
+			})
+		}
+	}
+	return ticks
 }
 
 // removeChunk removes all scheduled ticks positioned within a ChunkPos.
@@ -732,14 +1019,15 @@ func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
 	}
 }
 
-// add adds saved scheduled ticks to the queue, retaining the first tick for
-// each position and type just like schedule.
 func (queue *scheduledTickQueue) add(ticks []scheduledTick) {
-	for _, t := range ticks {
+	count := int64(len(ticks))
+	for i, t := range ticks {
 		index := scheduledTickIndex{pos: t.pos, typeName: t.btype}
 		if _, exists := queue.scheduledTicks[index]; exists {
 			continue
 		}
+		t.priority = normalizeScheduledTickPriority(t.priority)
+		t.order = int64(i) - count
 		queue.scheduledTicks[index] = t.t
 		queue.ticks = append(queue.ticks, t)
 	}

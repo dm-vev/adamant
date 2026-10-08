@@ -562,7 +562,8 @@ func TestPlacedRedstoneTorchTurnsOffWhenAttachmentBecomesPowered(t *testing.T) {
 		tx.SetBlock(torchPos, redstoneAttachmentTorch{Facing: cube.FaceWest, Lit: true}, nil)
 		tx.SetBlock(attachmentPos.Side(cube.FaceNorth), redstoneWeakBlockSource{}, nil)
 
-		tx.World().scheduledUpdates.tick(tx, 2)
+		tx.World().scheduledBlockTicks.tick(tx, 2)
+		tx.World().scheduledFluidTicks.tick(tx, 2)
 		tx.World().redstone.tick(tx, 2)
 		lit = tx.Block(torchPos).(redstoneAttachmentTorch).Lit
 	})
@@ -667,11 +668,276 @@ func TestScheduledTickQueueDuplicateScheduling(t *testing.T) {
 				t.Fatalf("scheduled tick = %d, want %d", got, want)
 			}
 			ticks := queue.fromChunk(chunkPosFromBlockPos(pos))
-			if len(ticks) != 1 || ticks[0].t != test.wantTick {
-				t.Fatalf("active ticks = %v, want only tick %d", ticks, test.wantTick)
+			if len(ticks) != 1 || ticks[0].Delay != int32(test.wantTick-100) {
+				t.Fatalf("saved ticks = %v, want remaining delay %d", ticks, test.wantTick-100)
 			}
 		})
 	}
+}
+func TestScheduledTickZeroDelayPauseAndDestinationOwnership(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	registry.Finalize()
+	pos := cube.Pos{64, 64, 8}
+	destination := chunkPosFromBlockPos(pos)
+	source := ChunkPos{2, 0}
+	b := scheduledTickTestBlock{}
+
+	generated := newScheduledTickQueue(100)
+	generated.scheduleAt(registry, pos, b, generated.currentTick, 0)
+	if ticks := generated.fromChunk(destination); len(ticks) != 1 || ticks[0].Delay != 0 {
+		t.Fatalf("generated destination ticks = %v, want one zero-delay tick", ticks)
+	}
+	if ticks := generated.fromChunk(source); len(ticks) != 0 {
+		t.Fatalf("source chunk owns generated ticks = %v, want none", ticks)
+	}
+
+	live := newScheduledTickQueue(100)
+	live.schedule(registry, pos, b, 3*time.Second/20)
+	saved := live.fromChunk(destination)
+	if len(saved) != 1 || saved[0].Delay != 3 {
+		t.Fatalf("saved live ticks = %v, want one tick with remaining delay 3", saved)
+	}
+	live.removeChunk(destination)
+
+	reloaded := newScheduledTickQueue(900)
+	reloaded.add([]scheduledTick{{
+		pos: pos, btype: saved[0].Type, t: reloaded.currentTick + int64(saved[0].Delay),
+		priority: saved[0].Priority,
+	}})
+	w := Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+	tickCount := 0
+	scheduledTickTestBlockTicks = &tickCount
+	t.Cleanup(func() { scheduledTickTestBlockTicks = nil })
+	runWorld(w, func(tx *Tx) {
+		tx.SetBlock(pos, b, nil)
+		reloaded.tick(tx, 902)
+		if tickCount != 0 {
+			t.Fatalf("paused live tick ran early at 902: count=%d", tickCount)
+		}
+		reloaded.tick(tx, 903)
+	})
+	if tickCount != 1 {
+		t.Fatalf("reloaded live ticks ran %d times, want once at remaining delay 3", tickCount)
+	}
+}
+
+func TestScheduledTickPriorityAndStableOrder(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	registry.Finalize()
+	w := Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+	queue := newScheduledTickQueue(100)
+	positions := []cube.Pos{{1, 64, 1}, {2, 64, 1}, {3, 64, 1}}
+	b := scheduledTickTestBlock{}
+	var order []cube.Pos
+	scheduledTickTestBlockOrder = &order
+	t.Cleanup(func() { scheduledTickTestBlockOrder = nil })
+
+	runWorld(w, func(tx *Tx) {
+		for _, pos := range positions {
+			tx.SetBlock(pos, b, nil)
+		}
+		queue.scheduleAt(registry, positions[0], b, 101, 0)
+		queue.scheduleAt(registry, positions[1], b, 101, -2)
+		queue.scheduleAt(registry, positions[2], b, 101, 0)
+		queue.tick(tx, 101)
+	})
+	want := []cube.Pos{positions[1], positions[0], positions[2]}
+	if !slices.Equal(order, want) {
+		t.Fatalf("scheduled callback order = %v, want priority then stable insertion order %v", order, want)
+	}
+}
+
+func TestScheduledTicksMergeChunkHeadsByPriority(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	w := Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+	queue := newScheduledTickQueue(100)
+	first := cube.Pos{1, 64, 1}
+	firstChunkHigh := cube.Pos{2, 64, 1}
+	otherChunkHigh := cube.Pos{17, 64, 1}
+	b := scheduledTickTestBlock{}
+	var order []cube.Pos
+	scheduledTickTestBlockOrder = &order
+	t.Cleanup(func() { scheduledTickTestBlockOrder = nil })
+
+	runWorld(w, func(tx *Tx) {
+		tx.SetBlock(first, b, nil)
+		tx.SetBlock(firstChunkHigh, b, nil)
+		tx.SetBlock(otherChunkHigh, b, nil)
+		queue.scheduleAt(registry, first, b, 100, 0)
+		queue.scheduleAt(registry, firstChunkHigh, b, 101, -2)
+		queue.scheduleAt(registry, otherChunkHigh, b, 101, -2)
+		queue.tick(tx, 105)
+	})
+	want := []cube.Pos{otherChunkHigh, first, firstChunkHigh}
+	if !slices.Equal(order, want) {
+		t.Fatalf("scheduled callbacks = %v, want per-chunk trigger order merged across chunks by priority/subtick %v", order, want)
+	}
+}
+
+func TestScheduledTicksWaitForLoadedTickingDestination(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	w := Config{Blocks: registry}.New()
+	defer w.Close()
+	queue := newScheduledTickQueue(0)
+	pos := cube.Pos{16, 64, 8}
+	source, destination := ChunkPos{0, 0}, ChunkPos{1, 0}
+	loader := &Loader{r: 0, pos: source}
+	b := scheduledTickTestBlock{}
+	ticks := 0
+	scheduledTickTestBlockTicks = &ticks
+	t.Cleanup(func() { scheduledTickTestBlockTicks = nil })
+
+	runWorld(w, func(tx *Tx) {
+		tx.chunk(source)
+		queue.scheduleAt(registry, pos, b, 1, 0)
+		queue.tick(tx, 1, loader)
+		if w.chunkLoaded(destination) || ticks != 0 || len(queue.ticks) != 1 {
+			t.Fatalf("unloaded destination after collection: loaded=%t callbacks=%d pending=%d", w.chunkLoaded(destination), ticks, len(queue.ticks))
+		}
+
+		tx.SetBlock(pos, b, nil)
+		queue.tick(tx, 2, loader)
+		if ticks != 0 || len(queue.ticks) != 1 {
+			t.Fatalf("non-ticking destination after collection: callbacks=%d pending=%d", ticks, len(queue.ticks))
+		}
+
+		loader.pos = destination
+		queue.tick(tx, 3, loader)
+	})
+	if ticks != 1 {
+		t.Fatalf("scheduled callback count after destination became ticking = %d, want 1", ticks)
+	}
+
+	synchronous := Config{Synchronous: true, Blocks: registry}.New()
+	defer synchronous.Close()
+	queue = newScheduledTickQueue(0)
+	ticks = 0
+	loader.pos = source
+	runWorld(synchronous, func(tx *Tx) {
+		tx.SetBlock(pos, b, nil)
+		queue.scheduleAt(registry, pos, b, 1, 0)
+		queue.tick(tx, 1, loader)
+	})
+	if ticks != 1 {
+		t.Fatalf("synchronous world failed to tick a loaded destination outside loader area: callbacks=%d", ticks)
+	}
+}
+
+func TestScheduledTickBatchClearsIdentitiesBeforeCallbacks(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	w := Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+	queue := newScheduledTickQueue(100)
+	first, later := cube.Pos{1, 64, 1}, cube.Pos{2, 64, 1}
+	b := scheduledTickTestBlock{}
+	ticks := 0
+	scheduledTickTestBlockTicks = &ticks
+	scheduledTickTestBlockReschedule = func(pos cube.Pos, tx *Tx) {
+		if pos == first {
+			queue.schedule(registry, later, b, time.Second/20)
+		}
+	}
+	t.Cleanup(func() {
+		scheduledTickTestBlockTicks = nil
+		scheduledTickTestBlockReschedule = nil
+	})
+
+	var afterFirst []chunk.SavedScheduledTick
+	runWorld(w, func(tx *Tx) {
+		tx.SetBlock(first, b, nil)
+		tx.SetBlock(later, b, nil)
+		queue.scheduleAt(registry, first, b, 101, 0)
+		queue.scheduleAt(registry, later, b, 101, 0)
+		queue.tick(tx, 101)
+		afterFirst = queue.fromChunk(ChunkPos{})
+		if ticks != 2 {
+			t.Fatalf("collected callbacks = %d, want 2", ticks)
+		}
+		queue.tick(tx, 102)
+	})
+	if len(afterFirst) != 1 || afterFirst[0].Pos != later || afterFirst[0].Delay != 1 {
+		t.Fatalf("replacement tick after collection = %v, want one later-position tick delayed by 1", afterFirst)
+	}
+	if ticks != 3 {
+		t.Fatalf("callback count after replacement ran = %d, want 3", ticks)
+	}
+}
+
+func TestScheduledTickBudgetAndUnpackedOrder(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	w := Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+	queue := newScheduledTickQueue(0)
+	positions := []cube.Pos{{1, 64, 1}, {2, 64, 1}, {3, 64, 1}}
+	b := scheduledTickTestBlock{}
+	var order []cube.Pos
+	scheduledTickTestBlockOrder = &order
+	t.Cleanup(func() { scheduledTickTestBlockOrder = nil })
+
+	runWorld(w, func(tx *Tx) {
+		for _, pos := range positions {
+			tx.SetBlock(pos, b, nil)
+		}
+		queue.add([]scheduledTick{
+			{pos: positions[0], btype: "test:scheduled_tick", t: 1},
+			{pos: positions[1], btype: "test:scheduled_tick", t: 1},
+		})
+		queue.scheduleAt(registry, positions[2], b, 1, 0)
+		queue.tick(tx, 1)
+		if !slices.Equal(order, positions) {
+			t.Fatalf("saved/unpacked callback order = %v, want saved list order before new tick %v", order, positions)
+		}
+	})
+
+	large := newScheduledTickQueue(0)
+	tickCount := maxScheduledTicksPerTick + 1
+	minY := w.Range()[0]
+	for i := range tickCount {
+		pos := cube.Pos{i & 15, minY + i/(16*16), (i / 16) & 15}
+		tick := scheduledTick{pos: pos, btype: "test:scheduled_tick", t: 1, order: int64(i)}
+		large.ticks = append(large.ticks, tick)
+		large.scheduledTicks[scheduledTickIndex{pos: pos, typeName: tick.btype}] = 1
+	}
+	runWorld(w, func(tx *Tx) {
+		tx.chunk(ChunkPos{})
+		large.tick(tx, 1)
+		if len(large.ticks) != 1 || len(large.scheduledTicks) != 1 {
+			t.Fatalf("ticks left after one capped drain = %d, identities=%d, want 1 each", len(large.ticks), len(large.scheduledTicks))
+		}
+		large.tick(tx, 2)
+		if len(large.ticks) != 0 || len(large.scheduledTicks) != 0 {
+			t.Fatalf("ticks after second drain = %d, identities=%d, want empty", len(large.ticks), len(large.scheduledTicks))
+		}
+	})
+}
+
+func TestScheduledTickChangesMarkDestinationDirty(t *testing.T) {
+	registry := scheduledTickTestRegistry()
+	w := Config{Synchronous: true, Blocks: registry}.New()
+	defer w.Close()
+	pos := cube.Pos{8, 64, 8}
+	b := scheduledTickTestBlock{}
+	runWorld(w, func(tx *Tx) {
+		col := tx.chunk(chunkPosFromBlockPos(pos))
+		col.modified = false
+		tx.ScheduleBlockUpdate(pos, b, time.Second/20)
+		if !col.modified {
+			t.Fatal("scheduling a tick did not dirty its loaded destination column")
+		}
+		col.modified = false
+		tx.ScheduleBlockUpdate(pos, b, time.Second/20)
+		if col.modified {
+			t.Fatal("duplicate scheduling dirtied a column without changing its pending tick set")
+		}
+		col.modified = false
+		w.scheduledBlockTicks.tick(tx, w.scheduledBlockTicks.currentTick+1)
+		if !col.modified {
+			t.Fatal("collecting a tick did not dirty its loaded destination column")
+		}
+	})
 }
 
 func TestScheduledTickQueueRemoveChunkClearsSchedule(t *testing.T) {
@@ -712,7 +978,7 @@ func TestScheduledTickQueueCanRescheduleFromScheduledCallback(t *testing.T) {
 		scheduledTickTestBlockReschedule = nil
 	})
 
-	var activeAfterFirst, activeAfterSecond []scheduledTick
+	var activeAfterFirst, activeAfterSecond []chunk.SavedScheduledTick
 	runWorld(w, func(tx *Tx) {
 		tx.SetBlock(pos, b, nil)
 		queue.schedule(registry, pos, b, time.Second/20)
@@ -724,8 +990,8 @@ func TestScheduledTickQueueCanRescheduleFromScheduledCallback(t *testing.T) {
 	if ticks != 2 {
 		t.Fatalf("scheduled callback executed %d times, want 2", ticks)
 	}
-	if len(activeAfterFirst) != 1 || activeAfterFirst[0].t != 102 {
-		t.Fatalf("active ticks after callback rescheduled = %v, want only tick 102", activeAfterFirst)
+	if len(activeAfterFirst) != 1 || activeAfterFirst[0].Delay != 1 {
+		t.Fatalf("active ticks after callback rescheduled = %v, want only one tick with remaining delay 1", activeAfterFirst)
 	}
 	if len(activeAfterSecond) != 0 {
 		t.Fatalf("active ticks after second callback = %v, want empty", activeAfterSecond)
@@ -811,12 +1077,16 @@ type scheduledTickTestBlock struct{}
 // Test counters below are package-level because block instances are registry values; tests using them must stay serial.
 var (
 	scheduledTickTestBlockTicks      *int
+	scheduledTickTestBlockOrder      *[]cube.Pos
 	scheduledTickTestBlockReschedule func(cube.Pos, *Tx)
 )
 
 func (scheduledTickTestBlock) ScheduledTick(pos cube.Pos, tx *Tx, _ *rand.Rand) {
 	if scheduledTickTestBlockTicks != nil {
 		(*scheduledTickTestBlockTicks)++
+	}
+	if scheduledTickTestBlockOrder != nil {
+		*scheduledTickTestBlockOrder = append(*scheduledTickTestBlockOrder, pos)
 	}
 	if scheduledTickTestBlockReschedule != nil {
 		scheduledTickTestBlockReschedule(pos, tx)
@@ -847,7 +1117,7 @@ func (b scheduledTickTypeVariant) Hash() (uint64, uint64) {
 	return 1 << 58, 0
 }
 func (scheduledTickTypeVariant) Model() BlockModel { return nil }
-func (scheduledTickTestBlock) Model() BlockModel      { return nil }
+func (scheduledTickTestBlock) Model() BlockModel   { return nil }
 
 func scheduledTickTestRegistry() BlockRegistry {
 	registry := NewBlockRegistry()

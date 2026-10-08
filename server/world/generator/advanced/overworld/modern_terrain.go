@@ -61,9 +61,12 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 				}
 				c.SetBiome(uint8(x), int16(y), uint8(z), modernBiomeIDs[work.lattice.BiomeIndexAt(worldX, y, worldZ)])
 				if schedule && (material == java26.AquiferWater || material == java26.AquiferLava) {
-					entry.scheduled = append(entry.scheduled, chunk.ScheduledBlockUpdate{
-						Pos:   cube.Pos{int(worldX), int(y), int(worldZ)},
-						Block: rid,
+					typeName := "minecraft:water"
+					if material == java26.AquiferLava {
+						typeName = "minecraft:lava"
+					}
+					entry.scheduled = append(entry.scheduled, chunk.ScheduledTick{
+						Pos: cube.Pos{int(worldX), int(y), int(worldZ)}, Kind: chunk.FluidTick, Type: typeName,
 					})
 				}
 			}
@@ -78,7 +81,7 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 			chunk:   c,
 			pos:     pos,
 		})
-		entry.scheduled = append(entry.scheduled, carved.ScheduledBlocks...)
+		entry.scheduled = append(entry.scheduled, carved.ScheduledTicks...)
 	}
 	c.Compact()
 	return entry
