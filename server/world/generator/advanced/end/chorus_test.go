@@ -3,6 +3,7 @@ package end
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"testing"
 
@@ -73,6 +74,9 @@ func TestChorusPlantMatchesJava263(t *testing.T) {
 			if written != len(tc.Writes) {
 				t.Errorf("written positions=%d source=%d", written, len(tc.Writes))
 			}
+			for index, c := range region.chunks {
+				region.publishTarget(region.minChunkX+index/endFeatureRadius, region.minChunkZ+index%endFeatureRadius, c)
+			}
 			mismatches := 0
 			for _, b := range tc.Writes {
 				var state world.BlockState
@@ -94,10 +98,21 @@ func TestChorusPlantMatchesJava263(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got := region.block(b.Position[0], b.Position[1], b.Position[2]); got != want.Block {
+				p := b.Position
+				c := region.chunks[region.index(p[0]>>4, p[2]>>4)]
+				gotNative := world.NativeStateAt(c, uint8(p[0]&15), int16(p[1]), uint8(p[2]&15))
+				got, err := world.JavaState(world.DefaultBlockRegistry, gotNative)
+				if err != nil {
+					t.Fatal(err)
+				}
+				expected, err := world.JavaState(world.DefaultBlockRegistry, want)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if gotNative.Block != want.Block || gotNative.Liquid != want.Liquid || got.Name != expected.Name || !maps.Equal(got.Properties, expected.Properties) {
 					mismatches++
 					if mismatches <= 5 {
-						t.Errorf("at %v got=%d source=%d", b.Position, got, want.Block)
+						t.Errorf("at %v got=%+v source=%+v", p, got, expected)
 					}
 				}
 			}

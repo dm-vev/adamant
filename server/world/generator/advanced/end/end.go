@@ -33,9 +33,8 @@ type End struct {
 	fireRID       uint32
 	endGatewayRID uint32
 
-	chorusPlantRID    uint32
-	chorusFlowerRID   uint32
-	chorusFlowerDead  uint32
+	chorusPlantStates [64]world.NativeState
+	chorusFlowerRIDs  [6]uint32
 	chorusMaxDistance int
 
 	spikes [10]java26.EndSpike
@@ -72,12 +71,26 @@ func NewEnd(seed int64) *End {
 		ironBarsRIDs: [16]uint32{},
 		fireRID:       world.BlockRuntimeID(block.Fire{Type: block.NormalFire()}),
 		endGatewayRID: world.BlockRuntimeID(block.EndGateway{}),
-		chorusPlantRID:    mustStateRID("minecraft:chorus_plant", nil),
-		chorusFlowerRID:   mustStateRID("minecraft:chorus_flower", nil),
-		chorusFlowerDead:  findChorusFlowerDeadRID(),
 		chorusMaxDistance: 8,
 	}
 	g.pool.New = func() any { return &endScratch{heights: make([]float32, 3*33*3)} }
+	for age := range g.chorusFlowerRIDs {
+		g.chorusFlowerRIDs[age] = mustStateRID("minecraft:chorus_flower", map[string]any{"age": int32(age)})
+	}
+	for mask := range g.chorusPlantStates {
+		state, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{
+			Name: "minecraft:chorus_plant",
+			Properties: map[string]any{
+				"down": mask&1 != 0, "up": mask&2 != 0,
+				"north": mask&4 != 0, "east": mask&8 != 0,
+				"south": mask&16 != 0, "west": mask&32 != 0,
+			},
+		})
+		if err != nil {
+			panic(err)
+		}
+		g.chorusPlantStates[mask] = state
+	}
 	for mask := range g.ironBarsRIDs {
 		g.ironBarsRIDs[mask] = world.BlockRuntimeID(block.IronBars{
 			NorthConnection: mask&1 != 0,
@@ -467,8 +480,34 @@ func (g *End) generateEndIsland(origin endFeatureOrigin, centreX, centreY, centr
 }
 
 func (g *End) generateChorusPlant(region endFeatureOrigin, x, y, z int, r *endRand, maxDistance int) {
-	region.setBlock(x, y, z, g.chorusPlantRID)
+	g.setChorusPlant(region, x, y, z)
 	g.growChorusRecursive(region, x, y, z, r, x, z, maxDistance, 0)
+}
+
+// setChorusPlant matches getStateWithConnections at the instant of the write.
+// Growth explicitly refreshes the preceding segment after adding its neighbor.
+func (g *End) setChorusPlant(region endFeatureOrigin, x, y, z int) {
+	if y < region.region.minY || y > region.region.maxY || !region.inWriteRadius(x, z) {
+		return
+	}
+	mask := 0
+	for side, offset := range [...]cube.Pos{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}} {
+		rid := region.block(x+offset[0], y+offset[1], z+offset[2])
+		connected := rid == g.chorusPlantStates[0].Block
+		if !connected {
+			for _, flower := range g.chorusFlowerRIDs {
+				if rid == flower {
+					connected = true
+					break
+				}
+			}
+		}
+		// Java 26.3's supports_chorus_plant tag contains only end_stone.
+		if connected || side == 0 && rid == g.endStoneRID {
+			mask |= 1 << side
+		}
+	}
+	region.region.setLayers(x, y, z, g.chorusPlantStates[mask])
 }
 
 func (g *End) growChorusRecursive(region endFeatureOrigin, x, y, z int, r *endRand, originX, originZ, maxDistance, depth int) {
@@ -481,7 +520,8 @@ func (g *End) growChorusRecursive(region endFeatureOrigin, x, y, z int, r *endRa
 		if !g.areAllHorizontalNeighborsAir(region, x, yy, z, -1) {
 			return
 		}
-		region.setBlock(x, yy, z, g.chorusPlantRID)
+		g.setChorusPlant(region, x, yy, z)
+		g.setChorusPlant(region, x, yy-1, z)
 	}
 	branched := false
 	if depth < 4 {
@@ -503,12 +543,13 @@ func (g *End) growChorusRecursive(region endFeatureOrigin, x, y, z int, r *endRa
 				continue
 			}
 			branched = true
-			region.setBlock(nx, ny, nz, g.chorusPlantRID)
+			g.setChorusPlant(region, nx, ny, nz)
+			g.setChorusPlant(region, x, ny, z)
 			g.growChorusRecursive(region, nx, ny, nz, r, originX, originZ, maxDistance, depth+1)
 		}
 	}
 	if !branched {
-		region.setBlock(x, y+i, z, g.chorusFlowerDead)
+		region.setBlock(x, y+i, z, g.chorusFlowerRIDs[5])
 	}
 }
 
@@ -554,40 +595,3 @@ func mustStateRID(name string, props map[string]any) uint32 {
 	return rid
 }
 
-func findChorusFlowerDeadRID() uint32 {
-	var (
-		bestRID uint32
-		bestAge int
-		found   bool
-	)
-	for rid := uint32(0); ; rid++ {
-		name, props, ok := chunk.RuntimeIDToState(rid)
-		if !ok {
-			break
-		}
-		if name != "minecraft:chorus_flower" {
-			continue
-		}
-		raw, ok := props["age"]
-		if !ok {
-			continue
-		}
-		var age int
-		switch v := raw.(type) {
-		case uint8:
-			age = int(v)
-		case int32:
-			age = int(v)
-		default:
-			continue
-		}
-
-		if !found || age > bestAge {
-			bestRID, bestAge, found = rid, age, true
-		}
-	}
-	if !found {
-		panic("mc112: missing chorus flower states")
-	}
-	return bestRID
-}
