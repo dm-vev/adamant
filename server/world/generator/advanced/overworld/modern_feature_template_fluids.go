@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
@@ -55,6 +57,11 @@ func applyTemplateFluids(region *featureRegion, blocks []javastructure.Block) []
 					continue
 				}
 				*entry = wet
+				if featureInsideTarget(region.target, pos) {
+					region.result.ScheduleTick(chunk.ScheduledTick{
+						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
+					})
+				}
 			}
 			// Java queues EMPTY and flowing fluid too; only source fluids skip.
 			if !previousSource {
@@ -112,6 +119,11 @@ func applyTemplateFluids(region *featureRegion, blocks []javastructure.Block) []
 					panic(err)
 				}
 				region.Set(pos, state)
+				if featureInsideTarget(region.target, pos) {
+					region.result.ScheduleTick(chunk.ScheduledTick{
+						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
+					})
+				}
 			}
 		}
 		toFill = remaining

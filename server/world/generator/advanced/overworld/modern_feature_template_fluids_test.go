@@ -34,11 +34,13 @@ func TestTemplatePlacementWaterlogsNativeWaterSources(t *testing.T) {
 		props    map[string]any
 		wet      bool
 		wantType string
+		wantTick bool
 	}{
 		{name: "dry", fluid: dry, props: map[string]any{"type": "bottom", "waterlogged": false}, wantType: "bottom"},
-		{name: "source water", fluid: water, props: map[string]any{"type": "bottom", "waterlogged": false}, wet: true, wantType: "bottom"},
+		{name: "source water", fluid: water, props: map[string]any{"type": "bottom", "waterlogged": false}, wet: true, wantType: "bottom", wantTick: true},
 		{name: "flowing water", fluid: flowing, props: map[string]any{"type": "top", "waterlogged": false}, wantType: "top"},
 		{name: "double slab rejects", fluid: water, props: map[string]any{"type": "double", "waterlogged": false}, wantType: "double"},
+		{name: "direct wet state", fluid: dry, props: map[string]any{"type": "bottom", "waterlogged": true}, wet: true, wantType: "bottom"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			region := templateFluidTestRegion()
@@ -47,6 +49,15 @@ func TestTemplatePlacementWaterlogsNativeWaterSources(t *testing.T) {
 			entry := javastructure.Block{Pos: [3]int32{pos.x, pos.y, pos.z}, State: world.BlockState{Name: "minecraft:oak_slab", Properties: tc.props}}
 			applyTemplateFluids(region, []javastructure.Block{entry})
 			assertTemplateSlab(t, region, pos, tc.wantType, tc.wet, waterLayer)
+			ticks := region.result.ScheduledTicks
+			if tc.wantTick {
+				want := chunk.ScheduledTick{Pos: cube.Pos{8, 80, 8}, Kind: chunk.FluidTick, Type: "minecraft:water"}
+				if len(ticks) != 1 || ticks[0] != want {
+					t.Fatalf("liquid placement ticks = %+v, want %+v", ticks, want)
+				}
+			} else if len(ticks) != 0 {
+				t.Fatalf("direct/rejected placement created liquid ticks: %+v", ticks)
+			}
 		})
 	}
 }
@@ -190,5 +201,84 @@ func TestTemplateFluidDropsOverwrittenActor(t *testing.T) {
 	stone := javastructure.Block{Pos: campfire.Pos, State: world.BlockState{Name: "minecraft:stone"}}
 	if payload := applyTemplateFluids(region, []javastructure.Block{campfire, stone}); len(payload) != 0 {
 		t.Fatalf("overwritten campfire survived in actor payload: %+v", payload)
+	}
+}
+
+func TestTemplateRefillTicksFollowSuccessfulFillOrder(t *testing.T) {
+	region := templateFluidTestRegion()
+	water, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{Name: "minecraft:water"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	region.Set(featurePos{10, 80, 8}, water)
+	state := world.BlockState{Name: "minecraft:oak_slab", Properties: map[string]any{"type": "bottom", "waterlogged": false}}
+	applyTemplateFluids(region, []javastructure.Block{
+		{Pos: [3]int32{8, 80, 8}, State: state},
+		{Pos: [3]int32{9, 80, 8}, State: state},
+	})
+	ticks := region.result.ScheduledTicks
+	want := []cube.Pos{{9, 80, 8}, {8, 80, 8}}
+	if len(ticks) != len(want) {
+		t.Fatalf("refill ticks = %+v, want positions %v", ticks, want)
+	}
+	for i, pos := range want {
+		if ticks[i] != (chunk.ScheduledTick{Pos: pos, Kind: chunk.FluidTick, Type: "minecraft:water"}) {
+			t.Fatalf("refill tick %d = %+v, want water at %v", i, ticks[i], pos)
+		}
+	}
+}
+
+func TestSpringReplayPublishesOnlyTargetOwnedTicks(t *testing.T) {
+	registry := world.DefaultBlockRegistry
+	stone, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:stone"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	air, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:air"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name     string
+		target   world.ChunkPos
+		wantTick bool
+	}{
+		{"own target", world.ChunkPos{}, true},
+		{"neighbor replay", world.ChunkPos{1, 0}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			region := templateFluidTestRegion()
+			region.target = tc.target
+			pos := featurePos{8, 80, 8}
+			for _, offset := range []featurePos{{0, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}} {
+				region.Set(featurePos{pos.x + offset.x, pos.y + offset.y, pos.z + offset.z}, stone)
+			}
+			region.Set(featurePos{9, 80, 8}, air)
+			config := map[string]any{
+				"state":        map[string]any{"id": "minecraft:water"},
+				"valid_blocks": []any{"minecraft:stone"}, "requires_block_below": true,
+				"rock_count": float64(4), "hole_count": float64(1),
+			}
+			if !placeModernSpringRegion(region, config, pos, nil) {
+				t.Fatal("valid spring was not placed")
+			}
+			name, _ := region.State(pos)
+			if name != "minecraft:water" {
+				t.Fatalf("spring left %s, want water", name)
+			}
+			ticks := region.result.ScheduledTicks
+			if tc.wantTick {
+				if len(ticks) != 1 || ticks[0] != (chunk.ScheduledTick{Pos: cube.Pos{8, 80, 8}, Kind: chunk.FluidTick, Type: "minecraft:water"}) {
+					t.Fatalf("spring tick = %+v, want own water update", ticks)
+				}
+			} else {
+				if len(ticks) != 0 {
+					t.Fatalf("replay published foreign spring ticks: %+v", ticks)
+				}
+				if rid := region.c.Block(8, 80, 8, 0); rid != registry.AirRuntimeID() {
+					t.Fatalf("foreign spring wrote target block %d", rid)
+				}
+			}
+		})
 	}
 }

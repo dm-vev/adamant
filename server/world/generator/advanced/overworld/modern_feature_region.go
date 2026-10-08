@@ -561,6 +561,9 @@ func placeModernSpringRegion(region *featureRegion, config map[string]any, p fea
 		panic("overworld: unresolved Java spring state")
 	}
 	placed := region.SetNativeBlock(p, state, actor)
+	if !featureInsideTarget(region.target, p) {
+		return placed
+	}
 	javaState, err := world.JavaState(region.c.BlockRegistry(), state)
 	if err != nil {
 		panic(err)
