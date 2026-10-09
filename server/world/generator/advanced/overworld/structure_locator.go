@@ -79,8 +79,8 @@ func (g *Overworld) FindNearestMapFeature(tag string, origin cube.Pos, searchRad
 						continue
 					}
 					sectorX, sectorZ := chunkX+spacing*int32(x), chunkZ+spacing*int32(z)
-					candidate, ok := s.candidate(set, sectorX, sectorZ)
-					if !ok {
+					candidate := s.randomSpreadChunk(set, sectorX, sectorZ)
+					if !s.frequencyAllows(set, candidate[0], candidate[1]) {
 						continue
 					}
 					start, ok := s.makeStart(set, candidate[0], candidate[1])

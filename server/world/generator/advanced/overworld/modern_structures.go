@@ -325,6 +325,17 @@ func (s *modernStructures) candidate(set modernStructureSet, x, z int32) ([2]int
 	if kind != "random_spread" {
 		return [2]int32{}, false
 	}
+	candidate := s.randomSpreadChunk(set, x, z)
+	if candidate != [2]int32{x, z} {
+		return [2]int32{}, false
+	}
+	return candidate, s.frequencyAllows(set, x, z)
+}
+
+// randomSpreadChunk projects any chunk in a placement region onto its candidate.
+// Generation still uses candidate to require an exact match with the input chunk.
+func (s *modernStructures) randomSpreadChunk(set modernStructureSet, x, z int32) [2]int32 {
+	placement := set.placement
 	spacing := int32(number(placement["spacing"]))
 	separation := int32(number(placement["separation"]))
 	salt := int32(number(placement["salt"]))
@@ -336,15 +347,15 @@ func (s *modernStructures) candidate(set modernStructureSet, x, z int32) ([2]int
 	if err != nil {
 		panic(fmt.Sprintf("overworld: structure set %s: %v", set.name, err))
 	}
-	if candidate[0] != x || candidate[1] != z {
-		return [2]int32{}, false
-	}
+	return candidate
+}
+
+func (s *modernStructures) frequencyAllows(set modernStructureSet, x, z int32) bool {
+	placement := set.placement
 	probability := float32(number(placement["frequency"]))
 	method := frequencyMethod(stringValue(placement["frequency_reduction_method"]))
-	if probability != 0 && !javastructure.FrequencyApplies(s.seed, salt, x, z, probability, method) {
-		return [2]int32{}, false
-	}
-	return candidate, true
+	salt := int32(number(placement["salt"]))
+	return probability == 0 || javastructure.FrequencyApplies(s.seed, salt, x, z, probability, method)
 }
 
 func registerModernStructureBuilder(kind string, builder modernStructureBuilder) {

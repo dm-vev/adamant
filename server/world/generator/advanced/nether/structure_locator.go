@@ -85,9 +85,7 @@ func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
-	if candidate[0] != sectorX || candidate[1] != sectorZ {
-		return world.StructureLocation{}, false, nil
-	}
+	sectorX, sectorZ = candidate[0], candidate[1]
 	var valid bool
 	switch structure {
 	case "minecraft:fortress":
@@ -171,8 +169,11 @@ func (g *Nether) FindStructureAt(tag string, position cube.Pos) (world.Structure
 			continue
 		}
 		spacing := netherLocateSpacing(structure)
-		for dz := int32(-32); dz <= 32; dz++ {
-			for dx := int32(-32); dx <= 32; dx++ {
+		// Cover a 32-chunk start window, rather than building 32 regions in
+		// every direction now that lookup projects each region to its start.
+		radius := (32 + spacing - 1) / spacing
+		for dz := -radius; dz <= radius; dz++ {
+			for dx := -radius; dx <= radius; dx++ {
 				location, valid, err := g.netherLocateCandidate(structure, chunkX+dx*spacing, chunkZ+dz*spacing)
 				if err != nil || !valid {
 					if err != nil {
