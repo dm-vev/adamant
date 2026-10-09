@@ -32,6 +32,10 @@ func (b javaFluidBlock) solid(c *javaShapeContext, pos cube.Pos) bool {
 }
 
 func javaFluidStateAt(c *javaShapeContext, pos cube.Pos) (javaFluidBlock, javaFluidState) {
+	if c.generation != nil {
+		id := c.at(pos)
+		return javaFluidBlock{state: id}, javaFluidForState(id)
+	}
 	id := c.tx.javaBlockStateID(pos)
 	if id != 0 {
 		return javaFluidBlock{state: id}, javaFluidForState(id)

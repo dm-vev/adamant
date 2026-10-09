@@ -18,6 +18,10 @@ func (p Placement) AdaptItemFrameEntities() (Placement, error) {
 		PostProcessing:       append([]cube.Pos(nil), p.PostProcessing...),
 		ScheduledTicks:       append([]chunk.ScheduledTick(nil), p.ScheduledTicks...),
 		StructurePieceWrites: p.StructurePieceWrites,
+		TemplateUpdateFlags:  p.TemplateUpdateFlags,
+		TemplateKnownShape:   p.TemplateKnownShape,
+		PostShapeBlocks:      append([]Block(nil), p.PostShapeBlocks...),
+		PostShapeEntities:    append([]Entity(nil), p.PostShapeEntities...),
 	}
 	for _, placed := range p.Blocks {
 		placed.NBT = cloneNBT(placed.NBT)

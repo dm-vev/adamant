@@ -69,6 +69,32 @@ func JavaBlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string
 		data["Items"] = converted
 	}
 	switch id {
+	case "chest", "trapped_chest":
+		// Java stores the pair in block states, Bedrock in block-actor NBT.
+		// Recompute it so shape-driven unpairing cannot retain stale links.
+		delete(data, "pairx")
+		delete(data, "pairz")
+		chestType, _ := state.Properties["type"].(string)
+		if chestType == "left" || chestType == "right" {
+			dx, dz := int32(0), int32(0)
+			facing, _ := state.Properties["facing"].(string)
+			switch facing {
+			case "", "north":
+				dx = 1
+			case "south":
+				dx = -1
+			case "east":
+				dz = 1
+			case "west":
+				dz = -1
+			default:
+				return nil, fmt.Errorf("Java chest has invalid facing %q", facing)
+			}
+			if chestType == "right" {
+				dx, dz = -dx, -dz
+			}
+			data["pairx"], data["pairz"] = pos[0]+dx, pos[2]+dz
+		}
 	case "bell":
 		// Java's BellBlockEntity has no saved ringing state; native Bell actors
 		// still require their reset transient fields and unset direction marker.

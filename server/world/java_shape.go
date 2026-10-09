@@ -18,8 +18,9 @@ const (
 )
 
 type javaShapeContext struct {
-	tx  *Tx
-	pos cube.Pos
+	tx         *Tx
+	generation JavaGenerationShapeAccess
+	pos        cube.Pos
 }
 
 // JavaBlockCanSurvive evaluates the source survival rule for the current block.
@@ -111,7 +112,13 @@ func javaDefault(name string) uint32 {
 }
 
 func (c *javaShapeContext) at(pos cube.Pos) uint32 {
-	id, err := c.tx.JavaBlockStateID(pos)
+	var id uint32
+	var err error
+	if c.generation != nil {
+		id, err = c.generation.JavaBlockStateID(pos)
+	} else {
+		id, err = c.tx.JavaBlockStateID(pos)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -223,6 +230,9 @@ func (c *javaShapeContext) hasBlockTick(pos cube.Pos, state uint32) bool {
 	if !ok {
 		panic(fmt.Sprintf("invalid Java block state ID %d", state))
 	}
+	if c.generation != nil {
+		return c.generation.HasJavaBlockTick(pos, name)
+	}
 	_, scheduled := c.tx.World().scheduledBlockTicks.scheduledTicks[scheduledTickIndex{pos: pos, typeName: name}]
 	return scheduled
 }
@@ -247,6 +257,10 @@ func (c *javaShapeContext) fluidTick(pos cube.Pos, fluid javaFluidState, delay i
 }
 
 func (c *javaShapeContext) schedule(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32) {
+	if c.generation != nil {
+		c.generation.ScheduleJavaTick(pos, kind, name, delay)
+		return
+	}
 	w := c.tx.World()
 	if pos.OutOfBounds(w.Range()) {
 		return
@@ -265,15 +279,45 @@ func (c *javaShapeContext) schedule(pos cube.Pos, kind chunk.ScheduledTickKind, 
 }
 
 func (c *javaShapeContext) randomInt(n int32) int32 {
+	if c.generation != nil {
+		return c.generation.JavaRandom().NextInt(n)
+	}
 	return c.tx.JavaRandom().NextInt(n)
 }
 
 func (c *javaShapeContext) randomFloat() float32 {
+	if c.generation != nil {
+		return c.generation.JavaRandom().NextFloat()
+	}
 	return c.tx.JavaRandom().NextFloat()
 }
 
 func (c *javaShapeContext) light(pos cube.Pos) int {
+	if c.generation != nil {
+		return int(c.generation.Light(pos))
+	}
 	return int(c.tx.Light(pos))
+}
+
+func (c *javaShapeContext) blockRange() cube.Range {
+	if c.generation != nil {
+		return c.generation.Range()
+	}
+	return c.tx.Range()
+}
+
+func (c *javaShapeContext) fluidDelay(fluid javaFluidState) int32 {
+	if c.generation == nil {
+		return javaFluidTickDelay(c.tx, fluid)
+	}
+	switch fluid.kind {
+	case javaFluidWater:
+		return c.generation.JavaFluidTickDelay("minecraft:water")
+	case javaFluidLava:
+		return c.generation.JavaFluidTickDelay("minecraft:lava")
+	default:
+		panic("cannot obtain tick delay for empty Java fluid")
+	}
 }
 
 func (c *javaShapeContext) rule(name string) bool {

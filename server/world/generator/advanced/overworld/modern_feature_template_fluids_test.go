@@ -138,7 +138,8 @@ func TestTemplateFluidSourcePropagationAndCurrentState(t *testing.T) {
 
 func templateFluidTestRegion() *featureRegion {
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
-	region := newFeatureRegion(&ModernFeatures{}, c, world.ChunkPos{}, &world.GenerationResult{})
+	source := pillarAirSource{ModernFeatureSource: modernTerrainSource{}, air: world.DefaultBlockRegistry.AirRuntimeID()}
+	region := newFeatureRegion(&ModernFeatures{source: source}, c, world.ChunkPos{}, &world.GenerationResult{})
 	region.SetOrigin(0, 0)
 	return region
 }

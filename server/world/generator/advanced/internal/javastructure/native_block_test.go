@@ -299,3 +299,40 @@ func TestShulkerTemplateFacingAndContents(t *testing.T) {
 		})
 	}
 }
+
+func TestChestStateDeterminesNativePartner(t *testing.T) {
+	for _, tc := range []struct {
+		facing, half string
+		x, z         int32
+	}{
+		{"north", "left", -15, 31},
+		{"north", "right", -17, 31},
+		{"south", "left", -17, 31},
+		{"south", "right", -15, 31},
+		{"east", "left", -16, 32},
+		{"east", "right", -16, 30},
+		{"west", "left", -16, 30},
+		{"west", "right", -16, 32},
+	} {
+		t.Run(tc.facing+"/"+tc.half, func(t *testing.T) {
+			state := world.BlockState{Name: "minecraft:chest", Properties: map[string]any{"facing": tc.facing, "type": tc.half}}
+			payload, err := JavaBlockEntityPayload(state, [3]int32{-16, 70, 31}, map[string]any{"id": "minecraft:chest"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			saved := block.NewChest().DecodeNBT(payload).(block.Chest).EncodeNBT()
+			if saved["pairx"] != tc.x || saved["pairz"] != tc.z {
+				t.Fatalf("native partner = (%v,%v), want (%d,%d)", saved["pairx"], saved["pairz"], tc.x, tc.z)
+			}
+			state.Properties["type"] = "single"
+			payload, err = JavaBlockEntityPayload(state, [3]int32{-16, 70, 31}, map[string]any{"id": "minecraft:chest", "pairx": tc.x, "pairz": tc.z})
+			if err != nil {
+				t.Fatal(err)
+			}
+			saved = block.NewChest().DecodeNBT(payload).(block.Chest).EncodeNBT()
+			if _, paired := saved["pairx"]; paired {
+				t.Fatalf("shape-driven unpairing retained native partner: %#v", saved)
+			}
+		})
+	}
+}

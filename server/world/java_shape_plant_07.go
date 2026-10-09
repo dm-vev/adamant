@@ -22,7 +22,7 @@ func javaPlant07SeagrassShape(c *javaShapeContext, state uint32, face cube.Face,
 	result := javaPlant07VegetationShape(c, state, face, neighbor)
 	if javaName(result) != "air" {
 		water := javaFluidState{kind: javaFluidWater, amount: 8, source: true}
-		c.fluidTick(c.pos, water, javaFluidTickDelay(c.tx, water))
+		c.fluidTick(c.pos, water, c.fluidDelay(water))
 	}
 	return result
 }

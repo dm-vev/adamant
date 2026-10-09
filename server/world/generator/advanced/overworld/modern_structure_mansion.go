@@ -24,28 +24,51 @@ func (p modernMansionPiece) Place(clip javastructure.Bounds, env javastructure.P
 	if env.Random==nil{return javastructure.Placement{},fmt.Errorf("woodland mansion placement requires Java structure random")}
 	placed,err:=p.template.PlaceBlocks(0,p.origin,p.rotation,p.mirror,clip,p.seed)
 	if err!=nil{return javastructure.Placement{},err}
-	for i:=range placed.Blocks {
-		b:=&placed.Blocks[i]
-		javastructure.SeedRandomizableContainerLoot(b,env.Random)
-		if b.State.Name!="minecraft:structure_block" { continue }
-		marker,_:=b.NBT["metadata"].(string)
+	for i := range placed.Blocks {
+		block := &placed.Blocks[i]
+		javastructure.SeedRandomizableContainerLoot(block, env.Random)
+		if block.State.Name != "minecraft:structure_block" {
+			continue
+		}
+		marker, _ := block.NBT["metadata"].(string)
 		switch marker {
-		case "ChestWest","ChestEast","ChestSouth","ChestNorth":
-			facing:="north"
-			switch marker{case "ChestWest":facing="west";case "ChestEast":facing="east";case "ChestSouth":facing="south"}
-			b.State=javastructure.TransformState(world.BlockState{Name:"minecraft:chest",Properties:map[string]any{"facing":facing}},javastructure.NoMirror,p.rotation)
-			b.NBT=map[string]any{"id":"minecraft:chest","LootTable":"minecraft:chests/woodland_mansion","LootTableSeed":env.Random.NextLong()}
-		case "Mage","Warrior","Group of Allays":
-			id:="minecraft:evoker";if marker=="Warrior"{id="minecraft:vindicator"};count:=1;if marker=="Group of Allays"{id="minecraft:allay";count=int(env.Random.NextInt(3))+1}
-			for i:=0;i<count;i++{placed.Entities=append(placed.Entities,javastructure.Entity{Pos:[3]float64{float64(b.Pos[0])+0.5,float64(b.Pos[1]),float64(b.Pos[2])+0.5},BlockPos:b.Pos,Record:int32(i),NBT:map[string]any{"id":id,"PersistenceRequired":byte(1)}})}
-			b.State=world.BlockState{Name:"minecraft:air"};b.NBT=nil
-		default:
-			b.State=world.BlockState{Name:"minecraft:air"};b.NBT=nil
+		case "ChestWest", "ChestEast", "ChestSouth", "ChestNorth":
+			facing := "north"
+			switch marker {
+			case "ChestWest":
+				facing = "west"
+			case "ChestEast":
+				facing = "east"
+			case "ChestSouth":
+				facing = "south"
+			}
+			state := javastructure.TransformState(world.BlockState{
+				Name: "minecraft:chest", Properties: map[string]any{"facing": facing},
+			}, javastructure.NoMirror, p.rotation)
+			placed.PostShapeBlocks = append(placed.PostShapeBlocks, javastructure.Block{
+				Pos: block.Pos, State: state,
+				NBT: map[string]any{"id": "minecraft:chest", "LootTable": "minecraft:chests/woodland_mansion", "LootTableSeed": env.Random.NextLong()},
+			})
+		case "Mage", "Warrior", "Group of Allays":
+			id, count := "minecraft:evoker", 1
+			if marker == "Warrior" {
+				id = "minecraft:vindicator"
+			} else if marker == "Group of Allays" {
+				id, count = "minecraft:allay", int(env.Random.NextInt(3))+1
+			}
+			for index := 0; index < count; index++ {
+				placed.PostShapeEntities = append(placed.PostShapeEntities, javastructure.Entity{
+					Pos: [3]float64{float64(block.Pos[0]) + 0.5, float64(block.Pos[1]), float64(block.Pos[2]) + 0.5},
+					BlockPos: block.Pos, Record: int32(index),
+					NBT: map[string]any{"id": id, "PersistenceRequired": byte(1)},
+				})
+			}
+			placed.PostShapeBlocks = append(placed.PostShapeBlocks, javastructure.Block{
+				Pos: block.Pos, State: world.BlockState{Name: "minecraft:air"},
+			})
 		}
 	}
-	placed,err=placed.AdaptItemFrameEntities()
-	if err!=nil{return javastructure.Placement{},err}
-	return placed,nil
+	return placed, nil
 }
 
 const (

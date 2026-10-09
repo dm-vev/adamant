@@ -216,6 +216,12 @@ func javaMechanism04RepeaterLocked(c *javaShapeContext, facing cube.Face) bool {
 		if name != "repeater" && name != "comparator" {
 			continue
 		}
+		if c.generation != nil {
+			if c.generation.JavaSignal(pos, javaMechanism04Opposite(side)) > 0 {
+				return true
+			}
+			continue
+		}
 		source, ok := c.tx.Block(pos).(RedstonePowerSource)
 		if ok && source.RedstonePower(pos, c.tx, javaMechanism04Opposite(side)) > 0 {
 			return true

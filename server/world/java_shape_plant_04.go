@@ -73,7 +73,7 @@ func javaPlant04GrowingPlantBodyShape(c *javaShapeContext, state uint32, face cu
 	}
 	if javaPlant04SchedulesWater(state) {
 		water := javaFluidState{kind: javaFluidWater, amount: 8, source: true}
-		c.fluidTick(c.pos, water, javaFluidTickDelay(c.tx, water))
+		c.fluidTick(c.pos, water, c.fluidDelay(water))
 	}
 	return c.ownerShape("BlockBehaviour", state, face, neighbor)
 }
@@ -91,7 +91,7 @@ func javaPlant04GrowingPlantHeadShape(c *javaShapeContext, state uint32, face cu
 	if face != growth || !javaPlant04GrowingPlantRelated(state, neighbor) {
 		if javaPlant04SchedulesWater(state) {
 			water := javaFluidState{kind: javaFluidWater, amount: 8, source: true}
-			c.fluidTick(c.pos, water, javaFluidTickDelay(c.tx, water))
+			c.fluidTick(c.pos, water, c.fluidDelay(water))
 		}
 		return c.ownerShape("BlockBehaviour", state, face, neighbor)
 	}

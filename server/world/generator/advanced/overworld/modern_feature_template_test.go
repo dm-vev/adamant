@@ -66,7 +66,7 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 	processors := well["features"].([]any)[1].(map[string]any)["feature"].(map[string]any)["processors"]
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%s/%s/%d/xor=%v/processed=%v", tc.Template, tc.Terrain, tc.Seed, tc.Xoroshiro, tc.Processed), func(t *testing.T) {
-			source := templateFeatureSource{wet: tc.Terrain == "wet", air: native("air"), stone: native("sandstone"), water: native("water")}
+			source := templateFeatureSource{ModernFeatureSource: modernTerrainSource{}, wet: tc.Terrain == "wet", air: native("air"), stone: native("sandstone"), water: native("water")}
 			c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 			region := newFeatureRegion(&ModernFeatures{source: source}, c, world.ChunkPos{}, &world.GenerationResult{})
 			for x := uint8(0); x < 16; x++ {

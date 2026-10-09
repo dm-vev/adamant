@@ -43,11 +43,16 @@ func(p modernOceanRuinPiece)Place(clip javastructure.Bounds,env javastructure.Pr
 			if env.Random==nil{return javastructure.Placement{},fmt.Errorf("ocean ruin chest marker requires placement random")}
 			blockName,properties:=env.BaseBlock(pos[0],pos[1],pos[2]).EncodeBlock();waterlogged:=blockName=="minecraft:water"||blockName=="minecraft:bubble_column";if property,ok:=properties["waterlogged"].(bool);ok&&property{waterlogged=true}
 			table:="minecraft:chests/underwater_ruin_small";if p.large{table="minecraft:chests/underwater_ruin_big"}
-			block:=javastructure.Block{Pos:pos,State:world.BlockState{Name:"minecraft:chest",Properties:map[string]any{"facing":"north","type":"single","waterlogged":waterlogged}},NBT:map[string]any{"id":"minecraft:chest","LootTable":table}}
-			javastructure.SeedRandomizableContainerLoot(&block,env.Random);placed.Blocks=append(placed.Blocks,block)
+			block := javastructure.Block{Pos: pos, State: world.BlockState{Name: "minecraft:chest", Properties: map[string]any{"facing": "north", "type": "single", "waterlogged": waterlogged}}, NBT: map[string]any{"id": "minecraft:chest", "LootTable": table}}
+			javastructure.SeedRandomizableContainerLoot(&block, env.Random)
+			placed.PostShapeBlocks = append(placed.PostShapeBlocks, block)
 		case "drowned":
-			placed.Entities=append(placed.Entities,javastructure.Entity{Pos:[3]float64{float64(pos[0])+0.5,float64(pos[1]),float64(pos[2])+0.5},BlockPos:pos,NBT:map[string]any{"id":"minecraft:drowned","PersistenceRequired":true},Record:int32(len(placed.Entities)),Seed:p.seed,SpawnReason:"structure"})
-			state:="minecraft:water";if pos[1]>63{state="minecraft:air"};placed.Blocks=append(placed.Blocks,javastructure.Block{Pos:pos,State:world.BlockState{Name:state}})
+			placed.PostShapeEntities = append(placed.PostShapeEntities, javastructure.Entity{Pos: [3]float64{float64(pos[0]) + 0.5, float64(pos[1]), float64(pos[2]) + 0.5}, BlockPos: pos, NBT: map[string]any{"id": "minecraft:drowned", "PersistenceRequired": true}, Record: int32(len(placed.Entities)), Seed: p.seed, SpawnReason: "structure"})
+			state := "minecraft:water"
+			if pos[1] > 63 {
+				state = "minecraft:air"
+			}
+			placed.PostShapeBlocks = append(placed.PostShapeBlocks, javastructure.Block{Pos: pos, State: world.BlockState{Name: state}})
 		}
 	}
 	return placed,nil

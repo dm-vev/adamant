@@ -19,6 +19,11 @@ func applyTemplateFluids(region *featureRegion, blocks []javastructure.Block) []
 }
 
 func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructure.Block, structurePieceWrites bool) []javastructure.Block {
+	payload, _ := applyTemplateFluidsForStructureWrites(region, blocks, structurePieceWrites, 3)
+	return payload
+}
+
+func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javastructure.Block, structurePieceWrites bool, flags int) ([]javastructure.Block, []cube.Pos) {
 	registry, ok := region.c.BlockRegistry().(world.BlockRegistry)
 	if !ok {
 		panic("overworld: Java feature region registry cannot resolve native blocks")
@@ -26,6 +31,7 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 	var toFill []featurePos
 	var locked []featurePos
 	var payloadBlocks []javastructure.Block
+	var written []cube.Pos
 	for i := range blocks {
 		entry := &blocks[i]
 		pos := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}
@@ -38,9 +44,10 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 		if err != nil {
 			panic(err)
 		}
-		if !region.Set(pos, state) {
+		if !region.setWithFlags(pos, state, flags) {
 			continue
 		}
+		written = append(written, cube.Pos{int(pos.x), int(pos.y), int(pos.z)})
 		if structurePieceWrites && featureInsideTarget(region.target, pos) {
 			state := region.nativeState(pos)
 			for _, rid := range [2]uint32{state.Block, state.Liquid} {
@@ -59,7 +66,7 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 				if !strings.Contains(typeName, ":") {
 					typeName = "minecraft:" + typeName
 				}
-				region.result.ScheduleTick(chunk.ScheduledTick{
+				region.reserveJavaTick(chunk.ScheduledTick{
 					Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: typeName,
 				})
 				break
@@ -70,7 +77,7 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 		}
 		if templateBlockStateIsSource(entry.State) {
 			locked = append(locked, pos)
-			if featureInsideTarget(region.target, pos) && (entry.NativeBlock != nil || len(entry.NBT) != 0) {
+			if entry.NativeBlock != nil || len(entry.NBT) != 0 {
 				payloadBlocks = append(payloadBlocks, *entry)
 			}
 			continue
@@ -84,12 +91,12 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 				if err != nil {
 					panic(err)
 				}
-				if !region.Set(pos, state) {
+				if !region.setWithFlags(pos, state, flags) {
 					continue
 				}
 				*entry = wet
 				if featureInsideTarget(region.target, pos) {
-					region.result.ScheduleTick(chunk.ScheduledTick{
+					region.reserveJavaTick(chunk.ScheduledTick{
 						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
 					})
 				}
@@ -99,7 +106,7 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 				toFill = append(toFill, pos)
 			}
 		}
-		if featureInsideTarget(region.target, pos) && (entry.NativeBlock != nil || len(entry.NBT) != 0) {
+		if entry.NativeBlock != nil || len(entry.NBT) != 0 {
 			payloadBlocks = append(payloadBlocks, *entry)
 		}
 	}
@@ -151,7 +158,7 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 				}
 				region.Set(pos, state)
 				if featureInsideTarget(region.target, pos) {
-					region.result.ScheduleTick(chunk.ScheduledTick{
+					region.reserveJavaTick(chunk.ScheduledTick{
 						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
 					})
 				}
@@ -177,7 +184,26 @@ func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructu
 			surviving = append(surviving, entry)
 		}
 	}
-	return surviving
+	return surviving, written
+}
+func applyTemplatePostShapeBlocks(region *featureRegion, blocks []javastructure.Block, flags int) {
+	registry := region.c.BlockRegistry()
+	for _, entry := range blocks {
+		pos := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}
+		if pos.y < region.MinY() || pos.y > region.MaxY() ||
+			absFeatureInt(pos.x>>4-region.writeOriginX) > 1 ||
+			absFeatureInt(pos.z>>4-region.writeOriginZ) > 1 {
+			continue
+		}
+		state, err := entry.ResolveNative(registry, region.nativeState(pos))
+		if err != nil {
+			panic(err)
+		}
+		if !region.setWithFlags(pos, state, flags) {
+			continue
+		}
+		region.recordTemplateActor(entry)
+	}
 }
 
 func structurePieceShapeCheckBlock(state world.NativeState, registry world.BlockRegistry) bool {

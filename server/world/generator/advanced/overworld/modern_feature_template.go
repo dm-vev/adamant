@@ -159,6 +159,8 @@ func placeModernTemplateFeature(region *featureRegion, config map[string]any, or
 	if err != nil {
 		panic(fmt.Errorf("overworld: placing Java template %q: %w", entry.name, err))
 	}
+	placement.TemplateUpdateFlags = 3
+	placement.TemplateKnownShape = false
 	for i := range placement.Blocks {
 		javastructure.SeedRandomizableContainerLoot(&placement.Blocks[i], random)
 	}

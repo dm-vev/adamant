@@ -39,6 +39,14 @@ func javaMechanism01RailSurvives(c *javaShapeContext, _ uint32, pos cube.Pos) bo
 
 func javaMechanism01BeehiveShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
 	if javaMechanism01IsFire(neighbor) {
+		if c.generation != nil {
+			// ProtoChunk block entities have no Level. Source releaseOccupant
+			// dereferences it only when the hive actually contains a bee.
+			if c.generation.JavaHiveHasOccupants(c.pos) {
+				panic("Java generation cannot release occupants from a hive without a Level")
+			}
+			return state
+		}
 		if hive, ok := c.tx.Block(c.pos).(interface {
 			JavaEmergencyRelease(cube.Pos, *Tx)
 		}); ok {

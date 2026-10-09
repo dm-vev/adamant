@@ -103,6 +103,21 @@ type modernTerrainSource struct {
 	raw       bool
 }
 
+func (modernTerrainSource) UseLegacyRandomSource() bool { return false }
+
+func (modernTerrainSource) JavaHasSkyLight() bool { return true }
+
+func (modernTerrainSource) JavaFluidTickDelay(name string) int32 {
+	switch name {
+	case "minecraft:water":
+		return 5
+	case "minecraft:lava":
+		return 30
+	default:
+		panic("overworld: unsupported generation fluid tick " + name)
+	}
+}
+
 func (modernTerrainSource) SeaLevel() int32 { return modernSeaLevel }
 
 func (s modernTerrainSource) JavaFeatureBiomeNames() []string {

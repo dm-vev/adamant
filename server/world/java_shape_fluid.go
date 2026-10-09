@@ -9,7 +9,7 @@ func javaFluidShape(c *javaShapeContext, owner string, state uint32, face cube.F
 		fluid := javaFluidForState(state)
 		neighborFluid := javaFluidForState(neighbor)
 		if fluid.source || neighborFluid.source {
-			c.fluidTick(pos, fluid, javaFluidTickDelay(c.tx, fluid))
+			c.fluidTick(pos, fluid, c.fluidDelay(fluid))
 		}
 		if face == cube.FaceDown && fluid.kind == javaFluidWater && fluid.source && fluid.amount >= 8 {
 			below := c.at(pos.Side(cube.FaceDown))

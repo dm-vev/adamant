@@ -32,13 +32,33 @@ func (p modernShipwreckPiece) Place(clip javastructure.Bounds,env javastructure.
 		if table==""{continue}
 		markerPos:=javastructure.TransformPosition(source.Pos,javastructure.NoMirror,p.rotation);for axis:=range 3{markerPos[axis]+=origin[axis]};if !inside(markerPos){continue}
 		pos:=markerPos;pos[1]--;if !inside(pos){continue}
-		chestIndex:=-1
-		for index:=range placed.Blocks{if placed.Blocks[index].Pos==pos&&placed.Blocks[index].State.Name=="minecraft:chest"{chestIndex=index;break}}
-		if chestIndex>=0{
-			block:=&placed.Blocks[chestIndex];if block.NBT==nil{block.NBT=map[string]any{"id":"minecraft:chest"}};block.NBT["LootTable"]=table;javastructure.SeedRandomizableContainerLoot(block,env.Random)
+		chestIndex := -1
+		for index := range placed.Blocks {
+			if placed.Blocks[index].Pos == pos && placed.Blocks[index].State.Name == "minecraft:chest" {
+				chestIndex = index
+				break
+			}
+		}
+		if chestIndex >= 0 {
+			block := placed.Blocks[chestIndex]
+			block.NBT = cloneStructureNBT(block.NBT)
+			if block.NBT == nil {
+				block.NBT = map[string]any{"id": "minecraft:chest"}
+			}
+			block.NBT["LootTable"] = table
+			javastructure.SeedRandomizableContainerLoot(&block, env.Random)
+			placed.PostShapeBlocks = append(placed.PostShapeBlocks, block)
 			continue
 		}
-		if env.BaseBlock!=nil{base:=env.BaseBlock(pos[0],pos[1],pos[2]);name,properties:=base.EncodeBlock();if name=="minecraft:chest"{block:=javastructure.Block{Pos:pos,State:world.BlockState{Name:name,Properties:properties},NBT:map[string]any{"id":"minecraft:chest","LootTable":table}};javastructure.SeedRandomizableContainerLoot(&block,env.Random);placed.Blocks=append(placed.Blocks,block)}}
+		if env.BaseBlock != nil {
+			base := env.BaseBlock(pos[0], pos[1], pos[2])
+			name, properties := base.EncodeBlock()
+			if name == "minecraft:chest" {
+				block := javastructure.Block{Pos: pos, State: world.BlockState{Name: name, Properties: properties}, NBT: map[string]any{"id": "minecraft:chest", "LootTable": table}}
+				javastructure.SeedRandomizableContainerLoot(&block, env.Random)
+				placed.PostShapeBlocks = append(placed.PostShapeBlocks, block)
+			}
+		}
 	}
 	return placed,nil
 }

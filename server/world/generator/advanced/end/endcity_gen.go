@@ -564,10 +564,12 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 	if err != nil {
 		panic(err)
 	}
-	for i := range blockPlacement.Blocks {
-		javastructure.SeedRandomizableContainerLoot(&blockPlacement.Blocks[i], random)
-	}
 	registry := c.BlockRegistry()
+	positions := make([]cube.Pos, 0, len(blockPlacement.Blocks))
+	access := endJavaShapeAccess{
+		endFeatureOrigin: endFeatureOrigin{region: region, chunkX: chunkX, chunkZ: chunkZ},
+		result: result, random: region.sourceShapeRandom(g.seed, chunkX, chunkZ),
+	}
 	for _, placed := range blockPlacement.Blocks {
 		if placed.Pos[0]>>4 != int32(chunkX) || placed.Pos[2]>>4 != int32(chunkZ) {
 			continue
@@ -579,21 +581,20 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 		if err != nil {
 			panic(err)
 		}
-		region.setLayers(int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2]), state)
-	}
-	g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
-	for i := range blockPlacement.Blocks {
-		if blockPlacement.Blocks[i].State.Name == "minecraft:structure_block" {
-			blockPlacement.Blocks[i].NBT = nil
-		}
-	}
-	if publish {
-		for _, payload := range blockPlacement.BlockEntityPayloads() {
-			if payload.Pos[0]>>4 == chunkX && payload.Pos[2]>>4 == chunkZ {
-				result.BlockEntities = append(result.BlockEntities, payload)
+		if region.setLayers(int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2]), state) {
+			pos := cube.Pos{int(placed.Pos[0]), int(placed.Pos[1]), int(placed.Pos[2])}
+			positions = append(positions, pos)
+			if actor, exists := region.blockActors[pos]; exists && actor.record.State.Name != placed.State.Name {
+				delete(region.blockActors, pos)
+				access.removeBlockEntity(pos)
 			}
+			javastructure.SeedRandomizableContainerLoot(&placed, random)
+			access.recordBlockActor(placed)
+			access.markPostProcessing(pos, state.CanonicalJavaID(registry))
 		}
 	}
+	world.UpdateJavaTemplateShapes(access, positions, 2)
+	g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
 }
 
 
@@ -615,20 +616,18 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			if !endCityPosInChunk(chestPos, chunkX, chunkZ, c) {
 				continue
 			}
-			seed := random.NextLong()
-			if !publish {
+			pos := cube.Pos{int(chestPos[0]), int(chestPos[1]), int(chestPos[2])}
+			actor, exists := region.blockActors[pos]
+			if !exists || actor.record.State.Name != "minecraft:chest" && actor.record.State.Name != "minecraft:trapped_chest" {
 				continue
 			}
-			chest := javastructure.Block{
-				Pos:   chestPos,
-				State: world.BlockState{Name: "minecraft:chest"},
-				NBT: map[string]any{
-					"id":            "minecraft:chest",
-					"LootTable":     "minecraft:chests/end_city_treasure",
-					"LootTableSeed": seed,
-				},
+			actor.record.NBT["LootTable"] = "minecraft:chests/end_city_treasure"
+			actor.record.NBT["LootTableSeed"] = random.NextLong()
+			access := endJavaShapeAccess{
+				endFeatureOrigin: endFeatureOrigin{region: region, chunkX: chunkX, chunkZ: chunkZ},
+				result: result,
 			}
-			result.BlockEntities = append(result.BlockEntities, (javastructure.Placement{Blocks: []javastructure.Block{chest}}).BlockEntityPayloads()...)
+			access.recordBlockActor(actor.record)
 		case strings.HasPrefix(metadata, "Sentry"):
 			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, c) {
 				continue
@@ -660,12 +659,12 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 				Item:      item.NewStack(item.Elytra{}, 1),
 				DropChance: 1,
 			}
-			blockName, properties := frame.EncodeBlock()
-			rid, ok := c.BlockRegistry().StateToRuntimeID(blockName, properties)
-			if !ok {
-				panic("End City item-frame state is not registered")
+			pos := cube.Pos{int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2])}
+			logicalState := region.nativeState(pos[0], pos[1], pos[2])
+			rid := world.BlockRuntimeID(frame)
+			if region.setLayers(pos[0], pos[1], pos[2], world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()}) {
+				region.logicalStates[pos] = logicalState
 			}
-			region.setLayers(int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2]), world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
 			if !publish {
 				continue
 			}

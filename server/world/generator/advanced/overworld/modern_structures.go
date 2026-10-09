@@ -485,14 +485,24 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 				if err != nil {
 					panic(err)
 				}
-				placement, err = placement.AdaptItemFrameEntities()
-				if err != nil {
-					panic(err)
-				}
 				placement.StructurePieceWrites = structurePieceUsesSetBlock(piece)
+				if _, template := piece.(modernJigsawPiece); template {
+					placement.TemplateUpdateFlags, placement.TemplateKnownShape = 18, true
+				} else if isTemplateStructurePiece(piece) {
+					placement.TemplateUpdateFlags, placement.TemplateKnownShape = 2, false
+				}
 				emit(placement)
 			}
 		}
+	}
+}
+
+func isTemplateStructurePiece(piece modernStructurePiece) bool {
+	switch piece.(type) {
+	case modernIglooPiece, modernMansionPiece, modernOceanRuinPiece, modernRuinedPortal, modernShipwreckPiece, *modernShipwreckPiece:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -641,8 +651,19 @@ func (c *modernStructureContext) place(pos world.ChunkPos, ch *chunk.Chunk) *mod
 				}
 				world.SetNativeState(ch, x, y, z, state)
 			}
+			for _, placed := range placement.PostShapeBlocks {
+				x, y, z := uint8(placed.Pos[0]&15), int16(placed.Pos[1]), uint8(placed.Pos[2]&15)
+				current := world.NativeStateAt(ch, x, y, z)
+				state, err := placed.ResolveNative(registry, current)
+				if err != nil {
+					panic(err)
+				}
+				world.SetNativeState(ch, x, y, z, state)
+			}
 			payloads.blockEntities = append(payloads.blockEntities, placement.BlockEntityPayloads()...)
+			payloads.blockEntities = append(payloads.blockEntities, (javastructure.Placement{Blocks: placement.PostShapeBlocks}).BlockEntityPayloads()...)
 			payloads.entities = append(payloads.entities, placement.Entities...)
+			payloads.entities = append(payloads.entities, placement.PostShapeEntities...)
 		}
 	}
 	return payloads

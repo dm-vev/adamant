@@ -1,8 +1,6 @@
 package overworld
 
 import (
-	"fmt"
-
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
@@ -41,20 +39,28 @@ func placeModernFossil(region *featureRegion, config map[string]any, origin feat
 	clip:=javastructure.Bounds{Min:[3]int32{chunkX*16-16,region.MinY(),chunkZ*16-16},Max:[3]int32{chunkX*16+31,region.MaxY(),chunkZ*16+31}}
 	place:=func(template *javastructure.Template,resource any) {
 		name:=normalizeJavaResource(resource.(string))
-		processors,err:=javastructure.LoadProcessors([]string{name},nil,javastructure.ProcessorEnvironment{BaseBlock:func(x,y,z int32) world.Block{return region.f.source.BaseBlock(x,y,z)},JavaBiomeAt:region.f.source.JavaBiomeAt,BaseHeight:region.f.source.BaseHeight,WorldSeed:region.f.seed,StartPos:templateOrigin,BlockCount:len(template.Palettes[0]),Random:random,SkipEntities:true})
-		if err!=nil{panic(err)}
-		placement,err:=template.PlaceBlocks(0,templateOrigin,rotation,javastructure.NoMirror,clip,0,processors...)
-		if err!=nil{panic(err)}
-		var blockEntityBlocks []javastructure.Block
-		for _,block:=range placement.Blocks {
-			p:=featurePos{block.Pos[0],block.Pos[1],block.Pos[2]}
-			state,err:=block.ResolveNative(region.c.BlockRegistry(),region.nativeState(p))
-			if err!=nil{panic(fmt.Errorf("overworld: unresolved fossil state %s: %w",block.State.Name,err))}
-			if !region.SetNativeBlock(p,state,block.NativeBlock)||!featureInsideTarget(region.target,p){continue}
-			if block.NativeBlock==nil&&len(block.NBT)!=0{blockEntityBlocks=append(blockEntityBlocks,block)}
+		processors, err := javastructure.LoadProcessors([]string{name}, nil, javastructure.ProcessorEnvironment{
+			BaseBlock:  func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
+			JavaBiomeAt: region.f.source.JavaBiomeAt,
+			BaseHeight: func(x, z int32, oceanFloor bool) int32 {
+				kind := "WORLD_SURFACE_WG"
+				if oceanFloor {
+					kind = "OCEAN_FLOOR_WG"
+				}
+				return region.placementHeight(x, z, kind)
+			},
+			WorldSeed: region.f.seed, StartPos: templateOrigin, BlockCount: len(template.Palettes[0]), Random: random, SkipEntities: true,
+		})
+		if err != nil {
+			panic(err)
 		}
-		payloads:=(javastructure.Placement{Blocks:blockEntityBlocks}).BlockEntityPayloads()
-		region.result.BlockEntities=append(region.result.BlockEntities,payloads...)
+		placement, err := template.PlaceBlocks(0, templateOrigin, rotation, javastructure.NoMirror, clip, 0, processors...)
+		if err != nil {
+			panic(err)
+		}
+		placement.TemplateUpdateFlags = 3
+		placement.TemplateKnownShape = false
+		region.f.applyStructurePlacement(region, placement)
 	}
 	place(fossil,config["fossil_processors"])
 	place(overlay,config["overlay_processors"])

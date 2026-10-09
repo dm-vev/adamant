@@ -1,0 +1,111 @@
+package world
+
+import (
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/world/chunk"
+)
+
+// JavaGenerationShapeAccess is the WorldGenRegion view used by source shape
+// callbacks. It deliberately does not emulate a live World or neighbour updates.
+// Implementations retain canonical states, loaded actors and proto-chunk tick
+// reservations, including those outside the chunk currently being published.
+// JavaRandom is the region stream, not the structure/feature placement stream.
+// SetJavaBlockState observes the source write radius and update flags.
+// Light returns source raw brightness with zero sky darkening.
+// JavaSignal's face points out of the signaling block towards its receiver.
+// JavaHiveHasOccupants reads the currently loaded generation hive actor.
+// JavaFluidTickDelay accepts minecraft:water or minecraft:lava.
+// Scheduled fluid type names may also be their flowing variants.
+type JavaGenerationShapeAccess interface {
+	JavaBlockStateID(cube.Pos) (uint32, error)
+	Range() cube.Range
+	JavaRandom() *java26.Random
+	Light(cube.Pos) uint8
+	JavaFluidTickDelay(name string) int32
+	ScheduleJavaTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32)
+	HasJavaBlockTick(pos cube.Pos, name string) bool
+	JavaSignal(pos cube.Pos, face cube.Face) int
+	JavaHiveHasOccupants(pos cube.Pos) bool
+	SetJavaBlockState(pos cube.Pos, state uint32, flags int) bool
+}
+
+// UpdateJavaTemplateShapes applies StructureTemplate's immediate shape phase.
+// Call it for one knownShape=false placement, after successful block writes,
+// liquid refill and actor loading, but before entities or data markers. Positions
+// include accepted unchanged writes and retain placement order and duplicates.
+// Generation's updateNeighborsAt is a no-op; it is not a runtime neighbour wave.
+func UpdateJavaTemplateShapes(access JavaGenerationShapeAccess, positions []cube.Pos, flags int) {
+	if len(positions) == 0 {
+		return
+	}
+	low, high := positions[0], positions[0]
+	for _, pos := range positions[1:] {
+		for axis := range 3 {
+			low[axis] = min(low[axis], pos[axis])
+			high[axis] = max(high[axis], pos[axis])
+		}
+	}
+	size := [3]int{high[0] - low[0] + 1, high[1] - low[1] + 1, high[2] - low[2] + 1}
+	volume := size[0] * size[1] * size[2]
+	occupied := make([]uint64, (volume+63)/64)
+	for _, pos := range positions {
+		index := ((pos[0]-low[0])*size[1]+pos[1]-low[1])*size[2] + pos[2] - low[2]
+		occupied[index>>6] |= uint64(1) << uint(index&63)
+	}
+	context := javaShapeContext{generation: access}
+	// DiscreteVoxelShape.forAllFaces visits NONE, FORWARD, BACKWARD.
+	// Each scan uses the inverse axis cycle: (x,y,z), (z,x,y), (y,z,x).
+	for _, axes := range [...][3]int{{0, 1, 2}, {2, 0, 1}, {1, 2, 0}} {
+		aAxis, bAxis, cAxis := axes[0], axes[1], axes[2]
+		negative := [3]cube.Face{cube.FaceWest, cube.FaceDown, cube.FaceNorth}[cAxis]
+		positive := negative.Opposite()
+		var local cube.Pos
+		for a := range size[aAxis] {
+			local[aAxis] = a
+			for b := range size[bAxis] {
+				local[bAxis] = b
+				lastFull := false
+				for c := range size[cAxis] + 1 {
+					local[cAxis] = c
+					full := false
+					if c < size[cAxis] {
+						index := (local[0]*size[1]+local[1])*size[2] + local[2]
+						full = occupied[index>>6]&(uint64(1)<<uint(index&63)) != 0
+					}
+					if !lastFull && full {
+						javaTemplateShapeEdge(&context, local.Add(low), negative, flags&^1)
+					} else if lastFull && !full {
+						pos := local.Add(low)
+						pos[cAxis]--
+						javaTemplateShapeEdge(&context, pos, positive, flags&^1)
+					}
+					lastFull = full
+				}
+			}
+		}
+	}
+	for _, pos := range positions {
+		context.pos = pos
+		state := context.at(pos)
+		updated := context.updateFromNeighbourShapes(state)
+		if updated != state {
+			access.SetJavaBlockState(pos, updated, flags&^1|16)
+		}
+	}
+}
+
+func javaTemplateShapeEdge(context *javaShapeContext, pos cube.Pos, face cube.Face, flags int) {
+	neighborPos := pos.Side(face)
+	state, neighbor := context.at(pos), context.at(neighborPos)
+	context.pos = pos
+	updated := context.updateShape(state, face, neighbor)
+	if state != updated {
+		context.generation.SetJavaBlockState(pos, updated, flags)
+	}
+	context.pos = neighborPos
+	updatedNeighbor := context.updateShape(neighbor, face.Opposite(), updated)
+	if neighbor != updatedNeighbor {
+		context.generation.SetJavaBlockState(neighborPos, updatedNeighbor, flags)
+	}
+}

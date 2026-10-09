@@ -14,22 +14,41 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
+type featureTickReservation struct {
+	pos      cube.Pos
+	kind     chunk.ScheduledTickKind
+	typeName string
+}
+
 type featureRegion struct {
-	f                *ModernFeatures
-	c                *chunk.Chunk
-	writeOriginX     int32
-	writeOriginZ     int32
-	target           world.ChunkPos
-	result           *world.GenerationResult
-	overlay          map[featurePos]world.NativeState
-	placementHeights map[featureHeightKey]int32
+	f                 *ModernFeatures
+	c                 *chunk.Chunk
+	writeOriginX      int32
+	writeOriginZ      int32
+	target            world.ChunkPos
+	result            *world.GenerationResult
+	overlay           map[featurePos]world.NativeState
+	placementHeights  map[featureHeightKey]int32
+	javaRandoms       map[[2]int32]*java26.Random
+	scheduledTicks    map[featureTickReservation]struct{}
+	blockActorRecords map[cube.Pos]javastructure.Block
+	blockActorData    map[cube.Pos]map[string]any
+	nativeProjections map[cube.Pos]struct{}
 }
 
 func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, result *world.GenerationResult) *featureRegion {
 	if f == nil || c == nil || result == nil {
 		panic("overworld: invalid Java feature region")
 	}
-	return &featureRegion{f: f, c: c, target: target, result: result, overlay: make(map[featurePos]world.NativeState)}
+	return &featureRegion{
+		f: f, c: c, target: target, result: result,
+		overlay:           make(map[featurePos]world.NativeState),
+		scheduledTicks:    make(map[featureTickReservation]struct{}),
+		blockActorRecords: make(map[cube.Pos]javastructure.Block),
+		blockActorData:    make(map[cube.Pos]map[string]any),
+		nativeProjections: make(map[cube.Pos]struct{}),
+		javaRandoms:       make(map[[2]int32]*java26.Random),
+	}
 }
 
 func (r *featureRegion) SetOrigin(chunkX, chunkZ int32) {
@@ -75,6 +94,10 @@ func (r *featureRegion) Block(p featurePos) world.Block {
 }
 
 func (r *featureRegion) Set(p featurePos, state world.NativeState) bool {
+	return r.setWithFlags(p, state, 3)
+}
+
+func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flags int) bool {
 	if p.y < r.MinY() || p.y > r.MaxY() {
 		return false
 	}
@@ -87,25 +110,54 @@ func (r *featureRegion) Set(p featurePos, state world.NativeState) bool {
 	if absFeatureInt(p.x>>4-r.writeOriginX) > 1 || absFeatureInt(p.z>>4-r.writeOriginZ) > 1 {
 		return false
 	}
+	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
+	if _, projected := r.nativeProjections[pos]; projected {
+		delete(r.nativeProjections, pos)
+		r.removeBlockEntityPayloads(pos)
+	}
+	previous := r.nativeState(p)
+	oldID, newID := previous.CanonicalJavaID(r.c.BlockRegistry()), state.CanonicalJavaID(r.c.BlockRegistry())
+	oldName, _ := javadata.BlockStateName(oldID)
+	newName, _ := javadata.BlockStateName(newID)
+	changedBlock := oldName != newName
+	if oldName == "" && newName == "" {
+		changedBlock = previous.Block != state.Block
+	}
+	if changedBlock {
+		r.removeBlockEntityPayloads(cube.Pos{int(p.x), int(p.y), int(p.z)})
+	}
 	r.overlay[p] = state
 	r.invalidatePlacementHeight(p)
 	if featureInsideTarget(r.target, p) {
 		x, z := uint8(p.x&15), uint8(p.z&15)
 		world.SetNativeState(r.c, x, int16(p.y), z, state)
-		r.markBlockPostProcessing(p, state)
+		if flags&16 == 0 {
+			r.markBlockPostProcessing(p, state)
+		}
+	}
+	if !changedBlock {
+		if _, exists := r.blockActorRecords[cube.Pos{int(p.x), int(p.y), int(p.z)}]; exists {
+			javaState, err := world.JavaState(r.c.BlockRegistry(), state)
+			if err != nil {
+				panic(err)
+			}
+			r.refreshTemplateActorState(cube.Pos{int(p.x), int(p.y), int(p.z)}, javaState)
+		}
 	}
 	return true
 }
 
-func (r *featureRegion) SetNativeBlock(p featurePos, state world.NativeState, actor world.Block) bool {
-	if !r.Set(p, state) {
-		return false
+func (r *featureRegion) removeBlockEntityPayloads(pos cube.Pos) {
+	delete(r.blockActorRecords, pos)
+	delete(r.blockActorData, pos)
+	entities := r.result.BlockEntities
+	kept := entities[:0]
+	for _, actor := range entities {
+		if actor.Pos != pos {
+			kept = append(kept, actor)
+		}
 	}
-	if actor != nil && featureInsideTarget(r.target, p) {
-		placement := javastructure.Placement{Blocks: []javastructure.Block{{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor}}}
-		r.result.BlockEntities = append(r.result.BlockEntities, placement.BlockEntityPayloads()...)
-	}
-	return true
+	r.result.BlockEntities = kept
 }
 
 func (r *featureRegion) Height(x, z int32, oceanFloor bool) int32 {
@@ -115,11 +167,18 @@ func (r *featureRegion) Height(x, z int32, oceanFloor bool) int32 {
 func (r *featureRegion) MinY() int32 { return int32(r.c.Range()[0]) }
 func (r *featureRegion) MaxY() int32 { return int32(r.c.Range()[1]) }
 
-func (r *featureRegion) SampleState(provider any, p featurePos, random *java26.Random) (world.NativeState, bool) {
-	state, _, ok := r.SampleNativeState(provider, p, random)
-	return state, ok
+func (r *featureRegion) SetNativeBlock(p featurePos, state world.NativeState, actor world.Block) bool {
+	if !r.Set(p, state) {
+		return false
+	}
+	if actor != nil {
+		r.recordTemplateActor(javastructure.Block{
+			Pos:         [3]int32{p.x, p.y, p.z},
+			NativeBlock: actor,
+		})
+	}
+	return true
 }
-
 func (r *featureRegion) SampleNativeState(provider any, p featurePos, random *java26.Random) (world.NativeState, world.Block, bool) {
 	placement, ok := sampleJavaBlockState(r, p, provider, random)
 	if !ok {

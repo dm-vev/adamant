@@ -25,6 +25,9 @@ type ModernFeatureSource interface {
 	BaseBlock(x, y, z int32) world.Block
 	JavaFeatureBiomeNames() []string
 	BaseState(x, y, z int32) world.NativeState
+	UseLegacyRandomSource() bool
+	JavaHasSkyLight() bool
+	JavaFluidTickDelay(name string) int32
 	PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement))
 }
 
@@ -766,21 +769,31 @@ func featureBound(v any, worldMinY, worldMaxY, seaLevel int32) float64 {
 
 // applyStructurePlacement adapts Java descriptors, applies allowed blocks, and publishes target metadata.
 func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placement javastructure.Placement) {
+	sourceBlockCount := len(placement.Blocks)
+	payloadBlocks, written := applyTemplateFluidsForStructureWrites(
+		region, placement.Blocks, placement.StructurePieceWrites, templatePlacementFlags(placement),
+	)
+	for _, entry := range payloadBlocks {
+		region.recordTemplateActor(entry)
+	}
+	for _, tick := range placement.ScheduledTicks {
+		region.reserveJavaTick(tick)
+	}
+	if placement.TemplateUpdateFlags != 0 && !placement.TemplateKnownShape {
+		world.UpdateJavaTemplateShapes(region, written, placement.TemplateUpdateFlags)
+	}
 	var err error
 	placement, err = placement.AdaptItemFrameEntities()
 	if err != nil {
 		panic(err)
 	}
-	payloadBlocks := applyTemplateFluidsForStructure(region, placement.Blocks, placement.StructurePieceWrites)
-	region.result.BlockEntities = append(region.result.BlockEntities, (javastructure.Placement{Blocks: payloadBlocks}).BlockEntityPayloads()...)
+	frameBlocks := placement.Blocks[sourceBlockCount:]
+	applyTemplateProjectionBlocks(region, frameBlocks, 18)
+	applyTemplatePostShapeBlocks(region, placement.PostShapeBlocks, templatePlacementFlags(placement))
+	placement.Entities = append(placement.Entities, placement.PostShapeEntities...)
 	for _, pos := range placement.PostProcessing {
 		if featureInsideTarget(region.target, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
 			region.result.MarkForPostProcessing(pos, region.c.Range())
-		}
-	}
-	for _, tick := range placement.ScheduledTicks {
-		if featureInsideTarget(region.target, featurePos{int32(tick.Pos[0]), int32(tick.Pos[1]), int32(tick.Pos[2])}) {
-			region.result.ScheduleTick(tick)
 		}
 	}
 	entities := make([]javastructure.Entity, 0, len(placement.Entities))
@@ -797,4 +810,11 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 		}
 		region.result.Entities = append(region.result.Entities, handles...)
 	}
+}
+
+func templatePlacementFlags(placement javastructure.Placement) int {
+	if placement.TemplateUpdateFlags != 0 {
+		return placement.TemplateUpdateFlags
+	}
+	return 3
 }

@@ -217,6 +217,16 @@ type Placement struct {
 	PostProcessing       []cube.Pos
 	ScheduledTicks       []chunk.ScheduledTick
 	StructurePieceWrites bool
+	// TemplateUpdateFlags identifies the exact source setBlock flags for a
+	// template placement. Zero means the placement is not a template pass.
+	TemplateUpdateFlags int
+	// TemplateKnownShape mirrors StructurePlaceSettings.knownShape; true
+	// placements deliberately skip the immediate shape update.
+	TemplateKnownShape bool
+	// PostShapeBlocks and PostShapeEntities are data-marker effects produced
+	// only after a TemplateStructurePiece's immediate shape phase.
+	PostShapeBlocks   []Block
+	PostShapeEntities []Entity
 }
 
 // Place selects one palette, transforms block positions, processes records in order,

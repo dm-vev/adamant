@@ -1104,7 +1104,7 @@ func treePoplarReplaceLogs(region *featureRegion, placer map[string]any, foliage
 			if a+b > radius*2-(cut+2) || !((b == 0 && radius-a >= 4) || (a == 0 && radius-b >= 4)) {
 				continue
 			}
-			expected, ok := region.SampleState(foliageProvider, treePos(center, dx, y, dz), r)
+			expected, _, ok := region.SampleNativeState(foliageProvider, treePos(center, dx, y, dz), r)
 			if !ok {
 				continue
 			}

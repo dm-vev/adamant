@@ -93,7 +93,7 @@ func javaMechanism03PortalComplete(c *javaShapeContext, pos cube.Pos, axis strin
 	}
 	left := right.Opposite()
 	bottom := pos
-	minY := max(c.tx.Range().Min(), pos[1]-21)
+	minY := max(c.blockRange().Min(), pos[1]-21)
 	for bottom[1] > minY && javaMechanism03PortalEmpty(c, c.at(bottom.Side(cube.FaceDown))) {
 		bottom = bottom.Side(cube.FaceDown)
 	}

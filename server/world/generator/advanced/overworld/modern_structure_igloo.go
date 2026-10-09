@@ -19,29 +19,42 @@ type modernIglooPiece struct {
 }
 
 func (p modernIglooPiece) Bounds() javastructure.Box { return p.box }
+
 func (p modernIglooPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+	if env.Random == nil {
+		return javastructure.Placement{}, fmt.Errorf("igloo placement requires Java structure random")
+	}
 	pivot := javastructure.TransformPosition(p.pivot, javastructure.NoMirror, p.rotation)
 	origin := [3]int32{p.origin[0] + p.pivot[0] - pivot[0], p.origin[1] + p.pivot[1] - pivot[1], p.origin[2] + p.pivot[2] - pivot[2]}
 	placed, err := p.template.Place(0, origin, p.rotation, javastructure.NoMirror, clip, p.seed)
-	if err != nil { return javastructure.Placement{}, err }
-	for i := range placed.Blocks {
-		marker := &placed.Blocks[i]
-		if marker.State.Name != "minecraft:structure_block" { continue }
+	if err != nil {
+		return javastructure.Placement{}, err
+	}
+	for _, marker := range placed.Blocks {
+		if marker.State.Name != "minecraft:structure_block" {
+			continue
+		}
 		if marker.NBT["metadata"] == "chest" {
 			chestPos := marker.Pos
 			chestPos[1]--
-			for j := range placed.Blocks {
-				chest := &placed.Blocks[j]
-				if chest.Pos != chestPos { continue }
-				if chest.NBT == nil { chest.NBT = make(map[string]any) }
+			for _, chest := range placed.Blocks {
+				if chest.Pos != chestPos {
+					continue
+				}
+				chest.NBT = cloneStructureNBT(chest.NBT)
+				if chest.NBT == nil {
+					chest.NBT = make(map[string]any)
+				}
 				chest.NBT["id"] = "minecraft:chest"
 				chest.NBT["LootTable"] = "minecraft:chests/igloo_chest"
-				chest.NBT["LootTableSeed"] = p.seed
+				chest.NBT["LootTableSeed"] = env.Random.NextLong()
+				placed.PostShapeBlocks = append(placed.PostShapeBlocks, chest)
 				break
 			}
 		}
-		marker.State = world.BlockState{Name:"minecraft:air"}
-		marker.NBT = nil
+		placed.PostShapeBlocks = append(placed.PostShapeBlocks, javastructure.Block{
+			Pos: marker.Pos, State: world.BlockState{Name: "minecraft:air"},
+		})
 	}
 	return placed, nil
 }

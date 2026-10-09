@@ -29,6 +29,19 @@ func newNetherFeatureSource(g *Nether) *netherFeatureSource {
 
 func (s *netherFeatureSource) UseLegacyRandomSource() bool { return false }
 
+func (*netherFeatureSource) JavaHasSkyLight() bool { return false }
+
+func (*netherFeatureSource) JavaFluidTickDelay(name string) int32 {
+	switch name {
+	case "minecraft:water":
+		return 5
+	case "minecraft:lava":
+		return 10
+	default:
+		panic("nether: unsupported generation fluid tick " + name)
+	}
+}
+
 func (*netherFeatureSource) SeaLevel() int32 { return netherSeaLevel }
 
 func (s *netherFeatureSource) JavaBiomeAt(x, y, z int32) string {
