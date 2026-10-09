@@ -1,7 +1,9 @@
 package javastructure
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -19,6 +21,8 @@ const (
 // JigsawOptions describes one Java JigsawStructure start.
 type JigsawOptions struct {
 	Pool string
+	// PoolAliases contains resolved, one-hop pool replacements for this start.
+	PoolAliases map[string]string
 	StartJigsaw string
 	Origin [3]int32
 	MaxDepth int
@@ -45,6 +49,7 @@ type JigsawPiece struct {
 	Bounds Box
 	Junctions []Junction
 	LiquidSettings LiquidSettings
+	legacySingle bool
 }
 type jigsawPart struct {
 	template *Template
@@ -53,6 +58,7 @@ type jigsawPart struct {
 	processorSpecs []ProcessorSpec
 	liquidSettings LiquidSettings
 	overrideLiquidSettings bool
+	legacySingle bool
 }
 // Place clips this piece to one world-space box and applies caller-supplied processors in order.
 func (p JigsawPiece) Place(palette int, clip Bounds, seed int64, processors ...Processor) (Placement,error) {
@@ -105,6 +111,7 @@ func (p JigsawPiece) PlaceWithEnvironment(palette int, clip Bounds, seed int64, 
 			partPiece.parts=nil
 			partPiece.Processors=part.processors
 			partPiece.ProcessorSpecs=part.processorSpecs
+			partPiece.legacySingle=part.legacySingle
 			if part.overrideLiquidSettings { partPiece.LiquidSettings = part.liquidSettings }
 			placed,err:=partPiece.placeWithEnvironment(palette,clip,seed,env)
 			if err!=nil{return Placement{},err}
@@ -123,15 +130,22 @@ func (p JigsawPiece) placeWithEnvironment(palette int, clip Bounds, seed int64, 
 	if err != nil { return Placement{}, err }
 	replacement, err := compileJigsawReplace()
 	if err != nil { return Placement{}, err }
-	defaults := []Processor{
-		processor(func(_ ProcessContext, block Block) (Block, bool, error) { return block, block.State.Name != "minecraft:structure_block", nil }),
-		replacement,
+	defaults := []Processor{replacement}
+	if !p.legacySingle {
+		defaults = append([]Processor{processor(func(_ ProcessContext, block Block) (Block, bool, error) {
+			return block, block.State.Name != "minecraft:structure_block", nil
+		})}, defaults...)
 	}
 	processors = append(defaults, processors...)
 	if p.Projection == TerrainMatching {
 		gravity, err := compileGravity(map[string]any{"offset": int32(-1), "heightmap": "WORLD_SURFACE_WG"}, env)
 		if err != nil { return Placement{}, err }
 		processors = append(processors, gravity)
+	}
+	if p.legacySingle {
+		processors = append(processors, processor(func(_ ProcessContext, block Block) (Block, bool, error) {
+			return block, block.State.Name != "minecraft:air" && block.State.Name != "minecraft:structure_block", nil
+		}))
 	}
 	if env.Random != nil {
 		processors = append(processors, processor(func(_ ProcessContext, block Block) (Block, bool, error) {
@@ -176,6 +190,7 @@ type poolElement struct {
 	children []poolElement
 	liquidSettings LiquidSettings
 	overrideLiquidSettings bool
+	legacySingle bool
 }
 type connector struct { pos [3]int32; front,top string; name,target,pool string; joint string }
 
@@ -185,10 +200,10 @@ func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult,err
 	if random == nil { return JigsawResult{},fmt.Errorf("Java jigsaw: nil random source") }
 	if options.MaxDepth < 0 { return JigsawResult{},fmt.Errorf("Java jigsaw: negative maximum depth") }
 	if options.MaxDistance <= 0 { options.MaxDistance = 128 }
-	startElements,_,err := loadPool(options.Pool)
+	startRotation := Rotation(random.NextInt(4))
+	startElements,_,err := loadStartPool(options.Pool, options.PoolAliases)
 	if err != nil { return JigsawResult{},err }
 	if len(startElements)==0 { return JigsawResult{},nil }
-	startRotation := Rotation(random.NextInt(4))
 	startElement,err := choosePoolElement(startElements,random)
 	if err != nil { return JigsawResult{},err }
 	startTemplates,err:=loadPoolElementTemplates(startElement)
@@ -223,7 +238,7 @@ func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult,err
 			jointPos:=[3]int32{sourceJigsaw.pos[0]+front[0],sourceJigsaw.pos[1]+front[1],sourceJigsaw.pos[2]+front[2]}
 			poolName:=sourceJigsaw.pool
 			if poolName=="" { continue }
-			primary,fallback,err:=loadPool(poolName)
+			primary,fallback,_,err:=loadOptionalPool(lookupPoolAlias(poolName, options.PoolAliases))
 			if err!=nil { return JigsawResult{},err }
 			candidates:=shuffledPoolElements(primary,random)
 			candidates=append(candidates,shuffledPoolElements(fallback,random)...)
@@ -284,11 +299,32 @@ func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult,err
 	return result,nil
 }
 
-func loadPool(name string) ([]poolElement, []poolElement, error) {
+func loadStartPool(name string, aliases map[string]string) ([]poolElement, []poolElement, error) {
 	name = strings.TrimPrefix(name, "minecraft:")
-	if name == "empty" { return nil, nil, nil }
+	resolved := lookupPoolAlias(name, aliases)
+	if resolved == name { return loadPool(name) }
+	primary, fallback, found, err := loadOptionalPool(resolved)
+	if found || err != nil { return primary, fallback, err }
+	return loadPool(name)
+}
+
+func loadPool(name string) ([]poolElement, []poolElement, error) {
+	primary, fallback, found, err := loadOptionalPool(name)
+	if !found && err == nil { err = fmt.Errorf("Java pool %q: %w", name, fs.ErrNotExist) }
+	return primary, fallback, err
+}
+
+func loadOptionalPool(name string) ([]poolElement, []poolElement, bool, error) {
+	name = strings.TrimPrefix(name, "minecraft:")
+	if name == "empty" { return nil, nil, true, nil }
 	root, err := javadata.LoadJSON("template_pool", name)
-	if err != nil { return nil, nil, err }
+	if errors.Is(err, fs.ErrNotExist) { return nil, nil, false, nil }
+	if err != nil { return nil, nil, false, err }
+	primary, fallback, err := decodePool(name, root)
+	return primary, fallback, true, err
+}
+
+func decodePool(name string, root map[string]any) ([]poolElement, []poolElement, error) {
 	elements, err := decodePoolElements(root["elements"])
 	if err != nil { return nil, nil, fmt.Errorf("Java pool %s: %w", name, err) }
 	fallbackName, _ := root["fallback"].(string)
@@ -326,7 +362,7 @@ func decodePoolElement(element map[string]any,weight int32)(poolElement,error){
 		rawSettings, override := element["override_liquid_settings"]
 		settings, err := ParseLiquidSettings(rawSettings)
 		if err != nil { return poolElement{}, err }
-		return poolElement{template:strings.TrimPrefix(location,"minecraft:"),processors:processors,processorSpecs:specs,projection:projection,weight:weight,liquidSettings:settings,overrideLiquidSettings:override},nil
+		return poolElement{template:strings.TrimPrefix(location,"minecraft:"),processors:processors,processorSpecs:specs,projection:projection,weight:weight,liquidSettings:settings,overrideLiquidSettings:override,legacySingle:strings.TrimPrefix(typeName,"minecraft:")=="legacy_single_pool_element"},nil
 	case "feature_pool_element":
 		feature,ok:=element["feature"]
 		if !ok{return poolElement{},fmt.Errorf("feature pool element lacks feature")}
@@ -436,7 +472,7 @@ func loadPoolElementTemplates(element poolElement)([]jigsawPart,error){
 	if element.feature!=nil{return []jigsawPart{{feature:element.feature}},nil}
 	template,err:=LoadOrCreate(element.template)
 	if err!=nil{return nil,err}
-	return []jigsawPart{{template:template,processors:element.processors,processorSpecs:element.processorSpecs,liquidSettings:element.liquidSettings,overrideLiquidSettings:element.overrideLiquidSettings}},nil
+	return []jigsawPart{{template:template,processors:element.processors,processorSpecs:element.processorSpecs,liquidSettings:element.liquidSettings,overrideLiquidSettings:element.overrideLiquidSettings,legacySingle:element.legacySingle}},nil
 }
 func hasPoolPlacement(parts []jigsawPart)bool{
 	for _,part:=range parts{if part.template!=nil||part.feature!=nil{return true}}
@@ -444,7 +480,7 @@ func hasPoolPlacement(parts []jigsawPart)bool{
 }
 func makeJigsawPoolPiece(parts []jigsawPart,origin [3]int32,rotation Rotation,e poolElement,settings LiquidSettings)JigsawPiece{
 	if e.overrideLiquidSettings { settings = e.liquidSettings }
-	piece:=JigsawPiece{Origin:origin,Rotation:rotation,Projection:e.projection,GroundLevelDelta:1,Bounds:Box{Min:origin,Max:origin},LiquidSettings:settings}
+	piece:=JigsawPiece{Origin:origin,Rotation:rotation,Projection:e.projection,GroundLevelDelta:1,Bounds:Box{Min:origin,Max:origin},LiquidSettings:settings,legacySingle:e.legacySingle}
 	hasFeature:=false
 	for _,part:=range parts { if part.feature!=nil {hasFeature=true};if piece.Template==nil&&part.template!=nil{piece.Template=part.template} }
 	if len(e.children)>0||hasFeature{piece.parts=parts}

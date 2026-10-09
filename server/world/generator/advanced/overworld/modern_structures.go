@@ -546,6 +546,13 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		HeightAt:                func(x, z int32) int32 { return input.source.BaseHeight(x, z, false) },
 		LiquidSettings:          liquidSettings,
 	}
+	if rawAliases, exists := config["pool_aliases"]; exists {
+		aliases, err := javastructure.ResolvePoolAliases(rawAliases, [3]int32{originX, originY, originZ}, input.seed)
+		if err != nil {
+			return modernStructureStart{}, false, err
+		}
+		options.PoolAliases = aliases
+	}
 	result, err := javastructure.BuildJigsaw(options, input.random)
 	if err != nil {
 		return modernStructureStart{}, false, err
