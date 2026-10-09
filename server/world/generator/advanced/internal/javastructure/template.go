@@ -15,13 +15,37 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
 )
 
+// LiquidSettings controls ambient-fluid preservation during template placement.
+type LiquidSettings uint8
+
+const (
+	ApplyWaterlogging LiquidSettings = iota
+	IgnoreWaterlogging
+)
+
+// ParseLiquidSettings decodes the source codec, including its default.
+func ParseLiquidSettings(value any) (LiquidSettings, error) {
+	switch value {
+	case nil, "apply_waterlogging":
+		return ApplyWaterlogging, nil
+	case "ignore_waterlogging":
+		return IgnoreWaterlogging, nil
+	default:
+		return ApplyWaterlogging, fmt.Errorf("invalid Java liquid settings %v", value)
+	}
+}
+
 // Block is a palette state and a template-relative position. NBT is retained verbatim.
 // NativeBlock carries Java state properties stored in native block actors, or an entity adapted to a native block.
 type Block struct {
-	Pos         [3]int32
-	State       world.BlockState
-	NBT         map[string]any
-	NativeBlock world.Block
+	Pos [3]int32
+	// Placement-only batch header. A flattened list pool element starts a new
+	// fluid pass here; LiquidSettings applies until the next TemplateStart.
+	TemplateStart  bool
+	LiquidSettings LiquidSettings
+	State          world.BlockState
+	NBT            map[string]any
+	NativeBlock    world.Block
 }
 
 // Entity is an entity record from a Java structure template.

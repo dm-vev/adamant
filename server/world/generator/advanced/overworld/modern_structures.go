@@ -531,6 +531,10 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		originY = 320 - int32(number(v))
 	}
 	terrain := terrainAdjustment(stringValue(config["terrain_adaptation"]))
+	liquidSettings, err := javastructure.ParseLiquidSettings(config["liquid_settings"])
+	if err != nil {
+		return modernStructureStart{}, false, err
+	}
 	options := javastructure.JigsawOptions{
 		Pool:                    pool,
 		StartJigsaw:             strings.TrimPrefix(stringValue(config["start_jigsaw_name"]), "minecraft:"),
@@ -542,6 +546,7 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		Terrain:                 terrain,
 		ProjectStartToHeightmap: config["project_start_to_heightmap"] != nil,
 		HeightAt:                func(x, z int32) int32 { return input.source.BaseHeight(x, z, false) },
+		LiquidSettings:          liquidSettings,
 	}
 	result, err := javastructure.BuildJigsaw(options, input.random)
 	if err != nil {

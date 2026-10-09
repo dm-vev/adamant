@@ -32,6 +32,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 	var locked []featurePos
 	var payloadBlocks []javastructure.Block
 	var written []cube.Pos
+	applyWaterlogging := len(blocks) == 0 || blocks[0].LiquidSettings != javastructure.IgnoreWaterlogging
 	for i := range blocks {
 		entry := &blocks[i]
 		pos := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}
@@ -74,6 +75,12 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 			if structurePieceShapeCheckBlock(state, registry) {
 				region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
 			}
+		}
+		if !applyWaterlogging {
+			if entry.NativeBlock != nil || len(entry.NBT) != 0 {
+				payloadBlocks = append(payloadBlocks, *entry)
+			}
+			continue
 		}
 		if templateBlockStateIsSource(entry.State) {
 			locked = append(locked, pos)

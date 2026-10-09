@@ -770,17 +770,33 @@ func featureBound(v any, worldMinY, worldMaxY, seaLevel int32) float64 {
 // applyStructurePlacement adapts Java descriptors, applies allowed blocks, and publishes target metadata.
 func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placement javastructure.Placement) {
 	sourceBlockCount := len(placement.Blocks)
-	payloadBlocks, written := applyTemplateFluidsForStructureWrites(
-		region, placement.Blocks, placement.StructurePieceWrites, templatePlacementFlags(placement),
-	)
-	for _, entry := range payloadBlocks {
-		region.recordTemplateActor(entry)
+	// List pool elements share a descriptor slice, but each source template
+	// completes its own fluid pass before the next one replaces any blocks.
+	for first := 0; first < sourceBlockCount; {
+		end := first + 1
+		for end < sourceBlockCount && !placement.Blocks[end].TemplateStart {
+			end++
+		}
+		payloadBlocks, written := applyTemplateFluidsForStructureWrites(
+			region, placement.Blocks[first:end], placement.StructurePieceWrites, templatePlacementFlags(placement),
+		)
+		for _, entry := range payloadBlocks {
+			region.recordTemplateActor(entry)
+		}
+		if end == sourceBlockCount {
+			for _, tick := range placement.ScheduledTicks {
+				region.reserveJavaTick(tick)
+			}
+		}
+		if placement.TemplateUpdateFlags != 0 && !placement.TemplateKnownShape {
+			world.UpdateJavaTemplateShapes(region, written, placement.TemplateUpdateFlags)
+		}
+		first = end
 	}
-	for _, tick := range placement.ScheduledTicks {
-		region.reserveJavaTick(tick)
-	}
-	if placement.TemplateUpdateFlags != 0 && !placement.TemplateKnownShape {
-		world.UpdateJavaTemplateShapes(region, written, placement.TemplateUpdateFlags)
+	if sourceBlockCount == 0 {
+		for _, tick := range placement.ScheduledTicks {
+			region.reserveJavaTick(tick)
+		}
 	}
 	var err error
 	placement, err = placement.AdaptItemFrameEntities()
