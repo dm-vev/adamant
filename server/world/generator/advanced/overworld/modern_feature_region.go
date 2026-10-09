@@ -92,6 +92,7 @@ func (r *featureRegion) Set(p featurePos, state world.NativeState) bool {
 	if featureInsideTarget(r.target, p) {
 		x, z := uint8(p.x&15), uint8(p.z&15)
 		world.SetNativeState(r.c, x, int16(p.y), z, state)
+		r.markBlockPostProcessing(p, state)
 	}
 	return true
 }
@@ -146,6 +147,43 @@ func featureStateHasFluid(c *chunk.Chunk, state world.NativeState) bool {
 		}
 	}
 	return false
+}
+
+func (r *featureRegion) markBlockPostProcessing(p featurePos, state world.NativeState) {
+	id := state.CanonicalJavaID(r.c.BlockRegistry())
+	if id == 0 {
+		// Native-only placements, including flowing-fluid palette variants,
+		// have no Java block callback. They retain their native capabilities.
+		return
+	}
+	name, ok := javadata.BlockStateName(id)
+	if !ok {
+		panic("overworld: feature write has an invalid canonical Java identity")
+	}
+	switch normalizeJavaResource(name) {
+	case "brown_mushroom", "red_mushroom":
+		r.result.MarkForPostProcessing(cube.Pos{int(p.x), int(p.y), int(p.z)}, r.c.Range())
+	case "soul_sand", "magma_block":
+		above := featurePos{p.x, p.y + 1, p.z}
+		name, _ := r.State(above)
+		if normalizeJavaResource(name) != "air" && normalizeJavaResource(name) != "cave_air" && normalizeJavaResource(name) != "void_air" {
+			r.result.MarkForPostProcessing(cube.Pos{int(above.x), int(above.y), int(above.z)}, r.c.Range())
+		}
+	}
+}
+
+func (r *featureRegion) markAboveForPostProcessing(p featurePos) {
+	for offset := int32(1); offset <= 2; offset++ {
+		marked := featurePos{p.x, p.y + offset, p.z}
+		name, _ := r.State(marked)
+		name = normalizeJavaResource(name)
+		if name == "air" || name == "cave_air" || name == "void_air" {
+			return
+		}
+		if featureInsideTarget(r.target, marked) {
+			r.result.MarkForPostProcessing(cube.Pos{int(marked.x), int(marked.y), int(marked.z)}, r.c.Range())
+		}
+	}
 }
 func (r *featureRegion) scheduledBlockID(state world.NativeState) uint32 {
 	if state.Block == r.c.BlockRegistry().AirRuntimeID() {
@@ -470,9 +508,11 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 			if dx*dx+dz*dz > radius*radius {
 				continue
 			}
+			placedAbove := false
 			for dy := halfHeight; dy >= -halfHeight; dy-- {
 				p := featurePos{origin.x + dx, origin.y + dy, origin.z + dz}
 				if !featurePredicate(region, p, predicate) {
+					placedAbove = false
 					continue
 				}
 				block, ok := sampleOptionalJavaBlockState(region, p, config["state_provider"], random)
@@ -484,7 +524,11 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 					panic(err)
 				}
 				region.SetNativeBlock(p, state, block.NativeBlock)
+				if !placedAbove {
+					region.markAboveForPostProcessing(p)
+				}
 				placed = true
+				placedAbove = true
 			}
 		}
 	}

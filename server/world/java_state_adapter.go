@@ -9,6 +9,12 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
+// JavaStateBlock applies source palette properties to a native actor while
+// retaining actor-only metadata on the receiver.
+type JavaStateBlock interface {
+	WithJavaBlockState(name string, properties map[string]any) (Block, error)
+}
+
 var waterSourceProperties = map[string]any{"liquid_depth": int32(0)}
 var facingPropertyCandidates = [...]string{"minecraft:cardinal_direction", "facing_direction", "direction", "weirdo_direction", "minecraft:facing_direction", "minecraft:block_face", "torch_facing_direction"}
 var rotationPropertyCandidates = [...]string{"ground_sign_direction", "rotation"}
@@ -180,6 +186,53 @@ var nativeDoublePlantJavaTypes = map[string]string{
 	"grass": "minecraft:tall_grass", "fern": "minecraft:large_fern",
 }
 
+// JavaActorBlockName identifies the source families whose palette properties
+// require a native block actor. Only dye-coloured beds use the generic bed palette.
+func JavaActorBlockName(name string) string {
+	if name == "minecraft:shulker_box" {
+		return "minecraft:undyed_shulker_box"
+	}
+	var colour, native string
+	switch {
+	case strings.HasSuffix(name, "_wall_banner"):
+		colour, native = strings.TrimSuffix(name, "_wall_banner"), "minecraft:wall_banner"
+	case strings.HasSuffix(name, "_banner"):
+		colour, native = strings.TrimSuffix(name, "_banner"), "minecraft:standing_banner"
+	case strings.HasSuffix(name, "_bed"):
+		colour, native = strings.TrimSuffix(name, "_bed"), "minecraft:bed"
+	case strings.HasSuffix(name, "_shulker_box"):
+		colour, native = strings.TrimSuffix(name, "_shulker_box"), name
+	default:
+		return ""
+	}
+	switch colour {
+	case "minecraft:white", "minecraft:orange", "minecraft:magenta", "minecraft:light_blue",
+		"minecraft:yellow", "minecraft:lime", "minecraft:pink", "minecraft:gray",
+		"minecraft:light_gray", "minecraft:cyan", "minecraft:purple", "minecraft:blue",
+		"minecraft:brown", "minecraft:green", "minecraft:red", "minecraft:black":
+		return native
+	}
+	return ""
+}
+
+func javaActorPaletteState(name string, properties map[string]any) (string, map[string]any) {
+	native := JavaActorBlockName(name)
+	if native == "" {
+		return name, properties
+	}
+	if !strings.HasSuffix(native, "_shulker_box") {
+		return native, properties
+	}
+	// Shulker facing is stored in the block actor, not the palette.
+	out := make(map[string]any, len(properties))
+	for key, value := range properties {
+		if key != "facing" {
+			out[key] = value
+		}
+	}
+	return native, out
+}
+
 func resolveJavaState(registry chunk.BlockRegistry, state BlockState) (NativeState, error) {
 	if registry == nil {
 		return NativeState{}, fmt.Errorf("java state codec: nil block registry")
@@ -187,9 +240,11 @@ func resolveJavaState(registry chunk.BlockRegistry, state BlockState) (NativeSta
 	javaName := NormaliseBlockName(state.Name)
 	if javaName == "" {
 		return NativeState{}, fmt.Errorf("java state codec: empty block name")
+
 	}
 	properties := javadata.BlockPropertiesWithDefaults(javaName, state.Properties)
-	name, props, err := nativeBlockState(registry, javaName, properties)
+	paletteName, paletteProperties := javaActorPaletteState(javaName, properties)
+	name, props, err := nativeBlockState(registry, paletteName, paletteProperties)
 	if err != nil {
 		return NativeState{}, err
 	}

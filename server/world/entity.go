@@ -231,6 +231,18 @@ func (e *EntityHandle) SetPosition(pos mgl64.Vec3) {
 	e.data.Pos = pos
 }
 
+// WorldlessEntity opens a view for preparing a newly created handle before it
+// is added to a world. The caller must own the handle exclusively and must not
+// retain the view after AddEntity. World membership is not changed.
+func (e *EntityHandle) WorldlessEntity(tx *Tx) Entity {
+	e.cond.L.Lock()
+	defer e.cond.L.Unlock()
+	if e.w != nil {
+		panic("cannot prepare an entity handle already in a world")
+	}
+	return e.t.Open(tx, e, &e.data)
+}
+
 // mustEntity calls Entity but panics if the worlds do not match.
 func (e *EntityHandle) mustEntity(tx *Tx) Entity {
 	if ent, ok := e.Entity(tx); ok {

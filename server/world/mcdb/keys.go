@@ -39,7 +39,10 @@ const (
 	// keyAdamantInhabitedTime stores Java-compatible local difficulty age in
 	// Adamant-owned LevelDB data; it is not a Bedrock-native chunk field.
 	keyAdamantInhabitedTime = "adamant:inhabited_time"
-	keyEntityIdentifiers = "digp"
+	// keyAdamantPostProcessing stores pending Java source markers separately
+	// from Bedrock-native chunk data.
+	keyAdamantPostProcessing = "adamant:post_processing"
+	keyEntityIdentifiers     = "digp"
 
 	keyEntity = "actorprefix"
 )

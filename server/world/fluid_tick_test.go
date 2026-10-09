@@ -149,3 +149,109 @@ func TestBlockToFluidSchedulingUsesCurrentSharedTickClock(t *testing.T) {
 		}
 	})
 }
+
+var nativeFluidHalfHash = block.NextHash()
+var nativeFluidUpperHalf = [...]cube.BBox{cube.Box(0, .5, 0, 1, 1, 1)}
+var nativeFluidLowerHalf = [...]cube.BBox{cube.Box(0, 0, 0, 1, .5, 1)}
+
+type nativeFluidHalfBlock struct {
+	block.Stone
+	closed bool
+}
+
+func (b nativeFluidHalfBlock) EncodeBlock() (string, map[string]any) {
+	return "test:positional_fluid_half", map[string]any{"closed": b.closed}
+}
+func (b nativeFluidHalfBlock) Hash() (uint64, uint64) {
+	if b.closed {
+		return nativeFluidHalfHash, 1
+	}
+	return nativeFluidHalfHash, 0
+}
+func (nativeFluidHalfBlock) Model() world.BlockModel { return nativeFluidHalfModel{} }
+func (nativeFluidHalfBlock) CanDisplace(liquid world.Liquid) bool {
+	return liquid != nil && liquid.LiquidType() == "water"
+}
+func (b nativeFluidHalfBlock) SideClosed(pos, side cube.Pos, _ *world.Tx) bool {
+	return b.closed && side == pos.Side(cube.FaceWest)
+}
+
+type nativeFluidHalfModel struct{}
+
+func (nativeFluidHalfModel) BBox(pos cube.Pos, _ world.BlockSource) []cube.BBox {
+	if pos[2]&1 == 0 {
+		return nativeFluidUpperHalf[:]
+	}
+	return nativeFluidLowerHalf[:]
+}
+func (nativeFluidHalfModel) FaceSolid(pos cube.Pos, face cube.Face, _ world.BlockSource) bool {
+	return pos[2]&1 == 0 && face == cube.FaceUp || pos[2]&1 != 0 && face == cube.FaceDown
+}
+
+func TestFluidMixedSourceNativeBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		z                 int
+		closed, wantFluid bool
+	}{
+		{"matching halves leave a gap", 8, false, true},
+		{"complementary halves close the boundary", 9, false, false},
+		{"native aperture closes a geometric gap", 8, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			registry := world.NewBlockRegistry()
+			custom := nativeFluidHalfBlock{closed: tc.closed}
+			name, properties := custom.EncodeBlock()
+			registry.RegisterBlockState(world.BlockState{Name: name, Properties: properties})
+			registry.RegisterBlock(custom)
+			w := world.Config{Blocks: registry, Synchronous: true, RandomTickSpeed: -1}.New()
+			t.Cleanup(func() { _ = w.Close() })
+			source := cube.Pos{8, 64, tc.z}
+			target := source.Side(cube.FaceEast)
+			native, err := world.ResolveState(registry, world.BlockState{
+				Name: "minecraft:oak_slab", Properties: map[string]any{"type": "top", "waterlogged": true},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			slab, ok := registry.BlockByRuntimeID(native.Block)
+			if !ok {
+				t.Fatal("missing native slab")
+			}
+			liquid, ok := registry.BlockByRuntimeID(native.Liquid)
+			if !ok {
+				t.Fatal("missing native water")
+			}
+			<-w.Exec(func(tx *world.Tx) {
+				tx.SetBlock(source, slab, nil)
+				tx.SetLiquid(source, liquid.(world.Liquid))
+				tx.SetBlock(target, custom, nil)
+				tx.SetBlock(source.Side(cube.FaceDown), block.Stone{}, nil)
+				tx.SetBlock(target.Side(cube.FaceDown), block.Stone{}, nil)
+				for _, face := range [...]cube.Face{cube.FaceNorth, cube.FaceSouth, cube.FaceWest} {
+					tx.SetBlock(source.Side(face), block.Stone{}, nil)
+				}
+				for _, face := range [...]cube.Face{cube.FaceNorth, cube.FaceSouth, cube.FaceEast} {
+					tx.SetBlock(target.Side(face), block.Stone{}, nil)
+				}
+				tx.ScheduleBlockUpdate(source, block.Water{Depth: 8, Still: true}, time.Second/20)
+			})
+			w.AdvanceTick()
+			<-w.Exec(func(tx *world.Tx) {
+				got, present := tx.Liquid(target)
+				if present != tc.wantFluid {
+					t.Fatalf("target fluid present = %v, want %v", present, tc.wantFluid)
+				}
+				if present && (got.LiquidDepth() != 7 || got.LiquidFalling()) {
+					t.Errorf("target fluid = %#v, want non-falling depth 7", got)
+				}
+				if actual, ok := tx.Block(target).(nativeFluidHalfBlock); !ok || actual != custom {
+					t.Error("flow replaced native foreground block")
+				}
+				if _, err := tx.JavaBlockStateID(target); err == nil {
+					t.Error("native-only block received a fabricated source identity")
+				}
+			})
+		})
+	}
+}

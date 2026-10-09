@@ -1,6 +1,9 @@
 package block
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
@@ -83,6 +86,44 @@ func (b Banner) EncodeBlock() (name string, properties map[string]any) {
 		return "minecraft:wall_banner", map[string]any{"facing_direction": int32(b.Attach.facing + 2)}
 	}
 	return "minecraft:standing_banner", map[string]any{"ground_sign_direction": int32(b.Attach.o)}
+}
+
+// WithJavaBlockState applies the state-backed properties of a Java banner while
+// retaining its patterns and other actor-only state.
+func (b Banner) WithJavaBlockState(name string, properties map[string]any) (world.Block, error) {
+	name = strings.TrimPrefix(name, "minecraft:")
+	wall := strings.HasSuffix(name, "_wall_banner")
+	colourName := strings.TrimSuffix(name, "_banner")
+	if wall {
+		colourName = strings.TrimSuffix(colourName, "_wall")
+	}
+	colour, ok := javaActorColour(colourName)
+	if !ok {
+		return nil, fmt.Errorf("java banner: unsupported state %q", name)
+	}
+	if wall {
+		facing, err := javaActorString(properties, "facing", "north")
+		if err != nil {
+			return nil, fmt.Errorf("java banner: %w", err)
+		}
+		direction, err := javaActorFacing(facing)
+		if err != nil {
+			return nil, fmt.Errorf("java banner: %w", err)
+		}
+		b.Attach = WallAttachment(direction)
+	} else {
+		rotation := int64(0)
+		if raw, exists := properties["rotation"]; exists {
+			var valid bool
+			rotation, valid = javaActorInteger(raw)
+			if !valid || rotation < 0 || rotation > 15 {
+				return nil, fmt.Errorf("java banner: invalid rotation %v", raw)
+			}
+		}
+		b.Attach = StandingAttachment(cube.Orientation(rotation))
+	}
+	b.Colour = colour
+	return b, nil
 }
 
 // EncodeNBT ...

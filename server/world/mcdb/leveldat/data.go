@@ -242,6 +242,14 @@ func (d *Data) Settings() *world.Settings {
 	if value, present := d.Java["spawn_wardens"].(byte); present {
 		spawnWardens = value != 0
 	}
+	waterSourceConversion := true
+	if value, present := d.Java["water_source_conversion"].(byte); present {
+		waterSourceConversion = value != 0
+	}
+	lavaSourceConversion := false
+	if value, present := d.Java["lava_source_conversion"].(byte); present {
+		lavaSourceConversion = value != 0
+	}
 	return &world.Settings{
 		Name:                      d.LevelName,
 		Seed:                      d.RandomSeed,
@@ -262,6 +270,8 @@ func (d *Data) Settings() *world.Settings {
 		SpawnMobs:                 d.DoMobSpawning,
 		SpawnMonsters:             spawnMonsters,
 		SpawnWardens:              spawnWardens,
+		WaterSourceConversion:     waterSourceConversion,
+		LavaSourceConversion:      lavaSourceConversion,
 		PlayersSleepingPercentage: d.PlayersSleepingPercentage,
 	}
 }
@@ -299,6 +309,14 @@ func (d *Data) PutSettings(s *world.Settings) {
 	d.Java["spawn_wardens"] = byte(0)
 	if s.SpawnWardens {
 		d.Java["spawn_wardens"] = byte(1)
+	}
+	d.Java["water_source_conversion"] = byte(0)
+	if s.WaterSourceConversion {
+		d.Java["water_source_conversion"] = byte(1)
+	}
+	d.Java["lava_source_conversion"] = byte(0)
+	if s.LavaSourceConversion {
+		d.Java["lava_source_conversion"] = byte(1)
 	}
 	d.PlayersSleepingPercentage = s.PlayersSleepingPercentage
 	mode, _ := world.GameModeID(s.DefaultGameMode)

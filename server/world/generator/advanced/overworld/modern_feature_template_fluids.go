@@ -15,6 +15,10 @@ import (
 // applyTemplateFluids matches StructureTemplate's post-write waterlogging pass.
 // Native secondary layers retain the actual fluid kind and source/flowing state.
 func applyTemplateFluids(region *featureRegion, blocks []javastructure.Block) []javastructure.Block {
+	return applyTemplateFluidsForStructure(region, blocks, false)
+}
+
+func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructure.Block, structurePieceWrites bool) []javastructure.Block {
 	registry, ok := region.c.BlockRegistry().(world.BlockRegistry)
 	if !ok {
 		panic("overworld: Java feature region registry cannot resolve native blocks")
@@ -36,6 +40,33 @@ func applyTemplateFluids(region *featureRegion, blocks []javastructure.Block) []
 		}
 		if !region.Set(pos, state) {
 			continue
+		}
+		if structurePieceWrites && featureInsideTarget(region.target, pos) {
+			state := region.nativeState(pos)
+			for _, rid := range [2]uint32{state.Block, state.Liquid} {
+				if !registry.LiquidBlock(rid) {
+					continue
+				}
+				fluidBlock, ok := registry.BlockByRuntimeID(rid)
+				if !ok {
+					panic("overworld: unknown structure fluid runtime ID")
+				}
+				fluid, ok := fluidBlock.(world.Liquid)
+				if !ok {
+					panic("overworld: structure liquid block has no fluid type")
+				}
+				typeName := fluid.LiquidType()
+				if !strings.Contains(typeName, ":") {
+					typeName = "minecraft:" + typeName
+				}
+				region.result.ScheduleTick(chunk.ScheduledTick{
+					Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: typeName,
+				})
+				break
+			}
+			if structurePieceShapeCheckBlock(state, registry) {
+				region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
+			}
 		}
 		if templateBlockStateIsSource(entry.State) {
 			locked = append(locked, pos)
@@ -147,6 +178,19 @@ func applyTemplateFluids(region *featureRegion, blocks []javastructure.Block) []
 		}
 	}
 	return surviving
+}
+
+func structurePieceShapeCheckBlock(state world.NativeState, registry world.BlockRegistry) bool {
+	name, _, ok := registry.RuntimeIDToState(state.Block)
+	if !ok {
+		panic("overworld: unknown structure block runtime ID")
+	}
+	switch normalizeJavaResource(name) {
+	case "nether_brick_fence", "torch", "wall_torch", "oak_fence", "spruce_fence", "dark_oak_fence", "pale_oak_fence", "acacia_fence", "birch_fence", "jungle_fence", "ladder", "iron_bars":
+		return true
+	default:
+		return false
+	}
 }
 
 func templateContainerState(state world.BlockState) bool {

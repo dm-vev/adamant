@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -17,6 +16,9 @@ import (
 // whose state properties are stored in a Bedrock block actor.
 func NativeBlockForJavaState(state world.BlockState) (world.Block, bool, error) {
 	name := world.NormaliseBlockName(state.Name)
+	if native, adapted, err := nativeJavaStateBlock(state, name); adapted || err != nil {
+		return native, adapted, err
+	}
 	if native, adapted, err := nativeStateActor(state, strings.TrimPrefix(name, "minecraft:")); adapted || err != nil {
 		return native, adapted, err
 	}
@@ -68,12 +70,25 @@ func NativeBlockForJavaState(state world.BlockState) (world.Block, bool, error) 
 	return block.CopperGolemStatue{Facing: direction, Pose: nativePose, Oxidation: oxidation, Waxed: waxed}, true, nil
 }
 
-var nativeActorColours = item.Colours()
-var nativeActorShulkers = block.ShulkerBoxTypes()
 var nativeActorSkulls = map[string]block.SkullType{
 	"skeleton_skull": block.SkeletonSkull(), "wither_skeleton_skull": block.WitherSkeletonSkull(),
 	"zombie_head": block.ZombieHead(), "player_head": block.PlayerHead(), "creeper_head": block.CreeperHead(),
 	"dragon_head": block.DragonHead(), "piglin_head": block.PiglinHead(),
+}
+
+func nativeJavaStateBlock(state world.BlockState, name string) (world.Block, bool, error) {
+	switch nativeName := world.JavaActorBlockName(name); {
+	case nativeName == "minecraft:bed":
+		native, err := (block.Bed{}).WithJavaBlockState(name, state.Properties)
+		return native, true, err
+	case nativeName == "minecraft:standing_banner", nativeName == "minecraft:wall_banner":
+		native, err := (block.Banner{}).WithJavaBlockState(name, state.Properties)
+		return native, true, err
+	case strings.HasSuffix(nativeName, "_shulker_box"):
+		native, err := block.NewShulkerBox().WithJavaBlockState(name, state.Properties)
+		return native, true, err
+	}
+	return nil, false, nil
 }
 
 func nativeStateActor(state world.BlockState, name string) (world.Block, bool, error) {
@@ -108,70 +123,6 @@ func nativeStateActor(state world.BlockState, name string) (world.Block, bool, e
 			return nil, false, err
 		}
 		return block.CalibratedSculkSensor{SculkSensor: sensor, Facing: facing}, true, nil
-	case name == "shulker_box", strings.HasSuffix(name, "_shulker_box"):
-		typ := block.NormalShulkerBox()
-		if name != "shulker_box" {
-			colour, ok := javaColorIDs[strings.TrimSuffix(name, "_shulker_box")]
-			if !ok {
-				return nil, false, nil
-			}
-			typ = nativeActorShulkers[int(colour)+1]
-		}
-		facing := cube.FaceUp
-		if raw, exists := state.Properties["facing"]; exists {
-			switch raw {
-			case "down":
-				facing = cube.FaceDown
-			case "up":
-			case "north":
-				facing = cube.FaceNorth
-			case "south":
-				facing = cube.FaceSouth
-			case "west":
-				facing = cube.FaceWest
-			case "east":
-				facing = cube.FaceEast
-			default:
-				return nil, false, fmt.Errorf("java shulker box: invalid facing %v", raw)
-			}
-		}
-		return block.ShulkerBox{Type: typ, Facing: facing}, true, nil
-	case strings.HasSuffix(name, "_bed"):
-		colour, ok := javaColorIDs[strings.TrimSuffix(name, "_bed")]
-		if !ok {
-			return nil, false, nil
-		}
-		facing, err := actorDirection(state)
-		if err != nil {
-			return nil, false, err
-		}
-		part := "foot"
-		if raw, exists := state.Properties["part"]; exists {
-			part, ok = actorStringProperty(raw)
-			if !ok || part != "foot" && part != "head" {
-				return nil, false, fmt.Errorf("java bed: invalid part %v", raw)
-			}
-		}
-		occupied, err := actorOptionalBool(state, "occupied")
-		if err != nil {
-			return nil, false, err
-		}
-		return block.Bed{Colour: nativeActorColours[colour], Facing: facing, Head: part == "head", Occupied: occupied}, true, nil
-	case strings.HasSuffix(name, "_banner"):
-		wall := strings.HasSuffix(name, "_wall_banner")
-		colourName := strings.TrimSuffix(name, "_banner")
-		if wall {
-			colourName = strings.TrimSuffix(colourName, "_wall")
-		}
-		colour, ok := javaColorIDs[colourName]
-		if !ok {
-			return nil, false, nil
-		}
-		attach, err := actorAttachment(state, wall, 8)
-		if err != nil {
-			return nil, false, err
-		}
-		return block.Banner{Colour: nativeActorColours[colour], Attach: attach}, true, nil
 	case strings.HasSuffix(name, "_head"), strings.HasSuffix(name, "_skull"):
 		skull, ok := nativeActorSkulls[strings.Replace(name, "_wall_", "_", 1)]
 		if !ok {

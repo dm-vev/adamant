@@ -283,6 +283,53 @@ func (s ShulkerBox) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + s.Type.String(), nil
 }
 
+// WithJavaBlockState applies Java shulker state without discarding stored
+// inventory, custom name, or actor lifecycle state.
+func (s ShulkerBox) WithJavaBlockState(name string, properties map[string]any) (world.Block, error) {
+	name = strings.TrimPrefix(name, "minecraft:")
+	colourName := strings.TrimSuffix(name, "_shulker_box")
+	if name == "shulker_box" {
+		colourName = ""
+	} else if colourName == name {
+		return nil, fmt.Errorf("java shulker box: incompatible state %q", name)
+	}
+	if colourName == "" {
+		s.Type = NormalShulkerBox()
+	} else {
+		colourID, ok := javaActorColourIDs[colourName]
+		if !ok {
+			return nil, fmt.Errorf("java shulker box: unsupported colour in %q", name)
+		}
+		s.Type = ShulkerBoxTypes()[int(colourID)+1]
+	}
+	facing, err := javaActorString(properties, "facing", "up")
+	if err != nil {
+		return nil, fmt.Errorf("java shulker box: %w", err)
+	}
+	switch facing {
+	case "down":
+		s.Facing = cube.FaceDown
+	case "up":
+		s.Facing = cube.FaceUp
+	case "north":
+		s.Facing = cube.FaceNorth
+	case "south":
+		s.Facing = cube.FaceSouth
+	case "west":
+		s.Facing = cube.FaceWest
+	case "east":
+		s.Facing = cube.FaceEast
+	default:
+		return nil, fmt.Errorf("java shulker box: invalid facing %q", facing)
+	}
+	if s.inventory == nil {
+		typ, facing, customName := s.Type, s.Facing, s.CustomName
+		s = NewShulkerBox()
+		s.Type, s.Facing, s.CustomName = typ, facing, customName
+	}
+	return s, nil
+}
+
 // EncodeItem ...
 func (s ShulkerBox) EncodeItem() (id string, meta int16) {
 	return "minecraft:" + s.Type.String(), 0

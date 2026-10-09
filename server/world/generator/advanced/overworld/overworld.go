@@ -182,16 +182,10 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 	base := g.terrainColumn(pos, false)
 	*c = *base.c.Clone()
 	result := g.modernFeatures.Decorate(pos, c)
-	if len(base.scheduled) != 0 {
-		decorationTicks := result.ScheduledTicks
-		result.ScheduledTicks = make([]chunk.ScheduledTick, 0, len(base.scheduled)+len(decorationTicks))
-		for _, tick := range base.scheduled {
-			result.ScheduleTick(tick)
-		}
-		for _, tick := range decorationTicks {
-			result.ScheduleTick(tick)
-		}
-	}
+	decorationMarkers := result.PostProcessing
+	result.PostProcessing = nil
+	appendPostProcessing(&result, base.postProcessing)
+	appendPostProcessing(&result, decorationMarkers)
 	return result
 }
 

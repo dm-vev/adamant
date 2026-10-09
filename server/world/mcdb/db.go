@@ -348,6 +348,13 @@ func (db *DB) column(k dbKey) (*chunk.Column, error) {
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return nil, fmt.Errorf("read scheduled updates: %w", err)
 	}
+	col.PostProcessing, err = db.postProcessing(k)
+	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
+		return nil, fmt.Errorf("read Adamant post-processing markers: %w", err)
+	}
+	if errors.Is(err, leveldb.ErrNotFound) {
+		col.PostProcessing = nil
+	}
 	inhabitedTime, err := db.ldb.Get(k.Sum([]byte(keyAdamantInhabitedTime)...), nil)
 	if err != nil && !errors.Is(err, leveldb.ErrNotFound) {
 		return nil, fmt.Errorf("read Adamant inhabited time: %w", err)
@@ -360,6 +367,102 @@ func (db *DB) column(k dbKey) (*chunk.Column, error) {
 	}
 
 	return col, nil
+}
+
+func (db *DB) postProcessing(k dbKey) ([][]uint16, error) {
+	data, err := db.ldb.Get(k.Sum([]byte(keyAdamantPostProcessing)...), nil)
+	if err != nil {
+		return nil, err
+	}
+	sections := dimensionSectionCount(k.dim)
+	if len(data) < 3 {
+		return nil, errors.New("truncated header")
+	}
+	if data[0] != postProcessingVersion {
+		return nil, fmt.Errorf("unsupported version %d", data[0])
+	}
+	rows := int(binary.LittleEndian.Uint16(data[1:3]))
+	if rows > sections {
+		return nil, fmt.Errorf("section row count %d exceeds dimension section count %d", rows, sections)
+	}
+	if rows == 0 {
+		if len(data) != 3 {
+			return nil, errors.New("unexpected data after empty section rows")
+		}
+		return nil, nil
+	}
+	if len(data)-3 < rows*4 {
+		return nil, errors.New("truncated section counts")
+	}
+	out := make([][]uint16, rows)
+	offset := 3
+	for section := range out {
+		count := binary.LittleEndian.Uint32(data[offset : offset+4])
+		offset += 4
+		if uint64(count) > uint64((len(data)-offset)/2) {
+			return nil, fmt.Errorf("truncated markers in section %d", section)
+		}
+		if count != 0 {
+			out[section] = make([]uint16, int(count))
+			for i := range out[section] {
+				value := binary.LittleEndian.Uint16(data[offset : offset+2])
+				offset += 2
+				if value&0xf000 != 0 {
+					return nil, fmt.Errorf("invalid packed marker 0x%04x in section %d", value, section)
+				}
+				out[section][i] = value
+			}
+		}
+	}
+	if offset != len(data) {
+		return nil, errors.New("unexpected trailing marker data")
+	}
+	return out, nil
+}
+
+const postProcessingVersion = 1
+
+func dimensionSectionCount(dim world.Dimension) int {
+	r := dim.Range()
+	return (r[1] - r[0] + 1) / 16
+}
+
+func encodePostProcessing(markers [][]uint16, dim world.Dimension) ([]byte, error) {
+	if len(markers) == 0 {
+		return nil, nil
+	}
+	if len(markers) > dimensionSectionCount(dim) || len(markers) > int(^uint16(0)) {
+		return nil, fmt.Errorf("section row count %d exceeds supported dimension range", len(markers))
+	}
+	size := 3 + 4*len(markers)
+	maxInt := int(^uint(0) >> 1)
+	for section, row := range markers {
+		if uint64(len(row)) > uint64(^uint32(0)) {
+			return nil, fmt.Errorf("marker count %d in section %d exceeds supported range", len(row), section)
+		}
+		if len(row) > (maxInt-size)/2 {
+			return nil, errors.New("post-processing payload is too large")
+		}
+		size += 2 * len(row)
+		for _, marker := range row {
+			if marker&0xf000 != 0 {
+				return nil, fmt.Errorf("invalid packed marker 0x%04x in section %d", marker, section)
+			}
+		}
+	}
+	data := make([]byte, size)
+	data[0] = postProcessingVersion
+	binary.LittleEndian.PutUint16(data[1:3], uint16(len(markers)))
+	offset := 3
+	for _, row := range markers {
+		binary.LittleEndian.PutUint32(data[offset:offset+4], uint32(len(row)))
+		offset += 4
+		for _, marker := range row {
+			binary.LittleEndian.PutUint16(data[offset:offset+2], marker)
+			offset += 2
+		}
+	}
+	return data, nil
 }
 
 func (db *DB) version(k dbKey) (byte, error) {
@@ -548,8 +651,12 @@ func (db *DB) StoreColumn(pos world.ChunkPos, dim world.Dimension, col *chunk.Co
 }
 
 func (db *DB) storeColumn(k dbKey, col *chunk.Column) error {
+	postProcessing, err := encodePostProcessing(col.PostProcessing, k.dim)
+	if err != nil {
+		return fmt.Errorf("encode Adamant post-processing markers: %w", err)
+	}
 	data := chunk.Encode(col.Chunk, chunk.DiskEncoding)
-	n := 8 + len(data.SubChunks) + len(col.Entities)
+	n := 9 + len(data.SubChunks) + len(col.Entities)
 	batch := leveldb.MakeBatch(n)
 
 	db.storeVersion(batch, k, chunkVersion)
@@ -559,6 +666,11 @@ func (db *DB) storeColumn(k dbKey, col *chunk.Column) error {
 	db.storeEntities(batch, k, col.Entities)
 	db.storeBlockEntities(batch, k, col.BlockEntities)
 	db.storeScheduledUpdates(batch, k, col.ScheduledTicks)
+	if len(postProcessing) == 0 {
+		batch.Delete(k.Sum([]byte(keyAdamantPostProcessing)...))
+	} else {
+		batch.Put(k.Sum([]byte(keyAdamantPostProcessing)...), postProcessing)
+	}
 	inhabitedTime := make([]byte, 8)
 	binary.LittleEndian.PutUint64(inhabitedTime, col.InhabitedTime)
 	batch.Put(k.Sum([]byte(keyAdamantInhabitedTime)...), inhabitedTime)

@@ -4,20 +4,27 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 func DecodeStateProperties(properties map[string]any) map[string]any {
-	if len(properties) == 0 { return nil }
+	if len(properties) == 0 {
+		return nil
+	}
 	out := make(map[string]any, len(properties))
 	for key, value := range properties {
 		if text, ok := value.(string); ok {
 			switch text {
-			case "true": value = true
-			case "false": value = false
+			case "true":
+				value = true
+			case "false":
+				value = false
 			default:
-				if n, err := strconv.ParseInt(text, 10, 32); err == nil { value = int32(n) }
+				if n, err := strconv.ParseInt(text, 10, 32); err == nil {
+					value = int32(n)
+				}
 			}
 		}
 		out[key] = value
@@ -34,6 +41,15 @@ type NativeState struct {
 	JavaStateID uint32
 }
 
+// CanonicalJavaID resolves a retained or exactly projected source identity
+// without materialising its property map. Zero denotes a native-only state.
+func (state NativeState) CanonicalJavaID(registry chunk.BlockRegistry) uint32 {
+	if state.JavaStateID != 0 {
+		return state.JavaStateID
+	}
+	return nativeJavaStateID(registry, state)
+}
+
 // NativeStateAt reads both native layers and their retained source identity.
 func NativeStateAt(c *chunk.Chunk, x uint8, y int16, z uint8) NativeState {
 	return NativeState{Block: c.Block(x, y, z, 0), Liquid: c.Block(x, y, z, 1), JavaStateID: c.JavaStateID(x, y, z)}
@@ -44,6 +60,32 @@ func SetNativeState(c *chunk.Chunk, x uint8, y int16, z uint8, state NativeState
 	c.SetBlock(x, y, z, 0, state.Block)
 	c.SetBlock(x, y, z, 1, state.Liquid)
 	c.SetJavaStateID(x, y, z, state.JavaStateID)
+}
+
+// JavaBlockStateID reads a canonical source state without materialising its
+// properties. Like Block, it may load its column. Out-of-height positions are air.
+func (tx *Tx) JavaBlockStateID(pos cube.Pos) (uint32, error) {
+	id := tx.javaBlockStateID(pos)
+	if _, ok := javadata.BlockStateName(id); !ok {
+		return 0, fmt.Errorf("Java block state at %v has no canonical source identity", pos)
+	}
+	return id, nil
+}
+
+// javaBlockStateID returns zero for native-only states without inventing a
+// canonical identity. Native capability adapters may handle these separately.
+func (tx *Tx) javaBlockStateID(pos cube.Pos) uint32 {
+	registry := tx.World().conf.Blocks
+	state := NativeState{Block: registry.AirRuntimeID(), Liquid: registry.AirRuntimeID()}
+	if !pos.OutOfBounds(tx.Range()) {
+		c := tx.chunk(chunkPosFromBlockPos(pos))
+		state = NativeStateAt(c.Chunk, uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15))
+	}
+	id := state.JavaStateID
+	if id == 0 {
+		id = nativeJavaStateID(registry, state)
+	}
+	return id
 }
 
 // ResolveState translates a Java block state to its Bedrock palette

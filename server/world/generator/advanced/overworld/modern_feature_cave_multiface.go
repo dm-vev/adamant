@@ -3,6 +3,7 @@ package overworld
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 )
 
 // placeModernMultifaceGrowth mirrors MultifaceGrowthFeature's search and face-spreading order.
@@ -102,15 +103,18 @@ func multifacePlaceAt(region *featureRegion, blockName string, support any, pos 
 			properties["waterlogged"] = true
 		}
 		if existing, _ := properties[direction].(bool); existing {
-			continue
+			return false
 		}
 		if existing, _ := properties[direction].(string); existing == "true" {
-			continue
+			return false
 		}
 		properties[direction] = true
 		state, found := featureStateRID(region.c, map[string]any{"id": "minecraft:" + blockName, "properties": properties})
 		if !found || !region.Set(pos, state) {
 			continue
+		}
+		if featureInsideTarget(region.target, pos) {
+			region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
 		}
 		if random.NextFloat() < chance {
 			multifaceSpreadFromFace(region, blockName, pos, direction, random)
@@ -172,16 +176,22 @@ func multifacePlaceFace(region *featureRegion, blockName string, pos featurePos,
 	}
 	properties[face] = true
 	state, ok := featureStateRID(region.c, map[string]any{"id": "minecraft:" + blockName, "properties": properties})
-	return ok && region.Set(pos, state)
+	if !ok {
+		return false
+	}
+	if featureInsideTarget(region.target, pos) {
+		region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
+	}
+	return region.Set(pos, state)
 }
 
 func multifaceCanAttach(region *featureRegion, supportPos featurePos, supportFace string) bool {
-	block := region.Block(supportPos)
-	if block == nil {
-		return false
+	id := region.nativeState(supportPos).CanonicalJavaID(region.c.BlockRegistry())
+	shape, err := javadata.BlockGenerationShapeID(id)
+	if err != nil {
+		panic(err)
 	}
-	pos := cube.Pos{int(supportPos.x), int(supportPos.y), int(supportPos.z)}
-	return block.Model().FaceSolid(pos, multifaceCubeFace(supportFace), featureRegionBlockSource{region})
+	return shape.Attachment&(1<<uint(multifaceCubeFace(supportFace))) != 0
 }
 
 func multifaceCubeFace(direction string) cube.Face {

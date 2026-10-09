@@ -36,9 +36,6 @@ func (b migrationTestBlock) ReconstructMissingState(pos cube.Pos, missing []stri
 	}
 	return b
 }
-func (migrationTestBlock) DerivedStateProperties() []string {
-	return []string{"minecraft:connection_east"}
-}
 
 type migrationTestGenerator struct {
 	blockRID uint32
@@ -54,46 +51,6 @@ func (g migrationTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk) Gene
 	return GenerationResult{}
 }
 func (migrationTestGenerator) DefaultSpawn(Dimension) cube.Pos { return cube.Pos{} }
-
-func TestGeneratedDerivedBlockStatesAreReconstructedAfterNeighbourReadiness(t *testing.T) {
-	registry := NewBlockRegistry()
-	registry.RegisterBlockState(BlockState{Name: migrationTestBlockName, Properties: map[string]any{"minecraft:connection_east": false}})
-	registry.RegisterBlockState(BlockState{Name: migrationTestBlockName, Properties: map[string]any{"minecraft:connection_east": true}})
-	registry.RegisterBlock(migrationTestBlock{})
-	registry.RegisterBlock(migrationTestBlock{east: true})
-	registry.Finalize()
-	blockRID, _ := registry.StateToRuntimeID(migrationTestBlockName, nil)
-	stoneRID, _ := registry.StateToRuntimeID("minecraft:stone", nil)
-	w := Config{
-		Blocks: registry, Generator: migrationTestGenerator{blockRID: blockRID, stoneRID: stoneRID},
-		Synchronous: true,
-	}.New()
-	t.Cleanup(func() { _ = w.Close() })
-
-	<-w.Exec(func(tx *Tx) {
-		tx.chunk(ChunkPos{0, 0})
-		if got := tx.Block(cube.Pos{15, 0, 8}).(migrationTestBlock); got.east {
-			t.Fatal("generated derived state was reconstructed before its east chunk was ready")
-		}
-		col := w.chunks[ChunkPos{0, 0}]
-		if pending := col.missingBlockStates; len(pending) != 1 {
-			t.Fatalf("generated pending states = %d, want one opted-in state", len(pending))
-		}
-		reloaded, err := chunk.DiskDecode(registry, chunk.Encode(col.Chunk, chunk.DiskEncoding), w.ra)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if pending := reloaded.MissingBlockStates(); len(pending) != 1 {
-			t.Fatalf("generated unresolved state did not persist for reconstruction: %#v", pending)
-		}
-	})
-	<-w.Exec(func(tx *Tx) { tx.chunk(ChunkPos{1, 0}) })
-	<-w.Exec(func(tx *Tx) {
-		if got := tx.Block(cube.Pos{15, 0, 8}).(migrationTestBlock); !got.east {
-			t.Fatal("generated derived state was not reconstructed after its east chunk became ready")
-		}
-	})
-}
 
 type migrationDependentBlock struct{ migrationTestBlock }
 
@@ -115,19 +72,6 @@ func (b migrationDependentBlock) ReconstructMissingState(pos cube.Pos, missing [
 	return b
 }
 
-type migrationDependencyGenerator struct {
-	migrationTestGenerator
-	dependentRID uint32
-}
-
-func (g migrationDependencyGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk) GenerationResult {
-	result := g.migrationTestGenerator.GenerateChunk(pos, c)
-	if pos == (ChunkPos{0, 0}) {
-		c.SetBlock(14, 0, 8, 0, g.dependentRID)
-	}
-	return result
-}
-
 func TestMissingStateDependencyWaitsForBoundaryReconstruction(t *testing.T) {
 	registry := NewBlockRegistry()
 	for _, east := range []bool{false, true} {
@@ -139,12 +83,11 @@ func TestMissingStateDependencyWaitsForBoundaryReconstruction(t *testing.T) {
 	}
 	registry.Finalize()
 	blockRID, _ := registry.StateToRuntimeID(migrationTestBlockName, nil)
-	dependentRID, _ := registry.StateToRuntimeID("test:state_migration_dependency", nil)
 	stoneRID, _ := registry.StateToRuntimeID("minecraft:stone", nil)
-	provider := &migrationTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, registry: registry, columns: make(map[ChunkPos]chunk.SerialisedData)}
+	provider := &migrationTestProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}, registry: registry, columns: map[ChunkPos]chunk.SerialisedData{{0, 0}: migrationTestDiskData(t, true)}}
 	w := Config{
 		Blocks: registry, Provider: provider, Synchronous: true,
-		Generator: migrationDependencyGenerator{migrationTestGenerator{blockRID: blockRID, stoneRID: stoneRID}, dependentRID},
+		Generator: migrationTestGenerator{blockRID: blockRID, stoneRID: stoneRID},
 	}.New()
 	t.Cleanup(func() { _ = w.Close() })
 	<-w.Exec(func(tx *Tx) {
@@ -209,7 +152,7 @@ func TestDiskMissingStateMigrationTracksPaletteEntriesAndChunkBoundaries(t *test
 			registry.RegisterBlock(migrationTestBlock{east: true})
 			registry.Finalize()
 
-			primary, err := chunk.DiskDecode(registry, migrationTestDiskData(t), Overworld.Range())
+			primary, err := chunk.DiskDecode(registry, migrationTestDiskData(t, false), Overworld.Range())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -281,12 +224,15 @@ func TestDiskMissingStateMigrationTracksPaletteEntriesAndChunkBoundaries(t *test
 	}
 }
 
-func migrationTestDiskData(t *testing.T) chunk.SerialisedData {
+func migrationTestDiskData(t *testing.T, dependent bool) chunk.SerialisedData {
 	t.Helper()
 	entries := []map[string]any{
 		{"name": "minecraft:air", "states": map[string]any{}, "version": chunk.CurrentBlockVersion},
 		{"name": migrationTestBlockName, "states": map[string]any{}, "version": chunk.CurrentBlockVersion},
 		{"name": migrationTestBlockName, "states": map[string]any{"minecraft:connection_east": false}, "version": chunk.CurrentBlockVersion},
+	}
+	if dependent {
+		entries[2] = map[string]any{"name": "test:state_migration_dependency", "states": map[string]any{}, "version": chunk.CurrentBlockVersion}
 	}
 	indices := make([]uint32, 256)
 	setPaletteIndex := func(x, y, z byte, index uint32) {

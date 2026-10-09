@@ -6,8 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/loot"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"strings"
@@ -29,8 +29,8 @@ type Chest struct {
 	// CustomName is the custom name of the chest. This name is displayed when the chest is opened, and may
 	// include colour codes.
 	CustomName string
-	lootTable string
-	lootSeed int64
+	lootTable  string
+	lootSeed   int64
 
 	paired       bool
 	pairX, pairZ int
@@ -69,26 +69,76 @@ func (c Chest) ContainerSize() int {
 // whether the chest is single or double.
 func (c Chest) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
 	if c.lootTable != "" {
-		if err := c.GenerateLoot(tx, pos); err != nil { panic(err) }
+		if err := c.GenerateLoot(tx, pos); err != nil {
+			panic(err)
+		}
 	}
 	inv, _ := c.tryPair(tx, pos)
 	return inv
 }
 
+// chestBlock keeps the concrete container type when shared chest logic updates
+// its actor. Copper variants may pair with each other, but not with wood chests.
+type chestBlock interface {
+	world.Block
+	chestData() Chest
+	withChestData(Chest) chestBlock
+	canPairChest(world.Block) bool
+}
+
+func (c Chest) chestData() Chest                    { return c }
+func (c Chest) withChestData(data Chest) chestBlock { return data }
+func (Chest) canPairChest(other world.Block) bool   { _, ok := other.(Chest); return ok }
+
+// WithJavaChestState retains the actor while projecting source pairing into the
+// native block-actor fields, which are not part of the Bedrock block palette.
+func (c Chest) WithJavaChestState(previous world.Block, pos cube.Pos, kind string) world.Block {
+	return c.withJavaChestState(previous, pos, kind)
+}
+
+func (c Chest) withJavaChestState(previous world.Block, pos cube.Pos, kind string) Chest {
+	facing := c.Facing
+	if old, ok := previous.(chestBlock); ok {
+		c = old.chestData()
+	} else if c.inventory == nil {
+		c = NewChest()
+	}
+	c.Facing = facing
+	paired := kind != "single"
+	pairPos := pos
+	if kind == "left" {
+		pairPos = pos.Side(facing.RotateRight().Face())
+	} else if kind == "right" {
+		pairPos = pos.Side(facing.RotateLeft().Face())
+	}
+	if c.paired != paired || c.pairX != pairPos[0] || c.pairZ != pairPos[2] {
+		c.pairInv = nil
+	}
+	c.paired = paired
+	c.pairX, c.pairZ = pairPos[0], pairPos[2]
+	return c
+}
+
 // GenerateLoot resolves an unopened source loot table exactly once and stores
 // the resulting inventory on the chest actor.
 func (c Chest) GenerateLoot(tx *world.Tx, pos cube.Pos) error {
-	if c.lootTable == "" { return nil }
+	if c.lootTable == "" {
+		return nil
+	}
 	sequence, err := loot.RandomSequence(c.lootTable)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	random := tx.LootRandomSequence(sequence, c.lootSeed)
 	stacks, err := loot.Generate(c.lootTable, c.lootSeed, loot.Context{
-		Random: random,
+		Random:         random,
 		RandomSequence: tx.LootRandomSequence,
-		Block: "minecraft:chest",
-		Origin: pos.Vec3Centre(),
+		Block:          "minecraft:chest",
+		Origin:         pos.Vec3Centre(),
 	})
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	parts := make([]item.Stack, 0, len(stacks))
 	for _, stack := range stacks {
 		for !stack.Empty() {
@@ -99,16 +149,26 @@ func (c Chest) GenerateLoot(tx *world.Tx, pos cube.Pos) error {
 	}
 	slots := c.inventory.Slots()
 	free := make([]int, 0, len(slots))
-	for slot, stack := range slots { if stack.Empty() { free = append(free, slot) } }
-	if len(parts) > len(free) { return fmt.Errorf("loot table %q produced %d stacks for %d empty chest slots", c.lootTable, len(parts), len(free)) }
+	for slot, stack := range slots {
+		if stack.Empty() {
+			free = append(free, slot)
+		}
+	}
+	if len(parts) > len(free) {
+		return fmt.Errorf("loot table %q produced %d stacks for %d empty chest slots", c.lootTable, len(parts), len(free))
+	}
 	for _, stack := range parts {
 		freeIndex := int(random.NextInt(int32(len(free))))
 		slot := free[freeIndex]
 		free = append(free[:freeIndex], free[freeIndex+1:]...)
-		if err := c.inventory.SetItem(slot, stack); err != nil { return err }
+		if err := c.inventory.SetItem(slot, stack); err != nil {
+			return err
+		}
 	}
 	c.lootTable, c.lootSeed = "", 0
-	tx.SetBlock(pos, c, nil)
+	if owner, ok := tx.Block(pos).(chestBlock); ok {
+		tx.SetBlockEntity(pos, owner.withChestData(c))
+	}
 	return nil
 }
 
@@ -118,13 +178,14 @@ func (c Chest) GenerateLoot(tx *world.Tx, pos cube.Pos) error {
 func (c Chest) tryPair(tx *world.Tx, pos cube.Pos) (*inventory.Inventory, bool) {
 	if c.paired {
 		if c.pairInv == nil {
-			if ch, pair, ok := c.pair(tx, pos, c.pairPos(pos)); ok {
-				tx.SetBlock(pos, ch, nil)
-				tx.SetBlock(c.pairPos(pos), pair, nil)
-				return ch.pairInv, true
+			owner := tx.Block(pos).(chestBlock)
+			if ch, pair, ok := c.pair(tx, pos, c.pairPos(pos), owner); ok {
+				tx.SetBlockEntity(pos, ch)
+				tx.SetBlockEntity(c.pairPos(pos), pair)
+				return ch.chestData().pairInv, true
 			}
 			c.paired = false
-			tx.SetBlock(pos, c, nil)
+			tx.SetBlock(pos, owner.withChestData(c), nil)
 			return c.inventory, true
 		}
 		return c.pairInv, false
@@ -168,6 +229,7 @@ func (c Chest) close(tx *world.Tx, pos cube.Pos) {
 	tx.ReleaseViewers(viewers)
 	tx.PlaySound(pos.Vec3Centre(), sound.ChestClose{})
 }
+
 // StartOpen displays the chest opening animation and sound for a non-player container user.
 func (c Chest) StartOpen(tx *world.Tx, pos cube.Pos) { c.open(tx, pos) }
 
@@ -232,9 +294,10 @@ func (c Chest) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 
 	// Check both sides of the chest to see if it is possible to pair with another chest.
 	for _, dir := range []cube.Direction{c.Facing.RotateLeft(), c.Facing.RotateRight()} {
-		if ch, pair, ok := c.pair(tx, pos, pos.Side(dir.Face())); ok {
+		pairPos := pos.Side(dir.Face())
+		if ch, pair, ok := c.pair(tx, pos, pairPos, c); ok {
 			place(tx, pos, ch, user, ctx)
-			tx.SetBlock(ch.pairPos(pos), pair, nil)
+			tx.SetBlock(pairPos, pair, nil)
 			return placed(ctx)
 		}
 	}
@@ -246,18 +309,22 @@ func (c Chest) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 // BreakInfo ...
 func (c Chest) BreakInfo() BreakInfo {
 	return newBreakInfo(2.5, alwaysHarvestable, axeEffective, oneOf(c)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
-		if c.paired {
-			pairPos := c.pairPos(pos)
-			if _, pair, ok := c.unpair(tx, pos); ok {
-				c.paired = false
-				tx.SetBlock(pairPos, pair, nil)
-			}
-		}
-
-		for _, i := range c.Inventory(tx, pos).Clear() {
-			dropItem(tx, i, pos.Vec3Centre())
-		}
+		c.dropContents(pos, tx, c)
 	})
+}
+
+func (c Chest) dropContents(pos cube.Pos, tx *world.Tx, owner chestBlock) {
+	if c.paired {
+		pairPos := c.pairPos(pos)
+		if ch, pair, ok := c.unpair(tx, pos, owner); ok {
+			c = ch.chestData()
+			tx.SetBlock(pairPos, pair, nil)
+		}
+		c.paired = false
+	}
+	for _, stack := range c.Inventory(tx, pos).Clear() {
+		dropItem(tx, stack, pos.Vec3Centre())
+	}
 }
 
 // FuelInfo ...
@@ -276,10 +343,14 @@ func (c Chest) Paired() bool {
 }
 
 // pair pairs this chest with the given chest position.
-func (c Chest) pair(tx *world.Tx, pos, pairPos cube.Pos) (ch, pair Chest, ok bool) {
-	pair, ok = tx.Block(pairPos).(Chest)
-	if !ok || c.Facing != pair.Facing || pair.paired && (pair.pairX != pos[0] || pair.pairZ != pos[2]) {
-		return c, pair, false
+func (c Chest) pair(tx *world.Tx, pos, pairPos cube.Pos, owner chestBlock) (ch, other chestBlock, ok bool) {
+	other, ok = tx.Block(pairPos).(chestBlock)
+	if !ok || !owner.canPairChest(other) {
+		return owner, other, false
+	}
+	pair := other.chestData()
+	if c.Facing != pair.Facing || pair.paired && (pair.pairX != pos[0] || pair.pairZ != pos[2]) {
+		return owner, other, false
 	}
 	m := new(sync.RWMutex)
 	v := make(map[ContainerViewer]struct{})
@@ -309,18 +380,21 @@ func (c Chest) pair(tx *world.Tx, pos, pairPos cube.Pos) (ch, pair Chest, ok boo
 	c.viewerMu, pair.viewerMu = m, m
 	c.viewers, pair.viewers = v, v
 	c.pairInv, pair.pairInv = double, double
-	return c, pair, true
+	return owner.withChestData(c), other.withChestData(pair), true
 }
 
 // unpair unpairs this chest from the chest it is currently paired with.
-func (c Chest) unpair(tx *world.Tx, pos cube.Pos) (ch, pair Chest, ok bool) {
+func (c Chest) unpair(tx *world.Tx, pos cube.Pos, owner chestBlock) (ch, other chestBlock, ok bool) {
 	if !c.paired {
-		return c, Chest{}, false
+		return owner, nil, false
 	}
-
-	pair, ok = tx.Block(c.pairPos(pos)).(Chest)
-	if !ok || c.Facing != pair.Facing || pair.paired && (pair.pairX != pos[0] || pair.pairZ != pos[2]) {
-		return c, pair, false
+	other, ok = tx.Block(c.pairPos(pos)).(chestBlock)
+	if !ok || !owner.canPairChest(other) {
+		return owner, other, false
+	}
+	pair := other.chestData()
+	if c.Facing != pair.Facing || pair.paired && (pair.pairX != pos[0] || pair.pairZ != pos[2]) {
+		return owner, other, false
 	}
 
 	if len(c.viewers) != 0 {
@@ -350,7 +424,7 @@ func (c Chest) unpair(tx *world.Tx, pos cube.Pos) (ch, pair Chest, ok bool) {
 	c.viewerMu, pair.viewerMu = newViewerMu, newPairViewerMu
 	c.viewers, pair.viewers = newViewers, newPairViewers
 	c.pairInv, pair.pairInv = nil, nil
-	return c, pair, true
+	return owner.withChestData(c), other.withChestData(pair), true
 }
 
 // pairPos returns the position of the chest that this chest is paired with.

@@ -186,19 +186,12 @@ func BlockStateID(name string, properties map[string]any) (uint32, error) {
 
 // BlockStateFromID decodes a canonical process-local block-state ID.
 func BlockStateFromID(id uint32) (name string, properties map[string]any, ok bool) {
-	if id == 0 {
-		return "", nil, false
-	}
-	value := id - 1
-	block := sort.Search(len(javaBlockStateCodecs), func(i int) bool {
-		codec := &javaBlockStateCodecs[i]
-		return codec.offset+codec.count > value
-	})
-	if block == len(javaBlockStateCodecs) {
+	block, ok := blockStateIndex(id)
+	if !ok {
 		return "", nil, false
 	}
 	codec := &javaBlockStateCodecs[block]
-	value -= codec.offset
+	value := id - 1 - codec.offset
 	properties = make(map[string]any, len(javaBlockPropertyDomains[block]))
 	for i, propertyID := range javaBlockPropertyDomains[block] {
 		domain := &javaPropertyDomains[propertyID]
@@ -220,6 +213,88 @@ func BlockStateFromID(id uint32) (name string, properties map[string]any, ok boo
 		}
 	}
 	return javaBlockQualifiedNames[block], properties, true
+}
+
+// BlockStateName returns the qualified name without materialising properties.
+func BlockStateName(id uint32) (string, bool) {
+	block, ok := blockStateIndex(id)
+	if !ok {
+		return "", false
+	}
+	return javaBlockQualifiedNames[block], true
+}
+
+// BlockStateBool reads a boolean property without allocating a property map.
+func BlockStateBool(id uint32, property string) (bool, bool) {
+	domain, value, _, ok := blockStateProperty(id, property)
+	if !ok || domain.kind != 'b' {
+		return false, false
+	}
+	return value != 0, true
+}
+
+// BlockStateInt reads an integer property without allocating a property map.
+func BlockStateInt(id uint32, property string) (int32, bool) {
+	domain, value, _, ok := blockStateProperty(id, property)
+	if !ok || domain.kind != 'i' {
+		return 0, false
+	}
+	return int32(int64(domain.min) + int64(value)), true
+}
+
+// BlockStateString reads an enum property without allocating a property map.
+func BlockStateString(id uint32, property string) (string, bool) {
+	domain, value, _, ok := blockStateProperty(id, property)
+	if !ok || domain.kind != 's' {
+		return "", false
+	}
+	return domain.values[value], true
+}
+
+// BlockStateWithProperty changes one property while preserving every other
+// property in the canonical state. The successful path does not allocate.
+func BlockStateWithProperty(id uint32, property string, value any) (uint32, error) {
+	domain, previous, stride, ok := blockStateProperty(id, property)
+	if !ok {
+		return 0, fmt.Errorf("Java state %d has no property %q", id, property)
+	}
+	next, err := propertyValueIndex(domain, value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid value for Java state %d property %q", id, property)
+	}
+	return id - previous*stride + next*stride, nil
+}
+
+func blockStateIndex(id uint32) (int, bool) {
+	if id == 0 || id > javaBlockStateCount {
+		return 0, false
+	}
+	value := id - 1
+	block := sort.Search(len(javaBlockStateCodecs), func(i int) bool {
+		codec := &javaBlockStateCodecs[i]
+		return codec.offset+codec.count > value
+	})
+	return block, true
+}
+
+func blockStateProperty(id uint32, property string) (*javaPropertyDomain, uint32, uint32, bool) {
+	block, ok := blockStateIndex(id)
+	if !ok {
+		return nil, 0, 0, false
+	}
+	codec := &javaBlockStateCodecs[block]
+	for i, propertyID := range javaBlockPropertyDomains[block] {
+		domain := &javaPropertyDomains[propertyID]
+		if domain.name != property {
+			continue
+		}
+		limit := codec.count
+		if i+1 < len(codec.stride) {
+			limit = codec.stride[i+1]
+		}
+		return domain, (id - 1 - codec.offset) % limit / codec.stride[i], codec.stride[i], true
+	}
+	return nil, 0, 0, false
 }
 
 func propertyValueIndex(domain *javaPropertyDomain, value any) (uint32, error) {

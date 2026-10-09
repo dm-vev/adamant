@@ -1,6 +1,9 @@
 package block
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -222,6 +225,37 @@ func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 		"occupied_bit":   boolByte(b.Occupied),
 		"head_piece_bit": boolByte(b.Head),
 	}
+}
+
+// WithJavaBlockState applies the state-backed properties of a Java bed while
+// retaining the receiver's actor-only state.
+func (b Bed) WithJavaBlockState(name string, properties map[string]any) (world.Block, error) {
+	name = strings.TrimPrefix(name, "minecraft:")
+	if !strings.HasSuffix(name, "_bed") {
+		return nil, fmt.Errorf("java bed: incompatible state %q", name)
+	}
+	colour, ok := javaActorColour(strings.TrimSuffix(name, "_bed"))
+	if !ok {
+		return nil, fmt.Errorf("java bed: unsupported colour in %q", name)
+	}
+	facing, err := javaActorString(properties, "facing", "north")
+	if err != nil {
+		return nil, fmt.Errorf("java bed: %w", err)
+	}
+	b.Facing, err = javaActorFacing(facing)
+	if err != nil {
+		return nil, fmt.Errorf("java bed: %w", err)
+	}
+	part, err := javaActorString(properties, "part", "foot")
+	if err != nil || part != "foot" && part != "head" {
+		return nil, fmt.Errorf("java bed: invalid part %v", properties["part"])
+	}
+	b.Occupied, err = javaActorBool(properties, "occupied")
+	if err != nil {
+		return nil, fmt.Errorf("java bed: %w", err)
+	}
+	b.Colour, b.Head = colour, part == "head"
+	return b, nil
 }
 
 // EncodeNBT ...

@@ -20,8 +20,11 @@ var BeeType beeType
 
 type beeType struct{}
 
-func (beeType) EncodeEntity() string        { return "minecraft:bee" }
-func (beeType) BBox(world.Entity) cube.BBox { return cube.Box(-.2, 0, -.2, .2, .6, .2) }
+func (beeType) EncodeEntity() string { return "minecraft:bee" }
+func (beeType) BBox(world.Entity) cube.BBox {
+	const halfWidth = float64(float32(.55)) / 2
+	return cube.Box(-halfWidth, 0, -halfWidth, halfWidth, float64(float32(.5)), halfWidth)
+}
 func (beeType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
 		beeConfig{}.Apply(d)

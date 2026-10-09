@@ -88,6 +88,7 @@ func init() {
 	world.RegisterItem(GlassBottle{})
 	world.RegisterItem(GlisteringMelonSlice{})
 	world.RegisterItem(GlowstoneDust{})
+	world.RegisterItem(GlowBerries{})
 	world.RegisterItem(GoldIngot{})
 	world.RegisterItem(GoldNugget{})
 	world.RegisterItem(GoldenHorseArmour{})

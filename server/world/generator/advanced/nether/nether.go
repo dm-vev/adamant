@@ -134,6 +134,7 @@ func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.Generat
 	result.Entities = append(result.Entities, decoration.Entities...)
 	result.BlockEntities = append(result.BlockEntities, decoration.BlockEntities...)
 	result.ScheduledTicks = append(result.ScheduledTicks, decoration.ScheduledTicks...)
+	result.PostProcessing = decoration.PostProcessing
 	return result
 }
 

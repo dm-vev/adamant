@@ -38,6 +38,7 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 	work.aquifer.Prepare(g.noise, baseX, baseZ)
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{int(modernMinY), int(modernMaxY)})
 	entry := &previewCacheEntry{pos: pos, c: c}
+	var terrainResult world.GenerationResult
 	if !raw {
 		entry.structures = g.modernStructures.Prepare(pos)
 	}
@@ -61,13 +62,7 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 				}
 				c.SetBiome(uint8(x), int16(y), uint8(z), modernBiomeIDs[work.lattice.BiomeIndexAt(worldX, y, worldZ)])
 				if schedule && (material == java26.AquiferWater || material == java26.AquiferLava) {
-					typeName := "minecraft:water"
-					if material == java26.AquiferLava {
-						typeName = "minecraft:lava"
-					}
-					entry.scheduled = append(entry.scheduled, chunk.ScheduledTick{
-						Pos: cube.Pos{int(worldX), int(y), int(worldZ)}, Kind: chunk.FluidTick, Type: typeName,
-					})
+					terrainResult.MarkForPostProcessing(cube.Pos{int(worldX), int(y), int(worldZ)}, c.Range())
 				}
 			}
 		}
@@ -81,10 +76,24 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 			chunk:   c,
 			pos:     pos,
 		})
-		entry.scheduled = append(entry.scheduled, carved.ScheduledTicks...)
+		appendPostProcessing(&terrainResult, carved.PostProcessing)
+		entry.postProcessing = terrainResult.PostProcessing
 	}
 	c.Compact()
 	return entry
+}
+
+func appendPostProcessing(result *world.GenerationResult, markers [][]uint16) {
+	if len(result.PostProcessing) < len(markers) {
+		result.PostProcessing = append(result.PostProcessing, make([][]uint16, len(markers)-len(result.PostProcessing))...)
+	}
+	for section := range len(markers) {
+		if result.PostProcessing[section] == nil {
+			result.PostProcessing[section] = append([]uint16{}, markers[section]...)
+			continue
+		}
+		result.PostProcessing[section] = append(result.PostProcessing[section], markers[section]...)
+	}
 }
 
 // modernTerrainSource separates generator base-column queries from the mutable

@@ -19,10 +19,10 @@ type previewCache struct {
 }
 
 type previewCacheEntry struct {
-	pos        world.ChunkPos
-	c          *chunk.Chunk
-	scheduled  []chunk.ScheduledTick
-	structures *modernStructureContext
+	pos            world.ChunkPos
+	c              *chunk.Chunk
+	postProcessing [][]uint16
+	structures     *modernStructureContext
 }
 
 type previewFlight struct {

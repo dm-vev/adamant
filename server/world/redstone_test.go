@@ -968,9 +968,11 @@ func TestScheduledTickQueueCanRescheduleFromScheduledCallback(t *testing.T) {
 	b := scheduledTickTestBlock{}
 	ticks := 0
 	scheduledTickTestBlockTicks = &ticks
+	var savedDuringCallback []chunk.SavedScheduledTick
 	scheduledTickTestBlockReschedule = func(pos cube.Pos, tx *Tx) {
 		if ticks == 1 {
 			queue.schedule(registry, pos, b, time.Second/20)
+			savedDuringCallback = queue.fromChunk(chunkPosFromBlockPos(pos))
 		}
 	}
 	t.Cleanup(func() {
@@ -995,6 +997,22 @@ func TestScheduledTickQueueCanRescheduleFromScheduledCallback(t *testing.T) {
 	}
 	if len(activeAfterSecond) != 0 {
 		t.Fatalf("active ticks after second callback = %v, want empty", activeAfterSecond)
+	}
+	if len(savedDuringCallback) != 1 {
+		t.Fatalf("snapshot inside callback lost its continuation: %v", savedDuringCallback)
+	}
+	restored := newScheduledTickQueue(900)
+	saved := savedDuringCallback[0]
+	restored.add([]scheduledTick{{pos: saved.Pos, btype: saved.Type, t: 900 + int64(saved.Delay), priority: saved.Priority}})
+	runWorld(w, func(tx *Tx) {
+		restored.tick(tx, 900)
+		if ticks != 2 {
+			t.Errorf("restored continuation ran before its remaining delay: callbacks=%d", ticks)
+		}
+		restored.tick(tx, 901)
+	})
+	if ticks != 3 {
+		t.Fatalf("restored in-callback continuation callbacks=%d, want 3", ticks)
 	}
 }
 

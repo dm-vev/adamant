@@ -771,8 +771,18 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 	if err != nil {
 		panic(err)
 	}
-	payloadBlocks := applyTemplateFluids(region, placement.Blocks)
+	payloadBlocks := applyTemplateFluidsForStructure(region, placement.Blocks, placement.StructurePieceWrites)
 	region.result.BlockEntities = append(region.result.BlockEntities, (javastructure.Placement{Blocks: payloadBlocks}).BlockEntityPayloads()...)
+	for _, pos := range placement.PostProcessing {
+		if featureInsideTarget(region.target, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+			region.result.MarkForPostProcessing(pos, region.c.Range())
+		}
+	}
+	for _, tick := range placement.ScheduledTicks {
+		if featureInsideTarget(region.target, featurePos{int32(tick.Pos[0]), int32(tick.Pos[1]), int32(tick.Pos[2])}) {
+			region.result.ScheduleTick(tick)
+		}
+	}
 	entities := make([]javastructure.Entity, 0, len(placement.Entities))
 	for _, record := range placement.Entities {
 		x, z := int32(math.Floor(record.Pos[0])), int32(math.Floor(record.Pos[2]))

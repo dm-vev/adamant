@@ -200,27 +200,29 @@ func (s *netherFeatureSource) placeFortressStructureStep(pos world.ChunkPos, env
 	defer s.generator.bridgePayloadMu.Unlock()
 	base := s.terrainChunk(pos)
 	placed := base.Clone()
-	s.generator.applyNetherBridge(int(pos[0]), int(pos[1]), placed, env.Random, true)
+	replay := s.generator.applyNetherBridge(int(pos[0]), int(pos[1]), placed, env.Random, true)
 	blockEntities := make(map[cube.Pos]map[string]any)
 	for _, payload := range s.generator.takeBlockEntityPayloads(pos) {
 		blockEntities[payload.Pos] = payload.Data
 	}
-	registry := placed.BlockRegistry()
-	placement := javastructure.Placement{}
+	placement := javastructure.Placement{
+		PostProcessing: replay.PostProcessing,
+		ScheduledTicks: replay.ScheduledTicks,
+	}
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
 			for y := int16(0); y < 128; y++ {
-				before := base.Block(x, y, z, 0)
-				after := placed.Block(x, y, z, 0)
+				before := world.NativeStateAt(base, x, y, z)
+				after := world.NativeStateAt(placed, x, y, z)
 				if before == after {
 					continue
 				}
-				name, properties, ok := registry.RuntimeIDToState(after)
-				if !ok {
-					panic(fmt.Sprintf("nether: fortress produced unknown runtime ID %d", after))
+				state, err := world.JavaState(placed.BlockRegistry(), after)
+				if err != nil {
+					panic(err)
 				}
 				worldX, worldZ := int32(pos[0])*16+int32(x), int32(pos[1])*16+int32(z)
-				block := javastructure.Block{Pos: [3]int32{worldX, int32(y), worldZ}, State: world.BlockState{Name: name, Properties: properties}}
+				block := javastructure.Block{Pos: [3]int32{worldX, int32(y), worldZ}, State: state}
 				if data := blockEntities[cube.Pos{int(worldX), int(y), int(worldZ)}]; data != nil {
 					block.NBT = data
 				}
@@ -228,7 +230,7 @@ func (s *netherFeatureSource) placeFortressStructureStep(pos world.ChunkPos, env
 			}
 		}
 	}
-	if len(placement.Blocks) != 0 {
+	if len(placement.Blocks) != 0 || len(placement.PostProcessing) != 0 || len(placement.ScheduledTicks) != 0 {
 		emit(placement)
 	}
 }
@@ -279,7 +281,10 @@ func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env java
 			if err != nil {
 				panic(fmt.Errorf("place Java Nether fossil %s: %w", templateName, err))
 			}
-			filtered := javastructure.Placement{Entities: placement.Entities}
+			filtered := javastructure.Placement{
+				Entities: placement.Entities, PostProcessing: placement.PostProcessing,
+				ScheduledTicks: placement.ScheduledTicks, StructurePieceWrites: placement.StructurePieceWrites,
+			}
 			for _, pieceBlock := range placement.Blocks {
 				switch pieceBlock.State.Name {
 				case "minecraft:air", "minecraft:structure_block", "minecraft:structure_void":

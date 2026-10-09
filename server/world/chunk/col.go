@@ -9,6 +9,9 @@ type Column struct {
 	Entities       []Entity
 	BlockEntities  []BlockEntity
 	ScheduledTicks []SavedScheduledTick
+	// PostProcessing stores pending Java source markers by section, relative
+	// to the dimension's minimum section. It is Adamant-owned metadata.
+	PostProcessing [][]uint16
 	// InhabitedTime is the number of ticks this chunk has been inhabited by a
 	// non-spectator player while within the world simulation area.
 	InhabitedTime uint64

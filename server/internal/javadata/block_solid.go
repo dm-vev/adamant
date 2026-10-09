@@ -25,3 +25,12 @@ func BlockIsSolid(name string) (bool, error) {
 	}
 	return javaSolidBlockBits[index/64]&(uint64(1)<<uint(index%64)) != 0, nil
 }
+
+// BlockStateIsSolid reads the source solidity of a canonical block state.
+func BlockStateIsSolid(id uint32) (bool, bool) {
+	index, ok := blockStateIndex(id)
+	if !ok {
+		return false, false
+	}
+	return javaSolidBlockBits[index/64]&(uint64(1)<<uint(index%64)) != 0, true
+}

@@ -94,3 +94,17 @@ func (w *World) SetSpawnWardens(enabled bool) {
 	defer w.set.Unlock()
 	w.set.SpawnWardens = enabled
 }
+
+// SetWaterSourceConversion controls Java's water_source_conversion rule.
+func (w *World) SetWaterSourceConversion(enabled bool) {
+	w.set.Lock()
+	defer w.set.Unlock()
+	w.set.WaterSourceConversion = enabled
+}
+
+// SetLavaSourceConversion controls Java's lava_source_conversion rule.
+func (w *World) SetLavaSourceConversion(enabled bool) {
+	w.set.Lock()
+	defer w.set.Unlock()
+	w.set.LavaSourceConversion = enabled
+}

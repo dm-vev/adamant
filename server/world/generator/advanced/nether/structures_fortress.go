@@ -2,11 +2,12 @@ package nether
 
 import (
 	"math"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
@@ -117,7 +118,7 @@ func componentBB(structMinX, structMinY, structMinZ, xMin, yMin, zMin, xMax, yMa
 	}
 }
 
-func setBlockWorld(c *chunk.Chunk, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32) {
+func setBlockWorld(c *chunk.Chunk, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *javastructure.Placement) {
 	if worldX>>4 != chunkX || worldZ>>4 != chunkZ {
 		return
 	}
@@ -125,7 +126,50 @@ func setBlockWorld(c *chunk.Chunk, chunkX, chunkZ, worldX, worldY, worldZ int, r
 	if yy < int16(c.Range().Min()) || yy > int16(c.Range().Max()) {
 		return
 	}
-	c.SetBlock(uint8(worldX&15), yy, uint8(worldZ&15), 0, rid)
+	world.SetNativeState(c, uint8(worldX&15), yy, uint8(worldZ&15), world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
+	if placement == nil {
+		return
+	}
+	pos := cube.Pos{worldX, worldY, worldZ}
+	state := world.NativeStateAt(c, uint8(worldX&15), yy, uint8(worldZ&15))
+	registry, ok := c.BlockRegistry().(world.BlockRegistry)
+	if !ok {
+		panic("nether: fortress registry cannot resolve native blocks")
+	}
+	for _, fluidRID := range [2]uint32{state.Block, state.Liquid} {
+		if !registry.LiquidBlock(fluidRID) {
+			continue
+		}
+		fluidBlock, ok := registry.BlockByRuntimeID(fluidRID)
+		if !ok {
+			panic("nether: unknown fortress fluid runtime ID")
+		}
+		fluid, ok := fluidBlock.(world.Liquid)
+		if !ok {
+			panic("nether: fortress liquid block has no fluid type")
+		}
+		typeName := fluid.LiquidType()
+		if !strings.Contains(typeName, ":") {
+			typeName = "minecraft:" + typeName
+		}
+		placement.ScheduledTicks = append(placement.ScheduledTicks, chunk.ScheduledTick{Pos: pos, Kind: chunk.FluidTick, Type: typeName})
+		break
+	}
+	name, _, ok := registry.RuntimeIDToState(rid)
+	if ok && fortressShapeCheckBlock(name) {
+		placement.PostProcessing = append(placement.PostProcessing, pos)
+	}
+}
+
+func fortressShapeCheckBlock(name string) bool {
+	switch name {
+	case "minecraft:nether_brick_fence", "minecraft:torch", "minecraft:wall_torch",
+		"minecraft:oak_fence", "minecraft:spruce_fence", "minecraft:dark_oak_fence", "minecraft:pale_oak_fence",
+		"minecraft:acacia_fence", "minecraft:birch_fence", "minecraft:jungle_fence", "minecraft:ladder", "minecraft:iron_bars":
+		return true
+	default:
+		return false
+	}
 }
 
 type bridgePiece interface {
@@ -138,6 +182,7 @@ type bridgePieceBase struct {
 	bb            structureBB
 	facing        cube.Direction
 	componentType int
+	placement     *javastructure.Placement
 }
 
 func (p *bridgePieceBase) pieceBase() *bridgePieceBase { return p }
@@ -177,7 +222,7 @@ func (p *bridgePieceBase) setBlock(c *chunk.Chunk, chunkX, chunkZ int, sbb struc
 	wy := p.getYWithOffset(y)
 	wz := p.getZWithOffset(x, z)
 	if sbb.isVecInside(wx, wy, wz) {
-		setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, rid)
+		setBlockWorld(c, chunkX, chunkZ, wx, wy, wz, rid, p.placement)
 	}
 }
 
@@ -255,7 +300,7 @@ func isAboveGround(bb structureBB) bool {
 
 // --- Fortress structure generation ---
 
-func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26.Random, simulate bool) {
+func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26.Random, simulate bool) (placement javastructure.Placement) {
 	g.bridgeGenerationMu.Lock()
 	defer g.bridgeGenerationMu.Unlock()
 	const scanRange = 8
@@ -281,6 +326,7 @@ func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26
 					p.addComponentParts(c, chunkX, chunkZ, chunkBB, r, g)
 					continue
 				}
+				p.pieceBase().placement = &placement
 				switch piece := p.(type) {
 				case *netherBridgeCorridor:
 					chest := piece.chest
@@ -297,9 +343,11 @@ func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26
 				default:
 					p.addComponentParts(c, chunkX, chunkZ, chunkBB, r, g)
 				}
+				p.pieceBase().placement = nil
 			}
 		}
 	}
+	return placement
 }
 
 func (g *Nether) netherBridgeStructure(startChunkX, startChunkZ int, random *java26.Random) *netherBridgeStructure {
@@ -313,7 +361,7 @@ func (g *Nether) netherBridgeStructure(startChunkX, startChunkZ int, random *jav
 	start := newNetherBridgeStart(random, startChunkX, startChunkZ, g)
 	return &netherBridgeStructure{
 		start: world.ChunkPos{int32(startChunkX), int32(startChunkZ)},
-		bb: start.bb, pieces: start.pieces,
+		bb:    start.bb, pieces: start.pieces,
 	}
 }
 

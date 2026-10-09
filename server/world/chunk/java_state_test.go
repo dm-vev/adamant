@@ -1,12 +1,14 @@
 package chunk_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
 func TestJavaStateMetadataDiskRoundTripAndCompaction(t *testing.T) {
@@ -99,12 +101,20 @@ func TestMissingNativePropertyCanonicalizationPreservesJavaMetadata(t *testing.T
 	}
 	c.SetBlock(4, 2, 5, 0, native)
 	c.SetJavaStateID(4, 2, 5, id)
-	c.MarkGeneratedBlockStates(func(rid uint32) []string {
-		if rid == native {
-			return []string{"pillar_axis"}
-		}
-		return nil
-	})
+	data := chunk.Encode(c, chunk.DiskEncoding)
+	var nativePalette bytes.Buffer
+	nativePalette.Write([]byte{chunk.SubChunkVersion, 1, 0, 0})
+	if err := nbt.NewEncoderWithEncoding(&nativePalette, nbt.LittleEndian).Encode(map[string]any{
+		"name": "minecraft:oak_log", "states": map[string]any{}, "version": chunk.CurrentBlockVersion,
+		"adamant:java": map[string]any{"name": "minecraft:oak_log", "properties": map[string]any{"axis": "x"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data.SubChunks[0] = nativePalette.Bytes()
+	c, err = chunk.DiskDecode(world.DefaultBlockRegistry, data, cube.Range{0, 15})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(c.MissingBlockStates()) == 0 {
 		t.Fatal("test setup did not produce a missing native property")
 	}

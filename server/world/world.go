@@ -15,6 +15,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
@@ -135,10 +136,11 @@ type World struct {
 	dragonArena         *Loader
 	javaHeightmapTags   [2]map[uint32]bool
 
-	scratchRandom           []cube.Pos
-	scratchBlockEntities    []cube.Pos
-	scratchLoaderAreas      []loaderActiveArea
-	scratchInhabitedPlayers []inhabitedTimePlayer
+	scratchRandom                []cube.Pos
+	scratchBlockEntities         []cube.Pos
+	scratchLoaderAreas           []loaderActiveArea
+	scratchInhabitedPlayers      []inhabitedTimePlayer
+	scratchPostProcessingColumns []columnRef
 
 	activeColumns     []columnRef
 	activeColumnIndex map[ChunkPos]int
@@ -600,6 +602,7 @@ func (w *World) blockInChunk(c *Column, pos cube.Pos) Block {
 		// Despite being a block with NBT, the block didn't actually have any
 		// stored NBT yet. We add it here and update the block.
 		nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), map[string]any{}, w.conf.Blocks).(Block)
+		nbtB = restoreJavaBlockActor(c.Chunk, pos, nbtB)
 		c.BlockEntities[pos] = nbtB
 		c.invalidateTickerBlockEntities()
 		c.invalidateBlockEntityPayloads()
@@ -682,6 +685,13 @@ type SetOpts struct {
 	// around the changed block. This is used by the redstone engine while
 	// applying its own block-state updates to avoid duplicate same-tick work.
 	DisableRedstoneUpdates bool
+
+	// Source mutations publish both native layers together and apply Java's
+	// independent notification and block-entity side-effect flags.
+	nativeState             *NativeState
+	disableRemovalHandler   bool
+	disablePlacementHandler bool
+	disableViewUpdates      bool
 }
 
 // setBlock writes a block to the position passed. If a chunk is not yet loaded
@@ -727,7 +737,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		}
 	}
 	b = w.replacePositionTrackingBlock(pos, oldBlock, b)
-	if handler, ok := oldBlock.(BlockRemovalHandler); ok {
+	if handler, ok := oldBlock.(BlockRemovalHandler); ok && !opts.disableRemovalHandler {
 		handler.Removed(pos, tx, b)
 	}
 
@@ -737,7 +747,11 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	}
 
 	c.modified = true
-	c.SetBlock(x, y, z, 0, rid)
+	if opts.nativeState == nil {
+		c.SetBlock(x, y, z, 0, rid)
+	} else {
+		SetNativeState(c.Chunk, x, y, z, *opts.nativeState)
+	}
 	if _, pending := c.missingBlockStates[pos]; pending && c.CanonicalizeMissingBlockState(pos, 0) {
 		delete(c.missingBlockStates, pos)
 	}
@@ -791,9 +805,14 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		w.redstone.forget(pos)
 	}
 
-	c.forEachViewer(func(viewer Viewer) {
-		viewer.ViewBlockUpdate(pos, b, 0)
-	})
+	if !opts.disableViewUpdates {
+		c.forEachViewer(func(viewer Viewer) {
+			viewer.ViewBlockUpdate(pos, b, 0)
+			if opts.nativeState != nil {
+				viewer.ViewBlockUpdate(pos, w.conf.Blocks.BlockByRuntimeIDOrAir(opts.nativeState.Liquid), 1)
+			}
+		})
+	}
 
 	if !opts.DisableBlockUpdates {
 		w.doBlockUpdatesAround(pos)
@@ -802,7 +821,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 		w.redstone.invalidateAroundBlockChange(pos, oldBlock, b, RedstoneUpdateCauseBlockUpdate, w.Range())
 	}
 	w.updatePOI(pos, b)
-	if handler, ok := b.(PlacementHandler); ok {
+	if handler, ok := b.(PlacementHandler); ok && !opts.disablePlacementHandler {
 		handler.Placed(pos, tx, oldBlock)
 	}
 }
@@ -1653,6 +1672,20 @@ func (w *World) resolveScheduledTickBlock(tick chunk.ScheduledTick) (Block, bool
 	if b, ok := w.scheduledTickBlocks[key]; ok {
 		return b, true
 	}
+	if tick.Kind == chunk.BlockTick {
+		if _, err := javadata.BlockStateID(tick.Type, nil); err == nil {
+			native, err := ResolveState(w.conf.Blocks, BlockState{Name: tick.Type})
+			if err == nil {
+				if b, ok := w.conf.Blocks.BlockByRuntimeID(native.Block); ok {
+					if w.scheduledTickBlocks == nil {
+						w.scheduledTickBlocks = make(map[scheduledTickTypeKey]Block)
+					}
+					w.scheduledTickBlocks[key] = b
+					return b, true
+				}
+			}
+		}
+	}
 	for rid := uint32(0); rid < uint32(w.conf.Blocks.BlockCount()); rid++ {
 		b, ok := w.conf.Blocks.BlockByRuntimeID(rid)
 		if !ok {
@@ -1685,7 +1718,7 @@ func (w *World) scheduleGeneratedTick(tick chunk.ScheduledTick) {
 	if tick.Pos.OutOfBounds(w.Range()) {
 		return
 	}
-	b, ok := w.resolveScheduledTickBlock(tick)
+	_, ok := w.resolveScheduledTickBlock(tick)
 	if !ok {
 		panic(fmt.Sprintf("generated tick: unknown %v type %q", tick.Kind, tick.Type))
 	}
@@ -1693,7 +1726,7 @@ func (w *World) scheduleGeneratedTick(tick chunk.ScheduledTick) {
 	if tick.Kind == chunk.FluidTick {
 		queue = w.scheduledFluidTicks
 	}
-	if queue.scheduleAt(w.conf.Blocks, tick.Pos, b, queue.currentTick, tick.Priority) {
+	if queue.insertTypeTick(tick.Pos, tick.Type, 0, tick.Priority, true) {
 		w.markScheduledTickColumnModified(tick.Pos)
 	}
 }
@@ -2386,7 +2419,6 @@ func (w *World) runGenerationTask(task generationTask) {
 			w.Do(func(tx *Tx) {
 				task.col.ensureLight(w, task.pos)
 				w.finishGeneration(tx, task.col)
-				w.markGeneratedDerivedBlockStates(task.pos, task.col)
 				w.reconcileMissingBlockStates(task.pos)
 				w.finishChunkRequest(tx, task.pos, task.col)
 			})
@@ -2451,6 +2483,7 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 						continue
 					}
 					nbtB := DecodeNBT(w.conf.Blocks.BlockByRuntimeIDOrAir(rid).(NBTer), map[string]any{}, w.conf.Blocks).(Block)
+					nbtB = restoreJavaBlockActor(c, worldPos, nbtB)
 					if blockEntities == nil {
 						blockEntities = make(map[cube.Pos]Block, 8)
 					}
@@ -2608,6 +2641,9 @@ type Column struct {
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult
+	// postProcessing survives FULL publication and is consumed only when the
+	// centre and its eight neighbours are ready for block ticking.
+	postProcessing [][]uint16
 
 	*chunk.Chunk
 	Entities                        []*EntityHandle
@@ -3011,6 +3047,7 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		BlockEntities:  make([]chunk.BlockEntity, 0, len(col.BlockEntities)),
 		ScheduledTicks: scheduled,
 		InhabitedTime:  col.InhabitedTime,
+		PostProcessing: col.postProcessing,
 	}
 	for _, e := range col.Entities {
 		if e.t.EncodeEntity() == "minecraft:player" {
@@ -3038,7 +3075,9 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 func (w *World) nativeScheduledTickState(col *Column, tick chunk.ScheduledTick) uint32 {
 	if tick.Kind == chunk.BlockTick {
 		b := w.blockInChunk(col, tick.Pos)
-		if scheduledTickType(w.conf.Blocks, b) == tick.Type {
+		state := NativeStateAt(col.Chunk, uint8(tick.Pos[0]), int16(tick.Pos[1]), uint8(tick.Pos[2]))
+		name, canonical := javadata.BlockStateName(state.CanonicalJavaID(w.conf.Blocks))
+		if canonical && name == tick.Type || !canonical && scheduledTickType(w.conf.Blocks, b) == tick.Type {
 			return w.conf.Blocks.BlockRuntimeID(b)
 		}
 	} else {
@@ -3056,33 +3095,13 @@ func (w *World) nativeScheduledTickState(col *Column, tick chunk.ScheduledTick) 
 	}
 	return w.conf.Blocks.BlockRuntimeID(b)
 }
-func (w *World) markGeneratedDerivedBlockStates(pos ChunkPos, col *Column) {
-	col.Chunk.MarkGeneratedBlockStates(func(runtimeID uint32) []string {
-		block := w.conf.Blocks.BlockByRuntimeIDOrAir(runtimeID)
-		provider, ok := block.(interface{ DerivedStateProperties() []string })
-		if !ok {
-			return nil
-		}
-		return provider.DerivedStateProperties()
-	})
-	for _, state := range col.Chunk.MissingBlockStates() {
-		if state.Layer != 0 {
-			continue
-		}
-		state.Position[0] += int(pos[0]) * 16
-		state.Position[2] += int(pos[1]) * 16
-		if col.missingBlockStates == nil {
-			col.missingBlockStates = make(map[cube.Pos]pendingMissingBlockState)
-		}
-		col.missingBlockStates[state.Position] = pendingMissingBlockState{properties: state.Properties}
-	}
-}
 
 // columnFrom converts a chunk.Column to a Column after reading it from a
 // provider.
 func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 	col := newColumn(c.Chunk)
 	col.InhabitedTime = c.InhabitedTime
+	col.postProcessing = c.PostProcessing
 	states := c.Chunk.MissingBlockStates()
 	if len(states) != 0 {
 		col.missingBlockStates = make(map[cube.Pos]pendingMissingBlockState, len(states))
@@ -3148,7 +3167,8 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 		tick := scheduledTick{
 			pos:      update.Pos,
 			btype:    typeName,
-			t:        w.scheduledBlockTicks.currentTick + int64(saved.Delay),
+			t:        int64(saved.Delay),
+			deferred: true,
 			priority: update.Priority,
 		}
 		switch update.Kind {
@@ -3174,6 +3194,9 @@ func (w *World) finishGeneration(tx *Tx, c *Column) {
 	}
 	result := c.generation
 	c.generation = GenerationResult{}
+	if result.PostProcessing != nil {
+		c.postProcessing = result.PostProcessing
+	}
 	w.decodeBlockEntities(c, result.BlockEntities)
 	for _, update := range result.ScheduledTicks {
 		w.scheduleGeneratedTick(update)
@@ -3199,6 +3222,7 @@ func (w *World) decodeBlockEntities(c *Column, entities []chunk.BlockEntity) {
 			continue
 		}
 		decoded := DecodeNBT(nb, be.Data, w.conf.Blocks).(Block)
+		decoded = restoreJavaBlockActor(c.Chunk, be.Pos, decoded)
 		if tracked, ok := decoded.(PositionTrackingBlock); ok && tracked.TrackingHandle() != 0 {
 			decoded = tracked.WithTrackingHandle(w.TrackPosition(be.Pos, tracked.TrackingHandle()))
 		}

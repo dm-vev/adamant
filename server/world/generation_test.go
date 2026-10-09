@@ -134,6 +134,17 @@ func TestGeneratedPayloadPersistsWithoutDuplicateActivation(t *testing.T) {
 			// No generator: everything observed below must come from disk.
 			w = world.Config{Provider: db, Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 			checkGeneratedPayload(t, w)
+			w.AdvanceTick()
+			<-w.Exec(func(tx *world.Tx) {
+				if _, flowing := tx.Liquid(cube.Pos{40, 63, 8}); flowing {
+					t.Error("saved generated fluid tick ran before its 3x3 neighbourhood was ready")
+				}
+				for dx := range 3 {
+					for dz := range 3 {
+						tx.Block(cube.Pos{(dx + 1) * 16, 64, (dz - 1) * 16})
+					}
+				}
+			})
 			for i := range 3 {
 				w.AdvanceTick()
 				task := w.Do(func(tx *world.Tx) {

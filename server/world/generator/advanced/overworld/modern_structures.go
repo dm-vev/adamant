@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/block/cube"
 
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
@@ -20,24 +20,30 @@ import (
 // modernStructures plans structure starts from Java structure-set assets. Prepared starts are immutable;
 // density and placement therefore never depend on chunk generation order.
 type modernStructures struct {
-	seed int64
-	source ModernFeatureSource
-	sets []modernStructureSet
-	rings map[string]map[[2]int32]struct{}
+	seed           int64
+	source         ModernFeatureSource
+	sets           []modernStructureSet
+	rings          map[string]map[[2]int32]struct{}
 	structureSteps map[int][]modernStructureStepEntry
-	startCache map[modernStructureStartKey]modernStructureStartResult
-	startFlights map[modernStructureStartKey]chan modernStructureStartResult
-	startCacheMu sync.Mutex
+	startCache     map[modernStructureStartKey]modernStructureStartResult
+	startFlights   map[modernStructureStartKey]chan modernStructureStartResult
+	startCacheMu   sync.Mutex
 }
 
-type modernStructureStepEntry struct { name string; index int32 }
+type modernStructureStepEntry struct {
+	name  string
+	index int32
+}
 
 type modernStructureSet struct {
-	name string
-	placement map[string]any
+	name       string
+	placement  map[string]any
 	structures []modernStructureEntry
 }
-type modernStructureEntry struct { name string; weight int32 }
+type modernStructureEntry struct {
+	name   string
+	weight int32
+}
 
 type modernStructurePiece interface {
 	Bounds() javastructure.Box
@@ -45,9 +51,9 @@ type modernStructurePiece interface {
 }
 
 type modernJigsawPiece struct {
-	piece javastructure.JigsawPiece
+	piece   javastructure.JigsawPiece
 	palette int
-	seed int64
+	seed    int64
 }
 
 func (p modernJigsawPiece) Bounds() javastructure.Box { return p.piece.Bounds }
@@ -56,22 +62,22 @@ func (p modernJigsawPiece) Place(clip javastructure.Bounds, env javastructure.Pr
 }
 
 type modernStructureStart struct {
-	name string
-	step int
-	pieces []modernStructurePiece
-	rigid []javastructure.RigidPiece
+	name      string
+	step      int
+	pieces    []modernStructurePiece
+	rigid     []javastructure.RigidPiece
 	junctions []javastructure.Junction
-	box javastructure.Box
-	terrain javastructure.TerrainAdjustment
+	box       javastructure.Box
+	terrain   javastructure.TerrainAdjustment
 }
 
 type modernStructureBuildInput struct {
-	seed int64
-	name string
+	seed           int64
+	name           string
 	chunkX, chunkZ int32
-	config map[string]any
-	source ModernFeatureSource
-	random *java26.Random
+	config         map[string]any
+	source         ModernFeatureSource
+	random         *java26.Random
 }
 
 type modernStructureBuilder func(modernStructureBuildInput) (modernStructureStart, bool, error)
@@ -105,25 +111,24 @@ var javaDecorationStepOrdinals = map[string]int{
 }
 
 type modernStructureContext struct {
-	seed int64
-	starts []modernStructureStart
+	seed           int64
+	starts         []modernStructureStart
 	structureSteps map[int][]modernStructureStepEntry
-	beardifier *javastructure.Beardifier
-	environment javastructure.ProcessorEnvironment
+	beardifier     *javastructure.Beardifier
+	environment    javastructure.ProcessorEnvironment
 }
- 
 
 func newModernStructures(seed int64, source ModernFeatureSource) *modernStructures {
 	if source == nil {
 		panic("overworld: nil Java structure source")
 	}
 	s := &modernStructures{
-		seed:            seed,
-		source:          source,
-		rings:           make(map[string]map[[2]int32]struct{}),
-		structureSteps:  make(map[int][]modernStructureStepEntry),
-		startCache:      make(map[modernStructureStartKey]modernStructureStartResult),
-		startFlights:    make(map[modernStructureStartKey]chan modernStructureStartResult),
+		seed:           seed,
+		source:         source,
+		rings:          make(map[string]map[[2]int32]struct{}),
+		structureSteps: make(map[int][]modernStructureStepEntry),
+		startCache:     make(map[modernStructureStartKey]modernStructureStartResult),
+		startFlights:   make(map[modernStructureStartKey]chan modernStructureStartResult),
 	}
 	names, err := javadata.ResourceNames("structure_set")
 	if err != nil {
@@ -393,14 +398,14 @@ func (s *modernStructures) makeStart(set modernStructureSet, cx, cz int32) (mode
 
 type modernStructureStartKey struct {
 	set string
-	x int32
-	z int32
+	x   int32
+	z   int32
 }
 
 type modernStructureStartResult struct {
 	start modernStructureStart
 	valid bool
-	err error
+	err   error
 }
 
 func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (start modernStructureStart, valid bool, err error) {
@@ -484,12 +489,21 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 				if err != nil {
 					panic(err)
 				}
+				placement.StructurePieceWrites = structurePieceUsesSetBlock(piece)
 				emit(placement)
 			}
 		}
 	}
 }
 
+func structurePieceUsesSetBlock(piece modernStructurePiece) bool {
+	switch piece.(type) {
+	case modernSwampHutPiece, modernJungleTemple, minePiece, modernOceanMonumentPiece, modernDesertPyramid, strongholdPiece, modernBuriedTreasurePiece:
+		return true
+	default:
+		return false
+	}
+}
 
 func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructureStart, bool, error) {
 	config := input.config
@@ -508,16 +522,16 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 	}
 	terrain := terrainAdjustment(stringValue(config["terrain_adaptation"]))
 	options := javastructure.JigsawOptions{
-		Pool: pool,
-		StartJigsaw: strings.TrimPrefix(stringValue(config["start_jigsaw_name"]), "minecraft:"),
-		Origin: [3]int32{originX, originY, originZ},
-		MaxDepth: int(number(config["size"])),
-		MaxDistance: int32(number(config["max_distance_from_center"])),
-		ExpansionHack: config["use_expansion_hack"] == true,
-		Seed: input.seed,
-		Terrain: terrain,
+		Pool:                    pool,
+		StartJigsaw:             strings.TrimPrefix(stringValue(config["start_jigsaw_name"]), "minecraft:"),
+		Origin:                  [3]int32{originX, originY, originZ},
+		MaxDepth:                int(number(config["size"])),
+		MaxDistance:             int32(number(config["max_distance_from_center"])),
+		ExpansionHack:           config["use_expansion_hack"] == true,
+		Seed:                    input.seed,
+		Terrain:                 terrain,
 		ProjectStartToHeightmap: config["project_start_to_heightmap"] != nil,
-		HeightAt: func(x, z int32) int32 { return input.source.BaseHeight(x, z, false) },
+		HeightAt:                func(x, z int32) int32 { return input.source.BaseHeight(x, z, false) },
 	}
 	result, err := javastructure.BuildJigsaw(options, input.random)
 	if err != nil {
@@ -569,7 +583,7 @@ func (c *modernStructureContext) Place(pos world.ChunkPos, ch *chunk.Chunk) worl
 
 type modernStructurePayloads struct {
 	blockEntities []chunk.BlockEntity
-	entities []javastructure.Entity
+	entities      []javastructure.Entity
 }
 
 func (p *modernStructurePayloads) GenerationData() world.GenerationResult {
@@ -581,7 +595,7 @@ func (p *modernStructurePayloads) GenerationData() world.GenerationResult {
 	}
 	for index, payload := range p.blockEntities {
 		result.BlockEntities[index] = chunk.BlockEntity{
-			Pos: payload.Pos,
+			Pos:  payload.Pos,
 			Data: cloneStructureNBT(payload.Data),
 		}
 	}

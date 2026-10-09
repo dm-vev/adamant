@@ -3,7 +3,6 @@ package overworld
 import (
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -198,9 +197,8 @@ func carveEllipsoid(c *chunk.Chunk, target world.ChunkPos, x, y, z, horizontalRa
 					continue
 				}
 				state := resolveCarverMaterial(c, material)
-				c.SetBlock(uint8(lx), int16(wy), uint8(lz), 0, state.Block)
-				c.SetBlock(uint8(lx), int16(wy), uint8(lz), 1, state.Liquid)
-				scheduleCarverFluidTick(result, wx, wy, wz, schedule, material)
+				world.SetNativeState(c, uint8(lx), int16(wy), uint8(lz), state)
+				markCarverPostProcessing(result, c, wx, wy, wz, schedule && featureStateHasFluid(c, state))
 				if hasGrass && wy > int32(c.Range()[0]) {
 					belowY := wy - 1
 					below := carverNativeState(c, wx, belowY, wz)
@@ -213,9 +211,8 @@ func carveEllipsoid(c *chunk.Chunk, target world.ChunkPos, x, y, z, horizontalRa
 						top, ok := aquifer.CarveTopMaterial(wx, belowY, wz, hasFluid)
 						if ok && top != nil {
 							topState := resolveCarverMaterial(c, top)
-							c.SetBlock(uint8(lx), int16(belowY), uint8(lz), 0, topState.Block)
-							c.SetBlock(uint8(lx), int16(belowY), uint8(lz), 1, topState.Liquid)
-							scheduleCarverFluidTick(result, wx, belowY, wz, featureStateHasFluid(c, topState), top)
+							world.SetNativeState(c, uint8(lx), int16(belowY), uint8(lz), topState)
+							markCarverPostProcessing(result, c, wx, belowY, wz, featureStateHasFluid(c, topState))
 						}
 					}
 				}
@@ -237,21 +234,10 @@ func resolveCarverMaterial(c *chunk.Chunk, material world.Block) world.NativeSta
 	return world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()}
 }
 
-func scheduleCarverFluidTick(result *world.GenerationResult, x, y, z int32, schedule bool, material world.Block) {
-	if !schedule {
-		return
+func markCarverPostProcessing(result *world.GenerationResult, c *chunk.Chunk, x, y, z int32, mark bool) {
+	if mark {
+		result.MarkForPostProcessing(cube.Pos{int(x), int(y), int(z)}, c.Range())
 	}
-	fluid, ok := material.(world.Liquid)
-	if !ok {
-		panic("overworld: scheduled carver tick material is not a fluid")
-	}
-	typeName := fluid.LiquidType()
-	if !strings.Contains(typeName, ":") {
-		typeName = "minecraft:" + typeName
-	}
-	result.ScheduleTick(chunk.ScheduledTick{
-		Pos: cube.Pos{int(x), int(y), int(z)}, Kind: chunk.FluidTick, Type: typeName,
-	})
 }
 
 func isCarverReplaceable(c *chunk.Chunk, x, y, z int32) bool {

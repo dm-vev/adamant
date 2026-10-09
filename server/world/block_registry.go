@@ -113,8 +113,9 @@ func (b blockInfo) getLightFilter() uint8 {
 
 // BasicBlockRegistry is the default BlockRegistry implementation used by Dragonfly.
 type BasicBlockRegistry struct {
-	mu           sync.Mutex
-	javaStateIDs sync.Map // Native layer pair -> canonical Java state ID.
+	mu               sync.Mutex
+	javaStateIDs     sync.Map // Native layer pair -> canonical Java state ID.
+	javaNativeStates sync.Map // Canonical Java state ID -> native layer pair.
 
 	finalized         bool
 	bitSize           int

@@ -29,9 +29,27 @@ type GenerationResult struct {
 	// ScheduledTicks contains zero-delay block or fluid updates for generated
 	// positions. The World publishes them on its owner goroutine.
 	ScheduledTicks []chunk.ScheduledTick
+	// PostProcessing contains packed local positions by vertical section,
+	// starting at the dimension's minimum section. Duplicates and insertion
+	// order within each section are significant.
+	PostProcessing [][]uint16
 
 	scheduledTickIndices map[generatedTickIndex]struct{}
 	scheduledTickCount   int
+}
+
+// MarkForPostProcessing records a source generation marker. The caller routes
+// the position to its owning column; positions outside r are ignored.
+func (result *GenerationResult) MarkForPostProcessing(pos cube.Pos, r cube.Range) {
+	if pos.OutOfBounds(r) {
+		return
+	}
+	if result.PostProcessing == nil {
+		result.PostProcessing = make([][]uint16, (r[1]>>4)-(r[0]>>4)+1)
+	}
+	section := (pos[1] >> 4) - (r[0] >> 4)
+	packed := uint16(pos[0]&15 | (pos[1]&15)<<4 | (pos[2]&15)<<8)
+	result.PostProcessing[section] = append(result.PostProcessing[section], packed)
 }
 
 type generatedTickIndex struct {

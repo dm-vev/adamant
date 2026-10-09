@@ -98,6 +98,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 							Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.BlockTick, Type: "minecraft:air",
 						})
 					}
+					region.markAboveForPostProcessing(p)
 				} else {
 					region.SetNativeBlock(p, fluidState, fluidActor)
 				}
@@ -129,6 +130,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 					p := featurePos{origin.x + int32(x), origin.y + int32(y), origin.z + int32(z)}
 					if featureRegionSolid(region, p) && featureRegionPredicate(region, p, canBarrier) {
 						region.SetNativeBlock(p, barrierState, barrierActor)
+						region.markAboveForPostProcessing(p)
 					}
 				}
 			}

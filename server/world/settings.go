@@ -59,6 +59,10 @@ type Settings struct {
 	SpawnMonsters bool
 	// SpawnWardens is Java's independent spawn_wardens gamerule.
 	SpawnWardens bool
+	// WaterSourceConversion and LavaSourceConversion are the independent Java
+	// rules allowing two neighboring sources to create a new fluid source.
+	WaterSourceConversion bool
+	LavaSourceConversion  bool
 	// PlayersSleepingPercentage determines the percentage of players that must sleep to skip the night.
 	PlayersSleepingPercentage int32
 	// RequiredSleepTicks is the number of ticks that players must sleep for in order for the time to change to day.
@@ -80,6 +84,7 @@ func defaultSettings() *Settings {
 		SpawnMobs:                 true,
 		SpawnMonsters:             true,
 		SpawnWardens:              true,
+		WaterSourceConversion:     true,
 		PlayersSleepingPercentage: 100,
 	}
 }
@@ -120,6 +125,8 @@ func (s *Settings) Snapshot() *Settings {
 		SpawnMobs:                 s.SpawnMobs,
 		SpawnMonsters:             s.SpawnMonsters,
 		SpawnWardens:              s.SpawnWardens,
+		WaterSourceConversion:     s.WaterSourceConversion,
+		LavaSourceConversion:      s.LavaSourceConversion,
 		PlayersSleepingPercentage: s.PlayersSleepingPercentage,
 		RequiredSleepTicks:        s.RequiredSleepTicks,
 	}

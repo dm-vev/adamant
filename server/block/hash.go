@@ -49,6 +49,7 @@ const (
 	hashCarpet
 	hashCarrot
 	hashCartographyTable
+	hashCaveVines
 	hashChemicalHeat
 	hashChest
 	hashChiseledQuartz
@@ -303,6 +304,7 @@ const (
 	hashTripwireHook
 	hashTuff
 	hashTuffBricks
+	hashTwistingVines
 	hashUnderwaterTNT
 	hashUnderwaterTorch
 	hashUnknownBlock
@@ -310,6 +312,7 @@ const (
 	hashWall
 	hashWarpedRoots
 	hashWater
+	hashWeepingVines
 	hashWheatSeeds
 	hashWildflowers
 	hashWood
@@ -504,6 +507,10 @@ func (c Carrot) Hash() (uint64, uint64) {
 
 func (CartographyTable) Hash() (uint64, uint64) {
 	return hashCartographyTable, 0
+}
+
+func (v CaveVines) Hash() (uint64, uint64) {
+	return hashCaveVines, uint64(v.Age) | uint64(v.Variant)<<8
 }
 
 func (ChemicalHeat) Hash() (uint64, uint64) {
@@ -1522,6 +1529,10 @@ func (t TuffBricks) Hash() (uint64, uint64) {
 	return hashTuffBricks, uint64(boolByte(t.Chiseled))
 }
 
+func (v TwistingVines) Hash() (uint64, uint64) {
+	return hashTwistingVines, uint64(v.Age)
+}
+
 func (t UnderwaterTNT) Hash() (uint64, uint64) {
 	return hashUnderwaterTNT, uint64(boolByte(t.Explode))
 }
@@ -1548,6 +1559,10 @@ func (WarpedRoots) Hash() (uint64, uint64) {
 
 func (w Water) Hash() (uint64, uint64) {
 	return hashWater, uint64(boolByte(w.Still)) | uint64(w.Depth)<<1 | uint64(boolByte(w.Falling))<<9
+}
+
+func (v WeepingVines) Hash() (uint64, uint64) {
+	return hashWeepingVines, uint64(v.Age)
 }
 
 func (s WheatSeeds) Hash() (uint64, uint64) {
