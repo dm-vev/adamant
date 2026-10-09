@@ -292,11 +292,7 @@ func (s *netherFeatureSource) terrainChunk(pos world.ChunkPos) *chunk.Chunk {
 	}
 	g := s.generator
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 127})
-	scratch := g.pool.Get().(*netherScratch)
-	g.prepareHeights(int(pos[0]), int(pos[1]), c, scratch)
-	g.pool.Put(scratch)
-	g.applyJavaNetherMaterial(int(pos[0]), int(pos[1]), c)
-	g.carveCaves(int(pos[0]), int(pos[1]), c)
+	g.prepareTerrain(pos, c)
 	s.mu.Lock()
 	if cached = s.terrain[pos]; cached == nil {
 		s.terrain[pos] = c.Clone()

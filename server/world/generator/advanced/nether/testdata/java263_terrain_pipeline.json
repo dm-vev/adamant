@@ -1,0 +1,57 @@
+[
+  {
+    "seed": 1,
+    "x": 1,
+    "z": -41,
+    "palette": {
+      "a": "minecraft:air",
+      "b": "minecraft:bedrock",
+      "l": "minecraft:lava",
+      "n": "minecraft:netherrack",
+      "q": "minecraft:soul_soil",
+      "s": "minecraft:soul_sand"
+    },
+    "sha256": "c633aa4b2233c74a019f3873c633723df419eb2b6aa9e0c2019c3c2d28cff603"
+  },
+  {
+    "seed": -1,
+    "x": 0,
+    "z": -80,
+    "palette": {
+      "a": "minecraft:air",
+      "b": "minecraft:bedrock",
+      "n": "minecraft:netherrack",
+      "q": "minecraft:soul_soil",
+      "s": "minecraft:soul_sand"
+    },
+    "sha256": "98ffe2ee1114d738e991f0a116102b79acadf3836e02cc63e36dbc33435d3a89"
+  },
+  {
+    "seed": 0,
+    "x": -1024,
+    "z": 64,
+    "palette": {
+      "B": "minecraft:basalt",
+      "a": "minecraft:air",
+      "b": "minecraft:bedrock",
+      "k": "minecraft:blackstone",
+      "l": "minecraft:lava",
+      "n": "minecraft:netherrack",
+      "w": "minecraft:warped_nylium"
+    },
+    "sha256": "ea1aa49005b136ce2d4b231a29a26b5b1d4069f6db3365ca190c27955242cd0c"
+  },
+  {
+    "seed": 0,
+    "x": -35,
+    "z": -9,
+    "palette": {
+      "a": "minecraft:air",
+      "b": "minecraft:bedrock",
+      "c": "minecraft:crimson_nylium",
+      "l": "minecraft:lava",
+      "n": "minecraft:netherrack"
+    },
+    "sha256": "4646cc5d55dc9a28915bef2d867a37e2a7cf01c55745c0eb6ca09d7e5e0ade2a"
+  }
+]

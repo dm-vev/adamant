@@ -4,44 +4,80 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
+// Material noise conditions are column-constant. Sample only when a rule needs
+// a value, and never resample the same noise for deeper blocks in that column.
+// Java promotes the float noise result before comparing double thresholds.
+type netherColumnNoise struct {
+	value float64
+	ready bool
+}
+
+func (n *netherColumnNoise) sample(x, z int32, source func(int32, int32) float32) float64 {
+	if !n.ready {
+		n.value = float64(source(x, z))
+		n.ready = true
+	}
+	return n.value
+}
+
 func (g *Nether) applyJavaNetherMaterial(chunkX, chunkZ int, c *chunk.Chunk) {
 	minY, maxY := c.Range().Min(), c.Range().Max()
+	if minY < 0 {
+		minY = 0
+	}
+	if maxY > 127 {
+		maxY = 127
+	}
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
 			worldX, worldZ := int32(chunkX*16)+int32(x), int32(chunkZ*16)+int32(z)
+			surfaceDepth := g.material.SurfaceDepth(worldX, worldZ)
+			var patchNoise, selectorNoise, forestNoise, wartNoise, soulNoise, gravelNoise netherColumnNoise
 			var floorDepth, ceilingDepth [128]int16
-			for y := minY; y <= maxY && y < 128; y++ {
-				floorDepth[y], ceilingDepth[y] = -1, -1
-			}
-			depth := int16(-1)
-			for y := maxY; y >= minY && y < 128; y-- {
-				if g.isSurfaceSolid(c.Block(x, int16(y), z, 0)) {
-					if y == maxY || !g.isSurfaceSolid(c.Block(x, int16(y+1), z, 0)) {
-						depth = 0
-					} else if depth >= 0 {
-						depth++
-					}
+			depth := int16(0)
+			for y := maxY; y >= minY; y-- {
+				rid := c.Block(x, int16(y), z, 0)
+				if rid == g.airRID {
+					depth = 0
+				} else if rid != g.lavaStillRID && rid != g.lavaFlowRID {
+					depth++
 					floorDepth[y] = depth
-				} else {
-					depth = -1
 				}
 			}
-			depth = -1
-			for y := minY; y <= maxY && y < 128; y++ {
+			depth = 0
+			for y := minY; y <= maxY; y++ {
 				if g.isSurfaceSolid(c.Block(x, int16(y), z, 0)) {
-					if y == minY || !g.isSurfaceSolid(c.Block(x, int16(y-1), z, 0)) {
-						depth = 0
-					} else if depth >= 0 {
-						depth++
-					}
+					depth++
 					ceilingDepth[y] = depth
 				} else {
-					depth = -1
+					depth = 0
 				}
 			}
 
 			for y := minY; y <= maxY; y++ {
+				rid := c.Block(x, int16(y), z, 0)
+				if !g.isSurfaceSolid(rid) {
+					continue
+				}
 				y32 := int32(y)
+				if g.material.BedrockFloor(worldX, y32, worldZ) || (y >= 122 && g.material.BedrockRoof(worldX, y32, worldZ)) {
+					c.SetBlock(x, int16(y), z, 0, g.bedrockRID)
+					continue
+				}
+				if y >= 122 {
+					continue
+				}
+				fd, cd := floorDepth[y], ceilingDepth[y]
+				onFloor := fd > 0 && fd <= 1
+				underFloor := fd > 0 && int(fd) <= 1+surfaceDepth
+				underCeiling := cd > 0 && int(cd) <= 1+surfaceDepth
+				if onFloor && y < 32 && surfaceDepth <= 0 {
+					c.SetBlock(x, int16(y), z, 0, g.lavaStillRID)
+					continue
+				}
+				if rid != g.netherrackRID {
+					continue
+				}
 				name := [...]string{
 					"minecraft:nether_wastes",
 					"minecraft:soul_sand_valley",
@@ -49,43 +85,38 @@ func (g *Nether) applyJavaNetherMaterial(chunkX, chunkZ int, c *chunk.Chunk) {
 					"minecraft:warped_forest",
 					"minecraft:basalt_deltas",
 				}[g.biomeIndexAt(worldX, y32, worldZ)]
-				if g.material.BedrockFloor(worldX, y32, worldZ) || (y >= 123 && g.material.BedrockRoof(worldX, y32, worldZ)) {
-					c.SetBlock(x, int16(y), z, 0, g.bedrockRID)
-					continue
-				}
-				rid := c.Block(x, int16(y), z, 0)
-				if rid != g.netherrackRID {
-					continue
-				}
-				fd, cd := floorDepth[y], ceilingDepth[y]
-				patch := g.material.Patch(worldX, worldZ) >= -0.012 && y >= 30 && y < 35
-				selector := g.material.Selector(worldX, worldZ) >= 0
 				switch name {
 				case "minecraft:basalt_deltas":
-					if cd > 0 && cd <= 4 {
+					if underCeiling {
 						rid = g.basaltRID
-					} else if fd > 0 && fd <= 4 {
-						if patch {
+					} else if underFloor {
+						if int(y)+int(fd) >= 30 && int(y)+int(fd) < 35 && patchNoise.sample(worldX, worldZ, g.material.Patch) >= -0.012 {
 							rid = g.gravelRID
-						} else if selector {
+						} else if selectorNoise.sample(worldX, worldZ, g.material.Selector) >= 0 {
 							rid = g.basaltRID
 						} else {
 							rid = g.blackstoneRID
 						}
 					}
 				case "minecraft:soul_sand_valley":
-					if cd > 0 && cd <= 4 || fd > 0 && fd <= 4 {
-						if patch {
+					if underCeiling {
+						if selectorNoise.sample(worldX, worldZ, g.material.Selector) >= 0 {
+							rid = g.soulSandRID
+						} else {
+							rid = g.soulSoilRID
+						}
+					} else if underFloor {
+						if int(y)+int(fd) >= 30 && int(y)+int(fd) < 35 && patchNoise.sample(worldX, worldZ, g.material.Patch) >= -0.012 {
 							rid = g.gravelRID
-						} else if selector {
+						} else if selectorNoise.sample(worldX, worldZ, g.material.Selector) >= 0 {
 							rid = g.soulSandRID
 						} else {
 							rid = g.soulSoilRID
 						}
 					}
 				case "minecraft:warped_forest", "minecraft:crimson_forest":
-					if fd == 0 && y >= 32 && g.material.Netherrack(worldX, worldZ) >= 0.54 {
-						if g.material.NetherWart(worldX, worldZ) >= 1.17 {
+					if onFloor && y >= 31 && forestNoise.sample(worldX, worldZ, g.material.Netherrack) < 0.54 {
+						if wartNoise.sample(worldX, worldZ, g.material.NetherWart) >= 1.17 {
 							if name == "minecraft:warped_forest" {
 								rid = g.warpedWartBlockRID
 							} else {
@@ -98,9 +129,11 @@ func (g *Nether) applyJavaNetherMaterial(chunkX, chunkZ int, c *chunk.Chunk) {
 						}
 					}
 				case "minecraft:nether_wastes":
-					if fd > 0 && fd <= 4 && g.material.SoulSandLayer(worldX, worldZ) >= -0.012 && y >= 30 && y < 35 {
+					if underFloor && surfaceDepth > 0 && int(y)+int(fd) >= 30 && int(y)+int(fd) < 35 &&
+						soulNoise.sample(worldX, worldZ, g.material.SoulSandLayer) >= -0.012 {
 						rid = g.soulSandRID
-					} else if fd == 0 && y > 31 && y < 35 && g.material.GravelLayer(worldX, worldZ) >= -0.012 {
+					} else if onFloor && y >= 31 && int(y)+int(fd) < 35 && (y >= 32 || surfaceDepth > 0) &&
+						gravelNoise.sample(worldX, worldZ, g.material.GravelLayer) >= -0.012 {
 						rid = g.gravelRID
 					}
 				}

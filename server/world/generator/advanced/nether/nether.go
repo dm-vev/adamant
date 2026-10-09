@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 	overworldFeatures "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
 )
 
@@ -127,14 +128,9 @@ func NewNether(seed int64) *Nether {
 
 // GenerateChunk generates a single Nether chunk at the position passed.
 func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
-	s := g.pool.Get().(*netherScratch)
-	defer g.pool.Put(s)
-
 	chunkX, chunkZ := int(pos[0]), int(pos[1])
 
-	g.prepareHeights(chunkX, chunkZ, c, s)
-	g.applyJavaNetherMaterial(chunkX, chunkZ, c)
-	g.carveCaves(chunkX, chunkZ, c)
+	g.prepareTerrain(pos, c)
 	result := world.GenerationResult{}
 	g.fillBiomes(chunkX, chunkZ, c)
 	g.featureSource.remember(pos, c)
@@ -144,6 +140,19 @@ func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.Generat
 	result.ScheduledTicks = append(result.ScheduledTicks, decoration.ScheduledTicks...)
 	result.PostProcessing = decoration.PostProcessing
 	return result
+}
+
+// prepareTerrain is shared by published chunks and decoration's neighboring
+// terrain views. Raw-column queries deliberately bypass these structure,
+// material and carving stages.
+func (g *Nether) prepareTerrain(pos world.ChunkPos, c *chunk.Chunk) {
+	chunkX, chunkZ := int(pos[0]), int(pos[1])
+	beard := g.fossilBeard(pos)
+	scratch := g.pool.Get().(*netherScratch)
+	g.prepareHeights(chunkX, chunkZ, c, scratch, beard)
+	g.pool.Put(scratch)
+	g.applyJavaNetherMaterial(chunkX, chunkZ, c)
+	g.carveCaves(chunkX, chunkZ, c)
 }
 
 // DefaultSpawn returns the default Nether spawn position.
@@ -180,7 +189,7 @@ func (g *Nether) biomeIndexAt(x, y, z int32) int {
 	}
 }
 
-func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScratch) {
+func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScratch, beard *javastructure.Beardifier) {
 	g.density.Fill(int32(chunkX), int32(chunkZ), &s.vertices)
 	minY, maxY := c.Range().Min(), c.Range().Max()
 	for cellX := range 4 {
@@ -202,10 +211,14 @@ func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScr
 						density := float32(z00 + float32((z10-z00)*fx))
 						top := float32(z01 + float32((z11-z01)*fx))
 						step := float32((top - density) * 0.125)
+						worldX, worldZ := int32(chunkX*16+cellX*4+dx), int32(chunkZ*16+cellZ*4+dz)
 						for dy := range 8 {
 							y := cellY*8 + dy
 							value := max(float32(-1), min(float32(1), density))
 							value = float32(value/2 - float32(float32(value*value)*value)/24)
+							if beard != nil {
+								value = float32(value + beard.AdjustDensity(worldX, int32(y), worldZ))
+							}
 							density = float32(density + step)
 							if y < minY || y > maxY {
 								continue

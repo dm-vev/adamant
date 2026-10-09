@@ -133,83 +133,77 @@ func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env java
 	}
 	targetX, targetZ := int32(pos[0]), int32(pos[1])
 	chunkClip := javastructure.Bounds{Min: [3]int32{targetX * 16, 0, targetZ * 16}, Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15}}
-	for sourceZ := targetZ - 3; sourceZ <= targetZ+3; sourceZ++ {
-		for sourceX := targetX - 3; sourceX <= targetX+3; sourceX++ {
-			start, err := s.generator.fossilStart(sourceX, sourceZ)
-			if err != nil {
-				panic(err)
-			}
-			if start == nil || !fossilBoxIntersects(start.box, chunkClip) {
-				continue
-			}
-			// NetherFossilPiece.postProcess expands the supplied chunkBB to the complete
-			// template bounding box before delegating to TemplateStructurePiece.
-			clip := chunkClip
-			for axis := range 3 {
-				clip.Min[axis] = min32(clip.Min[axis], start.box.Min[axis])
-				clip.Max[axis] = max32(clip.Max[axis], start.box.Max[axis])
-			}
-			// Fossil metadata may exceed the native dimension; only block placement
-			// is restricted to the generated Nether height.
-			clip.Min[1] = 0
-			clip.Max[1] = 127
-			placement, err := start.template.Place(0, start.origin, start.rotation, javastructure.NoMirror, clip, s.generator.seed)
-			if err != nil {
-				panic(fmt.Errorf("place Java Nether fossil %s: %w", start.name, err))
-			}
-			filtered := javastructure.Placement{
-				Entities: placement.Entities, PostProcessing: placement.PostProcessing,
-				ScheduledTicks: placement.ScheduledTicks, StructurePieceWrites: placement.StructurePieceWrites,
-			}
-			for _, pieceBlock := range placement.Blocks {
-				switch pieceBlock.State.Name {
-				case "minecraft:air", "minecraft:structure_block", "minecraft:structure_void":
-					continue
-				}
-				javastructure.SeedRandomizableContainerLoot(&pieceBlock, env.Random)
-				filtered.Blocks = append(filtered.Blocks, pieceBlock)
-			}
-			if len(filtered.Blocks) != 0 || len(filtered.Entities) != 0 {
-				filtered, err = filtered.AdaptItemFrameEntities()
-				if err != nil {
-					panic(fmt.Errorf("adapt Java Nether fossil: %w", err))
-				}
-				emit(filtered)
-			}
-			random := java26.NewLegacyRandom(s.generator.seed)
-			base := random.ForkPositional().At(start.box.Min[0]+(start.box.Max[0]-start.box.Min[0]+1)/2, start.box.Min[1]+(start.box.Max[1]-start.box.Min[1]+1)/2, start.box.Min[2]+(start.box.Max[2]-start.box.Min[2]+1)/2)
-			if base.NextFloat() >= 0.5 {
-				continue
-			}
-			ghastPos := [3]int32{
-				start.box.Min[0] + base.NextInt(start.box.Max[0]-start.box.Min[0]+1),
-				start.box.Min[1],
-				start.box.Min[2] + base.NextInt(start.box.Max[2]-start.box.Min[2]+1),
-			}
-			if ghastPos[1] < clip.Min[1] || ghastPos[1] > clip.Max[1] {
-				continue
-			}
-			occupied := false
-			for _, b := range filtered.Blocks {
-				if b.Pos == ghastPos {
-					occupied = true
-					break
-				}
-			}
-			if occupied {
-				continue
-			}
-			name, _ := env.BaseBlock(ghastPos[0], ghastPos[1], ghastPos[2]).EncodeBlock()
-			if name != "minecraft:air" {
-				continue
-			}
-			facing := []string{"north", "east", "south", "west"}[base.NextInt(4)]
-			emit(javastructure.Placement{Blocks: []javastructure.Block{{
-				Pos:   ghastPos,
-				State: world.BlockState{Name: "minecraft:dried_ghast", Properties: map[string]any{"facing": facing, "hydration": int32(0), "waterlogged": false}},
-			}}})
+	s.generator.forFossilReferences(pos, func(start *netherFossilStart) {
+		if !fossilBoxIntersects(start.box, chunkClip) {
+			return
 		}
-	}
+		// NetherFossilPiece.postProcess expands the supplied chunkBB to the complete
+		// template bounding box before delegating to TemplateStructurePiece.
+		clip := chunkClip
+		for axis := range 3 {
+			clip.Min[axis] = min32(clip.Min[axis], start.box.Min[axis])
+			clip.Max[axis] = max32(clip.Max[axis], start.box.Max[axis])
+		}
+		// Fossil metadata may exceed the native dimension; only block placement
+		// is restricted to the generated Nether height.
+		clip.Min[1] = 0
+		clip.Max[1] = 127
+		placement, err := start.template.Place(0, start.origin, start.rotation, javastructure.NoMirror, clip, s.generator.seed)
+		if err != nil {
+			panic(fmt.Errorf("place Java Nether fossil %s: %w", start.name, err))
+		}
+		filtered := javastructure.Placement{
+			Entities: placement.Entities, PostProcessing: placement.PostProcessing,
+			ScheduledTicks: placement.ScheduledTicks, StructurePieceWrites: placement.StructurePieceWrites,
+		}
+		for _, pieceBlock := range placement.Blocks {
+			switch pieceBlock.State.Name {
+			case "minecraft:air", "minecraft:structure_block", "minecraft:structure_void":
+				continue
+			}
+			javastructure.SeedRandomizableContainerLoot(&pieceBlock, env.Random)
+			filtered.Blocks = append(filtered.Blocks, pieceBlock)
+		}
+		if len(filtered.Blocks) != 0 || len(filtered.Entities) != 0 {
+			filtered, err = filtered.AdaptItemFrameEntities()
+			if err != nil {
+				panic(fmt.Errorf("adapt Java Nether fossil: %w", err))
+			}
+			emit(filtered)
+		}
+		random := java26.NewLegacyRandom(s.generator.seed)
+		base := random.ForkPositional().At(start.box.Min[0]+(start.box.Max[0]-start.box.Min[0]+1)/2, start.box.Min[1]+(start.box.Max[1]-start.box.Min[1]+1)/2, start.box.Min[2]+(start.box.Max[2]-start.box.Min[2]+1)/2)
+		if base.NextFloat() >= 0.5 {
+			return
+		}
+		ghastPos := [3]int32{
+			start.box.Min[0] + base.NextInt(start.box.Max[0]-start.box.Min[0]+1),
+			start.box.Min[1],
+			start.box.Min[2] + base.NextInt(start.box.Max[2]-start.box.Min[2]+1),
+		}
+		if ghastPos[1] < clip.Min[1] || ghastPos[1] > clip.Max[1] {
+			return
+		}
+		occupied := false
+		for _, b := range filtered.Blocks {
+			if b.Pos == ghastPos {
+				occupied = true
+				break
+			}
+		}
+		if occupied {
+			return
+		}
+		name, _ := env.BaseBlock(ghastPos[0], ghastPos[1], ghastPos[2]).EncodeBlock()
+		if name != "minecraft:air" {
+			return
+		}
+		facing := []string{"north", "east", "south", "west"}[base.NextInt(4)]
+		emit(javastructure.Placement{Blocks: []javastructure.Block{{
+			Pos:   ghastPos,
+			State: world.BlockState{Name: "minecraft:dried_ghast", Properties: map[string]any{"facing": facing, "hydration": int32(0), "waterlogged": false}},
+		}}})
+	})
 }
 
 func fossilBoxIntersects(box javastructure.Box, clip javastructure.Bounds) bool {
