@@ -26,7 +26,7 @@ type modernStructures struct {
 	rings          map[string]map[[2]int32]struct{}
 	structureSteps map[int][]modernStructureStepEntry
 	startCache     map[modernStructureStartKey]modernStructureStartResult
-	startFlights   map[modernStructureStartKey]chan modernStructureStartResult
+	startFlights   map[modernStructureStartKey]*modernStructureStartFlight
 	startCacheMu   sync.Mutex
 }
 
@@ -128,7 +128,7 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 		rings:          make(map[string]map[[2]int32]struct{}),
 		structureSteps: make(map[int][]modernStructureStepEntry),
 		startCache:     make(map[modernStructureStartKey]modernStructureStartResult),
-		startFlights:   make(map[modernStructureStartKey]chan modernStructureStartResult),
+		startFlights:   make(map[modernStructureStartKey]*modernStructureStartFlight),
 	}
 	names, err := javadata.ResourceNames("structure_set")
 	if err != nil {
@@ -369,13 +369,14 @@ func (s *modernStructures) makeStart(set modernStructureSet, cx, cz int32) (mode
 	}
 	if flight, ok := s.startFlights[key]; ok {
 		s.startCacheMu.Unlock()
-		result := <-flight
+		<-flight.done
+		result := flight.result
 		if result.err != nil {
 			panic(result.err)
 		}
 		return result.start, result.valid
 	}
-	flight := make(chan modernStructureStartResult, 1)
+	flight := &modernStructureStartFlight{done: make(chan struct{})}
 	s.startFlights[key] = flight
 	s.startCacheMu.Unlock()
 
@@ -390,8 +391,8 @@ func (s *modernStructures) makeStart(set modernStructureSet, cx, cz int32) (mode
 	}
 	s.startCache[key] = result
 	delete(s.startFlights, key)
-	flight <- result
-	close(flight)
+	flight.result = result
+	close(flight.done)
 	s.startCacheMu.Unlock()
 	if err != nil {
 		panic(err)
@@ -411,6 +412,11 @@ type modernStructureStartResult struct {
 	err   error
 }
 
+type modernStructureStartFlight struct {
+	done   chan struct{}
+	result modernStructureStartResult
+}
+
 func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (start modernStructureStart, valid bool, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -419,12 +425,49 @@ func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (sta
 			err = fmt.Errorf("overworld: Java structure build at %d,%d failed: %v", cx, cz, recovered)
 		}
 	}()
-	random := largeFeatureRandom(s.seed, cx, cz)
-	entry := chooseModernStructure(set.structures, &random)
-	if entry.name == "" {
+	if len(set.structures) == 1 {
+		return s.buildStructure(set.structures[0].name, cx, cz)
+	}
+	var total int32
+	for _, entry := range set.structures {
+		total += entry.weight
+	}
+	if total <= 0 {
 		return modernStructureStart{}, false, nil
 	}
-	config, err := javadata.LoadJSON("structure", strings.TrimPrefix(entry.name, "minecraft:"))
+	// Selection has its own stream; each attempted structure starts with a fresh
+	// generation stream, including retries after biome rejection.
+	random := largeFeatureRandom(s.seed, cx, cz)
+	var rejected []bool
+	for remaining := len(set.structures); remaining > 0; remaining-- {
+		choice := random.NextInt(total)
+		for i, entry := range set.structures {
+			if rejected != nil && rejected[i] {
+				continue
+			}
+			choice -= entry.weight
+			if choice >= 0 {
+				continue
+			}
+			start, valid, err = s.buildStructure(entry.name, cx, cz)
+			if valid || err != nil {
+				return start, valid, err
+			}
+			total -= entry.weight
+			if remaining > 1 {
+				if rejected == nil {
+					rejected = make([]bool, len(set.structures))
+				}
+				rejected[i] = true
+			}
+			break
+		}
+	}
+	return modernStructureStart{}, false, nil
+}
+
+func (s *modernStructures) buildStructure(name string, cx, cz int32) (start modernStructureStart, valid bool, err error) {
+	config, err := javadata.LoadJSON("structure", strings.TrimPrefix(name, "minecraft:"))
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
@@ -442,14 +485,15 @@ func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (sta
 		if !allowed {
 			return modernStructureStart{}, false, nil
 		}
-		return modernStructureStart{}, false, fmt.Errorf("overworld: Java structure %q has unsupported type %q", entry.name, kind)
+		return modernStructureStart{}, false, fmt.Errorf("overworld: Java structure %q has unsupported type %q", name, kind)
 	}
+	random := largeFeatureRandom(s.seed, cx, cz)
 	start, valid, err = builder(modernStructureBuildInput{
-		seed: s.seed, name: entry.name, chunkX: cx, chunkZ: cz,
+		seed: s.seed, name: name, chunkX: cx, chunkZ: cz,
 		config: config, source: s.source, random: &random,
 	})
 	if err != nil {
-		return modernStructureStart{}, false, fmt.Errorf("overworld: build Java structure %s at %d,%d: %w", entry.name, cx, cz, err)
+		return modernStructureStart{}, false, fmt.Errorf("overworld: build Java structure %s at %d,%d: %w", name, cx, cz, err)
 	}
 	if valid {
 		stepName := normalizeJavaResource(stringValue(config["step"]))
@@ -457,7 +501,7 @@ func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (sta
 		if !ok {
 			return modernStructureStart{}, false, fmt.Errorf("overworld: unknown Java structure decoration step %q", stepName)
 		}
-		start.name, start.step = entry.name, step
+		start.name, start.step = name, step
 	}
 	return start, valid, nil
 }
@@ -576,15 +620,6 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 	if len(result.Pieces) == 0 {
 		return modernStructureStart{}, false, nil
 	}
-	pieces := make([]modernStructurePiece, len(result.Pieces))
-	for i, piece := range result.Pieces {
-		pieces[i] = modernJigsawPiece{piece: piece, palette: 0, seed: input.seed}
-	}
-	start := modernStructureStart{
-		name: input.name, pieces: pieces, rigid: result.RigidPieces,
-		junctions: result.Junctions, terrain: terrain,
-		box: emptyStructureBox(),
-	}
 	biome := normalizeJavaResource(input.source.JavaNoiseBiomeAt(result.StartPos[0]>>2, result.StartPos[1]>>2, result.StartPos[2]>>2))
 	if !strings.Contains(biome, ":") {
 		biome = "minecraft:" + biome
@@ -595,6 +630,15 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 	}
 	if !allowed {
 		return modernStructureStart{}, false, nil
+	}
+	pieces := make([]modernStructurePiece, len(result.Pieces))
+	for i, piece := range result.Pieces {
+		pieces[i] = modernJigsawPiece{piece: piece, palette: 0, seed: input.seed}
+	}
+	start := modernStructureStart{
+		name: input.name, pieces: pieces, rigid: result.RigidPieces,
+		junctions: result.Junctions, terrain: terrain,
+		box: emptyStructureBox(),
 	}
 	for _, piece := range result.Pieces {
 		start.box = unionStructureBox(start.box, piece.Bounds)
@@ -766,24 +810,6 @@ func unionStructureBox(a, b javastructure.Box) javastructure.Box {
 		}
 	}
 	return a
-}
-
-func chooseModernStructure(entries []modernStructureEntry, random *java26.Random) modernStructureEntry {
-	var total int32
-	for _, entry := range entries {
-		total += entry.weight
-	}
-	if total <= 0 {
-		return modernStructureEntry{}
-	}
-	choice := random.NextInt(total)
-	for _, entry := range entries {
-		choice -= entry.weight
-		if choice < 0 {
-			return entry
-		}
-	}
-	return entries[len(entries)-1]
 }
 
 func frequencyMethod(name string) javastructure.FrequencyReduction {
