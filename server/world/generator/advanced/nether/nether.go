@@ -1,7 +1,6 @@
 package nether
 
 import (
-	"sort"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -37,7 +36,7 @@ type Nether struct {
 	netherWartBlockRID   uint32
 	warpedWartBlockRID   uint32
 	netherBricksRID      uint32
-	netherBrickFenceRID  uint32
+	netherBrickFenceRIDs [16]uint32
 	netherWartRID        uint32
 	netherBrickStairsRID [4]uint32
 	spawnerRID           uint32
@@ -53,17 +52,13 @@ type Nether struct {
 	features      *overworldFeatures.ModernFeatures
 	featureSource *netherFeatureSource
 
-	bridgeGenerationMu sync.Mutex
-	bridgePayloadMu    sync.Mutex
-
 	complexMu      sync.Mutex
 	complexStarts  map[world.ChunkPos]netherComplexResult
 	complexFlights map[world.ChunkPos]*netherComplexFlight
 	fossils        netherFossilCache
 	portals        netherPortalCache
 
-	pendingBlockEntities sync.Map // cube.Pos -> chunk.BlockEntity
-	pool                 sync.Pool
+	pool sync.Pool
 }
 type netherScratch struct {
 	vertices [425]float32
@@ -77,26 +72,25 @@ func New(seed int64) *Nether {
 // NewNether creates a Nether generator using the seed provided.
 func NewNether(seed int64) *Nether {
 	g := &Nether{
-		seed:                seed,
-		complexStarts:       make(map[world.ChunkPos]netherComplexResult),
-		complexFlights:      make(map[world.ChunkPos]*netherComplexFlight),
-		airRID:              world.BlockRuntimeID(block.Air{}),
-		netherrackRID:       world.BlockRuntimeID(block.Netherrack{}),
-		bedrockRID:          world.BlockRuntimeID(block.Bedrock{}),
-		lavaStillRID:        world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
-		lavaFlowRID:         world.BlockRuntimeID(block.Lava{Depth: 8, Still: false}),
-		gravelRID:           world.BlockRuntimeID(block.Gravel{}),
-		soulSandRID:         world.BlockRuntimeID(block.SoulSand{}),
-		soulSoilRID:         world.BlockRuntimeID(block.SoulSoil{}),
-		basaltRID:           world.BlockRuntimeID(block.Basalt{}),
-		blackstoneRID:       world.BlockRuntimeID(block.Blackstone{Type: block.NormalBlackstone()}),
-		crimsonNyliumRID:    world.BlockRuntimeID(block.Nylium{}),
-		warpedNyliumRID:     world.BlockRuntimeID(block.Nylium{Warped: true}),
-		netherWartBlockRID:  world.BlockRuntimeID(block.NetherWartBlock{}),
-		warpedWartBlockRID:  world.BlockRuntimeID(block.NetherWartBlock{Warped: true}),
-		netherBricksRID:     world.BlockRuntimeID(block.NetherBricks{}),
-		netherBrickFenceRID: world.BlockRuntimeID(block.NetherBrickFence{}),
-		netherWartRID:       world.BlockRuntimeID(block.NetherWart{Age: 0}),
+		seed:               seed,
+		complexStarts:      make(map[world.ChunkPos]netherComplexResult),
+		complexFlights:     make(map[world.ChunkPos]*netherComplexFlight),
+		airRID:             world.BlockRuntimeID(block.Air{}),
+		netherrackRID:      world.BlockRuntimeID(block.Netherrack{}),
+		bedrockRID:         world.BlockRuntimeID(block.Bedrock{}),
+		lavaStillRID:       world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
+		lavaFlowRID:        world.BlockRuntimeID(block.Lava{Depth: 8, Still: false}),
+		gravelRID:          world.BlockRuntimeID(block.Gravel{}),
+		soulSandRID:        world.BlockRuntimeID(block.SoulSand{}),
+		soulSoilRID:        world.BlockRuntimeID(block.SoulSoil{}),
+		basaltRID:          world.BlockRuntimeID(block.Basalt{}),
+		blackstoneRID:      world.BlockRuntimeID(block.Blackstone{Type: block.NormalBlackstone()}),
+		crimsonNyliumRID:   world.BlockRuntimeID(block.Nylium{}),
+		warpedNyliumRID:    world.BlockRuntimeID(block.Nylium{Warped: true}),
+		netherWartBlockRID: world.BlockRuntimeID(block.NetherWartBlock{}),
+		warpedWartBlockRID: world.BlockRuntimeID(block.NetherWartBlock{Warped: true}),
+		netherBricksRID:    world.BlockRuntimeID(block.NetherBricks{}),
+		netherWartRID:      world.BlockRuntimeID(block.NetherWart{Age: 0}),
 		biomeIDs: [5]uint32{
 			uint32(dfbiome.NetherWastes{}.EncodeBiome()),
 			uint32(dfbiome.SoulSandValley{}.EncodeBiome()),
@@ -108,6 +102,12 @@ func NewNether(seed int64) *Nether {
 		biomes:        java26.NewNetherBiomes(seed),
 		density:       java26.NewNetherDensity(seed),
 		material:      java26.NewNetherMaterialNoise(seed),
+	}
+	for mask := range g.netherBrickFenceRIDs {
+		g.netherBrickFenceRIDs[mask] = world.BlockRuntimeID(block.NetherBrickFence{
+			NorthConnection: mask&1 != 0, SouthConnection: mask&2 != 0,
+			WestConnection: mask&4 != 0, EastConnection: mask&8 != 0,
+		})
 	}
 
 	if b, ok := world.BlockByName("minecraft:mob_spawner", nil); ok {
@@ -238,29 +238,4 @@ func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScr
 			}
 		}
 	}
-}
-
-func (g *Nether) takeBlockEntityPayloads(pos world.ChunkPos) []chunk.BlockEntity {
-	out := make([]chunk.BlockEntity, 0)
-	g.pendingBlockEntities.Range(func(key, value any) bool {
-		blockPos := key.(cube.Pos)
-		if int32(blockPos[0])>>4 != pos[0] || int32(blockPos[2])>>4 != pos[1] {
-			return true
-		}
-		if payload, loaded := g.pendingBlockEntities.LoadAndDelete(key); loaded {
-			out = append(out, payload.(chunk.BlockEntity))
-		}
-		return true
-	})
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i].Pos, out[j].Pos
-		if a[0] != b[0] {
-			return a[0] < b[0]
-		}
-		if a[1] != b[1] {
-			return a[1] < b[1]
-		}
-		return a[2] < b[2]
-	})
-	return out
 }

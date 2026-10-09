@@ -390,21 +390,16 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		}
 		return placed
 	case "simple_block":
-		state, actor, ok := region.SampleNativeState(config.config["to_place"], origin, random)
+		state, _, ok := region.SampleNativeState(config.config["to_place"], origin, random)
 		if !ok {
 			return false
 		}
-		placed := region.SetNativeBlock(origin, state, actor)
-		if placed && config.config["schedule_tick"] == true && featureInsideTarget(region.target, origin) {
-			javaState, err := world.JavaState(region.c.BlockRegistry(), state)
-			if err != nil {
-				panic(err)
-			}
-			region.result.ScheduleTick(chunk.ScheduledTick{
-				Pos: cube.Pos{int(origin.x), int(origin.y), int(origin.z)}, Kind: chunk.BlockTick, Type: javaState.Name,
-			})
+		sourceState := state.CanonicalJavaID(region.c.BlockRegistry())
+		if sourceState == 0 {
+			panic("overworld: simple-block feature has no source state")
 		}
-		return placed
+		return world.PlaceJavaGenerationSimpleBlock(region, sourceState,
+			cube.Pos{int(origin.x), int(origin.y), int(origin.z)}, config.config["schedule_tick"] == true)
 	case "freeze_top_layer":
 		return region.freezeTopLayerRegion(origin)
 	case "ore":
@@ -494,10 +489,14 @@ func (r *featureRegion) freezeTopLayerRegion(origin featurePos) bool {
 func placeModernOreRegion(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
 	size := int32(featureNumber(config["size"]))
 	targets, ok := config["targets"].([]any)
-	if !ok || size <= 0 {
+	if !ok || size < 0 || size > 64 {
 		panic("overworld: malformed Java ore configuration")
 	}
-	oreTargets := make([]modernOreTarget, 0, len(targets))
+	var targetBuffer [2]modernOreTarget
+	oreTargets := targetBuffer[:0]
+	if len(targets) > len(targetBuffer) {
+		oreTargets = make([]modernOreTarget, 0, len(targets))
+	}
 	for _, raw := range targets {
 		entry := raw.(map[string]any)
 		placement, ok := featureStateBlock(entry["state"])
@@ -511,41 +510,119 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 		}
 		oreTargets = append(oreTargets, modernOreTarget{rid: state, actor: actor, predicate: predicate})
 	}
-	if len(oreTargets) == 0 {
-		return false
-	}
+	// OreFeature samples the entire ellipsoid chain before examining blocks.
+	// The source codec caps size at 64; both scratch buffers fit on the stack.
 	angle := random.NextFloat() * float32(math.Pi)
-	startX := float64(origin.x+8) + math.Sin(float64(angle))*float64(size)/8
-	endX := float64(origin.x+8) - math.Sin(float64(angle))*float64(size)/8
-	startZ := float64(origin.z+8) + math.Cos(float64(angle))*float64(size)/8
-	endZ := float64(origin.z+8) - math.Cos(float64(angle))*float64(size)/8
+	spread := float32(size) / 8
+	maxRadius := int32(math.Ceil(float64((float32(size)/16*2 + 1) / 2)))
+	startX := float64(origin.x) + math.Sin(float64(angle))*float64(spread)
+	endX := float64(origin.x) - math.Sin(float64(angle))*float64(spread)
+	startZ := float64(origin.z) + math.Cos(float64(angle))*float64(spread)
+	endZ := float64(origin.z) - math.Cos(float64(angle))*float64(spread)
 	startY := float64(origin.y + random.NextInt(3) - 2)
 	endY := float64(origin.y + random.NextInt(3) - 2)
+	horizontalRadius := int32(math.Ceil(float64(spread))) + maxRadius
+	xStart, yStart, zStart := origin.x-horizontalRadius, origin.y-2-maxRadius, origin.z-horizontalRadius
+	sizeXZ, sizeY := 2*horizontalRadius, 2*(2+maxRadius)
+	belowSurface := false
+	for x := xStart; x <= xStart+sizeXZ && !belowSurface; x++ {
+		for z := zStart; z <= zStart+sizeXZ; z++ {
+			if yStart <= region.placementHeight(x, z, "OCEAN_FLOOR_WG") {
+				belowSurface = true
+				break
+			}
+		}
+	}
+	if !belowSurface {
+		return false
+	}
+	var spheres [64]struct{ x, y, z, radius float64 }
+	for i := int32(0); i < size; i++ {
+		step := float32(i) / float32(size)
+		t := float64(step)
+		scale := random.NextDouble() * float64(size) / 16
+		sphere := &spheres[i]
+		sphere.x = startX + t*(endX-startX)
+		sphere.y = startY + t*(endY-startY)
+		sphere.z = startZ + t*(endZ-startZ)
+		sphere.radius = (float64(java26.Sin(float64(float32(math.Pi)*step))+1)*scale + 1) / 2
+	}
+	for i := int32(0); i < size-1; i++ {
+		if spheres[i].radius <= 0 {
+			continue
+		}
+		for j := i + 1; j < size; j++ {
+			if spheres[j].radius <= 0 {
+				continue
+			}
+			dx, dy, dz := spheres[i].x-spheres[j].x, spheres[i].y-spheres[j].y, spheres[i].z-spheres[j].z
+			dr := spheres[i].radius - spheres[j].radius
+			if dr*dr > dx*dx+dy*dy+dz*dz {
+				if dr > 0 {
+					spheres[j].radius = -1
+				} else {
+					spheres[i].radius = -1
+				}
+			}
+		}
+	}
+	// Maximum source bounding volume: 26*14*26 bits for a size-64 vein.
+	var tested [148]uint64
+	discard := float32(number(config["discard_chance_on_air_exposure"]))
 	placed := false
 	for i := int32(0); i < size; i++ {
-		t := float64(i) / float64(size)
-		cx, cy, cz := startX+(endX-startX)*t, startY+(endY-startY)*t, startZ+(endZ-startZ)*t
-		radius := (math.Sin(math.Pi*t)+1)*float64(random.NextFloat())*float64(size)/16 + 1
-		minX, maxX := int32(math.Floor(cx-radius/2)), int32(math.Floor(cx+radius/2))
-		minY, maxY := int32(math.Floor(cy-radius/2)), int32(math.Floor(cy+radius/2))
-		minZ, maxZ := int32(math.Floor(cz-radius/2)), int32(math.Floor(cz+radius/2))
+		sphere := &spheres[i]
+		radius := sphere.radius
+		if radius < 0 {
+			continue
+		}
+		minX := max(int32(math.Floor(sphere.x-radius)), xStart)
+		minY := max(int32(math.Floor(sphere.y-radius)), yStart)
+		minZ := max(int32(math.Floor(sphere.z-radius)), zStart)
+		maxX := max(int32(math.Floor(sphere.x+radius)), minX)
+		maxY := max(int32(math.Floor(sphere.y+radius)), minY)
+		maxZ := max(int32(math.Floor(sphere.z+radius)), minZ)
 		for x := minX; x <= maxX; x++ {
+			dx := (float64(x) + .5 - sphere.x) / radius
+			if dx*dx >= 1 {
+				continue
+			}
 			for y := minY; y <= maxY; y++ {
+				dy := (float64(y) + .5 - sphere.y) / radius
+				if dx*dx+dy*dy >= 1 {
+					continue
+				}
 				for z := minZ; z <= maxZ; z++ {
-					dx, dy, dz := (float64(x)+.5-cx)/(radius/2), (float64(y)+.5-cy)/(radius/2), (float64(z)+.5-cz)/(radius/2)
-					if dx*dx+dy*dy+dz*dz >= 1 {
+					dz := (float64(z) + .5 - sphere.z) / radius
+					if dx*dx+dy*dy+dz*dz >= 1 || y < region.MinY() || y > region.MaxY() {
 						continue
 					}
+					index := x - xStart + (y-yStart)*sizeXZ + (z-zStart)*sizeXZ*sizeY
+					word, bit := index>>6, uint64(1)<<uint(index&63)
+					if tested[word]&bit != 0 {
+						continue
+					}
+					tested[word] |= bit
 					p := featurePos{x, y, z}
-					if y < region.MinY() || y > region.MaxY() {
-						continue
-					}
+					name, _ := region.State(p)
 					for _, target := range oreTargets {
-						name, _ := region.State(p)
-						if orePredicateMatches(p, target.predicate, name) {
-							placed = region.SetNativeBlock(p, target.rid, target.actor) || placed
-							break
+						if !orePredicateMatches(p, target.predicate, name) {
+							continue
 						}
+						if discard > 0 && (discard >= 1 || random.NextFloat() < discard) {
+							exposed := false
+							for _, offset := range [6]featurePos{{y: -1}, {y: 1}, {z: -1}, {z: 1}, {x: -1}, {x: 1}} {
+								if treeIsAir(region, featurePos{x + offset.x, y + offset.y, z + offset.z}) {
+									exposed = true
+									break
+								}
+							}
+							if exposed {
+								continue
+							}
+						}
+						placed = region.SetNativeBlock(p, target.rid, target.actor) || placed
+						break
 					}
 				}
 			}

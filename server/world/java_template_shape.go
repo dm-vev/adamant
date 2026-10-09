@@ -1,8 +1,11 @@
 package world
 
 import (
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -28,6 +31,96 @@ type JavaGenerationShapeAccess interface {
 	JavaSignal(pos cube.Pos, face cube.Face) int
 	JavaHiveHasOccupants(pos cube.Pos) bool
 	SetJavaBlockState(pos cube.Pos, state uint32, flags int) bool
+}
+
+// JavaGenerationBlockCanSurvive evaluates a proposed source state against the
+// current generation view without placing it or running neighbour updates.
+func JavaGenerationBlockCanSurvive(access JavaGenerationShapeAccess, state uint32, pos cube.Pos) bool {
+	context := javaShapeContext{generation: access, pos: pos}
+	return context.canSurvive(state, pos)
+}
+
+// PlaceJavaGenerationSimpleBlock applies SimpleBlockFeature after its state
+// provider has sampled a state. Mossy carpet consumes the region random stream.
+func PlaceJavaGenerationSimpleBlock(access JavaGenerationShapeAccess, state uint32, pos cube.Pos, scheduleTick bool) bool {
+	context := javaShapeContext{generation: access, pos: pos}
+	owner, err := javadata.BlockCanSurviveOwnerID(state)
+	if err != nil {
+		panic(err)
+	}
+	owner = owner[strings.LastIndexByte(owner, '.')+1:]
+	if !context.ownerSurvival(owner, state, pos) {
+		return false
+	}
+	// These are the pinned source canSurvive owners of DoublePlantBlock and
+	// its subclasses; no second block-name classification table is needed.
+	switch owner {
+	case "MossyCarpetBlock":
+		placeJavaGenerationMossyCarpet(&context, pos)
+	case "DoublePlantBlock", "PitcherCropBlock", "SmallDripleafBlock", "TallSeagrassBlock":
+		abovePos := pos.Side(cube.FaceUp)
+		above := context.at(abovePos)
+		if !javaIsAir(above) && (context.fluid(state) != context.fluid(above) || !context.replaceable(above)) {
+			return false
+		}
+		lower := javaWith(state, "half", "lower")
+		upper := javaWith(state, "half", "upper")
+		if _, hasWaterlogged := javadata.BlockStateBool(state, "waterlogged"); hasWaterlogged {
+			for _, placement := range [...]struct {
+				pos   cube.Pos
+				state uint32
+			}{{pos, lower}, {abovePos, upper}} {
+				fluid := context.fluid(context.at(placement.pos))
+				placement.state = javaWith(placement.state, "waterlogged", fluid.kind == javaFluidWater)
+				access.SetJavaBlockState(placement.pos, placement.state, 2)
+			}
+		} else {
+			access.SetJavaBlockState(pos, lower, 2)
+			access.SetJavaBlockState(abovePos, upper, 2)
+		}
+	default:
+		access.SetJavaBlockState(pos, state, 2)
+	}
+
+	if scheduleTick {
+		current := context.at(pos)
+		access.ScheduleJavaTick(pos, chunk.BlockTick, "minecraft:"+javaName(current), 1)
+	}
+	return true
+}
+
+func placeJavaGenerationMossyCarpet(context *javaShapeContext, pos cube.Pos) {
+	base := javaDefault("pale_moss_carpet")
+	context.pos = pos
+	base = javaPlant06UpdateMossyCarpetSides(context, base, true)
+	context.generation.SetJavaBlockState(pos, base, 2)
+
+	abovePos := pos.Side(cube.FaceUp)
+	abovePrevious := context.at(abovePos)
+	isMossyCarpet := javaName(abovePrevious) == "pale_moss_carpet"
+	if isMossyCarpet {
+		if javaBool(abovePrevious, "bottom") {
+			return
+		}
+	} else if !context.replaceable(abovePrevious) {
+		return
+	}
+
+	context.pos = abovePos
+	topper := javaWith(javaDefault("pale_moss_carpet"), "bottom", false)
+	topper = javaPlant06UpdateMossyCarpetSides(context, topper, true)
+	for _, property := range [...]string{"north", "east", "south", "west"} {
+		if javaString(topper, property) != "none" && !context.generation.JavaRandom().NextBoolean() {
+			topper = javaWith(topper, property, "none")
+		}
+	}
+	if !javaPlant06MossyCarpetHasFaces(topper) || topper == abovePrevious {
+		return
+	}
+	context.generation.SetJavaBlockState(abovePos, topper, 2)
+	context.pos = pos
+	base = javaPlant06UpdateMossyCarpetSides(context, base, true)
+	context.generation.SetJavaBlockState(pos, base, 2)
 }
 
 // UpdateJavaTemplateShapes applies StructureTemplate's immediate shape phase.

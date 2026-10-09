@@ -134,7 +134,7 @@ func (s *netherFeatureSource) PlaceStructureStep(pos world.ChunkPos, step int, e
 		s.placeRuinedPortalStep(pos, env, emit)
 	case 7:
 		env.Random = s.structureStepRandom(pos, 1, step)
-		s.placeFortressStructureStep(pos, env, emit)
+		s.generator.placeFortressStructureStep(pos, env, emit)
 		env.Random = s.structureStepRandom(pos, 2, step)
 		s.placeNetherFossilStep(pos, env, emit)
 	}
@@ -188,49 +188,6 @@ func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env 
 				emit(placement)
 			}
 		}
-	}
-}
-
-func (s *netherFeatureSource) placeFortressStructureStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
-	if env.Random == nil {
-		panic("nether: Java structure placement has no step random source")
-	}
-	s.generator.bridgePayloadMu.Lock()
-	defer s.generator.bridgePayloadMu.Unlock()
-	base := s.terrainChunk(pos)
-	placed := base.Clone()
-	replay := s.generator.applyNetherBridge(int(pos[0]), int(pos[1]), placed, env.Random)
-	blockEntities := make(map[cube.Pos]map[string]any)
-	for _, payload := range s.generator.takeBlockEntityPayloads(pos) {
-		blockEntities[payload.Pos] = payload.Data
-	}
-	placement := javastructure.Placement{
-		PostProcessing: replay.PostProcessing,
-		ScheduledTicks: replay.ScheduledTicks,
-	}
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
-			for y := int16(0); y < 128; y++ {
-				before := world.NativeStateAt(base, x, y, z)
-				after := world.NativeStateAt(placed, x, y, z)
-				if before == after {
-					continue
-				}
-				state, err := world.JavaState(placed.BlockRegistry(), after)
-				if err != nil {
-					panic(err)
-				}
-				worldX, worldZ := int32(pos[0])*16+int32(x), int32(pos[1])*16+int32(z)
-				block := javastructure.Block{Pos: [3]int32{worldX, int32(y), worldZ}, State: state}
-				if data := blockEntities[cube.Pos{int(worldX), int(y), int(worldZ)}]; data != nil {
-					block.NBT = data
-				}
-				placement.Blocks = append(placement.Blocks, block)
-			}
-		}
-	}
-	if len(placement.Blocks) != 0 || len(placement.PostProcessing) != 0 || len(placement.ScheduledTicks) != 0 {
-		emit(placement)
 	}
 }
 

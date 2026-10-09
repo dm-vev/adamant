@@ -7,6 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
@@ -1374,7 +1375,7 @@ func placeModernHugeFungus(region *featureRegion, config map[string]any, origin 
 			corner := huge && abs32(dx) == stemRadius && abs32(dz) == stemRadius
 			for dy := int32(0); dy < total; dy++ {
 				p := treePos(origin, dx, dy, dz)
-				if !treeReplaceable(region, p) && !treeIsFungusReplaceable(config, p, region) {
+				if !treeIsFungusReplaceable(config, p, region, true) {
 					continue
 				}
 				if planted {
@@ -1414,7 +1415,7 @@ func placeModernHugeFungus(region *featureRegion, config map[string]any, origin 
 				corner := edgeX && edgeZ
 				hatBottom := dy < hatStart+3
 				p := treePos(origin, dx, dy, dz)
-				if !treeReplaceable(region, p) {
+				if !treeIsFungusReplaceable(config, p, region, false) {
 					continue
 				}
 				if planted {
@@ -1429,19 +1430,18 @@ func placeModernHugeFungus(region *featureRegion, config map[string]any, origin 
 					}
 					continue
 				}
-				decorChance, hatChance, vineChance := float32(.1), float32(.2), float32(0)
-				if corner {
+				decorChance, hatChance, vineChance := float32(.0005), float32(.98), float32(0)
+				if inside {
+					decorChance, hatChance = .1, .2
+				} else if corner {
 					decorChance, hatChance = .01, .7
-				} else if edgeX || edgeZ {
-					decorChance, hatChance = .0005, .98
 				}
 				if hatName == "nether_wart_block" {
-					if corner {
-						vineChance = .083
-					} else if edgeX || edgeZ {
-						vineChance = .07
-					} else {
+					vineChance = .07
+					if inside {
 						vineChance = .1
+					} else if corner {
+						vineChance = .083
 					}
 				}
 				if r.NextFloat() < decorChance {
@@ -1475,8 +1475,12 @@ func placeFungusHatDrop(region *featureRegion, p featurePos, hatName string, hat
 		}
 	}
 }
-func treeIsFungusReplaceable(config map[string]any, p featurePos, region *featureRegion) bool {
-	return featurePredicate(region, p, treeMap(config["replaceable_blocks"]))
+func treeIsFungusReplaceable(config map[string]any, p featurePos, region *featureRegion, checkPlants bool) bool {
+	shape, err := javadata.BlockGenerationShapeID(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	if err != nil {
+		panic(err)
+	}
+	return shape.Replaceable || checkPlants && featurePredicate(region, p, treeMap(config["replaceable_blocks"]))
 }
 func placeWeepingVines(region *featureRegion, origin featurePos, r *java26.Random) {
 	p := treePos(origin, 0, -1, 0)

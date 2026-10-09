@@ -112,7 +112,45 @@ func componentBB(structMinX, structMinY, structMinZ, xMin, yMin, zMin, xMax, yMa
 	}
 }
 
-func setBlockWorld(c *chunk.Chunk, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *javastructure.Placement) {
+type fortressRegion interface {
+	Block(x uint8, y int16, z uint8, layer uint8) uint32
+	SetNativeState(x uint8, y int16, z uint8, state world.NativeState)
+	Range() cube.Range
+	BlockRegistry() chunk.BlockRegistry
+}
+
+type journalFortressRegion struct {
+	chunkX, chunkZ int
+	env            javastructure.ProcessorEnvironment
+	registry       world.BlockRegistry
+	writes         map[cube.Pos]uint32
+}
+
+func (r *journalFortressRegion) Range() cube.Range                  { return cube.Range{0, 127} }
+func (r *journalFortressRegion) BlockRegistry() chunk.BlockRegistry { return r.registry }
+
+func (r *journalFortressRegion) Block(x uint8, y int16, z uint8, _ uint8) uint32 {
+	worldX, worldZ := r.chunkX*16+int(x), r.chunkZ*16+int(z)
+	pos := cube.Pos{worldX, int(y), worldZ}
+	if rid, ok := r.writes[pos]; ok {
+		return rid
+	}
+	block := r.env.BaseBlock(int32(worldX), int32(y), int32(worldZ))
+	if block == nil {
+		return r.registry.AirRuntimeID()
+	}
+	return r.registry.BlockRuntimeID(block)
+}
+
+func (r *journalFortressRegion) SetNativeState(x uint8, y int16, z uint8, state world.NativeState) {
+	r.writes[cube.Pos{r.chunkX*16 + int(x), int(y), r.chunkZ*16 + int(z)}] = state.Block
+}
+
+func setBlockWorld(c fortressRegion, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *javastructure.Placement) {
+	writeFortressBlockWorld(c, chunkX, chunkZ, worldX, worldY, worldZ, rid, placement, true)
+}
+
+func writeFortressBlockWorld(c fortressRegion, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *javastructure.Placement, blockUpdates bool) {
 	if worldX>>4 != chunkX || worldZ>>4 != chunkZ {
 		return
 	}
@@ -120,17 +158,26 @@ func setBlockWorld(c *chunk.Chunk, chunkX, chunkZ, worldX, worldY, worldZ int, r
 	if yy < int16(c.Range().Min()) || yy > int16(c.Range().Max()) {
 		return
 	}
-	world.SetNativeState(c, uint8(worldX&15), yy, uint8(worldZ&15), world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
+	x, z := uint8(worldX&15), uint8(worldZ&15)
+	c.SetNativeState(x, yy, z, world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
 	if placement == nil {
 		return
 	}
 	pos := cube.Pos{worldX, worldY, worldZ}
-	state := world.NativeStateAt(c, uint8(worldX&15), yy, uint8(worldZ&15))
+	state, err := world.JavaState(c.BlockRegistry(), world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
+	if err != nil {
+		panic(err)
+	}
+	placement.Blocks = append(placement.Blocks, javastructure.Block{Pos: [3]int32{int32(worldX), int32(worldY), int32(worldZ)}, State: state})
+	if !blockUpdates {
+		return
+	}
 	registry, ok := c.BlockRegistry().(world.BlockRegistry)
 	if !ok {
 		panic("nether: fortress registry cannot resolve native blocks")
 	}
-	for _, fluidRID := range [2]uint32{state.Block, state.Liquid} {
+	native := world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()}
+	for _, fluidRID := range [2]uint32{native.Block, native.Liquid} {
 		if !registry.LiquidBlock(fluidRID) {
 			continue
 		}
@@ -169,7 +216,7 @@ func fortressShapeCheckBlock(name string) bool {
 type bridgePiece interface {
 	pieceBase() *bridgePieceBase
 	buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random)
-	addComponentParts(c *chunk.Chunk, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool
+	addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool
 }
 
 type bridgePieceBase struct {
@@ -211,7 +258,21 @@ func (p *bridgePieceBase) getZWithOffset(x, z int) int {
 	}
 }
 
-func (p *bridgePieceBase) setBlock(c *chunk.Chunk, chunkX, chunkZ int, sbb structureBB, x, y, z int, rid uint32) {
+// netherBrickFenceRID applies StructurePiece's local-state mirror then rotation
+// before resolving the native state, matching placeBlock's transformation order.
+func (p *bridgePieceBase) netherBrickFenceRID(g *Nether, mask uint8) uint32 {
+	switch p.facing {
+	case cube.South: // Mirror.LEFT_RIGHT swaps north and south.
+		mask = mask&^3 | (mask&1)<<1 | (mask&2)>>1
+	case cube.East: // Rotate.CLOCKWISE_90.
+		mask = (mask&1)<<3 | (mask&8)>>2 | (mask&2)<<1 | (mask&4)>>2
+	case cube.West: // Mirror.LEFT_RIGHT, then Rotate.CLOCKWISE_90.
+		mask = (mask&1)<<2 | (mask&2)<<2 | (mask&8)>>2 | (mask&4)>>2
+	}
+	return g.netherBrickFenceRIDs[mask]
+}
+
+func (p *bridgePieceBase) setBlock(c fortressRegion, chunkX, chunkZ int, sbb structureBB, x, y, z int, rid uint32) {
 	wx := p.getXWithOffset(x, z)
 	wy := p.getYWithOffset(y)
 	wz := p.getZWithOffset(x, z)
@@ -220,20 +281,17 @@ func (p *bridgePieceBase) setBlock(c *chunk.Chunk, chunkX, chunkZ int, sbb struc
 	}
 }
 
-func (p *bridgePieceBase) blockRIDAt(c *chunk.Chunk, chunkX, chunkZ int, sbb structureBB, x, y, z int, airRID uint32) uint32 {
+func (p *bridgePieceBase) blockRIDAt(c fortressRegion, chunkX, chunkZ int, sbb structureBB, x, y, z int, airRID uint32) uint32 {
 	wx := p.getXWithOffset(x, z)
 	wy := p.getYWithOffset(y)
 	wz := p.getZWithOffset(x, z)
-	if !sbb.isVecInside(wx, wy, wz) {
-		return airRID
-	}
-	if wx>>4 != chunkX || wz>>4 != chunkZ {
+	if !sbb.isVecInside(wx, wy, wz) || wx>>4 != chunkX || wz>>4 != chunkZ {
 		return airRID
 	}
 	return c.Block(uint8(wx&15), int16(wy), uint8(wz&15), 0)
 }
 
-func (p *bridgePieceBase) fillWithAir(c *chunk.Chunk, chunkX, chunkZ int, sbb structureBB, minX, minY, minZ, maxX, maxY, maxZ int, airRID uint32) {
+func (p *bridgePieceBase) fillWithAir(c fortressRegion, chunkX, chunkZ int, sbb structureBB, minX, minY, minZ, maxX, maxY, maxZ int, airRID uint32) {
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
 			for z := minZ; z <= maxZ; z++ {
@@ -243,7 +301,7 @@ func (p *bridgePieceBase) fillWithAir(c *chunk.Chunk, chunkX, chunkZ int, sbb st
 	}
 }
 
-func (p *bridgePieceBase) fillWithBlocks(c *chunk.Chunk, chunkX, chunkZ int, sbb structureBB, minX, minY, minZ, maxX, maxY, maxZ int, boundaryRID, insideRID uint32, existingOnly bool, airRID uint32) {
+func (p *bridgePieceBase) fillWithBlocks(c fortressRegion, chunkX, chunkZ int, sbb structureBB, minX, minY, minZ, maxX, maxY, maxZ int, boundaryRID, insideRID uint32, existingOnly bool, airRID uint32) {
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
 			for z := minZ; z <= maxZ; z++ {
@@ -259,22 +317,22 @@ func (p *bridgePieceBase) fillWithBlocks(c *chunk.Chunk, chunkX, chunkZ int, sbb
 	}
 }
 
-func (p *bridgePieceBase) replaceAirAndLiquidDownwards(c *chunk.Chunk, chunkX, chunkZ int, sbb structureBB, x, y, z int, rid uint32, g *Nether) {
+func (p *bridgePieceBase) replaceAirAndLiquidDownwards(c fortressRegion, chunkX, chunkZ int, sbb structureBB, x, y, z int, rid uint32, g *Nether) {
 	wx := p.getXWithOffset(x, z)
 	wy := p.getYWithOffset(y)
 	wz := p.getZWithOffset(x, z)
-	if !sbb.isVecInside(wx, wy, wz) {
-		return
-	}
-	if wx>>4 != chunkX || wz>>4 != chunkZ {
+	if !sbb.isVecInside(wx, wy, wz) || wx>>4 != chunkX || wz>>4 != chunkZ {
 		return
 	}
 	for wy > 1 {
 		cur := c.Block(uint8(wx&15), int16(wy), uint8(wz&15), 0)
-		if cur != g.airRID && cur != g.lavaStillRID && cur != g.lavaFlowRID {
-			break
+		if cur != g.airRID && !c.BlockRegistry().LiquidBlock(cur) {
+			name, _, ok := c.BlockRegistry().RuntimeIDToState(cur)
+			if !ok || (name != "minecraft:glow_lichen" && name != "minecraft:seagrass" && name != "minecraft:tall_seagrass") {
+				break
+			}
 		}
-		c.SetBlock(uint8(wx&15), int16(wy), uint8(wz&15), 0, rid)
+		writeFortressBlockWorld(c, chunkX, chunkZ, wx, wy, wz, rid, p.placement, false)
 		wy--
 	}
 }
@@ -294,15 +352,11 @@ func isAboveGround(bb structureBB) bool {
 
 // --- Fortress structure rendering ---
 
-func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26.Random) (placement javastructure.Placement) {
-	g.bridgeGenerationMu.Lock()
-	defer g.bridgeGenerationMu.Unlock()
+func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *java26.Random, placement *javastructure.Placement) {
 	const scanRange = 8
-
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
 	chunkBB := structureBB{minX: chunkMinX, minY: 0, minZ: chunkMinZ, maxX: chunkMaxX, maxY: 127, maxZ: chunkMaxZ}
-
 	for sx := chunkX - scanRange; sx <= chunkX+scanRange; sx++ {
 		for sz := chunkZ - scanRange; sz <= chunkZ+scanRange; sz++ {
 			start, err := g.complexStart(int32(sx), int32(sz))
@@ -317,19 +371,38 @@ func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26
 				continue
 			}
 			for _, cached := range s.pieces {
-				if !cached.pieceBase().bb.intersects(chunkBB) {
-					continue
+				if cached.pieceBase().bb.intersects(chunkBB) {
+					renderFortressPiece(cached, c, chunkX, chunkZ, chunkBB, r, g, placement)
 				}
-				renderFortressPiece(cached, c, chunkX, chunkZ, chunkBB, r, g, &placement)
 			}
 		}
 	}
-	return placement
+}
+
+func (g *Nether) placeFortressStructureStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+	if env.Random == nil {
+		panic("nether: Java structure placement has no step random source")
+	}
+	if env.BaseBlock == nil {
+		panic("nether: fortress placement requires base-block queries")
+	}
+	placement := javastructure.Placement{}
+	region := &journalFortressRegion{
+		chunkX:   int(pos[0]),
+		chunkZ:   int(pos[1]),
+		env:      env,
+		registry: world.DefaultBlockRegistry,
+		writes:   make(map[cube.Pos]uint32),
+	}
+	g.applyNetherBridgeTo(int(pos[0]), int(pos[1]), region, env.Random, &placement)
+	if len(placement.Blocks) != 0 || len(placement.PostProcessing) != 0 || len(placement.ScheduledTicks) != 0 {
+		emit(placement)
+	}
 }
 
 // renderFortressPiece keeps render-time flags and the placement sink off the
 // cached graph. Concrete calls keep these short-lived copies on the stack.
-func renderFortressPiece(p bridgePiece, c *chunk.Chunk, chunkX, chunkZ int, bb structureBB, r *java26.Random, g *Nether, placement *javastructure.Placement) {
+func renderFortressPiece(p bridgePiece, c fortressRegion, chunkX, chunkZ int, bb structureBB, r *java26.Random, g *Nether, placement *javastructure.Placement) {
 	switch piece := p.(type) {
 	case *netherBridgeCorridor:
 		rendered := *piece
