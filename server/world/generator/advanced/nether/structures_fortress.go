@@ -11,12 +11,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
-type netherBridgeStructure struct {
-	start  world.ChunkPos
-	bb     structureBB
-	pieces []bridgePiece
-}
-
 type structureBB struct {
 	minX, minY, minZ int
 	maxX, maxY, maxZ int
@@ -298,9 +292,9 @@ func isAboveGround(bb structureBB) bool {
 	return bb.minY > 10
 }
 
-// --- Fortress structure generation ---
+// --- Fortress structure rendering ---
 
-func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26.Random, simulate bool) (placement javastructure.Placement) {
+func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26.Random) (placement javastructure.Placement) {
 	g.bridgeGenerationMu.Lock()
 	defer g.bridgeGenerationMu.Unlock()
 	const scanRange = 8
@@ -311,57 +305,90 @@ func (g *Nether) applyNetherBridge(chunkX, chunkZ int, c *chunk.Chunk, r *java26
 
 	for sx := chunkX - scanRange; sx <= chunkX+scanRange; sx++ {
 		for sz := chunkZ - scanRange; sz <= chunkZ+scanRange; sz++ {
-			s := g.netherBridgeStructure(sx, sz, r)
-			if s == nil {
+			start, err := g.complexStart(int32(sx), int32(sz))
+			if err != nil {
+				panic(err)
+			}
+			if start == nil || start.fortress == nil {
 				continue
 			}
+			s := start.fortress
 			if !s.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ) {
 				continue
 			}
-			for _, p := range s.pieces {
-				if !p.pieceBase().bb.intersects(chunkBB) {
+			for _, cached := range s.pieces {
+				if !cached.pieceBase().bb.intersects(chunkBB) {
 					continue
 				}
-				if !simulate {
-					p.addComponentParts(c, chunkX, chunkZ, chunkBB, r, g)
-					continue
-				}
-				p.pieceBase().placement = &placement
-				switch piece := p.(type) {
-				case *netherBridgeCorridor:
-					chest := piece.chest
-					piece.addComponentParts(c, chunkX, chunkZ, chunkBB, r, g)
-					piece.chest = chest
-				case *netherBridgeCorridor2:
-					chest := piece.chest
-					piece.addComponentParts(c, chunkX, chunkZ, chunkBB, r, g)
-					piece.chest = chest
-				case *netherBridgeThrone:
-					hasSpawner := piece.hasSpawner
-					piece.addComponentParts(c, chunkX, chunkZ, chunkBB, r, g)
-					piece.hasSpawner = hasSpawner
-				default:
-					p.addComponentParts(c, chunkX, chunkZ, chunkBB, r, g)
-				}
-				p.pieceBase().placement = nil
+				renderFortressPiece(cached, c, chunkX, chunkZ, chunkBB, r, g, &placement)
 			}
 		}
 	}
 	return placement
 }
 
-func (g *Nether) netherBridgeStructure(startChunkX, startChunkZ int, random *java26.Random) *netherBridgeStructure {
-	potential, err := javastructure.PotentialChunk(g.seed, int32(startChunkX), int32(startChunkZ), 30084232, 27, 4, javastructure.Linear)
-	if err != nil || potential[0] != int32(startChunkX) || potential[1] != int32(startChunkZ) {
-		return nil
-	}
-	if random.NextInt(5) >= 2 {
-		return nil
-	}
-	start := newNetherBridgeStart(random, startChunkX, startChunkZ, g)
-	return &netherBridgeStructure{
-		start: world.ChunkPos{int32(startChunkX), int32(startChunkZ)},
-		bb:    start.bb, pieces: start.pieces,
+// renderFortressPiece keeps render-time flags and the placement sink off the
+// cached graph. Concrete calls keep these short-lived copies on the stack.
+func renderFortressPiece(p bridgePiece, c *chunk.Chunk, chunkX, chunkZ int, bb structureBB, r *java26.Random, g *Nether, placement *javastructure.Placement) {
+	switch piece := p.(type) {
+	case *netherBridgeCorridor:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeCorridor2:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeCorridor3:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeCorridor4:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeCorridor5:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeCrossing:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeCrossing2:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeCrossing3:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeEnd:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeEntrance:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeNetherStalkRoom:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeStairs:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeStraight:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	case *netherBridgeThrone:
+		rendered := *piece
+		rendered.placement = placement
+		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
+	default:
+		panic("nether: unknown fortress piece type")
 	}
 }
 
@@ -420,13 +447,15 @@ var bridgeSecondaryWeights = []bridgePieceWeight{
 }
 
 type netherBridgeStart struct {
-	base             *netherBridgeCrossing3
-	primaryWeights   []bridgePieceWeight
-	secondaryWeights []bridgePieceWeight
-	lastPlaced       *bridgePieceWeight
-	pendingChildren  []bridgePiece
-	pieces           []bridgePiece
-	bb               structureBB
+	base                *netherBridgeCrossing3
+	primaryWeights      []bridgePieceWeight
+	secondaryWeights    []bridgePieceWeight
+	lastPlacedKind      bridgePieceKind
+	lastPlacedSecondary bool
+	hasLastPlaced       bool
+	pendingChildren     []bridgePiece
+	pieces              []bridgePiece
+	bb                  structureBB
 }
 
 func newNetherBridgeStart(r *java26.Random, chunkX, chunkZ int, g *Nether) *netherBridgeStart {
@@ -436,6 +465,7 @@ func newNetherBridgeStart(r *java26.Random, chunkX, chunkZ int, g *Nether) *neth
 		primaryWeights:   make([]bridgePieceWeight, len(bridgePrimaryWeights)),
 		secondaryWeights: make([]bridgePieceWeight, len(bridgeSecondaryWeights)),
 		pieces:           []bridgePiece{startPiece},
+		bb:               startPiece.bb,
 	}
 	copy(s.primaryWeights, bridgePrimaryWeights)
 	copy(s.secondaryWeights, bridgeSecondaryWeights)
@@ -497,7 +527,7 @@ func (p *bridgePieceBase) getTotalWeight(weights []bridgePieceWeight) int {
 func (p *bridgePieceBase) generatePiece(start *netherBridgeStart, weights *[]bridgePieceWeight, pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	total := p.getTotalWeight(*weights)
 	if total <= 0 || depth > 30 {
-		return nil
+		return createBridgePiece(bridgeEnd, pieces, r, x, y, z, facing, depth)
 	}
 
 	for attempt := 0; attempt < 5; attempt++ {
@@ -508,13 +538,16 @@ func (p *bridgePieceBase) generatePiece(start *netherBridgeStart, weights *[]bri
 			if k >= 0 {
 				continue
 			}
-			if !w.doPlace() || (start.lastPlaced == w && !w.allowInRow) {
+			if !w.doPlace() || (start.hasLastPlaced && start.lastPlacedKind == w.kind &&
+				start.lastPlacedSecondary == (weights == &start.secondaryWeights) && !w.allowInRow) {
 				break
 			}
 			piece := createBridgePiece(w.kind, pieces, r, x, y, z, facing, depth)
 			if piece != nil {
 				w.placeCount++
-				start.lastPlaced = w
+				start.lastPlacedKind = w.kind
+				start.lastPlacedSecondary = weights == &start.secondaryWeights
+				start.hasLastPlaced = true
 				if !w.isValid() {
 					*weights = append((*weights)[:i], (*weights)[i+1:]...)
 				}

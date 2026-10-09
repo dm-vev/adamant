@@ -88,28 +88,12 @@ func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32)
 	sectorX, sectorZ = candidate[0], candidate[1]
 	var valid bool
 	switch structure {
-	case "minecraft:fortress":
-		stepIndex, step = 1, 7
-		random := g.featureSource.structureStepRandom(world.ChunkPos{sectorX, sectorZ}, stepIndex, step)
-		valid = g.netherBridgeStructure(int(sectorX), int(sectorZ), random) != nil
-	case "minecraft:bastion_remnant":
-		stepIndex, step = 31, 4
-		random := g.featureSource.structureStepRandom(world.ChunkPos{sectorX, sectorZ}, stepIndex, step)
-		if random.NextInt(5) >= 2 {
-			startX, startZ := sectorX*16, sectorZ*16
-			if g.featureSource.JavaBiomeAt(startX, 33, startZ) != "minecraft:basalt_deltas" {
-				jigsaw, err := javastructure.BuildJigsaw(javastructure.JigsawOptions{
-					Pool: "bastion/starts", Origin: [3]int32{startX, 33, startZ}, MaxDepth: 6,
-					MaxDistance: 80, Seed: g.seed, Terrain: javastructure.TerrainNone,
-					HeightRange: cube.Range{0, 255},
-					HeightAt:    func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) },
-				}, random)
-				valid = err == nil && len(jigsaw.Pieces) != 0
-				if err != nil {
-					return world.StructureLocation{}, false, fmt.Errorf("build Nether bastion at %d,%d: %w", sectorX, sectorZ, err)
-				}
-			}
+	case "minecraft:fortress", "minecraft:bastion_remnant":
+		start, err := g.cachedComplexStart(sectorX, sectorZ)
+		if err != nil {
+			return world.StructureLocation{}, false, err
 		}
+		valid = start != nil && start.name == structure
 	case "minecraft:ruined_portal":
 		stepIndex, step = 26, 4
 		random := g.featureSource.structureStepRandom(world.ChunkPos{sectorX, sectorZ}, stepIndex, step)
@@ -193,23 +177,15 @@ func (g *Nether) FindStructureAt(tag string, position cube.Pos) (world.Structure
 func netherLocateContains(g *Nether, structure string, start world.ChunkPos, position cube.Pos) bool {
 	cx, cz := int32(start[0]), int32(start[1])
 	switch structure {
-	case "minecraft:fortress":
-		random := g.featureSource.structureStepRandom(start, 1, 7)
-		bridge := g.netherBridgeStructure(int(cx), int(cz), random)
-		if bridge == nil {
+	case "minecraft:fortress", "minecraft:bastion_remnant":
+		complex, err := g.cachedComplexStart(cx, cz)
+		if err != nil || complex == nil || complex.name != structure {
 			return false
 		}
-		return netherBBContains(bridge.bb.minX, bridge.bb.minY, bridge.bb.minZ, bridge.bb.maxX, bridge.bb.maxY, bridge.bb.maxZ, position)
-	case "minecraft:bastion_remnant":
-		random := g.featureSource.structureStepRandom(start, 31, 4)
-		if random.NextInt(5) < 2 || g.featureSource.JavaBiomeAt(cx*16, 33, cz*16) == "minecraft:basalt_deltas" {
-			return false
+		if complex.fortress != nil {
+			return boxContains(complex.box, position)
 		}
-		jigsaw, err := javastructure.BuildJigsaw(javastructure.JigsawOptions{Pool: "bastion/starts", Origin: [3]int32{cx * 16, 33, cz * 16}, MaxDepth: 6, MaxDistance: 80, HeightRange: cube.Range{0, 255}, Seed: g.seed, Terrain: javastructure.TerrainNone, HeightAt: func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) }}, random)
-		if err != nil {
-			return false
-		}
-		for _, piece := range jigsaw.Pieces {
+		for _, piece := range complex.bastion.Pieces {
 			if boxContains(piece.Bounds, position) {
 				return true
 			}

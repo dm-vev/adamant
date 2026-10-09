@@ -8,7 +8,6 @@ import (
 )
 
 func TestLocateUsesCandidateRatherThanRegionInput(t *testing.T) {
-	world.DefaultBlockRegistry.Finalize()
 	g := NewNether(0)
 	// Both positions belong to the same nether_complexes placement region.
 	// Compare the real planner's choice, not a pinned legacy fortress/bastion RNG.

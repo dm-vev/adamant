@@ -145,17 +145,29 @@ func TestJavaCaveVineTipAgeRoundTrip(t *testing.T) {
 func TestJavaFreeFluidSecondaryLayer(t *testing.T) {
 	registry := NewBlockRegistry()
 	registry.Finalize()
-	for _, name := range []string{"minecraft:water", "minecraft:lava"} {
-		fluid, ok := registry.StateToRuntimeID(name, map[string]any{"liquid_depth": int32(4)})
-		if !ok {
-			t.Fatalf("native fluid missing: %s", name)
-		}
-		state, err := JavaState(registry, NativeState{Block: registry.AirRuntimeID(), Liquid: fluid})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if state.Name != name || state.Properties["level"] != int32(4) {
-			t.Fatalf("secondary free fluid decoded as %+v", state)
+	for _, names := range []struct{ native, java string }{
+		{"minecraft:water", "minecraft:water"},
+		{"minecraft:flowing_water", "minecraft:water"},
+		{"minecraft:lava", "minecraft:lava"},
+		{"minecraft:flowing_lava", "minecraft:lava"},
+	} {
+		for _, level := range []int32{0, 4, 8, 15} {
+			fluid, ok := registry.StateToRuntimeID(names.native, map[string]any{"liquid_depth": level})
+			if !ok {
+				t.Fatalf("native fluid missing: %s level=%d", names.native, level)
+			}
+			for _, native := range []NativeState{
+				{Block: fluid, Liquid: registry.AirRuntimeID()},
+				{Block: registry.AirRuntimeID(), Liquid: fluid},
+			} {
+				state, err := JavaState(registry, native)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if state.Name != names.java || state.Properties["level"] != level {
+					t.Fatalf("%s level=%d layers=%+v decoded as %+v", names.native, level, native, state)
+				}
+			}
 		}
 	}
 }

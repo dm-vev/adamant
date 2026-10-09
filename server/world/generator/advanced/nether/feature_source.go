@@ -149,7 +149,6 @@ func (s *netherFeatureSource) structureStepRandom(pos world.ChunkPos, index, ste
 }
 
 func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
-	const salt, spacing, separation = int32(30084232), int32(27), int32(4)
 	targetX, targetZ := int32(pos[0]), int32(pos[1])
 	clip := javastructure.Bounds{
 		Min: [3]int32{targetX * 16, 0, targetZ * 16},
@@ -160,38 +159,24 @@ func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env 
 	}
 	for sourceZ := targetZ - 6; sourceZ <= targetZ+6; sourceZ++ {
 		for sourceX := targetX - 6; sourceX <= targetX+6; sourceX++ {
-			candidate, err := javastructure.PotentialChunk(s.generator.seed, sourceX, sourceZ, salt, spacing, separation, javastructure.Linear)
+			start, err := s.generator.complexStart(sourceX, sourceZ)
 			if err != nil {
 				panic(err)
 			}
-			if candidate[0] != sourceX || candidate[1] != sourceZ {
+			if start == nil || start.name != "minecraft:bastion_remnant" {
 				continue
-			}
-			startX, startZ := sourceX*16, sourceZ*16
-			if env.Random.NextInt(5) < 2 {
-				continue
-			}
-			if env.JavaBiomeAt(startX, 33, startZ) == "minecraft:basalt_deltas" {
-				continue
-			}
-			jigsaw, err := javastructure.BuildJigsaw(javastructure.JigsawOptions{
-				Pool:          "bastion/starts",
-				Origin:        [3]int32{startX, 33, startZ},
-				MaxDepth:      6,
-				MaxDistance:   80,
-				HeightRange:   cube.Range{0, 255},
-				ExpansionHack: false,
-				Seed:          s.generator.seed,
-				Terrain:       javastructure.TerrainNone,
-				HeightAt:      func(x, z int32) int32 { return s.BaseHeight(x, z, false) },
-			}, env.Random)
-			if err != nil {
-				panic(fmt.Errorf("build Java bastion at %d,%d: %w", sourceX, sourceZ, err))
 			}
 			pieceEnv := env
 			pieceEnv.WorldSeed = s.generator.seed
-			pieceEnv.StartPos = [3]int32{startX, 33, startZ}
-			for _, piece := range jigsaw.Pieces {
+			pieceEnv.StartPos = start.startPos
+			for i := range start.bastion.Pieces {
+				piece := &start.bastion.Pieces[i]
+				bounds := &piece.Bounds
+				if bounds.Max[0] < clip.Min[0] || bounds.Min[0] > clip.Max[0] ||
+					bounds.Max[1] < clip.Min[1] || bounds.Min[1] > clip.Max[1] ||
+					bounds.Max[2] < clip.Min[2] || bounds.Min[2] > clip.Max[2] {
+					continue
+				}
 				placement, err := piece.PlaceWithEnvironment(0, clip, s.generator.seed, pieceEnv)
 				if err != nil {
 					panic(fmt.Errorf("place Java bastion at %d,%d: %w", sourceX, sourceZ, err))
@@ -214,7 +199,7 @@ func (s *netherFeatureSource) placeFortressStructureStep(pos world.ChunkPos, env
 	defer s.generator.bridgePayloadMu.Unlock()
 	base := s.terrainChunk(pos)
 	placed := base.Clone()
-	replay := s.generator.applyNetherBridge(int(pos[0]), int(pos[1]), placed, env.Random, true)
+	replay := s.generator.applyNetherBridge(int(pos[0]), int(pos[1]), placed, env.Random)
 	blockEntities := make(map[cube.Pos]map[string]any)
 	for _, payload := range s.generator.takeBlockEntityPayloads(pos) {
 		blockEntities[payload.Pos] = payload.Data
@@ -336,8 +321,9 @@ func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env java
 			emit(javastructure.Placement{Blocks: []javastructure.Block{{
 				Pos: ghastPos,
 				State: world.BlockState{Name: "minecraft:dried_ghast", Properties: map[string]any{
-					"minecraft:cardinal_direction": facing,
-					"rehydration_level":            int32(0),
+					"facing":      facing,
+					"hydration":   int32(0),
+					"waterlogged": false,
 				}},
 			}}})
 		}

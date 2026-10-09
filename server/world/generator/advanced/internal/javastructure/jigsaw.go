@@ -185,9 +185,6 @@ type JigsawResult struct {
 	Pieces []JigsawPiece
 	RigidPieces []RigidPiece
 	Junctions []Junction
-	// StartPos is the source GenerationStub position, including a named anchor's Y.
-	StartPos [3]int32
-	HasStart bool
 }
 
 type poolElement struct {

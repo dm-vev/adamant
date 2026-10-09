@@ -101,12 +101,12 @@ func TestJava263JigsawGraphOracle(t *testing.T) {
 				// The source oracle uses a real 128-layer FlatLevelSource.
 				options.HeightAt = func(x, z int32) int32 { return row.FirstFreeHeight }
 			}
-			got, err := BuildJigsaw(options, &random)
+			got, position, hasStub, err := buildPreparedJigsaw(options, &random)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.HasStart != row.Stub || got.StartPos != row.StubPosition {
-				t.Fatalf("start = (%v, %v), want (%v, %v)", got.HasStart, got.StartPos, row.Stub, row.StubPosition)
+			if hasStub != row.Stub || (hasStub && position != row.StubPosition) {
+				t.Fatalf("stub = (%v, %v), want (%v, %v)", hasStub, position, row.Stub, row.StubPosition)
 			}
 			if len(got.Pieces) != len(row.Pieces) {
 				t.Fatalf("piece count = %d, want %d", len(got.Pieces), len(row.Pieces))

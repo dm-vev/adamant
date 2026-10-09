@@ -7,14 +7,31 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/java26"
 )
 
-// BuildJigsaw expands a Java jigsaw start pool into a deterministic piece graph.
+// JigsawStart holds the selected source stub and its per-start registry caches.
+type JigsawStart struct {
+	options   JigsawOptions
+	registry  *jigsawPoolRegistry
+	element   *poolElement
+	templates []jigsawPart
+	rotation  Rotation
+	origin    [3]int32
+	position  [3]int32
+	ready     bool
+}
+
+// Position returns the source GenerationStub position.
+func (start JigsawStart) Position() [3]int32 {
+	return start.position
+}
+
+// PrepareJigsaw selects and positions a Java jigsaw start without expanding its children.
 // random must be initialized with the structure's Java world-generation random source.
-func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult, error) {
+func PrepareJigsaw(options JigsawOptions, random *java26.Random) (JigsawStart, bool, error) {
 	if random == nil {
-		return JigsawResult{}, fmt.Errorf("Java jigsaw: nil random source")
+		return JigsawStart{}, false, fmt.Errorf("Java jigsaw: nil random source")
 	}
 	if options.MaxDepth < 0 {
-		return JigsawResult{}, fmt.Errorf("Java jigsaw: negative maximum depth")
+		return JigsawStart{}, false, fmt.Errorf("Java jigsaw: negative maximum depth")
 	}
 	if options.MaxDistance <= 0 {
 		options.MaxDistance = 128
@@ -26,32 +43,32 @@ func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult, er
 	startRotation := Rotation(random.NextInt(4))
 	startPool, err := registry.startPool(options.Pool, options.PoolAliases)
 	if err != nil {
-		return JigsawResult{}, err
+		return JigsawStart{}, false, err
 	}
 	if len(startPool.elements) == 0 {
-		return JigsawResult{}, nil
+		return JigsawStart{}, false, nil
 	}
 	startIndex, err := choosePoolIndex(startPool.elements, random)
 	if err != nil {
-		return JigsawResult{}, err
+		return JigsawStart{}, false, err
 	}
 	startElement := &startPool.elements[startIndex]
 	if startElement.empty {
-		return JigsawResult{}, nil
+		return JigsawStart{}, false, nil
 	}
 	startTemplates, err := registry.elementParts(startElement)
 	if err != nil {
-		return JigsawResult{}, err
+		return JigsawStart{}, false, err
 	}
 	if !hasPoolPlacement(startTemplates) {
-		return JigsawResult{}, fmt.Errorf("Java jigsaw: start list has no bounding box")
+		return JigsawStart{}, false, fmt.Errorf("Java jigsaw: start list has no bounding box")
 	}
 	startOrigin := options.Origin
-	var sourceConnectors, targetConnectors []connector
+	var sourceConnectors []connector
 	if options.StartJigsaw != "" {
 		sourceConnectors, err = registry.shuffledConnectors(sourceConnectors, startTemplates, startOrigin, startRotation, NoMirror, random)
 		if err != nil {
-			return JigsawResult{}, err
+			return JigsawStart{}, false, err
 		}
 		found := false
 		for i := range sourceConnectors {
@@ -63,35 +80,91 @@ func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult, er
 			}
 		}
 		if !found {
-			return JigsawResult{}, nil
+			return JigsawStart{}, false, nil
 		}
 	}
-	startPiece := makeJigsawPoolPiece(startTemplates, startOrigin, startRotation, startElement, options.LiquidSettings)
-	centerX := (startPiece.Bounds.Min[0] + startPiece.Bounds.Max[0]) / 2
-	centerZ := (startPiece.Bounds.Min[2] + startPiece.Bounds.Max[2]) / 2
+	bounds := startElementBounds(startTemplates, startOrigin, startRotation)
+	centerX := (bounds.Min[0] + bounds.Max[0]) / 2
+	centerZ := (bounds.Min[2] + bounds.Max[2]) / 2
 	bottomY := startOrigin[1]
 	if options.ProjectStartToHeightmap {
 		if options.HeightAt == nil {
-			return JigsawResult{}, fmt.Errorf("Java jigsaw: projected start requires a height accessor")
+			return JigsawStart{}, false, fmt.Errorf("Java jigsaw: projected start requires a height accessor")
 		}
 		bottomY = options.Origin[1] + options.HeightAt(centerX, centerZ)
 	}
-	startPiece = movePiece(startPiece, 0, bottomY-(startPiece.Bounds.Min[1]+startPiece.GroundLevelDelta), 0)
+	centerY := bottomY + options.Origin[1] - startOrigin[1]
+	yOffset := bottomY - (bounds.Min[1] + 1)
+	bounds.Min[1] += yOffset
+	bounds.Max[1] += yOffset
+	startOrigin[1] += yOffset
 	minY := int32(options.HeightRange.Min()) + options.PaddingBottom
 	maxY := int32(options.HeightRange.Max()) - options.PaddingTop
-	if options.CheckBounds && (startPiece.Bounds.Min[1] < minY || startPiece.Bounds.Max[1] > maxY) {
+	if options.CheckBounds && (bounds.Min[1] < minY || bounds.Max[1] > maxY) {
+		return JigsawStart{}, false, nil
+	}
+	return JigsawStart{
+		options: options, registry: registry, element: startElement, templates: startTemplates,
+		rotation: startRotation, origin: startOrigin,
+		position: [3]int32{centerX, centerY, centerZ}, ready: true,
+	}, true, nil
+}
+
+// startElementBounds mirrors the pool-piece bounding box calculation without creating a piece wrapper.
+func startElementBounds(parts []jigsawPart, origin [3]int32, rotation Rotation) Box {
+	bounds := Box{Min: origin, Max: origin}
+	hasTemplate := false
+	hasFeature := false
+	for _, part := range parts {
+		if part.feature != nil {
+			hasFeature = true
+		}
+		if part.template == nil {
+			continue
+		}
+		partBounds := templateBounds(part.template, origin, rotation)
+		if !hasTemplate {
+			bounds = partBounds
+			hasTemplate = true
+		} else {
+			for axis := range 3 {
+				bounds.Min[axis] = min(bounds.Min[axis], partBounds.Min[axis])
+				bounds.Max[axis] = max(bounds.Max[axis], partBounds.Max[axis])
+			}
+		}
+	}
+	if hasFeature && hasTemplate {
+		for axis := range 3 {
+			bounds.Min[axis] = min(bounds.Min[axis], origin[axis])
+			bounds.Max[axis] = max(bounds.Max[axis], origin[axis])
+		}
+	}
+	return bounds
+}
+
+// Build expands the prepared root using the same RNG continuation used by PrepareJigsaw.
+func (start *JigsawStart) Build(random *java26.Random) (JigsawResult, error) {
+	if random == nil {
+		return JigsawResult{}, fmt.Errorf("Java jigsaw: nil random source")
+	}
+	if !start.ready {
+		return JigsawResult{}, fmt.Errorf("Java jigsaw: unprepared start")
+	}
+	if start.options.MaxDepth == 0 {
 		return JigsawResult{}, nil
 	}
-	centerY := bottomY + options.Origin[1] - startOrigin[1]
-	result := JigsawResult{StartPos: [3]int32{centerX, centerY, centerZ}, HasStart: true}
-	// The source stub's builder adds no pieces at depth zero.
-	if options.MaxDepth == 0 {
-		return result, nil
-	}
-	result.Pieces = append(result.Pieces, startPiece)
+	options := &start.options
+	registry := start.registry
+	startPiece := makeJigsawPoolPiece(start.templates, start.origin, start.rotation, start.element, options.LiquidSettings)
+	result := JigsawResult{Pieces: []JigsawPiece{startPiece}}
+	pending := jigsawPending{piece: 0}
+	centerX, centerY, centerZ := start.position[0], start.position[1], start.position[2]
+	var sourceConnectors, targetConnectors []connector
+	var err error
+	minY := int32(options.HeightRange.Min()) + options.PaddingBottom
+	maxY := int32(options.HeightRange.Max()) - options.PaddingTop
 	spaceMinY := max(centerY-options.MaxVerticalDistance, minY)
 	spaceMaxY := min(centerY+options.MaxVerticalDistance+1, maxY+1)
-	// AABB's constructor normalises its endpoints, including an out-of-world start.
 	if spaceMinY > spaceMaxY {
 		spaceMinY, spaceMaxY = spaceMaxY, spaceMinY
 	}
@@ -100,7 +173,7 @@ func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult, er
 		Max: [3]int32{centerX + options.MaxDistance, spaceMaxY - 1, centerZ + options.MaxDistance},
 	})
 	outer.reserve(startPiece.Bounds)
-	pending := jigsawPending{piece: 0, space: outer}
+	pending.space = outer
 	var queue jigsawQueue
 	var candidates []*poolElement
 	for {

@@ -624,14 +624,15 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		}
 		options.PoolAliases = aliases
 	}
-	result, err := javastructure.BuildJigsaw(options, input.random)
+	startStub, hasStub, err := javastructure.PrepareJigsaw(options, input.random)
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
-	if len(result.Pieces) == 0 {
+	if !hasStub {
 		return modernStructureStart{}, false, nil
 	}
-	biome := normalizeJavaResource(input.source.JavaNoiseBiomeAt(result.StartPos[0]>>2, result.StartPos[1]>>2, result.StartPos[2]>>2))
+	position := startStub.Position()
+	biome := normalizeJavaResource(input.source.JavaNoiseBiomeAt(position[0]>>2, position[1]>>2, position[2]>>2))
 	if !strings.Contains(biome, ":") {
 		biome = "minecraft:" + biome
 	}
@@ -640,6 +641,13 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		return modernStructureStart{}, false, err
 	}
 	if !allowed {
+		return modernStructureStart{}, false, nil
+	}
+	result, err := startStub.Build(input.random)
+	if err != nil {
+		return modernStructureStart{}, false, err
+	}
+	if len(result.Pieces) == 0 {
 		return modernStructureStart{}, false, nil
 	}
 	pieces := make([]modernStructurePiece, len(result.Pieces))

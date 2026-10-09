@@ -105,6 +105,8 @@ var javaToNativeBlockNames = map[string]string{
 }
 
 var nativeToJavaBlockNames = map[string]string{
+	"minecraft:flowing_water":                "minecraft:water",
+	"minecraft:flowing_lava":                 "minecraft:lava",
 	"minecraft:melon_block":                  "minecraft:melon",
 	"minecraft:magma":                        "minecraft:magma_block",
 	"minecraft:mob_spawner":                  "minecraft:spawner",
@@ -1425,7 +1427,7 @@ func reverseNativeState(registry chunk.BlockRegistry, state NativeState) (BlockS
 		if !ok {
 			return BlockState{}, fmt.Errorf("java state codec: invalid native liquid runtime ID %d", state.Liquid)
 		}
-		if liquidName == "minecraft:water" || liquidName == "minecraft:lava" {
+		if liquidName == "minecraft:water" || liquidName == "minecraft:flowing_water" || liquidName == "minecraft:lava" || liquidName == "minecraft:flowing_lava" {
 			// Free fluid may occupy the secondary layer without a waterlogged block.
 			state.Block, state.Liquid = state.Liquid, registry.AirRuntimeID()
 		}
@@ -1487,7 +1489,7 @@ func reverseNativeState(registry chunk.BlockRegistry, state NativeState) (BlockS
 		return BlockState{}, fmt.Errorf("java state codec: invalid native liquid runtime ID %d", state.Liquid)
 	}
 	liquidClear := state.Liquid == registry.AirRuntimeID()
-	if !liquidClear && liquidName != "minecraft:water" {
+	if !liquidClear && liquidName != "minecraft:water" && liquidName != "minecraft:flowing_water" {
 		return BlockState{}, fmt.Errorf("java state codec: secondary layer %s%v is not clear or water", liquidName, liquidProps)
 	}
 	if !liquidClear && hasJavaWaterloggedProperty(javaName) {

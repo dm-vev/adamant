@@ -77,6 +77,7 @@ func (p *bridgePieceBase) generateChest(c *chunk.Chunk, chunkX, chunkZ int, sbb 
 	if c.Block(uint8(wx&15), int16(wy), uint8(wz&15), 0) == g.chestRID {
 		return false
 	}
+	p.setBlock(c, chunkX, chunkZ, sbb, x, y, z, g.chestRID)
 	lootSeed := r.NextLong()
 	pos := cube.Pos{wx, wy, wz}
 	g.pendingBlockEntities.Store(pos, chunk.BlockEntity{

@@ -55,6 +55,10 @@ type Nether struct {
 	bridgeGenerationMu sync.Mutex
 	bridgePayloadMu    sync.Mutex
 
+	complexMu      sync.Mutex
+	complexStarts  map[world.ChunkPos]netherComplexResult
+	complexFlights map[world.ChunkPos]*netherComplexFlight
+
 	pendingBlockEntities sync.Map // cube.Pos -> chunk.BlockEntity
 	pool                 sync.Pool
 }
@@ -71,6 +75,8 @@ func New(seed int64) *Nether {
 func NewNether(seed int64) *Nether {
 	g := &Nether{
 		seed:                seed,
+		complexStarts:       make(map[world.ChunkPos]netherComplexResult),
+		complexFlights:      make(map[world.ChunkPos]*netherComplexFlight),
 		airRID:              world.BlockRuntimeID(block.Air{}),
 		netherrackRID:       world.BlockRuntimeID(block.Netherrack{}),
 		bedrockRID:          world.BlockRuntimeID(block.Bedrock{}),

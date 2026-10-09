@@ -11,17 +11,17 @@ import (
 func TestJigsawMissingRootAliasRetainsOriginalStart(t *testing.T) {
 	options := JigsawOptions{Pool: "village/plains/town_centers", Origin: [3]int32{0, 80, 0}, MaxDepth: 1, HeightRange: cube.Range{-64, 319}, HeightAt: func(x, z int32) int32 { return 80 }}
 	originalRandom := java26.NewLegacyRandom(0)
-	original, err := BuildJigsaw(options, &originalRandom)
+	original, _, originalHasStub, err := buildPreparedJigsaw(options, &originalRandom)
 	if err != nil {
 		t.Fatal(err)
 	}
 	options.PoolAliases = map[string]string{"village/plains/town_centers": "missing_root_alias_target"}
 	aliasedRandom := java26.NewLegacyRandom(0)
-	got, err := BuildJigsaw(options, &aliasedRandom)
+	got, _, gotHasStub, err := buildPreparedJigsaw(options, &aliasedRandom)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, original) {
+	if !originalHasStub || !gotHasStub || !reflect.DeepEqual(got, original) {
 		t.Fatal("missing alias target did not retain the original root placement")
 	}
 	if got, want := aliasedRandom.NextLong(), originalRandom.NextLong(); got != want {
@@ -32,9 +32,12 @@ func TestJigsawMissingRootAliasRetainsOriginalStart(t *testing.T) {
 func TestJigsawMissingConnectorAliasSkipsAttachment(t *testing.T) {
 	options := JigsawOptions{Pool: "village/plains/town_centers", Origin: [3]int32{0, 80, 0}, MaxDepth: 1, HeightRange: cube.Range{-64, 319}, HeightAt: func(x, z int32) int32 { return 80 }}
 	random := java26.NewLegacyRandom(0)
-	root, err := BuildJigsaw(options, &random)
+	root, _, hasStub, err := buildPreparedJigsaw(options, &random)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !hasStub {
+		t.Fatal("unaliased fixture must have a valid root stub")
 	}
 	if len(root.Pieces) < 2 {
 		t.Fatalf("unaliased fixture must attach children: got %d pieces", len(root.Pieces))
@@ -57,9 +60,9 @@ func TestJigsawMissingConnectorAliasSkipsAttachment(t *testing.T) {
 	root.Pieces[0].Junctions = nil
 	root.Junctions = nil
 	random = java26.NewLegacyRandom(0)
-	result, err := BuildJigsaw(options, &random)
-	if err != nil {
-		t.Fatalf("missing connector pool should be skipped: %v", err)
+	result, _, hasStub, err := buildPreparedJigsaw(options, &random)
+	if err != nil || !hasStub {
+		t.Fatalf("missing connector pool should be skipped: stub=%v err=%v", hasStub, err)
 	}
 	if !reflect.DeepEqual(result, root) {
 		t.Fatal("missing connector targets changed the root-only result")
@@ -68,18 +71,27 @@ func TestJigsawMissingConnectorAliasSkipsAttachment(t *testing.T) {
 
 func TestJigsawEmptyAliasedRootConsumesSourceRotation(t *testing.T) {
 	random := java26.NewLegacyRandom(0)
-	result, err := BuildJigsaw(JigsawOptions{
+	result, _, hasStub, err := buildPreparedJigsaw(JigsawOptions{
 		Pool:        "village/plains/town_centers",
 		PoolAliases: map[string]string{"village/plains/town_centers": "empty"},
 	}, &random)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.HasStart || len(result.Pieces) != 0 {
+	if hasStub || len(result.Pieces) != 0 {
 		t.Fatal("empty aliased pool produced a root")
 	}
 	// Executed Java JigsawPlacement.addPieces, WorldgenRandom(LegacyRandomSource(0)).
 	if got := random.NextLong(); got != -3109364765729502342 {
 		t.Fatalf("following source stream = %d, want -3109364765729502342", got)
 	}
+}
+func buildPreparedJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult, [3]int32, bool, error) {
+	start, hasStub, err := PrepareJigsaw(options, random)
+	if err != nil || !hasStub {
+		return JigsawResult{}, [3]int32{}, hasStub, err
+	}
+	position := start.Position()
+	result, err := start.Build(random)
+	return result, position, true, err
 }
