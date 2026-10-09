@@ -5,7 +5,6 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
@@ -39,7 +38,7 @@ func (g *Nether) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius
 				if !xEdge && z != -radius && z != radius {
 					continue
 				}
-				for _, structure := range []string{"minecraft:fortress", "minecraft:bastion_remnant", "minecraft:ruined_portal", "minecraft:nether_fossil"} {
+				for _, structure := range []string{"minecraft:fortress", "minecraft:bastion_remnant", "minecraft:ruined_portal_nether", "minecraft:nether_fossil"} {
 					if !wanted[structure] {
 						continue
 					}
@@ -69,19 +68,17 @@ func (g *Nether) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius
 
 func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32) (world.StructureLocation, bool, error) {
 	var salt, spacing, separation int32
-	distribution := javastructure.Linear
-	stepIndex, step := 0, 0
 	switch structure {
 	case "minecraft:fortress", "minecraft:bastion_remnant":
 		salt, spacing, separation = 30084232, 27, 4
-	case "minecraft:ruined_portal":
-		salt, spacing, separation, distribution = 34222645, 40, 15, javastructure.Triangular
+	case "minecraft:ruined_portal_nether":
+		salt, spacing, separation = 34222645, 40, 15
 	case "minecraft:nether_fossil":
 		salt, spacing, separation = 14357921, 2, 1
 	default:
 		return world.StructureLocation{}, false, fmt.Errorf("unsupported Nether structure %q", structure)
 	}
-	candidate, err := javastructure.PotentialChunk(g.seed, sectorX, sectorZ, salt, spacing, separation, distribution)
+	candidate, err := javastructure.PotentialChunk(g.seed, sectorX, sectorZ, salt, spacing, separation, javastructure.Linear)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
@@ -94,42 +91,27 @@ func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32)
 			return world.StructureLocation{}, false, err
 		}
 		valid = start != nil && start.name == structure
-	case "minecraft:ruined_portal":
-		stepIndex, step = 26, 4
-		random := g.featureSource.structureStepRandom(world.ChunkPos{sectorX, sectorZ}, stepIndex, step)
-		if random.NextInt(7) == 6 {
-			clip := javastructure.Bounds{Min: [3]int32{sectorX * 16, 0, sectorZ * 16}, Max: [3]int32{sectorX*16 + 15, 127, sectorZ*16 + 15}}
-			env := g.netherLocateEnvironment(random)
-			_, valid = g.featureSource.buildNetherPortal(candidate, clip, env)
+	case "minecraft:ruined_portal_nether":
+		start, err := g.portalStart(sectorX, sectorZ)
+		if err != nil {
+			return world.StructureLocation{}, false, err
 		}
+		valid = start != nil
 	case "minecraft:nether_fossil":
-		stepIndex, step = 2, 7
-		random := g.featureSource.structureStepRandom(world.ChunkPos{sectorX, sectorZ}, stepIndex, step)
-		x, z := sectorX*16+random.NextInt(16), sectorZ*16+random.NextInt(16)
-		y := int32(32) + random.NextInt(94)
-		for y > netherSeaLevel {
-			currentName, _ := g.featureSource.BaseBlock(x, y, z).EncodeBlock()
-			y--
-			belowName, _ := g.featureSource.BaseBlock(x, y, z).EncodeBlock()
-			sturdy := belowName != "minecraft:air" && belowName != "minecraft:lava" && belowName != "minecraft:flowing_lava"
-			if currentName == "minecraft:air" && (belowName == "minecraft:soul_sand" || sturdy) {
-				break
-			}
+		start, err := g.fossilStart(sectorX, sectorZ)
+		if err != nil {
+			return world.StructureLocation{}, false, err
 		}
-		valid = y > netherSeaLevel && g.featureSource.JavaBiomeAt(x, y, z) == "minecraft:soul_sand_valley"
+		valid = start != nil
 	}
 	return world.StructureLocation{ID: structure, StartChunk: world.ChunkPos{sectorX, sectorZ}, Position: cube.Pos{int(sectorX * 16), 0, int(sectorZ * 16)}}, valid, nil
-}
-
-func (g *Nether) netherLocateEnvironment(random *java26.Random) javastructure.ProcessorEnvironment {
-	return javastructure.ProcessorEnvironment{BaseBlock: g.featureSource.BaseBlock, JavaBiomeAt: g.featureSource.JavaBiomeAt, BaseHeight: g.featureSource.BaseHeight, WorldSeed: g.seed, Random: random}
 }
 
 func netherLocateSpacing(structure string) int32 {
 	switch structure {
 	case "minecraft:fortress", "minecraft:bastion_remnant":
 		return 27
-	case "minecraft:ruined_portal":
+	case "minecraft:ruined_portal_nether":
 		return 40
 	case "minecraft:nether_fossil":
 		return 2
@@ -148,7 +130,7 @@ func (g *Nether) FindStructureAt(tag string, position cube.Pos) (world.Structure
 		wanted[member] = true
 	}
 	chunkX, chunkZ := int32(position[0]>>4), int32(position[2]>>4)
-	for _, structure := range []string{"minecraft:fortress", "minecraft:bastion_remnant", "minecraft:ruined_portal", "minecraft:nether_fossil"} {
+	for _, structure := range []string{"minecraft:fortress", "minecraft:bastion_remnant", "minecraft:ruined_portal_nether", "minecraft:nether_fossil"} {
 		if !wanted[structure] {
 			continue
 		}
@@ -190,53 +172,14 @@ func netherLocateContains(g *Nether, structure string, start world.ChunkPos, pos
 				return true
 			}
 		}
-	case "minecraft:ruined_portal":
-		random := g.featureSource.structureStepRandom(start, 26, 4)
-		if random.NextInt(7) != 6 {
-			return false
-		}
-		clip := javastructure.Bounds{Min: [3]int32{cx * 16, 0, cz * 16}, Max: [3]int32{cx*16 + 15, 127, cz*16 + 15}}
-		placement, valid := g.featureSource.buildNetherPortal([2]int32{cx, cz}, clip, g.netherLocateEnvironment(random))
-		if !valid {
-			return false
-		}
-		if len(placement.Blocks) == 0 {
-			return false
-		}
-		minPos, maxPos := placement.Blocks[0].Pos, placement.Blocks[0].Pos
-		for _, block := range placement.Blocks[1:] {
-			for axis := range 3 {
-				minPos[axis] = min(minPos[axis], block.Pos[axis])
-				maxPos[axis] = max(maxPos[axis], block.Pos[axis])
-			}
-		}
-		return int32(position[0]) >= minPos[0] && int32(position[0]) <= maxPos[0] && int32(position[1]) >= minPos[1] && int32(position[1]) <= maxPos[1] && int32(position[2]) >= minPos[2] && int32(position[2]) <= maxPos[2]
+	case "minecraft:ruined_portal_nether":
+		portal, err := g.portalStart(cx, cz)
+		return err == nil && portal != nil && boxContains(portal.box, position)
 	case "minecraft:nether_fossil":
-		random := g.featureSource.structureStepRandom(start, 2, 7)
-		x, z := cx*16+random.NextInt(16), cz*16+random.NextInt(16)
-		y := int32(32) + random.NextInt(94)
-		for y > netherSeaLevel {
-			currentName, _ := g.featureSource.BaseBlock(x, y, z).EncodeBlock()
-			y--
-			belowName, _ := g.featureSource.BaseBlock(x, y, z).EncodeBlock()
-			sturdy := belowName != "minecraft:air" && belowName != "minecraft:lava" && belowName != "minecraft:flowing_lava"
-			if currentName == "minecraft:air" && (belowName == "minecraft:soul_sand" || sturdy) {
-				break
-			}
-		}
-		if y <= netherSeaLevel || g.featureSource.JavaBiomeAt(x, y, z) != "minecraft:soul_sand_valley" {
-			return false
-		}
-		rotation := javastructure.Rotation(random.NextInt(4))
-		template := loadNetherTemplate(fmt.Sprintf("nether_fossils/fossil_%d", random.NextInt(14)+1))
-		min, max := netherTemplateBounds(template, [3]int32{x, y, z}, rotation)
-		return int32(position[0]) >= min[0] && int32(position[0]) <= max[0] && int32(position[1]) >= min[1] && int32(position[1]) <= max[1] && int32(position[2]) >= min[2] && int32(position[2]) <= max[2]
+		fossil, err := g.fossilStart(cx, cz)
+		return err == nil && fossil != nil && boxContains(fossil.box, position)
 	}
 	return false
-}
-
-func netherBBContains(minX, minY, minZ, maxX, maxY, maxZ int, position cube.Pos) bool {
-	return int(position[0]) >= minX && int(position[0]) <= maxX && int(position[1]) >= minY && int(position[1]) <= maxY && int(position[2]) >= minZ && int(position[2]) <= maxZ
 }
 
 func boxContains(box javastructure.Box, position cube.Pos) bool {

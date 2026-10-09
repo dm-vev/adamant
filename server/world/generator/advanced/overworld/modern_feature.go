@@ -324,10 +324,10 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 }
 
 func javaFeatureRandom(seed int64, chunkX, chunkZ int32, index, stage int) java26.Random {
-	r := java26.NewXoroshiroRandom(seed)
-	xScale, zScale := r.NextLong()|1, r.NextLong()|1
-	decorationSeed := int64(chunkX)*xScale + int64(chunkZ)*zScale ^ seed
-	return java26.NewXoroshiroRandom(decorationSeed + int64(index) + int64(10000*stage))
+	r := java26.NewWorldgenRandom(seed)
+	decorationSeed := r.SetDecorationSeed(seed, chunkX, chunkZ)
+	r.SetFeatureSeed(decorationSeed, int32(index), int32(stage))
+	return r
 }
 
 func (f *ModernFeatures) placeFeature(region *featureRegion, originX, originZ int32, name string, random java26.Random) bool {

@@ -30,7 +30,7 @@ func(p strongholdPiece)Place(clip javastructure.Bounds,env javastructure.Process
 	case "straight_stairs":
 		for i:=int32(0);i<6;i++{for x:=int32(1);x<=3;x++{strongholdPutLocal(p,clip,&out,x,6-i,1+i,"cobblestone_stairs",map[string]any{"facing":strongholdDirection(p.dir,"south"),"half":"bottom","shape":"straight","waterlogged":false});if i<5{strongholdPutLocal(p,clip,&out,x,5-i,1+i,"stone_bricks",nil)}}}
 	case "straight":
-		for _,q:=range []struct{x,y,z int32;facing string}{{1,2,1,"east"},{3,2,1,"west"},{1,2,5,"east"},{3,2,5,"west"}}{if env.Random.NextFloat()<0.1{strongholdPutLocal(p,clip,&out,q.x,q.y,q.z,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,q.facing),"lit":true})}}
+		for _,q:=range []struct{x,y,z int32;facing string}{{1,2,1,"east"},{3,2,1,"west"},{1,2,5,"east"},{3,2,5,"west"}}{if env.Random.NextFloat()<0.1{strongholdPutLocal(p,clip,&out,q.x,q.y,q.z,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,q.facing)})}}
 		if p.leftLow{for y:=int32(1);y<=3;y++{for z:=int32(2);z<=4;z++{strongholdPutLocal(p,clip,&out,0,y,z,"cave_air",nil)}}}
 		if p.rightLow{for y:=int32(1);y<=3;y++{for z:=int32(2);z<=4;z++{strongholdPutLocal(p,clip,&out,4,y,z,"cave_air",nil)}}}
 	case "turn_left","turn_right":
@@ -46,7 +46,7 @@ func(p strongholdPiece)Place(clip javastructure.Bounds,env javastructure.Process
 		for d:=int32(1);d<=13;d++{
 			name:="bookshelf";if (d-1)%4==0{name="oak_planks"}
 			for y:=int32(1);y<=4;y++{strongholdPutLocal(p,clip,&out,1,y,d,name,nil);strongholdPutLocal(p,clip,&out,12,y,d,name,nil)}
-			if name=="oak_planks"{strongholdPutLocal(p,clip,&out,2,3,d,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"east"),"lit":true});strongholdPutLocal(p,clip,&out,11,3,d,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"west"),"lit":true})}
+			if name=="oak_planks"{strongholdPutLocal(p,clip,&out,2,3,d,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"east")});strongholdPutLocal(p,clip,&out,11,3,d,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"west")})}
 			if height==11{for y:=int32(6);y<=9;y++{strongholdPutLocal(p,clip,&out,1,y,d,name,nil);strongholdPutLocal(p,clip,&out,12,y,d,name,nil)}}
 		}
 		for d:=int32(3);d<12;d+=2{for _,span:=range [][2]int32{{3,4},{6,7},{9,10}}{for x:=span[0];x<=span[1];x++{for y:=int32(1);y<=3;y++{strongholdPutLocal(p,clip,&out,x,y,d,"bookshelf",nil)}}}}
@@ -100,7 +100,7 @@ func(p strongholdPiece)Place(clip javastructure.Bounds,env javastructure.Process
 		switch p.variant{
 		case 0:
 			for y:=int32(1);y<=3;y++{strongholdPutLocal(p,clip,&out,5,y,5,"stone_bricks",nil)}
-			for _,q:=range []struct{x,y,z int32;facing string}{{4,3,5,"west"},{6,3,5,"east"},{5,3,4,"south"},{5,3,6,"north"}}{strongholdPutLocal(p,clip,&out,q.x,q.y,q.z,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,q.facing),"lit":true})}
+			for _,q:=range []struct{x,y,z int32;facing string}{{4,3,5,"west"},{6,3,5,"east"},{5,3,4,"south"},{5,3,6,"north"}}{strongholdPutLocal(p,clip,&out,q.x,q.y,q.z,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,q.facing)})}
 			for _,q:=range [][3]int32{{4,1,4},{4,1,5},{4,1,6},{6,1,4},{6,1,5},{6,1,6},{5,1,4},{5,1,6}}{strongholdPutLocal(p,clip,&out,q[0],q[1],q[2],"smooth_stone_slab",map[string]any{"type":"bottom","waterlogged":false})}
 		case 1:
 			for z:=int32(3);z<=7;z++{strongholdPutLocal(p,clip,&out,3,1,z,"stone_bricks",nil);strongholdPutLocal(p,clip,&out,7,1,z,"stone_bricks",nil);strongholdPutLocal(p,clip,&out,z,1,3,"stone_bricks",nil);strongholdPutLocal(p,clip,&out,z,1,7,"stone_bricks",nil)}
@@ -110,7 +110,7 @@ func(p strongholdPiece)Place(clip javastructure.Bounds,env javastructure.Process
 			for x:=int32(1);x<=9;x++{strongholdPutLocal(p,clip,&out,x,3,1,"cobblestone",nil);strongholdPutLocal(p,clip,&out,x,3,9,"cobblestone",nil)}
 			for _,q:=range [][3]int32{{5,1,4},{5,1,6},{5,3,4},{5,3,6},{4,1,5},{6,1,5},{4,3,5},{6,3,5}}{strongholdPutLocal(p,clip,&out,q[0],q[1],q[2],"cobblestone",nil)}
 			for y:=int32(1);y<=3;y++{for _,x:=range []int32{4,6}{for _,z:=range []int32{4,6}{strongholdPutLocal(p,clip,&out,x,y,z,"cobblestone",nil)}}}
-			strongholdPutLocal(p,clip,&out,5,3,5,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"north"),"lit":true})
+			strongholdPutLocal(p,clip,&out,5,3,5,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"north")})
 			for z:=int32(2);z<=8;z++{for _,x:=range []int32{2,3,7,8}{strongholdPutLocal(p,clip,&out,x,3,z,"oak_planks",nil)};if z<=3||z>=7{for x:=int32(4);x<=6;x++{strongholdPutLocal(p,clip,&out,x,3,z,"oak_planks",nil)}}}
 			for y:=int32(1);y<=3;y++{strongholdPutLocal(p,clip,&out,9,y,3,"ladder",map[string]any{"facing":strongholdDirection(p.dir,"west"),"waterlogged":false})}
 			strongholdPutLootLocal(p,clip,env,&out,3,4,8,"minecraft:chests/stronghold_crossing",env.Random)
@@ -125,7 +125,7 @@ func(p strongholdPiece)Place(clip javastructure.Bounds,env javastructure.Process
 		for x:=int32(5);x<=7;x++{strongholdPutLocal(p,clip,&out,x,1,9,"smooth_stone_slab",map[string]any{"type":"bottom","waterlogged":false});strongholdPutLocal(p,clip,&out,x,2,7,"smooth_stone_slab",map[string]any{"type":"bottom","waterlogged":false})}
 		for _,x:=range []int32{4,8}{for z:=int32(7);z<=9;z++{strongholdPutLocal(p,clip,&out,x,5,z,"smooth_stone_slab",map[string]any{"type":"bottom","waterlogged":false})}}
 		for z:=int32(7);z<=9;z++{for x:=int32(5);x<=7;x++{strongholdPutLocal(p,clip,&out,x,5,z,"smooth_stone_slab",map[string]any{"type":"double","waterlogged":false})}}
-		strongholdPutLocal(p,clip,&out,6,5,6,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"south"),"lit":true})
+		strongholdPutLocal(p,clip,&out,6,5,6,"wall_torch",map[string]any{"facing":strongholdDirection(p.dir,"south")})
 	}
 	if p.kind!="portal"&&p.kind!="filler"{strongholdDoorPlacement(p,clip,&out)}
 	exitZ:=int32(-1)

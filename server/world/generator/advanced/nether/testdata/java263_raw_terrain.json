@@ -1,0 +1,199 @@
+{
+  "source": "mapped-java-26.3-NoiseBasedChunkGenerator.getBaseColumn",
+  "height_min": 0,
+  "height_max": 127,
+  "columns": [
+    {
+      "seed": 0,
+      "x": -16383,
+      "z": 1027,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnllllnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaannnnnnnnnnnnaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 0,
+      "x": -545,
+      "z": -129,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnlllllllllaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 0,
+      "x": -17,
+      "z": -16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 0,
+      "x": -1,
+      "z": 0,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 0,
+      "x": 0,
+      "z": 1,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 0,
+      "x": 3,
+      "z": 4,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 0,
+      "x": 15,
+      "z": 16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 0,
+      "x": 17,
+      "z": 16385,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnlllllllllaaaaaaaaaaaaaaannnnnnnaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": -16383,
+      "z": 1027,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnlllllaaaaaaaaaaaaaaaaaaaaaaannnnnnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": -545,
+      "z": -129,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnllllllllllaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": -17,
+      "z": -16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnlllllllllaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": -1,
+      "z": 0,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnlllllllllaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": 0,
+      "z": 1,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnlllllllllaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": 3,
+      "z": 4,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnlllllllllaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": 15,
+      "z": 16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnlllllllllaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 1,
+      "x": 17,
+      "z": 16385,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": -16383,
+      "z": 1027,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnlnnnnnnnnnnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": -545,
+      "z": -129,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnllllllaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": -17,
+      "z": -16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": -1,
+      "z": 0,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": 0,
+      "z": 1,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnllnnnnnnnnnnnnnnnnnnnnnaaaaaaaannnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": 3,
+      "z": 4,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnllllllnnnnnnnnnnnnnnnnnaaaaaaaaannnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": 15,
+      "z": 16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnlnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": -1,
+      "x": 17,
+      "z": 16385,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnllllllllaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": -16383,
+      "z": 1027,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": -545,
+      "z": -129,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnllnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": -17,
+      "z": -16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnlaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": -1,
+      "z": 0,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnllllllllnaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": 0,
+      "z": 1,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnllllllllaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": 3,
+      "z": 4,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnllllllllaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": 15,
+      "z": 16,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnlllnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    },
+    {
+      "seed": 42,
+      "x": 17,
+      "z": 16385,
+      "material": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+    }
+  ]
+}

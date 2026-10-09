@@ -46,7 +46,7 @@ func (p minePiece) Place(clip javastructure.Bounds, env javastructure.ProcessorE
 				for y:=int32(0);y<2;y++{wx,wy,wz:=mineLocal(p,0,y,z);put(wx,wy,wz,fence,map[string]any{mineWorldDirection(p.facing,"west"):true,"waterlogged":false});wx,wy,wz=mineLocal(p,2,y,z);put(wx,wy,wz,fence,map[string]any{mineWorldDirection(p.facing,"east"):true,"waterlogged":false})}
 				if random.NextInt(4)==0{for _,x:=range []int32{0,2}{wx,wy,wz:=mineLocal(p,x,2,z);put(wx,wy,wz,plank,nil)}}else{
 					for x:=int32(0);x<=2;x++{wx,wy,wz:=mineLocal(p,x,2,z);put(wx,wy,wz,plank,nil)}
-					for _,torchZ:=range []int32{z-1,z+1}{if random.NextFloat()<0.05{wx,wy,wz:=mineLocal(p,1,2,torchZ);facing:="north";if torchZ<z{facing="south"};put(wx,wy,wz,"wall_torch",map[string]any{"facing":mineWorldDirection(p.facing,facing),"lit":true})}}
+					for _,torchZ:=range []int32{z-1,z+1}{if random.NextFloat()<0.05{wx,wy,wz:=mineLocal(p,1,2,torchZ);facing:="north";if torchZ<z{facing="south"};put(wx,wy,wz,"wall_torch",map[string]any{"facing":mineWorldDirection(p.facing,facing)})}}
 				}
 			}
 			for _,candidate:=range [][3]int32{{0,2,z-1},{2,2,z-1},{0,2,z+1},{2,2,z+1}}{mineMaybeCobweb(p,clip,env,&out,random,0.1,candidate[0],candidate[1],candidate[2])}

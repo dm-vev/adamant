@@ -1,0 +1,789 @@
+[
+  {
+    "xoroshiro": false,
+    "explicit": false,
+    "kind": "block_age",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate",
+        "output": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool",
+        "output": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:crying_obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks",
+        "output": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": {
+          "properties": {
+            "waterlogged": "false",
+            "shape": "straight",
+            "half": "top",
+            "facing": "north"
+          },
+          "id": "minecraft:mossy_stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": -5271782964635267311
+  },
+  {
+    "xoroshiro": false,
+    "explicit": false,
+    "kind": "block_rot",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate",
+        "output": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks",
+        "output": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": "minecraft:stone"
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": -5271782964635267311
+  },
+  {
+    "xoroshiro": false,
+    "explicit": true,
+    "kind": "block_age",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate",
+        "output": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": "minecraft:stone_slab"
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool",
+        "output": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks",
+        "output": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": {
+          "properties": {
+            "waterlogged": "false",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "west"
+          },
+          "id": "minecraft:mossy_stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": -7976169962165071137
+  },
+  {
+    "xoroshiro": false,
+    "explicit": true,
+    "kind": "block_rot",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool",
+        "output": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": "minecraft:stone"
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": 7582200665593937799
+  },
+  {
+    "xoroshiro": true,
+    "explicit": false,
+    "kind": "block_age",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate",
+        "output": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool",
+        "output": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:crying_obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks",
+        "output": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": {
+          "properties": {
+            "waterlogged": "false",
+            "shape": "straight",
+            "half": "top",
+            "facing": "north"
+          },
+          "id": "minecraft:mossy_stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": 5090933066588935521
+  },
+  {
+    "xoroshiro": true,
+    "explicit": false,
+    "kind": "block_rot",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate",
+        "output": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks",
+        "output": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": "minecraft:stone"
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": 5090933066588935521
+  },
+  {
+    "xoroshiro": true,
+    "explicit": true,
+    "kind": "block_age",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:mossy_stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate",
+        "output": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": "minecraft:stone_brick_slab"
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool",
+        "output": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks",
+        "output": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": {
+          "properties": {
+            "waterlogged": "false",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "east"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": 6155507738732871947
+  },
+  {
+    "xoroshiro": true,
+    "explicit": true,
+    "kind": "block_rot",
+    "seed": 991,
+    "blocks": [
+      {
+        "position": [
+          -1065,
+          28,
+          -415
+        ],
+        "input": "minecraft:stone_bricks",
+        "output": "minecraft:stone_bricks"
+      },
+      {
+        "position": [
+          -1064,
+          29,
+          -414
+        ],
+        "input": "minecraft:deepslate",
+        "output": "minecraft:deepslate"
+      },
+      {
+        "position": [
+          -1063,
+          30,
+          -413
+        ],
+        "input": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        },
+        "output": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "bottom",
+            "facing": "north"
+          },
+          "id": "minecraft:stone_brick_stairs"
+        }
+      },
+      {
+        "position": [
+          -1062,
+          31,
+          -412
+        ],
+        "input": "minecraft:gray_wool",
+        "output": "minecraft:gray_wool"
+      },
+      {
+        "position": [
+          -1061,
+          32,
+          -411
+        ],
+        "input": "minecraft:obsidian",
+        "output": "minecraft:obsidian"
+      },
+      {
+        "position": [
+          -1060,
+          28,
+          -410
+        ],
+        "input": "minecraft:deepslate_bricks"
+      },
+      {
+        "position": [
+          -1059,
+          29,
+          -409
+        ],
+        "input": "minecraft:stone",
+        "output": "minecraft:stone"
+      },
+      {
+        "position": [
+          -1058,
+          30,
+          -415
+        ],
+        "input": "minecraft:magma_block",
+        "output": "minecraft:magma_block"
+      }
+    ],
+    "next": -8818114512328395830
+  }
+]

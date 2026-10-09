@@ -530,7 +530,7 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 	env.WorldSeed = c.seed
 	env.SkipEntities = false
 	for _, entry := range c.structureSteps[step] {
-		random := java26.NewXoroshiroRandom(c.seed)
+		random := java26.NewWorldgenRandom(c.seed)
 		decorationSeed := random.SetDecorationSeed(c.seed, minX, minZ)
 		random.SetFeatureSeed(decorationSeed, entry.index, int32(step))
 		env.Random = &random

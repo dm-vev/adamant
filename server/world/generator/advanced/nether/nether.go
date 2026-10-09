@@ -58,6 +58,8 @@ type Nether struct {
 	complexMu      sync.Mutex
 	complexStarts  map[world.ChunkPos]netherComplexResult
 	complexFlights map[world.ChunkPos]*netherComplexFlight
+	fossils        netherFossilCache
+	portals        netherPortalCache
 
 	pendingBlockEntities sync.Map // cube.Pos -> chunk.BlockEntity
 	pool                 sync.Pool
@@ -189,27 +191,29 @@ func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScr
 				v010, v011 := s.vertices[base+17], s.vertices[base+18]
 				v100, v101 := s.vertices[base+85], s.vertices[base+86]
 				v110, v111 := s.vertices[base+102], s.vertices[base+103]
-				for dy := range 8 {
-					fy := float32(dy) * 0.125
-					y := cellY*8 + dy
-					if y < minY || y > maxY {
-						continue
-					}
-					a00 := float32(v000 + (v001-v000)*fy)
-					a01 := float32(v010 + (v011-v010)*fy)
-					a10 := float32(v100 + (v101-v100)*fy)
-					a11 := float32(v110 + (v111-v110)*fy)
+				for dz := range 4 {
+					fz := float32(dz) * 0.25
+					z00 := float32(v000 + float32((v010-v000)*fz))
+					z01 := float32(v001 + float32((v011-v001)*fz))
+					z10 := float32(v100 + float32((v110-v100)*fz))
+					z11 := float32(v101 + float32((v111-v101)*fz))
 					for dx := range 4 {
 						fx := float32(dx) * 0.25
-						left := float32(a00 + (a10-a00)*fx)
-						right := float32(a01 + (a11-a01)*fx)
-						for dz := range 4 {
-							fz := float32(dz) * 0.25
-							density := float32(left + (right-left)*fz)
+						density := float32(z00 + float32((z10-z00)*fx))
+						top := float32(z01 + float32((z11-z01)*fx))
+						step := float32((top - density) * 0.125)
+						for dy := range 8 {
+							y := cellY*8 + dy
+							value := max(float32(-1), min(float32(1), density))
+							value = float32(value/2 - float32(float32(value*value)*value)/24)
+							density = float32(density + step)
+							if y < minY || y > maxY {
+								continue
+							}
 							var rid uint32
-							if density > 0 {
+							if value > 0 {
 								rid = g.netherrackRID
-							} else if y < 32 {
+							} else if y < netherSeaLevel {
 								rid = g.lavaStillRID
 							}
 							if rid != 0 {

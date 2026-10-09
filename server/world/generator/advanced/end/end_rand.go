@@ -45,10 +45,9 @@ func (r *endRand) Int32() uint32 {
 	return uint32(r.random.NextInt32())
 }
 func (g *End) endFeatureRandom(chunkX, chunkZ, featureIndex, step int) *endRand {
-	random := java26.NewXoroshiroRandom(g.seed)
-	xScale, zScale := random.NextLong()|1, random.NextLong()|1
+	random := java26.NewWorldgenRandom(g.seed)
 	originX, originZ := int64(chunkX)*16, int64(chunkZ)*16
-	decorationSeed := originX*xScale + originZ*zScale ^ g.seed
-	featureSeed := decorationSeed + int64(featureIndex) + 10000*int64(step)
-	return newEndRandWithRandom(java26.NewXoroshiroRandom(featureSeed))
+	decorationSeed := random.SetDecorationSeed(g.seed, int32(originX), int32(originZ))
+	random.SetFeatureSeed(decorationSeed, int32(featureIndex), int32(step))
+	return newEndRandWithRandom(random)
 }

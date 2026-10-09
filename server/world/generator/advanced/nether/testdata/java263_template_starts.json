@@ -1,0 +1,1497 @@
+{
+  "source": "mapped-java-26.3-NoiseBasedChunkGenerator.createStructures",
+  "height_min": 0,
+  "height_max": 255,
+  "decoration_indices": [
+    {
+      "structure": "minecraft:bastion_remnant",
+      "step": 4,
+      "index": 18
+    },
+    {
+      "structure": "minecraft:fortress",
+      "step": 7,
+      "index": 1
+    },
+    {
+      "structure": "minecraft:nether_fossil",
+      "step": 7,
+      "index": 2
+    },
+    {
+      "structure": "minecraft:ruined_portal_nether",
+      "step": 4,
+      "index": 32
+    }
+  ],
+  "graphs": [
+    {
+      "seed": 0,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        -40,
+        1026
+      ],
+      "chunk": [
+        -40,
+        1026
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -634,
+            94,
+            16425,
+            -632,
+            97,
+            16425
+          ],
+          "class": "NetherFossilPiece",
+          "tag": {
+            "BB": [
+              -634,
+              94,
+              16425,
+              -632,
+              97,
+              16425
+            ],
+            "Rot": "CLOCKWISE_180",
+            "id": "minecraft:nefos",
+            "TPY": 94,
+            "GD": 0,
+            "TPX": -632,
+            "O": 2,
+            "TPZ": 16425,
+            "Template": "minecraft:nether_fossils/fossil_4"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -632,
+          94,
+          16425
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": -4764304449664966697
+      }
+    },
+    {
+      "seed": 1,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        0,
+        -40
+      ],
+      "chunk": [
+        0,
+        -40
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            9,
+            42,
+            -633,
+            11,
+            46,
+            -633
+          ],
+          "class": "NetherFossilPiece",
+          "tag": {
+            "BB": [
+              9,
+              42,
+              -633,
+              11,
+              46,
+              -633
+            ],
+            "Rot": "NONE",
+            "id": "minecraft:nefos",
+            "TPY": 42,
+            "GD": 0,
+            "TPX": 9,
+            "O": 2,
+            "TPZ": -633,
+            "Template": "minecraft:nether_fossils/fossil_8"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          9,
+          42,
+          -633
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 1305821293733322862
+      }
+    },
+    {
+      "seed": 1,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        40,
+        40
+      ],
+      "chunk": [
+        40,
+        40
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            651,
+            98,
+            648,
+            654,
+            101,
+            652
+          ],
+          "class": "NetherFossilPiece",
+          "tag": {
+            "BB": [
+              651,
+              98,
+              648,
+              654,
+              101,
+              652
+            ],
+            "Rot": "NONE",
+            "id": "minecraft:nefos",
+            "TPY": 98,
+            "GD": 0,
+            "TPX": 651,
+            "O": 2,
+            "TPZ": 648,
+            "Template": "minecraft:nether_fossils/fossil_1"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          651,
+          98,
+          648
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 2041907226696786876
+      }
+    },
+    {
+      "seed": 1,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        1026,
+        40
+      ],
+      "chunk": [
+        1026,
+        40
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            16428,
+            50,
+            637,
+            16432,
+            50,
+            641
+          ],
+          "class": "NetherFossilPiece",
+          "tag": {
+            "BB": [
+              16428,
+              50,
+              637,
+              16432,
+              50,
+              641
+            ],
+            "Rot": "COUNTERCLOCKWISE_90",
+            "id": "minecraft:nefos",
+            "TPY": 50,
+            "GD": 0,
+            "TPX": 16428,
+            "O": 2,
+            "TPZ": 641,
+            "Template": "minecraft:nether_fossils/fossil_2"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          16428,
+          50,
+          641
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": -4168229587816350642
+      }
+    },
+    {
+      "seed": -1,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        0,
+        -80
+      ],
+      "chunk": [
+        0,
+        -80
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -1,
+            44,
+            -1269,
+            5,
+            48,
+            -1265
+          ],
+          "class": "NetherFossilPiece",
+          "tag": {
+            "BB": [
+              -1,
+              44,
+              -1269,
+              5,
+              48,
+              -1265
+            ],
+            "Rot": "CLOCKWISE_90",
+            "id": "minecraft:nefos",
+            "TPY": 44,
+            "GD": 0,
+            "TPX": 5,
+            "O": 2,
+            "TPZ": -1269,
+            "Template": "minecraft:nether_fossils/fossil_11"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          5,
+          44,
+          -1269
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 7791329106809079933
+      }
+    },
+    {
+      "seed": -1,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        1026,
+        40
+      ],
+      "chunk": [
+        1026,
+        40
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            16415,
+            52,
+            652,
+            16419,
+            57,
+            655
+          ],
+          "class": "NetherFossilPiece",
+          "tag": {
+            "BB": [
+              16415,
+              52,
+              652,
+              16419,
+              57,
+              655
+            ],
+            "Rot": "CLOCKWISE_90",
+            "id": "minecraft:nefos",
+            "TPY": 52,
+            "GD": 0,
+            "TPX": 16419,
+            "O": 2,
+            "TPZ": 652,
+            "Template": "minecraft:nether_fossils/fossil_7"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          16419,
+          52,
+          652
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 9054460843856565272
+      }
+    },
+    {
+      "seed": 42,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        1026,
+        320
+      ],
+      "chunk": [
+        1026,
+        320
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            16428,
+            51,
+            5127,
+            16429,
+            54,
+            5129
+          ],
+          "class": "NetherFossilPiece",
+          "tag": {
+            "BB": [
+              16428,
+              51,
+              5127,
+              16429,
+              54,
+              5129
+            ],
+            "Rot": "CLOCKWISE_90",
+            "id": "minecraft:nefos",
+            "TPY": 51,
+            "GD": 0,
+            "TPX": 16429,
+            "O": 2,
+            "TPZ": 5127,
+            "Template": "minecraft:nether_fossils/fossil_3"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          16429,
+          51,
+          5127
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 7395391078201215353
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        -80,
+        -80
+      ],
+      "chunk": [
+        -80,
+        -80
+      ],
+      "valid": false,
+      "pieces": [],
+      "prepared": {
+        "valid": false,
+        "next": 4921546274017655190
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:nether_fossil",
+      "region_input": [
+        -40,
+        -80
+      ],
+      "chunk": [
+        -40,
+        -80
+      ],
+      "valid": false,
+      "pieces": [],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -639,
+          90,
+          -1272
+        ],
+        "allowed_biome": false,
+        "biome": "minecraft:warped_forest",
+        "next": -2287197173446681324
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -80,
+        -80
+      ],
+      "chunk": [
+        -56,
+        -64
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -890,
+            58,
+            -1023,
+            -885,
+            67,
+            -1018
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -890,
+              58,
+              -1023,
+              -885,
+              67,
+              -1018
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 58,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -896,
+            "Rotation": "CLOCKWISE_180",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": -1024,
+            "Template": "minecraft:ruined_portal/portal_1"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -896,
+          58,
+          -1024
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:warped_forest",
+        "next": -1039196121601272667
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -40,
+        -80
+      ],
+      "chunk": [
+        -34,
+        -70
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -542,
+            51,
+            -1132,
+            -533,
+            58,
+            -1121
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -542,
+              51,
+              -1132,
+              -533,
+              58,
+              -1121
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 51,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -544,
+            "Rotation": "CLOCKWISE_90",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": -1120,
+            "Template": "minecraft:ruined_portal/portal_10"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -544,
+          51,
+          -1120
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:warped_forest",
+        "next": -397955968520325202
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        40,
+        -80
+      ],
+      "chunk": [
+        56,
+        -77
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            896,
+            31,
+            -1232,
+            911,
+            46,
+            -1217
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              896,
+              31,
+              -1232,
+              911,
+              46,
+              -1217
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 31,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 896,
+            "Rotation": "NONE",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": -1232,
+            "Template": "minecraft:ruined_portal/giant_portal_3"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          896,
+          31,
+          -1232
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:basalt_deltas",
+        "next": 572573644238689430
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        320,
+        -80
+      ],
+      "chunk": [
+        320,
+        -80
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            5120,
+            29,
+            -1280,
+            5124,
+            35,
+            -1274
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              5120,
+              29,
+              -1280,
+              5124,
+              35,
+              -1274
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 29,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 5120,
+            "Rotation": "CLOCKWISE_180",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": -1280,
+            "Template": "minecraft:ruined_portal/portal_6"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          5120,
+          29,
+          -1280
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 487339919974417041
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -80,
+        -40
+      ],
+      "chunk": [
+        -66,
+        -26
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -1066,
+            28,
+            -416,
+            -1056,
+            43,
+            -401
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -1066,
+              28,
+              -416,
+              -1056,
+              43,
+              -401
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 28,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -1056,
+            "Rotation": "NONE",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": -416,
+            "Template": "minecraft:ruined_portal/giant_portal_2"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -1056,
+          28,
+          -416
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:nether_wastes",
+        "next": -6700683307674811332
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -40,
+        -40
+      ],
+      "chunk": [
+        -17,
+        -24
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -272,
+            27,
+            -384,
+            -264,
+            35,
+            -377
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -272,
+              27,
+              -384,
+              -264,
+              35,
+              -377
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 27,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -272,
+            "Rotation": "CLOCKWISE_90",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": -384,
+            "Template": "minecraft:ruined_portal/portal_3"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -272,
+          27,
+          -384
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:basalt_deltas",
+        "next": 4879558464053308256
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        40,
+        -40
+      ],
+      "chunk": [
+        64,
+        -38
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            1024,
+            27,
+            -600,
+            1032,
+            38,
+            -592
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              1024,
+              27,
+              -600,
+              1032,
+              38,
+              -592
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 27,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 1024,
+            "Rotation": "COUNTERCLOCKWISE_90",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": -608,
+            "Template": "minecraft:ruined_portal/portal_2"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          1024,
+          27,
+          -608
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:nether_wastes",
+        "next": 6687739600433289528
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        320,
+        -40
+      ],
+      "chunk": [
+        342,
+        -30
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            5472,
+            76,
+            -480,
+            5480,
+            82,
+            -472
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              5472,
+              76,
+              -480,
+              5480,
+              82,
+              -472
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 76,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 5472,
+            "Rotation": "NONE",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": -480,
+            "Template": "minecraft:ruined_portal/portal_7"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          5472,
+          76,
+          -480
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 5571833029688929474
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        1026,
+        -40
+      ],
+      "chunk": [
+        1000,
+        -30
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            15998,
+            48,
+            -477,
+            16013,
+            63,
+            -467
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              15998,
+              48,
+              -477,
+              16013,
+              63,
+              -467
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 48,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 16000,
+            "Rotation": "CLOCKWISE_90",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": -480,
+            "Template": "minecraft:ruined_portal/giant_portal_2"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          16000,
+          48,
+          -480
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:basalt_deltas",
+        "next": -910177742153500472
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -80,
+        0
+      ],
+      "chunk": [
+        -63,
+        14
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -1019,
+            48,
+            224,
+            -1008,
+            55,
+            233
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -1019,
+              48,
+              224,
+              -1008,
+              55,
+              233
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 48,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -1008,
+            "Rotation": "NONE",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": 224,
+            "Template": "minecraft:ruined_portal/portal_10"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -1008,
+          48,
+          224
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 7888625431093764199
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        320,
+        0
+      ],
+      "chunk": [
+        333,
+        13
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            5328,
+            28,
+            209,
+            5336,
+            36,
+            216
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              5328,
+              28,
+              209,
+              5336,
+              36,
+              216
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 28,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 5328,
+            "Rotation": "COUNTERCLOCKWISE_90",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": 208,
+            "Template": "minecraft:ruined_portal/portal_3"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          5328,
+          28,
+          208
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:basalt_deltas",
+        "next": -3165000194858991501
+      }
+    },
+    {
+      "seed": 0,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -80,
+        1026
+      ],
+      "chunk": [
+        -63,
+        1022
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -1011,
+            28,
+            16355,
+            -996,
+            44,
+            16365
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -1011,
+              28,
+              16355,
+              -996,
+              44,
+              16365
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 28,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -1008,
+            "Rotation": "COUNTERCLOCKWISE_90",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": 16352,
+            "Template": "minecraft:ruined_portal/giant_portal_1"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -1008,
+          28,
+          16352
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:nether_wastes",
+        "next": 4052316446831355319
+      }
+    },
+    {
+      "seed": 1,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -80,
+        40
+      ],
+      "chunk": [
+        -79,
+        50
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -1264,
+            28,
+            816,
+            -1249,
+            43,
+            831
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -1264,
+              28,
+              816,
+              -1249,
+              43,
+              831
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 28,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -1264,
+            "Rotation": "COUNTERCLOCKWISE_90",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": 800,
+            "Template": "minecraft:ruined_portal/giant_portal_3"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -1264,
+          28,
+          800
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:nether_wastes",
+        "next": 2995039634653161057
+      }
+    },
+    {
+      "seed": -1,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        -80,
+        -40
+      ],
+      "chunk": [
+        -77,
+        -34
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            -1222,
+            54,
+            -543,
+            -1212,
+            70,
+            -528
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              -1222,
+              54,
+              -543,
+              -1212,
+              70,
+              -528
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 54,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": -1232,
+            "Rotation": "CLOCKWISE_180",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": -544,
+            "Template": "minecraft:ruined_portal/giant_portal_1"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          -1232,
+          54,
+          -544
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:warped_forest",
+        "next": 1003692887717781661
+      }
+    },
+    {
+      "seed": -1,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        320,
+        0
+      ],
+      "chunk": [
+        332,
+        23
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            5313,
+            28,
+            353,
+            5328,
+            43,
+            368
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              5313,
+              28,
+              353,
+              5328,
+              43,
+              368
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 28,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 5312,
+            "Rotation": "CLOCKWISE_90",
+            "Mirror": "FRONT_BACK",
+            "O": 2,
+            "TPZ": 368,
+            "Template": "minecraft:ruined_portal/giant_portal_3"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          5312,
+          28,
+          368
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:soul_sand_valley",
+        "next": 3046175597274614688
+      }
+    },
+    {
+      "seed": 42,
+      "structure": "minecraft:ruined_portal_nether",
+      "region_input": [
+        1026,
+        0
+      ],
+      "chunk": [
+        1014,
+        1
+      ],
+      "valid": true,
+      "pieces": [
+        {
+          "box": [
+            16225,
+            31,
+            17,
+            16240,
+            46,
+            32
+          ],
+          "class": "RuinedPortalPiece",
+          "tag": {
+            "BB": [
+              16225,
+              31,
+              17,
+              16240,
+              46,
+              32
+            ],
+            "VerticalPlacement": "in_nether",
+            "id": "minecraft:rupo",
+            "TPY": 31,
+            "Properties": {
+              "overgrown": 0,
+              "mossiness": 0.0,
+              "replace_with_blackstone": 1,
+              "vines": 0,
+              "cold": 0,
+              "air_pocket": 0
+            },
+            "GD": 0,
+            "TPX": 16224,
+            "Rotation": "CLOCKWISE_180",
+            "Mirror": "NONE",
+            "O": 2,
+            "TPZ": 16,
+            "Template": "minecraft:ruined_portal/giant_portal_3"
+          }
+        }
+      ],
+      "prepared": {
+        "valid": true,
+        "position": [
+          16224,
+          31,
+          16
+        ],
+        "allowed_biome": true,
+        "biome": "minecraft:basalt_deltas",
+        "next": -7987481867599386599
+      }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+[
+  {
+    "submerged": true,
+    "input": "minecraft:magma_block",
+    "output": "minecraft:magma_block"
+  },
+  {
+    "submerged": true,
+    "input": "minecraft:obsidian",
+    "output": "minecraft:obsidian"
+  },
+  {
+    "submerged": true,
+    "input": "minecraft:stone_bricks",
+    "output": "minecraft:stone_bricks"
+  },
+  {
+    "submerged": true,
+    "input": "minecraft:stone_brick_stairs",
+    "output": "minecraft:lava"
+  },
+  {
+    "submerged": true,
+    "input": "minecraft:stone_brick_slab",
+    "output": "minecraft:lava"
+  },
+  {
+    "submerged": true,
+    "input": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "top"
+      },
+      "id": "minecraft:stone_brick_slab"
+    },
+    "output": "minecraft:lava"
+  },
+  {
+    "submerged": true,
+    "input": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "double"
+      },
+      "id": "minecraft:stone_brick_slab"
+    },
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "double"
+      },
+      "id": "minecraft:stone_brick_slab"
+    }
+  },
+  {
+    "submerged": true,
+    "input": "minecraft:blackstone_wall",
+    "output": "minecraft:lava"
+  },
+  {
+    "submerged": true,
+    "input": "minecraft:air",
+    "output": "minecraft:lava"
+  },
+  {
+    "submerged": true,
+    "input": "minecraft:cobweb",
+    "output": "minecraft:cobweb"
+  },
+  {
+    "submerged": false,
+    "input": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "top"
+      },
+      "id": "minecraft:stone_brick_slab"
+    },
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "top"
+      },
+      "id": "minecraft:stone_brick_slab"
+    }
+  }
+]

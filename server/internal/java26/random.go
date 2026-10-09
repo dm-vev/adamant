@@ -11,6 +11,7 @@ type State struct {
 	XorLo uint64 `json:"xor_lo"`
 	XorHi uint64 `json:"xor_hi"`
 	LegacyMode bool `json:"legacy_mode"`
+	WorldgenMode bool `json:"worldgen_mode,omitempty"`
 	Gaussian float64 `json:"gaussian"`
 	HasGaussian bool `json:"has_gaussian"`
 }
@@ -25,16 +26,17 @@ type Random struct {
 	legacy       uint64
 	xorLo, xorHi uint64
 	legacyMode   bool
+	worldgenMode bool
 	gaussian     float64
 	hasGaussian  bool
 }
 func (r Random) State() State {
-	return State{Legacy:r.legacy, XorLo:r.xorLo, XorHi:r.xorHi, LegacyMode:r.legacyMode, Gaussian:r.gaussian, HasGaussian:r.hasGaussian}
+	return State{Legacy:r.legacy, XorLo:r.xorLo, XorHi:r.xorHi, LegacyMode:r.legacyMode, WorldgenMode:r.worldgenMode, Gaussian:r.gaussian, HasGaussian:r.hasGaussian}
 }
 
 // FromState restores a Java random stream from its complete mutable state.
 func FromState(state State) Random {
-	return Random{legacy:state.Legacy, xorLo:state.XorLo, xorHi:state.XorHi, legacyMode:state.LegacyMode, gaussian:state.Gaussian, hasGaussian:state.HasGaussian}
+	return Random{legacy:state.Legacy, xorLo:state.XorLo, xorHi:state.XorHi, legacyMode:state.LegacyMode, worldgenMode:state.WorldgenMode, gaussian:state.Gaussian, hasGaussian:state.HasGaussian}
 }
 
 func NewLegacyRandom(seed int64) Random {
@@ -51,7 +53,7 @@ func (r *Random) NextInt(bound int32) int32 {
 	if bound <= 0 {
 		panic("java26: bound must be positive")
 	}
-	if r.legacyMode {
+	if r.legacyMode || r.worldgenMode {
 		if bound&(bound-1) == 0 {
 			return int32((int64(bound) * int64(r.next(31))) >> 31)
 		}
@@ -78,13 +80,13 @@ func (r *Random) NextInt(bound int32) int32 {
 	}
 }
 func (r *Random) NextInt32() int32 {
-	if r.legacyMode {
+	if r.legacyMode || r.worldgenMode {
 		return int32(r.next(32))
 	}
 	return int32(r.xoroshiro())
 }
 func (r *Random) NextLong() int64 {
-	if r.legacyMode {
+	if r.legacyMode || r.worldgenMode {
 		upper, lower := int32(r.next(32)), int32(r.next(32))
 		return int64(upper)<<32 + int64(lower)
 	}
@@ -92,7 +94,7 @@ func (r *Random) NextLong() int64 {
 }
 func (r *Random) NextFloat() float32 { return float32(r.next(24)) * 5.9604645e-8 }
 func (r *Random) NextDouble() float64 {
-	if !r.legacyMode {
+	if !r.legacyMode && !r.worldgenMode {
 		return float64(r.xoroshiro()>>11) * 1.1102230246251565e-16
 	}
 	upper, lower := r.next(26), r.next(27)
@@ -110,20 +112,16 @@ func (r *Random) SetSeed(seed int64) {
 			r.xorLo, r.xorHi = uint64(0x9e3779b97f4a7c15), uint64(7640891576956012809)
 		}
 	}
-	r.hasGaussian = false
-}
-
-// NextWorldgenLong matches WorldgenRandom.nextLong over an Xoroshiro source.
-func (r *Random) NextWorldgenLong() int64 {
-	upper, lower := int32(r.next(32)), int32(r.next(32))
-	return int64(upper)<<32 + int64(lower)
+	if !r.worldgenMode {
+		r.hasGaussian = false
+	}
 }
 
 // SetDecorationSeed and SetFeatureSeed mirror Minecraft's WorldgenRandom methods.
 func (r *Random) SetDecorationSeed(seed int64, blockX, blockZ int32) int64 {
 	r.SetSeed(seed)
-	xScale := r.NextWorldgenLong() | 1
-	zScale := r.NextWorldgenLong() | 1
+	xScale := r.NextLong() | 1
+	zScale := r.NextLong() | 1
 	decorationSeed := int64(blockX)*xScale + int64(blockZ)*zScale ^ seed
 	r.SetSeed(decorationSeed)
 	return decorationSeed
@@ -134,11 +132,12 @@ func (r *Random) SetFeatureSeed(seed int64, index, step int32) {
 }
 
 func (r *Random) NextBoolean() bool {
-	if r.legacyMode {
+	if r.legacyMode || r.worldgenMode {
 		return r.next(1) != 0
 	}
 	return r.xoroshiro()&1 != 0
 }
+
 
 func (r *Random) NextGaussian() float64 {
 	if r.hasGaussian {
@@ -164,6 +163,9 @@ func (r *Random) Consume(count int) {
 func (r *Random) ForkPositional() PositionalFactory {
 	if r.legacyMode {
 		return PositionalFactory{seed: r.NextLong(), legacy: true}
+	}
+	if r.worldgenMode {
+		return PositionalFactory{seed: int64(r.xoroshiro()), seedHi: int64(r.xoroshiro())}
 	}
 	return PositionalFactory{seed: r.NextLong(), seedHi: r.NextLong()}
 }
@@ -216,6 +218,22 @@ func (p PositionalFactory) FromHashOf(name string) Random {
 func NewXoroshiroRandom(seed int64) Random {
 	lo, hi := upgradeSeed(seed)
 	return newXoroshiro(mixStafford13(lo), mixStafford13(hi))
+}
+
+// NewWorldgenRandom wraps a XoroshiroRandomSource with WorldgenRandom's
+// next(bits) adapter, as used by Minecraft's world-generation seed streams.
+func NewWorldgenRandom(seed int64) Random {
+	r := NewXoroshiroRandom(seed)
+	r.worldgenMode = true
+	return r
+}
+
+// NewWorldgenLegacyRandom wraps a LegacyRandomSource with WorldgenRandom's
+// reseeding and next(bits) semantics.
+func NewWorldgenLegacyRandom(seed int64) Random {
+	r := NewLegacyRandom(seed)
+	r.worldgenMode = true
+	return r
 }
 // NewRandomSequence creates the native Java random stream for a persisted
 // random-sequence key, matching RandomSequences/RandomSequence.

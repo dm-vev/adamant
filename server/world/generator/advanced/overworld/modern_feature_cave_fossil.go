@@ -50,6 +50,7 @@ func placeModernFossil(region *featureRegion, config map[string]any, origin feat
 				return region.placementHeight(x, z, kind)
 			},
 			WorldSeed: region.f.seed, StartPos: templateOrigin, BlockCount: len(template.Palettes[0]), Random: random, SkipEntities: true,
+			SettingsRandom: random,
 		})
 		if err != nil {
 			panic(err)

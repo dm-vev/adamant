@@ -1,0 +1,610 @@
+[
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1065,
+      28,
+      -415
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": "minecraft:stone_bricks"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1065,
+      28,
+      -415
+    ],
+    "input": "minecraft:stone",
+    "output": "minecraft:stone"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1065,
+      28,
+      -415
+    ],
+    "input": "minecraft:obsidian",
+    "output": "minecraft:obsidian"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1065,
+      28,
+      -415
+    ],
+    "input": {
+      "properties": {
+        "waterlogged": "true",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    },
+    "output": {
+      "properties": {
+        "waterlogged": "true",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1065,
+      28,
+      -415
+    ],
+    "input": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "double"
+      },
+      "id": "minecraft:stone_brick_slab"
+    },
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "double"
+      },
+      "id": "minecraft:stone_brick_slab"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1065,
+      28,
+      -415
+    ],
+    "input": {
+      "properties": {
+        "west": "none",
+        "waterlogged": "false",
+        "up": "true",
+        "south": "none",
+        "north": "none",
+        "east": "tall"
+      },
+      "id": "minecraft:cobblestone_wall"
+    },
+    "output": {
+      "properties": {
+        "west": "none",
+        "waterlogged": "false",
+        "up": "true",
+        "south": "none",
+        "north": "none",
+        "east": "tall"
+      },
+      "id": "minecraft:cobblestone_wall"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1065,
+      28,
+      -415
+    ],
+    "input": "minecraft:magma_block",
+    "output": "minecraft:magma_block"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1064,
+      29,
+      -414
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1064,
+      29,
+      -414
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1064,
+      29,
+      -414
+    ],
+    "input": {
+      "properties": {
+        "waterlogged": "true",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    },
+    "output": "minecraft:stone_slab"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1061,
+      32,
+      -411
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "north"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1061,
+      32,
+      -411
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "north"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1061,
+      32,
+      -411
+    ],
+    "input": "minecraft:obsidian",
+    "output": "minecraft:crying_obsidian"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1059,
+      29,
+      -409
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "south"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1059,
+      29,
+      -409
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "south"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1059,
+      29,
+      -409
+    ],
+    "input": {
+      "properties": {
+        "waterlogged": "true",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    },
+    "output": "minecraft:stone_brick_slab"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1056,
+      32,
+      -413
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": "minecraft:cracked_stone_bricks"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1056,
+      32,
+      -413
+    ],
+    "input": "minecraft:stone",
+    "output": "minecraft:cracked_stone_bricks"
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1055,
+      28,
+      -412
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "south"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.0,
+    "position": [
+      -1055,
+      28,
+      -412
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "south"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1064,
+      29,
+      -414
+    ],
+    "input": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "double"
+      },
+      "id": "minecraft:stone_brick_slab"
+    },
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "type": "double"
+      },
+      "id": "minecraft:mossy_stone_brick_slab"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1064,
+      29,
+      -414
+    ],
+    "input": {
+      "properties": {
+        "west": "none",
+        "waterlogged": "false",
+        "up": "true",
+        "south": "none",
+        "north": "none",
+        "east": "tall"
+      },
+      "id": "minecraft:cobblestone_wall"
+    },
+    "output": {
+      "properties": {
+        "west": "none",
+        "waterlogged": "false",
+        "up": "true",
+        "south": "none",
+        "north": "none",
+        "east": "tall"
+      },
+      "id": "minecraft:mossy_stone_brick_wall"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1061,
+      32,
+      -411
+    ],
+    "input": {
+      "properties": {
+        "waterlogged": "true",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    },
+    "output": {
+      "properties": {
+        "waterlogged": "true",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1060,
+      28,
+      -410
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "east"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1060,
+      28,
+      -410
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "east"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1059,
+      29,
+      -409
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "north"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1059,
+      29,
+      -409
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "north"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1056,
+      32,
+      -413
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": "minecraft:mossy_stone_bricks"
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1056,
+      32,
+      -413
+    ],
+    "input": "minecraft:stone",
+    "output": "minecraft:mossy_stone_bricks"
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1055,
+      28,
+      -412
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "east"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 0.5,
+    "position": [
+      -1055,
+      28,
+      -412
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "bottom",
+        "facing": "east"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 1.0,
+    "position": [
+      -1064,
+      29,
+      -414
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": "minecraft:mossy_stone_brick_stairs"
+  },
+  {
+    "mossiness": 1.0,
+    "position": [
+      -1064,
+      29,
+      -414
+    ],
+    "input": "minecraft:stone",
+    "output": "minecraft:mossy_stone_brick_stairs"
+  },
+  {
+    "mossiness": 1.0,
+    "position": [
+      -1061,
+      32,
+      -411
+    ],
+    "input": "minecraft:stone_bricks",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 1.0,
+    "position": [
+      -1061,
+      32,
+      -411
+    ],
+    "input": "minecraft:stone",
+    "output": {
+      "properties": {
+        "waterlogged": "false",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:mossy_stone_brick_stairs"
+    }
+  },
+  {
+    "mossiness": 1.0,
+    "position": [
+      -1059,
+      29,
+      -409
+    ],
+    "input": {
+      "properties": {
+        "waterlogged": "true",
+        "shape": "straight",
+        "half": "top",
+        "facing": "west"
+      },
+      "id": "minecraft:stone_brick_stairs"
+    },
+    "output": "minecraft:mossy_stone_brick_slab"
+  }
+]

@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
@@ -15,15 +14,17 @@ import (
 
 // ProcessorEnvironment supplies world queries and placement context used by Java processors.
 type ProcessorEnvironment struct {
-	BaseBlock    func(x, y, z int32) world.Block
-	JavaBiomeAt  func(x, y, z int32) string
-	BaseHeight   func(x, z int32, oceanFloor bool) int32
-	WorldSeed    int64
-	StartPos     [3]int32
-	BlockCount   int
-	Random       *java26.Random
-	SkipEntities bool
-	PlaceFeature func(feature any, pos [3]int32, random *java26.Random) bool
+	BaseBlock   func(x, y, z int32) world.Block
+	JavaBiomeAt func(x, y, z int32) string
+	BaseHeight  func(x, z int32, oceanFloor bool) int32
+	WorldSeed   int64
+	StartPos    [3]int32
+	BlockCount  int
+	Random      *java26.Random
+	// SettingsRandom is StructurePlaceSettings.random; Random is the supplied feature/decorator stream.
+	SettingsRandom *java26.Random
+	SkipEntities   bool
+	PlaceFeature   func(feature any, pos [3]int32, random *java26.Random) bool
 }
 
 // LoadProcessors resolves named vanilla processor lists and inline processors into executable processors.
@@ -98,7 +99,7 @@ func compileRuleProcessor(config map[string]any, env ProcessorEnvironment) (Proc
 	}
 	rules := make([]struct {
 		config, input, location map[string]any
-		state world.BlockState
+		state                   world.BlockState
 	}, len(rawRules))
 	for i, raw := range rawRules {
 		rule, ok := raw.(map[string]any)
@@ -340,7 +341,6 @@ func absInt32(value int32) int32 {
 	return value
 }
 
-
 func compileBlockIgnore(config map[string]any) (Processor, error) {
 	values, ok := config["blocks"].([]any)
 	if !ok {
@@ -360,16 +360,27 @@ func compileBlockIgnore(config map[string]any) (Processor, error) {
 func compileBlockRot(config map[string]any, env ProcessorEnvironment) (Processor, error) {
 	probability := asFloat32(config["integrity"])
 	tag := ""
-	if value, ok := config["rottable_blocks"].(map[string]any); ok {
-		tag, _ = value["tag"].(string)
-	}
-	names := make(map[string]struct{})
-	if values, ok := config["rottable_blocks"].([]any); ok {
-		for _, value := range values {
-			if name, ok := value.(string); ok {
-				names[name] = struct{}{}
-			}
+	var names map[string]struct{}
+	selection, restricted := config["rottable_blocks"]
+	switch values := selection.(type) {
+	case nil:
+	case string:
+		if value, isTag := strings.CutPrefix(values, "#"); isTag {
+			tag = value
+		} else {
+			names = map[string]struct{}{world.NormaliseBlockName(values): {}}
 		}
+	case []any:
+		names = make(map[string]struct{}, len(values))
+		for _, value := range values {
+			name, ok := value.(string)
+			if !ok {
+				return Processor{}, fmt.Errorf("Java block-rot holder is not a block identifier")
+			}
+			names[world.NormaliseBlockName(name)] = struct{}{}
+		}
+	default:
+		return Processor{}, fmt.Errorf("invalid Java block-rot holder set %T", selection)
 	}
 	return processor(func(ctx ProcessContext, block Block) (Block, bool, error) {
 		if tag != "" {
@@ -381,12 +392,14 @@ func compileBlockRot(config map[string]any, env ProcessorEnvironment) (Processor
 				return block, true, nil
 			}
 		}
-		if len(names) > 0 {
+		if restricted && tag == "" {
 			if _, ok := names[block.State.Name]; !ok {
 				return block, true, nil
 			}
 		}
-		return block, processorRandom(env, ctx.Position).NextFloat() <= probability, nil
+		var positional java26.Random
+		random := processorRandom(env.SettingsRandom, ctx.Position, &positional)
+		return block, random.NextFloat() <= probability, nil
 	}), nil
 }
 func compileBlackstoneReplace() (Processor, error) {
@@ -449,25 +462,35 @@ func compileProtectedBlocks(config map[string]any, env ProcessorEnvironment) (Pr
 func compileBlockAge(config map[string]any, env ProcessorEnvironment) (Processor, error) {
 	mossiness := asFloat32(config["mossiness"])
 	return processor(func(ctx ProcessContext, b Block) (Block, bool, error) {
-		random := processorRandom(env, ctx.Position)
+		var positional java26.Random
+		random := processorRandom(env.SettingsRandom, ctx.Position, &positional)
 		state := b.State
 		switch state.Name {
 		case "minecraft:stone", "minecraft:stone_bricks", "minecraft:chiseled_stone_bricks":
 			if random.NextFloat() >= 0.5 {
 				return b, true, nil
 			}
+			// Java eagerly constructs both stair alternatives before selecting
+			// the replacement. Consume both pairs without allocating unused maps.
+			facing, half := random.NextInt(4), random.NextInt(2)
+			mossyFacing, mossyHalf := random.NextInt(4), random.NextInt(2)
 			mossy := random.NextFloat() < mossiness
 			choice := random.NextInt(2)
-			if mossy && choice == 0 {
+			state = world.BlockState{Name: "minecraft:cracked_stone_bricks"}
+			if mossy {
 				state.Name = "minecraft:mossy_stone_bricks"
-			} else if mossy {
-				state.Name = "minecraft:mossy_stone_brick_stairs"
-				state.Properties = randomAgedStairProperties(random)
-			} else if choice == 0 {
-				state.Name = "minecraft:cracked_stone_bricks"
-			} else {
+			}
+			if choice == 1 {
 				state.Name = "minecraft:stone_brick_stairs"
-				state.Properties = randomAgedStairProperties(random)
+				if mossy {
+					state.Name = "minecraft:mossy_stone_brick_stairs"
+					facing, half = mossyFacing, mossyHalf
+				}
+				state.Properties = map[string]any{
+					"facing": [...]string{"north", "east", "south", "west"}[facing],
+					"half":   [...]string{"top", "bottom"}[half],
+					"shape":  "straight", "waterlogged": false,
+				}
 			}
 		case "minecraft:obsidian":
 			if random.NextFloat() < 0.15 {
@@ -483,14 +506,14 @@ func compileBlockAge(config map[string]any, env ProcessorEnvironment) (Processor
 						state.Name = "minecraft:mossy_stone_brick_stairs"
 					} else {
 						state.Name = "minecraft:mossy_stone_brick_slab"
-						state.Properties = agedSlabProperties(state.Properties)
+						state.Properties = agedSlabProperties()
 					}
 				} else if random.NextInt(2) == 0 {
 					state.Name = "minecraft:stone_slab"
-					state.Properties = agedSlabProperties(nil)
+					state.Properties = agedSlabProperties()
 				} else {
 					state.Name = "minecraft:stone_brick_slab"
-					state.Properties = agedSlabProperties(nil)
+					state.Properties = agedSlabProperties()
 				}
 			} else if matches, _ := javadata.BlockTagContains("minecraft:slabs", state.Name); matches {
 				if random.NextFloat() < mossiness {
@@ -512,34 +535,9 @@ func compileBlockAge(config map[string]any, env ProcessorEnvironment) (Processor
 		return b, true, nil
 	}), nil
 }
-func randomAgedStairProperties(random *java26.Random) map[string]any {
-	facing := "north"
-	switch random.NextInt(4) {
-	case 1:
-		facing = "east"
-	case 2:
-		facing = "south"
-	case 3:
-		facing = "west"
-	}
-	half := "bottom"
-	if random.NextInt(2) == 1 {
-		half = "top"
-	}
-	return map[string]any{
-		"facing":      facing,
-		"half":        half,
-		"shape":       "straight",
-		"waterlogged": "false",
-	}
-}
 
-func agedSlabProperties(source map[string]any) map[string]any {
-	waterlogged, ok := source["waterlogged"]
-	if !ok {
-		waterlogged = "false"
-	}
-	return map[string]any{"type": "bottom", "waterlogged": waterlogged}
+func agedSlabProperties() map[string]any {
+	return map[string]any{"type": "bottom", "waterlogged": false}
 }
 
 func compileLavaSubmerged(env ProcessorEnvironment) (Processor, error) {
@@ -549,14 +547,14 @@ func compileLavaSubmerged(env ProcessorEnvironment) (Processor, error) {
 		}
 		base := env.BaseBlock(ctx.Position[0], ctx.Position[1], ctx.Position[2])
 		name, _ := base.EncodeBlock()
-		if name != "minecraft:lava" {
+		if name != "minecraft:lava" && name != "minecraft:flowing_lava" {
 			return b, true, nil
 		}
-		block, ok := world.BlockByName(b.State.Name, b.State.Properties)
-		if !ok {
-			return b, true, fmt.Errorf("unknown Java structure state %q", b.State.Name)
+		shape, err := javadata.BlockGenerationShape(b.State.Name, b.State.Properties)
+		if err != nil {
+			return b, true, fmt.Errorf("resolve Java lava-submerged shape %q: %w", b.State.Name, err)
 		}
-		if _, fullBlock := block.Model().(model.Solid); fullBlock {
+		if shape.OutlineFull {
 			return b, true, nil
 		}
 		b.State = world.BlockState{Name: "minecraft:lava"}
@@ -682,12 +680,12 @@ func javaBlockPositionSeed(pos [3]int32) int64 {
 	return seed >> 16
 }
 
-func processorRandom(env ProcessorEnvironment, pos [3]int32) *java26.Random {
-	if env.Random != nil {
-		return env.Random
+func processorRandom(settings *java26.Random, pos [3]int32, positional *java26.Random) *java26.Random {
+	if settings != nil {
+		return settings
 	}
-	random := java26.NewLegacyRandom(javaBlockPositionSeed(pos))
-	return &random
+	*positional = java26.NewLegacyRandom(javaBlockPositionSeed(pos))
+	return positional
 }
 func mergeNBT(a, b map[string]any) map[string]any {
 	out := make(map[string]any, len(a)+len(b))

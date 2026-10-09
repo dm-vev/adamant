@@ -41,6 +41,7 @@ type GenerationShape struct {
 	RedstoneConductor   bool // sampled with EmptyBlockGetter; inspect conductor predicate owner for contextual semantics
 	FireCanBurn         bool // FireBlock.canBurn for this state, including WATERLOGGED
 	SolidRender         bool // BlockState.isSolidRender, distinct from collision fullness
+	OutlineFull         bool // Block.isShapeFullBlock(BlockState.getShape), distinct from collision fullness
 }
 
 func generationBlockIndex(name string) (int, error) {
@@ -88,6 +89,7 @@ func generationShape(block, stateIndex int) GenerationShape {
 		ConnectionException: mask&(1<<21) != 0, SignalSource: mask&(1<<22) != 0,
 		RedstoneConductor: mask&(1<<23) != 0, FireCanBurn: mask&(1<<24) != 0,
 		SolidRender: mask&(1<<25) != 0,
+		OutlineFull: mask&(1<<26) != 0,
 	}
 }
 

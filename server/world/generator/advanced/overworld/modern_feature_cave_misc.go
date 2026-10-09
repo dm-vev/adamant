@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 func placeModernIceFamily(region *featureRegion, typeName string, config map[string]any, origin featurePos, random *java26.Random) (bool, bool) {
@@ -393,8 +393,7 @@ func placeModernRandomNeighborSpread(region *featureRegion, config map[string]an
 	xzOffset,ok:=config["xz_offset"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor xz offset")}
 	yOffset,ok:=config["y_offset"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor y offset")}
 	canReplace,ok:=config["can_replace"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor replace predicate")}
-	accepted,ok:=config["accepted_neighbors"].(string);if !ok{panic("overworld: malformed Java random-neighbor accepted neighbors")}
-	acceptedTag:=strings.HasPrefix(accepted,"#")
+	accepted := config["accepted_neighbors"]
 	sampleOffset:=func(provider map[string]any)int32{
 		switch provider["type"]{
 		case "minecraft:uniform":return geodeIntProvider(provider,0,0,random)
@@ -414,9 +413,7 @@ func placeModernRandomNeighborSpread(region *featureRegion, config map[string]an
 		neighbors:=0
 		for _,d:=range [][3]int32{{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}}{
 			name,_:=region.State(featurePos{p.x+d[0],p.y+d[1],p.z+d[2]})
-			matches:=normalizeJavaResource(name)==normalizeJavaResource(strings.TrimPrefix(accepted,"#"))
-			if !matches&&acceptedTag{matches=javaBlockTagContains(normalizeJavaResource(strings.TrimPrefix(accepted,"#")), normalizeJavaResource(name))}
-			if matches{neighbors++;if neighbors>1{break}}
+			if featureBlockHolderContains(accepted, name) {neighbors++;if neighbors>1{break}}
 		}
 		if neighbors==1{state,actor,ok=region.SampleNativeState(blockProvider,p,random);if !ok{panic("overworld: unresolved Java random-neighbor block provider")};region.SetNativeBlock(p,state,actor)}
 	}

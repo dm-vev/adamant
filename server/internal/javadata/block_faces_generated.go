@@ -376,7 +376,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -387,7 +387,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -398,7 +398,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -461,7 +461,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -540,7 +540,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -584,7 +584,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -609,7 +609,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -620,7 +620,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -634,7 +634,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -755,7 +755,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -788,7 +788,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -876,7 +876,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -891,7 +891,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -929,7 +929,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -992,7 +992,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -1071,7 +1071,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1082,7 +1082,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			11010047,
+			78118911,
 		},
 		rigid: []uint8{
 			63,
@@ -1093,7 +1093,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1104,7 +1104,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -1115,7 +1115,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1126,7 +1126,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -1137,7 +1137,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -1283,7 +1283,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -1294,7 +1294,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -1305,7 +1305,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -1368,7 +1368,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -1447,7 +1447,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -1520,7 +1520,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1531,7 +1531,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1545,7 +1545,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -1576,7 +1576,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1587,7 +1587,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -1598,7 +1598,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -1626,7 +1626,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1648,7 +1648,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -1663,7 +1663,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -1701,7 +1701,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1715,7 +1715,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -1786,7 +1786,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1859,7 +1859,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1870,7 +1870,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1884,7 +1884,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -1915,7 +1915,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1926,7 +1926,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -1948,7 +1948,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -1959,7 +1959,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -1987,7 +1987,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2009,7 +2009,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -2024,7 +2024,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -2062,7 +2062,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2073,7 +2073,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -2095,7 +2095,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2142,7 +2142,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -2213,7 +2213,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2286,7 +2286,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2297,7 +2297,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2311,7 +2311,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -2342,7 +2342,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2364,7 +2364,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2375,7 +2375,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -2386,7 +2386,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -2414,7 +2414,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2436,7 +2436,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -2451,7 +2451,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -2511,7 +2511,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2544,7 +2544,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2602,7 +2602,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2671,7 +2671,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2682,7 +2682,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			44564479,
+			111673343,
 		},
 		rigid: []uint8{
 			63,
@@ -2737,7 +2737,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -2828,7 +2828,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -2839,7 +2839,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -2850,7 +2850,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -2913,7 +2913,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -2992,7 +2992,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -3032,7 +3032,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3043,7 +3043,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3054,7 +3054,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3065,7 +3065,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3076,7 +3076,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3087,7 +3087,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3098,7 +3098,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3109,7 +3109,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3120,7 +3120,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3131,7 +3131,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3142,7 +3142,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3153,7 +3153,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3164,7 +3164,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3175,7 +3175,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3186,7 +3186,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			266303,
+			67375167,
 		},
 		rigid: []uint8{
 			0,
@@ -3223,7 +3223,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3237,7 +3237,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3308,7 +3308,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3322,7 +3322,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3393,7 +3393,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3415,7 +3415,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -3426,7 +3426,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3437,7 +3437,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3448,7 +3448,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3462,7 +3462,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3533,7 +3533,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3547,7 +3547,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3618,7 +3618,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524288,
+			67633152,
 		},
 		rigid: []uint8{
 			0,
@@ -3640,7 +3640,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3701,7 +3701,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3712,7 +3712,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -3779,7 +3779,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -3804,7 +3804,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3864,7 +3864,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3875,7 +3875,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3886,7 +3886,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3897,7 +3897,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3908,7 +3908,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3919,7 +3919,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3930,7 +3930,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -3941,7 +3941,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4061,7 +4061,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4072,7 +4072,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4083,7 +4083,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4144,7 +4144,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4175,7 +4175,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4227,7 +4227,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4238,7 +4238,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4252,7 +4252,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4283,7 +4283,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4297,7 +4297,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4308,7 +4308,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4322,7 +4322,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4395,7 +4395,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4406,7 +4406,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4420,7 +4420,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4451,7 +4451,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4462,7 +4462,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -4473,7 +4473,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -4501,7 +4501,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4523,7 +4523,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -4538,7 +4538,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -4681,7 +4681,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -4692,7 +4692,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -4703,7 +4703,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -4766,7 +4766,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -4845,7 +4845,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -4856,7 +4856,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4870,7 +4870,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4923,7 +4923,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -4967,7 +4967,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5022,7 +5022,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5066,7 +5066,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5110,7 +5110,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5154,7 +5154,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5168,7 +5168,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5239,7 +5239,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5250,7 +5250,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5261,7 +5261,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5272,7 +5272,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5283,7 +5283,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5294,7 +5294,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5305,7 +5305,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5316,7 +5316,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5327,7 +5327,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5341,7 +5341,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5412,7 +5412,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5434,7 +5434,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5445,7 +5445,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5456,7 +5456,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5470,7 +5470,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5541,7 +5541,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5563,7 +5563,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5621,7 +5621,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -5632,7 +5632,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5643,7 +5643,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5654,7 +5654,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5665,7 +5665,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5687,7 +5687,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524288,
+			67633152,
 		},
 		rigid: []uint8{
 			0,
@@ -5737,7 +5737,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5751,7 +5751,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5822,7 +5822,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5844,7 +5844,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5855,7 +5855,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -5883,7 +5883,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -5950,7 +5950,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -5991,7 +5991,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6005,7 +6005,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6094,7 +6094,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6127,7 +6127,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			17301504,
+			84410368,
 		},
 		rigid: []uint8{
 			0,
@@ -6138,7 +6138,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6174,7 +6174,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -6196,7 +6196,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -6207,7 +6207,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6218,7 +6218,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6229,7 +6229,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -6257,21 +6257,44 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		properties: []generationFaceProperty{
+			{name: "down", values: []any{false, true}},
+			{name: "east", values: []any{false, true}},
+			{name: "north", values: []any{false, true}},
+			{name: "south", values: []any{false, true}},
+			{name: "up", values: []any{false, true}},
 			{name: "waterlogged", values: []any{false, true}},
+			{name: "west", values: []any{false, true}},
 		},
 		masks: []uint32{
-			18350080, 1572864,
+			85458944, 18350080, 68681728, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
+			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
+			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
+			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
+			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
+			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
+			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
+			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
 		},
 		rigid: []uint8{
-			0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		geometry: []uint16{
-			0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -6282,7 +6305,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6293,7 +6316,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6315,7 +6338,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6329,7 +6352,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6400,7 +6423,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6411,7 +6434,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6484,7 +6507,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6495,7 +6518,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6509,7 +6532,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6540,7 +6563,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6551,7 +6574,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -6562,7 +6585,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -6590,7 +6613,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6612,7 +6635,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -6627,7 +6650,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -6727,7 +6750,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6738,7 +6761,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6752,7 +6775,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6783,7 +6806,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6794,7 +6817,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -6805,7 +6828,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -6833,7 +6856,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -6855,7 +6878,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -6870,7 +6893,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -6937,7 +6960,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -6970,7 +6993,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			4096,
+			67112960,
 		},
 		rigid: []uint8{
 			0,
@@ -6981,7 +7004,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7017,7 +7040,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7050,7 +7073,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -7061,7 +7084,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7072,7 +7095,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7083,7 +7106,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7094,7 +7117,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7105,7 +7128,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7116,7 +7139,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7127,7 +7150,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7155,7 +7178,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7196,7 +7219,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7223,7 +7246,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			44564479,
+			111673343,
 		},
 		rigid: []uint8{
 			63,
@@ -7234,7 +7257,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7245,7 +7268,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			46661631,
+			113770495,
 		},
 		rigid: []uint8{
 			63,
@@ -7336,7 +7359,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -7347,7 +7370,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -7358,7 +7381,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -7421,7 +7444,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -7500,7 +7523,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -7522,7 +7545,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524288,
+			67633152,
 		},
 		rigid: []uint8{
 			0,
@@ -7561,7 +7584,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7572,7 +7595,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7597,7 +7620,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			18350080,
+			85458944,
 		},
 		rigid: []uint8{
 			0,
@@ -7736,7 +7759,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7747,7 +7770,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7761,7 +7784,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -7792,7 +7815,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7803,7 +7826,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -7814,7 +7837,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -7842,7 +7865,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7864,7 +7887,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -7879,7 +7902,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -7979,7 +8002,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -7990,7 +8013,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8004,7 +8027,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -8035,7 +8058,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8046,7 +8069,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -8057,7 +8080,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -8085,7 +8108,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8107,7 +8130,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -8122,7 +8145,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8185,7 +8208,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			17301504,
+			84410368,
 		},
 		rigid: []uint8{
 			0,
@@ -8280,7 +8303,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8291,7 +8314,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8305,7 +8328,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -8336,7 +8359,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8347,7 +8370,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -8358,7 +8381,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -8386,7 +8409,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8408,7 +8431,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -8423,7 +8446,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8461,7 +8484,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8472,7 +8495,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8545,7 +8568,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8556,7 +8579,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8570,7 +8593,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -8601,7 +8624,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8612,7 +8635,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -8623,7 +8646,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -8651,7 +8674,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8673,7 +8696,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -8688,7 +8711,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8726,7 +8749,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -8817,7 +8840,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -8828,7 +8851,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -8839,7 +8862,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -8875,7 +8898,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			25690111, 8912895,
+			92798975, 76021759,
 		},
 		rigid: []uint8{
 			63, 63,
@@ -8916,7 +8939,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8995,7 +9018,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -9020,7 +9043,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			44564479,
+			111673343,
 		},
 		rigid: []uint8{
 			63,
@@ -9042,7 +9065,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9064,7 +9087,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9078,7 +9101,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9152,7 +9175,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9223,7 +9246,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9245,7 +9268,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42205183,
+			109314047,
 		},
 		rigid: []uint8{
 			63,
@@ -9259,7 +9282,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9330,7 +9353,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9341,7 +9364,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9352,7 +9375,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9363,7 +9386,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9394,7 +9417,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9465,7 +9488,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9476,7 +9499,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9498,7 +9521,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9531,7 +9554,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9542,7 +9565,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9553,7 +9576,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9564,7 +9587,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9655,7 +9678,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -9666,7 +9689,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -9677,7 +9700,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -9740,7 +9763,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -9819,7 +9842,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -9830,7 +9853,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			38273023,
+			105381887,
 		},
 		rigid: []uint8{
 			63,
@@ -9841,7 +9864,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9852,7 +9875,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9936,7 +9959,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9947,7 +9970,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -9961,7 +9984,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9992,7 +10015,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10006,7 +10029,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -10017,7 +10040,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -10028,7 +10051,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -10056,7 +10079,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10089,7 +10112,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -10104,7 +10127,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -10153,7 +10176,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10164,7 +10187,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10192,7 +10215,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -10259,7 +10282,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -10300,7 +10323,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10314,7 +10337,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -10359,7 +10382,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10370,7 +10393,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10392,7 +10415,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -10404,15 +10427,41 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	{
 		properties: []generationFaceProperty{
 			{name: "bottom", values: []any{false, true}},
+			{name: "east", values: []any{"low", "none", "tall"}},
+			{name: "north", values: []any{"low", "none", "tall"}},
+			{name: "south", values: []any{"low", "none", "tall"}},
+			{name: "west", values: []any{"low", "none", "tall"}},
 		},
 		masks: []uint32{
-			17301504, 16781377,
+			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
+			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
+			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 84410368, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
+			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
+			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
+			17301504, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377,
+			16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377,
+			16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377,
+			16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377,
+			16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377,
+			16781377, 16781377,
 		},
 		rigid: []uint8{
-			0, 1,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 		},
 		geometry: []uint16{
-			0, 117,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117,
+			117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117,
+			117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117,
+			117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117, 117,
 		},
 	},
 	{
@@ -10497,7 +10546,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -10508,7 +10557,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -10519,7 +10568,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -10582,7 +10631,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -10661,7 +10710,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -10672,7 +10721,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10683,7 +10732,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			17301504,
+			84410368,
 		},
 		rigid: []uint8{
 			0,
@@ -10697,7 +10746,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -10795,7 +10844,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10806,7 +10855,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10820,7 +10869,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -10851,7 +10900,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10873,7 +10922,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -10884,7 +10933,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -10912,7 +10961,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -10945,7 +10994,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -10960,7 +11009,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -11002,7 +11051,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
 		masks: []uint32{
-			34078719, 34078719, 34078719, 34078719, 34078719, 34078719, 8322, 128016, 242184, 225540, 249921, 194592,
+			101187583, 101187583, 101187583, 101187583, 101187583, 101187583, 8322, 128016, 242184, 225540, 249921, 194592,
 		},
 		rigid: []uint8{
 			63, 63, 63, 63, 63, 63, 2, 16, 8, 4, 1, 32,
@@ -11043,7 +11092,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			17301504,
+			84410368,
 		},
 		rigid: []uint8{
 			0,
@@ -11079,7 +11128,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11105,7 +11154,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11119,7 +11168,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11150,7 +11199,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11161,7 +11210,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11175,7 +11224,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11246,7 +11295,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11282,7 +11331,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11353,7 +11402,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11367,7 +11416,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11438,7 +11487,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11452,7 +11501,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11523,7 +11572,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11537,7 +11586,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11568,7 +11617,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11582,7 +11631,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11613,7 +11662,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11627,7 +11676,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11698,7 +11747,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -11712,7 +11761,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11860,7 +11909,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -11871,7 +11920,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -11934,7 +11983,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -12013,7 +12062,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -12046,7 +12095,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12486,7 +12535,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524288,
+			67633152,
 		},
 		rigid: []uint8{
 			0,
@@ -12519,7 +12568,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12533,7 +12582,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -12564,7 +12613,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12578,7 +12627,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -12649,7 +12698,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			44564479,
+			111673343,
 		},
 		rigid: []uint8{
 			63,
@@ -12733,7 +12782,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12744,7 +12793,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12758,7 +12807,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -12789,7 +12838,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12800,7 +12849,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -12811,7 +12860,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -12839,7 +12888,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12861,7 +12910,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -12876,7 +12925,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -12914,7 +12963,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12925,7 +12974,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12939,7 +12988,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -12970,7 +13019,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12981,7 +13030,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -12992,7 +13041,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13006,7 +13055,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13048,7 +13097,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13059,7 +13108,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13070,7 +13119,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13143,7 +13192,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13154,7 +13203,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13168,7 +13217,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13199,7 +13248,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13221,7 +13270,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13235,7 +13284,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13306,7 +13355,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13320,7 +13369,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -13331,7 +13380,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13342,7 +13391,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13356,7 +13405,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13438,7 +13487,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -13449,7 +13498,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -13477,7 +13526,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13510,7 +13559,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -13525,7 +13574,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -13563,7 +13612,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			38273023,
+			105381887,
 		},
 		rigid: []uint8{
 			63,
@@ -13574,7 +13623,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13585,7 +13634,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13629,7 +13678,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13651,7 +13700,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13662,7 +13711,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13676,7 +13725,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13747,7 +13796,44 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
+		},
+		rigid: []uint8{
+			63,
+		},
+		geometry: []uint16{
+			21,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "down", values: []any{false, true}},
+			{name: "east", values: []any{false, true}},
+			{name: "north", values: []any{false, true}},
+			{name: "south", values: []any{false, true}},
+			{name: "up", values: []any{false, true}},
+			{name: "west", values: []any{false, true}},
+		},
+		masks: []uint32{
+			68681728, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864,
+			1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864,
+			1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864,
+			1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864,
+		},
+		rigid: []uint8{
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		},
+		geometry: []uint16{
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		},
+	},
+	{
+		masks: []uint32{
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13758,18 +13844,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			1572864,
-		},
-		rigid: []uint8{
-			0,
-		},
-		geometry: []uint16{
-			0,
-		},
-	},
-	{
-		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13780,18 +13855,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
-		},
-		rigid: []uint8{
-			63,
-		},
-		geometry: []uint16{
-			21,
-		},
-	},
-	{
-		masks: []uint32{
-			17301504,
+			84410368,
 		},
 		rigid: []uint8{
 			0,
@@ -13802,7 +13866,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13813,7 +13877,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13827,7 +13891,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13912,7 +13976,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13923,7 +13987,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -13945,7 +14009,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			4161,
+			67113025,
 		},
 		rigid: []uint8{
 			1,
@@ -13955,19 +14019,34 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
+		properties: []generationFaceProperty{
+			{name: "down", values: []any{false, true}},
+			{name: "east", values: []any{false, true}},
+			{name: "north", values: []any{false, true}},
+			{name: "south", values: []any{false, true}},
+			{name: "up", values: []any{false, true}},
+			{name: "west", values: []any{false, true}},
+		},
 		masks: []uint32{
-			524288,
+			67633152, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288,
+			524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288,
+			524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288,
+			524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288,
 		},
 		rigid: []uint8{
-			0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		geometry: []uint16{
-			0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		},
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -14040,7 +14119,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14051,7 +14130,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -14087,7 +14166,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -14126,7 +14205,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14137,7 +14216,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14148,7 +14227,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14159,7 +14238,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14173,7 +14252,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14204,7 +14283,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14218,7 +14297,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14249,7 +14328,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14263,7 +14342,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14294,7 +14373,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14308,7 +14387,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14333,7 +14412,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "layers", values: []any{int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8)}},
 		},
 		masks: []uint32{
-			1577025, 1052737, 1052737, 1052737, 1298497, 1298497, 1298497, 34865151,
+			1577025, 1052737, 1052737, 1052737, 1298497, 1298497, 1298497, 101974015,
 		},
 		rigid: []uint8{
 			1, 1, 1, 1, 1, 1, 1, 63,
@@ -14344,7 +14423,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14391,7 +14470,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42205183,
+			109314047,
 		},
 		rigid: []uint8{
 			63,
@@ -14402,7 +14481,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14435,7 +14514,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -14446,7 +14525,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14548,7 +14627,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -14559,7 +14638,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14570,7 +14649,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14633,7 +14712,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -14712,7 +14791,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14727,7 +14806,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
 		masks: []uint32{
-			34078719, 34078719, 34078719, 34078719, 34078719, 34078719, 8322, 128016, 242184, 225540, 249921, 194592,
+			101187583, 101187583, 101187583, 101187583, 101187583, 101187583, 8322, 128016, 242184, 225540, 249921, 194592,
 		},
 		rigid: []uint8{
 			63, 63, 63, 63, 63, 63, 2, 16, 8, 4, 1, 32,
@@ -14738,7 +14817,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14752,7 +14831,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14823,7 +14902,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -14859,7 +14938,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14916,7 +14995,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14927,7 +15006,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14938,7 +15017,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14949,7 +15028,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14960,7 +15039,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14971,7 +15050,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14982,7 +15061,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -14993,7 +15072,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15004,7 +15083,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15015,7 +15094,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15026,7 +15105,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15037,7 +15116,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15048,7 +15127,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15059,7 +15138,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15070,7 +15149,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15081,7 +15160,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15092,7 +15171,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15103,7 +15182,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15114,7 +15193,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15125,7 +15204,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15136,7 +15215,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15147,7 +15226,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15158,7 +15237,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -15169,7 +15248,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15180,7 +15259,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15191,7 +15270,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15224,7 +15303,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15238,7 +15317,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15309,7 +15388,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15323,7 +15402,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15409,7 +15488,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			17301504,
+			84410368,
 		},
 		rigid: []uint8{
 			0,
@@ -15420,7 +15499,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15431,7 +15510,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15441,14 +15520,17 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
+		properties: []generationFaceProperty{
+			{name: "age", values: []any{int32(0), int32(1), int32(2), int32(3)}},
+		},
 		masks: []uint32{
-			17301504,
+			17301504, 17301504, 17301504, 84410368,
 		},
 		rigid: []uint8{
-			0,
+			0, 0, 0, 0,
 		},
 		geometry: []uint16{
-			0,
+			0, 0, 0, 0,
 		},
 	},
 	{
@@ -15464,7 +15546,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			18350080,
+			85458944,
 		},
 		rigid: []uint8{
 			0,
@@ -15486,7 +15568,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			63438847,
+			130547711,
 		},
 		rigid: []uint8{
 			63,
@@ -15497,7 +15579,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15508,7 +15590,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15519,7 +15601,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -15530,7 +15612,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -15541,7 +15623,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			50855935,
+			117964799,
 		},
 		rigid: []uint8{
 			63,
@@ -15600,7 +15682,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -15644,7 +15726,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15677,7 +15759,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15691,7 +15773,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15762,7 +15844,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15776,7 +15858,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15883,7 +15965,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -15894,7 +15976,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -15904,14 +15986,24 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
+		properties: []generationFaceProperty{
+			{name: "east", values: []any{false, true}},
+			{name: "north", values: []any{false, true}},
+			{name: "south", values: []any{false, true}},
+			{name: "up", values: []any{false, true}},
+			{name: "west", values: []any{false, true}},
+		},
 		masks: []uint32{
-			18350080,
+			85458944, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080,
+			18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080,
 		},
 		rigid: []uint8{
-			0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		geometry: []uint16{
-			0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 	},
 	{
@@ -16022,7 +16114,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16033,7 +16125,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16044,7 +16136,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16105,7 +16197,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -16136,7 +16228,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16188,7 +16280,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16221,7 +16313,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16249,7 +16341,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16260,7 +16352,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -16327,7 +16419,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -16368,7 +16460,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16382,7 +16474,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -16413,7 +16505,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16424,7 +16516,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16452,7 +16544,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -16519,7 +16611,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -16560,7 +16652,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16574,227 +16666,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
-		},
-		rigid: []uint8{
-			1, 63, 2,
-		},
-		geometry: []uint16{
-			26, 21, 27,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "facing", values: []any{"east", "north", "south", "west"}},
-			{name: "half", values: []any{"bottom", "top"}},
-			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
-		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
-		},
-		rigid: []uint8{
-			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
-			9, 42, 26, 2, 2, 10, 25, 21, 1, 1, 17, 26, 22, 2, 2, 18,
-		},
-		geometry: []uint16{
-			28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 28, 39, 30, 40, 41, 33, 42, 35, 43, 29, 44, 31, 45,
-			46, 34, 47, 36, 48, 49, 44, 38, 45, 39, 50, 47, 41, 48, 42, 51,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
-		},
-		masks: []uint32{
-			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
-		},
-		rigid: []uint8{
-			0, 0, 0, 0, 0, 0,
-		},
-		geometry: []uint16{
-			220, 221, 222, 222, 220, 221,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
-		},
-		masks: []uint32{
-			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
-		},
-		rigid: []uint8{
-			0, 0, 0, 0, 0, 0,
-		},
-		geometry: []uint16{
-			220, 221, 222, 222, 220, 221,
-		},
-	},
-	{
-		masks: []uint32{
-			42467327,
-		},
-		rigid: []uint8{
-			63,
-		},
-		geometry: []uint16{
-			21,
-		},
-	},
-	{
-		masks: []uint32{
-			42467327,
-		},
-		rigid: []uint8{
-			63,
-		},
-		geometry: []uint16{
-			21,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "east", values: []any{false, true}},
-			{name: "north", values: []any{false, true}},
-			{name: "south", values: []any{false, true}},
-			{name: "west", values: []any{false, true}},
-		},
-		masks: []uint32{
-			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
-		},
-		rigid: []uint8{
-			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		},
-		geometry: []uint16{
-			118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133,
-		},
-	},
-	{
-		masks: []uint32{
-			34078719,
-		},
-		rigid: []uint8{
-			63,
-		},
-		geometry: []uint16{
-			21,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "axis", values: []any{"x", "y", "z"}},
-		},
-		masks: []uint32{
-			0, 12288, 0,
-		},
-		rigid: []uint8{
-			0, 0, 0,
-		},
-		geometry: []uint16{
-			205, 206, 207,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "facing", values: []any{"east", "north", "south", "west"}},
-			{name: "type", values: []any{"left", "right", "single"}},
-		},
-		masks: []uint32{
-			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
-		},
-		rigid: []uint8{
-			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		},
-		geometry: []uint16{
-			142, 143, 116, 144, 145, 116, 145, 144, 116, 143, 142, 116,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "facing", values: []any{"east", "north", "south", "west"}},
-			{name: "hinge", values: []any{"left", "right"}},
-			{name: "open", values: []any{false, true}},
-		},
-		masks: []uint32{
-			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
-		},
-		rigid: []uint8{
-			16, 4, 16, 8, 8, 16, 8, 32, 4, 32, 4, 16, 32, 8, 32, 4,
-		},
-		geometry: []uint16{
-			1, 2, 1, 3, 3, 1, 3, 4, 2, 4, 2, 1, 4, 3, 4, 2,
-		},
-	},
-	{
-		masks: []uint32{
-			4096,
-		},
-		rigid: []uint8{
-			0,
-		},
-		geometry: []uint16{
-			60,
-		},
-	},
-	{
-		masks: []uint32{
-			524287,
-		},
-		rigid: []uint8{
-			63,
-		},
-		geometry: []uint16{
-			21,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "hanging", values: []any{false, true}},
-		},
-		masks: []uint32{
-			4096, 0,
-		},
-		rigid: []uint8{
-			0, 0,
-		},
-		geometry: []uint16{
-			208, 0,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "facing", values: []any{"east", "north", "south", "west"}},
-			{name: "half", values: []any{"bottom", "top"}},
-			{name: "open", values: []any{false, true}},
-		},
-		masks: []uint32{
-			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
-		},
-		rigid: []uint8{
-			1, 16, 2, 16, 1, 8, 2, 8, 1, 4, 2, 4, 1, 32, 2, 32,
-		},
-		geometry: []uint16{
-			52, 1, 53, 1, 52, 3, 53, 3, 52, 2, 53, 2, 52, 4, 53, 4,
-		},
-	},
-	{
-		masks: []uint32{
-			42467327,
-		},
-		rigid: []uint8{
-			63,
-		},
-		geometry: []uint16{
-			21,
-		},
-	},
-	{
-		properties: []generationFaceProperty{
-			{name: "type", values: []any{"bottom", "double", "top"}},
-		},
-		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -16838,8 +16710,22 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
+		properties: []generationFaceProperty{
+			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
+		},
 		masks: []uint32{
-			42467327,
+			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
+		},
+		rigid: []uint8{
+			0, 0, 0, 0, 0, 0,
+		},
+		geometry: []uint16{
+			220, 221, 222, 222, 220, 221,
+		},
+	},
+	{
+		masks: []uint32{
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16850,7 +16736,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -16878,7 +16764,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -16945,7 +16831,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -16986,7 +16872,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17000,7 +16886,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17045,7 +16931,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17056,7 +16942,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17084,7 +16970,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			34078719,
+			101187583,
 		},
 		rigid: []uint8{
 			63,
@@ -17151,7 +17037,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -17192,7 +17078,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17206,7 +17092,213 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
+		},
+		rigid: []uint8{
+			1, 63, 2,
+		},
+		geometry: []uint16{
+			26, 21, 27,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "facing", values: []any{"east", "north", "south", "west"}},
+			{name: "half", values: []any{"bottom", "top"}},
+			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
+		},
+		masks: []uint32{
+			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
+			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
+			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		},
+		rigid: []uint8{
+			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
+			9, 42, 26, 2, 2, 10, 25, 21, 1, 1, 17, 26, 22, 2, 2, 18,
+		},
+		geometry: []uint16{
+			28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 28, 39, 30, 40, 41, 33, 42, 35, 43, 29, 44, 31, 45,
+			46, 34, 47, 36, 48, 49, 44, 38, 45, 39, 50, 47, 41, 48, 42, 51,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
+		},
+		masks: []uint32{
+			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
+		},
+		rigid: []uint8{
+			0, 0, 0, 0, 0, 0,
+		},
+		geometry: []uint16{
+			220, 221, 222, 222, 220, 221,
+		},
+	},
+	{
+		masks: []uint32{
+			109576191,
+		},
+		rigid: []uint8{
+			63,
+		},
+		geometry: []uint16{
+			21,
+		},
+	},
+	{
+		masks: []uint32{
+			109576191,
+		},
+		rigid: []uint8{
+			63,
+		},
+		geometry: []uint16{
+			21,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "east", values: []any{false, true}},
+			{name: "north", values: []any{false, true}},
+			{name: "south", values: []any{false, true}},
+			{name: "west", values: []any{false, true}},
+		},
+		masks: []uint32{
+			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
+		},
+		rigid: []uint8{
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		},
+		geometry: []uint16{
+			118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133,
+		},
+	},
+	{
+		masks: []uint32{
+			101187583,
+		},
+		rigid: []uint8{
+			63,
+		},
+		geometry: []uint16{
+			21,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "axis", values: []any{"x", "y", "z"}},
+		},
+		masks: []uint32{
+			0, 12288, 0,
+		},
+		rigid: []uint8{
+			0, 0, 0,
+		},
+		geometry: []uint16{
+			205, 206, 207,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "facing", values: []any{"east", "north", "south", "west"}},
+			{name: "type", values: []any{"left", "right", "single"}},
+		},
+		masks: []uint32{
+			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
+		},
+		rigid: []uint8{
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		},
+		geometry: []uint16{
+			142, 143, 116, 144, 145, 116, 145, 144, 116, 143, 142, 116,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "facing", values: []any{"east", "north", "south", "west"}},
+			{name: "hinge", values: []any{"left", "right"}},
+			{name: "open", values: []any{false, true}},
+		},
+		masks: []uint32{
+			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
+		},
+		rigid: []uint8{
+			16, 4, 16, 8, 8, 16, 8, 32, 4, 32, 4, 16, 32, 8, 32, 4,
+		},
+		geometry: []uint16{
+			1, 2, 1, 3, 3, 1, 3, 4, 2, 4, 2, 1, 4, 3, 4, 2,
+		},
+	},
+	{
+		masks: []uint32{
+			4096,
+		},
+		rigid: []uint8{
+			0,
+		},
+		geometry: []uint16{
+			60,
+		},
+	},
+	{
+		masks: []uint32{
+			67633151,
+		},
+		rigid: []uint8{
+			63,
+		},
+		geometry: []uint16{
+			21,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "hanging", values: []any{false, true}},
+		},
+		masks: []uint32{
+			4096, 0,
+		},
+		rigid: []uint8{
+			0, 0,
+		},
+		geometry: []uint16{
+			208, 0,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "facing", values: []any{"east", "north", "south", "west"}},
+			{name: "half", values: []any{"bottom", "top"}},
+			{name: "open", values: []any{false, true}},
+		},
+		masks: []uint32{
+			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
+		},
+		rigid: []uint8{
+			1, 16, 2, 16, 1, 8, 2, 8, 1, 4, 2, 4, 1, 32, 2, 32,
+		},
+		geometry: []uint16{
+			52, 1, 53, 1, 52, 3, 53, 3, 52, 2, 53, 2, 52, 4, 53, 4,
+		},
+	},
+	{
+		masks: []uint32{
+			109576191,
+		},
+		rigid: []uint8{
+			63,
+		},
+		geometry: []uint16{
+			21,
+		},
+	},
+	{
+		properties: []generationFaceProperty{
+			{name: "type", values: []any{"bottom", "double", "top"}},
+		},
+		masks: []uint32{
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17273,7 +17365,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17283,14 +17375,17 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
+		properties: []generationFaceProperty{
+			{name: "age", values: []any{int32(0), int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7)}},
+		},
 		masks: []uint32{
-			524288,
+			524288, 524288, 524288, 524288, 524288, 524288, 524288, 67633152,
 		},
 		rigid: []uint8{
-			0,
+			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		geometry: []uint16{
-			0,
+			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 	},
 	{
@@ -17357,7 +17452,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17368,7 +17463,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17382,7 +17477,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17413,7 +17508,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17424,7 +17519,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -17435,7 +17530,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -17463,7 +17558,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17496,7 +17591,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -17511,7 +17606,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -17658,7 +17753,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17669,7 +17764,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17683,7 +17778,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
 		masks: []uint32{
-			4161, 42467327, 8322,
+			4161, 109576191, 8322,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17714,7 +17809,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17728,7 +17823,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			19136575, 2359359,
+			86245439, 69468223,
 		},
 		rigid: []uint8{
 			0, 0,
@@ -17739,7 +17834,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			8912895,
+			76021759,
 		},
 		rigid: []uint8{
 			63,
@@ -17750,7 +17845,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			524287,
+			67633151,
 		},
 		rigid: []uint8{
 			63,
@@ -17778,7 +17873,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			42467327,
+			109576191,
 		},
 		rigid: []uint8{
 			63,
@@ -17800,7 +17895,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	},
 	{
 		masks: []uint32{
-			59244543,
+			126353407,
 		},
 		rigid: []uint8{
 			63,
@@ -17815,7 +17910,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 		},
 		masks: []uint32{
-			16781377, 4161, 59244543, 42467327, 16785538, 8322,
+			16781377, 4161, 126353407, 109576191, 16785538, 8322,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,

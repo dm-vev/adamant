@@ -119,7 +119,7 @@ func generate(input, output, defaultsOutput, facesOutput, propertiesOutput strin
 			if err != nil {
 				return err
 			}
-			mask, err := strconv.ParseUint(fields[3], 10, 26)
+			mask, err := strconv.ParseUint(fields[3], 10, 27)
 			if err != nil {
 				return fmt.Errorf("invalid face mask %q: %w", fields[3], err)
 			}

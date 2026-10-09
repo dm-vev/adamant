@@ -137,10 +137,11 @@ func placeModernTemplateFeature(region *featureRegion, config map[string]any, or
 			}
 			return region.placementHeight(x, z, kind)
 		},
-		WorldSeed:  region.f.seed,
-		StartPos:   placeOrigin,
-		BlockCount: len(template.Palettes[palette]),
-		Random:     random,
+		WorldSeed:      region.f.seed,
+		StartPos:       placeOrigin,
+		BlockCount:     len(template.Palettes[palette]),
+		Random:         random,
+		SettingsRandom: random,
 		PlaceFeature: func(feature any, pos [3]int32, rng *java26.Random) bool {
 			return region.PlacePlacedFeature(feature, pos, rng)
 		},

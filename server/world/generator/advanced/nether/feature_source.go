@@ -128,10 +128,10 @@ func (s *netherFeatureSource) baseChunk(pos world.ChunkPos) *chunk.Chunk {
 func (s *netherFeatureSource) PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
 	switch step {
 	case 4:
-		env.Random = s.structureStepRandom(pos, 26, step)
-		s.placeRuinedPortalStep(pos, env, emit)
-		env.Random = s.structureStepRandom(pos, 31, step)
+		env.Random = s.structureStepRandom(pos, 18, step)
 		s.placeBastionStructureStep(pos, env, emit)
+		env.Random = s.structureStepRandom(pos, 32, step)
+		s.placeRuinedPortalStep(pos, env, emit)
 	case 7:
 		env.Random = s.structureStepRandom(pos, 1, step)
 		s.placeFortressStructureStep(pos, env, emit)
@@ -142,7 +142,7 @@ func (s *netherFeatureSource) PlaceStructureStep(pos world.ChunkPos, step int, e
 
 func (s *netherFeatureSource) structureStepRandom(pos world.ChunkPos, index, step int) *java26.Random {
 	originX, originZ := int32(pos[0])*16, int32(pos[1])*16
-	random := java26.NewXoroshiroRandom(s.generator.seed)
+	random := java26.NewWorldgenRandom(s.generator.seed)
 	decorationSeed := random.SetDecorationSeed(s.generator.seed, originX, originZ)
 	random.SetFeatureSeed(decorationSeed, int32(index), int32(step))
 	return &random
@@ -231,102 +231,6 @@ func (s *netherFeatureSource) placeFortressStructureStep(pos world.ChunkPos, env
 	}
 	if len(placement.Blocks) != 0 || len(placement.PostProcessing) != 0 || len(placement.ScheduledTicks) != 0 {
 		emit(placement)
-	}
-}
-
-func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
-	const salt, spacing, separation = int32(14357921), int32(2), int32(1)
-	targetX, targetZ := int32(pos[0]), int32(pos[1])
-	clip := javastructure.Bounds{
-		Min: [3]int32{targetX * 16, 0, targetZ * 16},
-		Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15},
-	}
-	for sourceZ := targetZ - 3; sourceZ <= targetZ+3; sourceZ++ {
-		for sourceX := targetX - 3; sourceX <= targetX+3; sourceX++ {
-			candidate, err := javastructure.PotentialChunk(s.generator.seed, sourceX, sourceZ, salt, spacing, separation, javastructure.Linear)
-			if err != nil {
-				panic(err)
-			}
-			if candidate[0] != sourceX || candidate[1] != sourceZ {
-				continue
-			}
-			if env.Random == nil {
-				panic("nether: Java fossil placement has no step random source")
-			}
-			x := sourceX*16 + env.Random.NextInt(16)
-			z := sourceZ*16 + env.Random.NextInt(16)
-			y := int32(32) + env.Random.NextInt(94)
-			for y > netherSeaLevel {
-				currentName, _ := env.BaseBlock(x, y, z).EncodeBlock()
-				y--
-				belowName, _ := env.BaseBlock(x, y, z).EncodeBlock()
-				sturdy := belowName != "minecraft:air" && belowName != "minecraft:lava" && belowName != "minecraft:flowing_lava"
-				if currentName == "minecraft:air" && (belowName == "minecraft:soul_sand" || sturdy) {
-					break
-				}
-			}
-			if y <= netherSeaLevel {
-				continue
-			}
-			if env.JavaBiomeAt(x, y, z) != "minecraft:soul_sand_valley" {
-				continue
-			}
-			rotation := javastructure.Rotation(env.Random.NextInt(4))
-			templateNumber := env.Random.NextInt(14) + 1
-			templateName := fmt.Sprintf("nether_fossils/fossil_%d", templateNumber)
-			template := loadNetherTemplate(templateName)
-			origin := [3]int32{x, y, z}
-			placement, err := template.Place(0, origin, rotation, javastructure.NoMirror, clip, s.generator.seed)
-			if err != nil {
-				panic(fmt.Errorf("place Java Nether fossil %s: %w", templateName, err))
-			}
-			filtered := javastructure.Placement{
-				Entities: placement.Entities, PostProcessing: placement.PostProcessing,
-				ScheduledTicks: placement.ScheduledTicks, StructurePieceWrites: placement.StructurePieceWrites,
-			}
-			for _, pieceBlock := range placement.Blocks {
-				switch pieceBlock.State.Name {
-				case "minecraft:air", "minecraft:structure_block", "minecraft:structure_void":
-					continue
-				}
-				javastructure.SeedRandomizableContainerLoot(&pieceBlock, env.Random)
-				filtered.Blocks = append(filtered.Blocks, pieceBlock)
-			}
-			if len(filtered.Blocks) != 0 || len(filtered.Entities) != 0 {
-				filtered, err = filtered.AdaptItemFrameEntities()
-				if err != nil {
-					panic(fmt.Errorf("adapt Java Nether fossil: %w", err))
-				}
-				emit(filtered)
-			}
-			min, max := netherTemplateBounds(template, origin, rotation)
-			random := java26.NewLegacyRandom(s.generator.seed)
-			base := random.ForkPositional().At((min[0]+max[0])/2, (min[1]+max[1])/2, (min[2]+max[2])/2)
-			if base.NextFloat() >= 0.5 {
-				continue
-			}
-			ghastPos := [3]int32{
-				min[0] + base.NextInt(max32(1, max[0]-min[0]+1)),
-				min[1],
-				min[2] + base.NextInt(max32(1, max[2]-min[2]+1)),
-			}
-			if ghastPos[0]>>4 != targetX || ghastPos[2]>>4 != targetZ || ghastPos[1] < clip.Min[1] || ghastPos[1] > clip.Max[1] {
-				continue
-			}
-			name, _ := env.BaseBlock(ghastPos[0], ghastPos[1], ghastPos[2]).EncodeBlock()
-			if name != "minecraft:air" {
-				continue
-			}
-			facing := []string{"north", "east", "south", "west"}[base.NextInt(4)]
-			emit(javastructure.Placement{Blocks: []javastructure.Block{{
-				Pos: ghastPos,
-				State: world.BlockState{Name: "minecraft:dried_ghast", Properties: map[string]any{
-					"facing":      facing,
-					"hydration":   int32(0),
-					"waterlogged": false,
-				}},
-			}}})
-		}
 	}
 }
 

@@ -771,7 +771,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 
 
 func (g *End) endCityWorldgenRandom(chunkX, chunkZ int) *endRand {
-	random := java26.NewXoroshiroRandom(g.seed)
+	random := java26.NewWorldgenRandom(g.seed)
 	decorationSeed := random.SetDecorationSeed(g.seed, int32(chunkX<<4), int32(chunkZ<<4))
 	// 22 is End City's registry-order index in the 26.3 surface_structures step.
 	random.SetFeatureSeed(decorationSeed, 22, 4)

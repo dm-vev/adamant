@@ -79,6 +79,7 @@ public final class JavaSolidExporter {
                 if (state.isRedstoneConductor(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) mask |= 1 << 23;
                 if (fireCanBurn(fireCanBurn, fire, state)) mask |= 1 << 24;
                 if (state.isSolidRender()) mask |= 1 << 25;
+                if (Block.isShapeFullBlock(state.getShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO))) mask |= 1 << 26;
                 if (firstMask == -1) firstMask = mask;
                 else if (mask != firstMask) facesVary = true;
                 faces.add(new FaceRow(properties(state), mask));
