@@ -638,29 +638,103 @@ var biomeInfoNoise = func() *java26.SimplexNoise {
 }()
 
 func sampleJavaHeight(provider map[string]any, r *java26.Random, worldMinY, worldMaxY, seaLevel int32) int32 {
-	typeName, ok := provider["type"].(string)
-	if !ok {
-		panic("overworld: Java height provider has no type")
-	}
 	bound := func(v any) int32 { return int32(featureBound(v, worldMinY, worldMaxY, seaLevel)) }
-	minY, maxY := bound(provider["min_inclusive"]), bound(provider["max_inclusive"])
-	if maxY < minY {
-		panic("overworld: inverted Java height provider")
+	typeName, typed := provider["type"].(string)
+	if !typed {
+		return bound(provider)
 	}
-	switch normalizeJavaResource(typeName) {
-	case "uniform":
-		return minY + r.NextInt(maxY-minY+1)
-	case "trapezoid":
-		width := maxY - minY + 1
-		a, b := r.NextInt(width), r.NextInt(width)
-		return minY + (a+b)/2
-	case "biased_to_bottom":
-		return minY + int32(r.NextInt(r.NextInt(maxY-minY+1)+1))
-	case "very_biased_to_bottom":
-		return minY + int32(r.NextInt(r.NextInt(r.NextInt(maxY-minY+1)+1)+1))
+	typeName = normalizeJavaResource(typeName)
+	switch typeName {
+	case "constant":
+		return bound(provider["value"])
+	case "weighted_list":
+		distribution, ok := provider["distribution"].([]any)
+		if !ok || len(distribution) == 0 {
+			panic("overworld: malformed weighted Java height provider")
+		}
+		total := int32(0)
+		for _, raw := range distribution {
+			entry, ok := raw.(map[string]any)
+			if !ok {
+				panic("overworld: malformed weighted Java height entry")
+			}
+			weight := javaIntProviderValue(entry["weight"])
+			if weight < 0 || total > int32(2147483647)-weight {
+				panic("overworld: invalid Java height weight")
+			}
+			total += weight
+		}
+		if total == 0 {
+			panic("overworld: weighted Java height provider has no positive weight")
+		}
+		choice := r.NextInt(total)
+		for _, raw := range distribution {
+			entry := raw.(map[string]any)
+			weight := javaIntProviderValue(entry["weight"])
+			if choice < weight {
+				child, ok := entry["data"].(map[string]any)
+				if !ok {
+					panic("overworld: weighted Java height entry has no provider")
+				}
+				return sampleJavaHeight(child, r, worldMinY, worldMaxY, seaLevel)
+			}
+			choice -= weight
+		}
+		panic("overworld: weighted Java height selection escaped its total")
+	case "uniform", "trapezoid", "biased_to_bottom", "very_biased_to_bottom":
+		minY, maxY := bound(provider["min_inclusive"]), bound(provider["max_inclusive"])
+		switch typeName {
+		case "uniform":
+			if minY > maxY {
+				return minY
+			}
+			return minY + r.NextInt(maxY-minY+1)
+		case "trapezoid":
+			if minY > maxY {
+				return minY
+			}
+			plateau := int32(0)
+			if value, exists := provider["plateau"]; exists {
+				plateau = javaIntProviderValue(value)
+			}
+			width := maxY - minY
+			if plateau >= width {
+				return minY + r.NextInt(width+1)
+			}
+			plateauStart := (width - plateau) / 2
+			plateauEnd := width - plateauStart
+			return minY + r.NextInt(plateauEnd+1) + r.NextInt(plateauStart+1)
+		}
+		inner := int32(1)
+		if value, exists := provider["inner"]; exists {
+			inner = javaIntProviderValue(value)
+		}
+		if inner < 1 {
+			panic("overworld: Java height inner must be positive")
+		}
+		extent := maxY - minY - inner + 1
+		if extent <= 0 {
+			return minY
+		}
+		if typeName == "biased_to_bottom" {
+			limit := r.NextInt(extent)
+			return minY + r.NextInt(limit+inner)
+		}
+		upper := javaHeightNextInt(r, minY+inner, maxY)
+		biasedUpper := javaHeightNextInt(r, minY, upper-1)
+		return javaHeightNextInt(r, minY, biasedUpper-1+inner)
 	default:
-		panic("overworld: unsupported Java height provider " + normalizeJavaResource(typeName))
+		panic("overworld: unsupported Java height provider " + typeName)
 	}
+}
+
+// javaHeightNextInt matches Mth.nextInt, which unlike randomBetweenInclusive
+// consumes no draw when its endpoints coincide or are inverted.
+func javaHeightNextInt(r *java26.Random, minimum, maximum int32) int32 {
+	if minimum >= maximum {
+		return minimum
+	}
+	return minimum + r.NextInt(maximum-minimum+1)
 }
 
 func noiseBasedCount(p featurePos, modifier map[string]any) int {

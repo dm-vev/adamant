@@ -202,12 +202,12 @@ func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult,err
 		if !found { return JigsawResult{},fmt.Errorf("Java jigsaw: start connector %q absent from %s",options.StartJigsaw,startElement.template) }
 	}
 	startPiece:=makeJigsawPoolPiece(startTemplates,startOrigin,startRotation,startElement,options.LiquidSettings)
+	bottomY := startOrigin[1]
 	if options.ProjectStartToHeightmap && options.HeightAt!=nil {
 		centerX:=(startPiece.Bounds.Min[0]+startPiece.Bounds.Max[0])/2; centerZ:=(startPiece.Bounds.Min[2]+startPiece.Bounds.Max[2])/2
-		bottomY:=options.Origin[1]+options.HeightAt(centerX,centerZ)
-		delta:=bottomY-(startPiece.Bounds.Min[1]+startPiece.GroundLevelDelta)
-		startPiece=movePiece(startPiece,0,delta,0)
+		bottomY = options.Origin[1]+options.HeightAt(centerX,centerZ)
 	}
+	startPiece = movePiece(startPiece, 0, bottomY-(startPiece.Bounds.Min[1]+startPiece.GroundLevelDelta), 0)
 	result:=JigsawResult{Pieces:[]JigsawPiece{startPiece}}
 	queue:=[]int{0}; depths:=[]int{0}
 	for len(queue)>0 {

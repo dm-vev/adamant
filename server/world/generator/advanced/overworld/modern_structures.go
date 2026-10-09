@@ -522,14 +522,12 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		return modernStructureStart{}, false, fmt.Errorf("jigsaw structure has no start_pool")
 	}
 	originX, originZ := input.chunkX*16, input.chunkZ*16
-	startHeight, _ := config["start_height"].(map[string]any)
-	originY := int32(number(startHeight["absolute"]))
-	if v, ok := startHeight["above_bottom"]; ok {
-		originY = -64 + int32(number(v))
+	startHeight, ok := config["start_height"].(map[string]any)
+	if !ok {
+		return modernStructureStart{}, false, fmt.Errorf("jigsaw structure has malformed start_height")
 	}
-	if v, ok := startHeight["below_top"]; ok {
-		originY = 320 - int32(number(v))
-	}
+	heightRange := world.Overworld.Range()
+	originY := sampleJavaHeight(startHeight, input.random, int32(heightRange.Min()), int32(heightRange.Max())+1, input.source.SeaLevel())
 	terrain := terrainAdjustment(stringValue(config["terrain_adaptation"]))
 	liquidSettings, err := javastructure.ParseLiquidSettings(config["liquid_settings"])
 	if err != nil {
