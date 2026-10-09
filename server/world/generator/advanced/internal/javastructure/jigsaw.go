@@ -1,13 +1,11 @@
 package javastructure
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
 )
 
 // Projection is the Java StructureTemplatePool projection mode.
@@ -27,6 +25,12 @@ type JigsawOptions struct {
 	Origin [3]int32
 	MaxDepth int
 	MaxDistance int32
+	MaxVerticalDistance int32
+	// HeightRange is the Java level-height accessor, not the native write clip.
+	HeightRange cube.Range
+	PaddingBottom, PaddingTop int32
+	// CheckBounds distinguishes an explicit zero padding from Java's default ZERO.
+	CheckBounds bool
 	ExpansionHack bool
 	Seed int64
 	Terrain TerrainAdjustment
@@ -177,7 +181,14 @@ func SeedRandomizableContainerLoot(block *Block, random *java26.Random) {
 }
 
 // JigsawResult contains the selected piece graph, rigid terrain contributions, and junctions.
-type JigsawResult struct { Pieces []JigsawPiece; RigidPieces []RigidPiece; Junctions []Junction }
+type JigsawResult struct {
+	Pieces []JigsawPiece
+	RigidPieces []RigidPiece
+	Junctions []Junction
+	// StartPos is the source GenerationStub position, including a named anchor's Y.
+	StartPos [3]int32
+	HasStart bool
+}
 
 type poolElement struct {
 	template string
@@ -192,147 +203,6 @@ type poolElement struct {
 	overrideLiquidSettings bool
 	legacySingle bool
 }
-type connector struct { pos [3]int32; front,top string; name,target,pool string; joint string }
-
-// BuildJigsaw expands a Java jigsaw start pool into a deterministic piece graph.
-// random must be initialized with the structure's Java world-generation random source.
-func BuildJigsaw(options JigsawOptions, random *java26.Random) (JigsawResult,error) {
-	if random == nil { return JigsawResult{},fmt.Errorf("Java jigsaw: nil random source") }
-	if options.MaxDepth < 0 { return JigsawResult{},fmt.Errorf("Java jigsaw: negative maximum depth") }
-	if options.MaxDistance <= 0 { options.MaxDistance = 128 }
-	startRotation := Rotation(random.NextInt(4))
-	startElements,_,err := loadStartPool(options.Pool, options.PoolAliases)
-	if err != nil { return JigsawResult{},err }
-	if len(startElements)==0 { return JigsawResult{},nil }
-	startElement,err := choosePoolElement(startElements,random)
-	if err != nil { return JigsawResult{},err }
-	startTemplates,err:=loadPoolElementTemplates(startElement)
-	if err!=nil{return JigsawResult{},err}
-	if len(startTemplates)==0||!hasPoolPlacement(startTemplates){return JigsawResult{},nil}
-	startOrigin := options.Origin
-	if options.StartJigsaw != "" {
-		connectors:=shuffledPoolConnectors(startTemplates,startOrigin,startRotation,NoMirror,random)
-		found:=false
-		for _,c:=range connectors { if strings.TrimPrefix(c.name,"minecraft:")==strings.TrimPrefix(options.StartJigsaw,"minecraft:") { startOrigin=cancelAnchor(startOrigin,c.pos,options.Origin); found=true; break } }
-		if !found { return JigsawResult{},fmt.Errorf("Java jigsaw: start connector %q absent from %s",options.StartJigsaw,startElement.template) }
-	}
-	startPiece:=makeJigsawPoolPiece(startTemplates,startOrigin,startRotation,startElement,options.LiquidSettings)
-	bottomY := startOrigin[1]
-	if options.ProjectStartToHeightmap && options.HeightAt!=nil {
-		centerX:=(startPiece.Bounds.Min[0]+startPiece.Bounds.Max[0])/2; centerZ:=(startPiece.Bounds.Min[2]+startPiece.Bounds.Max[2])/2
-		bottomY = options.Origin[1]+options.HeightAt(centerX,centerZ)
-	}
-	startPiece = movePiece(startPiece, 0, bottomY-(startPiece.Bounds.Min[1]+startPiece.GroundLevelDelta), 0)
-	result:=JigsawResult{Pieces:[]JigsawPiece{startPiece}}
-	queue:=[]int{0}; depths:=[]int{0}
-	for len(queue)>0 {
-		pieceIndex:=queue[0]; queue=queue[1:]
-		depth:=depths[0]; depths=depths[1:]
-		if depth>=options.MaxDepth { continue }
-		source := result.Pieces[pieceIndex]
-		sourceParts:=source.parts
-		if len(sourceParts)==0&&source.Template!=nil{sourceParts=[]jigsawPart{{template:source.Template}}}
-		sourceConnectors:=shuffledPoolConnectors(sourceParts,source.Origin,source.Rotation,source.Mirror,random)
-		for _,sourceJigsaw:=range sourceConnectors {
-			front:=directionStep(sourceJigsaw.front)
-			jointPos:=[3]int32{sourceJigsaw.pos[0]+front[0],sourceJigsaw.pos[1]+front[1],sourceJigsaw.pos[2]+front[2]}
-			poolName:=sourceJigsaw.pool
-			if poolName=="" { continue }
-			primary,fallback,_,err:=loadOptionalPool(lookupPoolAlias(poolName, options.PoolAliases))
-			if err!=nil { return JigsawResult{},err }
-			candidates:=shuffledPoolElements(primary,random)
-			candidates=append(candidates,shuffledPoolElements(fallback,random)...)
-			if len(candidates)==0 { continue }
-			attached:=false
-			for _,element:=range candidates {
-				if element.empty { break }
-				targetTemplates,err:=loadPoolElementTemplates(element); if err!=nil{return JigsawResult{},err}
-				if len(targetTemplates)==0{continue}
-				targetConnectorsTemplate:=targetTemplates
-				rotations:=randomRotations(random)
-				for _,targetRotation:=range rotations {
-					targetConnectors:=shuffledPoolConnectors(targetConnectorsTemplate,[3]int32{},targetRotation,NoMirror,random)
-					for _,targetJigsaw:=range targetConnectors {
-						localPos := targetJigsaw.pos
-						if !canAttach(sourceJigsaw,targetJigsaw) { continue }
-						origin := [3]int32{jointPos[0]-localPos[0],jointPos[1]-localPos[1],jointPos[2]-localPos[2]}
-						candidate := makeJigsawPoolPiece(targetTemplates,origin,targetRotation,element,options.LiquidSettings)
-						sourceLocalY := sourceJigsaw.pos[1]-source.Bounds.Min[1]
-						targetLocalY := targetJigsaw.pos[1]
-						deltaY := sourceLocalY-targetLocalY+front[1]
-						if source.Projection==Rigid&&candidate.Projection==Rigid {
-							candidate.GroundLevelDelta=source.GroundLevelDelta-deltaY
-							candidate=movePiece(candidate,0,source.Bounds.Min[1]+deltaY-candidate.Bounds.Min[1],0)
-						} else if options.HeightAt!=nil {
-							candidate=movePiece(candidate,0,options.HeightAt(sourceJigsaw.pos[0],sourceJigsaw.pos[2])-targetLocalY-candidate.Bounds.Min[1],0)
-						}
-						if !withinDistance(candidate.Bounds,options.Origin,options.MaxDistance) { continue }
-						if overlapsAny(candidate.Bounds,result.Pieces) { continue }
-						junctionY:=int32(0)
-						if source.Projection==Rigid {
-							junctionY=source.Bounds.Min[1]+sourceLocalY
-						} else if candidate.Projection==Rigid {
-							junctionY=candidate.Bounds.Min[1]+targetLocalY
-						} else if options.HeightAt!=nil {
-							junctionY=options.HeightAt(sourceJigsaw.pos[0],sourceJigsaw.pos[2])+deltaY/2
-						}
-						sourceJunction:=Junction{X:candidate.Origin[0]+localPos[0],Y:junctionY-sourceLocalY+source.GroundLevelDelta,Z:candidate.Origin[2]+localPos[2]}
-						targetJunction:=Junction{X:sourceJigsaw.pos[0],Y:junctionY-targetLocalY+candidate.GroundLevelDelta,Z:sourceJigsaw.pos[2]}
-						candidate.Junctions=append(candidate.Junctions,targetJunction)
-						result.Pieces[pieceIndex].Junctions=append(result.Pieces[pieceIndex].Junctions,sourceJunction)
-						result.Pieces=append(result.Pieces,candidate)
-						queue=append(queue,len(result.Pieces)-1); depths=append(depths,depth+1)
-						attached=true; break
-					}
-					if attached { break }
-				}
-				if attached { break }
-			}
-		}
-	}
-	for _,piece:=range result.Pieces {
-		if options.Terrain != TerrainNone {
-			result.RigidPieces=append(result.RigidPieces,RigidPiece{Bounds:piece.Bounds,Adjustment:options.Terrain,GroundLevelDelta:piece.GroundLevelDelta})
-		}
-		result.Junctions=append(result.Junctions,piece.Junctions...)
-	}
-	return result,nil
-}
-
-func loadStartPool(name string, aliases map[string]string) ([]poolElement, []poolElement, error) {
-	name = strings.TrimPrefix(name, "minecraft:")
-	resolved := lookupPoolAlias(name, aliases)
-	if resolved == name { return loadPool(name) }
-	primary, fallback, found, err := loadOptionalPool(resolved)
-	if found || err != nil { return primary, fallback, err }
-	return loadPool(name)
-}
-
-func loadPool(name string) ([]poolElement, []poolElement, error) {
-	primary, fallback, found, err := loadOptionalPool(name)
-	if !found && err == nil { err = fmt.Errorf("Java pool %q: %w", name, fs.ErrNotExist) }
-	return primary, fallback, err
-}
-
-func loadOptionalPool(name string) ([]poolElement, []poolElement, bool, error) {
-	name = strings.TrimPrefix(name, "minecraft:")
-	if name == "empty" { return nil, nil, true, nil }
-	root, err := javadata.LoadJSON("template_pool", name)
-	if errors.Is(err, fs.ErrNotExist) { return nil, nil, false, nil }
-	if err != nil { return nil, nil, false, err }
-	primary, fallback, err := decodePool(name, root)
-	return primary, fallback, true, err
-}
-
-func decodePool(name string, root map[string]any) ([]poolElement, []poolElement, error) {
-	elements, err := decodePoolElements(root["elements"])
-	if err != nil { return nil, nil, fmt.Errorf("Java pool %s: %w", name, err) }
-	fallbackName, _ := root["fallback"].(string)
-	if fallbackName == "" { return elements, nil, nil }
-	fallback, _, err := loadPool(fallbackName)
-	if err != nil { return nil, nil, err }
-	return elements, fallback, nil
-}
 
 func decodePoolElements(raw any)([]poolElement,error){
 	values,ok:=raw.([]any);if !ok{return nil,fmt.Errorf("elements has type %T",raw)}
@@ -341,7 +211,9 @@ func decodePoolElements(raw any)([]poolElement,error){
 		entry,ok:=item.(map[string]any);if !ok{return nil,fmt.Errorf("entry has type %T",item)}
 		element,ok:=entry["element"].(map[string]any)
 		if !ok{return nil,fmt.Errorf("element has type %T",entry["element"])}
-		decoded,err:=decodePoolElement(element,asInt32(entry["weight"]))
+		weight, valid := int32Value(entry["weight"])
+		if !valid || weight < 1 || weight > 150 { return nil, fmt.Errorf("Java pool weight must be in [1,150]: %v", entry["weight"]) }
+		decoded,err:=decodePoolElement(element,weight)
 		if err!=nil{return nil,err}
 		out=append(out,decoded)
 	}
@@ -409,76 +281,35 @@ func decodeElementProcessors(raw any) ([]string, []ProcessorSpec, error) {
 
 func choosePoolIndex(pool []poolElement, r *java26.Random) (int,error) {
 	if len(pool)==0 { return 0,fmt.Errorf("Java jigsaw: empty pool") }
-	total:=int32(0);for _,e:=range pool{total+=max(int32(1),e.weight)}
+	total:=int32(0);for i:=range pool{total+=pool[i].weight}
 	choice:=r.NextInt(total)
-	for i,e:=range pool{choice-=max(int32(1),e.weight);if choice<0{return i,nil}}
+	for i:=range pool{choice-=pool[i].weight;if choice<0{return i,nil}}
 	return len(pool)-1,nil
 }
-func choosePoolElement(pool []poolElement,r *java26.Random)(poolElement,error){
-	index,err:=choosePoolIndex(pool,r);if err!=nil{return poolElement{},err};return pool[index],nil
-}
-func shuffledPoolElements(pool []poolElement,r *java26.Random)[]poolElement {
-	size:=0
-	for _,element:=range pool {size+=int(max(int32(1),element.weight))}
-	out:=make([]poolElement,0,size)
-	for _,element:=range pool {for range max(int32(1),element.weight) {out=append(out,element)}}
-	for i:=len(out)-1;i>0;i-- {j:=int(r.NextInt(int32(i+1)));out[i],out[j]=out[j],out[i]}
+func appendShuffledPoolElements(out []*poolElement, pool []poolElement, random *java26.Random) []*poolElement {
+	start := len(out)
+	for i := range pool { for range pool[i].weight { out = append(out, &pool[i]) } }
+	for i := len(out)-1; i > start; i-- {
+		j := start + int(random.NextInt(int32(i-start+1)))
+		out[i], out[j] = out[j], out[i]
+	}
 	return out
 }
-func randomRotations(r *java26.Random)[]Rotation{
-	out:=[]Rotation{None,Clockwise90,Clockwise180,CounterClockwise90}
+func randomRotations(r *java26.Random)[4]Rotation{
+	out:=[4]Rotation{None,Clockwise90,Clockwise180,CounterClockwise90}
 	for i:=len(out)-1;i>0;i--{j:=int(r.NextInt(int32(i+1)));out[i],out[j]=out[j],out[i]}
 	return out
 }
-func templateConnectors(t *Template,origin [3]int32,rotation Rotation,mirror Mirror)[]connector{
-	if t==nil||len(t.Palettes)==0{return nil};var out []connector
-	for _,b:=range t.Palettes[0]{if b.State.Name!="minecraft:jigsaw"{continue};nbt:=b.NBT
-		orientation,_:=b.State.Properties["orientation"].(string);front,top,_:=strings.Cut(orientation,"_")
-		c:=connector{pos:TransformPosition(b.Pos,mirror,rotation),front:transformDirection(front,mirror,rotation),top:transformDirection(top,mirror,rotation)}
-		for axis:=range 3{c.pos[axis]+=origin[axis]}
-		c.name,_=nbt["name"].(string);c.target,_=nbt["target"].(string);c.pool,_=nbt["pool"].(string);c.joint,_=nbt["joint"].(string)
-		if c.joint==""{c.joint="rollable"};out=append(out,c)
-	}
-	return out
-}
-func shuffledPoolConnectors(parts []jigsawPart,origin [3]int32,rotation Rotation,mirror Mirror,r *java26.Random)[]connector{
-	var out []connector
-	for _,part:=range parts {
-		if part.feature!=nil {
-			out=append(out,connector{pos:origin,front:"down",top:"south",joint:"rollable"})
-			continue
-		}
-		out=append(out,templateConnectors(part.template,origin,rotation,mirror)...)
-	}
-	for i:=len(out)-1;i>0;i-- {j:=int(r.NextInt(int32(i+1)));out[i],out[j]=out[j],out[i]}
-	return out
-}
-func canAttach(source,target connector)bool{
+func canAttach(source,target *connector)bool{
 	if source.front==""||target.front==""||directionOpposite(source.front)!=target.front{return false}
 	if source.joint!="rollable"&&source.top!=target.top{return false}
-	return target.name==""||strings.TrimPrefix(source.target,"minecraft:")==strings.TrimPrefix(target.name,"minecraft:")
-}
-func loadPoolElementTemplates(element poolElement)([]jigsawPart,error){
-	if element.empty{return []jigsawPart{{}},nil}
-	if len(element.children)>0{
-		var parts []jigsawPart
-		for _,child:=range element.children{
-			loaded,err:=loadPoolElementTemplates(child)
-			if err!=nil{return nil,err}
-			parts=append(parts,loaded...)
-		}
-		return parts,nil
-	}
-	if element.feature!=nil{return []jigsawPart{{feature:element.feature}},nil}
-	template,err:=LoadOrCreate(element.template)
-	if err!=nil{return nil,err}
-	return []jigsawPart{{template:template,processors:element.processors,processorSpecs:element.processorSpecs,liquidSettings:element.liquidSettings,overrideLiquidSettings:element.overrideLiquidSettings,legacySingle:element.legacySingle}},nil
+	return target.wildcard||strings.TrimPrefix(source.target,"minecraft:")==strings.TrimPrefix(target.name,"minecraft:")
 }
 func hasPoolPlacement(parts []jigsawPart)bool{
 	for _,part:=range parts{if part.template!=nil||part.feature!=nil{return true}}
 	return false
 }
-func makeJigsawPoolPiece(parts []jigsawPart,origin [3]int32,rotation Rotation,e poolElement,settings LiquidSettings)JigsawPiece{
+func makeJigsawPoolPiece(parts []jigsawPart,origin [3]int32,rotation Rotation,e *poolElement,settings LiquidSettings)JigsawPiece{
 	if e.overrideLiquidSettings { settings = e.liquidSettings }
 	piece:=JigsawPiece{Origin:origin,Rotation:rotation,Projection:e.projection,GroundLevelDelta:1,Bounds:Box{Min:origin,Max:origin},LiquidSettings:settings,legacySingle:e.legacySingle}
 	hasFeature:=false
@@ -505,11 +336,7 @@ func templateBounds(t *Template,origin [3]int32,r Rotation)Box{
 	return Box{Min:[3]int32{origin[0]+min(corners[0][0],corners[1][0]),origin[1]+min(corners[0][1],corners[1][1]),origin[2]+min(corners[0][2],corners[1][2])},Max:[3]int32{origin[0]+max(corners[0][0],corners[1][0]),origin[1]+max(corners[0][1],corners[1][1]),origin[2]+max(corners[0][2],corners[1][2])}}
 }
 func movePiece(p JigsawPiece,x,y,z int32)JigsawPiece{p.Origin[0]+=x;p.Origin[1]+=y;p.Origin[2]+=z;p.Bounds.Min[0]+=x;p.Bounds.Min[1]+=y;p.Bounds.Min[2]+=z;p.Bounds.Max[0]+=x;p.Bounds.Max[1]+=y;p.Bounds.Max[2]+=z;for i:=range p.Junctions{p.Junctions[i].X+=x;p.Junctions[i].Y+=y;p.Junctions[i].Z+=z};return p}
-func overlapsAny(b Box,pieces []JigsawPiece)bool{for _,p:=range pieces{if float64(b.Min[0])+.25<float64(p.Bounds.Max[0]+1)&&float64(b.Max[0]+1)-.25>float64(p.Bounds.Min[0])&&float64(b.Min[1])+.25<float64(p.Bounds.Max[1]+1)&&float64(b.Max[1]+1)-.25>float64(p.Bounds.Min[1])&&float64(b.Min[2])+.25<float64(p.Bounds.Max[2]+1)&&float64(b.Max[2]+1)-.25>float64(p.Bounds.Min[2]){return true}};return false}
-func withinDistance(b Box,origin [3]int32,distance int32)bool{cx:=(b.Min[0]+b.Max[0])/2;cz:=(b.Min[2]+b.Max[2])/2;return abs32(cx-origin[0])<=distance&&abs32(cz-origin[2])<=distance}
-func sourceRigid(p JigsawPiece)bool{return p.Projection==Rigid}
 func directionStep(d string)[3]int32{switch d{case "north":return [3]int32{0,0,-1};case "south":return [3]int32{0,0,1};case "west":return [3]int32{-1,0,0};case "east":return [3]int32{1,0,0};case "up":return [3]int32{0,1,0};case "down":return [3]int32{0,-1,0};default:return [3]int32{}}}
 func directionOpposite(d string)string{switch d{case "north":return "south";case "south":return "north";case "east":return "west";case "west":return "east";case "up":return "down";case "down":return "up";default:return ""}}
 func asInt32(v any)int32{switch n:=v.(type){case float64:return int32(n);case int32:return n;case int:return int32(n)};return 1}
-func abs32(v int32)int32{if v<0{return -v};return v}
 func cancelAnchor(origin,connector,requested [3]int32)[3]int32{for axis:=range 3{origin[axis]+=requested[axis]-connector[axis]};return origin}

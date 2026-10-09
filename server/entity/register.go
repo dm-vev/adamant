@@ -66,6 +66,8 @@ func init() {
 		OminousItemSpawnerType,
 		RavagerType,
 		DrownedType,
+		PiglinType{},
+		PiglinBruteType{},
 		HoglinType,
 		ZoglinType,
 		StriderType,

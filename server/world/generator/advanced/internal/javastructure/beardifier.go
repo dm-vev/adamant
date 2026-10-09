@@ -21,8 +21,8 @@ type Box struct { Min, Max [3]int32 }
 // RigidPiece is a piece contributing terrain adaptation to the Beardifier.
 type RigidPiece struct { Bounds Box; Adjustment TerrainAdjustment; GroundLevelDelta int32 }
 
-// Junction stores the source coordinates of a jigsaw connector's density contribution.
-type Junction struct { X, Y, Z int32 }
+// Junction retains a source jigsaw connector's terrain and destination metadata.
+type Junction struct { X, Y, Z, DeltaY int32; DestProjection Projection }
 
 // Beardifier is the Java 26 structure terrain-adaptation sampler.
 type Beardifier struct { pieces []RigidPiece; junctions []Junction }

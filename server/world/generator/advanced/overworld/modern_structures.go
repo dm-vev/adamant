@@ -157,12 +157,15 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 			if !ok {
 				panic("overworld: missing Java structure id " + name)
 			}
+			if !strings.Contains(structure, ":") {
+				structure = "minecraft:" + structure
+			}
 			weight := int32(1)
 			if value, ok := entry["weight"].(float64); ok {
 				weight = int32(value)
 			}
 			set.structures = append(set.structures, modernStructureEntry{
-				name:   normalizeJavaResource(structure),
+				name:   structure,
 				weight: weight,
 			})
 		}
@@ -533,18 +536,31 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
+	horizontal, vertical, err := javastructure.ParseJigsawDistance(config["max_distance_from_center"])
+	if err != nil {
+		return modernStructureStart{}, false, err
+	}
 	options := javastructure.JigsawOptions{
 		Pool:                    pool,
 		StartJigsaw:             strings.TrimPrefix(stringValue(config["start_jigsaw_name"]), "minecraft:"),
 		Origin:                  [3]int32{originX, originY, originZ},
 		MaxDepth:                int(number(config["size"])),
-		MaxDistance:             int32(number(config["max_distance_from_center"])),
+		MaxDistance:             horizontal,
+		MaxVerticalDistance:     vertical,
+		HeightRange:             heightRange,
 		ExpansionHack:           config["use_expansion_hack"] == true,
 		Seed:                    input.seed,
 		Terrain:                 terrain,
 		ProjectStartToHeightmap: config["project_start_to_heightmap"] != nil,
 		HeightAt:                func(x, z int32) int32 { return input.source.BaseHeight(x, z, false) },
 		LiquidSettings:          liquidSettings,
+	}
+	if padding, exists := config["dimension_padding"]; exists {
+		options.PaddingBottom, options.PaddingTop, err = javastructure.ParseDimensionPadding(padding)
+		if err != nil {
+			return modernStructureStart{}, false, err
+		}
+		options.CheckBounds = true
 	}
 	if rawAliases, exists := config["pool_aliases"]; exists {
 		aliases, err := javastructure.ResolvePoolAliases(rawAliases, [3]int32{originX, originY, originZ}, input.seed)
@@ -569,10 +585,7 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		junctions: result.Junctions, terrain: terrain,
 		box: emptyStructureBox(),
 	}
-	root := result.Pieces[0]
-	centerX := (root.Bounds.Min[0] + root.Bounds.Max[0]) / 2
-	centerZ := (root.Bounds.Min[2] + root.Bounds.Max[2]) / 2
-	biome := normalizeJavaResource(input.source.JavaNoiseBiomeAt(centerX>>2, (root.Bounds.Min[1]+root.GroundLevelDelta)>>2, centerZ>>2))
+	biome := normalizeJavaResource(input.source.JavaNoiseBiomeAt(result.StartPos[0]>>2, result.StartPos[1]>>2, result.StartPos[2]>>2))
 	if !strings.Contains(biome, ":") {
 		biome = "minecraft:" + biome
 	}

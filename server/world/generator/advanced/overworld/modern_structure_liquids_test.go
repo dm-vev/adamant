@@ -21,7 +21,7 @@ func TestTrialChamberLiquidPolicyReplacesAmbientWater(t *testing.T) {
 				config[key] = value
 			}
 			config["liquid_settings"] = policy
-			config["size"] = float64(0)
+			config["size"] = float64(1)
 			config["start_height"] = map[string]any{"absolute": float64(80)}
 			random := java26.NewLegacyRandom(0)
 			source := liquidStructureSource{pillarAirSource{ModernFeatureSource: modernTerrainSource{}, air: world.DefaultBlockRegistry.AirRuntimeID()}}

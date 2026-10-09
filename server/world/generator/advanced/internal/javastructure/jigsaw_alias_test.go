@@ -1,6 +1,7 @@
 package javastructure
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"reflect"
 	"strings"
@@ -8,7 +9,7 @@ import (
 )
 
 func TestJigsawMissingRootAliasRetainsOriginalStart(t *testing.T) {
-	options := JigsawOptions{Pool: "village/plains/town_centers", Origin: [3]int32{0, 80, 0}, MaxDepth: 0}
+	options := JigsawOptions{Pool: "village/plains/town_centers", Origin: [3]int32{0, 80, 0}, MaxDepth: 1, HeightRange: cube.Range{-64, 319}, HeightAt: func(x, z int32) int32 { return 80 }}
 	originalRandom := java26.NewLegacyRandom(0)
 	original, err := BuildJigsaw(options, &originalRandom)
 	if err != nil {
@@ -29,18 +30,22 @@ func TestJigsawMissingRootAliasRetainsOriginalStart(t *testing.T) {
 }
 
 func TestJigsawMissingConnectorAliasSkipsAttachment(t *testing.T) {
-	options := JigsawOptions{Pool: "village/plains/town_centers", Origin: [3]int32{0, 80, 0}, MaxDepth: 0}
+	options := JigsawOptions{Pool: "village/plains/town_centers", Origin: [3]int32{0, 80, 0}, MaxDepth: 1, HeightRange: cube.Range{-64, 319}, HeightAt: func(x, z int32) int32 { return 80 }}
 	random := java26.NewLegacyRandom(0)
 	root, err := BuildJigsaw(options, &random)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(root.Pieces) != 1 {
-		t.Fatalf("builtin fixture produced %d roots", len(root.Pieces))
+	if len(root.Pieces) < 2 {
+		t.Fatalf("unaliased fixture must attach children: got %d pieces", len(root.Pieces))
 	}
 	piece := root.Pieces[0]
 	options.PoolAliases = map[string]string{}
-	for _, joint := range templateConnectors(piece.Template, piece.Origin, piece.Rotation, piece.Mirror) {
+	connectors, err := decodeJigsawConnectors(piece.Template.Palettes[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, joint := range connectors {
 		if joint.pool != "" {
 			options.PoolAliases[strings.TrimPrefix(joint.pool, "minecraft:")] = "missing_connector_alias_target"
 		}
@@ -48,7 +53,9 @@ func TestJigsawMissingConnectorAliasSkipsAttachment(t *testing.T) {
 	if len(options.PoolAliases) == 0 {
 		t.Fatal("builtin fixture has no connector pools")
 	}
-	options.MaxDepth = 1
+	root.Pieces = root.Pieces[:1]
+	root.Pieces[0].Junctions = nil
+	root.Junctions = nil
 	random = java26.NewLegacyRandom(0)
 	result, err := BuildJigsaw(options, &random)
 	if err != nil {
@@ -68,7 +75,7 @@ func TestJigsawEmptyAliasedRootConsumesSourceRotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Pieces) != 0 {
+	if result.HasStart || len(result.Pieces) != 0 {
 		t.Fatal("empty aliased pool produced a root")
 	}
 	// Executed Java JigsawPlacement.addPieces, WorldgenRandom(LegacyRandomSource(0)).

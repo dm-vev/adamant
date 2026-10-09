@@ -66,7 +66,9 @@ func TestJigsawStartSamplesHeightBeforePoolSelection(t *testing.T) {
 			for key, value := range requireJavaJSON("structure", "trial_chambers") {
 				config[key] = value
 			}
-			config["size"] = float64(0)
+			config["size"] = float64(1)
+			// Isolate height sampling from the trial structure's explicit padding.
+			delete(config, "dimension_padding")
 			config["start_height"] = row.Provider
 			random := java26.NewLegacyRandom(row.Seed)
 			source := liquidStructureSource{pillarAirSource{ModernFeatureSource: modernTerrainSource{}, air: world.DefaultBlockRegistry.AirRuntimeID()}}

@@ -179,6 +179,7 @@ func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env 
 				Origin:        [3]int32{startX, 33, startZ},
 				MaxDepth:      6,
 				MaxDistance:   80,
+				HeightRange:   cube.Range{0, 255},
 				ExpansionHack: false,
 				Seed:          s.generator.seed,
 				Terrain:       javastructure.TerrainNone,

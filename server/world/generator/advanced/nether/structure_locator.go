@@ -103,7 +103,8 @@ func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32)
 				jigsaw, err := javastructure.BuildJigsaw(javastructure.JigsawOptions{
 					Pool: "bastion/starts", Origin: [3]int32{startX, 33, startZ}, MaxDepth: 6,
 					MaxDistance: 80, Seed: g.seed, Terrain: javastructure.TerrainNone,
-					HeightAt: func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) },
+					HeightRange: cube.Range{0, 255},
+					HeightAt:    func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) },
 				}, random)
 				valid = err == nil && len(jigsaw.Pieces) != 0
 				if err != nil {
@@ -203,7 +204,7 @@ func netherLocateContains(g *Nether, structure string, start world.ChunkPos, pos
 		if random.NextInt(5) < 2 || g.featureSource.JavaBiomeAt(cx*16, 33, cz*16) == "minecraft:basalt_deltas" {
 			return false
 		}
-		jigsaw, err := javastructure.BuildJigsaw(javastructure.JigsawOptions{Pool: "bastion/starts", Origin: [3]int32{cx * 16, 33, cz * 16}, MaxDepth: 6, MaxDistance: 80, Seed: g.seed, Terrain: javastructure.TerrainNone, HeightAt: func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) }}, random)
+		jigsaw, err := javastructure.BuildJigsaw(javastructure.JigsawOptions{Pool: "bastion/starts", Origin: [3]int32{cx * 16, 33, cz * 16}, MaxDepth: 6, MaxDistance: 80, HeightRange: cube.Range{0, 255}, Seed: g.seed, Terrain: javastructure.TerrainNone, HeightAt: func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) }}, random)
 		if err != nil {
 			return false
 		}

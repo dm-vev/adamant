@@ -108,13 +108,13 @@ func TestLegacySinglePoolElementNestedListKeepsSiblingPolicies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts, err := loadPoolElementTemplates(decoded)
+	parts, err := newJigsawPoolRegistry().elementParts(&decoded)
 	if err != nil {
 		t.Fatal(err)
 	}
 	parts[0].template = legacyTemplate
 	parts[1].template = singleTemplate
-	piece := makeJigsawPoolPiece(parts, [3]int32{}, None, decoded, ApplyWaterlogging)
+	piece := makeJigsawPoolPiece(parts, [3]int32{}, None, &decoded, ApplyWaterlogging)
 	placed, err := piece.PlaceWithEnvironment(0, Bounds{Min: [3]int32{-4, -4, -4}, Max: [3]int32{4, 4, 4}}, 0, ProcessorEnvironment{})
 	if err != nil {
 		t.Fatal(err)
