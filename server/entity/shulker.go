@@ -127,7 +127,7 @@ func (shulkerType) EncodeNBT(data *world.EntityData) map[string]any {
 		native = SetNativeMobColor(native, byte(b.color))
 	}
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
-		"AttachFace": b.attachFace.String(), "Peek": int8(b.peek), "Color": int8(b.color),
+		"AttachFace": b.attachFace.String(), "Peek": b.peek, "Color": b.color,
 	})
 	return MergeNativeMobJavaState(native, javaState)
 }

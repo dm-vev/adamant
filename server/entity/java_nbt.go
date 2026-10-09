@@ -14,7 +14,7 @@ type javaNBTConfig struct {
 }
 
 func (c javaNBTConfig) Apply(data *world.EntityData) {
-	data.NativeNBT = world.CloneNativeEntityNBT(c.data)
+	data.NativeNBT = world.CloneJavaEntityNBT(c.data)
 	c.typeOf.DecodeNBT(c.data, data)
 }
 

@@ -7,7 +7,21 @@ import "strconv"
 func CloneNativeEntityNBT(data map[string]any) map[string]any {
 	if data == nil { return nil }
 	out := make(map[string]any, len(data))
-	for key, value := range data { out[key] = cloneNativeEntityNBTValue(value) }
+	for key, value := range data { out[key] = cloneNativeEntityNBTValue(value, false) }
+	return out
+}
+
+// CloneJavaEntityNBT deep-copies a source payload for the native NBT encoder.
+// Java signed bytes and byte arrays retain their payload bits using Go's native
+// unsigned-byte representation. Field names and other NBT types are unchanged.
+func CloneJavaEntityNBT(data map[string]any) map[string]any {
+	if data == nil {
+		return nil
+	}
+	out := make(map[string]any, len(data))
+	for key, value := range data {
+		out[key] = cloneNativeEntityNBTValue(value, true)
+	}
 	return out
 }
 
@@ -27,7 +41,7 @@ func MergeNativeEntityNBT(retained, canonical map[string]any) map[string]any {
 				if newCompound, ok := value.(map[string]any); ok { value = MergeNativeEntityNBT(oldCompound, newCompound) }
 			}
 		}
-		out[key] = cloneNativeEntityNBTValue(value)
+		out[key] = cloneNativeEntityNBTValue(value, false)
 	}
 	return out
 }
@@ -45,18 +59,18 @@ func mergeNativeEntityNBTList(key string, retained, canonical any) any {
 	}
 	for i, raw := range oldList {
 		compound, ok := raw.(map[string]any)
-		if !ok { out = append(out, cloneNativeEntityNBTValue(raw)); continue }
+		if !ok { out = append(out, cloneNativeEntityNBTValue(raw, false)); continue }
 		if id := identity(i, compound); id != "" { indexes[id] = len(out) }
-		out = append(out, cloneNativeEntityNBTValue(compound))
+		out = append(out, cloneNativeEntityNBTValue(compound, false))
 	}
 	for i, raw := range newList {
 		compound, ok := raw.(map[string]any)
-		if !ok { out = append(out, cloneNativeEntityNBTValue(raw)); continue }
+		if !ok { out = append(out, cloneNativeEntityNBTValue(raw, false)); continue }
 		if id := identity(i, compound); id != "" {
 			if index, exists := indexes[id]; exists { oldCompound, _ := out[index].(map[string]any); out[index] = MergeNativeEntityNBT(oldCompound, compound); continue }
 			indexes[id] = len(out)
 		}
-		out = append(out, cloneNativeEntityNBTValue(compound))
+		out = append(out, cloneNativeEntityNBTValue(compound, false))
 	}
 	return out
 }
@@ -73,12 +87,29 @@ func nativeEntityNBTInt(value any) (int, bool) {
 	return 0, false
 }
 
-func cloneNativeEntityNBTValue(value any) any {
+func cloneNativeEntityNBTValue(value any, javaBytes bool) any {
 	switch v := value.(type) {
-	case map[string]any: return CloneNativeEntityNBT(v)
-	case []any: out := make([]any, len(v)); for i := range v { out[i] = cloneNativeEntityNBTValue(v[i]) }; return out
+	case map[string]any:
+		if javaBytes {
+			return CloneJavaEntityNBT(v)
+		}
+		return CloneNativeEntityNBT(v)
+	case []any: out := make([]any, len(v)); for i := range v { out[i] = cloneNativeEntityNBTValue(v[i], javaBytes) }; return out
+	case int8:
+		if javaBytes {
+			return byte(v)
+		}
+		return v
 	case []byte: return append([]byte(nil), v...)
-	case []int8: return append([]int8(nil), v...)
+	case []int8:
+		if !javaBytes {
+			return append([]int8(nil), v...)
+		}
+		out := make([]byte, len(v))
+		for i, value := range v {
+			out[i] = byte(value)
+		}
+		return out
 	case []int16: return append([]int16(nil), v...)
 	case []int32: return append([]int32(nil), v...)
 	case []int64: return append([]int64(nil), v...)
