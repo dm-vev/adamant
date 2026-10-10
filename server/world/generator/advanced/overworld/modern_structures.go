@@ -552,12 +552,6 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 	if len(start.pieces) == 0 {
 		return
 	}
-	reference := start.pieces[0].Bounds()
-	env.StartPos = [3]int32{
-		reference.Min[0] + (reference.Max[0]-reference.Min[0]+1)/2,
-		reference.Min[1],
-		reference.Min[2] + (reference.Max[2]-reference.Min[2]+1)/2,
-	}
 	var state *modernStructureStartState
 	if start.mutablePieces {
 		if env.TransientStructureState {
@@ -573,14 +567,18 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 			}
 		}
 	}
+	var referenceFlags *javastructure.StructurePieceState
+	if state != nil {
+		referenceFlags = &state.pieces[0]
+	}
+	reference := scatteredPieceBounds(start.pieces[0], referenceFlags)
+	env.StartPos = [3]int32{
+		reference.Min[0] + (reference.Max[0]-reference.Min[0]+1)/2,
+		reference.Min[1],
+		reference.Min[2] + (reference.Max[2]-reference.Min[2]+1)/2,
+	}
 	var unusedState javastructure.StructurePieceState
 	for index, piece := range start.pieces {
-		box := piece.Bounds()
-		if box.Min[0] > clip.Max[0] || box.Max[0] < clip.Min[0] ||
-			box.Min[1] > clip.Max[1] || box.Max[1] < clip.Min[1] ||
-			box.Min[2] > clip.Max[2] || box.Max[2] < clip.Min[2] {
-			continue
-		}
 		unusedState = javastructure.StructurePieceState{}
 		env.PieceState = &unusedState
 		if state != nil {
@@ -589,6 +587,12 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 			} else {
 				env.PieceState = &state.pieces[index]
 			}
+		}
+		box := scatteredPieceBounds(piece, env.PieceState)
+		if box.Min[0] > clip.Max[0] || box.Max[0] < clip.Min[0] ||
+			box.Min[1] > clip.Max[1] || box.Max[1] < clip.Min[1] ||
+			box.Min[2] > clip.Max[2] || box.Max[2] < clip.Min[2] {
+			continue
 		}
 		placement, err := piece.Place(clip, env)
 		if err != nil {

@@ -224,6 +224,7 @@ type bridgePieceBase struct {
 	facing        cube.Direction
 	componentType int
 	placement     *javastructure.Placement
+	state         *javastructure.StructurePieceState
 }
 
 func (p *bridgePieceBase) pieceBase() *bridgePieceBase { return p }
@@ -352,7 +353,7 @@ func isAboveGround(bb structureBB) bool {
 
 // --- Fortress structure rendering ---
 
-func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *java26.Random, placement *javastructure.Placement) {
+func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *java26.Random, placement *javastructure.Placement, transient bool) {
 	const scanRange = 8
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
@@ -363,20 +364,69 @@ func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *ja
 			if err != nil {
 				panic(err)
 			}
+			key := fortressStartKey{x: int32(sx), z: int32(sz)}
 			if start == nil || start.fortress == nil {
+				if state := g.fortressStates.lookup(key); state != nil {
+					state.mu.Lock()
+					hasFlags := len(state.pending) != 0
+					for _, flags := range state.pieces {
+						hasFlags = hasFlags || flags.ChestPlaced || flags.SpawnerPlaced
+					}
+					state.mu.Unlock()
+					if hasFlags {
+						panic("nether: persisted fortress state has no matching source fortress start")
+					}
+				}
 				continue
 			}
 			s := start.fortress
-			if !s.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ) {
+			state := g.fortressStates.lookup(key)
+			intersects := s.bb.intersectsXZ(chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ)
+			if state == nil && !transient && intersects && hasMutableFortressState(s.pieces) {
+				state = g.fortressStates.forStart(key, s.pieces)
+			}
+			if state != nil {
+				state.mu.Lock()
+				if err = state.prepare(key, s.pieces); err != nil {
+					state.mu.Unlock()
+					panic(err)
+				}
+			}
+			if !intersects {
+				if state != nil {
+					state.mu.Unlock()
+				}
 				continue
 			}
-			for _, cached := range s.pieces {
-				if cached.pieceBase().bb.intersects(chunkBB) {
-					renderFortressPiece(cached, c, chunkX, chunkZ, chunkBB, r, g, placement)
+			var scratch javastructure.StructurePieceState
+			for i, cached := range s.pieces {
+				if !cached.pieceBase().bb.intersects(chunkBB) {
+					continue
 				}
+				var pieceState *javastructure.StructurePieceState
+				if state != nil {
+					pieceState = &state.pieces[i]
+					if transient {
+						scratch = *pieceState
+						pieceState = &scratch
+					}
+				}
+				renderFortressPiece(cached, c, chunkX, chunkZ, chunkBB, r, g, placement, pieceState)
+			}
+			if state != nil {
+				state.mu.Unlock()
 			}
 		}
 	}
+}
+
+func hasMutableFortressState(pieces []bridgePiece) bool {
+	for _, piece := range pieces {
+		if fortressPieceHasChestFlag(piece) || fortressPieceHasSpawnerFlag(piece) {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Nether) placeFortressStructureStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
@@ -394,23 +444,31 @@ func (g *Nether) placeFortressStructureStep(pos world.ChunkPos, env javastructur
 		registry: world.DefaultBlockRegistry,
 		writes:   make(map[cube.Pos]uint32),
 	}
-	g.applyNetherBridgeTo(int(pos[0]), int(pos[1]), region, env.Random, &placement)
+	g.applyNetherBridgeTo(int(pos[0]), int(pos[1]), region, env.Random, &placement, env.TransientStructureState)
 	if len(placement.Blocks) != 0 || len(placement.PostProcessing) != 0 || len(placement.ScheduledTicks) != 0 {
 		emit(placement)
 	}
 }
 
-// renderFortressPiece keeps render-time flags and the placement sink off the
-// cached graph. Concrete calls keep these short-lived copies on the stack.
-func renderFortressPiece(p bridgePiece, c fortressRegion, chunkX, chunkZ int, bb structureBB, r *java26.Random, g *Nether, placement *javastructure.Placement) {
+// renderFortressPiece leaves cached source geometry untouched. One-time flags
+// are shared per start during normal generation and scratch-only during preview.
+func renderFortressPiece(p bridgePiece, c fortressRegion, chunkX, chunkZ int, bb structureBB, r *java26.Random, g *Nether, placement *javastructure.Placement, state *javastructure.StructurePieceState) {
 	switch piece := p.(type) {
 	case *netherBridgeCorridor:
 		rendered := *piece
 		rendered.placement = placement
+		rendered.state = state
+		if state != nil && state.ChestPlaced {
+			rendered.chest = false
+		}
 		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
 	case *netherBridgeCorridor2:
 		rendered := *piece
 		rendered.placement = placement
+		rendered.state = state
+		if state != nil && state.ChestPlaced {
+			rendered.chest = false
+		}
 		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
 	case *netherBridgeCorridor3:
 		rendered := *piece
@@ -459,6 +517,10 @@ func renderFortressPiece(p bridgePiece, c fortressRegion, chunkX, chunkZ int, bb
 	case *netherBridgeThrone:
 		rendered := *piece
 		rendered.placement = placement
+		rendered.state = state
+		if state != nil {
+			rendered.hasSpawner = state.SpawnerPlaced
+		}
 		rendered.addComponentParts(c, chunkX, chunkZ, bb, r, g)
 	default:
 		panic("nether: unknown fortress piece type")

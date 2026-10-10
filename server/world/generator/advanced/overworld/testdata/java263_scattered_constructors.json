@@ -1,0 +1,290 @@
+[
+  {
+    "type": "jungle_temple",
+    "seed": "0",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "south",
+    "box": [
+      0,
+      64,
+      0,
+      11,
+      73,
+      14
+    ],
+    "next_long": "-3109364765729502342"
+  },
+  {
+    "type": "jungle_temple",
+    "seed": "0",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "south",
+    "box": [
+      -16,
+      64,
+      48,
+      -5,
+      73,
+      62
+    ],
+    "next_long": "-3109364765729502342"
+  },
+  {
+    "type": "jungle_temple",
+    "seed": "-1",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "east",
+    "box": [
+      0,
+      64,
+      0,
+      14,
+      73,
+      11
+    ],
+    "next_long": "8108487875070533655"
+  },
+  {
+    "type": "jungle_temple",
+    "seed": "-1",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "east",
+    "box": [
+      -16,
+      64,
+      48,
+      -2,
+      73,
+      59
+    ],
+    "next_long": "8108487875070533655"
+  },
+  {
+    "type": "jungle_temple",
+    "seed": "4096",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "north",
+    "box": [
+      0,
+      64,
+      0,
+      11,
+      73,
+      14
+    ],
+    "next_long": "-2297027267632269370"
+  },
+  {
+    "type": "jungle_temple",
+    "seed": "4096",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "north",
+    "box": [
+      -16,
+      64,
+      48,
+      -5,
+      73,
+      62
+    ],
+    "next_long": "-2297027267632269370"
+  },
+  {
+    "type": "jungle_temple",
+    "seed": "8192",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "west",
+    "box": [
+      0,
+      64,
+      0,
+      14,
+      73,
+      11
+    ],
+    "next_long": "-4734039761923968284"
+  },
+  {
+    "type": "jungle_temple",
+    "seed": "8192",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "west",
+    "box": [
+      -16,
+      64,
+      48,
+      -2,
+      73,
+      59
+    ],
+    "next_long": "-4734039761923968284"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "0",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "south",
+    "box": [
+      0,
+      64,
+      0,
+      6,
+      70,
+      8
+    ],
+    "next_long": "-3109364765729502342"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "0",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "south",
+    "box": [
+      -16,
+      64,
+      48,
+      -10,
+      70,
+      56
+    ],
+    "next_long": "-3109364765729502342"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "-1",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "east",
+    "box": [
+      0,
+      64,
+      0,
+      8,
+      70,
+      6
+    ],
+    "next_long": "8108487875070533655"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "-1",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "east",
+    "box": [
+      -16,
+      64,
+      48,
+      -8,
+      70,
+      54
+    ],
+    "next_long": "8108487875070533655"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "4096",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "north",
+    "box": [
+      0,
+      64,
+      0,
+      6,
+      70,
+      8
+    ],
+    "next_long": "-2297027267632269370"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "4096",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "north",
+    "box": [
+      -16,
+      64,
+      48,
+      -10,
+      70,
+      56
+    ],
+    "next_long": "-2297027267632269370"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "8192",
+    "chunk": [
+      0,
+      0
+    ],
+    "direction": "west",
+    "box": [
+      0,
+      64,
+      0,
+      8,
+      70,
+      6
+    ],
+    "next_long": "-4734039761923968284"
+  },
+  {
+    "type": "swamp_hut",
+    "seed": "8192",
+    "chunk": [
+      -1,
+      3
+    ],
+    "direction": "west",
+    "box": [
+      -16,
+      64,
+      48,
+      -8,
+      70,
+      54
+    ],
+    "next_long": "-4734039761923968284"
+  }
+]

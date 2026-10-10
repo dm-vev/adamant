@@ -54,19 +54,27 @@ func (w *journalStructureWorld) shape(x, y, z int32) javadata.GenerationShape {
 }
 
 func (w *journalStructureWorld) set(x, y, z int32, state world.BlockState) bool {
-	if !w.inside(x, y, z) || y < int32(w.env.Range.Min()) || y > int32(w.env.Range.Max()) {
+	if !w.inside(x, y, z) {
 		return false
 	}
+	return w.setUnclipped([3]int32{x, y, z}, state)
+}
+
+func (w *journalStructureWorld) setUnclipped(pos [3]int32, state world.BlockState) bool {
 	id, err := javadata.BlockStateID(state.Name, state.Properties)
 	if err != nil {
 		panic(err)
 	}
-	pos := [3]int32{x, y, z}
+	x, y, z := pos[0], pos[1], pos[2]
+	w.placement.Blocks = append(w.placement.Blocks, javastructure.Block{Pos: pos, State: state})
+	if y < int32(w.env.Range.Min()) || y > int32(w.env.Range.Max()) ||
+		(w.env.CanWriteBlock != nil && !w.env.CanWriteBlock(x, y, z)) {
+		return false
+	}
 	if w.writes == nil {
 		w.writes = make(map[[3]int32]uint32)
 	}
 	w.writes[pos] = id
-	w.placement.Blocks = append(w.placement.Blocks, javastructure.Block{Pos: pos, State: state})
 	return true
 }
 

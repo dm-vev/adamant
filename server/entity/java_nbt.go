@@ -14,7 +14,15 @@ type javaNBTConfig struct {
 }
 
 func (c javaNBTConfig) Apply(data *world.EntityData) {
-	data.NativeNBT = world.CloneJavaEntityNBT(c.data)
+	source := world.CloneJavaEntityNBT(c.data)
+	switch c.typeOf.EncodeEntity() {
+	case "minecraft:cat", "minecraft:witch":
+		// Their codecs use the Java namespace for source-only spawn state.
+		// Do not mislabel Java attributes or sound variants as BDS actor fields.
+		data.NativeNBT = map[string]any{"adamant:java": source}
+	default:
+		data.NativeNBT = source
+	}
 	c.typeOf.DecodeNBT(c.data, data)
 }
 

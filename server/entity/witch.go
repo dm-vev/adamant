@@ -38,6 +38,7 @@ func (witchType) EncodeNBT(d *world.EntityData) map[string]any {
 	if native == nil { native = make(map[string]any) }
 	native["Attributes"] = attributes
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{
+		"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()),
 		"DrinkingPotion": byte(boolByte(b.drinking)), "PotionUseTime": int32(b.potionUseTime), "DrinkPotionId": int32(b.drinkPotion.Uint8()),
 		"RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader,
 	})

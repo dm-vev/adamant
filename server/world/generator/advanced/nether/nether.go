@@ -55,10 +55,10 @@ type Nether struct {
 	complexMu      sync.Mutex
 	complexStarts  map[world.ChunkPos]netherComplexResult
 	complexFlights map[world.ChunkPos]*netherComplexFlight
+	fortressStates fortressStateStore
 	fossils        netherFossilCache
 	portals        netherPortalCache
-
-	pool sync.Pool
+	pool           sync.Pool
 }
 type netherScratch struct {
 	vertices [425]float32

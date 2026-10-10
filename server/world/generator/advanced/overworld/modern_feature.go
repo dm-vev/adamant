@@ -287,13 +287,20 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 					BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
 					JavaBiomeAt: f.source.JavaBiomeAt,
 					BaseHeight:  region.Height,
+					MotionBlockingNoLeavesHeight: func(x, z int32) int32 {
+						return region.placementHeight(x, z, "MOTION_BLOCKING_NO_LEAVES")
+					},
 					JavaBlockStateID: func(x, y, z int32) (uint32, error) {
 						return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
+					},
+					CanWriteBlock: func(x, y, z int32) bool {
+						return region.withinWriteArea(featurePos{x, y, z})
 					},
 					Range:                   region.Range(),
 					TransientStructureState: originChunkX != int32(pos[0]) || originChunkZ != int32(pos[1]),
 					WorldSeed:               f.seed,
 					Random:                  &structureRandom,
+					LevelRandom:             region.JavaRandom(),
 					PlaceFeature: func(feature any, pos [3]int32, random *java26.Random) bool {
 						return region.PlacePlacedFeature(feature, pos, random)
 					},

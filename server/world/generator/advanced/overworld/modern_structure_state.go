@@ -56,7 +56,11 @@ func (s *modernStructureStartState) prepare(start modernStructureStart) error {
 		if int(piece.Index) >= len(s.pieces) {
 			return fmt.Errorf("Java structure state piece %d at %s %d,%d is outside source graph", piece.Index, start.key.set, start.key.x, start.key.z)
 		}
-		s.pieces[piece.Index] = javastructure.StructurePieceState{ChestPlaced: piece.Chest != 0, SpawnerPlaced: piece.Spawner != 0}
+		s.pieces[piece.Index] = javastructure.StructurePieceState{
+			ChestPlaced: piece.Chest != 0, SpawnerPlaced: piece.Spawner != 0,
+			GroundHeightSet: piece.GroundHeightSet != 0, GroundHeight: piece.GroundHeight,
+			LootPlaced: piece.LootPlaced, EntitiesSpawned: piece.EntitiesSpawned,
+		}
 	}
 	s.pending = nil
 	return nil
@@ -73,6 +77,8 @@ func hasMutableStructurePieceState(pieces []modernStructurePiece) bool {
 			if p.kind == "chest" || p.kind == "portal" {
 				return true
 			}
+		case modernJungleTemple, modernSwampHutPiece:
+			return true
 		}
 	}
 	return false
@@ -82,9 +88,13 @@ const structureStateFormatVersion int32 = 1
 const structureStateJavaDataVersion int32 = 5023
 
 type savedStructurePieceState struct {
-	Index   int32 `nbt:"index"`
-	Chest   byte  `nbt:"chest"`
-	Spawner byte  `nbt:"spawner"`
+	Index           int32 `nbt:"index"`
+	Chest           byte  `nbt:"chest"`
+	Spawner         byte  `nbt:"spawner"`
+	GroundHeightSet byte  `nbt:"ground_height_set"`
+	GroundHeight    int32 `nbt:"ground_height"`
+	LootPlaced      byte  `nbt:"loot_placed"`
+	EntitiesSpawned byte  `nbt:"entities_spawned"`
 }
 
 type savedStructureStartState struct {
@@ -123,7 +133,7 @@ func (g *Overworld) LoadGenerationState(data []byte) error {
 				return fmt.Errorf("duplicate Java structure state at %s %d,%d", key.set, key.x, key.z)
 			}
 			for _, piece := range start.Pieces {
-				if piece.Index < 0 || piece.Chest > 1 || piece.Spawner > 1 {
+				if piece.Index < 0 || piece.Chest > 1 || piece.Spawner > 1 || piece.GroundHeightSet > 1 || piece.LootPlaced > 15 || piece.EntitiesSpawned > 3 {
 					return fmt.Errorf("invalid Java structure piece state at %s %d,%d: %+v", key.set, key.x, key.z, piece)
 				}
 			}
@@ -149,7 +159,7 @@ func (g *Overworld) SaveGenerationState() ([]byte, error) {
 		state.mu.Lock()
 		start.Pieces = append(start.Pieces, state.pending...)
 		for index, flags := range state.pieces {
-			if !flags.ChestPlaced && !flags.SpawnerPlaced {
+			if !flags.ChestPlaced && !flags.SpawnerPlaced && !flags.GroundHeightSet && flags.LootPlaced == 0 && flags.EntitiesSpawned == 0 {
 				continue
 			}
 			piece := savedStructurePieceState{Index: int32(index)}
@@ -159,6 +169,11 @@ func (g *Overworld) SaveGenerationState() ([]byte, error) {
 			if flags.SpawnerPlaced {
 				piece.Spawner = 1
 			}
+			if flags.GroundHeightSet {
+				piece.GroundHeightSet = 1
+				piece.GroundHeight = flags.GroundHeight
+			}
+			piece.LootPlaced, piece.EntitiesSpawned = flags.LootPlaced, flags.EntitiesSpawned
 			start.Pieces = append(start.Pieces, piece)
 		}
 		state.mu.Unlock()

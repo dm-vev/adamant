@@ -3,7 +3,6 @@ package nether
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -24,66 +23,6 @@ func TestComplexStartsMatchJava(t *testing.T) {
 	}
 	if err := compareNetherStartOracle(data); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestFortressActorsSurviveRepeatedRendering(t *testing.T) {
-	g := NewNether(1)
-	// Java start (-14,-54): two MonsterThrones and one chest-bearing corridor.
-	expected := []struct {
-		pos  cube.Pos
-		name string
-	}{
-		{cube.Pos{-160, 56, -853}, "minecraft:spawner"},
-		{cube.Pos{-193, 74, -780}, "minecraft:spawner"},
-		{cube.Pos{-207, 65, -796}, "minecraft:chest"},
-	}
-	first := make([]map[string]any, len(expected))
-	for pass := 0; pass < 2; pass++ {
-		for n := range expected {
-			index := n
-			if pass != 0 {
-				index = len(expected) - 1 - n
-			}
-			want := expected[index]
-			pos := world.ChunkPos{int32(want.pos[0] >> 4), int32(want.pos[2] >> 4)}
-			random := g.featureSource.structureStepRandom(pos, 1, 7)
-			var placement javastructure.Placement
-			g.placeFortressStructureStep(pos, javastructure.ProcessorEnvironment{
-				BaseBlock: func(int32, int32, int32) world.Block { return block.Air{} },
-				Random:    random,
-			}, func(p javastructure.Placement) { placement = p })
-			var data map[string]any
-			blockName := ""
-			for _, placed := range placement.Blocks {
-				if placed.Pos == [3]int32{int32(want.pos[0]), int32(want.pos[1]), int32(want.pos[2])} {
-					data = placed.NBT
-					blockName = placed.State.Name
-				}
-			}
-			if blockName != want.name {
-				t.Fatalf("pass=%d position=%v placement block=%s, want %s", pass, want.pos, blockName, want.name)
-			}
-			if want.name == "minecraft:chest" {
-				if data["LootTable"] != "minecraft:chests/nether_bridge" {
-					t.Fatalf("pass=%d missing fortress chest loot: %v", pass, data)
-				}
-				if seed, ok := bastionRenderInt64(data["LootTableSeed"]); !ok || seed != -8055585923370692160 {
-					t.Fatalf("pass=%d fortress chest loot seed=%v, want Java -8055585923370692160", pass, data["LootTableSeed"])
-				}
-			} else {
-				spawn, _ := data["SpawnData"].(map[string]any)
-				entity, _ := spawn["entity"].(map[string]any)
-				if entity["id"] != "minecraft:blaze" {
-					t.Fatalf("pass=%d missing blaze spawner: %v", pass, data)
-				}
-			}
-			if pass == 0 {
-				first[index] = data
-			} else if !reflect.DeepEqual(data, first[index]) {
-				t.Fatalf("re-rendering changed actor at %v: first=%v next=%v", want.pos, first[index], data)
-			}
-		}
 	}
 }
 

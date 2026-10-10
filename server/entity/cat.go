@@ -79,9 +79,11 @@ func (catType) EncodeNBT(d *world.EntityData) map[string]any {
 	health := b.health
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
 	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	javaState := map[string]any{"Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "CollarColor": int32(b.collarColor)}
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "CollarColor": int32(b.collarColor)})
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
 		javaState["Owner"] = owner
+	} else {
+		delete(javaState, "Owner")
 	}
 	return MergeNativeMobJavaState(native, javaState)
 }

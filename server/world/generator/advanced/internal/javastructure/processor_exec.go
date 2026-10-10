@@ -18,9 +18,14 @@ type ProcessorEnvironment struct {
 	BaseBlock   func(x, y, z int32) world.Block
 	JavaBiomeAt func(x, y, z int32) string
 	BaseHeight  func(x, z int32, oceanFloor bool) int32
+	// MotionBlockingNoLeavesHeight queries the live post-decoration heightmap,
+	// not the frozen *_WG terrain height used by BaseHeight.
+	MotionBlockingNoLeavesHeight func(x, z int32) int32
 	// JavaBlockStateID preserves source properties not represented by the native block model.
 	JavaBlockStateID func(x, y, z int32) (uint32, error)
-	Range            cube.Range
+	// CanWriteBlock applies WorldGenRegion's write radius in addition to Range.
+	CanWriteBlock func(x, y, z int32) bool
+	Range         cube.Range
 	// PieceState holds the source piece's persisted postProcess flags.
 	// Its owner serializes accesses across chunk render sessions.
 	PieceState *StructurePieceState
@@ -31,17 +36,26 @@ type ProcessorEnvironment struct {
 	StartPos                [3]int32
 	BlockCount              int
 	Random                  *java26.Random
+	// LevelRandom is WorldGenRegion.getRandom(), independent of postProcess Random.
+	LevelRandom *java26.Random
 	// SettingsRandom is StructurePlaceSettings.random; Random is the supplied feature/decorator stream.
 	SettingsRandom *java26.Random
 	SkipEntities   bool
 	PlaceFeature   func(feature any, pos [3]int32, random *java26.Random) bool
 }
 
-// StructurePieceState is the source state that changes when a piece places a
-// one-time chest or spawner during postProcess.
+// StructurePieceState holds the mutable source state of a postProcess piece.
 type StructurePieceState struct {
 	ChestPlaced   bool
 	SpawnerPlaced bool
+	// Scattered pieces retain the vertical move made by their first ground query.
+	// Negative HPos values are moved but sampled again by the source.
+	GroundHeightSet bool
+	GroundHeight    int32
+	// LootPlaced holds up to four independently placed chest/dispenser slots.
+	LootPlaced uint8
+	// EntitiesSpawned holds the one-shot witch/cat slots of a swamp hut.
+	EntitiesSpawned uint8
 }
 
 // LoadProcessors resolves named vanilla processor lists and inline processors into executable processors.

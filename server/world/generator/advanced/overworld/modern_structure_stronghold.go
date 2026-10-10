@@ -279,10 +279,10 @@ func (p strongholdPiece) Place(clip javastructure.Bounds, env javastructure.Proc
 				strongholdPutLocal(p, clip, &out, q[0], q[1], q[2], "torch", nil)
 			}
 		}
-		strongholdPutLootLocal(p, clip, env, &out, 3, 3, 5, "minecraft:chests/stronghold_library", env.Random)
+		journal.createSourceChest(strongholdLocal(b, p.dir, 3, 3, 5), "minecraft:chests/stronghold_library", env.Random)
 		if height == 11 {
 			strongholdPutLocal(p, clip, &out, 12, 9, 1, "cave_air", nil)
-			strongholdPutLootLocal(p, clip, env, &out, 12, 8, 1, "minecraft:chests/stronghold_library", env.Random)
+			journal.createSourceChest(strongholdLocal(b, p.dir, 12, 8, 1), "minecraft:chests/stronghold_library", env.Random)
 		}
 	case "portal":
 		strongholdSelectedBox(p, clip, &out, env.Random, 1, 6, 1, 1, 6, 14)
@@ -353,7 +353,7 @@ func (p strongholdPiece) Place(clip javastructure.Bounds, env javastructure.Proc
 		chestPos := strongholdLocal(b, p.dir, 3, 2, 3)
 		if !env.PieceState.ChestPlaced && journal.inside(chestPos[0], chestPos[1], chestPos[2]) {
 			env.PieceState.ChestPlaced = true
-			strongholdPutLootLocal(p, clip, env, &out, 3, 2, 3, "minecraft:chests/stronghold_corridor", env.Random)
+			journal.createSourceChest(chestPos, "minecraft:chests/stronghold_corridor", env.Random)
 		}
 	case "crossing":
 		strongholdOpening(p, clip, &out, 4, 1, 10, 6, 3, 10)
@@ -417,7 +417,7 @@ func (p strongholdPiece) Place(clip javastructure.Bounds, env javastructure.Proc
 			for y := int32(1); y <= 3; y++ {
 				strongholdPutLocal(p, clip, &out, 9, y, 3, "ladder", map[string]any{"facing": strongholdDirection(p.dir, "west"), "waterlogged": false})
 			}
-			strongholdPutLootLocal(p, clip, env, &out, 3, 4, 8, "minecraft:chests/stronghold_crossing", env.Random)
+			journal.createSourceChest(strongholdLocal(b, p.dir, 3, 4, 8), "minecraft:chests/stronghold_crossing", env.Random)
 		}
 	case "five":
 		if p.leftLow {
@@ -573,65 +573,6 @@ func strongholdPutFenceLocal(p strongholdPiece, clip javastructure.Bounds, out *
 }
 func strongholdSelectedBox(p strongholdPiece,clip javastructure.Bounds,out *javastructure.Placement,random *java26.Random,x0,y0,z0,x1,y1,z1 int32){
 	for y:=y0;y<=y1;y++{for x:=x0;x<=x1;x++{for z:=z0;z<=z1;z++{edge:=x==x0||x==x1||y==y0||y==y1||z==z0||z==z1;if !edge{strongholdPutLocal(p,clip,out,x,y,z,"cave_air",nil);continue};roll:=random.NextFloat();name:="stone_bricks";if roll<0.2{name="cracked_stone_bricks"}else if roll<0.5{name="mossy_stone_bricks"}else if roll<0.55{name="infested_stone_bricks"};strongholdPutLocal(p,clip,out,x,y,z,name,nil)}}}
-}
-func strongholdPutLootLocal(p strongholdPiece, clip javastructure.Bounds, env javastructure.ProcessorEnvironment, out *javastructure.Placement, x, y, z int32, loot string, random *java26.Random) {
-	pos := strongholdLocal(p.box, p.dir, x, y, z)
-	if pos[0] < clip.Min[0] || pos[0] > clip.Max[0] || pos[1] < clip.Min[1] || pos[1] > clip.Max[1] || pos[2] < clip.Min[2] || pos[2] > clip.Max[2] {
-		return
-	}
-	if name, ok := javadata.BlockStateName(p.journal.stateID(pos[0], pos[1], pos[2])); ok && name == "minecraft:chest" {
-		return
-	}
-	facing := "north"
-	directions := [4]struct {
-		dx, dz         int32
-		name, opposite string
-	}{{0, -1, "north", "south"}, {1, 0, "east", "west"}, {0, 1, "south", "north"}, {-1, 0, "west", "east"}}
-	var solid *string
-	for _, direction := range directions {
-		neighbor := [3]int32{pos[0] + direction.dx, pos[1], pos[2] + direction.dz}
-		name, ok := javadata.BlockStateName(p.journal.stateID(neighbor[0], neighbor[1], neighbor[2]))
-		if ok && name == "minecraft:chest" {
-			solid = nil
-			break
-		}
-		if p.journal.shape(neighbor[0], neighbor[1], neighbor[2]).SolidRender {
-			if solid != nil {
-				solid = nil
-				break
-			}
-			opposite := direction.opposite
-			solid = &opposite
-		}
-	}
-	if solid != nil {
-		facing = *solid
-	} else {
-		lock := "north"
-		solidAt := func(name string) bool {
-			for _, d := range directions {
-				if d.name == name {
-					n := [3]int32{pos[0] + d.dx, pos[1], pos[2] + d.dz}
-					return p.journal.shape(n[0], n[1], n[2]).SolidRender
-				}
-			}
-			return false
-		}
-		if solidAt(lock) {
-			lock = "south"
-		}
-		if solidAt(lock) {
-			lock = "east"
-		}
-		if solidAt(lock) {
-			lock = "west"
-		}
-		facing = lock
-	}
-	block := world.BlockState{Name: "minecraft:chest", Properties: map[string]any{"facing": facing, "type": "single", "waterlogged": false}}
-	if p.journal != nil && p.journal.set(pos[0], pos[1], pos[2], block) {
-		out.Blocks[len(out.Blocks)-1].NBT = map[string]any{"id": "minecraft:chest", "LootTable": loot, "LootTableSeed": random.NextLong()}
-	}
 }
 func strongholdDoorPlacement(p strongholdPiece, clip javastructure.Bounds, out *javastructure.Placement) {
 	footX := int32(1)

@@ -189,6 +189,9 @@ func (p *netherBridgeCorridor) addComponentParts(c fortressRegion, chunkX, chunk
 
 	if p.chest && p.isInside(sbb, 3, 2, 3) {
 		p.chest = false
+		if p.state != nil {
+			p.state.ChestPlaced = true
+		}
 		p.generateChest(c, chunkX, chunkZ, sbb, r, 3, 2, 3, g)
 	}
 
@@ -244,6 +247,9 @@ func (p *netherBridgeCorridor2) addComponentParts(c fortressRegion, chunkX, chun
 
 	if p.chest && p.isInside(sbb, 1, 2, 3) {
 		p.chest = false
+		if p.state != nil {
+			p.state.ChestPlaced = true
+		}
 		p.generateChest(c, chunkX, chunkZ, sbb, r, 1, 2, 3, g)
 	}
 
@@ -1052,10 +1058,10 @@ func (p *netherBridgeThrone) addComponentParts(c fortressRegion, chunkX, chunkZ 
 	p.fillWithBlocks(c, chunkX, chunkZ, sbb, 1, 5, 8, 5, 5, 8, brick, brick, false, air)
 	p.setBlock(c, chunkX, chunkZ, sbb, 1, 6, 3, westFence)
 	p.setBlock(c, chunkX, chunkZ, sbb, 5, 6, 3, eastFence)
-	p.fillWithBlocks(c, chunkX, chunkZ, sbb, 0, 6, 4, 0, 6, 7, nsFence, nsFence, false, air)
-	p.fillWithBlocks(c, chunkX, chunkZ, sbb, 6, 6, 4, 6, 6, 7, nsFence, nsFence, false, air)
 	p.setBlock(c, chunkX, chunkZ, sbb, 0, 6, 3, northEastFence)
 	p.setBlock(c, chunkX, chunkZ, sbb, 6, 6, 3, northWestFence)
+	p.fillWithBlocks(c, chunkX, chunkZ, sbb, 0, 6, 4, 0, 6, 7, nsFence, nsFence, false, air)
+	p.fillWithBlocks(c, chunkX, chunkZ, sbb, 6, 6, 4, 6, 6, 7, nsFence, nsFence, false, air)
 	p.setBlock(c, chunkX, chunkZ, sbb, 0, 6, 8, southEastFence)
 	p.setBlock(c, chunkX, chunkZ, sbb, 6, 6, 8, southWestFence)
 	p.fillWithBlocks(c, chunkX, chunkZ, sbb, 1, 6, 8, 5, 6, 8, weFence, weFence, false, air)
@@ -1068,6 +1074,9 @@ func (p *netherBridgeThrone) addComponentParts(c fortressRegion, chunkX, chunkZ 
 
 	if !p.hasSpawner && p.isInside(sbb, 3, 5, 5) {
 		p.hasSpawner = true
+		if p.state != nil {
+			p.state.SpawnerPlaced = true
+		}
 		if g.spawnerRID != 0 {
 			wx, wy, wz := p.getXWithOffset(3, 5), p.getYWithOffset(5), p.getZWithOffset(3, 5)
 			p.setBlock(c, chunkX, chunkZ, sbb, 3, 5, 5, g.spawnerRID)
