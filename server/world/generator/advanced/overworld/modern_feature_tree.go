@@ -782,9 +782,188 @@ clipped:
 	if len(trunks) == 0 && len(leaves) == 0 {
 		return false
 	}
+	overlayBeforeDecorators := make(map[featurePos]world.NativeState, len(region.overlay))
+	for pos, state := range region.overlay {
+		overlayBeforeDecorators[pos] = state
+	}
 	placeModernTreeDecorators(region, config["decorators"], trunks, leaves, roots, r)
-	updateModernLeafDistance(region, trunks, leaves, roots)
+	decorations := make([]featurePos, 0, len(region.overlay)-len(overlayBeforeDecorators))
+	for pos, state := range region.overlay {
+		if before, existed := overlayBeforeDecorators[pos]; !existed || before != state {
+			decorations = append(decorations, pos)
+		}
+	}
+	updateModernLeafDistance(region, trunks, leaves, roots, decorations)
 	return true
+}
+
+// treePositionSet preserves Java HashSet<BlockPos> bucket iteration for the
+// updateLeaves work queues; each source pop recreates an iterator at bucket 0.
+
+type treePositionSet struct {
+	buckets   [][]featurePos
+	size      int
+	threshold int
+}
+
+func treePositionHash(pos featurePos) uint32 {
+	hash := uint32(pos.y) + uint32(pos.z)*31
+	hash = hash*31 + uint32(pos.x)
+	return hash ^ hash>>16
+}
+
+func (s *treePositionSet) add(pos featurePos) bool {
+	if s.buckets == nil {
+		s.buckets = make([][]featurePos, 16)
+		s.threshold = 12
+	}
+	index := treePositionHash(pos) & uint32(len(s.buckets)-1)
+	for _, existing := range s.buckets[index] {
+		if existing == pos {
+			return false
+		}
+	}
+	s.buckets[index] = append(s.buckets[index], pos)
+	s.size++
+	if s.size > s.threshold {
+		s.resize()
+	}
+	return true
+}
+
+func (s *treePositionSet) popFirst() (featurePos, bool) {
+	for index := range s.buckets {
+		if len(s.buckets[index]) == 0 {
+			continue
+		}
+		pos := s.buckets[index][0]
+		s.buckets[index] = s.buckets[index][1:]
+		s.size--
+		return pos, true
+	}
+	return featurePos{}, false
+}
+
+func (s *treePositionSet) resize() {
+	previous := s.buckets
+	s.buckets = make([][]featurePos, len(previous)*2)
+	for _, bucket := range previous {
+		for _, pos := range bucket {
+			index := treePositionHash(pos) & uint32(len(s.buckets)-1)
+			s.buckets[index] = append(s.buckets[index], pos)
+		}
+	}
+	s.threshold = len(s.buckets) - len(s.buckets)/4
+}
+
+func updateModernLeafDistance(region *featureRegion, trunks, leaves, roots, decorations []featurePos) {
+	if len(trunks) == 0 {
+		return
+	}
+	positionCount := len(trunks) + len(leaves) + len(roots) + len(decorations)
+	minX, maxX := trunks[0].x, trunks[0].x
+	minY, maxY := trunks[0].y, trunks[0].y
+	minZ, maxZ := trunks[0].z, trunks[0].z
+	for _, positions := range [...][]featurePos{trunks[1:], leaves, roots, decorations} {
+		for _, p := range positions {
+			minX, maxX = min(minX, p.x), max(maxX, p.x)
+			minY, maxY = min(minY, p.y), max(maxY, p.y)
+			minZ, maxZ = min(minZ, p.z), max(maxZ, p.z)
+		}
+	}
+	low := cube.Pos{int(minX), int(minY), int(minZ)}
+	size := [3]int{int(maxX-minX) + 1, int(maxY-minY) + 1, int(maxZ-minZ) + 1}
+	occupied := make(map[featurePos]struct{}, positionCount)
+	filled := make([]cube.Pos, 0, positionCount)
+	for _, positions := range [...][]featurePos{roots, decorations} {
+		for _, p := range positions {
+			if _, full := occupied[p]; !full {
+				occupied[p] = struct{}{}
+				filled = append(filled, cube.Pos{int(p.x), int(p.y), int(p.z)})
+			}
+		}
+	}
+
+	var buckets [7]treePositionSet
+	logPositions := make([]featurePos, 0, len(trunks))
+	seenLogs := make(map[featurePos]struct{}, len(trunks))
+	for _, p := range trunks {
+		if _, exists := seenLogs[p]; exists {
+			continue
+		}
+		seenLogs[p] = struct{}{}
+		logPositions = append(logPositions, p)
+	}
+	for _, p := range vegetationPatchHashSetOrder(logPositions) {
+		buckets[0].add(p)
+	}
+	faceOffsets := [...]featurePos{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}}
+	distance := 0
+	for {
+		for distance < 7 {
+			pos, ok := buckets[distance].popFirst()
+			if !ok {
+				break
+			}
+			if pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY || pos.z < minZ || pos.z > maxZ {
+				continue
+			}
+			if _, full := occupied[pos]; !full {
+				occupied[pos] = struct{}{}
+				filled = append(filled, cube.Pos{int(pos.x), int(pos.y), int(pos.z)})
+			}
+			if distance != 0 {
+				pos3 := cube.Pos{int(pos.x), int(pos.y), int(pos.z)}
+				stateID, err := region.JavaBlockStateID(pos3)
+				if err != nil {
+					panic(err)
+				}
+				updated, err := javadata.BlockStateWithProperty(stateID, "distance", distance)
+				if err != nil {
+					panic(err)
+				}
+				region.SetJavaBlockState(pos3, updated, 19)
+			}
+			for _, offset := range faceOffsets {
+				neighbor := treePos(pos, offset.x, offset.y, offset.z)
+				if neighbor.x < minX || neighbor.x > maxX || neighbor.y < minY || neighbor.y > maxY || neighbor.z < minZ || neighbor.z > maxZ {
+					continue
+				}
+				if _, full := occupied[neighbor]; full {
+					continue
+				}
+				stateID, err := region.JavaBlockStateID(cube.Pos{int(neighbor.x), int(neighbor.y), int(neighbor.z)})
+				if err != nil {
+					panic(err)
+				}
+				neighborDistance, hasDistance := javadata.BlockStateInt(stateID, "distance")
+				if treeTagContains("prevents_nearby_leaf_decay", treeSourceStateName(stateID)) {
+					neighborDistance, hasDistance = 0, true
+				}
+				if !hasDistance {
+					continue
+				}
+				next := min(int(neighborDistance), distance+1)
+				if next < 7 {
+					buckets[next].add(neighbor)
+					distance = min(distance, next)
+				}
+			}
+		}
+		if distance >= 7 {
+			break
+		}
+		distance++
+	}
+	world.UpdateJavaGenerationShapeAtEdge(region, low, size, filled, 3)
+}
+
+func treeSourceStateName(id uint32) string {
+	name, ok := javadata.BlockStateName(id)
+	if !ok {
+		panic(fmt.Sprintf("overworld: invalid Java block state ID %d", id))
+	}
+	return name
 }
 func treeMinimumRadius(m map[string]any, height, y int32) int32 {
 	t := treeName(m)
@@ -847,7 +1026,7 @@ func treeSkipFoliage(typ string, props map[string]any, dx, y, dz, radius int32, 
 	}
 	switch typ {
 	case "blob_foliage_placer":
-		return a == radius && b == radius && (y == 0 || r.NextInt(2) == 0)
+		return a == radius && b == radius && (r.NextInt(2) == 0 || y == 0)
 	case "bush_foliage_placer":
 		return a == radius && b == radius && r.NextInt(2) == 0
 	case "fancy_foliage_placer":
@@ -1214,9 +1393,16 @@ func treeSturdyDown(region *featureRegion, p featurePos) bool {
 	return block.Model().FaceSolid(pos, cube.FaceDown, featureRegionBlockSource{region})
 }
 func treeSolidRender(region *featureRegion, p featurePos) bool {
-	return treeSturdyUp(region, p)
+	state, err := region.JavaBlockStateID(cube.Pos{int(p.x), int(p.y), int(p.z)})
+	if err != nil {
+		panic(err)
+	}
+	shape, err := javadata.BlockGenerationShapeID(state)
+	if err != nil {
+		panic(err)
+	}
+	return shape.SolidRender
 }
-
 func placeModernBamboo(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) bool {
 	n, _ := region.State(origin)
 	if normalizeJavaResource(n) != "air" {
@@ -1817,7 +2003,7 @@ func placeTreeGroundDecorator(region *featureRegion, d map[string]any, trunks, r
 		if normalizeJavaResource(n) != "air" && normalizeJavaResource(n) != "vine" {
 			continue
 		}
-		if !treeSolidRender(region, p) || region.Height(p.x, p.z, false) > above.y {
+		if !treeSolidRender(region, p) || region.placementHeight(p.x, p.z, "MOTION_BLOCKING_NO_LEAVES") > above.y {
 			continue
 		}
 		treeSet(region, above, provider, r)
@@ -2056,82 +2242,6 @@ func placeCreakingHeart(region *featureRegion, d map[string]any, trunks []featur
 		if valid {
 			treeSetNamed(region, p, "creaking_heart", map[string]any{"natural": "true", "state": "dormant", "axis": "y"})
 			return
-		}
-	}
-}
-
-func updateModernLeafDistance(region *featureRegion, trunks, leaves, roots []featurePos) {
-	if len(trunks) == 0 || len(leaves) == 0 {
-		return
-	}
-	minX, maxX, minY, maxY, minZ, maxZ := trunks[0].x, trunks[0].x, trunks[0].y, trunks[0].y, trunks[0].z, trunks[0].z
-	shape := make(map[featurePos]bool, len(roots))
-	for _, p := range append(append([]featurePos(nil), trunks...), append(leaves, roots...)...) {
-		minX = min(minX, p.x)
-		maxX = max(maxX, p.x)
-		minY = min(minY, p.y)
-		maxY = max(maxY, p.y)
-		minZ = min(minZ, p.z)
-		maxZ = max(maxZ, p.z)
-	}
-	for _, p := range roots {
-		shape[p] = true
-	}
-	type leafNode struct {
-		pos      featurePos
-		distance int32
-	}
-	queue := make([]leafNode, 0, len(trunks)+len(leaves))
-	distances := make(map[featurePos]int32, len(leaves))
-	for _, p := range trunks {
-		distances[p] = 0
-		queue = append(queue, leafNode{p, 0})
-	}
-	directions := [][3]int32{{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}}
-	for index := 0; index < len(queue); index++ {
-		current := queue[index]
-		if current.distance >= 6 {
-			continue
-		}
-		for _, d := range directions {
-			p := treePos(current.pos, d[0], d[1], d[2])
-			if p.x < minX || p.x > maxX || p.y < minY || p.y > maxY || p.z < minZ || p.z > maxZ || shape[p] {
-				continue
-			}
-			n, _ := region.State(p)
-			if !treeIsLeaves(normalizeJavaResource(n)) {
-				continue
-			}
-			next := current.distance + 1
-			if old, ok := distances[p]; ok && old <= next {
-				continue
-			}
-			distances[p] = next
-			queue = append(queue, leafNode{p, next})
-		}
-	}
-	for _, leaf := range leaves {
-		distance, ok := distances[leaf]
-		if !ok {
-			continue
-		}
-		n, props := region.State(leaf)
-		if !treeIsLeaves(normalizeJavaResource(n)) {
-			continue
-		}
-		if props == nil {
-			props = map[string]any{}
-		} else {
-			copy := make(map[string]any, len(props)+1)
-			for key, value := range props {
-				copy[key] = value
-			}
-			props = copy
-		}
-		props["distance"] = fmt.Sprint(distance)
-		state, actor, ok := region.SampleNativeState(map[string]any{"id": n, "properties": props}, leaf, &java26.Random{})
-		if ok {
-			region.SetNativeBlock(leaf, state, actor)
 		}
 	}
 }

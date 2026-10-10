@@ -1,8 +1,11 @@
 package overworld
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 
+	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
@@ -136,4 +139,89 @@ func TestTemplateChestShapeRefreshesInventoryPayload(t *testing.T) {
 		return
 	}
 	t.Fatal("chest block-entity payload was not published")
+}
+
+func TestTreeLeafDistancePreservesSourceStaleBucketWrites(t *testing.T) {
+	region := templateFluidTestRegion()
+	logs := []featurePos{{8, 64, 8}, {9, 66, 8}}
+	near, stale := featurePos{9, 65, 8}, featurePos{9, 64, 8}
+	for pos, name := range map[featurePos]string{
+		logs[0]: "minecraft:oak_log",
+		logs[1]: "minecraft:oak_log",
+		near:    "minecraft:oak_leaves",
+		stale:   "minecraft:oak_leaves",
+	} {
+		block, ok := featureStateBlock(name)
+		if !ok {
+			t.Fatalf("could not resolve feature block %s", name)
+		}
+		state, err := block.ResolveNative(region.c.BlockRegistry())
+		if err != nil {
+			t.Fatal(err)
+		}
+		region.Set(pos, state)
+	}
+	updateModernLeafDistance(region, logs, []featurePos{near, stale}, nil, nil)
+	for pos, want := range map[featurePos]int32{near: 1, stale: 2} {
+		state, err := world.JavaState(region.c.BlockRegistry(), region.nativeState(pos))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if state.Name != "minecraft:oak_leaves" || state.Properties["distance"] != want {
+			t.Errorf("leaf at %v = %v, want Java queue result distance %d", pos, state, want)
+		}
+	}
+}
+
+func TestBlobFoliageCornerRowsMatchJava263(t *testing.T) {
+	data, err := os.ReadFile("testdata/java263_blob_corner_rows.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct {
+		Xoroshiro bool       `json:"xoroshiro"`
+		Seed      int64      `json:"seed"`
+		Positions [][3]int32 `json:"positions"`
+		NextLong  int64      `json:"next_long"`
+	}
+	if err := json.Unmarshal(data, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range cases {
+		region := templateFluidTestRegion()
+		center := featurePos{8, 64, 8}
+		random := java26.NewLegacyRandom(tc.Seed)
+		if tc.Xoroshiro {
+			random = java26.NewXoroshiroRandom(tc.Seed)
+		}
+		provider := map[string]any{"id": "minecraft:oak_leaves"}
+		placed := make(map[featurePos]bool)
+		treeFoliageRow(region, "blob_foliage_placer", nil, provider, center, 1, 0, false, &random, placed, nil)
+		treeFoliageRow(region, "blob_foliage_placer", nil, provider, center, 1, -1, false, &random, placed, nil)
+		wantLeaves := make(map[featurePos]bool, len(tc.Positions))
+		for _, offset := range tc.Positions {
+			wantLeaves[treePos(center, offset[0], offset[1], offset[2])] = true
+		}
+		for _, y := range []int32{0, -1} {
+			for dx := int32(-1); dx <= 1; dx++ {
+				for dz := int32(-1); dz <= 1; dz++ {
+					pos := treePos(center, dx, y, dz)
+					state, err := world.JavaState(region.c.BlockRegistry(), region.nativeState(pos))
+					if err != nil {
+						t.Fatal(err)
+					}
+					want := "minecraft:air"
+					if wantLeaves[pos] {
+						want = "minecraft:oak_leaves"
+					}
+					if state.Name != want {
+						t.Errorf("xoroshiro=%v foliage at %v=%s, Java=%s", tc.Xoroshiro, pos, state.Name, want)
+					}
+				}
+			}
+		}
+		if got := random.NextLong(); got != tc.NextLong {
+			t.Errorf("xoroshiro=%v following RNG=%d, Java=%d", tc.Xoroshiro, got, tc.NextLong)
+		}
+	}
 }

@@ -1,0 +1,234 @@
+[
+  {
+    "seed": 0,
+    "x": 100,
+    "z": 100,
+    "hash": "90786fa4b53180e6c00c34061a5e62b6542bde4b348b706ed0fde7fbd13106ba",
+    "gateways": [],
+    "crystals": []
+  },
+  {
+    "seed": 0,
+    "x": 165,
+    "z": 100,
+    "hash": "a62361b8353d28f8600ad3ecf91e5d1b02e0c05bb88bee37844aa387cf705f29",
+    "gateways": [
+      {
+        "position": [
+          2648,
+          66,
+          1615
+        ],
+        "exit": [
+          100,
+          50,
+          0
+        ],
+        "exact": true
+      }
+    ],
+    "crystals": []
+  },
+  {
+    "seed": 1,
+    "x": 64,
+    "z": 80,
+    "hash": "f8abd1872ee99ec5a46fa5192dc41ae88afa0f0809e1bdc43bd5acca9f28e870",
+    "gateways": [
+      {
+        "position": [
+          1038,
+          69,
+          1290
+        ],
+        "exit": [
+          100,
+          50,
+          0
+        ],
+        "exact": true
+      }
+    ],
+    "crystals": []
+  },
+  {
+    "seed": -1,
+    "x": -236,
+    "z": 80,
+    "hash": "5dc5a407dae5c57cb25b2794724e4fd8ee84d67918e2cfe46d3c2709455fb7b0",
+    "gateways": [],
+    "crystals": []
+  },
+  {
+    "seed": -1,
+    "x": 168,
+    "z": 94,
+    "hash": "ce601582ccf68fbc669019d7ee4c2aed67ee4d66b92435373ce8d884d65b478e",
+    "gateways": [
+      {
+        "position": [
+          2690,
+          65,
+          1509
+        ],
+        "exit": [
+          100,
+          50,
+          0
+        ],
+        "exact": true
+      }
+    ],
+    "crystals": []
+  },
+  {
+    "seed": 0,
+    "x": 165,
+    "z": 101,
+    "hash": "3e7430810fbcae67e6705c6b8c5be83b0dbf74b99a330c7560385c9588b3c4a6",
+    "gateways": [],
+    "crystals": []
+  },
+  {
+    "seed": 1,
+    "x": 65,
+    "z": 80,
+    "hash": "567c40d703b8d46df7bac93a5230b596ba0e5baef122894228fe6788accef26b",
+    "gateways": [],
+    "crystals": []
+  },
+  {
+    "seed": -1,
+    "x": 168,
+    "z": 95,
+    "hash": "c652a8955a8dfc4ed785cbdaff5e88b3c3cb65990bdc23d06f12cd809927c473",
+    "gateways": [],
+    "crystals": []
+  },
+  {
+    "seed": 0,
+    "x": 2,
+    "z": -1,
+    "hash": "02b3a32e58a622c8badb48b43c291f51bd2ebd69462a1af2c1b02b19afae56ff",
+    "gateways": [],
+    "crystals": []
+  },
+  {
+    "seed": 0,
+    "x": 2,
+    "z": 0,
+    "hash": "2830d6dd96ea3140910d884a8d9a1c7bf0a31d6616cd40c608f9c23eb519e703",
+    "gateways": [],
+    "crystals": [
+      {
+        "position": [
+          42.5,
+          95.0,
+          0.5
+        ],
+        "rotation": [
+          138.91124,
+          0.0
+        ],
+        "showBase": true,
+        "beamTarget": null
+      }
+    ]
+  },
+  {
+    "seed": 0,
+    "x": 0,
+    "z": 2,
+    "hash": "ac2744337d63697f63cbc67df83342a121671eb97df90164069af2a815174885",
+    "gateways": [],
+    "crystals": [
+      {
+        "position": [
+          12.5,
+          80.0,
+          39.5
+        ],
+        "rotation": [
+          155.42078,
+          0.0
+        ],
+        "showBase": true,
+        "beamTarget": null
+      }
+    ]
+  },
+  {
+    "seed": 1,
+    "x": 2,
+    "z": 0,
+    "hash": "ffbd5841cdf8c07187cfc076a5a05d80f94fe183eca4354e7cbb5799c2fadea5",
+    "gateways": [],
+    "crystals": [
+      {
+        "position": [
+          42.5,
+          86.0,
+          0.5
+        ],
+        "rotation": [
+          58.86496,
+          0.0
+        ],
+        "showBase": true,
+        "beamTarget": null
+      }
+    ]
+  },
+  {
+    "seed": -1,
+    "x": 2,
+    "z": 0,
+    "hash": "f0554185ec886d73a2f2f435c76a8c3714d5224f2bf53859c647723527a324b9",
+    "gateways": [],
+    "crystals": [
+      {
+        "position": [
+          42.5,
+          104.0,
+          0.5
+        ],
+        "rotation": [
+          291.13287,
+          0.0
+        ],
+        "showBase": true,
+        "beamTarget": null
+      }
+    ]
+  },
+  {
+    "seed": -1,
+    "x": 1,
+    "z": 1,
+    "hash": "81e732f413e855ec2eeb0123bf7d498cd2bb68ce4f71886320ad790a57dce6cd",
+    "gateways": [],
+    "crystals": []
+  },
+  {
+    "seed": -1,
+    "x": 2,
+    "z": 1,
+    "hash": "c912fe4bbeae20689fa03c5997989ec9239a1f309f8d60cf17fdaa1a2c7e887d",
+    "gateways": [],
+    "crystals": [
+      {
+        "position": [
+          33.5,
+          80.0,
+          24.5
+        ],
+        "rotation": [
+          104.38662,
+          0.0
+        ],
+        "showBase": true,
+        "beamTarget": null
+      }
+    ]
+  }
+]

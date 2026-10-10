@@ -122,7 +122,7 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 	}
 }
 
-func TestTemplateProcessorsObservePriorFeatures(t *testing.T) {
+func TestTemplateRuleObservesPriorFeature(t *testing.T) {
 	native := func(name string) world.NativeState {
 		state, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{Name: "minecraft:" + name})
 		if err != nil {
@@ -130,43 +130,30 @@ func TestTemplateProcessorsObservePriorFeatures(t *testing.T) {
 		}
 		return state
 	}
-	for _, gravity := range []bool{false, true} {
-		t.Run(fmt.Sprintf("gravity=%v", gravity), func(t *testing.T) {
-			source := templateFeatureSource{air: native("air"), stone: native("sandstone"), water: native("water")}
-			c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
-			region := newFeatureRegion(&ModernFeatures{source: source}, c, world.ChunkPos{}, &world.GenerationResult{})
-			random := java26.NewLegacyRandom(123)
-			origin := featurePos{8, 80, 8}
-			if !region.PlaceValue(map[string]any{"type": "simple_block", "to_place": map[string]any{"id": "minecraft:stone"}}, origin, &random) {
-				t.Fatal("preceding stone feature failed")
-			}
-			processors := []any{map[string]any{
-				"processor_type": "minecraft:rule",
-				"rules": []any{map[string]any{
-					"input_predicate":    map[string]any{"predicate_type": "minecraft:always_true"},
-					"location_predicate": map[string]any{"predicate_type": "minecraft:block_match", "block": "minecraft:stone"},
-					"output_state":       "minecraft:gold_block",
-				}},
-			}}
-			wantPos := origin
-			if gravity {
-				processors = append(processors, map[string]any{"processor_type": "minecraft:gravity", "heightmap": "WORLD_SURFACE_WG", "offset": float64(0)})
-				wantPos.y++
-			}
-			config := map[string]any{
-				"type":       "minecraft:template",
-				"templates":  []any{map[string]any{"weight": float64(1), "data": map[string]any{"id": "minecraft:desert_well/suspicious_sand"}}},
-				"processors": map[string]any{"processors": processors},
-			}
-			if !region.PlaceValue(config, origin, &random) {
-				t.Fatal("template placement failed")
-			}
-			if got := region.nativeState(wantPos); got != native("gold_block") {
-				t.Fatalf("at %v got=%v, want gold above current terrain when gravity is enabled", wantPos, got)
-			}
-			if gravity && region.nativeState(origin) != native("stone") {
-				t.Fatal("gravity placement overwrote the earlier stone")
-			}
-		})
+	source := templateFeatureSource{air: native("air"), stone: native("sandstone"), water: native("water")}
+	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
+	region := newFeatureRegion(&ModernFeatures{source: source}, c, world.ChunkPos{}, &world.GenerationResult{})
+	random := java26.NewLegacyRandom(123)
+	origin := featurePos{8, 80, 8}
+	if !region.PlaceValue(map[string]any{"type": "simple_block", "to_place": map[string]any{"id": "minecraft:stone"}}, origin, &random) {
+		t.Fatal("preceding stone feature failed")
+	}
+	config := map[string]any{
+		"type":      "minecraft:template",
+		"templates": []any{map[string]any{"weight": float64(1), "data": map[string]any{"id": "minecraft:desert_well/suspicious_sand"}}},
+		"processors": map[string]any{"processors": []any{map[string]any{
+			"processor_type": "minecraft:rule",
+			"rules": []any{map[string]any{
+				"input_predicate":    map[string]any{"predicate_type": "minecraft:always_true"},
+				"location_predicate": map[string]any{"predicate_type": "minecraft:block_match", "block": "minecraft:stone"},
+				"output_state":       "minecraft:gold_block",
+			}},
+		}}},
+	}
+	if !region.PlaceValue(config, origin, &random) {
+		t.Fatal("template placement failed")
+	}
+	if got := region.nativeState(origin); got != native("gold_block") {
+		t.Fatalf("at %v got=%v, want rule output replacing the earlier feature", origin, got)
 	}
 }

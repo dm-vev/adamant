@@ -89,6 +89,33 @@ func TestSequenceStopsOnFailureWhileOverlayContinues(t *testing.T) {
 		})
 	}
 }
+func TestRandomSelectorStopsAfterSelectedChildFails(t *testing.T) {
+	r := selectorTestRegion()
+	first := r.f.placed["first"]
+	first.modifiers = append(first.modifiers, map[string]any{"type": "block_predicate_filter", "predicate": map[string]any{"type": "not", "predicate": map[string]any{"type": "true"}}})
+	r.f.placed["first"] = first
+
+	random := java26.NewLegacyRandom(123)
+	wantRandom := java26.NewLegacyRandom(123)
+	wantRandom.NextFloat()
+	if r.f.placeConfiguredData(r, "random_selector", map[string]any{
+		"features": []any{
+			map[string]any{"feature": "first", "chance": float64(1)},
+			map[string]any{"feature": "second", "chance": float64(1)},
+		},
+		"default": "third",
+	}, featurePos{4, 5, 4}, &random) {
+		t.Fatal("selected unsuccessful child returned success")
+	}
+	for _, p := range []featurePos{{5, 5, 4}, {6, 5, 4}, {7, 5, 4}} {
+		if name, _ := r.State(p); name != "minecraft:air" {
+			t.Fatalf("later candidate wrote %s at %v after selected child failed", name, p)
+		}
+	}
+	if got, want := random.NextLong(), wantRandom.NextLong(); got != want {
+		t.Fatalf("following stream=%d after selected-child failure, want %d", got, want)
+	}
+}
 
 func TestZeroWeightFeatureSelectorDoesNotDraw(t *testing.T) {
 	r := selectorTestRegion()

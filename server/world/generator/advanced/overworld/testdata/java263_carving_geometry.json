@@ -1,0 +1,32 @@
+[
+  {
+    "kind": "source",
+    "seed": 0,
+    "x": 0,
+    "z": 0,
+    "sourceX": 1,
+    "sourceZ": -3,
+    "starts": 1,
+    "hash": "e931d812b54b0486e1346c577f8d14d4757952612e3fee70017b7c9228451f9d"
+  },
+  {
+    "kind": "full",
+    "seed": 1,
+    "x": 32,
+    "z": -17,
+    "sourceX": 0,
+    "sourceZ": 0,
+    "starts": 75,
+    "hash": "58ee0c3234e74003d4f24cf9ac8f988ac69c4c5c78e9901a90de966274eca733"
+  },
+  {
+    "kind": "full",
+    "seed": -1,
+    "x": -24,
+    "z": 41,
+    "sourceX": 0,
+    "sourceZ": 0,
+    "starts": 71,
+    "hash": "fbff5d22c7f2df91ef03c7beca7dfd67642d1acd0aaa944fde5196ec3b66a2f5"
+  }
+]

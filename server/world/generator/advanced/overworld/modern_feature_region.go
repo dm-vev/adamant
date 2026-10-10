@@ -97,6 +97,10 @@ func (r *featureRegion) Set(p featurePos, state world.NativeState) bool {
 	return r.setWithFlags(p, state, 3)
 }
 
+func (r *featureRegion) withinWriteArea(p featurePos) bool {
+	return absFeatureInt(p.x>>4-r.writeOriginX) <= 1 && absFeatureInt(p.z>>4-r.writeOriginZ) <= 1
+}
+
 func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flags int) bool {
 	if p.y < r.MinY() || p.y > r.MaxY() {
 		return false
@@ -107,7 +111,7 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 	if _, _, ok := r.c.BlockRegistry().RuntimeIDToState(state.Liquid); !ok {
 		panic("overworld: Java feature region cannot set unknown liquid runtime ID")
 	}
-	if absFeatureInt(p.x>>4-r.writeOriginX) > 1 || absFeatureInt(p.z>>4-r.writeOriginZ) > 1 {
+	if !r.withinWriteArea(p) {
 		return false
 	}
 	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
@@ -604,6 +608,11 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 					}
 					tested[word] |= bit
 					p := featurePos{x, y, z}
+					// BulkSectionAccess checks the source-origin write window
+					// before predicates or air-exposure RNG consume the stream.
+					if !region.withinWriteArea(p) {
+						continue
+					}
 					name, _ := region.State(p)
 					for _, target := range oreTargets {
 						if !orePredicateMatches(p, target.predicate, name) {
@@ -980,7 +989,7 @@ func environmentScanPlacement(region *featureRegion, in []featurePos, modifier m
 				break
 			}
 			pos.y += step
-			if pos.y < minY || pos.y > maxY {
+			if pos.y < minY || pos.y >= maxY {
 				outside = true
 				break
 			}

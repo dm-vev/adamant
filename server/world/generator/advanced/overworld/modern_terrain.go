@@ -43,11 +43,11 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 		entry.structures = g.modernStructures.Prepare(pos)
 	}
 	materials := [...]uint32{g.stoneRID, g.airRID, g.waterRID, g.lavaRID}
-	for x := range int32(16) {
-		worldX := baseX + x
-		for z := range int32(16) {
-			worldZ := baseZ + z
-			for y := int32(modernMinY); y <= modernMaxY; y++ {
+	for z := range int32(16) {
+		worldZ := baseZ + z
+		for x := range int32(16) {
+			worldX := baseX + x
+			for y := int32(modernMaxY); y >= modernMinY; y-- {
 				density := work.lattice.Sample(x, y, z)
 				if entry.structures != nil {
 					density += entry.structures.AdjustDensity(worldX, y, worldZ)

@@ -140,6 +140,20 @@ func UpdateJavaTemplateShapes(access JavaGenerationShapeAccess, positions []cube
 		}
 	}
 	size := [3]int{high[0] - low[0] + 1, high[1] - low[1] + 1, high[2] - low[2] + 1}
+	updateJavaGenerationShapeAtEdge(access, low, size, positions, flags, true)
+}
+
+// UpdateJavaGenerationShapeAtEdge applies StructureTemplate.updateShapeAtEdge
+// to an explicitly bounded discrete shape. filledPositions are its occupied
+// voxels; size may include empty cells that still constrain the source shape.
+func UpdateJavaGenerationShapeAtEdge(access JavaGenerationShapeAccess, low cube.Pos, size [3]int, filledPositions []cube.Pos, flags int) {
+	updateJavaGenerationShapeAtEdge(access, low, size, filledPositions, flags, false)
+}
+
+func updateJavaGenerationShapeAtEdge(access JavaGenerationShapeAccess, low cube.Pos, size [3]int, positions []cube.Pos, flags int, updateInterior bool) {
+	if len(positions) == 0 {
+		return
+	}
 	volume := size[0] * size[1] * size[2]
 	occupied := make([]uint64, (volume+63)/64)
 	for _, pos := range positions {
@@ -178,12 +192,14 @@ func UpdateJavaTemplateShapes(access JavaGenerationShapeAccess, positions []cube
 			}
 		}
 	}
-	for _, pos := range positions {
-		context.pos = pos
-		state := context.at(pos)
-		updated := context.updateFromNeighbourShapes(state)
-		if updated != state {
-			access.SetJavaBlockState(pos, updated, flags&^1|16)
+	if updateInterior {
+		for _, pos := range positions {
+			context.pos = pos
+			state := context.at(pos)
+			updated := context.updateFromNeighbourShapes(state)
+			if updated != state {
+				access.SetJavaBlockState(pos, updated, flags&^1|16)
+			}
 		}
 	}
 }

@@ -1,0 +1,27 @@
+{
+  "chunks": [
+    {"seed":0,"x":0,"z":0,"min":11,"max":64,"hash":"747d55ca3e2bd112","heights":[63,64,65,63]},
+    {"seed":0,"x":1,"z":0,"min":11,"max":64,"hash":"518567aa50c2afb9","heights":[65,65,65,65]},
+    {"seed":0,"x":2,"z":0,"min":12,"max":63,"hash":"e395709f648ae815","heights":[64,64,62,64]},
+    {"seed":0,"x":10,"z":10,"min":128,"max":-1,"hash":"8f6955bf94ec2325","heights":[0,0,0,0]},
+    {"seed":0,"x":50,"z":-35,"min":38,"max":52,"hash":"2eaa657d98f2b889","heights":[0,0,0,0]},
+    {"seed":0,"x":-100,"z":300,"min":128,"max":-1,"hash":"8f6955bf94ec2325","heights":[0,0,0,0]},
+    {"seed":0,"x":800,"z":-400,"min":20,"max":58,"hash":"fd713c4c73341f7b","heights":[59,58,57,59]},
+    {"seed":1,"x":0,"z":0,"min":12,"max":61,"hash":"186206b996dbabb1","heights":[61,61,61,61]},
+    {"seed":-1,"x":0,"z":0,"min":13,"max":63,"hash":"b2bd85cccbdbabd5","heights":[64,62,61,62]}
+  ],
+  "biomes": [
+    {"seed":0,"quartX":2,"quartY":0,"quartZ":2,"biome":"minecraft:the_end"},
+    {"seed":0,"quartX":258,"quartY":0,"quartZ":2,"biome":"minecraft:the_end"},
+    {"seed":0,"quartX":262,"quartY":0,"quartZ":2,"biome":"minecraft:small_end_islands"},
+    {"seed":0,"quartX":802,"quartY":0,"quartZ":-398,"biome":"minecraft:end_midlands"},
+    {"seed":0,"quartX":202,"quartY":0,"quartZ":-138,"biome":"minecraft:the_end"},
+    {"seed":0,"quartX":3202,"quartY":0,"quartZ":1602,"biome":"minecraft:small_end_islands"},
+    {"seed":1,"quartX":1602,"quartY":0,"quartZ":402,"biome":"minecraft:end_midlands"},
+    {"seed":-1,"quartX":1602,"quartY":0,"quartZ":402,"biome":"minecraft:end_midlands"},
+    {"seed":0,"quartX":262,"quartY":0,"quartZ":-8190,"biome":"minecraft:small_end_islands"},
+    {"seed":0,"quartX":262,"quartY":0,"quartZ":-8174,"biome":"minecraft:end_barrens"},
+    {"seed":0,"quartX":262,"quartY":0,"quartZ":-8142,"biome":"minecraft:end_highlands"},
+    {"seed":0,"quartX":262,"quartY":0,"quartZ":-8126,"biome":"minecraft:end_midlands"}
+  ]
+}

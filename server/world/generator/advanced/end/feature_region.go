@@ -8,40 +8,43 @@ import (
 )
 
 const endReplayRadius = 1
+
 // Each replayed origin needs a one-chunk read/write halo, making a five-chunk raw region.
 const endFeatureRadius = 4*endReplayRadius + 1
 const endFeatureChunkCount = endFeatureRadius * endFeatureRadius
+
 type endFeatureRegion struct {
-	chunks                  [endFeatureChunkCount]*chunk.Chunk
-	overlays                [endFeatureChunkCount]map[uint32]world.NativeState
-	minChunkX, minChunkZ     int
-	targetX, targetZ         int
-	minY, maxY               int
-	airRID                   uint32
-	shapeRandoms             map[[2]int]*java26.Random
-	scheduledTicks           map[chunk.ScheduledTick]struct{}
-	blockActors              map[cube.Pos]endBlockActor
-	logicalStates map[cube.Pos]world.NativeState
+	chunks               [endFeatureChunkCount]*chunk.Chunk
+	overlays             [endFeatureChunkCount]map[uint32]world.NativeState
+	sourceBiomes         [endFeatureChunkCount]endGenerationBiomes
+	minChunkX, minChunkZ int
+	targetX, targetZ     int
+	minY, maxY           int
+	airRID               uint32
+	shapeRandoms         map[[2]int]*java26.Random
+	scheduledTicks       map[chunk.ScheduledTick]struct{}
+	blockActors          map[cube.Pos]endBlockActor
+	logicalStates        map[cube.Pos]world.NativeState
 }
 
 type endFeatureOrigin struct {
-	region *endFeatureRegion
+	region         *endFeatureRegion
 	chunkX, chunkZ int
 }
 
 func newEndFeatureRegion(g *End, targetX, targetZ int, target *chunk.Chunk, scratch *endScratch) *endFeatureRegion {
 	region := &endFeatureRegion{
-		minChunkX: targetX - endFeatureRadius/2,
-		minChunkZ: targetZ - endFeatureRadius/2,
-		targetX: targetX,
-		targetZ: targetZ,
-		minY: target.Range().Min(),
-		maxY: target.Range().Max(),
-		airRID: g.airRID,
-		shapeRandoms: make(map[[2]int]*java26.Random),
+		minChunkX:      targetX - endFeatureRadius/2,
+		minChunkZ:      targetZ - endFeatureRadius/2,
+		targetX:        targetX,
+		targetZ:        targetZ,
+		minY:           target.Range().Min(),
+		maxY:           target.Range().Max(),
+		airRID:         g.airRID,
+		shapeRandoms:   make(map[[2]int]*java26.Random),
 		scheduledTicks: make(map[chunk.ScheduledTick]struct{}),
-		blockActors: make(map[cube.Pos]endBlockActor),
-		logicalStates: make(map[cube.Pos]world.NativeState),
+		blockActors:    make(map[cube.Pos]endBlockActor),
+		logicalStates:  make(map[cube.Pos]world.NativeState),
 	}
 	for chunkX := region.minChunkX; chunkX < region.minChunkX+endFeatureRadius; chunkX++ {
 		for chunkZ := region.minChunkZ; chunkZ < region.minChunkZ+endFeatureRadius; chunkZ++ {
@@ -53,6 +56,9 @@ func newEndFeatureRegion(g *End, targetX, targetZ int, target *chunk.Chunk, scra
 				g.fillBiomes(c)
 			}
 			g.generateTerrain(chunkX, chunkZ, c, scratch)
+			// The End's unzoomed source biome is constant within a chunk and
+			// independent of Y; native client palettes still use the End ID.
+			region.sourceBiomes[region.index(chunkX, chunkZ)] = endGenerationBiome(g.javaNoiseBiomeAt(int32(chunkX)*4, 0, int32(chunkZ)*4))
 			region.chunks[region.index(chunkX, chunkZ)] = c
 		}
 	}
@@ -145,15 +151,6 @@ func (r *endFeatureRegion) setLayers(worldX, worldY, worldZ int, state world.Nat
 	return true
 }
 
-func (r *endFeatureRegion) highestBlock(worldX, worldZ int) int {
-	for y := r.maxY; y >= r.minY; y-- {
-		if r.block(worldX, y, worldZ) != r.airRID {
-			return y
-		}
-	}
-	return 0
-}
-
 func (r *endFeatureRegion) publishTarget(targetX, targetZ int, target *chunk.Chunk) {
 	i := r.index(targetX, targetZ)
 	for pos, state := range r.overlays[i] {
@@ -163,7 +160,6 @@ func (r *endFeatureRegion) publishTarget(targetX, targetZ int, target *chunk.Chu
 		world.SetNativeState(target, uint8(x), int16(y), uint8(z), state)
 	}
 }
-
 
 func (r endFeatureOrigin) inWriteRadius(worldX, worldZ int) bool {
 	chunkX, chunkZ := floorDiv(worldX, 16), floorDiv(worldZ, 16)
@@ -179,9 +175,6 @@ func (o endFeatureOrigin) setBlock(x, y, z int, rid uint32) bool {
 	return o.region.setBlock(x, y, z, rid)
 }
 
-func (o endFeatureOrigin) highestBlock(x, z int) int { return o.region.highestBlock(x, z) }
-
 func (o endFeatureOrigin) isTarget(targetX, targetZ int) bool {
 	return o.chunkX == targetX && o.chunkZ == targetZ
 }
-

@@ -15,7 +15,8 @@ func (r *featureRegion) invalidatePlacementHeight(p featurePos) {
 	if r.placementHeights == nil {
 		return
 	}
-	for _, kind := range [...]string{"WORLD_SURFACE", "WORLD_SURFACE_WG", "OCEAN_FLOOR", "OCEAN_FLOOR_WG", "MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES"} {
+	// ProtoChunk stops updating the WORLDGEN heightmaps at TERRAIN status.
+	for _, kind := range [...]string{"WORLD_SURFACE", "OCEAN_FLOOR", "MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES"} {
 		delete(r.placementHeights, featureHeightKey{p.x, p.z, kind})
 	}
 }
@@ -24,8 +25,14 @@ func (r *featureRegion) placementHeight(x, z int32, heightmap string) int32 {
 	if height, ok := r.placementHeights[key]; ok {
 		return height
 	}
+	frozen := heightmap == "WORLD_SURFACE_WG" || heightmap == "OCEAN_FLOOR_WG"
 	for y := r.MaxY(); y >= r.MinY(); y-- {
-		state := r.nativeState(featurePos{x, y, z})
+		var state world.NativeState
+		if frozen {
+			state = r.f.source.BaseState(x, y, z)
+		} else {
+			state = r.nativeState(featurePos{x, y, z})
+		}
 		javaState, err := world.JavaState(r.c.BlockRegistry(), state)
 		if err != nil {
 			panic(err)

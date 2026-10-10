@@ -7,10 +7,10 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -18,7 +18,9 @@ import (
 //
 // The implementation is concurrency-safe and may be called from multiple generator workers.
 type End struct {
-	seed int64
+	seed           int64
+	biomeZoomSeed  int64
+	motionBlocking sync.Map // native runtime ID -> Java heightmap tag membership
 
 	baseNoise   *java26.BlendedNoise
 	islandNoise *java26.SimplexNoise
@@ -37,8 +39,8 @@ type End struct {
 	chorusFlowerRIDs  [6]uint32
 	chorusMaxDistance int
 
-	spikes [10]java26.EndSpike
-	endCityCache    sync.Map // world.ChunkPos -> *endCityStructure (nil when absent)
+	spikes       [10]java26.EndSpike
+	endCityCache sync.Map // world.ChunkPos -> *endCityStructure (nil when absent)
 
 	pool sync.Pool
 }
@@ -59,18 +61,19 @@ func NewEnd(seed int64) *End {
 	islandRandom.Consume(17292)
 
 	g := &End{
-		seed:          seed,
-		spikes: java26.EndSpikes(seed),
-		baseNoise:      java26.NewBlendedNoise(&terrainRandom, 0.25, 0.25, 80, 160, 4),
-		islandNoise:    java26.NewSimplexNoiseWithoutOffset(&islandRandom),
-		endStoneRID:   world.BlockRuntimeID(block.EndStone{}),
-		airRID:        world.BlockRuntimeID(block.Air{}),
-		biomeID:       uint32(dfbiome.End{}.EncodeBiome()),
-		bedrockRID:    world.BlockRuntimeID(block.Bedrock{}),
-		obsidianRID:   world.BlockRuntimeID(block.Obsidian{}),
-		ironBarsRIDs: [16]uint32{},
-		fireRID:       world.BlockRuntimeID(block.Fire{Type: block.NormalFire()}),
-		endGatewayRID: world.BlockRuntimeID(block.EndGateway{}),
+		seed:              seed,
+		biomeZoomSeed:     java26.BiomeZoomSeed(seed),
+		spikes:            java26.EndSpikes(seed),
+		baseNoise:         java26.NewBlendedNoise(&terrainRandom, 0.25, 0.25, 80, 160, 4),
+		islandNoise:       java26.NewSimplexNoiseWithoutOffset(&islandRandom),
+		endStoneRID:       world.BlockRuntimeID(block.EndStone{}),
+		airRID:            world.BlockRuntimeID(block.Air{}),
+		biomeID:           uint32(dfbiome.End{}.EncodeBiome()),
+		bedrockRID:        world.BlockRuntimeID(block.Bedrock{}),
+		obsidianRID:       world.BlockRuntimeID(block.Obsidian{}),
+		ironBarsRIDs:      [16]uint32{},
+		fireRID:           world.BlockRuntimeID(block.Fire{Type: block.NormalFire()}),
+		endGatewayRID:     world.BlockRuntimeID(block.EndGateway{}),
 		chorusMaxDistance: 8,
 	}
 	g.pool.New = func() any { return &endScratch{heights: make([]float32, 3*33*3)} }
@@ -186,6 +189,9 @@ func (g *End) generateObsidianSpikes(origin endFeatureOrigin, targetX, targetZ i
 }
 
 func (g *End) generateSpike(origin endFeatureOrigin, targetX, targetZ int, spike *java26.EndSpike, result *world.GenerationResult, random *endRand) {
+	if spike.X>>4 != origin.chunkX || spike.Z>>4 != origin.chunkZ {
+		return
+	}
 	minChunkX, maxChunkX := origin.chunkX-endReplayRadius, origin.chunkX+endReplayRadius
 	minChunkZ, maxChunkZ := origin.chunkZ-endReplayRadius, origin.chunkZ+endReplayRadius
 	wxMin := max(spike.X-spike.Radius, minChunkX<<4)
@@ -213,17 +219,14 @@ func (g *End) generateSpike(origin endFeatureOrigin, targetX, targetZ int, spike
 			}
 		}
 	}
-	if spike.X>>4 == origin.chunkX && spike.Z>>4 == origin.chunkZ {
-		yaw := float64(random.random.NextFloat() * 360)
-		if origin.isTarget(targetX, targetZ) {
-			result.Entities = append(result.Entities, entity.NewEndCrystal(world.EntitySpawnOpts{
-				Position: mgl64.Vec3{float64(spike.X) + 0.5, float64(spike.Height + 1), float64(spike.Z) + 0.5},
-				Rotation: cube.Rotation{yaw, 0},
-			}, entity.EndCrystalBehaviourConfig{ShowBase: true}))
-		}
+	yaw := float64(random.random.NextFloat() * 360)
+	if origin.isTarget(targetX, targetZ) {
+		result.Entities = append(result.Entities, entity.NewEndCrystal(world.EntitySpawnOpts{
+			Position: mgl64.Vec3{float64(spike.X) + 0.5, float64(spike.Height + 1), float64(spike.Z) + 0.5},
+			Rotation: cube.Rotation{yaw, 0},
+		}, entity.EndCrystalBehaviourConfig{ShowBase: true}))
 	}
 }
-
 
 func min(a, b int) int {
 	if a < b {
@@ -338,70 +341,43 @@ func abs64(value int64) int64 {
 	return value
 }
 
+// javaNoiseBiomeAt resolves TheEndBiomeSource at unzoomed Java quart
+// coordinates. It intentionally returns Java's source biome key rather than
+// the native Bedrock biome ID, whose palette may contain only minecraft:the_end.
+func (g *End) javaNoiseBiomeAt(quartX, quartY, quartZ int32) string {
+	blockX, blockZ := quartX*4, quartZ*4
+	chunkX, chunkZ := blockX>>4, blockZ>>4
+	if int64(chunkX)*int64(chunkX)+int64(chunkZ)*int64(chunkZ) <= 4096 {
+		return "minecraft:the_end"
+	}
+
+	// TheEndBiomeSource samples erosion at the centre of the containing
+	// chunk. For NoiseGeneratorSettings.END, erosion is END_ISLANDS, whose
+	// value is (getHeightValue - 8) / 128.
+	weirdBlockX := int((chunkX*2 + 1) * 8)
+	weirdBlockZ := int((chunkZ*2 + 1) * 8)
+	erosion := (g.endIslandHeight(weirdBlockX, weirdBlockZ) - 8) / 128
+	switch {
+	case erosion > 0.25:
+		return "minecraft:end_highlands"
+	case erosion >= -0.0625:
+		return "minecraft:end_midlands"
+	case erosion < -0.21875:
+		return "minecraft:small_end_islands"
+	default:
+		return "minecraft:end_barrens"
+	}
+}
+
 func (g *End) populate(chunkX, chunkZ int, region *endFeatureRegion, result *world.GenerationResult) {
-	for originX := chunkX - endReplayRadius; originX <= chunkX+endReplayRadius; originX++ {
-		for originZ := chunkZ - endReplayRadius; originZ <= chunkZ+endReplayRadius; originZ++ {
+	for originZ := chunkZ - endReplayRadius; originZ <= chunkZ+endReplayRadius; originZ++ {
+		for originX := chunkX - endReplayRadius; originX <= chunkX+endReplayRadius; originX++ {
 			origin := endFeatureOrigin{region: region, chunkX: originX, chunkZ: originZ}
 			g.populateOrigin(chunkX, chunkZ, origin, result)
 		}
 	}
 }
 
-func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, result *world.GenerationResult) {
-	chunkX, chunkZ := origin.chunkX, origin.chunkZ
-	distSq := int64(chunkX)*int64(chunkX) + int64(chunkZ)*int64(chunkZ)
-	if distSq <= 4096 {
-		g.generateCentralStructures(origin, targetX, targetZ, result, g.endFeatureRandom(chunkX, chunkZ, 1, 4))
-		g.generateEndPlatform(origin)
-		return
-	}
-
-	height := g.islandHeightValue(chunkX, chunkZ, 1, 1)
-	rawRandom := g.endFeatureRandom(chunkX, chunkZ, 0, 0)
-	if height < -20 {
-		featureCount := rawRandom.islandCount()
-		for range featureCount {
-			x := int(rawRandom.Intn(16))
-			z := int(rawRandom.Intn(16))
-			y := 55 + int(rawRandom.Intn(16))
-			worldX, worldZ := chunkX*16+x, chunkZ*16+z
-			g.generateEndIsland(origin, worldX, y, worldZ, rawRandom)
-		}
-	}
-	g.applyEndCityStructures(chunkX, chunkZ, origin.region, origin.isTarget(targetX, targetZ), result)
-
-	g.generateCentralStructures(origin, targetX, targetZ, result, g.endFeatureRandom(chunkX, chunkZ, 1, 4))
-	if height <= 40 {
-		return
-	}
-
-	gatewayRandom := g.endFeatureRandom(chunkX, chunkZ, 0, 4)
-	if gatewayRandom.OneIn700() {
-		x := chunkX*16 + int(gatewayRandom.Intn(16))
-		z := chunkZ*16 + int(gatewayRandom.Intn(16))
-		top := origin.highestBlock(x, z)
-		if top > 0 {
-			y := top + 4 + int(gatewayRandom.Intn(7))
-			if y >= origin.region.minY && y <= origin.region.maxY {
-				g.generateEndGatewayStructure(origin, x, y, z, result, targetX, targetZ)
-			}
-		}
-	}
-
-	chorusRandom := g.endFeatureRandom(chunkX, chunkZ, 0, 9)
-	plants := int(chorusRandom.Intn(5))
-	for range plants {
-		x := chunkX*16 + int(chorusRandom.Intn(16))
-		z := chunkZ*16 + int(chorusRandom.Intn(16))
-		top := origin.highestBlock(x, z)
-		if top <= 0 || origin.block(x, top, z) != g.endStoneRID || top+1 > origin.region.maxY {
-			continue
-		}
-		if origin.block(x, top+1, z) == g.airRID {
-			g.generateChorusPlant(origin, x, top+1, z, chorusRandom, g.chorusMaxDistance)
-		}
-	}
-}
 func (g *End) generateEndGatewayStructure(origin endFeatureOrigin, worldX, worldY, worldZ int, result *world.GenerationResult, targetX, targetZ int) {
 	for wx := worldX - 1; wx <= worldX+1; wx++ {
 		for wy := worldY - 2; wy <= worldY+2; wy++ {
@@ -423,7 +399,7 @@ func (g *End) generateEndGatewayStructure(origin endFeatureOrigin, worldX, world
 			}
 		}
 	}
-	if origin.isTarget(targetX, targetZ) {
+	if origin.isTarget(targetX, targetZ) && worldY >= origin.region.minY && worldY <= origin.region.maxY {
 		result.BlockEntities = append(result.BlockEntities, chunk.BlockEntity{
 			Pos: cube.Pos{worldX, worldY, worldZ},
 			Data: map[string]any{
@@ -594,4 +570,3 @@ func mustStateRID(name string, props map[string]any) uint32 {
 	}
 	return rid
 }
-

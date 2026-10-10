@@ -3,6 +3,7 @@ package overworld
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -130,7 +131,7 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 			}
 			vegetationPlaced := region.PlacePlacedFeature(vegetation, [3]int32{placement.x, placement.y, placement.z}, random)
 			if waterlogged && vegetationPlaced {
-				waterloggedPos := featurePos{placement.x, placement.y + 1, placement.z}
+				waterloggedPos := pos
 				name, properties := region.State(waterloggedPos)
 				waterloggedValue, hasWaterloggedProperty := properties["waterlogged"].(bool)
 				if hasWaterloggedProperty && !waterloggedValue && name != "minecraft:water" {
@@ -173,7 +174,6 @@ func vegetationPatchHashSetOrder(positions []featurePos) []featurePos {
 	return ordered
 }
 
-
 func vegetationPatchReplaceable(region *featureRegion, pos featurePos, replaceable any) bool {
 	name, _ := region.State(pos)
 	switch value := replaceable.(type) {
@@ -199,7 +199,6 @@ func vegetationPatchReplaceable(region *featureRegion, pos featurePos, replaceab
 }
 
 func vegetationPatchSturdy(region *featureRegion, pos, faceDirection featurePos) bool {
-	block := region.Block(pos)
 	face := cube.FaceUp
 	switch {
 	case faceDirection.y < 0:
@@ -213,7 +212,12 @@ func vegetationPatchSturdy(region *featureRegion, pos, faceDirection featurePos)
 	case faceDirection.z > 0:
 		face = cube.FaceSouth
 	}
-	return block.Model().FaceSolid(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, face, featureRegionBlockSource{region})
+	name, properties := region.State(pos)
+	shape, err := javadata.BlockGenerationShape(normalizeJavaResource(name), properties)
+	if err != nil {
+		panic(err)
+	}
+	return shape.Sturdy&(1<<uint(face)) != 0
 }
 
 func vegetationPatchExposed(region *featureRegion, pos featurePos) bool {

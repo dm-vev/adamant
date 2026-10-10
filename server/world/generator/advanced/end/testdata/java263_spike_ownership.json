@@ -1,0 +1,32 @@
+[
+  {
+    "seed": 0,
+    "spikeIndex": 0,
+    "origin": [
+      3,
+      0
+    ],
+    "position": [
+      42,
+      95,
+      0
+    ],
+    "block": "minecraft:diamond_block",
+    "entities": 0
+  },
+  {
+    "seed": 0,
+    "spikeIndex": 5,
+    "origin": [
+      -4,
+      -1
+    ],
+    "position": [
+      -42,
+      104,
+      -1
+    ],
+    "block": "minecraft:diamond_block",
+    "entities": 0
+  }
+]

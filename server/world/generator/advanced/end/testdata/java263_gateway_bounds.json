@@ -1,0 +1,97 @@
+[
+  {
+    "y": 255,
+    "states": {
+      "7,253,7": "minecraft:air",
+      "8,253,7": "minecraft:air",
+      "9,253,7": "minecraft:air",
+      "7,254,7": "minecraft:air",
+      "8,254,7": "minecraft:bedrock",
+      "9,254,7": "minecraft:air",
+      "7,255,7": "minecraft:air",
+      "8,255,7": "minecraft:air",
+      "9,255,7": "minecraft:air",
+      "7,253,8": "minecraft:air",
+      "8,253,8": "minecraft:bedrock",
+      "9,253,8": "minecraft:air",
+      "7,254,8": "minecraft:bedrock",
+      "8,254,8": "minecraft:bedrock",
+      "9,254,8": "minecraft:bedrock",
+      "7,255,8": "minecraft:air",
+      "8,255,8": "minecraft:end_gateway",
+      "9,255,8": "minecraft:air",
+      "7,253,9": "minecraft:air",
+      "8,253,9": "minecraft:air",
+      "9,253,9": "minecraft:air",
+      "7,254,9": "minecraft:air",
+      "8,254,9": "minecraft:bedrock",
+      "9,254,9": "minecraft:air",
+      "7,255,9": "minecraft:air",
+      "8,255,9": "minecraft:air",
+      "9,255,9": "minecraft:air"
+    },
+    "gateways": [
+      {
+        "position": [
+          8,
+          255,
+          8
+        ],
+        "exit": [
+          100,
+          50,
+          0
+        ],
+        "exact": true
+      }
+    ]
+  },
+  {
+    "y": 256,
+    "states": {
+      "7,254,7": "minecraft:air",
+      "8,254,7": "minecraft:air",
+      "9,254,7": "minecraft:air",
+      "7,255,7": "minecraft:air",
+      "8,255,7": "minecraft:bedrock",
+      "9,255,7": "minecraft:air",
+      "7,254,8": "minecraft:air",
+      "8,254,8": "minecraft:bedrock",
+      "9,254,8": "minecraft:air",
+      "7,255,8": "minecraft:bedrock",
+      "8,255,8": "minecraft:bedrock",
+      "9,255,8": "minecraft:bedrock",
+      "7,254,9": "minecraft:air",
+      "8,254,9": "minecraft:air",
+      "9,254,9": "minecraft:air",
+      "7,255,9": "minecraft:air",
+      "8,255,9": "minecraft:bedrock",
+      "9,255,9": "minecraft:air"
+    },
+    "gateways": []
+  },
+  {
+    "y": -1,
+    "states": {
+      "7,0,7": "minecraft:air",
+      "8,0,7": "minecraft:bedrock",
+      "9,0,7": "minecraft:air",
+      "7,1,7": "minecraft:air",
+      "8,1,7": "minecraft:air",
+      "9,1,7": "minecraft:air",
+      "7,0,8": "minecraft:bedrock",
+      "8,0,8": "minecraft:bedrock",
+      "9,0,8": "minecraft:bedrock",
+      "7,1,8": "minecraft:air",
+      "8,1,8": "minecraft:bedrock",
+      "9,1,8": "minecraft:air",
+      "7,0,9": "minecraft:air",
+      "8,0,9": "minecraft:bedrock",
+      "9,0,9": "minecraft:air",
+      "7,1,9": "minecraft:air",
+      "8,1,9": "minecraft:air",
+      "9,1,9": "minecraft:air"
+    },
+    "gateways": []
+  }
+]

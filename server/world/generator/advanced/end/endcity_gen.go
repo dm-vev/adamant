@@ -6,10 +6,10 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -55,7 +55,6 @@ func (r endCityRotation) rotatePos(p endCityPos) endCityPos {
 		return p
 	}
 }
-
 
 type endCityBB struct {
 	minX, minY, minZ int
@@ -112,8 +111,8 @@ type endCityPiece struct {
 }
 
 type endCityStructure struct {
-	pieces          []*endCityPiece
-	bb              endCityBB
+	pieces []*endCityPiece
+	bb     endCityBB
 }
 
 type endCityBuilder struct {
@@ -187,14 +186,14 @@ func endCityPieceBoundingBox(piece *endCityPiece, t *endCityTemplate, rot endCit
 		sizeX, sizeZ = sizeZ, sizeX
 	}
 
-	bb := endCityBB{minX: 0, minY: 0, minZ: 0, maxX: sizeX, maxY: sizeY - 1, maxZ: sizeZ}
+	bb := endCityBB{minX: 0, minY: 0, minZ: 0, maxX: sizeX - 1, maxY: sizeY - 1, maxZ: sizeZ - 1}
 	switch rot {
 	case endCityRotClockwise90:
-		bb.offset(-sizeX, 0, 0)
+		bb.offset(-(sizeX - 1), 0, 0)
 	case endCityRotCounterClockwise90:
-		bb.offset(0, 0, -sizeZ)
+		bb.offset(0, 0, -(sizeZ - 1))
 	case endCityRotClockwise180:
-		bb.offset(-sizeX, 0, -sizeZ)
+		bb.offset(-(sizeX - 1), 0, -(sizeZ - 1))
 	}
 	bb.offset(piece.pos.x, piece.pos.y, piece.pos.z)
 	return bb
@@ -225,7 +224,7 @@ func endCityHouseTowerGenerator(b *endCityBuilder, g *End, depth int, parent *en
 		}
 		*out = append(*out, roof)
 	case 1:
-		second, err := g.addEndCityPiece(current, endCityPos{-1, 0, -1}, "second_floor_1", rotation, false)
+		second, err := g.addEndCityPiece(current, endCityPos{-1, 0, -1}, "second_floor_2", rotation, false)
 		if err != nil {
 			return false
 		}
@@ -465,7 +464,6 @@ func endCityFatTowerGenerator(b *endCityBuilder, g *End, depth int, parent *endC
 	return true
 }
 
-
 func (g *End) endCityYPosForStructure(chunkX, chunkZ int, rotation endCityRotation) (int, error) {
 	temp := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 
@@ -488,7 +486,7 @@ func (g *End) endCityYPosForStructure(chunkX, chunkZ int, rotation endCityRotati
 	h2 := int(temp.HighestBlock(7, uint8(7+j)))
 	h3 := int(temp.HighestBlock(uint8(7+i), 7))
 	h4 := int(temp.HighestBlock(uint8(7+i), uint8(7+j)))
-	return min(min(h1, h2), min(h3, h4)) + 1, nil
+	return min(min(h1, h2), min(h3, h4)), nil
 }
 
 func (g *End) isEndCityStart(chunkX, chunkZ int) bool {
@@ -568,7 +566,7 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 	positions := make([]cube.Pos, 0, len(blockPlacement.Blocks))
 	access := endJavaShapeAccess{
 		endFeatureOrigin: endFeatureOrigin{region: region, chunkX: chunkX, chunkZ: chunkZ},
-		result: result, random: region.sourceShapeRandom(g.seed, chunkX, chunkZ),
+		result:           result, random: region.sourceShapeRandom(g.seed, chunkX, chunkZ),
 	}
 	for _, placed := range blockPlacement.Blocks {
 		if placed.Pos[0]>>4 != int32(chunkX) || placed.Pos[2]>>4 != int32(chunkZ) {
@@ -597,8 +595,6 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 	g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
 }
 
-
-
 func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegion, blocks []javastructure.Block, p *endCityPiece, random *java26.Random, publish bool, result *world.GenerationResult) {
 	c := region.chunks[region.index(chunkX, chunkZ)]
 	for _, marker := range blocks {
@@ -625,7 +621,7 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			actor.record.NBT["LootTableSeed"] = random.NextLong()
 			access := endJavaShapeAccess{
 				endFeatureOrigin: endFeatureOrigin{region: region, chunkX: chunkX, chunkZ: chunkZ},
-				result: result,
+				result:           result,
 			}
 			access.recordBlockActor(actor.record)
 		case strings.HasPrefix(metadata, "Sentry"):
@@ -655,8 +651,8 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 				facing = cube.FaceNorth
 			}
 			frame := block.ItemFrame{
-				Facing:    facing.Opposite(),
-				Item:      item.NewStack(item.Elytra{}, 1),
+				Facing:     facing.Opposite(),
+				Item:       item.NewStack(item.Elytra{}, 1),
 				DropChance: 1,
 			}
 			pos := cube.Pos{int(marker.Pos[0]), int(marker.Pos[1]), int(marker.Pos[2])}
@@ -682,7 +678,6 @@ func endCityPosInChunk(pos [3]int32, chunkX, chunkZ int, c *chunk.Chunk) bool {
 	return pos[0]>>4 == int32(chunkX) && pos[2]>>4 == int32(chunkZ) &&
 		pos[1] >= int32(c.Range().Min()) && pos[1] <= int32(c.Range().Max())
 }
-
 
 func (g *End) endCityRotation(random *endRand) endCityRotation {
 	return endCityRotation(random.Intn(4))
@@ -769,12 +764,11 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 	return s, nil
 }
 
-
 func (g *End) endCityWorldgenRandom(chunkX, chunkZ int) *endRand {
 	random := java26.NewWorldgenRandom(g.seed)
 	decorationSeed := random.SetDecorationSeed(g.seed, int32(chunkX<<4), int32(chunkZ<<4))
-	// 22 is End City's registry-order index in the 26.3 surface_structures step.
-	random.SetFeatureSeed(decorationSeed, 22, 4)
+	// End City is registry-order index 20 in the Java 26.3 surface_structures step.
+	random.SetFeatureSeed(decorationSeed, 20, 4)
 	return newEndRandWithRandom(random)
 }
 
