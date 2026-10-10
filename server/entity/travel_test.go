@@ -485,19 +485,13 @@ func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
 				e := tx.AddEntity(handle)
 				tc = e.(*Ent).Behaviour().(*ProjectileBehaviour).PortalTravelComputer()
 				tc.Teleport = test.teleport
-				tc.travel(e.(Traveller), tx, destination)
+				tc.beginTravel()
+				tx.RemoveEntity(e)
 			})
 
-			deadline := time.Now().Add(10 * time.Second)
-			for time.Now().Before(deadline) {
-				tc.mu.Lock()
-				done := !tc.travelling
-				tc.mu.Unlock()
-				if done && entityInWorld(handle, source) {
-					break
-				}
-				time.Sleep(10 * time.Millisecond)
-			}
+			// Execute the transfer outside either owner's transaction. Completion
+			// is the rollback boundary, independent of portal-search wall time.
+			tc.transfer(handle, source, destination, origin, translatePortalPosition(cube.PosFromVec3(origin), world.Overworld, world.Nether), world.Overworld, world.Nether)
 			if !entityInWorld(handle, source) {
 				t.Fatal("entity was not restored to the source after destination panic")
 			}
@@ -658,20 +652,16 @@ func (testPortalCreatorConfig) Apply(data *world.EntityData) {
 
 func waitForEntityWorld(t *testing.T, handle *world.EntityHandle, w *world.World) {
 	t.Helper()
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		if entityInWorld(handle, w) {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	inWorld, err := world.CallEntity(context.Background(), handle, func(tx *world.Tx, _ world.Entity) (bool, error) {
+		return tx.World() == w, nil
+	})
+	if err != nil || !inWorld {
+		t.Fatalf("completed portal transfer: expected world=%p, inWorld=%v, err=%v", w, inWorld, err)
 	}
-	t.Fatal("timed out waiting for entity to change worlds")
 }
 
 func entityInWorld(handle *world.EntityHandle, w *world.World) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	inWorld, err := world.CallEntity(ctx, handle, func(tx *world.Tx, _ world.Entity) (bool, error) {
+	inWorld, err := world.CallEntity(context.Background(), handle, func(tx *world.Tx, _ world.Entity) (bool, error) {
 		return tx.World() == w, nil
 	})
 	return err == nil && inWorld

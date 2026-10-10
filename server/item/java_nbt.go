@@ -142,6 +142,7 @@ func StackFromJavaNBT(data map[string]any) (Stack, error) {
 	}
 	return s, nil
 }
+
 // StackToJavaNBT encodes a Dragonfly stack as a Java ItemStack.CODEC compound.
 // Raw Java components retained by StackFromJavaNBT are preserved where possible.
 func StackToJavaNBT(stack Stack) (map[string]any, error) {
@@ -184,7 +185,9 @@ func StackToJavaNBT(stack Stack) (map[string]any, error) {
 	}
 	if lore := stack.Lore(); len(lore) != 0 {
 		lines := make([]any, len(lore))
-		for i, line := range lore { lines[i] = map[string]any{"text": line} }
+		for i, line := range lore {
+			lines[i] = map[string]any{"text": line}
+		}
 		components["minecraft:lore"] = lines
 	} else {
 		delete(components, "minecraft:lore")
@@ -230,11 +233,22 @@ func StackToJavaNBT(stack Stack) (map[string]any, error) {
 	}
 	enchantments := stack.Enchantments()
 	if len(enchantments) != 0 {
-		levels := make(map[string]any, len(enchantments))
+		component := "minecraft:enchantments"
+		if _, book := stack.Item().(EnchantedBook); book {
+			component = "minecraft:stored_enchantments"
+		}
+		levels, _ := components[component].(map[string]any)
+		if legacy, ok := levels["levels"].(map[string]any); ok {
+			levels = legacy
+		}
+		if levels == nil {
+			levels = make(map[string]any, len(enchantments))
+		}
+		// Retain source-only enchantments that the native registry cannot expose.
 		for _, enchantment := range enchantments {
 			levels["minecraft:"+strings.ToLower(strings.ReplaceAll(enchantment.Type().Name(), " ", "_"))] = int32(enchantment.Level())
 		}
-		components["minecraft:enchantments"] = map[string]any{"levels": levels}
+		components[component] = levels
 	}
 	data := map[string]any{"id": name, "count": int32(stack.Count())}
 	if len(components) != 0 {

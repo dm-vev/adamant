@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
@@ -286,8 +287,13 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 					BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
 					JavaBiomeAt: f.source.JavaBiomeAt,
 					BaseHeight:  region.Height,
-					WorldSeed:   f.seed,
-					Random:      &structureRandom,
+					JavaBlockStateID: func(x, y, z int32) (uint32, error) {
+						return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
+					},
+					Range:                   region.Range(),
+					TransientStructureState: originChunkX != int32(pos[0]) || originChunkZ != int32(pos[1]),
+					WorldSeed:               f.seed,
+					Random:                  &structureRandom,
 					PlaceFeature: func(feature any, pos [3]int32, random *java26.Random) bool {
 						return region.PlacePlacedFeature(feature, pos, random)
 					},

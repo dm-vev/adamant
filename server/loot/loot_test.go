@@ -145,11 +145,14 @@ func TestDiamondOreFortuneMatchesJavaBonusBoundaries(t *testing.T) {
 	// minimum, positive bonus, and upper endpoint. The one-choice pool must
 	// not consume a random draw before applying Fortune.
 	for _, test := range []struct {
-		seed int64
+		seed  int64
 		count int
 	}{{6, 1}, {1, 2}, {3, 4}} {
-		drops, err := Generate("minecraft:blocks/diamond_ore", test.seed, Context{ToolStack: tool})
-		if err != nil { t.Fatal(err) }
+		random := java26.NewXoroshiroRandom(test.seed)
+		drops, err := Generate("minecraft:blocks/diamond_ore", test.seed, Context{ToolStack: tool, Random: &random})
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(drops) != 1 {
 			t.Fatalf("seed %d: drops = %v, want one diamond stack", test.seed, drops)
 		}

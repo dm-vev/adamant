@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"runtime"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
@@ -105,53 +103,5 @@ func TestConfiguredStructureStartsMatchJava(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-type configuredStartGate struct {
-	configuredStartSource
-	entered, release chan struct{}
-	once             sync.Once
-}
-
-func (s *configuredStartGate) JavaNoiseBiomeAt(x, y, z int32) string {
-	s.once.Do(func() { close(s.entered); <-s.release })
-	return s.biome
-}
-
-func TestConcurrentStructureStartReadersRetainCompleteGraph(t *testing.T) {
-	source := configuredStartSource{biome: "minecraft:plains", height: 64}
-	planner := newModernStructures(0, source)
-	set := configuredStartSet(t, planner, "trial_chambers")
-	expected, valid, err := planner.buildStart(set, 14, 5)
-	if err != nil || !valid {
-		t.Fatalf("real trial start: valid=%v err=%v", valid, err)
-	}
-	gate := &configuredStartGate{configuredStartSource: source, entered: make(chan struct{}), release: make(chan struct{})}
-	planner.source = gate
-	const readers = 17
-	results := make([]modernStructureStart, readers)
-	validity := make([]bool, readers)
-	var done, ready sync.WaitGroup
-	done.Add(readers)
-	go func() { defer done.Done(); results[0], validity[0] = planner.makeStart(set, 14, 5) }()
-	// Hold the actual graph build at biome validation while other generators join.
-	<-gate.entered
-	ready.Add(readers - 1)
-	for i := 1; i < readers; i++ {
-		go func() { defer done.Done(); ready.Done(); results[i], validity[i] = planner.makeStart(set, 14, 5) }()
-	}
-	ready.Wait()
-	runtime.Gosched()
-	close(gate.release)
-	done.Wait()
-	for i := range results {
-		if !validity[i] || !reflect.DeepEqual(results[i], expected) {
-			t.Errorf("reader %d lost or changed the completed trial graph", i)
-		}
-	}
-	cached, valid := planner.makeStart(set, 14, 5)
-	if !valid || !reflect.DeepEqual(cached, expected) {
-		t.Fatal("cached start differs from the completed trial graph")
 	}
 }

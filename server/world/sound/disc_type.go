@@ -115,12 +115,17 @@ func DiscLavaChicken() DiscType {
 	return DiscType{20}
 }
 
+// DiscBounce returns the music disc "Bounce".
+func DiscBounce() DiscType {
+	return DiscType{21}
+}
+
 // MusicDiscs returns a list of all existing music discs.
 func MusicDiscs() []DiscType {
 	return []DiscType{
 		Disc13(), DiscCat(), DiscBlocks(), DiscChirp(), DiscFar(), DiscMall(), DiscMellohi(), DiscStal(),
 		DiscStrad(), DiscWard(), Disc11(), DiscWait(), DiscOtherside(), DiscPigstep(), Disc5(), DiscRelic(),
-		DiscCreator(), DiscCreatorMusicBox(), DiscPrecipice(), DiscTears(), DiscLavaChicken(),
+		DiscCreator(), DiscCreatorMusicBox(), DiscPrecipice(), DiscTears(), DiscLavaChicken(), DiscBounce(),
 	}
 }
 
@@ -177,6 +182,8 @@ func (d disc) String() string {
 		return "tears"
 	case 20:
 		return "lava_chicken"
+	case 21:
+		return "bounce"
 	}
 	panic("unknown record type")
 }
@@ -188,6 +195,8 @@ func (d disc) DisplayName() string {
 		return "Creator (Music Box)"
 	case 20:
 		return "Lava Chicken"
+	case 21:
+		return "Bounce"
 	}
 	if d > 12 {
 		return cases.Title(language.English, cases.Compact).String(d.String())
@@ -211,6 +220,8 @@ func (d disc) Author() string {
 		return "Amos Roddy"
 	case 20:
 		return "Hyper Potions"
+	case 21:
+		return "fingerspit"
 	}
 	panic("unknown record type")
 }

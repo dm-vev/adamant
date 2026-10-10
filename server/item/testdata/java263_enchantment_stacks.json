@@ -1,0 +1,27 @@
+[
+  {
+    "name": "book_reset",
+    "stack": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 2
+        }
+      }
+    }
+  },
+  {
+    "name": "mixed_sweeping",
+    "stack": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4,
+          "minecraft:sweeping_edge": 2
+        }
+      }
+    }
+  }
+]

@@ -1,13 +1,16 @@
 package entity
 
 import (
+	"log"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -60,6 +63,8 @@ type MinecartContainerBehaviour struct {
 
 	containerType int32
 	containerSize int32
+	lootTable     string
+	lootSeed      int64
 }
 
 // Base returns the base minecart behaviour.
@@ -127,11 +132,121 @@ func (m *MinecartContainer) Interact(tx *world.Tx, user item.User, _ *item.UseCo
 	if b == nil {
 		return false
 	}
+	if b.lootTable != "" {
+		if mode, ok := user.(interface{ GameMode() world.GameMode }); ok && mode.GameMode() == world.GameModeSpectator {
+			return false
+		}
+		if _, ok := user.(ContainerOpener); !ok {
+			return false
+		}
+		m.generateLoot(tx, user)
+	}
 	if opener, ok := user.(ContainerOpener); ok {
 		opener.OpenEntityContainer(m, b.Inventory(), byte(b.containerType), tx)
 		return true
 	}
 	return false
+}
+
+// Inventory returns the minecart inventory, resolving pending loot on access.
+func (m *MinecartContainer) Inventory() *inventory.Inventory {
+	b := m.container()
+	if b == nil {
+		return nil
+	}
+	m.generateLoot(m.Ent.tx, nil)
+	return b.inv
+}
+
+func (m *MinecartContainer) generateLoot(tx *world.Tx, user item.User) {
+	b := m.container()
+	if b == nil || b.lootTable == "" {
+		return
+	}
+	sequence, err := loot.RandomSequence(b.lootTable)
+	if err != nil {
+		panic(err)
+	}
+	random := tx.LootRandomSequence(sequence, b.lootSeed)
+	ctx := loot.Context{Random: random, RandomSequence: tx.LootRandomSequence, Origin: m.Position(), Biome: tx.Biome(cube.PosFromVec3(m.Position())).String()}
+	if entity, ok := user.(world.Entity); ok {
+		ctx.ThisEntity, ctx.Player = entity, entity
+		if luck, ok := user.(interface{ Luck() float64 }); ok {
+			ctx.Luck = luck.Luck()
+		}
+	}
+	stacks, err := loot.Generate(b.lootTable, b.lootSeed, ctx)
+	if err != nil {
+		panic(err)
+	}
+	fillMinecartInventory(b.inv, stacks, random)
+	b.lootTable, b.lootSeed = "", 0
+	delete(m.Ent.data.NativeNBT, "LootTable")
+	delete(m.Ent.data.NativeNBT, "LootTableSeed")
+	delete(m.Ent.data.NativeNBT, "Items")
+}
+
+func fillMinecartInventory(inv *inventory.Inventory, stacks []item.Stack, random *java26.Random) {
+	free := make([]int, 0, inv.Size())
+	for slot, stack := range inv.Slots() {
+		if stack.Empty() {
+			free = append(free, slot)
+		}
+	}
+	shuffleMinecartLoot(free, random)
+	var items, split []item.Stack
+	for _, stack := range stacks {
+		for !stack.Empty() {
+			count := min(stack.Count(), stack.MaxCount())
+			part := stack.Grow(count - stack.Count())
+			stack = stack.Grow(-count)
+			if part.Count() > 1 {
+				split = append(split, part)
+			} else {
+				items = append(items, part)
+			}
+		}
+	}
+	for len(free)-len(items)-len(split) > 0 && len(split) > 0 {
+		i := 0
+		if len(split) > 1 {
+			i = int(random.NextInt(int32(len(split))))
+		}
+		stack := split[i]
+		split = append(split[:i], split[i+1:]...)
+		count := 1
+		if half := stack.Count() / 2; half > 1 {
+			count += int(random.NextInt(int32(half)))
+		}
+		part := stack.Grow(-stack.Count() + count)
+		stack = stack.Grow(-count)
+		if stack.Count() > 1 && random.NextBoolean() {
+			split = append(split, stack)
+		} else {
+			items = append(items, stack)
+		}
+		if part.Count() > 1 && random.NextBoolean() {
+			split = append(split, part)
+		} else {
+			items = append(items, part)
+		}
+	}
+	items = append(items, split...)
+	shuffleMinecartLoot(items, random)
+	for i, stack := range items {
+		if i >= len(free) {
+			log.Printf("loot table tried to over-fill a minecart container")
+			return
+		}
+		_ = inv.SetItem(free[len(free)-i-1], stack)
+	}
+}
+
+func shuffleMinecartLoot[T any](items []T, random *java26.Random) {
+	for i := len(items) - 1; i > 0; i-- {
+		j := int(random.NextInt(int32(i + 1)))
+		items[i], items[j] = items[j], items[i]
+	}
 }
 
 // Destroy destroys the minecart and drops its contents.
@@ -143,6 +258,7 @@ func (m *MinecartContainer) Destroy(tx *world.Tx, src world.DamageSource, causer
 	}
 	destroy := b.Hurt(minecartDamageFromSource(src, causer))
 	if destroy {
+		m.generateLoot(tx, nil)
 		for _, stack := range b.inv.Clear() {
 			if stack.Empty() {
 				continue
@@ -207,17 +323,29 @@ func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := chestMinecartConf
 	beh := conf.New()
 	readMinecartDisplayNBT(beh.MinecartBehaviour, m)
-	nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)
+	beh.lootTable = nbtconv.String(m, "LootTable")
+	beh.lootSeed = nbtconv.Int64(m, "LootTableSeed")
+	if beh.lootTable == "" {
+		nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)
+	} else {
+		delete(data.NativeNBT, "Items")
+	}
 	data.Data = beh
 }
 
 func (chestMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*MinecartContainerBehaviour)
-	items := nbtconv.InvToNBT(b.inv)
-	if items == nil {
-		items = []map[string]any{}
+	m := make(map[string]any)
+	if b.lootTable != "" {
+		m["LootTable"] = b.lootTable
+		if b.lootSeed != 0 {
+			m["LootTableSeed"] = b.lootSeed
+		}
+	} else if items := nbtconv.InvToNBT(b.inv); items != nil {
+		m["Items"] = items
+	} else {
+		m["Items"] = []map[string]any{}
 	}
-	m := map[string]any{"Items": items}
 	writeMinecartDisplayNBT(b.MinecartBehaviour, m)
 	return m
 }

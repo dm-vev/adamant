@@ -15,11 +15,13 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-//go:embed assets/minecraft/loot_table assets/minecraft/tags/item assets/minecraft/tags/enchantment
+//go:embed assets/minecraft/loot_table assets/minecraft/tags/item assets/minecraft/tags/enchantment assets/minecraft/enchantment_registry.json
 var assets embed.FS
+
 type table struct { Pools []pool `json:"pools"`; RandomSequence string `json:"random_sequence"`; Modifier modifierList `json:"modifier"` }
 type pool struct { Rolls any `json:"rolls"`; BonusRolls any `json:"bonus_rolls"`; Entries []entry `json:"entries"`; Condition *condition `json:"condition"`; Conditions []condition `json:"conditions"` }
 type entry struct { Type string `json:"type"`; Name string `json:"name"`; Value any `json:"value"`; Inline *table `json:"-"`; Weight int `json:"weight"`; Quality int `json:"quality"`; Children []entry `json:"children"`; Entries []entry `json:"entries"`; Entry *entry `json:"entry"`; Condition *condition `json:"condition"`; Conditions []condition `json:"conditions"`; Functions []modifier `json:"functions"`; Modifier modifierList `json:"modifier"` }
+
 func (e *entry) UnmarshalJSON(b []byte) error {
 	type alias entry
 	var decoded alias
@@ -35,8 +37,32 @@ func (e *entry) UnmarshalJSON(b []byte) error {
 	*e=entry(decoded)
 	return nil
 }
-type modifier struct { Type string `json:"type"`; Count any `json:"count"`; Min any `json:"min"`; Max any `json:"max"`; Add any `json:"add"`; Multiplier any `json:"multiplier"`; Condition *condition `json:"condition"`; Conditions []condition `json:"conditions"`; Enchantments map[string]any `json:"enchantments"`; Options any `json:"options"`; OnlyCompatible *bool `json:"only_compatible"`; Enchantment string `json:"enchantment"`; Formula string `json:"formula"`; Levels any `json:"levels"`; Damage any `json:"damage"`; Potion string `json:"id"`; Predicate json.RawMessage `json:"predicate"`; Components map[string]any `json:"components"`; Name any `json:"name"`; Raw map[string]any `json:"-"` }
+
+type modifier struct {
+	Type                     string          `json:"type"`
+	Count                    any             `json:"count"`
+	Min                      any             `json:"min"`
+	Max                      any             `json:"max"`
+	Add                      any             `json:"add"`
+	Multiplier               any             `json:"multiplier"`
+	Condition                *condition      `json:"condition"`
+	Conditions               []condition     `json:"conditions"`
+	Enchantments             map[string]any  `json:"enchantments"`
+	Options                  any             `json:"options"`
+	OnlyCompatible           *bool           `json:"only_compatible"`
+	Enchantment              string          `json:"enchantment"`
+	Formula                  string          `json:"formula"`
+	Levels                   any             `json:"levels"`
+	Damage                   any             `json:"damage"`
+	Potion                   string          `json:"id"`
+	Predicate                json.RawMessage `json:"predicate"`
+	Components               map[string]any  `json:"components"`
+	Name                     any             `json:"name"`
+	Raw                      map[string]any  `json:"-"`
+	randomEnchantmentOptions []string
+}
 type modifierList []modifier
+
 func matchItemComponents(raw any,stack item.Stack)(bool,error){
 	matchers,ok:=raw.(map[string]any);if !ok{return false,fmt.Errorf("invalid item predicate component matchers %T",raw)}
 	if exact,ok:=matchers["components"];ok {
@@ -111,14 +137,23 @@ func (m *modifierList) UnmarshalJSON(b []byte) error {
 func (m *modifier) UnmarshalJSON(b []byte) error {
 	type alias modifier
 	var compiled alias
-	if err := json.Unmarshal(b, &compiled); err != nil { return err }
+	if err := json.Unmarshal(b, &compiled); err != nil {
+		return err
+	}
 	var raw map[string]any
-	if err := json.Unmarshal(b, &raw); err != nil { return err }
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
 	*m = modifier(compiled)
 	m.Raw = raw
+	if m.Type == "minecraft:enchant_randomly" {
+		return m.resolveRandomEnchantmentOptions()
+	}
 	return nil
 }
+
 type condition struct { Type string `json:"type"`; Condition string `json:"condition"`; Chance float64 `json:"chance"`; Predicate any `json:"predicate"`; Terms []condition `json:"terms"`; Inverted *condition `json:"term"`; Block string `json:"block"`; Entity string `json:"entity"`; PredicateType string `json:"predicate_type"`; Raw map[string]any `json:"-"` }
+
 func (c *condition) UnmarshalJSON(b []byte) error {
 	if len(b) > 0 && b[0] == '"' { return json.Unmarshal(b, &c.Condition) }
 	type alias condition
@@ -137,8 +172,20 @@ var enchantmentTags map[string]map[string]struct{}
 var registeredEnchantments map[string]struct{}
 
 func init() {
+	if err := loadSourceEnchantments(); err != nil {
+		panic(err)
+	}
+	var err error
+	itemTags, err = loadItemTags()
+	if err != nil {
+		panic(err)
+	}
+	enchantmentTags, registeredEnchantments, err = loadEnchantmentTags()
+	if err != nil {
+		panic(err)
+	}
 	tables = make(map[string]table)
-	err := fs.WalkDir(assets, "assets/minecraft/loot_table", func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(assets, "assets/minecraft/loot_table", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".json") {
 			return err
 		}
@@ -157,13 +204,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	itemTags, err = loadItemTags()
-	if err != nil { panic(err) }
-	enchantmentTags, registeredEnchantments, err = loadEnchantmentTags()
-	if err != nil { panic(err) }
 }
 
- 
 // Context supplies the source properties used by loot predicates and functions.
 // Zero-valued fields are valid, and Random may be supplied by a gameplay caller.
 type Context struct {
@@ -197,11 +239,13 @@ type Context struct {
 // Unsupported tables/operators are errors; output is never silently discarded.
 func Generate(id string, seed int64, ctx Context) ([]item.Stack, error) {
 	t, ok := tables[normalize(id)]
-	if !ok { return nil, fmt.Errorf("unknown Java loot table %q", id) }
+	if !ok {
+		return nil, fmt.Errorf("unknown Java loot table %q", id)
+	}
 	if ctx.Random == nil {
 		switch {
 		case seed != 0:
-			r := java26.NewXoroshiroRandom(seed)
+			r := java26.NewLegacyRandom(seed)
 			ctx.Random = &r
 		case ctx.RandomSequence != nil && t.RandomSequence != "":
 			ctx.Random = ctx.RandomSequence(t.RandomSequence, seed)
@@ -209,24 +253,40 @@ func Generate(id string, seed int64, ctx Context) ([]item.Stack, error) {
 			return nil, fmt.Errorf("loot table %q needs its Java random sequence stream", id)
 		}
 	}
-	if ctx.Random == nil { return nil, fmt.Errorf("loot table %q random sequence %q returned nil", id, t.RandomSequence) }
+	if ctx.Random == nil {
+		return nil, fmt.Errorf("loot table %q random sequence %q returned nil", id, t.RandomSequence)
+	}
 	var out []item.Stack
 	for _, p := range t.Pools {
 		pass, err := testPoolConditions(p, &ctx)
-		if err != nil { return nil, err }
-		if !pass { continue }
+		if err != nil {
+			return nil, err
+		}
+		if !pass {
+			continue
+		}
 		rolls, err := integerNumber(p.Rolls, &ctx)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		bonus, err := number(p.BonusRolls, &ctx)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		n := rolls + int(math.Floor(bonus*ctx.Luck))
 		for range max(0, n) {
 			selected, err := choose(p.Entries, &ctx)
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 			for _, e := range selected {
 				s, err := makeStack(e, &ctx)
-				if err != nil { return nil, err }
-				if !s.Empty() { out = append(out, s) }
+				if err != nil {
+					return nil, err
+				}
+				if !s.Empty() {
+					out = append(out, s)
+				}
 			}
 		}
 	}
@@ -302,22 +362,94 @@ func testPoolConditions(p pool, c *Context) (bool, error) {
 	return testConditions(p.Conditions, c)
 }
 func testConditions(cs []condition,c *Context)(bool,error){ for _,x:=range cs { ok,e:=testCondition(x,c);if e!=nil||!ok{return ok,e} };return true,nil }
-func testCondition(x condition,c *Context)(bool,error){ kind:=x.Type;if kind==""{kind=x.Condition};switch kind {
-case "": return true,nil
-case "minecraft:survives_explosion":
-	if c.ExplosionRadius <= 0 { return true,nil }
-	return c.Random.NextFloat() <= float32(1/c.ExplosionRadius),nil
-case "minecraft:killed_by_player": return c.PlayerKilled,nil
-case "minecraft:random_chance": return c.Random.NextFloat()<float32(x.Chance),nil
-case "minecraft:entity_properties": return testEntityPredicate(x,c)
-case "minecraft:match_tool": return matchToolPredicate(x.Predicate,c)
-case "minecraft:all_of": return testConditions(x.Terms,c)
-case "minecraft:any_of": for _,t:=range x.Terms{ok,e:=testCondition(t,c);if e!=nil{return false,e};if ok{return true,nil}};return false,nil
-case "minecraft:inverted": if x.Inverted==nil{return false,fmt.Errorf("loot inverted predicate missing term")};ok,e:=testCondition(*x.Inverted,c);return !ok,e
-case "minecraft:tool/can_silk_touch": return lootEnchantmentLevel(c.ToolStack, "minecraft:silk_touch") > 0,nil
-case "minecraft:tool/can_shear": _,ok:=c.Tool.(item.Shears);if !ok&&!c.ToolStack.Empty(){_,ok=c.ToolStack.Item().(item.Shears)};return ok,nil
-default: return false,fmt.Errorf("unsupported loot condition %q",kind)
-} }
+func testCondition(x condition, c *Context) (bool, error) {
+	kind := x.Type
+	if kind == "" {
+		kind = x.Condition
+	}
+	switch kind {
+	case "":
+		return true, nil
+	case "minecraft:survives_explosion":
+		if c.ExplosionRadius <= 0 {
+			return true, nil
+		}
+		return c.Random.NextFloat() <= float32(1/c.ExplosionRadius), nil
+	case "minecraft:killed_by_player":
+		return c.PlayerKilled, nil
+	case "minecraft:random_chance":
+		return c.Random.NextFloat() < float32(x.Chance), nil
+	case "minecraft:location_check":
+		return testLocationCheck(x.Predicate, c)
+	case "minecraft:entity_properties":
+		return testEntityPredicate(x, c)
+	case "minecraft:match_tool":
+		return matchToolPredicate(x.Predicate, c)
+	case "minecraft:all_of":
+		return testConditions(x.Terms, c)
+	case "minecraft:any_of":
+		for _, t := range x.Terms {
+			ok, e := testCondition(t, c)
+			if e != nil {
+				return false, e
+			}
+			if ok {
+				return true, nil
+			}
+		}
+		return false, nil
+	case "minecraft:inverted":
+		if x.Inverted == nil {
+			return false, fmt.Errorf("loot inverted predicate missing term")
+		}
+		ok, e := testCondition(*x.Inverted, c)
+		return !ok, e
+	case "minecraft:tool/can_silk_touch":
+		return lootEnchantmentLevel(c.ToolStack, "minecraft:silk_touch") > 0, nil
+	case "minecraft:tool/can_shear":
+		_, ok := c.Tool.(item.Shears)
+		if !ok && !c.ToolStack.Empty() {
+			_, ok = c.ToolStack.Item().(item.Shears)
+		}
+		return ok, nil
+	default:
+		return false, fmt.Errorf("unsupported loot condition %q", kind)
+	}
+}
+func testLocationCheck(raw any, c *Context) (bool, error) {
+	predicate, ok := raw.(map[string]any)
+	if !ok {
+		return false, fmt.Errorf("invalid loot location predicate %T", raw)
+	}
+	biomes, ok := predicate["biomes"]
+	if !ok || c.Biome == "" {
+		return false, nil
+	}
+	match := func(value any) (bool, error) {
+		name, ok := value.(string)
+		if !ok {
+			return false, fmt.Errorf("invalid loot biome predicate %T", value)
+		}
+		if strings.HasPrefix(name, "#") {
+			return false, fmt.Errorf("unsupported loot biome tag %q", name)
+		}
+		return normalize(name) == normalize(c.Biome), nil
+	}
+	switch values := biomes.(type) {
+	case string:
+		return match(values)
+	case []any:
+		for _, value := range values {
+			matched, err := match(value)
+			if err != nil || matched {
+				return matched, err
+			}
+		}
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid loot biome predicate %T", biomes)
+	}
+}
 
 func matchToolPredicate(raw any, c *Context) (bool,error) {
 	if c.ToolStack.Empty() && c.Tool == nil { return false,nil }
@@ -452,41 +584,96 @@ func expand(e entry,c *Context)([]entry,error){
 }
 func makeStack(e entry, c *Context) (item.Stack, error) {
 	id := e.Name
-	if id == "" { id, _ = e.Value.(string) }
-	if id == "" { return item.Stack{}, fmt.Errorf("loot item entry has no name") }
+	if id == "" {
+		id, _ = e.Value.(string)
+	}
+	if id == "" {
+		return item.Stack{}, fmt.Errorf("loot item entry has no name")
+	}
 	count := 1
 	components := make(map[string]any)
 	setEnchantmentsApplied := false
 	mods := append([]modifier(nil), e.Functions...)
 	mods = append(mods, e.Modifier...)
 	for _, m := range mods {
-		if m.Condition != nil { ok, err := testCondition(*m.Condition, c); if err != nil { return item.Stack{}, err }; if !ok { continue } }
-		ok, err := testConditions(m.Conditions, c); if err != nil { return item.Stack{}, err }; if !ok { continue }
+		if m.Condition != nil {
+			ok, err := testCondition(*m.Condition, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			if !ok {
+				continue
+			}
+		}
+		ok, err := testConditions(m.Conditions, c)
+		if err != nil {
+			return item.Stack{}, err
+		}
+		if !ok {
+			continue
+		}
 		switch m.Type {
 		case "minecraft:set_count":
-			n, err := integerNumber(m.Count, c); if err != nil { return item.Stack{}, err }; count = n
+			n, err := integerNumber(m.Count, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			count = n
 		case "minecraft:limit_count":
-			lo, err := integerNumber(m.Min, c); if err != nil { return item.Stack{}, err }; hi, err := integerNumber(m.Max, c); if err != nil { return item.Stack{}, err }
-			if count < lo { count = lo }; if hi > 0 && count > hi { count = hi }
+			lo, err := integerNumber(m.Min, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			hi, err := integerNumber(m.Max, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			if count < lo {
+				count = lo
+			}
+			if hi > 0 && count > hi {
+				count = hi
+			}
 		case "minecraft:explosion_decay":
-			if c.ExplosionRadius > 0 { kept := 0; probability:=float32(1/c.ExplosionRadius); for range max(0, count) { if c.Random.NextFloat() <= probability { kept++ } }; count = kept }
+			if c.ExplosionRadius > 0 {
+				kept := 0
+				probability := float32(1 / c.ExplosionRadius)
+				for range max(0, count) {
+					if c.Random.NextFloat() <= probability {
+						kept++
+					}
+				}
+				count = kept
+			}
 		case "minecraft:apply_bonus":
 			count = applyBonus(count, m, c)
 		case "minecraft:enchanted_count_increase":
-			level := 0; if m.Enchantment == "minecraft:looting" || m.Enchantment == "minecraft:fortune" { level = lootEnchantmentLevel(c.ToolStack, m.Enchantment) }
-			if level > 0 { count += int(c.Random.NextInt(int32(level+1))) }
+			level := 0
+			if m.Enchantment == "minecraft:looting" || m.Enchantment == "minecraft:fortune" {
+				level = lootEnchantmentLevel(c.ToolStack, m.Enchantment)
+			}
+			if level > 0 {
+				count += int(c.Random.NextInt(int32(level + 1)))
+			}
 		case "minecraft:set_damage":
-			damage, err := number(m.Damage, c); if err != nil { return item.Stack{}, err }
+			damage, err := number(m.Damage, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
 			components["minecraft:damage"] = int32(damage)
 		case "minecraft:set_components":
 			for k, v := range m.Components {
 				if k == "minecraft:enchantments" || k == "minecraft:stored_enchantments" {
 					raw, ok := v.(map[string]any)
-					if !ok { return item.Stack{}, fmt.Errorf("invalid enchantment component %T", v) }
+					if !ok {
+						return item.Stack{}, fmt.Errorf("invalid enchantment component %T", v)
+					}
 					levels := make(map[string]any, len(raw))
 					for id, value := range raw {
 						level, err := integerNumber(value, c)
-						if err != nil { return item.Stack{}, err }
+						if err != nil {
+							return item.Stack{}, err
+						}
 						levels[id] = int32(level)
 					}
 					v = levels
@@ -495,21 +682,40 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 			}
 		case "minecraft:set_enchantments":
 			add := false
-			if m.Add != nil { var ok bool; add, ok = m.Add.(bool); if !ok { return item.Stack{}, fmt.Errorf("invalid set-enchantments add value %T", m.Add) } }
+			if m.Add != nil {
+				var ok bool
+				add, ok = m.Add.(bool)
+				if !ok {
+					return item.Stack{}, fmt.Errorf("invalid set-enchantments add value %T", m.Add)
+				}
+			}
 			levels := map[string]any{}
 			if existing, ok := components["minecraft:enchantments"].(map[string]any); ok {
-				for id, level := range existing { levels[id] = level }
+				for id, level := range existing {
+					levels[id] = level
+				}
 			}
 			for id, provider := range m.Enchantments {
-				if _, ok := registeredEnchantmentType(id); !ok { return item.Stack{}, fmt.Errorf("set_enchantments references unsupported enchantment %q", id) }
-				level, err := integerNumber(provider, c); if err != nil { return item.Stack{}, err }
+				if _, ok := registeredEnchantmentType(id); !ok {
+					return item.Stack{}, fmt.Errorf("set_enchantments references unsupported enchantment %q", id)
+				}
+				level, err := integerNumber(provider, c)
+				if err != nil {
+					return item.Stack{}, err
+				}
 				if add {
 					previous, err := integerNumber(levels[normalize(id)], c)
-					if err != nil { return item.Stack{}, err }
+					if err != nil {
+						return item.Stack{}, err
+					}
 					level += previous
 				}
 				level = max(0, min(255, level))
-				if level == 0 { delete(levels, normalize(id)) } else { levels[normalize(id)] = int32(level) }
+				if level == 0 {
+					delete(levels, normalize(id))
+				} else {
+					levels[normalize(id)] = int32(level)
+				}
 			}
 			components["minecraft:enchantments"] = levels
 			setEnchantmentsApplied = true
@@ -519,7 +725,13 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 			components["minecraft:potion_contents"] = map[string]any{"potion": m.Potion}
 		case "minecraft:set_name":
 			components["minecraft:custom_name"] = m.Name
-		case "minecraft:enchant_randomly", "minecraft:enchant_with_levels":
+		case "minecraft:enchant_randomly":
+			var err error
+			id, count, components, err = applyRandomEnchantment(id, count, components, m, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+		case "minecraft:enchant_with_levels":
 			return item.Stack{}, fmt.Errorf("loot modifier %q requires enchantment registry support", m.Type)
 		case "minecraft:furnace_smelt":
 			return item.Stack{}, fmt.Errorf("loot modifier %q requires recipe registry support", m.Type)
@@ -531,10 +743,22 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 			return item.Stack{}, fmt.Errorf("unsupported loot modifier %q", m.Type)
 		}
 	}
-	if count <= 0 { return item.Stack{}, nil }
-	native, err := item.StackFromJavaNBT(map[string]any{"id": id, "count": int32(count), "components": components})
-	if err != nil { return item.Stack{}, fmt.Errorf("decode loot item %q: %w", id, err) }
-	if setEnchantmentsApplied && id == "minecraft:book" { native = native.WithItem(item.EnchantedBook{}) }
+	if count <= 0 {
+		return item.Stack{}, nil
+	}
+	// Java renamed the powered rail item, while Dragonfly's native item
+	// registry retains Bedrock's golden_rail identifier.
+	registryID := id
+	if registryID == "minecraft:powered_rail" {
+		registryID = "minecraft:golden_rail"
+	}
+	native, err := item.StackFromJavaNBT(map[string]any{"id": registryID, "count": int32(count), "components": components})
+	if err != nil {
+		return item.Stack{}, fmt.Errorf("decode loot item %q: %w", id, err)
+	}
+	if setEnchantmentsApplied && id == "minecraft:book" {
+		native = native.WithItem(item.EnchantedBook{})
+	}
 	return native, nil
 }
 
@@ -550,7 +774,6 @@ func registeredEnchantmentType(id string) (item.EnchantmentType, bool) {
 	for _, enchantment := range item.Enchantments() { if enchantmentID(enchantment) == want { return enchantment, true } }
 	return nil, false
 }
-
 
 func applyBonus(count int, m modifier, c *Context) int {
 	level := lootEnchantmentLevel(c.ToolStack, m.Enchantment)
@@ -568,6 +791,7 @@ func applyBonus(count int, m modifier, c *Context) int {
 	}
 	return count
 }
+
 // RandomSequence returns the builtin random-sequence identifier for a loot table.
 func RandomSequence(id string) (string, error) {
 	t, ok := tables[normalize(id)]

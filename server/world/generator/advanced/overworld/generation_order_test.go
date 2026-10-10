@@ -12,10 +12,10 @@ func init() {
 	world.DefaultBlockRegistry.Finalize()
 }
 
-// Chunk contents must not depend on worker scheduling. Compare runs using the
-// same registry, not pinned hashes of runtime IDs that change with the palette.
-// This checks determinism, not equivalence to any Java or Bedrock release.
-func TestGenerationOrderDoesNotChangeChunkContents(t *testing.T) {
+// Compare this fixed seed-zero neighbourhood using one registry, not pinned
+// runtime-ID hashes. This is not a general order-independence contract: source
+// one-time chests/spawners depend on the first real chunk postProcess.
+func TestGenerationOrderForSeedZeroOriginNeighbourhood(t *testing.T) {
 	positions := []world.ChunkPos{{-1, -1}, {-1, 0}, {0, -1}, {0, 0}}
 	r := world.Overworld.Range()
 	generate := func(g *Overworld, pos world.ChunkPos) *chunk.Chunk {

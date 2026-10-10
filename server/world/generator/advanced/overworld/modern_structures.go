@@ -17,8 +17,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
-// modernStructures plans structure starts from Java structure-set assets. Prepared starts are immutable;
-// density and placement therefore never depend on chunk generation order.
+// modernStructures plans immutable graphs from Java structure-set assets.
+// One-time postProcess flags live independently of the bounded graph cache.
 type modernStructures struct {
 	seed           int64
 	source         ModernFeatureSource
@@ -28,6 +28,7 @@ type modernStructures struct {
 	startCache     map[modernStructureStartKey]modernStructureStartResult
 	startFlights   map[modernStructureStartKey]*modernStructureStartFlight
 	startCacheMu   sync.Mutex
+	pieceStates    modernStructureStateStore
 }
 
 type modernStructureStepEntry struct {
@@ -62,13 +63,15 @@ func (p modernJigsawPiece) Place(clip javastructure.Bounds, env javastructure.Pr
 }
 
 type modernStructureStart struct {
-	name      string
-	step      int
-	pieces    []modernStructurePiece
-	rigid     []javastructure.RigidPiece
-	junctions []javastructure.Junction
-	box       javastructure.Box
-	terrain   javastructure.TerrainAdjustment
+	key           modernStructureStartKey
+	mutablePieces bool
+	name          string
+	step          int
+	pieces        []modernStructurePiece
+	rigid         []javastructure.RigidPiece
+	junctions     []javastructure.Junction
+	box           javastructure.Box
+	terrain       javastructure.TerrainAdjustment
 }
 
 type modernStructureBuildInput struct {
@@ -115,7 +118,7 @@ type modernStructureContext struct {
 	starts         []modernStructureStart
 	structureSteps map[int][]modernStructureStepEntry
 	beardifier     *javastructure.Beardifier
-	environment    javastructure.ProcessorEnvironment
+	pieceStates    *modernStructureStateStore
 }
 
 func newModernStructures(seed int64, source ModernFeatureSource) *modernStructures {
@@ -286,7 +289,7 @@ func (s *modernStructures) locatePreferredBiome(chunkX, chunkZ int32, preferredB
 }
 
 func (s *modernStructures) Prepare(pos world.ChunkPos) *modernStructureContext {
-	ctx := &modernStructureContext{seed: s.seed, structureSteps: s.structureSteps, environment: s.sourceEnvironment()}
+	ctx := &modernStructureContext{seed: s.seed, structureSteps: s.structureSteps, pieceStates: &s.pieceStates}
 	for dz := int32(-8); dz <= 8; dz++ {
 		for dx := int32(-8); dx <= 8; dx++ {
 			startX, startZ := int32(pos[0])+dx, int32(pos[1])+dz
@@ -392,6 +395,8 @@ func (s *modernStructures) makeStart(set modernStructureSet, cx, cz int32) (mode
 	s.startCacheMu.Unlock()
 
 	start, valid, err := s.buildStart(set, cx, cz)
+	start.key = key
+	start.mutablePieces = hasMutableStructurePieceState(start.pieces)
 	result := modernStructureStartResult{start: start, valid: valid, err: err}
 	s.startCacheMu.Lock()
 	if len(s.startCache) >= 4096 {
@@ -538,20 +543,64 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 			if start.name != entry.name || start.step != step {
 				continue
 			}
-			for _, piece := range start.pieces {
-				placement, err := piece.Place(clip, env)
-				if err != nil {
-					panic(err)
-				}
-				placement.StructurePieceWrites = structurePieceUsesSetBlock(piece)
-				if _, template := piece.(modernJigsawPiece); template {
-					placement.TemplateUpdateFlags, placement.TemplateKnownShape = 18, true
-				} else if isTemplateStructurePiece(piece) {
-					placement.TemplateUpdateFlags, placement.TemplateKnownShape = 2, false
-				}
-				emit(placement)
+			c.placeStart(start, clip, env, emit)
+		}
+	}
+}
+
+func (c *modernStructureContext) placeStart(start modernStructureStart, clip javastructure.Bounds, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+	if len(start.pieces) == 0 {
+		return
+	}
+	reference := start.pieces[0].Bounds()
+	env.StartPos = [3]int32{
+		reference.Min[0] + (reference.Max[0]-reference.Min[0]+1)/2,
+		reference.Min[1],
+		reference.Min[2] + (reference.Max[2]-reference.Min[2]+1)/2,
+	}
+	var state *modernStructureStartState
+	if start.mutablePieces {
+		if env.TransientStructureState {
+			state = c.pieceStates.lookup(start.key)
+		} else {
+			state = c.pieceStates.forStart(start)
+		}
+		if state != nil {
+			state.mu.Lock()
+			defer state.mu.Unlock()
+			if err := state.prepare(start); err != nil {
+				panic(err)
 			}
 		}
+	}
+	var unusedState javastructure.StructurePieceState
+	for index, piece := range start.pieces {
+		box := piece.Bounds()
+		if box.Min[0] > clip.Max[0] || box.Max[0] < clip.Min[0] ||
+			box.Min[1] > clip.Max[1] || box.Max[1] < clip.Min[1] ||
+			box.Min[2] > clip.Max[2] || box.Max[2] < clip.Min[2] {
+			continue
+		}
+		unusedState = javastructure.StructurePieceState{}
+		env.PieceState = &unusedState
+		if state != nil {
+			if env.TransientStructureState {
+				unusedState = state.pieces[index]
+			} else {
+				env.PieceState = &state.pieces[index]
+			}
+		}
+		placement, err := piece.Place(clip, env)
+		if err != nil {
+			panic(err)
+		}
+		placement.StructurePieceWrites = structurePieceUsesSetBlock(piece)
+		if _, template := piece.(modernJigsawPiece); template {
+			placement.TemplateUpdateFlags, placement.TemplateKnownShape = 18, true
+		} else if isTemplateStructurePiece(piece) {
+			placement.TemplateUpdateFlags, placement.TemplateKnownShape = 2, false
+		}
+		emit(placement)
 	}
 }
 
@@ -669,14 +718,6 @@ func (c *modernStructureContext) AdjustDensity(x, y, z int32) float32 {
 	return c.beardifier.AdjustDensity(x, y, z)
 }
 
-func (c *modernStructureContext) PlacePreview(pos world.ChunkPos, ch *chunk.Chunk) *modernStructurePayloads {
-	return c.place(pos, ch)
-}
-
-func (c *modernStructureContext) Place(pos world.ChunkPos, ch *chunk.Chunk) world.GenerationResult {
-	return c.PlacePreview(pos, ch).GenerationData()
-}
-
 type modernStructurePayloads struct {
 	blockEntities []chunk.BlockEntity
 	entities      []javastructure.Entity
@@ -706,53 +747,6 @@ func (p *modernStructurePayloads) GenerationData() world.GenerationResult {
 	}
 	result.Entities = handles
 	return result
-}
-
-func (c *modernStructureContext) place(pos world.ChunkPos, ch *chunk.Chunk) *modernStructurePayloads {
-	payloads := &modernStructurePayloads{}
-	minY, maxY := int32(ch.Range()[0]), int32(ch.Range()[1])
-	clip := javastructure.Bounds{
-		Min: [3]int32{int32(pos[0]) * 16, minY, int32(pos[1]) * 16},
-		Max: [3]int32{int32(pos[0])*16 + 15, maxY, int32(pos[1])*16 + 15},
-	}
-	registry := ch.BlockRegistry()
-	environment := c.environment
-	environment.SkipEntities = false
-	for _, start := range c.starts {
-		for _, piece := range start.pieces {
-			placement, err := piece.Place(clip, environment)
-			if err != nil {
-				panic(err)
-			}
-			placement, err = placement.AdaptItemFrameEntities()
-			if err != nil {
-				panic(err)
-			}
-			for _, placed := range placement.Blocks {
-				x, y, z := uint8(placed.Pos[0]&15), int16(placed.Pos[1]), uint8(placed.Pos[2]&15)
-				current := world.NativeStateAt(ch, x, y, z)
-				state, err := placed.ResolveNative(registry, current)
-				if err != nil {
-					panic(err)
-				}
-				world.SetNativeState(ch, x, y, z, state)
-			}
-			for _, placed := range placement.PostShapeBlocks {
-				x, y, z := uint8(placed.Pos[0]&15), int16(placed.Pos[1]), uint8(placed.Pos[2]&15)
-				current := world.NativeStateAt(ch, x, y, z)
-				state, err := placed.ResolveNative(registry, current)
-				if err != nil {
-					panic(err)
-				}
-				world.SetNativeState(ch, x, y, z, state)
-			}
-			payloads.blockEntities = append(payloads.blockEntities, placement.BlockEntityPayloads()...)
-			payloads.blockEntities = append(payloads.blockEntities, (javastructure.Placement{Blocks: placement.PostShapeBlocks}).BlockEntityPayloads()...)
-			payloads.entities = append(payloads.entities, placement.Entities...)
-			payloads.entities = append(payloads.entities, placement.PostShapeEntities...)
-		}
-	}
-	return payloads
 }
 
 func cloneStructureNBT(source map[string]any) map[string]any {
@@ -797,15 +791,6 @@ func cloneStructureNBTValue(value any) any {
 	}
 }
 
-func (s *modernStructures) sourceEnvironment() javastructure.ProcessorEnvironment {
-	return javastructure.ProcessorEnvironment{
-		BaseBlock: s.source.BaseBlock,
-		JavaBiomeAt: func(x, y, z int32) string {
-			return "minecraft:" + normalizeJavaResource(s.source.JavaBiomeAt(x, y, z))
-		},
-		BaseHeight: s.source.BaseHeight,
-	}
-}
 func intersectsChunk(box javastructure.Box, pos world.ChunkPos) bool {
 	minX, minZ := int32(pos[0])*16, int32(pos[1])*16
 	maxX, maxZ := minX+15, minZ+15

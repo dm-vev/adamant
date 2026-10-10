@@ -1,0 +1,776 @@
+[
+  {
+    "input": {
+      "name": "book_reset",
+      "item": "book",
+      "count": 3,
+      "components": {
+        "minecraft:custom_name": {
+          "text": "old"
+        },
+        "minecraft:enchantments": {
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ]
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 2
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "book_reset",
+      "item": "book",
+      "count": 3,
+      "components": {
+        "minecraft:custom_name": {
+          "text": "old"
+        },
+        "minecraft:enchantments": {
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ]
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "book_reset",
+      "item": "book",
+      "count": 3,
+      "components": {
+        "minecraft:custom_name": {
+          "text": "old"
+        },
+        "minecraft:enchantments": {
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ]
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 2
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  },
+  {
+    "input": {
+      "name": "no_compatible",
+      "item": "stone",
+      "function": {}
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:stone",
+      "count": 1
+    },
+    "next_long": "-4964420948893066024"
+  },
+  {
+    "input": {
+      "name": "no_compatible",
+      "item": "stone",
+      "function": {}
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:stone",
+      "count": 1
+    },
+    "next_long": "4961115982468162243"
+  },
+  {
+    "input": {
+      "name": "no_compatible",
+      "item": "stone",
+      "function": {}
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:stone",
+      "count": 1
+    },
+    "next_long": "-4971030886054769832"
+  },
+  {
+    "input": {
+      "name": "empty_options",
+      "item": "diamond_sword",
+      "function": {
+        "options": []
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1
+    },
+    "next_long": "-4964420948893066024"
+  },
+  {
+    "input": {
+      "name": "empty_options",
+      "item": "diamond_sword",
+      "function": {
+        "options": []
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1
+    },
+    "next_long": "4961115982468162243"
+  },
+  {
+    "input": {
+      "name": "empty_options",
+      "item": "diamond_sword",
+      "function": {
+        "options": []
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1
+    },
+    "next_long": "-4971030886054769832"
+  },
+  {
+    "input": {
+      "name": "sweeping",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:sweeping_edge"
+        ]
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sweeping_edge": 2
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "sweeping",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:sweeping_edge"
+        ]
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sweeping_edge": 3
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "sweeping",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:sweeping_edge"
+        ]
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sweeping_edge": 2
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  },
+  {
+    "input": {
+      "name": "upgrade",
+      "item": "diamond_pickaxe",
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3,
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:fortune"
+        ]
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:diamond_pickaxe",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3,
+          "minecraft:mending": 1
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "upgrade",
+      "item": "diamond_pickaxe",
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3,
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:fortune"
+        ]
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:diamond_pickaxe",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3,
+          "minecraft:mending": 1
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "upgrade",
+      "item": "diamond_pickaxe",
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3,
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:fortune"
+        ]
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:diamond_pickaxe",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3,
+          "minecraft:mending": 1
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  },
+  {
+    "input": {
+      "name": "direct_order",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:unbreaking",
+          "minecraft:fortune",
+          "minecraft:sharpness"
+        ]
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "direct_order",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:unbreaking",
+          "minecraft:fortune",
+          "minecraft:sharpness"
+        ]
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "direct_order",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:unbreaking",
+          "minecraft:fortune",
+          "minecraft:sharpness"
+        ]
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 3
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  },
+  {
+    "input": {
+      "name": "book_registry",
+      "item": "book",
+      "function": {}
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:efficiency": 4
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "book_registry",
+      "item": "book",
+      "function": {}
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:frost_walker": 1
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "book_registry",
+      "item": "book",
+      "function": {}
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:swift_sneak": 2
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  },
+  {
+    "input": {
+      "name": "incompatible_allowed",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:fortune"
+        ],
+        "only_compatible": false
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 2
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "incompatible_allowed",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:fortune"
+        ],
+        "only_compatible": false
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "incompatible_allowed",
+      "item": "diamond_sword",
+      "function": {
+        "options": [
+          "minecraft:fortune"
+        ],
+        "only_compatible": false
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:fortune": 2
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  },
+  {
+    "input": {
+      "name": "stored_no_compatible",
+      "item": "enchanted_book",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ]
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:mending": 1
+        }
+      }
+    },
+    "next_long": "-4964420948893066024"
+  },
+  {
+    "input": {
+      "name": "stored_no_compatible",
+      "item": "enchanted_book",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ]
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:mending": 1
+        }
+      }
+    },
+    "next_long": "4961115982468162243"
+  },
+  {
+    "input": {
+      "name": "stored_no_compatible",
+      "item": "enchanted_book",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:mending": 1
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ]
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:mending": 1
+        }
+      }
+    },
+    "next_long": "-4971030886054769832"
+  },
+  {
+    "input": {
+      "name": "stored_upgrade",
+      "item": "enchanted_book",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ],
+        "only_compatible": false
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "stored_upgrade",
+      "item": "enchanted_book",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ],
+        "only_compatible": false
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "stored_upgrade",
+      "item": "enchanted_book",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:unbreaking"
+        ],
+        "only_compatible": false
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:enchanted_book",
+      "count": 1,
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:unbreaking": 3
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  },
+  {
+    "input": {
+      "name": "mixed_sweeping",
+      "item": "diamond_sword",
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:sweeping_edge"
+        ]
+      }
+    },
+    "seed": "1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4,
+          "minecraft:sweeping_edge": 2
+        }
+      }
+    },
+    "next_long": "7564655870752979346"
+  },
+  {
+    "input": {
+      "name": "mixed_sweeping",
+      "item": "diamond_sword",
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:sweeping_edge"
+        ]
+      }
+    },
+    "seed": "-1",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4,
+          "minecraft:sweeping_edge": 3
+        }
+      }
+    },
+    "next_long": "226341162490527646"
+  },
+  {
+    "input": {
+      "name": "mixed_sweeping",
+      "item": "diamond_sword",
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4
+        }
+      },
+      "function": {
+        "options": [
+          "minecraft:sweeping_edge"
+        ]
+      }
+    },
+    "seed": "5",
+    "result": {
+      "id": "minecraft:diamond_sword",
+      "count": 1,
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 4,
+          "minecraft:sweeping_edge": 2
+        }
+      }
+    },
+    "next_long": "1628080142987304160"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "seed": 0,
+    "chunk": [
+      0,
+      0
+    ],
+    "piece_count": 107,
+    "pieces_sha256": "aa7e3076ab22a90ed0b206e9285b150084f27a8ff9347d8a94f9029dd18e0f69",
+    "next_long": -2730112946719215065
+  },
+  {
+    "seed": 0,
+    "chunk": [
+      17,
+      -31
+    ],
+    "piece_count": 240,
+    "pieces_sha256": "db63d5da0be5c0b7ca7c416597e97808ab54bedaa8d68ba71ec40d5d8ec5103b",
+    "next_long": -8421576475077020524
+  },
+  {
+    "seed": 1,
+    "chunk": [
+      0,
+      0
+    ],
+    "piece_count": 124,
+    "pieces_sha256": "f5f017879c154dc65f79bde80ddf8f96e4718f2ca895e1bc829809d9eb1a5abc",
+    "next_long": -5217600154874891798
+  },
+  {
+    "seed": 1,
+    "chunk": [
+      17,
+      -31
+    ],
+    "piece_count": 148,
+    "pieces_sha256": "0dab285688a4c98c832a1b202d786d2c110f47eff42e39272c8eea518e99747f",
+    "next_long": -8286243344062833213
+  },
+  {
+    "seed": -1,
+    "chunk": [
+      0,
+      0
+    ],
+    "piece_count": 146,
+    "pieces_sha256": "b35814d898d164e261fa17db814a6e7fda841f7e7b30e3e7bf76ecf03ff3a83f",
+    "next_long": -1313835926916262551
+  },
+  {
+    "seed": -1,
+    "chunk": [
+      17,
+      -31
+    ],
+    "piece_count": 117,
+    "pieces_sha256": "2c846b2502c42aaad060cca7bb164667aad3feb8a247e5bb5244e4f611d05adf",
+    "next_long": 2042633068062485404
+  }
+]

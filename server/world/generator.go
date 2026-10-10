@@ -17,6 +17,16 @@ type Generator interface {
 	DefaultSpawn(dim Dimension) cube.Pos
 }
 
+// PersistentGenerator extends Generator with opaque state that survives world
+// saves. LoadGenerationState runs before any generation; missing data is nil.
+// SaveGenerationState may run concurrently with GenerateChunk and must snapshot
+// the state safely. The generator owns the format and validates its seed/version.
+type PersistentGenerator interface {
+	Generator
+	LoadGenerationState(data []byte) error
+	SaveGenerationState() ([]byte, error)
+}
+
 // GenerationResult contains data that cannot be represented by block runtime
 // IDs alone. Its zero value describes a column with no additional data.
 type GenerationResult struct {

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
@@ -17,14 +18,30 @@ type ProcessorEnvironment struct {
 	BaseBlock   func(x, y, z int32) world.Block
 	JavaBiomeAt func(x, y, z int32) string
 	BaseHeight  func(x, z int32, oceanFloor bool) int32
-	WorldSeed   int64
-	StartPos    [3]int32
-	BlockCount  int
-	Random      *java26.Random
+	// JavaBlockStateID preserves source properties not represented by the native block model.
+	JavaBlockStateID func(x, y, z int32) (uint32, error)
+	Range            cube.Range
+	// PieceState holds the source piece's persisted postProcess flags.
+	// Its owner serializes accesses across chunk render sessions.
+	PieceState *StructurePieceState
+	// TransientStructureState marks an uncommitted neighbour-decoration preview.
+	// It reads persisted flags but must not consume one-time placements.
+	TransientStructureState bool
+	WorldSeed               int64
+	StartPos                [3]int32
+	BlockCount              int
+	Random                  *java26.Random
 	// SettingsRandom is StructurePlaceSettings.random; Random is the supplied feature/decorator stream.
 	SettingsRandom *java26.Random
 	SkipEntities   bool
 	PlaceFeature   func(feature any, pos [3]int32, random *java26.Random) bool
+}
+
+// StructurePieceState is the source state that changes when a piece places a
+// one-time chest or spawner during postProcess.
+type StructurePieceState struct {
+	ChestPlaced   bool
+	SpawnerPlaced bool
 }
 
 // LoadProcessors resolves named vanilla processor lists and inline processors into executable processors.

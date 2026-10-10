@@ -1863,6 +1863,15 @@ func (w *World) Save() {
 	}
 }
 
+func (w *World) saveGenerationState() {
+	if w.conf.ReadOnly {
+		return
+	}
+	if err := saveGenerationState(w.conf.Provider, w.conf.Generator, w.conf.Dim); err != nil {
+		w.conf.Log.Error("save generation state: " + err.Error())
+	}
+}
+
 func (w *World) savePositionTracking() {
 	if err := w.providerUse.savePositionTracker(w.conf.Provider); err != nil {
 		w.conf.Log.Error("save position tracking data: " + err.Error())
@@ -1885,6 +1894,7 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 		w.saveRaids()
 		w.saveDragonFight()
 		w.saveLootRandomSequences()
+		w.saveGenerationState()
 	}
 }
 
@@ -1896,7 +1906,10 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 		return
 	}
 	w.finishGeneration(tx, c)
-	if !w.conf.ReadOnly && c.modified {
+	// Mutable entity state is not tracked by the block-column dirty flag.
+	// Loaded inventories and species state must be snapshotted even when no
+	// block or entity position has changed since the column was read.
+	if !w.conf.ReadOnly && (c.modified || len(c.Entities) != 0) {
 		c.Compact()
 		if err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, w.columnTo(c, pos)); err != nil {
 			w.conf.Log.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])

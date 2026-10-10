@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"log/slog"
 	"math"
 	"math/rand/v2"
@@ -194,6 +195,9 @@ func (conf Config) New() *World {
 	}
 	if err := providerUse.loadPositionTracker(conf.Provider); err != nil {
 		conf.Log.Error("load position tracking data: " + err.Error())
+	}
+	if err := loadGenerationState(conf.Provider, conf.Generator, conf.Dim); err != nil {
+		panic(fmt.Errorf("load generation state: %w", err))
 	}
 
 	if conf.RandSource == nil {

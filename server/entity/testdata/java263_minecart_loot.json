@@ -1,0 +1,1098 @@
+[
+  {
+    "seed": "1",
+    "biome": "forest",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 2,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:iron_ingot",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 7,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:riptide": 2
+        }
+      },
+      {
+        "slot": 9,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 11,
+        "item": "minecraft:glow_berries",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 12,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 13,
+        "item": "minecraft:detector_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 14,
+        "item": "minecraft:glow_berries",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 16,
+        "item": "minecraft:glow_berries",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 17,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:rail",
+        "count": 5,
+        "enchantments": {}
+      },
+      {
+        "slot": 19,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:glow_berries",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:detector_rail",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 24,
+        "item": "minecraft:rail",
+        "count": 5,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "4300965142756182089"
+  },
+  {
+    "seed": "-1",
+    "biome": "forest",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 0,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:lure": 1
+        }
+      },
+      {
+        "slot": 2,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 3,
+        "item": "minecraft:rail",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:glow_berries",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 7,
+        "item": "minecraft:melon_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 9,
+        "item": "minecraft:torch",
+        "count": 6,
+        "enchantments": {}
+      },
+      {
+        "slot": 10,
+        "item": "minecraft:rail",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 15,
+        "item": "minecraft:rail",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 17,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 19,
+        "item": "minecraft:torch",
+        "count": 6,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:melon_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 22,
+        "item": "minecraft:glow_berries",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 24,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 25,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 26,
+        "item": "minecraft:melon_seeds",
+        "count": 1,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "-5817002244800797954"
+  },
+  {
+    "seed": "5",
+    "biome": "forest",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 1,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 2,
+        "item": "minecraft:iron_ingot",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 3,
+        "item": "minecraft:detector_rail",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 4,
+        "item": "minecraft:torch",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:lapis_lazuli",
+        "count": 6,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:lapis_lazuli",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 8,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 10,
+        "item": "minecraft:detector_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 11,
+        "item": "minecraft:detector_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 12,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 15,
+        "item": "minecraft:detector_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:coal",
+        "count": 5,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:knockback": 1
+        }
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 25,
+        "item": "minecraft:coal",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 26,
+        "item": "minecraft:iron_ingot",
+        "count": 2,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "-4217611285553322328"
+  },
+  {
+    "seed": "123456789",
+    "biome": "forest",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 0,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 1,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:name_tag",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 9,
+        "item": "minecraft:activator_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 10,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 14,
+        "item": "minecraft:torch",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 19,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:iron_ingot",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:activator_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 22,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 23,
+        "item": "minecraft:torch",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 24,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 25,
+        "item": "minecraft:torch",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 26,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "7067325758086560896"
+  },
+  {
+    "seed": "-6891946900181190969",
+    "biome": "forest",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 0,
+        "item": "minecraft:lapis_lazuli",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 1,
+        "item": "minecraft:beetroot_seeds",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 2,
+        "item": "minecraft:lapis_lazuli",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 3,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 4,
+        "item": "minecraft:torch",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:rail",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 11,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 12,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:silk_touch": 1
+        }
+      },
+      {
+        "slot": 13,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 16,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 17,
+        "item": "minecraft:torch",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:beetroot_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:lapis_lazuli",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 22,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 23,
+        "item": "minecraft:rail",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 24,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "4102236265001654039"
+  },
+  {
+    "seed": "1",
+    "biome": "sulfur_caves",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 0,
+        "item": "minecraft:glow_berries",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 2,
+        "item": "minecraft:glow_berries",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 4,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:riptide": 2
+        }
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:detector_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 8,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 9,
+        "item": "minecraft:glow_berries",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 12,
+        "item": "minecraft:rail",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 14,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 16,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 17,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:music_disc_bounce",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 22,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "8993064755914044999"
+  },
+  {
+    "seed": "-1",
+    "biome": "sulfur_caves",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 0,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 2,
+        "item": "minecraft:glow_berries",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:melon_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 9,
+        "item": "minecraft:activator_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 10,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:lure": 1
+        }
+      },
+      {
+        "slot": 11,
+        "item": "minecraft:music_disc_bounce",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 12,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 14,
+        "item": "minecraft:activator_rail",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 15,
+        "item": "minecraft:rail",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 17,
+        "item": "minecraft:melon_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:melon_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 23,
+        "item": "minecraft:rail",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 24,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 25,
+        "item": "minecraft:glow_berries",
+        "count": 2,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "-7294013798137936443"
+  },
+  {
+    "seed": "5",
+    "biome": "sulfur_caves",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 1,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 2,
+        "item": "minecraft:pumpkin_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 3,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 4,
+        "item": "minecraft:rail",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 8,
+        "item": "minecraft:rail",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 10,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 11,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 12,
+        "item": "minecraft:coal",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 14,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:knockback": 1
+        }
+      },
+      {
+        "slot": 15,
+        "item": "minecraft:rail",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:coal",
+        "count": 7,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:iron_ingot",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 25,
+        "item": "minecraft:lapis_lazuli",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 26,
+        "item": "minecraft:lapis_lazuli",
+        "count": 6,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "8642649848061679209"
+  },
+  {
+    "seed": "123456789",
+    "biome": "sulfur_caves",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 0,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 1,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 5,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:name_tag",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 9,
+        "item": "minecraft:activator_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 10,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 14,
+        "item": "minecraft:torch",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 19,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:iron_ingot",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:activator_rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 22,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 23,
+        "item": "minecraft:torch",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 24,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 25,
+        "item": "minecraft:torch",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 26,
+        "item": "minecraft:torch",
+        "count": 1,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "7067325758086560896"
+  },
+  {
+    "seed": "-6891946900181190969",
+    "biome": "sulfur_caves",
+    "origin": [
+      12.25,
+      37.5,
+      -8.75
+    ],
+    "slots": [
+      {
+        "slot": 1,
+        "item": "minecraft:music_disc_bounce",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 2,
+        "item": "minecraft:torch",
+        "count": 6,
+        "enchantments": {}
+      },
+      {
+        "slot": 3,
+        "item": "minecraft:rail",
+        "count": 4,
+        "enchantments": {}
+      },
+      {
+        "slot": 6,
+        "item": "minecraft:iron_ingot",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 8,
+        "item": "minecraft:torch",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 10,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 12,
+        "item": "minecraft:beetroot_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 13,
+        "item": "minecraft:torch",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 14,
+        "item": "minecraft:bread",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 15,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 17,
+        "item": "minecraft:torch",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 18,
+        "item": "minecraft:lapis_lazuli",
+        "count": 3,
+        "enchantments": {}
+      },
+      {
+        "slot": 19,
+        "item": "minecraft:rail",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 20,
+        "item": "minecraft:enchanted_book",
+        "count": 1,
+        "enchantments": {
+          "minecraft:silk_touch": 1
+        }
+      },
+      {
+        "slot": 21,
+        "item": "minecraft:lapis_lazuli",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 23,
+        "item": "minecraft:rail",
+        "count": 2,
+        "enchantments": {}
+      },
+      {
+        "slot": 24,
+        "item": "minecraft:beetroot_seeds",
+        "count": 1,
+        "enchantments": {}
+      },
+      {
+        "slot": 25,
+        "item": "minecraft:beetroot_seeds",
+        "count": 1,
+        "enchantments": {}
+      }
+    ],
+    "next_long": "-1086746511560946797"
+  }
+]
