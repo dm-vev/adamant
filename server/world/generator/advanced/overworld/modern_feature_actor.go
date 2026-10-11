@@ -112,6 +112,26 @@ func (r *featureRegion) templateActorData(pos cube.Pos) map[string]any {
 	return nil
 }
 
+func (r *featureRegion) hasChestBlockEntity(pos cube.Pos) bool {
+	data := r.templateActorData(pos)
+	return data != nil && data["id"] == "Chest"
+}
+
+func (r *featureRegion) setBlockEntityLootTable(pos cube.Pos, table string, seed int64) {
+	if entry, exists := r.blockActorRecords[pos]; exists {
+		if entry.NBT == nil {
+			entry.NBT = make(map[string]any, 2)
+		}
+		entry.NBT["LootTable"], entry.NBT["LootTableSeed"] = table, seed
+		r.blockActorRecords[pos] = entry
+		r.refreshTemplateActor(pos)
+		return
+	}
+	if data := r.templateActorData(pos); data != nil {
+		data["LootTable"], data["LootTableSeed"] = table, seed
+	}
+}
+
 func hasHiveOccupantList(value any) bool {
 	switch occupants := value.(type) {
 	case []any:

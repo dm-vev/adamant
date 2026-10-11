@@ -1,0 +1,6 @@
+[
+  {"seed":"13","direction":"south","box":[-16,64,32,4,78,52],"after_int":221100},
+  {"seed":"1000016","direction":"east","box":[-16,64,32,4,78,52],"after_int":399275},
+  {"seed":"2000019","direction":"west","box":[-16,64,32,4,78,52],"after_int":448667},
+  {"seed":"5000028","direction":"north","box":[-16,64,32,4,78,52],"after_int":268316}
+]

@@ -11,11 +11,19 @@ import (
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
-// scatteredPieceBounds reconstructs the source's moved piece without making
+// mutableStructurePieceBounds reconstructs the source's moved piece without making
 // the cached constructor graph mutable. StructureStart's cached bounds stay put.
-func scatteredPieceBounds(piece modernStructurePiece, flags *javastructure.StructurePieceState) javastructure.Box {
+func mutableStructurePieceBounds(piece modernStructurePiece, flags *javastructure.StructurePieceState) javastructure.Box {
 	box := piece.Bounds()
-	if flags == nil || !flags.GroundHeightSet {
+	if flags == nil {
+		return box
+	}
+	if flags.BoundingBoxYSet {
+		box.Max[1] += flags.BoundingBoxMinY - box.Min[1]
+		box.Min[1] = flags.BoundingBoxMinY
+		return box
+	}
+	if !flags.GroundHeightSet {
 		return box
 	}
 	switch piece.(type) {
@@ -194,4 +202,46 @@ func scatteredMobSpawnNBT(id string, health float32, random *java26.Random) map[
 			}},
 		}},
 	}
+}
+
+// Source surface structures validate their terrain column and generation stub
+// before invoking the raw piece constructor. Only SinglePieceStructure checks
+// its four first-occupied footprint corners against sea level.
+func sourceSurfaceStructureAllowed(source ModernFeatureSource, kind, biomeTag string, chunkX, chunkZ int32) (bool, error) {
+	var width, depth int32
+	switch kind {
+	case "jungle_temple":
+		width, depth = 12, 15
+	case "desert_pyramid":
+		width, depth = 21, 21
+	case "swamp_hut", "igloo":
+	default:
+		return true, nil
+	}
+	x, z := chunkX*16+8, chunkZ*16+8
+	bounds := world.Overworld.Range()
+	columnAllowed := false
+	for quartY := int32(bounds[0]-1) >> 2; quartY <= int32(bounds[1])>>2; quartY++ {
+		allowed, err := javadata.BiomeTagContains(biomeTag, source.JavaNoiseBiomeAt(x>>2, quartY, z>>2))
+		if err != nil {
+			return false, err
+		}
+		if allowed {
+			columnAllowed = true
+			break
+		}
+	}
+	if !columnAllowed {
+		return false, nil
+	}
+	if width != 0 {
+		minX, minZ := chunkX*16, chunkZ*16
+		for _, corner := range [4][2]int32{{minX, minZ}, {minX, minZ + depth}, {minX + width, minZ}, {minX + width, minZ + depth}} {
+			if source.BaseHeight(corner[0], corner[1], false)-1 < source.SeaLevel() {
+				return false, nil
+			}
+		}
+	}
+	height := source.BaseHeight(x, z, false) - 1
+	return javadata.BiomeTagContains(biomeTag, source.JavaNoiseBiomeAt(x>>2, height>>2, z>>2))
 }

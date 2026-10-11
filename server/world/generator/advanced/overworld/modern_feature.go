@@ -293,6 +293,12 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 					JavaBlockStateID: func(x, y, z int32) (uint32, error) {
 						return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
 					},
+					HasChestBlockEntity: func(x, y, z int32) bool {
+						return region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)})
+					},
+					SetBlockEntityLootTable: func(x, y, z int32, table string, seed int64) {
+						region.setBlockEntityLootTable(cube.Pos{int(x), int(y), int(z)}, table, seed)
+					},
 					CanWriteBlock: func(x, y, z int32) bool {
 						return region.withinWriteArea(featurePos{x, y, z})
 					},

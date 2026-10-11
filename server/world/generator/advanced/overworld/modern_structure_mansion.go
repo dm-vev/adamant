@@ -93,7 +93,7 @@ func mansionShuffle(a [][2]int,r *java26.Random) { for i:=len(a)-1;i>0;i--{j:=in
 type mansionPlan struct { base,third *mansionGrid; rooms [3]*mansionGrid; sx,sy int; random *java26.Random }
 func newMansionPlan(r *java26.Random)*mansionPlan{
 	m:=&mansionPlan{base:newMansionGrid(11,11,5),sx:8,sy:5,random:r}
-	m.base.rect(7,4,7,5,mansionStartRoom);m.base.rect(6,4,6,5,mansionRoom)
+	m.base.rect(7,4,8,5,mansionStartRoom);m.base.rect(6,4,6,5,mansionRoom)
 	m.base.rect(9,2,10,7,mansionBlocked)
 	m.base.set(8,2,mansionCorridor);m.base.set(8,3,mansionCorridor);m.base.set(8,6,mansionCorridor);m.base.set(8,7,mansionCorridor);m.base.set(6,3,mansionCorridor);m.base.set(6,6,mansionCorridor)
 	m.base.rect(0,0,10,1,mansionBlocked);m.base.rect(0,9,10,10,mansionBlocked)

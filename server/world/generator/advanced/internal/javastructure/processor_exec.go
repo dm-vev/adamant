@@ -23,6 +23,10 @@ type ProcessorEnvironment struct {
 	MotionBlockingNoLeavesHeight func(x, z int32) int32
 	// JavaBlockStateID preserves source properties not represented by the native block model.
 	JavaBlockStateID func(x, y, z int32) (uint32, error)
+	// Template marker callbacks query the live actor after template placement.
+	HasChestBlockEntity func(x, y, z int32) bool
+	// SetBlockEntityLootTable changes actor NBT without writing the block again.
+	SetBlockEntityLootTable func(x, y, z int32, table string, seed int64)
 	// CanWriteBlock applies WorldGenRegion's write radius in addition to Range.
 	CanWriteBlock func(x, y, z int32) bool
 	Range         cube.Range
@@ -52,10 +56,23 @@ type StructurePieceState struct {
 	// Negative HPos values are moved but sampled again by the source.
 	GroundHeightSet bool
 	GroundHeight    int32
+	// BoundingBoxMinY retains a source piece's move separately from HPos.
+	// Pyramid offsets and template-piece moves need not equal ground height.
+	BoundingBoxYSet bool
+	BoundingBoxMinY int32
 	// LootPlaced holds up to four independently placed chest/dispenser slots.
 	LootPlaced uint8
 	// EntitiesSpawned holds the one-shot witch/cat slots of a swamp hut.
 	EntitiesSpawned uint8
+	// Pyramid is unpersisted source runtime state. Source NBT deliberately
+	// omits archaeology candidates and the collapsed-roof position.
+	Pyramid *PyramidPieceRuntimeState
+}
+
+// PyramidPieceRuntimeState belongs to the live source piece, not its saved NBT.
+type PyramidPieceRuntimeState struct {
+	SandPositions [][3]int32
+	RoofPosition  [3]int32
 }
 
 // LoadProcessors resolves named vanilla processor lists and inline processors into executable processors.

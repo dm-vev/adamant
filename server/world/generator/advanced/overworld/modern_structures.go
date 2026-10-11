@@ -503,6 +503,11 @@ func (s *modernStructures) buildStructure(name string, cx, cz int32) (start mode
 		}
 		return modernStructureStart{}, false, fmt.Errorf("overworld: Java structure %q has unsupported type %q", name, kind)
 	}
+	if allowed, err := sourceSurfaceStructureAllowed(s.source, kind, stringValue(config["biomes"]), cx, cz); err != nil {
+		return modernStructureStart{}, false, err
+	} else if !allowed {
+		return modernStructureStart{}, false, nil
+	}
 	random := largeFeatureRandom(s.seed, cx, cz)
 	start, valid, err = builder(modernStructureBuildInput{
 		seed: s.seed, name: name, chunkX: cx, chunkZ: cz,
@@ -571,7 +576,7 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 	if state != nil {
 		referenceFlags = &state.pieces[0]
 	}
-	reference := scatteredPieceBounds(start.pieces[0], referenceFlags)
+	reference := mutableStructurePieceBounds(start.pieces[0], referenceFlags)
 	env.StartPos = [3]int32{
 		reference.Min[0] + (reference.Max[0]-reference.Min[0]+1)/2,
 		reference.Min[1],
@@ -588,7 +593,7 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 				env.PieceState = &state.pieces[index]
 			}
 		}
-		box := scatteredPieceBounds(piece, env.PieceState)
+		box := mutableStructurePieceBounds(piece, env.PieceState)
 		if box.Min[0] > clip.Max[0] || box.Max[0] < clip.Min[0] ||
 			box.Min[1] > clip.Max[1] || box.Max[1] < clip.Min[1] ||
 			box.Min[2] > clip.Max[2] || box.Max[2] < clip.Min[2] {
@@ -605,6 +610,22 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 			placement.TemplateUpdateFlags, placement.TemplateKnownShape = 2, false
 		}
 		emit(placement)
+		if igloo, ok := piece.(modernIglooPiece); ok {
+			after, err := igloo.AfterTemplatePlacement(clip, env)
+			if err != nil {
+				panic(err)
+			}
+			after.StructurePieceWrites = true
+			emit(after)
+		}
+	}
+	if pyramid, ok := start.pieces[0].(modernDesertPyramid); ok {
+		after, err := pyramid.AfterPlace(clip, env, mutableStructurePieceBounds(pyramid, env.PieceState))
+		if err != nil {
+			panic(err)
+		}
+		after.StructurePieceWrites = true
+		emit(after)
 	}
 }
 

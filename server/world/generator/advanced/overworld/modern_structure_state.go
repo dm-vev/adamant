@@ -59,6 +59,7 @@ func (s *modernStructureStartState) prepare(start modernStructureStart) error {
 		s.pieces[piece.Index] = javastructure.StructurePieceState{
 			ChestPlaced: piece.Chest != 0, SpawnerPlaced: piece.Spawner != 0,
 			GroundHeightSet: piece.GroundHeightSet != 0, GroundHeight: piece.GroundHeight,
+			BoundingBoxYSet: piece.BoundingBoxYSet != 0, BoundingBoxMinY: piece.BoundingBoxMinY,
 			LootPlaced: piece.LootPlaced, EntitiesSpawned: piece.EntitiesSpawned,
 		}
 	}
@@ -77,7 +78,7 @@ func hasMutableStructurePieceState(pieces []modernStructurePiece) bool {
 			if p.kind == "chest" || p.kind == "portal" {
 				return true
 			}
-		case modernJungleTemple, modernSwampHutPiece:
+		case modernJungleTemple, modernSwampHutPiece, modernDesertPyramid, modernIglooPiece:
 			return true
 		}
 	}
@@ -93,6 +94,8 @@ type savedStructurePieceState struct {
 	Spawner         byte  `nbt:"spawner"`
 	GroundHeightSet byte  `nbt:"ground_height_set"`
 	GroundHeight    int32 `nbt:"ground_height"`
+	BoundingBoxYSet byte  `nbt:"bounding_box_y_set"`
+	BoundingBoxMinY int32 `nbt:"bounding_box_min_y"`
 	LootPlaced      byte  `nbt:"loot_placed"`
 	EntitiesSpawned byte  `nbt:"entities_spawned"`
 }
@@ -133,7 +136,7 @@ func (g *Overworld) LoadGenerationState(data []byte) error {
 				return fmt.Errorf("duplicate Java structure state at %s %d,%d", key.set, key.x, key.z)
 			}
 			for _, piece := range start.Pieces {
-				if piece.Index < 0 || piece.Chest > 1 || piece.Spawner > 1 || piece.GroundHeightSet > 1 || piece.LootPlaced > 15 || piece.EntitiesSpawned > 3 {
+				if piece.Index < 0 || piece.Chest > 1 || piece.Spawner > 1 || piece.GroundHeightSet > 1 || piece.BoundingBoxYSet > 1 || piece.LootPlaced > 15 || piece.EntitiesSpawned > 3 {
 					return fmt.Errorf("invalid Java structure piece state at %s %d,%d: %+v", key.set, key.x, key.z, piece)
 				}
 			}
@@ -159,7 +162,7 @@ func (g *Overworld) SaveGenerationState() ([]byte, error) {
 		state.mu.Lock()
 		start.Pieces = append(start.Pieces, state.pending...)
 		for index, flags := range state.pieces {
-			if !flags.ChestPlaced && !flags.SpawnerPlaced && !flags.GroundHeightSet && flags.LootPlaced == 0 && flags.EntitiesSpawned == 0 {
+			if !flags.ChestPlaced && !flags.SpawnerPlaced && !flags.GroundHeightSet && !flags.BoundingBoxYSet && flags.LootPlaced == 0 && flags.EntitiesSpawned == 0 {
 				continue
 			}
 			piece := savedStructurePieceState{Index: int32(index)}
@@ -172,6 +175,10 @@ func (g *Overworld) SaveGenerationState() ([]byte, error) {
 			if flags.GroundHeightSet {
 				piece.GroundHeightSet = 1
 				piece.GroundHeight = flags.GroundHeight
+			}
+			if flags.BoundingBoxYSet {
+				piece.BoundingBoxYSet = 1
+				piece.BoundingBoxMinY = flags.BoundingBoxMinY
 			}
 			piece.LootPlaced, piece.EntitiesSpawned = flags.LootPlaced, flags.EntitiesSpawned
 			start.Pieces = append(start.Pieces, piece)

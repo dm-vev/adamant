@@ -37,6 +37,10 @@ func (s scatteredLifecycleTerrain) BaseBlock(x, y, z int32) world.Block {
 	return b
 }
 func (s scatteredLifecycleTerrain) PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+	// Production looks up each origin's own structure references.
+	if !intersectsChunk(s.context.starts[0].box, pos) {
+		return
+	}
 	s.context.PlaceStep(pos, world.Overworld.Range(), step, env, emit)
 }
 func (scatteredLifecycleTerrain) UseLegacyRandomSource() bool     { return false }
@@ -70,12 +74,18 @@ func (g *scatteredLifecycleGenerator) SaveGenerationState() ([]byte, error) {
 func newScatteredLifecycleGenerator(kind string) (*scatteredLifecycleGenerator, modernStructureStart, error) {
 	owner := &Overworld{seed: 4096, modernStructures: new(modernStructures)}
 	random := java26.NewLegacyRandom(4096)
-	in := modernStructureBuildInput{seed: 4096, name: "minecraft:" + kind, random: &random}
+	in := modernStructureBuildInput{seed: 4096, name: "minecraft:" + kind, source: scatteredLifecycleTerrain{}, random: &random}
 	var start modernStructureStart
 	var err error
-	if kind == "jungle_temple" {
+	switch kind {
+	case "jungle_temple":
 		start, _, err = buildModernJungleTemple(in)
-	} else {
+	case "desert_pyramid":
+		start, _, err = buildModernDesertPyramid(in)
+	case "igloo":
+		random = java26.NewLegacyRandom(13) // Source fixture: rotation 2, basement depth 4.
+		start, _, err = buildModernIgloo(in)
+	default:
 		start, _, err = buildModernSwampHut(in)
 	}
 	if err != nil {
