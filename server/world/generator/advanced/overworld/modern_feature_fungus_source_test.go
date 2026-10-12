@@ -17,6 +17,7 @@ type fungusSourceFixture struct {
 }
 
 func (s fungusSourceFixture) BaseState(int32, int32, int32) world.NativeState { return s.air }
+func (fungusSourceFixture) JavaGenerationDepth() int32                        { return 128 }
 func TestHugeFungusPreservesNonReplaceableLeavesJava263(t *testing.T) {
 	// Executed HugeFungusFeature.place, LegacyRandomSource(1234), origin (8,65,8).
 	// Oak leaves obstruct both the stem and hat; the explicit replacement predicate

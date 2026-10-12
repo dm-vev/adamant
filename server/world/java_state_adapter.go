@@ -658,6 +658,21 @@ func mapJavaProperty(javaName, nativeName, key string, value any, javaProps, sch
 		}
 		return "", nil, true, nil
 	}
+	// The native moving-block palette has no properties. Java facing/type
+	// remain in the retained canonical state, independently of its actor.
+	if javaName == "minecraft:moving_piston" {
+		switch key {
+		case "facing":
+			_, err := convertJavaFacing("facing_direction", value, javaName)
+			return "", nil, true, err
+		case "type":
+			pistonType, ok := stringProperty(value)
+			if !ok || (pistonType != "normal" && pistonType != "sticky") {
+				return "", nil, false, fmt.Errorf("java state codec: invalid moving piston type %v", value)
+			}
+			return "", nil, true, nil
+		}
+	}
 	// Repeater/skull activation is neighbor-derived in Java, while piston extension
 	// is represented by a separate head block rather than a native base-state bit.
 	if key == "locked" && isRepeater(javaName) {

@@ -242,7 +242,16 @@ func tickBeehive(pos cube.Pos, h Beehive, tx *world.Tx, r *rand.Rand) {
 			continue
 		}
 		left := int(nbtconv.Int32(o, "TicksLeftToStay")) - 1
-		if left <= 0 {
+		ready := left <= 0
+		java, source := o["adamant:java"].(map[string]any)
+		if source {
+			ticks, minimum := nbtconv.Int32(java, "ticks_in_hive"), nbtconv.Int32(java, "min_ticks_in_hive")
+			ready = ticks > minimum
+			ticks++
+			java["ticks_in_hive"] = ticks
+			left = int(max(int64(0), min(int64(2147483647), int64(minimum)-int64(ticks)+2)))
+		}
+		if ready {
 			hadNectar := hiveBeeHasNectarFromOccupant(o)
 			if releaseHiveOccupant(pos, o, tx, false, false) {
 				if hadNectar && h.HoneyLevel < 5 {
@@ -258,7 +267,9 @@ func tickBeehive(pos cube.Pos, h Beehive, tx *world.Tx, r *rand.Rand) {
 				h.Occupants = append(h.Occupants[:i], h.Occupants[i+1:]...)
 				continue
 			}
-			left = 20
+			if !source {
+				left = 20
+			}
 		}
 		o["TicksLeftToStay"] = int32(left)
 		i++

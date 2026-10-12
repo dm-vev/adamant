@@ -122,7 +122,7 @@ func (r *featureRegion) JavaHiveHasOccupants(pos cube.Pos) bool {
 	if actor == nil {
 		return false
 	}
-	for _, key := range [...]string{"Bees", "bees", "Occupants"} {
+	for _, key := range [...]string{"bees", "Occupants"} {
 		if hasHiveOccupantList(actor[key]) {
 			return true
 		}

@@ -180,6 +180,16 @@ func featureSetNativeBlockFlag2(region *featureRegion, p featurePos, state world
 	return true
 }
 
+func featureSetNativeBlockFlag19(region *featureRegion, p featurePos, state world.NativeState, actor world.Block) bool {
+	if !region.setWithFlags(p, state, 19) {
+		return false
+	}
+	if actor != nil {
+		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
+	}
+	return true
+}
+
 func (r *featureRegion) SetNativeBlock(p featurePos, state world.NativeState, actor world.Block) bool {
 	if !r.Set(p, state) {
 		return false

@@ -120,6 +120,34 @@ func TestJavaDoorOpenIndependentOfPower(t *testing.T) {
 	}
 }
 
+func TestJavaMovingPistonPaletteAndCanonicalStates(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	for _, facing := range []string{"down", "up", "north", "south", "west", "east"} {
+		for _, pistonType := range []string{"normal", "sticky"} {
+			source := BlockState{
+				Name:       "minecraft:moving_piston",
+				Properties: map[string]any{"facing": facing, "type": pistonType},
+			}
+			state, err := ResolveState(registry, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			name, properties, ok := registry.RuntimeIDToState(state.Block)
+			if !ok || name != "minecraft:moving_block" || len(properties) != 0 {
+				t.Fatalf("moving piston leaked Java properties into native palette: %s %v", name, properties)
+			}
+			back, err := JavaState(registry, state)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if back.Name != source.Name || back.Properties["facing"] != facing || back.Properties["type"] != pistonType {
+				t.Fatalf("moving piston lost facing/type: Source=%+v actual=%+v", source, back)
+			}
+		}
+	}
+}
+
 func TestJavaCaveVineTipAgeRoundTrip(t *testing.T) {
 	registry := NewBlockRegistry()
 	registry.Finalize()

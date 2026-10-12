@@ -3,13 +3,13 @@ package overworld
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
 // placeModernTreeFamily dispatches the Java 26.3 tree-shaped configured feature families.
@@ -49,30 +49,24 @@ func treeAirOrLeaves(region *featureRegion, p featurePos) bool {
 	return n == "air" || n == "cave_air" || n == "void_air" || treeIsLeaves(n)
 }
 func treeIsAir(region *featureRegion, p featurePos) bool {
-	n, _ := region.State(p)
-	switch normalizeJavaResource(n) {
-	case "air", "cave_air", "void_air":
-		return true
-	}
-	return false
+	return featureRegionAir(region, p)
 }
 func treeIsLeaves(n string) bool { return javaBlockTagContains("leaves", normalizeJavaResource(n)) }
 func treeReplaceable(region *featureRegion, p featurePos) bool {
-	n, _ := region.State(p)
-	n = normalizeJavaResource(n)
-	return n == "air" || n == "cave_air" || n == "void_air" || treeTagContains("#minecraft:replaceable_by_trees", n)
+	name := treeSourceStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	return treeIsAirName(name) || treeTagContains("#minecraft:replaceable_by_trees", name)
+}
+func treeCanBeReplaced(region *featureRegion, p featurePos) bool {
+	state := region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry())
+	shape, err := javadata.BlockGenerationShapeID(state)
+	if err != nil {
+		panic(err)
+	}
+	return shape.Replaceable
 }
 func treeSet(region *featureRegion, p featurePos, provider any, r *java26.Random) bool {
 	state, actor, ok := region.SampleNativeState(provider, p, r)
 	return ok && region.SetNativeBlock(p, state, actor)
-}
-func treeSetLiteral(region *featureRegion, p featurePos, value any) bool {
-	placement, ok := featureStateBlock(value)
-	if !ok {
-		panic("overworld: malformed literal tree block state")
-	}
-	state, actor := region.resolveFeatureBlock(placement, p)
-	return region.SetNativeBlock(p, state, actor)
 }
 func treeSetAt(region *featureRegion, p, samplePos featurePos, provider any, r *java26.Random) bool {
 	state, actor, ok := region.SampleNativeState(provider, samplePos, r)
@@ -1325,70 +1319,97 @@ func treePoplarReplaceLogs(region *featureRegion, placer map[string]any, foliage
 
 func placeModernFallenTree(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) bool {
 	provider := config["trunk_provider"]
-	// The stump is independent of whether the lateral log can be fitted.
-	treeSet(region, origin, provider, r)
-	placeModernTreeDecorators(region, config["stump_decorators"], []featurePos{origin}, nil, nil, r)
-	d := r.NextInt(4)
-	dx, dz := int32(0), int32(0)
-	switch d {
-	case 0:
-		dz = -1
-	case 1:
-		dx = 1
-	case 2:
-		dz = 1
-	case 3:
-		dx = -1
+	if state, actor, ok := region.SampleNativeState(provider, origin, r); ok {
+		region.SetNativeBlock(origin, state, actor)
 	}
+	region.markAboveForPostProcessing(origin)
+	placeModernTreeDecorators(region, config["stump_decorators"], []featurePos{origin}, nil, nil, r)
+
+	directions := [...]featurePos{{0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}}
+	direction := directions[r.NextInt(4)]
 	length := treeInt(config["log_length"], 0, r) - 2
-	start := origin
 	dist := int32(2 + r.NextInt(2))
-	start = treePos(origin, dx*dist, 0, dz*dist)
+	start := treePos(origin, direction.x*dist, 0, direction.z*dist)
 	start.y++
 	for range 6 {
-		if treeReplaceable(region, start) && treeSturdyUp(region, treePos(start, 0, -1, 0)) {
+		if treeReplaceable(region, start) && fallenSturdyUp(region, treePos(start, 0, -1, 0)) {
 			break
 		}
 		start.y--
 	}
-	valid := length > 0
-	if length > 0 {
-		end := start
-		gap := 0
-		for i := int32(0); i < length; i++ {
-			if !treeReplaceable(region, end) {
+
+	valid := true
+	pos := start
+	gap := 0
+	for range length {
+		if !treeReplaceable(region, pos) {
+			valid = false
+			break
+		}
+		if !fallenSturdyUp(region, treePos(pos, 0, -1, 0)) {
+			gap++
+			if gap > 2 {
 				valid = false
 				break
 			}
-			if !treeSturdyUp(region, treePos(end, 0, -1, 0)) {
-				gap++
-				if gap > 2 {
-					valid = false
-					break
-				}
-			} else {
-				gap = 0
-			}
-			end = treePos(end, dx, 0, dz)
+		} else {
+			gap = 0
 		}
+		pos = treePos(pos, direction.x, 0, direction.z)
 	}
-	logs := make([]featurePos, 0, max(length, int32(0)))
-	if valid && length > 0 {
-		axis := "z"
-		if dx != 0 {
-			axis = "x"
-		}
-		pos := start
+
+	if valid {
+		positions := make([]featurePos, 0, max(length, int32(0)))
+		pos = start
 		for range length {
-			if treeAxis(region, pos, provider, axis, r) {
-				region.markAboveForPostProcessing(pos)
+			state, actor, ok := region.SampleNativeState(provider, pos, r)
+			if ok {
+				state = fallenSidewaysState(region, state, direction)
+				region.SetNativeBlock(pos, state, actor)
 			}
-			logs = append(logs, pos)
-			pos = treePos(pos, dx, 0, dz)
+			region.markAboveForPostProcessing(pos)
+			positions = append(positions, pos)
+			pos = treePos(pos, direction.x, 0, direction.z)
 		}
+		placeModernTreeDecorators(region, config["log_decorators"], fallenDecoratorPositions(positions), nil, nil, r)
 	}
-	placeModernTreeDecorators(region, config["log_decorators"], logs, nil, nil, r)
 	return true
+}
+
+func fallenSturdyUp(region *featureRegion, support featurePos) bool {
+	id := region.nativeState(support).CanonicalJavaID(region.c.BlockRegistry())
+	shape, err := javadata.BlockGenerationShapeID(id)
+	if err != nil {
+		panic(err)
+	}
+	return shape.Sturdy&(1<<uint(cube.FaceUp)) != 0
+}
+
+func fallenSidewaysState(region *featureRegion, state world.NativeState, direction featurePos) world.NativeState {
+	id := state.CanonicalJavaID(region.c.BlockRegistry())
+	if !javadata.BlockStateHasEnumValue(id, "axis", "y") {
+		return state
+	}
+	axis := "z"
+	if direction.x != 0 {
+		axis = "x"
+	}
+	id, err := javadata.BlockStateWithProperty(id, "axis", axis)
+	if err != nil {
+		panic(err)
+	}
+	return world.ResolveStateID(region.c.BlockRegistry(), id)
+}
+
+func fallenDecoratorPositions(positions []featurePos) []featurePos {
+	capacity := uint32(16)
+	if len(positions) > 12 {
+		capacity = 32
+	}
+	slices.SortStableFunc(positions, func(a, b featurePos) int {
+		return int(treePositionHash(a)&(capacity-1)) - int(treePositionHash(b)&(capacity-1))
+	})
+	return positions
 }
 
 func treeSolid(region *featureRegion, p featurePos) bool {
@@ -1624,9 +1645,36 @@ func mushroomCapWithProperties(region *featureRegion, state world.NativeState, r
 	return world.ResolveStateID(registry, id)
 }
 
+var modernFungusStateIDs = func() [5]uint32 {
+	var ids [5]uint32
+	for i, name := range [...]string{"minecraft:air", "minecraft:weeping_vines_plant"} {
+		id, err := javadata.BlockStateID(name, nil)
+		if err != nil {
+			panic(err)
+		}
+		ids[i] = id
+	}
+	head, err := javadata.BlockStateID("minecraft:weeping_vines", nil)
+	if err != nil {
+		panic(err)
+	}
+	for i := range 3 {
+		ids[i+2], err = javadata.BlockStateWithProperty(head, "age", i+23)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return ids
+}()
+
 func placeModernHugeFungus(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) bool {
-	base, _ := region.State(treePos(origin, 0, -1, 0))
-	if normalizeJavaResource(base) != normalizeJavaResource(fmt.Sprint(config["valid_base_block"])) {
+	base, ok := featureStateBlock(config["valid_base_block"])
+	if !ok {
+		panic("overworld: malformed huge fungus valid_base_block")
+	}
+	below := region.nativeState(treePos(origin, 0, -1, 0)).CanonicalJavaID(region.c.BlockRegistry())
+	belowName := treeSourceStateName(below)
+	if normalizeJavaResource(belowName) != normalizeJavaResource(base.State.Name) {
 		return false
 	}
 	total := int32(4 + r.NextInt(10))
@@ -1634,15 +1682,27 @@ func placeModernHugeFungus(region *featureRegion, config map[string]any, origin 
 		total *= 2
 	}
 	planted, _ := config["planted"].(bool)
-	if !planted && origin.y+total >= region.MaxY() {
+	if !planted && origin.y+total+1 >= region.f.source.JavaGenerationDepth() {
 		return false
 	}
 	huge := !planted && r.NextFloat() < .06
-	hatName := normalizeJavaResource(fmt.Sprint(config["hat_state"]))
-	if state, ok := config["hat_state"].(map[string]any); ok {
-		hatName = normalizeJavaResource(fmt.Sprint(state["id"]))
+	var literals [3]struct {
+		state world.NativeState
+		actor world.Block
 	}
-	treeSetNamed(region, origin, "air", nil)
+	for i, key := range [...]string{"stem_state", "hat_state", "decor_state"} {
+		placement, ok := featureStateBlock(config[key])
+		if !ok {
+			panic("overworld: malformed huge fungus " + key)
+		}
+		state, err := placement.ResolveNative(region.c.BlockRegistry())
+		if err != nil {
+			panic(err)
+		}
+		literals[i].state, literals[i].actor = state, placement.NativeBlock
+	}
+	hatName := normalizeJavaResource(treeSourceStateName(literals[1].state.CanonicalJavaID(region.c.BlockRegistry())))
+	region.setWithFlags(origin, world.ResolveStateID(region.c.BlockRegistry(), modernFungusStateIDs[0]), 260)
 	stemRadius := int32(0)
 	if huge {
 		stemRadius = 1
@@ -1650,23 +1710,20 @@ func placeModernHugeFungus(region *featureRegion, config map[string]any, origin 
 	for dx := -stemRadius; dx <= stemRadius; dx++ {
 		for dz := -stemRadius; dz <= stemRadius; dz++ {
 			corner := huge && abs32(dx) == stemRadius && abs32(dz) == stemRadius
-			for dy := int32(0); dy < total; dy++ {
+			for dy := range total {
 				p := treePos(origin, dx, dy, dz)
 				if !treeIsFungusReplaceable(config, p, region, true) {
 					continue
 				}
 				if planted {
-					below, _ := region.State(treePos(p, 0, -1, 0))
-					if !treeIsAirName(below) {
-						treeSetNamed(region, p, "air", nil)
-					}
-					treeSetLiteral(region, p, config["stem_state"])
+					fungusDestroyIfCovered(region, p)
+					region.SetNativeBlock(p, literals[0].state, literals[0].actor)
 				} else if corner {
 					if r.NextFloat() < .1 {
-						treeSetLiteral(region, p, config["stem_state"])
+						region.SetNativeBlock(p, literals[0].state, literals[0].actor)
 					}
 				} else {
-					treeSetLiteral(region, p, config["stem_state"])
+					region.SetNativeBlock(p, literals[0].state, literals[0].actor)
 				}
 			}
 		}
@@ -1696,14 +1753,11 @@ func placeModernHugeFungus(region *featureRegion, config map[string]any, origin 
 					continue
 				}
 				if planted {
-					below, _ := region.State(treePos(p, 0, -1, 0))
-					if !treeIsAirName(below) {
-						treeSetNamed(region, p, "air", nil)
-					}
+					fungusDestroyIfCovered(region, p)
 				}
 				if hatBottom {
 					if !inside {
-						placeFungusHatDrop(region, p, hatName, config["hat_state"], r)
+						placeFungusHatDrop(region, p, hatName, literals[1].state, literals[1].actor, r)
 					}
 					continue
 				}
@@ -1722,9 +1776,9 @@ func placeModernHugeFungus(region *featureRegion, config map[string]any, origin 
 					}
 				}
 				if r.NextFloat() < decorChance {
-					treeSetLiteral(region, p, config["decor_state"])
+					region.SetNativeBlock(p, literals[2].state, literals[2].actor)
 				} else if r.NextFloat() < hatChance {
-					treeSetLiteral(region, p, config["hat_state"])
+					region.SetNativeBlock(p, literals[1].state, literals[1].actor)
 					if r.NextFloat() < vineChance {
 						placeWeepingVines(region, p, r)
 					}
@@ -1741,19 +1795,20 @@ func treeIsAirName(name string) bool {
 	}
 	return false
 }
-func placeFungusHatDrop(region *featureRegion, p featurePos, hatName string, hatProvider any, r *java26.Random) {
-	below, _ := region.State(treePos(p, 0, -1, 0))
-	if normalizeJavaResource(below) == hatName {
-		treeSetLiteral(region, p, hatProvider)
-	} else if r.NextFloat() < .15 {
-		treeSetLiteral(region, p, hatProvider)
+func placeFungusHatDrop(region *featureRegion, p featurePos, hatName string, hatState world.NativeState, actor world.Block, r *java26.Random) {
+	below := region.nativeState(treePos(p, 0, -1, 0)).CanonicalJavaID(region.c.BlockRegistry())
+	if normalizeJavaResource(treeSourceStateName(below)) == hatName {
+		region.SetNativeBlock(p, hatState, actor)
+	} else if float64(r.NextFloat()) < .15 {
+		region.SetNativeBlock(p, hatState, actor)
 		if hatName == "nether_wart_block" && r.NextInt(11) == 0 {
 			placeWeepingVines(region, p, r)
 		}
 	}
 }
 func treeIsFungusReplaceable(config map[string]any, p featurePos, region *featureRegion, checkPlants bool) bool {
-	shape, err := javadata.BlockGenerationShapeID(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	id := region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry())
+	shape, err := javadata.BlockGenerationShapeID(id)
 	if err != nil {
 		panic(err)
 	}
@@ -1761,25 +1816,33 @@ func treeIsFungusReplaceable(config map[string]any, p featurePos, region *featur
 }
 func placeWeepingVines(region *featureRegion, origin featurePos, r *java26.Random) {
 	p := treePos(origin, 0, -1, 0)
-	if !treeIsAir(region, p) {
+	if !featureRegionAir(region, p) {
 		return
 	}
 	height := int32(r.NextInt(5) + 1)
 	if r.NextInt(7) == 0 {
 		height *= 2
 	}
-	for y := int32(0); y <= height; y++ {
+	for y := range height + 1 {
 		at := treePos(p, 0, -y, 0)
-		if treeIsAir(region, at) {
-			below := treePos(at, 0, -1, 0)
-			if y == height || !treeIsAir(region, below) {
-				treeSetNamed(region, at, "weeping_vines", map[string]any{"age": fmt.Sprint(23 + r.NextInt(3))})
-				break
-			}
-			treeSetNamed(region, at, "weeping_vines_plant", nil)
+		if !featureRegionAir(region, at) {
+			continue
 		}
+		if y == height || !featureRegionAir(region, treePos(at, 0, -1, 0)) {
+			id := modernFungusStateIDs[2+r.NextInt(3)]
+			region.setWithFlags(at, world.ResolveStateID(region.c.BlockRegistry(), id), 2)
+			break
+		}
+		region.setWithFlags(at, world.ResolveStateID(region.c.BlockRegistry(), modernFungusStateIDs[1]), 2)
 	}
 }
+func fungusDestroyIfCovered(region *featureRegion, p featurePos) {
+	if featureRegionAir(region, treePos(p, 0, -1, 0)) || featureRegionAir(region, p) {
+		return
+	}
+	region.setWithFlags(p, world.ResolveStateID(region.c.BlockRegistry(), modernFungusStateIDs[0]), 3)
+}
+
 func rootSystemLevelTest(region *featureRegion, p featurePos, distance, deviation int32) bool {
 	if distance <= 0 {
 		return true
@@ -1903,6 +1966,38 @@ func rootSystemHangingRoots(region *featureRegion, config map[string]any, origin
 
 func asAnySlice(v any) []any { a, _ := v.([]any); return a }
 
+type treeDecoratorStateIDs struct {
+	beeNest, creakingHeart uint32
+	paleMoss               [2]uint32
+	cocoa                  [4][3]uint32
+	shelfMushroom          [4][2]uint32
+}
+
+var modernTreeDecoratorIDs = func() treeDecoratorStateIDs {
+	literal := func(name string, properties map[string]any) uint32 {
+		id, err := javadata.BlockStateID("minecraft:"+name, properties)
+		if err != nil {
+			panic(err)
+		}
+		return id
+	}
+	var ids treeDecoratorStateIDs
+	ids.beeNest = literal("bee_nest", map[string]any{"facing": "south", "honey_level": 0})
+	ids.creakingHeart = literal("creaking_heart", map[string]any{"natural": true, "creaking_heart_state": "dormant"})
+	for i := range 2 {
+		ids.paleMoss[i] = literal("pale_hanging_moss", map[string]any{"tip": i == 1})
+	}
+	for facing, direction := range [...]string{"north", "east", "south", "west"} {
+		for age := range 3 {
+			ids.cocoa[facing][age] = literal("cocoa", map[string]any{"facing": direction, "age": age})
+			if age < 2 {
+				ids.shelfMushroom[facing][age] = literal("shelf_mushroom", map[string]any{"facing": direction, "age": age})
+			}
+		}
+	}
+	return ids
+}()
+
 func placeModernTreeDecorators(region *featureRegion, raw any, trunks, leaves, roots []featurePos, r *java26.Random) {
 	for _, value := range asAnySlice(raw) {
 		d := treeMap(value)
@@ -1910,14 +2005,13 @@ func placeModernTreeDecorators(region *featureRegion, raw any, trunks, leaves, r
 		case "trunk_vine":
 			for _, p := range trunks {
 				for _, v := range []struct {
-					dx, dz   int32
-					name     string
-					attached string
-				}{{-1, 0, "west", "east"}, {1, 0, "east", "west"}, {0, -1, "north", "south"}, {0, 1, "south", "north"}} {
+					dx, dz int32
+					vineID int
+				}{{-1, 0, 4}, {1, 0, 3}, {0, -1, 2}, {0, 1, 1}} {
 					if r.NextInt(3) > 0 {
 						q := treePos(p, v.dx, 0, v.dz)
 						if treeIsAir(region, q) {
-							treeSetNamed(region, q, "vine", map[string]any{v.attached: "true"})
+							treeDecoratorSetID(region, q, modernVineStateIDs[v.vineID])
 						}
 					}
 				}
@@ -1929,9 +2023,9 @@ func placeModernTreeDecorators(region *featureRegion, raw any, trunks, leaves, r
 			}
 			for _, leaf := range leaves {
 				for _, v := range []struct {
-					dx, dz   int32
-					attached string
-				}{{-1, 0, "east"}, {1, 0, "west"}, {0, -1, "south"}, {0, 1, "north"}} {
+					dx, dz int32
+					vineID int
+				}{{-1, 0, 4}, {1, 0, 3}, {0, -1, 2}, {0, 1, 1}} {
 					if r.NextFloat() < p {
 						q := treePos(leaf, v.dx, 0, v.dz)
 						if treeIsAir(region, q) {
@@ -1940,7 +2034,7 @@ func placeModernTreeDecorators(region *featureRegion, raw any, trunks, leaves, r
 								if !treeIsAir(region, at) {
 									break
 								}
-								treeSetNamed(region, at, "vine", map[string]any{v.attached: "true"})
+								treeDecoratorSetID(region, at, modernVineStateIDs[v.vineID])
 							}
 						}
 					}
@@ -1968,6 +2062,18 @@ func placeModernTreeDecorators(region *featureRegion, raw any, trunks, leaves, r
 			panic("overworld: unsupported Java tree decorator " + treeName(d))
 		}
 	}
+}
+
+func treeDecoratorSet(region *featureRegion, p featurePos, provider any, r *java26.Random) bool {
+	state, actor, ok := region.SampleNativeState(provider, p, r)
+	if !ok {
+		return false
+	}
+	return featureSetNativeBlockFlag19(region, p, state, actor)
+}
+
+func treeDecoratorSetID(region *featureRegion, p featurePos, id uint32) bool {
+	return region.setWithFlags(p, world.ResolveStateID(region.c.BlockRegistry(), id), 19)
 }
 func treeProbability(d map[string]any, key string, def float32) float32 {
 	if v, ok := d[key].(float64); ok {
@@ -2025,27 +2131,23 @@ func placeTreeBeeNest(region *featureRegion, d map[string]any, trunks, leaves []
 			}
 		}
 	}
-	placements = treeShufflePositions(placements, r)
+	for i := len(placements) - 1; i > 0; i-- {
+		j := int(r.NextInt(int32(i + 1)))
+		placements[i], placements[j] = placements[j], placements[i]
+	}
 	for _, p := range placements {
 		if !treeIsAir(region, p) || !treeIsAir(region, treeNeighbor(p, "south")) {
 			continue
 		}
-		if !treeSetNamed(region, p, "bee_nest", map[string]any{"facing": "south", "honey_level": "0"}) {
+		if !treeDecoratorSetID(region, p, modernTreeDecoratorIDs.beeNest) {
 			return
 		}
 		count := 2 + r.NextInt(2)
 		bees := make([]any, 0, count)
 		for range count {
-			bees = append(bees, map[string]any{"entity_data": map[string]any{"id": "minecraft:bee"}, "ticks_in_hive": r.NextInt(599), "min_ticks_in_hive": 600})
+			bees = append(bees, map[string]any{"entity_data": map[string]any{"id": "minecraft:bee"}, "ticks_in_hive": r.NextInt(599), "min_ticks_in_hive": int32(600)})
 		}
-		if featureInsideTarget(region.target, p) {
-			name, props := region.State(p)
-			if !strings.Contains(name, ":") {
-				name = "minecraft:" + name
-			}
-			placement := javastructure.Placement{Blocks: []javastructure.Block{{Pos: [3]int32{p.x, p.y, p.z}, State: world.BlockState{Name: name, Properties: props}, NBT: map[string]any{"id": "minecraft:beehive", "bees": bees}}}}
-			region.result.BlockEntities = append(region.result.BlockEntities, placement.BlockEntityPayloads()...)
-		}
+		featureRecordJavaBlockEntity(region, p, map[string]any{"id": "minecraft:beehive", "bees": bees})
 		return
 	}
 }
@@ -2059,11 +2161,11 @@ func placeTreeCocoa(region *featureRegion, d map[string]any, trunks []featurePos
 		if log.y-baseY > 2 {
 			continue
 		}
-		for _, side := range directions {
+		for i, side := range directions {
 			if r.NextFloat() <= .25 {
 				p := treeNeighbor(log, side.opposite)
 				if treeIsAir(region, p) {
-					treeSetNamed(region, p, "cocoa", map[string]any{"age": fmt.Sprint(r.NextInt(3)), "facing": side.direction})
+					treeDecoratorSetID(region, p, modernTreeDecoratorIDs.cocoa[i][r.NextInt(3)])
 				}
 			}
 		}
@@ -2105,7 +2207,7 @@ func placeTreeGroundDecorator(region *featureRegion, d map[string]any, trunks, r
 		if !treeSolidRender(region, p) || region.placementHeight(p.x, p.z, "MOTION_BLOCKING_NO_LEAVES") > above.y {
 			continue
 		}
-		treeSet(region, above, provider, r)
+		treeDecoratorSet(region, above, provider, r)
 	}
 }
 func placeTreeAlterGround(region *featureRegion, d map[string]any, trunks, roots []featurePos, r *java26.Random) {
@@ -2140,7 +2242,7 @@ func treeAlterGroundCircle(region *featureRegion, provider any, origin featurePo
 				p := treePos(origin, x, dy, z)
 				state, actor, ok := region.SampleNativeState(provider, p, r)
 				if ok {
-					region.SetNativeBlock(p, state, actor)
+					featureSetNativeBlockFlag19(region, p, state, actor)
 					break
 				}
 				if !treeIsAir(region, p) && dy < 0 {
@@ -2156,7 +2258,7 @@ func placeTreeLogAttachments(region *featureRegion, d map[string]any, trunks []f
 		dir := dirs[r.NextInt(int32(len(dirs)))]
 		at := treeNeighbor(p, dir)
 		if r.NextFloat() <= treeProbability(d, "probability", 0) && treeIsAir(region, at) {
-			treeSet(region, at, d["block_provider"], r)
+			treeDecoratorSet(region, at, d["block_provider"], r)
 		}
 	}
 }
@@ -2191,7 +2293,7 @@ func placeTreeLeafAttachments(region *featureRegion, d map[string]any, leaves []
 				}
 			}
 		}
-		treeSet(region, at, d["block_provider"], r)
+		treeDecoratorSet(region, at, d["block_provider"], r)
 	}
 }
 func placePaleMoss(region *featureRegion, d map[string]any, trunks, leaves []featurePos, r *java26.Random) {
@@ -2227,13 +2329,13 @@ func placePaleMoss(region *featureRegion, d map[string]any, trunks, leaves []fea
 }
 func treeHangMoss(region *featureRegion, p featurePos, r *java26.Random) {
 	for treeIsAir(region, treePos(p, 0, -1, 0)) && !(r.NextFloat() < .5) {
-		treeSetNamed(region, p, "pale_hanging_moss", map[string]any{"tip": "false"})
+		treeDecoratorSetID(region, p, modernTreeDecoratorIDs.paleMoss[0])
 		p.y--
 	}
-	treeSetNamed(region, p, "pale_hanging_moss", map[string]any{"tip": "true"})
+	treeDecoratorSetID(region, p, modernTreeDecoratorIDs.paleMoss[1])
 }
 func treeShelfMushroom(region *featureRegion, p featurePos, facing string, standing bool, r *java26.Random) {
-	if !treeReplaceable(region, p) || treeIsWaterNearby(region, p) {
+	if !treeCanBeReplaced(region, p) || treeIsWaterNearby(region, p) {
 		return
 	}
 	if standing {
@@ -2243,7 +2345,16 @@ func treeShelfMushroom(region *featureRegion, p featurePos, facing string, stand
 			return
 		}
 	}
-	treeSetNamed(region, p, "shelf_mushroom", map[string]any{"facing": facing, "age": fmt.Sprint(r.NextInt(2))})
+	facingIndex := 0
+	switch facing {
+	case "east":
+		facingIndex = 1
+	case "south":
+		facingIndex = 2
+	case "west":
+		facingIndex = 3
+	}
+	treeDecoratorSetID(region, p, modernTreeDecoratorIDs.shelfMushroom[facingIndex][r.NextInt(2)])
 }
 func treeIsWaterNearby(region *featureRegion, p featurePos) bool {
 	for _, dir := range []string{"east", "west", "north", "south"} {
@@ -2269,7 +2380,7 @@ func placeShelfMushrooms(region *featureRegion, d map[string]any, trunks []featu
 			for _, facing := range dirs {
 				if r.NextFloat() <= .25 {
 					p := treeNeighbor(log, facing)
-					if treeReplaceable(region, p) && !treeIsWaterNearby(region, p) {
+					if treeCanBeReplaced(region, p) && !treeIsWaterNearby(region, p) {
 						adjacent := false
 						for _, direction := range []string{"north", "east", "south", "west"} {
 							if name, _ := region.State(treeNeighbor(p, direction)); normalizeJavaResource(name) == "shelf_mushroom" {
@@ -2300,7 +2411,7 @@ func placeShelfMushrooms(region *featureRegion, d map[string]any, trunks []featu
 		for _, facing := range directions {
 			if r.NextFloat() <= .25 {
 				p := treeNeighbor(log, facing)
-				if !treeReplaceable(region, p) || treeIsWaterNearby(region, p) {
+				if !treeCanBeReplaced(region, p) || treeIsWaterNearby(region, p) {
 					continue
 				}
 				below := treePos(p, 0, -1, 0)
@@ -2332,14 +2443,16 @@ func placeCreakingHeart(region *featureRegion, d map[string]any, trunks []featur
 	for _, p := range treeShufflePositions(trunks, r) {
 		valid := true
 		for _, dir := range []string{"down", "up", "north", "south", "west", "east"} {
-			name, _ := region.State(treeNeighbor(p, dir))
+			name := treeSourceStateName(region.nativeState(treeNeighbor(p, dir)).CanonicalJavaID(region.c.BlockRegistry()))
 			if !treeTagContains("#minecraft:logs", name) {
 				valid = false
 				break
 			}
 		}
 		if valid {
-			treeSetNamed(region, p, "creaking_heart", map[string]any{"natural": "true", "state": "dormant", "axis": "y"})
+			if treeDecoratorSetID(region, p, modernTreeDecoratorIDs.creakingHeart) {
+				featureRecordJavaBlockEntity(region, p, map[string]any{"id": "minecraft:creaking_heart"})
+			}
 			return
 		}
 	}

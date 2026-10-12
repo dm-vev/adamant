@@ -1,0 +1,92 @@
+{
+  "oracle": "Actual Java 26.3 BeehiveBlockEntity.BeeData.tick and toOccupant through reflection, /tmp/BeeResidenceOracle.java, /tmp/bee-residence-capture.log; maximum-minimum case captures the first tick only.",
+  "cases": [
+    {
+      "name": "generated-511",
+      "ticks": 511,
+      "minimum": 600,
+      "firstTickReady": false,
+      "afterFirstTick": 512,
+      "firstEligibleTick": 91
+    },
+    {
+      "name": "generated-419",
+      "ticks": 419,
+      "minimum": 600,
+      "firstTickReady": false,
+      "afterFirstTick": 420,
+      "firstEligibleTick": 183
+    },
+    {
+      "name": "generated-556",
+      "ticks": 556,
+      "minimum": 600,
+      "firstTickReady": false,
+      "afterFirstTick": 557,
+      "firstEligibleTick": 46
+    },
+    {
+      "name": "generated-270",
+      "ticks": 270,
+      "minimum": 600,
+      "firstTickReady": false,
+      "afterFirstTick": 271,
+      "firstEligibleTick": 332
+    },
+    {
+      "name": "generated-430",
+      "ticks": 430,
+      "minimum": 600,
+      "firstTickReady": false,
+      "afterFirstTick": 431,
+      "firstEligibleTick": 172
+    },
+    {
+      "name": "fresh",
+      "ticks": 0,
+      "minimum": 600,
+      "firstTickReady": false,
+      "afterFirstTick": 1,
+      "firstEligibleTick": 602
+    },
+    {
+      "name": "minimum",
+      "ticks": 600,
+      "minimum": 600,
+      "firstTickReady": false,
+      "afterFirstTick": 601,
+      "firstEligibleTick": 2
+    },
+    {
+      "name": "eligible",
+      "ticks": 601,
+      "minimum": 600,
+      "firstTickReady": true,
+      "afterFirstTick": 602,
+      "firstEligibleTick": 1
+    },
+    {
+      "name": "zero-minimum",
+      "ticks": 0,
+      "minimum": 0,
+      "firstTickReady": false,
+      "afterFirstTick": 1,
+      "firstEligibleTick": 2
+    },
+    {
+      "name": "wrap-ready",
+      "ticks": 2147483647,
+      "minimum": 600,
+      "firstTickReady": true,
+      "afterFirstTick": -2147483648,
+      "firstEligibleTick": 1
+    },
+    {
+      "name": "wrap-not-ready",
+      "ticks": 2147483647,
+      "minimum": 2147483647,
+      "firstTickReady": false,
+      "afterFirstTick": -2147483648
+    }
+  ]
+}

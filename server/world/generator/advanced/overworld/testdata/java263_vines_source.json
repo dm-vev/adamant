@@ -1,0 +1,2605 @@
+{
+  "source": "Executed Java 26.3 VinesFeature.DIRECT_CODEC and place; complete canonical states and following RNG. Source WorldGenLevel proxy has live sparse terrain and actual default methods/state collision shapes.",
+  "minY": -64,
+  "maxY": 319,
+  "cases": [
+    {
+      "name": "up-bottom-slab",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49013,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_slab",
+            "properties": {
+              "type": "bottom",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "9035686281113536409",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "up-top-slab",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49030,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_slab",
+            "properties": {
+              "type": "top",
+              "waterlogged": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "5485700708566904591",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "up-double-slab",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49047,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_slab",
+            "properties": {
+              "type": "double",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-9037596422416645022",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "north-top-stairs",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49064,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:oak_stairs",
+            "properties": {
+              "facing": "south",
+              "half": "top",
+              "shape": "straight",
+              "waterlogged": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-3953271208096058322",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "north-inner-stairs",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49081,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:oak_stairs",
+            "properties": {
+              "facing": "south",
+              "half": "bottom",
+              "shape": "inner_left",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-9100390810420445663",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "south-closed-trapdoor",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49098,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            9
+          ],
+          "state": {
+            "id": "minecraft:oak_trapdoor",
+            "properties": {
+              "facing": "north",
+              "half": "top",
+              "open": "false",
+              "powered": "false",
+              "waterlogged": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "4520726525687541186",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "south-open-trapdoor",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49115,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            9
+          ],
+          "state": {
+            "id": "minecraft:oak_trapdoor",
+            "properties": {
+              "facing": "south",
+              "half": "bottom",
+              "open": "true",
+              "powered": "true",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-9149965328395805985",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "west-open-gate",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49132,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_fence_gate",
+            "properties": {
+              "facing": "east",
+              "open": "true",
+              "powered": "false",
+              "in_wall": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "-7590228356583016256",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "west-closed-gate",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49149,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_fence_gate",
+            "properties": {
+              "facing": "east",
+              "open": "false",
+              "powered": "false",
+              "in_wall": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "-9212759716399606626",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "east-waterlogged-leaves",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49166,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_leaves",
+            "properties": {
+              "distance": "7",
+              "persistent": "true",
+              "waterlogged": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-4781566582489489437",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "east-dense-wall",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49183,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:cobblestone_wall",
+            "properties": {
+              "east": "tall",
+              "north": "tall",
+              "south": "tall",
+              "west": "tall",
+              "up": "true",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6056323548433403722",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "west-linked-fence",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49200,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_fence",
+            "properties": {
+              "east": "true",
+              "north": "true",
+              "south": "false",
+              "west": "true",
+              "waterlogged": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "-6080785257652480376",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "up-seven-snow-layers",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49217,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:snow",
+            "properties": {
+              "layers": "7"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "5940649671725907207",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "up-full-snow-layers",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49234,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:snow",
+            "properties": {
+              "layers": "8"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "5929563527296962496",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "up-farmland",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49251,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:farmland",
+            "properties": {
+              "moisture": "7"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "5891075153750546886",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "up-honey",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49268,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:honey_block"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "-7007159632968408270",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "north-soul-sand",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49285,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:soul_sand"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6251316658196444046",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "east-full-composter",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49302,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:composter",
+            "properties": {
+              "level": "8"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "4052722892631522302",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "west-chest",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49319,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:chest",
+            "properties": {
+              "facing": "south",
+              "type": "single",
+              "waterlogged": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6201742140221083725",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "south-shulker",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49336,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            9
+          ],
+          "state": {
+            "id": "minecraft:red_shulker_box",
+            "properties": {
+              "facing": "east"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-2739361285191617503",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "north-piston-head",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49353,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:piston_head",
+            "properties": {
+              "facing": "south",
+              "short": "false",
+              "type": "normal"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6138947743627348492",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "east-extended-piston",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49370,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:piston",
+            "properties": {
+              "facing": "west",
+              "extended": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "-7349976037939591236",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "west-decorated-pot",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49387,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:decorated_pot",
+            "properties": {
+              "facing": "east",
+              "waterlogged": "true",
+              "cracked": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6089373225651988170",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "north-fire",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49404,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:fire",
+            "properties": {
+              "age": "0",
+              "east": "false",
+              "north": "false",
+              "south": "false",
+              "west": "false",
+              "up": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "-5430495437880659646",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "south-pointed-dripstone",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49421,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            9
+          ],
+          "state": {
+            "id": "minecraft:pointed_dripstone",
+            "properties": {
+              "vertical_direction": "up",
+              "thickness": "base",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6449614730097885331",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "east-barrier",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49438,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:barrier",
+            "properties": {
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "2961838167275536799",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "west-water",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49455,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:water",
+            "properties": {
+              "level": "0"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6400040212122525010",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "north-lava",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49472,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:lava",
+            "properties": {
+              "level": "0"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6004317253282920108",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "up-scaffolding",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49489,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:scaffolding",
+            "properties": {
+              "distance": "0",
+              "bottom": "false",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6390125304232485650",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "south-rail",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49506,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            9
+          ],
+          "state": {
+            "id": "minecraft:rail",
+            "properties": {
+              "shape": "north_south",
+              "waterlogged": "true"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "-6067917015081692127",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "precedence-up-north",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49523,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            71,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        },
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:gold_block"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6340550786257125329",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "precedence-north-south",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49540,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        },
+        {
+          "pos": [
+            8,
+            70,
+            9
+          ],
+          "state": {
+            "id": "minecraft:gold_block"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6676005029567858681",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "precedence-south-west",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49557,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            9
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        },
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:gold_block"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6700792286408055193",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "precedence-west-east",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49574,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        },
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:gold_block"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6626430511592498360",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "true"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "true"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "origin-cave_air-authored-axis-support",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49591,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:cave_air"
+          }
+        },
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_log",
+            "properties": {
+              "axis": "x"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6651217768432694872",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "origin-void_air-authored-axis-support",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49608,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:void_air"
+          }
+        },
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:oak_log",
+            "properties": {
+              "axis": "x"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6563636123588697718",
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "occupied-water",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49625,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:water"
+          }
+        },
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6588423380428894231",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "occupied-lava",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49642,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:lava"
+          }
+        },
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6514061605613337397",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "occupied-short_grass",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49659,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:short_grass"
+          }
+        },
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "6538848862453533909",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "occupied-vine",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49676,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:vine"
+          }
+        },
+        {
+          "pos": [
+            7,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "5182159544555410644",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "only-down-dirt-path-is-ignored",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49693,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            69,
+            8
+          ],
+          "state": {
+            "id": "minecraft:dirt_path"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "5206946805690574453",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "lower-outside-write-rejected",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49710,
+      "origin": [
+        8,
+        -65,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            -64,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-1271644022010670041",
+      "states": [],
+      "writes": [
+        {
+          "pos": [
+            8,
+            -65,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "true",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "name": "bottom-cell-supported",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49727,
+      "origin": [
+        8,
+        -64,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            -64,
+            7
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "6684749565388081883",
+      "states": [
+        {
+          "pos": [
+            8,
+            -64,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            -64,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "top-cell-north-support",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49744,
+      "origin": [
+        8,
+        319,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            319,
+            7
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-3029940077463284669",
+      "states": [
+        {
+          "pos": [
+            8,
+            319,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            319,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "true",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "top-up-void",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49761,
+      "origin": [
+        8,
+        319,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            320,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "7272081236680865468",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "above-world-empty",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49778,
+      "origin": [
+        8,
+        320,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            9,
+            320,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "8086589931572196453",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "negative-chunk-border",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49795,
+      "origin": [
+        -16,
+        74,
+        -1
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            -16,
+            74,
+            0
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "187260134267379246",
+      "states": [
+        {
+          "pos": [
+            -16,
+            74,
+            -1
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -16,
+            74,
+            -1
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "true",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "positive-chunk-border",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49812,
+      "origin": [
+        31,
+        74,
+        31
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            30,
+            74,
+            31
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-3772826402920763515",
+      "states": [
+        {
+          "pos": [
+            31,
+            74,
+            31
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "true"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            31,
+            74,
+            31
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "false",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "true"
+          },
+          "flags": 2,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "setter-rejected-live-support",
+      "featureType": "vines",
+      "algorithm": "xoroshiro",
+      "seed": 49829,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            9,
+            70,
+            8
+          ],
+          "state": {
+            "id": "minecraft:stone"
+          }
+        }
+      ],
+      "rejectWrites": true,
+      "encodedConfig": {},
+      "placed": true,
+      "nextLong": "-3051476723376397639",
+      "states": [],
+      "writes": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:vine",
+          "properties": {
+            "east": "true",
+            "north": "false",
+            "south": "false",
+            "up": "false",
+            "west": "false"
+          },
+          "flags": 2,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "name": "moving-piston-empty-actor",
+      "featureType": "vines",
+      "algorithm": "legacy",
+      "seed": 49846,
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {},
+      "seaLevel": 63,
+      "initial": [
+        {
+          "pos": [
+            8,
+            70,
+            7
+          ],
+          "state": {
+            "id": "minecraft:moving_piston",
+            "properties": {
+              "facing": "south",
+              "type": "normal"
+            }
+          }
+        }
+      ],
+      "encodedConfig": {},
+      "placed": false,
+      "nextLong": "5383762587185187481",
+      "states": [],
+      "writes": []
+    }
+  ]
+}

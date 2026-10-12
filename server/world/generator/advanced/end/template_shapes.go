@@ -122,7 +122,7 @@ func (a endJavaShapeAccess) JavaSignal(pos cube.Pos, face cube.Face) int {
 
 func (a endJavaShapeAccess) JavaHiveHasOccupants(pos cube.Pos) bool {
 	if actor, exists := a.region.blockActors[pos]; exists {
-		for _, key := range [...]string{"Bees", "bees", "Occupants"} {
+		for _, key := range [...]string{"bees", "Occupants"} {
 			switch occupants := actor.data[key].(type) {
 			case []any:
 				if len(occupants) != 0 {

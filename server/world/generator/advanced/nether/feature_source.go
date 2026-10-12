@@ -31,6 +31,8 @@ func (s *netherFeatureSource) UseLegacyRandomSource() bool { return false }
 
 func (*netherFeatureSource) JavaHasSkyLight() bool { return false }
 
+func (*netherFeatureSource) JavaGenerationDepth() int32 { return 128 }
+
 func (*netherFeatureSource) JavaFluidTickDelay(name string) int32 {
 	switch name {
 	case "minecraft:water":

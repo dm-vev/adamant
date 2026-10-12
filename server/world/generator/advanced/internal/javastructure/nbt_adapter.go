@@ -461,12 +461,8 @@ func convertBeehive(data map[string]any) error {
 		data["FlowerPos"] = converted
 		delete(data, "flower_pos")
 	}
-	bees := data["Bees"]
+	bees := data["bees"]
 	count, ok := templateListLen(bees)
-	if !ok {
-		bees = data["bees"]
-		count, ok = templateListLen(bees)
-	}
 	if !ok {
 		return nil
 	}
@@ -477,26 +473,30 @@ func convertBeehive(data map[string]any) error {
 		if !ok {
 			return fmt.Errorf("bee %d has type %T, want compound", i, raw)
 		}
-		entityData, _ := bee["EntityData"].(map[string]any)
-		if entityData == nil {
-			entityData, _ = bee["entity_data"].(map[string]any)
-		}
+		entityData, _ := bee["entity_data"].(map[string]any)
 		entityID, _ := entityData["id"].(string)
 		if entityID == "" {
 			return fmt.Errorf("bee %d has no entity id", i)
 		}
-		ticks, _ := javaNBTInt(bee["TicksInHive"])
-		minimum, _ := javaNBTInt(bee["MinOccupationTicks"])
-		if minimum == 0 {
-			minimum = 600
+		ticks, valid := javaNBTInt(bee["ticks_in_hive"])
+		if !valid {
+			return fmt.Errorf("bee %d has no integer ticks_in_hive", i)
+		}
+		minimum, valid := javaNBTInt(bee["min_ticks_in_hive"])
+		if !valid {
+			return fmt.Errorf("bee %d has no integer min_ticks_in_hive", i)
 		}
 		occupants = append(occupants, map[string]any{
 			"ActorIdentifier": entityID,
 			"SaveData":        entityData,
-			"TicksLeftToStay": int32(max(int64(0), minimum-ticks)),
+			"TicksLeftToStay": int32(max(int64(0), min(int64(2147483647), minimum-ticks+2))),
+			"adamant:java": map[string]any{
+				"ticks_in_hive": int32(ticks), "min_ticks_in_hive": int32(minimum),
+			},
 		})
 	}
 	data["Occupants"] = occupants
+	delete(data, "bees")
 	return nil
 }
 

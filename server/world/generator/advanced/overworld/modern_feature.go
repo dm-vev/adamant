@@ -28,6 +28,7 @@ type ModernFeatureSource interface {
 	BaseState(x, y, z int32) world.NativeState
 	UseLegacyRandomSource() bool
 	JavaHasSkyLight() bool
+	JavaGenerationDepth() int32
 	JavaFluidTickDelay(name string) int32
 	PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement))
 }

@@ -6,36 +6,47 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+var modernVineStateIDs = func() [5]uint32 {
+	defaultID, err := javadata.BlockStateID("minecraft:vine", nil)
+	if err != nil {
+		panic(err)
+	}
+	var ids [5]uint32
+	for i, property := range [...]string{"up", "north", "south", "west", "east"} {
+		ids[i], err = javadata.BlockStateWithProperty(defaultID, property, true)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return ids
+}()
+
 func placeModernVines(region *featureRegion, origin featurePos) bool {
 	if !featureRegionAir(region, origin) {
 		return false
 	}
 	// Direction.values(), omitting DOWN, determines attachment precedence.
-	for _, side := range [...]struct {
-		delta    featurePos
-		face     cube.Face
-		property string
+	for i, side := range [...]struct {
+		delta featurePos
+		face  cube.Face
 	}{
-		{featurePos{0, 1, 0}, cube.FaceUp, "up"},
-		{featurePos{0, 0, -1}, cube.FaceNorth, "north"},
-		{featurePos{0, 0, 1}, cube.FaceSouth, "south"},
-		{featurePos{-1, 0, 0}, cube.FaceWest, "west"},
-		{featurePos{1, 0, 0}, cube.FaceEast, "east"},
+		{featurePos{0, 1, 0}, cube.FaceUp},
+		{featurePos{0, 0, -1}, cube.FaceNorth},
+		{featurePos{0, 0, 1}, cube.FaceSouth},
+		{featurePos{-1, 0, 0}, cube.FaceWest},
+		{featurePos{1, 0, 0}, cube.FaceEast},
 	} {
 		p := featurePos{origin.x + side.delta.x, origin.y + side.delta.y, origin.z + side.delta.z}
-		name, properties := region.State(p)
-		shape, err := javadata.BlockGenerationShape(name, properties)
+		id := region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry())
+		shape, err := javadata.BlockGenerationShapeID(id)
 		if err != nil {
 			panic(err)
 		}
 		if shape.Attachment&(1<<uint(side.face.Opposite())) == 0 {
 			continue
 		}
-		state, err := world.ResolveState(region.c.BlockRegistry(), world.BlockState{Name: "minecraft:vine", Properties: map[string]any{side.property: true}})
-		if err != nil {
-			panic(err)
-		}
-		region.Set(origin, state)
+		state := world.ResolveStateID(region.c.BlockRegistry(), modernVineStateIDs[i])
+		region.setWithFlags(origin, state, 2)
 		return true
 	}
 	return false

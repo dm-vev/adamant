@@ -107,6 +107,8 @@ func (modernTerrainSource) UseLegacyRandomSource() bool { return false }
 
 func (modernTerrainSource) JavaHasSkyLight() bool { return true }
 
+func (modernTerrainSource) JavaGenerationDepth() int32 { return modernMaxY - modernMinY + 1 }
+
 func (modernTerrainSource) JavaFluidTickDelay(name string) int32 {
 	switch name {
 	case "minecraft:water":

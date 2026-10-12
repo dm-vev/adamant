@@ -82,6 +82,7 @@ func (s rootSystemSourceTerrain) BaseState(x, y, z int32) world.NativeState {
 }
 func (rootSystemSourceTerrain) UseLegacyRandomSource() bool     { return false }
 func (rootSystemSourceTerrain) JavaHasSkyLight() bool           { return true }
+func (rootSystemSourceTerrain) JavaGenerationDepth() int32      { return 384 }
 func (rootSystemSourceTerrain) JavaFluidTickDelay(string) int32 { return 0 }
 func (rootSystemSourceTerrain) PlaceStructureStep(world.ChunkPos, int, javastructure.ProcessorEnvironment, func(javastructure.Placement)) {
 }
