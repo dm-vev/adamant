@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 var monsterRoomMobs = [...]string{
@@ -52,7 +51,7 @@ func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *ja
 				name, _ := region.State(p)
 				if dx == minX || dy == -1 || dz == minZ || dx == maxX || dy == 4 || dz == maxZ {
 					if p.y >= region.MinY() && !featureRegionSolid(region, featurePos{p.x, p.y - 1, p.z}) {
-						region.Set(p, air)
+						region.setWithFlags(p, air, 2)
 					} else if featureRegionSolid(region, p) && normalizeJavaResource(name) != "chest" {
 						wallRID := cobblestone
 						if dy == -1 && random.NextInt(4) != 0 {
@@ -91,14 +90,14 @@ func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *ja
 			if !ok {
 				panic("overworld: unresolved Java monster room chest block state")
 			}
-			if monsterRoomSafeSet(region, p, chestRID) {
-				// RandomizableContainer.setBlockEntityLootTable consumes a seed from the feature stream.
-				lootSeed := random.NextLong()
-				monsterRoomAppendBlockEntity(region, p, map[string]any{
-					"id": "minecraft:chest", "LootTable": "minecraft:chests/simple_dungeon", "LootTableSeed": lootSeed,
-				})
-				break
+			monsterRoomSafeSet(region, p, chestRID)
+			// Source calls setBlockEntityLootTable after the safe write regardless of
+			// whether that write succeeded. The block-entity lookup decides whether
+			// the seed is consumed.
+			if name, _ := region.State(p); normalizeJavaResource(name) == "chest" {
+				monsterRoomSetChestLoot(region, p, random)
 			}
+			break
 		}
 	}
 
@@ -106,12 +105,7 @@ func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *ja
 	monsterRoomSafeSet(region, origin, spawnerRID)
 	if name, _ := region.State(origin); normalizeJavaResource(name) == "spawner" {
 		mob := monsterRoomMobs[random.NextInt(int32(len(monsterRoomMobs)))]
-		monsterRoomAppendBlockEntity(region, origin, map[string]any{
-			"id": "minecraft:mob_spawner",
-			"Delay": int16(20), "MinSpawnDelay": int16(200), "MaxSpawnDelay": int16(800),
-			"SpawnCount": int16(4), "MaxNearbyEntities": int16(6), "RequiredPlayerRange": int16(16), "SpawnRange": int16(4),
-			"SpawnData": map[string]any{"entity": map[string]any{"id": mob}},
-		})
+		monsterRoomSetSpawnerMob(region, origin, mob)
 	}
 	return true
 }
@@ -126,37 +120,43 @@ func monsterRoomSafeSet(region *featureRegion, p featurePos, state world.NativeS
 	if javaBlockTagContains("features_cannot_replace", normalizeJavaResource(name)) {
 		return false
 	}
-	return region.Set(p, state)
-}
-
-func monsterRoomAppendBlockEntity(region *featureRegion, p featurePos, data map[string]any) {
-	if !featureInsideTarget(region.target, p) || p.y < region.MinY() || p.y > region.MaxY() {
-		return
-	}
-	data["x"], data["y"], data["z"] = p.x, p.y, p.z
-	region.result.BlockEntities = append(region.result.BlockEntities, chunk.BlockEntity{
-		Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Data: data,
-	})
+	return region.setWithFlags(p, state, 2)
 }
 
 func monsterRoomChestFacing(region *featureRegion, p featurePos) string {
-	locked:="north";var solidNeighbor string;found:=false
-	for _,direction:=range [...]string{"north","east","south","west"}{
-		neighbor:=monsterRoomNeighbor(p,direction);name,_:=region.State(neighbor)
-		if normalizeJavaResource(name)=="chest"{return locked}
-		if featureRegionSolid(region,neighbor){if found{solidNeighbor="";break};solidNeighbor=direction;found=true}
+	locked := "north"
+	var solidNeighbor string
+	found := false
+	for _, direction := range [...]string{"north", "east", "south", "west"} {
+		neighbor := monsterRoomNeighbor(p, direction)
+		name, _ := region.State(neighbor)
+		if normalizeJavaResource(name) == "chest" {
+			return locked
+		}
+		if treeSolidRender(region, neighbor) {
+			if found {
+				solidNeighbor = ""
+				break
+			}
+			solidNeighbor = direction
+			found = true
+		}
 	}
-	if solidNeighbor!=""{return monsterRoomOpposite(solidNeighbor)}
-	if monsterRoomSolidAtDirection(region,p,locked){locked=monsterRoomOpposite(locked)}
-	if monsterRoomSolidAtDirection(region,p,locked){locked=monsterRoomClockwise(locked)}
-	if monsterRoomSolidAtDirection(region,p,locked){locked=monsterRoomOpposite(locked)}
+	if solidNeighbor != "" {
+		return monsterRoomOpposite(solidNeighbor)
+	}
+	if monsterRoomSolidRenderAtDirection(region, p, locked) {
+		locked = monsterRoomOpposite(locked)
+	}
+	if monsterRoomSolidRenderAtDirection(region, p, locked) {
+		locked = monsterRoomClockwise(locked)
+	}
+	if monsterRoomSolidRenderAtDirection(region, p, locked) {
+		locked = monsterRoomOpposite(locked)
+	}
 	return locked
 }
-func monsterRoomNeighbor(p featurePos,direction string)featurePos{switch direction{case "north":p.z--;case "east":p.x++;case "south":p.z++;case "west":p.x--};return p}
-func monsterRoomOpposite(direction string)string{switch direction{case "north":return "south";case "east":return "west";case "south":return "north";default:return "east"}}
-func monsterRoomClockwise(direction string)string{switch direction{case "north":return "east";case "east":return "south";case "south":return "west";default:return "north"}}
-
-func monsterRoomSolidAtDirection(region *featureRegion, p featurePos, direction string) bool {
+func monsterRoomNeighbor(p featurePos, direction string) featurePos {
 	switch direction {
 	case "north":
 		p.z--
@@ -167,5 +167,74 @@ func monsterRoomSolidAtDirection(region *featureRegion, p featurePos, direction 
 	case "west":
 		p.x--
 	}
-	return featureRegionSolid(region, p)
+	return p
+}
+func monsterRoomOpposite(direction string) string {
+	switch direction {
+	case "north":
+		return "south"
+	case "east":
+		return "west"
+	case "south":
+		return "north"
+	default:
+		return "east"
+	}
+}
+func monsterRoomClockwise(direction string) string {
+	switch direction {
+	case "north":
+		return "east"
+	case "east":
+		return "south"
+	case "south":
+		return "west"
+	default:
+		return "north"
+	}
+}
+
+func monsterRoomSolidRenderAtDirection(region *featureRegion, p featurePos, direction string) bool {
+	return treeSolidRender(region, monsterRoomNeighbor(p, direction))
+}
+func monsterRoomSetChestLoot(region *featureRegion, p featurePos, random *java26.Random) {
+	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
+	seed := random.NextLong()
+	if data := region.templateActorData(pos); data != nil {
+		region.setBlockEntityLootTable(pos, "minecraft:chests/simple_dungeon", seed)
+		return
+	}
+	featureRecordJavaBlockEntity(region, p, map[string]any{
+		"id": "minecraft:chest", "LootTable": "minecraft:chests/simple_dungeon", "LootTableSeed": seed,
+	})
+}
+func monsterRoomSetSpawnerMob(region *featureRegion, p featurePos, mob string) {
+	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
+	if entry, exists := region.blockActorRecords[pos]; exists && entry.NBT != nil {
+		spawnData, ok := entry.NBT["SpawnData"].(map[string]any)
+		if !ok {
+			spawnData = make(map[string]any, 1)
+			entry.NBT["SpawnData"] = spawnData
+		}
+		entity, ok := spawnData["entity"].(map[string]any)
+		if !ok {
+			entity = make(map[string]any, 1)
+			spawnData["entity"] = entity
+		}
+		entity["id"] = mob
+		region.blockActorRecords[pos] = entry
+		region.refreshTemplateActor(pos)
+		return
+	}
+	if data := region.templateActorData(pos); data != nil {
+		data["EntityIdentifier"] = mob
+		return
+	}
+	featureRecordJavaBlockEntity(region, p, map[string]any{
+		"id":    "minecraft:mob_spawner",
+		"Delay": int16(20), "MinSpawnDelay": int16(200), "MaxSpawnDelay": int16(800),
+		"SpawnCount": int16(4), "MaxNearbyEntities": int16(6), "RequiredPlayerRange": int16(16), "SpawnRange": int16(4),
+		"SpawnData":       map[string]any{"entity": map[string]any{"id": mob}},
+		"SpawnPotentials": []any{},
+	})
 }

@@ -1,0 +1,1279 @@
+{
+  "minY": -64,
+  "maxY": 319,
+  "cases": [
+    {
+      "name": "clear_0_legacy",
+      "algorithm": "legacy",
+      "seed": 731,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "-6077715435159022681",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": 0,
+        "y_offset": 1
+      },
+      "states": [
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "clear_1_xoroshiro",
+      "algorithm": "xoroshiro",
+      "seed": 732,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "-2167172787534069371",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "min_inclusive": -2,
+          "max_inclusive": 2,
+          "type": "minecraft:uniform"
+        },
+        "y_offset": {
+          "min_inclusive": 0,
+          "max_inclusive": 3,
+          "type": "minecraft:uniform"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            -14,
+            70,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -14,
+            70,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            71,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            72,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "clear_2_legacy",
+      "algorithm": "legacy",
+      "seed": 733,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "7769718054095303072",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "min_inclusive": -2,
+          "max_inclusive": 2,
+          "type": "minecraft:biased_to_bottom"
+        },
+        "y_offset": {
+          "min_inclusive": 0,
+          "max_inclusive": 3,
+          "type": "minecraft:biased_to_bottom"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            -14,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            14
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -16,
+            70,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            70,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            71,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "clear_3_xoroshiro",
+      "algorithm": "xoroshiro",
+      "seed": 734,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "3611033376131902826",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "min_inclusive": -2,
+          "max_inclusive": 2,
+          "type": "minecraft:very_biased_to_bottom"
+        },
+        "y_offset": {
+          "min_inclusive": 0,
+          "max_inclusive": 3,
+          "type": "minecraft:very_biased_to_bottom"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            -14,
+            70,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -14,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -16,
+            70,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            71,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            70,
+            13
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            70,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            70,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            71,
+            13
+          ],
+          "state": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "name": "clear_4_legacy",
+      "algorithm": "legacy",
+      "seed": 735,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "-448364232543322800",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "min": -2,
+          "max": 2,
+          "plateau": 0,
+          "type": "minecraft:trapezoid"
+        },
+        "y_offset": {
+          "min": 0,
+          "max": 3,
+          "plateau": 0,
+          "type": "minecraft:trapezoid"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            -13,
+            72,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -14,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -14,
+            71,
+            13
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -14,
+            71,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -14,
+            72,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            14
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            13
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            14
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            72,
+            13
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            72,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            71,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            72,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            73,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            72,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "clear_5_xoroshiro",
+      "algorithm": "xoroshiro",
+      "seed": 736,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "-9111632998179600883",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "distribution": [
+            {
+              "data": 0,
+              "weight": 3
+            },
+            {
+              "data": {
+                "min_inclusive": -2,
+                "max_inclusive": 2,
+                "type": "minecraft:uniform"
+              },
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted_list"
+        },
+        "y_offset": {
+          "distribution": [
+            {
+              "data": 1,
+              "weight": 3
+            },
+            {
+              "data": {
+                "min_inclusive": 0,
+                "max_inclusive": 3,
+                "type": "minecraft:uniform"
+              },
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted_list"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            -14,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            13
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            14
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            72,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            73,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            73,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -16,
+            71,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            71,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -17,
+            71,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "clear_6_legacy",
+      "algorithm": "legacy",
+      "seed": 737,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "6806349543760520744",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "source": {
+            "min_inclusive": -4,
+            "max_inclusive": 4,
+            "type": "minecraft:uniform"
+          },
+          "min_inclusive": -2,
+          "max_inclusive": 2,
+          "type": "minecraft:clamped"
+        },
+        "y_offset": {
+          "source": {
+            "min_inclusive": -2,
+            "max_inclusive": 5,
+            "type": "minecraft:uniform"
+          },
+          "min_inclusive": 0,
+          "max_inclusive": 3,
+          "type": "minecraft:clamped"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "clear_7_xoroshiro",
+      "algorithm": "xoroshiro",
+      "seed": 738,
+      "scenario": "clear",
+      "placed": true,
+      "nextLong": "-3921767345123472063",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "mean": 0.0,
+          "deviation": 1.0,
+          "min_inclusive": -2,
+          "max_inclusive": 2,
+          "type": "minecraft:clamped_normal"
+        },
+        "y_offset": {
+          "mean": 1.0,
+          "deviation": 1.0,
+          "min_inclusive": 0,
+          "max_inclusive": 3,
+          "type": "minecraft:clamped_normal"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            -13,
+            70,
+            14
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -14,
+            70,
+            14
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -14,
+            70,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            14
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            16
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            -15,
+            72,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            73,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -15,
+            73,
+            16
+          ],
+          "state": "minecraft:netherrack"
+        },
+        {
+          "pos": [
+            -16,
+            71,
+            15
+          ],
+          "state": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "name": "two_neighbors_0_xoroshiro",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "scenario": "two_neighbors",
+      "placed": true,
+      "nextLong": "7341713790291473579",
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": 0,
+        "y_offset": 1
+      },
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "occupied_1_legacy",
+      "algorithm": "legacy",
+      "seed": 17,
+      "scenario": "occupied",
+      "placed": true,
+      "nextLong": "-7299795248033405020",
+      "origin": [
+        8,
+        70,
+        8
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": {
+          "min_inclusive": -2,
+          "max_inclusive": 2,
+          "type": "minecraft:uniform"
+        },
+        "y_offset": {
+          "min_inclusive": 0,
+          "max_inclusive": 3,
+          "type": "minecraft:uniform"
+        }
+      },
+      "states": [
+        {
+          "pos": [
+            8,
+            70,
+            8
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "height_top_0_legacy",
+      "algorithm": "legacy",
+      "seed": 0,
+      "scenario": "height_top",
+      "placed": true,
+      "nextLong": "-3109364765729502342",
+      "origin": [
+        -15,
+        319,
+        15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": 0,
+        "y_offset": 1
+      },
+      "states": [
+        {
+          "pos": [
+            -15,
+            319,
+            15
+          ],
+          "state": "minecraft:glowstone"
+        }
+      ]
+    },
+    {
+      "name": "height_bottom_0_xoroshiro",
+      "algorithm": "xoroshiro",
+      "seed": 0,
+      "scenario": "height_bottom",
+      "placed": true,
+      "nextLong": "4633751808701151732",
+      "origin": [
+        15,
+        -64,
+        -15
+      ],
+      "config": {
+        "block": {
+          "entries": [
+            {
+              "data": "minecraft:glowstone",
+              "weight": 2
+            },
+            {
+              "data": "minecraft:netherrack",
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        },
+        "accepted_neighbors": [
+          "minecraft:glowstone",
+          "minecraft:netherrack"
+        ],
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": 0,
+        "y_offset": 1
+      },
+      "states": [
+        {
+          "pos": [
+            15,
+            -63,
+            -15
+          ],
+          "state": "minecraft:glowstone"
+        },
+        {
+          "pos": [
+            15,
+            -64,
+            -15
+          ],
+          "state": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "name": "actor_0_legacy",
+      "algorithm": "legacy",
+      "seed": 17,
+      "scenario": "actor",
+      "placed": true,
+      "nextLong": "-4937981208836185383",
+      "origin": [
+        -15,
+        70,
+        15
+      ],
+      "config": {
+        "block": {
+          "properties": {
+            "facing": "east"
+          },
+          "id": "minecraft:blue_shulker_box"
+        },
+        "accepted_neighbors": "minecraft:blue_shulker_box",
+        "can_replace": {
+          "blocks": "minecraft:air",
+          "type": "minecraft:matching_blocks"
+        },
+        "attempts": 80,
+        "xz_offset": 0,
+        "y_offset": 1
+      },
+      "states": [
+        {
+          "pos": [
+            -15,
+            70,
+            15
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "east"
+          }
+        },
+        {
+          "pos": [
+            -15,
+            71,
+            15
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "east"
+          }
+        }
+      ]
+    }
+  ]
+}

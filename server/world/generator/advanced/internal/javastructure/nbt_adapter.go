@@ -281,6 +281,13 @@ func convertJavaItems(raw any) ([]any, error) {
 }
 
 func convertSpawner(data map[string]any) {
+	// Java saves these spawner parameters as shorts; the native decoder and
+	// encoder use ints. Preserve their values rather than falling back to defaults.
+	for _, key := range [...]string{"MinSpawnDelay", "MaxSpawnDelay", "SpawnCount", "MaxNearbyEntities", "RequiredPlayerRange", "SpawnRange"} {
+		if value, ok := javaNBTInt(data[key]); ok {
+			data[key] = int32(value)
+		}
+	}
 	if spawn, ok := data["SpawnData"].(map[string]any); ok {
 		entity, _ := spawn["entity"].(map[string]any)
 		if entity == nil {

@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
 func placeModernLake(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
@@ -103,7 +102,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 					}
 					region.markAboveForPostProcessing(p)
 				} else {
-					lakeSetNativeBlock(region, p, fluidState, fluidActor)
+					featureSetNativeBlockFlag2(region, p, fluidState, fluidActor)
 				}
 			}
 		}
@@ -132,7 +131,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 					}
 					p := featurePos{origin.x + int32(x), origin.y + int32(y), origin.z + int32(z)}
 					if featureRegionSolid(region, p) && featureRegionPredicate(region, p, canBarrier) {
-						lakeSetNativeBlock(region, p, barrierState, barrierActor)
+						featureSetNativeBlockFlag2(region, p, barrierState, barrierActor)
 						region.markAboveForPostProcessing(p)
 					}
 				}
@@ -166,14 +165,4 @@ func featureRegionSolid(region *featureRegion, p featurePos) bool {
 	state := region.nativeState(p)
 	solid, ok := javadata.BlockStateIsSolid(state.CanonicalJavaID(region.c.BlockRegistry()))
 	return ok && solid
-}
-
-func lakeSetNativeBlock(region *featureRegion, p featurePos, state world.NativeState, actor world.Block) bool {
-	if !region.setWithFlags(p, state, 2) {
-		return false
-	}
-	if actor != nil {
-		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
-	}
-	return true
 }

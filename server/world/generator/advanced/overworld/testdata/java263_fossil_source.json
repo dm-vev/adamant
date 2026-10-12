@@ -1,0 +1,1659 @@
+{
+  "oracle": "Executed actual Java 26.3 FossilFeature.place with actual StructureTemplateManager cache populated by actual StructureTemplate.load on all 16 vanilla fossil NBT resources. Runtime vanilla tags loaded through VanillaPackResourcesBuilder/MultiPackResourceManager and TagLoader. Actual FossilFeature, BlockRotProcessor, ProtectedBlockProcessor and diamond RuleProcessor execute. WorldGenLevel proxy uses stone terrain, OCEAN_FLOOR_WG=floor+3 at x divisible by 5 (else floor), case minY/maxY=319, and rejects out-of-height writes. Corner cases initialize exact 7 or 8 corners of the actual rotated Source BoundingBox to source water, flowing water(level=1), or lava; 7 is accepted and 8 rejected. Captured all rotated box corners, complete final write properties, initial states, return, write count, rotation/index/zero-position transform and next RandomSource Long.",
+  "bounds": {
+    "minY": "case.minY",
+    "maxY": 319,
+    "surface": "floor + 3 when floorMod(x,5)==0; otherwise floor",
+    "terrain": "minecraft:stone"
+  },
+  "config": {
+    "fossil_structures": [
+      "minecraft:fossil/spine_1",
+      "minecraft:fossil/spine_2",
+      "minecraft:fossil/spine_3",
+      "minecraft:fossil/spine_4",
+      "minecraft:fossil/skull_1",
+      "minecraft:fossil/skull_2",
+      "minecraft:fossil/skull_3",
+      "minecraft:fossil/skull_4"
+    ],
+    "overlay_structures": [
+      "minecraft:fossil/spine_1_coal",
+      "minecraft:fossil/spine_2_coal",
+      "minecraft:fossil/spine_3_coal",
+      "minecraft:fossil/spine_4_coal",
+      "minecraft:fossil/skull_1_coal",
+      "minecraft:fossil/skull_2_coal",
+      "minecraft:fossil/skull_3_coal",
+      "minecraft:fossil/skull_4_coal"
+    ],
+    "fossil_processors": "minecraft:fossil_rot",
+    "coal_processors": "minecraft:fossil_coal",
+    "diamond_processors": "minecraft:fossil_diamonds",
+    "max_empty_corners_allowed": 7
+  },
+  "cases": [
+    {
+      "name": "xoroshiro_default_-9223372036854775808",
+      "algorithm": "xoroshiro",
+      "seed": -9223372036854775808,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        30,
+        16
+      ],
+      "heightFloor": 54,
+      "minY": -64,
+      "scenario": "default",
+      "placed": true,
+      "nextLong": "7787598885125848668",
+      "writeCount": 73,
+      "rotation": "COUNTERCLOCKWISE_90",
+      "index": 5,
+      "targetY": 15,
+      "targetPos": [
+        -3,
+        15,
+        19
+      ],
+      "cornerPositions": [],
+      "initialStates": [],
+      "states": [
+        "-1,15,14=minecraft:bone_block{axis=z}",
+        "-1,15,15=minecraft:bone_block{axis=z}",
+        "-1,15,16=minecraft:coal_ore{}",
+        "-1,15,17=minecraft:coal_ore{}",
+        "-1,15,18=minecraft:bone_block{axis=z}",
+        "-1,16,13=minecraft:bone_block{axis=x}",
+        "-1,16,19=minecraft:bone_block{axis=x}",
+        "-1,17,13=minecraft:bone_block{axis=x}",
+        "-1,17,19=minecraft:bone_block{axis=x}",
+        "-1,18,13=minecraft:bone_block{axis=x}",
+        "-1,18,19=minecraft:bone_block{axis=x}",
+        "-1,19,14=minecraft:coal_ore{}",
+        "-1,19,15=minecraft:bone_block{axis=z}",
+        "-1,19,16=minecraft:bone_block{axis=z}",
+        "-1,19,17=minecraft:bone_block{axis=z}",
+        "-1,19,18=minecraft:bone_block{axis=z}",
+        "-2,15,14=minecraft:bone_block{axis=z}",
+        "-2,15,15=minecraft:bone_block{axis=z}",
+        "-2,15,16=minecraft:bone_block{axis=z}",
+        "-2,15,17=minecraft:bone_block{axis=z}",
+        "-2,16,13=minecraft:bone_block{axis=y}",
+        "-2,17,13=minecraft:bone_block{axis=y}",
+        "-2,17,19=minecraft:bone_block{axis=y}",
+        "-2,18,13=minecraft:bone_block{axis=y}",
+        "-2,18,19=minecraft:bone_block{axis=y}",
+        "-2,19,14=minecraft:bone_block{axis=z}",
+        "-2,19,15=minecraft:bone_block{axis=z}",
+        "-2,19,16=minecraft:bone_block{axis=z}",
+        "-2,19,17=minecraft:bone_block{axis=z}",
+        "-2,19,18=minecraft:bone_block{axis=z}",
+        "-3,16,14=minecraft:bone_block{axis=y}",
+        "-3,16,18=minecraft:bone_block{axis=y}",
+        "-3,17,14=minecraft:bone_block{axis=y}",
+        "-3,17,15=minecraft:coal_ore{}",
+        "-3,17,16=minecraft:coal_ore{}",
+        "-3,17,17=minecraft:coal_ore{}",
+        "-3,17,18=minecraft:bone_block{axis=y}",
+        "-3,18,14=minecraft:bone_block{axis=y}",
+        "-3,18,16=minecraft:bone_block{axis=y}",
+        "-3,18,18=minecraft:bone_block{axis=y}",
+        "-3,19,15=minecraft:bone_block{axis=z}",
+        "-3,19,17=minecraft:bone_block{axis=z}",
+        "0,15,14=minecraft:bone_block{axis=z}",
+        "0,15,15=minecraft:bone_block{axis=z}",
+        "0,15,17=minecraft:bone_block{axis=z}",
+        "0,15,18=minecraft:bone_block{axis=z}",
+        "0,16,13=minecraft:bone_block{axis=y}",
+        "0,17,13=minecraft:bone_block{axis=y}",
+        "0,17,19=minecraft:bone_block{axis=y}",
+        "0,18,13=minecraft:bone_block{axis=y}",
+        "0,18,19=minecraft:bone_block{axis=y}",
+        "0,19,15=minecraft:bone_block{axis=z}",
+        "0,19,16=minecraft:bone_block{axis=z}",
+        "0,19,17=minecraft:bone_block{axis=z}",
+        "0,19,18=minecraft:bone_block{axis=z}",
+        "1,16,14=minecraft:bone_block{axis=y}",
+        "1,16,15=minecraft:bone_block{axis=z}",
+        "1,16,16=minecraft:coal_ore{}",
+        "1,16,17=minecraft:bone_block{axis=z}",
+        "1,17,14=minecraft:bone_block{axis=y}",
+        "1,17,15=minecraft:bone_block{axis=z}",
+        "1,17,17=minecraft:bone_block{axis=z}",
+        "1,17,18=minecraft:bone_block{axis=y}",
+        "1,18,14=minecraft:bone_block{axis=y}",
+        "1,18,16=minecraft:bone_block{axis=z}",
+        "1,18,17=minecraft:bone_block{axis=z}",
+        "1,18,18=minecraft:bone_block{axis=y}"
+      ]
+    },
+    {
+      "name": "xoroshiro_default_-1",
+      "algorithm": "xoroshiro",
+      "seed": -1,
+      "worldSeed": 0,
+      "origin": [
+        0,
+        30,
+        0
+      ],
+      "heightFloor": 52,
+      "minY": -64,
+      "scenario": "default",
+      "placed": true,
+      "nextLong": "7776559682391359420",
+      "writeCount": 120,
+      "rotation": "CLOCKWISE_180",
+      "index": 3,
+      "targetY": 13,
+      "targetPos": [
+        4,
+        13,
+        6
+      ],
+      "cornerPositions": [],
+      "initialStates": [],
+      "states": [
+        "-1,17,-1=minecraft:bone_block{axis=x}",
+        "-1,17,-3=minecraft:bone_block{axis=x}",
+        "-1,17,-5=minecraft:bone_block{axis=x}",
+        "-1,17,1=minecraft:bone_block{axis=x}",
+        "-1,17,3=minecraft:bone_block{axis=x}",
+        "-1,17,5=minecraft:bone_block{axis=x}",
+        "-2,13,-1=minecraft:bone_block{axis=x}",
+        "-2,13,-3=minecraft:bone_block{axis=x}",
+        "-2,13,-5=minecraft:coal_ore{}",
+        "-2,13,1=minecraft:bone_block{axis=x}",
+        "-2,13,3=minecraft:bone_block{axis=x}",
+        "-2,13,5=minecraft:coal_ore{}",
+        "-2,17,-1=minecraft:coal_ore{}",
+        "-2,17,-3=minecraft:bone_block{axis=x}",
+        "-2,17,-5=minecraft:bone_block{axis=x}",
+        "-2,17,1=minecraft:bone_block{axis=x}",
+        "-2,17,3=minecraft:bone_block{axis=x}",
+        "-2,17,5=minecraft:bone_block{axis=x}",
+        "-3,13,-1=minecraft:bone_block{axis=x}",
+        "-3,13,-3=minecraft:bone_block{axis=x}",
+        "-3,13,-5=minecraft:bone_block{axis=x}",
+        "-3,13,1=minecraft:bone_block{axis=x}",
+        "-3,13,3=minecraft:bone_block{axis=x}",
+        "-3,17,-1=minecraft:bone_block{axis=x}",
+        "-3,17,-3=minecraft:bone_block{axis=x}",
+        "-3,17,-5=minecraft:bone_block{axis=x}",
+        "-3,17,1=minecraft:bone_block{axis=x}",
+        "-3,17,3=minecraft:bone_block{axis=x}",
+        "-4,14,-1=minecraft:bone_block{axis=y}",
+        "-4,14,-3=minecraft:bone_block{axis=y}",
+        "-4,14,-5=minecraft:coal_ore{}",
+        "-4,14,1=minecraft:bone_block{axis=y}",
+        "-4,14,3=minecraft:bone_block{axis=y}",
+        "-4,14,5=minecraft:bone_block{axis=y}",
+        "-4,15,-1=minecraft:bone_block{axis=y}",
+        "-4,15,-3=minecraft:bone_block{axis=y}",
+        "-4,15,-5=minecraft:bone_block{axis=y}",
+        "-4,15,1=minecraft:bone_block{axis=y}",
+        "-4,15,3=minecraft:bone_block{axis=y}",
+        "-4,15,5=minecraft:bone_block{axis=y}",
+        "-4,16,-1=minecraft:coal_ore{}",
+        "-4,16,-5=minecraft:bone_block{axis=y}",
+        "-4,16,3=minecraft:bone_block{axis=y}",
+        "-4,16,5=minecraft:bone_block{axis=y}",
+        "-4,17,-3=minecraft:bone_block{axis=x}",
+        "-4,17,-5=minecraft:bone_block{axis=x}",
+        "-4,17,1=minecraft:bone_block{axis=x}",
+        "-4,17,3=minecraft:bone_block{axis=x}",
+        "-4,17,5=minecraft:bone_block{axis=x}",
+        "0,17,-1=minecraft:bone_block{axis=z}",
+        "0,17,-2=minecraft:coal_ore{}",
+        "0,17,-3=minecraft:bone_block{axis=z}",
+        "0,17,-4=minecraft:bone_block{axis=z}",
+        "0,17,-5=minecraft:bone_block{axis=z}",
+        "0,17,-6=minecraft:bone_block{axis=z}",
+        "0,17,0=minecraft:bone_block{axis=z}",
+        "0,17,1=minecraft:bone_block{axis=z}",
+        "0,17,2=minecraft:bone_block{axis=z}",
+        "0,17,4=minecraft:coal_ore{}",
+        "0,17,5=minecraft:bone_block{axis=z}",
+        "0,17,6=minecraft:bone_block{axis=z}",
+        "1,17,-1=minecraft:bone_block{axis=x}",
+        "1,17,-3=minecraft:bone_block{axis=x}",
+        "1,17,-5=minecraft:bone_block{axis=x}",
+        "1,17,1=minecraft:bone_block{axis=x}",
+        "1,17,3=minecraft:coal_ore{}",
+        "1,17,5=minecraft:bone_block{axis=x}",
+        "2,13,-1=minecraft:bone_block{axis=x}",
+        "2,13,-3=minecraft:bone_block{axis=x}",
+        "2,13,-5=minecraft:bone_block{axis=x}",
+        "2,13,1=minecraft:coal_ore{}",
+        "2,13,3=minecraft:bone_block{axis=x}",
+        "2,13,5=minecraft:bone_block{axis=x}",
+        "2,17,-3=minecraft:bone_block{axis=x}",
+        "2,17,3=minecraft:bone_block{axis=x}",
+        "3,13,-1=minecraft:bone_block{axis=x}",
+        "3,13,-3=minecraft:bone_block{axis=x}",
+        "3,13,-5=minecraft:bone_block{axis=x}",
+        "3,13,1=minecraft:coal_ore{}",
+        "3,13,3=minecraft:bone_block{axis=x}",
+        "3,13,5=minecraft:coal_ore{}",
+        "3,17,-1=minecraft:bone_block{axis=x}",
+        "3,17,1=minecraft:bone_block{axis=x}",
+        "4,14,-1=minecraft:coal_ore{}",
+        "4,14,-3=minecraft:bone_block{axis=y}",
+        "4,14,-5=minecraft:bone_block{axis=y}",
+        "4,14,1=minecraft:bone_block{axis=y}",
+        "4,14,3=minecraft:coal_ore{}",
+        "4,14,5=minecraft:bone_block{axis=y}",
+        "4,15,-1=minecraft:bone_block{axis=y}",
+        "4,15,-3=minecraft:bone_block{axis=y}",
+        "4,15,-5=minecraft:bone_block{axis=y}",
+        "4,15,1=minecraft:bone_block{axis=y}",
+        "4,15,5=minecraft:coal_ore{}",
+        "4,16,-1=minecraft:bone_block{axis=y}",
+        "4,16,-3=minecraft:bone_block{axis=y}",
+        "4,16,-5=minecraft:coal_ore{}",
+        "4,16,1=minecraft:bone_block{axis=y}",
+        "4,16,3=minecraft:bone_block{axis=y}",
+        "4,16,5=minecraft:bone_block{axis=y}",
+        "4,17,-1=minecraft:bone_block{axis=x}",
+        "4,17,-3=minecraft:bone_block{axis=x}",
+        "4,17,-5=minecraft:bone_block{axis=x}",
+        "4,17,1=minecraft:bone_block{axis=x}",
+        "4,17,3=minecraft:bone_block{axis=x}",
+        "4,17,5=minecraft:bone_block{axis=x}"
+      ]
+    },
+    {
+      "name": "xoroshiro_diamonds_42",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        15,
+        8,
+        -17
+      ],
+      "heightFloor": 58,
+      "minY": -64,
+      "scenario": "diamonds",
+      "placed": true,
+      "nextLong": "-381064582185266303",
+      "writeCount": 102,
+      "rotation": "CLOCKWISE_90",
+      "index": 2,
+      "targetY": -15,
+      "targetPos": [
+        21,
+        -15,
+        -20
+      ],
+      "cornerPositions": [],
+      "initialStates": [],
+      "states": [
+        "10,-12,-14=minecraft:bone_block{axis=z}",
+        "10,-12,-15=minecraft:bone_block{axis=z}",
+        "10,-12,-16=minecraft:bone_block{axis=z}",
+        "10,-12,-17=minecraft:bone_block{axis=x}",
+        "10,-12,-18=minecraft:bone_block{axis=z}",
+        "10,-12,-19=minecraft:bone_block{axis=z}",
+        "10,-12,-20=minecraft:bone_block{axis=z}",
+        "10,-14,-14=minecraft:bone_block{axis=y}",
+        "10,-14,-20=minecraft:bone_block{axis=y}",
+        "10,-15,-14=minecraft:bone_block{axis=y}",
+        "10,-15,-15=minecraft:deepslate_diamond_ore{}",
+        "10,-15,-18=minecraft:deepslate_diamond_ore{}",
+        "10,-15,-19=minecraft:bone_block{axis=z}",
+        "10,-15,-20=minecraft:bone_block{axis=y}",
+        "11,-12,-17=minecraft:bone_block{axis=x}",
+        "12,-12,-14=minecraft:bone_block{axis=z}",
+        "12,-12,-15=minecraft:bone_block{axis=z}",
+        "12,-12,-16=minecraft:bone_block{axis=z}",
+        "12,-12,-17=minecraft:bone_block{axis=x}",
+        "12,-12,-18=minecraft:bone_block{axis=z}",
+        "12,-12,-19=minecraft:bone_block{axis=z}",
+        "12,-12,-20=minecraft:bone_block{axis=z}",
+        "12,-13,-14=minecraft:bone_block{axis=y}",
+        "12,-13,-20=minecraft:bone_block{axis=y}",
+        "12,-14,-20=minecraft:bone_block{axis=y}",
+        "12,-15,-14=minecraft:bone_block{axis=y}",
+        "12,-15,-15=minecraft:bone_block{axis=z}",
+        "12,-15,-18=minecraft:deepslate_diamond_ore{}",
+        "12,-15,-19=minecraft:bone_block{axis=z}",
+        "12,-15,-20=minecraft:bone_block{axis=y}",
+        "14,-12,-14=minecraft:bone_block{axis=z}",
+        "14,-12,-15=minecraft:bone_block{axis=z}",
+        "14,-12,-16=minecraft:bone_block{axis=z}",
+        "14,-12,-17=minecraft:deepslate_diamond_ore{}",
+        "14,-12,-18=minecraft:bone_block{axis=z}",
+        "14,-12,-19=minecraft:bone_block{axis=z}",
+        "14,-12,-20=minecraft:bone_block{axis=z}",
+        "14,-13,-14=minecraft:deepslate_diamond_ore{}",
+        "14,-13,-20=minecraft:bone_block{axis=y}",
+        "14,-14,-14=minecraft:bone_block{axis=y}",
+        "14,-14,-20=minecraft:bone_block{axis=y}",
+        "14,-15,-14=minecraft:bone_block{axis=y}",
+        "14,-15,-15=minecraft:bone_block{axis=z}",
+        "14,-15,-19=minecraft:bone_block{axis=z}",
+        "14,-15,-20=minecraft:bone_block{axis=y}",
+        "15,-12,-17=minecraft:bone_block{axis=x}",
+        "16,-12,-14=minecraft:bone_block{axis=z}",
+        "16,-12,-15=minecraft:bone_block{axis=z}",
+        "16,-12,-17=minecraft:bone_block{axis=x}",
+        "16,-12,-18=minecraft:bone_block{axis=z}",
+        "16,-12,-19=minecraft:deepslate_diamond_ore{}",
+        "16,-12,-20=minecraft:bone_block{axis=z}",
+        "16,-13,-14=minecraft:bone_block{axis=y}",
+        "16,-13,-20=minecraft:bone_block{axis=y}",
+        "16,-14,-14=minecraft:bone_block{axis=y}",
+        "16,-14,-20=minecraft:bone_block{axis=y}",
+        "16,-15,-14=minecraft:bone_block{axis=y}",
+        "16,-15,-19=minecraft:bone_block{axis=z}",
+        "16,-15,-20=minecraft:deepslate_diamond_ore{}",
+        "17,-12,-17=minecraft:bone_block{axis=x}",
+        "18,-12,-14=minecraft:bone_block{axis=z}",
+        "18,-12,-15=minecraft:bone_block{axis=z}",
+        "18,-12,-16=minecraft:bone_block{axis=z}",
+        "18,-12,-18=minecraft:deepslate_diamond_ore{}",
+        "18,-12,-19=minecraft:bone_block{axis=z}",
+        "18,-12,-20=minecraft:bone_block{axis=z}",
+        "18,-13,-14=minecraft:bone_block{axis=y}",
+        "18,-13,-20=minecraft:bone_block{axis=y}",
+        "18,-14,-14=minecraft:bone_block{axis=y}",
+        "18,-14,-20=minecraft:bone_block{axis=y}",
+        "18,-15,-14=minecraft:bone_block{axis=y}",
+        "18,-15,-15=minecraft:deepslate_diamond_ore{}",
+        "18,-15,-19=minecraft:bone_block{axis=z}",
+        "18,-15,-20=minecraft:deepslate_diamond_ore{}",
+        "19,-12,-17=minecraft:bone_block{axis=x}",
+        "20,-12,-14=minecraft:bone_block{axis=z}",
+        "20,-12,-15=minecraft:bone_block{axis=z}",
+        "20,-12,-16=minecraft:deepslate_diamond_ore{}",
+        "20,-12,-17=minecraft:bone_block{axis=x}",
+        "20,-12,-18=minecraft:bone_block{axis=z}",
+        "20,-12,-19=minecraft:bone_block{axis=z}",
+        "20,-12,-20=minecraft:bone_block{axis=z}",
+        "20,-13,-14=minecraft:bone_block{axis=y}",
+        "20,-13,-20=minecraft:bone_block{axis=y}",
+        "20,-14,-14=minecraft:bone_block{axis=y}",
+        "20,-14,-20=minecraft:bone_block{axis=y}",
+        "20,-15,-14=minecraft:bone_block{axis=y}",
+        "20,-15,-15=minecraft:deepslate_diamond_ore{}",
+        "20,-15,-16=minecraft:deepslate_diamond_ore{}",
+        "20,-15,-19=minecraft:bone_block{axis=z}",
+        "20,-15,-20=minecraft:bone_block{axis=y}",
+        "21,-12,-17=minecraft:deepslate_diamond_ore{}",
+        "9,-12,-17=minecraft:bone_block{axis=x}"
+      ]
+    },
+    {
+      "name": "xoroshiro_coal_12345",
+      "algorithm": "xoroshiro",
+      "seed": 12345,
+      "worldSeed": 0,
+      "origin": [
+        -16,
+        30,
+        -16
+      ],
+      "heightFloor": 48,
+      "minY": -64,
+      "scenario": "coal",
+      "placed": true,
+      "nextLong": "-6185684316500909047",
+      "writeCount": 58,
+      "rotation": "NONE",
+      "index": 6,
+      "targetY": 7,
+      "targetPos": [
+        -18,
+        7,
+        -18
+      ],
+      "cornerPositions": [],
+      "initialStates": [],
+      "states": [
+        "-14,10,-18=minecraft:bone_block{axis=x}",
+        "-14,7,-18=minecraft:bone_block{axis=y}",
+        "-14,8,-14=minecraft:bone_block{axis=y}",
+        "-14,8,-15=minecraft:coal_ore{}",
+        "-14,8,-16=minecraft:bone_block{axis=z}",
+        "-14,8,-17=minecraft:bone_block{axis=z}",
+        "-14,8,-18=minecraft:bone_block{axis=y}",
+        "-14,9,-14=minecraft:bone_block{axis=y}",
+        "-14,9,-15=minecraft:bone_block{axis=z}",
+        "-14,9,-16=minecraft:bone_block{axis=z}",
+        "-14,9,-17=minecraft:bone_block{axis=z}",
+        "-14,9,-18=minecraft:bone_block{axis=y}",
+        "-15,10,-15=minecraft:bone_block{axis=x}",
+        "-15,10,-16=minecraft:bone_block{axis=x}",
+        "-15,10,-17=minecraft:bone_block{axis=x}",
+        "-15,10,-18=minecraft:bone_block{axis=x}",
+        "-15,7,-14=minecraft:bone_block{axis=x}",
+        "-15,7,-15=minecraft:bone_block{axis=x}",
+        "-15,7,-16=minecraft:bone_block{axis=x}",
+        "-15,7,-17=minecraft:bone_block{axis=x}",
+        "-15,8,-14=minecraft:bone_block{axis=x}",
+        "-15,8,-18=minecraft:bone_block{axis=x}",
+        "-15,9,-14=minecraft:bone_block{axis=x}",
+        "-16,10,-15=minecraft:bone_block{axis=x}",
+        "-16,10,-17=minecraft:bone_block{axis=x}",
+        "-16,10,-18=minecraft:bone_block{axis=x}",
+        "-16,7,-14=minecraft:bone_block{axis=x}",
+        "-16,7,-15=minecraft:bone_block{axis=x}",
+        "-16,7,-16=minecraft:bone_block{axis=x}",
+        "-16,7,-17=minecraft:bone_block{axis=x}",
+        "-16,8,-14=minecraft:bone_block{axis=x}",
+        "-16,8,-18=minecraft:bone_block{axis=x}",
+        "-16,9,-14=minecraft:bone_block{axis=x}",
+        "-16,9,-18=minecraft:bone_block{axis=y}",
+        "-17,10,-15=minecraft:bone_block{axis=x}",
+        "-17,10,-16=minecraft:bone_block{axis=x}",
+        "-17,10,-17=minecraft:bone_block{axis=x}",
+        "-17,10,-18=minecraft:bone_block{axis=x}",
+        "-17,7,-14=minecraft:bone_block{axis=x}",
+        "-17,7,-15=minecraft:bone_block{axis=x}",
+        "-17,7,-16=minecraft:bone_block{axis=x}",
+        "-17,7,-17=minecraft:bone_block{axis=x}",
+        "-17,8,-14=minecraft:bone_block{axis=x}",
+        "-17,8,-18=minecraft:coal_ore{}",
+        "-17,9,-14=minecraft:bone_block{axis=x}",
+        "-18,7,-18=minecraft:bone_block{axis=y}",
+        "-18,8,-14=minecraft:bone_block{axis=y}",
+        "-18,8,-15=minecraft:bone_block{axis=z}",
+        "-18,8,-16=minecraft:bone_block{axis=z}",
+        "-18,8,-17=minecraft:bone_block{axis=z}",
+        "-18,8,-18=minecraft:bone_block{axis=y}",
+        "-18,9,-14=minecraft:bone_block{axis=y}",
+        "-18,9,-16=minecraft:coal_ore{}",
+        "-18,9,-17=minecraft:coal_ore{}",
+        "-18,9,-18=minecraft:bone_block{axis=y}"
+      ]
+    },
+    {
+      "name": "legacy_default_42",
+      "algorithm": "legacy",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        -50,
+        0
+      ],
+      "heightFloor": 52,
+      "minY": -64,
+      "scenario": "default",
+      "placed": true,
+      "nextLong": "-905134758997926863",
+      "writeCount": 37,
+      "rotation": "CLOCKWISE_180",
+      "index": 0,
+      "targetY": -54,
+      "targetPos": [
+        0,
+        -54,
+        6
+      ],
+      "cornerPositions": [],
+      "initialStates": [],
+      "states": [
+        "-1,-52,-1=minecraft:bone_block{axis=z}",
+        "-1,-52,-2=minecraft:bone_block{axis=z}",
+        "-1,-52,-3=minecraft:bone_block{axis=z}",
+        "-1,-52,-4=minecraft:bone_block{axis=z}",
+        "-1,-52,-5=minecraft:bone_block{axis=z}",
+        "-1,-52,-6=minecraft:bone_block{axis=z}",
+        "-1,-52,0=minecraft:bone_block{axis=z}",
+        "-1,-52,1=minecraft:bone_block{axis=z}",
+        "-1,-52,2=minecraft:bone_block{axis=z}",
+        "-1,-52,3=minecraft:bone_block{axis=z}",
+        "-1,-52,4=minecraft:bone_block{axis=z}",
+        "-1,-52,5=minecraft:bone_block{axis=z}",
+        "-1,-52,6=minecraft:bone_block{axis=z}",
+        "-2,-53,-3=minecraft:bone_block{axis=y}",
+        "-2,-53,-5=minecraft:bone_block{axis=y}",
+        "-2,-53,1=minecraft:bone_block{axis=y}",
+        "-2,-53,3=minecraft:bone_block{axis=y}",
+        "-2,-53,5=minecraft:bone_block{axis=y}",
+        "-2,-54,-1=minecraft:bone_block{axis=y}",
+        "-2,-54,-3=minecraft:bone_block{axis=y}",
+        "-2,-54,-5=minecraft:coal_ore{}",
+        "-2,-54,1=minecraft:bone_block{axis=y}",
+        "-2,-54,3=minecraft:bone_block{axis=y}",
+        "-2,-54,5=minecraft:coal_ore{}",
+        "0,-53,-1=minecraft:coal_ore{}",
+        "0,-53,-5=minecraft:bone_block{axis=y}",
+        "0,-53,1=minecraft:bone_block{axis=y}",
+        "0,-53,3=minecraft:bone_block{axis=y}",
+        "0,-53,5=minecraft:bone_block{axis=y}",
+        "0,-54,-1=minecraft:coal_ore{}",
+        "0,-54,-3=minecraft:bone_block{axis=y}",
+        "0,-54,-5=minecraft:bone_block{axis=y}",
+        "0,-54,1=minecraft:bone_block{axis=y}",
+        "0,-54,3=minecraft:coal_ore{}",
+        "0,-54,5=minecraft:bone_block{axis=y}"
+      ]
+    },
+    {
+      "name": "legacy_diamonds_987654321",
+      "algorithm": "legacy",
+      "seed": 987654321,
+      "worldSeed": 0,
+      "origin": [
+        16,
+        30,
+        16
+      ],
+      "heightFloor": 62,
+      "minY": 0,
+      "scenario": "diamonds",
+      "placed": true,
+      "nextLong": "-2625819204978813261",
+      "writeCount": 32,
+      "rotation": "CLOCKWISE_90",
+      "index": 7,
+      "targetY": 10,
+      "targetPos": [
+        17,
+        10,
+        14
+      ],
+      "cornerPositions": [],
+      "initialStates": [],
+      "states": [
+        "14,11,15=minecraft:deepslate_diamond_ore{}",
+        "14,12,15=minecraft:bone_block{axis=y}",
+        "14,12,16=minecraft:bone_block{axis=y}",
+        "15,10,15=minecraft:bone_block{axis=z}",
+        "15,10,16=minecraft:bone_block{axis=z}",
+        "15,11,14=minecraft:bone_block{axis=y}",
+        "15,12,14=minecraft:bone_block{axis=y}",
+        "15,12,17=minecraft:bone_block{axis=y}",
+        "15,13,15=minecraft:bone_block{axis=z}",
+        "15,13,16=minecraft:bone_block{axis=z}",
+        "16,10,15=minecraft:bone_block{axis=z}",
+        "16,10,16=minecraft:bone_block{axis=z}",
+        "16,11,14=minecraft:bone_block{axis=y}",
+        "16,11,17=minecraft:deepslate_diamond_ore{}",
+        "16,12,14=minecraft:bone_block{axis=y}",
+        "16,12,17=minecraft:bone_block{axis=y}",
+        "16,13,15=minecraft:bone_block{axis=z}",
+        "16,13,16=minecraft:bone_block{axis=z}",
+        "17,10,14=minecraft:bone_block{axis=y}",
+        "17,10,17=minecraft:bone_block{axis=y}",
+        "17,11,14=minecraft:bone_block{axis=y}",
+        "17,11,15=minecraft:bone_block{axis=z}",
+        "17,11,16=minecraft:bone_block{axis=z}",
+        "17,11,17=minecraft:bone_block{axis=y}",
+        "17,12,14=minecraft:bone_block{axis=y}",
+        "17,12,17=minecraft:bone_block{axis=y}",
+        "17,13,14=minecraft:bone_block{axis=z}",
+        "17,13,15=minecraft:bone_block{axis=z}",
+        "17,13,16=minecraft:bone_block{axis=z}",
+        "17,13,17=minecraft:bone_block{axis=z}"
+      ]
+    },
+    {
+      "name": "xoroshiro_corners_water_42",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        30,
+        16
+      ],
+      "heightFloor": 54,
+      "minY": -64,
+      "scenario": "corners_water",
+      "placed": true,
+      "nextLong": "-381064582185266303",
+      "writeCount": 102,
+      "rotation": "CLOCKWISE_90",
+      "index": 2,
+      "targetY": 7,
+      "targetPos": [
+        5,
+        7,
+        13
+      ],
+      "cornerPositions": [
+        [
+          5,
+          10,
+          19
+        ],
+        [
+          -7,
+          10,
+          19
+        ],
+        [
+          5,
+          7,
+          19
+        ],
+        [
+          -7,
+          7,
+          19
+        ],
+        [
+          5,
+          10,
+          13
+        ],
+        [
+          -7,
+          10,
+          13
+        ],
+        [
+          5,
+          7,
+          13
+        ],
+        [
+          -7,
+          7,
+          13
+        ]
+      ],
+      "initialStates": [
+        {
+          "pos": [
+            -7,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            13
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        }
+      ],
+      "states": [
+        "-1,10,16=minecraft:bone_block{axis=x}",
+        "-2,10,13=minecraft:bone_block{axis=z}",
+        "-2,10,14=minecraft:bone_block{axis=z}",
+        "-2,10,15=minecraft:bone_block{axis=z}",
+        "-2,10,16=minecraft:coal_ore{}",
+        "-2,10,17=minecraft:bone_block{axis=z}",
+        "-2,10,18=minecraft:bone_block{axis=z}",
+        "-2,10,19=minecraft:bone_block{axis=z}",
+        "-2,7,13=minecraft:bone_block{axis=y}",
+        "-2,7,14=minecraft:bone_block{axis=z}",
+        "-2,7,18=minecraft:bone_block{axis=z}",
+        "-2,7,19=minecraft:bone_block{axis=y}",
+        "-2,8,13=minecraft:bone_block{axis=y}",
+        "-2,8,19=minecraft:bone_block{axis=y}",
+        "-2,9,13=minecraft:bone_block{axis=y}",
+        "-2,9,19=minecraft:coal_ore{}",
+        "-4,10,13=minecraft:bone_block{axis=z}",
+        "-4,10,14=minecraft:bone_block{axis=z}",
+        "-4,10,15=minecraft:bone_block{axis=z}",
+        "-4,10,16=minecraft:bone_block{axis=x}",
+        "-4,10,17=minecraft:bone_block{axis=z}",
+        "-4,10,18=minecraft:bone_block{axis=z}",
+        "-4,10,19=minecraft:bone_block{axis=z}",
+        "-4,7,13=minecraft:bone_block{axis=y}",
+        "-4,7,14=minecraft:bone_block{axis=z}",
+        "-4,7,15=minecraft:coal_ore{}",
+        "-4,7,18=minecraft:bone_block{axis=z}",
+        "-4,7,19=minecraft:bone_block{axis=y}",
+        "-4,8,13=minecraft:bone_block{axis=y}",
+        "-4,9,13=minecraft:bone_block{axis=y}",
+        "-4,9,19=minecraft:bone_block{axis=y}",
+        "-5,10,16=minecraft:bone_block{axis=x}",
+        "-6,10,13=minecraft:bone_block{axis=z}",
+        "-6,10,14=minecraft:bone_block{axis=z}",
+        "-6,10,15=minecraft:bone_block{axis=z}",
+        "-6,10,16=minecraft:bone_block{axis=x}",
+        "-6,10,17=minecraft:bone_block{axis=z}",
+        "-6,10,18=minecraft:bone_block{axis=z}",
+        "-6,10,19=minecraft:bone_block{axis=z}",
+        "-6,7,13=minecraft:bone_block{axis=y}",
+        "-6,7,14=minecraft:bone_block{axis=z}",
+        "-6,7,15=minecraft:coal_ore{}",
+        "-6,7,18=minecraft:coal_ore{}",
+        "-6,7,19=minecraft:bone_block{axis=y}",
+        "-6,8,13=minecraft:bone_block{axis=y}",
+        "-6,8,19=minecraft:bone_block{axis=y}",
+        "-7,10,16=minecraft:bone_block{axis=x}",
+        "0,10,13=minecraft:bone_block{axis=z}",
+        "0,10,14=minecraft:coal_ore{}",
+        "0,10,15=minecraft:bone_block{axis=z}",
+        "0,10,16=minecraft:bone_block{axis=x}",
+        "0,10,18=minecraft:bone_block{axis=z}",
+        "0,10,19=minecraft:bone_block{axis=z}",
+        "0,7,13=minecraft:coal_ore{}",
+        "0,7,14=minecraft:bone_block{axis=z}",
+        "0,7,19=minecraft:bone_block{axis=y}",
+        "0,8,13=minecraft:bone_block{axis=y}",
+        "0,8,19=minecraft:bone_block{axis=y}",
+        "0,9,13=minecraft:bone_block{axis=y}",
+        "0,9,19=minecraft:bone_block{axis=y}",
+        "1,10,16=minecraft:bone_block{axis=x}",
+        "2,10,13=minecraft:bone_block{axis=z}",
+        "2,10,14=minecraft:bone_block{axis=z}",
+        "2,10,15=minecraft:coal_ore{}",
+        "2,10,17=minecraft:bone_block{axis=z}",
+        "2,10,18=minecraft:bone_block{axis=z}",
+        "2,10,19=minecraft:bone_block{axis=z}",
+        "2,7,13=minecraft:coal_ore{}",
+        "2,7,14=minecraft:bone_block{axis=z}",
+        "2,7,18=minecraft:coal_ore{}",
+        "2,7,19=minecraft:bone_block{axis=y}",
+        "2,8,13=minecraft:bone_block{axis=y}",
+        "2,8,19=minecraft:bone_block{axis=y}",
+        "2,9,13=minecraft:bone_block{axis=y}",
+        "2,9,19=minecraft:bone_block{axis=y}",
+        "3,10,16=minecraft:bone_block{axis=x}",
+        "4,10,13=minecraft:bone_block{axis=z}",
+        "4,10,14=minecraft:bone_block{axis=z}",
+        "4,10,15=minecraft:bone_block{axis=z}",
+        "4,10,16=minecraft:bone_block{axis=x}",
+        "4,10,17=minecraft:coal_ore{}",
+        "4,10,18=minecraft:bone_block{axis=z}",
+        "4,10,19=minecraft:bone_block{axis=z}",
+        "4,7,13=minecraft:bone_block{axis=y}",
+        "4,7,14=minecraft:bone_block{axis=z}",
+        "4,7,17=minecraft:coal_ore{}",
+        "4,7,18=minecraft:coal_ore{}",
+        "4,7,19=minecraft:bone_block{axis=y}",
+        "4,8,13=minecraft:bone_block{axis=y}",
+        "4,8,19=minecraft:bone_block{axis=y}",
+        "4,9,13=minecraft:bone_block{axis=y}",
+        "4,9,19=minecraft:bone_block{axis=y}",
+        "5,10,16=minecraft:coal_ore{}"
+      ]
+    },
+    {
+      "name": "xoroshiro_corners_flowing_42",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        30,
+        16
+      ],
+      "heightFloor": 54,
+      "minY": -64,
+      "scenario": "corners_flowing",
+      "placed": true,
+      "nextLong": "-381064582185266303",
+      "writeCount": 102,
+      "rotation": "CLOCKWISE_90",
+      "index": 2,
+      "targetY": 7,
+      "targetPos": [
+        5,
+        7,
+        13
+      ],
+      "cornerPositions": [
+        [
+          5,
+          10,
+          19
+        ],
+        [
+          -7,
+          10,
+          19
+        ],
+        [
+          5,
+          7,
+          19
+        ],
+        [
+          -7,
+          7,
+          19
+        ],
+        [
+          5,
+          10,
+          13
+        ],
+        [
+          -7,
+          10,
+          13
+        ],
+        [
+          5,
+          7,
+          13
+        ],
+        [
+          -7,
+          7,
+          13
+        ]
+      ],
+      "initialStates": [
+        {
+          "pos": [
+            -7,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            -7,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            13
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        }
+      ],
+      "states": [
+        "-1,10,16=minecraft:bone_block{axis=x}",
+        "-2,10,13=minecraft:bone_block{axis=z}",
+        "-2,10,14=minecraft:bone_block{axis=z}",
+        "-2,10,15=minecraft:bone_block{axis=z}",
+        "-2,10,16=minecraft:coal_ore{}",
+        "-2,10,17=minecraft:bone_block{axis=z}",
+        "-2,10,18=minecraft:bone_block{axis=z}",
+        "-2,10,19=minecraft:bone_block{axis=z}",
+        "-2,7,13=minecraft:bone_block{axis=y}",
+        "-2,7,14=minecraft:bone_block{axis=z}",
+        "-2,7,18=minecraft:bone_block{axis=z}",
+        "-2,7,19=minecraft:bone_block{axis=y}",
+        "-2,8,13=minecraft:bone_block{axis=y}",
+        "-2,8,19=minecraft:bone_block{axis=y}",
+        "-2,9,13=minecraft:bone_block{axis=y}",
+        "-2,9,19=minecraft:coal_ore{}",
+        "-4,10,13=minecraft:bone_block{axis=z}",
+        "-4,10,14=minecraft:bone_block{axis=z}",
+        "-4,10,15=minecraft:bone_block{axis=z}",
+        "-4,10,16=minecraft:bone_block{axis=x}",
+        "-4,10,17=minecraft:bone_block{axis=z}",
+        "-4,10,18=minecraft:bone_block{axis=z}",
+        "-4,10,19=minecraft:bone_block{axis=z}",
+        "-4,7,13=minecraft:bone_block{axis=y}",
+        "-4,7,14=minecraft:bone_block{axis=z}",
+        "-4,7,15=minecraft:coal_ore{}",
+        "-4,7,18=minecraft:bone_block{axis=z}",
+        "-4,7,19=minecraft:bone_block{axis=y}",
+        "-4,8,13=minecraft:bone_block{axis=y}",
+        "-4,9,13=minecraft:bone_block{axis=y}",
+        "-4,9,19=minecraft:bone_block{axis=y}",
+        "-5,10,16=minecraft:bone_block{axis=x}",
+        "-6,10,13=minecraft:bone_block{axis=z}",
+        "-6,10,14=minecraft:bone_block{axis=z}",
+        "-6,10,15=minecraft:bone_block{axis=z}",
+        "-6,10,16=minecraft:bone_block{axis=x}",
+        "-6,10,17=minecraft:bone_block{axis=z}",
+        "-6,10,18=minecraft:bone_block{axis=z}",
+        "-6,10,19=minecraft:bone_block{axis=z}",
+        "-6,7,13=minecraft:bone_block{axis=y}",
+        "-6,7,14=minecraft:bone_block{axis=z}",
+        "-6,7,15=minecraft:coal_ore{}",
+        "-6,7,18=minecraft:coal_ore{}",
+        "-6,7,19=minecraft:bone_block{axis=y}",
+        "-6,8,13=minecraft:bone_block{axis=y}",
+        "-6,8,19=minecraft:bone_block{axis=y}",
+        "-7,10,16=minecraft:bone_block{axis=x}",
+        "0,10,13=minecraft:bone_block{axis=z}",
+        "0,10,14=minecraft:coal_ore{}",
+        "0,10,15=minecraft:bone_block{axis=z}",
+        "0,10,16=minecraft:bone_block{axis=x}",
+        "0,10,18=minecraft:bone_block{axis=z}",
+        "0,10,19=minecraft:bone_block{axis=z}",
+        "0,7,13=minecraft:coal_ore{}",
+        "0,7,14=minecraft:bone_block{axis=z}",
+        "0,7,19=minecraft:bone_block{axis=y}",
+        "0,8,13=minecraft:bone_block{axis=y}",
+        "0,8,19=minecraft:bone_block{axis=y}",
+        "0,9,13=minecraft:bone_block{axis=y}",
+        "0,9,19=minecraft:bone_block{axis=y}",
+        "1,10,16=minecraft:bone_block{axis=x}",
+        "2,10,13=minecraft:bone_block{axis=z}",
+        "2,10,14=minecraft:bone_block{axis=z}",
+        "2,10,15=minecraft:coal_ore{}",
+        "2,10,17=minecraft:bone_block{axis=z}",
+        "2,10,18=minecraft:bone_block{axis=z}",
+        "2,10,19=minecraft:bone_block{axis=z}",
+        "2,7,13=minecraft:coal_ore{}",
+        "2,7,14=minecraft:bone_block{axis=z}",
+        "2,7,18=minecraft:coal_ore{}",
+        "2,7,19=minecraft:bone_block{axis=y}",
+        "2,8,13=minecraft:bone_block{axis=y}",
+        "2,8,19=minecraft:bone_block{axis=y}",
+        "2,9,13=minecraft:bone_block{axis=y}",
+        "2,9,19=minecraft:bone_block{axis=y}",
+        "3,10,16=minecraft:bone_block{axis=x}",
+        "4,10,13=minecraft:bone_block{axis=z}",
+        "4,10,14=minecraft:bone_block{axis=z}",
+        "4,10,15=minecraft:bone_block{axis=z}",
+        "4,10,16=minecraft:bone_block{axis=x}",
+        "4,10,17=minecraft:coal_ore{}",
+        "4,10,18=minecraft:bone_block{axis=z}",
+        "4,10,19=minecraft:bone_block{axis=z}",
+        "4,7,13=minecraft:bone_block{axis=y}",
+        "4,7,14=minecraft:bone_block{axis=z}",
+        "4,7,17=minecraft:coal_ore{}",
+        "4,7,18=minecraft:coal_ore{}",
+        "4,7,19=minecraft:bone_block{axis=y}",
+        "4,8,13=minecraft:bone_block{axis=y}",
+        "4,8,19=minecraft:bone_block{axis=y}",
+        "4,9,13=minecraft:bone_block{axis=y}",
+        "4,9,19=minecraft:bone_block{axis=y}",
+        "5,10,16=minecraft:coal_ore{}"
+      ]
+    },
+    {
+      "name": "xoroshiro_corners_lava_42",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        30,
+        16
+      ],
+      "heightFloor": 54,
+      "minY": -64,
+      "scenario": "corners_lava",
+      "placed": true,
+      "nextLong": "-381064582185266303",
+      "writeCount": 102,
+      "rotation": "CLOCKWISE_90",
+      "index": 2,
+      "targetY": 7,
+      "targetPos": [
+        5,
+        7,
+        13
+      ],
+      "cornerPositions": [
+        [
+          5,
+          10,
+          19
+        ],
+        [
+          -7,
+          10,
+          19
+        ],
+        [
+          5,
+          7,
+          19
+        ],
+        [
+          -7,
+          7,
+          19
+        ],
+        [
+          5,
+          10,
+          13
+        ],
+        [
+          -7,
+          10,
+          13
+        ],
+        [
+          5,
+          7,
+          13
+        ],
+        [
+          -7,
+          7,
+          13
+        ]
+      ],
+      "initialStates": [
+        {
+          "pos": [
+            -7,
+            10,
+            13
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            10,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            13
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            13
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        }
+      ],
+      "states": [
+        "-1,10,16=minecraft:bone_block{axis=x}",
+        "-2,10,13=minecraft:bone_block{axis=z}",
+        "-2,10,14=minecraft:bone_block{axis=z}",
+        "-2,10,15=minecraft:bone_block{axis=z}",
+        "-2,10,16=minecraft:coal_ore{}",
+        "-2,10,17=minecraft:bone_block{axis=z}",
+        "-2,10,18=minecraft:bone_block{axis=z}",
+        "-2,10,19=minecraft:bone_block{axis=z}",
+        "-2,7,13=minecraft:bone_block{axis=y}",
+        "-2,7,14=minecraft:bone_block{axis=z}",
+        "-2,7,18=minecraft:bone_block{axis=z}",
+        "-2,7,19=minecraft:bone_block{axis=y}",
+        "-2,8,13=minecraft:bone_block{axis=y}",
+        "-2,8,19=minecraft:bone_block{axis=y}",
+        "-2,9,13=minecraft:bone_block{axis=y}",
+        "-2,9,19=minecraft:coal_ore{}",
+        "-4,10,13=minecraft:bone_block{axis=z}",
+        "-4,10,14=minecraft:bone_block{axis=z}",
+        "-4,10,15=minecraft:bone_block{axis=z}",
+        "-4,10,16=minecraft:bone_block{axis=x}",
+        "-4,10,17=minecraft:bone_block{axis=z}",
+        "-4,10,18=minecraft:bone_block{axis=z}",
+        "-4,10,19=minecraft:bone_block{axis=z}",
+        "-4,7,13=minecraft:bone_block{axis=y}",
+        "-4,7,14=minecraft:bone_block{axis=z}",
+        "-4,7,15=minecraft:coal_ore{}",
+        "-4,7,18=minecraft:bone_block{axis=z}",
+        "-4,7,19=minecraft:bone_block{axis=y}",
+        "-4,8,13=minecraft:bone_block{axis=y}",
+        "-4,9,13=minecraft:bone_block{axis=y}",
+        "-4,9,19=minecraft:bone_block{axis=y}",
+        "-5,10,16=minecraft:bone_block{axis=x}",
+        "-6,10,13=minecraft:bone_block{axis=z}",
+        "-6,10,14=minecraft:bone_block{axis=z}",
+        "-6,10,15=minecraft:bone_block{axis=z}",
+        "-6,10,16=minecraft:bone_block{axis=x}",
+        "-6,10,17=minecraft:bone_block{axis=z}",
+        "-6,10,18=minecraft:bone_block{axis=z}",
+        "-6,10,19=minecraft:bone_block{axis=z}",
+        "-6,7,13=minecraft:bone_block{axis=y}",
+        "-6,7,14=minecraft:bone_block{axis=z}",
+        "-6,7,15=minecraft:coal_ore{}",
+        "-6,7,18=minecraft:coal_ore{}",
+        "-6,7,19=minecraft:bone_block{axis=y}",
+        "-6,8,13=minecraft:bone_block{axis=y}",
+        "-6,8,19=minecraft:bone_block{axis=y}",
+        "-7,10,16=minecraft:bone_block{axis=x}",
+        "0,10,13=minecraft:bone_block{axis=z}",
+        "0,10,14=minecraft:coal_ore{}",
+        "0,10,15=minecraft:bone_block{axis=z}",
+        "0,10,16=minecraft:bone_block{axis=x}",
+        "0,10,18=minecraft:bone_block{axis=z}",
+        "0,10,19=minecraft:bone_block{axis=z}",
+        "0,7,13=minecraft:coal_ore{}",
+        "0,7,14=minecraft:bone_block{axis=z}",
+        "0,7,19=minecraft:bone_block{axis=y}",
+        "0,8,13=minecraft:bone_block{axis=y}",
+        "0,8,19=minecraft:bone_block{axis=y}",
+        "0,9,13=minecraft:bone_block{axis=y}",
+        "0,9,19=minecraft:bone_block{axis=y}",
+        "1,10,16=minecraft:bone_block{axis=x}",
+        "2,10,13=minecraft:bone_block{axis=z}",
+        "2,10,14=minecraft:bone_block{axis=z}",
+        "2,10,15=minecraft:coal_ore{}",
+        "2,10,17=minecraft:bone_block{axis=z}",
+        "2,10,18=minecraft:bone_block{axis=z}",
+        "2,10,19=minecraft:bone_block{axis=z}",
+        "2,7,13=minecraft:coal_ore{}",
+        "2,7,14=minecraft:bone_block{axis=z}",
+        "2,7,18=minecraft:coal_ore{}",
+        "2,7,19=minecraft:bone_block{axis=y}",
+        "2,8,13=minecraft:bone_block{axis=y}",
+        "2,8,19=minecraft:bone_block{axis=y}",
+        "2,9,13=minecraft:bone_block{axis=y}",
+        "2,9,19=minecraft:bone_block{axis=y}",
+        "3,10,16=minecraft:bone_block{axis=x}",
+        "4,10,13=minecraft:bone_block{axis=z}",
+        "4,10,14=minecraft:bone_block{axis=z}",
+        "4,10,15=minecraft:bone_block{axis=z}",
+        "4,10,16=minecraft:bone_block{axis=x}",
+        "4,10,17=minecraft:coal_ore{}",
+        "4,10,18=minecraft:bone_block{axis=z}",
+        "4,10,19=minecraft:bone_block{axis=z}",
+        "4,7,13=minecraft:bone_block{axis=y}",
+        "4,7,14=minecraft:bone_block{axis=z}",
+        "4,7,17=minecraft:coal_ore{}",
+        "4,7,18=minecraft:coal_ore{}",
+        "4,7,19=minecraft:bone_block{axis=y}",
+        "4,8,13=minecraft:bone_block{axis=y}",
+        "4,8,19=minecraft:bone_block{axis=y}",
+        "4,9,13=minecraft:bone_block{axis=y}",
+        "4,9,19=minecraft:bone_block{axis=y}",
+        "5,10,16=minecraft:coal_ore{}"
+      ]
+    },
+    {
+      "name": "xoroshiro_corners_reject_42",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        30,
+        16
+      ],
+      "heightFloor": 54,
+      "minY": -64,
+      "scenario": "corners_reject",
+      "placed": false,
+      "nextLong": "4888889476139319686",
+      "writeCount": 0,
+      "rotation": "CLOCKWISE_90",
+      "index": 2,
+      "targetY": 7,
+      "targetPos": [
+        5,
+        7,
+        13
+      ],
+      "cornerPositions": [
+        [
+          5,
+          10,
+          19
+        ],
+        [
+          -7,
+          10,
+          19
+        ],
+        [
+          5,
+          7,
+          19
+        ],
+        [
+          -7,
+          7,
+          19
+        ],
+        [
+          5,
+          10,
+          13
+        ],
+        [
+          -7,
+          10,
+          13
+        ],
+        [
+          5,
+          7,
+          13
+        ],
+        [
+          -7,
+          7,
+          13
+        ]
+      ],
+      "initialStates": [
+        {
+          "pos": [
+            -7,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            13
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            13
+          ],
+          "state": "minecraft:water{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=0}"
+        }
+      ],
+      "states": []
+    },
+    {
+      "name": "xoroshiro_corners_reject_flowing_42",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        30,
+        16
+      ],
+      "heightFloor": 54,
+      "minY": -64,
+      "scenario": "corners_reject_flowing",
+      "placed": false,
+      "nextLong": "4888889476139319686",
+      "writeCount": 0,
+      "rotation": "CLOCKWISE_90",
+      "index": 2,
+      "targetY": 7,
+      "targetPos": [
+        5,
+        7,
+        13
+      ],
+      "cornerPositions": [
+        [
+          5,
+          10,
+          19
+        ],
+        [
+          -7,
+          10,
+          19
+        ],
+        [
+          5,
+          7,
+          19
+        ],
+        [
+          -7,
+          7,
+          19
+        ],
+        [
+          5,
+          10,
+          13
+        ],
+        [
+          -7,
+          10,
+          13
+        ],
+        [
+          5,
+          7,
+          13
+        ],
+        [
+          -7,
+          7,
+          13
+        ]
+      ],
+      "initialStates": [
+        {
+          "pos": [
+            -7,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            -7,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            13
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            13
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            13
+          ],
+          "state": "minecraft:water{level=1}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            19
+          ],
+          "state": "minecraft:water{level=1}"
+        }
+      ],
+      "states": []
+    },
+    {
+      "name": "xoroshiro_corners_reject_lava_42",
+      "algorithm": "xoroshiro",
+      "seed": 42,
+      "worldSeed": 0,
+      "origin": [
+        -1,
+        30,
+        16
+      ],
+      "heightFloor": 54,
+      "minY": -64,
+      "scenario": "corners_reject_lava",
+      "placed": false,
+      "nextLong": "4888889476139319686",
+      "writeCount": 0,
+      "rotation": "CLOCKWISE_90",
+      "index": 2,
+      "targetY": 7,
+      "targetPos": [
+        5,
+        7,
+        13
+      ],
+      "cornerPositions": [
+        [
+          5,
+          10,
+          19
+        ],
+        [
+          -7,
+          10,
+          19
+        ],
+        [
+          5,
+          7,
+          19
+        ],
+        [
+          -7,
+          7,
+          19
+        ],
+        [
+          5,
+          10,
+          13
+        ],
+        [
+          -7,
+          10,
+          13
+        ],
+        [
+          5,
+          7,
+          13
+        ],
+        [
+          -7,
+          7,
+          13
+        ]
+      ],
+      "initialStates": [
+        {
+          "pos": [
+            -7,
+            10,
+            13
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            10,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            13
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            -7,
+            7,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            13
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            10,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            13
+          ],
+          "state": "minecraft:lava{level=0}"
+        },
+        {
+          "pos": [
+            5,
+            7,
+            19
+          ],
+          "state": "minecraft:lava{level=0}"
+        }
+      ],
+      "states": []
+    }
+  ]
+}

@@ -62,6 +62,17 @@ func (r *featureRegion) recordTemplateActor(entry javastructure.Block) {
 	r.refreshTemplateActor(pos)
 }
 
+func featureRecordJavaBlockEntity(region *featureRegion, p featurePos, data map[string]any) {
+	if p.y < region.MinY() || p.y > region.MaxY() {
+		return
+	}
+	state, err := world.JavaState(region.c.BlockRegistry(), region.nativeState(p))
+	if err != nil {
+		panic(err)
+	}
+	region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, State: state, NBT: data})
+}
+
 func (r *featureRegion) refreshTemplateActor(pos cube.Pos) {
 	entry, exists := r.blockActorRecords[pos]
 	if !exists {

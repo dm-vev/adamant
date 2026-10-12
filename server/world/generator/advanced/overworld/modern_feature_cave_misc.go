@@ -386,36 +386,40 @@ func manhattanPositions(origin featurePos,reachX,reachY,reachZ int32,visit func(
 	}
 }
 func placeModernRandomNeighborSpread(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
-	blockProvider:=config["block"]
-	state,actor,ok:=region.SampleNativeState(blockProvider,origin,random);if !ok{panic("overworld: unresolved Java random-neighbor block provider")}
-	region.SetNativeBlock(origin,state,actor)
-	attempts:=int(sampleJavaIntOrUniform(config["attempts"],1,1,random))
-	xzOffset,ok:=config["xz_offset"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor xz offset")}
-	yOffset,ok:=config["y_offset"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor y offset")}
-	canReplace,ok:=config["can_replace"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor replace predicate")}
-	accepted := config["accepted_neighbors"]
-	sampleOffset:=func(provider map[string]any)int32{
-		switch provider["type"]{
-		case "minecraft:uniform":return sampleJavaIntOrUniform(provider,0,0,random)
-		case "minecraft:trapezoid":
-			min,max,plateau:=geodeIntDefault(provider["min"],0),geodeIntDefault(provider["max"],0),geodeIntDefault(provider["plateau"],0)
-			rangeWidth:=max-min
-			if plateau==0&&max==-min{return random.NextInt(int32(max+1))-random.NextInt(int32(max+1))}
-			if plateau==rangeWidth{return int32(min)+random.NextInt(int32(rangeWidth+1))}
-			start:=(rangeWidth-plateau)/2;end:=rangeWidth-start
-			return int32(min)+random.NextInt(int32(end+1))+random.NextInt(int32(start+1))
-		default:panic("overworld: unsupported Java random-neighbor offset provider")
-		}
+	blockProvider := config["block"]
+	state, actor, ok := region.SampleNativeState(blockProvider, origin, random)
+	if !ok {
+		panic("overworld: unresolved Java random-neighbor block provider")
 	}
-	for range attempts{
-		p:=featurePos{origin.x+sampleOffset(xzOffset),origin.y+sampleOffset(yOffset),origin.z+sampleOffset(xzOffset)}
-		if !featureRegionPredicate(region,p,canReplace){continue}
-		neighbors:=0
-		for _,d:=range [][3]int32{{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}}{
-			name,_:=region.State(featurePos{p.x+d[0],p.y+d[1],p.z+d[2]})
-			if featureBlockHolderContains(accepted, name) {neighbors++;if neighbors>1{break}}
+	featureSetNativeBlockFlag2(region, origin, state, actor)
+	attempts := sampleJavaInt(config["attempts"], random)
+	canReplace, ok := config["can_replace"].(map[string]any)
+	if !ok {
+		panic("overworld: malformed Java random-neighbor replace predicate")
+	}
+	accepted := config["accepted_neighbors"]
+	for range attempts {
+		p := featurePos{origin.x + sampleJavaInt(config["xz_offset"], random), origin.y + sampleJavaInt(config["y_offset"], random), origin.z + sampleJavaInt(config["xz_offset"], random)}
+		if !featureRegionPredicate(region, p, canReplace) {
+			continue
 		}
-		if neighbors==1{state,actor,ok=region.SampleNativeState(blockProvider,p,random);if !ok{panic("overworld: unresolved Java random-neighbor block provider")};region.SetNativeBlock(p,state,actor)}
+		neighbors := 0
+		for _, d := range [...][3]int32{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}} {
+			name, _ := region.State(featurePos{p.x + d[0], p.y + d[1], p.z + d[2]})
+			if featureBlockHolderContains(accepted, name) {
+				neighbors++
+				if neighbors > 1 {
+					break
+				}
+			}
+		}
+		if neighbors == 1 {
+			state, actor, ok = region.SampleNativeState(blockProvider, p, random)
+			if !ok {
+				panic("overworld: unresolved Java random-neighbor block provider")
+			}
+			featureSetNativeBlockFlag2(region, p, state, actor)
+		}
 	}
 	return true
 }

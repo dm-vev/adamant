@@ -171,6 +171,16 @@ func (r *featureRegion) Height(x, z int32, oceanFloor bool) int32 {
 func (r *featureRegion) MinY() int32 { return int32(r.c.Range()[0]) }
 func (r *featureRegion) MaxY() int32 { return int32(r.c.Range()[1]) }
 
+func featureSetNativeBlockFlag2(region *featureRegion, p featurePos, state world.NativeState, actor world.Block) bool {
+	if !region.setWithFlags(p, state, 2) {
+		return false
+	}
+	if actor != nil {
+		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
+	}
+	return true
+}
+
 func (r *featureRegion) SetNativeBlock(p featurePos, state world.NativeState, actor world.Block) bool {
 	if !r.Set(p, state) {
 		return false

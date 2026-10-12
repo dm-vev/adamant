@@ -33,7 +33,7 @@ func placeModernBonusChest(region *featureRegion, origin featurePos, random *jav
 			chest := featureRequireState(region, "minecraft:chest")
 			if region.Set(p, chest) {
 				// Java draws only when the placed block has a RandomizableContainer actor.
-				monsterRoomAppendBlockEntity(region, p, map[string]any{"id": "minecraft:chest", "LootTable": "minecraft:chests/spawn_bonus_chest", "LootTableSeed": random.NextLong()})
+				featureRecordJavaBlockEntity(region, p, map[string]any{"id": "minecraft:chest", "LootTable": "minecraft:chests/spawn_bonus_chest", "LootTableSeed": random.NextLong()})
 			}
 			torch := featureRequireState(region, "minecraft:torch")
 			for _, d := range [...]featurePos{{0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}} {
