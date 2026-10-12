@@ -108,8 +108,12 @@ func (sub *SubChunk) SetBlockLight(x, y, z byte, level uint8) {
 	sub.blockLight[i] = (sub.blockLight[i] & (0xf0 >> bit)) | (level << bit)
 }
 
-// BlockLight returns the block light value at a specific value at a specific position in the sub chunk.
+// BlockLight returns the block light at a position. Unlit generation subchunks
+// have no light storage and report zero until lighting is initialised.
 func (sub *SubChunk) BlockLight(x, y, z byte) uint8 {
+	if len(sub.blockLight) == 0 {
+		return 0
+	}
 	index := (uint16(x) << 8) | (uint16(z) << 4) | uint16(y)
 	return (sub.blockLight[index>>1] >> ((index & 1) << 2)) & 0xf
 }

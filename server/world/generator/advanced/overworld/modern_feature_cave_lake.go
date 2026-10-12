@@ -3,8 +3,10 @@ package overworld
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
 func placeModernLake(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
@@ -48,7 +50,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 	if !found {
 		panic("overworld: invalid Java lake fluid runtime ID")
 	}
-	fluidIsWater := normalizeJavaResource(fluidName) == "water"
+	fluidIsWater := featureFluidTagContains("minecraft:water", normalizeJavaResource(fluidName))
 	canPlace, ok := config["can_place_feature"].(map[string]any)
 	if !ok {
 		panic("overworld: malformed Java lake placement predicate")
@@ -69,7 +71,8 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 				}
 				p := featurePos{origin.x + int32(x), origin.y + int32(y), origin.z + int32(z)}
 				stateNative := region.nativeState(p)
-				if y >= 4 && featureStateHasFluid(region.c, stateNative) {
+				blockName, _, stateExists := region.c.BlockRegistry().RuntimeIDToState(stateNative.Block)
+				if y >= 4 && stateExists && isJavaLiquidBlock(blockName) {
 					return false
 				}
 				if y < 4 && !featureRegionSolid(region, p) && stateNative != fluidState {
@@ -92,15 +95,15 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 					continue
 				}
 				if y >= 4 {
-					region.Set(p, caveAirState)
+					region.setWithFlags(p, caveAirState, 2)
 					if featureInsideTarget(region.target, p) {
 						region.result.ScheduleTick(chunk.ScheduledTick{
-							Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.BlockTick, Type: "minecraft:air",
+							Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.BlockTick, Type: "minecraft:cave_air",
 						})
 					}
 					region.markAboveForPostProcessing(p)
 				} else {
-					region.SetNativeBlock(p, fluidState, fluidActor)
+					lakeSetNativeBlock(region, p, fluidState, fluidActor)
 				}
 			}
 		}
@@ -129,7 +132,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 					}
 					p := featurePos{origin.x + int32(x), origin.y + int32(y), origin.z + int32(z)}
 					if featureRegionSolid(region, p) && featureRegionPredicate(region, p, canBarrier) {
-						region.SetNativeBlock(p, barrierState, barrierActor)
+						lakeSetNativeBlock(region, p, barrierState, barrierActor)
 						region.markAboveForPostProcessing(p)
 					}
 				}
@@ -140,10 +143,9 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 		for x := range 16 {
 			for z := range 16 {
 				p := featurePos{origin.x + int32(x), origin.y + 4, origin.z + int32(z)}
-				biome := normalizeJavaResource(region.f.source.JavaBiomeAt(p.x, p.y, p.z))
-				if region.f.temperatures[biome] < 0.15 && featureRegionPredicate(region, p, canAirFluid) {
+				if region.biomeShouldFreeze(p, false) && featureRegionPredicate(region, p, canAirFluid) {
 					ice := featureRequireState(region, "minecraft:ice")
-					region.Set(p, ice)
+					region.setWithFlags(p, ice, 2)
 				}
 			}
 		}
@@ -161,13 +163,17 @@ func (s featureRegionBlockSource) Block(pos cube.Pos) world.Block {
 	return s.region.Block(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])})
 }
 func featureRegionSolid(region *featureRegion, p featurePos) bool {
-	block := region.Block(p)
-	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
-	source := featureRegionBlockSource{region}
-	for _, face := range cube.Faces() {
-		if !block.Model().FaceSolid(pos, face, source) {
-			return false
-		}
+	state := region.nativeState(p)
+	solid, ok := javadata.BlockStateIsSolid(state.CanonicalJavaID(region.c.BlockRegistry()))
+	return ok && solid
+}
+
+func lakeSetNativeBlock(region *featureRegion, p featurePos, state world.NativeState, actor world.Block) bool {
+	if !region.setWithFlags(p, state, 2) {
+		return false
+	}
+	if actor != nil {
+		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
 	}
 	return true
 }

@@ -33,8 +33,10 @@ type ModernFeatureSource interface {
 }
 
 type modernBiomeFeatures struct {
-	stages  [][]string
-	carvers []string
+	stages            [][]string
+	carvers           []string
+	frozenTemperature bool
+	hasPrecipitation  bool
 }
 
 type modernFeaturePlacement struct {
@@ -83,7 +85,9 @@ func NewModernFeatures(seed int64, source ModernFeatureSource) *ModernFeatures {
 		if !ok {
 			panic(fmt.Sprintf("Java biome %q has no feature stages", name))
 		}
-		biome := modernBiomeFeatures{stages: make([][]string, len(stages))}
+		modifier, _ := data["temperature_modifier"].(string)
+		precipitation, _ := data["has_precipitation"].(bool)
+		biome := modernBiomeFeatures{stages: make([][]string, len(stages)), frozenTemperature: modifier == "frozen", hasPrecipitation: precipitation}
 		for stage, entries := range stages {
 			values, err := javaResourceReferences(entries)
 			if err != nil {

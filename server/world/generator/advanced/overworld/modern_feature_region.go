@@ -451,44 +451,51 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 }
 
 func (r *featureRegion) freezeTopLayerRegion(origin featurePos) bool {
-	if !featureInsideTarget(r.target, origin) {
-		return false
+	registry := r.c.BlockRegistry()
+	ice, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:ice"})
+	if err != nil {
+		panic(err)
 	}
-	x0, z0 := int32(r.target[0])<<4, int32(r.target[1])<<4
-	placed := false
-	for lx := int32(0); lx < 16; lx++ {
-		for lz := int32(0); lz < 16; lz++ {
-			x, z := x0+lx, z0+lz
-			y := int32(r.c.HighestBlock(uint8(lx), uint8(lz))) + 1
-			p := featurePos{x, y, z}
-			if y < r.MinY() || y > r.MaxY() {
-				continue
-			}
+	snow, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:snow"})
+	if err != nil {
+		panic(err)
+	}
+	snowID := snow.CanonicalJavaID(registry)
+	for dx := int32(0); dx < 16; dx++ {
+		for dz := int32(0); dz < 16; dz++ {
+			x, z := origin.x+dx, origin.z+dz
+			y := r.placementHeight(x, z, "MOTION_BLOCKING")
+			top, below := featurePos{x, y, z}, featurePos{x, y - 1, z}
+			// Source selects the biome at topPos for both predicates, even
+			// when the block below belongs to a different vertical biome.
 			biome := normalizeJavaResource(r.f.source.JavaBiomeAt(x, y, z))
-			temperature, ok := r.f.temperatures[biome]
-			if !ok || temperature >= 0.15 {
+			if r.biomeShouldFreezeFor(biome, below, false) {
+				r.Set(below, ice)
+			}
+			if !r.f.biomes[biome].hasPrecipitation || r.biomeTemperatureFor(biome, top) >= float32(.15) ||
+				y < r.MinY() || y > r.MaxY() || r.blockLight(top) >= 10 {
 				continue
 			}
-			name, _ := r.State(p)
-			if normalizeJavaResource(name) == "water" {
-				state, err := world.ResolveState(r.c.BlockRegistry(), world.BlockState{Name: "minecraft:ice"})
+			stateID := r.nativeState(top).CanonicalJavaID(registry)
+			name, _ := javadata.BlockStateName(stateID)
+			if name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" && name != "minecraft:snow" {
+				continue
+			}
+			if !world.JavaGenerationBlockCanSurvive(r, snowID, cube.Pos{int(x), int(y), int(z)}) {
+				continue
+			}
+			r.Set(top, snow)
+			belowID := r.nativeState(below).CanonicalJavaID(registry)
+			if _, exists := javadata.BlockStateBool(belowID, "snowy"); exists {
+				snowyID, err := javadata.BlockStateWithProperty(belowID, "snowy", true)
 				if err != nil {
 					panic(err)
 				}
-				placed = r.Set(p, state) || placed
-				continue
+				r.SetJavaBlockState(cube.Pos{int(x), int(y - 1), int(z)}, snowyID, 2)
 			}
-			if normalizeJavaResource(name) != "air" {
-				continue
-			}
-			state, err := world.ResolveState(r.c.BlockRegistry(), world.BlockState{Name: "minecraft:snow", Properties: map[string]any{"layers": int32(1)}})
-			if err != nil {
-				panic(err)
-			}
-			placed = r.Set(p, state) || placed
 		}
 	}
-	return placed
+	return true
 }
 func placeModernOreRegion(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
 	size := int32(featureNumber(config["size"]))
