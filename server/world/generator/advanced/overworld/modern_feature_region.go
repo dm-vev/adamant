@@ -671,13 +671,16 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 	}
 	placed := false
 	// BlockPos.betweenClosed advances X before Z; each column runs top-down.
-	for dz := -radius; dz <= radius; dz++ {
-		for dx := -radius; dx <= radius; dx++ {
+	for zi := range int(2*radius + 1) {
+		dz := int32(zi) - radius
+		for xi := range int(2*radius + 1) {
+			dx := int32(xi) - radius
 			if dx*dx+dz*dz > radius*radius {
 				continue
 			}
 			placedAbove := false
-			for dy := halfHeight; dy >= -halfHeight; dy-- {
+			for yi := range int(2*halfHeight + 1) {
+				dy := halfHeight - int32(yi)
 				p := featurePos{origin.x + dx, origin.y + dy, origin.z + dz}
 				if !featurePredicate(region, p, predicate) {
 					placedAbove = false
@@ -691,7 +694,7 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 				if err != nil {
 					panic(err)
 				}
-				region.SetNativeBlock(p, state, block.NativeBlock)
+				featureSetNativeBlockFlag2(region, p, state, block.NativeBlock)
 				if !placedAbove {
 					region.markAboveForPostProcessing(p)
 				}

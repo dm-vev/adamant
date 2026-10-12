@@ -21,7 +21,7 @@ func placeModernSingleBlockPillar(region *featureRegion, config map[string]any, 
 		if !ok {
 			panic("overworld: empty single-block pillar provider")
 		}
-		region.SetNativeBlock(p, state, actor)
+		featureSetNativeBlockFlag2(region, p, state, actor)
 		p.y += direction
 	}
 	p.y -= direction
@@ -54,7 +54,7 @@ func placeModernProjectedPatchySquare(region *featureRegion, config map[string]a
 				if err != nil {
 					panic(err)
 				}
-				region.SetNativeBlock(p, state, block.NativeBlock)
+				featureSetNativeBlockFlag2(region, p, state, block.NativeBlock)
 			}
 		}
 	}

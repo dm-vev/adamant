@@ -77,7 +77,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 				if y < 4 && !featureRegionSolid(region, p) && stateNative != fluidState {
 					return false
 				}
-				if !featureRegionPredicate(region, p, canPlace) {
+				if !featurePredicate(region, p, canPlace) {
 					return false
 				}
 			}
@@ -90,7 +90,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 					continue
 				}
 				p := featurePos{origin.x + int32(x), origin.y + int32(y), origin.z + int32(z)}
-				if !featureRegionPredicate(region, p, canAirFluid) {
+				if !featurePredicate(region, p, canAirFluid) {
 					continue
 				}
 				if y >= 4 {
@@ -130,7 +130,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 						continue
 					}
 					p := featurePos{origin.x + int32(x), origin.y + int32(y), origin.z + int32(z)}
-					if featureRegionSolid(region, p) && featureRegionPredicate(region, p, canBarrier) {
+					if featureRegionSolid(region, p) && featurePredicate(region, p, canBarrier) {
 						featureSetNativeBlockFlag2(region, p, barrierState, barrierActor)
 						region.markAboveForPostProcessing(p)
 					}
@@ -142,7 +142,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 		for x := range 16 {
 			for z := range 16 {
 				p := featurePos{origin.x + int32(x), origin.y + 4, origin.z + int32(z)}
-				if region.biomeShouldFreeze(p, false) && featureRegionPredicate(region, p, canAirFluid) {
+				if region.biomeShouldFreeze(p, false) && featurePredicate(region, p, canAirFluid) {
 					ice := featureRequireState(region, "minecraft:ice")
 					region.setWithFlags(p, ice, 2)
 				}

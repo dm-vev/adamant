@@ -122,7 +122,7 @@ func TestLakeMatchesJava263SourceFixtures(t *testing.T) {
 			}
 			provider := func(name string) map[string]any { return map[string]any{"id": "minecraft:" + name} }
 			always := map[string]any{"type": "true"}
-			never := map[string]any{"type": "false"}
+			never := map[string]any{"type": "not", "predicate": always}
 			canPlace, canReplace, canBarrier := always, always, always
 			if tc.Scene == 4 {
 				canPlace = never

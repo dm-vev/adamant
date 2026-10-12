@@ -119,108 +119,133 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 
 func placeModernSpike(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
 	canPlace, ok := config["can_place_on"].(map[string]any)
-	if !ok { panic("overworld: malformed Java spike placement predicate") }
+	if !ok {
+		panic("overworld: malformed Java spike placement predicate")
+	}
 	canReplace, ok := config["can_replace"].(map[string]any)
-	if !ok { panic("overworld: malformed Java spike replace predicate") }
-	state, ok := config["state"].(string)
-	if !ok { panic("overworld: malformed Java spike state") }
-	for origin.y > region.MinY()+2 {
-		if !featureRegionAir(region, origin) { break }
+	if !ok {
+		panic("overworld: malformed Java spike replace predicate")
+	}
+	for featureRegionAir(region, origin) && origin.y > region.MinY()+2 {
 		origin.y--
 	}
-	if !featureRegionPredicate(region, origin, canPlace) { return false }
+	if !featurePredicate(region, origin, canPlace) {
+		return false
+	}
+	placement, ok := featureStateBlock(config["state"])
+	if !ok {
+		panic("overworld: malformed Java spike state")
+	}
+	// A literal Source BlockState is independent of the fluid it overwrites.
+	state, err := placement.ResolveNative(region.c.BlockRegistry())
+	if err != nil {
+		panic(err)
+	}
+	sourceStateID := state.CanonicalJavaID(region.c.BlockRegistry())
 	origin.y += random.NextInt(4)
-	height := random.NextInt(4)+7
-	width := height/4+random.NextInt(2)
-	if width > 1 && random.NextInt(60)==0 { origin.y += 10+random.NextInt(30) }
-	rid := featureRequireState(region,"minecraft:"+normalizeJavaResource(state))
-	for y := int32(0); y < height; y++ {
-		scale := (1-float32(y)/float32(height))*float32(width)
+	height := random.NextInt(4) + 7
+	width := height/4 + random.NextInt(2)
+	if width > 1 && random.NextInt(60) == 0 {
+		origin.y += 10 + random.NextInt(30)
+	}
+	for y := range height {
+		scale := (1 - float32(y)/float32(height)) * float32(width)
 		newWidth := int32(math.Ceil(float64(scale)))
 		for x := -newWidth; x <= newWidth; x++ {
-			dx := float32(absI32(x))-0.25
+			dx := float32(absI32(x)) - 0.25
 			for z := -newWidth; z <= newWidth; z++ {
-				dz := float32(absI32(z))-0.25
-				inside := x == 0 && z == 0 || dx*dx+dz*dz <= scale*scale
-				if !inside { continue }
+				dz := float32(absI32(z)) - 0.25
+				if x != 0 || z != 0 {
+					if dx*dx+dz*dz > scale*scale {
+						continue
+					}
+				}
 				edge := x == -newWidth || x == newWidth || z == -newWidth || z == newWidth
-				if edge && random.NextFloat() > 0.75 { continue }
-				place := featurePos{origin.x+x,origin.y+y,origin.z+z}
-				if featureRegionAir(region,place) || featureRegionPredicate(region,place,canReplace) { region.Set(place,rid) }
+				if edge && random.NextFloat() > 0.75 {
+					continue
+				}
+				p := featurePos{origin.x + x, origin.y + y, origin.z + z}
+				if featureRegionAir(region, p) || featurePredicate(region, p, canReplace) {
+					region.SetNativeBlock(p, state, placement.NativeBlock)
+				}
 				if y != 0 && newWidth > 1 {
-					place.y = origin.y-y
-					if featureRegionAir(region,place) || featureRegionPredicate(region,place,canReplace) { region.Set(place,rid) }
+					p.y = origin.y - y
+					if featureRegionAir(region, p) || featurePredicate(region, p, canReplace) {
+						region.SetNativeBlock(p, state, placement.NativeBlock)
+					}
 				}
 			}
 		}
 	}
-	pillarWidth := width-1
-	if pillarWidth < 0 { pillarWidth=0 } else if pillarWidth>1 { pillarWidth=1 }
-	for x:=-pillarWidth; x<=pillarWidth; x++ {
-		for z:=-pillarWidth; z<=pillarWidth; z++ {
-			cursor:=featurePos{origin.x+x,origin.y-1,origin.z+z}
-			runLength:=int32(50)
-			if absI32(x)==1&&absI32(z)==1 { runLength=random.NextInt(5) }
-			for cursor.y>50 {
-				name,_:=region.State(cursor)
-				if !featureRegionAir(region,cursor)&&!featureRegionPredicate(region,cursor,canReplace)&&normalizeJavaResource(name)!=normalizeJavaResource(state) { break }
-				region.Set(cursor,rid);cursor.y--
+	pillarWidth := max(int32(0), min(int32(1), width-1))
+	for x := -pillarWidth; x <= pillarWidth; x++ {
+		for z := -pillarWidth; z <= pillarWidth; z++ {
+			cursor := featurePos{origin.x + x, origin.y - 1, origin.z + z}
+			runLength := int32(50)
+			if absI32(x) == 1 && absI32(z) == 1 {
+				runLength = random.NextInt(5)
+			}
+			for cursor.y > 50 {
+				id := region.nativeState(cursor).CanonicalJavaID(region.c.BlockRegistry())
+				name, _ := javadata.BlockStateName(id)
+				if !treeIsAirName(name) && !featurePredicate(region, cursor, canReplace) && id != sourceStateID {
+					break
+				}
+				region.SetNativeBlock(cursor, state, placement.NativeBlock)
+				cursor.y--
 				runLength--
-				if runLength<=0 { cursor.y-=random.NextInt(5)+1;runLength=random.NextInt(5) }
+				if runLength <= 0 {
+					cursor.y -= random.NextInt(5) + 1
+					runLength = random.NextInt(5)
+				}
 			}
 		}
 	}
 	return true
 }
 
-func featureRegionPredicate(region *featureRegion, p featurePos, predicate map[string]any) bool {
-	typeName,ok:=predicate["type"].(string);if !ok {panic("overworld: Java block predicate without type")}
-	name,_:=region.State(p)
-	switch normalizeJavaResource(typeName) {
-	case "true":
-		return true
-	case "false":
-		return false
-	case "not":
-		child,ok:=predicate["predicate"].(map[string]any);if !ok{panic("overworld: malformed Java negated predicate")};return !featureRegionPredicate(region,p,child)
-	
-	case "matching_blocks":
-		switch v:=predicate["blocks"].(type) {case string:return normalizeJavaResource(name)==normalizeJavaResource(v);case []any:for _,raw:=range v {if normalizeJavaResource(name)==normalizeJavaResource(raw.(string)){return true}};return false;default:panic("overworld: malformed matching_blocks predicate")}
-	case "matching_block_tag":
-		tag,ok:=predicate["tag"].(string);if !ok{panic("overworld: malformed matching_block_tag predicate")};return javaBlockTagContains(normalizeJavaResource(tag), normalizeJavaResource(name))
-	case "all_of","any_of":
-		predicates,ok:=predicate["predicates"].([]any);if !ok{panic("overworld: malformed compound block predicate")}
-		all:=normalizeJavaResource(typeName)=="all_of"
-		for _,raw:=range predicates {match:=featureRegionPredicate(region,p,raw.(map[string]any));if match!=all{return !all}}
-		return all
-	default: panic("overworld: unsupported Java block predicate "+typeName)
-	}
-}
-
 func placeModernBlueIce(region *featureRegion, origin featurePos, random *java26.Random) bool {
-	if origin.y > 62 { return false }
-	name, _ := region.State(origin)
-	below, _ := region.State(featurePos{origin.x, origin.y-1, origin.z})
-	if name != "minecraft:water" && below != "minecraft:water" { return false }
-	packed := false
-	for _, d := range [][3]int32{{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}} {
-		name, _ = region.State(featurePos{origin.x+d[0],origin.y+d[1],origin.z+d[2]})
-		if name == "minecraft:packed_ice" { packed = true; break }
+	if origin.y > region.f.source.SeaLevel()-1 {
+		return false
 	}
-	if !packed { return false }
+	nameAt := func(p featurePos) string {
+		name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		return name
+	}
+	if nameAt(origin) != "minecraft:water" && nameAt(featurePos{origin.x, origin.y - 1, origin.z}) != "minecraft:water" {
+		return false
+	}
+	packed := false
+	for _, d := range [...]featurePos{{0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}} {
+		if nameAt(featurePos{origin.x + d.x, origin.y + d.y, origin.z + d.z}) == "minecraft:packed_ice" {
+			packed = true
+			break
+		}
+	}
+	if !packed {
+		return false
+	}
 	blue := featureRequireState(region, "minecraft:blue_ice")
-	region.Set(origin, blue)
+	region.setWithFlags(origin, blue, 2)
 	for range 200 {
-		yOff := random.NextInt(5)-random.NextInt(6)
+		yOff := random.NextInt(5) - random.NextInt(6)
 		xzDiff := int32(3)
-		if yOff < 2 { xzDiff += yOff/2 }
-		if xzDiff < 1 { continue }
-		p := featurePos{origin.x+random.NextInt(xzDiff)-random.NextInt(xzDiff), origin.y+yOff, origin.z+random.NextInt(xzDiff)-random.NextInt(xzDiff)}
-		name,_ = region.State(p)
-		if !featureRegionAir(region,p) && name != "minecraft:water" && name != "minecraft:packed_ice" && name != "minecraft:ice" { continue }
-		for _,d := range [][3]int32{{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}} {
-			neighbor,_ := region.State(featurePos{p.x+d[0],p.y+d[1],p.z+d[2]})
-			if neighbor == "minecraft:blue_ice" { region.Set(p,blue); break }
+		if yOff < 2 {
+			xzDiff += yOff / 2
+		}
+		if xzDiff < 1 {
+			continue
+		}
+		p := featurePos{origin.x + random.NextInt(xzDiff) - random.NextInt(xzDiff), origin.y + yOff, origin.z + random.NextInt(xzDiff) - random.NextInt(xzDiff)}
+		name := nameAt(p)
+		if !treeIsAirName(name) && name != "minecraft:water" && name != "minecraft:packed_ice" && name != "minecraft:ice" {
+			continue
+		}
+		for _, d := range [...]featurePos{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}} {
+			if nameAt(featurePos{p.x + d.x, p.y + d.y, p.z + d.z}) == "minecraft:blue_ice" {
+				region.setWithFlags(p, blue, 2)
+				break
+			}
 		}
 	}
 	return true
@@ -454,7 +479,7 @@ func placeModernRandomNeighborSpread(region *featureRegion, config map[string]an
 	accepted := config["accepted_neighbors"]
 	for range attempts {
 		p := featurePos{origin.x + sampleJavaInt(config["xz_offset"], random), origin.y + sampleJavaInt(config["y_offset"], random), origin.z + sampleJavaInt(config["xz_offset"], random)}
-		if !featureRegionPredicate(region, p, canReplace) {
+		if !featurePredicate(region, p, canReplace) {
 			continue
 		}
 		neighbors := 0
