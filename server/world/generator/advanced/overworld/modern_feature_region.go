@@ -336,7 +336,10 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		return placeModernTemplateFeature(region, config.config, origin, random)
 	case "sequence":
 		features, ok := config.config["features"].([]any)
-		if !ok || len(features) == 0 {
+		if !ok {
+			return region.PlacePlacedFeature(config.config["features"], [3]int32{origin.x, origin.y, origin.z}, random)
+		}
+		if len(features) == 0 {
 			panic("overworld: malformed Java sequence feature")
 		}
 		for _, child := range features {
@@ -353,7 +356,11 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		return region.PlacePlacedFeature(feature, [3]int32{origin.x, origin.y, origin.z}, random)
 	case "simple_random_selector":
 		features, ok := config.config["features"].([]any)
-		if !ok || len(features) == 0 {
+		if !ok {
+			random.NextInt(1)
+			return region.PlacePlacedFeature(config.config["features"], [3]int32{origin.x, origin.y, origin.z}, random)
+		}
+		if len(features) == 0 {
 			panic("overworld: malformed Java simple random selector")
 		}
 		return region.PlacePlacedFeature(features[random.NextInt(int32(len(features)))], [3]int32{origin.x, origin.y, origin.z}, random)
@@ -377,7 +384,7 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		}
 		total := int64(0)
 		for _, raw := range features {
-			weight := featureNumber(raw.(map[string]any)["weight"])
+			weight := javaIntProviderValue(raw.(map[string]any)["weight"])
 			if weight < 0 {
 				panic("overworld: negative Java weighted random selector weight")
 			}
@@ -392,7 +399,7 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		choice := random.NextInt(int32(total))
 		for _, raw := range features {
 			entry := raw.(map[string]any)
-			weight := int32(featureNumber(entry["weight"]))
+			weight := javaIntProviderValue(entry["weight"])
 			if choice < weight {
 				value, ok := entry["data"]
 				if !ok {
@@ -404,7 +411,10 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		}
 	case "overlay":
 		features, ok := config.config["features"].([]any)
-		if !ok || len(features) == 0 {
+		if !ok {
+			return region.PlacePlacedFeature(config.config["features"], [3]int32{origin.x, origin.y, origin.z}, random)
+		}
+		if len(features) == 0 {
 			panic("overworld: malformed Java overlay feature")
 		}
 		placed := false
@@ -413,14 +423,11 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		}
 		return placed
 	case "simple_block":
-		state, _, ok := region.SampleNativeState(config.config["to_place"], origin, random)
+		placement, ok := sampleOptionalJavaBlockState(region, origin, config.config["to_place"], random)
 		if !ok {
 			return false
 		}
-		sourceState := state.CanonicalJavaID(region.c.BlockRegistry())
-		if sourceState == 0 {
-			panic("overworld: simple-block feature has no source state")
-		}
+		sourceState := featureBlockStateID(placement)
 		return world.PlaceJavaGenerationSimpleBlock(region, sourceState,
 			cube.Pos{int(origin.x), int(origin.y), int(origin.z)}, config.config["schedule_tick"] == true)
 	case "freeze_top_layer":

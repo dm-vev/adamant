@@ -175,15 +175,15 @@ func placeModernFillLayer(region *featureRegion, config map[string]any, origin f
 	if !ok {
 		panic("overworld: malformed Java fill-layer state")
 	}
-	for x := int32(0); x < 16; x++ {
-		for z := int32(0); z < 16; z++ {
+	state, err := placement.ResolveNative(region.c.BlockRegistry())
+	if err != nil {
+		panic(err)
+	}
+	for x := range int32(16) {
+		for z := range int32(16) {
 			p := featurePos{origin.x + x, region.MinY() + height, origin.z + z}
 			if featureRegionAir(region, p) {
-				state, err := placement.ResolveNative(region.c.BlockRegistry(), region.nativeState(p))
-				if err != nil {
-					panic(err)
-				}
-				region.SetNativeBlock(p, state, placement.NativeBlock)
+				featureSetNativeBlockFlag2(region, p, state, placement.NativeBlock)
 			}
 		}
 	}
@@ -214,7 +214,7 @@ func placeModernReplaceSingleBlock(region *featureRegion, config map[string]any,
 			if err != nil {
 				panic(err)
 			}
-			region.SetNativeBlock(origin, state, placement.NativeBlock)
+			featureSetNativeBlockFlag2(region, origin, state, placement.NativeBlock)
 			break
 		}
 	}

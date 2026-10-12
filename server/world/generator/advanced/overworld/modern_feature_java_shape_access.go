@@ -9,14 +9,13 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
 var _ world.JavaGenerationShapeAccess = (*featureRegion)(nil)
 
 func (r *featureRegion) JavaBlockStateID(pos cube.Pos) (uint32, error) {
 	if int32(pos[1]) < r.MinY() || int32(pos[1]) > r.MaxY() {
-		return javadata.BlockStateID("minecraft:air", nil)
+		return javadata.BlockStateID("minecraft:void_air", nil)
 	}
 	state := r.nativeState(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])})
 	if id := state.CanonicalJavaID(r.c.BlockRegistry()); id != 0 {
@@ -131,17 +130,8 @@ func (r *featureRegion) JavaHiveHasOccupants(pos cube.Pos) bool {
 }
 
 func (r *featureRegion) SetJavaBlockState(pos cube.Pos, id uint32, flags int) bool {
-	name, properties, ok := javadata.BlockStateFromID(id)
-	if !ok {
-		panic(fmt.Sprintf("overworld: invalid generated Java shape state ID %d", id))
-	}
 	p := featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	entry := javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, State: world.BlockState{Name: name, Properties: properties}}
-	state, err := entry.ResolveNative(r.c.BlockRegistry(), r.nativeState(p))
-	if err != nil {
-		panic(fmt.Errorf("overworld: resolving Java template shape state at %v: %w", pos, err))
-	}
-	return r.setWithFlags(p, state, flags)
+	return r.setWithFlags(p, world.ResolveStateID(r.c.BlockRegistry(), id), flags)
 }
 
 func javaSignalFacing(value any) cube.Face {

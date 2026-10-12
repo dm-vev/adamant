@@ -483,7 +483,11 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			total := int32(0)
 			for _, raw := range entries {
 				entry := raw.(map[string]any)
-				total += int32(featureNumber(entry["weight"]))
+				weight := javaIntProviderValue(entry["weight"])
+				if weight < 0 || total > int32(2147483647)-weight {
+					panic("overworld: invalid Java block state weight")
+				}
+				total += weight
 			}
 			if total <= 0 {
 				panic("overworld: empty weighted block state provider")
@@ -491,7 +495,7 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			n := r.NextInt(total)
 			for _, raw := range entries {
 				entry := raw.(map[string]any)
-				weight := int32(featureNumber(entry["weight"]))
+				weight := javaIntProviderValue(entry["weight"])
 				if n < weight {
 					return featureStateBlock(entry["data"])
 				}
