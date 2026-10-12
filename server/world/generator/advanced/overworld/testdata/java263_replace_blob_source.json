@@ -1,0 +1,3404 @@
+{
+  "oracle": "Minecraft 26.3 ReplaceBlobsFeature.CODEC and ReplaceBlobsFeature.place; Bootstrap, vanilla tags, RegistryOps, strict bounded WorldGenLevel proxy",
+  "minY": -64,
+  "maxY": 319,
+  "cases": [
+    {
+      "name": "constant",
+      "algorithm": "legacy",
+      "seed": 1701,
+      "origin": [
+        0,
+        20,
+        0
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": "minecraft:stone",
+        "radius": {
+          "type": "minecraft:constant",
+          "value": 2
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-7350607766051934435",
+      "states": [
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            7,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            8,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            9,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            10,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            11,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            20,
+            0
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            21,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "uniform",
+      "algorithm": "xoroshiro",
+      "seed": 1702,
+      "origin": [
+        0,
+        20,
+        0
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": "minecraft:stone",
+        "radius": {
+          "type": "minecraft:uniform",
+          "min_inclusive": 0,
+          "max_inclusive": 3
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-760329675288810386",
+      "states": [
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            7,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            8,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            9,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            10,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            11,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            20,
+            0
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            21,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "biased_to_bottom",
+      "algorithm": "legacy",
+      "seed": 1703,
+      "origin": [
+        0,
+        20,
+        0
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": "minecraft:stone",
+        "radius": {
+          "type": "minecraft:biased_to_bottom",
+          "min_inclusive": 0,
+          "max_inclusive": 12
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "7019587573926007795",
+      "states": [
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            7,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            8,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            9,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            10,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            11,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            20,
+            0
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            21,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "very_biased_to_bottom",
+      "algorithm": "xoroshiro",
+      "seed": 1704,
+      "origin": [
+        0,
+        20,
+        0
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": "minecraft:stone",
+        "radius": {
+          "type": "minecraft:very_biased_to_bottom",
+          "min_inclusive": 0,
+          "max_inclusive": 12
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-5841898552160804035",
+      "states": [
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            7,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            8,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            9,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            10,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            11,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            20,
+            0
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            21,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "clamped_normal",
+      "algorithm": "legacy",
+      "seed": 1705,
+      "origin": [
+        0,
+        20,
+        0
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": "minecraft:stone",
+        "radius": {
+          "type": "minecraft:clamped_normal",
+          "mean": 6.0,
+          "deviation": 3.0,
+          "min_inclusive": 0,
+          "max_inclusive": 12
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-6376503668710703380",
+      "states": [
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            7,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            8,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            9,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            10,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            11,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            20,
+            0
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            21,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "trapezoid",
+      "algorithm": "xoroshiro",
+      "seed": 1706,
+      "origin": [
+        0,
+        20,
+        0
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": {
+          "id": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        "radius": {
+          "type": "minecraft:trapezoid",
+          "plateau": 3,
+          "min": 0,
+          "max": 12
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-1215815458247299190",
+      "states": [
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            7,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            8,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            9,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            10,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            11,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            20,
+            0
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            21,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "weighted_list",
+      "algorithm": "legacy",
+      "seed": 1707,
+      "origin": [
+        0,
+        20,
+        0
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": {
+          "id": "minecraft:chest",
+          "properties": {
+            "facing": "east",
+            "type": "left",
+            "waterlogged": "false"
+          }
+        },
+        "radius": {
+          "type": "minecraft:weighted_list",
+          "distribution": [
+            {
+              "data": {
+                "type": "minecraft:constant",
+                "value": 0
+              },
+              "weight": 1
+            },
+            {
+              "data": {
+                "type": "minecraft:constant",
+                "value": 12
+              },
+              "weight": 1
+            }
+          ]
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-3870046798830116280",
+      "states": [
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "east",
+            "type": "left",
+            "waterlogged": "false"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            7,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            8,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            9,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            10,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            11,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            12,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            13,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            14,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            15,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            16,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            17,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            18,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            20,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            20,
+            0
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            21,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            19,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "clamped",
+      "algorithm": "xoroshiro",
+      "seed": 1708,
+      "origin": [
+        15,
+        20,
+        15
+      ],
+      "config": {
+        "target": {
+          "id": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        "state": {
+          "id": "minecraft:observer",
+          "properties": {
+            "facing": "up",
+            "powered": "true"
+          }
+        },
+        "radius": {
+          "type": "minecraft:clamped",
+          "source": {
+            "type": "minecraft:uniform",
+            "min_inclusive": 0,
+            "max_inclusive": 12
+          },
+          "min_inclusive": 2,
+          "max_inclusive": 10
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "6859619428880182917",
+      "states": [
+        {
+          "pos": [
+            14,
+            19,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "up",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            16,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "up",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            17,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "up",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            18,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "up",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            19,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "up",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            20,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "up",
+            "powered": "true"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            15,
+            7,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            8,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            9,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            10,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            11,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            12,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            13,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            14,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            15,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            16,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            17,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            18,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            19,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            15,
+            20,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            16,
+            20,
+            15
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            21,
+            16
+          ],
+          "state": "minecraft:air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            19,
+            15
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "zero",
+      "algorithm": "xoroshiro",
+      "seed": 55,
+      "origin": [
+        0,
+        5,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:constant",
+          "value": 0
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-6209246879078713690",
+      "states": [
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            -10,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -9,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -8,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -7,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -6,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "max",
+      "algorithm": "xoroshiro",
+      "seed": 56,
+      "origin": [
+        0,
+        5,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:constant",
+          "value": 12
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "6009218094715944547",
+      "states": [
+        {
+          "pos": [
+            0,
+            -7,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -6,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -5,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -4,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -3,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -2,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -1,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            1,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            2,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            -10,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -9,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -8,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -7,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -6,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "asymmetric_draw",
+      "algorithm": "xoroshiro",
+      "seed": 57,
+      "origin": [
+        0,
+        5,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:uniform",
+          "min_inclusive": 1,
+          "max_inclusive": 4
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "8116159775757121233",
+      "states": [
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            -10,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -9,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -8,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -7,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -6,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "one_radius",
+      "algorithm": "legacy",
+      "seed": 58,
+      "origin": [
+        0,
+        5,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:constant",
+          "value": 1
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-4999123113623301897",
+      "states": [
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            -3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "minimum_rejected",
+      "algorithm": "legacy",
+      "seed": 999,
+      "origin": [
+        0,
+        -64,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:uniform",
+          "min_inclusive": 0,
+          "max_inclusive": 12
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": false,
+      "nextLong": "-5337882323367403505",
+      "states": [],
+      "initial": [
+        {
+          "pos": [
+            0,
+            -63,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "maximum_accepted",
+      "algorithm": "legacy",
+      "seed": 999,
+      "origin": [
+        0,
+        400,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:uniform",
+          "min_inclusive": 0,
+          "max_inclusive": 12
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "8389859098611251329",
+      "states": [
+        {
+          "pos": [
+            0,
+            319,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            319,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "no_target_short_circuit",
+      "algorithm": "legacy",
+      "seed": 999,
+      "origin": [
+        0,
+        4,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:uniform",
+          "min_inclusive": 0,
+          "max_inclusive": 12
+        }
+      },
+      "scenario": "empty",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": false,
+      "nextLong": "-5337882323367403505",
+      "states": [],
+      "initial": []
+    },
+    {
+      "name": "rejected_setter_is_success",
+      "algorithm": "legacy",
+      "seed": 129,
+      "origin": [
+        0,
+        5,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:stone",
+        "radius": {
+          "type": "minecraft:constant",
+          "value": 0
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": true,
+      "placed": true,
+      "nextLong": "-4752903006963184419",
+      "states": [],
+      "initial": [
+        {
+          "pos": [
+            0,
+            -3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "shulker_actor",
+      "algorithm": "legacy",
+      "seed": 130,
+      "origin": [
+        0,
+        5,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": {
+          "id": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "east"
+          }
+        },
+        "radius": {
+          "type": "minecraft:constant",
+          "value": 0
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-4747945553018164739",
+      "states": [
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "east"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            -2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            1,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            2,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "name": "scan_down_to_target",
+      "algorithm": "xoroshiro",
+      "seed": 778,
+      "origin": [
+        0,
+        40,
+        0
+      ],
+      "config": {
+        "target": "minecraft:netherrack",
+        "state": "minecraft:basalt",
+        "radius": {
+          "type": "minecraft:constant",
+          "value": 0
+        }
+      },
+      "scenario": "scene",
+      "ceiling": 319,
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-8096966635210631053",
+      "states": [
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:basalt",
+          "properties": {
+            "axis": "y"
+          }
+        }
+      ],
+      "initial": [
+        {
+          "pos": [
+            0,
+            3,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            4,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            5,
+            0
+          ],
+          "state": "minecraft:netherrack",
+          "properties": {}
+        }
+      ]
+    }
+  ]
+}

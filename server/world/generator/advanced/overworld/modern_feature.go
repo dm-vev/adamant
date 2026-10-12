@@ -464,6 +464,19 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 	}
 	if typeName, ok := state["type"].(string); ok {
 		switch normalizeJavaResource(typeName) {
+		case "simple":
+			return featureStateBlock(state["state"])
+		case "copy_properties":
+			block, ok := sampleJavaBlockState(region, p, state["source"], r)
+			if !ok {
+				return javastructure.Block{}, false
+			}
+			id := featureBlockStateID(block)
+			next, err := javadata.BlockStateWithPropertiesOf(id, region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+			if err != nil {
+				panic(err)
+			}
+			return featureBlockWithStateID(block, id, next), true
 		case "weighted":
 			entries, ok := state["entries"].([]any)
 			if !ok {
@@ -488,35 +501,46 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			}
 			panic("overworld: weighted block state selection escaped its total")
 		case "random_block":
-			raw, ok := state["blocks"].(string)
-			if !ok {
-				panic("overworld: malformed random_block provider")
+			if block, ok := sampleJavaRandomBlockState(state["blocks"], r); ok {
+				return block, true
 			}
-			blocks := []string{}
-			if strings.HasPrefix(raw, "#") {
-				blocks = javaBlockTagNames(normalizeJavaResource(strings.TrimPrefix(raw, "#")))
-			} else {
-				blocks = []string{normalizeJavaResource(raw)}
-			}
-			if len(blocks) == 0 {
-				return javastructure.Block{}, false
-			}
-			return featureStateBlock(blocks[r.NextInt(int32(len(blocks)))])
+			name, properties := region.State(p)
+			return featureJavaBlock(world.BlockState{Name: name, Properties: properties}), true
 		case "rotated":
+			direction, explicit := state["direction"].(string)
+			if !explicit {
+				direction = [...]string{"down", "up", "north", "south", "west", "east"}[r.NextInt(6)]
+			}
 			block, ok := sampleJavaBlockState(region, p, state["state"], r)
 			if !ok {
 				return javastructure.Block{}, false
 			}
-			properties := cloneFeatureProperties(block.State.Properties)
-			direction, explicit := state["direction"].(string)
-			if !explicit {
-				direction = []string{"north", "east", "south", "west"}[r.NextInt(4)]
+			id := featureBlockStateID(block)
+			next := id
+			if javadata.BlockStateHasEnumValue(id, "axis", "y") {
+				axis := "y"
+				switch direction {
+				case "east", "west":
+					axis = "x"
+				case "north", "south":
+					axis = "z"
+				}
+				var err error
+				next, err = javadata.BlockStateWithProperty(next, "axis", axis)
+				if err != nil {
+					panic(err)
+				}
 			}
-			if _, ok := properties["facing"]; ok {
-				properties["facing"] = direction
+			fullFacing := javadata.BlockStateHasEnumValue(id, "facing", "up")
+			horizontalFacing := direction != "up" && direction != "down" && javadata.BlockStateHasEnumValue(id, "facing", "north") && !javadata.BlockStateHasEnumValue(id, "facing", "down")
+			if fullFacing || horizontalFacing {
+				var err error
+				next, err = javadata.BlockStateWithProperty(next, "facing", direction)
+				if err != nil {
+					panic(err)
+				}
 			}
-			block.State.Properties = properties
-			return featureJavaBlock(block.State), true
+			return featureBlockWithStateID(block, id, next), true
 		case "randomized_int":
 			property, ok := state["property"].(string)
 			if !ok {
@@ -526,16 +550,15 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			if !ok {
 				return javastructure.Block{}, false
 			}
-			properties := javadata.BlockPropertiesWithDefaults(block.State.Name, block.State.Properties)
-			if _, integer := properties[property].(int32); !integer {
+			id := featureBlockStateID(block)
+			if _, integer := javadata.BlockStateInt(id, property); !integer {
 				return block, true
 			}
-			if len(properties) == len(block.State.Properties) {
-				properties = cloneFeatureProperties(properties)
+			next, err := javadata.BlockStateWithProperty(id, property, sampleJavaInt(state["values"], r))
+			if err != nil {
+				panic(err)
 			}
-			properties[property] = sampleJavaInt(state["values"], r)
-			block.State.Properties = properties
-			return featureJavaBlock(block.State), true
+			return featureBlockWithStateID(block, id, next), true
 		case "noise", "noise_threshold", "dual_noise":
 			return sampleJavaNoiseStateProvider(p, state, r)
 		case "rule_based":
@@ -551,11 +574,54 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 	return featureStateBlock(state)
 }
 
+func featureBlockStateID(block javastructure.Block) uint32 {
+	id, err := javadata.BlockStateID(block.State.Name, block.State.Properties)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
+func featureBlockWithStateID(block javastructure.Block, previous, next uint32) javastructure.Block {
+	if previous == next {
+		return block
+	}
+	name, properties, ok := javadata.BlockStateFromID(next)
+	if !ok {
+		panic("overworld: invalid sampled Java block state")
+	}
+	return featureJavaBlock(world.BlockState{Name: name, Properties: properties})
+}
+
+func sampleJavaRandomBlockState(value any, r *java26.Random) (javastructure.Block, bool) {
+	switch blocks := value.(type) {
+	case string:
+		if strings.HasPrefix(blocks, "#") {
+			names := javaBlockTagNames(normalizeJavaResource(strings.TrimPrefix(blocks, "#")))
+			if len(names) == 0 {
+				return javastructure.Block{}, false
+			}
+			return featureStateBlock(names[r.NextInt(int32(len(names)))])
+		}
+		r.NextInt(1)
+		return featureStateBlock(blocks)
+	case []any:
+		if len(blocks) == 0 {
+			return javastructure.Block{}, false
+		}
+		return featureStateBlock(blocks[r.NextInt(int32(len(blocks)))])
+	default:
+		panic("overworld: malformed random_block holder set")
+	}
+}
+
 func sampleOptionalJavaBlockState(region *featureRegion, p featurePos, provider any, r *java26.Random) (javastructure.Block, bool) {
 	provider = resolveJavaStateProvider(provider)
 	if state, ok := provider.(map[string]any); ok {
 		if kind, _ := state["type"].(string); normalizeJavaResource(kind) == "rule_based" {
 			return sampleJavaRuleState(region, p, state, r)
+		} else if normalizeJavaResource(kind) == "random_block" {
+			return sampleJavaRandomBlockState(state["blocks"], r)
 		}
 	}
 	return sampleJavaBlockState(region, p, provider, r)

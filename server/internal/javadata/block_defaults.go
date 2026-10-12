@@ -281,6 +281,42 @@ func BlockStateWithProperty(id uint32, property string, value any) (uint32, erro
 	return id - previous*stride + next*stride, nil
 }
 
+// BlockStateWithPropertiesOf copies only properties with the same pinned Java
+// domain. A shared name alone is insufficient: FACING and HORIZONTAL_FACING,
+// for example, must not be copied between each other.
+func BlockStateWithPropertiesOf(id, source uint32) (uint32, error) {
+	block, ok := blockStateIndex(id)
+	if !ok {
+		return 0, fmt.Errorf("invalid Java state %d", id)
+	}
+	sourceBlock, ok := blockStateIndex(source)
+	if !ok {
+		return 0, fmt.Errorf("invalid Java source state %d", source)
+	}
+	codec, sourceCodec := &javaBlockStateCodecs[block], &javaBlockStateCodecs[sourceBlock]
+	value, sourceValue := id-1-codec.offset, source-1-sourceCodec.offset
+	result := id
+	for i, propertyID := range javaBlockPropertyDomains[block] {
+		for j, sourcePropertyID := range javaBlockPropertyDomains[sourceBlock] {
+			if propertyID != sourcePropertyID {
+				continue
+			}
+			limit, sourceLimit := codec.count, sourceCodec.count
+			if i+1 < len(codec.stride) {
+				limit = codec.stride[i+1]
+			}
+			if j+1 < len(sourceCodec.stride) {
+				sourceLimit = sourceCodec.stride[j+1]
+			}
+			previous := value % limit / codec.stride[i]
+			next := sourceValue % sourceLimit / sourceCodec.stride[j]
+			result = result - previous*codec.stride[i] + next*codec.stride[i]
+			break
+		}
+	}
+	return result, nil
+}
+
 func blockStateIndex(id uint32) (int, bool) {
 	if id == 0 || id > javaBlockStateCount {
 		return 0, false

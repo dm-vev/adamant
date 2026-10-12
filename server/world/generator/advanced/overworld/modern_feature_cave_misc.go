@@ -285,49 +285,53 @@ func placeModernScatteredOre(region *featureRegion, config map[string]any, origi
 }
 
 func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
-	target, ok := config["target"].(string)
-	if !ok { panic("overworld: malformed Java replace-blob target") }
-	state, ok := config["state"].(string)
-	if !ok { panic("overworld: malformed Java replace-blob state") }
-	target, state = normalizeJavaResource(target), normalizeJavaResource(state)
+	targetPlacement, ok := featureStateBlock(config["target"])
+	if !ok {
+		panic("overworld: malformed Java replace-blob target")
+	}
+	replacePlacement, ok := featureStateBlock(config["state"])
+	if !ok {
+		panic("overworld: malformed Java replace-blob state")
+	}
+	targetState, _ := region.resolveFeatureBlock(targetPlacement, origin)
+	targetBlock, _ := javadata.BlockStateName(targetState.CanonicalJavaID(region.c.BlockRegistry()))
 	center := origin
-	if center.y > region.MaxY() { center.y = region.MaxY() }
-	if center.y < region.MinY()+1 { center.y = region.MinY()+1 }
+	if center.y > region.MaxY() {
+		center.y = region.MaxY()
+	}
+	if center.y < region.MinY()+1 {
+		center.y = region.MinY() + 1
+	}
+	found := false
 	for center.y > region.MinY()+1 {
-		name, _ := region.State(center)
-		if normalizeJavaResource(name) == target { break }
+		name, _ := javadata.BlockStateName(region.nativeState(center).CanonicalJavaID(region.c.BlockRegistry()))
+		if name == targetBlock {
+			found = true
+			break
+		}
 		center.y--
 	}
-	name, _ := region.State(center)
-	if normalizeJavaResource(name) != target { return false }
+	if !found {
+		return false
+	}
 	radius := config["radius"]
 	rx := sampleJavaIntOrUniform(radius, 0, 0, random)
 	ry := sampleJavaIntOrUniform(radius, 0, 0, random)
 	rz := sampleJavaIntOrUniform(radius, 0, 0, random)
-	maxRadius := rx
-	if ry > maxRadius { maxRadius = ry }
-	if rz > maxRadius { maxRadius = rz }
-	replace := featureRequireState(region, "minecraft:"+state)
+	maxRadius := max(rx, ry, rz)
+	replaceState, actor := region.resolveFeatureBlock(replacePlacement, origin)
 	replacedAny := false
-	for depth := int32(0); depth <= rx+ry+rz; depth++ {
-		maxX := rx
-		if depth < maxX { maxX = depth }
-		for x := -maxX; x <= maxX; x++ {
-			maxY := ry
-			if depth-absI32(x) < maxY { maxY = depth-absI32(x) }
-			for y := -maxY; y <= maxY; y++ {
-				z := depth-absI32(x)-absI32(y)
-				if z > rz { continue }
-				for _, zz := range []int32{z, -z} {
-					if absI32(x)+absI32(y)+absI32(zz) > maxRadius { return replacedAny }
-					p := featurePos{center.x+x, center.y+y, center.z+zz}
-					name, _ := region.State(p)
-					if normalizeJavaResource(name) == target { region.Set(p, replace); replacedAny = true }
-					if zz == 0 { break }
-				}
-			}
+	manhattanPositions(center, rx, ry, rz, func(p featurePos, depth int32) bool {
+		if depth > maxRadius {
+			return false
 		}
-	}
+		name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		if name == targetBlock {
+			featureSetNativeBlockFlag2(region, p, replaceState, actor)
+			replacedAny = true
+		}
+		return true
+	})
 	return replacedAny
 }
 
@@ -339,37 +343,82 @@ func featureRequireState(region *featureRegion, id string) world.NativeState {
 }
 func absI32(x int32) int32 { if x<0 { return -x }; return x }
 func placeModernDelta(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
-	contents,ok:=config["contents"].(string);if !ok{panic("overworld: malformed Java delta contents")}
-	rim,ok:=config["rim"].(string);if !ok{panic("overworld: malformed Java delta rim")}
-	spawnRim:=random.NextDouble()<0.9
-	rimX,rimZ:=int32(0),int32(0)
-	if spawnRim {rimX=sampleJavaIntOrUniform(config["rim_size"],0,0,random);rimZ=sampleJavaIntOrUniform(config["rim_size"],0,0,random)}
-	hasRim:=spawnRim&&rimX!=0&&rimZ!=0
-	radiusX:=sampleJavaIntOrUniform(config["size"],0,0,random)
-	radiusZ:=sampleJavaIntOrUniform(config["size"],0,0,random)
-	radiusLimit:=radiusX;if radiusZ>radiusLimit{radiusLimit=radiusZ}
-	contentRID:=featureRequireState(region,"minecraft:"+normalizeJavaResource(contents))
-	rimRID:=featureRequireState(region,"minecraft:"+normalizeJavaResource(rim))
-	placed:=false
-	manhattanPositions(origin,radiusX,0,radiusZ,func(p featurePos,depth int32) bool {
-		if depth>radiusLimit{return false}
-		if caveDeltaClear(region,p,normalizeJavaResource(contents)) {
-			if hasRim {placed=region.Set(p,rimRID)||placed}
-			shifted:=featurePos{p.x+rimX,p.y,p.z+rimZ}
-			if caveDeltaClear(region,shifted,normalizeJavaResource(contents)){placed=region.Set(shifted,contentRID)||placed}
+	contents, ok := featureStateBlock(config["contents"])
+	if !ok {
+		panic("overworld: malformed Java delta contents")
+	}
+	rim, ok := featureStateBlock(config["rim"])
+	if !ok {
+		panic("overworld: malformed Java delta rim")
+	}
+	spawnRim := random.NextDouble() < 0.9
+	rimX, rimZ := int32(0), int32(0)
+	if spawnRim {
+		rimX = sampleJavaIntOrUniform(config["rim_size"], 0, 0, random)
+		rimZ = sampleJavaIntOrUniform(config["rim_size"], 0, 0, random)
+	}
+	hasRim := spawnRim && rimX != 0 && rimZ != 0
+	radiusX := sampleJavaIntOrUniform(config["size"], 0, 0, random)
+	radiusZ := sampleJavaIntOrUniform(config["size"], 0, 0, random)
+	radiusLimit := radiusX
+	if radiusZ > radiusLimit {
+		radiusLimit = radiusZ
+	}
+	contentsState, contentsActor := region.resolveFeatureBlock(contents, origin)
+	rimState, rimActor := region.resolveFeatureBlock(rim, origin)
+	contentsBlockName := contents.State.Name
+	if !strings.Contains(contentsBlockName, ":") {
+		contentsBlockName = "minecraft:" + contentsBlockName
+	}
+	placed := false
+	manhattanPositions(origin, radiusX, 0, radiusZ, func(p featurePos, depth int32) bool {
+		if depth > radiusLimit {
+			return false
+		}
+		if caveDeltaClear(region, p, contentsBlockName) {
+			if hasRim {
+				placed = true
+				featureSetNativeBlockFlag2(region, p, rimState, rimActor)
+			}
+			shifted := featurePos{p.x + rimX, p.y, p.z + rimZ}
+			if caveDeltaClear(region, shifted, contentsBlockName) {
+				placed = true
+				featureSetNativeBlockFlag2(region, shifted, contentsState, contentsActor)
+			}
 		}
 		return true
 	})
 	return placed
 }
-func caveDeltaClear(region *featureRegion,p featurePos,contents string)bool{
-	name,_:=region.State(p)
-	if normalizeJavaResource(name)==contents{return false}
-	switch normalizeJavaResource(name){case "bedrock","nether_bricks","nether_brick_fence","nether_brick_stairs","nether_wart","chest","spawner":return false}
-	for i,d:=range [][3]int32{{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}}{
-		neighbor:=featurePos{p.x+d[0],p.y+d[1],p.z+d[2]}
-		isAir:=featureRegionAir(region,neighbor)
-		if isAir&&i!=1||!isAir&&i==1{return false}
+func caveDeltaClear(region *featureRegion, p featurePos, contents string) bool {
+	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	if name == contents {
+		return false
+	}
+	switch name {
+	case "minecraft:bedrock", "minecraft:nether_bricks", "minecraft:nether_brick_fence", "minecraft:nether_brick_stairs", "minecraft:nether_wart", "minecraft:chest", "minecraft:spawner":
+		return false
+	}
+	for i := range 6 {
+		nx, ny, nz := p.x, p.y, p.z
+		switch i {
+		case 0:
+			ny--
+		case 1:
+			ny++
+		case 2:
+			nz--
+		case 3:
+			nz++
+		case 4:
+			nx--
+		case 5:
+			nx++
+		}
+		isAir := featureRegionAir(region, featurePos{nx, ny, nz})
+		if isAir && i != 1 || !isAir && i == 1 {
+			return false
+		}
 	}
 	return true
 }

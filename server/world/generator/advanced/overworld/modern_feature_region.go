@@ -908,7 +908,13 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 	if !ok {
 		panic("overworld: malformed Java block column layers")
 	}
-	layerHeights := make([]int32, len(layers))
+	var heights [8]int32
+	layerHeights := heights[:]
+	if len(layers) > len(heights) {
+		layerHeights = make([]int32, len(layers))
+	} else {
+		layerHeights = layerHeights[:len(layers)]
+	}
 	totalHeight := int32(0)
 	for i, raw := range layers {
 		layer, ok := raw.(map[string]any)
@@ -931,7 +937,7 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 	next := featurePos{origin.x + dx, origin.y + dy, origin.z + dz}
 	validHeight := int32(0)
 	for range totalHeight {
-		if next.y < region.MinY() || next.y > region.MaxY() || !featurePredicate(region, next, allowed) {
+		if !featurePredicate(region, next, allowed) {
 			break
 		}
 		validHeight++
@@ -963,7 +969,7 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 			if !ok {
 				panic("overworld: unresolved Java block column provider")
 			}
-			region.SetNativeBlock(p, state, actor)
+			featureSetNativeBlockFlag2(region, p, state, actor)
 			p.x += dx
 			p.y += dy
 			p.z += dz
