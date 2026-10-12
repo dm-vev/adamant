@@ -132,9 +132,6 @@ func NewModernFeatures(seed int64, source ModernFeatureSource) *ModernFeatures {
 			panic(fmt.Sprintf("Java configured feature %q has no type", name))
 		}
 		normalizedType := normalizeJavaResource(typeName)
-		if normalizedType == "spring_feature" {
-			normalizeSpringFeatureConfig(data)
-		}
 		f.configured[name] = modernFeatureConfig{typeName: normalizedType, config: data}
 	}
 	for _, name := range requireJavaResourceNames("configured_carver") {

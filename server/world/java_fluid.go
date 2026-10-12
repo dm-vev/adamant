@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -19,6 +20,50 @@ type javaFluidState struct {
 	kind            javaFluidKind
 	amount          int32
 	falling, source bool
+}
+
+// JavaFluidLegacyBlock decodes a pinned FluidState into its canonical legacy
+// block. StateDefinition.any supplies falling=true and flowing level=1 when
+// the corresponding Source CODEC properties are absent.
+func JavaFluidLegacyBlock(name string, properties map[string]any) (uint32, error) {
+	name = NormaliseBlockName(name)
+	fluid := javaFluidState{amount: 8, falling: true, source: true}
+	switch name {
+	case "minecraft:empty":
+		if len(properties) != 0 {
+			return 0, fmt.Errorf("empty Java fluid has properties")
+		}
+		return javaLegacyFluidBlock(javaFluidState{}), nil
+	case "minecraft:water", "minecraft:flowing_water":
+		fluid.kind = javaFluidWater
+	case "minecraft:lava", "minecraft:flowing_lava":
+		fluid.kind = javaFluidLava
+	default:
+		return 0, fmt.Errorf("unknown Java fluid %q", name)
+	}
+	flowing := name == "minecraft:flowing_water" || name == "minecraft:flowing_lava"
+	if flowing {
+		fluid.amount, fluid.source = 1, false
+	}
+	for property, value := range properties {
+		switch property {
+		case "falling":
+			falling, valid := boolProperty(value)
+			if !valid {
+				return 0, fmt.Errorf("invalid Java fluid falling property %v", value)
+			}
+			fluid.falling = falling
+		case "level":
+			level, valid := intProperty(value)
+			if !flowing || !valid || level < 1 || level > 8 {
+				return 0, fmt.Errorf("invalid Java fluid level %v for %s", value, name)
+			}
+			fluid.amount = int32(level)
+		default:
+			return 0, fmt.Errorf("unknown Java fluid property %q", property)
+		}
+	}
+	return javaLegacyFluidBlock(fluid), nil
 }
 
 func javaFluidForState(id uint32) javaFluidState {

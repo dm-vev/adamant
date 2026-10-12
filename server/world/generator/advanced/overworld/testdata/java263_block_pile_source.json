@@ -1,0 +1,8468 @@
+{
+  "oracle": "Actual Java 26.3 BlockPileFeature.CODEC and place; BlockPileOracle.java, strict live WorldGenLevel proxy with vanilla tags. Captures retain ordered Source writes, flags, acceptance, full final states and RNG tails.",
+  "minY": -64,
+  "maxY": 319,
+  "cases": [
+    {
+      "name": "below-min-no-rng",
+      "algorithm": "legacy",
+      "seed": 100,
+      "origin": [
+        -15,
+        -60,
+        15
+      ],
+      "config": {
+        "state_provider": {
+          "properties": {
+            "axis": "y"
+          },
+          "id": "minecraft:oak_log"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [],
+      "placed": false,
+      "nextLong": "-5128016860359238732",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "min-plus-five-allowed",
+      "algorithm": "xoroshiro",
+      "seed": 2635,
+      "origin": [
+        0,
+        -59,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "properties": {
+            "axis": "z"
+          },
+          "id": "minecraft:oak_log"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            -60,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            -60,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            -60,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            -60,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            -60,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            -60,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            -60,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            -60,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            -60,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            -60,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            -60,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            -60,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            -60,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            -60,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            -60,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            -60,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            -60,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            -60,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            -60,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            -60,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            -60,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -60,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -60,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -60,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -60,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -60,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -60,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            -60,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            -60,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            -60,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            -60,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            -60,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            -60,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            -60,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            -60,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "1904951406799289663",
+      "states": [
+        {
+          "pos": [
+            -2,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            -59,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            -58,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            -58,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            -59,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            -59,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            -58,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            -58,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            0,
+            -58,
+            2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            1,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            1,
+            -59,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            1,
+            -58,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            1,
+            -58,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            2,
+            -59,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -1,
+            -59,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            -59,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            -58,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            -58,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            -58,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            -59,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            -59,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            -59,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            -58,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            -58,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            -59,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            -58,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            -59,
+            2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            -58,
+            2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "legacy-cross-chunk-mixed-support-and-occupied",
+      "algorithm": "legacy",
+      "seed": 2630,
+      "origin": [
+        -15,
+        64,
+        15
+      ],
+      "config": {
+        "state_provider": {
+          "properties": {
+            "powered": "true",
+            "facing": "west"
+          },
+          "id": "minecraft:observer"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -18,
+            63,
+            12
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            63,
+            12
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -16,
+            63,
+            12
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -15,
+            63,
+            12
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -14,
+            63,
+            12
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -13,
+            63,
+            12
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -12,
+            63,
+            12
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -18,
+            63,
+            13
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -17,
+            63,
+            13
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -16,
+            63,
+            13
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -15,
+            63,
+            13
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -14,
+            63,
+            13
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -13,
+            63,
+            13
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -12,
+            63,
+            13
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        },
+        {
+          "pos": [
+            -18,
+            63,
+            14
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -17,
+            63,
+            14
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -16,
+            63,
+            14
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -15,
+            63,
+            14
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -14,
+            63,
+            14
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -13,
+            63,
+            14
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        },
+        {
+          "pos": [
+            -12,
+            63,
+            14
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -18,
+            63,
+            15
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -17,
+            63,
+            15
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -16,
+            63,
+            15
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -15,
+            63,
+            15
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -14,
+            63,
+            15
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        },
+        {
+          "pos": [
+            -13,
+            63,
+            15
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -12,
+            63,
+            15
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -18,
+            63,
+            16
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -17,
+            63,
+            16
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -16,
+            63,
+            16
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -15,
+            63,
+            16
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        },
+        {
+          "pos": [
+            -14,
+            63,
+            16
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -13,
+            63,
+            16
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -12,
+            63,
+            16
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -18,
+            63,
+            17
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -17,
+            63,
+            17
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -16,
+            63,
+            17
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        },
+        {
+          "pos": [
+            -15,
+            63,
+            17
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -14,
+            63,
+            17
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -13,
+            63,
+            17
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -12,
+            63,
+            17
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -18,
+            63,
+            18
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -17,
+            63,
+            18
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            63,
+            18
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -15,
+            63,
+            18
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -14,
+            63,
+            18
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -13,
+            63,
+            18
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -12,
+            63,
+            18
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -15,
+            64,
+            15
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top"
+          }
+        },
+        {
+          "pos": [
+            -14,
+            64,
+            15
+          ],
+          "state": "minecraft:oak_fence",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -13,
+            64,
+            15
+          ],
+          "state": "minecraft:oak_leaves",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -12,
+            64,
+            15
+          ],
+          "state": "minecraft:water",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -11,
+            64,
+            15
+          ],
+          "state": "minecraft:chest",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -10,
+            64,
+            15
+          ],
+          "state": "minecraft:cave_air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -9,
+            64,
+            15
+          ],
+          "state": "minecraft:void_air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -16,
+            64,
+            14
+          ],
+          "state": "minecraft:cave_air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -17,
+            64,
+            15
+          ],
+          "state": "minecraft:void_air",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -18,
+            64,
+            12
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "1527556916482207859",
+      "states": [
+        {
+          "pos": [
+            -17,
+            64,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            64,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            64,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            -13,
+            64,
+            13
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -13,
+            64,
+            13
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            64,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            64,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            64,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "west",
+            "powered": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro-dirt-path-boolean-weighted-actors",
+      "algorithm": "xoroshiro",
+      "seed": 2631,
+      "origin": [
+        0,
+        65,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "entries": [
+            {
+              "data": {
+                "properties": {
+                  "waterlogged": "true",
+                  "type": "top"
+                },
+                "id": "minecraft:oak_slab"
+              },
+              "weight": 2
+            },
+            {
+              "data": {
+                "properties": {
+                  "powered": "false",
+                  "facing": "east"
+                },
+                "id": "minecraft:observer"
+              },
+              "weight": 1
+            },
+            {
+              "data": {
+                "properties": {
+                  "facing": "north"
+                },
+                "id": "minecraft:blue_shulker_box"
+              },
+              "weight": 1
+            }
+          ],
+          "type": "minecraft:weighted"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            64,
+            -3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            0
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            0
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            0
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            0
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            0
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            0
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            0
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            1
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            2
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            3
+          ],
+          "state": "minecraft:dirt_path",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "-4477844570835375488",
+      "states": [
+        {
+          "pos": [
+            -1,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            -1
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "north"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            1
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "north"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            1
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "false"
+          }
+        },
+        {
+          "pos": [
+            0,
+            66,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            1,
+            66,
+            1
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "north"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -1,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            -1
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "north"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            1
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            1
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "north"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            66,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "true"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            66,
+            1
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "north"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "legacy-random-provider-cave-support",
+      "algorithm": "legacy",
+      "seed": 2632,
+      "origin": [
+        8,
+        65,
+        -8
+      ],
+      "config": {
+        "state_provider": {
+          "blocks": [
+            "minecraft:oak_log",
+            "minecraft:oak_slab",
+            "minecraft:oak_stairs"
+          ],
+          "type": "minecraft:random_block"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            5,
+            64,
+            -11
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            5,
+            64,
+            -10
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            5,
+            64,
+            -9
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            5,
+            64,
+            -8
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            5,
+            64,
+            -7
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            5,
+            64,
+            -6
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            5,
+            64,
+            -5
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            6,
+            64,
+            -11
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            6,
+            64,
+            -10
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            6,
+            64,
+            -9
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            6,
+            64,
+            -8
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            6,
+            64,
+            -7
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            6,
+            64,
+            -6
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            6,
+            64,
+            -5
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            7,
+            64,
+            -11
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            7,
+            64,
+            -10
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            7,
+            64,
+            -9
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            7,
+            64,
+            -8
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            7,
+            64,
+            -7
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            7,
+            64,
+            -6
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            7,
+            64,
+            -5
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            64,
+            -11
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            64,
+            -10
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            64,
+            -9
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            64,
+            -8
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            64,
+            -7
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            64,
+            -6
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            64,
+            -5
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            9,
+            64,
+            -11
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            9,
+            64,
+            -10
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            9,
+            64,
+            -9
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            9,
+            64,
+            -8
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            9,
+            64,
+            -7
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            9,
+            64,
+            -6
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            9,
+            64,
+            -5
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            10,
+            64,
+            -11
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            10,
+            64,
+            -10
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            10,
+            64,
+            -9
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            10,
+            64,
+            -8
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            10,
+            64,
+            -7
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            10,
+            64,
+            -6
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            10,
+            64,
+            -5
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            11,
+            64,
+            -11
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            11,
+            64,
+            -10
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            11,
+            64,
+            -9
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            11,
+            64,
+            -8
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            11,
+            64,
+            -7
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            11,
+            64,
+            -6
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            11,
+            64,
+            -5
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            8,
+            65,
+            -8
+          ],
+          "state": "minecraft:cave_air",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "8531572613925636689",
+      "states": [
+        {
+          "pos": [
+            6,
+            65,
+            -9
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            7,
+            65,
+            -9
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            7,
+            65,
+            -7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            7,
+            66,
+            -9
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            8,
+            65,
+            -10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            8,
+            65,
+            -8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            8,
+            65,
+            -7
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            9,
+            65,
+            -9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            9,
+            65,
+            -8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            9,
+            65,
+            -7
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            9,
+            66,
+            -8
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            10,
+            65,
+            -8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            10,
+            66,
+            -8
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            65,
+            -10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            65,
+            -9
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            65,
+            -9
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            65,
+            -9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            66,
+            -9
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            65,
+            -8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            65,
+            -8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            65,
+            -8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            66,
+            -8
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            66,
+            -8
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "bottom",
+            "shape": "straight",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            65,
+            -7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            65,
+            -7
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            65,
+            -7
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "rejected-setters-do-not-change-placement-return-or-rng",
+      "algorithm": "legacy",
+      "seed": 2633,
+      "origin": [
+        15,
+        319,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "state": {
+            "properties": {
+              "axis": "y"
+            },
+            "id": "minecraft:oak_log"
+          },
+          "type": "minecraft:rotated"
+        }
+      },
+      "rejectWrites": true,
+      "initial": [
+        {
+          "pos": [
+            12,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            12,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            12,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            12,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            12,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            12,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            12,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            13,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            13,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            13,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            13,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            13,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            13,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            13,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            14,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            15,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "-304148463678200400",
+      "states": [],
+      "writes": [
+        {
+          "pos": [
+            14,
+            319,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            15,
+            319,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            16,
+            319,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            17,
+            319,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "y"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            15,
+            319,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            13,
+            319,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            15,
+            319,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            13,
+            319,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            14,
+            319,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            15,
+            319,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "name": "top-build-boundary-native-return",
+      "algorithm": "xoroshiro",
+      "seed": 2634,
+      "origin": [
+        0,
+        319,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "properties": {
+            "waterlogged": "false",
+            "type": "top"
+          },
+          "id": "minecraft:oak_slab"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            318,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            318,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            318,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            318,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            318,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            318,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            318,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "5403470730646297288",
+      "states": [
+        {
+          "pos": [
+            -2,
+            319,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            319,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            0,
+            319,
+            2
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            1,
+            319,
+            -1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            1,
+            319,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            2,
+            319,
+            -1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            1,
+            319,
+            -1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            319,
+            -1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            320,
+            -1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            -2,
+            319,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            319,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            320,
+            0
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            -1,
+            319,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            320,
+            1
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": false
+        },
+        {
+          "pos": [
+            0,
+            319,
+            2
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            320,
+            2
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "top",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "name": "empty-random-provider-current-fallback",
+      "algorithm": "legacy",
+      "seed": 2636,
+      "origin": [
+        0,
+        65,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "blocks": [],
+          "type": "minecraft:random_block"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "-8350113221085787601",
+      "states": [],
+      "writes": [
+        {
+          "pos": [
+            -3,
+            65,
+            -2
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            65,
+            -2
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            2
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "rule-provider-optional-no-fallback-current",
+      "algorithm": "xoroshiro",
+      "seed": 2637,
+      "origin": [
+        0,
+        65,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "rules": [],
+          "type": "minecraft:rule_based"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "8880303035549161405",
+      "states": [],
+      "writes": [
+        {
+          "pos": [
+            0,
+            65,
+            -2
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            -1
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            -1
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            65,
+            0
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            0
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            1
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            2
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            2
+          ],
+          "state": "minecraft:air",
+          "properties": {},
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "copy-properties-provider",
+      "algorithm": "legacy",
+      "seed": 2638,
+      "origin": [
+        0,
+        65,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "source": {
+            "properties": {
+              "axis": "x"
+            },
+            "id": "minecraft:oak_log"
+          },
+          "type": "minecraft:copy_properties"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "5204390084742987094",
+      "states": [
+        {
+          "pos": [
+            -2,
+            65,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            2,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -2,
+            65,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            66,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "randomized-int-provider",
+      "algorithm": "xoroshiro",
+      "seed": 2639,
+      "origin": [
+        0,
+        65,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "source": {
+            "properties": {
+              "layers": "2"
+            },
+            "id": "minecraft:snow"
+          },
+          "property": "layers",
+          "values": {
+            "min_inclusive": 1,
+            "max_inclusive": 8,
+            "type": "minecraft:uniform"
+          },
+          "type": "minecraft:randomized_int"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "-8170236319582117018",
+      "states": [
+        {
+          "pos": [
+            -2,
+            65,
+            -2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "8"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            -2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "5"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "2"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "2"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            1
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "1"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            -1
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "5"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "3"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "2"
+          }
+        },
+        {
+          "pos": [
+            2,
+            65,
+            0
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "5"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -2,
+            65,
+            -2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "8"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            -2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "5"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "2"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            -1
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "5"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "2"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "3"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            65,
+            0
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "5"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            1
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "1"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            2
+          ],
+          "state": "minecraft:snow",
+          "properties": {
+            "layers": "2"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "noise-provider",
+      "algorithm": "legacy",
+      "seed": 2640,
+      "origin": [
+        0,
+        65,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "seed": 981,
+          "noise": {
+            "base_octave": -3
+          },
+          "scale": 0.17,
+          "states": [
+            "minecraft:stone",
+            {
+              "properties": {
+                "axis": "x"
+              },
+              "id": "minecraft:oak_log"
+            },
+            {
+              "properties": {
+                "powered": "true",
+                "facing": "south"
+              },
+              "id": "minecraft:observer"
+            }
+          ],
+          "type": "minecraft:noise"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "-4832240710141881293",
+      "states": [
+        {
+          "pos": [
+            -2,
+            65,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            66,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            0,
+            66,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            66,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            1,
+            66,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            2,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            2,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -2,
+            65,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            66,
+            -2
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            65,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            66,
+            -1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            65,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            66,
+            0
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            66,
+            1
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "authored-chest-provider-state",
+      "algorithm": "legacy",
+      "seed": 2641,
+      "origin": [
+        0,
+        65,
+        0
+      ],
+      "config": {
+        "state_provider": {
+          "properties": {
+            "waterlogged": "false",
+            "type": "single",
+            "facing": "north"
+          },
+          "id": "minecraft:chest"
+        }
+      },
+      "rejectWrites": false,
+      "initial": [
+        {
+          "pos": [
+            -3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            -1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            0
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            1
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            2
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            64,
+            3
+          ],
+          "state": "minecraft:stone",
+          "properties": {}
+        }
+      ],
+      "placed": true,
+      "nextLong": "1620271584776381098",
+      "states": [
+        {
+          "pos": [
+            -3,
+            65,
+            -2
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            65,
+            1
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            -1
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -2
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            0,
+            65,
+            2
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            2,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -3,
+            65,
+            -2
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            -2
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            -1
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -2,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            65,
+            0
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -3,
+            65,
+            1
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            65,
+            2
+          ],
+          "state": "minecraft:chest",
+          "properties": {
+            "facing": "north",
+            "type": "single",
+            "waterlogged": "false"
+          },
+          "flags": 260,
+          "accepted": true
+        }
+      ]
+    }
+  ]
+}

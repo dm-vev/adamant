@@ -1672,6 +1672,11 @@ func (w *World) resolveScheduledTickBlock(tick chunk.ScheduledTick) (Block, bool
 	if tick.Kind != chunk.BlockTick && tick.Kind != chunk.FluidTick {
 		return nil, false
 	}
+	if tick.Kind == chunk.FluidTick && tick.Type == "minecraft:empty" {
+		// EmptyFluid's legacy block is native air. It still owns a Source tick
+		// record, even though dispatch against an empty fluid changes no blocks.
+		return w.conf.Blocks.BlockByRuntimeID(w.conf.Blocks.AirRuntimeID())
+	}
 	key := scheduledTickTypeKey{kind: tick.Kind, typeName: tick.Type}
 	if b, ok := w.scheduledTickBlocks[key]; ok {
 		return b, true
@@ -1719,9 +1724,6 @@ func (w *World) resolveScheduledTickBlock(tick chunk.ScheduledTick) (Block, bool
 // scheduleGeneratedTick installs a worldless generation result on the owner
 // thread. Source ProtoChunkTicks converts every generated delay to zero.
 func (w *World) scheduleGeneratedTick(tick chunk.ScheduledTick) {
-	if tick.Pos.OutOfBounds(w.Range()) {
-		return
-	}
 	_, ok := w.resolveScheduledTickBlock(tick)
 	if !ok {
 		panic(fmt.Sprintf("generated tick: unknown %v type %q", tick.Kind, tick.Type))
@@ -3093,14 +3095,15 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 // the queued Java type. A stale tick retains its old type rather than ticking a
 // different block after the save is opened by BDS.
 func (w *World) nativeScheduledTickState(col *Column, tick chunk.ScheduledTick) uint32 {
-	if tick.Kind == chunk.BlockTick {
+	withinHeight := !tick.Pos.OutOfBounds(w.Range())
+	if withinHeight && tick.Kind == chunk.BlockTick {
 		b := w.blockInChunk(col, tick.Pos)
 		state := NativeStateAt(col.Chunk, uint8(tick.Pos[0]), int16(tick.Pos[1]), uint8(tick.Pos[2]))
 		name, canonical := javadata.BlockStateName(state.CanonicalJavaID(w.conf.Blocks))
 		if canonical && name == tick.Type || !canonical && scheduledTickType(w.conf.Blocks, b) == tick.Type {
 			return w.conf.Blocks.BlockRuntimeID(b)
 		}
-	} else {
+	} else if withinHeight && tick.Kind == chunk.FluidTick {
 		for layer := uint8(0); layer < 2; layer++ {
 			rid := col.Block(uint8(tick.Pos[0]&15), int16(tick.Pos[1]), uint8(tick.Pos[2]&15), layer)
 			b, ok := w.conf.Blocks.BlockByRuntimeID(rid)

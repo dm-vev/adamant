@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
 // placeModernTerrainMisc implements vanilla's small position-oriented terrain features.
@@ -144,13 +145,17 @@ func blockPileTryPlace(region *featureRegion, p featurePos, provider any, random
 		return
 	}
 	below := featurePos{p.x, p.y - 1, p.z}
-	name, properties := region.State(below)
-	if normalizeJavaResource(name) == "dirt_path" {
+	belowID := region.nativeState(below).CanonicalJavaID(region.c.BlockRegistry())
+	belowName, ok := javadata.BlockStateName(belowID)
+	if !ok {
+		panic("overworld: block pile encountered an invalid Java support state ID")
+	}
+	if normalizeJavaResource(belowName) == "dirt_path" {
 		if !random.NextBoolean() {
 			return
 		}
 	} else {
-		shape, err := javadata.BlockGenerationShape(name, properties)
+		shape, err := javadata.BlockGenerationShapeID(belowID)
 		if err != nil {
 			panic(err)
 		}
@@ -159,8 +164,8 @@ func blockPileTryPlace(region *featureRegion, p featurePos, provider any, random
 		}
 	}
 	state, actor, ok := region.SampleNativeState(provider, p, random)
-	if ok {
-		region.SetNativeBlock(p, state, actor)
+	if ok && region.setWithFlags(p, state, 260) && actor != nil {
+		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
 	}
 }
 

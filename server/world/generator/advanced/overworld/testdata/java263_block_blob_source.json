@@ -1,0 +1,5523 @@
+{
+  "oracle": "/tmp/BlockBlobOracle.java; strict BlockBlobFeature.CODEC parse + BlockBlobFeature.place on live WorldGenLevel proxy; raw requests: /tmp/java263_block_blob_source_requests.json; raw Java stdout: /tmp/java263_block_blob_source_oracle_stdout.log; JSON captures: /tmp/java263_block_blob_source_captures.jsonl",
+  "cases": [
+    {
+      "name": "legacy_scalar_scan_observer_chunk_edges",
+      "algorithm": "legacy",
+      "seed": 371,
+      "origin": [
+        15,
+        28,
+        15
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": {
+          "properties": {
+            "powered": "true",
+            "facing": "east"
+          },
+          "id": "minecraft:observer"
+        },
+        "can_place_on": {
+          "blocks": "minecraft:stone",
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            15,
+            25,
+            15
+          ],
+          "state": "minecraft:stone"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-5924821025454686985",
+      "states": [
+        {
+          "pos": [
+            13,
+            24,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            13,
+            25,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            13,
+            25,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            13,
+            25,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            13,
+            26,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            24,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            24,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            24,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            25,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            25,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            25,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            26,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            26,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            14,
+            26,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            24,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            25,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            25,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            25,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        },
+        {
+          "pos": [
+            15,
+            26,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            15,
+            26,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            15,
+            25,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            24,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            13,
+            25,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            25,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            15,
+            25,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            26,
+            14
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            13,
+            24,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            24,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            15,
+            24,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            13,
+            25,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            25,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            15,
+            25,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            13,
+            26,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            26,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            15,
+            26,
+            15
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            24,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            13,
+            25,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            25,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            15,
+            25,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            14,
+            26,
+            16
+          ],
+          "state": "minecraft:observer",
+          "properties": {
+            "facing": "east",
+            "powered": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "legacy_nonflat_terrain_scan",
+      "algorithm": "legacy",
+      "seed": 2224,
+      "origin": [
+        5,
+        76,
+        5
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": {
+          "properties": {
+            "axis": "x"
+          },
+          "id": "minecraft:oak_log"
+        },
+        "can_place_on": {
+          "blocks": "minecraft:stone",
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            5,
+            72,
+            5
+          ],
+          "state": "minecraft:stone"
+        },
+        {
+          "pos": [
+            4,
+            71,
+            5
+          ],
+          "state": "minecraft:stone"
+        },
+        {
+          "pos": [
+            6,
+            74,
+            5
+          ],
+          "state": "minecraft:stone"
+        },
+        {
+          "pos": [
+            5,
+            72,
+            4
+          ],
+          "state": "minecraft:oak_stairs"
+        },
+        {
+          "pos": [
+            5,
+            73,
+            6
+          ],
+          "state": "minecraft:gravel"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-1068989278717414694",
+      "states": [
+        {
+          "pos": [
+            3,
+            71,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            3,
+            72,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            3,
+            72,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            3,
+            72,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            3,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            71,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            71,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            71,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            72,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            72,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            72,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            73,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            4,
+            73,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            5,
+            71,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            5,
+            72,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            5,
+            72,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            5,
+            72,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            5,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            5,
+            74,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        },
+        {
+          "pos": [
+            6,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            5,
+            72,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            5,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            5,
+            74,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            71,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            72,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            72,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            5,
+            72,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            73,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            71,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            71,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            5,
+            71,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            72,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            72,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            5,
+            72,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            5,
+            73,
+            5
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            71,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            72,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            72,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            5,
+            72,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            73,
+            6
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            71,
+            4
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "x"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro_list_stairs",
+      "algorithm": "xoroshiro",
+      "seed": 9123,
+      "origin": [
+        -1,
+        36,
+        -17
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": {
+          "properties": {
+            "waterlogged": "false",
+            "shape": "inner_left",
+            "half": "bottom",
+            "facing": "south"
+          },
+          "id": "minecraft:oak_stairs"
+        },
+        "can_place_on": {
+          "blocks": [
+            "minecraft:granite",
+            "minecraft:dirt"
+          ],
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            -1,
+            35,
+            -17
+          ],
+          "state": "minecraft:granite"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-1589582216157084590",
+      "states": [
+        {
+          "pos": [
+            -1,
+            36,
+            -19
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "south",
+            "half": "bottom",
+            "shape": "inner_left",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            36,
+            -18
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "south",
+            "half": "bottom",
+            "shape": "inner_left",
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -1,
+            36,
+            -17
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "south",
+            "half": "bottom",
+            "shape": "inner_left",
+            "waterlogged": "false"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -1,
+            36,
+            -17
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "south",
+            "half": "bottom",
+            "shape": "inner_left",
+            "waterlogged": "false"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            36,
+            -18
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "south",
+            "half": "bottom",
+            "shape": "inner_left",
+            "waterlogged": "false"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            36,
+            -19
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "south",
+            "half": "bottom",
+            "shape": "inner_left",
+            "waterlogged": "false"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "legacy_tag_slab",
+      "algorithm": "legacy",
+      "seed": 17,
+      "origin": [
+        7,
+        40,
+        8
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": {
+          "properties": {
+            "waterlogged": "true",
+            "type": "bottom"
+          },
+          "id": "minecraft:oak_slab"
+        },
+        "can_place_on": {
+          "tag": "minecraft:logs",
+          "type": "minecraft:matching_block_tag"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            7,
+            39,
+            8
+          ],
+          "state": "minecraft:oak_log"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "69262903955598751",
+      "states": [
+        {
+          "pos": [
+            6,
+            39,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            6,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            6,
+            40,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            6,
+            40,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            6,
+            41,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            39,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            39,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            39,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            40,
+            6
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            40,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            40,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            41,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            41,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            7,
+            41,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            8,
+            39,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            8,
+            40,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            8,
+            41,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            7,
+            39,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            41,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            39,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            39,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            39,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            40,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            40,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            41,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            41,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            41,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            39,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            40,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            40,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            40,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            41,
+            9
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            39,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            41,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            40,
+            6
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            40,
+            8
+          ],
+          "state": "minecraft:oak_slab",
+          "properties": {
+            "type": "bottom",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro_fluid_log",
+      "algorithm": "xoroshiro",
+      "seed": 2026,
+      "origin": [
+        8,
+        45,
+        8
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": {
+          "properties": {
+            "axis": "z"
+          },
+          "id": "minecraft:oak_log"
+        },
+        "can_place_on": {
+          "fluids": "minecraft:water",
+          "type": "minecraft:matching_fluids"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            8,
+            44,
+            8
+          ],
+          "state": "minecraft:water"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "792045049464327716",
+      "states": [
+        {
+          "pos": [
+            6,
+            44,
+            7
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            7,
+            45,
+            8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        },
+        {
+          "pos": [
+            8,
+            45,
+            8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            8,
+            45,
+            8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            7,
+            45,
+            8
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            6,
+            44,
+            7
+          ],
+          "state": "minecraft:oak_log",
+          "properties": {
+            "axis": "z"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "legacy_scalar_shulker",
+      "algorithm": "legacy",
+      "seed": -922,
+      "origin": [
+        9,
+        24,
+        9
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": {
+          "properties": {
+            "facing": "west"
+          },
+          "id": "minecraft:blue_shulker_box"
+        },
+        "can_place_on": {
+          "blocks": "minecraft:stone",
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            9,
+            23,
+            9
+          ],
+          "state": "minecraft:stone"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "1171641691171414341",
+      "states": [
+        {
+          "pos": [
+            8,
+            23,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            9,
+            22,
+            8
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            9,
+            22,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            9,
+            23,
+            7
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            9,
+            23,
+            8
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            9,
+            23,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            9,
+            24,
+            8
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            9,
+            24,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        },
+        {
+          "pos": [
+            10,
+            23,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            9,
+            24,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            22,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            8,
+            23,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            23,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            23,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            24,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            23,
+            7
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            22,
+            8
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            23,
+            8
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            24,
+            8
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            9,
+            23,
+            9
+          ],
+          "state": "minecraft:blue_shulker_box",
+          "properties": {
+            "facing": "west"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro_plus_three_rejected",
+      "algorithm": "xoroshiro",
+      "seed": 88,
+      "origin": [
+        4,
+        -61,
+        4
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": "minecraft:diamond_block",
+        "can_place_on": {
+          "blocks": "minecraft:stone",
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [],
+      "rejectWrites": false,
+      "placed": false,
+      "nextLong": "2647376607631752040",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "legacy_plus_four_supported",
+      "algorithm": "legacy",
+      "seed": 441,
+      "origin": [
+        4,
+        -60,
+        4
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": "minecraft:emerald_block",
+        "can_place_on": {
+          "blocks": "minecraft:stone",
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            4,
+            -61,
+            4
+          ],
+          "state": "minecraft:stone"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "8065204566796169868",
+      "states": [
+        {
+          "pos": [
+            2,
+            -62,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -62,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -61,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -61,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -61,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -62,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -62,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -62,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -61,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -61,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -61,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            4,
+            -62,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            4,
+            -61,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            4,
+            -61,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            4,
+            -61,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            4,
+            -60,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            4,
+            -60,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {}
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            4,
+            -60,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -62,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            -61,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -61,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            -61,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            -62,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -62,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            -62,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            -61,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -61,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            -61,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            -60,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            -60,
+            3
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -62,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            -61,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -61,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            4,
+            -61,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            3,
+            -60,
+            4
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            2,
+            -62,
+            2
+          ],
+          "state": "minecraft:emerald_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro_scans_to_min_plus_three",
+      "algorithm": "xoroshiro",
+      "seed": 551,
+      "origin": [
+        5,
+        -56,
+        5
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": "minecraft:gold_block",
+        "can_place_on": {
+          "blocks": "minecraft:stone",
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [],
+      "rejectWrites": false,
+      "placed": false,
+      "nextLong": "-22998091740761051",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "legacy_high_build_height",
+      "algorithm": "legacy",
+      "seed": 736,
+      "origin": [
+        0,
+        500,
+        0
+      ],
+      "minY": 0,
+      "maxY": 511,
+      "config": {
+        "state": "minecraft:ancient_debris",
+        "can_place_on": {
+          "tag": "minecraft:stone_ore_replaceables",
+          "type": "minecraft:matching_block_tag"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            0,
+            499,
+            0
+          ],
+          "state": "minecraft:stone"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-1087043829450589393",
+      "states": [
+        {
+          "pos": [
+            -1,
+            499,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            -2
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -1,
+            501,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            499,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            499,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            499,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            500,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            500,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            500,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            501,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            501,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            0,
+            501,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            499,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            500,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            500,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            500,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        },
+        {
+          "pos": [
+            1,
+            501,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {}
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            0,
+            499,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            500,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            500,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            501,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            499,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            499,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            499,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            500,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            500,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            501,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            501,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            501,
+            0
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            499,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            500,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            1,
+            500,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            0,
+            501,
+            1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            -1
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -1,
+            500,
+            -2
+          ],
+          "state": "minecraft:ancient_debris",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro_partial_face_support",
+      "algorithm": "xoroshiro",
+      "seed": 145,
+      "origin": [
+        31,
+        64,
+        31
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": "minecraft:diamond_block",
+        "can_place_on": {
+          "direction": "up",
+          "type": "minecraft:has_sturdy_face"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            31,
+            63,
+            31
+          ],
+          "state": {
+            "id": "minecraft:oak_slab",
+            "properties": {
+              "type": "bottom",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "rejectWrites": false,
+      "placed": false,
+      "nextLong": "5603955766223506361",
+      "states": [],
+      "writes": []
+    },
+    {
+      "name": "legacy_partial_face_rejected",
+      "algorithm": "legacy",
+      "seed": 145,
+      "origin": [
+        31,
+        64,
+        31
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": "minecraft:diamond_block",
+        "can_place_on": {
+          "direction": "down",
+          "type": "minecraft:has_sturdy_face"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            31,
+            63,
+            31
+          ],
+          "state": {
+            "id": "minecraft:oak_slab",
+            "properties": {
+              "type": "bottom",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-8538342290837862206",
+      "states": [
+        {
+          "pos": [
+            29,
+            63,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            29,
+            64,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            29,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            29,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            29,
+            65,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            63,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            63,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            63,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            64,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            65,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            65,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            30,
+            65,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            31,
+            63,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            31,
+            64,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            31,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            31,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            31,
+            64,
+            32
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            31,
+            65,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        },
+        {
+          "pos": [
+            32,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {}
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            31,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            31,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            32,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            31,
+            64,
+            32
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            63,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            29,
+            64,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            64,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            31,
+            64,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            65,
+            29
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            29,
+            63,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            63,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            31,
+            63,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            29,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            31,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            29,
+            65,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            65,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            31,
+            65,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            63,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            29,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            31,
+            64,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            65,
+            31
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            30,
+            64,
+            30
+          ],
+          "state": "minecraft:diamond_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro_writes_rejected",
+      "algorithm": "xoroshiro",
+      "seed": 302,
+      "origin": [
+        8,
+        48,
+        8
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": "minecraft:gold_block",
+        "can_place_on": {
+          "blocks": "minecraft:stone",
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            8,
+            47,
+            8
+          ],
+          "state": "minecraft:stone"
+        }
+      ],
+      "rejectWrites": true,
+      "placed": true,
+      "nextLong": "7165406647642654585",
+      "states": [],
+      "writes": [
+        {
+          "pos": [
+            8,
+            48,
+            8
+          ],
+          "state": "minecraft:gold_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": false
+        },
+        {
+          "pos": [
+            7,
+            46,
+            7
+          ],
+          "state": "minecraft:gold_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": false
+        },
+        {
+          "pos": [
+            6,
+            47,
+            7
+          ],
+          "state": "minecraft:gold_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": false
+        },
+        {
+          "pos": [
+            7,
+            47,
+            7
+          ],
+          "state": "minecraft:gold_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": false
+        },
+        {
+          "pos": [
+            8,
+            47,
+            7
+          ],
+          "state": "minecraft:gold_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": false
+        },
+        {
+          "pos": [
+            7,
+            48,
+            7
+          ],
+          "state": "minecraft:gold_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": false
+        },
+        {
+          "pos": [
+            6,
+            46,
+            6
+          ],
+          "state": "minecraft:gold_block",
+          "properties": {},
+          "flags": 3,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "name": "legacy_nested_predicate",
+      "algorithm": "legacy",
+      "seed": 991,
+      "origin": [
+        12,
+        80,
+        12
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": {
+          "properties": {
+            "waterlogged": "true",
+            "shape": "straight",
+            "half": "top",
+            "facing": "north"
+          },
+          "id": "minecraft:oak_stairs"
+        },
+        "can_place_on": {
+          "predicates": [
+            {
+              "blocks": [
+                "minecraft:stone",
+                "minecraft:deepslate"
+              ],
+              "type": "minecraft:matching_blocks"
+            },
+            {
+              "type": "minecraft:inside_world_bounds"
+            }
+          ],
+          "type": "minecraft:all_of"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            12,
+            79,
+            12
+          ],
+          "state": "minecraft:deepslate"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "2988615937462702541",
+      "states": [
+        {
+          "pos": [
+            10,
+            79,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            10,
+            80,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            10,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            10,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            10,
+            81,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            79,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            79,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            79,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            80,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            81,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            81,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            11,
+            81,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            12,
+            79,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            12,
+            80,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            12,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            12,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            12,
+            80,
+            13
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            12,
+            81,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            13,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            12,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            13,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            80,
+            13
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            80,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            79,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            80,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            80,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            80,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            81,
+            10
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            79,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            79,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            79,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            80,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            81,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            81,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            81,
+            11
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            79,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            10,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            12,
+            80,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            11,
+            81,
+            12
+          ],
+          "state": "minecraft:oak_stairs",
+          "properties": {
+            "facing": "north",
+            "half": "top",
+            "shape": "straight",
+            "waterlogged": "true"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "name": "xoroshiro_list_matching_blocks",
+      "algorithm": "xoroshiro",
+      "seed": 7766,
+      "origin": [
+        -16,
+        100,
+        -16
+      ],
+      "minY": -64,
+      "maxY": 319,
+      "config": {
+        "state": "minecraft:red_shulker_box",
+        "can_place_on": {
+          "blocks": [
+            "minecraft:birch_log",
+            "minecraft:stone"
+          ],
+          "type": "minecraft:matching_blocks"
+        }
+      },
+      "initial": [
+        {
+          "pos": [
+            -16,
+            99,
+            -16
+          ],
+          "state": "minecraft:birch_log"
+        }
+      ],
+      "rejectWrites": false,
+      "placed": true,
+      "nextLong": "-7459948013220406855",
+      "states": [
+        {
+          "pos": [
+            -18,
+            99,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -18,
+            100,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -18,
+            100,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -18,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -18,
+            101,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            99,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            99,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            99,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            101,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            101,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -17,
+            101,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            99,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            99,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            101,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -16,
+            101,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        },
+        {
+          "pos": [
+            -15,
+            100,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "pos": [
+            -16,
+            99,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -15,
+            100,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            101,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -18,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -16
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            99,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -18,
+            100,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            101,
+            -19
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -18,
+            99,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            99,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            99,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -18,
+            100,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -18,
+            101,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            101,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            101,
+            -18
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            99,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -18,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -16,
+            100,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        },
+        {
+          "pos": [
+            -17,
+            101,
+            -17
+          ],
+          "state": "minecraft:red_shulker_box",
+          "properties": {
+            "facing": "up"
+          },
+          "flags": 3,
+          "accepted": true
+        }
+      ]
+    }
+  ]
+}

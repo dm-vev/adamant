@@ -3,7 +3,6 @@ package overworld
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -704,182 +703,70 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 	return placed
 }
 
-func placeModernSpringRegion(region *featureRegion, config map[string]any, p featurePos, random *java26.Random) bool {
-	if p.y < region.MinY()+1 || p.y >= region.MaxY() {
-		return false
-	}
+func placeModernSpringRegion(region *featureRegion, config map[string]any, p featurePos, _ *java26.Random) bool {
 	validRaw, ok := config["valid_blocks"]
 	if !ok {
 		panic("overworld: malformed Java spring valid blocks")
 	}
 	valid := func(pos featurePos) bool {
-		name, _ := region.State(pos)
-		name = normalizeJavaResource(name)
-		switch values := validRaw.(type) {
-		case string:
-			if strings.HasPrefix(values, "#") {
-				return javaBlockTagContains(normalizeJavaResource(strings.TrimPrefix(values, "#")), name)
-			}
-			return name == normalizeJavaResource(values)
-		case []any:
-			for _, value := range values {
-				block, ok := value.(string)
-				if !ok {
-					panic("overworld: malformed Java spring valid blocks")
-				}
-				if name == normalizeJavaResource(block) {
-					return true
-				}
-			}
-			return false
-		default:
-			panic("overworld: malformed Java spring valid blocks")
-		}
+		name, _ := javadata.BlockStateName(region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry()))
+		return featureBlockHolderContains(validRaw, name)
 	}
 	if !valid(featurePos{p.x, p.y + 1, p.z}) || config["requires_block_below"] != false && !valid(featurePos{p.x, p.y - 1, p.z}) {
 		return false
 	}
-	name, _ := region.State(p)
-	if normalizeJavaResource(name) != "air" && !valid(p) {
+	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	if !treeIsAirName(name) && !featureBlockHolderContains(validRaw, name) {
 		return false
 	}
-	rock, holes := 0, 0
-	for _, d := range [][3]int32{{-1, 0, 0}, {1, 0, 0}, {0, 0, -1}, {0, 0, 1}, {0, -1, 0}} {
-		neighbor := featurePos{p.x + d[0], p.y + d[1], p.z + d[2]}
-		if valid(neighbor) {
+	rock, holes := int32(0), int32(0)
+	for _, d := range [5]featurePos{{x: -1}, {x: 1}, {z: -1}, {z: 1}, {y: -1}} {
+		neighbor := featurePos{p.x + d.x, p.y + d.y, p.z + d.z}
+		name, _ := javadata.BlockStateName(region.nativeState(neighbor).CanonicalJavaID(region.c.BlockRegistry()))
+		if featureBlockHolderContains(validRaw, name) {
 			rock++
 		}
-		neighborName, _ := region.State(neighbor)
-		if normalizeJavaResource(neighborName) == "air" {
+		if treeIsAirName(name) {
 			holes++
 		}
 	}
-	wantRock, wantHole := 4, 1
-	if value, ok := config["rock_count"].(float64); ok {
-		wantRock = int(value)
+	wantRock, wantHole := int32(4), int32(1)
+	if value, exists := config["rock_count"]; exists {
+		wantRock = int32(featureNumber(value))
 	}
-	if value, ok := config["hole_count"].(float64); ok {
-		wantHole = int(value)
+	if value, exists := config["hole_count"]; exists {
+		wantHole = int32(featureNumber(value))
 	}
 	if rock != wantRock || holes != wantHole {
 		return false
 	}
-	state, actor, ok := region.SampleNativeState(config["state"], p, nil)
-	if !ok {
-		panic("overworld: unresolved Java spring state")
-	}
-	placed := region.SetNativeBlock(p, state, actor)
-	if !featureInsideTarget(region.target, p) {
-		return placed
-	}
-	javaState, err := world.JavaState(region.c.BlockRegistry(), state)
-	if err != nil {
-		panic(err)
-	}
-	if javaState.Name == "minecraft:water" || javaState.Name == "minecraft:lava" {
-		region.result.ScheduleTick(chunk.ScheduledTick{
-			Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.FluidTick, Type: javaState.Name,
-		})
-	}
-	return placed
-}
-
-func normalizeSpringFeatureConfig(config map[string]any) {
-	raw, exists := config["state"]
-	if !exists {
-		panic("overworld: malformed Java spring state")
-	}
-	data, ok := raw.(map[string]any)
+	fluid, ok := config["state"].(map[string]any)
 	if !ok {
 		panic("overworld: malformed Java spring fluid state")
 	}
-	id, ok := data["id"].(string)
+	fluidType, ok := fluid["id"].(string)
 	if !ok {
-		panic("overworld: malformed Java spring fluid state")
+		panic("overworld: malformed Java spring fluid type")
 	}
-	name := normalizeJavaResource(id)
 	var properties map[string]any
-	if rawProperties, exists := data["properties"]; exists {
+	if value, exists := fluid["properties"]; exists {
 		var valid bool
-		properties, valid = rawProperties.(map[string]any)
+		properties, valid = value.(map[string]any)
 		if !valid {
 			panic("overworld: malformed Java spring fluid properties")
 		}
 	}
-	if name == "empty" {
-		if len(properties) != 0 {
-			panic("overworld: malformed Java empty fluid state")
-		}
-		data["id"] = "minecraft:air"
-		delete(data, "properties")
-		return
+	id, err := world.JavaFluidLegacyBlock(fluidType, properties)
+	if err != nil {
+		panic(err)
 	}
-	water := name == "water" || name == "flowing_water"
-	lava := name == "lava" || name == "flowing_lava"
-	if !water && !lava {
-		panic("overworld: unsupported Java spring fluid " + name)
+	region.setWithFlags(p, world.ResolveStateID(region.c.BlockRegistry(), id), 2)
+	if featureInsideTarget(region.target, p) {
+		region.result.ScheduleTick(chunk.ScheduledTick{
+			Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.FluidTick, Type: world.NormaliseBlockName(fluidType),
+		})
 	}
-	falling := false
-	if value, exists := properties["falling"]; exists {
-		switch v := value.(type) {
-		case string:
-			if v == "true" {
-				falling = true
-			} else if v != "false" {
-				panic("overworld: malformed Java spring fluid falling property")
-			}
-		case bool:
-			falling = v
-		default:
-			panic("overworld: malformed Java spring fluid falling property")
-		}
-	}
-	level := int32(0)
-	for key := range properties {
-		if key != "falling" && (name != "flowing_water" && name != "flowing_lava" || key != "level") {
-			panic("overworld: malformed Java spring fluid property")
-		}
-	}
-	if name == "flowing_water" || name == "flowing_lava" {
-		amount := int32(1)
-		if value, exists := properties["level"]; exists {
-			switch v := value.(type) {
-			case string:
-				n, err := strconv.ParseInt(v, 10, 32)
-				if err != nil {
-					panic("overworld: malformed Java spring fluid level")
-				}
-				amount = int32(n)
-			case float64:
-				amount = int32(v)
-				if float64(amount) != v {
-					panic("overworld: malformed Java spring fluid level")
-				}
-			case int32:
-				amount = v
-			default:
-				panic("overworld: malformed Java spring fluid level")
-			}
-		}
-		if amount < 1 || amount > 8 {
-			panic("overworld: malformed Java spring fluid level")
-		}
-		level = 8 - min(amount, 8)
-		if falling {
-			level += 8
-		}
-	}
-	legacyName := "minecraft:water"
-	if lava {
-		legacyName = "minecraft:lava"
-	}
-	data["id"] = legacyName
-	if properties == nil {
-		properties = make(map[string]any, 1)
-	}
-	delete(properties, "falling")
-	properties["level"] = level
-	data["properties"] = properties
+	return true
 }
 
 func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {

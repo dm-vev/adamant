@@ -174,3 +174,104 @@ func TestReadOnlyWorldClosesGeneratedEntities(t *testing.T) {
 		t.Fatal("read-only world leaked generated entity")
 	}
 }
+
+type protoFluidTickGenerator struct{}
+
+func (protoFluidTickGenerator) DefaultSpawn(world.Dimension) cube.Pos { return cube.Pos{8, 64, 8} }
+
+func (protoFluidTickGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, _ world.GenerationContext) world.GenerationResult {
+	if pos != (world.ChunkPos{}) {
+		return world.GenerationResult{}
+	}
+	c.SetBlock(9, 64, 8, 0, world.BlockRuntimeID(block.Stone{}))
+	return world.GenerationResult{ScheduledTicks: sourceProtoFluidTicks()}
+}
+
+// Executed Java 26.3 ProtoChunkTicks retains all five fluid registry types at
+// these heights, in insertion order, with zero delay and NORMAL priority.
+func sourceProtoFluidTicks() []chunk.ScheduledTick {
+	ticks := make([]chunk.ScheduledTick, 0, 20)
+	for _, fluid := range [...]string{"minecraft:empty", "minecraft:water", "minecraft:flowing_water", "minecraft:lava", "minecraft:flowing_lava"} {
+		for _, y := range [...]int{-65, -64, 319, 320} {
+			ticks = append(ticks, chunk.ScheduledTick{Pos: cube.Pos{8, y, 8}, Kind: chunk.FluidTick, Type: fluid})
+		}
+	}
+	return ticks
+}
+
+func TestGeneratedProtoFluidTicksRetainEmptyAndOutsideHeightAcrossRestart(t *testing.T) {
+	dir := t.TempDir()
+	db, err := mcdb.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := world.Config{Provider: db, Generator: protoFluidTickGenerator{}, Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() {
+		if w != nil {
+			_ = w.Close()
+		}
+	})
+	load := func(neighbours bool) {
+		task := w.Do(func(tx *world.Tx) {
+			if neighbours {
+				for dx := range 3 {
+					for dz := range 3 {
+						tx.Block(cube.Pos{(dx - 1) * 16, 64, (dz - 1) * 16})
+					}
+				}
+			}
+			if _, ok := tx.Block(cube.Pos{9, 64, 8}).(block.Stone); !ok {
+				t.Errorf("inert or stale fluid tick changed the stone marker")
+			}
+		})
+		<-task.Done()
+		if err := task.Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	save := func() {
+		w.Save()
+		if err := w.Close(); err != nil {
+			t.Fatal(err)
+		}
+		w = nil
+		db, err = mcdb.Open(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	checkSaved := func(want []chunk.ScheduledTick) {
+		col, err := db.LoadColumn(world.ChunkPos{}, world.Overworld)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(col.ScheduledTicks) != len(want) {
+			t.Fatalf("saved Source proto ticks=%v, want %v", col.ScheduledTicks, want)
+		}
+		for i, expected := range want {
+			got := col.ScheduledTicks[i]
+			if got.ScheduledTick != expected || got.Delay != 0 {
+				t.Errorf("saved tick %d=%+v, Source=%+v with zero delay", i, got, expected)
+			}
+			if expected.Type == "minecraft:empty" && got.NativeBlock != world.DefaultBlockRegistry.AirRuntimeID() {
+				t.Errorf("empty fluid legacy block=%d, want native air", got.NativeBlock)
+			}
+		}
+	}
+	load(false)
+	save()
+	checkSaved(sourceProtoFluidTicks())
+	w = world.Config{Provider: db, Synchronous: true, RandomTickSpeed: -1}.New()
+	load(false)
+	save()
+	checkSaved(sourceProtoFluidTicks())
+	w = world.Config{Provider: db, Synchronous: true, RandomTickSpeed: -1}.New()
+	load(true)
+	w.AdvanceTick()
+	load(false)
+	save()
+	checkSaved(nil)
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
