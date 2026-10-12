@@ -1710,14 +1710,12 @@ func rootSystemLevelTest(region *featureRegion, p featurePos, distance, deviatio
 	if distance <= 0 {
 		return true
 	}
-	dirs := [][2]int32{{0, 1}, {-1, 0}, {0, -1}, {1, 0}}
+	dirs := [...]featurePos{{z: 1}, {x: -1}, {z: -1}, {x: 1}}
 	for _, dir := range dirs {
-		corner := treePos(p, dir[0]*distance, 0, dir[1]*distance)
+		corner := treePos(p, dir.x*distance, 0, dir.z*distance)
 		below := treePos(corner, 0, -deviation, 0)
 		above := treePos(corner, 0, deviation, 0)
-		bn, _ := region.State(below)
-		an, _ := region.State(above)
-		if normalizeJavaResource(bn) == "air" || normalizeJavaResource(an) != "air" {
+		if treeIsAir(region, below) || !treeIsAir(region, above) {
 			return false
 		}
 	}
@@ -1725,56 +1723,52 @@ func rootSystemLevelTest(region *featureRegion, p featurePos, distance, deviatio
 }
 
 func placeModernRootSystem(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) bool {
-	n, _ := region.State(origin)
-	if normalizeJavaResource(n) != "air" {
+	if !treeIsAir(region, origin) {
 		return false
 	}
 	column := origin
-	target := origin
-	found := false
-	max := treeInt(config["root_column_max_height"], 100, r)
-	for i := int32(0); i < max; i++ {
+	maxHeight := int32(featureNumber(config["root_column_max_height"]))
+	levelDistance := int32(featureNumber(config["level_test_distance"]))
+	maxDeviation := int32(featureNumber(config["max_level_deviation"]))
+	requiredSpace := int32(featureNumber(config["required_vertical_space_for_tree"]))
+	allowedWater := int32(featureNumber(config["allowed_vertical_water_for_tree"]))
+	for range maxHeight {
 		column.y++
-		if column.y > region.MaxY() {
+		if region.Height(column.x, column.z, false) < column.y {
 			break
 		}
-		if region.Height(column.x, column.z, false) < column.y {
-			return true
-		}
-		if !rootSystemLevelTest(region, column, treeInt(config["level_test_distance"], 0, r), treeInt(config["max_level_deviation"], 0, r)) || !rootSystemAllowedTreePosition(region, column, treeMap(config["allowed_tree_position"])) || !rootSystemSpace(region, column, treeInt(config["required_vertical_space_for_tree"], 3, r), treeInt(config["allowed_vertical_water_for_tree"], 2, r)) {
+		if !rootSystemAllowedTreePosition(region, column, treeMap(config["allowed_tree_position"])) ||
+			!rootSystemSpace(region, column, requiredSpace, allowedWater) ||
+			!rootSystemLevelTest(region, column, levelDistance, maxDeviation) {
 			continue
 		}
 		below := treePos(column, 0, -1, 0)
-		if !treeSolid(region, below) {
-			return true
+		if featureFluidTagContains("minecraft:lava", featureFluidName(region, below, nil)) || !featureRegionSolid(region, below) {
+			break
 		}
-		target = column
-		found = true
-		break
-	}
-	if !found {
-		return true
-	}
-	if !region.PlacePlacedFeature(config["feature"], [3]int32{target.x, target.y, target.z}, r) {
-		return true
-	}
-	for y := origin.y; y < target.y; y++ {
-		for i := int32(0); i < treeInt(config["root_placement_attempts"], 20, r); i++ {
-			x := origin.x + r.NextInt(treeInt(config["root_radius"], 3, r)) - r.NextInt(treeInt(config["root_radius"], 3, r))
-			z := origin.z + r.NextInt(treeInt(config["root_radius"], 3, r)) - r.NextInt(treeInt(config["root_radius"], 3, r))
-			p := featurePos{x, y, z}
-			if rootSystemReplaceable(region, p, config["root_replaceable"]) {
-				treeSet(region, p, config["root_state_provider"], r)
+		if !region.PlacePlacedFeature(config["feature"], [3]int32{column.x, column.y, column.z}, r) {
+			continue
+		}
+		// Java passes originY + candidateOffset - 1 as targetHeight and
+		// places the exclusive range [originY, targetHeight).
+		targetHeight := column.y - 1
+		rootRadius := int32(featureNumber(config["root_radius"]))
+		rootAttempts := int32(featureNumber(config["root_placement_attempts"]))
+		for rootY := origin.y; rootY < targetHeight; rootY++ {
+			for range rootAttempts {
+				x := origin.x + r.NextInt(rootRadius) - r.NextInt(rootRadius)
+				z := origin.z + r.NextInt(rootRadius) - r.NextInt(rootRadius)
+				p := featurePos{x, rootY, z}
+				if rootSystemReplaceable(region, p, config["root_replaceable"]) {
+					state, actor, ok := region.SampleNativeState(config["root_state_provider"], p, r)
+					if ok {
+						featureSetNativeBlockFlag2(region, p, state, actor)
+					}
+				}
 			}
 		}
-	}
-	for i := int32(0); i < treeInt(config["hanging_root_placement_attempts"], 20, r); i++ {
-		rad := treeInt(config["hanging_root_radius"], 3, r)
-		span := treeInt(config["hanging_roots_vertical_span"], 2, r)
-		p := featurePos{origin.x + r.NextInt(rad) - r.NextInt(rad), origin.y + r.NextInt(span) - r.NextInt(span), origin.z + r.NextInt(rad) - r.NextInt(rad)}
-		if treeIsAir(region, p) && treeSturdyDown(region, treePos(p, 0, 1, 0)) {
-			treeSet(region, p, config["hanging_root_state_provider"], r)
-		}
+		rootSystemHangingRoots(region, config, origin, r)
+		return true
 	}
 	return true
 }
@@ -1783,39 +1777,53 @@ func rootSystemAllowedTreePosition(region *featureRegion, p featurePos, predicat
 }
 func rootSystemSpace(region *featureRegion, p featurePos, height, water int32) bool {
 	for i := int32(1); i <= height; i++ {
-		n, _ := region.State(treePos(p, 0, i, 0))
-		n = normalizeJavaResource(n)
-		if n != "air" && !(i+1 <= water && n == "water") {
+		at := treePos(p, 0, i, 0)
+		if featureRegionAir(region, at) {
+			continue
+		}
+		if i+1 > water {
+			return false
+		}
+		native := region.nativeState(at)
+		if !featureFluidTagContains("minecraft:water", featureFluidName(region, at, nil)) &&
+			!world.JavaBlockStateHasWaterFluid(native.CanonicalJavaID(region.c.BlockRegistry())) {
 			return false
 		}
 	}
 	return true
 }
 func rootSystemReplaceable(region *featureRegion, p featurePos, raw any) bool {
-	name, _ := region.State(p)
-	matches := func(value any) bool {
-		block, ok := value.(string)
+	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	return featureBlockHolderContains(raw, name)
+}
+func rootSystemHangingRoots(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) {
+	radius := int32(featureNumber(config["hanging_root_radius"]))
+	span := int32(featureNumber(config["hanging_roots_vertical_span"]))
+	for range int32(featureNumber(config["hanging_root_placement_attempts"])) {
+		p := featurePos{
+			origin.x + r.NextInt(radius) - r.NextInt(radius),
+			origin.y + r.NextInt(span) - r.NextInt(span),
+			origin.z + r.NextInt(radius) - r.NextInt(radius),
+		}
+		if !treeIsAir(region, p) {
+			continue
+		}
+		state, actor, ok := region.SampleNativeState(config["hanging_root_state_provider"], p, r)
 		if !ok {
-			panic("overworld: malformed Java root replaceable block")
+			continue
 		}
-		block = normalizeJavaResource(block)
-		if strings.HasPrefix(block, "#") {
-			return treeTagContains(block, name)
+		id := state.CanonicalJavaID(region.c.BlockRegistry())
+		if !world.JavaGenerationBlockCanSurvive(region, id, cube.Pos{int(p.x), int(p.y), int(p.z)}) {
+			continue
 		}
-		return normalizeJavaResource(name) == block
-	}
-	switch values := raw.(type) {
-	case string:
-		return matches(values)
-	case []any:
-		for _, value := range values {
-			if matches(value) {
-				return true
-			}
+		support := treePos(p, 0, 1, 0)
+		shape, err := javadata.BlockGenerationShapeID(region.nativeState(support).CanonicalJavaID(region.c.BlockRegistry()))
+		if err != nil {
+			panic(err)
 		}
-		return false
-	default:
-		panic("overworld: malformed Java root replaceable set")
+		if shape.Sturdy&(1<<uint(cube.FaceDown)) != 0 {
+			featureSetNativeBlockFlag2(region, p, state, actor)
+		}
 	}
 }
 

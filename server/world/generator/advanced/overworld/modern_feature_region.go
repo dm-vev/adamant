@@ -630,15 +630,17 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 					if !region.withinWriteArea(p) {
 						continue
 					}
-					name, _ := region.State(p)
+					stateID := region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry())
 					for _, target := range oreTargets {
-						if !orePredicateMatches(p, target.predicate, name) {
+						if !featureRuleMatches(p, target.predicate, stateID, random) {
 							continue
 						}
 						if discard > 0 && (discard >= 1 || random.NextFloat() < discard) {
 							exposed := false
 							for _, offset := range [6]featurePos{{y: -1}, {y: 1}, {z: -1}, {z: 1}, {x: -1}, {x: 1}} {
-								if treeIsAir(region, featurePos{x + offset.x, y + offset.y, z + offset.z}) {
+								neighbour := featurePos{x + offset.x, y + offset.y, z + offset.z}
+								name, _ := javadata.BlockStateName(region.nativeState(neighbour).CanonicalJavaID(region.c.BlockRegistry()))
+								if treeIsAirName(name) {
 									exposed = true
 									break
 								}
@@ -647,7 +649,12 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 								continue
 							}
 						}
-						placed = region.SetNativeBlock(p, target.rid, target.actor) || placed
+						// Java writes through BulkSectionAccess, not WorldGenLevel:
+						// no automatic postprocessing, but native actor payloads remain valid.
+						if region.setWithFlags(p, target.rid, 16) && target.actor != nil {
+							region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: target.actor})
+						}
+						placed = true
 						break
 					}
 				}

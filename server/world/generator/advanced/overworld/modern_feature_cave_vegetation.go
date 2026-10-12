@@ -45,8 +45,7 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 	vr := int32(featureNumber(verticalRange))
 	xRadius := sampleJavaInt(xzRadius, random) + 1
 	zRadius := sampleJavaInt(xzRadius, random) + 1
-	surface := make([]featurePos, 0)
-	surfaceSeen := make(map[featurePos]struct{})
+	surface := make([]featurePos, 0, (2*xRadius+1)*(2*zRadius+1)-4)
 	for dx := -xRadius; dx <= xRadius; dx++ {
 		isXEdge := dx == -xRadius || dx == xRadius
 		for dz := -zRadius; dz <= zRadius; dz++ {
@@ -78,33 +77,35 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 			}
 			groundPos := below
 			groundPlaced := true
-			for i := int32(0); i < patchDepth; i++ {
+			for i := range patchDepth {
 				groundNative, groundActor, sampled := region.SampleNativeState(groundState, below, random)
 				if !sampled {
 					groundPlaced = false
 					break
 				}
-				groundJavaState, err := world.JavaState(region.c.BlockRegistry(), groundNative)
-				if err != nil {
-					panic("overworld: Java vegetation patch sampled unknown block state: " + err.Error())
+				registry := region.c.BlockRegistry()
+				sampledName, ok := javadata.BlockStateName(groundNative.CanonicalJavaID(registry))
+				if !ok {
+					panic("overworld: Java vegetation patch sampled unknown block state")
 				}
-				groundName, _ := region.State(below)
-				if groundJavaState.Name != groundName {
-					if !vegetationPatchReplaceable(region, below, replaceable) {
+				groundName, ok := javadata.BlockStateName(region.nativeState(below).CanonicalJavaID(registry))
+				if !ok {
+					panic("overworld: Java vegetation patch encountered unknown ground block state")
+				}
+				if normalizeJavaResource(sampledName) != normalizeJavaResource(groundName) {
+					if !featureBlockHolderContains(replaceable, groundName) {
 						groundPlaced = i != 0
 						break
 					}
-					region.SetNativeBlock(below, groundNative, groundActor)
+					featureSetNativeBlockFlag2(region, below, groundNative, groundActor)
 					below.x += inward.x
 					below.y += inward.y
 					below.z += inward.z
 				}
 			}
 			if groundPlaced {
-				if _, duplicate := surfaceSeen[groundPos]; !duplicate {
-					surfaceSeen[groundPos] = struct{}{}
-					surface = append(surface, groundPos)
-				}
+				// Each column owns a distinct x/z, so this HashSet cannot contain duplicates.
+				surface = append(surface, groundPos)
 			}
 		}
 	}
@@ -119,7 +120,7 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 		}
 		waterSurface = vegetationPatchHashSetOrder(waterSurface)
 		for _, pos := range waterSurface {
-			region.Set(pos, waterRID)
+			featureSetNativeBlockFlag2(region, pos, waterRID, nil)
 		}
 		surface = waterSurface
 	}
@@ -131,17 +132,19 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 			}
 			vegetationPlaced := region.PlacePlacedFeature(vegetation, [3]int32{placement.x, placement.y, placement.z}, random)
 			if waterlogged && vegetationPlaced {
-				waterloggedPos := pos
-				name, properties := region.State(waterloggedPos)
-				waterloggedValue, hasWaterloggedProperty := properties["waterlogged"].(bool)
-				if hasWaterloggedProperty && !waterloggedValue && name != "minecraft:water" {
-					props := make(map[string]any, len(properties))
-					for key, value := range properties {
-						props[key] = value
+				id := region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry())
+				waterloggedValue, hasWaterloggedProperty := javadata.BlockStateBool(id, "waterlogged")
+				if hasWaterloggedProperty && !waterloggedValue {
+					name, ok := javadata.BlockStateName(id)
+					if !ok {
+						panic("overworld: Java vegetation patch encountered unknown placed state")
 					}
-					props["waterlogged"] = true
-					if native, found := featureStateRID(region.c, map[string]any{"id": name, "properties": props}); found {
-						region.Set(waterloggedPos, native)
+					if normalizeJavaResource(name) != "water" {
+						updated, err := javadata.BlockStateWithProperty(id, "waterlogged", true)
+						if err != nil {
+							panic(err)
+						}
+						featureSetNativeBlockFlag2(region, pos, world.ResolveStateID(region.c.BlockRegistry(), updated), nil)
 					}
 				}
 			}
@@ -160,43 +163,32 @@ func vegetationPatchHashSetOrder(positions []featurePos) []featurePos {
 	for len(positions) > capacity*3/4 {
 		capacity *= 2
 	}
-	buckets := make([][]featurePos, capacity)
+	// The codec caps xz_radius at 32: at most 4485 columns and 8192 buckets.
+	// Stable counting distribution preserves bucket insertion order without
+	// allocating a slice for each occupied Java HashMap bucket.
+	var next [8192]uint16
+	for _, pos := range positions {
+		hash := uint32((pos.y+pos.z*31)*31 + pos.x)
+		hash ^= hash >> 16
+		next[hash&uint32(capacity-1)]++
+	}
+	var offset uint16
+	for i := range capacity {
+		count := next[i]
+		next[i] = offset
+		offset += count
+	}
+	ordered := make([]featurePos, len(positions))
 	for _, pos := range positions {
 		hash := uint32((pos.y+pos.z*31)*31 + pos.x)
 		hash ^= hash >> 16
 		index := hash & uint32(capacity-1)
-		buckets[index] = append(buckets[index], pos)
-	}
-	ordered := make([]featurePos, 0, len(positions))
-	for _, bucket := range buckets {
-		ordered = append(ordered, bucket...)
+		ordered[next[index]] = pos
+		next[index]++
 	}
 	return ordered
 }
 
-func vegetationPatchReplaceable(region *featureRegion, pos featurePos, replaceable any) bool {
-	name, _ := region.State(pos)
-	switch value := replaceable.(type) {
-	case string:
-		if len(value) > 0 && value[0] == '#' {
-			return javaBlockTagContains(normalizeJavaResource(value[1:]), normalizeJavaResource(name))
-		}
-		return normalizeJavaResource(name) == normalizeJavaResource(value)
-	case []any:
-		for _, entry := range value {
-			blockName, ok := entry.(string)
-			if !ok {
-				panic("overworld: malformed Java vegetation patch replaceable list")
-			}
-			if vegetationPatchReplaceable(region, pos, blockName) {
-				return true
-			}
-		}
-		return false
-	default:
-		panic("overworld: malformed Java vegetation patch replaceable set")
-	}
-}
 
 func vegetationPatchSturdy(region *featureRegion, pos, faceDirection featurePos) bool {
 	face := cube.FaceUp
@@ -212,8 +204,8 @@ func vegetationPatchSturdy(region *featureRegion, pos, faceDirection featurePos)
 	case faceDirection.z > 0:
 		face = cube.FaceSouth
 	}
-	name, properties := region.State(pos)
-	shape, err := javadata.BlockGenerationShape(normalizeJavaResource(name), properties)
+	id := region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry())
+	shape, err := javadata.BlockGenerationShapeID(id)
 	if err != nil {
 		panic(err)
 	}

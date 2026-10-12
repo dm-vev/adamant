@@ -1,8 +1,6 @@
 package overworld
 
 import (
-	"maps"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
@@ -24,52 +22,59 @@ func placeModernTerrainMisc(region *featureRegion, kind string, config map[strin
 	}
 }
 
-func replaceSingleRuleMatches(region *featureRegion, p featurePos, rule map[string]any, blockName string, random *java26.Random) bool {
+func featureRuleMatches(p featurePos, rule map[string]any, stateID uint32, random *java26.Random) bool {
 	kind := normalizeJavaResource(rule["predicate_type"].(string))
 	switch kind {
 	case "always_true":
 		return true
-	case "block_match", "tag_match", "height_match":
-		return orePredicateMatches(p, rule, blockName)
+	case "block_match":
+		name, _ := javadata.BlockStateName(stateID)
+		return normalizeJavaResource(rule["block"].(string)) == normalizeJavaResource(name)
+	case "tag_match":
+		name, _ := javadata.BlockStateName(stateID)
+		return javaBlockTagContains(normalizeJavaResource(rule["tag"].(string)), normalizeJavaResource(name))
+	case "height_match":
+		return p.y >= int32(featureNumber(rule["min_inclusive"])) && p.y <= int32(featureNumber(rule["max_inclusive"]))
 	case "blockstate_match", "random_blockstate_match":
-		expected, ok := featureStateBlock(rule["block_state"])
+		name, ok := rule["block_state"].(string)
+		var properties map[string]any
 		if !ok {
-			panic("overworld: malformed Java block-state rule test")
+			state := rule["block_state"].(map[string]any)
+			name = state["id"].(string)
+			properties, _ = state["properties"].(map[string]any)
 		}
-		if normalizeJavaResource(expected.State.Name) != normalizeJavaResource(blockName) {
+		expected, err := javadata.BlockStateID(name, properties)
+		if err != nil {
+			panic(err)
+		}
+		if stateID != expected {
 			return false
 		}
-		_, properties := region.State(p)
-		if !maps.Equal(javadata.BlockPropertiesWithDefaults(expected.State.Name, expected.State.Properties), javadata.BlockPropertiesWithDefaults(blockName, properties)) {
-			return false
-		}
-		if kind == "random_blockstate_match" {
-			return random.NextFloat() < float32(rule["probability"].(float64))
-		}
-		return true
+		return kind != "random_blockstate_match" || random.NextFloat() < float32(rule["probability"].(float64))
 	case "random_block_match":
-		if normalizeJavaResource(rule["block"].(string)) != normalizeJavaResource(blockName) {
+		name, _ := javadata.BlockStateName(stateID)
+		if normalizeJavaResource(rule["block"].(string)) != normalizeJavaResource(name) {
 			return false
 		}
 		return random.NextFloat() < float32(rule["probability"].(float64))
 	case "all_of":
 		for _, raw := range rule["rules"].([]any) {
-			if !replaceSingleRuleMatches(region, p, raw.(map[string]any), blockName, random) {
+			if !featureRuleMatches(p, raw.(map[string]any), stateID, random) {
 				return false
 			}
 		}
 		return true
 	case "any_of":
 		for _, raw := range rule["rules"].([]any) {
-			if replaceSingleRuleMatches(region, p, raw.(map[string]any), blockName, random) {
+			if featureRuleMatches(p, raw.(map[string]any), stateID, random) {
 				return true
 			}
 		}
 		return false
 	case "not":
-		return !replaceSingleRuleMatches(region, p, rule["rule"].(map[string]any), blockName, random)
+		return !featureRuleMatches(p, rule["rule"].(map[string]any), stateID, random)
 	default:
-		panic("overworld: unsupported Java replace-single-block rule test " + kind)
+		panic("overworld: unsupported Java block rule test " + kind)
 	}
 }
 
@@ -194,8 +199,8 @@ func placeModernReplaceSingleBlock(region *featureRegion, config map[string]any,
 		if !ok {
 			panic("overworld: malformed Java block replacement target")
 		}
-		name, _ := region.State(origin)
-		if replaceSingleRuleMatches(region, origin, predicate, name, random) {
+		stateID := region.nativeState(origin).CanonicalJavaID(region.c.BlockRegistry())
+		if featureRuleMatches(origin, predicate, stateID, random) {
 			placement, ok := featureStateBlock(replacement["state"])
 			if !ok {
 				panic("overworld: malformed Java replacement state")

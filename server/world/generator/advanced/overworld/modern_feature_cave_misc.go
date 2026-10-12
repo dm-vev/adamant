@@ -33,13 +33,8 @@ func placeModernIceFamily(region *featureRegion, typeName string, config map[str
 }
 
 func featureRegionAir(region *featureRegion, p featurePos) bool {
-	name, _ := region.State(p)
-	switch normalizeJavaResource(name) {
-	case "air", "cave_air", "void_air":
-		return true
-	default:
-		return false
-	}
+	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	return treeIsAirName(name)
 }
 
 func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
@@ -232,38 +227,57 @@ func placeModernBlueIce(region *featureRegion, origin featurePos, random *java26
 }
 func placeModernScatteredOre(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
 	size := int32(featureNumber(config["size"]))
-	if size < 0 { panic("overworld: negative Java scattered ore size") }
 	targets, ok := config["targets"].([]any)
-	if !ok { panic("overworld: malformed Java scattered ore targets") }
-	type replacement struct { state world.NativeState; predicate map[string]any }
-	replacements := make([]replacement, 0, len(targets))
-	for _, raw := range targets {
-		entry, ok := raw.(map[string]any); if !ok { panic("overworld: malformed Java scattered ore target") }
-		state, ok := entry["state"].(string); if !ok { panic("overworld: malformed Java scattered ore state") }
-		predicate, ok := entry["target"].(map[string]any); if !ok { panic("overworld: malformed Java scattered ore rule") }
-		replacements = append(replacements, replacement{featureRequireState(region,"minecraft:"+normalizeJavaResource(state)),predicate})
+	if !ok || size < 0 || size > 64 {
+		panic("overworld: malformed Java scattered ore configuration")
 	}
-	numberOfTries := random.NextInt(size+1)
-	discardChance := float32(0)
-	if raw,ok:=config["discard_chance_on_air_exposure"].(float64);ok { discardChance=float32(raw) }
-	for i:=int32(0);i<numberOfTries;i++ {
-		distance:=i;if distance>7{distance=7}
-		axis:=func() int32 {
-			difference:=random.NextFloat()-random.NextFloat()
-			return int32(math.Floor(float64(difference*float32(distance))+0.5))
+	var targetBuffer [2]modernOreTarget
+	replacements := targetBuffer[:0]
+	if len(targets) > len(targetBuffer) {
+		replacements = make([]modernOreTarget, 0, len(targets))
+	}
+	for _, raw := range targets {
+		entry := raw.(map[string]any)
+		placement, ok := featureStateBlock(entry["state"])
+		if !ok {
+			panic("overworld: malformed Java scattered ore target state")
 		}
-		p:=featurePos{origin.x+axis(),origin.y+axis(),origin.z+axis()}
-		name,_:=region.State(p)
-		for _,target:=range replacements {
-			if !orePredicateMatches(p,target.predicate,name){continue}
-			skipAirCheck:=discardChance<=0
-			if discardChance>0&&discardChance<1 {skipAirCheck=random.NextFloat()>=discardChance}
-			if !skipAirCheck {
-				exposed:=false
-				for _,d:=range [][3]int32{{0,-1,0},{0,1,0},{0,0,-1},{0,0,1},{-1,0,0},{1,0,0}} {if featureRegionAir(region,featurePos{p.x+d[0],p.y+d[1],p.z+d[2]}){exposed=true;break}}
-				if exposed {break}
+		predicate, ok := entry["target"].(map[string]any)
+		if !ok {
+			panic("overworld: malformed Java scattered ore target predicate")
+		}
+		state, actor := region.resolveFeatureBlock(placement, origin)
+		replacements = append(replacements, modernOreTarget{rid: state, actor: actor, predicate: predicate})
+	}
+	numberOfTries := random.NextInt(size + 1)
+	discard := float32(number(config["discard_chance_on_air_exposure"]))
+	for i := range numberOfTries {
+		distance := min(i, 7)
+		axis := func() int32 {
+			difference := random.NextFloat() - random.NextFloat()
+			return int32(math.Floor(float64(difference*float32(distance)) + .5))
+		}
+		p := featurePos{origin.x + axis(), origin.y + axis(), origin.z + axis()}
+		stateID := region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry())
+		for _, target := range replacements {
+			if !featureRuleMatches(p, target.predicate, stateID, random) {
+				continue
 			}
-			region.Set(p,target.state)
+			if discard > 0 && (discard >= 1 || random.NextFloat() < discard) {
+				exposed := false
+				for _, d := range [6]featurePos{{y: -1}, {y: 1}, {z: -1}, {z: 1}, {x: -1}, {x: 1}} {
+					neighbour := featurePos{p.x + d.x, p.y + d.y, p.z + d.z}
+					name, _ := javadata.BlockStateName(region.nativeState(neighbour).CanonicalJavaID(region.c.BlockRegistry()))
+					if treeIsAirName(name) {
+						exposed = true
+						break
+					}
+				}
+				if exposed {
+					continue
+				}
+			}
+			featureSetNativeBlockFlag2(region, p, target.rid, target.actor)
 			break
 		}
 	}

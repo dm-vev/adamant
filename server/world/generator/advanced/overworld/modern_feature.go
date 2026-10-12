@@ -810,40 +810,6 @@ type modernOreTarget struct {
 	predicate map[string]any
 }
 
-func orePredicateMatches(p featurePos, predicate map[string]any, blockName string) bool {
-	typeName, _ := predicate["predicate_type"].(string)
-	switch normalizeJavaResource(typeName) {
-	case "tag_match":
-		tag, _ := predicate["tag"].(string)
-		return javaBlockTagContains(normalizeJavaResource(tag), normalizeJavaResource(blockName))
-	case "height_match":
-		return p.y >= int32(featureNumber(predicate["min_inclusive"])) && p.y <= int32(featureNumber(predicate["max_inclusive"]))
-	case "all_of":
-		rules := predicate["rules"].([]any)
-		for _, v := range rules {
-			if !orePredicateMatches(p, v.(map[string]any), blockName) {
-				return false
-			}
-		}
-		return true
-	case "any_of":
-		rules := predicate["rules"].([]any)
-		for _, v := range rules {
-			if orePredicateMatches(p, v.(map[string]any), blockName) {
-				return true
-			}
-		}
-		return false
-	case "not":
-		return !orePredicateMatches(p, predicate["rule"].(map[string]any), blockName)
-	case "block_match":
-		name, _ := predicate["block"].(string)
-		return normalizeJavaResource(name) == normalizeJavaResource(blockName)
-	default:
-		panic("overworld: unsupported Java ore target predicate " + normalizeJavaResource(typeName))
-	}
-}
-
 // featureBound resolves a vertical anchor; worldMaxY is exclusive.
 func featureBound(v any, worldMinY, worldMaxY, seaLevel int32) float64 {
 	if n, ok := v.(float64); ok {
