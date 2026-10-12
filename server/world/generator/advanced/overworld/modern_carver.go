@@ -325,6 +325,62 @@ func javaIntProviderField(provider map[string]any, field string) int32 {
 	return javaIntProviderValue(value)
 }
 
+// javaIntProviderBounds retains Source minInclusive/maxInclusive, including
+// zero-weight entries and clamped providers' intersection with their source.
+func javaIntProviderBounds(provider any) (int32, int32) {
+	if _, ok := provider.(float64); ok {
+		value := javaIntProviderValue(provider)
+		return value, value
+	}
+	p, ok := provider.(map[string]any)
+	if !ok {
+		panic("overworld: malformed Java IntProvider")
+	}
+	typeName, ok := p["type"].(string)
+	if !ok {
+		panic("overworld: Java IntProvider has no type")
+	}
+	switch normalizeJavaResource(typeName) {
+	case "constant":
+		value := javaIntProviderField(p, "value")
+		return value, value
+	case "uniform", "biased_to_bottom", "very_biased_to_bottom", "clamped_normal":
+		return javaIntProviderField(p, "min_inclusive"), javaIntProviderField(p, "max_inclusive")
+	case "trapezoid":
+		return javaIntProviderField(p, "min"), javaIntProviderField(p, "max")
+	case "clamped":
+		minimum, maximum := javaIntProviderBounds(p["source"])
+		return max(minimum, javaIntProviderField(p, "min_inclusive")), min(maximum, javaIntProviderField(p, "max_inclusive"))
+	case "weighted_list":
+		distribution, ok := p["distribution"].([]any)
+		if !ok || len(distribution) == 0 {
+			panic("overworld: malformed weighted Java IntProvider")
+		}
+		minimum, maximum := int32(math.MaxInt32), int32(math.MinInt32)
+		for _, raw := range distribution {
+			entry, ok := raw.(map[string]any)
+			if !ok {
+				panic("overworld: malformed weighted Java IntProvider entry")
+			}
+			entryMin, entryMax := javaIntProviderBounds(entry["data"])
+			minimum, maximum = min(minimum, entryMin), max(maximum, entryMax)
+		}
+		return minimum, maximum
+	default:
+		panic("overworld: unsupported Java IntProvider " + normalizeJavaResource(typeName))
+	}
+}
+
+func sampleJavaIntOrUniform(provider any, minimum, maximum int, random *java26.Random) int32 {
+	if provider != nil {
+		return sampleJavaInt(provider, random)
+	}
+	if minimum == maximum {
+		return int32(minimum)
+	}
+	return int32(minimum) + random.NextInt(int32(maximum-minimum+1))
+}
+
 func sampleJavaInt(provider any, r *java26.Random) int32 {
 	if _, ok := provider.(float64); ok {
 		return javaIntProviderValue(provider)

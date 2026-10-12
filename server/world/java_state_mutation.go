@@ -40,10 +40,9 @@ func applyJavaActorState(b Block, id uint32) Block {
 	return b
 }
 
-// resolveJavaStateID caches the forward projection independently of the native
-// inverse: multiple source states may share the same native layer pair.
-func (w *World) resolveJavaStateID(id uint32) NativeState {
-	registry := w.conf.Blocks
+// ResolveStateID projects a canonical Java state through the registry's cached
+// native codec. Invalid or unmappable source states panic, as with world writes.
+func ResolveStateID(registry chunk.BlockRegistry, id uint32) NativeState {
 	basic, cached := registry.(*BasicBlockRegistry)
 	if cached {
 		if state, ok := basic.javaNativeStates.Load(id); ok {
@@ -73,7 +72,7 @@ func (tx *Tx) setJavaBlockState(pos cube.Pos, id uint32, flags int) bool {
 		return false
 	}
 	w := tx.World()
-	native := w.resolveJavaStateID(id)
+	native := ResolveStateID(w.conf.Blocks, id)
 	col := tx.chunk(chunkPosFromBlockPos(pos))
 	old := w.blockInChunk(col, pos)
 	b := w.conf.Blocks.BlockByRuntimeIDOrAir(native.Block)

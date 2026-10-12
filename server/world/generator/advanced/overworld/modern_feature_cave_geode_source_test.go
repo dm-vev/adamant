@@ -23,6 +23,7 @@ type geodeSourceCase struct {
 	Origin        [3]int32            `json:"origin"`
 	Scenario      string              `json:"scenario"`
 	Invalid       bool                `json:"invalid"`
+	Config        map[string]any      `json:"config,omitempty"`
 	Placed        bool                `json:"placed"`
 	NextLong      string              `json:"nextLong"`
 	States        []string            `json:"states"`
@@ -122,6 +123,9 @@ func TestGeodeMatchesJava263SourceFixtures(t *testing.T) {
 				random = java26.NewXoroshiroRandom(tc.Seed)
 			}
 			config := geodeScenarioConfig(fixture.Config, tc.Scenario)
+			if tc.Config != nil {
+				config = tc.Config
+			}
 			got := placeModernGeode(region, config, featurePos{x: tc.Origin[0], y: tc.Origin[1], z: tc.Origin[2]}, &random)
 			if got != tc.Placed {
 				t.Fatalf("placed=%v, Source=%v", got, tc.Placed)

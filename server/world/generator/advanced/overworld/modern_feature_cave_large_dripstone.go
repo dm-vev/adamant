@@ -24,7 +24,7 @@ func placeModernLargeDripstone(region *featureRegion, config map[string]any, ori
 		return false
 	}
 
-	radiusMin, radiusMax := largeDripstoneIntBounds(config["column_radius"], 1, 16)
+	radiusMin, radiusMax := javaIntProviderBounds(config["column_radius"])
 	maxRadius := int32(float32(columnHeight) * largeDripstoneFloat(config["max_column_radius_to_cave_height_ratio"], .1))
 	if maxRadius < radiusMin { maxRadius = radiusMin }
 	if maxRadius > radiusMax { maxRadius = radiusMax }
@@ -41,10 +41,12 @@ func placeModernLargeDripstone(region *featureRegion, config map[string]any, ori
 		wind = largeDripstoneWind{originY: origin.y, x: float64(java26.Cos(float64(direction)) * speed), z: float64(java26.Sin(float64(direction)) * speed), maxOffset: 16-radius}
 	}
 
-	if largeDripstoneEmbed(region, &stalactite, wind) {
+	stalactiteEmbedded := largeDripstoneEmbed(region, &stalactite, wind)
+	stalagmiteEmbedded := largeDripstoneEmbed(region, &stalagmite, wind)
+	if stalactiteEmbedded {
 		largeDripstonePlace(region, stalactite, wind, random)
 	}
-	if largeDripstoneEmbed(region, &stalagmite, wind) {
+	if stalagmiteEmbedded {
 		largeDripstonePlace(region, stalagmite, wind, random)
 	}
 	return true
@@ -148,7 +150,7 @@ func largeDripstonePlace(region *featureRegion, shape largeDripstoneShape, wind 
 				adjusted := largeDripstoneWindOffset(pos, wind)
 				if largeDripstoneEmptyWaterOrLava(region, adjusted) {
 					hasBeenOutOfStone = true
-					region.Set(adjusted, dripstone)
+					region.setWithFlags(adjusted, dripstone, 2)
 				} else if hasBeenOutOfStone && javaBlockTagContains("base_stone_overworld", largeDripstoneName(region, adjusted)) {
 					break
 				}
@@ -171,15 +173,7 @@ func largeDripstoneEmptyOrWaterName(name string) bool {
 }
 func largeDripstoneBaseOrLava(name string, replaceable any) bool {
 	name = normalizeJavaResource(name)
-	return name == "dripstone_block" || name == "lava" || largeDripstoneTagMatch(replaceable, name)
-}
-func largeDripstoneTagMatch(raw any, name string) bool {
-	tag, ok := raw.(string)
-	if !ok { return false }
-	tag = normalizeJavaResource(tag)
-	name = normalizeJavaResource(name)
-	if len(tag) > 0 && tag[0] == '#' { return javaBlockTagContains(tag[1:], name) }
-	return tag == name
+	return name == "dripstone_block" || name == "lava" || featureBlockHolderContains(replaceable, name)
 }
 
 func largeDripstoneSuitableForWind(shape largeDripstoneShape, minRadius int32, minBluntness float64) bool {
@@ -187,28 +181,6 @@ func largeDripstoneSuitableForWind(shape largeDripstoneShape, minRadius int32, m
 }
 func largeDripstoneInt(v any, fallback int) int { if n, ok := v.(float64); ok { return int(n) }; return fallback }
 func largeDripstoneFloat(v any, fallback float32) float32 { if n, ok := v.(float64); ok { return float32(n) }; return fallback }
-func largeDripstoneIntBounds(v any, defaultMin, defaultMax int32) (int32, int32) {
-	provider, ok := v.(map[string]any)
-	if !ok { return defaultMin, defaultMax }
-	switch normalizeJavaResource(largeDripstoneString(provider["type"], "uniform")) {
-	case "uniform":
-		return int32(largeDripstoneInt(provider["min_inclusive"], int(defaultMin))), int32(largeDripstoneInt(provider["max_inclusive"], int(defaultMax)))
-	case "constant":
-		value := int32(largeDripstoneInt(provider["value"], int(defaultMin)))
-		return value, value
-	case "clamped":
-		minimum := int32(largeDripstoneInt(provider["min_inclusive"], int(defaultMin)))
-		maximum := int32(largeDripstoneInt(provider["max_inclusive"], int(defaultMax)))
-		if source, ok := provider["source"].(map[string]any); ok {
-			sourceMin, sourceMax := largeDripstoneIntBounds(source, minimum, maximum)
-			if sourceMin > minimum { minimum = sourceMin }
-			if sourceMax < maximum { maximum = sourceMax }
-		}
-		return minimum, maximum
-	default:
-		panic("overworld: unsupported large dripstone radius provider " + largeDripstoneString(provider["type"], ""))
-	}
-}
 func largeDripstoneSampleFloat(v any, fallback float32, random *java26.Random) float32 {
 	if n, ok := v.(float64); ok { return float32(n) }
 	provider, ok := v.(map[string]any); if !ok { return fallback }

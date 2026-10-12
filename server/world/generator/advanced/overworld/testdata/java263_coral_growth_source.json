@@ -1,0 +1,1184 @@
+{
+  "oracle": "Executed Java 26.3 CoralTreeFeature.place and CoralClawFeature.place with actual Holder<PlacedFeature> -> SimpleBlockFeature -> WeightedStateProvider and BlockPredicateFilter(matches water), bootstrapped vanilla registries, Java native states, controlled WorldGenLevel proxy applies writes, rejects writes outside -64..319, returns VOID_AIR outside build height, and exposes minY=-64/maxY=319/height=384 plus heightmap reads; LegacyRandomSource or XoroshiroRandomSource. Cases cover both RNGs, water placement predicate, weighted provider RNG, occupied origin, rejected branches, negative and positive chunk-edge origins, and maximum build height. Oracle: /tmp/CoralGrowthOracle.java",
+  "terrain": {
+    "default": "minecraft:water",
+    "bounds": [
+      -32,
+      -64,
+      -32,
+      31,
+      319,
+      31
+    ],
+    "origin": [
+      8,
+      64,
+      8
+    ],
+    "negativeEdgeOrigin": [
+      -15,
+      64,
+      -15
+    ],
+    "positiveEdgeOrigin": [
+      15,
+      64,
+      15
+    ],
+    "heightOrigin": [
+      8,
+      318,
+      8
+    ],
+    "occupiedOrigin": "minecraft:stone",
+    "branchRejection": "stone at horizontal neighbors one, two, and three blocks above origin"
+  },
+  "provider": {
+    "minecraft:brain_coral_block": 2,
+    "minecraft:tube_coral_block": 1,
+    "minecraft:horn_coral_block": 1
+  },
+  "placementPredicate": "minecraft:matching_blocks(minecraft:water)",
+  "cases": [
+    {
+      "algorithm": "legacy",
+      "kind": "tree",
+      "scenario": "clear",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": 6787954838522539928,
+      "blocks": [
+        {
+          "pos": [
+            10,
+            66,
+            8
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            10,
+            67,
+            8
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            66,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            67,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            7,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            64,
+            8
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            65,
+            7
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            66,
+            6
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            67,
+            6
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            68,
+            6
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "kind": "tree",
+      "scenario": "occupied_origin",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": -3109364765729502342,
+      "blocks": []
+    },
+    {
+      "algorithm": "legacy",
+      "kind": "tree",
+      "scenario": "branch_reject",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": -4029974628518736597,
+      "blocks": [
+        {
+          "pos": [
+            8,
+            64,
+            8
+          ],
+          "state": "minecraft:horn_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "kind": "tree",
+      "scenario": "negative_edge",
+      "seed": 0,
+      "origin": [
+        -15,
+        64,
+        -15
+      ],
+      "placed": true,
+      "nextLong": 6787954838522539928,
+      "blocks": [
+        {
+          "pos": [
+            -13,
+            66,
+            -15
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            -13,
+            67,
+            -15
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            -14,
+            65,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            64,
+            -15
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            65,
+            -16
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            66,
+            -17
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            67,
+            -17
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            68,
+            -17
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            -16,
+            65,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -17,
+            66,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -17,
+            67,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "kind": "tree",
+      "scenario": "positive_edge",
+      "seed": 0,
+      "origin": [
+        15,
+        64,
+        15
+      ],
+      "placed": true,
+      "nextLong": 6787954838522539928,
+      "blocks": [
+        {
+          "pos": [
+            13,
+            66,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            13,
+            67,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            14,
+            65,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            64,
+            15
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            65,
+            14
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            66,
+            13
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            67,
+            13
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            68,
+            13
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            16,
+            65,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            17,
+            66,
+            15
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            17,
+            67,
+            15
+          ],
+          "state": "minecraft:horn_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "kind": "tree",
+      "scenario": "height",
+      "seed": 0,
+      "origin": [
+        8,
+        318,
+        8
+      ],
+      "placed": true,
+      "nextLong": 7105486291024734541,
+      "blocks": [
+        {
+          "pos": [
+            7,
+            319,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            318,
+            8
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            319,
+            7
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            319,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "kind": "claw",
+      "scenario": "clear",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": -8062155292093192501,
+      "blocks": [
+        {
+          "pos": [
+            3,
+            65,
+            8
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            3,
+            69,
+            6
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            4,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            4,
+            69,
+            6
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            5,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            5,
+            68,
+            6
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            65,
+            8
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            67,
+            6
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            7,
+            64,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            7,
+            66,
+            6
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            64,
+            8
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            65,
+            6
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            65,
+            7
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "kind": "claw",
+      "scenario": "occupied_origin",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": false,
+      "nextLong": -4962768465676381896,
+      "blocks": []
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "tree",
+      "scenario": "clear",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": 6577276377054993003,
+      "blocks": [
+        {
+          "pos": [
+            10,
+            68,
+            8
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            10,
+            69,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            11,
+            70,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            11,
+            71,
+            8
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            68,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            7,
+            67,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            64,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            66,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            67,
+            7
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            67,
+            9
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            68,
+            10
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            68,
+            6
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            69,
+            6
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            67,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "tree",
+      "scenario": "occupied_origin",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": -3694039286755638414,
+      "blocks": []
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "tree",
+      "scenario": "branch_reject",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": 1397090480460350253,
+      "blocks": [
+        {
+          "pos": [
+            8,
+            64,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            66,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "tree",
+      "scenario": "negative_edge",
+      "seed": 0,
+      "origin": [
+        -15,
+        64,
+        -15
+      ],
+      "placed": true,
+      "nextLong": 6577276377054993003,
+      "blocks": [
+        {
+          "pos": [
+            -12,
+            70,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -12,
+            71,
+            -15
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            -13,
+            68,
+            -15
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            -13,
+            69,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -14,
+            67,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            64,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            65,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            66,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            67,
+            -14
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            67,
+            -16
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            68,
+            -13
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            68,
+            -17
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -15,
+            69,
+            -17
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            -16,
+            67,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            -17,
+            68,
+            -15
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "tree",
+      "scenario": "positive_edge",
+      "seed": 0,
+      "origin": [
+        15,
+        64,
+        15
+      ],
+      "placed": true,
+      "nextLong": 6577276377054993003,
+      "blocks": [
+        {
+          "pos": [
+            13,
+            68,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            14,
+            67,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            64,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            65,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            66,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            67,
+            14
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            67,
+            16
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            68,
+            13
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            68,
+            17
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            15,
+            69,
+            13
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            16,
+            67,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            17,
+            68,
+            15
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            17,
+            69,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            18,
+            70,
+            15
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            18,
+            71,
+            15
+          ],
+          "state": "minecraft:horn_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "tree",
+      "scenario": "height",
+      "seed": 0,
+      "origin": [
+        8,
+        318,
+        8
+      ],
+      "placed": true,
+      "nextLong": 2160572957309072155,
+      "blocks": [
+        {
+          "pos": [
+            8,
+            318,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            319,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "claw",
+      "scenario": "clear",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": true,
+      "nextLong": 4564113396893194621,
+      "blocks": [
+        {
+          "pos": [
+            6,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            66,
+            5
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            66,
+            6
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            6,
+            66,
+            7
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            7,
+            65,
+            8
+          ],
+          "state": "minecraft:tube_coral_block"
+        },
+        {
+          "pos": [
+            8,
+            64,
+            8
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            65,
+            8
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            66,
+            7
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            67,
+            6
+          ],
+          "state": "minecraft:horn_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            68,
+            3
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            68,
+            4
+          ],
+          "state": "minecraft:brain_coral_block"
+        },
+        {
+          "pos": [
+            9,
+            68,
+            5
+          ],
+          "state": "minecraft:brain_coral_block"
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "kind": "claw",
+      "scenario": "occupied_origin",
+      "seed": 0,
+      "origin": [
+        8,
+        64,
+        8
+      ],
+      "placed": false,
+      "nextLong": 3038984756725240190,
+      "blocks": []
+    }
+  ]
+}

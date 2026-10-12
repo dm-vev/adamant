@@ -47,7 +47,7 @@ func (c *javaShapeContext) decayEvent(pos cube.Pos, from, to javaFluidState) boo
 
 func (c *javaShapeContext) hardenFlow(src, dst cube.Pos, fluid javaFluidState, replacement uint32) bool {
 	registry := c.tx.World().conf.Blocks
-	native := c.tx.World().resolveJavaStateID(replacement)
+	native := ResolveStateID(registry, replacement)
 	result := registry.BlockByRuntimeIDOrAir(native.Block)
 	before, present := c.tx.Liquid(dst)
 	if !present {

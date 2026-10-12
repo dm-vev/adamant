@@ -251,6 +251,22 @@ func BlockStateString(id uint32, property string) (string, bool) {
 	return domain.values[value], true
 }
 
+// BlockStateHasEnumValue checks a property's domain without allocating. Source
+// properties with the same name may have different domains, such as FACING and
+// HORIZONTAL_FACING.
+func BlockStateHasEnumValue(id uint32, property, value string) bool {
+	domain, _, _, ok := blockStateProperty(id, property)
+	if !ok || domain.kind != 's' {
+		return false
+	}
+	for _, candidate := range domain.values {
+		if candidate == value {
+			return true
+		}
+	}
+	return false
+}
+
 // BlockStateWithProperty changes one property while preserving every other
 // property in the canonical state. The successful path does not allocate.
 func BlockStateWithProperty(id uint32, property string, value any) (uint32, error) {

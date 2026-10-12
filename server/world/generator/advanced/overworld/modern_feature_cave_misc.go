@@ -296,9 +296,9 @@ func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin
 	name, _ := region.State(center)
 	if normalizeJavaResource(name) != target { return false }
 	radius := config["radius"]
-	rx := geodeIntProvider(radius, 0, 0, random)
-	ry := geodeIntProvider(radius, 0, 0, random)
-	rz := geodeIntProvider(radius, 0, 0, random)
+	rx := sampleJavaIntOrUniform(radius, 0, 0, random)
+	ry := sampleJavaIntOrUniform(radius, 0, 0, random)
+	rz := sampleJavaIntOrUniform(radius, 0, 0, random)
 	maxRadius := rx
 	if ry > maxRadius { maxRadius = ry }
 	if rz > maxRadius { maxRadius = rz }
@@ -338,10 +338,10 @@ func placeModernDelta(region *featureRegion, config map[string]any, origin featu
 	rim,ok:=config["rim"].(string);if !ok{panic("overworld: malformed Java delta rim")}
 	spawnRim:=random.NextDouble()<0.9
 	rimX,rimZ:=int32(0),int32(0)
-	if spawnRim {rimX=geodeIntProvider(config["rim_size"],0,0,random);rimZ=geodeIntProvider(config["rim_size"],0,0,random)}
+	if spawnRim {rimX=sampleJavaIntOrUniform(config["rim_size"],0,0,random);rimZ=sampleJavaIntOrUniform(config["rim_size"],0,0,random)}
 	hasRim:=spawnRim&&rimX!=0&&rimZ!=0
-	radiusX:=geodeIntProvider(config["size"],0,0,random)
-	radiusZ:=geodeIntProvider(config["size"],0,0,random)
+	radiusX:=sampleJavaIntOrUniform(config["size"],0,0,random)
+	radiusZ:=sampleJavaIntOrUniform(config["size"],0,0,random)
 	radiusLimit:=radiusX;if radiusZ>radiusLimit{radiusLimit=radiusZ}
 	contentRID:=featureRequireState(region,"minecraft:"+normalizeJavaResource(contents))
 	rimRID:=featureRequireState(region,"minecraft:"+normalizeJavaResource(rim))
@@ -389,14 +389,14 @@ func placeModernRandomNeighborSpread(region *featureRegion, config map[string]an
 	blockProvider:=config["block"]
 	state,actor,ok:=region.SampleNativeState(blockProvider,origin,random);if !ok{panic("overworld: unresolved Java random-neighbor block provider")}
 	region.SetNativeBlock(origin,state,actor)
-	attempts:=int(geodeIntProvider(config["attempts"],1,1,random))
+	attempts:=int(sampleJavaIntOrUniform(config["attempts"],1,1,random))
 	xzOffset,ok:=config["xz_offset"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor xz offset")}
 	yOffset,ok:=config["y_offset"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor y offset")}
 	canReplace,ok:=config["can_replace"].(map[string]any);if !ok{panic("overworld: malformed Java random-neighbor replace predicate")}
 	accepted := config["accepted_neighbors"]
 	sampleOffset:=func(provider map[string]any)int32{
 		switch provider["type"]{
-		case "minecraft:uniform":return geodeIntProvider(provider,0,0,random)
+		case "minecraft:uniform":return sampleJavaIntOrUniform(provider,0,0,random)
 		case "minecraft:trapezoid":
 			min,max,plateau:=geodeIntDefault(provider["min"],0),geodeIntDefault(provider["max"],0),geodeIntDefault(provider["plateau"],0)
 			rangeWidth:=max-min
