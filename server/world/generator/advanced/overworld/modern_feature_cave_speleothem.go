@@ -1,19 +1,23 @@
 package overworld
 
 import (
-	"strings"
-
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/world"
 )
+
+type speleothemColumn struct {
+	ceiling, floor       int32
+	hasCeiling, hasFloor bool
+}
 
 // placeModernSpeleothemExact ports SpeleothemFeature.place.
 func placeModernSpeleothemExact(r *featureRegion, c map[string]any, origin featurePos, random *java26.Random) bool {
 	base := speleothemBlockName(c["base_block"], "")
-	pointed := speleothemBlockName(c["pointed_block"], "")
+	point := speleothemBlockName(c["pointed_block"], "")
 	replaceable := c["replaceable_blocks"]
-	above := speleothemIsBase(r, c, featurePos{origin.x, origin.y + 1, origin.z})
-	below := speleothemIsBase(r, c, featurePos{origin.x, origin.y - 1, origin.z})
-
+	above := speleothemIsBase(r, base, replaceable, featurePos{origin.x, origin.y + 1, origin.z})
+	below := speleothemIsBase(r, base, replaceable, featurePos{origin.x, origin.y - 1, origin.z})
 	var dir int32
 	switch {
 	case above && below:
@@ -32,11 +36,7 @@ func placeModernSpeleothemExact(r *featureRegion, c map[string]any, origin featu
 
 	root := featurePos{origin.x, origin.y - dir, origin.z}
 	speleothemPlaceBase(r, root, base, replaceable)
-	for _, d := range [...]struct {
-		dx, dz int32
-	}{
-		{0, -1}, {1, 0}, {0, 1}, {-1, 0},
-	} {
+	for _, d := range [...]struct{ dx, dz int32 }{{0, -1}, {1, 0}, {0, 1}, {-1, 0}} {
 		if random.NextFloat() > speleothemChanceConfig(c, "chance_of_directional_spread", .7) {
 			continue
 		}
@@ -53,30 +53,24 @@ func placeModernSpeleothemExact(r *featureRegion, c map[string]any, origin featu
 		next = speleothemRandomNeighbor(next, random)
 		speleothemPlaceBase(r, next, base, replaceable)
 	}
-
 	height := int32(1)
-	if random.NextFloat() < speleothemChanceConfig(c, "chance_of_taller_generation", .2) &&
-		speleothemEmptyOrWater(r, speleothemNeighbor(origin, dir)) {
+	if random.NextFloat() < speleothemChanceConfig(c, "chance_of_taller_generation", .2) && speleothemEmptyOrWater(r, featurePos{origin.x, origin.y + dir, origin.z}) {
 		height = 2
 	}
-	speleothemGrow(r, c, origin, dir, height, false, base, pointed)
+	speleothemGrow(r, c, origin, dir, height, false, base, point)
 	return true
 }
 
-func speleothemIsBase(r *featureRegion, c map[string]any, p featurePos) bool {
-	name, _ := r.State(p)
-	return normalizeJavaResource(name) == speleothemBlockName(c["base_block"], "") ||
-		speleothemTag(c["replaceable_blocks"], name)
+func speleothemIsBase(r *featureRegion, base string, replaceable any, p featurePos) bool {
+	name := speleothemStateName(r, p)
+	return normalizeJavaResource(name) == base || featureBlockHolderContains(replaceable, name)
 }
-
 func speleothemPlaceBase(r *featureRegion, p featurePos, base string, replaceable any) {
-	name, _ := r.State(p)
-	if !speleothemTag(replaceable, name) {
-		return
+	name := speleothemStateName(r, p)
+	if featureBlockHolderContains(replaceable, name) {
+		r.setWithFlags(p, speleothemDefaultState(r, base), 2)
 	}
-	speleothemSetNamed(r, p, base)
 }
-
 func speleothemRandomNeighbor(p featurePos, random *java26.Random) featurePos {
 	switch random.NextInt(6) {
 	case 0:
@@ -94,12 +88,6 @@ func speleothemRandomNeighbor(p featurePos, random *java26.Random) featurePos {
 	}
 	return p
 }
-
-func speleothemNeighbor(p featurePos, dir int32) featurePos {
-	p.y += dir
-	return p
-}
-
 func speleothemChanceConfig(c map[string]any, key string, fallback float32) float32 {
 	return float32(speleothemFloat(c[key], float64(fallback)))
 }
@@ -109,47 +97,45 @@ func placeModernSpeleothemClusterExact(r *featureRegion, c map[string]any, origi
 	if !speleothemEmptyOrWater(r, origin) {
 		return false
 	}
-	height := speleothemIntSample(c["height"], random, 0)
-	wetness := speleothemFloatSample(c["wetness"], random, 0)
-	density := speleothemFloatSample(c["density"], random, 0)
-	xr, zr := speleothemIntSample(c["radius"], random, 0), speleothemIntSample(c["radius"], random, 0)
+	height := sampleJavaInt(c["height"], random)
+	wetness := sampleJavaFloatValue(c["wetness"], random)
+	density := sampleJavaFloatValue(c["density"], random)
+	xr, zr := sampleJavaInt(c["radius"], random), sampleJavaInt(c["radius"], random)
 	for dx := -xr; dx <= xr; dx++ {
 		for dz := -zr; dz <= zr; dz++ {
-			speleothemColumnPlace(r, c, random, featurePos{origin.x + dx, origin.y, origin.z + dz}, int(dx), int(dz), wetness, speleothemChance(c, int(xr), int(zr), int(dx), int(dz)), height, density)
+			speleothemColumnPlace(r, c, random, featurePos{origin.x + dx, origin.y, origin.z + dz}, dx, dz, wetness, speleothemChance(c, xr, zr, dx, dz), height, density)
 		}
 	}
 	return true
 }
 
-type speleothemColumn struct{ ceiling, floor *int32 }
-
-func speleothemColumnPlace(r *featureRegion, c map[string]any, random *java26.Random, p featurePos, dx, dz int, wetness float32, chance float64, height int32, density float32) {
-	col, ok := speleothemScan(r, p, int32(speleothemInt(c["floor_to_ceiling_search_range"], 0)))
-	if !ok || col.ceiling == nil && col.floor == nil {
+func speleothemColumnPlace(r *featureRegion, c map[string]any, random *java26.Random, p featurePos, dx, dz int32, wetness float32, chance float64, height int32, density float32) {
+	column, ok := speleothemScan(r, p, int32(featureNumber(c["floor_to_ceiling_search_range"])))
+	if !ok || !column.hasCeiling && !column.hasFloor {
 		return
 	}
-	ceiling, floor := col.ceiling, col.floor
-	if random.NextFloat() < wetness && floor != nil && speleothemCanPool(r, c, featurePos{p.x, *floor, p.z}) {
-		y := *floor - 1
-		speleothemSetNamed(r, featurePos{p.x, *floor, p.z}, "water")
-		floor = &y
+	ceiling, floor := column.ceiling, column.floor
+	hasCeiling, hasFloor := column.hasCeiling, column.hasFloor
+	if random.NextFloat() < wetness && hasFloor && speleothemCanPool(r, c, featurePos{p.x, floor, p.z}) {
+		speleothemSetNamed(r, featurePos{p.x, floor, p.z}, "minecraft:water")
+		floor--
 	}
 	stalactite := int32(0)
 	wantStalactite := random.NextDouble() < chance
-	if ceiling != nil && wantStalactite && !speleothemNameIs(r, featurePos{p.x, *ceiling, p.z}, "lava") {
-		speleothemReplaceBase(r, c, featurePos{p.x, *ceiling, p.z}, speleothemIntSample(c["speleothem_block_layer_thickness"], random, 0), 1)
-		max := height
-		if floor != nil && *ceiling-*floor < max {
-			max = *ceiling - *floor
+	if hasCeiling && wantStalactite && !speleothemNameIs(r, featurePos{p.x, ceiling, p.z}, "minecraft:lava") {
+		speleothemReplaceBase(r, c, featurePos{p.x, ceiling, p.z}, sampleJavaInt(c["speleothem_block_layer_thickness"], random), 1)
+		maxHeight := height
+		if hasFloor && ceiling-floor < maxHeight {
+			maxHeight = ceiling - floor
 		}
-		stalactite = speleothemHeight(random, c, dx, dz, density, max)
+		stalactite = speleothemHeight(random, c, dx, dz, density, maxHeight)
 	}
 	stalagmite := int32(0)
 	wantStalagmite := random.NextDouble() < chance
-	if floor != nil && wantStalagmite && !speleothemNameIs(r, featurePos{p.x, *floor, p.z}, "lava") {
-		speleothemReplaceBase(r, c, featurePos{p.x, *floor, p.z}, speleothemIntSample(c["speleothem_block_layer_thickness"], random, 0), -1)
-		if ceiling != nil {
-			diff := int32(speleothemInt(c["max_stalagmite_stalactite_height_diff"], 0))
+	if hasFloor && wantStalagmite && !speleothemNameIs(r, featurePos{p.x, floor, p.z}, "minecraft:lava") {
+		speleothemReplaceBase(r, c, featurePos{p.x, floor, p.z}, sampleJavaInt(c["speleothem_block_layer_thickness"], random), -1)
+		if hasCeiling {
+			diff := int32(featureNumber(c["max_stalagmite_stalactite_height_diff"]))
 			stalagmite = stalactite + random.NextInt(2*diff+1) - diff
 			if stalagmite < 0 {
 				stalagmite = 0
@@ -159,269 +145,214 @@ func speleothemColumnPlace(r *featureRegion, c map[string]any, random *java26.Ra
 		}
 	}
 	actualStalactite, actualStalagmite := stalactite, stalagmite
-	if ceiling != nil && floor != nil && *ceiling-stalactite <= *floor+stalagmite {
-		low := *ceiling - stalactite
-		if low < *floor+1 {
-			low = *floor + 1
-		}
-		high := *floor + stalagmite
-		if high > *ceiling-1 {
-			high = *ceiling - 1
-		}
+	if hasCeiling && hasFloor && ceiling-stalactite <= floor+stalagmite {
+		low := max(ceiling-stalactite, floor+1)
+		high := min(floor+stalagmite, ceiling-1)
 		bottom := low + random.NextInt(high-low+2)
-		actualStalactite, actualStalagmite = *ceiling-bottom, bottom-1-*floor
+		actualStalactite, actualStalagmite = ceiling-bottom, bottom-1-floor
 	}
-	merge := random.NextBoolean() && actualStalactite > 0 && actualStalagmite > 0 && ceiling != nil && floor != nil && actualStalactite+actualStalagmite == *ceiling-*floor-1
-	base, point := speleothemBlockName(c["base_block"], "dripstone_block"), speleothemBlockName(c["pointed_block"], "pointed_dripstone")
-	if ceiling != nil {
-		speleothemGrow(r, c, featurePos{p.x, *ceiling - 1, p.z}, -1, actualStalactite, merge, base, point)
+	merge := random.NextBoolean() && actualStalactite > 0 && actualStalagmite > 0 && hasCeiling && hasFloor && actualStalactite+actualStalagmite == ceiling-floor-1
+	base := speleothemBlockName(c["base_block"], "minecraft:dripstone_block")
+	point := speleothemBlockName(c["pointed_block"], "minecraft:pointed_dripstone")
+	if hasCeiling {
+		speleothemGrow(r, c, featurePos{p.x, ceiling - 1, p.z}, -1, actualStalactite, merge, base, point)
 	}
-	if floor != nil {
-		speleothemGrow(r, c, featurePos{p.x, *floor + 1, p.z}, 1, actualStalagmite, merge, base, point)
+	if hasFloor {
+		speleothemGrow(r, c, featurePos{p.x, floor + 1, p.z}, 1, actualStalagmite, merge, base, point)
 	}
 }
 
-func speleothemScan(r *featureRegion, o featurePos, reach int32) (speleothemColumn, bool) {
-	if !speleothemEmptyOrWater(r, o) {
+func speleothemScan(r *featureRegion, origin featurePos, reach int32) (speleothemColumn, bool) {
+	if !speleothemEmptyOrWater(r, origin) {
 		return speleothemColumn{}, false
 	}
-	col := speleothemColumn{}
-	// Column.scan searches the ceiling ray first, then the floor ray.
+	column := speleothemColumn{}
 	for _, dir := range [...]int32{1, -1} {
-		p := o
-		// Column.scan evaluates the origin on each ray before stepping and checks
-		// the edge after at most searchRange-1 moves.
-		for i := int32(1); i < reach && speleothemEmptyOrWater(r, p); i++ {
-			p.y += dir
+		y := origin.y
+		for i := int32(1); i < reach && speleothemEmptyOrWater(r, featurePos{origin.x, y, origin.z}); i++ {
+			y += dir
 		}
-		if p.y >= r.MinY() && p.y <= r.MaxY() {
-			name, _ := r.State(p)
+		if y >= r.MinY() && y <= r.MaxY() {
+			name := speleothemStateName(r, featurePos{origin.x, y, origin.z})
 			if !speleothemEmptyWaterName(name) {
-				y := p.y
 				if dir > 0 {
-					col.ceiling = &y
+					column.ceiling, column.hasCeiling = y, true
 				} else {
-					col.floor = &y
+					column.floor, column.hasFloor = y, true
 				}
 			}
 		}
 	}
-	return col, true
+	return column, true
 }
 func speleothemEmptyOrWater(r *featureRegion, p featurePos) bool {
-	n, _ := r.State(p)
-	return speleothemEmptyWaterName(n)
+	if p.y < r.MinY() || p.y > r.MaxY() {
+		return true
+	}
+	name := speleothemStateName(r, p)
+	return speleothemEmptyWaterName(name)
 }
-func speleothemEmptyWaterName(n string) bool {
-	switch normalizeJavaResource(n) {
+func speleothemEmptyWaterName(name string) bool {
+	switch normalizeJavaResource(name) {
 	case "air", "cave_air", "void_air", "water":
 		return true
 	}
 	return false
 }
 func speleothemNameIs(r *featureRegion, p featurePos, name string) bool {
-	n, _ := r.State(p)
-	return normalizeJavaResource(n) == name
+	got := speleothemStateName(r, p)
+	return normalizeJavaResource(got) == normalizeJavaResource(name)
 }
-func speleothemBlockName(v any, d string) string {
-	if s, ok := v.(string); ok {
-		return normalizeJavaResource(s)
+func speleothemBlockName(v any, fallback string) string {
+	if name, ok := v.(string); ok {
+		return normalizeJavaResource(name)
 	}
-	return d
-}
-func speleothemInt(v any, d int) int {
-	if n, ok := v.(float64); ok {
-		return int(n)
-	}
-	return d
-}
-func speleothemFloat(v any, d float64) float64 {
-	if n, ok := v.(float64); ok {
-		return n
-	}
-	return d
-}
-func speleothemIntSample(v any, r *java26.Random, d int32) int32 {
-	if n, ok := v.(float64); ok {
-		return int32(n)
-	}
-	m, ok := v.(map[string]any)
-	if !ok {
-		return d
-	}
-	switch normalizeJavaResource(speleothemBlockName(m["type"], "")) {
-	case "constant":
-		return int32(speleothemInt(m["value"], int(d)))
-	case "uniform":
-		lo := int32(speleothemInt(m["min_inclusive"], int(d)))
-		hi := int32(speleothemInt(m["max_inclusive"], int(d)))
-		return lo + r.NextInt(hi-lo+1)
-	default:
-		panic("overworld: unsupported speleothem integer provider")
-	}
-}
-func speleothemFloatSample(v any, r *java26.Random, d float32) float32 {
-	if n, ok := v.(float64); ok {
-		return float32(n)
-	}
-	m, ok := v.(map[string]any)
-	if !ok {
-		return d
-	}
-	switch normalizeJavaResource(speleothemBlockName(m["type"], "")) {
-	case "constant":
-		return float32(speleothemFloat(m["value"], float64(d)))
-	case "uniform":
-		lo := float32(speleothemFloat(m["min_inclusive"], float64(d)))
-		hi := float32(speleothemFloat(m["max_exclusive"], float64(d)))
-		return lo + (hi-lo)*r.NextFloat()
-	case "clamped_normal":
-		mean := float32(speleothemFloat(m["mean"], float64(d)))
-		dev := float32(speleothemFloat(m["deviation"], 0))
-		v := mean + float32(r.NextGaussian())*dev
-		lo := float32(speleothemFloat(m["min"], float64(d)))
-		hi := float32(speleothemFloat(m["max"], float64(d)))
-		if v < lo {
-			v = lo
+	if state, ok := v.(map[string]any); ok {
+		for _, key := range [...]string{"id", "Name", "name"} {
+			if name, ok := state[key].(string); ok {
+				return normalizeJavaResource(name)
+			}
 		}
-		if v > hi {
-			v = hi
-		}
-		return v
-	default:
-		panic("overworld: unsupported speleothem float provider")
 	}
+	return normalizeJavaResource(fallback)
 }
-func speleothemChance(c map[string]any, xr, zr, dx, dz int) float64 {
-	edge := xr - absInt(dx)
-	if z := zr - absInt(dz); z < edge {
-		edge = z
+func speleothemFloat(v any, fallback float64) float64 {
+	if value, ok := v.(float64); ok {
+		return value
 	}
-	return speleothemMap(float64(edge), 0, float64(speleothemInt(c["max_distance_from_edge_affecting_chance_of_speleothem"], 1)), speleothemFloat(c["chance_of_speleothem_at_max_distance_from_center"], .1), 1)
+	return fallback
 }
-func speleothemMap(v, lo, hi, a, b float64) float64 {
-	if lo == hi {
-		return a
-	}
-	t := (v - lo) / (hi - lo)
+func speleothemChance(c map[string]any, xr, zr, dx, dz int32) float64 {
+	edge := min(xr-speleothemAbs(dx), zr-speleothemAbs(dz))
+	maxDistance := float32(featureNumber(c["max_distance_from_edge_affecting_chance_of_speleothem"]))
+	t := float32(edge) / maxDistance
 	if t < 0 {
 		t = 0
-	}
-	if t > 1 {
+	} else if t > 1 {
 		t = 1
 	}
-	return a + (b-a)*t
+	chance := float32(speleothemFloat(c["chance_of_speleothem_at_max_distance_from_center"], .1))
+	return float64(chance + (1-chance)*t)
 }
-func speleothemHeight(r *java26.Random, c map[string]any, dx, dz int, density float32, max int32) int32 {
-	if r.NextFloat() > density {
+func speleothemHeight(random *java26.Random, c map[string]any, dx, dz int32, density float32, maxHeight int32) int32 {
+	if random.NextFloat() > density {
 		return 0
 	}
-	distance := absInt(dx) + absInt(dz)
-	mean := float32(speleothemMap(float64(distance), 0, float64(speleothemInt(c["max_distance_from_center_affecting_height_bias"], 1)), float64(max)/2, 0))
-	dev := float32(speleothemInt(c["height_deviation"], 1))
-	v := mean + float32(r.NextGaussian())*dev
-	if v < 0 {
-		v = 0
+	distance := float64(speleothemAbs(dx) + speleothemAbs(dz))
+	maxDistance := float64(featureNumber(c["max_distance_from_center_affecting_height_bias"]))
+	halfHeight := float64(maxHeight) / 2
+	mean := float32(halfHeight + min(float64(1), distance/maxDistance)*(-halfHeight))
+	deviation := float32(featureNumber(c["height_deviation"]))
+	value := mean + float32(random.NextGaussian())*deviation
+	if value < 0 {
+		value = 0
 	}
-	if v > float32(max) {
-		v = float32(max)
+	if value > float32(maxHeight) {
+		value = float32(maxHeight)
 	}
-	return int32(v)
+	return int32(value)
 }
 func speleothemCanPool(r *featureRegion, c map[string]any, p featurePos) bool {
-	n, _ := r.State(p)
-	if normalizeJavaResource(n) == "water" || normalizeJavaResource(n) == speleothemBlockName(c["base_block"], "dripstone_block") || normalizeJavaResource(n) == speleothemBlockName(c["pointed_block"], "pointed_dripstone") || speleothemWater(r, featurePos{p.x, p.y + 1, p.z}) {
+	name := normalizeJavaResource(speleothemStateName(r, p))
+	if name == "water" || name == speleothemBlockName(c["base_block"], "minecraft:dripstone_block") || name == speleothemBlockName(c["pointed_block"], "minecraft:pointed_dripstone") || speleothemWater(r, featurePos{p.x, p.y + 1, p.z}) {
 		return false
 	}
-	for _, d := range [...][2]int32{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
-		if !speleothemAdjacent(r, featurePos{p.x + d[0], p.y, p.z + d[1]}) {
+	for _, d := range [...]featurePos{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}} {
+		if !speleothemAdjacent(r, featurePos{p.x + d.x, p.y, p.z + d.z}) {
 			return false
 		}
 	}
 	return speleothemAdjacent(r, featurePos{p.x, p.y - 1, p.z})
 }
 func speleothemWater(r *featureRegion, p featurePos) bool {
-	state := r.nativeState(p)
-	for _, runtimeID := range [...]uint32{state.Block, state.Liquid} {
-		name, _, ok := r.c.BlockRegistry().RuntimeIDToState(runtimeID)
-		if !ok {
-			panic("overworld: invalid native speleothem fluid state")
-		}
-		if normalizeJavaResource(name) == "water" {
-			return true
-		}
+	if p.y < r.MinY() || p.y > r.MaxY() {
+		return false
 	}
-	return false
-}
-func speleothemSetNamed(r *featureRegion, p featurePos, name string) {
-	rid, ok := featureStateRID(r.c, map[string]any{"id": "minecraft:" + name})
-	if !ok {
-		panic("overworld: unresolved Java speleothem state minecraft:" + name)
-	}
-	r.Set(p, rid)
+	return world.JavaBlockStateHasWaterFluid(r.nativeState(p).CanonicalJavaID(r.c.BlockRegistry()))
 }
 func speleothemAdjacent(r *featureRegion, p featurePos) bool {
-	name, _ := r.State(p)
+	name := speleothemStateName(r, p)
 	return javaBlockTagContains("base_stone_overworld", normalizeJavaResource(name)) || speleothemWater(r, p)
 }
 func speleothemReplaceBase(r *featureRegion, c map[string]any, p featurePos, count, dy int32) {
-	baseName := "minecraft:" + speleothemBlockName(c["base_block"], "dripstone_block")
-	base, ok := featureStateRID(r.c, map[string]any{"id": baseName})
-	if !ok {
-		panic("overworld: unresolved Java speleothem base block " + baseName)
-	}
+	base := speleothemDefaultState(r, speleothemBlockName(c["base_block"], "minecraft:dripstone_block"))
 	for i := int32(0); i < count; i++ {
-		name, _ := r.State(p)
-		if !speleothemTag(c["replaceable_blocks"], name) {
+		name := speleothemStateName(r, p)
+		if !featureBlockHolderContains(c["replaceable_blocks"], name) {
 			return
 		}
-		r.Set(p, base)
+		r.setWithFlags(p, base, 2)
 		p.y += dy
 	}
 }
 func speleothemGrow(r *featureRegion, c map[string]any, start featurePos, dir, height int32, merge bool, base, point string) {
 	support := featurePos{start.x, start.y - dir, start.z}
-	n, _ := r.State(support)
-	if !speleothemTag(c["replaceable_blocks"], n) && normalizeJavaResource(n) != base {
+	name := speleothemStateName(r, support)
+	if !featureBlockHolderContains(c["replaceable_blocks"], name) && normalizeJavaResource(name) != normalizeJavaResource(base) {
 		return
 	}
-	for _, thickness := range speleothemThicknesses(height, merge) {
-		props := map[string]any{"vertical_direction": map[bool]string{true: "up", false: "down"}[dir > 0], "thickness": thickness, "waterlogged": speleothemWater(r, start)}
-		state, ok := featureStateRID(r.c, map[string]any{"id": "minecraft:" + point, "properties": props})
-		if !ok {
-			panic("overworld: unresolved Java pointed-dripstone state")
+	if height <= 0 {
+		return
+	}
+	pointID, err := javadata.BlockStateID(normalizeJavaResource(point), nil)
+	if err != nil {
+		panic(err)
+	}
+	direction := "down"
+	if dir > 0 {
+		direction = "up"
+	}
+	pointID, err = javadata.BlockStateWithProperty(pointID, "vertical_direction", direction)
+	if err != nil {
+		panic(err)
+	}
+	for i := int32(0); i < height; i++ {
+		thickness := "tip"
+		if i == height-1 && merge {
+			thickness = "tip_merge"
+		} else if height >= 3 {
+			if i == 0 {
+				thickness = "base"
+			} else if i < height-2 {
+				thickness = "middle"
+			} else if i == height-2 {
+				thickness = "frustum"
+			}
+		} else if i == height-2 && height >= 2 {
+			thickness = "frustum"
 		}
-		r.Set(start, state)
+		id, e := javadata.BlockStateWithProperty(pointID, "thickness", thickness)
+		if e != nil {
+			panic(e)
+		}
+		id, e = javadata.BlockStateWithProperty(id, "waterlogged", speleothemWater(r, start))
+		if e != nil {
+			panic(e)
+		}
+		r.setWithFlags(start, world.ResolveStateID(r.c.BlockRegistry(), id), 2)
 		start.y += dir
 	}
 }
-func speleothemThicknesses(n int32, merge bool) []string {
-	out := make([]string, 0, n)
-	if n >= 3 {
-		out = append(out, "base")
-		for i := int32(0); i < n-3; i++ {
-			out = append(out, "middle")
-		}
+func speleothemAbs(value int32) int32 {
+	if value < 0 {
+		return -value
 	}
-	if n >= 2 {
-		out = append(out, "frustum")
-	}
-	if n >= 1 {
-		if merge {
-			out = append(out, "tip_merge")
-		} else {
-			out = append(out, "tip")
-		}
-	}
-	return out
+	return value
 }
-func speleothemTag(raw any, name string) bool {
-	s, ok := raw.(string)
+func speleothemSetNamed(r *featureRegion, p featurePos, name string) {
+	r.setWithFlags(p, speleothemDefaultState(r, name), 2)
+}
+func speleothemDefaultState(r *featureRegion, name string) world.NativeState {
+	id, err := javadata.BlockStateID(name, nil)
+	if err != nil {
+		panic(err)
+	}
+	return world.ResolveStateID(r.c.BlockRegistry(), id)
+}
+func speleothemStateName(r *featureRegion, p featurePos) string {
+	name, ok := javadata.BlockStateName(r.nativeState(p).CanonicalJavaID(r.c.BlockRegistry()))
 	if !ok {
-		return false
+		panic("overworld: invalid Java speleothem state")
 	}
-	if strings.HasPrefix(s, "#") {
-		return javaBlockTagContains(normalizeJavaResource(strings.TrimPrefix(s, "#")), normalizeJavaResource(name))
-	}
-	return normalizeJavaResource(s) == normalizeJavaResource(name)
+	return name
 }

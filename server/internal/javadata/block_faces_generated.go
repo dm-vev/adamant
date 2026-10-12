@@ -295,7 +295,7 @@ var javaGenerationCollisionGeometry = [...]generationCollisionGeometry{
 
 var javaGenerationFaceBlocks = [...]generationFaceBlock{
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -311,7 +311,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -329,7 +329,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -347,7 +347,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -361,7 +361,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -375,7 +375,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -386,8 +386,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -397,8 +397,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -408,7 +408,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -419,7 +419,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -434,8 +434,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -445,7 +445,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -460,8 +460,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -477,12 +477,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -503,7 +503,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -517,7 +517,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -528,7 +528,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -539,8 +539,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -550,7 +550,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -561,7 +561,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -572,7 +572,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -583,8 +583,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -597,7 +597,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			8192, 0, 0, 0, 4096, 0,
 		},
 		rigid: []uint8{
@@ -608,8 +608,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -619,8 +619,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -633,8 +633,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -649,10 +649,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -671,7 +671,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -707,7 +707,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -718,7 +718,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -729,7 +729,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -740,7 +740,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			16789634,
 		},
 		rigid: []uint8{
@@ -754,7 +754,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -765,7 +765,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -776,7 +776,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			16777216,
 		},
 		rigid: []uint8{
@@ -787,8 +787,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -798,7 +798,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -814,7 +814,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -832,7 +832,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -850,7 +850,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -864,7 +864,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -875,8 +875,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -890,8 +890,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -907,12 +907,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -928,8 +928,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -939,7 +939,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -950,7 +950,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -965,8 +965,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -976,7 +976,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -991,8 +991,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -1008,12 +1008,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -1034,7 +1034,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -1048,7 +1048,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -1059,7 +1059,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1070,8 +1070,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1081,7 +1081,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			78118911,
 		},
 		rigid: []uint8{
@@ -1092,8 +1092,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1103,7 +1103,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -1114,8 +1114,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1125,8 +1125,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -1136,8 +1136,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -1147,7 +1147,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1162,7 +1162,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "attachment", values: []any{"ceiling", "double_wall", "floor", "single_wall"}},
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			8192, 8192, 8192, 8192, 0, 0, 0, 0, 61440, 208896, 208896, 61440, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -1177,7 +1177,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "tilt", values: []any{"full", "none", "partial", "unstable"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			17301504, 524288, 16777216, 0, 16777216, 0, 16777216, 0,
 		},
 		rigid: []uint8{
@@ -1191,7 +1191,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			17301504, 524288,
 		},
 		rigid: []uint8{
@@ -1202,7 +1202,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -1218,7 +1218,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -1236,7 +1236,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -1254,7 +1254,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -1268,7 +1268,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -1282,7 +1282,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -1293,8 +1293,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -1304,8 +1304,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -1315,7 +1315,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -1326,7 +1326,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1341,8 +1341,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -1352,7 +1352,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1367,8 +1367,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -1384,12 +1384,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -1410,7 +1410,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -1424,7 +1424,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -1435,7 +1435,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1446,8 +1446,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -1457,7 +1457,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1472,7 +1472,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -1486,7 +1486,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -1497,7 +1497,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -1508,8 +1508,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -1519,8 +1519,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1530,8 +1530,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1544,8 +1544,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -1560,10 +1560,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -1575,8 +1575,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1586,7 +1586,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -1597,7 +1597,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -1614,7 +1614,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -1625,8 +1625,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1636,7 +1636,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1647,8 +1647,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -1662,8 +1662,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -1679,12 +1679,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -1700,8 +1700,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1714,8 +1714,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -1730,10 +1730,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -1752,7 +1752,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -1785,8 +1785,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1796,7 +1796,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -1811,7 +1811,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -1825,7 +1825,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -1836,7 +1836,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -1847,8 +1847,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -1858,8 +1858,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1869,8 +1869,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1883,8 +1883,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -1899,10 +1899,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -1914,8 +1914,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1925,8 +1925,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1936,7 +1936,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -1947,7 +1947,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -1958,7 +1958,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -1975,7 +1975,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -1986,8 +1986,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -1997,7 +1997,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2008,8 +2008,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -2023,8 +2023,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -2040,12 +2040,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -2061,8 +2061,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2072,8 +2072,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -2083,7 +2083,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2094,8 +2094,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2105,7 +2105,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2116,7 +2116,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2127,7 +2127,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -2141,8 +2141,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -2157,10 +2157,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -2179,7 +2179,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -2212,8 +2212,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2223,7 +2223,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2238,7 +2238,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -2252,7 +2252,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -2263,7 +2263,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -2274,8 +2274,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -2285,8 +2285,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2296,8 +2296,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2310,8 +2310,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -2326,10 +2326,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -2341,8 +2341,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2352,7 +2352,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2363,8 +2363,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2374,7 +2374,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -2385,7 +2385,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -2402,7 +2402,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -2413,8 +2413,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2424,7 +2424,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2435,8 +2435,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -2450,8 +2450,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -2467,12 +2467,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -2488,7 +2488,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -2499,7 +2499,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2510,8 +2510,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2521,7 +2521,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2532,7 +2532,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2543,8 +2543,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2554,7 +2554,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -2565,7 +2565,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -2576,7 +2576,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -2590,7 +2590,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "bites", values: []any{int32(0), int32(1), int32(2), int32(3), int32(4), int32(5), int32(6)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -2601,8 +2601,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2612,8 +2612,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			4198465,
+		masks: []uint64{
+			138416193,
 		},
 		rigid: []uint8{
 			1,
@@ -2623,7 +2623,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4161,
 		},
 		rigid: []uint8{
@@ -2637,7 +2637,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -2648,7 +2648,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -2659,7 +2659,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2670,8 +2670,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2681,8 +2681,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			111673343,
+		masks: []uint64{
+			8567390207,
 		},
 		rigid: []uint8{
 			63,
@@ -2692,7 +2692,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			0,
 		},
 		rigid: []uint8{
@@ -2703,7 +2703,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -2714,7 +2714,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -2725,7 +2725,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -2736,8 +2736,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -2747,7 +2747,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -2763,7 +2763,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -2781,7 +2781,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -2799,7 +2799,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -2813,7 +2813,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -2827,7 +2827,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -2838,8 +2838,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -2849,8 +2849,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -2860,7 +2860,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -2871,7 +2871,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2886,8 +2886,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -2897,7 +2897,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2912,8 +2912,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -2929,12 +2929,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -2955,7 +2955,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -2969,7 +2969,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -2980,7 +2980,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -2991,8 +2991,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -3006,7 +3006,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -3020,7 +3020,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -3031,8 +3031,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3042,8 +3042,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3053,8 +3053,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3064,8 +3064,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3075,8 +3075,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3086,8 +3086,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3097,8 +3097,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3108,8 +3108,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3119,8 +3119,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3130,8 +3130,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3141,8 +3141,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3152,8 +3152,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3163,8 +3163,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3174,8 +3174,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3185,7 +3185,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67375167,
 		},
 		rigid: []uint8{
@@ -3204,7 +3204,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 8192, 8192, 0, 0, 8192, 8192, 0, 0, 8192, 8192, 0, 0, 8192, 8192,
 			0, 0, 8192, 8192, 0, 0, 8192, 8192, 0, 0, 8192, 8192, 0, 0, 8192, 8192,
 			4096, 4096, 12288, 12288, 4096, 4096, 12288, 12288, 4096, 4096, 12288, 12288, 4096, 4096, 12288, 12288,
@@ -3222,8 +3222,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3236,8 +3236,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3252,10 +3252,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -3274,7 +3274,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -3307,8 +3307,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3321,8 +3321,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3337,10 +3337,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -3359,7 +3359,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -3392,8 +3392,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3403,7 +3403,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -3414,8 +3414,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -3425,8 +3425,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3436,8 +3436,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3447,8 +3447,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3461,8 +3461,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3477,10 +3477,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -3499,7 +3499,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -3532,8 +3532,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3546,8 +3546,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -3562,10 +3562,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -3584,7 +3584,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -3617,7 +3617,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633152,
 		},
 		rigid: []uint8{
@@ -3628,7 +3628,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			0,
 		},
 		rigid: []uint8{
@@ -3639,8 +3639,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3650,8 +3650,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			4198465,
+		masks: []uint64{
+			138416193,
 		},
 		rigid: []uint8{
 			1,
@@ -3661,8 +3661,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			17031037,
+		masks: []uint64{
+			8204312445,
 		},
 		rigid: []uint8{
 			63,
@@ -3672,7 +3672,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			0,
 		},
 		rigid: []uint8{
@@ -3689,7 +3689,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -3700,8 +3700,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3711,8 +3711,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -3725,7 +3725,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -3740,7 +3740,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -3756,7 +3756,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -3767,7 +3767,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -3778,7 +3778,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -3792,7 +3792,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -3803,8 +3803,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3814,7 +3814,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -3830,7 +3830,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -3841,7 +3841,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -3852,7 +3852,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -3863,8 +3863,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3874,8 +3874,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3885,8 +3885,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3896,8 +3896,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3907,8 +3907,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3918,8 +3918,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3929,8 +3929,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3940,8 +3940,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -3951,7 +3951,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -3965,7 +3965,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -3976,7 +3976,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -3992,7 +3992,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -4009,7 +4009,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -4024,7 +4024,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			8192, 524288, 8192, 524288, 8192, 524288, 8192, 524288,
 		},
 		rigid: []uint8{
@@ -4035,7 +4035,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4049,7 +4049,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -4060,8 +4060,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4071,8 +4071,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4082,8 +4082,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4093,7 +4093,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -4104,7 +4104,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -4118,8 +4118,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
-			66576, 33288, 16644, 133152,
+		masks: []uint64{
+			2147550224, 1073775112, 536887556, 4295100448,
 		},
 		rigid: []uint8{
 			16, 8, 4, 32,
@@ -4129,7 +4129,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4143,8 +4143,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4159,10 +4159,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -4174,8 +4174,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4190,7 +4190,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -4204,7 +4204,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -4215,7 +4215,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4226,8 +4226,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4237,8 +4237,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4251,8 +4251,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4267,10 +4267,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -4282,8 +4282,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4296,8 +4296,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4307,8 +4307,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4321,8 +4321,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4332,7 +4332,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4347,7 +4347,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -4361,7 +4361,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -4372,7 +4372,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -4383,8 +4383,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -4394,8 +4394,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4405,8 +4405,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4419,8 +4419,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4435,10 +4435,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -4450,8 +4450,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4461,7 +4461,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -4472,7 +4472,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -4489,7 +4489,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -4500,8 +4500,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4511,7 +4511,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4522,8 +4522,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -4537,8 +4537,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -4554,12 +4554,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -4578,7 +4578,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -4589,7 +4589,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -4600,7 +4600,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -4616,7 +4616,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -4634,7 +4634,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -4652,7 +4652,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -4666,7 +4666,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -4680,7 +4680,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -4691,8 +4691,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -4702,8 +4702,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -4713,7 +4713,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -4724,7 +4724,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4739,8 +4739,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -4750,7 +4750,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4765,8 +4765,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -4782,12 +4782,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -4808,7 +4808,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -4822,7 +4822,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -4833,7 +4833,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4844,8 +4844,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -4855,8 +4855,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4869,8 +4869,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -4885,10 +4885,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -4900,8 +4900,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			4198465,
+		masks: []uint64{
+			138416193,
 		},
 		rigid: []uint8{
 			1,
@@ -4911,7 +4911,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4922,8 +4922,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4933,7 +4933,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4944,7 +4944,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4955,7 +4955,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4966,8 +4966,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -4977,7 +4977,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4988,7 +4988,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -4999,7 +4999,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -5010,7 +5010,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5021,8 +5021,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5032,7 +5032,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5043,7 +5043,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5054,7 +5054,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5065,8 +5065,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5076,7 +5076,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5087,7 +5087,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5098,7 +5098,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5109,8 +5109,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5120,7 +5120,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5131,7 +5131,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5142,7 +5142,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			12288,
 		},
 		rigid: []uint8{
@@ -5153,8 +5153,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5167,8 +5167,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5183,10 +5183,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -5205,7 +5205,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -5238,8 +5238,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5249,8 +5249,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5260,8 +5260,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5271,8 +5271,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5282,8 +5282,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5293,8 +5293,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5304,8 +5304,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5315,8 +5315,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5326,8 +5326,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5340,8 +5340,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5356,10 +5356,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -5378,7 +5378,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -5411,8 +5411,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5422,7 +5422,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -5433,8 +5433,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5444,8 +5444,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5455,8 +5455,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5469,8 +5469,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5485,10 +5485,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -5507,7 +5507,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -5540,8 +5540,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5551,8 +5551,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			249921,
+		masks: []uint64{
+			134467649,
 		},
 		rigid: []uint8{
 			1,
@@ -5562,8 +5562,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5573,7 +5573,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			12288,
 		},
 		rigid: []uint8{
@@ -5584,7 +5584,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -5598,7 +5598,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -5609,7 +5609,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -5620,8 +5620,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -5631,8 +5631,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5642,8 +5642,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5653,8 +5653,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5664,8 +5664,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5675,8 +5675,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			249921,
+		masks: []uint64{
+			134467649,
 		},
 		rigid: []uint8{
 			1,
@@ -5686,7 +5686,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633152,
 		},
 		rigid: []uint8{
@@ -5697,7 +5697,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -5711,8 +5711,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "eye", values: []any{false, true}},
 		},
-		masks: []uint32{
-			249921, 258113,
+		masks: []uint64{
+			134467649, 134475841,
 		},
 		rigid: []uint8{
 			1, 1,
@@ -5725,7 +5725,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 0, 0, 0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -5736,8 +5736,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5750,8 +5750,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -5766,10 +5766,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -5788,7 +5788,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -5821,8 +5821,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5832,7 +5832,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -5843,8 +5843,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5854,8 +5854,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -5871,7 +5871,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -5882,8 +5882,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -5896,7 +5896,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -5911,7 +5911,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -5927,7 +5927,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -5938,7 +5938,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -5949,7 +5949,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -5963,7 +5963,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -5979,7 +5979,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -5990,8 +5990,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6004,8 +6004,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6020,10 +6020,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -6038,7 +6038,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -6049,8 +6049,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			249921,
+		masks: []uint64{
+			134467649,
 		},
 		rigid: []uint8{
 			1,
@@ -6060,7 +6060,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -6071,7 +6071,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -6082,7 +6082,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6093,8 +6093,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6104,7 +6104,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6115,7 +6115,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6126,7 +6126,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			84410368,
 		},
 		rigid: []uint8{
@@ -6137,8 +6137,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6148,7 +6148,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -6159,7 +6159,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			16789634,
 		},
 		rigid: []uint8{
@@ -6173,7 +6173,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -6184,7 +6184,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6195,7 +6195,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -6206,8 +6206,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6217,8 +6217,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6228,7 +6228,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -6245,7 +6245,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -6265,7 +6265,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			85458944, 18350080, 68681728, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
 			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
 			18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864, 18350080, 18350080, 1572864, 1572864,
@@ -6293,8 +6293,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -6304,8 +6304,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6315,8 +6315,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6326,7 +6326,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -6337,8 +6337,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6351,8 +6351,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6367,10 +6367,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -6389,7 +6389,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -6422,8 +6422,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6433,8 +6433,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6444,7 +6444,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6459,7 +6459,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -6473,7 +6473,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -6484,7 +6484,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -6495,8 +6495,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -6506,8 +6506,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6517,8 +6517,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6531,8 +6531,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6547,10 +6547,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -6562,8 +6562,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6573,7 +6573,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -6584,7 +6584,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -6601,7 +6601,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -6612,8 +6612,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6623,7 +6623,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6634,8 +6634,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -6649,8 +6649,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -6666,12 +6666,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -6687,7 +6687,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6702,7 +6702,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -6716,7 +6716,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -6727,7 +6727,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -6738,8 +6738,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -6749,8 +6749,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6760,8 +6760,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6774,8 +6774,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -6790,10 +6790,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -6805,8 +6805,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6816,7 +6816,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -6827,7 +6827,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -6844,7 +6844,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -6855,8 +6855,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -6866,7 +6866,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -6877,8 +6877,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -6892,8 +6892,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -6909,12 +6909,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -6934,7 +6934,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "face", values: []any{"ceiling", "floor", "wall"}},
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096, 8192, 8192, 8192, 8192, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -6948,7 +6948,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			18350080, 1572864,
 		},
 		rigid: []uint8{
@@ -6959,8 +6959,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -6970,7 +6970,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -6981,7 +6981,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -6992,7 +6992,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67112960,
 		},
 		rigid: []uint8{
@@ -7003,8 +7003,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7017,7 +7017,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -7028,7 +7028,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7039,8 +7039,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7050,7 +7050,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7061,7 +7061,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7072,7 +7072,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -7083,8 +7083,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7094,8 +7094,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7105,8 +7105,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7116,8 +7116,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7127,8 +7127,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7138,8 +7138,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7149,8 +7149,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7166,7 +7166,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -7177,8 +7177,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7191,7 +7191,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -7207,7 +7207,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -7218,8 +7218,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7234,7 +7234,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -7245,8 +7245,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			111673343,
+		masks: []uint64{
+			8567390207,
 		},
 		rigid: []uint8{
 			63,
@@ -7256,8 +7256,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7267,8 +7267,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			113770495,
+		masks: []uint64{
+			8569487359,
 		},
 		rigid: []uint8{
 			63,
@@ -7278,7 +7278,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -7294,7 +7294,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -7312,7 +7312,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -7330,7 +7330,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -7344,7 +7344,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -7358,7 +7358,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -7369,8 +7369,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -7380,8 +7380,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -7391,7 +7391,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -7402,7 +7402,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7417,8 +7417,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -7428,7 +7428,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7443,8 +7443,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -7460,12 +7460,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -7486,7 +7486,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -7500,7 +7500,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -7511,7 +7511,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7522,8 +7522,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -7533,7 +7533,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7544,7 +7544,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633152,
 		},
 		rigid: []uint8{
@@ -7558,7 +7558,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 33288, 16644, 133152,
 		},
 		rigid: []uint8{
@@ -7572,7 +7572,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -7583,8 +7583,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7594,8 +7594,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7608,7 +7608,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			8192, 0, 0, 0, 4096, 0,
 		},
 		rigid: []uint8{
@@ -7619,7 +7619,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			85458944,
 		},
 		rigid: []uint8{
@@ -7630,7 +7630,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -7641,7 +7641,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			0,
 		},
 		rigid: []uint8{
@@ -7652,7 +7652,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -7663,8 +7663,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			20975681,
+		masks: []uint64{
+			155193409,
 		},
 		rigid: []uint8{
 			1,
@@ -7674,7 +7674,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -7685,7 +7685,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -7696,7 +7696,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7711,7 +7711,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -7725,7 +7725,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -7736,7 +7736,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -7747,8 +7747,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -7758,8 +7758,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7769,8 +7769,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7783,8 +7783,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -7799,10 +7799,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -7814,8 +7814,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7825,7 +7825,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -7836,7 +7836,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -7853,7 +7853,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -7864,8 +7864,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -7875,7 +7875,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7886,8 +7886,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -7901,8 +7901,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -7918,12 +7918,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -7939,7 +7939,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -7954,7 +7954,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -7968,7 +7968,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -7979,7 +7979,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -7990,8 +7990,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -8001,8 +8001,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8012,8 +8012,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8026,8 +8026,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -8042,10 +8042,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -8057,8 +8057,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8068,7 +8068,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -8079,7 +8079,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -8096,7 +8096,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -8107,8 +8107,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8118,7 +8118,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -8129,8 +8129,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -8144,8 +8144,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8161,12 +8161,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -8182,7 +8182,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -8196,7 +8196,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -8207,7 +8207,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			84410368,
 		},
 		rigid: []uint8{
@@ -8218,7 +8218,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -8229,7 +8229,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -8240,7 +8240,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -8255,7 +8255,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -8269,7 +8269,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -8280,7 +8280,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -8291,8 +8291,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -8302,8 +8302,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8313,8 +8313,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8327,8 +8327,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -8343,10 +8343,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -8358,8 +8358,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8369,7 +8369,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -8380,7 +8380,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -8397,7 +8397,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -8408,8 +8408,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8419,7 +8419,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -8430,8 +8430,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -8445,8 +8445,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8462,12 +8462,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -8483,8 +8483,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8494,8 +8494,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8505,7 +8505,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -8520,7 +8520,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -8534,7 +8534,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -8545,7 +8545,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -8556,8 +8556,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -8567,8 +8567,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8578,8 +8578,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8592,8 +8592,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -8608,10 +8608,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -8623,8 +8623,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8634,7 +8634,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -8645,7 +8645,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -8662,7 +8662,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -8673,8 +8673,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8684,7 +8684,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -8695,8 +8695,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -8710,8 +8710,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8727,12 +8727,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -8748,8 +8748,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -8759,7 +8759,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -8775,7 +8775,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -8793,7 +8793,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -8811,7 +8811,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -8825,7 +8825,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -8839,7 +8839,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -8850,8 +8850,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -8861,8 +8861,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -8872,7 +8872,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -8883,7 +8883,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -8897,7 +8897,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			92798975, 76021759,
 		},
 		rigid: []uint8{
@@ -8912,8 +8912,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -8923,7 +8923,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -8938,8 +8938,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -8955,12 +8955,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -8981,7 +8981,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -8995,7 +8995,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -9006,7 +9006,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9017,8 +9017,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -9031,7 +9031,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			8192, 0, 0, 0, 4096, 0,
 		},
 		rigid: []uint8{
@@ -9042,8 +9042,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			111673343,
+		masks: []uint64{
+			8567390207,
 		},
 		rigid: []uint8{
 			63,
@@ -9053,7 +9053,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9064,8 +9064,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9075,8 +9075,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			4161,
+		masks: []uint64{
+			134221889,
 		},
 		rigid: []uint8{
 			1,
@@ -9086,8 +9086,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9100,8 +9100,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9116,10 +9116,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -9138,7 +9138,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -9174,8 +9174,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9190,10 +9190,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -9212,7 +9212,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -9245,8 +9245,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9256,7 +9256,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9267,8 +9267,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109314047,
+		masks: []uint64{
+			8565030911,
 		},
 		rigid: []uint8{
 			63,
@@ -9281,8 +9281,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9297,10 +9297,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -9319,7 +9319,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -9352,8 +9352,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9363,8 +9363,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9374,8 +9374,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9385,8 +9385,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9402,7 +9402,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -9416,8 +9416,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9432,10 +9432,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -9454,7 +9454,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -9487,8 +9487,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9498,8 +9498,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9509,7 +9509,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9520,8 +9520,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9531,7 +9531,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -9542,7 +9542,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9553,8 +9553,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9564,8 +9564,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9575,8 +9575,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9586,8 +9586,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9597,7 +9597,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -9613,7 +9613,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -9631,7 +9631,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -9649,7 +9649,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -9663,7 +9663,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -9677,7 +9677,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -9688,8 +9688,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -9699,8 +9699,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -9710,7 +9710,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -9721,7 +9721,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9736,8 +9736,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -9747,7 +9747,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9762,8 +9762,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -9779,12 +9779,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -9805,7 +9805,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -9819,7 +9819,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -9830,7 +9830,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9841,8 +9841,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -9852,8 +9852,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			105381887,
+		masks: []uint64{
+			8561098751,
 		},
 		rigid: []uint8{
 			63,
@@ -9863,8 +9863,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9874,8 +9874,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9885,7 +9885,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -9896,7 +9896,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -9911,7 +9911,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -9925,7 +9925,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -9936,7 +9936,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -9947,8 +9947,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -9958,8 +9958,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9969,8 +9969,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -9983,8 +9983,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -9999,10 +9999,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -10014,8 +10014,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10028,7 +10028,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -10039,7 +10039,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -10050,7 +10050,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -10067,7 +10067,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -10078,8 +10078,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10089,7 +10089,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -10100,7 +10100,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -10111,8 +10111,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -10126,8 +10126,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -10143,12 +10143,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -10164,7 +10164,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -10175,8 +10175,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10186,8 +10186,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10203,7 +10203,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -10214,8 +10214,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -10228,7 +10228,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -10243,7 +10243,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -10259,7 +10259,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -10270,7 +10270,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -10281,7 +10281,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -10295,7 +10295,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -10311,7 +10311,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -10322,8 +10322,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10336,8 +10336,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -10352,10 +10352,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -10370,7 +10370,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -10381,8 +10381,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10392,8 +10392,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10403,7 +10403,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -10414,8 +10414,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -10432,7 +10432,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{"low", "none", "tall"}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
 			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
 			17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 84410368, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504, 17301504,
@@ -10465,7 +10465,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -10481,7 +10481,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -10499,7 +10499,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -10517,7 +10517,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -10531,7 +10531,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -10545,7 +10545,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -10556,8 +10556,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -10567,8 +10567,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -10578,7 +10578,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -10589,7 +10589,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -10604,8 +10604,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -10615,7 +10615,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -10630,8 +10630,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -10647,12 +10647,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -10673,7 +10673,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -10687,7 +10687,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -10698,7 +10698,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -10709,8 +10709,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -10720,8 +10720,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10731,7 +10731,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			84410368,
 		},
 		rigid: []uint8{
@@ -10745,8 +10745,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -10756,7 +10756,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -10770,7 +10770,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -10781,7 +10781,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -10796,7 +10796,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -10810,7 +10810,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -10821,7 +10821,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -10832,8 +10832,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -10843,8 +10843,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10854,8 +10854,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10868,8 +10868,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -10884,10 +10884,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -10899,8 +10899,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10910,7 +10910,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -10921,7 +10921,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -10932,7 +10932,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -10949,7 +10949,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -10960,8 +10960,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -10971,7 +10971,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -10982,7 +10982,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -10993,8 +10993,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -11008,8 +11008,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -11025,12 +11025,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -11050,8 +11050,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "extended", values: []any{false, true}},
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
-			101187583, 101187583, 101187583, 101187583, 101187583, 101187583, 8322, 128016, 242184, 225540, 249921, 194592,
+		masks: []uint64{
+			8556904447, 8556904447, 8556904447, 8556904447, 8556904447, 8556904447, 268443778, 2147611664, 1073984008, 537096452, 134467649, 4295161888,
 		},
 		rigid: []uint8{
 			63, 63, 63, 63, 63, 63, 2, 16, 8, 4, 1, 32,
@@ -11065,8 +11065,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 			{name: "short", values: []any{false, true}},
 		},
-		masks: []uint32{
-			12353, 12353, 133152, 133152, 16644, 16644, 33288, 33288, 12418, 12418, 66576, 66576,
+		masks: []uint64{
+			134230081, 134230081, 4295100448, 4295100448, 536887556, 536887556, 1073775112, 1073775112, 268447874, 268447874, 2147550224, 2147550224,
 		},
 		rigid: []uint8{
 			1, 1, 32, 32, 4, 4, 8, 8, 2, 2, 16, 16,
@@ -11080,7 +11080,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "age", values: []any{int32(0), int32(1), int32(2), int32(3), int32(4)}},
 			{name: "half", values: []any{"lower", "upper"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 524288, 4096, 524288, 4096, 524288, 4096, 524288, 4096, 524288,
 		},
 		rigid: []uint8{
@@ -11091,7 +11091,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			84410368,
 		},
 		rigid: []uint8{
@@ -11102,7 +11102,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -11116,7 +11116,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -11127,8 +11127,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11142,7 +11142,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "thickness", values: []any{"base", "frustum", "middle", "tip", "tip_merge"}},
 			{name: "vertical_direction", values: []any{"down", "up"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			94208, 94208, 12288, 12288, 12288, 12288, 8192, 4096, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -11153,8 +11153,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11167,8 +11167,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11183,10 +11183,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11198,8 +11198,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11209,8 +11209,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11223,8 +11223,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11239,10 +11239,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11261,7 +11261,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -11294,8 +11294,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11305,7 +11305,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -11316,7 +11316,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -11330,8 +11330,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11346,10 +11346,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11368,7 +11368,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -11401,8 +11401,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11415,8 +11415,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11431,10 +11431,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11453,7 +11453,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -11486,8 +11486,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11500,8 +11500,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11516,10 +11516,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11538,7 +11538,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -11571,8 +11571,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11585,8 +11585,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11601,10 +11601,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11616,8 +11616,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11630,8 +11630,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11646,10 +11646,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11661,8 +11661,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11675,8 +11675,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11691,10 +11691,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11713,7 +11713,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -11746,8 +11746,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -11760,8 +11760,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -11776,10 +11776,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -11798,7 +11798,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -11831,7 +11831,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -11847,7 +11847,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -11865,7 +11865,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -11883,7 +11883,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -11897,7 +11897,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -11908,8 +11908,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -11919,8 +11919,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -11930,7 +11930,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -11941,7 +11941,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -11956,8 +11956,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -11967,7 +11967,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -11982,8 +11982,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -11999,12 +11999,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -12025,7 +12025,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -12039,7 +12039,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -12050,7 +12050,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -12061,8 +12061,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -12072,7 +12072,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -12083,7 +12083,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -12094,8 +12094,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12105,7 +12105,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12116,7 +12116,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12127,7 +12127,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12138,7 +12138,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12149,7 +12149,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12160,7 +12160,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12171,7 +12171,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12182,7 +12182,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12193,7 +12193,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12204,7 +12204,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12215,7 +12215,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12226,7 +12226,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12237,7 +12237,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12248,7 +12248,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12259,7 +12259,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12270,7 +12270,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12281,7 +12281,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12292,7 +12292,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12303,7 +12303,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12314,7 +12314,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12325,7 +12325,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12336,7 +12336,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12347,7 +12347,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12358,7 +12358,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12369,7 +12369,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12380,7 +12380,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12391,7 +12391,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12402,7 +12402,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12413,7 +12413,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12424,7 +12424,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12435,7 +12435,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12446,7 +12446,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12457,7 +12457,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12468,7 +12468,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12479,7 +12479,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12490,7 +12490,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12501,7 +12501,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12512,7 +12512,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12523,7 +12523,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12534,7 +12534,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633152,
 		},
 		rigid: []uint8{
@@ -12545,7 +12545,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			0,
 		},
 		rigid: []uint8{
@@ -12556,7 +12556,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -12567,8 +12567,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12581,8 +12581,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -12597,10 +12597,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -12612,8 +12612,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12626,8 +12626,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -12642,10 +12642,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -12664,7 +12664,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -12697,8 +12697,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			111673343,
+		masks: []uint64{
+			8567390207,
 		},
 		rigid: []uint8{
 			63,
@@ -12708,7 +12708,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -12719,7 +12719,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -12734,7 +12734,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -12748,7 +12748,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -12759,7 +12759,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -12770,8 +12770,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -12781,8 +12781,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12792,8 +12792,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12806,8 +12806,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -12822,10 +12822,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -12837,8 +12837,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12848,7 +12848,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -12859,7 +12859,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -12876,7 +12876,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -12887,8 +12887,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12898,7 +12898,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -12909,8 +12909,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -12924,8 +12924,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -12941,12 +12941,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -12962,8 +12962,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12973,8 +12973,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -12987,8 +12987,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13003,10 +13003,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -13018,8 +13018,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13029,8 +13029,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13040,8 +13040,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13054,8 +13054,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13070,10 +13070,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -13085,7 +13085,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -13096,8 +13096,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13107,8 +13107,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13118,8 +13118,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13129,7 +13129,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -13144,7 +13144,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -13158,7 +13158,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -13169,7 +13169,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -13180,8 +13180,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -13191,8 +13191,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13202,8 +13202,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13216,8 +13216,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13232,10 +13232,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -13247,8 +13247,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13258,7 +13258,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -13269,8 +13269,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13283,8 +13283,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13299,10 +13299,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -13321,7 +13321,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -13354,8 +13354,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13368,7 +13368,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -13379,8 +13379,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13390,8 +13390,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13404,8 +13404,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13420,10 +13420,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -13442,7 +13442,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -13475,7 +13475,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -13486,7 +13486,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -13497,7 +13497,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -13514,7 +13514,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -13525,8 +13525,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13536,7 +13536,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -13547,7 +13547,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -13558,8 +13558,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -13573,8 +13573,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -13590,12 +13590,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -13611,8 +13611,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			105381887,
+		masks: []uint64{
+			8561098751,
 		},
 		rigid: []uint8{
 			63,
@@ -13622,8 +13622,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13633,8 +13633,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13644,7 +13644,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -13655,7 +13655,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -13666,7 +13666,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -13677,8 +13677,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13688,8 +13688,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			4198465,
+		masks: []uint64{
+			138416193,
 		},
 		rigid: []uint8{
 			1,
@@ -13699,8 +13699,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13710,8 +13710,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13724,8 +13724,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13740,10 +13740,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -13762,7 +13762,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -13795,8 +13795,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13814,7 +13814,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			68681728, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864,
 			1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864,
 			1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864, 1572864,
@@ -13832,8 +13832,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13843,8 +13843,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13854,7 +13854,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			84410368,
 		},
 		rigid: []uint8{
@@ -13865,8 +13865,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13876,8 +13876,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13890,8 +13890,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -13906,10 +13906,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -13928,7 +13928,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -13964,7 +13964,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785538, 8322,
 		},
 		rigid: []uint8{
@@ -13975,8 +13975,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13986,8 +13986,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -13997,8 +13997,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			4198465,
+		masks: []uint64{
+			138416193,
 		},
 		rigid: []uint8{
 			1,
@@ -14008,8 +14008,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			67113025,
+		masks: []uint64{
+			201330753,
 		},
 		rigid: []uint8{
 			1,
@@ -14027,7 +14027,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			67633152, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288,
 			524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288,
 			524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288, 524288,
@@ -14045,8 +14045,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -14059,7 +14059,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "pickles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -14070,7 +14070,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -14085,7 +14085,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "age", values: []any{int32(0), int32(1)}},
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -14096,7 +14096,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -14107,7 +14107,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -14118,8 +14118,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14129,7 +14129,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -14140,7 +14140,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -14154,7 +14154,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -14165,7 +14165,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -14179,7 +14179,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			8192, 0, 0, 0, 4096, 0,
 		},
 		rigid: []uint8{
@@ -14193,7 +14193,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			17301504, 524288,
 		},
 		rigid: []uint8{
@@ -14204,8 +14204,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14215,8 +14215,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14226,8 +14226,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14237,8 +14237,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14251,8 +14251,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14267,10 +14267,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -14282,8 +14282,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14296,8 +14296,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14312,10 +14312,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -14327,8 +14327,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14341,8 +14341,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14357,10 +14357,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -14372,8 +14372,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14386,8 +14386,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14397,7 +14397,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			12288,
 		},
 		rigid: []uint8{
@@ -14411,8 +14411,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "layers", values: []any{int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8)}},
 		},
-		masks: []uint32{
-			1577025, 1052737, 1052737, 1052737, 1298497, 1298497, 1298497, 101974015,
+		masks: []uint64{
+			135794753, 135270465, 135270465, 135270465, 135516225, 135516225, 135516225, 8557690879,
 		},
 		rigid: []uint8{
 			1, 1, 1, 1, 1, 1, 1, 63,
@@ -14422,8 +14422,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14433,7 +14433,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4161,
 		},
 		rigid: []uint8{
@@ -14444,7 +14444,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -14458,7 +14458,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -14469,8 +14469,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109314047,
+		masks: []uint64{
+			8565030911,
 		},
 		rigid: []uint8{
 			63,
@@ -14480,8 +14480,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14491,7 +14491,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -14502,7 +14502,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -14513,7 +14513,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -14524,8 +14524,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14535,7 +14535,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -14546,7 +14546,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -14562,7 +14562,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -14580,7 +14580,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "waterlogged", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16789504, 16855040, 12288, 77824, 16822272, 16887808, 45056, 110592, 16805888, 16871424, 28672, 94208, 16838656, 16904192, 61440, 126976,
 			16920576, 16986112, 143360, 208896, 16953344, 17018880, 176128, 241664, 16936960, 17002496, 159744, 225280, 16969728, 17035264, 192512, 258048,
 		},
@@ -14598,7 +14598,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16785408, 17301504, 16785408, 17301504, 16785408, 17301504, 16785408, 17301504,
 		},
 		rigid: []uint8{
@@ -14612,7 +14612,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -14626,7 +14626,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -14637,8 +14637,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -14648,8 +14648,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -14659,7 +14659,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -14670,7 +14670,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -14685,8 +14685,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16843792, 66576, 16810504, 33288, 16793860, 16644, 16910368, 133152,
+		masks: []uint64{
+			2164327440, 2147550224, 1090552328, 1073775112, 553664772, 536887556, 4311877664, 4295100448,
 		},
 		rigid: []uint8{
 			16, 16, 8, 8, 4, 4, 32, 32,
@@ -14696,7 +14696,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -14711,8 +14711,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -14728,12 +14728,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -14754,7 +14754,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -14768,7 +14768,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -14779,7 +14779,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -14790,8 +14790,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -14805,8 +14805,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "extended", values: []any{false, true}},
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
-			101187583, 101187583, 101187583, 101187583, 101187583, 101187583, 8322, 128016, 242184, 225540, 249921, 194592,
+		masks: []uint64{
+			8556904447, 8556904447, 8556904447, 8556904447, 8556904447, 8556904447, 268443778, 2147611664, 1073984008, 537096452, 134467649, 4295161888,
 		},
 		rigid: []uint8{
 			63, 63, 63, 63, 63, 63, 2, 16, 8, 4, 1, 32,
@@ -14816,8 +14816,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14830,8 +14830,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14846,10 +14846,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -14868,7 +14868,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -14901,8 +14901,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -14912,7 +14912,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -14923,7 +14923,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -14937,8 +14937,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -14953,10 +14953,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -14968,8 +14968,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			4161,
+		masks: []uint64{
+			134221889,
 		},
 		rigid: []uint8{
 			1,
@@ -14983,7 +14983,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377, 16781377,
 		},
 		rigid: []uint8{
@@ -14994,8 +14994,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15005,8 +15005,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15016,8 +15016,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15027,8 +15027,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15038,8 +15038,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15049,8 +15049,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15060,8 +15060,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15071,8 +15071,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15082,8 +15082,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15093,8 +15093,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15104,8 +15104,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15115,8 +15115,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15126,8 +15126,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15137,8 +15137,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15148,8 +15148,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15159,8 +15159,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15170,8 +15170,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15181,8 +15181,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15192,8 +15192,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15203,8 +15203,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15214,8 +15214,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15225,8 +15225,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15236,8 +15236,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -15247,8 +15247,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15258,8 +15258,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15269,8 +15269,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15280,7 +15280,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -15291,7 +15291,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15302,8 +15302,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15316,8 +15316,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15332,10 +15332,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -15354,7 +15354,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -15387,8 +15387,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15401,8 +15401,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15416,7 +15416,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "thickness", values: []any{"base", "frustum", "middle", "tip", "tip_merge"}},
 			{name: "vertical_direction", values: []any{"down", "up"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			94208, 94208, 12288, 12288, 12288, 12288, 8192, 4096, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -15432,10 +15432,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -15454,7 +15454,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -15487,7 +15487,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			84410368,
 		},
 		rigid: []uint8{
@@ -15498,8 +15498,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15509,8 +15509,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15523,7 +15523,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "age", values: []any{int32(0), int32(1), int32(2), int32(3)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			17301504, 17301504, 17301504, 84410368,
 		},
 		rigid: []uint8{
@@ -15534,7 +15534,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			18350080,
 		},
 		rigid: []uint8{
@@ -15545,7 +15545,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			85458944,
 		},
 		rigid: []uint8{
@@ -15556,7 +15556,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -15567,8 +15567,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			130547711,
+		masks: []uint64{
+			8586264575,
 		},
 		rigid: []uint8{
 			63,
@@ -15578,8 +15578,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15589,8 +15589,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15600,7 +15600,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -15611,7 +15611,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -15622,8 +15622,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			117964799,
+		masks: []uint64{
+			8573681663,
 		},
 		rigid: []uint8{
 			63,
@@ -15633,7 +15633,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15644,7 +15644,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -15655,7 +15655,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15670,7 +15670,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4231168, 4214784, 4198400, 4329472, 4263936, 4198400, 4263936, 4329472, 4198400, 4214784, 4231168, 4198400,
 		},
 		rigid: []uint8{
@@ -15681,7 +15681,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -15692,7 +15692,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15703,7 +15703,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -15714,7 +15714,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15725,8 +15725,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15736,7 +15736,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15747,7 +15747,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15758,8 +15758,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15772,8 +15772,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15788,10 +15788,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -15810,7 +15810,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -15843,8 +15843,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15857,8 +15857,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -15873,10 +15873,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -15895,7 +15895,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{"low", "none", "tall"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280, 258048, 192512, 258048, 258048,
 			192512, 258048, 241664, 176128, 241664, 241664, 176128, 241664, 208896, 143360, 208896, 208896, 143360, 208896, 241664, 176128,
 			241664, 241664, 176128, 241664, 258048, 192512, 258048, 258048, 192512, 258048, 225280, 159744, 225280, 225280, 159744, 225280,
@@ -15931,7 +15931,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "eggs", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -15942,7 +15942,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15953,7 +15953,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -15964,7 +15964,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -15975,8 +15975,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -15993,7 +15993,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "up", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			85458944, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080,
 			18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080, 18350080,
 		},
@@ -16007,7 +16007,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -16018,7 +16018,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -16029,7 +16029,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -16045,7 +16045,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -16062,7 +16062,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -16077,7 +16077,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			8192, 524288, 8192, 524288, 8192, 524288, 8192, 524288,
 		},
 		rigid: []uint8{
@@ -16088,7 +16088,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -16102,7 +16102,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "rotation", values: []any{int32(0), int32(1), int32(10), int32(11), int32(12), int32(13), int32(14), int32(15), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7), int32(8), int32(9)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			528384, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 536576, 536576, 528384, 536576, 536576, 536576, 528384, 536576,
 		},
 		rigid: []uint8{
@@ -16113,8 +16113,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16124,8 +16124,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16135,8 +16135,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16146,7 +16146,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4718592,
 		},
 		rigid: []uint8{
@@ -16157,7 +16157,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -16171,8 +16171,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
-			66576, 33288, 16644, 133152,
+		masks: []uint64{
+			2147550224, 1073775112, 536887556, 4295100448,
 		},
 		rigid: []uint8{
 			16, 8, 4, 32,
@@ -16182,7 +16182,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -16196,8 +16196,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -16212,10 +16212,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -16227,8 +16227,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16243,7 +16243,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -16257,7 +16257,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 12288, 12288, 12288,
 		},
 		rigid: []uint8{
@@ -16268,7 +16268,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -16279,8 +16279,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16290,7 +16290,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			1572864,
 		},
 		rigid: []uint8{
@@ -16301,7 +16301,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			0,
 		},
 		rigid: []uint8{
@@ -16312,8 +16312,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16329,7 +16329,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -16340,8 +16340,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16351,8 +16351,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -16365,7 +16365,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -16380,7 +16380,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -16396,7 +16396,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -16407,7 +16407,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -16418,7 +16418,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -16432,7 +16432,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -16448,7 +16448,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -16459,8 +16459,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16473,8 +16473,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -16489,10 +16489,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -16504,8 +16504,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16515,8 +16515,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16532,7 +16532,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -16543,8 +16543,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -16557,7 +16557,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -16572,7 +16572,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -16588,7 +16588,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -16599,7 +16599,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -16610,7 +16610,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -16624,7 +16624,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -16640,7 +16640,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -16651,8 +16651,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16665,8 +16665,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -16681,10 +16681,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -16699,7 +16699,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -16713,7 +16713,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -16724,8 +16724,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16735,8 +16735,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16752,7 +16752,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -16763,8 +16763,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -16777,7 +16777,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -16792,7 +16792,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -16808,7 +16808,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -16819,7 +16819,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -16830,7 +16830,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -16844,7 +16844,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -16860,7 +16860,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -16871,8 +16871,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16885,8 +16885,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -16901,10 +16901,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -16919,7 +16919,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -16930,8 +16930,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16941,8 +16941,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -16958,7 +16958,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -16969,8 +16969,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -16983,7 +16983,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -16998,7 +16998,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -17014,7 +17014,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -17025,7 +17025,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -17036,7 +17036,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -17050,7 +17050,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -17066,7 +17066,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -17077,8 +17077,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17091,8 +17091,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17107,10 +17107,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -17125,7 +17125,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -17136,8 +17136,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17147,8 +17147,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17164,7 +17164,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -17175,8 +17175,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			101187583,
+		masks: []uint64{
+			8556904447,
 		},
 		rigid: []uint8{
 			63,
@@ -17189,7 +17189,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "axis", values: []any{"x", "y", "z"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 12288, 0,
 		},
 		rigid: []uint8{
@@ -17204,7 +17204,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "type", values: []any{"left", "right", "single"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			36864, 20480, 4096, 135168, 69632, 4096, 69632, 135168, 4096, 20480, 36864, 4096,
 		},
 		rigid: []uint8{
@@ -17220,7 +17220,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "hinge", values: []any{"left", "right"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			66576, 16644, 66576, 33288, 33288, 66576, 33288, 133152, 16644, 133152, 16644, 66576, 133152, 33288, 133152, 16644,
 		},
 		rigid: []uint8{
@@ -17231,7 +17231,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -17242,7 +17242,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -17256,7 +17256,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "hanging", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 0,
 		},
 		rigid: []uint8{
@@ -17272,7 +17272,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "open", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4161, 66576, 8322, 66576, 4161, 33288, 8322, 33288, 4161, 16644, 8322, 16644, 4161, 133152, 8322, 133152,
 		},
 		rigid: []uint8{
@@ -17283,8 +17283,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17297,8 +17297,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17313,10 +17313,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -17331,7 +17331,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"down", "east", "north", "south", "up", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4206592, 4194304, 4194304, 4194304, 4206592, 4194304,
 		},
 		rigid: []uint8{
@@ -17342,7 +17342,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -17353,7 +17353,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -17364,8 +17364,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17378,7 +17378,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "age", values: []any{int32(0), int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), int32(7)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			524288, 524288, 524288, 524288, 524288, 524288, 524288, 67633152,
 		},
 		rigid: []uint8{
@@ -17389,7 +17389,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -17404,7 +17404,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -17418,7 +17418,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -17429,7 +17429,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -17440,8 +17440,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -17451,8 +17451,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17462,8 +17462,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17476,8 +17476,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17492,10 +17492,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -17507,8 +17507,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17518,7 +17518,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -17529,7 +17529,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -17546,7 +17546,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -17557,8 +17557,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17568,7 +17568,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -17579,7 +17579,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -17590,8 +17590,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -17605,8 +17605,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -17622,12 +17622,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -17643,7 +17643,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -17654,7 +17654,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			17301504,
 		},
 		rigid: []uint8{
@@ -17665,7 +17665,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -17679,7 +17679,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -17690,7 +17690,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -17705,7 +17705,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 			{name: "part", values: []any{"foot", "head"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0, 0, 0, 0, 0,
 		},
 		rigid: []uint8{
@@ -17719,7 +17719,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "candles", values: []any{int32(1), int32(2), int32(3), int32(4)}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			4096, 4096, 4096, 4096,
 		},
 		rigid: []uint8{
@@ -17730,7 +17730,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -17741,8 +17741,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			16781377,
+		masks: []uint64{
+			150999105,
 		},
 		rigid: []uint8{
 			1,
@@ -17752,8 +17752,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17763,8 +17763,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17777,8 +17777,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 		},
-		masks: []uint32{
-			4161, 109576191, 8322,
+		masks: []uint64{
+			134221889, 8565293055, 268443778,
 		},
 		rigid: []uint8{
 			1, 63, 2,
@@ -17793,10 +17793,10 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "half", values: []any{"bottom", "top"}},
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 		},
-		masks: []uint32{
-			153957, 170601, 4161, 4161, 137313, 158118, 174762, 8322, 8322, 141474, 87381, 153957, 4161, 4161, 20805, 91542,
-			158118, 8322, 8322, 24966, 170601, 104025, 4161, 4161, 37449, 174762, 108186, 8322, 8322, 41610, 104025, 87381,
-			4161, 4161, 70737, 108186, 91542, 8322, 8322, 74898,
+		masks: []uint64{
+			4966209893, 5503097449, 134221889, 134221889, 4429322337, 5100431782, 5637319338, 268443778, 268443778, 4563544226, 2818659669, 4966209893, 134221889, 134221889, 671109445, 2952881558,
+			5100431782, 268443778, 268443778, 805331334, 5503097449, 3355547225, 134221889, 134221889, 1207997001, 5637319338, 3489769114, 268443778, 268443778, 1342218890, 3355547225, 2818659669,
+			134221889, 134221889, 2281772113, 3489769114, 2952881558, 268443778, 268443778, 2415994002,
 		},
 		rigid: []uint8{
 			37, 41, 1, 1, 33, 38, 42, 2, 2, 34, 21, 37, 1, 1, 5, 22, 38, 2, 2, 6, 41, 25, 1, 1,
@@ -17808,8 +17808,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17822,7 +17822,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			86245439, 69468223,
 		},
 		rigid: []uint8{
@@ -17833,7 +17833,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			76021759,
 		},
 		rigid: []uint8{
@@ -17844,7 +17844,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			67633151,
 		},
 		rigid: []uint8{
@@ -17861,7 +17861,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "south", values: []any{false, true}},
 			{name: "west", values: []any{false, true}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			12288, 77824, 45056, 110592, 28672, 94208, 61440, 126976, 143360, 208896, 176128, 241664, 159744, 225280, 192512, 258048,
 		},
 		rigid: []uint8{
@@ -17872,8 +17872,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			109576191,
+		masks: []uint64{
+			8565293055,
 		},
 		rigid: []uint8{
 			63,
@@ -17883,7 +17883,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			524288,
 		},
 		rigid: []uint8{
@@ -17894,8 +17894,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
-			126353407,
+		masks: []uint64{
+			8582070271,
 		},
 		rigid: []uint8{
 			63,
@@ -17909,8 +17909,8 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "type", values: []any{"bottom", "double", "top"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16781377, 4161, 126353407, 109576191, 16785538, 8322,
+		masks: []uint64{
+			150999105, 134221889, 8582070271, 8565293055, 285220994, 268443778,
 		},
 		rigid: []uint8{
 			1, 1, 63, 63, 2, 2,
@@ -17926,12 +17926,12 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 			{name: "shape", values: []any{"inner_left", "inner_right", "outer_left", "outer_right", "straight"}},
 			{name: "waterlogged", values: []any{false, true}},
 		},
-		masks: []uint32{
-			16931173, 153957, 16947817, 170601, 16781377, 4161, 16781377, 4161, 16914529, 137313, 16935334, 158118, 16951978, 174762, 16785538, 8322,
-			16785538, 8322, 16918690, 141474, 16864597, 87381, 16931173, 153957, 16781377, 4161, 16781377, 4161, 16798021, 20805, 16868758, 91542,
-			16935334, 158118, 16785538, 8322, 16785538, 8322, 16802182, 24966, 16947817, 170601, 16881241, 104025, 16781377, 4161, 16781377, 4161,
-			16814665, 37449, 16951978, 174762, 16885402, 108186, 16785538, 8322, 16785538, 8322, 16818826, 41610, 16881241, 104025, 16864597, 87381,
-			16781377, 4161, 16781377, 4161, 16847953, 70737, 16885402, 108186, 16868758, 91542, 16785538, 8322, 16785538, 8322, 16852114, 74898,
+		masks: []uint64{
+			4982987109, 4966209893, 5519874665, 5503097449, 150999105, 134221889, 150999105, 134221889, 4446099553, 4429322337, 5117208998, 5100431782, 5654096554, 5637319338, 285220994, 268443778,
+			285220994, 268443778, 4580321442, 4563544226, 2835436885, 2818659669, 4982987109, 4966209893, 150999105, 134221889, 150999105, 134221889, 687886661, 671109445, 2969658774, 2952881558,
+			5117208998, 5100431782, 285220994, 268443778, 285220994, 268443778, 822108550, 805331334, 5519874665, 5503097449, 3372324441, 3355547225, 150999105, 134221889, 150999105, 134221889,
+			1224774217, 1207997001, 5654096554, 5637319338, 3506546330, 3489769114, 285220994, 268443778, 285220994, 268443778, 1358996106, 1342218890, 3372324441, 3355547225, 2835436885, 2818659669,
+			150999105, 134221889, 150999105, 134221889, 2298549329, 2281772113, 3506546330, 3489769114, 2969658774, 2952881558, 285220994, 268443778, 285220994, 268443778, 2432771218, 2415994002,
 		},
 		rigid: []uint8{
 			37, 37, 41, 41, 1, 1, 1, 1, 33, 33, 38, 38, 42, 42, 2, 2, 2, 2, 34, 34, 21, 21, 37, 37,
@@ -17947,7 +17947,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		},
 	},
 	{
-		masks: []uint32{
+		masks: []uint64{
 			4096,
 		},
 		rigid: []uint8{
@@ -17961,7 +17961,7 @@ var javaGenerationFaceBlocks = [...]generationFaceBlock{
 		properties: []generationFaceProperty{
 			{name: "facing", values: []any{"east", "north", "south", "west"}},
 		},
-		masks: []uint32{
+		masks: []uint64{
 			0, 0, 0, 0,
 		},
 		rigid: []uint8{

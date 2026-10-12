@@ -12,7 +12,7 @@ import (
 
 type faceState struct {
 	properties []defaultProperty
-	mask       uint32
+	mask       uint64
 	rigid      uint8
 	geometry   string
 }
@@ -76,7 +76,7 @@ func generateFaces(path string, names []string, rows [][]faceState) error {
 			}
 			fmt.Fprintln(&out, "\t\t},")
 		}
-		fmt.Fprint(&out, "\t\tmasks: []uint32{")
+		fmt.Fprint(&out, "\t\tmasks: []uint64{")
 		for j, mask := range masks {
 			if j%16 == 0 {
 				fmt.Fprint(&out, "\n\t\t\t")
@@ -166,7 +166,7 @@ func parseRectFaces(encoded string, faces *[6][][4]float64) error {
 	return nil
 }
 
-func faceLayout(rows []faceState, geometryIDs map[string]int) ([]faceProperty, []uint32, []uint8, []int, error) {
+func faceLayout(rows []faceState, geometryIDs map[string]int) ([]faceProperty, []uint64, []uint8, []int, error) {
 	if len(rows) == 0 {
 		return nil, nil, nil, nil, fmt.Errorf("missing generation faces")
 	}
@@ -195,7 +195,7 @@ func faceLayout(rows []faceState, geometryIDs map[string]int) ([]faceProperty, [
 	if total != len(rows) {
 		return nil, nil, nil, nil, fmt.Errorf("incomplete state product: %d rows, want %d", len(rows), total)
 	}
-	masks, rigid, shapeIDs := make([]uint32, total), make([]uint8, total), make([]int, total)
+	masks, rigid, shapeIDs := make([]uint64, total), make([]uint8, total), make([]int, total)
 	seen := make([]bool, total)
 	for _, row := range rows {
 		index := 0
@@ -224,7 +224,7 @@ func faceLayout(rows []faceState, geometryIDs map[string]int) ([]faceProperty, [
 			stride *= radix
 			continue
 		}
-		reducedMasks := make([]uint32, 0, len(masks)/radix)
+		reducedMasks := make([]uint64, 0, len(masks)/radix)
 		reducedRigid := make([]uint8, 0, len(rigid)/radix)
 		reducedShapes := make([]int, 0, len(shapeIDs)/radix)
 		for index := range masks {

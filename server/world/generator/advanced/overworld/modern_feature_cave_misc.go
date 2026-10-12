@@ -4,8 +4,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -42,14 +42,6 @@ func featureRegionAir(region *featureRegion, p featurePos) bool {
 	}
 }
 
-type featureBlockSource struct {
-	region *featureRegion
-}
-
-func (s featureBlockSource) Block(pos cube.Pos) world.Block {
-	return s.region.Block(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])})
-}
-
 func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
 	floorSearchRange, ok := config["floor_search_range"].(float64)
 	if !ok || floorSearchRange < 0 || floorSearchRange > 512 || floorSearchRange != math.Trunc(floorSearchRange) {
@@ -65,8 +57,8 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 	}
 
 	isWater := func(p featurePos) bool {
-		name, _ := region.State(p)
-		return normalizeJavaResource(name) == "water"
+		name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		return name == "minecraft:water"
 	}
 	if !isWater(origin) {
 		return false
@@ -82,13 +74,12 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 
 	r := int32(radius)
 	magma := featureRequireState(region, "minecraft:magma_block")
-	source := featureBlockSource{region: region}
-	faceSolid := func(p featurePos, face cube.Face) bool {
-		pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
-		return region.Block(p).Model().FaceSolid(pos, face, source)
-	}
-	visibleFromOutside := func(p featurePos, face cube.Face) bool {
-		return !faceSolid(p, face)
+	visibleFromOutside := func(p featurePos, direction int) bool {
+		shape, err := javadata.BlockGenerationShapeID(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		if err != nil {
+			panic(err)
+		}
+		return shape.Occlusion&(1<<uint(direction)) == 0
 	}
 	placed := false
 	for z := floor.z - r; z <= floor.z+r; z++ {
@@ -98,30 +89,31 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 				if random.NextFloat() >= float32(probability) {
 					continue
 				}
-				name, _ := region.State(p)
-				switch normalizeJavaResource(name) {
-				case "water", "air", "cave_air", "void_air":
+				name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+				switch name {
+				case "minecraft:water", "minecraft:air", "minecraft:cave_air", "minecraft:void_air":
 					continue
 				}
-				if visibleFromOutside(featurePos{p.x, p.y - 1, p.z}, cube.FaceUp) {
+				if visibleFromOutside(featurePos{p.x, p.y - 1, p.z}, 1) {
 					continue
 				}
 				visible := false
 				for _, neighbour := range [...]struct {
-					dx, dz int32
-					face   cube.Face
+					dx, dz    int32
+					direction int
 				}{
-					{0, -1, cube.FaceSouth},
-					{1, 0, cube.FaceWest},
-					{0, 1, cube.FaceNorth},
-					{-1, 0, cube.FaceEast},
+					{0, -1, 3},
+					{1, 0, 4},
+					{0, 1, 2},
+					{-1, 0, 5},
 				} {
-					if visibleFromOutside(featurePos{p.x + neighbour.dx, p.y, p.z + neighbour.dz}, neighbour.face) {
+					if visibleFromOutside(featurePos{p.x + neighbour.dx, p.y, p.z + neighbour.dz}, neighbour.direction) {
 						visible = true
 						break
 					}
 				}
-				if !visible && region.Set(p, magma) {
+				if !visible {
+					region.setWithFlags(p, magma, 2)
 					placed = true
 				}
 			}
@@ -129,7 +121,6 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 	}
 	return placed
 }
-
 
 func placeModernSpike(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
 	canPlace, ok := config["can_place_on"].(map[string]any)

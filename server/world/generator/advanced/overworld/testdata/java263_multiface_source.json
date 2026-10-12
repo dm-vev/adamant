@@ -1,0 +1,1359 @@
+{
+  "oracle": "Executed actual Java 26.3 MultifaceGrowthFeature CODEC encode/decode/place and real MultifaceSpreader/ProtoChunk.markPosForPostProcessing; loaded vanilla tags, strict WorldGenLevel dispatch, full -64..319 bounds. Includes all owning columns and failed initial/spread setters.",
+  "minY": -64,
+  "maxY": 319,
+  "cases": [
+    {
+      "name": "legacy-scene0-seed36",
+      "algorithm": "legacy",
+      "seed": 36,
+      "scene": 0,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "-8917140768387680777",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene1-seed55",
+      "algorithm": "legacy",
+      "seed": 55,
+      "scene": 1,
+      "directions": 2,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-4994165663973249513",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_ceiling": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": []
+    },
+    {
+      "name": "legacy-scene2-seed77",
+      "algorithm": "legacy",
+      "seed": 77,
+      "scene": 2,
+      "directions": 4,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-5090009733490601899",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=true, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene3-seed106",
+      "algorithm": "legacy",
+      "seed": 106,
+      "scene": 3,
+      "directions": 7,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "898338007022498926",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "can_place_on_ceiling": true,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2191"
+        ],
+        "1,0": [
+          "6:2176"
+        ]
+      },
+      "markers": [
+        "6:2191"
+      ],
+      "states": [
+        {
+          "pos": [
+            15,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            16,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene4-seed88",
+      "algorithm": "legacy",
+      "seed": 88,
+      "scene": 4,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "-1895491844797992673",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene5-seed107",
+      "algorithm": "legacy",
+      "seed": 107,
+      "scene": 5,
+      "directions": 2,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-5132974314304258412",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_ceiling": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            15,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene6-seed129",
+      "algorithm": "legacy",
+      "seed": 129,
+      "scene": 6,
+      "directions": 4,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-777481740571078641",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": []
+    },
+    {
+      "name": "legacy-scene7-seed158",
+      "algorithm": "legacy",
+      "seed": 158,
+      "scene": 7,
+      "directions": 7,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "8023316739795793602",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "can_place_on_ceiling": true,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {
+        "1,0": [
+          "6:2176",
+          "6:2177"
+        ]
+      },
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            16,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        },
+        {
+          "pos": [
+            17,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene0-seed36",
+      "algorithm": "xoroshiro",
+      "seed": 36,
+      "scene": 0,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "-3452340462778365641",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene1-seed55",
+      "algorithm": "xoroshiro",
+      "seed": 55,
+      "scene": 1,
+      "directions": 2,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-6209246879078713690",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_ceiling": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": []
+    },
+    {
+      "name": "xor-scene2-seed77",
+      "algorithm": "xoroshiro",
+      "seed": 77,
+      "scene": 2,
+      "directions": 4,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "3377058575937212638",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=true, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene3-seed106",
+      "algorithm": "xoroshiro",
+      "seed": 106,
+      "scene": 3,
+      "directions": 7,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "8505086676124067211",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "can_place_on_ceiling": true,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2191",
+          "6:1935"
+        ]
+      },
+      "markers": [
+        "6:2191",
+        "6:1935"
+      ],
+      "states": [
+        {
+          "pos": [
+            15,
+            40,
+            7
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        },
+        {
+          "pos": [
+            15,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=true, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene4-seed88",
+      "algorithm": "xoroshiro",
+      "seed": 88,
+      "scene": 4,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "2697033190142150896",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene5-seed107",
+      "algorithm": "xoroshiro",
+      "seed": 107,
+      "scene": 5,
+      "directions": 2,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-2444288647025221604",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_ceiling": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            15,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene6-seed129",
+      "algorithm": "xoroshiro",
+      "seed": 129,
+      "scene": 6,
+      "directions": 4,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "7317362489043664559",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": []
+    },
+    {
+      "name": "xor-scene7-seed158",
+      "algorithm": "xoroshiro",
+      "seed": 158,
+      "scene": 7,
+      "directions": 7,
+      "supportKind": 1,
+      "origin": [
+        15,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "7221393636163839648",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "can_place_on_ceiling": true,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": [
+          "minecraft:stone",
+          "minecraft:oak_stairs"
+        ]
+      },
+      "allMarkers": {
+        "1,0": [
+          "6:2176",
+          "6:1920"
+        ]
+      },
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            16,
+            40,
+            7
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        },
+        {
+          "pos": [
+            16,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene10-seed83",
+      "algorithm": "legacy",
+      "seed": 83,
+      "scene": 10,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "5858664277079944475",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=true, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene11-seed84",
+      "algorithm": "legacy",
+      "seed": 84,
+      "scene": 11,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "4224286304666636638",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:1928"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:1928"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene12-seed85",
+      "algorithm": "legacy",
+      "seed": 85,
+      "scene": 12,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "208061894583071289",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:1912"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:1912"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            39,
+            7
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=false, south=true, up=false, waterlogged=false, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene10-seed83",
+      "algorithm": "xoroshiro",
+      "seed": 83,
+      "scene": 10,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "3409293623938022338",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=true, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene11-seed84",
+      "algorithm": "xoroshiro",
+      "seed": 84,
+      "scene": 11,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "-7602761466860265935",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:1928"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:1928"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene12-seed85",
+      "algorithm": "xoroshiro",
+      "seed": 85,
+      "scene": 12,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "6485635687825388175",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:2169"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:2169"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        },
+        {
+          "pos": [
+            9,
+            39,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=false, south=false, up=false, waterlogged=false, west=true}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene17-seed90",
+      "algorithm": "legacy",
+      "seed": 90,
+      "scene": 17,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "-3808162511205526765",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:2183"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:2183"
+      ],
+      "states": [
+        {
+          "pos": [
+            7,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            9
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            9,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene17-seed90",
+      "algorithm": "xoroshiro",
+      "seed": 90,
+      "scene": 17,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "1097396155016808385",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:2440"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:2440"
+      ],
+      "states": [
+        {
+          "pos": [
+            7,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            7
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        },
+        {
+          "pos": [
+            8,
+            40,
+            9
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        },
+        {
+          "pos": [
+            9,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=false, east=false, north=true, south=false, up=false, waterlogged=true, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene15-seed231",
+      "algorithm": "legacy",
+      "seed": 231,
+      "scene": 15,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-4914846430917705703",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            8,
+            39,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene15-seed231",
+      "algorithm": "xoroshiro",
+      "seed": 231,
+      "scene": 15,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-6399546811491576763",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": [
+        {
+          "pos": [
+            8,
+            39,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene0-seed77",
+      "algorithm": "legacy",
+      "seed": 77,
+      "scene": 0,
+      "directions": 1,
+      "supportKind": 2,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "-8357818524942274755",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "#minecraft:mineable/pickaxe"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "xor-scene0-seed77",
+      "algorithm": "xoroshiro",
+      "seed": 77,
+      "scene": 0,
+      "directions": 1,
+      "supportKind": 2,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "placed": true,
+      "nextLong": "-1980821539092387680",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "#minecraft:mineable/pickaxe"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184"
+      ],
+      "states": [
+        {
+          "pos": [
+            8,
+            40,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "legacy-scene13-seed91",
+      "algorithm": "legacy",
+      "seed": 91,
+      "scene": 13,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        8,
+        -64,
+        8
+      ],
+      "placed": false,
+      "nextLong": "-5053655085543681898",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {},
+      "markers": [],
+      "states": []
+    },
+    {
+      "name": "xor-scene14-seed92",
+      "algorithm": "xoroshiro",
+      "seed": 92,
+      "scene": 14,
+      "directions": 1,
+      "supportKind": 0,
+      "origin": [
+        15,
+        319,
+        8
+      ],
+      "placed": true,
+      "nextLong": "5881629521232879614",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "chance_of_spreading": 0.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "23:2303"
+        ]
+      },
+      "markers": [
+        "23:2303"
+      ],
+      "states": [
+        {
+          "pos": [
+            15,
+            319,
+            8
+          ],
+          "state": "minecraft:glow_lichen{down=true, east=false, north=false, south=false, up=false, waterlogged=false, west=false}"
+        }
+      ]
+    },
+    {
+      "name": "reject-writes-legacy",
+      "algorithm": "legacy",
+      "seed": 99,
+      "scene": 18,
+      "directions": 7,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "rejectWrites": true,
+      "placed": true,
+      "nextLong": "-4630523717739626165",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "can_place_on_ceiling": true,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:2184",
+          "6:2184",
+          "6:1944",
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:2184",
+        "6:2184",
+        "6:1944",
+        "6:2184"
+      ],
+      "states": []
+    },
+    {
+      "name": "reject-writes-xoroshiro",
+      "algorithm": "xoroshiro",
+      "seed": 99,
+      "scene": 18,
+      "directions": 7,
+      "supportKind": 0,
+      "origin": [
+        8,
+        40,
+        8
+      ],
+      "rejectWrites": true,
+      "placed": true,
+      "nextLong": "4361946633127247389",
+      "config": {
+        "block": "minecraft:glow_lichen",
+        "search_range": 2,
+        "can_place_on_floor": true,
+        "can_place_on_ceiling": true,
+        "can_place_on_wall": true,
+        "chance_of_spreading": 1.0,
+        "can_be_placed_on": "minecraft:stone"
+      },
+      "allMarkers": {
+        "0,0": [
+          "6:2184",
+          "6:2184",
+          "6:2184",
+          "6:2199",
+          "6:2184"
+        ]
+      },
+      "markers": [
+        "6:2184",
+        "6:2184",
+        "6:2184",
+        "6:2199",
+        "6:2184"
+      ],
+      "states": []
+    }
+  ]
+}

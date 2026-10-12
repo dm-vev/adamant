@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 // placeModernMultifaceGrowth mirrors MultifaceGrowthFeature's search and face-spreading order.
@@ -13,7 +14,7 @@ func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, or
 		panic("overworld: malformed Java multiface growth block")
 	}
 	blockName = normalizeJavaResource(blockName)
-	originName, _ := region.State(origin)
+	_, originName := multifaceSourceStateAt(region, origin)
 	if !multifaceAirOrWater(originName) {
 		return false
 	}
@@ -39,36 +40,46 @@ func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, or
 	if !ok {
 		panic("overworld: malformed Java multiface growth support set")
 	}
-	validDirections := make([]string, 0, 6)
+	var validDirections [6]string
+	directionCount := 0
 	if canCeiling {
-		validDirections = append(validDirections, "up")
+		validDirections[directionCount] = "up"
+		directionCount++
 	}
 	if canFloor {
-		validDirections = append(validDirections, "down")
+		validDirections[directionCount] = "down"
+		directionCount++
 	}
 	if canWall {
-		validDirections = append(validDirections, "north", "east", "south", "west")
+		for _, direction := range [...]string{"north", "east", "south", "west"} {
+			validDirections[directionCount] = direction
+			directionCount++
+		}
 	}
-	if len(validDirections) == 0 {
+	if directionCount == 0 {
 		return false
 	}
 
-	directions := multifaceShuffle(validDirections, random)
+	var shuffledBuffer [6]string
+	copy(shuffledBuffer[:], validDirections[:directionCount])
+	directions := shuffledBuffer[:directionCount]
+	multifaceShuffle(directions, random)
 	if multifacePlaceAt(region, blockName, support, origin, random, directions, chance) {
 		return true
 	}
 	for _, searchDirection := range directions {
-		placementDirections := make([]string, 0, len(directions)-1)
-		for _, direction := range validDirections {
+		var placementBuffer [6]string
+		placementDirections := placementBuffer[:0]
+		for _, direction := range validDirections[:directionCount] {
 			if direction != multifaceOpposite(searchDirection) {
 				placementDirections = append(placementDirections, direction)
 			}
 		}
-		placementDirections = multifaceShuffle(placementDirections, random)
+		multifaceShuffle(placementDirections, random)
 		for range searchRange {
 			// Vanilla resets its mutable position to origin on every search iteration.
 			pos := multifaceOffset(origin, searchDirection)
-			name, _ := region.State(pos)
+			_, name := multifaceSourceStateAt(region, pos)
 			if !multifaceAirOrWater(name) && normalizeJavaResource(name) != blockName {
 				break
 			}
@@ -81,52 +92,39 @@ func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, or
 }
 
 func multifacePlaceAt(region *featureRegion, blockName string, support any, pos featurePos, random *java26.Random, directions []string, chance float32) bool {
-	oldName, oldProperties := region.State(pos)
+	oldID, oldName := multifaceSourceStateAt(region, pos)
 	if !multifaceAirOrWater(oldName) && normalizeJavaResource(oldName) != blockName {
 		return false
 	}
 	for _, direction := range directions {
 		supportPos := multifaceOffset(pos, direction)
-		supportName, _ := region.State(supportPos)
-		if !multifaceSupportMatchesName(support, supportName) {
+		_, supportName := multifaceSourceStateAt(region, supportPos)
+		if !featureBlockHolderContains(support, supportName) {
 			continue
 		}
-		if !multifaceCanAttach(region, supportPos, multifaceOpposite(direction)) {
+		stateID, valid := multifacePlacementState(region, blockName, pos, direction, oldID)
+		if !valid {
 			return false
 		}
-		properties := make(map[string]any, len(oldProperties)+1)
-		if normalizeJavaResource(oldName) == blockName {
-			for key, value := range oldProperties {
-				properties[key] = value
-			}
-		} else if normalizeJavaResource(oldName) == "water" && multifaceWaterSource(oldProperties) {
-			properties["waterlogged"] = true
-		}
-		if existing, _ := properties[direction].(bool); existing {
-			return false
-		}
-		if existing, _ := properties[direction].(string); existing == "true" {
-			return false
-		}
-		properties[direction] = true
-		state, found := featureStateRID(region.c, map[string]any{"id": "minecraft:" + blockName, "properties": properties})
-		if !found || !region.Set(pos, state) {
-			continue
-		}
+		// Source ignores the setter's return value, then marks and consumes spread RNG.
+		region.setWithFlags(pos, world.ResolveStateID(region.c.BlockRegistry(), stateID), 3)
 		if featureInsideTarget(region.target, pos) {
 			region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
 		}
 		if random.NextFloat() < chance {
-			multifaceSpreadFromFace(region, blockName, pos, direction, random)
+			multifaceSpreadFromFace(region, blockName, pos, stateID, direction, random)
 		}
 		return true
 	}
 	return false
 }
 
-func multifaceSpreadFromFace(region *featureRegion, blockName string, pos featurePos, startingFace string, random *java26.Random) {
-	for _, spreadDirection := range multifaceShuffle([]string{"down", "up", "north", "south", "west", "east"}, random) {
-		if multifaceAxis(spreadDirection) == multifaceAxis(startingFace) {
+func multifaceSpreadFromFace(region *featureRegion, blockName string, pos featurePos, sourceID uint32, startingFace string, random *java26.Random) {
+	spreadDirections := [...]string{"down", "up", "north", "south", "west", "east"}
+	multifaceShuffle(spreadDirections[:], random)
+	for _, spreadDirection := range spreadDirections {
+		hasSpreadFace, _ := javadata.BlockStateBool(sourceID, spreadDirection)
+		if multifaceAxis(spreadDirection) == multifaceAxis(startingFace) || hasSpreadFace {
 			continue
 		}
 		for spreadType := 0; spreadType < 3; spreadType++ {
@@ -139,50 +137,38 @@ func multifaceSpreadFromFace(region *featureRegion, blockName string, pos featur
 				target = multifaceOffset(multifaceOffset(pos, spreadDirection), startingFace)
 				face = multifaceOpposite(spreadDirection)
 			}
-			if multifaceCanSpreadInto(region, blockName, target, face) && multifacePlaceFace(region, blockName, target, face) {
-				return
+			if multifaceCanSpreadInto(region, blockName, target, face) {
+				if multifacePlaceFace(region, blockName, target, face) {
+					return
+				}
+				break
 			}
 		}
 	}
 }
 
 func multifaceCanSpreadInto(region *featureRegion, blockName string, pos featurePos, face string) bool {
-	name, properties := region.State(pos)
-	if normalizeJavaResource(name) == "water" && !multifaceWaterSource(properties) {
+	id, name := multifaceSourceStateAt(region, pos)
+	if normalizeJavaResource(name) == "water" && !multifaceWaterSource(id) {
 		return false
 	}
 	if !multifaceAirOrWater(name) && normalizeJavaResource(name) != blockName {
 		return false
 	}
-	if normalizeJavaResource(name) == blockName {
-		if value, ok := properties[face].(bool); ok && value {
-			return false
-		}
-		if value, ok := properties[face].(string); ok && value == "true" {
-			return false
-		}
-	}
-	supportPos := multifaceOffset(pos, face)
-	return multifaceCanAttach(region, supportPos, multifaceOpposite(face))
+	_, valid := multifacePlacementState(region, blockName, pos, face, id)
+	return valid
 }
 
 func multifacePlaceFace(region *featureRegion, blockName string, pos featurePos, face string) bool {
-	oldName, properties := region.State(pos)
-	if normalizeJavaResource(oldName) != blockName {
-		properties = map[string]any{}
-	}
-	if normalizeJavaResource(oldName) == "water" && multifaceWaterSource(properties) {
-		properties["waterlogged"] = true
-	}
-	properties[face] = true
-	state, ok := featureStateRID(region.c, map[string]any{"id": "minecraft:" + blockName, "properties": properties})
-	if !ok {
+	id, _ := multifaceSourceStateAt(region, pos)
+	stateID, valid := multifacePlacementState(region, blockName, pos, face, id)
+	if !valid {
 		return false
 	}
 	if featureInsideTarget(region.target, pos) {
 		region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
 	}
-	return region.Set(pos, state)
+	return region.setWithFlags(pos, world.ResolveStateID(region.c.BlockRegistry(), stateID), 2)
 }
 
 func multifaceCanAttach(region *featureRegion, supportPos featurePos, supportFace string) bool {
@@ -213,26 +199,43 @@ func multifaceCubeFace(direction string) cube.Face {
 	}
 }
 
-func multifaceSupportMatchesName(raw any, name string) bool {
-	name = normalizeJavaResource(name)
-	switch value := raw.(type) {
-	case string:
-		return name == normalizeJavaResource(value)
-	case []any:
-		for _, item := range value {
-			if id, ok := item.(string); ok && name == normalizeJavaResource(id) {
-				return true
+func multifaceSourceStateAt(region *featureRegion, pos featurePos) (uint32, string) {
+	id := region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry())
+	name, valid := javadata.BlockStateName(id)
+	if !valid {
+		panic("overworld: invalid Java multiface state")
+	}
+	return id, name
+}
+
+func multifacePlacementState(region *featureRegion, blockName string, pos featurePos, face string, oldID uint32) (uint32, bool) {
+	oldName, _ := javadata.BlockStateName(oldID)
+	id := oldID
+	if normalizeJavaResource(oldName) != blockName {
+		var err error
+		id, err = javadata.BlockStateID(blockName, nil)
+		if err != nil {
+			panic(err)
+		}
+		if normalizeJavaResource(oldName) == "water" && multifaceWaterSource(oldID) {
+			id, err = javadata.BlockStateWithProperty(id, "waterlogged", true)
+			if err != nil {
+				panic(err)
 			}
 		}
-	case map[string]any:
-		if tag, ok := value["tag"].(string); ok {
-			return javaBlockTagContains(normalizeJavaResource(tag), name)
-		}
-		if id, ok := value["id"].(string); ok {
-			return name == normalizeJavaResource(id)
-		}
 	}
-	return false
+	if hasFace, supported := javadata.BlockStateBool(id, face); !supported || hasFace {
+		return 0, false
+	}
+	supportPos := multifaceOffset(pos, face)
+	if !multifaceCanAttach(region, supportPos, multifaceOpposite(face)) {
+		return 0, false
+	}
+	id, err := javadata.BlockStateWithProperty(id, face, true)
+	if err != nil {
+		panic(err)
+	}
+	return id, true
 }
 
 func multifaceAirOrWater(name string) bool {
@@ -244,23 +247,9 @@ func multifaceAirOrWater(name string) bool {
 	}
 }
 
-func multifaceWaterSource(properties map[string]any) bool {
-	switch level := properties["level"].(type) {
-	case string:
-		return level == "" || level == "0"
-	case int:
-		return level == 0
-	case int8:
-		return level == 0
-	case int16:
-		return level == 0
-	case int32:
-		return level == 0
-	case int64:
-		return level == 0
-	default:
-		return true
-	}
+func multifaceWaterSource(id uint32) bool {
+	level, valid := javadata.BlockStateInt(id, "level")
+	return valid && level == 0
 }
 
 func multifaceAxis(direction string) string {
@@ -313,11 +302,9 @@ func multifaceOffset(pos featurePos, direction string) featurePos {
 	return pos
 }
 
-func multifaceShuffle(in []string, random *java26.Random) []string {
-	out := append([]string(nil), in...)
-	for i := len(out) - 1; i > 0; i-- {
+func multifaceShuffle(in []string, random *java26.Random) {
+	for i := len(in) - 1; i > 0; i-- {
 		j := int(random.NextInt(int32(i + 1)))
-		out[i], out[j] = out[j], out[i]
+		in[i], in[j] = in[j], in[i]
 	}
-	return out
 }

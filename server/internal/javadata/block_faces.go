@@ -14,7 +14,7 @@ type generationFaceProperty struct {
 
 type generationFaceBlock struct {
 	properties []generationFaceProperty
-	masks      []uint32
+	masks      []uint64
 	rigid      []uint8
 	geometry   []uint16
 }
@@ -33,6 +33,7 @@ type GenerationShape struct {
 	Sturdy              uint8
 	Center              uint8
 	Rigid               uint8 // SupportType.RIGID
+	Occlusion           uint8 // full BlockState.getFaceOcclusionShape faces
 	CollisionFull       bool
 	CollisionEmpty      bool
 	Replaceable         bool
@@ -85,6 +86,7 @@ func generationShape(block, stateIndex int) GenerationShape {
 	return GenerationShape{
 		Attachment: uint8(mask & 63), Sturdy: uint8(mask >> 6 & 63), Center: uint8(mask >> 12 & 63),
 		Rigid:         entry.rigid[stateIndex],
+		Occlusion:     uint8(mask >> 27 & 63),
 		CollisionFull: mask&(1<<18) != 0, CollisionEmpty: mask&(1<<19) != 0, Replaceable: mask&(1<<20) != 0,
 		ConnectionException: mask&(1<<21) != 0, SignalSource: mask&(1<<22) != 0,
 		RedstoneConductor: mask&(1<<23) != 0, FireCanBurn: mask&(1<<24) != 0,
