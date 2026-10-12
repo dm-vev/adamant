@@ -36,7 +36,7 @@ func newBenchmarkTerrainGenerator() benchmarkTerrainGenerator {
 	}
 }
 
-func (g benchmarkTerrainGenerator) GenerateChunk(_ ChunkPos, c *chunk.Chunk) GenerationResult {
+func (g benchmarkTerrainGenerator) GenerateChunk(_ ChunkPos, c *chunk.Chunk, _ GenerationContext) GenerationResult {
 	const surfaceY = 64
 
 	minY := int(c.Range().Min())

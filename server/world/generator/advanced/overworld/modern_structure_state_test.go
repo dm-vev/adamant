@@ -167,7 +167,7 @@ func TestNeighbourDecorationPreviewDoesNotConsumeMineshaftSpawner(t *testing.T) 
 					}
 				}
 			}
-			result := features.Decorate(world.ChunkPos{0, z}, c)
+			result := features.Decorate(world.ChunkPos{0, z}, c, world.GenerationContext{})
 			spawners := 0
 			for y := int16(0); y < 80; y++ {
 				for x := range uint8(16) {

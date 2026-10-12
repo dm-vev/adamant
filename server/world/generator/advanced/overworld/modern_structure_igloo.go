@@ -64,9 +64,9 @@ func (p modernIglooPiece) Place(clip javastructure.Bounds, env javastructure.Pro
 	return placed, nil
 }
 
-func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) error {
 	if env.BaseHeight == nil {
-		return javastructure.Placement{}, fmt.Errorf("igloo postProcess requires WORLD_SURFACE_WG")
+		return fmt.Errorf("igloo postProcess requires WORLD_SURFACE_WG")
 	}
 	offset := [3]int32{}
 	if p.name == "igloo/middle" {
@@ -81,7 +81,6 @@ func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env 
 	inside := func(pos [3]int32) bool {
 		return pos[0] >= clip.Min[0] && pos[0] <= clip.Max[0] && pos[1] >= clip.Min[1] && pos[1] <= clip.Max[1] && pos[2] >= clip.Min[2] && pos[2] <= clip.Max[2]
 	}
-	placed := javastructure.Placement{}
 	// StructureTemplate seeds only successfully placed, live randomizable actors.
 	// Igloo templates contain only chest actors in that category; their empty
 	// template inventory ignores the seed, but the draw precedes marker loot.
@@ -97,7 +96,7 @@ func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env 
 			continue
 		}
 		if env.HasChestBlockEntity == nil || env.Random == nil {
-			return javastructure.Placement{}, fmt.Errorf("igloo template chest requires live actor and random queries")
+			return fmt.Errorf("igloo template chest requires live actor and random queries")
 		}
 		if env.HasChestBlockEntity(pos[0], pos[1], pos[2]) {
 			env.Random.NextLong()
@@ -114,14 +113,14 @@ func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env 
 		if !inside(markerPos) {
 			continue
 		}
-		placed.PostShapeBlocks = append(placed.PostShapeBlocks, javastructure.Block{Pos: markerPos, State: world.BlockState{Name: "minecraft:air"}})
+		emit(javastructure.Placement{PostShapeBlocks: []javastructure.Block{{Pos: markerPos, State: world.BlockState{Name: "minecraft:air"}}}})
 		chestPos := [3]int32{markerPos[0], markerPos[1] - 1, markerPos[2]}
 		if env.HasChestBlockEntity == nil || env.SetBlockEntityLootTable == nil {
-			return javastructure.Placement{}, fmt.Errorf("igloo chest marker requires live chest block-entity callbacks")
+			return fmt.Errorf("igloo chest marker requires live chest block-entity callbacks")
 		}
 		if env.HasChestBlockEntity(chestPos[0], chestPos[1], chestPos[2]) {
 			if env.Random == nil {
-				return javastructure.Placement{}, fmt.Errorf("igloo chest marker requires postProcess random")
+				return fmt.Errorf("igloo chest marker requires postProcess random")
 			}
 			env.SetBlockEntityLootTable(chestPos[0], chestPos[1], chestPos[2], "minecraft:chests/igloo_chest", env.Random.NextLong())
 		}
@@ -130,22 +129,21 @@ func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env 
 		trapdoor := transformedTemplatePos(origin, [3]int32{3, 0, 5}, p.pivot, p.rotation)
 		below := [3]int32{trapdoor[0], trapdoor[1] - 1, trapdoor[2]}
 		if env.JavaBlockStateID == nil {
-			return javastructure.Placement{}, fmt.Errorf("igloo top requires live Java block-state query")
+			return fmt.Errorf("igloo top requires live Java block-state query")
 		}
 		id, queryErr := env.JavaBlockStateID(below[0], below[1], below[2])
 		if queryErr != nil {
-			return javastructure.Placement{}, queryErr
+			return queryErr
 		}
 		belowName, ok := javadata.BlockStateName(id)
 		if !ok {
-			return javastructure.Placement{}, fmt.Errorf("igloo top queried unknown Java block state %d", id)
+			return fmt.Errorf("igloo top queried unknown Java block state %d", id)
 		}
 		if belowName != "minecraft:air" && belowName != "minecraft:cave_air" && belowName != "minecraft:void_air" && belowName != "minecraft:ladder" {
-			placed.StructurePieceWrites = true
-			placed.PostShapeBlocks = append(placed.PostShapeBlocks, javastructure.Block{Pos: trapdoor, State: world.BlockState{Name: "minecraft:snow_block"}})
+			emit(javastructure.Placement{PostShapeBlocks: []javastructure.Block{{Pos: trapdoor, State: world.BlockState{Name: "minecraft:snow_block"}}}})
 		}
 	}
-	return placed, nil
+	return nil
 }
 
 func templatePivotOrigin(position, pivot [3]int32, rotation javastructure.Rotation) [3]int32 {

@@ -49,6 +49,12 @@ func javaFluidForState(id uint32) javaFluidState {
 	return javaFluidState{kind: kind, amount: 8 - depth}
 }
 
+// JavaBlockStateHasWaterFluid reports the source state's WATER-tag fluid,
+// including waterlogged solids, bubble columns, and aquatic plants.
+func JavaBlockStateHasWaterFluid(id uint32) bool {
+	return javaFluidForState(id).kind == javaFluidWater
+}
+
 func javaFluidTickDelay(tx *Tx, fluid javaFluidState) int32 {
 	if fluid.kind == javaFluidLava {
 		if tx.World().Dimension() == Nether {

@@ -1,0 +1,934 @@
+{
+  "oracle": "Executed Java 26.3 MangroveRootPlacer.placeRoots and RootPlacer with Bootstrap, loaded vanilla server-data block/fluid tags and actual MANGROVE_ROOTS_CAN_GROW_THROUGH holder; real registry blocks/states; controlled WorldGenLevel proxy that applies rootSetter writes; Java LegacyRandomSource or XoroshiroRandomSource.",
+  "cases": [
+    {
+      "algorithm": "legacy",
+      "seed": 0,
+      "scenario": "air",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": -4029974628518736597,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            65,
+            3
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "seed": 0,
+      "scenario": "shallow_water",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": -4029974628518736597,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            65,
+            3
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "seed": 0,
+      "scenario": "blocked_column",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": false,
+      "next_long": -4962768465676381896,
+      "blocks": []
+    },
+    {
+      "algorithm": "legacy",
+      "seed": 0,
+      "scenario": "muddy_substrate",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": -7423979211207825555,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:muddy_mangrove_roots",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -4,
+            65,
+            2
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "seed": 0,
+      "scenario": "length_boundary",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": false,
+      "next_long": -3109364765729502342,
+      "blocks": []
+    },
+    {
+      "algorithm": "legacy",
+      "seed": 0,
+      "scenario": "deep_water",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": -4029974628518736597,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            65,
+            3
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "legacy",
+      "seed": 1,
+      "scenario": "positive_air",
+      "origin": [
+        17,
+        62,
+        18
+      ],
+      "trunk_origin": [
+        17,
+        64,
+        18
+      ],
+      "placed": true,
+      "next_long": -5335911890708011662,
+      "blocks": [
+        {
+          "pos": [
+            17,
+            63,
+            18
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            17,
+            64,
+            18
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            17,
+            64,
+            17
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            17,
+            65,
+            17
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            64,
+            18
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            17,
+            64,
+            19
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            16,
+            64,
+            18
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "seed": 0,
+      "scenario": "air",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": -7194800960680693874,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "seed": 0,
+      "scenario": "shallow_water",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": -7194800960680693874,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "seed": 0,
+      "scenario": "blocked_column",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": false,
+      "next_long": 3038984756725240190,
+      "blocks": []
+    },
+    {
+      "algorithm": "xoroshiro",
+      "seed": 0,
+      "scenario": "muddy_substrate",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": 8864804693509535725,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:muddy_mangrove_roots",
+          "properties": {
+            "axis": "y"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            65,
+            1
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "seed": 0,
+      "scenario": "length_boundary",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": false,
+      "next_long": -3694039286755638414,
+      "blocks": []
+    },
+    {
+      "algorithm": "xoroshiro",
+      "seed": 0,
+      "scenario": "deep_water",
+      "origin": [
+        -3,
+        62,
+        2
+      ],
+      "trunk_origin": [
+        -3,
+        64,
+        2
+      ],
+      "placed": true,
+      "next_long": -7194800960680693874,
+      "blocks": [
+        {
+          "pos": [
+            -3,
+            63,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "true"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            2
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            1
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -2,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -3,
+            64,
+            3
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            -4,
+            64,
+            2
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        }
+      ]
+    },
+    {
+      "algorithm": "xoroshiro",
+      "seed": 1,
+      "scenario": "positive_air",
+      "origin": [
+        17,
+        62,
+        18
+      ],
+      "trunk_origin": [
+        17,
+        64,
+        18
+      ],
+      "placed": true,
+      "next_long": -2886123833362855573,
+      "blocks": [
+        {
+          "pos": [
+            17,
+            63,
+            18
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            17,
+            64,
+            17
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            17,
+            65,
+            17
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            18,
+            64,
+            18
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            17,
+            64,
+            19
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            17,
+            65,
+            19
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        },
+        {
+          "pos": [
+            16,
+            64,
+            18
+          ],
+          "state": "minecraft:mangrove_roots",
+          "properties": {
+            "waterlogged": "false"
+          }
+        },
+        {
+          "pos": [
+            16,
+            65,
+            18
+          ],
+          "state": "minecraft:moss_carpet",
+          "properties": {}
+        }
+      ]
+    }
+  ]
+}

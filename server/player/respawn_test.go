@@ -114,6 +114,254 @@ func TestRespawnFallsBackToDefaultDimension(t *testing.T) {
 	})
 }
 
+func TestPlayerReturnsFromEndToChargedNetherAnchor(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	spawn := cube.Pos{12, 64, -5}
+	netherProvider := &playerSpawnPositionProvider{spawn: spawn}
+	var end, nether *world.World
+	end = world.Config{
+		Log: log,
+		Dim: world.End,
+		PortalDestination: func(dim world.Dimension) *world.World {
+			if dim == world.Nether {
+				return nether
+			}
+			return nil
+		},
+		DefaultWorld: func() *world.World { return nether },
+	}.New()
+	nether = world.Config{
+		Log:      log,
+		Dim:      world.Nether,
+		Provider: netherProvider,
+		PortalDestination: func(dim world.Dimension) *world.World {
+			if dim == world.End {
+				return end
+			}
+			return nil
+		},
+	}.New()
+	t.Cleanup(func() {
+		_ = end.Close()
+		_ = nether.Close()
+	})
+
+	conn := stubConn{}
+	sess := session.Config{Log: log, MaxChunkRadius: 1}.New(conn)
+	t.Cleanup(sess.CloseConnection)
+	id := uuid.New()
+	origin := mgl64.Vec3{5.5, 64, 5.5}
+	velocity := mgl64.Vec3{0.25, 0.5, -0.75}
+	cfg := Config{
+		Session: sess, Position: origin, UUID: id, GameMode: world.GameModeSurvival,
+		RespawnDimension: world.Nether, RespawnPosition: spawn, HasRespawnPoint: true,
+	}
+	handle := world.EntitySpawnOpts{Position: origin, Velocity: velocity, ID: id}.New(Type, cfg)
+	sess.SetHandle(handle, cfg.Skin)
+	nether.SetPlayerSpawn(id, spawn)
+
+	if err := nether.Do(func(tx *world.Tx) {
+		tx.SetBlock(spawn, block.RespawnAnchor{Charge: 1}, nil)
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := end.Do(func(tx *world.Tx) {
+		tx.SetBlock(cube.PosFromVec3(origin), block.EndPortal{}, nil)
+		player := tx.AddEntity(handle)
+		(block.EndPortal{}).EntityInside(cube.PosFromVec3(origin), tx, player)
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	waitForPlayerWorld(t, handle, nether)
+	if err := nether.Do(func(tx *world.Tx) {
+		player, ok := handle.Entity(tx)
+		if !ok {
+			t.Error("player did not arrive in the Nether")
+			return
+		}
+		if got, want := player.Position(), spawn.Vec3Middle(); !got.ApproxEqual(want) {
+			t.Errorf("End return position = %v, want charged anchor position %v", got, want)
+		}
+		if got := player.(interface{ Velocity() mgl64.Vec3 }).Velocity(); got != (mgl64.Vec3{}) {
+			t.Errorf("End player respawn velocity = %v, want Source absolute zero delta", got)
+		}
+		if anchor, ok := tx.Block(spawn).(block.RespawnAnchor); !ok || anchor.Charge != 1 {
+			t.Errorf("End return consumed the respawn anchor: %T %+v", tx.Block(spawn), anchor)
+		}
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+func TestPlayerEndExitUsesOverworldBedPositionAndRotation(t *testing.T) {
+	head := cube.Pos{0, 64, 0}
+	safe := cube.Pos{-1, 64, -1}
+	runPlayerEndExit(t, world.Overworld, head, func(tx *world.Tx) {
+		tx.SetBlock(head, block.Bed{Facing: cube.East, Head: true}, nil)
+		tx.SetBlock(head.Side(cube.FaceWest), block.Bed{Facing: cube.East}, nil)
+		tx.SetBlock(safe.Side(cube.FaceDown), block.Stone{}, nil)
+	}, safe.Vec3Middle(), cube.Rotation{-45, 0})
+}
+
+func TestPlayerEndExitFallsBackForUnchargedNetherAnchor(t *testing.T) {
+	anchor := cube.Pos{12, 64, -5}
+	spawn := cube.Pos{}
+	runPlayerEndExit(t, world.Nether, anchor, func(tx *world.Tx) {
+		tx.SetBlock(anchor, block.RespawnAnchor{}, nil)
+	}, spawn.Vec3Middle(), cube.Rotation{})
+}
+
+func runPlayerEndExit(t *testing.T, dimension world.Dimension, respawnPos cube.Pos, setup func(*world.Tx), wantPos mgl64.Vec3, wantRotation cube.Rotation) {
+	t.Helper()
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	var end, destination *world.World
+	end = world.Config{
+		Log: log, Dim: world.End,
+		PortalDestination: func(dim world.Dimension) *world.World {
+			if dim == dimension {
+				return destination
+			}
+			return nil
+		},
+		DefaultWorld: func() *world.World { return destination },
+	}.New()
+	destination = world.Config{Log: log, Dim: dimension}.New()
+	t.Cleanup(func() {
+		_ = end.Close()
+		_ = destination.Close()
+	})
+	if err := destination.Do(setup).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	origin := mgl64.Vec3{5.5, 64, 5.5}
+	id := uuid.New()
+	cfg := Config{
+		Position: origin, UUID: id, GameMode: world.GameModeSurvival,
+		RespawnDimension: dimension, RespawnPosition: respawnPos, HasRespawnPoint: true,
+	}
+	handle := world.EntitySpawnOpts{Position: origin, ID: id, Velocity: mgl64.Vec3{.25, .5, -.75}}.New(Type, cfg)
+	if err := end.Do(func(tx *world.Tx) {
+		player := tx.AddEntity(handle)
+		(block.EndPortal{}).EntityInside(cube.PosFromVec3(origin), tx, player)
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	waitForPlayerWorld(t, handle, destination)
+	if err := destination.Do(func(tx *world.Tx) {
+		player, ok := handle.Entity(tx)
+		if !ok {
+			t.Error("player did not arrive in the respawn dimension")
+			return
+		}
+		if got := player.Position(); !got.ApproxEqual(wantPos) {
+			t.Errorf("End return position = %v, want %v", got, wantPos)
+		}
+		if got := player.Rotation(); got != wantRotation {
+			t.Errorf("End return rotation = %v, want %v", got, wantRotation)
+		}
+		if velocity := player.(interface{ Velocity() mgl64.Vec3 }).Velocity(); velocity != (mgl64.Vec3{}) {
+			t.Errorf("End player respawn velocity = %v, want Source absolute zero delta", velocity)
+		}
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCancelledEndPortalTransferKeepsPlayerInSourceWorld(t *testing.T) {
+	var end, overworld *world.World
+	end = world.Config{
+		Dim: world.End,
+		PortalDestination: func(dim world.Dimension) *world.World {
+			if dim == world.Overworld {
+				return overworld
+			}
+			return nil
+		},
+		DefaultWorld: func() *world.World { return overworld },
+	}.New()
+	overworld = world.New()
+	t.Cleanup(func() {
+		_ = end.Close()
+		_ = overworld.Close()
+	})
+	origin := mgl64.Vec3{5.5, 64, 5.5}
+	rotation, velocity := cube.Rotation{12, -4}, mgl64.Vec3{0.25, 0.5, -0.75}
+	id := uuid.New()
+	handle := world.EntitySpawnOpts{Position: origin, Rotation: rotation, Velocity: velocity, ID: id}.New(Type, Config{
+		UUID: id, Position: origin, Rotation: rotation, Velocity: velocity, GameMode: world.GameModeSurvival,
+	})
+	entered, release := make(chan struct{}), make(chan struct{})
+	sourceSpawns := make(chan struct{}, 2)
+	end.Handle(cancelledPlayerSpawnObserver{handle: handle, spawned: sourceSpawns})
+	if err := end.Do(func(tx *world.Tx) {
+		e := tx.AddEntity(handle).(*Player)
+		e.Handle(cancelPortalTeleportHandler{entered: entered, release: release})
+		(block.EndPortal{}).EntityInside(cube.PosFromVec3(origin), tx, e)
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-sourceSpawns:
+	case <-time.After(5 * time.Second):
+		t.Fatal("player was not initially published in the source End")
+	}
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		close(release)
+		t.Fatal("End portal transfer never reached the cancellable teleport handler")
+	}
+	if handle.World() != overworld {
+		close(release)
+		t.Fatalf("teleport handler ran while player was in world %p, want destination world", handle.World())
+	}
+	close(release)
+	select {
+	case <-sourceSpawns:
+	case <-time.After(5 * time.Second):
+		t.Fatal("cancelled transfer did not republish player in the source End")
+	}
+	waitForPlayerWorld(t, handle, end)
+	if err := end.Do(func(tx *world.Tx) {
+		e, ok := handle.Entity(tx)
+		if !ok || !e.Position().ApproxEqual(origin) {
+			t.Fatalf("cancelled portal transfer entity=%v ok=%t; want source position %v", e, ok, origin)
+		}
+		if got := e.Rotation(); got != rotation {
+			t.Fatalf("cancelled portal transfer rotation = %v, want %v", got, rotation)
+		}
+		if got := e.(interface{ Velocity() mgl64.Vec3 }).Velocity(); !got.ApproxEqual(velocity) {
+			t.Fatalf("cancelled portal transfer velocity = %v, want %v", got, velocity)
+		}
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type cancelledPlayerSpawnObserver struct {
+	world.NopHandler
+	handle  *world.EntityHandle
+	spawned chan<- struct{}
+}
+
+func (o cancelledPlayerSpawnObserver) HandleEntitySpawn(_ *world.Tx, e world.Entity) {
+	if e.H() == o.handle {
+		o.spawned <- struct{}{}
+	}
+}
+
+type cancelPortalTeleportHandler struct {
+	NopHandler
+	entered chan struct{}
+	release <-chan struct{}
+}
+
+func (h cancelPortalTeleportHandler) HandleTeleport(ctx *Context, _ mgl64.Vec3) {
+	close(h.entered)
+	<-h.release
+	ctx.Cancel()
+}
+
 func TestStationarySurvivalPlayerCompletesPortalTimer(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	var overworld, nether *world.World

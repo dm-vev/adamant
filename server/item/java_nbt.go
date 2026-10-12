@@ -25,7 +25,11 @@ func StackFromJavaNBT(data map[string]any) (Stack, error) {
 		it = KnowledgeBook{}
 	} else {
 		var ok bool
-		it, ok = world.ItemByName(id, 0)
+		nativeID := id
+		if id == "minecraft:jack_o_lantern" {
+			nativeID = "minecraft:lit_pumpkin"
+		}
+		it, ok = world.ItemByName(nativeID, 0)
 		if !ok {
 			return Stack{}, fmt.Errorf("unsupported Java item %q", id)
 		}
@@ -154,6 +158,9 @@ func StackToJavaNBT(stack Stack) (map[string]any, error) {
 		return nil, fmt.Errorf("invalid filled map variant %d", mapItem.Variant)
 	}
 	name, _ := stack.Item().EncodeItem()
+	if name == "minecraft:lit_pumpkin" {
+		name = "minecraft:jack_o_lantern"
+	}
 	if isMap {
 		name = mapItem.Variant.JavaItemID()
 	}

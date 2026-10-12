@@ -11,7 +11,14 @@
       "minecraft:diamond_helmet",
       "minecraft:netherite_helmet",
       "minecraft:turtle_helmet"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 1,
+    "min_cost_per_level": 0,
+    "max_cost_base": 41,
+    "max_cost_per_level": 0,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:bane_of_arthropods",
@@ -39,6 +46,35 @@
       "minecraft:iron_axe",
       "minecraft:copper_axe",
       "minecraft:mace"
+    ],
+    "primary_items": [
+      "minecraft:diamond_sword",
+      "minecraft:stone_sword",
+      "minecraft:golden_sword",
+      "minecraft:netherite_sword",
+      "minecraft:wooden_sword",
+      "minecraft:iron_sword",
+      "minecraft:copper_sword",
+      "minecraft:diamond_spear",
+      "minecraft:stone_spear",
+      "minecraft:golden_spear",
+      "minecraft:netherite_spear",
+      "minecraft:wooden_spear",
+      "minecraft:iron_spear",
+      "minecraft:copper_spear"
+    ],
+    "weight": 5,
+    "min_cost_base": 5,
+    "min_cost_per_level": 8,
+    "max_cost_base": 25,
+    "max_cost_per_level": 8,
+    "exclusive_set": [
+      "minecraft:sharpness",
+      "minecraft:smite",
+      "minecraft:bane_of_arthropods",
+      "minecraft:impaling",
+      "minecraft:density",
+      "minecraft:breach"
     ]
   },
   {
@@ -83,7 +119,14 @@
       "minecraft:dragon_head",
       "minecraft:piglin_head",
       "minecraft:carved_pumpkin"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 1,
+    "min_cost_base": 25,
+    "min_cost_per_level": 0,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:blast_protection",
@@ -118,6 +161,18 @@
       "minecraft:diamond_helmet",
       "minecraft:netherite_helmet",
       "minecraft:turtle_helmet"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 5,
+    "min_cost_per_level": 8,
+    "max_cost_base": 13,
+    "max_cost_per_level": 8,
+    "exclusive_set": [
+      "minecraft:protection",
+      "minecraft:blast_protection",
+      "minecraft:fire_protection",
+      "minecraft:projectile_protection"
     ]
   },
   {
@@ -125,6 +180,20 @@
     "max_level": 4,
     "supported_items": [
       "minecraft:mace"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 15,
+    "min_cost_per_level": 9,
+    "max_cost_base": 65,
+    "max_cost_per_level": 9,
+    "exclusive_set": [
+      "minecraft:sharpness",
+      "minecraft:smite",
+      "minecraft:bane_of_arthropods",
+      "minecraft:impaling",
+      "minecraft:density",
+      "minecraft:breach"
     ]
   },
   {
@@ -132,13 +201,34 @@
     "max_level": 1,
     "supported_items": [
       "minecraft:trident"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 1,
+    "min_cost_base": 25,
+    "min_cost_per_level": 0,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:density",
     "max_level": 5,
     "supported_items": [
       "minecraft:mace"
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 5,
+    "min_cost_per_level": 8,
+    "max_cost_base": 25,
+    "max_cost_per_level": 8,
+    "exclusive_set": [
+      "minecraft:sharpness",
+      "minecraft:smite",
+      "minecraft:bane_of_arthropods",
+      "minecraft:impaling",
+      "minecraft:density",
+      "minecraft:breach"
     ]
   },
   {
@@ -152,6 +242,16 @@
       "minecraft:iron_boots",
       "minecraft:diamond_boots",
       "minecraft:netherite_boots"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 10,
+    "min_cost_per_level": 10,
+    "max_cost_base": 25,
+    "max_cost_per_level": 10,
+    "exclusive_set": [
+      "minecraft:frost_walker",
+      "minecraft:depth_strider"
     ]
   },
   {
@@ -187,7 +287,14 @@
       "minecraft:iron_hoe",
       "minecraft:copper_hoe",
       "minecraft:shears"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 10,
+    "min_cost_base": 1,
+    "min_cost_per_level": 10,
+    "max_cost_base": 51,
+    "max_cost_per_level": 10,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:feather_falling",
@@ -200,7 +307,14 @@
       "minecraft:iron_boots",
       "minecraft:diamond_boots",
       "minecraft:netherite_boots"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 5,
+    "min_cost_per_level": 6,
+    "max_cost_base": 11,
+    "max_cost_per_level": 6,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:fire_aspect",
@@ -221,7 +335,29 @@
       "minecraft:iron_spear",
       "minecraft:copper_spear",
       "minecraft:mace"
-    ]
+    ],
+    "primary_items": [
+      "minecraft:diamond_sword",
+      "minecraft:stone_sword",
+      "minecraft:golden_sword",
+      "minecraft:netherite_sword",
+      "minecraft:wooden_sword",
+      "minecraft:iron_sword",
+      "minecraft:copper_sword",
+      "minecraft:diamond_spear",
+      "minecraft:stone_spear",
+      "minecraft:golden_spear",
+      "minecraft:netherite_spear",
+      "minecraft:wooden_spear",
+      "minecraft:iron_spear",
+      "minecraft:copper_spear"
+    ],
+    "weight": 2,
+    "min_cost_base": 10,
+    "min_cost_per_level": 20,
+    "max_cost_base": 60,
+    "max_cost_per_level": 20,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:fire_protection",
@@ -256,6 +392,18 @@
       "minecraft:diamond_helmet",
       "minecraft:netherite_helmet",
       "minecraft:turtle_helmet"
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 10,
+    "min_cost_per_level": 8,
+    "max_cost_base": 18,
+    "max_cost_per_level": 8,
+    "exclusive_set": [
+      "minecraft:protection",
+      "minecraft:blast_protection",
+      "minecraft:fire_protection",
+      "minecraft:projectile_protection"
     ]
   },
   {
@@ -263,7 +411,14 @@
     "max_level": 1,
     "supported_items": [
       "minecraft:bow"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 20,
+    "min_cost_per_level": 0,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:fortune",
@@ -297,6 +452,16 @@
       "minecraft:wooden_hoe",
       "minecraft:iron_hoe",
       "minecraft:copper_hoe"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 15,
+    "min_cost_per_level": 9,
+    "max_cost_base": 65,
+    "max_cost_per_level": 9,
+    "exclusive_set": [
+      "minecraft:fortune",
+      "minecraft:silk_touch"
     ]
   },
   {
@@ -310,6 +475,16 @@
       "minecraft:iron_boots",
       "minecraft:diamond_boots",
       "minecraft:netherite_boots"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 10,
+    "min_cost_per_level": 10,
+    "max_cost_base": 25,
+    "max_cost_per_level": 10,
+    "exclusive_set": [
+      "minecraft:frost_walker",
+      "minecraft:depth_strider"
     ]
   },
   {
@@ -317,6 +492,20 @@
     "max_level": 5,
     "supported_items": [
       "minecraft:trident"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 1,
+    "min_cost_per_level": 8,
+    "max_cost_base": 21,
+    "max_cost_per_level": 8,
+    "exclusive_set": [
+      "minecraft:sharpness",
+      "minecraft:smite",
+      "minecraft:bane_of_arthropods",
+      "minecraft:impaling",
+      "minecraft:density",
+      "minecraft:breach"
     ]
   },
   {
@@ -324,6 +513,16 @@
     "max_level": 1,
     "supported_items": [
       "minecraft:bow"
+    ],
+    "primary_items": [],
+    "weight": 1,
+    "min_cost_base": 20,
+    "min_cost_per_level": 0,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": [
+      "minecraft:infinity",
+      "minecraft:mending"
     ]
   },
   {
@@ -344,7 +543,14 @@
       "minecraft:wooden_spear",
       "minecraft:iron_spear",
       "minecraft:copper_spear"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 5,
+    "min_cost_per_level": 20,
+    "max_cost_base": 55,
+    "max_cost_per_level": 20,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:looting",
@@ -364,21 +570,42 @@
       "minecraft:wooden_spear",
       "minecraft:iron_spear",
       "minecraft:copper_spear"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 15,
+    "min_cost_per_level": 9,
+    "max_cost_base": 65,
+    "max_cost_per_level": 9,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:loyalty",
     "max_level": 3,
     "supported_items": [
       "minecraft:trident"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 12,
+    "min_cost_per_level": 7,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:luck_of_the_sea",
     "max_level": 3,
     "supported_items": [
       "minecraft:fishing_rod"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 15,
+    "min_cost_per_level": 9,
+    "max_cost_base": 65,
+    "max_cost_per_level": 9,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:lunge",
@@ -391,14 +618,28 @@
       "minecraft:wooden_spear",
       "minecraft:iron_spear",
       "minecraft:copper_spear"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 5,
+    "min_cost_per_level": 8,
+    "max_cost_base": 25,
+    "max_cost_per_level": 8,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:lure",
     "max_level": 3,
     "supported_items": [
       "minecraft:fishing_rod"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 15,
+    "min_cost_per_level": 9,
+    "max_cost_base": 65,
+    "max_cost_per_level": 9,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:mending",
@@ -487,13 +728,30 @@
       "minecraft:wooden_spear",
       "minecraft:iron_spear",
       "minecraft:copper_spear"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 25,
+    "min_cost_per_level": 25,
+    "max_cost_base": 75,
+    "max_cost_per_level": 25,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:multishot",
     "max_level": 1,
     "supported_items": [
       "minecraft:crossbow"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 20,
+    "min_cost_per_level": 0,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": [
+      "minecraft:multishot",
+      "minecraft:piercing"
     ]
   },
   {
@@ -501,6 +759,16 @@
     "max_level": 4,
     "supported_items": [
       "minecraft:crossbow"
+    ],
+    "primary_items": [],
+    "weight": 10,
+    "min_cost_base": 1,
+    "min_cost_per_level": 10,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": [
+      "minecraft:multishot",
+      "minecraft:piercing"
     ]
   },
   {
@@ -508,7 +776,14 @@
     "max_level": 5,
     "supported_items": [
       "minecraft:bow"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 10,
+    "min_cost_base": 1,
+    "min_cost_per_level": 10,
+    "max_cost_base": 16,
+    "max_cost_per_level": 10,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:projectile_protection",
@@ -543,6 +818,18 @@
       "minecraft:diamond_helmet",
       "minecraft:netherite_helmet",
       "minecraft:turtle_helmet"
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 3,
+    "min_cost_per_level": 6,
+    "max_cost_base": 9,
+    "max_cost_per_level": 6,
+    "exclusive_set": [
+      "minecraft:protection",
+      "minecraft:blast_protection",
+      "minecraft:fire_protection",
+      "minecraft:projectile_protection"
     ]
   },
   {
@@ -578,6 +865,18 @@
       "minecraft:diamond_helmet",
       "minecraft:netherite_helmet",
       "minecraft:turtle_helmet"
+    ],
+    "primary_items": [],
+    "weight": 10,
+    "min_cost_base": 1,
+    "min_cost_per_level": 11,
+    "max_cost_base": 12,
+    "max_cost_per_level": 11,
+    "exclusive_set": [
+      "minecraft:protection",
+      "minecraft:blast_protection",
+      "minecraft:fire_protection",
+      "minecraft:projectile_protection"
     ]
   },
   {
@@ -585,14 +884,28 @@
     "max_level": 2,
     "supported_items": [
       "minecraft:bow"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 12,
+    "min_cost_per_level": 20,
+    "max_cost_base": 37,
+    "max_cost_per_level": 20,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:quick_charge",
     "max_level": 3,
     "supported_items": [
       "minecraft:crossbow"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 12,
+    "min_cost_per_level": 20,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:respiration",
@@ -606,13 +919,30 @@
       "minecraft:diamond_helmet",
       "minecraft:netherite_helmet",
       "minecraft:turtle_helmet"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 10,
+    "min_cost_per_level": 10,
+    "max_cost_base": 40,
+    "max_cost_per_level": 10,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:riptide",
     "max_level": 3,
     "supported_items": [
       "minecraft:trident"
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 17,
+    "min_cost_per_level": 7,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": [
+      "minecraft:loyalty",
+      "minecraft:channeling"
     ]
   },
   {
@@ -640,6 +970,35 @@
       "minecraft:wooden_axe",
       "minecraft:iron_axe",
       "minecraft:copper_axe"
+    ],
+    "primary_items": [
+      "minecraft:diamond_sword",
+      "minecraft:stone_sword",
+      "minecraft:golden_sword",
+      "minecraft:netherite_sword",
+      "minecraft:wooden_sword",
+      "minecraft:iron_sword",
+      "minecraft:copper_sword",
+      "minecraft:diamond_spear",
+      "minecraft:stone_spear",
+      "minecraft:golden_spear",
+      "minecraft:netherite_spear",
+      "minecraft:wooden_spear",
+      "minecraft:iron_spear",
+      "minecraft:copper_spear"
+    ],
+    "weight": 10,
+    "min_cost_base": 1,
+    "min_cost_per_level": 11,
+    "max_cost_base": 21,
+    "max_cost_per_level": 11,
+    "exclusive_set": [
+      "minecraft:sharpness",
+      "minecraft:smite",
+      "minecraft:bane_of_arthropods",
+      "minecraft:impaling",
+      "minecraft:density",
+      "minecraft:breach"
     ]
   },
   {
@@ -674,6 +1033,16 @@
       "minecraft:wooden_hoe",
       "minecraft:iron_hoe",
       "minecraft:copper_hoe"
+    ],
+    "primary_items": [],
+    "weight": 1,
+    "min_cost_base": 15,
+    "min_cost_per_level": 0,
+    "max_cost_base": 65,
+    "max_cost_per_level": 0,
+    "exclusive_set": [
+      "minecraft:fortune",
+      "minecraft:silk_touch"
     ]
   },
   {
@@ -702,6 +1071,35 @@
       "minecraft:iron_axe",
       "minecraft:copper_axe",
       "minecraft:mace"
+    ],
+    "primary_items": [
+      "minecraft:diamond_sword",
+      "minecraft:stone_sword",
+      "minecraft:golden_sword",
+      "minecraft:netherite_sword",
+      "minecraft:wooden_sword",
+      "minecraft:iron_sword",
+      "minecraft:copper_sword",
+      "minecraft:diamond_spear",
+      "minecraft:stone_spear",
+      "minecraft:golden_spear",
+      "minecraft:netherite_spear",
+      "minecraft:wooden_spear",
+      "minecraft:iron_spear",
+      "minecraft:copper_spear"
+    ],
+    "weight": 5,
+    "min_cost_base": 5,
+    "min_cost_per_level": 8,
+    "max_cost_base": 25,
+    "max_cost_per_level": 8,
+    "exclusive_set": [
+      "minecraft:sharpness",
+      "minecraft:smite",
+      "minecraft:bane_of_arthropods",
+      "minecraft:impaling",
+      "minecraft:density",
+      "minecraft:breach"
     ]
   },
   {
@@ -715,7 +1113,14 @@
       "minecraft:iron_boots",
       "minecraft:diamond_boots",
       "minecraft:netherite_boots"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 1,
+    "min_cost_base": 10,
+    "min_cost_per_level": 10,
+    "max_cost_base": 25,
+    "max_cost_per_level": 10,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:sweeping_edge",
@@ -728,7 +1133,14 @@
       "minecraft:wooden_sword",
       "minecraft:iron_sword",
       "minecraft:copper_sword"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 5,
+    "min_cost_per_level": 9,
+    "max_cost_base": 20,
+    "max_cost_per_level": 9,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:swift_sneak",
@@ -741,7 +1153,14 @@
       "minecraft:iron_leggings",
       "minecraft:diamond_leggings",
       "minecraft:netherite_leggings"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 1,
+    "min_cost_base": 25,
+    "min_cost_per_level": 25,
+    "max_cost_base": 75,
+    "max_cost_per_level": 25,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:thorns",
@@ -776,7 +1195,22 @@
       "minecraft:diamond_helmet",
       "minecraft:netherite_helmet",
       "minecraft:turtle_helmet"
-    ]
+    ],
+    "primary_items": [
+      "minecraft:leather_chestplate",
+      "minecraft:copper_chestplate",
+      "minecraft:chainmail_chestplate",
+      "minecraft:golden_chestplate",
+      "minecraft:iron_chestplate",
+      "minecraft:diamond_chestplate",
+      "minecraft:netherite_chestplate"
+    ],
+    "weight": 1,
+    "min_cost_base": 10,
+    "min_cost_per_level": 20,
+    "max_cost_base": 60,
+    "max_cost_per_level": 20,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:unbreaking",
@@ -865,7 +1299,14 @@
       "minecraft:wooden_spear",
       "minecraft:iron_spear",
       "minecraft:copper_spear"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 5,
+    "min_cost_base": 5,
+    "min_cost_per_level": 8,
+    "max_cost_base": 55,
+    "max_cost_per_level": 8,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:vanishing_curse",
@@ -963,13 +1404,27 @@
       "minecraft:wither_skeleton_skull",
       "minecraft:dragon_head",
       "minecraft:piglin_head"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 1,
+    "min_cost_base": 25,
+    "min_cost_per_level": 0,
+    "max_cost_base": 50,
+    "max_cost_per_level": 0,
+    "exclusive_set": []
   },
   {
     "name": "minecraft:wind_burst",
     "max_level": 3,
     "supported_items": [
       "minecraft:mace"
-    ]
+    ],
+    "primary_items": [],
+    "weight": 2,
+    "min_cost_base": 15,
+    "min_cost_per_level": 9,
+    "max_cost_base": 65,
+    "max_cost_per_level": 9,
+    "exclusive_set": []
   }
 ]

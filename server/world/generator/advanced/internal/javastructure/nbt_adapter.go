@@ -15,7 +15,18 @@ func JavaBlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string
 	data := cloneNBT(nbt)
 	id, ok := data["id"].(string)
 	if !ok || id == "" {
-		return nil, fmt.Errorf("Java block entity has no string id")
+		if _, exists := data["id"]; exists {
+			return nil, fmt.Errorf("Java block entity has no string id")
+		}
+		// Rule modifiers carry partial actor NBT. Source creates the actor
+		// from the placed state before applying this data, not from an id.
+		id = strings.TrimPrefix(state.Name, "minecraft:")
+		if id == "suspicious_sand" || id == "suspicious_gravel" {
+			id = "brushable_block"
+		}
+		if _, supported := javaBlockEntityIDs[id]; !supported {
+			return nil, fmt.Errorf("Java block state %q has no supported actor type", state.Name)
+		}
 	}
 	id = strings.TrimPrefix(id, "minecraft:")
 	bedrockID, supported := javaBlockEntityIDs[id]

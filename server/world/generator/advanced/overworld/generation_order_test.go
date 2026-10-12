@@ -20,7 +20,7 @@ func TestGenerationOrderForSeedZeroOriginNeighbourhood(t *testing.T) {
 	r := world.Overworld.Range()
 	generate := func(g *Overworld, pos world.ChunkPos) *chunk.Chunk {
 		c := chunk.New(world.DefaultBlockRegistry, r)
-		g.GenerateChunk(pos, c)
+		g.GenerateChunk(pos, c, world.GenerationContext{})
 		return c
 	}
 	baseline := make([]*chunk.Chunk, len(positions))

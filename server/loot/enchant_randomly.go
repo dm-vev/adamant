@@ -11,6 +11,13 @@ type sourceEnchantmentDefinition struct {
 	Name           string   `json:"name"`
 	MaxLevel       int      `json:"max_level"`
 	SupportedItems []string `json:"supported_items"`
+	PrimaryItems   []string `json:"primary_items"`
+	Weight         int      `json:"weight"`
+	MinCostBase    int      `json:"min_cost_base"`
+	MinCostPer     int      `json:"min_cost_per_level"`
+	MaxCostBase    int      `json:"max_cost_base"`
+	MaxCostPer     int      `json:"max_cost_per_level"`
+	ExclusiveSet   []string `json:"exclusive_set"`
 }
 
 var sourceEnchantmentDefinitions []sourceEnchantmentDefinition
@@ -29,6 +36,8 @@ func loadSourceEnchantments() error {
 	for i := range sourceEnchantmentDefinitions {
 		definition := &sourceEnchantmentDefinitions[i]
 		slices.Sort(definition.SupportedItems)
+		slices.Sort(definition.PrimaryItems)
+		slices.Sort(definition.ExclusiveSet)
 		sourceEnchantmentsByID[definition.Name] = definition
 	}
 	return nil
@@ -46,7 +55,7 @@ func (m *modifier) resolveRandomEnchantmentOptions() error {
 			if !ok {
 				return fmt.Errorf("unknown random-enchantment tag %q", value)
 			}
-			m.randomEnchantmentOptions = options
+			m.randomEnchantmentOptions = append([]string{}, options...)
 		} else {
 			m.randomEnchantmentOptions = []string{normalize(value)}
 		}

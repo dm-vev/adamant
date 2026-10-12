@@ -1,0 +1,369 @@
+{
+  "select": [
+    {
+      "item": "minecraft:empty",
+      "empty": true,
+      "cost": 30,
+      "seed": "120",
+      "options": "empty",
+      "result_item": "minecraft:empty",
+      "enchantments": [],
+      "next_long": "-5108187057464061899"
+    },
+    {
+      "item": "minecraft:fishing_rod",
+      "cost": 30,
+      "seed": "101",
+      "options": "all",
+      "result_item": "minecraft:fishing_rod",
+      "enchantments": [
+        {
+          "id": "minecraft:luck_of_the_sea",
+          "level": 2
+        },
+        {
+          "id": "minecraft:unbreaking",
+          "level": 3
+        }
+      ],
+      "next_long": "-206267227608389060"
+    },
+    {
+      "item": "minecraft:trident",
+      "cost": 30,
+      "seed": "102",
+      "options": "all",
+      "result_item": "minecraft:trident",
+      "enchantments": [
+        {
+          "id": "minecraft:unbreaking",
+          "level": 3
+        },
+        {
+          "id": "minecraft:loyalty",
+          "level": 3
+        }
+      ],
+      "next_long": "-2247065016639961267"
+    },
+    {
+      "item": "minecraft:diamond_pickaxe",
+      "cost": 30,
+      "seed": "103",
+      "options": "all",
+      "result_item": "minecraft:diamond_pickaxe",
+      "enchantments": [
+        {
+          "id": "minecraft:efficiency",
+          "level": 4
+        },
+        {
+          "id": "minecraft:fortune",
+          "level": 3
+        }
+      ],
+      "next_long": "4582115605705402439"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 30,
+      "seed": "104",
+      "options": "all",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:unbreaking",
+          "level": 3
+        },
+        {
+          "id": "minecraft:smite",
+          "level": 4
+        }
+      ],
+      "next_long": "1834530565718150444"
+    },
+    {
+      "item": "minecraft:diamond_chestplate",
+      "cost": 30,
+      "seed": "105",
+      "options": "all",
+      "result_item": "minecraft:diamond_chestplate",
+      "enchantments": [
+        {
+          "id": "minecraft:unbreaking",
+          "level": 3
+        },
+        {
+          "id": "minecraft:protection",
+          "level": 3
+        }
+      ],
+      "next_long": "8663711188063514150"
+    },
+    {
+      "item": "minecraft:book",
+      "cost": 30,
+      "seed": "106",
+      "options": "all",
+      "result_item": "minecraft:enchanted_book",
+      "enchantments": [
+        {
+          "id": "minecraft:smite",
+          "level": 4
+        },
+        {
+          "id": "minecraft:fire_aspect",
+          "level": 2
+        }
+      ],
+      "next_long": "6622913394736974647"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 1,
+      "seed": "107",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:sharpness",
+          "level": 1
+        }
+      ],
+      "next_long": "2311026252749479136"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 2,
+      "seed": "108",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:sharpness",
+          "level": 1
+        }
+      ],
+      "next_long": "676648280336171300"
+    },
+    {
+      "item": "minecraft:stick",
+      "cost": 30,
+      "seed": "109",
+      "options": "all",
+      "result_item": "minecraft:stick",
+      "enchantments": [],
+      "next_long": "-5142889217899330476"
+    },
+    {
+      "item": "minecraft:fishing_rod",
+      "cost": 30,
+      "seed": "110",
+      "options": "minecraft:vanishing_curse",
+      "result_item": "minecraft:fishing_rod",
+      "enchantments": [
+        {
+          "id": "minecraft:vanishing_curse",
+          "level": 1
+        }
+      ],
+      "next_long": "8709097096208334703"
+    },
+    {
+      "item": "minecraft:fishing_rod",
+      "cost": 30,
+      "seed": "111",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:fishing_rod",
+      "enchantments": [],
+      "next_long": "-6285884254384958351"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 30,
+      "seed": "112",
+      "options": "minecraft:sharpness,minecraft:smite,minecraft:bane_of_arthropods",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:bane_of_arthropods",
+          "level": 5
+        }
+      ],
+      "next_long": "2450467294648887617"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 21,
+      "seed": "113",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:sharpness",
+          "level": 3
+        }
+      ],
+      "next_long": "-1565757115434677733"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 22,
+      "seed": "114",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:sharpness",
+          "level": 3
+        }
+      ],
+      "next_long": "-7963827958893533300"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 32,
+      "seed": "115",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:sharpness",
+          "level": 4
+        }
+      ],
+      "next_long": "6466691700437485671"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 33,
+      "seed": "116",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:diamond_sword",
+      "enchantments": [
+        {
+          "id": "minecraft:sharpness",
+          "level": 4
+        }
+      ],
+      "next_long": "4832313728024177835"
+    },
+    {
+      "item": "minecraft:fishing_rod",
+      "cost": 30,
+      "seed": "117",
+      "options": "#minecraft:on_random_loot",
+      "result_item": "minecraft:fishing_rod",
+      "enchantments": [
+        {
+          "id": "minecraft:mending",
+          "level": 1
+        },
+        {
+          "id": "minecraft:unbreaking",
+          "level": 3
+        }
+      ],
+      "next_long": "1207307282892905109"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 30,
+      "seed": "118",
+      "options": "all",
+      "result_item": "minecraft:diamond_sword",
+      "input_enchantments": "minecraft:sharpness:1",
+      "input_damage": 7,
+      "input_name": "Oracle blade",
+      "enchantments": [
+        {
+          "id": "minecraft:knockback",
+          "level": 2
+        },
+        {
+          "id": "minecraft:sharpness",
+          "level": 1
+        },
+        {
+          "id": "minecraft:unbreaking",
+          "level": 3
+        },
+        {
+          "id": "minecraft:bane_of_arthropods",
+          "level": 4
+        }
+      ],
+      "next_long": "-9021954722047988200"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "cost": 30,
+      "seed": "119",
+      "options": "minecraft:sharpness",
+      "result_item": "minecraft:diamond_sword",
+      "input_enchantments": "minecraft:sharpness:1",
+      "input_damage": 7,
+      "input_name": "Oracle blade",
+      "enchantments": [
+        {
+          "id": "minecraft:sharpness",
+          "level": 3
+        }
+      ],
+      "next_long": "8848538138107743184"
+    },
+    {
+      "item": "minecraft:diamond_boots",
+      "cost": 30,
+      "seed": "121",
+      "options": "minecraft:thorns",
+      "result_item": "minecraft:diamond_boots",
+      "enchantments": [],
+      "next_long": "7265950114983425950"
+    },
+    {
+      "item": "minecraft:diamond_chestplate",
+      "cost": 30,
+      "seed": "122",
+      "options": "minecraft:thorns",
+      "result_item": "minecraft:diamond_chestplate",
+      "enchantments": [
+        {
+          "id": "minecraft:thorns",
+          "level": 2
+        }
+      ],
+      "next_long": "-3200135087847985569"
+    }
+  ],
+  "mob_spawn_provider": [
+    {
+      "item": "minecraft:iron_helmet",
+      "seed": "201",
+      "special_multiplier": 1.0,
+      "enchantments": [
+        {
+          "id": "minecraft:aqua_affinity",
+          "level": 1
+        },
+        {
+          "id": "minecraft:respiration",
+          "level": 1
+        }
+      ],
+      "next_long": "-5990401447112239651"
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "seed": "202",
+      "special_multiplier": 1.0,
+      "enchantments": [
+        {
+          "id": "minecraft:unbreaking",
+          "level": 2
+        }
+      ],
+      "next_long": "-5735277461414506011"
+    }
+  ]
+}

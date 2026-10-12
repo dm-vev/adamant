@@ -285,11 +285,12 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 				}
 				features.applyStructurePlacement(region, placement)
 				placedEntities = append(placedEntities, placement.Entities...)
-				post, err := piece.AfterTemplatePlacement(clip, env)
+				err = piece.AfterTemplatePlacement(clip, env, func(post javastructure.Placement) {
+					features.applyStructurePlacement(region, post)
+				})
 				if err != nil {
 					t.Fatal(err)
 				}
-				features.applyStructurePlacement(region, post)
 				for _, write := range call.Writes {
 					var pos [3]int32
 					var stateText string

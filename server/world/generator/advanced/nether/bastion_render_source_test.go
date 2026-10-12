@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
@@ -64,11 +65,15 @@ func TestBastionRenderedOutputMatchesJava263(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("seed_%d", tc.seed), func(t *testing.T) {
 			g := NewNether(tc.seed)
+			levelRandom := java26.NewXoroshiroRandom(tc.seed)
 			env := javastructure.ProcessorEnvironment{
 				BaseBlock:   g.featureSource.BaseBlock,
 				JavaBiomeAt: g.featureSource.JavaBiomeAt,
 				BaseHeight:  g.featureSource.BaseHeight,
 				Random:      g.featureSource.structureStepRandom(tc.target, 18, 4),
+				LevelRandom: &levelRandom,
+				SourceDimension: "minecraft:the_nether",
+				GenerationContext: world.GenerationContext{Difficulty: world.LocalDifficulty{Base: world.DifficultyNormal}},
 			}
 			var placements []javastructure.Placement
 			g.featureSource.placeBastionStructureStep(tc.target, env, func(p javastructure.Placement) {

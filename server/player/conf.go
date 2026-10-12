@@ -1,6 +1,7 @@
 package player
 
 import (
+	"math"
 	"math/rand/v2"
 	"sync/atomic"
 	"time"
@@ -56,6 +57,11 @@ type Config struct {
 	ShoulderRight          map[string]any
 	// JavaState retains source-only player data not represented by Bedrock.
 	JavaState map[string]any
+	// Respawn data retains the player's Java respawn destination and transition angles.
+	RespawnDimension world.Dimension
+	RespawnPosition  cube.Pos
+	RespawnRotation  cube.Rotation
+	HasRespawnPoint  bool
 }
 
 // Apply applies fields from a Config to a world.EntityData, filling out empty
@@ -112,24 +118,97 @@ func (cfg Config) Apply(data *world.EntityData) {
 		shoulderRight:       cfg.ShoulderRight,
 		javaState:           world.CloneNativeEntityNBT(conf.JavaState),
 		wardenSpawnTracker:  decodePlayerWardenTracker(conf.JavaState),
+		respawnDimension:    conf.RespawnDimension,
+		respawnPosition:     conf.RespawnPosition,
+		respawnRotation:     conf.RespawnRotation,
+		hasRespawnPoint:     conf.HasRespawnPoint,
 	}
 	playerUUID := conf.UUID
 	pdata.portalTravel = entity.NewPortalTravelComputer()
 	pdata.portalTravel.Instantaneous = func(_, target world.Dimension) bool {
 		return target == world.End || pdata.gameMode != nil && pdata.gameMode.CreativeInventory()
 	}
-	pdata.portalTravel.Teleport = func(e entity.Traveller, pos mgl64.Vec3) {
-		e.(*Player).forceTeleport(pos)
+	pdata.portalTravel.Teleport = func(e entity.Traveller, pos mgl64.Vec3, rotation cube.Rotation, velocity mgl64.Vec3) {
+		p := e.(*Player)
+		p.data.Rot = rotation
+		p.forceTeleport(pos)
+		p.data.Vel = velocity
+		p.SetVelocity(velocity)
+	}
+	pdata.portalTravel.TeleportAllowed = func(e entity.Traveller, pos mgl64.Vec3) bool {
+		p := e.(*Player)
+		ctx := NewEventContext(p.tx, p)
+		p.Handler().HandleTeleport(ctx, pos)
+		return !ctx.Cancelled()
+	}
+	pdata.portalTravel.DestinationWorld = func(tx *world.Tx, target world.Dimension) *world.World {
+		source := tx.World()
+		if source.Dimension() != world.End || target != world.End {
+			return source.PortalDestination(target)
+		}
+		dimension := pdata.respawnDimension
+		if !pdata.hasRespawnPoint || dimension == nil {
+			dimension = world.Overworld
+		}
+		if destination := source.PortalDestination(dimension); destination != nil {
+			return destination
+		}
+		return source.DefaultWorld()
 	}
 	pdata.portalTravel.SpawnPoint = func(tx *world.Tx) mgl64.Vec3 {
-		// Use the player's spawn only while its bed still exists and is unobstructed, like respawning.
-		pos := tx.World().PlayerSpawn(playerUUID)
-		if b, ok := tx.Block(pos).(block.Bed); ok && b.CanRespawnOn() {
-			if safe, ok := b.SafeSpawn(pos, tx); ok {
-				return safe.Vec3Middle()
+		pos := pdata.respawnPosition
+		if !pdata.hasRespawnPoint {
+			pos = tx.World().PlayerSpawn(playerUUID)
+		} else if pdata.respawnDimension != tx.World().Dimension() {
+			return tx.World().Spawn().Vec3Middle()
+		}
+		switch tx.World().Dimension() {
+		case world.Overworld:
+			if bed, ok := tx.Block(pos).(block.Bed); ok && bed.CanRespawnOn() {
+				if safe, ok := bed.SafeSpawn(pos, tx); ok {
+					return safe.Vec3Middle()
+				}
+			}
+		case world.Nether:
+			if respawn, ok := tx.Block(pos).(block.RespawnBlock); ok && respawn.CanRespawnOn() {
+				return pos.Vec3Middle()
 			}
 		}
 		return tx.World().Spawn().Vec3Middle()
+	}
+	pdata.portalTravel.SpawnRotation = func(tx *world.Tx) (cube.Rotation, bool) {
+		if !pdata.hasRespawnPoint || pdata.respawnDimension != tx.World().Dimension() {
+			return cube.Rotation{}, false
+		}
+		var spawn mgl64.Vec3
+		switch tx.World().Dimension() {
+		case world.Overworld:
+			bed, ok := tx.Block(pdata.respawnPosition).(block.Bed)
+			if !ok || !bed.CanRespawnOn() {
+				return cube.Rotation{}, false
+			}
+			safe, ok := bed.SafeSpawn(pdata.respawnPosition, tx)
+			if !ok {
+				return cube.Rotation{}, false
+			}
+			spawn = safe.Vec3Middle()
+		case world.Nether:
+			respawn, ok := tx.Block(pdata.respawnPosition).(block.RespawnBlock)
+			if !ok || !respawn.CanRespawnOn() {
+				return cube.Rotation{}, false
+			}
+			spawn = pdata.respawnPosition.Vec3Middle()
+		default:
+			return cube.Rotation{}, false
+		}
+		dx := float64(pdata.respawnPosition[0]) + 0.5 - spawn[0]
+		dz := float64(pdata.respawnPosition[2]) + 0.5 - spawn[2]
+		yaw := math.Atan2(dz, dx)*180/math.Pi - 90
+		yaw = math.Mod(yaw+180, 360)
+		if yaw < 0 {
+			yaw += 360
+		}
+		return cube.Rotation{yaw - 180, 0}, true
 	}
 	pdata.portalTravel.Player = true
 	// Only players create a portal at the destination when no linked portal exists.

@@ -63,11 +63,17 @@ func (r RespawnAnchor) Activate(pos cube.Pos, clickedFace cube.Face, tx *world.T
 	if r.Charge > 0 {
 		if w.Dimension() == world.Nether {
 			previousSpawn := w.PlayerSpawn(sleeper.UUID())
+			if setter, ok := sleeper.(interface {
+				SetRespawnPosition(cube.Pos, world.Dimension)
+			}); ok {
+				setter.SetRespawnPosition(pos, w.Dimension())
+			} else if previousSpawn != pos {
+				w.SetPlayerSpawn(sleeper.UUID(), pos)
+			}
 			if previousSpawn == pos {
 				return false
 			}
 			sleeper.Messaget(chat.MessageRespawnPointSet)
-			w.SetPlayerSpawn(sleeper.UUID(), pos)
 			return true
 		}
 		tx.SetBlock(pos, nil, nil)

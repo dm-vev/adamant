@@ -471,6 +471,15 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		return
 	}
 	state.lastProcessedTick = tick
+	// Java ticks the vehicle before its passengers. Marking first also stops
+	// malformed cyclic saved links from recursing indefinitely.
+	if active && handle.data.Riding != nil {
+		vehicle := handle.data.Riding
+		if vehicleState, loaded := w.entities[vehicle]; loaded {
+			vehicleRef := entityChunkRef{pos: vehicleState.pos, col: w.chunks[vehicleState.pos]}
+			t.tickEntityHandle(tx, tick, vehicle, vehicleRef, true)
+		}
+	}
 
 	chunkPos := chunkPosFromVec3(handle.data.Pos)
 	var entity Entity

@@ -3,6 +3,7 @@ package entity
 import (
 	"math"
 	"math/rand/v2"
+	"strings"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -19,15 +20,18 @@ type pigType struct{}
 func(pigType)Open(tx *world.Tx,h *world.EntityHandle,d *world.EntityData)world.Entity{if d.Data==nil{PigConfig{}.Apply(d)};return &Pig{Ent:&Ent{tx:tx,handle:h,data:d}}}
 func(pigType)EncodeEntity()string{return "minecraft:pig"}
 func(pigType)BBox(e world.Entity)cube.BBox{if p,ok:=e.(*Pig);ok&&p.behaviour().age<0{return cube.Box(-.225,0,-.225,.225,.5,.225)};return cube.Box(-.45,0,-.45,.45,.9,.45)}
-func(pigType)DecodeNBT(m map[string]any,d *world.EntityData){s:=ReadNativeMobJavaState(m);if s==nil{s=m};c:=PigConfig{Age:int(nbtconv.Int32(s,"Age")),Saddled:nbtconv.Bool(s,"Saddle")};if a,ok:=nativeMobAttribute(m,"minecraft:health");ok{c.Health,c.MaxHealth=a.Current,a.Base};d.Data=c.New()}
-func(pigType)EncodeNBT(d *world.EntityData)map[string]any{b:=d.Data.(*PigBehaviour);a:=EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT),[]NativeMobAttribute{{Name:"minecraft:health",Base:b.maxHealth,Current:b.health,DefaultMin:0,DefaultMax:b.maxHealth,Min:0,Max:b.maxHealth}});return MergeNativeMobJavaState(map[string]any{"Attributes":a},MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT),map[string]any{"Age":int32(b.age),"Saddle":byte(boolByte(b.saddled))}))}
+func(pigType)DecodeNBT(m map[string]any,d *world.EntityData){s:=ReadNativeMobJavaState(m);if s==nil{s=m};c:=PigConfig{Age:int(nbtconv.Int32(s,"Age")),Saddled:nbtconv.Bool(s,"Saddle")};if v,ok:=s["variant"].(string);ok{c.Variant=pigVariant(v)}else if v,ok:=m["Variant"];ok{c.Variant=int(nbtconv.Int32(map[string]any{"Variant":v},"Variant"))};if v,ok:=s["sound_variant"].(string);ok{c.SoundVariant=v};if a,ok:=nativeMobAttribute(m,"minecraft:health");ok{c.Health,c.MaxHealth=a.Current,a.Base};if v,ok:=s["Health"];ok{c.Health=float64(nbtconv.Float32(map[string]any{"Health":v},"Health"))};if v,ok:=s["MaxHealth"];ok{c.MaxHealth=float64(nbtconv.Float32(map[string]any{"MaxHealth":v},"MaxHealth"))};d.Data=c.New()}
+func pigVariant(value string) int { switch strings.TrimPrefix(value,"minecraft:") { case "warm": return 1; case "cold": return 2; default: return 0 } }
+func(pigType)EncodeNBT(d *world.EntityData)map[string]any{b:=d.Data.(*PigBehaviour);a:=EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT),[]NativeMobAttribute{{Name:"minecraft:health",Base:b.maxHealth,Current:b.health,DefaultMin:0,DefaultMax:b.maxHealth,Min:0,Max:b.maxHealth}});native:=MergeNativeMobNBT(d.NativeNBT,map[string]any{"Attributes":a,"Variant":int32(b.variant)});return MergeNativeMobJavaState(native,MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT),map[string]any{"Age":int32(b.age),"Saddle":byte(boolByte(b.saddled)),"variant":"minecraft:"+[...]string{"temperate","warm","cold"}[b.variant],"sound_variant":"minecraft:"+b.soundVariant}))}
 // PigConfig supplies a pig's persistent Java state.
-type PigConfig struct{Health,MaxHealth float64;Age int;Saddled bool}
+type PigConfig struct{Health,MaxHealth float64;Age int;Saddled bool;Variant int;SoundVariant string}
 func(c PigConfig)Apply(d *world.EntityData){d.Data=c.New()}
-func(c PigConfig)New()*PigBehaviour{if c.MaxHealth<=0{c.MaxHealth=10};if c.Health<=0{c.Health=c.MaxHealth};return &PigBehaviour{health:c.Health,maxHealth:c.MaxHealth,age:c.Age,saddled:c.Saddled,speed:.25,mc:&MovementComputer{Gravity:.08,Drag:.02,DragBeforeGravity:true},next:40+rand.IntN(81)}}
+func(c PigConfig)New()*PigBehaviour{if c.MaxHealth<=0{c.MaxHealth=10};if c.Health<=0{c.Health=c.MaxHealth};sv:=strings.TrimPrefix(c.SoundVariant,"minecraft:");if sv!="big"&&sv!="mini"{sv="classic"};return &PigBehaviour{health:c.Health,maxHealth:c.MaxHealth,age:c.Age,saddled:c.Saddled,variant:max(0,min(c.Variant,2)),soundVariant:sv,speed:.25,mc:&MovementComputer{Gravity:.08,Drag:.02,DragBeforeGravity:true},next:40+rand.IntN(81)}}
 // Pig is a concrete passive pig with growth, saddle and ridden steering state.
 type Pig struct{*Ent}
-type PigBehaviour struct{health,maxHealth float64;age int;saddled,dead bool;speed,steer float64;passenger *world.EntityHandle;lastLightningBolt string;path []cube.Pos;index,next int;mc *MovementComputer}
+type PigBehaviour struct{health,maxHealth float64;age,variant int;soundVariant string;saddled,dead bool;speed,steer float64;passenger *world.EntityHandle;lastLightningBolt string;path []cube.Pos;index,next int;mc *MovementComputer}
+func (p *PigBehaviour) Variant() int32 { return int32(p.variant) }
+func (p *PigBehaviour) Baby() bool { return p.age < 0 }
 func(p *Pig)behaviour()*PigBehaviour{return p.Behaviour().(*PigBehaviour)}
 func(p *Pig)Tick(tx *world.Tx,t int64){p.Ent.Tick(tx,t);b:=p.behaviour();if b.passenger!=nil{if rider,ok:=b.passenger.Entity(tx);ok{if mover,ok:=rider.(interface{Teleport(mgl64.Vec3)});ok{mover.Teleport(p.Position().Add(mgl64.Vec3{0,.9,0}))}}else{b.passenger=nil}}}
 func(b *PigBehaviour)Tick(e *Ent,tx *world.Tx)*Movement{if b.age<0{b.age=min(0,b.age+1)};if b.next>0{b.next--};if b.index>=len(b.path)&&b.next==0{b.next=40+rand.IntN(81);start:=cube.PosFromVec3(e.Position());for range 4{goal:=start.Add(cube.Pos{rand.IntN(13)-6,0,rand.IntN(13)-6});if path:=findPath(tx,start,goal,128,false,false);len(path)>0{b.path,b.index=path,0;break}}};rot,vel:=e.data.Rot,e.data.Vel;if b.steer!=0{rot[0]+=b.steer*4;d:=rot.Vec3();vel[0],vel[2]=d[0]*b.speed,d[2]*b.speed}else if b.index<len(b.path){target:=b.path[b.index].Vec3().Add(mgl64.Vec3{.5,0,.5});d:=target.Sub(e.data.Pos);d[1]=0;if d.Len()<.25{b.index++}else{d=d.Normalize();vel[0],vel[2]=d[0]*b.speed,d[2]*b.speed}}else{vel[0],vel[2]=0,0};m:=b.mc.TickMovement(e,e.data.Pos,vel,e.data.Rot,rot,tx);e.data.Pos,e.data.Vel,e.data.Rot=m.Position(),m.Velocity(),m.Rotation();return m}

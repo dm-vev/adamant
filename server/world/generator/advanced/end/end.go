@@ -106,7 +106,7 @@ func NewEnd(seed int64) *End {
 }
 
 // GenerateChunk generates a single End chunk at the position passed.
-func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (g *End) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	s := g.pool.Get().(*endScratch)
 	defer g.pool.Put(s)
 

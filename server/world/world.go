@@ -102,6 +102,7 @@ type World struct {
 	entities           map[*EntityHandle]*entityState
 	entitiesByUUID     map[uuid.UUID]*EntityHandle
 	entitiesByUniqueID map[int64]*EntityHandle
+	pendingRiders      map[uuid.UUID][]*EntityHandle
 
 	// chunkCount and entityCount track the map sizes so callers outside the world
 	// goroutine can read counts without racing map mutations.
@@ -220,8 +221,9 @@ func (s *entityState) entity(tx *Tx, handle *EntityHandle) Entity {
 }
 
 type generationTask struct {
-	pos ChunkPos
-	col *Column
+	pos     ChunkPos
+	col     *Column
+	context GenerationContext
 }
 
 type chunkCallback func(tx *Tx, col *Column)
@@ -1300,6 +1302,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	w.entitiesByUUID[handle.id] = handle
 	w.entitiesByUniqueID[handle.UniqueID()] = handle
 	handle.state = state
+	w.resolveEntityRiding(handle)
 
 	c := tx.chunk(pos)
 	c.addEntity(handle)
@@ -1343,6 +1346,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	for v := range c.viewers {
 		v.HideEntity(e)
 	}
+	w.removePendingRider(handle)
 	delete(w.entities, handle)
 	delete(w.entitiesByUUID, handle.id)
 	delete(w.entitiesByUniqueID, handle.UniqueID())
@@ -1928,6 +1932,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		}
 		if c.removeEntity(e) {
 			if _, ok := w.entities[e]; ok {
+				w.removePendingRider(e)
 				delete(w.entities, e)
 				delete(w.entitiesByUUID, e.id)
 				delete(w.entitiesByUniqueID, e.UniqueID())
@@ -1969,6 +1974,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			v.HideEntity(ent)
 		}
 		if _, ok := w.entities[e]; ok {
+			w.removePendingRider(e)
 			delete(w.entities, e)
 			delete(w.entitiesByUUID, e.id)
 			delete(w.entitiesByUniqueID, e.UniqueID())
@@ -2251,6 +2257,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 			w.entitiesByUUID[e.id] = e
 			w.entitiesByUniqueID[e.UniqueID()] = e
 			e.state = state
+			w.resolveEntityRiding(e)
 			e.markWorldReady(w)
 		}
 
@@ -2351,7 +2358,7 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 // This prevents chunks from being stuck in a "not ready" state during shutdown,
 // which could otherwise cause Close() or c.waitReady() to block forever.
 func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
-	task := generationTask{pos: pos, col: col}
+	task := generationTask{pos: pos, col: col, context: w.generationContext()}
 	w.scheduleMu.Lock()
 	if w.closed.Load() {
 		w.scheduleMu.Unlock()
@@ -2440,7 +2447,7 @@ func (w *World) runGenerationTask(task generationTask) {
 
 	// Perform the actual chunk generation.
 	// The generator implementation is responsible for populating the chunk’s data.
-	task.col.generation = w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk)
+	task.col.generation = w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk, task.context)
 
 	task.col.BlockEntities = w.generatedBlockEntities(task.pos, task.col.Chunk)
 	if task.col.BlockEntities == nil {

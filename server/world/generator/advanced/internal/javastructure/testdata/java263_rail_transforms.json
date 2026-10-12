@@ -1,0 +1,1850 @@
+[
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_east",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "south_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "north_west"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "north_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "south_east"
+  },
+  {
+    "block": "minecraft:rail",
+    "shape": "north_east",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "south_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:powered_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "north_south",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "east_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "east_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "north_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_east",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_west",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_north",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 0,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 0,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 1,
+    "transformed": "ascending_east"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 2,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 1,
+    "rotation": 3,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 0,
+    "transformed": "ascending_south"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 1,
+    "transformed": "ascending_west"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 2,
+    "transformed": "ascending_north"
+  },
+  {
+    "block": "minecraft:detector_rail",
+    "shape": "ascending_south",
+    "mirror": 2,
+    "rotation": 3,
+    "transformed": "ascending_east"
+  }
+]

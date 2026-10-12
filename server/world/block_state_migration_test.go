@@ -42,7 +42,7 @@ type migrationTestGenerator struct {
 	stoneRID uint32
 }
 
-func (g migrationTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk) GenerationResult {
+func (g migrationTestGenerator) GenerateChunk(pos ChunkPos, c *chunk.Chunk, _ GenerationContext) GenerationResult {
 	if pos == (ChunkPos{0, 0}) {
 		c.SetBlock(15, 0, 8, 0, g.blockRID)
 	} else if pos == (ChunkPos{1, 0}) {

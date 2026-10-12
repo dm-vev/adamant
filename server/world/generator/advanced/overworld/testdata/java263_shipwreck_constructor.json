@@ -1,0 +1,12 @@
+[
+  {"beached":false,"seed":0,"template":"minecraft:shipwreck/rightsideup_fronthalf","rotation":2,"size":[9,9,24],"template_position":[-48,90,80],"raw_box":[-48,90,87,-40,98,110],"next_long":"4437113781045784766"},
+  {"beached":false,"seed":1,"template":"minecraft:shipwreck/rightsideup_fronthalf","rotation":2,"size":[9,9,24],"template_position":[-48,90,80],"raw_box":[-48,90,87,-40,98,110],"next_long":"7564655870752979346"},
+  {"beached":false,"seed":2,"template":"minecraft:shipwreck/upsidedown_fronthalf_degraded","rotation":2,"size":[9,9,22],"template_position":[-48,90,80],"raw_box":[-48,90,89,-40,98,110],"next_long":"-1817970389778669801"},
+  {"beached":false,"seed":4096,"template":"minecraft:shipwreck/rightsideup_backhalf_degraded","rotation":0,"size":[9,9,16],"template_position":[-48,90,80],"raw_box":[-48,90,80,-40,98,95],"next_long":"-3934888480740723025"},
+  {"beached":false,"seed":-1,"template":"minecraft:shipwreck/sideways_fronthalf","rotation":1,"size":[9,9,24],"template_position":[-48,90,80],"raw_box":[-52,90,91,-29,98,99],"next_long":"226341162490527646"},
+  {"beached":true,"seed":0,"template":"minecraft:shipwreck/rightsideup_backhalf","rotation":2,"size":[9,9,16],"template_position":[-48,90,80],"raw_box":[-48,90,95,-40,98,110],"next_long":"4437113781045784766"},
+  {"beached":true,"seed":1,"template":"minecraft:shipwreck/rightsideup_backhalf","rotation":2,"size":[9,9,16],"template_position":[-48,90,80],"raw_box":[-48,90,95,-40,98,110],"next_long":"7564655870752979346"},
+  {"beached":true,"seed":2,"template":"minecraft:shipwreck/sideways_fronthalf","rotation":2,"size":[9,9,24],"template_position":[-48,90,80],"raw_box":[-48,90,87,-40,98,110],"next_long":"-1817970389778669801"},
+  {"beached":true,"seed":4096,"template":"minecraft:shipwreck/rightsideup_full_degraded","rotation":0,"size":[9,9,28],"template_position":[-48,90,80],"raw_box":[-48,90,80,-40,98,107],"next_long":"-3934888480740723025"},
+  {"beached":true,"seed":-1,"template":"minecraft:shipwreck/with_mast_degraded","rotation":1,"size":[9,21,28],"template_position":[-48,90,80],"raw_box":[-56,90,91,-29,110,99],"next_long":"226341162490527646"}
+]

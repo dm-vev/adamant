@@ -162,7 +162,10 @@ func (p JigsawPiece) placeWithEnvironment(palette int, clip Bounds, seed int64, 
 		markTemplateLiquidPass(&placed, p.LiquidSettings)
 		return placed, err
 	}
-	return p.Place(palette, clip, seed, processors...)
+	placed, err := p.Place(palette, clip, seed, processors...)
+	if err != nil { return Placement{}, err }
+	if err := finalizeJigsawTemplateEntities(&placed, env); err != nil { return Placement{}, err }
+	return placed, nil
 }
 
 func randomizableContainer(name string) bool {

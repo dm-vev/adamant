@@ -1,0 +1,304 @@
+[
+  {
+    "direction": 2,
+    "profile": "water",
+    "clipOrigin": [
+      32,
+      112
+    ],
+    "calls": [
+      {
+        "index": 0,
+        "hash": "d125c6d4bb274007ebb227a7c53487dd6aae761952c5984fa2d02dc47a4c1502",
+        "count": 1430,
+        "postNextLong": "8975706519510869704",
+        "levelNextLong": "9034016462047876825",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              47.5,
+              53.0,
+              112.5
+            ],
+            "block": [
+              47,
+              53,
+              112
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[47.5d,53.0d,112.5d],Rotation:[0.0f,0.0f],UUID:[I;-1049463608,2042511441,-2112429491,-1386118923],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.04203321261961309d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "hash": "646648f3e93687cd40bd3c3b0c9b976af2a56dc488c8b53b61751ca0a4551156",
+        "count": 1430,
+        "postNextLong": "-8243398065255185330",
+        "levelNextLong": "-6962964776808924952",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              47.5,
+              53.0,
+              112.5
+            ],
+            "block": [
+              47,
+              53,
+              112
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[47.5d,53.0d,112.5d],Rotation:[0.0f,0.0f],UUID:[I;-1478425027,-455980952,-1903888990,1455077052],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.05559264225903515d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "direction": 5,
+    "profile": "water",
+    "calls": [
+      {
+        "index": 0,
+        "hash": "f9598f82415ac6499e0609a2e589628be3f0a519e45a6446689dcf35a4f49a18",
+        "count": 1430,
+        "postNextLong": "8975706519510869704",
+        "levelNextLong": "9034016462047876825",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              47.5,
+              53.0,
+              111.5
+            ],
+            "block": [
+              47,
+              53,
+              111
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[47.5d,53.0d,111.5d],Rotation:[0.0f,0.0f],UUID:[I;-644408454,222644541,-1611669202,-817476548],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.04203321261961309d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "hash": "2d7e77160c172a32f979c8569301006f1d29cff14910df22361807f7026e5b04",
+        "count": 1430,
+        "postNextLong": "-8243398065255185330",
+        "levelNextLong": "-6962964776808924952",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              47.5,
+              53.0,
+              111.5
+            ],
+            "block": [
+              47,
+              53,
+              111
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[47.5d,53.0d,111.5d],Rotation:[0.0f,0.0f],UUID:[I;-744007172,-68137106,-1974562193,-787282414],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.05559264225903515d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      }
+    ],
+    "clipOrigin": [
+      32,
+      96
+    ]
+  },
+  {
+    "direction": 3,
+    "profile": "water",
+    "calls": [
+      {
+        "index": 0,
+        "hash": "308f84d7bdcf3d641882508f793348c29eb39b3a7d16db079256527ae69f1fa2",
+        "count": 1430,
+        "postNextLong": "8975706519510869704",
+        "levelNextLong": "9034016462047876825",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              47.5,
+              53.0,
+              111.5
+            ],
+            "block": [
+              47,
+              53,
+              111
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[47.5d,53.0d,111.5d],Rotation:[0.0f,0.0f],UUID:[I;263936652,-881635822,-1869452003,-575985030],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.04203321261961309d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "hash": "1e63fe38cc8bae4446767180038189fb9902448ed4e30f15647c5b4466f53db4",
+        "count": 1430,
+        "postNextLong": "-8243398065255185330",
+        "levelNextLong": "-6962964776808924952",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              47.5,
+              53.0,
+              111.5
+            ],
+            "block": [
+              47,
+              53,
+              111
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[47.5d,53.0d,111.5d],Rotation:[0.0f,0.0f],UUID:[I;1249165199,704991031,-1187369250,-347395920],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.05559264225903515d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      }
+    ],
+    "clipOrigin": [
+      32,
+      96
+    ]
+  },
+  {
+    "direction": 4,
+    "profile": "water",
+    "clipOrigin": [
+      48,
+      96
+    ],
+    "calls": [
+      {
+        "index": 0,
+        "hash": "46153a13cc45120798a6719cb56312bac0929124dadddd131a9edf0e951f1162",
+        "count": 1430,
+        "postNextLong": "8975706519510869704",
+        "levelNextLong": "9034016462047876825",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              48.5,
+              53.0,
+              111.5
+            ],
+            "block": [
+              48,
+              53,
+              111
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[48.5d,53.0d,111.5d],Rotation:[0.0f,0.0f],UUID:[I;-674240294,-645248158,-1131027246,825007495],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.04203321261961309d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "hash": "cf2adc101db52ae7d31a61fe22399f14e9edac91f071c9ca23fa8685b4d7dee6",
+        "count": 1430,
+        "postNextLong": "-8243398065255185330",
+        "levelNextLong": "-6962964776808924952",
+        "entities": [
+          {
+            "id": "minecraft:elder_guardian",
+            "pos": [
+              48.5,
+              53.0,
+              111.5
+            ],
+            "block": [
+              48,
+              53,
+              111
+            ],
+            "nbt": "{AbsorptionAmount:0.0f,Air:300s,Brain:{memories:{}},CanPickUpLoot:0b,DeathTime:0s,FallFlying:0b,Fire:0s,Health:80.0f,HurtTime:0s,Invulnerable:0b,LeftHanded:0b,Motion:[0.0d,0.0d,0.0d],OnGround:0b,PersistenceRequired:1b,PortalCooldown:0,Pos:[48.5d,53.0d,111.5d],Rotation:[0.0f,0.0f],UUID:[I;-1978026000,2089764765,-1135565668,2147122604],attributes:[{base:16.0d,id:\"minecraft:follow_range\",modifiers:[{amount:-0.05559264225903515d,id:\"minecraft:random_spawn_bonus\",operation:\"add_multiplied_base\"}]}],current_impulse_context_reset_grace_time:0,fall_distance:0.0d}"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "direction": 2,
+    "profile": "air",
+    "calls": [
+      {
+        "index": 0,
+        "hash": "5049be10865d2696a59da2c5affa50cf90062be20d4f03aafc69a011b1129380",
+        "count": 6656,
+        "postNextLong": "2963317155973257000",
+        "levelNextLong": "5627198997721296553",
+        "entities": []
+      },
+      {
+        "index": 1,
+        "hash": "9bdceb288ff45a5434b4a790915ddf6f51b0571e75cd2dec57d94b323f315f57",
+        "count": 6656,
+        "postNextLong": "-3482204388531257653",
+        "levelNextLong": "-6068339776176335353",
+        "entities": []
+      }
+    ],
+    "clipOrigin": [
+      32,
+      96
+    ]
+  },
+  {
+    "direction": 2,
+    "profile": "stone",
+    "calls": [
+      {
+        "index": 0,
+        "hash": "5049be10865d2696a59da2c5affa50cf90062be20d4f03aafc69a011b1129380",
+        "count": 6656,
+        "postNextLong": "2963317155973257000",
+        "levelNextLong": "5627198997721296553",
+        "entities": []
+      },
+      {
+        "index": 1,
+        "hash": "9bdceb288ff45a5434b4a790915ddf6f51b0571e75cd2dec57d94b323f315f57",
+        "count": 6656,
+        "postNextLong": "-3482204388531257653",
+        "levelNextLong": "-6068339776176335353",
+        "entities": []
+      }
+    ],
+    "clipOrigin": [
+      32,
+      96
+    ]
+  },
+  {
+    "direction": 2,
+    "profile": "ice",
+    "calls": [
+      {
+        "index": 0,
+        "hash": "2f27a178471322e01d774d0f3d53462952fa6c05be93a6e833836238c85ed057",
+        "count": 1854,
+        "postNextLong": "2963317155973257000",
+        "levelNextLong": "5627198997721296553",
+        "entities": []
+      },
+      {
+        "index": 1,
+        "hash": "7dfa6f0c3137efc4c725a5e53075c97ed8e13217dd982389cb71c51f148bf270",
+        "count": 1865,
+        "postNextLong": "-3482204388531257653",
+        "levelNextLong": "-6068339776176335353",
+        "entities": []
+      }
+    ],
+    "clipOrigin": [
+      32,
+      96
+    ]
+  }
+]

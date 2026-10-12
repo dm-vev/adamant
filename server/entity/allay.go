@@ -98,8 +98,10 @@ func (allayType) EncodeNBT(d *world.EntityData) map[string]any {
 	equipment.ChestItems[0].Slot = &slot
 	if len(b.inventory) > 0 {
 		equipment.ChestItems[0] = allayNativeItem(b.inventory[0], equipment.ChestItems[0])
-		equipment.ChestItems[0].Slot = &slot
+	} else {
+		equipment.ChestItems[0] = allayNativeItem(item.Stack{}, equipment.ChestItems[0])
 	}
+	equipment.ChestItems[0].Slot = &slot
 	native = MergeNativeMobNBT(native, EncodeNativeMobEquipment(equipment))
 	inv := make([]any, 0, len(b.inventory))
 	for _, s := range b.inventory {

@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
@@ -53,7 +54,7 @@ type scatteredLifecycleGenerator struct {
 	terrain  scatteredLifecycleTerrain
 }
 
-func (g *scatteredLifecycleGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (g *scatteredLifecycleGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
 			h := g.terrain.BaseHeight(int32(pos[0])*16+int32(x), int32(pos[1])*16+int32(z), false)
@@ -62,7 +63,7 @@ func (g *scatteredLifecycleGenerator) GenerateChunk(pos world.ChunkPos, c *chunk
 			}
 		}
 	}
-	return g.features.Decorate(pos, c)
+	return g.features.Decorate(pos, c, context)
 }
 func (*scatteredLifecycleGenerator) DefaultSpawn(world.Dimension) cube.Pos { return cube.Pos{0, 70, 0} }
 func (g *scatteredLifecycleGenerator) LoadGenerationState(data []byte) error {
@@ -85,6 +86,16 @@ func newScatteredLifecycleGenerator(kind string) (*scatteredLifecycleGenerator, 
 	case "igloo":
 		random = java26.NewLegacyRandom(13) // Source fixture: rotation 2, basement depth 4.
 		start, _, err = buildModernIgloo(in)
+	case "shipwreck", "shipwreck_beached", "ocean_ruin_warm", "ocean_ruin_cold":
+		in.config, err = javadata.LoadJSON("structure", kind)
+		if err != nil {
+			return nil, start, err
+		}
+		if kind == "shipwreck" || kind == "shipwreck_beached" {
+			start, _, err = buildModernShipwreck(in)
+		} else {
+			start, _, err = buildModernOceanRuin(in)
+		}
 	default:
 		start, _, err = buildModernSwampHut(in)
 	}
@@ -215,7 +226,7 @@ func TestScatteredStateSurvivesNativeMCDBRestart(t *testing.T) {
 				t.Fatalf("mob health changed on restart: got%v want%v", loadedHealth, health)
 			}
 			c := chunk.New(world.DefaultBlockRegistry, world.Overworld.Range())
-			result := restored.GenerateChunk(world.ChunkPos{0, 0}, c)
+			result := restored.GenerateChunk(world.ChunkPos{0, 0}, c, world.GenerationContext{})
 			if len(result.Entities) != 0 {
 				t.Fatalf("restarted hut duplicated %d mobs", len(result.Entities))
 			}
@@ -269,7 +280,7 @@ func TestScatteredNeighborPreviewDoesNotConsumeHPosLootOrMobs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			generator.GenerateChunk(world.ChunkPos{-1, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()))
+			generator.GenerateChunk(world.ChunkPos{-1, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()), world.GenerationContext{})
 			flags := generator.owner.modernStructures.pieceStates.lookup(start.key)
 			if flags != nil {
 				flags.mu.Lock()
@@ -279,7 +290,7 @@ func TestScatteredNeighborPreviewDoesNotConsumeHPosLootOrMobs(t *testing.T) {
 					t.Fatalf("neighbor preview consumed real state: %+v", before)
 				}
 			}
-			result := generator.GenerateChunk(world.ChunkPos{0, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()))
+			result := generator.GenerateChunk(world.ChunkPos{0, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()), world.GenerationContext{})
 			flags = generator.owner.modernStructures.pieceStates.lookup(start.key)
 			flags.mu.Lock()
 			after := flags.pieces[0]

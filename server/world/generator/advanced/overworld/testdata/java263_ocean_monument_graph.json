@@ -1,0 +1,8345 @@
+[
+  {
+    "seed": "1",
+    "nextLong": "3720926972118013035",
+    "box": [
+      19,
+      39,
+      83,
+      76,
+      61,
+      140
+    ],
+    "sourceRoom": 2,
+    "coreRoom": 12,
+    "rooms": [
+      {
+        "index": 3,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 28,
+            "opening": true
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 2,
+            "opening": true
+          },
+          {
+            "room": 4,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 35,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 10,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1003,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 52,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 36,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": 35,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 34,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 9,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          },
+          {
+            "room": 33,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 37,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": true
+          },
+          {
+            "room": 38,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 33,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": true
+          },
+          {
+            "room": 28,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 27,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 2,
+            "opening": true
+          },
+          {
+            "room": 52,
+            "opening": true
+          },
+          {
+            "room": 32,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": true
+          },
+          {
+            "room": 28,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 51,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 26,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 56,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 42,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 17,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": true
+          },
+          {
+            "room": 43,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 26,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 25,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 0,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": true
+          },
+          {
+            "room": 1001,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 39,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 14,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": true
+          },
+          {
+            "room": 34,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 0,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": false
+          },
+          {
+            "room": 5,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 1,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 38,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": true
+          },
+          {
+            "room": 37,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 0,
+            "opening": true
+          },
+          {
+            "room": 2,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 17,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": false
+          },
+          {
+            "room": 16,
+            "opening": true
+          },
+          {
+            "room": 18,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 40,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 15,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "claimed": true,
+        "source": true,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": true
+          },
+          {
+            "room": 7,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 1,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 44,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 19,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": true
+          },
+          {
+            "room": 43,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1002,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1001,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 9,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": false
+          },
+          {
+            "room": 14,
+            "opening": false
+          },
+          {
+            "room": 4,
+            "opening": true
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 53,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 28,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 12,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": true
+          },
+          {
+            "room": 17,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": true
+          },
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 56,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 57,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 15,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 10,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 16,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 30,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 5,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": true
+          },
+          {
+            "room": 25,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 43,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 18,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": 2,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": false
+          },
+          {
+            "room": 8,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 31,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 6,
+            "opening": true
+          },
+          {
+            "room": 56,
+            "opening": true
+          },
+          {
+            "room": 36,
+            "opening": true
+          },
+          {
+            "room": 26,
+            "opening": true
+          },
+          {
+            "room": 30,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 29,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 4,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": true
+          },
+          {
+            "room": 1002,
+            "opening": true
+          },
+          {
+            "room": 28,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 13,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": false
+          },
+          {
+            "room": 18,
+            "opening": true
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": 14,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 28,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 3,
+            "opening": true
+          },
+          {
+            "room": 53,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 16,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": 15,
+            "opening": true
+          },
+          {
+            "room": 17,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 58,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 53,
+            "opening": true
+          },
+          {
+            "room": 57,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 10,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": true
+          },
+          {
+            "room": 15,
+            "opening": false
+          },
+          {
+            "room": 5,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 11,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 14,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": false
+          },
+          {
+            "room": 19,
+            "opening": false
+          },
+          {
+            "room": 9,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 57,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": true
+          },
+          {
+            "room": 56,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 11,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": false
+          },
+          {
+            "room": 16,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": true
+          },
+          {
+            "room": 10,
+            "opening": true
+          },
+          {
+            "room": 12,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": true
+          },
+          {
+            "room": 10,
+            "opening": false
+          },
+          {
+            "room": 0,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 41,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 16,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 52,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 27,
+            "opening": true
+          },
+          {
+            "room": 1003,
+            "opening": true
+          },
+          {
+            "room": 57,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": true
+          },
+          {
+            "room": 53,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 18,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": true
+          },
+          {
+            "room": 17,
+            "opening": true
+          },
+          {
+            "room": 19,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 19,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 14,
+            "opening": false
+          },
+          {
+            "room": 18,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 8,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": true
+          },
+          {
+            "room": 9,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          },
+          {
+            "room": 9,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": 11,
+            "opening": true
+          },
+          {
+            "room": 1,
+            "opening": false
+          },
+          {
+            "room": 5,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 32,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 7,
+            "opening": false
+          },
+          {
+            "room": 57,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": true
+          },
+          {
+            "room": 31,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": false
+          }
+        ]
+      }
+    ],
+    "children": [
+      {
+        "type": "OceanMonumentEntryRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentCoreRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleTopRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentSimpleTopRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentWingRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentWingRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentPenthouse",
+        "design": -1
+      }
+    ],
+    "directions": {
+      "2": [
+        [
+          44,
+          39,
+          111,
+          51,
+          42,
+          118
+        ],
+        [
+          44,
+          39,
+          87,
+          59,
+          46,
+          102
+        ],
+        [
+          60,
+          39,
+          103,
+          67,
+          42,
+          118
+        ],
+        [
+          36,
+          39,
+          111,
+          43,
+          42,
+          118
+        ],
+        [
+          52,
+          43,
+          111,
+          67,
+          46,
+          118
+        ],
+        [
+          36,
+          43,
+          95,
+          43,
+          46,
+          102
+        ],
+        [
+          36,
+          43,
+          103,
+          43,
+          46,
+          118
+        ],
+        [
+          60,
+          43,
+          87,
+          67,
+          46,
+          94
+        ],
+        [
+          44,
+          39,
+          103,
+          59,
+          42,
+          110
+        ],
+        [
+          52,
+          43,
+          103,
+          67,
+          46,
+          110
+        ],
+        [
+          28,
+          43,
+          87,
+          35,
+          46,
+          94
+        ],
+        [
+          52,
+          39,
+          111,
+          59,
+          42,
+          118
+        ],
+        [
+          60,
+          39,
+          87,
+          67,
+          42,
+          94
+        ],
+        [
+          44,
+          47,
+          103,
+          59,
+          50,
+          110
+        ],
+        [
+          28,
+          39,
+          103,
+          35,
+          42,
+          118
+        ],
+        [
+          36,
+          43,
+          87,
+          43,
+          46,
+          94
+        ],
+        [
+          28,
+          43,
+          95,
+          35,
+          46,
+          102
+        ],
+        [
+          52,
+          47,
+          111,
+          59,
+          50,
+          118
+        ],
+        [
+          36,
+          39,
+          95,
+          43,
+          42,
+          102
+        ],
+        [
+          28,
+          39,
+          95,
+          35,
+          42,
+          102
+        ],
+        [
+          60,
+          39,
+          95,
+          67,
+          42,
+          102
+        ],
+        [
+          28,
+          43,
+          103,
+          35,
+          46,
+          118
+        ],
+        [
+          36,
+          39,
+          87,
+          43,
+          42,
+          94
+        ],
+        [
+          36,
+          47,
+          103,
+          43,
+          50,
+          110
+        ],
+        [
+          36,
+          47,
+          111,
+          51,
+          50,
+          118
+        ],
+        [
+          44,
+          43,
+          103,
+          51,
+          46,
+          110
+        ],
+        [
+          28,
+          39,
+          87,
+          35,
+          42,
+          94
+        ],
+        [
+          44,
+          43,
+          111,
+          51,
+          46,
+          118
+        ],
+        [
+          36,
+          39,
+          103,
+          43,
+          42,
+          110
+        ],
+        [
+          60,
+          43,
+          95,
+          67,
+          46,
+          102
+        ],
+        [
+          20,
+          40,
+          119,
+          42,
+          47,
+          139
+        ],
+        [
+          53,
+          40,
+          119,
+          75,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "5": [
+        [
+          41,
+          39,
+          108,
+          48,
+          42,
+          115
+        ],
+        [
+          57,
+          39,
+          108,
+          72,
+          46,
+          123
+        ],
+        [
+          41,
+          39,
+          124,
+          56,
+          42,
+          131
+        ],
+        [
+          41,
+          39,
+          100,
+          48,
+          42,
+          107
+        ],
+        [
+          41,
+          43,
+          116,
+          48,
+          46,
+          131
+        ],
+        [
+          57,
+          43,
+          100,
+          64,
+          46,
+          107
+        ],
+        [
+          41,
+          43,
+          100,
+          56,
+          46,
+          107
+        ],
+        [
+          65,
+          43,
+          124,
+          72,
+          46,
+          131
+        ],
+        [
+          49,
+          39,
+          108,
+          56,
+          42,
+          123
+        ],
+        [
+          49,
+          43,
+          116,
+          56,
+          46,
+          131
+        ],
+        [
+          65,
+          43,
+          92,
+          72,
+          46,
+          99
+        ],
+        [
+          41,
+          39,
+          116,
+          48,
+          42,
+          123
+        ],
+        [
+          65,
+          39,
+          124,
+          72,
+          42,
+          131
+        ],
+        [
+          49,
+          47,
+          108,
+          56,
+          50,
+          123
+        ],
+        [
+          41,
+          39,
+          92,
+          56,
+          42,
+          99
+        ],
+        [
+          65,
+          43,
+          100,
+          72,
+          46,
+          107
+        ],
+        [
+          57,
+          43,
+          92,
+          64,
+          46,
+          99
+        ],
+        [
+          41,
+          47,
+          116,
+          48,
+          50,
+          123
+        ],
+        [
+          57,
+          39,
+          100,
+          64,
+          42,
+          107
+        ],
+        [
+          57,
+          39,
+          92,
+          64,
+          42,
+          99
+        ],
+        [
+          57,
+          39,
+          124,
+          64,
+          42,
+          131
+        ],
+        [
+          41,
+          43,
+          92,
+          56,
+          46,
+          99
+        ],
+        [
+          65,
+          39,
+          100,
+          72,
+          42,
+          107
+        ],
+        [
+          49,
+          47,
+          100,
+          56,
+          50,
+          107
+        ],
+        [
+          41,
+          47,
+          100,
+          48,
+          50,
+          115
+        ],
+        [
+          49,
+          43,
+          108,
+          56,
+          46,
+          115
+        ],
+        [
+          65,
+          39,
+          92,
+          72,
+          42,
+          99
+        ],
+        [
+          41,
+          43,
+          108,
+          48,
+          46,
+          115
+        ],
+        [
+          49,
+          39,
+          100,
+          56,
+          42,
+          107
+        ],
+        [
+          57,
+          43,
+          124,
+          64,
+          46,
+          131
+        ],
+        [
+          20,
+          40,
+          84,
+          40,
+          47,
+          106
+        ],
+        [
+          20,
+          40,
+          117,
+          40,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "3": [
+        [
+          44,
+          39,
+          105,
+          51,
+          42,
+          112
+        ],
+        [
+          44,
+          39,
+          121,
+          59,
+          46,
+          136
+        ],
+        [
+          60,
+          39,
+          105,
+          67,
+          42,
+          120
+        ],
+        [
+          36,
+          39,
+          105,
+          43,
+          42,
+          112
+        ],
+        [
+          52,
+          43,
+          105,
+          67,
+          46,
+          112
+        ],
+        [
+          36,
+          43,
+          121,
+          43,
+          46,
+          128
+        ],
+        [
+          36,
+          43,
+          105,
+          43,
+          46,
+          120
+        ],
+        [
+          60,
+          43,
+          129,
+          67,
+          46,
+          136
+        ],
+        [
+          44,
+          39,
+          113,
+          59,
+          42,
+          120
+        ],
+        [
+          52,
+          43,
+          113,
+          67,
+          46,
+          120
+        ],
+        [
+          28,
+          43,
+          129,
+          35,
+          46,
+          136
+        ],
+        [
+          52,
+          39,
+          105,
+          59,
+          42,
+          112
+        ],
+        [
+          60,
+          39,
+          129,
+          67,
+          42,
+          136
+        ],
+        [
+          44,
+          47,
+          113,
+          59,
+          50,
+          120
+        ],
+        [
+          28,
+          39,
+          105,
+          35,
+          42,
+          120
+        ],
+        [
+          36,
+          43,
+          129,
+          43,
+          46,
+          136
+        ],
+        [
+          28,
+          43,
+          121,
+          35,
+          46,
+          128
+        ],
+        [
+          52,
+          47,
+          105,
+          59,
+          50,
+          112
+        ],
+        [
+          36,
+          39,
+          121,
+          43,
+          42,
+          128
+        ],
+        [
+          28,
+          39,
+          121,
+          35,
+          42,
+          128
+        ],
+        [
+          60,
+          39,
+          121,
+          67,
+          42,
+          128
+        ],
+        [
+          28,
+          43,
+          105,
+          35,
+          46,
+          120
+        ],
+        [
+          36,
+          39,
+          129,
+          43,
+          42,
+          136
+        ],
+        [
+          36,
+          47,
+          113,
+          43,
+          50,
+          120
+        ],
+        [
+          36,
+          47,
+          105,
+          51,
+          50,
+          112
+        ],
+        [
+          44,
+          43,
+          113,
+          51,
+          46,
+          120
+        ],
+        [
+          28,
+          39,
+          129,
+          35,
+          42,
+          136
+        ],
+        [
+          44,
+          43,
+          105,
+          51,
+          46,
+          112
+        ],
+        [
+          36,
+          39,
+          113,
+          43,
+          42,
+          120
+        ],
+        [
+          60,
+          43,
+          121,
+          67,
+          46,
+          128
+        ],
+        [
+          20,
+          40,
+          84,
+          42,
+          47,
+          104
+        ],
+        [
+          53,
+          40,
+          84,
+          75,
+          47,
+          104
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "4": [
+        [
+          47,
+          39,
+          108,
+          54,
+          42,
+          115
+        ],
+        [
+          23,
+          39,
+          108,
+          38,
+          46,
+          123
+        ],
+        [
+          39,
+          39,
+          124,
+          54,
+          42,
+          131
+        ],
+        [
+          47,
+          39,
+          100,
+          54,
+          42,
+          107
+        ],
+        [
+          47,
+          43,
+          116,
+          54,
+          46,
+          131
+        ],
+        [
+          31,
+          43,
+          100,
+          38,
+          46,
+          107
+        ],
+        [
+          39,
+          43,
+          100,
+          54,
+          46,
+          107
+        ],
+        [
+          23,
+          43,
+          124,
+          30,
+          46,
+          131
+        ],
+        [
+          39,
+          39,
+          108,
+          46,
+          42,
+          123
+        ],
+        [
+          39,
+          43,
+          116,
+          46,
+          46,
+          131
+        ],
+        [
+          23,
+          43,
+          92,
+          30,
+          46,
+          99
+        ],
+        [
+          47,
+          39,
+          116,
+          54,
+          42,
+          123
+        ],
+        [
+          23,
+          39,
+          124,
+          30,
+          42,
+          131
+        ],
+        [
+          39,
+          47,
+          108,
+          46,
+          50,
+          123
+        ],
+        [
+          39,
+          39,
+          92,
+          54,
+          42,
+          99
+        ],
+        [
+          23,
+          43,
+          100,
+          30,
+          46,
+          107
+        ],
+        [
+          31,
+          43,
+          92,
+          38,
+          46,
+          99
+        ],
+        [
+          47,
+          47,
+          116,
+          54,
+          50,
+          123
+        ],
+        [
+          31,
+          39,
+          100,
+          38,
+          42,
+          107
+        ],
+        [
+          31,
+          39,
+          92,
+          38,
+          42,
+          99
+        ],
+        [
+          31,
+          39,
+          124,
+          38,
+          42,
+          131
+        ],
+        [
+          39,
+          43,
+          92,
+          54,
+          46,
+          99
+        ],
+        [
+          23,
+          39,
+          100,
+          30,
+          42,
+          107
+        ],
+        [
+          39,
+          47,
+          100,
+          46,
+          50,
+          107
+        ],
+        [
+          47,
+          47,
+          100,
+          54,
+          50,
+          115
+        ],
+        [
+          39,
+          43,
+          108,
+          46,
+          46,
+          115
+        ],
+        [
+          23,
+          39,
+          92,
+          30,
+          42,
+          99
+        ],
+        [
+          47,
+          43,
+          108,
+          54,
+          46,
+          115
+        ],
+        [
+          39,
+          39,
+          100,
+          46,
+          42,
+          107
+        ],
+        [
+          31,
+          43,
+          124,
+          38,
+          46,
+          131
+        ],
+        [
+          55,
+          40,
+          84,
+          75,
+          47,
+          106
+        ],
+        [
+          55,
+          40,
+          117,
+          75,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ]
+    },
+    "markerDirections": {
+      "2": [
+        [
+          31,
+          45,
+          126
+        ],
+        [
+          64,
+          42,
+          123
+        ],
+        [
+          47,
+          53,
+          112
+        ]
+      ],
+      "5": [
+        [
+          33,
+          45,
+          95
+        ],
+        [
+          36,
+          42,
+          128
+        ],
+        [
+          47,
+          53,
+          111
+        ]
+      ],
+      "3": [
+        [
+          31,
+          45,
+          97
+        ],
+        [
+          64,
+          42,
+          100
+        ],
+        [
+          47,
+          53,
+          111
+        ]
+      ],
+      "4": [
+        [
+          62,
+          45,
+          95
+        ],
+        [
+          59,
+          42,
+          128
+        ],
+        [
+          48,
+          53,
+          111
+        ]
+      ]
+    }
+  },
+  {
+    "seed": "123456789",
+    "nextLong": "185115105310730632",
+    "box": [
+      19,
+      39,
+      83,
+      76,
+      61,
+      140
+    ],
+    "sourceRoom": 2,
+    "coreRoom": 12,
+    "rooms": [
+      {
+        "index": 3,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 28,
+            "opening": false
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 2,
+            "opening": false
+          },
+          {
+            "room": 4,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 35,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 10,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1003,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 52,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 36,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 34,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 9,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": true
+          },
+          {
+            "room": 29,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 37,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 12,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": true
+          },
+          {
+            "room": 36,
+            "opening": true
+          },
+          {
+            "room": 38,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 33,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": true
+          },
+          {
+            "room": 38,
+            "opening": true
+          },
+          {
+            "room": 28,
+            "opening": true
+          },
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 27,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 2,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": false
+          },
+          {
+            "room": 28,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 51,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 26,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 56,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 42,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 17,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 26,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": true
+          },
+          {
+            "room": 27,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 25,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 0,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": true
+          },
+          {
+            "room": 1001,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 39,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 14,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": true
+          },
+          {
+            "room": 38,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 0,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": true
+          },
+          {
+            "room": 5,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 1,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 38,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 13,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": true
+          },
+          {
+            "room": 37,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 0,
+            "opening": true
+          },
+          {
+            "room": 2,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 17,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": 16,
+            "opening": true
+          },
+          {
+            "room": 18,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 40,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 15,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "claimed": true,
+        "source": true,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 1,
+            "opening": true
+          },
+          {
+            "room": 3,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 44,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 19,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1002,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1001,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 9,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": false
+          },
+          {
+            "room": 14,
+            "opening": true
+          },
+          {
+            "room": 4,
+            "opening": true
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 53,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 28,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 12,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": false
+          },
+          {
+            "room": 17,
+            "opening": true
+          },
+          {
+            "room": 7,
+            "opening": true
+          },
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 56,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 57,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 15,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 10,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 16,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 30,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 5,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 43,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 18,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": 2,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": false
+          },
+          {
+            "room": 8,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 31,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 6,
+            "opening": true
+          },
+          {
+            "room": 56,
+            "opening": true
+          },
+          {
+            "room": 36,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 29,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 4,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": false
+          },
+          {
+            "room": 1002,
+            "opening": true
+          },
+          {
+            "room": 28,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 13,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": true
+          },
+          {
+            "room": 18,
+            "opening": true
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": 14,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 28,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 3,
+            "opening": false
+          },
+          {
+            "room": 53,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": true
+          },
+          {
+            "room": 29,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 16,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 11,
+            "opening": true
+          },
+          {
+            "room": 15,
+            "opening": false
+          },
+          {
+            "room": 17,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 58,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 33,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 53,
+            "opening": true
+          },
+          {
+            "room": 57,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 10,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": true
+          },
+          {
+            "room": 15,
+            "opening": true
+          },
+          {
+            "room": 5,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 11,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 14,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": false
+          },
+          {
+            "room": 19,
+            "opening": true
+          },
+          {
+            "room": 9,
+            "opening": true
+          },
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 57,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 32,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": true
+          },
+          {
+            "room": 56,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 11,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": false
+          },
+          {
+            "room": 16,
+            "opening": true
+          },
+          {
+            "room": 6,
+            "opening": true
+          },
+          {
+            "room": 10,
+            "opening": true
+          },
+          {
+            "room": 12,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": true
+          },
+          {
+            "room": 10,
+            "opening": false
+          },
+          {
+            "room": 0,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 41,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 16,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 52,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 27,
+            "opening": false
+          },
+          {
+            "room": 1003,
+            "opening": true
+          },
+          {
+            "room": 57,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": true
+          },
+          {
+            "room": 53,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 18,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": true
+          },
+          {
+            "room": 17,
+            "opening": false
+          },
+          {
+            "room": 19,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 19,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 14,
+            "opening": true
+          },
+          {
+            "room": 18,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 8,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": true
+          },
+          {
+            "room": 9,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          },
+          {
+            "room": 9,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": 11,
+            "opening": true
+          },
+          {
+            "room": 1,
+            "opening": false
+          },
+          {
+            "room": 5,
+            "opening": true
+          },
+          {
+            "room": 7,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 32,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 7,
+            "opening": false
+          },
+          {
+            "room": 57,
+            "opening": true
+          },
+          {
+            "room": 37,
+            "opening": true
+          },
+          {
+            "room": 27,
+            "opening": true
+          },
+          {
+            "room": 31,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": false
+          }
+        ]
+      }
+    ],
+    "children": [
+      {
+        "type": "OceanMonumentEntryRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentCoreRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleYRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleTopRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleTopRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleTopRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleTopRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentWingRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentWingRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentPenthouse",
+        "design": -1
+      }
+    ],
+    "directions": {
+      "2": [
+        [
+          44,
+          39,
+          111,
+          51,
+          42,
+          118
+        ],
+        [
+          44,
+          39,
+          87,
+          59,
+          46,
+          102
+        ],
+        [
+          36,
+          43,
+          103,
+          43,
+          50,
+          110
+        ],
+        [
+          52,
+          47,
+          103,
+          59,
+          50,
+          118
+        ],
+        [
+          28,
+          39,
+          103,
+          43,
+          42,
+          110
+        ],
+        [
+          36,
+          39,
+          87,
+          43,
+          42,
+          102
+        ],
+        [
+          44,
+          43,
+          103,
+          51,
+          46,
+          118
+        ],
+        [
+          28,
+          43,
+          95,
+          35,
+          46,
+          102
+        ],
+        [
+          28,
+          43,
+          87,
+          35,
+          46,
+          94
+        ],
+        [
+          60,
+          43,
+          95,
+          67,
+          46,
+          102
+        ],
+        [
+          52,
+          39,
+          111,
+          67,
+          42,
+          118
+        ],
+        [
+          36,
+          43,
+          95,
+          43,
+          46,
+          102
+        ],
+        [
+          36,
+          47,
+          111,
+          51,
+          50,
+          118
+        ],
+        [
+          36,
+          39,
+          111,
+          43,
+          42,
+          118
+        ],
+        [
+          28,
+          43,
+          103,
+          35,
+          46,
+          118
+        ],
+        [
+          28,
+          39,
+          111,
+          35,
+          42,
+          118
+        ],
+        [
+          60,
+          43,
+          103,
+          67,
+          46,
+          110
+        ],
+        [
+          60,
+          43,
+          87,
+          67,
+          46,
+          94
+        ],
+        [
+          36,
+          43,
+          111,
+          43,
+          46,
+          118
+        ],
+        [
+          60,
+          39,
+          87,
+          67,
+          42,
+          94
+        ],
+        [
+          28,
+          39,
+          87,
+          35,
+          42,
+          94
+        ],
+        [
+          52,
+          39,
+          103,
+          59,
+          42,
+          110
+        ],
+        [
+          36,
+          43,
+          87,
+          43,
+          46,
+          94
+        ],
+        [
+          60,
+          39,
+          95,
+          67,
+          42,
+          110
+        ],
+        [
+          28,
+          39,
+          95,
+          35,
+          42,
+          102
+        ],
+        [
+          44,
+          39,
+          103,
+          51,
+          42,
+          110
+        ],
+        [
+          44,
+          47,
+          103,
+          51,
+          50,
+          110
+        ],
+        [
+          52,
+          43,
+          103,
+          59,
+          46,
+          110
+        ],
+        [
+          60,
+          43,
+          111,
+          67,
+          46,
+          118
+        ],
+        [
+          52,
+          43,
+          111,
+          59,
+          46,
+          118
+        ],
+        [
+          20,
+          40,
+          119,
+          42,
+          47,
+          139
+        ],
+        [
+          53,
+          40,
+          119,
+          75,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "5": [
+        [
+          41,
+          39,
+          108,
+          48,
+          42,
+          115
+        ],
+        [
+          57,
+          39,
+          108,
+          72,
+          46,
+          123
+        ],
+        [
+          49,
+          43,
+          100,
+          56,
+          50,
+          107
+        ],
+        [
+          41,
+          47,
+          116,
+          56,
+          50,
+          123
+        ],
+        [
+          49,
+          39,
+          92,
+          56,
+          42,
+          107
+        ],
+        [
+          57,
+          39,
+          100,
+          72,
+          42,
+          107
+        ],
+        [
+          41,
+          43,
+          108,
+          56,
+          46,
+          115
+        ],
+        [
+          57,
+          43,
+          92,
+          64,
+          46,
+          99
+        ],
+        [
+          65,
+          43,
+          92,
+          72,
+          46,
+          99
+        ],
+        [
+          57,
+          43,
+          124,
+          64,
+          46,
+          131
+        ],
+        [
+          41,
+          39,
+          116,
+          48,
+          42,
+          131
+        ],
+        [
+          57,
+          43,
+          100,
+          64,
+          46,
+          107
+        ],
+        [
+          41,
+          47,
+          100,
+          48,
+          50,
+          115
+        ],
+        [
+          41,
+          39,
+          100,
+          48,
+          42,
+          107
+        ],
+        [
+          41,
+          43,
+          92,
+          56,
+          46,
+          99
+        ],
+        [
+          41,
+          39,
+          92,
+          48,
+          42,
+          99
+        ],
+        [
+          49,
+          43,
+          124,
+          56,
+          46,
+          131
+        ],
+        [
+          65,
+          43,
+          124,
+          72,
+          46,
+          131
+        ],
+        [
+          41,
+          43,
+          100,
+          48,
+          46,
+          107
+        ],
+        [
+          65,
+          39,
+          124,
+          72,
+          42,
+          131
+        ],
+        [
+          65,
+          39,
+          92,
+          72,
+          42,
+          99
+        ],
+        [
+          49,
+          39,
+          116,
+          56,
+          42,
+          123
+        ],
+        [
+          65,
+          43,
+          100,
+          72,
+          46,
+          107
+        ],
+        [
+          49,
+          39,
+          124,
+          64,
+          42,
+          131
+        ],
+        [
+          57,
+          39,
+          92,
+          64,
+          42,
+          99
+        ],
+        [
+          49,
+          39,
+          108,
+          56,
+          42,
+          115
+        ],
+        [
+          49,
+          47,
+          108,
+          56,
+          50,
+          115
+        ],
+        [
+          49,
+          43,
+          116,
+          56,
+          46,
+          123
+        ],
+        [
+          41,
+          43,
+          124,
+          48,
+          46,
+          131
+        ],
+        [
+          41,
+          43,
+          116,
+          48,
+          46,
+          123
+        ],
+        [
+          20,
+          40,
+          84,
+          40,
+          47,
+          106
+        ],
+        [
+          20,
+          40,
+          117,
+          40,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "3": [
+        [
+          44,
+          39,
+          105,
+          51,
+          42,
+          112
+        ],
+        [
+          44,
+          39,
+          121,
+          59,
+          46,
+          136
+        ],
+        [
+          36,
+          43,
+          113,
+          43,
+          50,
+          120
+        ],
+        [
+          52,
+          47,
+          105,
+          59,
+          50,
+          120
+        ],
+        [
+          28,
+          39,
+          113,
+          43,
+          42,
+          120
+        ],
+        [
+          36,
+          39,
+          121,
+          43,
+          42,
+          136
+        ],
+        [
+          44,
+          43,
+          105,
+          51,
+          46,
+          120
+        ],
+        [
+          28,
+          43,
+          121,
+          35,
+          46,
+          128
+        ],
+        [
+          28,
+          43,
+          129,
+          35,
+          46,
+          136
+        ],
+        [
+          60,
+          43,
+          121,
+          67,
+          46,
+          128
+        ],
+        [
+          52,
+          39,
+          105,
+          67,
+          42,
+          112
+        ],
+        [
+          36,
+          43,
+          121,
+          43,
+          46,
+          128
+        ],
+        [
+          36,
+          47,
+          105,
+          51,
+          50,
+          112
+        ],
+        [
+          36,
+          39,
+          105,
+          43,
+          42,
+          112
+        ],
+        [
+          28,
+          43,
+          105,
+          35,
+          46,
+          120
+        ],
+        [
+          28,
+          39,
+          105,
+          35,
+          42,
+          112
+        ],
+        [
+          60,
+          43,
+          113,
+          67,
+          46,
+          120
+        ],
+        [
+          60,
+          43,
+          129,
+          67,
+          46,
+          136
+        ],
+        [
+          36,
+          43,
+          105,
+          43,
+          46,
+          112
+        ],
+        [
+          60,
+          39,
+          129,
+          67,
+          42,
+          136
+        ],
+        [
+          28,
+          39,
+          129,
+          35,
+          42,
+          136
+        ],
+        [
+          52,
+          39,
+          113,
+          59,
+          42,
+          120
+        ],
+        [
+          36,
+          43,
+          129,
+          43,
+          46,
+          136
+        ],
+        [
+          60,
+          39,
+          113,
+          67,
+          42,
+          128
+        ],
+        [
+          28,
+          39,
+          121,
+          35,
+          42,
+          128
+        ],
+        [
+          44,
+          39,
+          113,
+          51,
+          42,
+          120
+        ],
+        [
+          44,
+          47,
+          113,
+          51,
+          50,
+          120
+        ],
+        [
+          52,
+          43,
+          113,
+          59,
+          46,
+          120
+        ],
+        [
+          60,
+          43,
+          105,
+          67,
+          46,
+          112
+        ],
+        [
+          52,
+          43,
+          105,
+          59,
+          46,
+          112
+        ],
+        [
+          20,
+          40,
+          84,
+          42,
+          47,
+          104
+        ],
+        [
+          53,
+          40,
+          84,
+          75,
+          47,
+          104
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "4": [
+        [
+          47,
+          39,
+          108,
+          54,
+          42,
+          115
+        ],
+        [
+          23,
+          39,
+          108,
+          38,
+          46,
+          123
+        ],
+        [
+          39,
+          43,
+          100,
+          46,
+          50,
+          107
+        ],
+        [
+          39,
+          47,
+          116,
+          54,
+          50,
+          123
+        ],
+        [
+          39,
+          39,
+          92,
+          46,
+          42,
+          107
+        ],
+        [
+          23,
+          39,
+          100,
+          38,
+          42,
+          107
+        ],
+        [
+          39,
+          43,
+          108,
+          54,
+          46,
+          115
+        ],
+        [
+          31,
+          43,
+          92,
+          38,
+          46,
+          99
+        ],
+        [
+          23,
+          43,
+          92,
+          30,
+          46,
+          99
+        ],
+        [
+          31,
+          43,
+          124,
+          38,
+          46,
+          131
+        ],
+        [
+          47,
+          39,
+          116,
+          54,
+          42,
+          131
+        ],
+        [
+          31,
+          43,
+          100,
+          38,
+          46,
+          107
+        ],
+        [
+          47,
+          47,
+          100,
+          54,
+          50,
+          115
+        ],
+        [
+          47,
+          39,
+          100,
+          54,
+          42,
+          107
+        ],
+        [
+          39,
+          43,
+          92,
+          54,
+          46,
+          99
+        ],
+        [
+          47,
+          39,
+          92,
+          54,
+          42,
+          99
+        ],
+        [
+          39,
+          43,
+          124,
+          46,
+          46,
+          131
+        ],
+        [
+          23,
+          43,
+          124,
+          30,
+          46,
+          131
+        ],
+        [
+          47,
+          43,
+          100,
+          54,
+          46,
+          107
+        ],
+        [
+          23,
+          39,
+          124,
+          30,
+          42,
+          131
+        ],
+        [
+          23,
+          39,
+          92,
+          30,
+          42,
+          99
+        ],
+        [
+          39,
+          39,
+          116,
+          46,
+          42,
+          123
+        ],
+        [
+          23,
+          43,
+          100,
+          30,
+          46,
+          107
+        ],
+        [
+          31,
+          39,
+          124,
+          46,
+          42,
+          131
+        ],
+        [
+          31,
+          39,
+          92,
+          38,
+          42,
+          99
+        ],
+        [
+          39,
+          39,
+          108,
+          46,
+          42,
+          115
+        ],
+        [
+          39,
+          47,
+          108,
+          46,
+          50,
+          115
+        ],
+        [
+          39,
+          43,
+          116,
+          46,
+          46,
+          123
+        ],
+        [
+          47,
+          43,
+          124,
+          54,
+          46,
+          131
+        ],
+        [
+          47,
+          43,
+          116,
+          54,
+          46,
+          123
+        ],
+        [
+          55,
+          40,
+          84,
+          75,
+          47,
+          106
+        ],
+        [
+          55,
+          40,
+          117,
+          75,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ]
+    },
+    "markerDirections": {
+      "2": [
+        [
+          31,
+          42,
+          123
+        ],
+        [
+          64,
+          45,
+          126
+        ],
+        [
+          47,
+          53,
+          112
+        ]
+      ],
+      "5": [
+        [
+          36,
+          42,
+          95
+        ],
+        [
+          33,
+          45,
+          128
+        ],
+        [
+          47,
+          53,
+          111
+        ]
+      ],
+      "3": [
+        [
+          31,
+          42,
+          100
+        ],
+        [
+          64,
+          45,
+          97
+        ],
+        [
+          47,
+          53,
+          111
+        ]
+      ],
+      "4": [
+        [
+          59,
+          42,
+          95
+        ],
+        [
+          62,
+          45,
+          128
+        ],
+        [
+          48,
+          53,
+          111
+        ]
+      ]
+    }
+  },
+  {
+    "seed": "305441741",
+    "nextLong": "-1839754310590990583",
+    "box": [
+      19,
+      39,
+      83,
+      76,
+      61,
+      140
+    ],
+    "sourceRoom": 2,
+    "coreRoom": 10,
+    "rooms": [
+      {
+        "index": 3,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 28,
+            "opening": true
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 2,
+            "opening": false
+          },
+          {
+            "room": 4,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 35,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 10,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": true
+          },
+          {
+            "room": 30,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 1003,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 52,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 36,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 11,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": true
+          },
+          {
+            "room": 31,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": true
+          },
+          {
+            "room": 37,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 34,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 9,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          },
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 37,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": true
+          },
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 33,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 8,
+            "opening": true
+          },
+          {
+            "room": 58,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": false
+          },
+          {
+            "room": 28,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": true
+          },
+          {
+            "room": 34,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 27,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 2,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": false
+          },
+          {
+            "room": 28,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 51,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 26,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 56,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 42,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 17,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": true
+          },
+          {
+            "room": 41,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 26,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 1,
+            "opening": true
+          },
+          {
+            "room": 51,
+            "opening": true
+          },
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": true
+          },
+          {
+            "room": 27,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 25,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 0,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": false
+          },
+          {
+            "room": 1001,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 39,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 14,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": true
+          },
+          {
+            "room": 34,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 0,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": false
+          },
+          {
+            "room": 5,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 1,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 38,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": true
+          },
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": true
+          },
+          {
+            "room": 39,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": true
+          },
+          {
+            "room": 6,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 0,
+            "opening": true
+          },
+          {
+            "room": 2,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 17,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": false
+          },
+          {
+            "room": 16,
+            "opening": true
+          },
+          {
+            "room": 18,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 40,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 15,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "claimed": true,
+        "source": true,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 1,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 44,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 19,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": true
+          },
+          {
+            "room": 43,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1002,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 1001,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 25,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 9,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": false
+          },
+          {
+            "room": 14,
+            "opening": true
+          },
+          {
+            "room": 4,
+            "opening": false
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 53,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 28,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 12,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": true
+          },
+          {
+            "room": 17,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": true
+          },
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 56,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 31,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 57,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 15,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 40,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 10,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 16,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 30,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 5,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": true
+          },
+          {
+            "room": 25,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 43,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 18,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": true
+          },
+          {
+            "room": 42,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": true
+          },
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": 2,
+            "opening": true
+          },
+          {
+            "room": 6,
+            "opening": true
+          },
+          {
+            "room": 8,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 31,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 6,
+            "opening": false
+          },
+          {
+            "room": 56,
+            "opening": true
+          },
+          {
+            "room": 36,
+            "opening": false
+          },
+          {
+            "room": 26,
+            "opening": true
+          },
+          {
+            "room": 30,
+            "opening": false
+          },
+          {
+            "room": 32,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 29,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 4,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 34,
+            "opening": true
+          },
+          {
+            "room": 1002,
+            "opening": true
+          },
+          {
+            "room": 28,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 13,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 38,
+            "opening": false
+          },
+          {
+            "room": 18,
+            "opening": false
+          },
+          {
+            "room": 8,
+            "opening": false
+          },
+          {
+            "room": 12,
+            "opening": true
+          },
+          {
+            "room": 14,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 28,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 3,
+            "opening": true
+          },
+          {
+            "room": 53,
+            "opening": true
+          },
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 16,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 41,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": 15,
+            "opening": false
+          },
+          {
+            "room": 17,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 58,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 33,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 53,
+            "opening": true
+          },
+          {
+            "room": 57,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 10,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 35,
+            "opening": false
+          },
+          {
+            "room": 15,
+            "opening": true
+          },
+          {
+            "room": 5,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 11,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 14,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 39,
+            "opening": true
+          },
+          {
+            "room": 19,
+            "opening": false
+          },
+          {
+            "room": 9,
+            "opening": true
+          },
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 57,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 32,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 52,
+            "opening": false
+          },
+          {
+            "room": 56,
+            "opening": false
+          },
+          {
+            "room": 58,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 11,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": true
+          },
+          {
+            "room": 16,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": false
+          },
+          {
+            "room": 10,
+            "opening": true
+          },
+          {
+            "room": 12,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 30,
+            "opening": true
+          },
+          {
+            "room": 10,
+            "opening": false
+          },
+          {
+            "room": 0,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 6,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 41,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 16,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 36,
+            "opening": true
+          },
+          {
+            "room": 40,
+            "opening": false
+          },
+          {
+            "room": 42,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 52,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 27,
+            "opening": false
+          },
+          {
+            "room": 1003,
+            "opening": true
+          },
+          {
+            "room": 57,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 51,
+            "opening": true
+          },
+          {
+            "room": 53,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 18,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 43,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": 17,
+            "opening": true
+          },
+          {
+            "room": 19,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 19,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 44,
+            "opening": true
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 14,
+            "opening": false
+          },
+          {
+            "room": 18,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 8,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": true
+          },
+          {
+            "room": 13,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": false
+          },
+          {
+            "room": 7,
+            "opening": false
+          },
+          {
+            "room": 9,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 29,
+            "opening": true
+          },
+          {
+            "room": 9,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 3,
+            "opening": false
+          },
+          {
+            "room": -1,
+            "opening": false
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": -1,
+            "opening": false
+          },
+          {
+            "room": 31,
+            "opening": false
+          },
+          {
+            "room": 11,
+            "opening": false
+          },
+          {
+            "room": 1,
+            "opening": true
+          },
+          {
+            "room": 5,
+            "opening": true
+          },
+          {
+            "room": 7,
+            "opening": true
+          }
+        ]
+      },
+      {
+        "index": 32,
+        "claimed": true,
+        "source": false,
+        "edges": [
+          {
+            "room": 7,
+            "opening": true
+          },
+          {
+            "room": 57,
+            "opening": false
+          },
+          {
+            "room": 37,
+            "opening": false
+          },
+          {
+            "room": 27,
+            "opening": true
+          },
+          {
+            "room": 31,
+            "opening": false
+          },
+          {
+            "room": 33,
+            "opening": true
+          }
+        ]
+      }
+    ],
+    "children": [
+      {
+        "type": "OceanMonumentEntryRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentCoreRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleTopRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentDoubleYRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleYRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentDoubleZRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleYRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleYRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentDoubleYRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentDoubleXRoom",
+        "design": -1
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentSimpleRoom",
+        "design": 2
+      },
+      {
+        "type": "OceanMonumentWingRoom",
+        "design": 0
+      },
+      {
+        "type": "OceanMonumentWingRoom",
+        "design": 1
+      },
+      {
+        "type": "OceanMonumentPenthouse",
+        "design": -1
+      }
+    ],
+    "directions": {
+      "2": [
+        [
+          44,
+          39,
+          111,
+          51,
+          42,
+          118
+        ],
+        [
+          28,
+          39,
+          87,
+          43,
+          46,
+          102
+        ],
+        [
+          36,
+          47,
+          103,
+          43,
+          50,
+          110
+        ],
+        [
+          28,
+          39,
+          103,
+          43,
+          42,
+          110
+        ],
+        [
+          52,
+          39,
+          87,
+          59,
+          42,
+          94
+        ],
+        [
+          60,
+          39,
+          95,
+          67,
+          42,
+          110
+        ],
+        [
+          28,
+          39,
+          111,
+          43,
+          42,
+          118
+        ],
+        [
+          52,
+          47,
+          103,
+          59,
+          50,
+          110
+        ],
+        [
+          52,
+          39,
+          95,
+          59,
+          42,
+          102
+        ],
+        [
+          28,
+          43,
+          103,
+          35,
+          46,
+          110
+        ],
+        [
+          44,
+          47,
+          103,
+          51,
+          50,
+          110
+        ],
+        [
+          44,
+          39,
+          87,
+          51,
+          42,
+          94
+        ],
+        [
+          60,
+          39,
+          87,
+          67,
+          46,
+          94
+        ],
+        [
+          44,
+          43,
+          87,
+          51,
+          46,
+          94
+        ],
+        [
+          44,
+          47,
+          111,
+          59,
+          50,
+          118
+        ],
+        [
+          60,
+          39,
+          111,
+          67,
+          46,
+          118
+        ],
+        [
+          36,
+          43,
+          103,
+          43,
+          46,
+          110
+        ],
+        [
+          44,
+          43,
+          103,
+          51,
+          46,
+          118
+        ],
+        [
+          52,
+          39,
+          103,
+          59,
+          46,
+          110
+        ],
+        [
+          52,
+          39,
+          111,
+          59,
+          46,
+          118
+        ],
+        [
+          60,
+          43,
+          103,
+          67,
+          46,
+          110
+        ],
+        [
+          52,
+          43,
+          87,
+          59,
+          46,
+          94
+        ],
+        [
+          44,
+          39,
+          95,
+          51,
+          46,
+          102
+        ],
+        [
+          28,
+          43,
+          111,
+          43,
+          46,
+          118
+        ],
+        [
+          60,
+          43,
+          95,
+          67,
+          46,
+          102
+        ],
+        [
+          52,
+          43,
+          95,
+          59,
+          46,
+          102
+        ],
+        [
+          44,
+          39,
+          103,
+          51,
+          42,
+          110
+        ],
+        [
+          36,
+          47,
+          111,
+          43,
+          50,
+          118
+        ],
+        [
+          20,
+          40,
+          119,
+          42,
+          47,
+          139
+        ],
+        [
+          53,
+          40,
+          119,
+          75,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "5": [
+        [
+          41,
+          39,
+          108,
+          48,
+          42,
+          115
+        ],
+        [
+          57,
+          39,
+          92,
+          72,
+          46,
+          107
+        ],
+        [
+          49,
+          47,
+          100,
+          56,
+          50,
+          107
+        ],
+        [
+          49,
+          39,
+          92,
+          56,
+          42,
+          107
+        ],
+        [
+          65,
+          39,
+          116,
+          72,
+          42,
+          123
+        ],
+        [
+          49,
+          39,
+          124,
+          64,
+          42,
+          131
+        ],
+        [
+          41,
+          39,
+          92,
+          48,
+          42,
+          107
+        ],
+        [
+          49,
+          47,
+          116,
+          56,
+          50,
+          123
+        ],
+        [
+          57,
+          39,
+          116,
+          64,
+          42,
+          123
+        ],
+        [
+          49,
+          43,
+          92,
+          56,
+          46,
+          99
+        ],
+        [
+          49,
+          47,
+          108,
+          56,
+          50,
+          115
+        ],
+        [
+          65,
+          39,
+          108,
+          72,
+          42,
+          115
+        ],
+        [
+          65,
+          39,
+          124,
+          72,
+          46,
+          131
+        ],
+        [
+          65,
+          43,
+          108,
+          72,
+          46,
+          115
+        ],
+        [
+          41,
+          47,
+          108,
+          48,
+          50,
+          123
+        ],
+        [
+          41,
+          39,
+          124,
+          48,
+          46,
+          131
+        ],
+        [
+          49,
+          43,
+          100,
+          56,
+          46,
+          107
+        ],
+        [
+          41,
+          43,
+          108,
+          56,
+          46,
+          115
+        ],
+        [
+          49,
+          39,
+          116,
+          56,
+          46,
+          123
+        ],
+        [
+          41,
+          39,
+          116,
+          48,
+          46,
+          123
+        ],
+        [
+          49,
+          43,
+          124,
+          56,
+          46,
+          131
+        ],
+        [
+          65,
+          43,
+          116,
+          72,
+          46,
+          123
+        ],
+        [
+          57,
+          39,
+          108,
+          64,
+          46,
+          115
+        ],
+        [
+          41,
+          43,
+          92,
+          48,
+          46,
+          107
+        ],
+        [
+          57,
+          43,
+          124,
+          64,
+          46,
+          131
+        ],
+        [
+          57,
+          43,
+          116,
+          64,
+          46,
+          123
+        ],
+        [
+          49,
+          39,
+          108,
+          56,
+          42,
+          115
+        ],
+        [
+          41,
+          47,
+          100,
+          48,
+          50,
+          107
+        ],
+        [
+          20,
+          40,
+          84,
+          40,
+          47,
+          106
+        ],
+        [
+          20,
+          40,
+          117,
+          40,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "3": [
+        [
+          44,
+          39,
+          105,
+          51,
+          42,
+          112
+        ],
+        [
+          28,
+          39,
+          121,
+          43,
+          46,
+          136
+        ],
+        [
+          36,
+          47,
+          113,
+          43,
+          50,
+          120
+        ],
+        [
+          28,
+          39,
+          113,
+          43,
+          42,
+          120
+        ],
+        [
+          52,
+          39,
+          129,
+          59,
+          42,
+          136
+        ],
+        [
+          60,
+          39,
+          113,
+          67,
+          42,
+          128
+        ],
+        [
+          28,
+          39,
+          105,
+          43,
+          42,
+          112
+        ],
+        [
+          52,
+          47,
+          113,
+          59,
+          50,
+          120
+        ],
+        [
+          52,
+          39,
+          121,
+          59,
+          42,
+          128
+        ],
+        [
+          28,
+          43,
+          113,
+          35,
+          46,
+          120
+        ],
+        [
+          44,
+          47,
+          113,
+          51,
+          50,
+          120
+        ],
+        [
+          44,
+          39,
+          129,
+          51,
+          42,
+          136
+        ],
+        [
+          60,
+          39,
+          129,
+          67,
+          46,
+          136
+        ],
+        [
+          44,
+          43,
+          129,
+          51,
+          46,
+          136
+        ],
+        [
+          44,
+          47,
+          105,
+          59,
+          50,
+          112
+        ],
+        [
+          60,
+          39,
+          105,
+          67,
+          46,
+          112
+        ],
+        [
+          36,
+          43,
+          113,
+          43,
+          46,
+          120
+        ],
+        [
+          44,
+          43,
+          105,
+          51,
+          46,
+          120
+        ],
+        [
+          52,
+          39,
+          113,
+          59,
+          46,
+          120
+        ],
+        [
+          52,
+          39,
+          105,
+          59,
+          46,
+          112
+        ],
+        [
+          60,
+          43,
+          113,
+          67,
+          46,
+          120
+        ],
+        [
+          52,
+          43,
+          129,
+          59,
+          46,
+          136
+        ],
+        [
+          44,
+          39,
+          121,
+          51,
+          46,
+          128
+        ],
+        [
+          28,
+          43,
+          105,
+          43,
+          46,
+          112
+        ],
+        [
+          60,
+          43,
+          121,
+          67,
+          46,
+          128
+        ],
+        [
+          52,
+          43,
+          121,
+          59,
+          46,
+          128
+        ],
+        [
+          44,
+          39,
+          113,
+          51,
+          42,
+          120
+        ],
+        [
+          36,
+          47,
+          105,
+          43,
+          50,
+          112
+        ],
+        [
+          20,
+          40,
+          84,
+          42,
+          47,
+          104
+        ],
+        [
+          53,
+          40,
+          84,
+          75,
+          47,
+          104
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ],
+      "4": [
+        [
+          47,
+          39,
+          108,
+          54,
+          42,
+          115
+        ],
+        [
+          23,
+          39,
+          92,
+          38,
+          46,
+          107
+        ],
+        [
+          39,
+          47,
+          100,
+          46,
+          50,
+          107
+        ],
+        [
+          39,
+          39,
+          92,
+          46,
+          42,
+          107
+        ],
+        [
+          23,
+          39,
+          116,
+          30,
+          42,
+          123
+        ],
+        [
+          31,
+          39,
+          124,
+          46,
+          42,
+          131
+        ],
+        [
+          47,
+          39,
+          92,
+          54,
+          42,
+          107
+        ],
+        [
+          39,
+          47,
+          116,
+          46,
+          50,
+          123
+        ],
+        [
+          31,
+          39,
+          116,
+          38,
+          42,
+          123
+        ],
+        [
+          39,
+          43,
+          92,
+          46,
+          46,
+          99
+        ],
+        [
+          39,
+          47,
+          108,
+          46,
+          50,
+          115
+        ],
+        [
+          23,
+          39,
+          108,
+          30,
+          42,
+          115
+        ],
+        [
+          23,
+          39,
+          124,
+          30,
+          46,
+          131
+        ],
+        [
+          23,
+          43,
+          108,
+          30,
+          46,
+          115
+        ],
+        [
+          47,
+          47,
+          108,
+          54,
+          50,
+          123
+        ],
+        [
+          47,
+          39,
+          124,
+          54,
+          46,
+          131
+        ],
+        [
+          39,
+          43,
+          100,
+          46,
+          46,
+          107
+        ],
+        [
+          39,
+          43,
+          108,
+          54,
+          46,
+          115
+        ],
+        [
+          39,
+          39,
+          116,
+          46,
+          46,
+          123
+        ],
+        [
+          47,
+          39,
+          116,
+          54,
+          46,
+          123
+        ],
+        [
+          39,
+          43,
+          124,
+          46,
+          46,
+          131
+        ],
+        [
+          23,
+          43,
+          116,
+          30,
+          46,
+          123
+        ],
+        [
+          31,
+          39,
+          108,
+          38,
+          46,
+          115
+        ],
+        [
+          47,
+          43,
+          92,
+          54,
+          46,
+          107
+        ],
+        [
+          31,
+          43,
+          124,
+          38,
+          46,
+          131
+        ],
+        [
+          31,
+          43,
+          116,
+          38,
+          46,
+          123
+        ],
+        [
+          39,
+          39,
+          108,
+          46,
+          42,
+          115
+        ],
+        [
+          47,
+          47,
+          100,
+          54,
+          50,
+          107
+        ],
+        [
+          55,
+          40,
+          84,
+          75,
+          47,
+          106
+        ],
+        [
+          55,
+          40,
+          117,
+          75,
+          47,
+          139
+        ],
+        [
+          41,
+          52,
+          105,
+          54,
+          56,
+          118
+        ]
+      ]
+    },
+    "markerDirections": {
+      "2": [
+        [
+          31,
+          42,
+          123
+        ],
+        [
+          64,
+          45,
+          126
+        ],
+        [
+          47,
+          53,
+          112
+        ]
+      ],
+      "5": [
+        [
+          36,
+          42,
+          95
+        ],
+        [
+          33,
+          45,
+          128
+        ],
+        [
+          47,
+          53,
+          111
+        ]
+      ],
+      "3": [
+        [
+          31,
+          42,
+          100
+        ],
+        [
+          64,
+          45,
+          97
+        ],
+        [
+          47,
+          53,
+          111
+        ]
+      ],
+      "4": [
+        [
+          59,
+          42,
+          95
+        ],
+        [
+          62,
+          45,
+          128
+        ],
+        [
+          48,
+          53,
+          111
+        ]
+      ]
+    }
+  }
+]

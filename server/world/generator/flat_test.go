@@ -20,7 +20,7 @@ func TestFlatFillsBiomeAcrossDimensionHeight(t *testing.T) {
 			dim := test.dim
 			c := chunk.New(world.DefaultBlockRegistry, dim.Range())
 			g := generator.NewFlat(biome.Desert{}, []world.Block{block.Grass{}, block.Stone{}})
-			g.GenerateChunk(world.ChunkPos{-2, 3}, c)
+			g.GenerateChunk(world.ChunkPos{-2, 3}, c, world.GenerationContext{})
 			for x := range uint8(16) {
 				for z := range uint8(16) {
 					for y := dim.Range().Min(); y <= dim.Range().Max(); y++ {

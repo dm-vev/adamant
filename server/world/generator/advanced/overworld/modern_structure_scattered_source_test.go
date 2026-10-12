@@ -271,7 +271,7 @@ func runScatteredNativeCase(f scatteredSourceCase) ([]scatteredNativeCall, error
 		flags.mu.Lock()
 		state := flags.pieces[0]
 		flags.mu.Unlock()
-		bounds := scatteredPieceBounds(piece, &state)
+		bounds := mutableStructurePieceBounds(piece, &state)
 		hPos := int32(-1)
 		if state.GroundHeightSet {
 			hPos = state.GroundHeight

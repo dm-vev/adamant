@@ -20,7 +20,7 @@ type persistentTestGenerator struct {
 	value byte
 }
 
-func (g *persistentTestGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (g *persistentTestGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, _ world.GenerationContext) world.GenerationResult {
 	if pos[1] != 0 || pos[0] < 3 || pos[0] > 5 {
 		return world.GenerationResult{}
 	}

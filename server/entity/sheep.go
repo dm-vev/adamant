@@ -32,15 +32,16 @@ func (sheepType) BBox(e world.Entity) cube.BBox {
 }
 func (sheepType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	s := ReadNativeMobJavaState(m); if s == nil { s = m }
-	c := SheepConfig{WoolColor: int(nbtconv.Int32(s,"Color")), Sheared: nbtconv.Bool(s,"Sheared"), RegrowTicks:int(nbtconv.Int32(s,"RegrowTicks"))}
-	if nbtconv.Int32(s,"Age") != 0 { c.AgeTicks=int(nbtconv.Int32(s,"Age")) }
+	c := SheepConfig{WoolColor: sheepNBTColor(s["Color"]), Sheared: nbtconv.Bool(s,"Sheared"), RegrowTicks:int(nbtconv.Int32(s,"RegrowTicks")), AgeTicks:int(nbtconv.Int32(s,"Age"))}
 	if a,ok:=nativeMobAttribute(m,"minecraft:health"); ok { c.Health,c.MaxHealth=a.Current,a.Base }
 	if h,ok:=s["Health"]; ok { c.Health=float64(nbtconv.Float32(map[string]any{"h":h},"h")) }
+	if h,ok:=s["MaxHealth"]; ok { c.MaxHealth=float64(nbtconv.Float32(map[string]any{"h":h},"h")) }
 	d.Data=c.New()
 }
 func (sheepType) EncodeNBT(d *world.EntityData) map[string]any {
 	b:=d.Data.(*SheepBehaviour); attr:=EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT),[]NativeMobAttribute{{Name:"minecraft:health",Base:b.maxHealth,Current:b.health,DefaultMin:0,DefaultMax:b.maxHealth,Min:0,Max:b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes":attr},MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT),map[string]any{"Age":int32(b.ageTicks),"Color":int32(b.color),"Sheared":byte(boolByte(b.sheared)),"RegrowTicks":int32(b.regrowTicks)}))
+	native:=MergeNativeMobNBT(d.NativeNBT,map[string]any{"Attributes":attr})
+	return MergeNativeMobJavaState(native,MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT),map[string]any{"Age":int32(b.ageTicks),"Color":byte(b.color),"Sheared":byte(boolByte(b.sheared)),"RegrowTicks":int32(b.regrowTicks)}))
 }
 
 // SheepConfig configures a sheep's saved source state.
@@ -53,6 +54,7 @@ func (c SheepConfig) New() *SheepBehaviour {
 // Sheep is a concrete Java sheep, including wool and grazing state.
 type Sheep struct{ *Ent }
 type SheepBehaviour struct { health,maxHealth float64; ageTicks,color,regrowTicks int; sheared,dead bool; speed float64; path []cube.Pos; pathIndex,nextWander int; mc *MovementComputer }
+func (s *SheepBehaviour) Baby() bool { return s.ageTicks < 0 }
 func (s *Sheep) behaviour() *SheepBehaviour { return s.Behaviour().(*SheepBehaviour) }
 func (s *Sheep) Tick(tx *world.Tx,current int64) { s.Ent.Tick(tx,current) }
 func (b *SheepBehaviour) Tick(e *Ent,tx *world.Tx)*Movement {
@@ -105,3 +107,12 @@ var _ interface{ Shear(*world.Tx) item.Stack } = (*Sheep)(nil)
 // FinalizeSpawn chooses the source fleece color, including rare pink sheep.
 func(s *Sheep)FinalizeSpawn(_ string,r *java26.Random){if r==nil{return};b:=s.behaviour();roll:=r.NextInt(100);switch{case roll<5:b.color=15;case roll<10:b.color=7;case roll<15:b.color=8;case roll<18:b.color=12;default:if r.NextInt(500)==0{b.color=6}else{b.color=0}}}
 func sheepColor(s string)int{switch strings.TrimPrefix(s,"minecraft:"){case "orange":return 1;case "magenta":return 2;case "light_blue":return 3;case "yellow":return 4;case "lime":return 5;case "pink":return 6;case "gray":return 7;case "light_gray":return 8;case "cyan":return 9;case "purple":return 10;case "blue":return 11;case "brown":return 12;case "green":return 13;case "red":return 14;case "black":return 15};return 0}
+func sheepNBTColor(v any) int {
+	switch color := v.(type) {
+	case byte: return int(color)
+	case int8: return int(color)
+	case int32: return int(color)
+	case int: return color
+	default: return 0
+	}
+}

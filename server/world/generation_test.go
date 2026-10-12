@@ -19,7 +19,7 @@ type payloadGenerator struct {
 
 func (*payloadGenerator) DefaultSpawn(world.Dimension) cube.Pos { return cube.Pos{0, 70, 0} }
 
-func (g *payloadGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (g *payloadGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, _ world.GenerationContext) world.GenerationResult {
 	if pos != (world.ChunkPos{2, 0}) {
 		return world.GenerationResult{}
 	}

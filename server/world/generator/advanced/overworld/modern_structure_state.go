@@ -60,7 +60,9 @@ func (s *modernStructureStartState) prepare(start modernStructureStart) error {
 			ChestPlaced: piece.Chest != 0, SpawnerPlaced: piece.Spawner != 0,
 			GroundHeightSet: piece.GroundHeightSet != 0, GroundHeight: piece.GroundHeight,
 			BoundingBoxYSet: piece.BoundingBoxYSet != 0, BoundingBoxMinY: piece.BoundingBoxMinY,
-			LootPlaced: piece.LootPlaced, EntitiesSpawned: piece.EntitiesSpawned,
+			TemplatePositionYSet: piece.TemplatePositionYSet != 0, TemplatePositionY: piece.TemplatePositionY,
+			HeightAdjusted: piece.HeightAdjusted != 0,
+			LootPlaced:     piece.LootPlaced, EntitiesSpawned: piece.EntitiesSpawned,
 		}
 	}
 	s.pending = nil
@@ -78,7 +80,7 @@ func hasMutableStructurePieceState(pieces []modernStructurePiece) bool {
 			if p.kind == "chest" || p.kind == "portal" {
 				return true
 			}
-		case modernJungleTemple, modernSwampHutPiece, modernDesertPyramid, modernIglooPiece:
+		case modernJungleTemple, modernSwampHutPiece, modernDesertPyramid, modernIglooPiece, modernShipwreckPiece, *modernShipwreckPiece, modernOceanRuinPiece:
 			return true
 		}
 	}
@@ -89,15 +91,18 @@ const structureStateFormatVersion int32 = 1
 const structureStateJavaDataVersion int32 = 5023
 
 type savedStructurePieceState struct {
-	Index           int32 `nbt:"index"`
-	Chest           byte  `nbt:"chest"`
-	Spawner         byte  `nbt:"spawner"`
-	GroundHeightSet byte  `nbt:"ground_height_set"`
-	GroundHeight    int32 `nbt:"ground_height"`
-	BoundingBoxYSet byte  `nbt:"bounding_box_y_set"`
-	BoundingBoxMinY int32 `nbt:"bounding_box_min_y"`
-	LootPlaced      byte  `nbt:"loot_placed"`
-	EntitiesSpawned byte  `nbt:"entities_spawned"`
+	Index                int32 `nbt:"index"`
+	Chest                byte  `nbt:"chest"`
+	Spawner              byte  `nbt:"spawner"`
+	GroundHeightSet      byte  `nbt:"ground_height_set"`
+	GroundHeight         int32 `nbt:"ground_height"`
+	BoundingBoxYSet      byte  `nbt:"bounding_box_y_set"`
+	BoundingBoxMinY      int32 `nbt:"bounding_box_min_y"`
+	TemplatePositionYSet byte  `nbt:"template_position_y_set"`
+	TemplatePositionY    int32 `nbt:"template_position_y"`
+	HeightAdjusted       byte  `nbt:"height_adjusted"`
+	LootPlaced           byte  `nbt:"loot_placed"`
+	EntitiesSpawned      byte  `nbt:"entities_spawned"`
 }
 
 type savedStructureStartState struct {
@@ -136,7 +141,7 @@ func (g *Overworld) LoadGenerationState(data []byte) error {
 				return fmt.Errorf("duplicate Java structure state at %s %d,%d", key.set, key.x, key.z)
 			}
 			for _, piece := range start.Pieces {
-				if piece.Index < 0 || piece.Chest > 1 || piece.Spawner > 1 || piece.GroundHeightSet > 1 || piece.BoundingBoxYSet > 1 || piece.LootPlaced > 15 || piece.EntitiesSpawned > 3 {
+				if piece.Index < 0 || piece.Chest > 1 || piece.Spawner > 1 || piece.GroundHeightSet > 1 || piece.BoundingBoxYSet > 1 || piece.TemplatePositionYSet > 1 || piece.HeightAdjusted > 1 || piece.LootPlaced > 15 || piece.EntitiesSpawned > 3 {
 					return fmt.Errorf("invalid Java structure piece state at %s %d,%d: %+v", key.set, key.x, key.z, piece)
 				}
 			}
@@ -162,7 +167,7 @@ func (g *Overworld) SaveGenerationState() ([]byte, error) {
 		state.mu.Lock()
 		start.Pieces = append(start.Pieces, state.pending...)
 		for index, flags := range state.pieces {
-			if !flags.ChestPlaced && !flags.SpawnerPlaced && !flags.GroundHeightSet && !flags.BoundingBoxYSet && flags.LootPlaced == 0 && flags.EntitiesSpawned == 0 {
+			if !flags.ChestPlaced && !flags.SpawnerPlaced && !flags.GroundHeightSet && !flags.BoundingBoxYSet && !flags.TemplatePositionYSet && !flags.HeightAdjusted && flags.LootPlaced == 0 && flags.EntitiesSpawned == 0 {
 				continue
 			}
 			piece := savedStructurePieceState{Index: int32(index)}
@@ -179,6 +184,13 @@ func (g *Overworld) SaveGenerationState() ([]byte, error) {
 			if flags.BoundingBoxYSet {
 				piece.BoundingBoxYSet = 1
 				piece.BoundingBoxMinY = flags.BoundingBoxMinY
+			}
+			if flags.TemplatePositionYSet {
+				piece.TemplatePositionYSet = 1
+				piece.TemplatePositionY = flags.TemplatePositionY
+			}
+			if flags.HeightAdjusted {
+				piece.HeightAdjusted = 1
 			}
 			piece.LootPlaced, piece.EntitiesSpawned = flags.LootPlaced, flags.EntitiesSpawned
 			start.Pieces = append(start.Pieces, piece)

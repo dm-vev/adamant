@@ -180,11 +180,16 @@ func transformRail(s string, m Mirror, r Rotation) string {
 		}
 		return s
 	}
-	parts := strings.Split(s, "_")
-	for i, part := range parts {
-		parts[i] = transformDirection(part, m, r)
+	if strings.HasPrefix(s, "ascending_") {
+		return "ascending_" + transformDirection(strings.TrimPrefix(s, "ascending_"), m, r)
 	}
-	return strings.Join(parts, "_")
+	first, second, _ := strings.Cut(s, "_")
+	first, second = transformDirection(first, m, r), transformDirection(second, m, r)
+	// Java's corner names always put the north/south direction first.
+	if first == "east" || first == "west" {
+		first, second = second, first
+	}
+	return first + "_" + second
 }
 
 // ProcessContext provides the stable template-space and world-space coordinates and deterministic placement seed.

@@ -503,7 +503,7 @@ func (s *modernStructures) buildStructure(name string, cx, cz int32) (start mode
 		}
 		return modernStructureStart{}, false, fmt.Errorf("overworld: Java structure %q has unsupported type %q", name, kind)
 	}
-	if allowed, err := sourceSurfaceStructureAllowed(s.source, kind, stringValue(config["biomes"]), cx, cz); err != nil {
+	if allowed, err := sourceHeightmapStructureAllowed(s.source, kind, config, cx, cz); err != nil {
 		return modernStructureStart{}, false, err
 	} else if !allowed {
 		return modernStructureStart{}, false, nil
@@ -539,6 +539,8 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 	}
 	env.WorldSeed = c.seed
 	env.SkipEntities = false
+	env.SourceDimension = "minecraft:overworld"
+	env.CatsSpawnAsBlackAt = c.catsSpawnAsBlackAt
 	for _, entry := range c.structureSteps[step] {
 		random := java26.NewWorldgenRandom(c.seed)
 		decorationSeed := random.SetDecorationSeed(c.seed, minX, minZ)
@@ -551,6 +553,27 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 			c.placeStart(start, clip, env, emit)
 		}
 	}
+}
+
+func (c *modernStructureContext) catsSpawnAsBlackAt(x, y, z int32) bool {
+	for _, start := range c.starts {
+		if start.name != "minecraft:swamp_hut" { continue }
+		state := c.pieceStates.lookup(start.key)
+		if state != nil {
+			state.mu.Lock()
+			if err := state.prepare(start); err != nil { state.mu.Unlock(); panic(err) }
+		}
+		found := false
+		for index, piece := range start.pieces {
+			var flags *javastructure.StructurePieceState
+			if state != nil { flags = &state.pieces[index] }
+			box := mutableStructurePieceBounds(piece, flags)
+			if x >= box.Min[0] && x <= box.Max[0] && y >= box.Min[1] && y <= box.Max[1] && z >= box.Min[2] && z <= box.Max[2] { found = true; break }
+		}
+		if state != nil { state.mu.Unlock() }
+		if found { return true }
+	}
+	return false
 }
 
 func (c *modernStructureContext) placeStart(start modernStructureStart, clip javastructure.Bounds, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
@@ -610,13 +633,15 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 			placement.TemplateUpdateFlags, placement.TemplateKnownShape = 2, false
 		}
 		emit(placement)
-		if igloo, ok := piece.(modernIglooPiece); ok {
-			after, err := igloo.AfterTemplatePlacement(clip, env)
-			if err != nil {
+		if template, ok := piece.(interface {
+			AfterTemplatePlacement(javastructure.Bounds, javastructure.ProcessorEnvironment, func(javastructure.Placement)) error
+		}); ok {
+			if err := template.AfterTemplatePlacement(clip, env, func(after javastructure.Placement) {
+				after.StructurePieceWrites = true
+				emit(after)
+			}); err != nil {
 				panic(err)
 			}
-			after.StructurePieceWrites = true
-			emit(after)
 		}
 	}
 	if pyramid, ok := start.pieces[0].(modernDesertPyramid); ok {

@@ -4,7 +4,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
-
 // modernMonumentChild describes a Java child piece before its bounding box is
 // moved by the MonumentBuilding's getWorldPos(9, 0, 22) offset.
 type modernMonumentChild struct {
@@ -121,22 +120,26 @@ func modernMonumentChildRoomDimensions(kind modernMonumentChildKind) (width, hei
 // modernMonumentRoomBlockSink receives child-piece local coordinates. The
 // caller applies the child's Java bounding box/orientation transform and clip.
 type modernMonumentRoomBlockSink func(x, y, z int32, state string)
+func monumentIsWater(name string) bool {
+ return name == "minecraft:water" || name == "minecraft:flowing_water"
+}
 
 // emitModernMonumentChild emits exact child local geometry. get must observe
 // prior shell/child writes; spawn receives child-local entity coordinates.
-func emitModernMonumentChild(piece *modernOceanMonumentPiece, child modernMonumentChild, random *java26.Random, get func(x, y, z int32) string, put modernMonumentRoomBlockSink, spawn func(x, y, z int32)) {
+func emitModernMonumentChild(piece *modernOceanMonumentPiece, child modernMonumentChild, random *java26.Random, get func(x, y, z int32) string, fillWater func(x, y, z int32) bool, put modernMonumentRoomBlockSink, spawn func(x, y, z int32)) {
+
  gray, light, black, lamp := "minecraft:prismarine", "minecraft:prismarine_bricks", "minecraft:dark_prismarine", "minecraft:sea_lantern"
  box := func(x0,y0,z0,x1,y1,z1 int32,state string) {
   for y:=y0;y<=y1;y++ { for x:=x0;x<=x1;x++ { for z:=z0;z<=z1;z++ { put(x,y,z,state) } } }
  }
  water := func(x0,y0,z0,x1,y1,z1 int32) {
   for y:=y0;y<=y1;y++ { for x:=x0;x<=x1;x++ { for z:=z0;z<=z1;z++ {
-   old:=get(x,y,z); if old=="minecraft:ice"||old=="minecraft:packed_ice"||old=="minecraft:blue_ice"||old=="minecraft:water" { continue }
-   state:="minecraft:water";building:=modernMonumentChildToBuilding(piece,child,x,y,z);if building[1]+39>=63 { state="minecraft:air" }; put(x,y,z,state)
+   old:=get(x,y,z);if old=="minecraft:ice"||old=="minecraft:packed_ice"||old=="minecraft:blue_ice"||monumentIsWater(old){continue}
+   building:=modernMonumentChildToBuilding(piece,child,x,y,z);state:="minecraft:water";if building[1]+39>=63{state="minecraft:air"};put(x,y,z,state)
   } } }
  }
  fill := func(x0,y0,z0,x1,y1,z1 int32,state string) {
-  for y:=y0;y<=y1;y++ { for x:=x0;x<=x1;x++ { for z:=z0;z<=z1;z++ { if get(x,y,z)=="minecraft:water" { put(x,y,z,state) } } } }
+  for y:=y0;y<=y1;y++ { for x:=x0;x<=x1;x++ { for z:=z0;z<=z1;z++ { if fillWater(x,y,z) { put(x,y,z,state) } } } }
  }
  floor := func(xoff,zoff int32,opening bool) {
   if !opening { box(xoff,0,zoff,xoff+7,0,zoff+7,gray); return }
@@ -204,7 +207,8 @@ func emitModernMonumentChild(piece *modernOceanMonumentPiece, child modernMonume
   if r.index/25>0 {floor(0,0,r.hasOpening[monumentDown]);floor(0,8,n.hasOpening[monumentDown])}
   if r.connections[monumentUp]<0 {fill(1,4,1,6,4,7,gray)};if n.connections[monumentUp]<0 {fill(1,4,8,6,4,14,gray)}
   for _,y:=range []int32{1,3} {s:=light;if y==3{s=light};box(0,y,0,0,y,15,s);box(7,y,0,7,y,15,s);box(1,y,0,7,y,0,s);box(1,y,15,6,y,15,s)}
-  for _,v:=range [][6]int32{{0,2,0,0,2,15},{7,2,0,7,2,15},{1,2,0,7,2,0},{1,2,15,6,2,15},{1,1,1,1,1,2},{6,1,1,6,1,2},{1,3,1,1,3,2},{6,3,1,6,3,2},{1,1,13,1,1,14},{6,1,13,6,1,14},{1,3,13,1,3,14},{6,3,13,6,3,14},{2,1,6,2,3,6},{5,1,6,5,3,6},{2,1,9,2,3,9},{5,1,9,5,3,9},{3,2,6,4,2,6},{3,2,9,4,2,9},{2,2,7,2,2,8},{5,2,7,5,2,8}} {s:=light;if v[1]==2{s=gray};box(v[0],v[1],v[2],v[3],v[4],v[5],s)}
+  for _,v:=range [][6]int32{{0,2,0,0,2,15},{7,2,0,7,2,15},{1,2,0,7,2,0},{1,2,15,6,2,15}}{box(v[0],v[1],v[2],v[3],v[4],v[5],gray)}
+  for _,v:=range [][6]int32{{0,3,0,0,3,15},{7,3,0,7,3,15},{1,3,0,7,3,0},{1,3,15,6,3,15},{1,1,1,1,1,2},{6,1,1,6,1,2},{1,3,1,1,3,2},{6,3,1,6,3,2},{1,1,13,1,1,14},{6,1,13,6,1,14},{1,3,13,1,3,14},{6,3,13,6,3,14},{2,1,6,2,3,6},{5,1,6,5,3,6},{2,1,9,2,3,9},{5,1,9,5,3,9},{3,2,6,4,2,6},{3,2,9,4,2,9},{2,2,7,2,2,8},{5,2,7,5,2,8}}{box(v[0],v[1],v[2],v[3],v[4],v[5],light)}
   for _,v:=range [][3]int32{{2,2,5},{5,2,5},{2,2,10},{5,2,10}} {put(v[0],v[1],v[2],lamp)};for _,v:=range [][3]int32{{2,3,5},{5,3,5},{2,3,10},{5,3,10}} {put(v[0],v[1],v[2],light)}
   if r.hasOpening[monumentSouth]{water(3,1,0,4,2,0)};if r.hasOpening[monumentEast]{water(7,1,3,7,2,4)};if r.hasOpening[monumentWest]{water(0,1,3,0,2,4)}
   if n.hasOpening[monumentNorth]{water(3,1,15,4,2,15)};if n.hasOpening[monumentWest]{water(0,1,11,0,2,12)};if n.hasOpening[monumentEast]{water(7,1,11,7,2,12)}
@@ -272,7 +276,8 @@ func emitModernMonumentChild(piece *modernOceanMonumentPiece, child modernMonume
   } else {
    for _,v:=range [][6]int32{{0,1,0,0,1,7},{7,1,0,7,1,7},{1,1,0,6,1,0},{1,1,7,6,1,7}}{box(v[0],v[1],v[2],v[3],v[4],v[5],light)}
    for _,v:=range [][6]int32{{0,2,0,0,2,7},{7,2,0,7,2,7},{1,2,0,6,2,0},{1,2,7,6,2,7}}{box(v[0],v[1],v[2],v[3],v[4],v[5],black)}
-   for _,v:=range [][6]int32{{0,3,0,0,3,7},{7,3,0,7,3,7},{1,3,0,6,3,0},{1,3,7,6,3,7},{0,1,3,0,2,4},{7,1,3,7,2,4},{3,1,0,4,2,0},{3,1,7,4,2,7}}{box(v[0],v[1],v[2],v[3],v[4],v[5],light)}
+   for _,v:=range [][6]int32{{0,3,0,0,3,7},{7,3,0,7,3,7},{1,3,0,6,3,0},{1,3,7,6,3,7}}{box(v[0],v[1],v[2],v[3],v[4],v[5],light)}
+   for _,v:=range [][6]int32{{0,1,3,0,2,4},{7,1,3,7,2,4},{3,1,0,4,2,0},{3,1,7,4,2,7}}{box(v[0],v[1],v[2],v[3],v[4],v[5],black)}
    for _,d:=range []int{monumentSouth,monumentNorth,monumentWest,monumentEast}{if r.hasOpening[d]{switch d{case monumentSouth:water(3,1,0,4,2,0);case monumentNorth:water(3,1,7,4,2,7);case monumentWest:water(0,1,3,0,2,4);case monumentEast:water(7,1,3,7,2,4)}}}
   }
   if center {box(3,1,3,4,1,4,light);box(3,2,3,4,2,4,gray);box(3,3,3,4,3,4,light)}

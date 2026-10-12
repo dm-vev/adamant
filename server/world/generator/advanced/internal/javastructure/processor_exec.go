@@ -18,6 +18,7 @@ type ProcessorEnvironment struct {
 	BaseBlock   func(x, y, z int32) world.Block
 	JavaBiomeAt func(x, y, z int32) string
 	BaseHeight  func(x, z int32, oceanFloor bool) int32
+	SeaLevel    int32
 	// MotionBlockingNoLeavesHeight queries the live post-decoration heightmap,
 	// not the frozen *_WG terrain height used by BaseHeight.
 	MotionBlockingNoLeavesHeight func(x, z int32) int32
@@ -42,6 +43,12 @@ type ProcessorEnvironment struct {
 	Random                  *java26.Random
 	// LevelRandom is WorldGenRegion.getRandom(), independent of postProcess Random.
 	LevelRandom *java26.Random
+	// GenerationContext is the owner-thread snapshot of Source level inputs.
+	GenerationContext world.GenerationContext
+	// SourceDimension is the Java registry key used by GlobalPos memories.
+	SourceDimension string
+	// CatsSpawnAsBlackAt mirrors StructureManager.getStructureWithPieceAt.
+	CatsSpawnAsBlackAt func(x, y, z int32) bool
 	// SettingsRandom is StructurePlaceSettings.random; Random is the supplied feature/decorator stream.
 	SettingsRandom *java26.Random
 	SkipEntities   bool
@@ -60,6 +67,12 @@ type StructurePieceState struct {
 	// Pyramid offsets and template-piece moves need not equal ground height.
 	BoundingBoxYSet bool
 	BoundingBoxMinY int32
+	// TemplatePositionY tracks TP independently of the bounding box. Shipwreck
+	// constructor adjustments deliberately leave the constructor box unmoved.
+	TemplatePositionYSet bool
+	TemplatePositionY    int32
+	// HeightAdjusted is ShipwreckPiece's persisted height_adjusted flag.
+	HeightAdjusted bool
 	// LootPlaced holds up to four independently placed chest/dispenser slots.
 	LootPlaced uint8
 	// EntitiesSpawned holds the one-shot witch/cat slots of a swamp hut.

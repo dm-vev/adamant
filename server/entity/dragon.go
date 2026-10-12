@@ -33,16 +33,15 @@ const (
 	DragonHovering
 )
 
-
 // EnderDragonBehaviourConfig configures an EnderDragon's persistent runtime state.
 type EnderDragonBehaviourConfig struct {
-	Health float64
-	Phase DragonPhase
-	FightOrigin cube.Pos
-	DeathTime int
+	Health        float64
+	Phase         DragonPhase
+	FightOrigin   cube.Pos
+	DeathTime     int
 	SittingDamage float64
-	Fight world.DragonFight
-	healthSet bool
+	Fight         world.DragonFight
+	healthSet     bool
 }
 
 // NewEnderDragon creates an EnderDragon. The fight controller is attached by the world lifecycle.
@@ -96,49 +95,54 @@ func (enderDragonType) EncodeNBT(data *world.EntityData) map[string]any {
 func (c EnderDragonBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
 func (c EnderDragonBehaviourConfig) New() *EnderDragonBehaviour {
 	health := c.Health
-	if !c.healthSet && health <= 0 { health = 200 }
+	if !c.healthSet && health <= 0 {
+		health = 200
+	}
 	phase := c.Phase
-	if phase < DragonHoldingPattern || phase > DragonHovering { phase = DragonHovering }
+	if phase < DragonHoldingPattern || phase > DragonHovering {
+		phase = DragonHovering
+	}
 	return &EnderDragonBehaviour{health: NewHealthManager(health, 200), movement: &MovementComputer{NoBlockCollisions: true}, phase: phase, origin: c.FightOrigin, deathTime: c.DeathTime, sittingDamage: c.SittingDamage, fight: c.Fight, firstTakeoffTick: phase == DragonTakeoff, flightHead: -1}
 }
 
 type EnderDragonBehaviour struct {
-	health *HealthManager
-	movement *MovementComputer
-	phase DragonPhase
-	phaseTicks int
-	tickCount int64
-	origin cube.Pos
-	deathTime int
-	sittingDamage float64
-	fight world.DragonFight
-	target mgl64.Vec3
-	targetSet bool
-	nearestCrystal *world.EntityHandle
-	phaseTarget *world.EntityHandle
-	clockwise, firstTakeoffTick bool
+	health                                *HealthManager
+	movement                              *MovementComputer
+	phase                                 DragonPhase
+	phaseTicks                            int
+	tickCount                             int64
+	origin                                cube.Pos
+	deathTime                             int
+	sittingDamage                         float64
+	fight                                 world.DragonFight
+	target                                mgl64.Vec3
+	targetSet                             bool
+	nearestCrystal                        *world.EntityHandle
+	phaseTarget                           *world.EntityHandle
+	clockwise, firstTakeoffTick           bool
 	fireballCharge, flameCount, scanTicks int
-	flightY [64]float64
-	flightYaw [64]float64
-	flightHead int
-	yRotA float64
-	hurtTime int
-	wingHitTicks map[*world.EntityHandle]int64
-	dead bool
-	nodes [24]cube.Pos
-	nodesInitialized bool
-	path [25]mgl64.Vec3
-	pathLen, pathIndex int
+	flightY                               [64]float64
+	flightYaw                             [64]float64
+	flightHead                            int
+	yRotA                                 float64
+	hurtTime                              int
+	wingHitTicks                          map[*world.EntityHandle]int64
+	dead                                  bool
+	nodes                                 [24]cube.Pos
+	nodesInitialized                      bool
+	path                                  [25]mgl64.Vec3
+	pathLen, pathIndex                    int
 }
 
 // EnderDragon runs the server-side dragon phase machine and flight behavior.
 type EnderDragon struct{ *Ent }
+
 func (d *EnderDragon) behaviour() *EnderDragonBehaviour { return d.Behaviour().(*EnderDragonBehaviour) }
 
 // DragonPartBox describes one independently hittable Java dragon body part.
 type DragonPartBox struct {
 	Name string
-	Box cube.BBox
+	Box  cube.BBox
 }
 
 // PartBoxes returns the dragon's head, neck, body, three tail segments and
@@ -194,7 +198,11 @@ func dragonPartBox(name string, center mgl64.Vec3, width, height, depth float64)
 
 func wrapDragonDegrees(value float64) float64 {
 	value = math.Mod(value, 360)
-	if value >= 180 { value -= 360 } else if value < -180 { value += 360 }
+	if value >= 180 {
+		value -= 360
+	} else if value < -180 {
+		value += 360
+	}
 	return value
 }
 
@@ -277,15 +285,8 @@ func (b *EnderDragonBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dead {
 		return nil
 	}
-	if b.phase == DragonDying {
+	if b.health.Health() <= 0 {
 		b.deathTime++
-		podium := b.dragonPodiumTarget(tx)
-		b.target, b.targetSet = podium, true
-		if e.Position().Sub(podium).LenSqr() < 100 {
-			b.health.AddHealth(1 - b.health.Health())
-		} else {
-			b.health.AddHealth(-b.health.Health())
-		}
 		if b.deathTime == 1 {
 			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.ender_dragon.death", Volume: 10, Pitch: 1})
 		}
@@ -298,6 +299,11 @@ func (b *EnderDragonBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 				tx.AddEntity(orb)
 			}
 		}
+		// Source tickDeath is separate from the still-living DYING flight
+		// phase. Its ascent uses the widened 0.1F constant on every tick.
+		b.movement.Drag, b.movement.Gravity = 0, 0
+		m := b.movement.TickMovement(e, e.Position(), mgl64.Vec3{0, float64(float32(.1)), 0}, e.Rotation(), e.Rotation(), tx)
+		e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
 		if b.deathTime >= 200 {
 			for _, orb := range NewExperienceOrbs(e.Position(), xp*20/100) {
 				tx.AddEntity(orb)
@@ -307,10 +313,10 @@ func (b *EnderDragonBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			}
 			b.dead = true
 			_ = e.CloseIn(tx)
+			m.releaseViewers()
 			return nil
 		}
-		b.moveTowardTarget(e)
-		return b.movement.TickMovement(e, e.Position(), e.data.Vel, e.data.Rot, e.data.Rot, tx)
+		return m
 	}
 	b.recordFlight(e)
 	b.phaseTicks++
@@ -328,7 +334,9 @@ func (b *EnderDragonBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	b.attackNearby(e, tx)
 	b.movement.Drag = 0
 	b.movement.Gravity = 0
-	return b.movement.TickMovement(e, e.Position(), e.data.Vel, e.data.Rot, e.data.Rot, tx)
+	m := b.movement.TickMovement(e, e.Position(), e.data.Vel, e.data.Rot, e.data.Rot, tx)
+	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
+	return m
 }
 
 func (b *EnderDragonBehaviour) recordFlight(e *Ent) {
@@ -345,7 +353,9 @@ func (b *EnderDragonBehaviour) recordFlight(e *Ent) {
 }
 
 func (b *EnderDragonBehaviour) flightSample(delay int, e *Ent) (float64, float64) {
-	if b.flightHead < 0 { return e.Position()[1], e.Rotation().Yaw() }
+	if b.flightHead < 0 {
+		return e.Position()[1], e.Rotation().Yaw()
+	}
 	i := (b.flightHead - delay) & 63
 	return b.flightY[i], b.flightYaw[i]
 }
@@ -418,6 +428,16 @@ func (b *EnderDragonBehaviour) tickPhase(e *Ent, tx *world.Tx) {
 		} else if b.phaseTicks > 40 || e.Position().Sub(b.target).LenSqr() < 100 || e.Position().Sub(b.target).LenSqr() > 22500 {
 			b.setPhase(DragonHoldingPattern)
 		}
+	case DragonDying:
+		if !b.targetSet {
+			b.target, b.targetSet = b.dragonPodiumTarget(tx), true
+		}
+		distance := b.target.Sub(e.Position()).LenSqr()
+		health := 1.0
+		if distance < 100 || distance > 22500 || b.movement.CollidedHorizontally() || b.movement.CollidedVertically() {
+			health = 0
+		}
+		b.health.AddHealth(health - b.health.Health())
 	case DragonHovering:
 		b.target, b.targetSet = e.Position(), true
 	}
@@ -651,7 +671,7 @@ func (b *EnderDragonBehaviour) tickSittingScan(e *Ent, tx *world.Tx) {
 		}
 		yaw := float32(e.Rotation().Yaw()) * float32(math.Pi/180)
 		forward := mgl64.Vec3{float64(java26.Sin(float64(yaw))), 0, -float64(java26.Cos(float64(yaw)))}
-		angle := math.Acos(max(-1.0, min(1.0, forward.Dot(toPlayer)))) * 180 / math.Pi + .5
+		angle := math.Acos(max(-1.0, min(1.0, forward.Dot(toPlayer))))*180/math.Pi + .5
 		if angle < 0 || angle > 10 {
 			head := (&EnderDragon{Ent: e}).PartBoxes()[0].Box.Min().Add((&EnderDragon{Ent: e}).PartBoxes()[0].Box.Max()).Mul(.5)
 			dx, dz := player.Position()[0]-head[0], player.Position()[2]-head[2]
@@ -679,7 +699,7 @@ func (b *EnderDragonBehaviour) tickSittingScan(e *Ent, tx *world.Tx) {
 
 func (b *EnderDragonBehaviour) dragonPodiumTarget(tx *world.Tx) mgl64.Vec3 {
 	x, z := b.origin[0], b.origin[2]
-	y := tx.HighestBlock(x, z) + 1
+	y := tx.JavaMotionBlockingHeight(x, z, false)
 	return mgl64.Vec3{float64(x) + .5, float64(y), float64(z) + .5}
 }
 
@@ -839,10 +859,10 @@ func (b *EnderDragonBehaviour) setPhase(p DragonPhase) {
 		b.scanTicks = 0
 	}
 }
-func (d *EnderDragon) Health() float64 { return d.behaviour().health.Health() }
-func (d *EnderDragon) MaxHealth() float64 { return d.behaviour().health.MaxHealth() }
+func (d *EnderDragon) Health() float64        { return d.behaviour().health.Health() }
+func (d *EnderDragon) MaxHealth() float64     { return d.behaviour().health.MaxHealth() }
 func (d *EnderDragon) SetMaxHealth(h float64) { d.behaviour().health.SetMaxHealth(h) }
-func (d *EnderDragon) Dead() bool { b:=d.behaviour(); return b.dead || b.phase==DragonDying && b.deathTime>=200 }
+func (d *EnderDragon) Dead() bool             { b := d.behaviour(); return b.dead || b.health.Health() <= 0 }
 func (d *EnderDragon) Hurt(amount float64, src world.DamageSource) (float64, bool) {
 	if attacker := dragonPlayerAttacker(src); attacker != nil {
 		if part, _, ok := d.PartHitFrom(EyePosition(attacker), attacker.Rotation().Vec3(), 14); ok {
@@ -870,9 +890,6 @@ func (d *EnderDragon) HurtPart(part string, amount float64, src world.DamageSour
 	b.health.AddHealth(-amount)
 	dealt := old - d.Health()
 	if dragonSittingPhase(b.phase) {
-		if b.health.Health() <= 0 {
-			b.health.AddHealth(1 - b.health.Health())
-		}
 		b.sittingDamage += dealt
 		if b.sittingDamage > .25*d.MaxHealth() {
 			b.sittingDamage = 0
@@ -948,19 +965,32 @@ func dragonNearestPlayer(tx *world.Tx, pos mgl64.Vec3, radius float64) world.Ent
 	}
 	return nearest
 }
-func (d *EnderDragon) Heal(amount float64, _ world.HealingSource) float64 { if d.Dead() || amount<=0 { return 0 }; old:=d.Health(); d.behaviour().health.AddHealth(amount); return d.Health()-old }
-func (d *EnderDragon) KnockBack(_ mgl64.Vec3,_,_ float64) {}
-func (d *EnderDragon) AddEffect(e effect.Effect) {}
-func (d *EnderDragon) RemoveEffect(effect.Type) {}
-func (d *EnderDragon) Effects() []effect.Effect { return nil }
-func (d *EnderDragon) Speed() float64 { return 0.6 }
-func (d *EnderDragon) SetSpeed(float64) {}
-func (d *EnderDragon) Phase() DragonPhase { return d.behaviour().phase }
-func (d *EnderDragon) SetPhase(p DragonPhase) { d.behaviour().setPhase(p) }
+func (d *EnderDragon) Heal(amount float64, _ world.HealingSource) float64 {
+	if d.Dead() || amount <= 0 {
+		return 0
+	}
+	old := d.Health()
+	d.behaviour().health.AddHealth(amount)
+	return d.Health() - old
+}
+func (d *EnderDragon) KnockBack(_ mgl64.Vec3, _, _ float64)   {}
+func (d *EnderDragon) AddEffect(e effect.Effect)              {}
+func (d *EnderDragon) RemoveEffect(effect.Type)               {}
+func (d *EnderDragon) Effects() []effect.Effect               { return nil }
+func (d *EnderDragon) Speed() float64                         { return 0.6 }
+func (d *EnderDragon) SetSpeed(float64)                       {}
+func (d *EnderDragon) Phase() DragonPhase                     { return d.behaviour().phase }
+func (d *EnderDragon) SetPhase(p DragonPhase)                 { d.behaviour().setPhase(p) }
 func (d *EnderDragon) SetDragonFight(fight world.DragonFight) { d.behaviour().fight = fight }
-func (d *EnderDragon) SetFightOrigin(origin cube.Pos) { d.behaviour().origin=origin }
-func (d *EnderDragon) FightOrigin() cube.Pos { return d.behaviour().origin }
-func (d *EnderDragon) viewAction(a world.EntityAction) { vs:=d.tx.Viewers(d.Position()); for _,v:=range vs { v.ViewEntityAction(d,a) }; d.tx.ReleaseViewers(vs) }
+func (d *EnderDragon) SetFightOrigin(origin cube.Pos)         { d.behaviour().origin = origin }
+func (d *EnderDragon) FightOrigin() cube.Pos                  { return d.behaviour().origin }
+func (d *EnderDragon) viewAction(a world.EntityAction) {
+	vs := d.tx.Viewers(d.Position())
+	for _, v := range vs {
+		v.ViewEntityAction(d, a)
+	}
+	d.tx.ReleaseViewers(vs)
+}
 
 var _ world.EntityType = enderDragonType{}
 var _ Living = (*EnderDragon)(nil)

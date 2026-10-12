@@ -37,7 +37,7 @@ func TestOverworldDecorationMatchesJava263(t *testing.T) {
 			g := NewOverworld(fixture.Seed)
 			g.modernStructures.sets = nil
 			c := chunk.New(world.DefaultBlockRegistry, world.Overworld.Range())
-			result := g.GenerateChunk(fixture.Chunk, c)
+			result := g.GenerateChunk(fixture.Chunk, c, world.GenerationContext{})
 			for _, handle := range result.Entities {
 				t.Cleanup(func() {
 					if err := handle.Close(); err != nil {

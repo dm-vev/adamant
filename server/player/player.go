@@ -115,8 +115,12 @@ type playerData struct {
 	lastDamage  float64
 	immuneUntil time.Time
 
-	deathPos       *mgl64.Vec3
-	deathDimension world.Dimension
+	deathPos         *mgl64.Vec3
+	deathDimension   world.Dimension
+	respawnDimension world.Dimension
+	respawnPosition  cube.Pos
+	respawnRotation  cube.Rotation
+	hasRespawnPoint  bool
 
 	enchantSeed int64
 
@@ -324,12 +328,16 @@ func (p *Player) SendToast(title, message string) {
 	p.session().SendToast(title, message)
 }
 
-// SetRespawnPosition updates the client's personal respawn location.
+// SetRespawnPosition updates the player's persistent respawn point and the client-visible destination.
 func (p *Player) SetRespawnPosition(pos cube.Pos, dim world.Dimension) {
-	if p.session() == session.Nop {
-		return
+	p.respawnDimension, p.respawnPosition = dim, pos
+	p.respawnRotation, p.hasRespawnPoint = p.Rotation(), true
+	if p.tx != nil {
+		p.tx.World().SetPlayerSpawn(p.UUID(), pos)
 	}
-	p.session().SetPlayerSpawn(pos, dim)
+	if p.session() != session.Nop {
+		p.session().SetPlayerSpawn(pos, dim)
+	}
 }
 
 // ResetFallDistance resets the player's fall distance.
@@ -4373,6 +4381,10 @@ func (p *Player) Data() Config {
 		EnderChestInventory: p.enderChest,
 		FireTicks:           p.fireTicks,
 		FallDistance:        p.fallDistance,
+		RespawnDimension:    p.respawnDimension,
+		RespawnPosition:     p.respawnPosition,
+		RespawnRotation:     p.respawnRotation,
+		HasRespawnPoint:     p.hasRespawnPoint,
 		Effects:             p.Effects(),
 		UnlockedRecipes:     p.unlockedRecipeIDs(),
 		RaidOmenPosition:    raidOmenPos,

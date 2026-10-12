@@ -55,7 +55,7 @@ func (c MountConfig) New() *MountBehaviour {
 	if c.JumpStrength <= 0 {
 		c.JumpStrength = .7
 	}
-	b := &MountBehaviour{kind: mountKind(c.Kind), tamed: c.Tamed, saddled: c.Saddled, chested: c.Chested, trap: c.SkeletonTrap, strength: c.Strength, variant: c.Variant, ageTicks: c.AgeTicks, jumpStrength: c.JumpStrength, health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager()}
+	b := &MountBehaviour{kind: mountKind(c.Kind), tamed: c.Tamed, saddled: c.Saddled, chested: c.Chested, trap: c.SkeletonTrap, strength: c.Strength, variant: c.Variant, ageTicks: c.AgeTicks, jumpStrength: c.JumpStrength, movementSpeed: .225, health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager()}
 	b.base = PassiveBehaviourConfig{Gravity: .08, Drag: .02}.New()
 	return b
 }
@@ -66,6 +66,7 @@ type MountBehaviour struct {
 	tamed, saddled, chested, sitting bool
 	strength, variant, ageTicks      int
 	jumpStrength                     float64
+	movementSpeed                    float64
 	health                           *HealthManager
 	effects                          *EffectManager
 	passengers                       [2]*world.EntityHandle
@@ -83,6 +84,7 @@ type MountBehaviour struct {
 	caravanLeaderUUID                string
 	caravanHead                      bool
 	traderDespawn                    int
+	lastPoseTick                     int64
 	spitCooldown                     int
 }
 
@@ -941,8 +943,19 @@ func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	d.Data = c.New()
 	b := d.Data.(*MountBehaviour)
+	// AbstractHorse.finalizeSpawn replaces the max-health base after loading
+	// Health; Source does not clamp that already-loaded health a second time.
+	if _, loadedHealth := state["Health"]; loadedHealth {
+		b.health.health = c.Health
+	}
 	b.sitting = nbtconv.Bool(state, "Sitting")
-	b.dashCooldown = int(nbtconv.Int32(state, "DashCooldown"))
+	b.lastPoseTick = nbtconv.Int64(state, "LastPoseTick")
+	if speed, ok := nativeMobAttribute(n, "minecraft:movement"); ok {
+		b.movementSpeed = speed.Base
+	}
+	if jump, ok := nativeMobAttribute(n, "minecraft:horse.jump_strength"); ok {
+		b.jumpStrength = jump.Base
+	}
 	b.trust = int(nbtconv.Int32(state, "Trust"))
 	b.trap = nbtconv.Bool(state, "SkeletonTrap")
 	b.trapTime = int(nbtconv.Int32(state, "SkeletonTrapTime"))
@@ -973,7 +986,7 @@ func defaultMountConfig(kind mountKind) MountConfig {
 func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*MountBehaviour)
 	native := map[string]any{}
-	native["Attributes"] = EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(), DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth()}})
+	native["Attributes"] = EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(), DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth()}, {Name: "minecraft:movement", Base: b.movementSpeed, Current: b.movementSpeed, DefaultMin: 0, DefaultMax: b.movementSpeed, Min: 0, Max: b.movementSpeed}, {Name: "minecraft:horse.jump_strength", Base: b.jumpStrength, Current: b.jumpStrength, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
 	equipment := ReadNativeMobEquipment(d.NativeNBT)
 	if !b.armor.Empty() {
 		equipment.Armor = []NativeMobItem{mountNativeStack(b.armor, NativeMobItem{})}
@@ -990,7 +1003,7 @@ func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
 	for k, v := range EncodeNativeMobEquipment(equipment) {
 		native[k] = v
 	}
-	state := map[string]any{"Tamed": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Trust": int32(b.trust), "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "CaravanHead": b.caravanHead, "CaravanLeaderUUID": b.caravanLeaderUUID, "TraderDespawn": int32(b.traderDespawn)}
+	state := map[string]any{"Tamed": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Trust": int32(b.trust), "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "CaravanHead": b.caravanHead, "CaravanLeaderUUID": b.caravanLeaderUUID, "TraderDespawn": int32(b.traderDespawn), "LastPoseTick": b.lastPoseTick}
 	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, native), state)
 }
 func mountNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {
@@ -1058,8 +1071,8 @@ func (m *Mount) KnockBack(src mgl64.Vec3, force, height float64) {
 	}
 	m.SetVelocity(m.Velocity().Add(d.Normalize().Mul(force).Add(mgl64.Vec3{0, height, 0})))
 }
-func (m *Mount) Speed() float64             { return .225 }
-func (m *Mount) SetSpeed(float64)           {}
+func (m *Mount) Speed() float64             { return m.b().movementSpeed }
+func (m *Mount) SetSpeed(v float64)          { m.b().movementSpeed = v }
 func (m *Mount) AddEffect(e effect.Effect)  { m.b().effects.Add(e, m) }
 func (m *Mount) RemoveEffect(e effect.Type) { m.b().effects.Remove(e, m) }
 func (m *Mount) Effects() []effect.Effect   { return m.b().effects.Effects() }

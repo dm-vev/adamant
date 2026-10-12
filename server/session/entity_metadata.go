@@ -76,6 +76,12 @@ func creakingProperties(e any) (state, swayTicks int32, ok bool) {
 }
 
 func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
+	if sheep, ok := e.(*entity.Sheep); ok {
+		m[protocol.EntityDataKeyColorIndex] = byte(sheep.WoolColor())
+		if sheep.Sheared() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSheared)
+		}
+	}
 	if parrot, ok := e.(*entity.Parrot); ok {
 		m[protocol.EntityDataKeyVariant] = int32(parrot.Variant())
 		if parrot.Tamed() {

@@ -14,6 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
 // NewCow creates a cow entity.
 func NewCow(opts world.EntitySpawnOpts) *world.EntityHandle {
 	return opts.New(CowType, CowConfig{})
@@ -76,7 +77,7 @@ func (cowType) EncodeNBT(data *world.EntityData) map[string]any {
 		Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(),
 		DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth(),
 	}})
-	native := map[string]any{"Attributes": attributes}
+	native := MergeNativeMobNBT(data.NativeNBT, map[string]any{"Attributes": attributes})
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
 		"Age": int32(cow.ageTicks), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[min(cow.variant, 2)],
 		"sound_variant": "minecraft:" + cow.soundVariant,
@@ -108,8 +109,8 @@ func cowVariant(value string) int {
 type CowConfig struct {
 	Health, MaxHealth float64
 	Variant, AgeTicks int
-	SoundVariant string
-	healthSet bool
+	SoundVariant      string
+	healthSet         bool
 }
 
 // Apply applies the cow configuration to entity data.
@@ -129,13 +130,14 @@ func (conf CowConfig) New() *CowBehaviour {
 		soundVariant = "classic"
 	}
 	return &CowBehaviour{
-		health: NewHealthManager(conf.Health, conf.MaxHealth),
-		effects: NewEffectManager(),
-		mc: &MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
-		variant: max(0, min(conf.Variant, 2)),
-		ageTicks: conf.AgeTicks,
-		soundVariant: soundVariant,
-		speed: 0.2,
+		BaseBehaviour: NewBaseBehaviour(),
+		health:        NewHealthManager(conf.Health, conf.MaxHealth),
+		effects:       NewEffectManager(),
+		mc:            &MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
+		variant:       max(0, min(conf.Variant, 2)),
+		ageTicks:      conf.AgeTicks,
+		soundVariant:  soundVariant,
+		speed:         0.2,
 	}
 }
 
@@ -143,16 +145,20 @@ func (conf CowConfig) New() *CowBehaviour {
 type Cow struct{ *Ent }
 
 type CowBehaviour struct {
-	health *HealthManager
-	effects *EffectManager
-	mc *MovementComputer
-	variant, ageTicks int
-	soundVariant string
-	speed float64
-	path []cube.Pos
+	BaseBehaviour
+	health                *HealthManager
+	effects               *EffectManager
+	mc                    *MovementComputer
+	variant, ageTicks     int
+	soundVariant          string
+	speed                 float64
+	path                  []cube.Pos
 	pathIndex, nextWander int
-	dead bool
+	dead                  bool
 }
+
+func (c *CowBehaviour) Variant() int32 { return int32(c.variant) }
+func (c *CowBehaviour) Baby() bool { return c.ageTicks < 0 }
 
 func (c *Cow) behaviour() *CowBehaviour { return c.Behaviour().(*CowBehaviour) }
 
@@ -196,7 +202,7 @@ func (b *CowBehaviour) chooseWanderPath(e *Ent, tx *world.Tx) {
 	b.nextWander = 40 + rand.IntN(81)
 	start := cube.PosFromVec3(e.Position())
 	for range 4 {
-		goal := start.Add(cube.Pos{rand.IntN(13)-6, 0, rand.IntN(13)-6})
+		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
 		path := findPath(tx, start, goal, 128, false, false)
 		if len(path) != 0 {
 			b.path, b.pathIndex = path, 0
@@ -300,6 +306,7 @@ func (c *Cow) die() {
 	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position()}, item.NewStack(item.Beef{Cooked: c.OnFireDuration() > 0}, rand.IntN(3)+1)))
 	_ = c.CloseIn(tx)
 }
+
 // Milk returns whether an empty bucket can be used on the cow.
 func (c *Cow) Milk(_ *world.Tx) bool {
 	return !c.Dead() && c.behaviour().ageTicks >= 0
@@ -311,6 +318,7 @@ func (c *Cow) MilkSound() world.Sound {
 }
 
 var _ Milkable = (*Cow)(nil)
+
 // FinalizeSpawn assigns the randomized cow sound set used for newly spawned mobs.
 func (c *Cow) FinalizeSpawn(_ string, random *java26.Random) {
 	if random == nil {

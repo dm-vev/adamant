@@ -1,0 +1,2388 @@
+{
+  "graphs": [
+    {
+      "seed": "461",
+      "warm": true,
+      "cluster": false,
+      "rotation": 3,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_6",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "-2301447213095644121"
+    },
+    {
+      "seed": "819",
+      "warm": true,
+      "cluster": true,
+      "rotation": 1,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_5",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_1",
+          "rotation": 0,
+          "position": [
+            20,
+            90,
+            133
+          ],
+          "bbox": [
+            20,
+            90,
+            133,
+            25,
+            96,
+            139
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_8",
+          "rotation": 3,
+          "position": [
+            25,
+            90,
+            118
+          ],
+          "bbox": [
+            25,
+            90,
+            113,
+            31,
+            96,
+            118
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_2",
+          "rotation": 3,
+          "position": [
+            53,
+            90,
+            104
+          ],
+          "bbox": [
+            53,
+            90,
+            99,
+            59,
+            96,
+            104
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_6",
+          "rotation": 1,
+          "position": [
+            19,
+            90,
+            103
+          ],
+          "bbox": [
+            13,
+            90,
+            103,
+            19,
+            96,
+            108
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "-7296607990899502727"
+    },
+    {
+      "seed": "462",
+      "warm": true,
+      "cluster": false,
+      "rotation": 3,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_5",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "9076235425130507980"
+    },
+    {
+      "seed": "820",
+      "warm": true,
+      "cluster": true,
+      "rotation": 2,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_4",
+          "rotation": 2,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            97,
+            48,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_8",
+          "rotation": 2,
+          "position": [
+            52,
+            90,
+            87
+          ],
+          "bbox": [
+            47,
+            90,
+            81,
+            52,
+            96,
+            87
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_6",
+          "rotation": 1,
+          "position": [
+            36,
+            90,
+            115
+          ],
+          "bbox": [
+            30,
+            90,
+            115,
+            36,
+            96,
+            120
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_4",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            99
+          ],
+          "bbox": [
+            19,
+            90,
+            99,
+            25,
+            96,
+            104
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_1",
+          "rotation": 1,
+          "position": [
+            34,
+            90,
+            87
+          ],
+          "bbox": [
+            28,
+            90,
+            87,
+            34,
+            96,
+            92
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "-796227058644386026"
+    },
+    {
+      "seed": "463",
+      "warm": true,
+      "cluster": false,
+      "rotation": 3,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_7",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "2556963880964841674"
+    },
+    {
+      "seed": "821",
+      "warm": true,
+      "cluster": true,
+      "rotation": 1,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_7",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_5",
+          "rotation": 1,
+          "position": [
+            24,
+            90,
+            114
+          ],
+          "bbox": [
+            18,
+            90,
+            114,
+            24,
+            96,
+            119
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_2",
+          "rotation": 3,
+          "position": [
+            21,
+            90,
+            103
+          ],
+          "bbox": [
+            21,
+            90,
+            98,
+            27,
+            96,
+            103
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_6",
+          "rotation": 0,
+          "position": [
+            55,
+            90,
+            104
+          ],
+          "bbox": [
+            55,
+            90,
+            104,
+            60,
+            96,
+            110
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_6",
+          "rotation": 1,
+          "position": [
+            40,
+            90,
+            102
+          ],
+          "bbox": [
+            34,
+            90,
+            102,
+            40,
+            96,
+            107
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_2",
+          "rotation": 3,
+          "position": [
+            50,
+            90,
+            132
+          ],
+          "bbox": [
+            50,
+            90,
+            127,
+            56,
+            96,
+            132
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_7",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            132
+          ],
+          "bbox": [
+            19,
+            90,
+            132,
+            25,
+            96,
+            137
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_7",
+          "rotation": 0,
+          "position": [
+            50,
+            90,
+            118
+          ],
+          "bbox": [
+            50,
+            90,
+            118,
+            55,
+            96,
+            124
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_2",
+          "rotation": 3,
+          "position": [
+            36,
+            90,
+            133
+          ],
+          "bbox": [
+            36,
+            90,
+            128,
+            42,
+            96,
+            133
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "-581989184604795413"
+    },
+    {
+      "seed": "464",
+      "warm": true,
+      "cluster": false,
+      "rotation": 0,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_6",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "-3626176846681646669"
+    },
+    {
+      "seed": "822",
+      "warm": true,
+      "cluster": true,
+      "rotation": 0,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_warm_4",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_1",
+          "rotation": 2,
+          "position": [
+            54,
+            90,
+            100
+          ],
+          "bbox": [
+            49,
+            90,
+            94,
+            54,
+            96,
+            100
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_6",
+          "rotation": 1,
+          "position": [
+            54,
+            90,
+            129
+          ],
+          "bbox": [
+            48,
+            90,
+            129,
+            54,
+            96,
+            134
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_7",
+          "rotation": 3,
+          "position": [
+            35,
+            90,
+            130
+          ],
+          "bbox": [
+            35,
+            90,
+            125,
+            41,
+            96,
+            130
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        },
+        {
+          "template": "minecraft:underwater_ruin/warm_6",
+          "rotation": 3,
+          "position": [
+            71,
+            90,
+            104
+          ],
+          "bbox": [
+            71,
+            90,
+            99,
+            77,
+            96,
+            104
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "WARM"
+        }
+      ],
+      "next_long": "3315501058594995650"
+    },
+    {
+      "seed": "461",
+      "warm": false,
+      "cluster": false,
+      "rotation": 3,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_3",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_3",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_3",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "-2301447213095644121"
+    },
+    {
+      "seed": "819",
+      "warm": false,
+      "cluster": true,
+      "rotation": 1,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_2",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_2",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_2",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_1",
+          "rotation": 0,
+          "position": [
+            20,
+            90,
+            133
+          ],
+          "bbox": [
+            20,
+            90,
+            133,
+            25,
+            96,
+            139
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_1",
+          "rotation": 0,
+          "position": [
+            20,
+            90,
+            133
+          ],
+          "bbox": [
+            20,
+            90,
+            133,
+            25,
+            96,
+            139
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_1",
+          "rotation": 0,
+          "position": [
+            20,
+            90,
+            133
+          ],
+          "bbox": [
+            20,
+            90,
+            133,
+            25,
+            96,
+            139
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_8",
+          "rotation": 3,
+          "position": [
+            25,
+            90,
+            118
+          ],
+          "bbox": [
+            25,
+            90,
+            113,
+            31,
+            96,
+            118
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_8",
+          "rotation": 3,
+          "position": [
+            25,
+            90,
+            118
+          ],
+          "bbox": [
+            25,
+            90,
+            113,
+            31,
+            96,
+            118
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_8",
+          "rotation": 3,
+          "position": [
+            25,
+            90,
+            118
+          ],
+          "bbox": [
+            25,
+            90,
+            113,
+            31,
+            96,
+            118
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_2",
+          "rotation": 3,
+          "position": [
+            53,
+            90,
+            104
+          ],
+          "bbox": [
+            53,
+            90,
+            99,
+            59,
+            96,
+            104
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_2",
+          "rotation": 3,
+          "position": [
+            53,
+            90,
+            104
+          ],
+          "bbox": [
+            53,
+            90,
+            99,
+            59,
+            96,
+            104
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_2",
+          "rotation": 3,
+          "position": [
+            53,
+            90,
+            104
+          ],
+          "bbox": [
+            53,
+            90,
+            99,
+            59,
+            96,
+            104
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_6",
+          "rotation": 1,
+          "position": [
+            19,
+            90,
+            103
+          ],
+          "bbox": [
+            13,
+            90,
+            103,
+            19,
+            96,
+            108
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_6",
+          "rotation": 1,
+          "position": [
+            19,
+            90,
+            103
+          ],
+          "bbox": [
+            13,
+            90,
+            103,
+            19,
+            96,
+            108
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_6",
+          "rotation": 1,
+          "position": [
+            19,
+            90,
+            103
+          ],
+          "bbox": [
+            13,
+            90,
+            103,
+            19,
+            96,
+            108
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "-7296607990899502727"
+    },
+    {
+      "seed": "462",
+      "warm": false,
+      "cluster": false,
+      "rotation": 3,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_2",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_2",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_2",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "9076235425130507980"
+    },
+    {
+      "seed": "820",
+      "warm": false,
+      "cluster": true,
+      "rotation": 2,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_1",
+          "rotation": 2,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            97,
+            48,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_1",
+          "rotation": 2,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            97,
+            48,
+            105,
+            112
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_1",
+          "rotation": 2,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            97,
+            48,
+            105,
+            112
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_8",
+          "rotation": 2,
+          "position": [
+            52,
+            90,
+            87
+          ],
+          "bbox": [
+            47,
+            90,
+            81,
+            52,
+            96,
+            87
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_8",
+          "rotation": 2,
+          "position": [
+            52,
+            90,
+            87
+          ],
+          "bbox": [
+            47,
+            90,
+            81,
+            52,
+            96,
+            87
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_8",
+          "rotation": 2,
+          "position": [
+            52,
+            90,
+            87
+          ],
+          "bbox": [
+            47,
+            90,
+            81,
+            52,
+            96,
+            87
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_6",
+          "rotation": 1,
+          "position": [
+            36,
+            90,
+            115
+          ],
+          "bbox": [
+            30,
+            90,
+            115,
+            36,
+            96,
+            120
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_6",
+          "rotation": 1,
+          "position": [
+            36,
+            90,
+            115
+          ],
+          "bbox": [
+            30,
+            90,
+            115,
+            36,
+            96,
+            120
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_6",
+          "rotation": 1,
+          "position": [
+            36,
+            90,
+            115
+          ],
+          "bbox": [
+            30,
+            90,
+            115,
+            36,
+            96,
+            120
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_4",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            99
+          ],
+          "bbox": [
+            19,
+            90,
+            99,
+            25,
+            96,
+            104
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_4",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            99
+          ],
+          "bbox": [
+            19,
+            90,
+            99,
+            25,
+            96,
+            104
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_4",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            99
+          ],
+          "bbox": [
+            19,
+            90,
+            99,
+            25,
+            96,
+            104
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_1",
+          "rotation": 1,
+          "position": [
+            34,
+            90,
+            87
+          ],
+          "bbox": [
+            28,
+            90,
+            87,
+            34,
+            96,
+            92
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_1",
+          "rotation": 1,
+          "position": [
+            34,
+            90,
+            87
+          ],
+          "bbox": [
+            28,
+            90,
+            87,
+            34,
+            96,
+            92
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_1",
+          "rotation": 1,
+          "position": [
+            34,
+            90,
+            87
+          ],
+          "bbox": [
+            28,
+            90,
+            87,
+            34,
+            96,
+            92
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "-796227058644386026"
+    },
+    {
+      "seed": "463",
+      "warm": false,
+      "cluster": false,
+      "rotation": 3,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_8",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_8",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_8",
+          "rotation": 3,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            97,
+            63,
+            105,
+            112
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "2556963880964841674"
+    },
+    {
+      "seed": "821",
+      "warm": false,
+      "cluster": true,
+      "rotation": 1,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_8",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_8",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_8",
+          "rotation": 1,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            33,
+            90,
+            112,
+            48,
+            105,
+            127
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_5",
+          "rotation": 1,
+          "position": [
+            24,
+            90,
+            114
+          ],
+          "bbox": [
+            18,
+            90,
+            114,
+            24,
+            96,
+            119
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_5",
+          "rotation": 1,
+          "position": [
+            24,
+            90,
+            114
+          ],
+          "bbox": [
+            18,
+            90,
+            114,
+            24,
+            96,
+            119
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_5",
+          "rotation": 1,
+          "position": [
+            24,
+            90,
+            114
+          ],
+          "bbox": [
+            18,
+            90,
+            114,
+            24,
+            96,
+            119
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_2",
+          "rotation": 3,
+          "position": [
+            21,
+            90,
+            103
+          ],
+          "bbox": [
+            21,
+            90,
+            98,
+            27,
+            96,
+            103
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_2",
+          "rotation": 3,
+          "position": [
+            21,
+            90,
+            103
+          ],
+          "bbox": [
+            21,
+            90,
+            98,
+            27,
+            96,
+            103
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_2",
+          "rotation": 3,
+          "position": [
+            21,
+            90,
+            103
+          ],
+          "bbox": [
+            21,
+            90,
+            98,
+            27,
+            96,
+            103
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_6",
+          "rotation": 0,
+          "position": [
+            55,
+            90,
+            104
+          ],
+          "bbox": [
+            55,
+            90,
+            104,
+            60,
+            96,
+            110
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_6",
+          "rotation": 0,
+          "position": [
+            55,
+            90,
+            104
+          ],
+          "bbox": [
+            55,
+            90,
+            104,
+            60,
+            96,
+            110
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_6",
+          "rotation": 0,
+          "position": [
+            55,
+            90,
+            104
+          ],
+          "bbox": [
+            55,
+            90,
+            104,
+            60,
+            96,
+            110
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_6",
+          "rotation": 1,
+          "position": [
+            40,
+            90,
+            102
+          ],
+          "bbox": [
+            34,
+            90,
+            102,
+            40,
+            96,
+            107
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_6",
+          "rotation": 1,
+          "position": [
+            40,
+            90,
+            102
+          ],
+          "bbox": [
+            34,
+            90,
+            102,
+            40,
+            96,
+            107
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_6",
+          "rotation": 1,
+          "position": [
+            40,
+            90,
+            102
+          ],
+          "bbox": [
+            34,
+            90,
+            102,
+            40,
+            96,
+            107
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_2",
+          "rotation": 3,
+          "position": [
+            50,
+            90,
+            132
+          ],
+          "bbox": [
+            50,
+            90,
+            127,
+            56,
+            96,
+            132
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_2",
+          "rotation": 3,
+          "position": [
+            50,
+            90,
+            132
+          ],
+          "bbox": [
+            50,
+            90,
+            127,
+            56,
+            96,
+            132
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_2",
+          "rotation": 3,
+          "position": [
+            50,
+            90,
+            132
+          ],
+          "bbox": [
+            50,
+            90,
+            127,
+            56,
+            96,
+            132
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_7",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            132
+          ],
+          "bbox": [
+            19,
+            90,
+            132,
+            25,
+            96,
+            137
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_7",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            132
+          ],
+          "bbox": [
+            19,
+            90,
+            132,
+            25,
+            96,
+            137
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_7",
+          "rotation": 1,
+          "position": [
+            25,
+            90,
+            132
+          ],
+          "bbox": [
+            19,
+            90,
+            132,
+            25,
+            96,
+            137
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_7",
+          "rotation": 0,
+          "position": [
+            50,
+            90,
+            118
+          ],
+          "bbox": [
+            50,
+            90,
+            118,
+            55,
+            96,
+            124
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_7",
+          "rotation": 0,
+          "position": [
+            50,
+            90,
+            118
+          ],
+          "bbox": [
+            50,
+            90,
+            118,
+            55,
+            96,
+            124
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_7",
+          "rotation": 0,
+          "position": [
+            50,
+            90,
+            118
+          ],
+          "bbox": [
+            50,
+            90,
+            118,
+            55,
+            96,
+            124
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_2",
+          "rotation": 3,
+          "position": [
+            36,
+            90,
+            133
+          ],
+          "bbox": [
+            36,
+            90,
+            128,
+            42,
+            96,
+            133
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_2",
+          "rotation": 3,
+          "position": [
+            36,
+            90,
+            133
+          ],
+          "bbox": [
+            36,
+            90,
+            128,
+            42,
+            96,
+            133
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_2",
+          "rotation": 3,
+          "position": [
+            36,
+            90,
+            133
+          ],
+          "bbox": [
+            36,
+            90,
+            128,
+            42,
+            96,
+            133
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "-581989184604795413"
+    },
+    {
+      "seed": "464",
+      "warm": false,
+      "cluster": false,
+      "rotation": 0,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_3",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_3",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_3",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "-3626176846681646669"
+    },
+    {
+      "seed": "822",
+      "warm": false,
+      "cluster": true,
+      "rotation": 0,
+      "pieces": [
+        {
+          "template": "minecraft:underwater_ruin/big_brick_1",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.9",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_cracked_1",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.7",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/big_mossy_1",
+          "rotation": 0,
+          "position": [
+            48,
+            90,
+            112
+          ],
+          "bbox": [
+            48,
+            90,
+            112,
+            63,
+            105,
+            127
+          ],
+          "integrity": "0.5",
+          "large": "true",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_1",
+          "rotation": 2,
+          "position": [
+            54,
+            90,
+            100
+          ],
+          "bbox": [
+            49,
+            90,
+            94,
+            54,
+            96,
+            100
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_1",
+          "rotation": 2,
+          "position": [
+            54,
+            90,
+            100
+          ],
+          "bbox": [
+            49,
+            90,
+            94,
+            54,
+            96,
+            100
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_1",
+          "rotation": 2,
+          "position": [
+            54,
+            90,
+            100
+          ],
+          "bbox": [
+            49,
+            90,
+            94,
+            54,
+            96,
+            100
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_6",
+          "rotation": 1,
+          "position": [
+            54,
+            90,
+            129
+          ],
+          "bbox": [
+            48,
+            90,
+            129,
+            54,
+            96,
+            134
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_6",
+          "rotation": 1,
+          "position": [
+            54,
+            90,
+            129
+          ],
+          "bbox": [
+            48,
+            90,
+            129,
+            54,
+            96,
+            134
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_6",
+          "rotation": 1,
+          "position": [
+            54,
+            90,
+            129
+          ],
+          "bbox": [
+            48,
+            90,
+            129,
+            54,
+            96,
+            134
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_7",
+          "rotation": 3,
+          "position": [
+            35,
+            90,
+            130
+          ],
+          "bbox": [
+            35,
+            90,
+            125,
+            41,
+            96,
+            130
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_7",
+          "rotation": 3,
+          "position": [
+            35,
+            90,
+            130
+          ],
+          "bbox": [
+            35,
+            90,
+            125,
+            41,
+            96,
+            130
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_7",
+          "rotation": 3,
+          "position": [
+            35,
+            90,
+            130
+          ],
+          "bbox": [
+            35,
+            90,
+            125,
+            41,
+            96,
+            130
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/brick_6",
+          "rotation": 3,
+          "position": [
+            71,
+            90,
+            104
+          ],
+          "bbox": [
+            71,
+            90,
+            99,
+            77,
+            96,
+            104
+          ],
+          "integrity": "0.8",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/cracked_6",
+          "rotation": 3,
+          "position": [
+            71,
+            90,
+            104
+          ],
+          "bbox": [
+            71,
+            90,
+            99,
+            77,
+            96,
+            104
+          ],
+          "integrity": "0.7",
+          "large": "false",
+          "biomeType": "COLD"
+        },
+        {
+          "template": "minecraft:underwater_ruin/mossy_6",
+          "rotation": 3,
+          "position": [
+            71,
+            90,
+            104
+          ],
+          "bbox": [
+            71,
+            90,
+            99,
+            77,
+            96,
+            104
+          ],
+          "integrity": "0.5",
+          "large": "false",
+          "biomeType": "COLD"
+        }
+      ],
+      "next_long": "3315501058594995650"
+    }
+  ]
+}

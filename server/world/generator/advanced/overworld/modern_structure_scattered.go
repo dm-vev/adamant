@@ -204,20 +204,21 @@ func scatteredMobSpawnNBT(id string, health float32, random *java26.Random) map[
 	}
 }
 
-// Source surface structures validate their terrain column and generation stub
+// Source heightmap structures validate their terrain column and generation stub
 // before invoking the raw piece constructor. Only SinglePieceStructure checks
 // its four first-occupied footprint corners against sea level.
-func sourceSurfaceStructureAllowed(source ModernFeatureSource, kind, biomeTag string, chunkX, chunkZ int32) (bool, error) {
+func sourceHeightmapStructureAllowed(source ModernFeatureSource, kind string, config map[string]any, chunkX, chunkZ int32) (bool, error) {
 	var width, depth int32
 	switch kind {
 	case "jungle_temple":
 		width, depth = 12, 15
 	case "desert_pyramid":
 		width, depth = 21, 21
-	case "swamp_hut", "igloo":
+	case "swamp_hut", "igloo", "shipwreck", "ocean_ruin":
 	default:
 		return true, nil
 	}
+	biomeTag := stringValue(config["biomes"])
 	x, z := chunkX*16+8, chunkZ*16+8
 	bounds := world.Overworld.Range()
 	columnAllowed := false
@@ -242,6 +243,7 @@ func sourceSurfaceStructureAllowed(source ModernFeatureSource, kind, biomeTag st
 			}
 		}
 	}
-	height := source.BaseHeight(x, z, false) - 1
+	oceanFloor := kind == "ocean_ruin" || kind == "shipwreck" && config["is_beached"] != true
+	height := source.BaseHeight(x, z, oceanFloor) - 1
 	return javadata.BiomeTagContains(biomeTag, source.JavaNoiseBiomeAt(x>>2, height>>2, z>>2))
 }

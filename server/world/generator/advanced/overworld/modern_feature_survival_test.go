@@ -93,7 +93,7 @@ type multifacePostprocessGenerator struct{}
 func (multifacePostprocessGenerator) DefaultSpawn(world.Dimension) cube.Pos {
 	return cube.Pos{8, 10, 8}
 }
-func (multifacePostprocessGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (multifacePostprocessGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, _ world.GenerationContext) world.GenerationResult {
 	var result world.GenerationResult
 	if pos != (world.ChunkPos{}) {
 		return result

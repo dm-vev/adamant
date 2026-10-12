@@ -176,7 +176,7 @@ func TestEntTravelsThroughPortalOnTick(t *testing.T) {
 	})
 }
 
-func TestEntTravelsThroughEndPortal(t *testing.T) {
+func TestRegisteredCowTravelsThroughEndPortal(t *testing.T) {
 	var overworld, end *world.World
 	overworld = world.Config{PortalDestination: func(dim world.Dimension) *world.World {
 		if dim == world.End {
@@ -195,35 +195,35 @@ func TestEntTravelsThroughEndPortal(t *testing.T) {
 		_ = end.Close()
 	})
 
-	sourcePortal := cube.Pos{50, 64, 50}
-	mustDo(t, overworld, func(tx *world.Tx) {
-		tx.SetBlock(sourcePortal, block.EndPortal{}, nil)
-	})
-
-	handle := world.EntitySpawnOpts{Position: sourcePortal.Vec3Middle().Sub(mgl64.Vec3{1})}.New(testMovingEntType{}, testMoveConfig{delta: mgl64.Vec3{1}})
+	origin := mgl64.Vec3{50.5, 64, 50.5}
+	handle := world.EntitySpawnOpts{Position: origin, Rotation: cube.Rotation{12, 4}, Velocity: mgl64.Vec3{0.3, 0.4, 0.5}}.New(CowType, CowConfig{})
+	spawned := make(chan struct{})
+	end.Handle(entitySpawnSignal{handle: handle, spawned: spawned})
 	mustDo(t, overworld, func(tx *world.Tx) {
 		e := tx.AddEntity(handle)
-		ticker, ok := e.(world.TickerEntity)
-		if !ok {
-			t.Fatalf("entity has type %T, want world.TickerEntity", e)
-		}
-		ticker.Tick(tx, 1)
+		(block.EndPortal{}).EntityInside(cube.PosFromVec3(origin), tx, e)
 	})
-
-	waitForEntityWorld(t, handle, end)
-	if entityInWorld(handle, overworld) {
-		t.Fatal("entity remained in the source world after End portal travel")
+	select {
+	case <-spawned:
+	case <-time.After(5 * time.Second):
+		t.Fatal("cow was never published in the End world")
 	}
+	waitForEntityWorld(t, handle, end)
 	mustDo(t, end, func(tx *world.Tx) {
 		e, ok := handle.Entity(tx)
 		if !ok {
-			t.Fatal("entity was not added to the End")
+			t.Fatal("registered cow was not added to the End")
 		}
 		want := mgl64.Vec3{100.5, 50, 0.5}
 		if got := e.Position(); !got.ApproxEqual(want) {
-			t.Fatalf("entity position after End travel = %v, want %v", got, want)
+			t.Fatalf("registered cow position after End travel = %v, want %v", got, want)
 		}
-		// Spawn platform: 5x5 obsidian at y=48 around x=100, z=0.
+		if got := e.Rotation().Yaw(); got != 90 {
+			t.Fatalf("registered cow yaw after End travel = %v, want 90", got)
+		}
+		if got := e.(interface{ Velocity() mgl64.Vec3 }).Velocity(); !got.ApproxEqual(mgl64.Vec3{0.3, 0.4, 0.5}) {
+			t.Fatalf("registered cow velocity after End travel = %v, want original velocity", got)
+		}
 		for dx := -2; dx <= 2; dx++ {
 			for dz := -2; dz <= 2; dz++ {
 				p := cube.Pos{100 + dx, 48, dz}
@@ -231,6 +231,32 @@ func TestEntTravelsThroughEndPortal(t *testing.T) {
 					t.Fatalf("obsidian platform missing at %v: got %T", p, tx.Block(p))
 				}
 			}
+		}
+	})
+}
+
+func TestEndArrivalDestinationRegeneratesPlatformForEntityKinds(t *testing.T) {
+	w := world.Config{Dim: world.End, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	tc := &PortalTravelComputer{}
+
+	mustDo(t, w, func(tx *world.Tx) {
+		for _, player := range []bool{false, true} {
+			tc.Player = player
+			want := mgl64.Vec3{100.5, 50, 0.5}
+			if player {
+				want[1] = 49
+			}
+			tx.SetBlock(cube.Pos{100, 50, 0}, block.Obsidian{}, nil)
+			if got, ok := tc.destinationSpawn(tx, world.Overworld, cube.Pos{}); !ok || !got.ApproxEqual(want) {
+				t.Fatalf("destinationSpawn(player=%t) = %v, %v; want %v, true", player, got, ok, want)
+			}
+		}
+		if _, ok := tx.Block(cube.Pos{100, 48, 0}).(block.Obsidian); !ok {
+			t.Fatal("End ingress did not regenerate the platform floor")
+		}
+		if _, ok := tx.Block(cube.Pos{100, 50, 0}).(block.Air); !ok {
+			t.Fatal("repeated End ingress did not clear the platform volume")
 		}
 	})
 }
@@ -297,11 +323,17 @@ func TestEntReturnsFromEndToDefaultWorldSpawn(t *testing.T) {
 
 	origin := mgl64.Vec3{5.5, 64, 5.5}
 	handle := world.EntitySpawnOpts{Position: origin}.New(testMovingEntType{}, testMoveConfig{})
+	spawned := make(chan struct{})
+	defaultWorld.Handle(entitySpawnSignal{handle: handle, spawned: spawned})
 	mustDo(t, end, func(tx *world.Tx) {
 		e := tx.AddEntity(handle)
 		(block.EndPortal{}).EntityInside(cube.PosFromVec3(origin), tx, e)
 	})
-
+	select {
+	case <-spawned:
+	case <-time.After(5 * time.Second):
+		t.Fatal("entity was never published in the default world")
+	}
 	waitForEntityWorld(t, handle, defaultWorld)
 	mustDo(t, defaultWorld, func(tx *world.Tx) {
 		e, ok := handle.Entity(tx)
@@ -447,7 +479,7 @@ func TestPortalTravelClosesHandleWhenBothWorldsClose(t *testing.T) {
 	}
 
 	tc := NewPortalTravelComputer()
-	tc.transfer(handle, source, destination, origin, cube.Pos{10, 64, 10}, world.Overworld, world.Nether)
+	tc.transfer(handle, source, destination, portalTravelOrigin{position: origin}, cube.Pos{10, 64, 10}, world.Overworld, world.Nether)
 
 	if !handle.Closed() {
 		t.Fatal("entity handle remained worldless after destination and recovery worlds closed")
@@ -458,14 +490,21 @@ func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
 	for _, test := range []struct {
 		name         string
 		spawnHandler world.Handler
-		teleport     func(Traveller, mgl64.Vec3)
+		teleport     func(Traveller, mgl64.Vec3, cube.Rotation, mgl64.Vec3)
 	}{
 		{name: "spawn", spawnHandler: panicSpawnHandler{}},
-		{name: "teleport", teleport: func(Traveller, mgl64.Vec3) { panic("teleport panic") }},
+		{name: "teleport", teleport: func(e Traveller, _ mgl64.Vec3, _ cube.Rotation, _ mgl64.Vec3) {
+			e.Teleport(mgl64.Vec3{200, 90, 200})
+			applyPortalRotation(e, cube.Rotation{120, -15})
+			if mover, ok := e.(interface{ SetVelocity(mgl64.Vec3) }); ok {
+				mover.SetVelocity(mgl64.Vec3{4, 5, 6})
+			}
+			panic("teleport panic")
+		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			source := world.New()
-			destination := world.Config{Dim: world.Nether}.New()
+			source := world.Config{Synchronous: true}.New()
+			destination := world.Config{Dim: world.Nether, Synchronous: true}.New()
 			t.Cleanup(func() {
 				_ = source.Close()
 				_ = destination.Close()
@@ -479,38 +518,75 @@ func TestPortalTravelRecoversDestinationPanic(t *testing.T) {
 			}
 
 			origin := mgl64.Vec3{80.5, 64, 80.5}
+			originalRotation := cube.Rotation{30, 10}
+			originalVelocity := mgl64.Vec3{0.25, 0.5, -0.75}
 			handle := world.EntitySpawnOpts{Position: origin}.New(EnderPearlType, enderPearlConf)
 			var tc *PortalTravelComputer
+			var rollbackOrigin portalTravelOrigin
+			teleportCalls := 0
 			mustDo(t, source, func(tx *world.Tx) {
-				e := tx.AddEntity(handle)
-				tc = e.(*Ent).Behaviour().(*ProjectileBehaviour).PortalTravelComputer()
-				tc.Teleport = test.teleport
+				e := tx.AddEntity(handle).(*Ent)
+				e.setRotation(originalRotation)
+				e.SetVelocity(originalVelocity)
+				tc = e.Behaviour().(*ProjectileBehaviour).PortalTravelComputer()
+				if test.teleport != nil {
+					tc.Teleport = func(e Traveller, pos mgl64.Vec3, rotation cube.Rotation, velocity mgl64.Vec3) {
+						teleportCalls++
+						test.teleport(e, pos, rotation, velocity)
+					}
+				}
+				rollbackOrigin = capturePortalTravelOrigin(e)
 				tc.beginTravel()
 				tx.RemoveEntity(e)
 			})
 
-			// Execute the transfer outside either owner's transaction. Completion
-			// is the rollback boundary, independent of portal-search wall time.
-			tc.transfer(handle, source, destination, origin, translatePortalPosition(cube.PosFromVec3(origin), world.Overworld, world.Nether), world.Overworld, world.Nether)
+			// Synchronous owners isolate the rollback transition from autonomous
+			// projectile ticks, which may destroy a correctly restored pearl.
+			tc.transfer(handle, source, destination, rollbackOrigin, translatePortalPosition(cube.PosFromVec3(origin), world.Overworld, world.Nether), world.Overworld, world.Nether)
 			if !entityInWorld(handle, source) {
 				t.Fatal("entity was not restored to the source after destination panic")
 			}
 			if entityInWorld(handle, destination) {
 				t.Fatal("entity remained destination-bound after destination panic")
 			}
+			wantTeleportCalls := 0
+			if test.teleport != nil {
+				wantTeleportCalls = 1
+			}
+			if teleportCalls != wantTeleportCalls {
+				t.Fatalf("Teleport callback called %d times, want %d", teleportCalls, wantTeleportCalls)
+			}
 			mustDo(t, source, func(tx *world.Tx) {
-				e, _ := handle.Entity(tx)
+				e, ok := handle.Entity(tx)
+				if !ok {
+					t.Fatal("restored handle was not accessible from the source transaction")
+				}
 				if got := e.Position(); !got.ApproxEqual(origin) {
 					t.Fatalf("restored entity position = %v, want %v", got, origin)
 				}
+				if got := e.Rotation(); got != originalRotation {
+					t.Fatalf("restored entity rotation = %v, want %v", got, originalRotation)
+				}
+				if got := e.(interface{ Velocity() mgl64.Vec3 }).Velocity(); got != originalVelocity {
+					t.Fatalf("restored entity velocity = %v, want %v", got, originalVelocity)
+				}
+				if e.(*Ent).Behaviour().(*ProjectileBehaviour).PortalTravel() {
+					t.Fatal("projectile was marked as having completed portal travel")
+				}
 			})
+			tc.mu.Lock()
+			travelling, timedOut, pending := tc.travelling, tc.timedOut, tc.pending
+			tc.mu.Unlock()
+			if travelling || timedOut || pending != nil {
+				t.Fatalf("travel state stuck after rollback: travelling=%t timedOut=%t pending=%v", travelling, timedOut, pending)
+			}
 		})
 	}
 }
 
 func TestPortalDestinationNetherSearchBoundary(t *testing.T) {
 	for _, test := range []struct {
-		x int
+		x     int
 		found bool
 	}{{-17, false}, {-16, true}, {16, true}, {17, false}} {
 		w := world.Config{Dim: world.Nether, Synchronous: true}.New()
@@ -546,13 +622,15 @@ func TestPortalTravelRegistersEntityInDestinationChunk(t *testing.T) {
 
 	origin := mgl64.Vec3{0.5, 64, 0.5}
 	handle := world.EntitySpawnOpts{Position: origin}.New(testMovingEntType{}, testMoveConfig{})
+	var originState portalTravelOrigin
 	mustDo(t, source, func(tx *world.Tx) {
 		e := tx.AddEntity(handle)
+		originState = capturePortalTravelOrigin(e.(Traveller))
 		if tx.RemoveEntity(e) != handle {
 			t.Fatal("failed to remove entity from source world")
 		}
 	})
-	tc.transfer(handle, source, destination, origin, targetPortal, world.Overworld, world.Nether)
+	tc.transfer(handle, source, destination, originState, targetPortal, world.Overworld, world.Nether)
 
 	mustDo(t, destination, func(tx *world.Tx) {
 		found := false
@@ -680,6 +758,18 @@ func buildActivePortal(tx *world.Tx, origin cube.Pos) {
 		for x := range 2 {
 			tx.SetBlock(p.Add(cube.Pos{0, 0, x}), block.Portal{Axis: cube.Z}, nil)
 		}
+	}
+}
+
+type entitySpawnSignal struct {
+	world.NopHandler
+	handle  *world.EntityHandle
+	spawned chan struct{}
+}
+
+func (s entitySpawnSignal) HandleEntitySpawn(_ *world.Tx, e world.Entity) {
+	if e.H() == s.handle {
+		close(s.spawned)
 	}
 }
 

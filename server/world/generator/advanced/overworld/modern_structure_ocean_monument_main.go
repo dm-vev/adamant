@@ -45,7 +45,7 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip javastructure.Bo
 					if !exists {
 						name, _ = env.BaseBlock(pos[0], pos[1], pos[2]).EncodeBlock()
 					}
-					if name == "minecraft:water" || name == "minecraft:ice" || name == "minecraft:packed_ice" || name == "minecraft:blue_ice" {
+     if monumentIsWater(name) || name == "minecraft:ice" || name == "minecraft:packed_ice" || name == "minecraft:blue_ice" {
 						continue
 					}
 					if pos[1] >= 63 {
@@ -182,6 +182,8 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip javastructure.Bo
 		_ = waterBox(35, 1, 21, 35, 2, 21)
 	}
 	if chunkIntersects(21, 21, 36, 36) {
+		box(21, 0, 22, 36, 0, 36, "minecraft:prismarine")
+		_ = waterBox(21, 1, 22, 36, 23, 36)
 		for i := range int32(4) {
 			box(21+i, 13+i, 21+i, 36-i, 13+i, 21+i, "minecraft:prismarine_bricks")
 			box(21+i, 13+i, 36-i, 36-i, 13+i, 36-i, "minecraft:prismarine_bricks")
@@ -349,7 +351,7 @@ func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip javastructure.Bo
 						if !exists {
 							name, _ = env.BaseBlock(pos[0], pos[1], pos[2]).EncodeBlock()
 						}
-						if name != "minecraft:air" && name != "minecraft:water" && name != "minecraft:lava" && name != "minecraft:glow_lichen" && name != "minecraft:seagrass" && name != "minecraft:tall_seagrass" {
+      if name != "minecraft:air" && !monumentIsWater(name) && name != "minecraft:lava" && name != "minecraft:glow_lichen" && name != "minecraft:seagrass" && name != "minecraft:tall_seagrass" {
 							break
 						}
 						put(x, y, z, "minecraft:prismarine_bricks")

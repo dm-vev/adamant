@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/portal"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // ringFrame is one (position, facing) pair on an end portal ring.
@@ -143,6 +144,20 @@ func TestEnderEyeCompletesRing(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestEndSpawnPositionMatchesJavaEntityTransitions(t *testing.T) {
+	for _, test := range []struct {
+		player bool
+		want   mgl64.Vec3
+	}{
+		{player: true, want: mgl64.Vec3{100.5, 49, 0.5}},
+		{player: false, want: mgl64.Vec3{100.5, 50, 0.5}},
+	} {
+		if got := portal.EndSpawnPosition(test.player); !got.ApproxEqual(test.want) {
+			t.Errorf("EndSpawnPosition(%t) = %v, want %v", test.player, got, test.want)
+		}
+	}
 }
 
 func TestGenerateEndSpawnPlatformClearsThreeLayers(t *testing.T) {

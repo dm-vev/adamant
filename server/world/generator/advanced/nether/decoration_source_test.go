@@ -46,7 +46,7 @@ func TestNetherPlacedFeaturesMatchJava263(t *testing.T) {
 			g.fillBiomes(int(tc.pos[0]), int(tc.pos[1]), c)
 			g.featureSource.remember(tc.pos, c)
 			features := overworld.NewModernFeatures(tc.seed, &decorationSourceWithoutStructures{g.featureSource})
-			result := features.Decorate(tc.pos, c)
+			result := features.Decorate(tc.pos, c, world.GenerationContext{})
 			if got := netherSourceStateHash(t, c); got != tc.digest {
 				t.Errorf("Java placed-feature state digest=%s, native=%s", tc.digest, got)
 			}

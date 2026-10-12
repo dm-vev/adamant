@@ -15,11 +15,17 @@ import (
 type PortalTravelComputer struct {
 	// Instantaneous returns true if the entity should skip the portal wait timer when moving between dimensions.
 	Instantaneous func(source, target world.Dimension) bool
-	// Teleport teleports the entity to the final portal position. If nil, Traveller.Teleport is used.
-	Teleport func(e Traveller, pos mgl64.Vec3)
+	// Teleport installs the resolved position, absolute rotation and velocity. If nil, Traveller methods are used.
+	Teleport func(e Traveller, pos mgl64.Vec3, rotation cube.Rotation, velocity mgl64.Vec3)
 	// SpawnPoint returns the position the entity arrives at when returning from the End; if nil the world spawn is used.
 	SpawnPoint func(tx *world.Tx) mgl64.Vec3
-	// Player specifies if the entity is a player. Players arrive one block lower on the End platform than other entities.
+	// TeleportAllowed runs after resolving the destination but before changing traveller state.
+	TeleportAllowed func(e Traveller, pos mgl64.Vec3) bool
+	// DestinationWorld may select a portal destination from entity-owned respawn configuration.
+	DestinationWorld func(tx *world.Tx, target world.Dimension) *world.World
+	// SpawnRotation returns an absolute arrival rotation and whether a source-specific respawn point was used.
+	SpawnRotation func(tx *world.Tx) (cube.Rotation, bool)
+	// Player specifies whether the traveller is a player. Java players arrive at y=49, other entities at y=50.
 	Player bool
 	// CreatePortal specifies if the entity may create a portal at the destination when none is found.
 	CreatePortal bool
@@ -52,6 +58,20 @@ type Traveller interface {
 	world.Entity
 	Teleport(pos mgl64.Vec3)
 }
+type portalTravelOrigin struct {
+	position    mgl64.Vec3
+	rotation    cube.Rotation
+	velocity    mgl64.Vec3
+	hasVelocity bool
+}
+
+func capturePortalTravelOrigin(e Traveller) portalTravelOrigin {
+	origin := portalTravelOrigin{position: e.Position(), rotation: e.Rotation()}
+	if mover, ok := e.(interface{ Velocity() mgl64.Vec3 }); ok {
+		origin.velocity, origin.hasVelocity = mover.Velocity(), true
+	}
+	return origin
+}
 
 type portalTravelHandler interface {
 	HandlePortalTravel(source, destination world.Dimension)
@@ -59,7 +79,7 @@ type portalTravelHandler interface {
 
 // EnterPortal handles an entity touching a portal block.
 func (t *PortalTravelComputer) EnterPortal(e Traveller, tx *world.Tx, target world.Dimension) {
-	destination := tx.World().PortalDestination(target)
+	destination := t.portalDestination(tx, target)
 	if destination == nil || destination == tx.World() {
 		t.notifyDenied(e, tx, target)
 		return
@@ -80,7 +100,7 @@ func (t *PortalTravelComputer) queuePortalTravel(tx *world.Tx, target world.Dime
 
 func (t *PortalTravelComputer) enterPortal(tx *world.Tx, target world.Dimension) *world.World {
 	source := tx.World()
-	destination := source.PortalDestination(target)
+	destination := t.portalDestination(tx, target)
 	if destination == nil || destination == source {
 		return nil
 	}
@@ -146,8 +166,8 @@ func (t *PortalTravelComputer) travel(e Traveller, tx *world.Tx, destination *wo
 		return
 	}
 	sourceDim, destinationDim := source.Dimension(), destination.Dimension()
-	origin := e.Position()
-	pos := translatePortalPosition(cube.PosFromVec3(origin), sourceDim, destinationDim)
+	origin := capturePortalTravelOrigin(e)
+	pos := translatePortalPosition(cube.PosFromVec3(origin.position), sourceDim, destinationDim)
 
 	t.beginTravel()
 	handle := tx.RemoveEntity(e)
@@ -164,8 +184,8 @@ func (t *PortalTravelComputer) travelQueued(e Traveller, tx *world.Tx, destinati
 		return
 	}
 	sourceDim, destinationDim := source.Dimension(), destination.Dimension()
-	origin := e.Position()
-	pos := translatePortalPosition(cube.PosFromVec3(origin), sourceDim, destinationDim)
+	origin := capturePortalTravelOrigin(e)
+	pos := translatePortalPosition(cube.PosFromVec3(origin.position), sourceDim, destinationDim)
 
 	t.beginTravel()
 	h := e.H()
@@ -196,7 +216,7 @@ func (t *PortalTravelComputer) resetFailedTravel() {
 	t.mu.Unlock()
 }
 
-func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, destination *world.World, origin mgl64.Vec3, pos cube.Pos, sourceDim, destinationDim world.Dimension) {
+func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, destination *world.World, origin portalTravelOrigin, pos cube.Pos, sourceDim, destinationDim world.Dimension) {
 	travelled, err := safeWorldCall(destination, func(tx *world.Tx) (bool, error) {
 		spawn, ok := t.destinationSpawn(tx, sourceDim, pos)
 		if !ok {
@@ -207,7 +227,14 @@ func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, dest
 		if !ok {
 			return false, nil
 		}
-		t.finishTravel(e, spawn, sourceDim, destinationDim)
+		var rotation cube.Rotation
+		applyRotation := false
+		if sourceDim == world.End && t.SpawnRotation != nil {
+			rotation, applyRotation = t.SpawnRotation(tx)
+		}
+		if !t.finishTravel(e, spawn, sourceDim, destinationDim, rotation, applyRotation) {
+			return false, nil
+		}
 		return true, nil
 	})
 	if err != nil {
@@ -219,12 +246,17 @@ func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, dest
 		var restoreErr error
 		if handle.World() == nil {
 			restored, restoreErr = safeWorldCall(source, func(tx *world.Tx) (bool, error) {
-				handle.SetPosition(origin)
+				handle.SetPosition(origin.position)
 				e, ok := tx.AddEntity(handle).(Traveller)
 				if !ok {
 					return false, nil
 				}
-				e.Teleport(origin)
+				applyPortalRotation(e, origin.rotation)
+				if origin.hasVelocity {
+					if mover, ok := e.(interface{ SetVelocity(mgl64.Vec3) }); ok {
+						mover.SetVelocity(origin.velocity)
+					}
+				}
 				return true, nil
 			})
 		}
@@ -295,13 +327,64 @@ func (t *PortalTravelComputer) destinationSpawn(tx *world.Tx, sourceDim world.Di
 	return mgl64.Vec3{}, false
 }
 
-func (t *PortalTravelComputer) finishTravel(e Traveller, pos mgl64.Vec3, source, destination world.Dimension) {
-	handlePortalTravel(e, source, destination)
-	if t.Teleport != nil {
-		t.Teleport(e, pos)
-		return
+func (t *PortalTravelComputer) portalDestination(tx *world.Tx, target world.Dimension) *world.World {
+	if t.DestinationWorld != nil {
+		return t.DestinationWorld(tx, target)
 	}
-	e.Teleport(pos)
+	return tx.World().PortalDestination(target)
+}
+
+func applyPortalRotation(e Traveller, rotation cube.Rotation) {
+	if setter, ok := e.(interface{ setRotation(cube.Rotation) }); ok {
+		setter.setRotation(rotation)
+	} else if mover, ok := e.(interface {
+		Move(mgl64.Vec3, float64, float64)
+	}); ok {
+		current := e.Rotation()
+		mover.Move(mgl64.Vec3{}, rotation.Yaw()-current.Yaw(), rotation.Pitch()-current.Pitch())
+	}
+}
+
+func (t *PortalTravelComputer) finishTravel(e Traveller, pos mgl64.Vec3, source, destination world.Dimension, rotation cube.Rotation, applyRotation bool) bool {
+	if t.TeleportAllowed != nil && !t.TeleportAllowed(e, pos) {
+		return false
+	}
+	endTransition := source == world.End || destination == world.End
+	var velocity mgl64.Vec3
+	if mover, ok := e.(interface{ Velocity() mgl64.Vec3 }); ok {
+		velocity = mover.Velocity()
+	}
+	// ServerPlayer's End exit uses a respawn transition with an absolute zero
+	// delta. Other End transitions retain the incoming DELTA relatives.
+	if source == world.End && t.Player {
+		velocity = mgl64.Vec3{}
+	}
+	if !applyRotation {
+		rotation = e.Rotation()
+		if source == world.End && t.Player {
+			rotation = cube.Rotation{}
+			applyRotation = true
+		}
+	}
+	if destination == world.End && source != world.End {
+		rotation = cube.Rotation{90, e.Rotation().Pitch()}
+		applyRotation = true
+	}
+	if t.Teleport != nil {
+		t.Teleport(e, pos, rotation, velocity)
+	} else {
+		if applyRotation {
+			applyPortalRotation(e, rotation)
+		}
+		e.Teleport(pos)
+		if endTransition {
+			if setter, ok := e.(interface{ SetVelocity(mgl64.Vec3) }); ok {
+				setter.SetVelocity(velocity)
+			}
+		}
+	}
+	handlePortalTravel(e, source, destination)
+	return true
 }
 
 func handlePortalTravel(e Traveller, source, destination world.Dimension) {

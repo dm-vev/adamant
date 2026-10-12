@@ -32,7 +32,7 @@ func TestNaturalEndPlatformMatchesJava263(t *testing.T) {
 		c := columns[pos]
 		if c == nil {
 			c = chunk.New(registry, cube.Range{0, 255})
-			g.GenerateChunk(pos, c)
+			g.GenerateChunk(pos, c, world.GenerationContext{})
 			columns[pos] = c
 		}
 		name, _, _ := registry.RuntimeIDToState(c.Block(uint8(x&15), int16(y), uint8(z&15), 0))

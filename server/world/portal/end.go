@@ -13,7 +13,8 @@ const (
 	endSpawnZ = 0
 )
 
-// EndSpawnPosition returns the Bedrock End platform arrival position: y=49 for players and y=50 for other entities.
+// EndSpawnPosition returns the Java End-platform arrival position. Players are placed at y=49; other entities are placed
+// at y=50.
 func EndSpawnPosition(player bool) mgl64.Vec3 {
 	y := endSpawnY + 1
 	if player {

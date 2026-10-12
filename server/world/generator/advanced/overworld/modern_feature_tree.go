@@ -90,14 +90,7 @@ func treeSetNamed(region *featureRegion, p featurePos, name string, props map[st
 	return ok && region.SetNativeBlock(p, state, actor)
 }
 func treeWaterSource(region *featureRegion, p featurePos) bool {
-	state, err := world.JavaState(region.c.BlockRegistry(), region.nativeState(p))
-	if err != nil {
-		panic(err)
-	}
-	if normalizeJavaResource(state.Name) == "water" {
-		return state.Properties["level"] == nil || fmt.Sprint(state.Properties["level"]) == "0"
-	}
-	return state.Properties["waterlogged"] == true || state.Properties["waterlogged"] == "true"
+	return featureFluidTagContains("minecraft:water", featureFluidName(region, p, nil))
 }
 func treeSetFoliage(region *featureRegion, p featurePos, provider any, r *java26.Random) bool {
 	state, actor, ok := region.SampleNativeState(provider, p, r)
@@ -192,6 +185,12 @@ func placeMangroveRoots(region *featureRegion, root map[string]any, origin, trun
 			return false
 		}
 	}
+
+	// Source first simulates every direction, and does not place anything until
+	// all four simulations succeed. Keep the candidate order identical to its
+	// rootPositions list because provider sampling and placement consume RNG.
+	rootPositions := make([]featurePos, 0, maxLength*4+5)
+	rootPositions = append(rootPositions, treePos(trunkOrigin, 0, -1, 0))
 	directions := [4][2]int32{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
 	for _, dir := range directions {
 		rootPos := treePos(trunkOrigin, dir[0], 0, dir[1])
@@ -204,23 +203,26 @@ func placeMangroveRoots(region *featureRegion, root map[string]any, origin, trun
 			width := abs32(pos.x-trunkOrigin.x) + abs32(pos.y-trunkOrigin.y) + abs32(pos.z-trunkOrigin.z)
 			below := treePos(pos, 0, -1, 0)
 			nextTo := treePos(pos, dir[0], 0, dir[1])
-			choices := []featurePos{below}
+			choices := [2]featurePos{below, featurePos{}}
+			count := 1
 			if width > maxWidth-3 && width <= maxWidth {
 				if r.NextFloat() < skew {
-					choices = append(choices, treePos(nextTo, 0, -1, 0))
+					choices[1] = treePos(nextTo, 0, -1, 0)
+					count = 2
 				}
 			} else if width <= maxWidth {
-				if r.NextFloat() >= skew && r.NextBoolean() {
-					choices = []featurePos{nextTo}
+				if r.NextFloat() < skew {
+					choices[0] = below
+				} else if r.NextBoolean() {
+					choices[0] = nextTo
 				}
 			}
-			for _, candidate := range choices {
-				if !canPlace(candidate) {
-					continue
-				}
-				local = append(local, candidate)
-				if !simulate(candidate, layer+1) {
-					return false
+			for _, candidate := range choices[:count] {
+				if canPlace(candidate) {
+					local = append(local, candidate)
+					if !simulate(candidate, layer+1) {
+						return false
+					}
 				}
 			}
 			return true
@@ -228,28 +230,43 @@ func placeMangroveRoots(region *featureRegion, root map[string]any, origin, trun
 		if !simulate(rootPos, 0) {
 			return false
 		}
-		*roots = append(*roots, local...)
-		*roots = append(*roots, rootPos)
+		rootPositions = append(rootPositions, local...)
+		rootPositions = append(rootPositions, rootPos)
 	}
-	*roots = append([]featurePos{treePos(trunkOrigin, 0, -1, 0)}, (*roots)...)
+
 	above := treeMap(root["above_root_placement"])
-	for _, p := range *roots {
-		if !canPlace(p) {
-			continue
-		}
+	for _, p := range rootPositions {
 		n, _ := region.State(p)
-		provider := root["root_provider"]
-		for _, mud := range asAnySlice(rootConfig["muddy_roots_in"]) {
-			if normalizeJavaResource(fmt.Sprint(mud)) == normalizeJavaResource(n) {
-				provider = rootConfig["muddy_roots_provider"]
+		var placed bool
+		muddy := false
+		for _, substrate := range asAnySlice(rootConfig["muddy_roots_in"]) {
+			if normalizeJavaResource(fmt.Sprint(substrate)) == normalizeJavaResource(n) {
+				muddy = true
 				break
 			}
 		}
-		treeSetWaterlogged(region, p, provider, r)
-		if len(above) > 0 && r.NextFloat() < float32(treeProbability(above, "above_root_placement_chance", 0)) && treeIsAir(region, treePos(p, 0, 1, 0)) {
-			treeSetWaterlogged(region, treePos(p, 0, 1, 0), above["above_root_provider"], r)
+		if muddy {
+			// MangroveRootPlacer's muddy branch directly invokes the setter; it
+			// intentionally bypasses canPlaceRoot and above-root placement.
+			placed = treeSetWaterlogged(region, p, rootConfig["muddy_roots_provider"], r)
+		} else if canPlace(p) {
+			placed = treeSetWaterlogged(region, p, root["root_provider"], r)
+			if len(above) > 0 && r.NextFloat() < float32(treeProbability(above, "above_root_placement_chance", 0)) && treeIsAir(region, treePos(p, 0, 1, 0)) {
+				treeSetWaterlogged(region, treePos(p, 0, 1, 0), above["above_root_provider"], r)
+			}
 		}
-		*roots = append(*roots, p)
+		if placed {
+			unique := true
+			for _, existing := range *roots {
+				if existing == p {
+					unique = false
+					break
+				}
+			}
+			if unique {
+				*roots = append(*roots, p)
+			}
+		}
 	}
 	return true
 }

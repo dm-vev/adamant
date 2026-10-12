@@ -158,3 +158,34 @@ func TestEndCrystalPlacementPosition(t *testing.T) {
 		t.Fatalf("unexpected crystal Y position: got %f, want %f", res.pos[1], expectedY)
 	}
 }
+
+func TestEndCrystalPlacementRejectsIntersectingEntity(t *testing.T) {
+	w := world.Config{Entities: entity.DefaultRegistry}.New()
+	defer w.Close()
+
+	loader := world.NewLoader(2, w, world.NopViewer{})
+	defer func() {
+		<-w.Exec(func(tx *world.Tx) { loader.Close(tx) })
+	}()
+
+	done := make(chan bool, 1)
+	<-w.Exec(func(tx *world.Tx) {
+		base := cube.Pos{0, 64, 0}
+		tx.SetBlock(base, block.Obsidian{}, nil)
+		loader.Move(tx, base.Vec3Centre())
+		loader.Load(tx, 1)
+
+		orb := tx.AddEntity(entity.NewExperienceOrb(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 65, 0.5}}, 1))
+		ctx := item.UseContext{}
+		if (item.EndCrystal{}).UseOnBlock(base, cube.FaceUp, mgl64.Vec3{}, tx, nil, &ctx) {
+			t.Error("crystal placement succeeded despite an intersecting experience orb")
+		}
+
+		tx.RemoveEntity(orb)
+		if !(item.EndCrystal{}).UseOnBlock(base, cube.FaceUp, mgl64.Vec3{}, tx, nil, &ctx) {
+			t.Error("crystal placement failed after the intersecting entity was removed")
+		}
+		done <- true
+	})
+	<-done
+}

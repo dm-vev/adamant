@@ -106,12 +106,14 @@ func (t netherBeastType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		j = n
 	}
 	age := int(nbtconv.Int32(j, "Age"))
-	if age == 0 && nbtconv.Bool(n, "IsBaby") {
+	if age == 0 && nbtconv.Bool(j, "IsBaby") {
 		age = -24000
 	}
 	c := netherBeastConfig{kind: t.kind, age: age, immune: nbtconv.Bool(n, "IsImmuneToZombification"), saddled: nbtconv.Uint8(n, "Saddle") != 0, attackCooldown: int(nbtconv.Int32(j, "AttackCooldown")), conversion: int(nbtconv.Int32(n, "TimeInOverworld"))}
 	if x, ok := nativeMobAttribute(n, "minecraft:health"); ok {
 		c.health = x.Current
+	} else if _, ok := j["Health"]; ok {
+		c.health = float64(nbtconv.Float32(j, "Health"))
 	}
 	c.Apply(d)
 	s := d.Data.(*netherBeastState)
@@ -135,7 +137,13 @@ func (t netherBeastType) EncodeNBT(d *world.EntityData) map[string]any {
 		native["Saddle"] = byte(boolByte(s.saddled))
 	}
 	out := MergeNativeMobNBT(d.NativeNBT, native)
-	return MergeNativeMobJavaState(out, map[string]any{"Age": int32(s.age), "AttackCooldown": int32(s.attackCooldown), "BreedCooldown": int32(s.breedCooldown), "InLove": int32(s.loveTicks), "Suffocating": byte(boolByte(s.suffocating)), "BoostTime": int32(s.boost), "BoostTimeMax": int32(s.boostMax)})
+	j := ReadNativeMobJavaState(d.NativeNBT)
+	if j == nil {
+		j = make(map[string]any)
+	}
+	j["Age"], j["AttackCooldown"], j["BreedCooldown"], j["InLove"] = int32(s.age), int32(s.attackCooldown), int32(s.breedCooldown), int32(s.loveTicks)
+	j["Suffocating"], j["BoostTime"], j["BoostTimeMax"] = byte(boolByte(s.suffocating)), int32(s.boost), int32(s.boostMax)
+	return MergeNativeMobJavaState(out, j)
 }
 func (h *Hoglin) SpeciesType() world.EntityType  { return HoglinType }
 func (z *Zoglin) SpeciesType() world.EntityType  { return ZoglinType }

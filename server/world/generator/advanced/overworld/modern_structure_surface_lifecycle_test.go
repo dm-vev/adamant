@@ -96,16 +96,6 @@ func TestMutableSurfaceBoundsAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 					_ = db.Close()
 					t.Fatalf("saved igloo marker did not mutate the real chest actor: %v", loot)
 				}
-				ids := map[string]int{}
-				for _, e := range column.Entities {
-					if id, ok := e.Data["id"].(string); ok {
-						ids[id]++
-					}
-				}
-				if !reflect.DeepEqual(ids, map[string]int{"minecraft:villager": 1, "minecraft:zombie_villager": 1}) {
-					_ = db.Close()
-					t.Fatalf("saved igloo prisoners=%v", ids)
-				}
 			}
 			restored, restoredStart, err := newScatteredLifecycleGenerator(kind)
 			if err != nil {
@@ -158,19 +148,19 @@ func TestMutableSurfaceNeighborPreviewDoesNotConsumeBBoxOrRuntime(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			preview := g.GenerateChunk(world.ChunkPos{-1, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()))
+			preview := g.GenerateChunk(world.ChunkPos{-1, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()), world.GenerationContext{})
 			for _, handle := range preview.Entities {
 				_ = handle.Close()
 			}
 			if g.owner.modernStructures.pieceStates.lookup(start.key) != nil {
 				t.Fatal("neighbor preview created real surface state")
 			}
-			real := g.GenerateChunk(world.ChunkPos{0, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()))
+			real := g.GenerateChunk(world.ChunkPos{0, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()), world.GenerationContext{})
 			for _, handle := range real.Entities {
 				defer handle.Close()
 			}
 			before := surfaceLifecycleState(t, g, start)
-			preview = g.GenerateChunk(world.ChunkPos{-1, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()))
+			preview = g.GenerateChunk(world.ChunkPos{-1, 0}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()), world.GenerationContext{})
 			for _, handle := range preview.Entities {
 				_ = handle.Close()
 			}

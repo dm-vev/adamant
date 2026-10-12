@@ -21,7 +21,7 @@ type postprocessTestGenerator struct {
 }
 
 func (postprocessTestGenerator) DefaultSpawn(world.Dimension) cube.Pos { return postprocessTestPos }
-func (g postprocessTestGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (g postprocessTestGenerator) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, _ world.GenerationContext) world.GenerationResult {
 	var result world.GenerationResult
 	if pos != (world.ChunkPos{}) {
 		return result

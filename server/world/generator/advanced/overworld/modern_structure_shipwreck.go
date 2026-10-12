@@ -2,85 +2,203 @@ package overworld
 
 import (
 	"fmt"
-	"math"
 
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
 func init() { registerModernStructureBuilder("shipwreck", buildModernShipwreck) }
 
-type modernShipwreckPiece struct { template *javastructure.Template; origin [3]int32; rotation javastructure.Rotation; beached bool; seed int64 }
-func (p modernShipwreckPiece) Bounds() javastructure.Box {
-	pivot:=[3]int32{4,0,15}
-	var out=javastructure.Box{Min:[3]int32{int32(^uint32(0)>>1),int32(^uint32(0)>>1),int32(^uint32(0)>>1)},Max:[3]int32{-int32(^uint32(0)>>1)-1,-int32(^uint32(0)>>1)-1,-int32(^uint32(0)>>1)-1}}
-	for _,x:=range [2]int32{0,p.template.Size[0]-1} { for _,y:=range [2]int32{0,p.template.Size[1]-1} { for _,z:=range [2]int32{0,p.template.Size[2]-1} { v:=javastructure.TransformPosition([3]int32{x-pivot[0],y,z-pivot[2]},javastructure.NoMirror,p.rotation); for a:=range 3 { v[a]+=p.origin[a]+pivot[a]; if v[a]<out.Min[a]{out.Min[a]=v[a]};if v[a]>out.Max[a]{out.Max[a]=v[a]} } } } }
-	return out
-}
-func (p modernShipwreckPiece) Place(clip javastructure.Bounds,env javastructure.ProcessorEnvironment)(javastructure.Placement,error) {
-	if env.Random==nil||env.BaseBlock==nil{return javastructure.Placement{},fmt.Errorf("shipwreck requires base-block and placement random queries")}
-	pivot:=[3]int32{4,0,15};transformed:=javastructure.TransformPosition(pivot,javastructure.NoMirror,p.rotation);origin:=p.origin
-	for axis:=range 3{origin[axis]+=pivot[axis]-transformed[axis]}
-	ignore:=javastructure.Processor{Process: func(_ javastructure.ProcessContext,b javastructure.Block)(javastructure.Block,bool,error){return b,b.State.Name!="minecraft:air"&&b.State.Name!="minecraft:structure_block",nil}}
-	placed,err:=p.template.Place(0,origin,p.rotation,javastructure.NoMirror,clip,p.seed,ignore);if err!=nil{return javastructure.Placement{},err}
-	for i:=range placed.Blocks{javastructure.SeedRandomizableContainerLoot(&placed.Blocks[i],env.Random)}
-	inside:=func(pos [3]int32)bool{return pos[0]>=clip.Min[0]&&pos[0]<=clip.Max[0]&&pos[1]>=clip.Min[1]&&pos[1]<=clip.Max[1]&&pos[2]>=clip.Min[2]&&pos[2]<=clip.Max[2]}
-	for _,source:=range p.template.Palettes[0]{
-		if source.State.Name!="minecraft:structure_block"||source.NBT==nil||source.NBT["mode"]!="DATA"{continue}
-		marker,_:=source.NBT["metadata"].(string);var table string
-		switch marker{case "map_chest":table="minecraft:chests/shipwreck_map";case "treasure_chest":table="minecraft:chests/shipwreck_treasure";case "supply_chest":table="minecraft:chests/shipwreck_supply"}
-		if table==""{continue}
-		markerPos:=javastructure.TransformPosition(source.Pos,javastructure.NoMirror,p.rotation);for axis:=range 3{markerPos[axis]+=origin[axis]};if !inside(markerPos){continue}
-		pos:=markerPos;pos[1]--;if !inside(pos){continue}
-		chestIndex := -1
-		for index := range placed.Blocks {
-			if placed.Blocks[index].Pos == pos && placed.Blocks[index].State.Name == "minecraft:chest" {
-				chestIndex = index
-				break
-			}
-		}
-		if chestIndex >= 0 {
-			block := placed.Blocks[chestIndex]
-			block.NBT = cloneStructureNBT(block.NBT)
-			if block.NBT == nil {
-				block.NBT = map[string]any{"id": "minecraft:chest"}
-			}
-			block.NBT["LootTable"] = table
-			javastructure.SeedRandomizableContainerLoot(&block, env.Random)
-			placed.PostShapeBlocks = append(placed.PostShapeBlocks, block)
-			continue
-		}
-		if env.BaseBlock != nil {
-			base := env.BaseBlock(pos[0], pos[1], pos[2])
-			name, properties := base.EncodeBlock()
-			if name == "minecraft:chest" {
-				block := javastructure.Block{Pos: pos, State: world.BlockState{Name: name, Properties: properties}, NBT: map[string]any{"id": "minecraft:chest", "LootTable": table}}
-				javastructure.SeedRandomizableContainerLoot(&block, env.Random)
-				placed.PostShapeBlocks = append(placed.PostShapeBlocks, block)
-			}
-		}
-	}
-	return placed,nil
+var shipwreckPivot = [3]int32{4, 0, 15}
+
+type modernShipwreckPiece struct {
+	template       *javastructure.Template
+	templateName   string
+	box            javastructure.Box // immutable constructor bounding box
+	origin         [3]int32
+	rotation       javastructure.Rotation
+	beached        bool
+	oversized      bool
+	heightAdjusted bool
+	seed           int64
 }
 
-func buildModernShipwreck(input modernStructureBuildInput)(modernStructureStart,bool,error) {
-	if input.source==nil||input.random==nil{return modernStructureStart{},false,fmt.Errorf("shipwreck requires terrain and generation random queries")}
-	beached:=input.config["is_beached"]==true
-	allowed,err:=modernStructureBiomeAllowed(input,stringValue(input.config["biomes"]),!beached);if err!=nil{return modernStructureStart{},false,err};if !allowed{return modernStructureStart{},false,nil}
-	names:=[]string{"with_mast","sideways_full","sideways_fronthalf","sideways_backhalf","rightsideup_full","rightsideup_fronthalf","rightsideup_backhalf","with_mast_degraded","rightsideup_full_degraded","rightsideup_fronthalf_degraded","rightsideup_backhalf_degraded"}
-	if !beached { names=[]string{"with_mast","upsidedown_full","upsidedown_fronthalf","upsidedown_backhalf","sideways_full","sideways_fronthalf","sideways_backhalf","rightsideup_full","rightsideup_fronthalf","rightsideup_backhalf","with_mast_degraded","upsidedown_full_degraded","upsidedown_fronthalf_degraded","upsidedown_backhalf_degraded","sideways_full_degraded","sideways_fronthalf_degraded","sideways_backhalf_degraded","rightsideup_full_degraded","rightsideup_fronthalf_degraded","rightsideup_backhalf_degraded"} }
-	rotation:=javastructure.Rotation(input.random.NextInt(4))
-	template,err:=javastructure.Load("shipwreck/"+names[input.random.NextInt(int32(len(names)))])
-	if err!=nil{return modernStructureStart{},false,err}
-	piece:=&modernShipwreckPiece{template:template,origin:[3]int32{input.chunkX*16,90,input.chunkZ*16},rotation:rotation,beached:beached,seed:input.seed}
-	if template.Size[0]>32||template.Size[1]>32 {
-		bounds:=piece.Bounds();count:=int64(bounds.Max[0]-bounds.Min[0]+1)*int64(bounds.Max[2]-bounds.Min[2]+1);var total int64;minY:=int32(math.MaxInt32)
-		for z:=bounds.Min[2];z<=bounds.Max[2];z++{for x:=bounds.Min[0];x<=bounds.Max[0];x++{height:=input.source.BaseHeight(x,z,!beached);total+=int64(height);if height<minY{minY=height}}}
-		if beached{piece.origin[1]=minY-template.Size[1]/2-input.random.NextInt(3)}else{piece.origin[1]=int32(total/count)}
-	} else {
-		count:=int64(template.Size[0])*int64(template.Size[2]);var total int64;minY:=int32(math.MaxInt32)
-		for dz:=range template.Size[2]{for dx:=range template.Size[0]{x,z:=piece.origin[0]+dx,piece.origin[2]+dz;height:=input.source.BaseHeight(x,z,!beached);total+=int64(height);if height<minY{minY=height}}}
-		if beached{planningRandom:=javaFeatureRandom(input.seed,input.chunkX,input.chunkZ,13,4);piece.origin[1]=minY-template.Size[1]/2-planningRandom.NextInt(3)}else{piece.origin[1]=int32(total/count)}
+func (p modernShipwreckPiece) Bounds() javastructure.Box { return p.box }
+
+func (p modernShipwreckPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+	if env.BaseHeight == nil {
+		return javastructure.Placement{}, fmt.Errorf("shipwreck postProcess requires frozen heightmap query")
 	}
-	return modernStructureStart{name:input.name,pieces:[]modernStructurePiece{piece},box:piece.Bounds(),terrain:javastructure.TerrainNone},true,nil
+	state := env.PieceState
+	var scratch javastructure.StructurePieceState
+	if state == nil {
+		state = &scratch
+	}
+	if !state.TemplatePositionYSet {
+		state.TemplatePositionY = p.origin[1]
+		state.TemplatePositionYSet = true
+		state.HeightAdjusted = p.heightAdjusted
+	}
+	position := p.origin
+	position[1] = state.TemplatePositionY
+	heightAdjusted := state.HeightAdjusted || p.heightAdjusted
+	if !heightAdjusted && !p.oversized {
+		heightmapOceanFloor := !p.beached
+		minY := int32(env.Range.Max()) + 1 // Source getMaxY is inclusive.
+		var total int64
+		count := int64(p.template.Size[0]) * int64(p.template.Size[2])
+		if count == 0 {
+			total = int64(env.BaseHeight(position[0], position[2], heightmapOceanFloor))
+			count = 1
+		} else {
+			for dz := int32(0); dz < p.template.Size[2]; dz++ {
+				for dx := int32(0); dx < p.template.Size[0]; dx++ {
+					height := env.BaseHeight(position[0]+dx, position[2]+dz, heightmapOceanFloor)
+					total += int64(height)
+					if height < minY {
+						minY = height
+					}
+				}
+			}
+		}
+		position[1] = int32(total / count)
+		if p.beached {
+			if env.Random == nil {
+				return javastructure.Placement{}, fmt.Errorf("beached shipwreck height adjustment requires postProcess random")
+			}
+			position[1] = minY - p.template.Size[1]/2 - env.Random.NextInt(3)
+		}
+		heightAdjusted = true
+	}
+	placeOrigin := templatePivotOrigin(position, shipwreckPivot, p.rotation)
+	ignore := javastructure.Processor{Process: func(_ javastructure.ProcessContext, b javastructure.Block) (javastructure.Block, bool, error) {
+		return b, b.State.Name != "minecraft:air" && b.State.Name != "minecraft:structure_block", nil
+	}}
+	placed, err := p.template.Place(0, placeOrigin, p.rotation, javastructure.NoMirror, clip, p.seed, ignore)
+	if err != nil {
+		return javastructure.Placement{}, err
+	}
+	state.TemplatePositionY = position[1]
+	state.TemplatePositionYSet = true
+	state.HeightAdjusted = heightAdjusted || p.oversized
+	box := modernTemplateBounds(p.template, placeOrigin, p.rotation)
+	state.BoundingBoxYSet = true
+	state.BoundingBoxMinY = box.Min[1]
+	return placed, nil
+}
+
+func (p modernShipwreckPiece) AfterTemplatePlacement(clip javastructure.Bounds, env javastructure.ProcessorEnvironment, _ func(javastructure.Placement)) error {
+	if env.Random == nil {
+		return fmt.Errorf("shipwreck postProcess requires Java structure random")
+	}
+	if env.PieceState == nil {
+		return fmt.Errorf("shipwreck marker handling requires persisted piece state")
+	}
+	if env.HasChestBlockEntity == nil || env.SetBlockEntityLootTable == nil {
+		return fmt.Errorf("shipwreck marker handling requires live block-entity callbacks")
+	}
+	position := p.origin
+	position[1] = env.PieceState.TemplatePositionY
+	placeOrigin := templatePivotOrigin(position, shipwreckPivot, p.rotation)
+	inside := func(pos [3]int32) bool {
+		return pos[0] >= clip.Min[0] && pos[0] <= clip.Max[0] && pos[1] >= clip.Min[1] && pos[1] <= clip.Max[1] && pos[2] >= clip.Min[2] && pos[2] <= clip.Max[2]
+	}
+	// StructureTemplate consumes a draw only after an actual RandomizableContainer
+	// block entity has been placed successfully. The live actor query reproduces
+	// that condition across clipped and repeated postProcess calls.
+	for _, block := range p.template.Palettes[0] {
+		if block.State.Name != "minecraft:chest" {
+			continue
+		}
+		pos := javastructure.TransformPosition(block.Pos, javastructure.NoMirror, p.rotation)
+		for axis := range 3 {
+			pos[axis] += placeOrigin[axis]
+		}
+		if !inside(pos) {
+			continue
+		}
+		if env.HasChestBlockEntity(pos[0], pos[1], pos[2]) {
+			env.Random.NextLong()
+		}
+	}
+	for _, source := range p.template.Palettes[0] {
+		if source.State.Name != "minecraft:structure_block" || source.NBT == nil || source.NBT["mode"] != "DATA" {
+			continue
+		}
+		marker, _ := source.NBT["metadata"].(string)
+		var table string
+		switch marker {
+		case "map_chest":
+			table = "minecraft:chests/shipwreck_map"
+		case "treasure_chest":
+			table = "minecraft:chests/shipwreck_treasure"
+		case "supply_chest":
+			table = "minecraft:chests/shipwreck_supply"
+		default:
+			continue
+		}
+		markerPos := javastructure.TransformPosition(source.Pos, javastructure.NoMirror, p.rotation)
+		for axis := range 3 {
+			markerPos[axis] += placeOrigin[axis]
+		}
+		if !inside(markerPos) {
+			continue
+		}
+		// StructureTemplate ignored structure blocks during placement; Source
+		// clips this marker but deliberately does not clip markerPos.below().
+		chest := [3]int32{markerPos[0], markerPos[1] - 1, markerPos[2]}
+		if env.HasChestBlockEntity(chest[0], chest[1], chest[2]) {
+			env.SetBlockEntityLootTable(chest[0], chest[1], chest[2], table, env.Random.NextLong())
+		}
+	}
+	return nil
+}
+
+func buildModernShipwreck(input modernStructureBuildInput) (modernStructureStart, bool, error) {
+	if input.source == nil || input.random == nil {
+		return modernStructureStart{}, false, fmt.Errorf("shipwreck requires terrain and generation random queries")
+	}
+	beached := input.config["is_beached"] == true
+	var names []string
+	if beached {
+		names = []string{"with_mast", "sideways_full", "sideways_fronthalf", "sideways_backhalf", "rightsideup_full", "rightsideup_fronthalf", "rightsideup_backhalf", "with_mast_degraded", "rightsideup_full_degraded", "rightsideup_fronthalf_degraded", "rightsideup_backhalf_degraded"}
+	} else {
+		names = []string{"with_mast", "upsidedown_full", "upsidedown_fronthalf", "upsidedown_backhalf", "sideways_full", "sideways_fronthalf", "sideways_backhalf", "rightsideup_full", "rightsideup_fronthalf", "rightsideup_backhalf", "with_mast_degraded", "upsidedown_full_degraded", "upsidedown_fronthalf_degraded", "upsidedown_backhalf_degraded", "sideways_full_degraded", "sideways_fronthalf_degraded", "sideways_backhalf_degraded", "rightsideup_full_degraded", "rightsideup_fronthalf_degraded", "rightsideup_backhalf_degraded"}
+	}
+	rotation := javastructure.Rotation(input.random.NextInt(4))
+	templateName := "shipwreck/" + names[input.random.NextInt(int32(len(names)))]
+	template, err := javastructure.Load(templateName)
+	if err != nil {
+		return modernStructureStart{}, false, err
+	}
+	origin := [3]int32{input.chunkX * 16, 90, input.chunkZ * 16}
+	piece := &modernShipwreckPiece{
+		template: template, templateName: templateName, origin: origin, rotation: rotation, beached: beached,
+		oversized: template.Size[0] > 32 || template.Size[1] > 32, seed: input.seed,
+	}
+	box := modernTemplateBounds(template, templatePivotOrigin(origin, shipwreckPivot, rotation), rotation)
+	piece.box = box
+	if piece.oversized {
+		xSpan, zSpan := box.Max[0]-box.Min[0]+1, box.Max[2]-box.Min[2]+1
+		// Structure.getCornerHeights always samples WORLD_SURFACE_WG. The
+		// beached caller's argument order is the source's unusual minX,sizeX,
+		// minZ,sizeZ call into getLowestY(minX,minZ,sizeX,sizeZ).
+		minX, minZ, sampleX, sampleZ := box.Min[0], box.Min[2], xSpan, zSpan
+		if beached {
+			minZ, sampleX = xSpan, box.Min[2]
+		}
+		heights := [4]int32{
+			input.source.BaseHeight(minX, minZ, false) - 1,
+			input.source.BaseHeight(minX, minZ+sampleZ, false) - 1,
+			input.source.BaseHeight(minX+sampleX, minZ, false) - 1,
+			input.source.BaseHeight(minX+sampleX, minZ+sampleZ, false) - 1,
+		}
+		if beached {
+			minY := min(heights[0], heights[1], heights[2], heights[3])
+			piece.origin[1] = minY - template.Size[1]/2 - input.random.NextInt(3)
+		} else {
+			piece.origin[1] = int32((int64(heights[0]) + int64(heights[1]) + int64(heights[2]) + int64(heights[3])) / 4)
+		}
+		piece.heightAdjusted = true
+	}
+	return modernStructureStart{name: input.name, pieces: []modernStructurePiece{piece}, box: box, mutablePieces: true, terrain: javastructure.TerrainNone}, true, nil
 }

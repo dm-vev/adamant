@@ -124,7 +124,7 @@ func TestEndDecorationMatchesJava263(t *testing.T) {
 				generators[row.Seed] = g
 			}
 			c := chunk.New(world.DefaultBlockRegistry, world.End.Range())
-			result := g.GenerateChunk(world.ChunkPos{int32(row.X), int32(row.Z)}, c)
+			result := g.GenerateChunk(world.ChunkPos{int32(row.X), int32(row.Z)}, c, world.GenerationContext{})
 			t.Cleanup(func() {
 				for _, handle := range result.Entities {
 					if err := handle.Close(); err != nil {

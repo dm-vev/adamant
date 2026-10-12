@@ -26,6 +26,7 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 			playerID = parsed
 		}
 	}
+	respawnDimension, _ := world.DimensionByID(int(d.RespawnDimension))
 	conf := player.Config{
 		// Fall back to the key UUID if the stored data is corrupted.
 		UUID:                playerID,
@@ -58,6 +59,10 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
 		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
+		RespawnDimension:    respawnDimension,
+		RespawnPosition:     d.RespawnPosition,
+		RespawnRotation:     cube.Rotation{d.RespawnYaw, d.RespawnPitch},
+		HasRespawnPoint:     d.HasRespawnPoint,
 	}
 	echest := make([]item.Stack, 27)
 	decodeItems(d.EnderChestInventory, echest, br)
@@ -83,6 +88,11 @@ func (p *Provider) fromJson(d jsonData, lookupWorld func(world.Dimension) *world
 
 func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 	dim, _ := world.DimensionID(w.Dimension())
+	respawnDimension := d.RespawnDimension
+	if respawnDimension == nil {
+		respawnDimension = world.Overworld
+	}
+	respawnDim, _ := world.DimensionID(respawnDimension)
 	mode, _ := world.GameModeID(d.GameMode)
 	offHand, _ := d.OffHand.Item(0)
 	heldSlot := d.HeldSlot
@@ -128,6 +138,11 @@ func (p *Provider) toJson(d player.Config, w *world.World) jsonData {
 		ShoulderLeft:        d.ShoulderLeft,
 		ShoulderRight:       d.ShoulderRight,
 		JavaState:           world.CloneNativeEntityNBT(d.JavaState),
+		RespawnDimension:    int32(respawnDim),
+		RespawnPosition:     d.RespawnPosition,
+		RespawnYaw:          d.RespawnRotation.Yaw(),
+		RespawnPitch:        d.RespawnRotation.Pitch(),
+		HasRespawnPoint:     d.HasRespawnPoint,
 	}
 }
 
@@ -157,6 +172,10 @@ type jsonData struct {
 	ShoulderLeft                     map[string]any
 	ShoulderRight                    map[string]any
 	JavaState                        map[string]any `json:"adamant:java,omitempty"`
+	RespawnDimension                 int32
+	RespawnPosition                  cube.Pos
+	RespawnYaw, RespawnPitch         float64
+	HasRespawnPoint                  bool
 }
 
 type jsonInventoryData struct {

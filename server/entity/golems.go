@@ -96,42 +96,71 @@ func (snowGolemType) EncodeEntity() string        { return "minecraft:snow_golem
 func (ironGolemType) BBox(world.Entity) cube.BBox { return cube.Box(-.7, 0, -.7, .7, 2.7, .7) }
 func (snowGolemType) BBox(world.Entity) cube.BBox { return cube.Box(-.35, 0, -.35, .35, 1.9, .35) }
 func (ironGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
+	source := ReadNativeMobJavaState(n)
+	if source == nil {
+		source = n
+	}
 	c := golemConfig{kind: ironKind}
-	if _, ok := n["Health"]; ok {
-		c.health = float64(nbtconv.Float32(n, "Health"))
+	if _, ok := source["Health"]; ok {
+		c.health = float64(nbtconv.Float32(source, "Health"))
 		c.healthSet = true
 	}
-	c.playerCreated = nbtconv.Bool(n, "PlayerCreated")
-	javaState := ReadNativeMobJavaState(n)
-	c.angerTarget = golemUUIDString(javaState["AngryAt"])
-	c.angerTicks = int(nbtconv.Int32(javaState, "AngerTime"))
+	if health, ok := nativeMobAttribute(n, "minecraft:health"); ok {
+		c.health, c.healthSet = health.Current, true
+	}
+	c.playerCreated = nbtconv.Bool(source, "PlayerCreated")
+	c.angerTarget = golemUUIDString(source["AngryAt"])
+	c.angerTicks = int(nbtconv.Int32(source, "AngerTime"))
 	c.Apply(d)
 }
 func (snowGolemType) DecodeNBT(n map[string]any, d *world.EntityData) {
+	source := ReadNativeMobJavaState(n)
+	if source == nil {
+		source = n
+	}
 	c := golemConfig{kind: snowKind, pumpkin: true}
-	if _, ok := n["Health"]; ok {
-		c.health = float64(nbtconv.Float32(n, "Health"))
+	if _, ok := source["Health"]; ok {
+		c.health = float64(nbtconv.Float32(source, "Health"))
 		c.healthSet = true
 	}
-	if _, ok := n["Pumpkin"]; ok {
-		c.pumpkin = nbtconv.Bool(n, "Pumpkin")
+	if health, ok := nativeMobAttribute(n, "minecraft:health"); ok {
+		c.health, c.healthSet = health.Current, true
+	}
+	if _, ok := source["Pumpkin"]; ok {
+		c.pumpkin = nbtconv.Bool(source, "Pumpkin")
 	}
 	c.Apply(d)
 }
 func (ironGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*golemState)
-	javaState := map[string]any{}
-	if b.angerTicks > 0 {
-		javaState["AngerTime"] = int32(b.angerTicks)
-		if target := golemUUIDNBT(b.angerTarget); target != nil {
-			javaState["AngryAt"] = target
-		}
+	h := b.health
+	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{
+		{Name: "minecraft:health", Base: ironGolemHealth, Current: h.Health(), DefaultMin: 0, DefaultMax: ironGolemHealth, Min: 0, Max: ironGolemHealth},
+	})
+	javaState := map[string]any{"Health": float32(h.Health()), "PlayerCreated": byte(boolByte(b.playerCreated)),
+		"AngerTime": int32(b.angerTicks)}
+	target := golemUUIDNBT(b.angerTarget)
+	if target != nil && b.angerTicks > 0 {
+		javaState["AngryAt"] = target
 	}
-	return MergeNativeMobJavaState(d.NativeNBT, map[string]any{"Health": float32(b.health.Health()), "PlayerCreated": byte(boolByte(b.playerCreated)), "IsAngry": byte(boolByte(b.angerTicks > 0)), "JavaState": javaState})
+	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
+		"PlayerCreated": byte(boolByte(b.playerCreated)), "IsAngry": byte(boolByte(b.angerTicks > 0))})
+	state := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), javaState)
+	if target == nil || b.angerTicks <= 0 {
+		delete(state, "AngryAt")
+	}
+	return MergeNativeMobJavaState(native, state)
 }
 func (snowGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*golemState)
-	return map[string]any{"Health": float32(b.health.Health()), "Pumpkin": byte(boolByte(b.pumpkin))}
+	h := b.health
+	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{
+		{Name: "minecraft:health", Base: snowGolemHealth, Current: h.Health(), DefaultMin: 0, DefaultMax: snowGolemHealth, Min: 0, Max: snowGolemHealth},
+	})
+	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(h.Health()), "Attributes": attrs,
+		"Pumpkin": byte(boolByte(b.pumpkin))})
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(h.Health()), "Pumpkin": byte(boolByte(b.pumpkin))})
+	return MergeNativeMobJavaState(native, javaState)
 }
 
 func golemUUIDNBT(raw string) []int32 {

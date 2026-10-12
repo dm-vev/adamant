@@ -9,7 +9,9 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 )
 
-type itemTag struct { Values []json.RawMessage `json:"values"` }
+type itemTag struct {
+	Values []json.RawMessage `json:"values"`
+}
 
 func loadItemTags() (map[string]map[string]struct{}, error) {
 	return loadTags("item", nil, nil)
@@ -22,7 +24,10 @@ func loadEnchantmentTags() (map[string]map[string]struct{}, map[string]struct{},
 	}
 	orderedEnchantmentTags = make(map[string][]string)
 	tags, err := loadTags("enchantment", registered, orderedEnchantmentTags)
-	return tags, registered, err
+	if err != nil {
+		return nil, nil, err
+	}
+	return tags, registered, nil
 }
 
 func loadTags(kind string, registered map[string]struct{}, ordered map[string][]string) (map[string]map[string]struct{}, error) {
@@ -132,10 +137,16 @@ func loadTags(kind string, registered map[string]struct{}, ordered map[string][]
 }
 
 func itemInTag(itemID, tagID string) bool {
-	if itemTags == nil { return false }
-	if !strings.Contains(tagID, ":") { tagID = "minecraft:" + tagID }
+	if itemTags == nil {
+		return false
+	}
+	if !strings.Contains(tagID, ":") {
+		tagID = "minecraft:" + tagID
+	}
 	members, ok := itemTags[tagID]
-	if !ok { return false }
+	if !ok {
+		return false
+	}
 	_, ok = members[normalize(itemID)]
 	return ok
 }
@@ -144,9 +155,13 @@ func enchantmentID(enchantment item.EnchantmentType) string {
 }
 
 func enchantmentTagMembers(tagID string) (map[string]struct{}, error) {
-	if !strings.Contains(tagID, ":") { tagID = "minecraft:" + tagID }
+	if !strings.Contains(tagID, ":") {
+		tagID = "minecraft:" + tagID
+	}
 	members, ok := enchantmentTags[tagID]
-	if !ok { return nil, fmt.Errorf("unknown builtin enchantment tag %q", tagID) }
+	if !ok {
+		return nil, fmt.Errorf("unknown builtin enchantment tag %q", tagID)
+	}
 	return members, nil
 }
 

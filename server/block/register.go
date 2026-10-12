@@ -220,6 +220,7 @@ func init() {
 	registerAll(allAnvils())
 	registerAll(allBamboos())
 	registerAll(allBambooSaplings())
+	registerAll(allTreeSaplings())
 	registerAll(allBambooBlocks())
 	registerAll(allBanners())
 	registerAll(allBarrels())
@@ -388,6 +389,12 @@ func init() {
 	world.RegisterItem(BambooBlock{})
 	world.RegisterItem(BambooBlock{Stripped: true})
 	world.RegisterItem(BambooMosaic{})
+	for _, b := range allTreeSaplings() {
+		s := b.(TreeSapling)
+		if s.Stage == 0 && s.Age == 0 && !s.Hanging {
+			world.RegisterItem(s)
+		}
+	}
 	world.RegisterItem(Barrel{})
 	world.RegisterItem(Barrier{})
 	world.RegisterItem(Allow{})

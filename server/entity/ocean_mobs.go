@@ -1,9 +1,7 @@
 package entity
 
 import (
-	"math"
-	"time"
-
+	"encoding/json"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -12,6 +10,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
+	"math"
+	"time"
 )
 
 // The ocean hostile and mount types share only their low-level living and swim
@@ -80,36 +80,76 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if _, ok := m["MaxHealth"]; ok {
 		c.MaxHealth = float64(nbtconv.Float32(m, "MaxHealth"))
 	}
-	c.fromBucket = nbtconv.Bool(m, "FromBucket")
-	{
-		c.tamed = nbtconv.Bool(m, "Tame")
-		c.canBreakDoors = nbtconv.Bool(m, "CanBreakDoors")
-		{
-			c.canPickupLoot = nbtconv.Bool(m, "CanPickUpLoot")
-			c.baby = nbtconv.Bool(m, "IsBaby")
-		}
+	for _, attr := range ReadNativeMobAttributes(m) {
+		c.setAttribute(attr.Name, attr.Base, attr.Current)
 	}
+	attributes, _ := m["attributes"].([]any)
+	for _, value := range attributes {
+		raw, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := raw["id"].(string)
+		base := oceanNumber(raw["base"])
+		current := oceanAttributeValue(base, raw["modifiers"])
+		c.setAttribute(name, base, current)
+	}
+	c.fromBucket = oceanBool(m, "FromBucket")
+	c.tamed = oceanBool(m, "Tame")
+	c.canBreakDoors = oceanBool(m, "CanBreakDoors")
+	c.canPickupLoot = oceanBool(m, "CanPickUpLoot")
+	c.baby = oceanBool(m, "IsBaby")
+	c.leftHanded = oceanBool(m, "LeftHanded")
 	c.age = int(nbtconv.Int32(m, "Age"))
 	c.air = int(nbtconv.Int16(m, "Air"))
-	if v, ok := m["variant"].(string); ok && (v == "warm" || v == "temperate") {
-		c.variant = v
+	if v, ok := m["variant"].(string); ok {
+		c.variant = oceanVariant(v)
 	}
-	if slots, ok := m["HandItems"].([]any); ok {
-		if len(slots) > 0 {
-			c.mainHand = decodeOceanHand(slots[0])
+	if equipment, ok := m["equipment"].(map[string]any); ok {
+		c.mainHand = decodeOceanStack(equipment, "mainhand")
+		c.offHand = decodeOceanStack(equipment, "offhand")
+		c.head = decodeOceanStack(equipment, "head")
+		c.saddle = !decodeOceanStack(equipment, "saddle").Empty()
+		if armor := decodeOceanStack(equipment, "body"); !armor.Empty() {
+			if a, ok := armor.Item().(item.NautilusArmor); ok {
+				c.bodyArmorMaterial, c.armorSet = int(a.Material), true
+			}
 		}
-		if len(slots) > 1 {
-			c.offHand = decodeOceanHand(slots[1])
+	}
+	nativeEquipment := ReadNativeMobEquipment(m)
+	if _, native := m["Mainhand"]; native {
+		c.mainHand = item.Stack{}
+		if len(nativeEquipment.Mainhand) != 0 {
+			c.mainHand = item.ReadNBT(nativeEquipment.Mainhand[0].Raw, nil)
 		}
 	}
-	if saddle, ok := m["Saddle"].(map[string]any); ok {
-		c.saddle = !decodeOceanHand(saddle).Empty()
+	if _, native := m["Offhand"]; native {
+		c.offHand = item.Stack{}
+		if len(nativeEquipment.Offhand) != 0 {
+			c.offHand = item.ReadNBT(nativeEquipment.Offhand[0].Raw, nil)
+		}
 	}
-	if armor, ok := m["BodyArmor"].(map[string]any); ok {
-		if stack := decodeOceanHand(armor); !stack.Empty() {
+	if _, native := m["Armor"]; native {
+		c.head = item.Stack{}
+		if len(nativeEquipment.Armor) != 0 {
+			c.head = item.ReadNBT(nativeEquipment.Armor[0].Raw, nil)
+		}
+	}
+	if chances, ok := m["drop_chances"].(map[string]any); ok {
+		c.dropChances = make(map[string]float64, len(chances))
+		for slot, raw := range chances {
+			if value, ok := oceanFloat(raw); ok {
+				c.dropChances[slot] = value
+			}
+		}
+	}
+	if saddle, ok := m["Saddle"].(map[string]any); ok && !c.saddle {
+		c.saddle = !item.ReadNBT(saddle, nil).Empty()
+	}
+	if armor, ok := m["BodyArmor"].(map[string]any); ok && !c.armorSet {
+		if stack := item.ReadNBT(armor, nil); !stack.Empty() {
 			if a, ok := stack.Item().(item.NautilusArmor); ok {
-				c.bodyArmorMaterial = int(a.Material)
-				c.armorSet = true
+				c.bodyArmorMaterial, c.armorSet = int(a.Material), true
 			}
 		}
 	}
@@ -117,10 +157,7 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 }
 func (t oceanEntityType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*oceanBehaviour)
-	m := map[string]any{
-		"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()),
-		"Air": int16(b.air),
-	}
+	m := map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Air": int16(b.air)}
 	if b.kind == oceanNautilus || b.kind == oceanZombieNautilus {
 		m["Age"] = int32(b.age)
 	}
@@ -128,57 +165,116 @@ func (t oceanEntityType) EncodeNBT(d *world.EntityData) map[string]any {
 		m["FromBucket"] = byte(1)
 	}
 	if b.kind == oceanZombieNautilus {
-		m["variant"] = b.variant
+		m["variant"] = "minecraft:" + oceanVariant(b.variant)
 	}
 	if b.kind == oceanNautilus || b.kind == oceanZombieNautilus {
 		m["Tame"] = boolByte(b.tamed)
-		if b.saddle {
-			m["Saddle"] = encodeOceanHand(item.NewStack(item.Saddle{}, 1))
-		}
-		if b.bodyArmorMaterial >= 0 {
-			m["BodyArmor"] = encodeOceanHand(item.NewStack(item.NautilusArmor{Material: item.NautilusArmorMaterial(b.bodyArmorMaterial)}, 1))
-		}
-	}
-	if !b.mainHand.Empty() || !b.offHand.Empty() {
-		m["HandItems"] = []any{encodeOceanHand(b.mainHand), encodeOceanHand(b.offHand)}
 	}
 	if b.kind == oceanDrowned {
-		m["CanBreakDoors"] = boolByte(b.canBreakDoors)
-		m["CanPickUpLoot"] = boolByte(b.canPickupLoot)
-		m["IsBaby"] = boolByte(b.baby)
+		m["CanBreakDoors"], m["CanPickUpLoot"], m["IsBaby"] = boolByte(b.canBreakDoors), boolByte(b.canPickupLoot), boolByte(b.baby)
 	}
-	return m
+	m["LeftHanded"] = byte(boolByte(b.leftHanded))
+	if len(b.dropChances) != 0 {
+		chances := make(map[string]any, len(b.dropChances))
+		for k, v := range b.dropChances {
+			chances[k] = float32(v)
+		}
+		m["drop_chances"] = chances
+	}
+	// Saving an actor is a native Bedrock operation, not a Java item export.
+	// Native map UUIDs need no fabricated Java map ID to survive this path.
+	equipment := ReadNativeMobEquipment(d.NativeNBT)
+	equipment.Mainhand = []NativeMobItem{nativeMobItemFromStack(b.mainHand)}
+	equipment.Offhand = []NativeMobItem{nativeMobItemFromStack(b.offHand)}
+	if len(equipment.Armor) < 4 {
+		armor := make([]NativeMobItem, 4)
+		copy(armor, equipment.Armor)
+		equipment.Armor = armor
+	}
+	equipment.Armor[0] = nativeMobItemFromStack(b.head)
+	encoded := MergeNativeMobNBT(d.NativeNBT, m)
+	for key, value := range EncodeNativeMobEquipment(equipment) {
+		encoded[key] = value
+	}
+	delete(encoded, "HandItems")
+	if oldEquipment, ok := encoded["equipment"].(map[string]any); ok {
+		for _, slot := range [...]string{"mainhand", "offhand", "head", "body", "saddle", "minecraft:mainhand", "minecraft:offhand", "minecraft:head", "minecraft:body", "minecraft:saddle"} {
+			delete(oldEquipment, slot)
+		}
+		if len(oldEquipment) == 0 {
+			delete(encoded, "equipment")
+		}
+	}
+	if b.kind == oceanNautilus || b.kind == oceanZombieNautilus {
+		saddle, armor := item.Stack{}, item.Stack{}
+		if b.saddle {
+			saddle = item.NewStack(item.Saddle{}, 1)
+		}
+		if b.bodyArmorMaterial >= 0 {
+			armor = item.NewStack(item.NautilusArmor{Material: item.NautilusArmorMaterial(b.bodyArmorMaterial)}, 1)
+		}
+		encoded["Saddle"], encoded["BodyArmor"] = item.WriteNBT(saddle, true), item.WriteNBT(armor, true)
+	}
+	return encoded
 }
-func decodeOceanHand(raw any) item.Stack {
-	m, ok := raw.(map[string]any)
+func decodeOceanStack(equipment map[string]any, slot string) item.Stack {
+	raw, ok := equipment[slot].(map[string]any)
+	if !ok {
+		raw, ok = equipment["minecraft:"+slot].(map[string]any)
+	}
 	if !ok {
 		return item.Stack{}
 	}
-	id, _ := m["id"].(string)
-	if id == "" {
-		id, _ = m["Name"].(string)
-	}
-	if id == "" {
-		return item.Stack{}
-	}
-	it, ok := world.ItemByName(id, 0)
-	if !ok {
-		return item.Stack{}
-	}
-	count := 1
-	if v, ok := m["Count"].(byte); ok {
-		count = int(v)
-	} else if v, ok := m["count"].(int32); ok {
-		count = int(v)
-	}
-	return item.NewStack(it, count)
+	stack, _ := item.StackFromJavaNBT(raw)
+	return stack
 }
-func encodeOceanHand(stack item.Stack) map[string]any {
-	if stack.Empty() {
-		return map[string]any{}
+func oceanNumber(value any) float64 { v, _ := oceanFloat(value); return v }
+func oceanBool(data map[string]any, key string) bool {
+	switch value := data[key].(type) {
+	case bool:
+		return value
+	case byte:
+		return value == 1
+	default:
+		return nbtconv.Bool(data, key)
 	}
-	id, _ := stack.Item().EncodeItem()
-	return map[string]any{"id": id, "Count": byte(stack.Count())}
+}
+func oceanFloat(value any) (float64, bool) {
+	switch v := value.(type) {
+	case float32:
+		return float64(v), true
+	case float64:
+		return v, true
+	case int32:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	}
+	return 0, false
+}
+func oceanAttributeValue(base float64, raw any) float64 {
+	modifiers, ok := raw.([]any)
+	if !ok {
+		return base
+	}
+	add, multipliedBase, multipliedTotal := 0.0, 0.0, 1.0
+	for _, value := range modifiers {
+		modifier, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		amount := oceanNumber(modifier["amount"])
+		switch modifier["operation"] {
+		case "add_value":
+			add += amount
+		case "add_multiplied_base":
+			multipliedBase += amount
+		case "add_multiplied_total":
+			multipliedTotal *= 1 + amount
+		}
+	}
+	base += add
+	return (base + base*multipliedBase) * multipliedTotal
 }
 func (drownedType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	return &Drowned{oceanEntityType{kind: oceanDrowned}.open(tx, h, d)}
@@ -253,18 +349,38 @@ func (t zombieNautilusType) EncodeNBT(d *world.EntityData) map[string]any {
 }
 
 type oceanConfig struct {
-	kind                                                                               oceanKind
-	Health, MaxHealth                                                                  float64
-	variant                                                                            string
-	healthSet, fromBucket, tamed, saddle, armorSet, canBreakDoors, canPickupLoot, baby bool
-	age, air, dashCooldown, beamTicks, bodyArmorMaterial                               int
-	mainHand, offHand                                                                  item.Stack
+	kind                                                                                           oceanKind
+	Health, MaxHealth, Speed, FollowRange, KnockbackResistance                                     float64
+	variant                                                                                        string
+	healthSet, fromBucket, tamed, saddle, armorSet, canBreakDoors, canPickupLoot, baby, leftHanded bool
+	age, air, dashCooldown, beamTicks, bodyArmorMaterial                                           int
+	mainHand, offHand, head                                                                        item.Stack
+	dropChances                                                                                    map[string]float64
+}
+
+func (c *oceanConfig) setAttribute(name string, base, current float64) {
+	switch name {
+	case "minecraft:health":
+		c.MaxHealth = base
+		if !c.healthSet {
+			c.Health, c.healthSet = current, true
+		}
+	case "minecraft:max_health", "minecraft:generic.max_health":
+		c.MaxHealth = current
+	case "minecraft:movement", "minecraft:movement_speed", "minecraft:generic.movement_speed":
+		c.Speed = current
+	case "minecraft:follow_range", "minecraft:generic.follow_range":
+		c.FollowRange = current
+	case "minecraft:knockback_resistance", "minecraft:generic.knockback_resistance":
+		c.KnockbackResistance = current
+	}
 }
 
 func (c oceanConfig) Apply(d *world.EntityData) {
 	b := c.New()
 	b.variant = oceanVariant(c.variant)
 	b.canBreakDoors, b.canPickupLoot, b.baby = c.canBreakDoors, c.canPickupLoot, c.baby
+	b.head, b.leftHanded, b.dropChances = c.head, c.leftHanded, c.dropChances
 	d.Data = b
 }
 func (c oceanConfig) New() *oceanBehaviour {
@@ -279,10 +395,12 @@ func (c oceanConfig) New() *oceanBehaviour {
 			maxHealth = 80
 		case oceanNautilus:
 			maxHealth = 30
-		default:
-			maxHealth = 30
+		case oceanZombieNautilus:
+			maxHealth = 15
 		}
 	}
+	// LivingEntity.getMaxHealth exposes the double attribute as a float.
+	maxHealth = float64(float32(maxHealth))
 	health := c.Health
 	if !c.healthSet && health <= 0 {
 		health = maxHealth
@@ -295,7 +413,22 @@ func (c oceanConfig) New() *oceanBehaviour {
 	if air == 0 {
 		air = 300
 	}
-	return &oceanBehaviour{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true, NoBlockCollisions: false}, speed: oceanBaseSpeed(c.kind), fromBucket: c.fromBucket, tamed: c.tamed, age: c.age, air: air, dashCooldown: c.dashCooldown, beamTicks: c.beamTicks, saddle: c.saddle, bodyArmorMaterial: armor, mainHand: c.mainHand, offHand: c.offHand, nextWander: 1}
+	speed := c.Speed
+	if speed <= 0 {
+		speed = oceanBaseSpeed(c.kind)
+	}
+	followRange := c.FollowRange
+	if c.kind == oceanDrowned && c.baby {
+		// Source's baby modifier is transient and absent from saved attributes.
+		speed *= 1.5
+	}
+	if followRange <= 0 {
+		followRange = 16
+		if c.kind == oceanDrowned {
+			followRange = 35
+		}
+	}
+	return &oceanBehaviour{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true, NoBlockCollisions: false}, speed: speed, followRange: followRange, knockbackResistance: c.KnockbackResistance, fromBucket: c.fromBucket, tamed: c.tamed, age: c.age, air: air, dashCooldown: c.dashCooldown, beamTicks: c.beamTicks, saddle: c.saddle, bodyArmorMaterial: armor, mainHand: c.mainHand, offHand: c.offHand, head: c.head, nextWander: 1}
 }
 func oceanBaseSpeed(k oceanKind) float64 {
 	switch k {
@@ -305,6 +438,10 @@ func oceanBaseSpeed(k oceanKind) float64 {
 		return .5
 	case oceanElderGuardian:
 		return .3
+	case oceanNautilus:
+		return 1
+	case oceanZombieNautilus:
+		return 1.1
 	default:
 		return .25
 	}
@@ -317,26 +454,42 @@ type Nautilus struct{ *oceanMob }
 type ZombieNautilus struct{ *oceanMob }
 type oceanMob struct{ *Ent }
 
+func (m *Nautilus) PassengerPosition(passenger world.Entity) mgl64.Vec3 {
+	return m.Position().Add(mgl64.Vec3{0, float64(float32(1.1375)), 0}).Sub(vehicleAttachmentPoint(passenger))
+}
+
+func (m *ZombieNautilus) PassengerPosition(passenger world.Entity) mgl64.Vec3 {
+	return m.Position().Add(mgl64.Vec3{0, float64(float32(1.1375)), 0}).Sub(vehicleAttachmentPoint(passenger))
+}
+
+func (m *Drowned) VehicleAttachmentPoint() mgl64.Vec3 {
+	if m.Baby() {
+		return mgl64.Vec3{0, .1875, 0}
+	}
+	return mgl64.Vec3{0, float64(float32(.7)), 0}
+}
+
 func (m *oceanMob) b() *oceanBehaviour { return m.Behaviour().(*oceanBehaviour) }
 
 type oceanBehaviour struct {
-	kind                                                                oceanKind
-	health                                                              *HealthManager
-	effects                                                             *EffectManager
-	mc                                                                  *MovementComputer
-	speed                                                               float64
-	dead, fromBucket, tamed, saddle, canBreakDoors, canPickupLoot, baby bool
-	age, air, dashCooldown, beamTicks, nextWander, ticks, pathCooldown  int
-	bodyArmorMaterial                                                   int
-	variant                                                             string
-	mainHand, offHand                                                   item.Stack
-	beamTarget                                                          *world.EntityHandle
-	vehicleStrafe, vehicleForward                                       float64
-	path                                                                []cube.Pos
-	pathTarget                                                          cube.Pos
-	pathIndex                                                           int
-	attackCooldown, thornsCooldown                                      int
-	swim                                                                mgl64.Vec3
+	kind                                                                            oceanKind
+	health                                                                          *HealthManager
+	effects                                                                         *EffectManager
+	mc                                                                              *MovementComputer
+	speed, followRange, knockbackResistance                                         float64
+	dead, fromBucket, tamed, saddle, canBreakDoors, canPickupLoot, baby, leftHanded bool
+	age, air, dashCooldown, beamTicks, nextWander, ticks, pathCooldown              int
+	bodyArmorMaterial                                                               int
+	variant                                                                         string
+	mainHand, offHand, head                                                         item.Stack
+	dropChances                                                                     map[string]float64
+	beamTarget                                                                      *world.EntityHandle
+	vehicleStrafe, vehicleForward                                                   float64
+	path                                                                            []cube.Pos
+	pathTarget                                                                      cube.Pos
+	pathIndex                                                                       int
+	attackCooldown, thornsCooldown                                                  int
+	swim                                                                            mgl64.Vec3
 }
 
 func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -367,7 +520,7 @@ func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return b.tickNautilus(e, tx)
 }
 func (b *oceanBehaviour) tickDrowned(e *Ent, tx *world.Tx) *Movement {
-	target := oceanNearestTarget(tx, e.Position(), 16)
+	target := oceanNearestTarget(tx, e.Position(), b.followRange)
 	if target == nil {
 		b.path = nil
 		b.wander(e, tx, .03)
@@ -439,10 +592,12 @@ func (b *oceanBehaviour) tickGuardian(e *Ent, tx *world.Tx) *Movement {
 }
 func (b *oceanBehaviour) tickNautilus(e *Ent, tx *world.Tx) *Movement {
 	_, inWater := tx.Liquid(cube.PosFromVec3(e.Position()))
-	if inWater {
-		b.speed = .25
-	} else {
-		b.speed = .08
+	if b.kind == oceanNautilus {
+		if inWater {
+			b.speed = .25
+		} else {
+			b.speed = .08
+		}
 	}
 	b.air = oceanAir(b.air, inWater, &oceanMob{Ent: e})
 	if b.tamed && b.saddle {
@@ -461,7 +616,7 @@ func (b *oceanBehaviour) tickNautilus(e *Ent, tx *world.Tx) *Movement {
 	}
 	target := world.Entity(nil)
 	if b.kind == oceanZombieNautilus && !b.tamed {
-		target = oceanNearestTarget(tx, e.Position(), 12)
+		target = oceanNearestTarget(tx, e.Position(), b.followRange)
 	}
 	if target != nil {
 		if target.Position().Sub(e.Position()).Len() < 1.5 && b.attackCooldown == 0 {
@@ -656,7 +811,7 @@ func (m *oceanMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		}
 	}
 	if m.Dead() {
-		m.die()
+		m.die(src)
 	}
 	return d, true
 }
@@ -669,11 +824,13 @@ func (m *oceanMob) Heal(h float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *oceanMob) KnockBack(src mgl64.Vec3, force, height float64) {
+	b := m.b()
+	force *= 1 - min(1, max(0, b.knockbackResistance))
 	d := m.Position().Sub(src)
 	if d.Len() != 0 {
 		d = d.Normalize().Mul(force)
 	}
-	d[1] = height
+	d[1] = height * (1 - min(1, max(0, b.knockbackResistance)))
 	m.SetVelocity(d)
 }
 func (m *oceanMob) AddEffect(e effect.Effect) {
@@ -686,6 +843,8 @@ func (m *oceanMob) RemoveEffect(t effect.Type)   { m.b().effects.Remove(t, m) }
 func (m *oceanMob) Effects() []effect.Effect     { return m.b().effects.Effects() }
 func (m *oceanMob) Speed() float64               { return m.b().speed }
 func (m *oceanMob) SetSpeed(v float64)           { m.b().speed = v }
+func (m *oceanMob) FollowRange() float64         { return m.b().followRange }
+func (m *oceanMob) KnockbackResistance() float64 { return m.b().knockbackResistance }
 func (m *oceanMob) hasEffect(t effect.Type) bool { _, ok := m.b().effects.Effect(t); return ok }
 func (m *oceanMob) viewAction(a world.EntityAction) {
 	vs := m.tx.Viewers(m.Position())
@@ -694,23 +853,128 @@ func (m *oceanMob) viewAction(a world.EntityAction) {
 	}
 	m.tx.ReleaseViewers(vs)
 }
-func (m *oceanMob) die() {
+func (m *oceanMob) die(src world.DamageSource) {
 	b := m.b()
 	if b.dead {
 		return
 	}
 	b.dead = true
 	m.viewAction(DeathAction{})
-	if armor := m.BodyArmor(); !armor.Empty() {
-		m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, armor))
-	}
+	killedByPlayer := oceanKilledByPlayer(src)
+	looting := oceanLootingLevel(src)
+	// Source iterates EquipmentSlot.VALUES: mainhand, offhand, armor
+	// (feet, legs, chest, head), body, saddle. Only represented slots roll.
+	m.dropEquipment("mainhand", b.mainHand, killedByPlayer, looting)
+	m.dropEquipment("offhand", b.offHand, killedByPlayer, looting)
+	m.dropEquipment("head", b.head, killedByPlayer, looting)
+	m.dropEquipment("body", m.BodyArmor(), killedByPlayer, looting)
 	if b.saddle {
-		m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, item.NewStack(item.Saddle{}, 1)))
-	}
-	if !b.offHand.Empty() {
-		m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, b.offHand))
+		m.dropEquipment("saddle", item.NewStack(item.Saddle{}, 1), killedByPlayer, looting)
 	}
 	_ = m.CloseIn(m.tx)
+}
+func (m *oceanMob) dropEquipment(slot string, stack item.Stack, killedByPlayer bool, looting int) {
+	if stack.Empty() {
+		return
+	}
+	chance, ok := m.b().dropChances[slot]
+	if !ok {
+		chance = .085
+	}
+	preserve := float32(chance) > 1
+	if chance == 0 || (!killedByPlayer && !preserve) {
+		return
+	}
+	if oceanStackEnchantmentLevel(stack, "Curse of Vanishing", "minecraft:vanishing_curse") > 0 {
+		return
+	}
+	dropChance := oceanEquipmentDropChance(float32(chance), looting)
+	random := m.H().JavaRandom()
+	if random.NextFloat() >= dropChance {
+		return
+	}
+	if !preserve {
+		if durable, ok := stack.Item().(item.Durable); ok {
+			maxDamage := durable.DurabilityInfo().MaxDurability
+			if maxDamage > 0 {
+				remaining := random.NextInt(1 + random.NextInt(int32(max(maxDamage-3, 1))))
+				stack = stack.WithDurability(int(remaining))
+			}
+		}
+	}
+	m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, stack))
+}
+func oceanEquipmentDropChance(chance float32, looting int) float32 {
+	if looting > 0 {
+		chance += float32(looting) * float32(.01)
+	}
+	return chance
+}
+
+func oceanLootingLevel(src world.DamageSource) int {
+	if !oceanKilledByPlayer(src) {
+		return 0
+	}
+	attacker := oceanDamageSourceAttacker(src)
+	living, ok := attacker.(interface {
+		HeldItems() (item.Stack, item.Stack)
+	})
+	if !ok {
+		return 0
+	}
+	main, _ := living.HeldItems()
+	return oceanStackEnchantmentLevel(main, "Looting", "minecraft:looting")
+}
+func oceanStackEnchantmentLevel(main item.Stack, nativeName, sourceID string) int {
+	if main.Empty() {
+		return 0
+	}
+	level := 0
+	for _, enchantment := range main.Enchantments() {
+		if enchantment.Type().Name() == nativeName && enchantment.Level() > level {
+			level = enchantment.Level()
+		}
+	}
+	if raw, ok := main.Value("java_components_json"); ok {
+		if encoded, ok := raw.(string); ok {
+			var components map[string]any
+			if json.Unmarshal([]byte(encoded), &components) == nil {
+				if enchantments, ok := components["minecraft:enchantments"].(map[string]any); ok {
+					levels, _ := enchantments["levels"].(map[string]any)
+					if levels == nil {
+						levels = enchantments
+					}
+					if rawLevel, ok := levels[sourceID]; ok {
+						if n, ok := oceanFloat(rawLevel); ok && int(n) > level {
+							level = int(n)
+						}
+					}
+				}
+			}
+		}
+	}
+	return level
+}
+func oceanDamageSourceAttacker(src world.DamageSource) world.Entity {
+	switch source := src.(type) {
+	case AttackDamageSource:
+		return source.Attacker
+	case SpearDamageSource:
+		return source.Attacker
+	case MaceSmashDamageSource:
+		return source.Attacker
+	case ProjectileDamageSource:
+		return source.Owner
+	case ExplosionDamageSource:
+		if source, ok := source.Source.(world.EntityExplosionSource); ok {
+			return source.Entity
+		}
+	}
+	return nil
+}
+func oceanKilledByPlayer(src world.DamageSource) bool {
+	attacker := oceanDamageSourceAttacker(src)
+	return attacker != nil && attacker.H() != nil && attacker.H().Type().EncodeEntity() == "minecraft:player"
 }
 func (m *oceanMob) CanEquipBodyArmor(user world.Entity) bool {
 	b := m.b()
@@ -870,8 +1134,11 @@ func (m *oceanMob) Tame(user world.Entity) {
 }
 func (m *oceanMob) HeldItems() (item.Stack, item.Stack) { return m.b().mainHand, m.b().offHand }
 func (m *oceanMob) SetHeldItems(main, off item.Stack)   { m.b().mainHand, m.b().offHand = main, off }
-func (m *oceanMob) BeamTicks() int                      { return m.b().beamTicks }
-func (m *oceanMob) Dashing() bool                       { return m.b().dashCooldown > 35 }
+func (m *oceanMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
+	return m.b().head, item.Stack{}, item.Stack{}, item.Stack{}
+}
+func (m *oceanMob) BeamTicks() int { return m.b().beamTicks }
+func (m *oceanMob) Dashing() bool  { return m.b().dashCooldown > 35 }
 
 var _ world.EntityType = drownedType{}
 var _ world.EntityType = guardianType{}
@@ -901,10 +1168,12 @@ func (m *oceanMob) CanBeHitByPiercingWeapon(attacker world.Entity) bool {
 	return !m.Dead() && attacker != nil && attacker.H() != m.H()
 }
 func oceanVariant(variant string) string {
-	if variant == "warm" {
+	switch variant {
+	case "warm", "minecraft:warm":
 		return "warm"
+	default:
+		return "temperate"
 	}
-	return "temperate"
 }
 func (m *oceanMob) Variant() string           { return oceanVariant(m.b().variant) }
 func (m *oceanMob) SetVariant(variant string) { m.b().variant = oceanVariant(variant) }

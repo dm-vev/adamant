@@ -1,0 +1,472 @@
+[
+  {
+    "seed": "73313",
+    "chunk": [
+      83,
+      30
+    ],
+    "markerRandomSeed": "991234",
+    "markers": [
+      {
+        "piece": 307,
+        "name": "1x2_a1",
+        "rotation": 3,
+        "mirror": 1,
+        "marker": "ChestSouth",
+        "position": [
+          15,
+          71,
+          32
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "2952878762325072634"
+      },
+      {
+        "piece": 347,
+        "name": "1x1_a4",
+        "rotation": 3,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          32,
+          76,
+          -3
+        ],
+        "facing": "south",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "3009251846689356700"
+      },
+      {
+        "piece": 362,
+        "name": "1x2_a1",
+        "rotation": 1,
+        "mirror": 0,
+        "marker": "ChestSouth",
+        "position": [
+          23,
+          71,
+          -16
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "8847543281593893389"
+      },
+      {
+        "piece": 459,
+        "name": "2x2_b5",
+        "rotation": 1,
+        "mirror": 0,
+        "marker": "ChestSouth",
+        "position": [
+          27,
+          85,
+          12
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-638363470146955455"
+      },
+      {
+        "piece": 544,
+        "name": "1x2_se1",
+        "rotation": 3,
+        "mirror": 0,
+        "marker": "ChestSouth",
+        "position": [
+          6,
+          98,
+          24
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-4921362676484984618"
+      },
+      {
+        "piece": 544,
+        "name": "1x2_se1",
+        "rotation": 3,
+        "mirror": 0,
+        "marker": "ChestNorth",
+        "position": [
+          18,
+          98,
+          24
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "4202292574526371069"
+      },
+      {
+        "piece": 569,
+        "name": "1x1_as1",
+        "rotation": 2,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          22,
+          90,
+          -14
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-3175750415998788536"
+      }
+    ]
+  },
+  {
+    "seed": "82901",
+    "chunk": [
+      23,
+      -13
+    ],
+    "markerRandomSeed": "991234",
+    "markers": [
+      {
+        "piece": 328,
+        "name": "1x1_a4",
+        "rotation": 1,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -40,
+          76,
+          1
+        ],
+        "facing": "north",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "2952878762325072634"
+      },
+      {
+        "piece": 457,
+        "name": "1x2_d2",
+        "rotation": 0,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -45,
+          85,
+          -33
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "3009251846689356700"
+      }
+    ]
+  },
+  {
+    "seed": "91477",
+    "chunk": [
+      0,
+      0
+    ],
+    "markerRandomSeed": "991234",
+    "markers": [
+      {
+        "piece": 351,
+        "name": "1x1_a4",
+        "rotation": 1,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -8,
+          76,
+          17
+        ],
+        "facing": "north",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "2952878762325072634"
+      },
+      {
+        "piece": 501,
+        "name": "1x2_d2",
+        "rotation": 1,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -17,
+          85,
+          -39
+        ],
+        "facing": "north",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "3009251846689356700"
+      },
+      {
+        "piece": 509,
+        "name": "2x2_b5",
+        "rotation": 2,
+        "mirror": 0,
+        "marker": "ChestSouth",
+        "position": [
+          -12,
+          85,
+          -7
+        ],
+        "facing": "north",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "8847543281593893389"
+      },
+      {
+        "piece": 515,
+        "name": "2x2_b5",
+        "rotation": 2,
+        "mirror": 1,
+        "marker": "ChestSouth",
+        "position": [
+          -20,
+          85,
+          -5
+        ],
+        "facing": "north",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-638363470146955455"
+      },
+      {
+        "piece": 533,
+        "name": "1x2_d2",
+        "rotation": 2,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -43,
+          85,
+          -35
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-4921362676484984618"
+      },
+      {
+        "piece": 577,
+        "name": "2x2_b5",
+        "rotation": 1,
+        "mirror": 1,
+        "marker": "ChestSouth",
+        "position": [
+          -11,
+          96,
+          -6
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "4202292574526371069"
+      },
+      {
+        "piece": 590,
+        "name": "1x2_d2",
+        "rotation": 0,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -21,
+          96,
+          -1
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-3175750415998788536"
+      }
+    ]
+  },
+  {
+    "seed": "100127",
+    "chunk": [
+      -4,
+      8
+    ],
+    "markerRandomSeed": "991234",
+    "markers": [
+      {
+        "piece": 326,
+        "name": "1x1_a4",
+        "rotation": 2,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -21,
+          76,
+          72
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "2952878762325072634"
+      },
+      {
+        "piece": 337,
+        "name": "1x1_a4",
+        "rotation": 3,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -18,
+          76,
+          45
+        ],
+        "facing": "south",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "3009251846689356700"
+      },
+      {
+        "piece": 372,
+        "name": "1x2_a1",
+        "rotation": 3,
+        "mirror": 0,
+        "marker": "ChestSouth",
+        "position": [
+          23,
+          71,
+          56
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "8847543281593893389"
+      },
+      {
+        "piece": 376,
+        "name": "1x2_a1",
+        "rotation": 0,
+        "mirror": 2,
+        "marker": "ChestSouth",
+        "position": [
+          22,
+          71,
+          49
+        ],
+        "facing": "south",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-638363470146955455"
+      },
+      {
+        "piece": 546,
+        "name": "1x2_se1",
+        "rotation": 0,
+        "mirror": 0,
+        "marker": "ChestSouth",
+        "position": [
+          -26,
+          98,
+          38
+        ],
+        "facing": "south",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-4921362676484984618"
+      },
+      {
+        "piece": 546,
+        "name": "1x2_se1",
+        "rotation": 0,
+        "mirror": 0,
+        "marker": "ChestNorth",
+        "position": [
+          -26,
+          98,
+          50
+        ],
+        "facing": "north",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "4202292574526371069"
+      },
+      {
+        "piece": 556,
+        "name": "2x2_b5",
+        "rotation": 3,
+        "mirror": 2,
+        "marker": "ChestSouth",
+        "position": [
+          -13,
+          96,
+          28
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-3175750415998788536"
+      },
+      {
+        "piece": 570,
+        "name": "1x2_d2",
+        "rotation": 2,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          3,
+          96,
+          63
+        ],
+        "facing": "east",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-6987918099244893265"
+      }
+    ]
+  },
+  {
+    "seed": "6",
+    "chunk": [
+      83,
+      30
+    ],
+    "markerRandomSeed": "991234",
+    "markers": [
+      {
+        "piece": 305,
+        "name": "1x2_a1",
+        "rotation": 1,
+        "mirror": 0,
+        "marker": "ChestSouth",
+        "position": [
+          -75,
+          71,
+          6
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "2952878762325072634"
+      },
+      {
+        "piece": 316,
+        "name": "1x1_a4",
+        "rotation": 0,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -31,
+          76,
+          6
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "3009251846689356700"
+      },
+      {
+        "piece": 355,
+        "name": "1x1_a4",
+        "rotation": 1,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -18,
+          76,
+          41
+        ],
+        "facing": "north",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "8847543281593893389"
+      },
+      {
+        "piece": 549,
+        "name": "1x1_as1",
+        "rotation": 0,
+        "mirror": 0,
+        "marker": "ChestWest",
+        "position": [
+          -48,
+          90,
+          44
+        ],
+        "facing": "west",
+        "lootTable": "minecraft:chests/woodland_mansion",
+        "lootSeed": "-638363470146955455"
+      }
+    ]
+  }
+]

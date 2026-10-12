@@ -126,6 +126,7 @@ func (s *netherFeatureSource) baseChunk(pos world.ChunkPos) *chunk.Chunk {
 }
 
 func (s *netherFeatureSource) PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+	env.SourceDimension = "minecraft:the_nether"
 	switch step {
 	case 4:
 		env.Random = s.structureStepRandom(pos, 18, step)

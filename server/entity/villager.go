@@ -36,29 +36,36 @@ func (villagerType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.3, 0, -.3, .3, 1.95, .3)
 }
 func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
+	source := ReadNativeMobJavaState(nbt)
+	if source == nil {
+		source = nbt
+	}
 	c := VillagerBehaviourConfig{}
-	if _, ok := nbt["Health"]; ok {
-		c.Health, c.healthSet = float64(nbtconv.Float32(nbt, "Health")), true
+	if _, ok := source["Health"]; ok {
+		c.Health, c.healthSet = float64(nbtconv.Float32(source, "Health")), true
 	}
-	if _, ok := nbt["Xp"]; ok {
-		c.XP = int(nbtconv.Int32(nbt, "Xp"))
+	if health, ok := nativeMobAttribute(nbt, "minecraft:health"); ok {
+		c.Health, c.healthSet = health.Current, true
 	}
-	if _, ok := nbt["Age"]; ok {
-		c.Age = int(nbtconv.Int32(nbt, "Age"))
+	if _, ok := source["Xp"]; ok {
+		c.XP = int(nbtconv.Int32(source, "Xp"))
 	}
-	c.Finalized = nbtconv.Bool(nbt, "VillagerDataFinalized")
-	c.FoodLevel = int(nbtconv.Uint8(nbt, "FoodLevel"))
-	c.LastGossipDecay = nbtconv.Int64(nbt, "LastGossipDecay")
-	c.LastRestock = nbtconv.Int64(nbt, "LastRestock")
-	c.RestocksToday = int(nbtconv.Int32(nbt, "RestocksToday"))
-	c.LastSlept = nbtconv.Int64(nbt, "VillagerLastSlept")
-	c.HasSlept = nbtconv.Bool(nbt, "VillagerHasSlept")
-	c.GolemDetectedUntil = nbtconv.Int64(nbt, "VillagerGolemDetectedUntil")
-	c.JobSite, c.HasJobSite = villagerReadPos(nbt["VillagerJobSite"])
-	c.Home, c.HasHome = villagerReadPos(nbt["VillagerHome"])
-	c.PotentialJobSite, c.HasPotentialJobSite = villagerReadPos(nbt["VillagerPotentialJobSite"])
-	c.MeetingPoint, c.HasMeetingPoint = villagerReadPos(nbt["VillagerMeetingPoint"])
-	for _, raw := range nbtconv.Slice(nbt, "Inventory") {
+	if _, ok := source["Age"]; ok {
+		c.Age = int(nbtconv.Int32(source, "Age"))
+	}
+	c.Finalized = nbtconv.Bool(source, "VillagerDataFinalized")
+	c.FoodLevel = int(nbtconv.Uint8(source, "FoodLevel"))
+	c.LastGossipDecay = nbtconv.Int64(source, "LastGossipDecay")
+	c.LastRestock = nbtconv.Int64(source, "LastRestock")
+	c.RestocksToday = int(nbtconv.Int32(source, "RestocksToday"))
+	c.LastSlept = nbtconv.Int64(source, "VillagerLastSlept")
+	c.HasSlept = nbtconv.Bool(source, "VillagerHasSlept")
+	c.GolemDetectedUntil = nbtconv.Int64(source, "VillagerGolemDetectedUntil")
+	c.JobSite, c.HasJobSite = villagerReadPos(source["VillagerJobSite"])
+	c.Home, c.HasHome = villagerReadPos(source["VillagerHome"])
+	c.PotentialJobSite, c.HasPotentialJobSite = villagerReadPos(source["VillagerPotentialJobSite"])
+	c.MeetingPoint, c.HasMeetingPoint = villagerReadPos(source["VillagerMeetingPoint"])
+	for _, raw := range nbtconv.Slice(source, "Inventory") {
 		row, ok := raw.(map[string]any)
 		if !ok {
 			continue
@@ -69,12 +76,19 @@ func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 			c.Inventory = append(c.Inventory, villagerInventorySlot{Slot: slot, Stack: stack})
 		}
 	}
-	if d, ok := nbt["VillagerData"].(map[string]any); ok {
+	if d, ok := source["VillagerData"].(map[string]any); ok {
 		c.Type = villagerString(d, "type", "minecraft:plains")
 		c.Profession = villagerString(d, "profession", "minecraft:none")
 		c.Level = int(nbtconv.Int32(d, "level"))
+		if _, hasType := d["type"]; hasType {
+			if _, hasProfession := d["profession"]; hasProfession {
+				if _, hasLevel := d["level"]; hasLevel {
+					c.Finalized = true
+				}
+			}
+		}
 	}
-	if raw, ok := nbt["Gossips"]; ok {
+	if raw, ok := source["Gossips"]; ok {
 		for _, row := range nbtconv.Slice(map[string]any{"Gossips": raw}, "Gossips") {
 			g, ok := row.(map[string]any)
 			if !ok {
@@ -88,7 +102,7 @@ func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 			}
 		}
 	}
-	if o, ok := nbt["Offers"].(map[string]any); ok {
+	if o, ok := source["Offers"].(map[string]any); ok {
 		for _, raw := range nbtconv.Slice(o, "Recipes") {
 			m, ok := raw.(map[string]any)
 			if !ok {
@@ -113,8 +127,8 @@ func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 				PriceMultiplier: nbtconv.Float32(m, "priceMultiplier")})
 		}
 	}
-	if _, exists := nbt["OffersGenerated"]; exists {
-		c.OffersGenerated = nbtconv.Bool(nbt, "OffersGenerated")
+	if _, exists := source["OffersGenerated"]; exists {
+		c.OffersGenerated = nbtconv.Bool(source, "OffersGenerated")
 	} else {
 		c.OffersGenerated = len(c.Offers) > 0
 	}
@@ -166,7 +180,26 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 	if b.hasMeetingPoint {
 		result["VillagerMeetingPoint"] = villagerPosNBT(b.meetingPoint)
 	}
-	return result
+	health := b.health
+	maxHealth := health.MaxHealth()
+	attributes := EncodeNativeMobAttributes(ReadNativeMobAttributes(data.NativeNBT), []NativeMobAttribute{
+		{Name: "minecraft:health", Base: maxHealth, Current: health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth},
+	})
+	native := MergeNativeMobNBT(data.NativeNBT, map[string]any{"Health": float32(health.Health()), "Attributes": attributes})
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), result)
+	if !b.hasJobSite {
+		delete(javaState, "VillagerJobSite")
+	}
+	if !b.hasHome {
+		delete(javaState, "VillagerHome")
+	}
+	if !b.hasPotentialJobSite {
+		delete(javaState, "VillagerPotentialJobSite")
+	}
+	if !b.hasMeetingPoint {
+		delete(javaState, "VillagerMeetingPoint")
+	}
+	return MergeNativeMobJavaState(native, javaState)
 }
 func villagerUUIDNBT(target string) []int32 {
 	id, err := uuid.Parse(target)
@@ -328,6 +361,8 @@ type VillagerBehaviour struct {
 	jobSite, potentialJobSite, home, meetingPoint                                                         cube.Pos
 	finalized, offersGenerated, hasSlept, hasJobSite, hasPotentialJobSite, hasHome, hasMeetingPoint, dead bool
 }
+
+func (b *VillagerBehaviour) Baby() bool { return b.age < 0 }
 
 type Villager struct{ *Ent }
 

@@ -20,7 +20,7 @@ import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.tags.TagLoader;
 
-/** Exports registry order, supported item holders and level bounds from Java 26.3. */
+/** Exports registry order, item eligibility, costs and exclusive holders from Java 26.3. */
 public final class JavaEnchantmentExporter {
     public static void main(String[] args) throws Exception {
         if (args.length != 0) throw new IllegalArgumentException("usage: JavaEnchantmentExporter");
@@ -44,9 +44,21 @@ public final class JavaEnchantmentExporter {
                 var row = new JsonObject();
                 row.addProperty("name", holder.unwrapKey().orElseThrow().identifier().toString());
                 row.addProperty("max_level", holder.value().getMaxLevel());
+                var definition = holder.value().definition();
                 var supportedItems = new JsonArray();
-                holder.value().getSupportedItems().stream().forEach(item -> supportedItems.add(item.unwrapKey().orElseThrow().identifier().toString()));
+                definition.supportedItems().stream().forEach(item -> supportedItems.add(item.unwrapKey().orElseThrow().identifier().toString()));
                 row.add("supported_items", supportedItems);
+                var primaryItems = new JsonArray();
+                definition.primaryItems().ifPresent(items -> items.stream().forEach(item -> primaryItems.add(item.unwrapKey().orElseThrow().identifier().toString())));
+                row.add("primary_items", primaryItems);
+                row.addProperty("weight", definition.weight());
+                row.addProperty("min_cost_base", definition.minCost().base());
+                row.addProperty("min_cost_per_level", definition.minCost().perLevelAboveFirst());
+                row.addProperty("max_cost_base", definition.maxCost().base());
+                row.addProperty("max_cost_per_level", definition.maxCost().perLevelAboveFirst());
+                var exclusiveSet = new JsonArray();
+                holder.value().exclusiveSet().stream().forEach(enchantment -> exclusiveSet.add(enchantment.unwrapKey().orElseThrow().identifier().toString()));
+                row.add("exclusive_set", exclusiveSet);
                 rows.add(row);
             }
             out.println(new GsonBuilder().setPrettyPrinting().create().toJson(rows));

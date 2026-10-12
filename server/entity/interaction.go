@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // Interactable represents an entity that can be interacted with by a user.
@@ -17,10 +18,24 @@ type Rider interface {
 	SetRiding(*world.EntityHandle)
 }
 
+// passengerPositioner supplies the vehicle's source attachment minus the
+// passenger's attachment. Locomotion uses it instead of independent physics.
+type passengerPositioner interface {
+	PassengerPosition(passenger world.Entity) mgl64.Vec3
+}
+
+func vehicleAttachmentPoint(passenger world.Entity) mgl64.Vec3 {
+	if attached, ok := passenger.(interface{ VehicleAttachmentPoint() mgl64.Vec3 }); ok {
+		return attached.VehicleAttachmentPoint()
+	}
+	return mgl64.Vec3{}
+}
+
 // VehicleInput represents an entity that can be controlled by rider input.
 type VehicleInput interface {
 	SetVehicleInput(strafe, forward float64)
 }
+
 // VehicleInputWithRider is an optional input extension for vehicles whose
 // steering depends on the controlling passenger's orientation.
 type VehicleInputWithRider interface {
@@ -31,6 +46,7 @@ type VehicleInputWithRider interface {
 type VehicleController interface {
 	ControlsVehicle(passenger world.Entity) bool
 }
+
 // PassengerDismounter removes a specific passenger from a vehicle.
 type PassengerDismounter interface {
 	Dismount(tx *world.Tx, passenger world.Entity)
@@ -121,7 +137,6 @@ func CanBeHitByPiercingWeapon(target, attacker world.Entity) bool {
 	}
 	return true
 }
-
 
 // ContainerOpener represents a user that can open an entity container.
 type ContainerOpener interface {

@@ -11,10 +11,20 @@ import (
 type javaNBTConfig struct {
 	typeOf world.EntityType
 	data   map[string]any
+	native map[string]any
 }
 
 func (c javaNBTConfig) Apply(data *world.EntityData) {
 	source := world.CloneJavaEntityNBT(c.data)
+	if c.native != nil {
+		data.NativeNBT = c.native
+		data.NativeNBT["adamant:java"] = source
+		decoded := make(map[string]any, len(source)+len(c.native))
+		for key, value := range source { decoded[key] = value }
+		for key, value := range c.native { decoded[key] = value }
+		c.typeOf.DecodeNBT(decoded, data)
+		return
+	}
 	switch c.typeOf.EncodeEntity() {
 	case "minecraft:cat", "minecraft:witch":
 		// Their codecs use the Java namespace for source-only spawn state.
@@ -47,7 +57,9 @@ func NewFromJavaNBT(data map[string]any, opts world.EntitySpawnOpts) (*world.Ent
 	if !ok {
 		return nil, fmt.Errorf("unsupported Java entity type %q", id)
 	}
-	return opts.New(t, javaNBTConfig{typeOf: t, data: data}), nil
+	native, err := projectTemplateMobNBT(data)
+	if err != nil { return nil, err }
+	return opts.New(t, javaNBTConfig{typeOf: t, data: data, native: native}), nil
 }
 
 // NewFromBucket constructs a mob from the entity data retained by its bucket.

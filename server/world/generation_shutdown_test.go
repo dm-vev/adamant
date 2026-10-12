@@ -15,7 +15,7 @@ type shutdownGenerator struct {
 
 func (*shutdownGenerator) DefaultSpawn(Dimension) cube.Pos { return cube.Pos{32, 70, 0} }
 
-func (g *shutdownGenerator) GenerateChunk(pos ChunkPos, _ *chunk.Chunk) GenerationResult {
+func (g *shutdownGenerator) GenerateChunk(pos ChunkPos, _ *chunk.Chunk, _ GenerationContext) GenerationResult {
 	if pos != (ChunkPos{}) {
 		return GenerationResult{}
 	}

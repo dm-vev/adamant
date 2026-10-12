@@ -68,10 +68,12 @@ type EntityHandle struct {
 	worldChanged chan struct{}
 	closeOnce    sync.Once
 
-	data        EntityData
-	spawnReason string
-	spawnSeed   int64
-	spawnGroup  *EntitySpawnGroup
+	data           EntityData
+	spawnReason    string
+	spawnSeed      int64
+	spawnGroup     *EntitySpawnGroup
+	javaRandom     *java26.Random
+	pendingVehicle uuid.UUID
 
 	// TODO Handler? Handle world change here?
 }
@@ -90,9 +92,18 @@ type EntitySpawnOpts struct {
 	ID uuid.UUID
 	// NameTag is the name tag that the entity is spawned with.
 	NameTag string
-	// SpawnReason requests Java mob initialisation on first insertion into a
-	// world. Leave it empty for restored entities or fully specified templates.
+	// SpawnReason records the Java spawn origin and requests initialisation
+	// on first insertion unless SpawnFinalized is set.
 	SpawnReason string
+	// SpawnFinalized marks Source state already prepared by a generation worker.
+	// Origin metadata is retained, but owner activation must not repeat RNG draws.
+	SpawnFinalized bool
+	// EntityRandom carries the independent Entity.random continuation from
+	// preparation. New copies it because entity state has a different owner.
+	EntityRandom *java26.Random
+	// Riding attaches a newly prepared passenger to its worldless vehicle.
+	// The vehicle must be installed before the passenger.
+	Riding *EntityHandle
 	// SpawnSeed supplies the independent spawn random stream. It is not the
 	// structure decoration stream used for processors and loot.
 	SpawnSeed int64
@@ -135,6 +146,14 @@ func (opts EntitySpawnOpts) New(t EntityType, conf EntityConfig) *EntityHandle {
 	handle.data.Pos, handle.data.Rot, handle.data.Vel = opts.Position, opts.Rotation, opts.Velocity
 	handle.data.Name = opts.NameTag
 	conf.Apply(&handle.data)
+	handle.data.Riding = opts.Riding
+	if opts.SpawnFinalized {
+		handle.spawnReason = ""
+	}
+	if opts.EntityRandom != nil {
+		random := *opts.EntityRandom
+		handle.javaRandom = &random
+	}
 	return handle
 }
 
@@ -508,6 +527,11 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 				e.id = id
 			}
 		}
+		if words, ok := javaData["VehicleUUID"].([]int32); ok && len(words) == 4 {
+			for i, word := range words {
+				binary.BigEndian.PutUint32(e.pendingVehicle[i*4:], uint32(word))
+			}
+		}
 	}
 }
 
@@ -523,7 +547,7 @@ func (e *EntityHandle) encodeNBT() map[string]any {
 		"Age":     int16(min(e.data.Age/(time.Second/20), math.MaxInt16)),
 		"NameTag": e.data.Name,
 	})
-	if e.data.SpawnReason != "" || binary.BigEndian.Uint64(e.id[:8]) != 0 {
+	if e.data.SpawnReason != "" || binary.BigEndian.Uint64(e.id[:8]) != 0 || e.data.Riding != nil || e.pendingVehicle != uuid.Nil || data["adamant:java"] != nil {
 		javaData, _ := data["adamant:java"].(map[string]any)
 		javaData = CloneNativeEntityNBT(javaData)
 		if javaData == nil {
@@ -538,6 +562,18 @@ func (e *EntityHandle) encodeNBT() map[string]any {
 				words[i] = int32(binary.BigEndian.Uint32(e.id[i*4:]))
 			}
 			javaData["UUID"] = words
+		}
+		delete(javaData, "VehicleUUID")
+		vehicle := e.pendingVehicle
+		if e.data.Riding != nil {
+			vehicle = e.data.Riding.id
+		}
+		if vehicle != uuid.Nil {
+			words := make([]int32, 4)
+			for i := range words {
+				words[i] = int32(binary.BigEndian.Uint32(vehicle[i*4:]))
+			}
+			javaData["VehicleUUID"] = words
 		}
 		data["adamant:java"] = javaData
 	}

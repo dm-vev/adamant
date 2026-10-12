@@ -21,7 +21,7 @@ func BenchmarkGenerate1000Chunks(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, pos := range positions {
 			c := chunk.New(world.DefaultBlockRegistry, world.Overworld.Range())
-			g.GenerateChunk(pos, c)
+			g.GenerateChunk(pos, c, world.GenerationContext{})
 		}
 	}
 }

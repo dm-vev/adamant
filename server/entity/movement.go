@@ -13,7 +13,7 @@ import (
 type MovementComputer struct {
 	Gravity, Drag     float64
 	DragBeforeGravity bool
-	NoBlockCollisions  bool
+	NoBlockCollisions bool
 
 	onGround             bool
 	collidedHorizontally bool
@@ -88,6 +88,20 @@ func (m *Movement) Rotation() cube.Rotation {
 // The resulting Movement can be sent to viewers by calling Movement.Send.
 func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot, prevRot cube.Rotation, tx *world.Tx) *Movement {
 	viewers := tx.Viewers(pos)
+	if rider, ok := e.(Rider); ok && rider.Riding() != nil {
+		if vehicle, loaded := rider.Riding().Entity(tx); loaded {
+			if living, ok := vehicle.(Living); ok && living.Dead() {
+				rider.SetRiding(nil)
+			} else if positioner, ok := vehicle.(passengerPositioner); ok {
+				passenger, _ := e.H().Entity(tx)
+				next := positioner.PassengerPosition(passenger)
+				return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+					pos: next, dpos: next.Sub(pos), dvel: vel.Mul(-1), rot: rot, rotChanged: rotationChanged(rot, prevRot)}
+			}
+		} else {
+			rider.SetRiding(nil)
+		}
+	}
 
 	velBefore := vel
 	vel = c.applyHorizontalForces(tx, pos, c.applyVerticalForces(vel))

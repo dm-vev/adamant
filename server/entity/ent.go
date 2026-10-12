@@ -134,6 +134,9 @@ func (e *Ent) Displace(deltaPos mgl64.Vec3) {
 func (e *Ent) Rotation() cube.Rotation {
 	return e.data.Rot
 }
+func (e *Ent) setRotation(rotation cube.Rotation) {
+	e.data.Rot = rotation
+}
 
 // Age returns the total time lived of this entity. It increases by
 // time.Second/20 for every time Tick is called.
@@ -248,6 +251,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		return
 	}
 	e.SetOnFire(e.OnFireDuration() - time.Second/20)
+	if e.data.Riding != nil {
+		e.data.Vel = mgl64.Vec3{}
+	}
 
 	m := e.Behaviour().Tick(e, tx)
 	checkEntityInsiders(tx, e)

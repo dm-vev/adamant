@@ -1,0 +1,170 @@
+[
+  {
+    "direction": 2,
+    "profile": "water",
+    "calls": [
+      {
+        "clip": 0,
+        "hash": "fc10c3ed725f66603ef6995a5a78d2ed02df438a8cb36c5e3311ff2bf252e46f",
+        "count": 241,
+        "nextLong": "3627702220766667225"
+      },
+      {
+        "clip": 1,
+        "hash": "b95491e69f2f6fed5b5dca67908dc9de8f7d51ccf927e11db876ce2a01053730",
+        "count": 498,
+        "nextLong": "2152586615940552998"
+      },
+      {
+        "clip": 2,
+        "hash": "b95491e69f2f6fed5b5dca67908dc9de8f7d51ccf927e11db876ce2a01053730",
+        "count": 498,
+        "nextLong": "-7480727144680432691"
+      }
+    ]
+  },
+  {
+    "direction": 2,
+    "profile": "air",
+    "calls": [
+      {
+        "clip": 0,
+        "hash": "ea84dbcb896d5a6e2a25486186e02939ccec9497e325a971f6a9227359b8d4ef",
+        "count": 384,
+        "nextLong": "3627702220766667225"
+      },
+      {
+        "clip": 1,
+        "hash": "453ad667face569de6647795fcff08d85b73a51bfca84d8b08a5584b99c306f2",
+        "count": 768,
+        "nextLong": "2152586615940552998"
+      },
+      {
+        "clip": 2,
+        "hash": "453ad667face569de6647795fcff08d85b73a51bfca84d8b08a5584b99c306f2",
+        "count": 768,
+        "nextLong": "-7480727144680432691"
+      }
+    ]
+  },
+  {
+    "direction": 2,
+    "profile": "stone",
+    "calls": [
+      {
+        "clip": 0,
+        "hash": "ea84dbcb896d5a6e2a25486186e02939ccec9497e325a971f6a9227359b8d4ef",
+        "count": 384,
+        "nextLong": "3627702220766667225"
+      },
+      {
+        "clip": 1,
+        "hash": "453ad667face569de6647795fcff08d85b73a51bfca84d8b08a5584b99c306f2",
+        "count": 768,
+        "nextLong": "2152586615940552998"
+      },
+      {
+        "clip": 2,
+        "hash": "453ad667face569de6647795fcff08d85b73a51bfca84d8b08a5584b99c306f2",
+        "count": 768,
+        "nextLong": "-7480727144680432691"
+      }
+    ]
+  },
+  {
+    "direction": 2,
+    "profile": "ice",
+    "calls": [
+      {
+        "clip": 0,
+        "hash": "fc10c3ed725f66603ef6995a5a78d2ed02df438a8cb36c5e3311ff2bf252e46f",
+        "count": 241,
+        "nextLong": "3627702220766667225"
+      },
+      {
+        "clip": 1,
+        "hash": "b95491e69f2f6fed5b5dca67908dc9de8f7d51ccf927e11db876ce2a01053730",
+        "count": 498,
+        "nextLong": "2152586615940552998"
+      },
+      {
+        "clip": 2,
+        "hash": "b95491e69f2f6fed5b5dca67908dc9de8f7d51ccf927e11db876ce2a01053730",
+        "count": 498,
+        "nextLong": "-7480727144680432691"
+      }
+    ]
+  },
+  {
+    "direction": 5,
+    "profile": "water",
+    "calls": [
+      {
+        "clip": 0,
+        "hash": "4c1514e47f84ea668f23ecd9bb5c5157044cd9bfd5e2c0ec264d0a8f25d3f34a",
+        "count": 174,
+        "nextLong": "-3342970523933462541"
+      },
+      {
+        "clip": 1,
+        "hash": "3063fc646ee2abf53a0a6c13dba24bc352f6027b13bf3f153ba2b8c4da5ddd4f",
+        "count": 427,
+        "nextLong": "5721147289244439929"
+      },
+      {
+        "clip": 2,
+        "hash": "3063fc646ee2abf53a0a6c13dba24bc352f6027b13bf3f153ba2b8c4da5ddd4f",
+        "count": 427,
+        "nextLong": "8848689374656667212"
+      }
+    ]
+  },
+  {
+    "direction": 3,
+    "profile": "water",
+    "calls": [
+      {
+        "clip": 0,
+        "hash": "48c87b8ffa8593e6a46a22176d2a16b10d37c476e6f0a8883f4dbdd7f69988a3",
+        "count": 231,
+        "nextLong": "-3342970523933462541"
+      },
+      {
+        "clip": 1,
+        "hash": "3c71cb512fb67f179a12c35c763eb3f5e8c62dd116f67a7022e83d6da38081e9",
+        "count": 417,
+        "nextLong": "2152586615940552998"
+      },
+      {
+        "clip": 2,
+        "hash": "3c71cb512fb67f179a12c35c763eb3f5e8c62dd116f67a7022e83d6da38081e9",
+        "count": 417,
+        "nextLong": "8848689374656667212"
+      }
+    ]
+  },
+  {
+    "direction": 4,
+    "profile": "water",
+    "calls": [
+      {
+        "clip": 0,
+        "hash": "e123ddadf1d22de5b0e8d5b87f25680e1f466a01fa81cc991a90fbf244380bd1",
+        "count": 234,
+        "nextLong": "-1405852065022123515"
+      },
+      {
+        "clip": 1,
+        "hash": "715caaa627e104342903ea1a96e226993e6b714484fdf5b5268771e7d4a7994e",
+        "count": 498,
+        "nextLong": "5721147289244439929"
+      },
+      {
+        "clip": 2,
+        "hash": "715caaa627e104342903ea1a96e226993e6b714484fdf5b5268771e7d4a7994e",
+        "count": 498,
+        "nextLong": "7115355081621167131"
+      }
+    ]
+  }
+]

@@ -72,19 +72,17 @@ func (catType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.CollarColor = uint8(nbtconv.Int32(source, "CollarColor"))
 		c.collarSet = true
 	}
+	if value, ok := source["Age"]; ok { c.AgeTicks = int(nbtconv.Int32(map[string]any{"Age":value}, "Age")) }
+	if value, ok := source["sound_variant"].(string); ok { c.SoundVariant = strings.TrimPrefix(value, "minecraft:") }
 	d.Data = c.New()
 }
 func (catType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*CatBehaviour)
 	health := b.health
-	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "CollarColor": int32(b.collarColor)})
-	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
-		javaState["Owner"] = owner
-	} else {
-		delete(javaState, "Owner")
-	}
+	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name:"minecraft:health", Base:health.MaxHealth(), Current:health.Health(), DefaultMin:0, DefaultMax:health.MaxHealth(), Min:0, Max:health.MaxHealth()}, {Name:"minecraft:movement", Base:.3, Current:.3, DefaultMin:0, DefaultMax:.3, Min:0, Max:.3}, {Name:"minecraft:attack_damage", Base:3, Current:3, DefaultMin:0, DefaultMax:3, Min:0, Max:3}})
+	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes":attrs, "Variant":int32(b.variant)})
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age":int32(b.ageTicks), "Health":float32(health.Health()), "MaxHealth":float32(health.MaxHealth()), "Tame":byte(catBool(b.tamed)), "Sitting":byte(catBool(b.sitting)), "variant":"minecraft:"+catVariantNames[b.variant], "sound_variant":"minecraft:"+b.soundVariant, "CollarColor":int32(b.collarColor)})
+	if owner := catOwnerNBT(b.ownerUUID); owner != nil { javaState["Owner"] = owner } else { delete(javaState,"Owner") }
 	return MergeNativeMobJavaState(native, javaState)
 }
 func catOwnerNBT(owner string) []int32 {
@@ -137,11 +135,12 @@ func catBool(v bool) byte {
 }
 
 type CatBehaviourConfig struct {
-	Health, MaxHealth                float64
-	Tamed, Sitting                   bool
-	OwnerUUID                        string
-	CollarColor                      uint8
-	Variant                          int
+	Health, MaxHealth float64
+	Tamed, Sitting bool
+	OwnerUUID string
+	CollarColor uint8
+	Variant, AgeTicks int
+	SoundVariant string
 	healthSet, collarSet, variantSet bool
 }
 
@@ -160,7 +159,9 @@ func (c CatBehaviourConfig) New() *CatBehaviour {
 		c.Variant = 1
 	}
 	c.Variant = max(0, min(c.Variant, len(catVariantNames)-1))
-	return &CatBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), speed: .3, tamed: c.Tamed, sitting: c.Sitting, ownerUUID: c.OwnerUUID, variant: c.Variant, collarColor: c.CollarColor, nextWander: 1}
+	soundVariant := strings.TrimPrefix(c.SoundVariant, "minecraft:")
+	if soundVariant != "royal" { soundVariant = "classic" }
+	return &CatBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), speed: .3, tamed: c.Tamed, sitting: c.Sitting, ownerUUID: c.OwnerUUID, variant: c.Variant, collarColor: c.CollarColor, ageTicks:c.AgeTicks, soundVariant:soundVariant, nextWander: 1}
 }
 
 type CatBehaviour struct {
@@ -171,12 +172,17 @@ type CatBehaviour struct {
 	speed                float64
 	tamed, sitting, dead bool
 	ownerUUID            string
+	ageTicks int
+	soundVariant string
 	variant              int
 	collarColor          uint8
 	nextWander           int
 	path                 []cube.Pos
 	pathIndex            int
 }
+
+func (c *CatBehaviour) Variant() int32 { return int32(c.variant) }
+func (c *CatBehaviour) Baby() bool { return c.ageTicks < 0 }
 type Cat struct{ *Ent }
 
 func NewCat(opts world.EntitySpawnOpts) *world.EntityHandle {

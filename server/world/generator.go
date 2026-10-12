@@ -12,7 +12,7 @@ type Generator interface {
 	// returns additional column data. Ownership transfers to the World when
 	// this method returns; generators must not retain mutable returned data
 	// or perform world transactions from generation workers.
-	GenerateChunk(pos ChunkPos, chunk *chunk.Chunk) GenerationResult
+	GenerateChunk(pos ChunkPos, chunk *chunk.Chunk, context GenerationContext) GenerationResult
 	// DefaultSpawn returns the default spawn position for worlds using this generator in the dimension passed.
 	DefaultSpawn(dim Dimension) cube.Pos
 }
@@ -124,7 +124,7 @@ func (result *GenerationResult) ScheduleTick(tick chunk.ScheduledTick) {
 type NopGenerator struct{}
 
 // GenerateChunk ...
-func (NopGenerator) GenerateChunk(ChunkPos, *chunk.Chunk) GenerationResult {
+func (NopGenerator) GenerateChunk(ChunkPos, *chunk.Chunk, GenerationContext) GenerationResult {
 	return GenerationResult{}
 }
 

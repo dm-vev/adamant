@@ -97,17 +97,16 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		}
 	}
 	c.cureTicks = int(nbtconv.Int32(n, "ConversionTime"))
-	equipment := ReadNativeMobEquipment(n)
-	if len(equipment.Mainhand) > 0 {
-		entry := equipment.Mainhand[0]
-		stackData := map[string]any{"id": entry.Name, "count": int32(entry.Count)}
-		if entry.Damage != 0 {
-			stackData["components"] = map[string]any{"minecraft:damage": entry.Damage}
-		}
-		c.main, _ = item.StackFromJavaNBT(stackData)
-	} else if hands, ok := n["HandItems"].([]any); ok && len(hands) > 0 {
-		if hand, ok := hands[0].(map[string]any); ok {
+	if source, ok := n["equipment"].(map[string]any); ok {
+		if hand, ok := source["mainhand"].(map[string]any); ok {
 			c.main, _ = item.StackFromJavaNBT(hand)
+		}
+	}
+	equipment := ReadNativeMobEquipment(n)
+	if _, native := n["Mainhand"]; native {
+		c.main = item.Stack{}
+		if len(equipment.Mainhand) > 0 {
+			c.main = item.ReadNBT(equipment.Mainhand[0].Raw, nil)
 		}
 	}
 	if len(equipment.Armor) > 0 {
@@ -144,19 +143,7 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 		{Name: "minecraft:attack_damage", Base: t.attack, Current: t.attack, DefaultMin: 0, DefaultMax: t.attack, Min: 0, Max: t.attack},
 	}
 	equipment := ReadNativeMobEquipment(d.NativeNBT)
-	entry := NativeMobItem{}
-	if !b.main.Empty() {
-		raw := item.WriteNBT(b.main, true)
-		entry.Name, _ = raw["Name"].(string)
-		entry.Count = byte(b.main.Count())
-		if damage, ok := raw["Damage"]; ok {
-			entry.Damage = int32(nbtconv.Int32(map[string]any{"Damage": damage}, "Damage"))
-		}
-		if len(equipment.Mainhand) > 0 && equipment.Mainhand[0].Name == entry.Name {
-			entry.Raw = equipment.Mainhand[0].Raw
-		}
-	}
-	equipment.Mainhand = []NativeMobItem{entry}
+	equipment.Mainhand = []NativeMobItem{nativeMobItemFromStack(b.main)}
 	if !b.head.Empty() {
 		var previous NativeMobItem
 		if len(equipment.Armor) > 0 {
@@ -395,6 +382,9 @@ func (m *HostileMob) IsRaidLeader() bool { return m.state().raidLeader }
 func (m *HostileMob) CloseIn(tx *world.Tx) error {
 	tx.RaiderDied(m)
 	return m.Ent.CloseIn(tx)
+}
+func (m *HostileMob) HeldItems() (item.Stack, item.Stack) {
+	return m.state().main, item.Stack{}
 }
 func (m *HostileMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	return m.state().head, item.Stack{}, item.Stack{}, item.Stack{}

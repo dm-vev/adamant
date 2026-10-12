@@ -38,13 +38,12 @@ func (o *Overworld) BindWorld(w *world.World) {
 
 // GenerateChunk delegates generation to the underlying pm-gen implementation. BindWorld must
 // have been called before this method is invoked.
-func (o *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
-	o.mu.RLock()
+func (o *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult { o.mu.RLock()
 	gen := o.gen
 	o.mu.RUnlock()
 	// gen is created in NewOverworld, so this should not be nil.
-	return gen.GenerateChunk(pos, c)
-}
+	return gen.GenerateChunk(pos, c, context)
+ }
 
 // DefaultSpawn returns the default overworld spawn position.
 func (*Overworld) DefaultSpawn(world.Dimension) cube.Pos {

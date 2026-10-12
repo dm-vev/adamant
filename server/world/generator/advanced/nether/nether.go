@@ -127,14 +127,14 @@ func NewNether(seed int64) *Nether {
 }
 
 // GenerateChunk generates a single Nether chunk at the position passed.
-func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	chunkX, chunkZ := int(pos[0]), int(pos[1])
 
 	g.prepareTerrain(pos, c)
 	result := world.GenerationResult{}
 	g.fillBiomes(chunkX, chunkZ, c)
 	g.featureSource.remember(pos, c)
-	decoration := g.features.Decorate(pos, c)
+	decoration := g.features.Decorate(pos, c, context)
 	result.Entities = append(result.Entities, decoration.Entities...)
 	result.BlockEntities = append(result.BlockEntities, decoration.BlockEntities...)
 	result.ScheduledTicks = append(result.ScheduledTicks, decoration.ScheduledTicks...)

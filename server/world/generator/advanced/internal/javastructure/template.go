@@ -10,9 +10,11 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
+	"github.com/google/uuid"
 )
 
 // LiquidSettings controls ambient-fluid preservation during template placement.
@@ -56,6 +58,14 @@ type Entity struct {
 	Record      int32
 	Seed        int64
 	SpawnReason string
+	// ID preserves the fresh identity allocated by Source-style mob creation.
+	// Template descriptors without it use their deterministic placement key.
+	ID uuid.UUID
+	// Prepared spawns carry complete Source state and their independent RNG.
+	SpawnFinalized bool
+	EntityRandom   *java26.Random
+	// Passengers are absolute placement descriptors installed after this vehicle.
+	Passengers []Entity
 }
 
 // Template is an immutable decoded Java structure template.

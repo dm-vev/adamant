@@ -178,10 +178,10 @@ func NewOverworld(seed int64) *Overworld {
 }
 
 // GenerateChunk generates a single overworld chunk at the position passed.
-func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	base := g.terrainColumn(pos, false)
 	*c = *base.c.Clone()
-	result := g.modernFeatures.Decorate(pos, c)
+	result := g.modernFeatures.Decorate(pos, c, context)
 	decorationMarkers := result.PostProcessing
 	result.PostProcessing = nil
 	appendPostProcessing(&result, base.postProcessing)

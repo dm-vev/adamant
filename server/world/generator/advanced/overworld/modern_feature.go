@@ -257,7 +257,7 @@ func (f *ModernFeatures) buildFeatureRanks() {
 	}
 }
 
-func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk) world.GenerationResult {
+func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	result := world.GenerationResult{}
 	region := newFeatureRegion(f, c, pos, &result)
 	minQuartY, maxQuartY := region.MinY()>>2, region.MaxY()>>2
@@ -287,6 +287,7 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 					BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
 					JavaBiomeAt: f.source.JavaBiomeAt,
 					BaseHeight:  region.Height,
+					SeaLevel:    f.source.SeaLevel(),
 					MotionBlockingNoLeavesHeight: func(x, z int32) int32 {
 						return region.placementHeight(x, z, "MOTION_BLOCKING_NO_LEAVES")
 					},
@@ -307,6 +308,7 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk) world.Gene
 					WorldSeed:               f.seed,
 					Random:                  &structureRandom,
 					LevelRandom:             region.JavaRandom(),
+					GenerationContext:       context,
 					PlaceFeature: func(feature any, pos [3]int32, random *java26.Random) bool {
 						return region.PlacePlacedFeature(feature, pos, random)
 					},

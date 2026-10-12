@@ -1,0 +1,106 @@
+{
+  "data_version": 5023,
+  "cat_variants": [
+    "minecraft:all_black",
+    "minecraft:black",
+    "minecraft:british_shorthair",
+    "minecraft:calico",
+    "minecraft:jellie",
+    "minecraft:persian",
+    "minecraft:ragdoll",
+    "minecraft:red",
+    "minecraft:siamese",
+    "minecraft:tabby",
+    "minecraft:white"
+  ],
+  "cat_sounds": [
+    "minecraft:classic",
+    "minecraft:royal"
+  ],
+  "cow_variants": [
+    "minecraft:cold",
+    "minecraft:temperate",
+    "minecraft:warm"
+  ],
+  "cow_sounds": [
+    "minecraft:classic",
+    "minecraft:moody"
+  ],
+  "pig_variants": [
+    "minecraft:cold",
+    "minecraft:temperate",
+    "minecraft:warm"
+  ],
+  "pig_sounds": [
+    "minecraft:big",
+    "minecraft:classic",
+    "minecraft:mini"
+  ],
+  "spawns_warm_variant_farm_animals": [
+    "minecraft:desert",
+    "minecraft:warm_ocean",
+    "minecraft:bamboo_jungle",
+    "minecraft:jungle",
+    "minecraft:sparse_jungle",
+    "minecraft:savanna",
+    "minecraft:savanna_plateau",
+    "minecraft:windswept_savanna",
+    "minecraft:nether_wastes",
+    "minecraft:soul_sand_valley",
+    "minecraft:crimson_forest",
+    "minecraft:warped_forest",
+    "minecraft:basalt_deltas",
+    "minecraft:badlands",
+    "minecraft:eroded_badlands",
+    "minecraft:wooded_badlands",
+    "minecraft:mangrove_swamp",
+    "minecraft:deep_lukewarm_ocean",
+    "minecraft:lukewarm_ocean"
+  ],
+  "spawns_cold_variant_farm_animals": [
+    "minecraft:snowy_plains",
+    "minecraft:ice_spikes",
+    "minecraft:frozen_peaks",
+    "minecraft:jagged_peaks",
+    "minecraft:snowy_slopes",
+    "minecraft:frozen_ocean",
+    "minecraft:deep_frozen_ocean",
+    "minecraft:grove",
+    "minecraft:deep_dark",
+    "minecraft:frozen_river",
+    "minecraft:snowy_taiga",
+    "minecraft:snowy_beach",
+    "minecraft:the_end",
+    "minecraft:end_highlands",
+    "minecraft:end_midlands",
+    "minecraft:small_end_islands",
+    "minecraft:end_barrens",
+    "minecraft:cold_ocean",
+    "minecraft:deep_cold_ocean",
+    "minecraft:old_growth_pine_taiga",
+    "minecraft:old_growth_spruce_taiga",
+    "minecraft:taiga",
+    "minecraft:windswept_forest",
+    "minecraft:windswept_gravelly_hills",
+    "minecraft:windswept_hills",
+    "minecraft:stony_peaks",
+    "minecraft:dappled_forest"
+  ],
+  "allowed_in_peaceful": {
+    "minecraft:villager": true,
+    "minecraft:cat": true,
+    "minecraft:cow": true,
+    "minecraft:horse": true,
+    "minecraft:iron_golem": true,
+    "minecraft:pig": true,
+    "minecraft:sheep": true,
+    "minecraft:camel": true,
+    "minecraft:allay": true,
+    "minecraft:piglin": true,
+    "minecraft:piglin_brute": false,
+    "minecraft:hoglin": false,
+    "minecraft:zombie_villager": false,
+    "minecraft:armor_stand": true,
+    "minecraft:cushion": true
+  }
+}
