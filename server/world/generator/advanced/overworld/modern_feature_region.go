@@ -1023,22 +1023,14 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 		panic("overworld: Java block predicate without type")
 	}
 	kind := normalizeJavaResource(typeName)
-	if raw, exists := predicate["offset"]; exists {
-		values, ok := raw.([]any)
-		if !ok || len(values) != 3 {
-			panic("overworld: malformed Java block predicate offset")
+	switch kind {
+	case "matching_blocks", "matching_block_tag", "matching_fluids", "has_sturdy_face", "solid", "replaceable", "would_survive", "inside_world_bounds":
+		if raw, exists := predicate["offset"]; exists {
+			offset := featurePredicateVector(raw)
+			p.x += offset[0]
+			p.y += offset[1]
+			p.z += offset[2]
 		}
-		offset := [3]int32{}
-		for i, value := range values {
-			n, ok := value.(float64)
-			if !ok || n < -16 || n > 16 || n != math.Trunc(n) {
-				panic("overworld: invalid Java block predicate offset")
-			}
-			offset[i] = int32(n)
-		}
-		p.x += offset[0]
-		p.y += offset[1]
-		p.z += offset[2]
 	}
 	switch kind {
 	case "true":
@@ -1071,6 +1063,38 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 			panic("overworld: malformed negated block predicate")
 		}
 		return !featurePredicate(region, p, child)
+	case "matching_biomes":
+		return featureBiomeHolderContains(predicate["biomes"], region.f.source.JavaBiomeAt(p.x, p.y, p.z))
+	case "replaceable":
+		shape, err := javadata.BlockGenerationShapeID(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		if err != nil {
+			panic(err)
+		}
+		return shape.Replaceable
+	case "unobstructed":
+		// WorldGenRegion's entity queries are empty. EntityGetter therefore
+		// accepts the unit shape; Source also deliberately ignores offset.
+		return true
+	case "volume_match":
+		minimum := featurePredicateVector(predicate["min"])
+		maximum := featurePredicateVector(predicate["max"])
+		if minimum[0] > maximum[0] || minimum[1] > maximum[1] || minimum[2] > maximum[2] {
+			panic("overworld: Java volume_match min bound exceeds max bound")
+		}
+		match, ok := predicate["match"].(map[string]any)
+		if !ok {
+			panic("overworld: malformed Java volume_match predicate")
+		}
+		for x := minimum[0]; x <= maximum[0]; x++ {
+			for z := minimum[2]; z <= maximum[2]; z++ {
+				for y := minimum[1]; y <= maximum[1]; y++ {
+					if !featurePredicate(region, featurePos{p.x + x, p.y + y, p.z + z}, match) {
+						return false
+					}
+				}
+			}
+		}
+		return true
 	}
 	name, properties := region.State(p)
 	name = normalizeJavaResource(name)
@@ -1147,5 +1171,45 @@ func featureBlockHolderContains(holder any, name string) bool {
 		return false
 	default:
 		panic("overworld: malformed Java block holder set")
+	}
+}
+
+func featurePredicateVector(raw any) [3]int32 {
+	values, ok := raw.([]any)
+	if !ok || len(values) != 3 {
+		panic("overworld: malformed Java block predicate vector")
+	}
+	var vector [3]int32
+	for i, value := range values {
+		n, ok := value.(float64)
+		if !ok || n < -16 || n > 16 || n != math.Trunc(n) {
+			panic("overworld: invalid Java block predicate vector")
+		}
+		vector[i] = int32(n)
+	}
+	return vector
+}
+
+func featureBiomeHolderContains(holder any, biome string) bool {
+	biome = normalizeJavaResource(biome)
+	switch values := holder.(type) {
+	case string:
+		if tag, ok := strings.CutPrefix(values, "#"); ok {
+			match, err := javadata.BiomeTagContains(tag, biome)
+			if err != nil {
+				panic(err)
+			}
+			return match
+		}
+		return biome == normalizeJavaResource(values)
+	case []any:
+		for _, value := range values {
+			if biome == normalizeJavaResource(value.(string)) {
+				return true
+			}
+		}
+		return false
+	default:
+		panic("overworld: malformed Java biome holder set")
 	}
 }

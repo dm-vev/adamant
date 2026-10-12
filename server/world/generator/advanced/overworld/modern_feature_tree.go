@@ -22,7 +22,7 @@ func placeModernTreeFamily(region *featureRegion, typeName string, config map[st
 	case "bamboo":
 		return true, placeModernBamboo(region, config, origin, r)
 	case "huge_brown_mushroom", "huge_red_mushroom":
-		return true, placeModernHugeMushroom(region, config, origin, r)
+		return true, placeModernHugeMushroom(region, normalizeJavaResource(typeName), config, origin, r)
 	case "huge_fungus":
 		return true, placeModernHugeFungus(region, config, origin, r)
 	case "root_system":
@@ -1420,75 +1420,113 @@ func treeSolidRender(region *featureRegion, p featurePos) bool {
 	}
 	return shape.SolidRender
 }
+
+var modernBambooStateIDs = func() [5]uint32 {
+	var ids [5]uint32
+	var err error
+	ids[0], err = javadata.BlockStateID("minecraft:bamboo", nil)
+	if err != nil {
+		panic(err)
+	}
+	ids[1], err = javadata.BlockStateWithProperty(ids[0], "age", 1)
+	if err != nil {
+		panic(err)
+	}
+	ids[3], err = javadata.BlockStateWithProperty(ids[1], "leaves", "large")
+	if err != nil {
+		panic(err)
+	}
+	ids[2], err = javadata.BlockStateWithProperty(ids[3], "stage", 1)
+	if err != nil {
+		panic(err)
+	}
+	ids[4], err = javadata.BlockStateWithProperty(ids[1], "leaves", "small")
+	if err != nil {
+		panic(err)
+	}
+	return ids
+}()
+
 func placeModernBamboo(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) bool {
-	n, _ := region.State(origin)
-	if normalizeJavaResource(n) != "air" {
+	registry := region.c.BlockRegistry()
+	isEmpty := func(p featurePos) bool {
+		name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(registry))
+		return name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air"
+	}
+	if !isEmpty(origin) {
 		return false
 	}
-	soil, _ := region.State(treePos(origin, 0, -1, 0))
-	if !treeTagContains("#minecraft:bamboo_plantable_on", soil) {
-		return false
+	if !world.JavaGenerationBlockCanSurvive(region, modernBambooStateIDs[0], cube.Pos{int(origin.x), int(origin.y), int(origin.z)}) {
+		return true
 	}
 	height := int32(r.NextInt(12) + 5)
-	probability := 0.0
-	if v, ok := config["probability"].(float64); ok {
-		probability = v
-	}
-	if r.NextFloat() < float32(probability) {
+	if r.NextFloat() < float32(config["probability"].(float64)) {
 		radius := int32(r.NextInt(4) + 1)
+		podzolID, err := javadata.BlockStateID("minecraft:podzol", nil)
+		if err != nil {
+			panic(err)
+		}
+		podzol := world.ResolveStateID(registry, podzolID)
 		for x := -radius; x <= radius; x++ {
 			for z := -radius; z <= radius; z++ {
 				if x*x+z*z > radius*radius {
 					continue
 				}
 				p := treePos(origin, x, 0, z)
-				ground := region.Height(p.x, p.z, false) - 1
-				p.y = ground
-				s, _ := region.State(p)
-				if treeTagContains("#minecraft:beneath_bamboo_podzol_replaceable", s) {
-					treeSetNamed(region, p, "podzol", nil)
+				p.y = region.placementHeight(p.x, p.z, "WORLD_SURFACE") - 1
+				name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(registry))
+				if treeTagContains("#minecraft:beneath_bamboo_podzol_replaceable", name) {
+					region.setWithFlags(p, podzol, 2)
 				}
 			}
 		}
 	}
-	y := int32(0)
-	for ; y < height && origin.y+y <= region.MaxY(); y++ {
-		p := treePos(origin, 0, y, 0)
-		n, _ := region.State(p)
-		if normalizeJavaResource(n) != "air" {
+	trunk := world.ResolveStateID(registry, modernBambooStateIDs[1])
+	grown := int32(0)
+	for range height {
+		p := treePos(origin, 0, grown, 0)
+		if !isEmpty(p) {
 			break
 		}
-		treeSetNamed(region, p, "bamboo", map[string]any{"age": "1", "leaves": "none", "stage": "0"})
+		region.setWithFlags(p, trunk, 2)
+		grown++
 	}
-	if y >= 3 {
-		treeSetNamed(region, treePos(origin, 0, y, 0), "bamboo", map[string]any{"age": "1", "leaves": "large", "stage": "1"})
-		treeSetNamed(region, treePos(origin, 0, y-1, 0), "bamboo", map[string]any{"age": "1", "leaves": "large", "stage": "0"})
-		treeSetNamed(region, treePos(origin, 0, y-2, 0), "bamboo", map[string]any{"age": "1", "leaves": "small", "stage": "0"})
+	if grown >= 3 {
+		region.setWithFlags(treePos(origin, 0, grown, 0), world.ResolveStateID(registry, modernBambooStateIDs[2]), 2)
+		region.setWithFlags(treePos(origin, 0, grown-1, 0), world.ResolveStateID(registry, modernBambooStateIDs[3]), 2)
+		region.setWithFlags(treePos(origin, 0, grown-2, 0), world.ResolveStateID(registry, modernBambooStateIDs[4]), 2)
 	}
 	return true
 }
 
-func placeModernHugeMushroom(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) bool {
+func placeModernHugeMushroom(region *featureRegion, typeName string, config map[string]any, origin featurePos, r *java26.Random) bool {
 	height := int32(r.NextInt(3) + 4)
 	if r.NextInt(12) == 0 {
 		height *= 2
 	}
-	radius := treeInt(config["foliage_radius"], 2, r)
-	if origin.y < region.MinY()+1 || origin.y+height+1 > region.MaxY()+1 {
+	radius := int32(2)
+	if value, exists := config["foliage_radius"]; exists {
+		radius = javaIntProviderValue(value)
+	}
+	if origin.y < region.MinY()+1 || origin.y+height+1 > region.MaxY() {
 		return false
 	}
 	if !featurePredicate(region, treePos(origin, 0, -1, 0), treeMap(config["can_place_on"])) {
 		return false
 	}
-	red := strings.Contains(fmt.Sprint(config["cap_provider"]), "red_mushroom")
-	for y := int32(0); y <= height; y++ {
+	red := typeName == "huge_red_mushroom"
+	for y := range height + 1 {
 		rad := int32(0)
-		if red && y >= height-3 || !red && y > 3 {
+		// isValidPosition passes (-1, -1) to the variant method. The red
+		// implementation consequently returns radius zero for every scan row.
+		if !red && y > 3 {
 			rad = radius
 		}
 		for x := -rad; x <= rad; x++ {
 			for z := -rad; z <= rad; z++ {
-				if !treeAirOrLeaves(region, treePos(origin, x, y, z)) {
+				p := treePos(origin, x, y, z)
+				name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+				if name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" && !treeIsLeaves(name) {
 					return false
 				}
 			}
@@ -1500,7 +1538,6 @@ func placeModernHugeMushroom(region *featureRegion, config map[string]any, origi
 			if y == height {
 				rad = radius - 1
 			}
-			center := radius - 2
 			for x := -rad; x <= rad; x++ {
 				for z := -rad; z <= rad; z++ {
 					edgeX := x == -rad || x == rad
@@ -1508,8 +1545,12 @@ func placeModernHugeMushroom(region *featureRegion, config map[string]any, origi
 					if y < height && edgeX == edgeZ {
 						continue
 					}
-					props := map[string]any{"up": fmt.Sprint(y >= height-1), "west": fmt.Sprint(x < -center), "east": fmt.Sprint(x > center), "north": fmt.Sprint(z < -center), "south": fmt.Sprint(z > center)}
-					treeSetAt(region, treePos(origin, x, y, z), origin, mushroomCapWithProperties(config["cap_provider"], props), r)
+					p := treePos(origin, x, y, z)
+					state, actor, ok := region.SampleNativeState(config["cap_provider"], origin, r)
+					if ok {
+						state = mushroomCapWithProperties(region, state, true, x, z, radius, y >= height-1)
+						mushroomPlaceSample(region, p, state, actor)
+					}
 				}
 			}
 		}
@@ -1519,35 +1560,68 @@ func placeModernHugeMushroom(region *featureRegion, config map[string]any, origi
 				if (x == -radius || x == radius) && (z == -radius || z == radius) {
 					continue
 				}
-				props := map[string]any{"west": fmt.Sprint(x == -radius || (z == -radius || z == radius) && x == 1-radius), "east": fmt.Sprint(x == radius || (z == -radius || z == radius) && x == radius-1), "north": fmt.Sprint(z == -radius || (x == -radius || x == radius) && z == 1-radius), "south": fmt.Sprint(z == radius || (x == -radius || x == radius) && z == radius-1)}
-				treeSetAt(region, treePos(origin, x, height, z), origin, mushroomCapWithProperties(config["cap_provider"], props), r)
+				p := treePos(origin, x, height, z)
+				state, actor, ok := region.SampleNativeState(config["cap_provider"], origin, r)
+				if ok {
+					state = mushroomCapWithProperties(region, state, false, x, z, radius, false)
+					mushroomPlaceSample(region, p, state, actor)
+				}
 			}
 		}
 	}
-	for y := int32(0); y < height; y++ {
-		treeSetAt(region, treePos(origin, 0, y, 0), origin, config["stem_provider"], r)
+	for y := range height {
+		p := treePos(origin, 0, y, 0)
+		state, actor, ok := region.SampleNativeState(config["stem_provider"], origin, r)
+		if ok {
+			mushroomPlaceSample(region, p, state, actor)
+		}
 	}
 	return true
 }
-func mushroomCapWithProperties(provider any, props map[string]any) any {
-	p, ok := provider.(map[string]any)
-	if !ok {
-		return provider
+
+func mushroomPlaceSample(region *featureRegion, p featurePos, state world.NativeState, actor world.Block) bool {
+	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	if name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" && !treeTagContains("#minecraft:replaceable_by_mushrooms", name) {
+		return false
 	}
-	copy := make(map[string]any, len(p))
-	for k, v := range p {
-		copy[k] = v
+	return region.SetNativeBlock(p, state, actor)
+}
+
+var mushroomCapFaces = [...]string{"west", "east", "north", "south", "up"}
+
+func mushroomCapWithProperties(region *featureRegion, state world.NativeState, red bool, x, z, radius int32, up bool) world.NativeState {
+	registry := region.c.BlockRegistry()
+	id := state.CanonicalJavaID(registry)
+	count := 4
+	if red {
+		count = 5
 	}
-	existing, _ := p["properties"].(map[string]any)
-	merged := make(map[string]any, len(existing)+len(props))
-	for k, v := range existing {
-		merged[k] = v
+	for i := range count {
+		if _, ok := javadata.BlockStateBool(id, mushroomCapFaces[i]); !ok {
+			return state
+		}
 	}
-	for k, v := range props {
-		merged[k] = v
+	var values [5]bool
+	if red {
+		center := radius - 2
+		values = [5]bool{x < -center, x > center, z < -center, z > center, up}
+	} else {
+		edgeX, edgeZ := x == -radius || x == radius, z == -radius || z == radius
+		values = [5]bool{
+			x == -radius || edgeZ && x == 1-radius,
+			x == radius || edgeZ && x == radius-1,
+			z == -radius || edgeX && z == 1-radius,
+			z == radius || edgeX && z == radius-1,
+		}
 	}
-	copy["properties"] = merged
-	return copy
+	for i := range count {
+		var err error
+		id, err = javadata.BlockStateWithProperty(id, mushroomCapFaces[i], values[i])
+		if err != nil {
+			panic(err)
+		}
+	}
+	return world.ResolveStateID(registry, id)
 }
 
 func placeModernHugeFungus(region *featureRegion, config map[string]any, origin featurePos, r *java26.Random) bool {
