@@ -38,6 +38,7 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 	if e.H().Type() == entity.LingeringPotionType {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagLingering)
 	}
+	addAmbientSoundMetadata(e, m)
 	s.addSpecificMetadata(e, m)
 	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		s.addSpecificMetadata(beh.Behaviour(), m)
@@ -349,9 +350,9 @@ func addMountMetadata(s entity.MountState, m protocol.EntityMetadata) {
 			m.SetFlag(protocol.EntityDataKeyFlags, flag)
 		}
 	}
-	// The dedicated server sends the eating and standing flags of horses in
-	// the actor data minecarts keep their display block in.
-	m[protocol.EntityDataKeyDisplayBlockState] = s.HorseFlags
+	if s.Rearing {
+		m[protocol.EntityDataKeyHorseFlags] = s.HorseFlags
+	}
 	if s.ContainerSize > 0 {
 		m[protocol.EntityDataKeyContainerType] = byte(protocol.ContainerTypeHorse)
 		m[protocol.EntityDataKeyContainerSize] = s.ContainerSize

@@ -771,7 +771,9 @@ type MountState struct {
 	// Controlled is set on a saddled mount a player can steer, which can
 	// then power jump, or dash for camels.
 	Controlled, PowerJump, Dash bool
-	// HorseFlags are Bedrock's eating and standing flags.
+	// Rearing is set for the species that rear and eat grass, whose
+	// eating and standing flags HorseFlags holds.
+	Rearing    bool
 	HorseFlags int64
 	// ContainerSize is the size of the horse inventory of a tamed mount.
 	ContainerSize, StrengthModifier int32
@@ -782,7 +784,7 @@ type MountState struct {
 // MountState returns the state Bedrock clients show of the mount.
 func (m *Mount) MountState() MountState {
 	b := m.b()
-	s := MountState{Saddled: b.saddled, Tamed: b.tamed, Chested: b.chested, Sitting: b.sitting, Controlled: b.saddled}
+	s := MountState{Saddled: b.saddled, Tamed: b.tamed, Chested: b.chested, Sitting: b.sitting, Controlled: b.saddled, Rearing: b.horseRearing()}
 	if s.Controlled {
 		s.PowerJump, s.Dash = !b.camel(), b.camel()
 	}
