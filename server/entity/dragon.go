@@ -288,7 +288,7 @@ func (b *EnderDragonBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.health.Health() <= 0 {
 		b.deathTime++
 		if b.deathTime == 1 {
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.ender_dragon.death", Volume: 10, Pitch: 1})
+			tx.PlayGlobalSound(e.Position(), sound.Custom{Name: "mob.enderdragon.death", Volume: 10, Pitch: 1})
 		}
 		xp := 500
 		if b.fight == nil || !b.fight.HasPreviouslyKilledDragon() {

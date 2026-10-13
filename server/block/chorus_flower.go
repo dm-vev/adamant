@@ -48,6 +48,14 @@ func (c ChorusFlower) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	}
 }
 
+// ProjectileHit ports ChorusFlowerBlock.onProjectileHit: impact projectiles
+// that may interact and break destroy the flower with drops.
+func (c ChorusFlower) ProjectileHit(pos cube.Pos, tx *world.Tx, projectile world.Entity, _ cube.Face) {
+	if projectileMayInteract(tx, projectile) && projectileMayBreak(tx, projectile) {
+		breakBlock(c, pos, tx)
+	}
+}
+
 // RandomTick ...
 func (c ChorusFlower) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	if !c.canSurvive(pos, tx) {

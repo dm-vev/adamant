@@ -202,7 +202,7 @@ func (c Chest) StopOpen(tx *world.Tx, pos cube.Pos) { c.close(tx, pos) }
 // AddViewer adds a viewer to the chest, so that it is updated whenever the inventory of the chest is changed.
 func (c Chest) AddViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
 	if _, changed := c.tryPair(tx, pos); changed {
-		c = tx.Block(pos).(Chest)
+		c = tx.Block(pos).(chestBlock).chestData()
 	}
 	c.viewerMu.Lock()
 	defer c.viewerMu.Unlock()
@@ -216,7 +216,7 @@ func (c Chest) AddViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
 // it.
 func (c Chest) RemoveViewer(v ContainerViewer, tx *world.Tx, pos cube.Pos) {
 	if _, changed := c.tryPair(tx, pos); changed {
-		c = tx.Block(pos).(Chest)
+		c = tx.Block(pos).(chestBlock).chestData()
 	}
 	c.viewerMu.Lock()
 	defer c.viewerMu.Unlock()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"math/rand/v2"
 	"net"
@@ -443,8 +444,29 @@ func (p *Player) Transfer(address string) error {
 	return nil
 }
 
-// SendCommandOutput sends the output of a command to the player.
+// SendCommandOutput sends the output of a command the player ran. It ports
+// CommandSourceStack.sendSuccess: success messages reach the player only
+// with send_command_feedback on, and with log_admin_commands on they are
+// also shown to other operators as "[Player: message]" and logged.
 func (p *Player) SendCommandOutput(output *cmd.Output) {
+	if p.tx == nil {
+		p.session().SendCommandOutput(output, p.locale)
+		return
+	}
+	w := p.tx.World()
+	if output.MessageCount() > 0 && w.GameRuleBool("log_admin_commands") {
+		for _, msg := range output.Messages() {
+			slog.Default().Info(fmt.Sprintf("[%s: %s]", p.Name(), msg))
+			for e := range p.tx.Players() {
+				if other, ok := e.(*Player); ok && other != p && cmd.IsOperator(other.Name()) {
+					other.Messaget(chat.MessageAdminCommand, p.Name(), msg.String())
+				}
+			}
+		}
+	}
+	if !w.GameRuleBool("send_command_feedback") {
+		output = output.WithoutMessages()
+	}
 	p.session().SendCommandOutput(output, p.locale)
 }
 
@@ -1013,6 +1035,8 @@ func (p *Player) kill(src world.DamageSource) {
 
 	p.awardDeathScores(src)
 	p.broadcastDeathMessage(src)
+	entity.ForgiveDeadPlayer(p.tx, p)
+	p.vanishEnderPearls()
 	keepInv := p.tx.World().GameRuleBool("keep_inventory")
 	handledKeepInv := false
 	p.Handler().HandleDeath(p, src, &handledKeepInv)
@@ -1049,7 +1073,7 @@ func finishDying(p *Player) {
 		// position server side so that in the future, the client won't respawn
 		// on the death location when disconnecting. The client should not see
 		// the movement itself yet, though.
-		pos, _, _, _ := p.spawnLocation()
+		pos, _, _, _, _ := p.spawnLocation()
 
 		p.data.Pos = pos.Vec3()
 	}
@@ -1103,7 +1127,7 @@ func (p *Player) Respawn() *world.EntityHandle {
 // respawn destination, otherwise the world it died in — so a quit callback
 // from close always completes the player's teardown.
 func (p *Player) respawn(f func(p *Player)) {
-	position, w, spawnObstructed, previousDimension := p.spawnLocation()
+	position, w, spawnObstructed, previousDimension, worldSpawn := p.spawnLocation()
 	if spawnObstructed {
 		switch previousDimension {
 		case world.Nether:
@@ -1145,6 +1169,11 @@ func (p *Player) respawn(f func(p *Player)) {
 		if bl, ok := tx.Block(position).(block.RespawnBlock); ok {
 			bl.RespawnOn(position, p, tx)
 		}
+		// Without a respawn block, PlayerSpawnFinder picks a safe position
+		// within respawn_radius unless a handler chose another position.
+		if worldSpawn && pos == position.Vec3Middle() {
+			pos = tx.PlayerSpawnPosition(position)
+		}
 		np.Teleport(pos)
 		np.session().SendRespawn(pos, p)
 		np.SetVisible()
@@ -1180,8 +1209,9 @@ func (p *Player) respawn(f func(p *Player)) {
 	})
 }
 
-// spawnLocation designates the player's safe spawn location.
-func (p *Player) spawnLocation() (playerSpawn cube.Pos, w *world.World, spawnBlockBroken bool, previousDimension world.Dimension) {
+// spawnLocation returns the block the player respawns at. worldSpawn is true
+// when no bed or respawn block applies and the world spawn is used instead.
+func (p *Player) spawnLocation() (playerSpawn cube.Pos, w *world.World, spawnBlockBroken bool, previousDimension world.Dimension, worldSpawn bool) {
 	tx := p.tx
 	w = tx.World()
 	previousDimension = w.Dimension()
@@ -1189,18 +1219,18 @@ func (p *Player) spawnLocation() (playerSpawn cube.Pos, w *world.World, spawnBlo
 	if b, ok := tx.Block(playerSpawn).(block.Bed); ok && b.CanRespawnOn() {
 		pos, ok := b.SafeSpawn(playerSpawn, tx)
 		if ok {
-			return pos, w, false, previousDimension
+			return pos, w, false, previousDimension, false
 		}
 	}
 	if b, ok := tx.Block(playerSpawn).(block.RespawnBlock); ok && b.CanRespawnOn() {
-		return playerSpawn, w, false, previousDimension
+		return playerSpawn, w, false, previousDimension, false
 	}
 
 	// We can use the principle here that returning through a portal of a specific dimension inside that dimension will
 	// always bring us back to the overworld.
 	w = w.PortalDestination(w.Dimension())
-	worldSpawn := w.Spawn()
-	return worldSpawn, w, playerSpawn != worldSpawn, previousDimension
+	spawn := w.Spawn()
+	return spawn, w, playerSpawn != spawn, previousDimension, true
 }
 
 // StartSprinting makes a player start sprinting, increasing the speed of the player by 30% and making

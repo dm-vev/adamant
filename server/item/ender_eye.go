@@ -38,7 +38,7 @@ func (EnderEye) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx
 	}
 	tx.PlaySound(pos.Vec3Centre(), sound.EnderEyePlaced{})
 	if portal.ActivateEndPortal(tx, pos) {
-		tx.PlaySound(pos.Vec3Centre(), sound.EndPortalCreated{})
+		tx.PlayGlobalSound(pos.Vec3Centre(), sound.EndPortalCreated{})
 	}
 	ctx.SubtractFromCount(1)
 	return true

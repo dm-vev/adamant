@@ -37,6 +37,14 @@ func (o *Output) Result() int {
 // Success reports whether the command completed without errors.
 func (o *Output) Success() bool { return len(o.errors) == 0 }
 
+// WithoutMessages returns a copy of the output keeping only its errors and
+// result, as sent to players while send_command_feedback is off.
+func (o *Output) WithoutMessages() *Output {
+	c := *o
+	c.messages = nil
+	return &c
+}
+
 // Errorf formats an error message and adds it to the command output.
 func (o *Output) Errorf(format string, a ...any) {
 	o.errors = append(o.errors, fmt.Errorf(format, a...))

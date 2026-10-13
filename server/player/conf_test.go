@@ -46,9 +46,14 @@ func TestEndReturnUsesRespawnBlockInDestinationDimension(t *testing.T) {
 				UUID: id, RespawnDimension: test.dimension, RespawnPosition: pos, HasRespawnPoint: true,
 			}.Apply(data)
 			spawnPoint := data.Data.(*playerData).portalTravel.SpawnPoint
-			var got cube.Pos
+			var got, want cube.Pos
 			if err := w.Do(func(tx *world.Tx) {
 				got = cube.PosFromVec3(spawnPoint(tx))
+				want = pos
+				if test.wantSpawn {
+					// The fallback goes through the world-spawn finder.
+					want = cube.PosFromVec3(tx.PlayerSpawnPosition(w.Spawn()))
+				}
 				if !test.wantSpawn {
 					if anchor, ok := tx.Block(pos).(block.RespawnAnchor); !ok || anchor.Charge != 2 {
 						t.Fatalf("charged anchor after End return = %T %+v; want unchanged charge 2", tx.Block(pos), anchor)
@@ -56,11 +61,6 @@ func TestEndReturnUsesRespawnBlockInDestinationDimension(t *testing.T) {
 				}
 			}).Wait(context.Background()); err != nil {
 				t.Fatal(err)
-			}
-
-			want := pos
-			if test.wantSpawn {
-				want = w.Spawn()
 			}
 			if got != want {
 				t.Fatalf("End return spawn = %v, want %v", got, want)

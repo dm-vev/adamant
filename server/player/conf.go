@@ -125,8 +125,18 @@ func (cfg Config) Apply(data *world.EntityData) {
 	}
 	playerUUID := conf.UUID
 	pdata.portalTravel = entity.NewPortalTravelComputer()
-	pdata.portalTravel.Instantaneous = func(_, target world.Dimension) bool {
-		return target == world.End || pdata.gameMode != nil && pdata.gameMode.CreativeInventory()
+	// NetherPortalBlock.getPortalTransitionTime: players wait the
+	// players_nether_portal_(creative|default)_delay ticks; end portals are
+	// immediate.
+	pdata.portalTravel.Delay = func(tx *world.Tx, target world.Dimension) time.Duration {
+		if target == world.End {
+			return 0
+		}
+		rule := "players_nether_portal_default_delay"
+		if pdata.gameMode != nil && pdata.gameMode.CreativeInventory() {
+			rule = "players_nether_portal_creative_delay"
+		}
+		return time.Duration(max(0, tx.World().GameRuleInt(rule))) * time.Second / 20
 	}
 	pdata.portalTravel.Teleport = func(e entity.Traveller, pos mgl64.Vec3, rotation cube.Rotation, velocity mgl64.Vec3) {
 		p := e.(*Player)
@@ -160,7 +170,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 		if !pdata.hasRespawnPoint {
 			pos = tx.World().PlayerSpawn(playerUUID)
 		} else if pdata.respawnDimension != tx.World().Dimension() {
-			return tx.World().Spawn().Vec3Middle()
+			return tx.PlayerSpawnPosition(tx.World().Spawn())
 		}
 		switch tx.World().Dimension() {
 		case world.Overworld:
@@ -174,7 +184,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 				return pos.Vec3Middle()
 			}
 		}
-		return tx.World().Spawn().Vec3Middle()
+		return tx.PlayerSpawnPosition(tx.World().Spawn())
 	}
 	pdata.portalTravel.SpawnRotation = func(tx *world.Tx) (cube.Rotation, bool) {
 		if !pdata.hasRespawnPoint || pdata.respawnDimension != tx.World().Dimension() {

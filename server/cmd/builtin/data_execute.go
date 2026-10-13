@@ -50,11 +50,35 @@ func (c executeCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 	if ctx.World == nil {
 		ctx.World = tx.World()
 	}
-	executeChain(src, ctx, words, out, tx)
+	forks := &executeForks{limit: tx.World().GameRuleInt("max_command_forks"), counts: map[int]int{}}
+	executeChain(src, ctx, words, out, tx, forks)
+}
+
+// executeForks ports ExecutionContext's fork limit: when the contexts created
+// at one stage of an execute chain reach max_command_forks, the command fails
+// with "Maximum number of contexts reached" and no further branch runs.
+type executeForks struct {
+	limit    int
+	counts   map[int]int
+	exceeded bool
+}
+
+// admit records n contexts forked at the stage with remaining words.
+func (f *executeForks) admit(out *cmd.Output, remaining, n int) bool {
+	if f.exceeded {
+		return false
+	}
+	if f.counts[remaining]+n >= f.limit {
+		f.exceeded = true
+		out.Errorf("Maximum number of contexts (%d) reached", f.limit)
+		return false
+	}
+	f.counts[remaining] += n
+	return true
 }
 
 // executeChain evaluates the remaining modifiers for one context branch.
-func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out *cmd.Output, tx *world.Tx) {
+func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out *cmd.Output, tx *world.Tx, forks *executeForks) {
 	at := func() cmd.Source { return cmd.WithContext(src, ctx) }
 	for len(words) > 0 {
 		switch words[0] {
@@ -68,6 +92,9 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				out.Error(err)
 				return
 			}
+			if !forks.admit(out, len(words), len(targets)) {
+				return
+			}
 			for _, t := range targets {
 				e, ok := t.(world.Entity)
 				if !ok {
@@ -79,7 +106,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				} else {
 					next.Position, next.Rotation = e.Position(), e.Rotation()
 				}
-				executeChain(src, next, words[2:], out, tx)
+				executeChain(src, next, words[2:], out, tx, forks)
 			}
 			return
 		case "positioned":
@@ -88,10 +115,13 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				if err != nil || len(targets) == 0 {
 					return
 				}
+				if !forks.admit(out, len(words), len(targets)) {
+					return
+				}
 				for _, t := range targets {
 					next := ctx
 					next.Position = t.Position()
-					executeChain(src, next, words[3:], out, tx)
+					executeChain(src, next, words[3:], out, tx, forks)
 				}
 				return
 			}
@@ -112,11 +142,14 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				if err != nil || len(targets) == 0 {
 					return
 				}
+				if !forks.admit(out, len(words), len(targets)) {
+					return
+				}
 				for _, t := range targets {
 					if e, ok := t.(world.Entity); ok {
 						next := ctx
 						next.Rotation = e.Rotation()
-						executeChain(src, next, words[3:], out, tx)
+						executeChain(src, next, words[3:], out, tx, forks)
 					}
 				}
 				return
@@ -138,6 +171,9 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				if err != nil || len(targets) == 0 {
 					return
 				}
+				if !forks.admit(out, len(words), len(targets)) {
+					return
+				}
 				for _, t := range targets {
 					look := t.Position()
 					if words[3] == "eyes" {
@@ -147,7 +183,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 					}
 					next := ctx
 					next.Rotation = rotationTowards(anchorPosition(ctx), look)
-					executeChain(src, next, words[4:], out, tx)
+					executeChain(src, next, words[4:], out, tx, forks)
 				}
 				return
 			}
@@ -206,17 +242,21 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 			rest := words[2:]
 			next := ctx
 			// The remaining chain needs the target world's transaction.
-			target.Exec(func(other *world.Tx) { executeChain(src, next, rest, out, other) })
+			target.Exec(func(other *world.Tx) { executeChain(src, next, rest, out, other, forks) })
 			return
 		case "on":
 			if len(words) < 2 {
 				out.Error(errExecuteSyntax)
 				return
 			}
-			for _, e := range relatedEntities(ctx.Executor, words[1], tx) {
+			related := relatedEntities(ctx.Executor, words[1], tx)
+			if !forks.admit(out, len(words), len(related)) {
+				return
+			}
+			for _, e := range related {
 				next := ctx
 				next.Executor = e
-				executeChain(src, next, words[2:], out, tx)
+				executeChain(src, next, words[2:], out, tx, forks)
 			}
 			return
 		case "summon":

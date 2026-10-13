@@ -799,10 +799,10 @@ func (h *ItemStackRequestHandler) notifyContainerRedstone(s *Session, tx *world.
 			return
 		}
 		block.NotifyComparatorUpdate(*openedPos, tx)
-		if _, ok := openedBlock.(block.Chest); ok {
+		if paired, ok := openedBlock.(interface{ Paired() bool }); ok && paired.Paired() {
 			for _, face := range cube.HorizontalFaces() {
 				sidePos := openedPos.Side(face)
-				if _, ok := tx.Block(sidePos).(block.Chest); ok {
+				if _, ok := tx.Block(sidePos).(interface{ Paired() bool }); ok {
 					block.NotifyComparatorUpdate(sidePos, tx)
 				}
 			}

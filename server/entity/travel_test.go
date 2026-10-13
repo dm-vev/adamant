@@ -375,7 +375,7 @@ func TestPortalTravelComputerDelayedTravel(t *testing.T) {
 	overworld, nether := portalWorlds(t)
 	_ = nether
 
-	tc := &PortalTravelComputer{}
+	tc := &PortalTravelComputer{Delay: func(*world.Tx, world.Dimension) time.Duration { return time.Second * 4 }}
 	mustDo(t, overworld, func(tx *world.Tx) {
 		if destination := tc.enterPortal(tx, world.Nether); destination != nil {
 			t.Fatal("enterPortal() started travel before the portal timer finished")
@@ -388,6 +388,25 @@ func TestPortalTravelComputerDelayedTravel(t *testing.T) {
 		tc.start = time.Now().Add(-time.Second * 4)
 		if destination := tc.enterPortal(tx, world.Nether); destination != nether {
 			t.Fatalf("enterPortal() destination after portal timer = %v, want the Nether", destination)
+		}
+	})
+}
+
+func TestPortalTravelHonoursAllowEnteringNether(t *testing.T) {
+	overworld, nether := portalWorlds(t)
+	tc := NewPortalTravelComputer()
+	mustDo(t, overworld, func(tx *world.Tx) {
+		if err := tx.World().SetGameRule("allow_entering_nether_using_portals", false); err != nil {
+			t.Fatal(err)
+		}
+		if destination := tc.enterPortal(tx, world.Nether); destination != nil {
+			t.Fatal("portal entered the Nether with allow_entering_nether_using_portals off")
+		}
+		if err := tx.World().SetGameRule("allow_entering_nether_using_portals", true); err != nil {
+			t.Fatal(err)
+		}
+		if destination := tc.enterPortal(tx, world.Nether); destination != nether {
+			t.Fatal("portal did not enter the Nether with the gamerule back on")
 		}
 	})
 }
@@ -722,10 +741,7 @@ func mustDo(t *testing.T, w *world.World, f func(tx *world.Tx)) {
 type testPortalCreatorConfig struct{}
 
 func (testPortalCreatorConfig) Apply(data *world.EntityData) {
-	data.Data = &testMoveBehaviour{BaseBehaviour: BaseBehaviour{portalTravel: &PortalTravelComputer{
-		Instantaneous: func(world.Dimension, world.Dimension) bool { return true },
-		CreatePortal:  true,
-	}}}
+	data.Data = &testMoveBehaviour{BaseBehaviour: BaseBehaviour{portalTravel: &PortalTravelComputer{CreatePortal: true}}}
 }
 
 func waitForEntityWorld(t *testing.T, handle *world.EntityHandle, w *world.World) {

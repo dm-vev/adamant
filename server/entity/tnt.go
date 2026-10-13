@@ -71,7 +71,7 @@ func (t *TNT) Tick(tx *world.Tx, current int64) {
 	if behaviour.remainingFuse <= 0 {
 		source := world.NewEntityExplosionSource(t, 4)
 		_ = t.CloseIn(tx)
-		block.ExplosionConfig{ItemDropChance: 1}.Explode(tx, source)
+		block.ExplosionConfig{}.Explode(tx, source)
 		return
 	}
 	if behaviour.remainingFuse%(time.Second/4) == 0 {

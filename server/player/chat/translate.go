@@ -22,6 +22,7 @@ var MessageBedIsOccupied = Translate(str("%tile.bed.occupied"), 0, `This bed is 
 var MessageSleeping = Translate(str("%chat.type.sleeping"), 2, `%v is sleeping in a bed. To skip to dawn, %v more users need to sleep in beds at the same time.`)
 var MessageRespawnAnchorNotValid = Translate(str("%tile.respawn_anchor.notValid"), 0, `Your respawn anchor was out of charges, missing or obstructed`).Enc("<grey>%v</grey>")
 var MessageBedNotValid = Translate(str("%tile.bed.notValid"), 0, `Your home bed was missing or obstructed`)
+var MessageAdminCommand = Translate(str("%chat.type.admin"), 2, `[%v: %v]`).Enc("<grey><i>%v</i></grey>")
 
 type str string
 

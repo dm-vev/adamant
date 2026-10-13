@@ -377,6 +377,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 				continue
 			}
 			blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
+			w.tickPrecipitation(tx, ref.pos)
 		}
 		for _, pos := range blockEntities {
 			tb := tx.chunk(chunkPosFromBlockPos(pos)).BlockEntities[pos].(TickerBlock)
@@ -399,6 +400,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			continue
 		}
 		blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
+		w.tickPrecipitation(tx, ref.pos)
 
 		cx, cz := int(ref.pos[0]<<4), int(ref.pos[1]<<4)
 		subChunks := c.Sub()

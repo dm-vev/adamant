@@ -15,11 +15,24 @@ type SpawnEgg struct {
 }
 
 // UseOnBlock spawns an entity at the clicked position.
-func (s SpawnEgg) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
-	if b := tx.Block(pos); s.trySetSpawner(pos, b, tx, ctx) {
-		return true
+func (s SpawnEgg) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
+	if b := tx.Block(pos); isMobSpawner(b) {
+		// SpawnEggItem.useOn: with spawner_blocks_work off, spawners can't be
+		// changed and the user is told so.
+		if !tx.World().GameRuleBool("spawner_blocks_work") {
+			if m, ok := user.(interface{ Message(...any) }); ok {
+				m.Message("Spawner blocks are not enabled on this server")
+			}
+			return false
+		}
+		return s.trySetSpawner(pos, b, tx, ctx)
 	}
 	return s.spawnAt(pos.Side(face).Vec3Middle(), tx, ctx)
+}
+
+func isMobSpawner(b world.Block) bool {
+	name, _ := b.EncodeBlock()
+	return name == "minecraft:mob_spawner"
 }
 
 // UseOnEntity spawns an entity at the target entity's position.
@@ -52,10 +65,6 @@ type spawnerBlock interface {
 }
 
 func (s SpawnEgg) trySetSpawner(pos cube.Pos, b world.Block, tx *world.Tx, ctx *UseContext) bool {
-	name, _ := b.EncodeBlock()
-	if name != "minecraft:mob_spawner" {
-		return false
-	}
 	spawner, ok := b.(spawnerBlock)
 	if !ok {
 		return false

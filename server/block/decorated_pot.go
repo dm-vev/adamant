@@ -39,8 +39,12 @@ func (p DecoratedPot) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool {
 	return false
 }
 
-// ProjectileHit ...
-func (p DecoratedPot) ProjectileHit(pos cube.Pos, tx *world.Tx, _ world.Entity, _ cube.Face) {
+// ProjectileHit ports DecoratedPotBlock.onProjectileHit: impact projectiles
+// that may interact and break shatter the pot.
+func (p DecoratedPot) ProjectileHit(pos cube.Pos, tx *world.Tx, projectile world.Entity, _ cube.Face) {
+	if !projectileMayInteract(tx, projectile) || !projectileMayBreak(tx, projectile) {
+		return
+	}
 	for _, d := range p.Decorations {
 		if d == nil {
 			dropItem(tx, item.NewStack(item.Brick{}, 1), pos.Vec3Centre())

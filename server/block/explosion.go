@@ -33,8 +33,9 @@ type ExplosionConfig struct {
 	// applies this to every explosion.
 	SuppressUnderwaterImpact bool
 	// ItemDropChance specifies how item drops should be handled. By default,
-	// the item drop chance is 1/Size. If negative, no items will be dropped by
-	// the explosion. If set to 1 or higher, all items are dropped.
+	// it follows the explosion's *_explosion_drop_decay gamerule: 1/Size with
+	// decay, otherwise every block drops. If negative, no items will be dropped
+	// by the explosion. If set to 1 or higher, all items are dropped.
 	ItemDropChance float64
 
 	// Sound is the sound to play when the explosion is created. If set to nil, this will default to the sound of a
@@ -137,7 +138,10 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 		}
 		size, explosionPos := src.Size(), src.Position()
 		if c.ItemDropChance == 0 {
-			c.ItemDropChance = 1.0 / size
+			c.ItemDropChance = 1
+			if explosionDropDecay(tx.World(), src) {
+				c.ItemDropChance = 1.0 / size
+			}
 		}
 
 		r, d := rand.New(c.RandSource), size*2
@@ -150,8 +154,17 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 			math.Ceil(explosionPos[2]+d+1),
 		)
 
+		// Level.getEntities(source, box): the exploding entity itself is not
+		// affected by its own explosion.
+		var sourceHandle *world.EntityHandle
+		if es, ok := src.(world.EntityExplosionSource); ok && es.Entity != nil {
+			sourceHandle = es.Entity.H()
+		}
 		affectedEntities := make([]world.Entity, 0, 32)
 		for e := range tx.EntitiesWithin(box.Grow(2)) {
+			if sourceHandle != nil && e.H() == sourceHandle {
+				continue
+			}
 			pos := e.Position()
 			dist := pos.Sub(explosionPos).Len()
 			if dist > d {
@@ -280,6 +293,30 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 	}) {
 		return
 	}
+}
+
+// explosionDropDecay ports ServerLevel.explode's interaction mapping: TNT and
+// TNT minecarts follow tnt_explosion_drop_decay, end crystals and blocks
+// (beds, respawn anchors) follow block_explosion_drop_decay, and other
+// entities (creepers, fireballs, wither skulls) mob_explosion_drop_decay.
+func explosionDropDecay(w *world.World, src world.ExplosionSource) bool {
+	var e world.Entity
+	switch s := src.(type) {
+	case world.EntityExplosionSource:
+		e = s.Entity
+	case *world.EntityExplosionSource:
+		e = s.Entity
+	}
+	if e == nil {
+		return w.GameRuleBool("block_explosion_drop_decay")
+	}
+	switch e.H().Type().EncodeEntity() {
+	case "minecraft:tnt", "minecraft:tnt_minecart":
+		return w.GameRuleBool("tnt_explosion_drop_decay")
+	case "minecraft:ender_crystal":
+		return w.GameRuleBool("block_explosion_drop_decay")
+	}
+	return w.GameRuleBool("mob_explosion_drop_decay")
 }
 
 // exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.

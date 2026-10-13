@@ -256,6 +256,13 @@ func (w *World) SetGameRule(name string, value any) error {
 	if err != nil {
 		return err
 	}
+	viewers, _ := w.allViewers()
+	for _, viewer := range viewers {
+		if v, ok := viewer.(interface{ ViewGameRule(string, any) }); ok {
+			v.ViewGameRule(name, value)
+		}
+	}
+	w.releaseViewers(viewers)
 	return w.SaveWorldData(gameruleNamespace, data)
 }
 

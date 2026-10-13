@@ -574,16 +574,16 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 		}
 		return dest
 	})
-	if err != nil {
+	if err != nil || fallback {
 		w = srv.world
-		d.Position = w.Spawn().Vec3Centre()
+		<-w.Exec(func(tx *world.Tx) {
+			d.Position = tx.PlayerSpawnPosition(w.Spawn())
+		})
 		d.GameMode = w.DefaultGameMode()
-	} else if fallback {
-		w = srv.world
-		d.Position = w.Spawn().Vec3Centre()
-		d.GameMode = w.DefaultGameMode()
-		d.Velocity = mgl64.Vec3{}
-		srv.conf.Log.Info("Relocating player from disabled dimension.", "requested", fmt.Sprint(requested), "target", fmt.Sprint(w.Dimension()))
+		if fallback {
+			d.Velocity = mgl64.Vec3{}
+			srv.conf.Log.Info("Relocating player from disabled dimension.", "requested", fmt.Sprint(requested), "target", fmt.Sprint(w.Dimension()))
+		}
 	}
 
 	data.PlayerPosition = vec64To32(d.Position).Add(mgl32.Vec3{0, float32(player.Type.NetworkOffset())})
@@ -671,11 +671,11 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 
 		Items:        srv.itemEntries(),
 		CustomBlocks: srv.customBlocks,
-		GameRules: []protocol.GameRule{
+		GameRules: append([]protocol.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
 			{Name: "falldamage", Value: srv.world.FallDamage()},
-		},
+		}, session.ClientGameRules(srv.world)...),
 
 		ServerAuthoritativeInventory: true,
 		PlayerMovementSettings: protocol.PlayerMovementSettings{

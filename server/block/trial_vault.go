@@ -302,7 +302,7 @@ func (s TrialSpawner) Tick(currentTick int64, pos cube.Pos, tx *world.Tx) {
 			tx.SetBlock(pos, s, nil)
 			return
 		}
-		if totalSpawned < targetTotal && len(currentMobs) < trialSimultaneousBudget(s, len(registered)) && currentTick >= actorLong((*s.data)["next_mob_spawns_at"]) {
+		if totalSpawned < targetTotal && len(currentMobs) < trialSimultaneousBudget(s, len(registered)) && currentTick >= actorLong((*s.data)["next_mob_spawns_at"]) && trialCanSpawnInLevel(tx) {
 			spawned, err := s.spawnConfiguredMob(tx, pos, currentTick)
 			if err != nil { slog.Error("trial spawner failed to spawn configured entity", "pos", pos, "error", err); return }
 			if spawned != nil {
@@ -432,6 +432,14 @@ func trialSimultaneousBudget(s TrialSpawner, players int) int {
 	if _, ok := config["simultaneous_mobs_added_per_player"]; !ok { added = 1 }
 	return int(total + added*float64(max(0, players-1)))
 }
+
+// trialCanSpawnInLevel ports TrialSpawner.canSpawnInLevel: spawning needs
+// spawner_blocks_work, a non-peaceful difficulty and spawn_mobs.
+func trialCanSpawnInLevel(tx *world.Tx) bool {
+	w := tx.World()
+	return w.GameRuleBool("spawner_blocks_work") && w.Difficulty() != world.DifficultyPeaceful && w.SpawnMobsEnabled()
+}
+
 func trialSpawnInterval(s TrialSpawner) int {
 	interval := actorLong(activeTrialConfig(s)["ticks_between_spawn"])
 	if interval == 0 { return 40 }

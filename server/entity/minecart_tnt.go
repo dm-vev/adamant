@@ -89,7 +89,7 @@ func (b *MinecartTNTBehaviour) explode(e *Ent, tx *world.Tx, speedSq float64) {
 		root = 5
 	}
 	size := 4 + rand.Float64()*1.5*root
-	block.ExplosionConfig{ItemDropChance: 1}.Explode(tx, world.NewEntityExplosionSource(e, size))
+	block.ExplosionConfig{}.Explode(tx, world.NewEntityExplosionSource(e, size))
 }
 
 // MinecartTNT is a minecart with TNT.

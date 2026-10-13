@@ -13,8 +13,10 @@ import (
 
 // PortalTravelComputer handles portal-triggered interdimensional travel for an entity.
 type PortalTravelComputer struct {
-	// Instantaneous returns true if the entity should skip the portal wait timer when moving between dimensions.
-	Instantaneous func(source, target world.Dimension) bool
+	// Delay returns how long the entity must stay in a portal before it travels
+	// to the target dimension. Nil or zero travels immediately, as Java does
+	// for every non-player entity.
+	Delay func(tx *world.Tx, target world.Dimension) time.Duration
 	// Teleport installs the resolved position, absolute rotation and velocity. If nil, Traveller methods are used.
 	Teleport func(e Traveller, pos mgl64.Vec3, rotation cube.Rotation, velocity mgl64.Vec3)
 	// SpawnPoint returns the position the entity arrives at when returning from the End; if nil the world spawn is used.
@@ -46,7 +48,7 @@ type PortalTravelComputer struct {
 
 // NewPortalTravelComputer creates a PortalTravelComputer for instant portal travel.
 func NewPortalTravelComputer() *PortalTravelComputer {
-	return &PortalTravelComputer{Instantaneous: func(world.Dimension, world.Dimension) bool { return true }, Cooldown: time.Second * 15}
+	return &PortalTravelComputer{Cooldown: time.Second * 15}
 }
 
 type portalTravelComputerProvider interface {
@@ -79,13 +81,16 @@ type portalTravelHandler interface {
 
 // EnterPortal handles an entity touching a portal block.
 func (t *PortalTravelComputer) EnterPortal(e Traveller, tx *world.Tx, target world.Dimension) {
+	if !netherEntryAllowed(tx, target) {
+		return
+	}
 	destination := t.portalDestination(tx, target)
 	if destination == nil || destination == tx.World() {
 		t.notifyDenied(e, tx, target)
 		return
 	}
 	t.clearDenied()
-	if t.enterPortalDestination(tx.World().Dimension(), target, destination) {
+	if t.enterPortalDestination(t.delay(tx, target), destination) {
 		t.travelQueued(e, tx, destination)
 	}
 }
@@ -100,32 +105,45 @@ func (t *PortalTravelComputer) queuePortalTravel(tx *world.Tx, target world.Dime
 
 func (t *PortalTravelComputer) enterPortal(tx *world.Tx, target world.Dimension) *world.World {
 	source := tx.World()
+	if !netherEntryAllowed(tx, target) {
+		return nil
+	}
 	destination := t.portalDestination(tx, target)
 	if destination == nil || destination == source {
 		return nil
 	}
-	if t.enterPortalDestination(source.Dimension(), target, destination) {
+	if t.enterPortalDestination(t.delay(tx, target), destination) {
 		return destination
 	}
 	return nil
 }
 
-func (t *PortalTravelComputer) enterPortalDestination(source, target world.Dimension, destination *world.World) bool {
+func (t *PortalTravelComputer) enterPortalDestination(delay time.Duration, destination *world.World) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.inside = true
 	if t.timedOut || time.Now().Before(t.cooldownUntil) {
 		return false
 	}
-	travelNow := t.instantaneous(source, target) || (t.awaitingTravel && time.Since(t.start) >= time.Second*4)
+	travelNow := delay <= 0 || (t.awaitingTravel && time.Since(t.start) >= delay)
 	if !travelNow && !t.awaitingTravel {
 		t.start, t.awaitingTravel = time.Now(), true
 	}
 	return travelNow && destination != nil
 }
 
-func (t *PortalTravelComputer) instantaneous(source, target world.Dimension) bool {
-	return t.Instantaneous != nil && t.Instantaneous(source, target)
+func (t *PortalTravelComputer) delay(tx *world.Tx, target world.Dimension) time.Duration {
+	if t.Delay == nil {
+		return 0
+	}
+	return t.Delay(tx, target)
+}
+
+// netherEntryAllowed ports MinecraftServer.isLevelEnabled for portal travel:
+// with allow_entering_nether_using_portals off, portals do nothing on the
+// way into the Nether while the way back still works.
+func netherEntryAllowed(tx *world.Tx, target world.Dimension) bool {
+	return target != world.Nether || tx.World().GameRuleBool("allow_entering_nether_using_portals")
 }
 
 func (t *PortalTravelComputer) hasPendingPortalTravel() bool {

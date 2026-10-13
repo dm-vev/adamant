@@ -57,7 +57,9 @@ func (m MobSpawner) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 		// Should never happen for properly initialised block entities.
 		return
 	}
-	if !m.playerWithinRange(tx, pos, int(m.requiredPlayerRange)) {
+	// BaseSpawner.serverTick: spawners only run near players while the
+	// spawner_blocks_work gamerule is on.
+	if !m.playerWithinRange(tx, pos, int(m.requiredPlayerRange)) || !tx.World().GameRuleBool("spawner_blocks_work") {
 		return
 	}
 

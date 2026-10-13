@@ -666,7 +666,10 @@ func (s *witherState) Tick(e *Ent, tx *world.Tx) *Movement {
 			s.health.AddHealth(10)
 		}
 		if s.invulnerable == 0 {
-			tx.PlaySound(e.Position(), sound.Custom{Name: "mob.wither.spawn", Volume: 1, Pitch: 1})
+			// WitherBoss.customServerAiStep: the summoning finishes with a
+			// power 7 mob explosion and the global wither spawn sound.
+			block.ExplosionConfig{NoBlockDamage: mobGriefingDisabled(tx)}.Explode(tx, world.NewEntityExplosionSource(e, 7))
+			tx.PlayGlobalSound(e.Position(), sound.Custom{Name: "mob.wither.spawn", Volume: 1, Pitch: 1})
 		}
 		return s.stop(e, tx)
 	}
