@@ -598,6 +598,8 @@ type EntityData struct {
 	InPowderSnow bool
 	// WasInPowderSnow is InPowderSnow of the previous tick.
 	WasInPowderSnow bool
+	// OnGround is set while the entity's last movement ended on a surface.
+	OnGround bool
 
 	// NativeNBT retains the original actor payload so entity serializers can
 	// update known fields without discarding fields unknown to this server.

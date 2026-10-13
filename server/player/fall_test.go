@@ -55,6 +55,40 @@ func TestFallDamageSettingPreservesEntityLand(t *testing.T) {
 	})
 }
 
+func TestLandingOnStalagmiteTipDoublesFallDamage(t *testing.T) {
+	cases := []struct {
+		name       string
+		stalagmite block.PointedDripstone
+		feet       float64
+		fallDamage bool
+		health     float64
+		source     world.DamageSource
+	}{
+		// ceil((5 + 2.5 - 3) * 2) = 9.
+		{"tip impales", block.PointedDripstone{Thickness: block.SpeleothemTip}, 11.0 / 16, true, 11, block.StalagmiteDamageSource{}},
+		{"frustum is ordinary ground", block.PointedDripstone{Thickness: block.SpeleothemFrustum}, 1, true, 18, entity.FallDamageSource{}},
+		{"fall_damage disabled", block.PointedDripstone{Thickness: block.SpeleothemTip}, 11.0 / 16, false, 20, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := world.Config{Synchronous: true}.New()
+			t.Cleanup(func() { _ = w.Close() })
+			w.SetFallDamage(c.fallDamage)
+			<-w.Exec(func(tx *world.Tx) {
+				tx.SetBlock(cube.Pos{0, 0, 0}, c.stalagmite, nil)
+				pos := mgl64.Vec3{0.5, c.feet, 0.5}
+				p := tx.AddEntity(world.EntitySpawnOpts{Position: pos}.New(Type, Config{Position: pos})).(*Player)
+				h := new(fallDamageHandler)
+				p.Handle(h)
+				p.fall(5)
+				if got := p.Health(); got != c.health || h.source != c.source {
+					t.Fatalf("health=%v source=%T, want %v and %T", got, h.source, c.health, c.source)
+				}
+			})
+		})
+	}
+}
+
 type fallDamageHandler struct {
 	NopHandler
 	calls  int

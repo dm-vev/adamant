@@ -439,6 +439,33 @@ func (c Cauldron) HandlePrecipitation(pos cube.Pos, tx *world.Tx, p world.Precip
 	}
 }
 
+// receivesDrip ports canReceiveStalactiteDrip: an empty cauldron takes water
+// or lava from pointed dripstone, and plain water takes more water.
+func (c Cauldron) receivesDrip(fluid string) bool {
+	return c.FillLevel == 0 || fluid == "water" && c.plainWater()
+}
+
+// ScheduledTick ports AbstractCauldronBlock.tick, scheduled by a stalactite
+// dripping above: water raises the level by a third and lava fills the
+// cauldron.
+func (c Cauldron) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	fluid, ok := dripstoneFluidAboveCauldron(tx, pos)
+	if !ok || !c.receivesDrip(fluid) {
+		return
+	}
+	n := Cauldron{FillLevel: cauldronMaxFill, Liquid: CauldronLava}
+	if fluid == "water" {
+		if c.FillLevel >= cauldronMaxFill {
+			return
+		}
+		n = Cauldron{FillLevel: min(c.FillLevel+2, cauldronMaxFill), Liquid: CauldronWater}
+	}
+	tx.SetBlock(pos, n, nil)
+	notifyComparatorUpdate(pos, tx)
+	tx.EmitGameEvent(world.GameEventBlockChange, pos.Vec3Centre(), world.GameEventContext{AffectedState: n})
+	tx.PlaySound(pos.Vec3Centre(), sound.PointedDripstoneCauldronDrip{Lava: fluid == "lava"})
+}
+
 // UseOnBlock ...
 func (c Cauldron) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, c)

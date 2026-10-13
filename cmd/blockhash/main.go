@@ -244,6 +244,10 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ")", 6
 	case "CauldronLiquid":
 		return "uint64(" + s + ")", 2
+	case "SpeleothemThickness":
+		return "uint64(" + s + ")", 3
+	case "DripleafTilt":
+		return "uint64(" + s + ")", 2
 	case "int32":
 		return "uint64(uint32(" + s + "))", 32
 	case "Block":

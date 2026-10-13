@@ -668,6 +668,14 @@ func (p *Player) fall(distance float64) {
 	if pos, lander, ok := p.landedOn(); ok {
 		lander.EntityLand(pos, p.tx, p, &distance)
 	}
+	p.CauseFallDamage(distance, 1, entity.FallDamageSource{})
+}
+
+// CauseFallDamage hurts the player for landing after falling distance blocks,
+// the three blocks above the safe fall distance multiplied by multiplier, with
+// the damage source passed. Jump Boost raises the safe fall distance and the
+// fall_damage game rule disables the damage.
+func (p *Player) CauseFallDamage(distance, multiplier float64, src world.DamageSource) {
 	if !p.tx.World().FallDamage() {
 		return
 	}
@@ -678,7 +686,7 @@ func (p *Player) fall(distance float64) {
 	if dmg < 0.5 {
 		return
 	}
-	p.Hurt(math.Ceil(dmg), entity.FallDamageSource{})
+	p.Hurt(math.Ceil(dmg*multiplier), src)
 }
 
 // landedOn returns the first block.EntityLander the Player came to rest on, along with its position.
@@ -730,7 +738,7 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	}
 	// Player.isInvulnerableTo: the is_fall and is_freezing damage types.
 	switch src.(type) {
-	case entity.FallDamageSource:
+	case entity.FallDamageSource, block.StalagmiteDamageSource:
 		if !w.GameRuleBool("fall_damage") {
 			return 0, false
 		}

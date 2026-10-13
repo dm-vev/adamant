@@ -46,6 +46,9 @@ func (conf FallingBlockBehaviourConfig) New() *FallingBlockBehaviour {
 type FallingBlockBehaviour struct {
 	passive *PassiveBehaviour
 	block   world.Block
+
+	hurts                 bool
+	hurtPerBlock, hurtMax float64
 }
 
 // Block returns the world.Block of the entity.
@@ -74,26 +77,49 @@ func (f *FallingBlockBehaviour) tick(e *Ent, tx *world.Tx) {
 func (f *FallingBlockBehaviour) solidify(e *Ent, pos mgl64.Vec3, tx *world.Tx) {
 	bpos := cube.PosFromVec3(pos)
 
-	if d, ok := f.block.(damager); ok {
-		f.damageEntities(e, d, pos, tx)
-	}
+	f.damageEntities(e, pos, tx)
 	if l, ok := f.block.(landable); ok {
 		l.Landed(tx, bpos)
 	}
 	f.passive.close = true
 
-	if r, ok := tx.Block(bpos).(replaceable); ok && r.ReplaceableBy(f.block) {
+	r, ok := tx.Block(bpos).(replaceable)
+	survives := true
+	if s, ok := f.block.(fallSurvivor); ok {
+		survives = s.SurvivesFall(bpos, tx)
+	}
+	if ok && r.ReplaceableBy(f.block) && survives {
 		tx.SetBlock(bpos, f.block, nil)
-	} else if i, ok := f.block.(world.Item); ok {
+		return
+	}
+	if !tx.World().GameRuleBool("entity_drops") {
+		return
+	}
+	if b, ok := f.block.(brokenAfterFall); ok {
+		b.BrokenAfterFall(tx, bpos)
+	}
+	if i, ok := f.block.(world.Item); ok {
 		opts := world.EntitySpawnOpts{Position: bpos.Vec3Middle()}
 		tx.AddEntity(NewItem(opts, item.NewStack(i, 1)))
 	}
 }
 
+// HurtEntities makes the falling block hurt entities it lands on by
+// damagePerBlock per block fallen, up to maxDamage, overriding the damage of
+// its block. Falling stalactites deal damage scaled by their column length.
+func (f *FallingBlockBehaviour) HurtEntities(damagePerBlock, maxDamage float64) {
+	f.hurts, f.hurtPerBlock, f.hurtMax = true, damagePerBlock, maxDamage
+}
+
 // damageEntities attempts to damage any entities standing below the falling
-// block. This functionality is used by falling anvils.
-func (f *FallingBlockBehaviour) damageEntities(e *Ent, d damager, pos mgl64.Vec3, tx *world.Tx) {
-	damagePerBlock, maxDamage := d.Damage()
+// block. This functionality is used by falling anvils and stalactites.
+func (f *FallingBlockBehaviour) damageEntities(e *Ent, pos mgl64.Vec3, tx *world.Tx) {
+	damagePerBlock, maxDamage := f.hurtPerBlock, f.hurtMax
+	if d, ok := f.block.(damager); ok && !f.hurts {
+		damagePerBlock, maxDamage = d.Damage()
+	} else if !f.hurts {
+		return
+	}
 	dist := math.Ceil(f.passive.fallDistance - 1.0)
 	if dist <= 0 {
 		return
@@ -134,4 +160,16 @@ type breakable interface {
 // landable ...
 type landable interface {
 	Landed(tx *world.Tx, pos cube.Pos)
+}
+
+// fallSurvivor is a block that can only be placed by a falling block entity
+// where it would survive, like a stalactite needing a ceiling.
+type fallSurvivor interface {
+	SurvivesFall(pos cube.Pos, tx *world.Tx) bool
+}
+
+// brokenAfterFall is a block reacting to its falling block entity breaking
+// instead of being placed.
+type brokenAfterFall interface {
+	BrokenAfterFall(tx *world.Tx, pos cube.Pos)
 }

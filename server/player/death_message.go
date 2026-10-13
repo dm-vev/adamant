@@ -23,31 +23,37 @@ func deathTranslation(key string, params int, fallback string) chat.Translation 
 
 // Death message translations from the Bedrock en_US.lang death.attack keys.
 var (
-	deathGeneric     = deathTranslation("death.attack.generic", 1, "%v died")
-	deathPlayer      = deathTranslation("death.attack.player", 2, "%v was slain by %v")
-	deathMob         = deathTranslation("death.attack.mob", 2, "%v was slain by %v")
-	deathArrow       = deathTranslation("death.attack.arrow", 2, "%v was shot by %v")
-	deathTrident     = deathTranslation("death.attack.trident", 2, "%v was impaled to death by %v")
-	deathFireball    = deathTranslation("death.attack.fireball", 2, "%v was fireballed by %v")
-	deathThrown      = deathTranslation("death.attack.thrown", 2, "%v was pummeled by %v")
-	deathThorns      = deathTranslation("death.attack.thorns", 2, "%v was killed trying to hurt %v")
-	deathFall        = deathTranslation("death.attack.fall", 1, "%v hit the ground too hard")
-	deathInFire      = deathTranslation("death.attack.inFire", 1, "%v went up in flames")
-	deathOnFire      = deathTranslation("death.attack.onFire", 1, "%v burned to death")
-	deathLava        = deathTranslation("death.attack.lava", 1, "%v tried to swim in lava")
-	deathMagma       = deathTranslation("death.attack.magma", 1, "%v discovered the floor was lava")
-	deathInWall      = deathTranslation("death.attack.inWall", 1, "%v suffocated in a wall")
-	deathDrown       = deathTranslation("death.attack.drown", 1, "%v drowned")
-	deathOutOfWorld  = deathTranslation("death.attack.outOfWorld", 1, "%v fell out of the world")
-	deathExplosion   = deathTranslation("death.attack.explosion", 1, "%v blew up")
-	deathExplosionBy = deathTranslation("death.attack.explosion.player", 2, "%v was blown up by %v")
-	deathFireworks   = deathTranslation("death.attack.fireworks", 1, "%v went off with a bang")
-	deathMagic       = deathTranslation("death.attack.magic", 1, "%v was killed by magic")
-	deathWither      = deathTranslation("death.attack.wither", 1, "%v withered away")
-	deathLightning   = deathTranslation("death.attack.lightningBolt", 1, "%v was struck by lightning")
-	deathFlyIntoWall = deathTranslation("death.attack.flyIntoWall", 1, "%v experienced kinetic energy")
-	deathStarve      = deathTranslation("death.attack.starve", 1, "%v starved to death")
-	deathFreeze      = deathTranslation("death.attack.freeze", 1, "%v froze to death")
+	deathGeneric      = deathTranslation("death.attack.generic", 1, "%v died")
+	deathPlayer       = deathTranslation("death.attack.player", 2, "%v was slain by %v")
+	deathMob          = deathTranslation("death.attack.mob", 2, "%v was slain by %v")
+	deathArrow        = deathTranslation("death.attack.arrow", 2, "%v was shot by %v")
+	deathTrident      = deathTranslation("death.attack.trident", 2, "%v was impaled to death by %v")
+	deathFireball     = deathTranslation("death.attack.fireball", 2, "%v was fireballed by %v")
+	deathThrown       = deathTranslation("death.attack.thrown", 2, "%v was pummeled by %v")
+	deathThorns       = deathTranslation("death.attack.thorns", 2, "%v was killed trying to hurt %v")
+	deathFall         = deathTranslation("death.attack.fall", 1, "%v hit the ground too hard")
+	deathInFire       = deathTranslation("death.attack.inFire", 1, "%v went up in flames")
+	deathOnFire       = deathTranslation("death.attack.onFire", 1, "%v burned to death")
+	deathLava         = deathTranslation("death.attack.lava", 1, "%v tried to swim in lava")
+	deathMagma        = deathTranslation("death.attack.magma", 1, "%v discovered the floor was lava")
+	deathInWall       = deathTranslation("death.attack.inWall", 1, "%v suffocated in a wall")
+	deathDrown        = deathTranslation("death.attack.drown", 1, "%v drowned")
+	deathOutOfWorld   = deathTranslation("death.attack.outOfWorld", 1, "%v fell out of the world")
+	deathExplosion    = deathTranslation("death.attack.explosion", 1, "%v blew up")
+	deathExplosionBy  = deathTranslation("death.attack.explosion.player", 2, "%v was blown up by %v")
+	deathFireworks    = deathTranslation("death.attack.fireworks", 1, "%v went off with a bang")
+	deathMagic        = deathTranslation("death.attack.magic", 1, "%v was killed by magic")
+	deathWither       = deathTranslation("death.attack.wither", 1, "%v withered away")
+	deathLightning    = deathTranslation("death.attack.lightningBolt", 1, "%v was struck by lightning")
+	deathFlyIntoWall  = deathTranslation("death.attack.flyIntoWall", 1, "%v experienced kinetic energy")
+	deathStarve       = deathTranslation("death.attack.starve", 1, "%v starved to death")
+	deathFreeze       = deathTranslation("death.attack.freeze", 1, "%v froze to death")
+	deathCactus       = deathTranslation("death.attack.cactus", 1, "%v was pricked to death")
+	deathSweetBerry   = deathTranslation("death.attack.sweetBerry", 1, "%v was poked to death by a sweet berry bush")
+	deathAnvil        = deathTranslation("death.attack.anvil", 1, "%v was squashed by a falling anvil")
+	deathFallingBlock = deathTranslation("death.attack.fallingBlock", 1, "%v was squashed by a falling block")
+	deathStalactite   = deathTranslation("death.attack.stalactite", 1, "%v was skewered by a falling stalactite")
+	deathStalagmite   = deathTranslation("death.attack.stalagmite", 1, "%v was impaled on a stalagmite")
 )
 
 // deathMessage ports DamageSource.getLocalizedDeathMessage onto the Bedrock
@@ -116,6 +122,20 @@ func deathMessage(victim string, pos cube.Pos, src world.DamageSource, tx *world
 		return one(deathLava)
 	case block.MagmaDamageSource:
 		return one(deathMagma)
+	case block.StalagmiteDamageSource:
+		return one(deathStalagmite)
+	case block.DamageSource:
+		switch s.Block.(type) {
+		case block.Cactus:
+			return one(deathCactus)
+		case block.SweetBerries:
+			return one(deathSweetBerry)
+		case block.Anvil:
+			return one(deathAnvil)
+		case block.PointedDripstone, block.SulfurSpike:
+			return one(deathStalactite)
+		}
+		return one(deathFallingBlock)
 	case block.FireDamageSource:
 		// Fire and campfire contact is IN_FIRE; damage while merely burning is ON_FIRE.
 		switch tx.Block(pos).(type) {

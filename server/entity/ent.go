@@ -88,6 +88,14 @@ func (e *Ent) Prick(blockPos cube.Pos) {
 	}
 }
 
+// HurtEntities makes a falling block entity hurt entities it lands on by
+// damagePerBlock per block fallen, up to maxDamage.
+func (e *Ent) HurtEntities(damagePerBlock, maxDamage float64) {
+	if f, ok := e.Behaviour().(*FallingBlockBehaviour); ok {
+		f.HurtEntities(damagePerBlock, maxDamage)
+	}
+}
+
 // Position returns the current position of the entity.
 func (e *Ent) Position() mgl64.Vec3 {
 	return e.data.Pos
@@ -256,6 +264,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	}
 
 	m := e.Behaviour().Tick(e, tx)
+	if m != nil {
+		e.data.OnGround = m.onGround
+	}
 	tickLeash(e, tx, m)
 	checkEntityInsiders(tx, e)
 	if frozen := e.data.FrozenTicks; frozen > 0 || e.data.InPowderSnow || e.data.WasInPowderSnow {
@@ -275,6 +286,11 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	}
 	e.stopPortalContact()
 	e.data.Age += time.Second / 20
+}
+
+// OnGround reports whether the entity's last movement ended on a surface.
+func (e *Ent) OnGround() bool {
+	return e.data.OnGround
 }
 
 // TravelThroughPortal handles the entity touching a portal block.

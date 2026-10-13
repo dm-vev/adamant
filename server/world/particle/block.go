@@ -120,6 +120,13 @@ type EyeblossomTransform struct {
 	Open bool
 }
 
+// DripstoneDrip is a drop falling from the tip of a pointed dripstone.
+type DripstoneDrip struct{ particle }
+
+// PointedDripstoneLand is the shattering of a falling pointed dripstone, which
+// the client plays as its landing sound.
+type PointedDripstoneLand struct{ particle }
+
 // CauldronEffect is a Bedrock cauldron interaction, which the client plays as
 // its particles and sound. Colour is the dye or potion colour involved.
 type CauldronEffect struct {

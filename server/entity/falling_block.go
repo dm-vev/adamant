@@ -36,10 +36,18 @@ func (fallingBlockType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := fallingBlockConf
 	conf.Block = nbtconv.Block(m, "FallingBlock")
 	conf.DistanceFallen = nbtconv.Float64(m, "FallDistance")
-	data.Data = conf.New()
+	b := conf.New()
+	if nbtconv.Bool(m, "HurtEntities") {
+		b.HurtEntities(float64(nbtconv.Float32(m, "FallHurtAmount")), float64(nbtconv.Int32(m, "FallHurtMax")))
+	}
+	data.Data = b
 }
 
 func (fallingBlockType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*FallingBlockBehaviour)
-	return map[string]any{"FallDistance": b.passive.fallDistance, "FallingBlock": nbtconv.WriteBlock(b.block)}
+	m := map[string]any{"FallDistance": b.passive.fallDistance, "FallingBlock": nbtconv.WriteBlock(b.block)}
+	if b.hurts {
+		m["HurtEntities"], m["FallHurtAmount"], m["FallHurtMax"] = uint8(1), float32(b.hurtPerBlock), int32(b.hurtMax)
+	}
+	return m
 }

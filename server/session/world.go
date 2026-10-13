@@ -687,6 +687,10 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			Position:  vec64To32(pos),
 			EventData: nbtconv.Int32FromRGBA(pa.Colour),
 		})
+	case particle.DripstoneDrip:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
+	case particle.PointedDripstoneLand:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
 	case particle.ElectricSpark:
 		s.writePacket(&packet.LevelEvent{
 			EventType: packet.LevelEventParticlesElectricSpark,
@@ -1003,6 +1007,16 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType, pk.ExtraData = packet.SoundEventItemUseOn, int32(s.br.BlockRuntimeID(so.Block))
 	case sound.Fizz:
 		pk.SoundType = packet.SoundEventFizz
+	case sound.PointedDripstoneCauldronDrip:
+		pk.SoundType = packet.SoundEventPointedDripstoneCauldronDripWater
+		if so.Lava {
+			pk.SoundType = packet.SoundEventPointedDripstoneCauldronDripLava
+		}
+	case sound.BigDripleafTilt:
+		pk.SoundType = packet.SoundEventBigDripleafTiltDown
+		if so.Up {
+			pk.SoundType = packet.SoundEventBigDripleafTiltUp
+		}
 	case sound.GlassBreak:
 		pk.SoundType = packet.SoundEventGlass
 	case sound.Attack:

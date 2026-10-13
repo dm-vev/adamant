@@ -8,6 +8,7 @@ const (
 	hashAir = iota
 	hashAllow
 	hashAmethyst
+	hashAmethystCluster
 	hashAncientDebris
 	hashAndesite
 	hashAnvil
@@ -25,6 +26,7 @@ const (
 	hashBedrock
 	hashBeetrootSeeds
 	hashBell
+	hashBigDripleaf
 	hashBlackstone
 	hashBlastFurnace
 	hashBlueIce
@@ -229,6 +231,7 @@ const (
 	hashPistonHead
 	hashPlanks
 	hashPodzol
+	hashPointedDripstone
 	hashPolishedBlackstoneBrick
 	hashPolishedCinnabar
 	hashPolishedSulfur
@@ -279,6 +282,7 @@ const (
 	hashSkull
 	hashSlab
 	hashSlime
+	hashSmallDripleaf
 	hashSmithingTable
 	hashSmoker
 	hashSmoothBasalt
@@ -298,6 +302,7 @@ const (
 	hashSugarCane
 	hashSulfur
 	hashSulfurBricks
+	hashSulfurSpike
 	hashSweetBerries
 	hashTNT
 	hashTallDryGrass
@@ -349,6 +354,10 @@ func (Allow) Hash() (uint64, uint64) {
 
 func (Amethyst) Hash() (uint64, uint64) {
 	return hashAmethyst, 0
+}
+
+func (a AmethystCluster) Hash() (uint64, uint64) {
+	return hashAmethystCluster, uint64(a.Stage) | uint64(a.Facing)<<8
 }
 
 func (AncientDebris) Hash() (uint64, uint64) {
@@ -417,6 +426,10 @@ func (b BeetrootSeeds) Hash() (uint64, uint64) {
 
 func (b Bell) Hash() (uint64, uint64) {
 	return hashBell, uint64(b.Attach.Uint8()) | uint64(b.Facing)<<2 | uint64(boolByte(b.Toggle))<<5
+}
+
+func (d BigDripleaf) Hash() (uint64, uint64) {
+	return hashBigDripleaf, uint64(d.Facing) | uint64(boolByte(d.Head))<<3 | uint64(d.Tilt)<<4
 }
 
 func (b Blackstone) Hash() (uint64, uint64) {
@@ -1235,6 +1248,10 @@ func (Podzol) Hash() (uint64, uint64) {
 	return hashPodzol, 0
 }
 
+func (d PointedDripstone) Hash() (uint64, uint64) {
+	return hashPointedDripstone, uint64(boolByte(d.Hanging)) | uint64(d.Thickness)<<1
+}
+
 func (b PolishedBlackstoneBrick) Hash() (uint64, uint64) {
 	return hashPolishedBlackstoneBrick, uint64(boolByte(b.Cracked))
 }
@@ -1435,6 +1452,10 @@ func (Slime) Hash() (uint64, uint64) {
 	return hashSlime, 0
 }
 
+func (d SmallDripleaf) Hash() (uint64, uint64) {
+	return hashSmallDripleaf, uint64(d.Facing) | uint64(boolByte(d.UpperPart))<<3
+}
+
 func (SmithingTable) Hash() (uint64, uint64) {
 	return hashSmithingTable, 0
 }
@@ -1509,6 +1530,10 @@ func (s Sulfur) Hash() (uint64, uint64) {
 
 func (SulfurBricks) Hash() (uint64, uint64) {
 	return hashSulfurBricks, 0
+}
+
+func (s SulfurSpike) Hash() (uint64, uint64) {
+	return hashSulfurSpike, uint64(boolByte(s.Hanging)) | uint64(s.Thickness)<<1
 }
 
 func (s SweetBerries) Hash() (uint64, uint64) {

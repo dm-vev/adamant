@@ -164,6 +164,18 @@ func (tx *Tx) ScheduleBlockUpdate(pos cube.Pos, b Block, delay time.Duration) {
 	tx.World().scheduleBlockUpdate(pos, b, delay)
 }
 
+// HasScheduledBlockUpdate reports whether an update of the type of b is
+// pending at the position passed.
+func (tx *Tx) HasScheduledBlockUpdate(pos cube.Pos, b Block) bool {
+	w := tx.World()
+	if _, ok := b.(Liquid); ok {
+		_, pending := w.scheduledFluidTicks.scheduledTicks[scheduledTickIndex{pos: pos, typeName: scheduledFluidTickType(b.(Liquid))}]
+		return pending
+	}
+	_, pending := w.scheduledBlockTicks.scheduledTicks[scheduledTickIndex{pos: pos, typeName: scheduledTickType(w.conf.Blocks, b)}]
+	return pending
+}
+
 // DoBlockUpdatesAround triggers neighbour updates around the position passed.
 func (tx *Tx) DoBlockUpdatesAround(pos cube.Pos) {
 	tx.World().doBlockUpdatesAround(pos)

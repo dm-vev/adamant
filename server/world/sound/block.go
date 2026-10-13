@@ -30,6 +30,22 @@ type GlassBreak struct{ sound }
 // them turns into a solid block.
 type Fizz struct{ sound }
 
+// PointedDripstoneCauldronDrip is a sound played when a drop from pointed
+// dripstone fills a cauldron with water or lava.
+type PointedDripstoneCauldronDrip struct {
+	sound
+	// Lava is set for a drop of lava.
+	Lava bool
+}
+
+// BigDripleafTilt is played when a big dripleaf tilts down under an entity
+// or springs back up.
+type BigDripleafTilt struct {
+	sound
+	// Up is set when the leaf returns to level.
+	Up bool
+}
+
 // AnvilLand is played when an anvil lands on the ground.
 type AnvilLand struct{ sound }
 
