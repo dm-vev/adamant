@@ -312,6 +312,9 @@ func TestTraderLlamasCannotBeRiddenWhileLed(t *testing.T) {
 	})
 }
 
+// TestTraderLlamasSpitAtTheirTradersAttacker checks
+// TraderLlamaDefendWanderingTraderGoal with RangedAttackGoal, which spits
+// two seconds after the llama took aim.
 func TestTraderLlamasSpitAtTheirTradersAttacker(t *testing.T) {
 	w := traderTestWorld(t)
 	var tr *world.EntityHandle
@@ -332,12 +335,14 @@ func TestTraderLlamasSpitAtTheirTradersAttacker(t *testing.T) {
 		p := addSurvivalPlayer(tx, mgl64.Vec3{-3.5, 64, .5})
 		trader(tx, tr).Hurt(1, entity.AttackDamageSource{Attacker: p})
 	})
-	w.AdvanceTick()
-	<-w.Exec(func(tx *world.Tx) {
-		if countEntities(tx, "minecraft:llama_spit") == 0 {
-			t.Fatal("trader llama did not spit at the trader's attacker")
-		}
-	})
+	spat := false
+	for range 60 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) { spat = spat || countEntities(tx, "minecraft:llama_spit") != 0 })
+	}
+	if !spat {
+		t.Fatal("trader llama did not spit at the trader's attacker")
+	}
 }
 
 //go:linkname spawnWanderingTrader github.com/df-mc/dragonfly/server/entity.spawnWanderingTrader

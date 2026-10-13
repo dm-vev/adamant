@@ -81,7 +81,9 @@ func (c MountConfig) New() *MountBehaviour {
 	}
 	b := &MountBehaviour{kind: kind, tamed: c.Tamed || kind == mountCamel || kind == mountCamelHusk, saddled: c.Saddled, chested: c.Chested, trap: c.SkeletonTrap, strength: max(1, min(c.Strength, 5)), variant: c.Variant, ageTicks: c.AgeTicks,
 		jumpStrength: c.JumpStrength, movementSpeed: c.Speed, health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), nextStand: -400,
-		mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+		mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, llamaState: llamaState{caravanSpeed: 2.1, attackTime: -1}}
+	// CamelAi panics with AnimalPanic, which lasts five seconds.
+	b.goals.panic.brain = b.camel()
 	return b
 }
 
@@ -104,14 +106,10 @@ type MountBehaviour struct {
 	gearInv                          *inventory.Inventory
 	trap                             bool
 	trapTime                         int
-	caravanLeader                    *world.EntityHandle
-	caravanLeaderUUID                string
-	caravanHead                      bool
 	traderDespawn                    int
 	lastPoseTick                     int64
-	spitCooldown                     int
-	spitTarget                       *world.EntityHandle
-	defendStamp                      int64
+	llamaState                       llamaState
+	camelState                       camelState
 	breeding                         breeding
 	goals                            animalGoals
 	// temper, owner and bred are AbstractHorse's Temper, Owner and Bred.
@@ -135,8 +133,9 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dashCooldown > 0 {
 		b.dashCooldown--
 	}
-	if b.camel() && b.sitting && b.forward != 0 {
-		b.sitting = false
+	if b.camel() && b.sitting && b.forward > 0 && !b.inPoseTransition(tx) {
+		// Camel.tickRidden: riding forward makes a sitting camel stand up.
+		b.standUp(m)
 	}
 	b.effects.Tick(m, tx)
 	if b.kind == mountSkeletonHorse && b.trap {
@@ -153,8 +152,6 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return nil
 	}
 	vel, rot := b.tickHorse(m, tx)
-	b.defendWithSpit(e, tx)
-	b.followCaravan(e, tx, &vel)
 	if b.controlled() {
 		direction := b.direction
 		if direction.LenSqr() == 0 {
@@ -263,132 +260,6 @@ func (b *MountBehaviour) riddenByPlayer() bool {
 	return b.passengers[0] != nil && b.passengers[0].Type().EncodeEntity() == "minecraft:player"
 }
 
-func (b *MountBehaviour) defendWithSpit(e *Ent, tx *world.Tx) {
-	if !b.llama() {
-		return
-	}
-	if b.spitCooldown > 0 {
-		b.spitCooldown--
-		return
-	}
-	if target := b.llamaTarget(e, tx); target != nil && (&Mount{Ent: e}).SpitAt(tx, target) {
-		b.spitCooldown = 60
-	}
-}
-
-// llamaTarget returns what a llama spits at. A trader llama turns on whoever
-// last hurt the trader leading it (TraderLlamaDefendWanderingTraderGoal) and
-// otherwise targets zombies other than zombified piglins and illagers; any
-// llama targets untamed wolves within ten blocks.
-func (b *MountBehaviour) llamaTarget(e *Ent, tx *world.Tx) world.Entity {
-	if b.kind == mountTraderLlama {
-		if trader, ok := leashedTrader(e, tx); ok {
-			if attacker, stamp, ok := trader.lastAttacker(tx); ok && stamp != b.defendStamp {
-				b.defendStamp, b.spitTarget = stamp, attacker.H()
-			}
-		}
-	}
-	if b.spitTarget != nil {
-		if target, ok := b.spitTarget.Entity(tx); ok && target.Position().Sub(e.Position()).LenSqr() <= 20*20 {
-			if l, living := target.(Living); !living || !l.Dead() {
-				return target
-			}
-		}
-		b.spitTarget = nil
-	}
-	var target world.Entity
-	best := math.MaxFloat64
-	for candidate := range tx.EntitiesWithin(cube.Box(-20, -4, -20, 20, 4, 20).Translate(e.Position())) {
-		id := candidate.H().Type().EncodeEntity()
-		d := candidate.Position().Sub(e.Position()).LenSqr()
-		eligible := false
-		switch {
-		case id == "minecraft:wolf":
-			wolf, ok := candidate.(*Wolf)
-			eligible = ok && !wolf.Tamed() && d <= 10*10
-		case b.kind == mountTraderLlama && zombieClass[id] && id != "minecraft:zombified_piglin",
-			b.kind == mountTraderLlama && (id == "minecraft:pillager" || id == "minecraft:vindicator" || id == "minecraft:evoker" || id == "minecraft:illusioner"):
-			eligible = true
-		}
-		if eligible && d < best && lineVisible(e, tx, candidate) {
-			target, best = candidate, d
-		}
-	}
-	if target != nil {
-		b.spitTarget = target.H()
-	}
-	return target
-}
-func (b *MountBehaviour) followCaravan(e *Ent, tx *world.Tx, vel *mgl64.Vec3) {
-	if !b.llama() {
-		return
-	}
-	if b.caravanLeader == nil && b.caravanLeaderUUID != "" {
-		box := cube.Box(-32, -8, -32, 32, 8, 32).Translate(e.Position())
-		for candidate := range tx.EntitiesWithin(box) {
-			if candidate.H().UUID().String() == b.caravanLeaderUUID {
-				b.caravanLeader = candidate.H()
-				break
-			}
-		}
-	}
-	if b.caravanLeader != nil {
-		leader, ok := b.caravanLeader.Entity(tx)
-		if !ok {
-			b.caravanLeader = nil
-			return
-		}
-		d := leader.Position().Sub(e.Position())
-		d[1] = 0
-		if d.Len() > 3 {
-			*vel = vel.Add(d.Normalize().Mul(.025))
-		}
-		return
-	}
-	if !b.caravanHead {
-		box := cube.Box(-9, -4, -9, 9, 4, 9).Translate(e.Position())
-		var loose *Mount
-		for candidate := range tx.EntitiesWithin(box) {
-			other := mountFromEntity(candidate)
-			if other == nil || candidate.H() == e.H() {
-				continue
-			}
-			ob := other.b()
-			if !ob.llama() {
-				continue
-			}
-			if ob.caravanHead || ob.caravanLeader != nil {
-				b.caravanLeader = candidate.H()
-				b.caravanLeaderUUID = candidate.H().UUID().String()
-				return
-			}
-			if loose == nil {
-				loose = other
-			}
-		}
-		if loose != nil {
-			b.caravanHead = true
-			loose.b().caravanLeader = e.H()
-			loose.b().caravanLeaderUUID = e.H().UUID().String()
-		}
-		return
-	}
-	box := cube.Box(-9, -4, -9, 9, 4, 9).Translate(e.Position())
-	for candidate := range tx.EntitiesWithin(box) {
-		other := mountFromEntity(candidate)
-		if other == nil || candidate.H() == e.H() {
-			continue
-		}
-		ob := other.b()
-		if !ob.llama() || ob.caravanLeader != nil || ob.caravanHead {
-			continue
-		}
-		if candidate.Position().Sub(e.Position()).LenSqr() <= 81 {
-			ob.caravanLeader = e.H()
-			return
-		}
-	}
-}
 func (b *MountBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	m := &Mount{Ent: e}
 	for i, h := range b.passengers {
@@ -875,9 +746,15 @@ func (m *Mount) MarkVariant() int32 {
 	return int32(m.b().variant >> 8 & 0xff)
 }
 func (m *Mount) Sitting() bool { return m.b().sitting }
+
+// SetSitting makes a camel sit down or stand up.
 func (m *Mount) SetSitting(v bool) {
-	if m.b().camel() {
-		m.b().sitting = v
+	switch b := m.b(); {
+	case !b.camel():
+	case v:
+		b.sitDown(m)
+	default:
+		b.standUp(m)
 	}
 }
 func (m *Mount) AgeTicks() int { return m.b().ageTicks }
@@ -926,42 +803,6 @@ func (m *Mount) MountState() MountState {
 		s.Strength, s.MaxStrength = int32(b.strength), 5
 	}
 	return s
-}
-func (m *Mount) StartCaravan() bool {
-	b := m.b()
-	if !b.llama() || b.caravanLeader != nil {
-		return false
-	}
-	b.caravanHead = true
-	return true
-}
-func (m *Mount) JoinCaravan(leader world.Entity) bool {
-	if leader == nil || leader.H() == m.H() {
-		return false
-	}
-	lead := mountFromEntity(leader)
-	if lead == nil || !lead.b().llama() || !m.b().llama() {
-		return false
-	}
-	m.b().caravanLeader = leader.H()
-	m.b().caravanLeaderUUID = leader.H().UUID().String()
-	m.b().caravanHead = false
-	return true
-}
-func (m *Mount) LeaveCaravan()                      { m.b().caravanLeader = nil; m.b().caravanHead = false }
-func (m *Mount) CaravanLeader() *world.EntityHandle { return m.b().caravanLeader }
-func (m *Mount) SpitAt(tx *world.Tx, target world.Entity) bool {
-	if target == nil || !m.b().llama() {
-		return false
-	}
-	delta := target.Position().Sub(m.Position())
-	delta[1] += math.Sqrt(delta[0]*delta[0]+delta[2]*delta[2]) * .2
-	if delta.LenSqr() == 0 {
-		return false
-	}
-	velocity := delta.Normalize().Mul(1.5)
-	tx.AddEntity(NewLlamaSpit(world.EntitySpawnOpts{Position: m.Position().Add(mgl64.Vec3{0, 1.2, 0}), Velocity: velocity}, m))
-	return true
 }
 func (b *MountBehaviour) chestInventory() *inventory.Inventory {
 	if b.chestInv == nil && b.chested {
@@ -1104,11 +945,9 @@ func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	b.owner = javaUUIDString(state["Owner"])
 	b.trap = nbtconv.Bool(state, "SkeletonTrap")
 	b.trapTime = int(nbtconv.Int32(state, "SkeletonTrapTime"))
-	b.caravanHead = nbtconv.Bool(state, "CaravanHead")
 	if _, ok := state["DespawnDelay"]; ok {
 		b.traderDespawn = int(nbtconv.Int32(state, "DespawnDelay"))
 	}
-	b.caravanLeaderUUID, _ = state["CaravanLeaderUUID"].(string)
 	b.armor = mountStackFromNative(ReadNativeMobEquipment(n).Armor)
 	if b.chested {
 		b.chestItems = mountStacksFromNative(ReadNativeMobEquipment(n).ChestItems)
@@ -1138,7 +977,7 @@ func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
 	for k, v := range EncodeNativeMobEquipment(equipment) {
 		native[k] = v
 	}
-	state := b.breeding.encodeNBT(map[string]any{"Tame": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Temper": int32(b.temper), "Bred": b.bred, "EatingHaystack": b.eating, "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "CaravanHead": b.caravanHead, "CaravanLeaderUUID": b.caravanLeaderUUID, "LastPoseTick": b.lastPoseTick})
+	state := b.breeding.encodeNBT(map[string]any{"Tame": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Temper": int32(b.temper), "Bred": b.bred, "EatingHaystack": b.eating, "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "LastPoseTick": b.lastPoseTick})
 	if b.owner != "" {
 		state["Owner"] = javaUUIDIntArray(b.owner)
 	}
@@ -1199,13 +1038,16 @@ func (m *Mount) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if v, ok = mobEffectDamage(b.effects, v, src); !ok {
 		return 0, false
 	}
-	if b.camel() && b.sitting {
-		b.sitting = false
-		m.updateState()
+	if b.camel() {
+		// Camel.actuallyHurt stands the camel up at once.
+		b.standUpInstantly(m)
 	}
 	old := b.health.Health()
 	b.health.AddHealth(-v)
 	b.goals.hurt(src, m.tx.CurrentTick())
+	if b.llama() {
+		b.llamaHurt(src, m.tx.CurrentTick())
+	}
 	resetLove(m)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)

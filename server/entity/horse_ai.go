@@ -77,7 +77,7 @@ func (b *MountBehaviour) horseGoals(m *Mount) animalGoalSpec {
 	if b.mobControlled() {
 		s.panic = 0
 	}
-	if b.horseRearing() || b.camel() {
+	if b.horseRearing() {
 		s.species = b
 	}
 	return s
@@ -124,19 +124,42 @@ func (b *MountBehaviour) tickHorse(m *Mount, tx *world.Tx) (mgl64.Vec3, cube.Rot
 	if b.horseRearing() {
 		b.randomStand(m)
 	}
-	spec := b.horseGoals(m)
-	crazy := b.runAroundLikeCrazy(m, tx)
-	if crazy {
-		spec = animalGoalSpec{speed: b.movementSpeed}
-	}
-	vel, rot := b.goals.tick(e, tx, m, spec)
-	if crazy {
-		vel, rot, _ = steer(e, &b.crazyNavigator, groundSpeed(b.movementSpeed, 1.2), 1)
+	var vel mgl64.Vec3
+	var rot cube.Rotation
+	if b.camel() {
+		vel, rot = b.tickCamel(m, tx)
+	} else {
+		vel, rot = b.tickHorseGoals(m, tx)
 	}
 	if b.eating || b.standCounter > 0 {
 		// AbstractHorse.isImmobile: the horse does not move while it eats
 		// or rears.
 		vel, rot = e.data.Vel, e.data.Rot
+	}
+	return vel, rot
+}
+
+// tickHorseGoals runs the goal selector of the horse species.
+func (b *MountBehaviour) tickHorseGoals(m *Mount, tx *world.Tx) (mgl64.Vec3, cube.Rotation) {
+	e := m.Ent
+	spec := b.horseGoals(m)
+	crazy := b.runAroundLikeCrazy(m, tx)
+	var llamaVel mgl64.Vec3
+	var llamaRot cube.Rotation
+	llama := false
+	if !crazy && b.llama() {
+		// LlamaFollowCaravanGoal and RangedAttackGoal outrank its panic.
+		llamaVel, llamaRot, llama = b.tickLlamaGoals(m, tx)
+	}
+	if crazy || llama {
+		spec = animalGoalSpec{speed: b.movementSpeed}
+	}
+	vel, rot := b.goals.tick(e, tx, m, spec)
+	switch {
+	case crazy:
+		vel, rot, _ = steer(e, &b.crazyNavigator, groundSpeed(b.movementSpeed, 1.2), 1)
+	case llama:
+		vel, rot = llamaVel, llamaRot
 	}
 	return vel, rot
 }

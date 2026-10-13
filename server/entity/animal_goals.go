@@ -60,6 +60,12 @@ type animalGoalSpec struct {
 	panic, breed, tempt, parent, stroll float64
 	// tempting reports whether a held item tempts the animal.
 	tempting func(item.Stack) bool
+	// temptStop is how far from the tempting player the animal stops, 2.5
+	// blocks if zero.
+	temptStop float64
+	// parentRange are the distances babies follow adults at, those of
+	// FollowParentGoal if zero.
+	parentRange parentRange
 	// strollInterval is RandomStrollGoal.interval, 120 if zero.
 	strollInterval int
 	// lookDistance is the range of LookAtPlayerGoal, 6 if zero.
@@ -99,14 +105,14 @@ func (g *animalGoals) tick(e *Ent, tx *world.Tx, a breeder, s animalGoalSpec) (m
 		if p, ok := g.tempt.next(e, tx, s.tempting, false); ok {
 			goal, modifier = goalTempt, s.tempt
 			g.own(goalTempt)
-			g.tempt.follow(e, tx, &g.navigator, p)
+			g.tempt.follow(e, tx, &g.navigator, p, max(s.temptStop, 2.5))
 			face, facing = EyePosition(p), true
 		}
 	} else {
 		g.tempt.stop()
 	}
 	if goal == goalIdle && s.parent > 0 {
-		if parent, ok := g.parent.next(e, tx, a); ok {
+		if parent, ok := g.parent.next(e, tx, a, s.parentRange.orDefault()); ok {
 			goal, modifier = goalParent, s.parent
 			g.own(goalParent)
 			g.parent.follow(e, tx, &g.navigator, parent)
@@ -263,9 +269,9 @@ func (g *temptGoal) stop() {
 	}
 }
 
-// follow walks the animal to the player until it is 2.5 blocks away.
-func (g *temptGoal) follow(e *Ent, tx *world.Tx, nav *Navigator, p world.Entity) {
-	if e.Position().Sub(p.Position()).LenSqr() < 2.5*2.5 {
+// follow walks the animal to the player until it is stop blocks away.
+func (g *temptGoal) follow(e *Ent, tx *world.Tx, nav *Navigator, p world.Entity, stop float64) {
+	if e.Position().Sub(p.Position()).LenSqr() < stop*stop {
 		nav.Path, nav.Index, nav.HasTarget = nil, 0, false
 		return
 	}
@@ -330,16 +336,28 @@ func visibilityPercent(target world.Entity) float64 {
 	return v
 }
 
-// followParentGoal ports FollowParentGoal: a baby walks to the nearest adult
-// of its kind within 8 blocks once it is more than 3 blocks away and stops
-// following it beyond 16 blocks.
+// parentRange are the distances of FollowParentGoal: a baby starts following
+// an adult at least start blocks away, found within search blocks, until it
+// is closer than stop blocks or the adult is further than far.
+type parentRange struct{ start, stop, far, search float64 }
+
+// orDefault returns the range, or the one of FollowParentGoal if unset.
+func (r parentRange) orDefault() parentRange {
+	if r == (parentRange{}) {
+		return parentRange{start: 3, stop: 3, far: 16, search: 8}
+	}
+	return r
+}
+
+// followParentGoal ports FollowParentGoal and BabyFollowAdult: a baby walks
+// to the nearest adult of its kind once it is far enough away.
 type followParentGoal struct {
 	parent           *world.EntityHandle
 	timeToRecalcPath int
 }
 
 // next ports FollowParentGoal.canUse and canContinueToUse.
-func (g *followParentGoal) next(e *Ent, tx *world.Tx, a breeder) (world.Entity, bool) {
+func (g *followParentGoal) next(e *Ent, tx *world.Tx, a breeder, r parentRange) (world.Entity, bool) {
 	if *a.ageTicks() >= 0 {
 		g.stop()
 		return nil, false
@@ -347,7 +365,7 @@ func (g *followParentGoal) next(e *Ent, tx *world.Tx, a breeder) (world.Entity, 
 	if g.parent != nil {
 		if parent, ok := g.parent.Entity(tx); ok {
 			if l, living := parent.(Living); !living || !l.Dead() {
-				if d := e.Position().Sub(parent.Position()).LenSqr(); d >= 9 && d <= 256 {
+				if d := e.Position().Sub(parent.Position()).LenSqr(); d >= r.stop*r.stop && d <= r.far*r.far {
 					return parent, true
 				}
 			}
@@ -355,7 +373,7 @@ func (g *followParentGoal) next(e *Ent, tx *world.Tx, a breeder) (world.Entity, 
 		g.stop()
 		return nil, false
 	}
-	box := e.H().Type().BBox(e).Translate(e.Position()).GrowVec3(mgl64.Vec3{8, 4, 8})
+	box := e.H().Type().BBox(e).Translate(e.Position()).GrowVec3(mgl64.Vec3{r.search, 4, r.search})
 	var closest world.Entity
 	best := math.MaxFloat64
 	for other := range tx.EntitiesWithin(box) {
@@ -367,7 +385,7 @@ func (g *followParentGoal) next(e *Ent, tx *world.Tx, a breeder) (world.Entity, 
 			closest, best = other, d
 		}
 	}
-	if closest == nil || best < 9 {
+	if closest == nil || best < r.start*r.start || best > r.far*r.far {
 		return nil, false
 	}
 	g.parent, g.timeToRecalcPath = closest.H(), 0

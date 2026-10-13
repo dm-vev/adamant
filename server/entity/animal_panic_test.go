@@ -69,10 +69,14 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 		// SmoothSwimmingMoveControl walks at a tenth of the frog's speed.
 		{id: "minecraft:frog", attribute: .1, modifier: 2},
 		{id: "minecraft:copper_golem", attribute: .2, modifier: 1.5},
+		{id: "minecraft:camel", attribute: .09, modifier: 4},
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
 			w := traderTestWorld(t)
+			// A camel that never changed its pose is still standing up
+			// during the first 52 ticks of a world.
+			w.SetTime(6000)
 			var h *world.EntityHandle
 			<-w.Exec(func(tx *world.Tx) { h = spawnAnimal(t, tx, c.id, .5, c.nbt) })
 			w.AdvanceTick()
