@@ -378,6 +378,7 @@ type VillagerBehaviour struct {
 	jobSite, potentialJobSite, home, meetingPoint                                                         cube.Pos
 	finalized, offersGenerated, hasSlept, hasJobSite, hasPotentialJobSite, hasHome, hasMeetingPoint, dead bool
 	trading                                                                                               tradingPlayer
+	panic                                                                                                 villagerPanicState
 }
 
 func (b *VillagerBehaviour) Baby() bool { return b.age < 0 }
@@ -388,7 +389,11 @@ func (v *Villager) behaviour() *VillagerBehaviour { return v.Behaviour().(*Villa
 func (v *Villager) Tick(tx *world.Tx, current int64) {
 	b := v.behaviour()
 	b.tickGossip(current)
-	if customer, trading := b.trading.tick(tx, v.Position()); trading {
+	v.senseGolems(tx, current)
+	if v.tickPanic(tx, current) {
+		// The PANIC activity replaces trading and work.
+		b.trading.user = nil
+	} else if customer, trading := b.trading.tick(tx, v.Position()); trading {
 		// While trading the villager stands still and faces its customer.
 		v.data.Vel[0], v.data.Vel[2] = 0, 0
 		v.data.Rot = faceTowards(v.data.Rot, v.Position(), customer.Position())
@@ -451,6 +456,13 @@ func (v *Villager) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(src, r.Level())
 	}
 	b.health.AddHealth(-d)
+	// HurtBySensor remembers the damage and the living entity behind it.
+	b.panic.hurt.hurt(src, v.tx.CurrentTick())
+	if attacker := mobKiller(src); attacker != nil {
+		if _, living := attacker.(Living); living {
+			b.panic.hurtBy = attacker.H()
+		}
+	}
 	v.viewAction(HurtAction{})
 	onMobHurt(v.tx, v)
 	if v.Dead() {
