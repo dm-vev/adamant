@@ -697,6 +697,10 @@ type EntityRegistryConfig struct {
 	NaturalSpawnTick func(*Tx)
 	// EntityCollisions pushes overlapping entities apart once per world tick.
 	EntityCollisions func(*Tx)
+	// EncodeSharedNBT and DecodeSharedNBT persist state many entity types
+	// share beside each type's own codec, such as the status effects of mobs.
+	EncodeSharedNBT func(data *EntityData) map[string]any
+	DecodeSharedNBT func(data *EntityData, m map[string]any)
 	Item             func(opts EntitySpawnOpts, it any) *EntityHandle
 	// Painting creates a painting occupying pos and facing away from its wall,
 	// choosing a canvas that fits. It returns nil if none fits.

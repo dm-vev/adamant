@@ -108,13 +108,21 @@ func (m *EffectManager) Effects() []effect.Effect {
 	return append(effects, initial...)
 }
 
+// restore adds an effect a saved entity had. Like the effects passed to
+// NewEffectManager, it starts on the next tick.
+func (m *EffectManager) restore(e effect.Effect) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.initialEffects = append(m.initialEffects, e)
+}
+
 // Tick ticks the EffectManager, applying all of its effects to the Living entity passed when applicable and
 // removing expired effects.
 func (m *EffectManager) Tick(entity Living, tx *world.Tx) {
-	update := false
-
 	m.mu.Lock()
 	initialActions := m.collectInitialActionsLocked()
+	// Effects a mob spawned or was loaded with become visible now.
+	update := len(initialActions) != 0
 
 	var toApply []effect.Effect
 	var toEnd []effect.Effect

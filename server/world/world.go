@@ -3104,6 +3104,9 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		}
 
 		data := MergeNativeEntityNBT(e.encodeNBT(), e.t.EncodeNBT(&e.data))
+		if encode := w.conf.Entities.Config().EncodeSharedNBT; encode != nil {
+			maps.Copy(data, encode(&e.data))
+		}
 		data["identifier"] = e.t.EncodeEntity()
 		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: data})
 	}
@@ -3183,7 +3186,11 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 			continue
 		}
 		col.addEntity(withBlockRegistryNBT(e.Data, w.conf.Blocks, func() *EntityHandle {
-			return entityFromData(t, e.ID, e.Data)
+			h := entityFromData(t, e.ID, e.Data)
+			if decode := w.conf.Entities.Config().DecodeSharedNBT; decode != nil {
+				decode(&h.data, e.Data)
+			}
+			return h
 		}))
 	}
 	w.decodeBlockEntities(col, c.BlockEntities)
