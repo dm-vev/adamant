@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -245,9 +244,9 @@ func (o *Ocelot) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool 
 		ctx.SubtractFromCount(1)
 		if b.random.NextInt(3) == 0 {
 			b.trusting = true
-			tx.PlaySound(o.Position(), sound.Custom{Name: "entity.ocelot.ambient", Volume: 1, Pitch: 1})
+			o.viewAction(TameAction{Succeeded: true})
 		} else {
-			tx.PlaySound(o.Position(), sound.Custom{Name: "entity.ocelot.hurt", Volume: 1, Pitch: 1})
+			o.viewAction(TameAction{})
 		}
 		return true
 	}

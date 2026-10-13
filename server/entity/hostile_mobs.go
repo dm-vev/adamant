@@ -458,7 +458,7 @@ func (m *HostileMob) tickCure(tx *world.Tx) bool {
 	config := VillagerBehaviourConfig{Health: b.health.Health(), XP: b.villagerXP, Level: b.villagerLevel, Age: b.villagerAge, Profession: b.profession, Type: b.villagerType, Offers: append([]MerchantOffer(nil), b.offers...)}
 	opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: m.Rotation()}
 	tx.AddEntity(opts.New(VillagerType, config))
-	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.zombie_villager.cure", Volume: 1, Pitch: 1})
+	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.zombie_villager.converted", Volume: 1, Pitch: 1})
 	_ = m.CloseIn(tx)
 	return true
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -349,9 +348,9 @@ func (c *Cat) TameWithFish(tx *world.Tx, user world.Entity) bool {
 		b.ownerUUID = user.H().UUID().String()
 		b.sitting = true
 		c.updateState()
-		tx.PlaySound(c.Position(), sound.Custom{Name: "entity.cat.purr", Volume: 1, Pitch: 1})
+		c.viewAction(TameAction{Succeeded: true})
 	} else {
-		tx.PlaySound(c.Position(), sound.Custom{Name: "entity.cat.hiss", Volume: 1, Pitch: 1})
+		c.viewAction(TameAction{})
 	}
 	return true
 }

@@ -72,6 +72,14 @@ type FishHookTeaseAction struct{ action }
 // breeding.
 type LoveHeartsAction struct{ action }
 
+// TameAction shows the hearts of a successful taming attempt, or the smoke of
+// a failed one.
+type TameAction struct {
+	action
+	// Succeeded is set if the taming succeeded.
+	Succeeded bool
+}
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}

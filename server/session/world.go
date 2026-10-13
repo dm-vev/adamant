@@ -1034,6 +1034,8 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventWindChargeBurst
 	case sound.BreezeWindChargeBurst:
 		pk.SoundType = packet.SoundEventBreezeWindChargeBurst
+	case sound.WindChargeShoot:
+		pk.SoundType, pk.EntityType = packet.SoundEventThrow, "minecraft:player"
 	case sound.Fizz:
 		pk.SoundType = packet.SoundEventFizz
 	case sound.PointedDripstoneCauldronDrip:
@@ -1212,8 +1214,12 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.DecoratedPotInsertFailed:
 		pk.SoundType = packet.SoundEventDecoratedPotInsertFail
 	case sound.Custom:
+		name, ok := bedrockSoundName(so.Name)
+		if !ok {
+			return
+		}
 		s.writePacket(&packet.PlaySound{
-			SoundName: so.Name,
+			SoundName: name,
 			Position:  vec64To32(pos),
 			Volume:    float32(so.Volume),
 			Pitch:     float32(so.Pitch),
@@ -1451,6 +1457,15 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFishhookTease,
+		})
+	case entity.TameAction:
+		event := byte(packet.ActorEventTamingFailed)
+		if act.Succeeded {
+			event = packet.ActorEventTamingSucceeded
+		}
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       event,
 		})
 	case entity.LoveHeartsAction:
 		s.writePacket(&packet.ActorEvent{

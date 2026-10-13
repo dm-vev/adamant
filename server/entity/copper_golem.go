@@ -428,7 +428,7 @@ func (c *CopperGolem) updateWeathering(tx *world.Tx, tick int64) {
 		if replaceable, ok := tx.Block(p).(block.Replaceable); ok && replaceable.ReplaceableBy(block.CopperGolemStatue{}) {
 			poses := block.CopperGolemPoses()
 			tx.SetBlock(p, block.CopperGolemStatue{Pose: poses[b.randomInt(len(poses))], Oxidation: block.OxidisedOxidation(), Facing: c.Rotation().Direction()}, nil)
-			tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem.become_statue", Volume: 1, Pitch: 1})
+			tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem_become_statue", Volume: 1, Pitch: 1})
 			c.dropEquipment(tx)
 			_ = c.CloseIn(tx)
 		}

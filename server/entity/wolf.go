@@ -617,9 +617,9 @@ func (w *Wolf) TameWithBone(tx *world.Tx, user world.Entity) bool {
 		b.health.SetMaxHealth(40)
 		b.health.AddHealth(40)
 		b.angry = false
-		tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.tame", Volume: 1, Pitch: 1})
+		w.viewAction(TameAction{Succeeded: true})
 	} else {
-		tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.whine", Volume: 1, Pitch: 1})
+		w.viewAction(TameAction{})
 	}
 	return true
 }
