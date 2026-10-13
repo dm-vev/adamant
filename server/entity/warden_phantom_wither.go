@@ -15,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
+	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -885,6 +886,11 @@ func (p *Phantom) dropSourceLoot(id string, src world.DamageSource) {
 func (w *Wither) dropSourceLoot(id string, src world.DamageSource) {
 	dropMobLoot(w.tx, w.Position(), id, src)
 }
+
+// DamageSourceKiller returns the entity credited with a kill: the attacker of
+// a melee source or the owner of a projectile.
+func DamageSourceKiller(src world.DamageSource) world.Entity { return mobKiller(src) }
+
 func mobKiller(src world.DamageSource) world.Entity {
 	switch s := src.(type) {
 	case AttackDamageSource:
@@ -904,18 +910,17 @@ func mobKilledByPlayer(src world.DamageSource) bool {
 }
 
 func mobGriefingDisabled(tx *world.Tx) bool {
-	if value, ok := tx.World().GameRule("mob_griefing"); ok {
-		if enabled, valid := value.(bool); valid {
-			return !enabled
-		}
-	}
-	return false
+	return !tx.World().GameRuleBool("mob_griefing")
 }
 func dropMobLoot(tx *world.Tx, pos mgl64.Vec3, id string, src world.DamageSource) {
-	if rule, ok := tx.World().GameRule("do_mob_loot"); ok && rule == false {
-		return
+	// LivingEntity.die awards the killing player's totalKillCount regardless
+	// of loot rules.
+	if killer := mobKiller(src); killer != nil && killer.H().Type().EncodeEntity() == "minecraft:player" {
+		if named, ok := killer.(interface{ Name() string }); ok {
+			tx.World().Scoreboard().AddCriteria(scoreboard.TotalKillCount, named.Name(), 1)
+		}
 	}
-	if rule, ok := tx.World().GameRule("do_entity_drops"); ok && rule == false {
+	if !tx.World().GameRuleBool("mob_drops") {
 		return
 	}
 	tableID := "minecraft:entities/" + id[len("minecraft:"):]

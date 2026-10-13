@@ -89,7 +89,7 @@ type borderCommand struct {
 }
 type gameruleCommand struct {
 	worldOpCommand
-	Rule  string               `cmd:"rule"`
+	Rule  gameRuleName         `cmd:"rule"`
 	Value cmd.Optional[string] `cmd:"value"`
 }
 type seedCommand struct{ worldOpCommand }
@@ -460,31 +460,43 @@ func (b borderCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("worldborder action must be get, set, add, center, damage, or warning")
 	}
 }
+
+// gameRuleName enumerates the Java 26.3 gamerule identifiers for completion.
+type gameRuleName string
+
+func (gameRuleName) Type() string                { return "GameRule" }
+func (gameRuleName) Options(cmd.Source) []string { return world.GameRuleNames() }
+
+// Run ports GameRuleCommand: querying returns the value (booleans as 1/0) and
+// setting validates the rule's type and range.
 func (g gameruleCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	w := tx.World()
-	name := g.Rule
+	name := string(g.Rule)
 	v, provided := g.Value.Load()
 	if !provided {
-		if value, ok := w.GameRule(name); ok {
-			o.Printf("%s = %v", name, value)
-		} else {
-			o.Error("unknown gamerule")
+		value, ok := w.GameRule(name)
+		if !ok {
+			o.Errorf("Unknown game rule '%s'", name)
+			return
 		}
+		switch typed := value.(type) {
+		case bool:
+			if typed {
+				o.SetResult(1)
+			} else {
+				o.SetResult(0)
+			}
+		case int:
+			o.SetResult(typed)
+		}
+		o.Printf("Gamerule %s is currently set to: %v", name, value)
 		return
 	}
-	var value any
-	if n, e := strconv.ParseInt(v, 10, 64); e == nil {
-		value = n
-	} else if b, e := strconv.ParseBool(v); e == nil {
-		value = b
-	} else {
-		value = v
-	}
-	if err := w.SetGameRule(name, value); err != nil {
+	if err := w.SetGameRule(name, v); err != nil {
 		o.Error(err.Error())
 		return
 	}
-	o.Printf("Set %s to %s.", name, v)
+	o.Printf("Gamerule %s is now set to: %s", name, v)
 }
 func (seedCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	o.Printf("Seed: %d", tx.World().Seed())

@@ -50,12 +50,14 @@ type playerData struct {
 	shoulderLeft, shoulderRight map[string]any
 	javaState                   map[string]any
 	wardenSpawnTracker          *world.WardenSpawnTracker
-	xuid                        string
-	locale                      language.Tag
-	nameTag, scoreTag           string
-	alwaysShowNameTag           bool
-	absorptionHealth            float64
-	scale                       float64
+	// sidebar is the last scoreboard sidebar sent to the client.
+	sidebar           string
+	xuid              string
+	locale            language.Tag
+	nameTag, scoreTag string
+	alwaysShowNameTag bool
+	absorptionHealth  float64
+	scale             float64
 
 	gameMode world.GameMode
 	skin     skin.Skin
@@ -1000,7 +1002,8 @@ func (p *Player) kill(src world.DamageSource) {
 
 	p.StopFishing(p.tx, false)
 
-	keepInv := gameruleBool(p.tx.World(), "keep_inventory", false)
+	p.awardDeathScores(src)
+	keepInv := p.tx.World().GameRuleBool("keep_inventory")
 	handledKeepInv := false
 	p.Handler().HandleDeath(p, src, &handledKeepInv)
 	keepInv = keepInv || handledKeepInv
@@ -2759,7 +2762,7 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 	}
 	held, _ := p.HeldItems()
 	drops := p.drops(pos, held, b)
-	tileDrops := gameruleBool(p.tx.World(), "do_tile_drops", true)
+	tileDrops := p.tx.World().GameRuleBool("block_drops")
 	if !tileDrops {
 		drops = nil
 	}
@@ -3347,6 +3350,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		p.ReleaseShoulderParrots()
 	}
 	p.tickCarriedMaps(current)
+	p.tickScoreboard(tx, current)
 	p.tickMapFrames(current)
 	if _, ok := p.tx.Liquid(cube.PosFromVec3(p.Position())); !ok {
 		p.StopSwimming()
@@ -3774,7 +3778,7 @@ func (p *Player) tickAirSupply() {
 // is full enough.
 func (p *Player) tickFood() {
 	state := p.hunger.tickState()
-	naturalRegeneration := gameruleBool(p.tx.World(), "natural_regeneration", true)
+	naturalRegeneration := p.tx.World().GameRuleBool("natural_health_regeneration")
 	foodRegenerates := p.tx.World().Difficulty().FoodRegenerates() && naturalRegeneration
 	if naturalRegeneration && state.foodTick%10 == 0 && (state.canQuicklyRegenerate || foodRegenerates) {
 		if foodRegenerates {
@@ -3806,15 +3810,6 @@ func (p *Player) regenerate(exhaust bool) {
 	if exhaust && regenerated > 0 {
 		p.Exhaust(6)
 	}
-}
-
-func gameruleBool(w *world.World, name string, fallback bool) bool {
-	if value, ok := w.GameRule(name); ok {
-		if enabled, ok := value.(bool); ok {
-			return enabled
-		}
-	}
-	return fallback
 }
 
 // starve deals starvation damage to the player if the difficult allows it. In peaceful mode, no damage will

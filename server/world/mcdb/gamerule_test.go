@@ -13,7 +13,7 @@ func TestJavaOnlyGameRulePersistsAcrossMCDBReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := world.Config{Provider: db, Synchronous: true, RandomTickSpeed: -1}.New()
-	if err := w.SetGameRule("doPatrolSpawning", false); err != nil {
+	if err := w.SetGameRule("spawn_patrols", false); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Close(); err != nil {
@@ -25,8 +25,8 @@ func TestJavaOnlyGameRulePersistsAcrossMCDBReopen(t *testing.T) {
 	}
 	w = world.Config{Provider: db, Synchronous: true, RandomTickSpeed: -1}.New()
 	t.Cleanup(func() { _ = w.Close() })
-	got, ok := w.GameRule("dopatrolspawning")
+	got, ok := w.GameRule("spawn_patrols")
 	if !ok || got != false {
-		t.Fatalf("reopened doPatrolSpawning = (%v, %t), want (false, true)", got, ok)
+		t.Fatalf("reopened spawn_patrols = (%v, %t), want (false, true)", got, ok)
 	}
 }

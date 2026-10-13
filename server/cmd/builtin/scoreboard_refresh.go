@@ -1,44 +1,18 @@
 package builtin
 
 import (
-	"fmt"
-	"sort"
-
-	playerscoreboard "github.com/df-mc/dragonfly/server/player/scoreboard"
 	model "github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// refreshScoreboard mirrors the model's sidebar onto every Bedrock viewer.
+// refreshScoreboard mirrors the model's sidebar onto every Bedrock viewer
+// immediately after a command changes it.
 func refreshScoreboard(tx *world.Tx, m *model.Model) {
 	if tx == nil {
 		return
 	}
-	name, ok := m.DisplayObjective("sidebar")
-	if !ok {
-		for p := range onlinePlayers(tx) {
-			p.RemoveScoreboard()
-		}
-		return
-	}
-	objective, ok := m.Objective(name)
-	if !ok {
-		return
-	}
-	entries := make([]string, 0, len(objective.Scores))
-	for holder, score := range objective.Scores {
-		entries = append(entries, fmt.Sprintf("%s: %d", holder, score))
-	}
-	sort.Strings(entries)
-	if len(entries) > 15 {
-		entries = entries[len(entries)-15:]
-	}
-	board := playerscoreboard.New(objective.DisplayName)
-	for _, entry := range entries {
-		_, _ = board.WriteString(entry + "\n")
-	}
 	for p := range onlinePlayers(tx) {
-		p.SendScoreboard(board)
+		p.SyncScoreboard(m)
 	}
 }
 

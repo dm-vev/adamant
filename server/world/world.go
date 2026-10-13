@@ -82,6 +82,9 @@ type World struct {
 	forcedChunksLoaded        bool
 	scoreboardOnce            sync.Once
 	scoreboardModel           *scoreboard.Model
+	// gameRules caches persisted non-native Java gamerules.
+	gameRulesMu sync.Mutex
+	gameRules   map[string]any
 	handler                   atomic.Pointer[Handler]
 	structureReferenceQueryMu sync.Mutex
 	structureReferenceMu      sync.Mutex

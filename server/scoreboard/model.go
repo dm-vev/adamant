@@ -225,6 +225,75 @@ func (m *Model) ResetHolder(holder string) bool {
 	}
 	return removed
 }
+
+// SetCriteria sets holder's score in every objective tracking the criteria,
+// as Scoreboard.forAllObjectives does for player stat updates.
+func (m *Model) SetCriteria(c Criteria, holder string, value int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, o := range m.Objectives {
+		if o.Criteria == c {
+			o.Scores[holder] = value
+		}
+	}
+}
+
+// AddCriteria increments holder's score in every objective tracking c.
+func (m *Model) AddCriteria(c Criteria, holder string, delta int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, o := range m.Objectives {
+		if o.Criteria == c {
+			o.Scores[holder] += delta
+		}
+	}
+}
+
+// TracksCriteria reports whether any objective uses a gameplay criteria, so
+// callers can skip per-tick updates when none exist.
+func (m *Model) TracksCriteria() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, o := range m.Objectives {
+		if o.Criteria != Dummy && o.Criteria != Trigger {
+			return true
+		}
+	}
+	return false
+}
+
+// Sidebar returns the sidebar title and its lines, highest scores last as on
+// the Java sidebar, limited to the 15 shown entries.
+func (m *Model) Sidebar() (title string, lines []string, ok bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	name, ok := m.Displays["sidebar"]
+	if !ok {
+		return "", nil, false
+	}
+	o := m.Objectives[name]
+	if o == nil {
+		return "", nil, false
+	}
+	holders := make([]string, 0, len(o.Scores))
+	for holder := range o.Scores {
+		holders = append(holders, holder)
+	}
+	sort.Slice(holders, func(i, j int) bool {
+		if o.Scores[holders[i]] != o.Scores[holders[j]] {
+			return o.Scores[holders[i]] > o.Scores[holders[j]]
+		}
+		return holders[i] < holders[j]
+	})
+	if len(holders) > 15 {
+		holders = holders[:15]
+	}
+	lines = make([]string, len(holders))
+	for i, holder := range holders {
+		lines[i] = holder + ": " + strconv.Itoa(o.Scores[holder])
+	}
+	return o.DisplayName, lines, true
+}
 func (m *Model) SetDisplay(slot, objective string) error {
 	if slot != "list" && slot != "sidebar" && slot != "belowName" {
 		return ErrInvalid
