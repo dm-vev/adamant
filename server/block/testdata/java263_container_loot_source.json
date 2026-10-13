@@ -1,0 +1,866 @@
+{
+  "gameVersion": "26.3",
+  "table": "minecraft:barrels/abandoned_camp_barrel",
+  "source": "Actual LootTable.fill(SimpleContainer,LootParams,long); two empty containers, occupied/split and overfull boundaries. Unsafe-allocated ServerLevel support only; not a natural server. Input controls normalized from actual ItemStack constructor n+1; raw Source final slots unchanged.",
+  "cases": [
+    {
+      "name": "empty-263777",
+      "seed": 263777,
+      "occupied": [],
+      "slots": [
+        {
+          "slot": 3,
+          "item": "minecraft:wooden_axe",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 4,
+          "item": "minecraft:bone",
+          "count": 3,
+          "components": {}
+        },
+        {
+          "slot": 5,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 6,
+          "item": "minecraft:white_candle",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 9,
+          "item": "minecraft:white_candle",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 10,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 11,
+          "item": "minecraft:straw_bed",
+          "count": 3,
+          "components": {}
+        },
+        {
+          "slot": 12,
+          "item": "minecraft:wheat",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 16,
+          "item": "minecraft:bowl",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 21,
+          "item": "minecraft:wheat",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 22,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 23,
+          "item": "minecraft:bone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 24,
+          "item": "minecraft:bowl",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 26,
+          "item": "minecraft:bread",
+          "count": 1,
+          "components": {}
+        }
+      ]
+    },
+    {
+      "name": "empty-263779",
+      "seed": 263779,
+      "occupied": [],
+      "slots": [
+        {
+          "slot": 1,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 4,
+          "item": "minecraft:coal",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 5,
+          "item": "minecraft:coal",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 7,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 8,
+          "item": "minecraft:leather",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 10,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 12,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 13,
+          "item": "minecraft:wooden_axe",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 15,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 19,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 22,
+          "item": "minecraft:coal",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 23,
+          "item": "minecraft:coal",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 24,
+          "item": "minecraft:string",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 26,
+          "item": "minecraft:string",
+          "count": 1,
+          "components": {}
+        }
+      ]
+    },
+    {
+      "name": "three-occupied-263777",
+      "seed": 263777,
+      "occupied": [
+        {
+          "slot": 0,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "item": "minecraft:stone",
+          "count": 2
+        },
+        {
+          "slot": 13,
+          "item": "minecraft:stone",
+          "count": 3
+        }
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 1,
+          "item": "minecraft:stone",
+          "count": 2,
+          "components": {}
+        },
+        {
+          "slot": 3,
+          "item": "minecraft:bowl",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 5,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 8,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 9,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 10,
+          "item": "minecraft:wooden_axe",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 11,
+          "item": "minecraft:bone",
+          "count": 2,
+          "components": {}
+        },
+        {
+          "slot": 12,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 13,
+          "item": "minecraft:stone",
+          "count": 3,
+          "components": {}
+        },
+        {
+          "slot": 15,
+          "item": "minecraft:white_candle",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 16,
+          "item": "minecraft:bread",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 17,
+          "item": "minecraft:straw_bed",
+          "count": 2,
+          "components": {}
+        },
+        {
+          "slot": 19,
+          "item": "minecraft:wheat",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 20,
+          "item": "minecraft:bone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 22,
+          "item": "minecraft:bowl",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 23,
+          "item": "minecraft:white_candle",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 24,
+          "item": "minecraft:wheat",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 26,
+          "item": "minecraft:bone",
+          "count": 1,
+          "components": {}
+        }
+      ]
+    },
+    {
+      "name": "thirteen-free-263777",
+      "seed": 263777,
+      "occupied": [
+        {
+          "slot": 0,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 2,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 3,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 4,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 5,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 6,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 7,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 8,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 9,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 10,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 11,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 12,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 13,
+          "item": "minecraft:stone",
+          "count": 1
+        }
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 1,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 2,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 3,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 4,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 5,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 6,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 7,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 8,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 9,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 10,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 11,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 12,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 13,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 14,
+          "item": "minecraft:bone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 15,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 16,
+          "item": "minecraft:bone",
+          "count": 3,
+          "components": {}
+        },
+        {
+          "slot": 17,
+          "item": "minecraft:bread",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 18,
+          "item": "minecraft:straw_bed",
+          "count": 3,
+          "components": {}
+        },
+        {
+          "slot": 19,
+          "item": "minecraft:arrow",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 20,
+          "item": "minecraft:white_candle",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 21,
+          "item": "minecraft:wooden_axe",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 22,
+          "item": "minecraft:white_candle",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 23,
+          "item": "minecraft:bowl",
+          "count": 2,
+          "components": {}
+        },
+        {
+          "slot": 24,
+          "item": "minecraft:wheat",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 25,
+          "item": "minecraft:wheat",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 26,
+          "item": "minecraft:straw_bed",
+          "count": 1,
+          "components": {}
+        }
+      ]
+    },
+    {
+      "name": "one-free-overfull-263779",
+      "seed": 263779,
+      "occupied": [
+        {
+          "slot": 0,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 1,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 2,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 3,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 4,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 5,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 6,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 7,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 8,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 9,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 10,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 11,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 12,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 13,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 14,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 15,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 16,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 17,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 18,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 19,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 20,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 21,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 22,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 23,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 24,
+          "item": "minecraft:stone",
+          "count": 1
+        },
+        {
+          "slot": 25,
+          "item": "minecraft:stone",
+          "count": 1
+        }
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 1,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 2,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 3,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 4,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 5,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 6,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 7,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 8,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 9,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 10,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 11,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 12,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 13,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 14,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 15,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 16,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 17,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 18,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 19,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 20,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 21,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 22,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 23,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 24,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 25,
+          "item": "minecraft:stone",
+          "count": 1,
+          "components": {}
+        },
+        {
+          "slot": 26,
+          "item": "minecraft:leather",
+          "count": 1,
+          "components": {}
+        }
+      ]
+    }
+  ]
+}

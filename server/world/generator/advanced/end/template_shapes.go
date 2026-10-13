@@ -144,7 +144,7 @@ func (a endJavaShapeAccess) SetJavaBlockState(pos cube.Pos, stateID uint32, flag
 		!a.inWriteRadius(pos[0], pos[2]) {
 		return false
 	}
-	name, properties, ok := javadata.BlockStateFromID(stateID)
+	name, ok := javadata.BlockStateName(stateID)
 	if !ok {
 		panic(fmt.Sprintf("end generation shape produced unknown Java state ID %d", stateID))
 	}
@@ -157,10 +157,7 @@ func (a endJavaShapeAccess) SetJavaBlockState(pos cube.Pos, stateID uint32, flag
 		panic(fmt.Sprintf("invalid previous End Java state ID %d at %v", oldID, pos))
 	}
 	registry := a.region.chunks[a.region.index(chunkX, chunkZ)].BlockRegistry()
-	native, err := world.ResolveState(registry, world.BlockState{Name: name, Properties: properties})
-	if err != nil {
-		panic(fmt.Errorf("end generation shape cannot project %s: %w", name, err))
-	}
+	native := world.ResolveStateID(registry, stateID)
 	if oldName != name {
 		delete(a.region.blockActors, pos)
 		a.removeBlockEntity(pos)
@@ -169,6 +166,7 @@ func (a endJavaShapeAccess) SetJavaBlockState(pos cube.Pos, stateID uint32, flag
 		return false
 	}
 	if actor, exists := a.region.blockActors[pos]; exists {
+		_, properties, _ := javadata.BlockStateFromID(stateID)
 		actor.record.State = world.BlockState{Name: name, Properties: properties}
 		nativeActor, adapted, err := javastructure.NativeBlockForJavaState(actor.record.State)
 		if err != nil {

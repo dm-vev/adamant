@@ -243,6 +243,9 @@ func (conf Config) New() *World {
 		activeColumnIndex:   make(map[ChunkPos]int),
 		entityColumnIndex:   make(map[ChunkPos]int),
 	}
+	if err := w.loadBorder(); err != nil {
+		panic(err)
+	}
 	w.loadLootRandomSequences()
 	w.loadVillagePOIs()
 	w.loadRaids()

@@ -1,0 +1,157 @@
+{
+  "source": "Java 26.3 actual AbstractBedBlock.findStandUpPosition/EntityTypes.PLAYER on registered StrawBed states. Sparse CollisionGetter prioritizes overrides: real lower HEAD at y64, default stone y63 and bottom stone slabs y64. Immutable raw: local://java263-bed-effective-bunk-source.stdout.txt; oracle: local://java263-bed-effective-bunk-oracle.java. No Source Player callbacks executed.",
+  "cases": [
+    {
+      "name": "north_bunk_unobstructed",
+      "facing": "north",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(1.5, 64.5, -0.5)",
+      "position": [
+        1.5,
+        64.5,
+        -0.5
+      ]
+    },
+    {
+      "name": "north_bunk_top_surround_dangerous_below_safe",
+      "facing": "north",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 10,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(1.5, 64.5, -0.5)",
+      "position": [
+        1.5,
+        64.5,
+        -0.5
+      ]
+    },
+    {
+      "name": "north_bunk_all_blocked",
+      "facing": "north",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": true,
+      "standUp": "none",
+      "position": null
+    },
+    {
+      "name": "east_bunk_unobstructed",
+      "facing": "east",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(1.5, 64.5, -0.5)",
+      "position": [
+        1.5,
+        64.5,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_bunk_top_surround_dangerous_below_safe",
+      "facing": "east",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 10,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(1.5, 64.5, -0.5)",
+      "position": [
+        1.5,
+        64.5,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_bunk_all_blocked",
+      "facing": "east",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": true,
+      "standUp": "none",
+      "position": null
+    },
+    {
+      "name": "south_bunk_unobstructed",
+      "facing": "south",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(-0.5, 64.5, 1.5)",
+      "position": [
+        -0.5,
+        64.5,
+        1.5
+      ]
+    },
+    {
+      "name": "south_bunk_top_surround_dangerous_below_safe",
+      "facing": "south",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 10,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(-0.5, 64.5, 1.5)",
+      "position": [
+        -0.5,
+        64.5,
+        1.5
+      ]
+    },
+    {
+      "name": "south_bunk_all_blocked",
+      "facing": "south",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": true,
+      "standUp": "none",
+      "position": null
+    },
+    {
+      "name": "west_bunk_unobstructed",
+      "facing": "west",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(-0.5, 64.5, -0.5)",
+      "position": [
+        -0.5,
+        64.5,
+        -0.5
+      ]
+    },
+    {
+      "name": "west_bunk_top_surround_dangerous_below_safe",
+      "facing": "west",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 10,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": false,
+      "standUp": "(-0.5, 64.5, -0.5)",
+      "position": [
+        -0.5,
+        64.5,
+        -0.5
+      ]
+    },
+    {
+      "name": "west_bunk_all_blocked",
+      "facing": "west",
+      "bunkConfirmed": "minecraft:straw_bed",
+      "topSurroundDangerousBlocks": 0,
+      "topSurroundHazardVerified": true,
+      "allSearchCandidatesBlocked": true,
+      "standUp": "none",
+      "position": null
+    }
+  ]
+}

@@ -74,6 +74,7 @@ func (b unknownBlock) EncodeNBT() map[string]any {
 // DecodeNBT ...
 func (b unknownBlock) DecodeNBT(data map[string]any) any {
 	b.data = maps.Clone(data)
+	delete(b.data, blockRegistryNBTKey)
 	return b
 }
 

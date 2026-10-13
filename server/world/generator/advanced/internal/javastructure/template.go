@@ -215,6 +215,10 @@ func templateListLen(value any) (int, bool) {
 		return len(list), true
 	case []string:
 		return len(list), true
+	case []float32:
+		return len(list), true
+	case []float64:
+		return len(list), true
 	default:
 		return 0, false
 	}
@@ -231,6 +235,14 @@ func templateListValue(value any, index int) (any, bool) {
 			return list[index], true
 		}
 	case []string:
+		if index >= 0 && index < len(list) {
+			return list[index], true
+		}
+	case []float32:
+		if index >= 0 && index < len(list) {
+			return list[index], true
+		}
+	case []float64:
 		if index >= 0 && index < len(list) {
 			return list[index], true
 		}

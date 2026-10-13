@@ -63,7 +63,8 @@ func TestChorusPlantMatchesJava263(t *testing.T) {
 			if tc.Xoroshiro {
 				random = newEndRandWithRandom(java26.NewXoroshiroRandom(tc.Seed))
 			}
-			g.generateChorusPlant(endFeatureOrigin{region: region}, 8, tc.Y, 8, random, 8)
+			world.GenerateJavaChorusPlant(endJavaShapeAccess{endFeatureOrigin: endFeatureOrigin{region: region}, result: &world.GenerationResult{}},
+				cube.Pos{8, tc.Y, 8}, &random.random, 8)
 			if next := random.Long(); next != tc.NextLong {
 				t.Errorf("following RNG=%d source=%d", next, tc.NextLong)
 			}

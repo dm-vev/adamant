@@ -132,6 +132,7 @@ func (t ticker) tick(tx *Tx) {
 	} else {
 		w.tick++
 	}
+	w.border.tick()
 
 	rain, thunder, tick, tim := w.set.Raining, w.set.Thundering && w.set.Raining, w.currentTickLocked(), int(w.set.Time)
 	timeCycle := w.set.TimeCycle

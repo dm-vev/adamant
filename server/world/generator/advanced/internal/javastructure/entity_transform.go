@@ -24,8 +24,9 @@ func transformEntityNBT(source map[string]any, mirror Mirror, rotation Rotation,
 		pos["X"], pos["Y"], pos["Z"] = blockPos[0], blockPos[1], blockPos[2]
 		out["block_pos"] = pos
 	}
-	if raw, ok := source["Rotation"].([]any); ok && len(raw) >= 1 {
-		if yaw, ok := number(raw[0]); ok {
+	if count, ok := templateListLen(source["Rotation"]); ok && count >= 1 {
+		rawYaw, _ := templateListValue(source["Rotation"], 0)
+		if yaw, ok := number(rawYaw); ok {
 			original := float32(yaw)
 			wrapped := wrapEntityDegrees(original)
 			angle := wrapped
@@ -46,16 +47,12 @@ func transformEntityNBT(source map[string]any, mirror Mirror, rotation Rotation,
 			}
 			// StructureTemplate adds the separately rounded mirror delta after rotation.
 			angle += mirrored - original
-			if len(raw) == 2 {
-				values := []any{raw[0], raw[1]}
-				values[0] = convertedFloat(raw[0], float64(angle))
-				out["Rotation"] = values
-			} else {
-				values := make([]any, len(raw))
-				copy(values, raw)
-				values[0] = convertedFloat(raw[0], float64(angle))
-				out["Rotation"] = values
+			values := make([]any, count)
+			for i := range count {
+				values[i], _ = templateListValue(source["Rotation"], i)
 			}
+			values[0] = convertedFloat(rawYaw, float64(angle))
+			out["Rotation"] = values
 		}
 	}
 	if facing, ok := integer(source["Facing"]); ok {

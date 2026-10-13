@@ -1,6 +1,7 @@
 package end
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
@@ -103,7 +104,8 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 				panic(err)
 			}
 			if supports {
-				g.generateChorusPlant(origin, x, y, z, random, g.chorusMaxDistance)
+				world.GenerateJavaChorusPlant(endJavaShapeAccess{endFeatureOrigin: origin, result: result},
+					cube.Pos{x, y, z}, &random.random, g.chorusMaxDistance)
 			}
 		}
 	}

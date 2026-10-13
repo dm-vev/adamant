@@ -91,55 +91,47 @@ func treeSetFoliage(region *featureRegion, p featurePos, provider any, r *java26
 	if !ok {
 		return false
 	}
-	javaState, err := world.JavaState(region.c.BlockRegistry(), state)
-	if err != nil {
-		panic(err)
+	id := state.CanonicalJavaID(region.c.BlockRegistry())
+	if _, waterlogged := javadata.BlockStateBool(id, "waterlogged"); waterlogged {
+		state, actor = treeWithProperty(region, state, actor, "waterlogged", treeWaterSource(region, p))
 	}
-	if _, exists := javaState.Properties["waterlogged"]; exists {
-		javaState.Properties["waterlogged"] = treeWaterSource(region, p)
-		state, err = world.ResolveState(region.c.BlockRegistry(), javaState)
-		if err != nil {
-			panic(err)
-		}
-	}
-	return region.SetNativeBlock(p, state, actor)
+	featureSetNativeBlockFlag19(region, p, state, actor)
+	return true
 }
 func treeAxis(region *featureRegion, p featurePos, provider any, axis string, r *java26.Random) bool {
 	state, actor, ok := region.SampleNativeState(provider, p, r)
 	if !ok {
 		return false
 	}
-	javaState, err := world.JavaState(region.c.BlockRegistry(), state)
-	if err != nil {
-		panic(err)
+	id := state.CanonicalJavaID(region.c.BlockRegistry())
+	if _, hasAxis := javadata.BlockStateString(id, "axis"); axis != "" && hasAxis {
+		state, actor = treeWithProperty(region, state, actor, "axis", axis)
 	}
-	if javaState.Properties == nil {
-		javaState.Properties = map[string]any{}
-	}
-	javaState.Properties["axis"] = axis
-	state, err = world.ResolveState(region.c.BlockRegistry(), javaState)
-	if err != nil {
-		panic(err)
-	}
-	return region.SetNativeBlock(p, state, actor)
+	return featureSetNativeBlockFlag19(region, p, state, actor)
 }
 func treeSetWaterlogged(region *featureRegion, p featurePos, provider any, r *java26.Random) bool {
 	state, actor, ok := region.SampleNativeState(provider, p, r)
 	if !ok {
 		return false
 	}
-	javaState, err := world.JavaState(region.c.BlockRegistry(), state)
+	id := state.CanonicalJavaID(region.c.BlockRegistry())
+	if _, waterlogged := javadata.BlockStateBool(id, "waterlogged"); waterlogged {
+		state, actor = treeWithProperty(region, state, actor, "waterlogged", treeWaterSource(region, p))
+	}
+	return featureSetNativeBlockFlag19(region, p, state, actor)
+}
+
+func treeWithProperty(region *featureRegion, state world.NativeState, actor world.Block, property string, value any) (world.NativeState, world.Block) {
+	id, err := javadata.BlockStateWithProperty(state.CanonicalJavaID(region.c.BlockRegistry()), property, value)
 	if err != nil {
 		panic(err)
 	}
-	if _, exists := javaState.Properties["waterlogged"]; exists {
-		javaState.Properties["waterlogged"] = treeWaterSource(region, p)
-		state, err = world.ResolveState(region.c.BlockRegistry(), javaState)
-		if err != nil {
-			panic(err)
-		}
+	next := world.ResolveStateID(region.c.BlockRegistry(), id)
+	if actor != nil && next != state {
+		name, properties, _ := javadata.BlockStateFromID(id)
+		actor = featureJavaBlock(world.BlockState{Name: name, Properties: properties}).NativeBlock
 	}
-	return region.SetNativeBlock(p, state, actor)
+	return next, actor
 }
 func treePos(a featurePos, dx, dy, dz int32) featurePos {
 	return featurePos{a.x + dx, a.y + dy, a.z + dz}
@@ -160,9 +152,8 @@ func placeTreeBelowTrunk(region *featureRegion, provider any, origin featurePos,
 			continue
 		}
 		state, actor := region.resolveFeatureBlock(placement, p)
-		if region.SetNativeBlock(p, state, actor) {
-			*trunks = append(*trunks, p)
-		}
+		*trunks = append(*trunks, p)
+		featureSetNativeBlockFlag19(region, p, state, actor)
 	}
 }
 func placeMangroveRoots(region *featureRegion, root map[string]any, origin, trunkOrigin featurePos, r *java26.Random, roots *[]featurePos) bool {
@@ -229,9 +220,14 @@ func placeMangroveRoots(region *featureRegion, root map[string]any, origin, trun
 	}
 
 	above := treeMap(root["above_root_placement"])
+	var rootSet treePositionSet
+	recordRoot := func(pos featurePos) {
+		if rootSet.add(pos) {
+			*roots = append(*roots, pos)
+		}
+	}
 	for _, p := range rootPositions {
 		n, _ := region.State(p)
-		var placed bool
 		muddy := false
 		for _, substrate := range asAnySlice(rootConfig["muddy_roots_in"]) {
 			if normalizeJavaResource(fmt.Sprint(substrate)) == normalizeJavaResource(n) {
@@ -242,23 +238,14 @@ func placeMangroveRoots(region *featureRegion, root map[string]any, origin, trun
 		if muddy {
 			// MangroveRootPlacer's muddy branch directly invokes the setter; it
 			// intentionally bypasses canPlaceRoot and above-root placement.
-			placed = treeSetWaterlogged(region, p, rootConfig["muddy_roots_provider"], r)
+			recordRoot(p)
+			treeSetWaterlogged(region, p, rootConfig["muddy_roots_provider"], r)
 		} else if canPlace(p) {
-			placed = treeSetWaterlogged(region, p, root["root_provider"], r)
+			recordRoot(p)
+			treeSetWaterlogged(region, p, root["root_provider"], r)
 			if len(above) > 0 && r.NextFloat() < float32(treeProbability(above, "above_root_placement_chance", 0)) && treeIsAir(region, treePos(p, 0, 1, 0)) {
+				recordRoot(treePos(p, 0, 1, 0))
 				treeSetWaterlogged(region, treePos(p, 0, 1, 0), above["above_root_provider"], r)
-			}
-		}
-		if placed {
-			unique := true
-			for _, existing := range *roots {
-				if existing == p {
-					unique = false
-					break
-				}
-			}
-			if unique {
-				*roots = append(*roots, p)
 			}
 		}
 	}
@@ -321,7 +308,7 @@ func treeCherryBranch(origin featurePos, height, trunkHeight, offset int32, midd
 		chance := float32(abs32(end.y-pos.y)) / float32(distance)
 		if r.NextFloat() < chance {
 			pos.y += vertical
-			placeLog(pos, "y")
+			placeLog(pos, "")
 		} else {
 			pos.x += dir[0]
 			pos.z += dir[1]
@@ -401,9 +388,6 @@ func placeModernTreeRegion(region *featureRegion, config map[string]any, origin 
 	heightRandA := treeInt(trunkPlacer["height_rand_a"], 0, r)
 	heightRandB := treeInt(trunkPlacer["height_rand_b"], 0, r)
 	height := baseHeight + r.NextInt(heightRandA+1) + r.NextInt(heightRandB+1)
-	if height <= 0 || height > 80 {
-		return false
-	}
 	root := treeMap(config["root_placer"])
 	foliageType := treeName(foliagePlacer)
 	foliageHeight := int32(0)
@@ -414,7 +398,7 @@ func placeModernTreeRegion(region *featureRegion, config map[string]any, origin 
 		foliageHeight = max(int32(4), height-treeInt(foliagePlacer["trunk_height"], 0, r))
 	case "mega_pine_foliage_placer":
 		foliageHeight = treeInt(foliagePlacer["crown_height"], 0, r)
-	case "mega_jungle_foliage_placer":
+	case "jungle_foliage_placer":
 		foliageHeight = treeInt(foliagePlacer["height"], 0, r)
 	case "blob_foliage_placer", "bush_foliage_placer", "fancy_foliage_placer":
 		foliageHeight = treeInt(foliagePlacer["height"], 0, r)
@@ -478,11 +462,9 @@ clipped:
 		if p.y < region.MinY() || p.y > region.MaxY() || (!treeReplaceable(region, p) && !(trunkType == "upwards_branching_trunk_placer" && treeTagContains(fmt.Sprint(trunkPlacer["can_grow_through"]), func() string { n, _ := region.State(p); return n }()))) {
 			return false
 		}
-		if treeAxis(region, p, trunkProvider, axis, r) {
-			trunks = append(trunks, p)
-			return true
-		}
-		return false
+		trunks = append(trunks, p)
+		treeAxis(region, p, trunkProvider, axis, r)
+		return true
 	}
 	if root != nil && treeName(root) == "mangrove_root_placer" {
 		if !placeMangroveRoots(region, root, origin, trunkOrigin, r, &roots) {
@@ -499,11 +481,11 @@ clipped:
 			}
 		}
 		for y := int32(0); y < height; y++ {
-			placeLogFree(treePos(trunkOrigin, 0, y, 0), "y")
+			placeLogFree(treePos(trunkOrigin, 0, y, 0), "")
 			if y < height-1 {
-				placeLogFree(treePos(trunkOrigin, 1, y, 0), "y")
-				placeLogFree(treePos(trunkOrigin, 1, y, 1), "y")
-				placeLogFree(treePos(trunkOrigin, 0, y, 1), "y")
+				placeLogFree(treePos(trunkOrigin, 1, y, 0), "")
+				placeLogFree(treePos(trunkOrigin, 1, y, 1), "")
+				placeLogFree(treePos(trunkOrigin, 0, y, 1), "")
 			}
 		}
 		foliageAnchors = []treeFoliageAttachment{{pos: treePos(trunkOrigin, 0, height, 0), doubleTrunk: true}}
@@ -522,10 +504,10 @@ clipped:
 			}
 			p := featurePos{tx, trunkOrigin.y + dy, tz}
 			if treeAirOrLeaves(region, p) {
-				placeLog(p, "y")
-				placeLog(treePos(p, 1, 0, 0), "y")
-				placeLog(treePos(p, 0, 0, 1), "y")
-				placeLog(treePos(p, 1, 0, 1), "y")
+				placeLog(p, "")
+				placeLog(treePos(p, 1, 0, 0), "")
+				placeLog(treePos(p, 0, 0, 1), "")
+				placeLog(treePos(p, 1, 0, 1), "")
 			}
 		}
 		foliageAnchors = []treeFoliageAttachment{{pos: featurePos{tx, ey, tz}, doubleTrunk: true}}
@@ -534,7 +516,7 @@ clipped:
 				if (ox < 0 || ox > 1 || oz < 0 || oz > 1) && r.NextInt(3) <= 0 {
 					length := r.NextInt(3) + 2
 					for by := int32(0); by < length; by++ {
-						placeLog(featurePos{trunkOrigin.x + ox, ey - by - 1, trunkOrigin.z + oz}, "y")
+						placeLog(featurePos{trunkOrigin.x + ox, ey - by - 1, trunkOrigin.z + oz}, "")
 					}
 					foliageAnchors = append(foliageAnchors, treeFoliageAttachment{pos: featurePos{trunkOrigin.x + ox, ey, trunkOrigin.z + oz}})
 				}
@@ -543,7 +525,7 @@ clipped:
 	case "straight_trunk_placer":
 		placeTreeBelowTrunk(region, config["below_trunk_provider"], trunkOrigin, trunkType, r, &trunks)
 		for y := int32(0); y < height; y++ {
-			placeLog(treePos(trunkOrigin, 0, y, 0), "y")
+			placeLog(treePos(trunkOrigin, 0, y, 0), "")
 		}
 	case "fancy_trunk_placer":
 		placeTreeBelowTrunk(region, config["below_trunk_provider"], trunkOrigin, trunkType, r, &trunks)
@@ -594,7 +576,7 @@ clipped:
 		for hp := int32(0); hp < height; hp++ {
 			currentHeight := trunkOrigin.y + hp
 			logPos := treePos(trunkOrigin, 0, hp, 0)
-			if placeLog(logPos, "y") && hp < height-1 && r.NextFloat() < treeProbability(trunkPlacer, "place_branch_per_log_probability", 0) {
+			if placeLog(logPos, "") && hp < height-1 && r.NextFloat() < treeProbability(trunkPlacer, "place_branch_per_log_probability", 0) {
 				dir := treeDirection(r.NextInt(4))
 				branchLen := treeInt(trunkPlacer["extra_branch_length"], 0, r)
 				branchPos := max(int32(0), branchLen-treeInt(trunkPlacer["extra_branch_length"], 0, r)-1)
@@ -609,7 +591,7 @@ clipped:
 						logZ += dir[1]
 						heightAlong = placeY
 						p := featurePos{logX, placeY, logZ}
-						if placeLog(p, "y") {
+						if placeLog(p, "") {
 							heightAlong++
 						}
 						anchors = append(anchors, treeFoliageAttachment{pos: p})
@@ -641,7 +623,7 @@ clipped:
 				pos.z += dir[1]
 			}
 			if treeReplaceable(region, pos) {
-				placeLog(pos, "y")
+				placeLog(pos, "")
 			}
 			if y >= minLeaves {
 				foliageAnchors = append(foliageAnchors, treeFoliageAttachment{pos: pos})
@@ -651,13 +633,14 @@ clipped:
 		length := treeInt(trunkPlacer["bend_length"], 0, r)
 		for y := int32(0); y <= length; y++ {
 			if treeReplaceable(region, pos) {
-				placeLog(pos, "y")
+				placeLog(pos, "")
 			}
 			foliageAnchors = append(foliageAnchors, treeFoliageAttachment{pos: pos})
 			pos.x += dir[0]
 			pos.z += dir[1]
 		}
 	case "forking_trunk_placer":
+		foliageAnchors = nil
 		placeTreeBelowTrunk(region, config["below_trunk_provider"], trunkOrigin, trunkType, r, &trunks)
 		leanDir := treeDirection(r.NextInt(4))
 		leanHeight := height - r.NextInt(4) - 1
@@ -672,7 +655,7 @@ clipped:
 				tz += leanDir[1]
 				leanSteps--
 			}
-			if placeLog(featurePos{tx, yy, tz}, "y") {
+			if placeLog(featurePos{tx, yy, tz}, "") {
 				ey = yy + 1
 				hasEy = true
 			}
@@ -692,7 +675,7 @@ clipped:
 					yy := trunkOrigin.y + yo
 					tx += branchDir[0]
 					tz += branchDir[1]
-					if placeLog(featurePos{tx, yy, tz}, "y") {
+					if placeLog(featurePos{tx, yy, tz}, "") {
 						ey = yy + 1
 						hasEy = true
 					}
@@ -708,7 +691,7 @@ clipped:
 		placeTreeBelowTrunk(region, config["below_trunk_provider"], trunkOrigin, trunkType, r, &trunks)
 		branchHeight := height - treeInt(trunkPlacer["trunk_height_above_branches"], 0, r)
 		for y := int32(0); y < height; y++ {
-			placeLog(treePos(trunkOrigin, 0, y, 0), "y")
+			placeLog(treePos(trunkOrigin, 0, y, 0), "")
 			dirs := treeShuffleDirections(r)
 			if branchHeight-1 == y {
 				branches := treeInt(trunkPlacer["branch_amount"], 0, r)
@@ -731,11 +714,11 @@ clipped:
 			}
 		}
 		for y := int32(0); y < height; y++ {
-			placeLogFree(treePos(trunkOrigin, 0, y, 0), "y")
+			placeLogFree(treePos(trunkOrigin, 0, y, 0), "")
 			if y < height-1 {
-				placeLogFree(treePos(trunkOrigin, 1, y, 0), "y")
-				placeLogFree(treePos(trunkOrigin, 1, y, 1), "y")
-				placeLogFree(treePos(trunkOrigin, 0, y, 1), "y")
+				placeLogFree(treePos(trunkOrigin, 1, y, 0), "")
+				placeLogFree(treePos(trunkOrigin, 1, y, 1), "")
+				placeLogFree(treePos(trunkOrigin, 0, y, 1), "")
 			}
 		}
 		foliageAnchors = []treeFoliageAttachment{{pos: treePos(trunkOrigin, 0, height, 0), doubleTrunk: true}}
@@ -745,7 +728,7 @@ clipped:
 			for b := int32(0); b < 5; b++ {
 				bx = int32(float32(1.5) + java26.Cos(float64(angle))*float32(b))
 				bz = int32(float32(1.5) + java26.Sin(float64(angle))*float32(b))
-				placeLog(treePos(trunkOrigin, bx, bh-3+b/2, bz), "y")
+				placeLog(treePos(trunkOrigin, bx, bh-3+b/2, bz), "")
 			}
 			foliageAnchors = append(foliageAnchors, treeFoliageAttachment{pos: treePos(trunkOrigin, bx, bh, bz), radiusOffset: -2})
 		}
@@ -771,7 +754,7 @@ clipped:
 			trunkHeight = height
 		}
 		for y := int32(0); y < trunkHeight; y++ {
-			placeLog(treePos(trunkOrigin, 0, y, 0), "y")
+			placeLog(treePos(trunkOrigin, 0, y, 0), "")
 		}
 		if middle {
 			foliageAnchors = append(foliageAnchors, treeFoliageAttachment{pos: treePos(trunkOrigin, 0, trunkHeight, 0)})
@@ -793,16 +776,14 @@ clipped:
 	if len(trunks) == 0 && len(leaves) == 0 {
 		return false
 	}
-	overlayBeforeDecorators := make(map[featurePos]world.NativeState, len(region.overlay))
-	for pos, state := range region.overlay {
-		overlayBeforeDecorators[pos] = state
-	}
+	var decorationSet treePositionSet
+	previousDecorations := region.treeDecorationPositions
+	region.treeDecorationPositions = &decorationSet
 	placeModernTreeDecorators(region, config["decorators"], trunks, leaves, roots, r)
-	decorations := make([]featurePos, 0, len(region.overlay)-len(overlayBeforeDecorators))
-	for pos, state := range region.overlay {
-		if before, existed := overlayBeforeDecorators[pos]; !existed || before != state {
-			decorations = append(decorations, pos)
-		}
+	region.treeDecorationPositions = previousDecorations
+	decorations := make([]featurePos, 0, decorationSet.size)
+	for _, bucket := range decorationSet.buckets {
+		decorations = append(decorations, bucket...)
 	}
 	updateModernLeafDistance(region, trunks, leaves, roots, decorations)
 	return true
@@ -1049,7 +1030,7 @@ func treeSkipFoliage(typ string, props map[string]any, dx, y, dz, radius int32, 
 		return a == radius && b == radius && radius > 0
 	case "pine_foliage_placer", "spruce_foliage_placer":
 		return a == radius && b == radius && radius > 0
-	case "mega_pine_foliage_placer", "mega_jungle_foliage_placer":
+	case "mega_pine_foliage_placer", "jungle_foliage_placer":
 		return a+b >= 7 || a*a+b*b > radius*radius
 	case "dark_oak_foliage_placer":
 		if y == 0 && double && ((dx == -radius || dx >= radius) && (dz == -radius || dz >= radius)) {
@@ -1110,7 +1091,6 @@ func treeCreateFoliage(region *featureRegion, typ string, placer map[string]any,
 		leaves = treeFoliageRow(region, typ, placer, foliageProvider, center, max(radius-1, int32(0)), -h, double, r, placed, leaves)
 		leaves = treeFoliageRow(region, typ, placer, foliageProvider, center, max(radius+attachment.radiusOffset-1, int32(0)), 0, double, r, placed, leaves)
 	case "pine_foliage_placer":
-		center.y += offset
 		curr := int32(0)
 		for yo := offset; yo >= offset-h; yo-- {
 			leaves = treeFoliageRow(region, typ, placer, foliageProvider, center, curr, yo, double, r, placed, leaves)
@@ -1121,7 +1101,6 @@ func treeCreateFoliage(region *featureRegion, typ string, placer map[string]any,
 			}
 		}
 	case "spruce_foliage_placer":
-		center.y += offset
 		curr, maxRadius, minRadius := int32(r.NextInt(2)), int32(1), int32(0)
 		for yo := offset; yo >= -h; yo-- {
 			leaves = treeFoliageRow(region, typ, placer, foliageProvider, center, curr, yo, double, r, placed, leaves)
@@ -1146,8 +1125,7 @@ func treeCreateFoliage(region *featureRegion, typ string, placer map[string]any,
 			leaves = treeFoliageRow(region, typ, placer, foliageProvider, featurePos{center.x, yy, center.z}, rad, 0, double, r, placed, leaves)
 			previous = smooth
 		}
-	case "mega_jungle_foliage_placer":
-		center.y += offset
+	case "jungle_foliage_placer":
 		leafHeight := h
 		if !double {
 			leafHeight = 1 + r.NextInt(2) + attachment.foliageHeightOffset
@@ -1371,7 +1349,7 @@ func placeModernFallenTree(region *featureRegion, config map[string]any, origin 
 			positions = append(positions, pos)
 			pos = treePos(pos, direction.x, 0, direction.z)
 		}
-		placeModernTreeDecorators(region, config["log_decorators"], fallenDecoratorPositions(positions), nil, nil, r)
+		placeModernTreeDecorators(region, config["log_decorators"], treeDecoratorPositions(positions), nil, nil, r)
 	}
 	return true
 }
@@ -1401,15 +1379,22 @@ func fallenSidewaysState(region *featureRegion, state world.NativeState, directi
 	return world.ResolveStateID(region.c.BlockRegistry(), id)
 }
 
-func fallenDecoratorPositions(positions []featurePos) []featurePos {
-	capacity := uint32(16)
-	if len(positions) > 12 {
-		capacity = 32
+func treeDecoratorPositions(positions []featurePos) []featurePos {
+	if len(positions) < 2 {
+		return positions
 	}
-	slices.SortStableFunc(positions, func(a, b featurePos) int {
-		return int(treePositionHash(a)&(capacity-1)) - int(treePositionHash(b)&(capacity-1))
+	var set treePositionSet
+	for _, pos := range positions {
+		set.add(pos)
+	}
+	ordered := make([]featurePos, 0, set.size)
+	for _, bucket := range set.buckets {
+		ordered = append(ordered, bucket...)
+	}
+	slices.SortStableFunc(ordered, func(a, b featurePos) int {
+		return int(a.y) - int(b.y)
 	})
-	return positions
+	return ordered
 }
 
 func treeSolid(region *featureRegion, p featurePos) bool {
@@ -1999,6 +1984,12 @@ var modernTreeDecoratorIDs = func() treeDecoratorStateIDs {
 }()
 
 func placeModernTreeDecorators(region *featureRegion, raw any, trunks, leaves, roots []featurePos, r *java26.Random) {
+	if len(asAnySlice(raw)) == 0 {
+		return
+	}
+	trunks = treeDecoratorPositions(trunks)
+	leaves = treeDecoratorPositions(leaves)
+	roots = treeDecoratorPositions(roots)
 	for _, value := range asAnySlice(raw) {
 		d := treeMap(value)
 		switch treeName(d) {
@@ -2069,10 +2060,16 @@ func treeDecoratorSet(region *featureRegion, p featurePos, provider any, r *java
 	if !ok {
 		return false
 	}
+	if region.treeDecorationPositions != nil {
+		region.treeDecorationPositions.add(p)
+	}
 	return featureSetNativeBlockFlag19(region, p, state, actor)
 }
 
 func treeDecoratorSetID(region *featureRegion, p featurePos, id uint32) bool {
+	if region.treeDecorationPositions != nil {
+		region.treeDecorationPositions.add(p)
+	}
 	return region.setWithFlags(p, world.ResolveStateID(region.c.BlockRegistry(), id), 19)
 }
 func treeProbability(d map[string]any, key string, def float32) float32 {
@@ -2240,8 +2237,9 @@ func treeAlterGroundCircle(region *featureRegion, provider any, origin featurePo
 			}
 			for dy := int32(2); dy >= -3; dy-- {
 				p := treePos(origin, x, dy, z)
-				state, actor, ok := region.SampleNativeState(provider, p, r)
+				block, ok := sampleOptionalJavaBlockState(region, p, provider, r)
 				if ok {
+					state, actor := region.resolveFeatureBlock(block, p)
 					featureSetNativeBlockFlag19(region, p, state, actor)
 					break
 				}

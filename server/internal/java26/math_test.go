@@ -1,7 +1,9 @@
 package java26
 
 import (
+	"encoding/json"
 	"math"
+	"os"
 	"testing"
 )
 
@@ -27,6 +29,29 @@ func TestMthLookupAndJavaNarrowing(t *testing.T) {
 			}
 			if got := math.Float32bits(Cos(test.angle)); got != test.cos {
 				t.Fatalf("Cos(%v) bits = %08x, want %08x", test.angle, got, test.cos)
+			}
+		})
+	}
+}
+
+func TestAtan2MatchesJava263Source(t *testing.T) {
+	var fixture struct {
+		Cases []struct {
+			Name        string
+			X, Y, Atan2 float64
+		} `json:"cases"`
+	}
+	data, err := os.ReadFile("testdata/java263_atan2_source.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range fixture.Cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			if got := Atan2(tc.Y, tc.X); got != tc.Atan2 {
+				t.Fatalf("atan2(%v,%v)=%0.17g Source=%0.17g", tc.Y, tc.X, got, tc.Atan2)
 			}
 		})
 	}

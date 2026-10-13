@@ -67,6 +67,8 @@ type World struct {
 
 	set         *Settings
 	providerUse *providerRef
+	// border is dimension-owned; Settings' mutex guards its external API.
+	border worldBorder
 	// tick is the per-world tick counter used by worlds that do not advance the
 	// shared Settings, such as the Nether, End and custom dimensions.
 	tick                      int64
@@ -1900,6 +1902,7 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 		w.saveRaids()
 		w.saveDragonFight()
 		w.saveLootRandomSequences()
+		w.saveBorder()
 		w.saveGenerationState()
 	}
 }

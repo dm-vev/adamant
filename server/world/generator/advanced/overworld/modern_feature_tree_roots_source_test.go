@@ -135,7 +135,9 @@ func TestMangroveRootsMatchJava263Source(t *testing.T) {
 						t.Errorf("property %s at %v = %s, Java source=%s", key, p, got, value)
 					}
 				}
-				if expected.State == "minecraft:mangrove_roots" || expected.State == "minecraft:muddy_mangrove_roots" {
+				// RootPlacer.placeRoot records above-root placements through the
+				// same rootSetter, so decorators see them as root positions.
+				if expected.State == "minecraft:mangrove_roots" || expected.State == "minecraft:muddy_mangrove_roots" || expected.State == "minecraft:moss_carpet" {
 					wantRoots = append(wantRoots, p)
 				}
 			}

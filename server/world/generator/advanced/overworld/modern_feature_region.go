@@ -20,19 +20,20 @@ type featureTickReservation struct {
 }
 
 type featureRegion struct {
-	f                 *ModernFeatures
-	c                 *chunk.Chunk
-	writeOriginX      int32
-	writeOriginZ      int32
-	target            world.ChunkPos
-	result            *world.GenerationResult
-	overlay           map[featurePos]world.NativeState
-	placementHeights  map[featureHeightKey]int32
-	javaRandoms       map[[2]int32]*java26.Random
-	scheduledTicks    map[featureTickReservation]struct{}
-	blockActorRecords map[cube.Pos]javastructure.Block
-	blockActorData    map[cube.Pos]map[string]any
-	nativeProjections map[cube.Pos]struct{}
+	f                       *ModernFeatures
+	c                       *chunk.Chunk
+	writeOriginX            int32
+	writeOriginZ            int32
+	target                  world.ChunkPos
+	result                  *world.GenerationResult
+	overlay                 map[featurePos]world.NativeState
+	placementHeights        map[featureHeightKey]int32
+	javaRandoms             map[[2]int32]*java26.Random
+	scheduledTicks          map[featureTickReservation]struct{}
+	blockActorRecords       map[cube.Pos]javastructure.Block
+	blockActorData          map[cube.Pos]map[string]any
+	nativeProjections       map[cube.Pos]struct{}
+	treeDecorationPositions *treePositionSet
 }
 
 func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, result *world.GenerationResult) *featureRegion {
@@ -334,6 +335,18 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		return placeModernSculkPatch(region, config.config, origin, random)
 	case "template":
 		return placeModernTemplateFeature(region, config.config, origin, random)
+	case "end_gateway":
+		return placeModernEndGateway(region, config.config, origin)
+	case "end_island":
+		return placeModernEndIsland(region, origin, random)
+	case "end_platform":
+		return placeModernEndPlatform(region, origin)
+	case "end_podium":
+		return placeModernEndPodium(region, config.config, origin)
+	case "end_spike":
+		return placeModernEndSpike(region, config.config, origin, random)
+	case "chorus_plant":
+		return placeModernChorusPlant(region, origin, random)
 	case "sequence":
 		features, ok := config.config["features"].([]any)
 		if !ok {

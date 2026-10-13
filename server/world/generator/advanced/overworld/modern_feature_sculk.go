@@ -3,6 +3,7 @@ package overworld
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
@@ -336,7 +337,10 @@ func sculkPlaceVein(region *featureRegion, pos featurePos, face string) bool {
 			props["waterlogged"] = true
 		}
 	}
-	return region.Set(pos, sculkResolveState(region, "sculk_vein", props))
+	if featureInsideTarget(region.target, pos) {
+		region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
+	}
+	return region.setWithFlags(pos, sculkResolveState(region, "sculk_vein", props), 2)
 }
 
 func sculkRegrowVein(region *featureRegion, pos featurePos, faces uint8) bool {
@@ -354,7 +358,8 @@ func sculkRegrowVein(region *featureRegion, pos featurePos, faces uint8) bool {
 	if sculkWaterFluid(region, pos, nil) {
 		properties["waterlogged"] = true
 	}
-	return region.Set(pos, sculkResolveState(region, "sculk_vein", properties))
+	region.Set(pos, sculkResolveState(region, "sculk_vein", properties))
+	return true
 }
 
 func sculkWaterFluid(region *featureRegion, pos featurePos, properties map[string]any) bool {

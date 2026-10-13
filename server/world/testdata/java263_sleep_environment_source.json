@@ -1,0 +1,1185 @@
+{
+  "source": "Java26.3 actual registered minecraft:day Timeline.createTrackSampler and WeatherAttributes maps; full-strength weather; Level skyDarken/isDarkOutside formula applied by oracle, not a live Level invocation. Immutable captured runtime output local://java263-bed-environment-runtime.stdout.",
+  "cases": [
+    {
+      "tick": 0,
+      "timelineSkyLight": 14.188575,
+      "weather": "clear",
+      "skyLight": 14.188575,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 0,
+      "timelineSkyLight": 14.188575,
+      "weather": "rain",
+      "skyLight": 11.004645,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 0,
+      "timelineSkyLight": 14.188575,
+      "weather": "thunder",
+      "skyLight": 8.815693,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 71,
+      "timelineSkyLight": 14.621742,
+      "weather": "clear",
+      "skyLight": 14.621742,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 71,
+      "timelineSkyLight": 14.621742,
+      "weather": "rain",
+      "skyLight": 11.302448,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 71,
+      "timelineSkyLight": 14.621742,
+      "weather": "thunder",
+      "skyLight": 9.020433,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 92,
+      "timelineSkyLight": 14.749863,
+      "weather": "clear",
+      "skyLight": 14.749863,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 92,
+      "timelineSkyLight": 14.749863,
+      "weather": "rain",
+      "skyLight": 11.390531,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 92,
+      "timelineSkyLight": 14.749863,
+      "weather": "thunder",
+      "skyLight": 9.08099,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 133,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 133,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 133,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 310,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 310,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 310,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 565,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 565,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 565,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 730,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 730,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 730,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 1000,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 1000,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 1000,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 11270,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11270,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11270,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 11373,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11373,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11373,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 11522,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11522,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11522,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 11690,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11690,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11690,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 11867,
+      "timelineSkyLight": 15.0,
+      "weather": "clear",
+      "skyLight": 15.0,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11867,
+      "timelineSkyLight": 15.0,
+      "weather": "rain",
+      "skyLight": 11.5625,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11867,
+      "timelineSkyLight": 15.0,
+      "weather": "thunder",
+      "skyLight": 9.199219,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 11929,
+      "timelineSkyLight": 14.621741,
+      "weather": "clear",
+      "skyLight": 14.621741,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11929,
+      "timelineSkyLight": 14.621741,
+      "weather": "rain",
+      "skyLight": 11.302447,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 11929,
+      "timelineSkyLight": 14.621741,
+      "weather": "thunder",
+      "skyLight": 9.020432,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12243,
+      "timelineSkyLight": 12.706045,
+      "weather": "clear",
+      "skyLight": 12.706045,
+      "skyDarken": 2,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 12243,
+      "timelineSkyLight": 12.706045,
+      "weather": "rain",
+      "skyLight": 9.985406,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12243,
+      "timelineSkyLight": 12.706045,
+      "weather": "thunder",
+      "skyLight": 8.114967,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12358,
+      "timelineSkyLight": 12.004437,
+      "weather": "clear",
+      "skyLight": 12.004437,
+      "skyDarken": 2,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 12358,
+      "timelineSkyLight": 12.004437,
+      "weather": "rain",
+      "skyLight": 9.503051,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12358,
+      "timelineSkyLight": 12.004437,
+      "weather": "thunder",
+      "skyLight": 7.7833476,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12512,
+      "timelineSkyLight": 11.064892,
+      "weather": "clear",
+      "skyLight": 11.064892,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 12512,
+      "timelineSkyLight": 11.064892,
+      "weather": "rain",
+      "skyLight": 8.857113,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12512,
+      "timelineSkyLight": 11.064892,
+      "weather": "thunder",
+      "skyLight": 7.3392653,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12600,
+      "timelineSkyLight": 10.528008,
+      "weather": "clear",
+      "skyLight": 10.528008,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12600,
+      "timelineSkyLight": 10.528008,
+      "weather": "rain",
+      "skyLight": 8.488006,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12600,
+      "timelineSkyLight": 10.528008,
+      "weather": "thunder",
+      "skyLight": 7.085504,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12613,
+      "timelineSkyLight": 10.448697,
+      "weather": "clear",
+      "skyLight": 10.448697,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12613,
+      "timelineSkyLight": 10.448697,
+      "weather": "rain",
+      "skyLight": 8.433479,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12613,
+      "timelineSkyLight": 10.448697,
+      "weather": "thunder",
+      "skyLight": 7.048017,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12732,
+      "timelineSkyLight": 9.722684,
+      "weather": "clear",
+      "skyLight": 9.722684,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12732,
+      "timelineSkyLight": 9.722684,
+      "weather": "rain",
+      "skyLight": 7.9343452,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12732,
+      "timelineSkyLight": 9.722684,
+      "weather": "thunder",
+      "skyLight": 6.7048626,
+      "skyDarken": 8,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12841,
+      "timelineSkyLight": 9.057681,
+      "weather": "clear",
+      "skyLight": 9.057681,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12841,
+      "timelineSkyLight": 9.057681,
+      "weather": "rain",
+      "skyLight": 7.4771557,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12841,
+      "timelineSkyLight": 9.057681,
+      "weather": "thunder",
+      "skyLight": 6.390545,
+      "skyDarken": 8,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13035,
+      "timelineSkyLight": 7.8740983,
+      "weather": "clear",
+      "skyLight": 7.8740983,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13035,
+      "timelineSkyLight": 7.8740983,
+      "weather": "rain",
+      "skyLight": 6.6634426,
+      "skyDarken": 8,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13035,
+      "timelineSkyLight": 7.8740983,
+      "weather": "thunder",
+      "skyLight": 5.8311167,
+      "skyDarken": 9,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13140,
+      "timelineSkyLight": 7.2334995,
+      "weather": "clear",
+      "skyLight": 7.2334995,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13140,
+      "timelineSkyLight": 7.2334995,
+      "weather": "rain",
+      "skyLight": 6.223031,
+      "skyDarken": 8,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13140,
+      "timelineSkyLight": 7.2334995,
+      "weather": "thunder",
+      "skyLight": 5.5283337,
+      "skyDarken": 9,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13252,
+      "timelineSkyLight": 6.550194,
+      "weather": "clear",
+      "skyLight": 6.550194,
+      "skyDarken": 8,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13252,
+      "timelineSkyLight": 6.550194,
+      "weather": "rain",
+      "skyLight": 5.753258,
+      "skyDarken": 9,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13252,
+      "timelineSkyLight": 6.550194,
+      "weather": "thunder",
+      "skyLight": 5.205365,
+      "skyDarken": 9,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13670,
+      "timelineSkyLight": 4.0,
+      "weather": "clear",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13670,
+      "timelineSkyLight": 4.0,
+      "weather": "rain",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13670,
+      "timelineSkyLight": 4.0,
+      "weather": "thunder",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13775,
+      "timelineSkyLight": 4.0,
+      "weather": "clear",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13775,
+      "timelineSkyLight": 4.0,
+      "weather": "rain",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 13775,
+      "timelineSkyLight": 4.0,
+      "weather": "thunder",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 14039,
+      "timelineSkyLight": 4.0,
+      "weather": "clear",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 14039,
+      "timelineSkyLight": 4.0,
+      "weather": "rain",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 14039,
+      "timelineSkyLight": 4.0,
+      "weather": "thunder",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 18000,
+      "timelineSkyLight": 4.0,
+      "weather": "clear",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 18000,
+      "timelineSkyLight": 4.0,
+      "weather": "rain",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 18000,
+      "timelineSkyLight": 4.0,
+      "weather": "thunder",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 21807,
+      "timelineSkyLight": 4.0,
+      "weather": "clear",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 21807,
+      "timelineSkyLight": 4.0,
+      "weather": "rain",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 21807,
+      "timelineSkyLight": 4.0,
+      "weather": "thunder",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 22330,
+      "timelineSkyLight": 4.0,
+      "weather": "clear",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 22330,
+      "timelineSkyLight": 4.0,
+      "weather": "rain",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 22330,
+      "timelineSkyLight": 4.0,
+      "weather": "thunder",
+      "skyLight": 4.0,
+      "skyDarken": 11,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 22860,
+      "timelineSkyLight": 7.2335,
+      "weather": "clear",
+      "skyLight": 7.2335,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 22860,
+      "timelineSkyLight": 7.2335,
+      "weather": "rain",
+      "skyLight": 6.223031,
+      "skyDarken": 8,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 22860,
+      "timelineSkyLight": 7.2335,
+      "weather": "thunder",
+      "skyLight": 5.528334,
+      "skyDarken": 9,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23159,
+      "timelineSkyLight": 9.057682,
+      "weather": "clear",
+      "skyLight": 9.057682,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23159,
+      "timelineSkyLight": 9.057682,
+      "weather": "rain",
+      "skyLight": 7.4771566,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23159,
+      "timelineSkyLight": 9.057682,
+      "weather": "thunder",
+      "skyLight": 6.390545,
+      "skyDarken": 8,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23401,
+      "timelineSkyLight": 10.53411,
+      "weather": "clear",
+      "skyLight": 10.53411,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23401,
+      "timelineSkyLight": 10.53411,
+      "weather": "rain",
+      "skyLight": 8.492201,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23401,
+      "timelineSkyLight": 10.53411,
+      "weather": "thunder",
+      "skyLight": 7.088388,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23460,
+      "timelineSkyLight": 10.894066,
+      "weather": "clear",
+      "skyLight": 10.894066,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23460,
+      "timelineSkyLight": 10.894066,
+      "weather": "rain",
+      "skyLight": 8.73967,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23460,
+      "timelineSkyLight": 10.894066,
+      "weather": "thunder",
+      "skyLight": 7.258523,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23642,
+      "timelineSkyLight": 12.004437,
+      "weather": "clear",
+      "skyLight": 12.004437,
+      "skyDarken": 2,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 23642,
+      "timelineSkyLight": 12.004437,
+      "weather": "rain",
+      "skyLight": 9.503051,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23642,
+      "timelineSkyLight": 12.004437,
+      "weather": "thunder",
+      "skyLight": 7.7833476,
+      "skyDarken": 7,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23758,
+      "timelineSkyLight": 12.712147,
+      "weather": "clear",
+      "skyLight": 12.712147,
+      "skyDarken": 2,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 23758,
+      "timelineSkyLight": 12.712147,
+      "weather": "rain",
+      "skyLight": 9.989601,
+      "skyDarken": 5,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23758,
+      "timelineSkyLight": 12.712147,
+      "weather": "thunder",
+      "skyLight": 8.117851,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23999,
+      "timelineSkyLight": 14.182475,
+      "weather": "clear",
+      "skyLight": 14.182475,
+      "skyDarken": 0,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 23999,
+      "timelineSkyLight": 14.182475,
+      "weather": "rain",
+      "skyLight": 11.000452,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 23999,
+      "timelineSkyLight": 14.182475,
+      "weather": "thunder",
+      "skyLight": 8.812811,
+      "skyDarken": 6,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 12522,
+      "timelineSkyLight": 11.003882,
+      "weather": "clear",
+      "skyLight": 11.003882,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 12523,
+      "timelineSkyLight": 10.997781,
+      "weather": "clear",
+      "skyLight": 10.997781,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23477,
+      "timelineSkyLight": 10.997781,
+      "weather": "clear",
+      "skyLight": 10.997781,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23478,
+      "timelineSkyLight": 11.003883,
+      "weather": "clear",
+      "skyLight": 11.003883,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 12001,
+      "timelineSkyLight": 14.182473,
+      "weather": "rain",
+      "skyLight": 11.00045,
+      "skyDarken": 3,
+      "isBrightOutside": true,
+      "isDarkOutside": false,
+      "strawBedCanSleep": false
+    },
+    {
+      "tick": 12002,
+      "timelineSkyLight": 14.176373,
+      "weather": "rain",
+      "skyLight": 10.996256,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    },
+    {
+      "tick": 23998,
+      "timelineSkyLight": 14.176373,
+      "weather": "rain",
+      "skyLight": 10.996256,
+      "skyDarken": 4,
+      "isBrightOutside": false,
+      "isDarkOutside": true,
+      "strawBedCanSleep": true
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "source": "Actual Java26.3 Mth.atan2, immutable oracle local://java263-bed-wake-math-oracle.java and raw local://java263-bed-wake-math.stdout.txt. New math surface only, no SourcePlayer lifecycle capture.",
+  "cases": [
+    {
+      "name": "north_fractional",
+      "y": 0.847998304005088,
+      "x": 0.0,
+      "atan2": 1.5707963267948966
+    },
+    {
+      "name": "east_fractional",
+      "y": 0.0,
+      "x": -0.9701425001453319,
+      "atan2": 3.141592653589793
+    },
+    {
+      "name": "southwest_diagonal_fractional",
+      "y": -0.6834861261734088,
+      "x": 0.6834861261734088,
+      "atan2": -0.7853979770381607
+    },
+    {
+      "name": "fallback_headAbove_plus_0_1",
+      "y": 0.0,
+      "x": 0.0,
+      "atan2": 0.0
+    },
+    {
+      "name": "nearzero_below_normalization_threshold",
+      "y": 0.0,
+      "x": 0.0,
+      "atan2": 0.0
+    },
+    {
+      "name": "accepted_standup_north_yaw0",
+      "y": 0.5773502691896258,
+      "x": -0.5773502691896258,
+      "atan2": 2.356194672089508
+    },
+    {
+      "name": "yaw_wrap_near_negative_180",
+      "y": -1.0,
+      "x": -9.999999717180685e-10,
+      "atan2": -1.5707963277932047
+    },
+    {
+      "name": "quadrant_I",
+      "y": 1.0,
+      "x": 1.0,
+      "atan2": 0.7853981366411398
+    },
+    {
+      "name": "quadrant_II",
+      "y": 1.0,
+      "x": -1.0,
+      "atan2": 2.356194516948653
+    },
+    {
+      "name": "quadrant_III",
+      "y": -1.0,
+      "x": -1.0,
+      "atan2": -2.356194516948653
+    },
+    {
+      "name": "quadrant_IV",
+      "y": -1.0,
+      "x": 1.0,
+      "atan2": -0.7853981366411398
+    },
+    {
+      "name": "negative_zero_y",
+      "y": -0.0,
+      "x": 1.0,
+      "atan2": 0.0
+    },
+    {
+      "name": "negative_zero_x",
+      "y": 1.0,
+      "x": -0.0,
+      "atan2": 1.5707963267948966
+    }
+  ]
+}

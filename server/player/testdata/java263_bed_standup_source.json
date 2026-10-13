@@ -1,0 +1,369 @@
+{
+  "source": "Java26.3 actual AbstractBedBlock.findStandUpPosition/EntityTypes.PLAYER/DismountHelper with registered blockstates, sparse flat-stone CollisionGetter at y64, foot0,65,0, actualWorldBorder default. Beds present during capture; postclear output separately matched for east case. No live SourcePlayer or destroycallback execution. Immutable full runtime local://java263-bed-standup-runtime.stdout.",
+  "cases": [
+    {
+      "name": "north_yaw0.0",
+      "facing": "north",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "north_yaw90.0",
+      "facing": "north",
+      "yaw": 90.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "north_yaw180.0",
+      "facing": "north",
+      "yaw": 180.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "north_yaw270.0",
+      "facing": "north",
+      "yaw": 270.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_yaw0.0",
+      "facing": "east",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_yaw90.0",
+      "facing": "east",
+      "yaw": 90.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_yaw180.0",
+      "facing": "east",
+      "yaw": 180.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "east_yaw270.0",
+      "facing": "east",
+      "yaw": 270.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "south_yaw0.0",
+      "facing": "south",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "south_yaw90.0",
+      "facing": "south",
+      "yaw": 90.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "south_yaw180.0",
+      "facing": "south",
+      "yaw": 180.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "south_yaw270.0",
+      "facing": "south",
+      "yaw": 270.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "west_yaw0.0",
+      "facing": "west",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "west_yaw90.0",
+      "facing": "west",
+      "yaw": 90.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "west_yaw180.0",
+      "facing": "west",
+      "yaw": 180.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "west_yaw270.0",
+      "facing": "west",
+      "yaw": 270.0,
+      "bunk": false,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "north_blockedFirst",
+      "facing": "north",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        0.5
+      ]
+    },
+    {
+      "name": "north_dangerFirst",
+      "facing": "north",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": true,
+      "position": [
+        1.5,
+        65.0,
+        0.5
+      ]
+    },
+    {
+      "name": "north_bunk",
+      "facing": "north",
+      "yaw": 0.0,
+      "bunk": true,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_blockedFirst",
+      "facing": "east",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": false,
+      "position": [
+        0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_dangerFirst",
+      "facing": "east",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": true,
+      "position": [
+        0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "east_bunk",
+      "facing": "east",
+      "yaw": 0.0,
+      "bunk": true,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        1.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "south_blockedFirst",
+      "facing": "south",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        0.5
+      ]
+    },
+    {
+      "name": "south_dangerFirst",
+      "facing": "south",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": true,
+      "position": [
+        -0.5,
+        65.0,
+        0.5
+      ]
+    },
+    {
+      "name": "south_bunk",
+      "facing": "south",
+      "yaw": 0.0,
+      "bunk": true,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        1.5
+      ]
+    },
+    {
+      "name": "west_blockedFirst",
+      "facing": "west",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": false,
+      "position": [
+        0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "west_dangerFirst",
+      "facing": "west",
+      "yaw": 0.0,
+      "bunk": false,
+      "firstCandidateObstructed": true,
+      "firstCandidateDangerous": true,
+      "position": [
+        0.5,
+        65.0,
+        -0.5
+      ]
+    },
+    {
+      "name": "west_bunk",
+      "facing": "west",
+      "yaw": 0.0,
+      "bunk": true,
+      "firstCandidateObstructed": false,
+      "firstCandidateDangerous": false,
+      "position": [
+        -0.5,
+        65.0,
+        -0.5
+      ]
+    }
+  ]
+}

@@ -1423,9 +1423,20 @@ func (p *Player) Sleep(pos cube.Pos) {
 }
 
 func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
-	b, ok := tx.Block(pos).(block.Bed)
-	if !ok || b.Occupied {
-		// The player cannot sleep here.
+	b := tx.Block(pos)
+	height := 0.5625
+	switch bed := b.(type) {
+	case block.Bed:
+		if bed.Occupied {
+			return
+		}
+	case block.StrawBed:
+		var ok bool
+		height, ok = bed.SleepHeight(pos, tx)
+		if bed.Occupied || !ok {
+			return
+		}
+	default:
 		return
 	}
 
@@ -1433,16 +1444,26 @@ func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
 	if p.Handler().HandleSleep(ctx, &sendReminder); ctx.Cancelled() {
 		return
 	}
+	entity.DismountRider(p, tx)
 
-	b.Sleeper, b.Occupied = p.H(), true
-	tx.SetBlock(pos, b, nil)
+	switch bed := b.(type) {
+	case block.Bed:
+		bed.Sleeper, bed.Occupied = p.H(), true
+		b = bed
+	case block.StrawBed:
+		bed.Sleeper, bed.Occupied = p.H(), true
+		b = bed
+	}
 
 	tx.World().SetRequiredSleepDuration(time.Millisecond * 5050)
 
-	p.data.Pos = pos.Vec3Middle().Add(mgl64.Vec3{0, 0.5625})
+	p.data.Pos = pos.Vec3Middle().Add(mgl64.Vec3{0, height + 0.125})
+	tx.SetBlock(pos, b, nil)
 	p.sleeping = true
 	p.timeSinceRest = 0
 	p.sleepPos = pos
+	p.SetVelocity(mgl64.Vec3{})
+	p.data.Vel = mgl64.Vec3{}
 
 	p.session().SendPlayerSpawn(pos.Vec3())
 
@@ -1478,7 +1499,20 @@ func (p *Player) wakeInTx(tx *world.Tx) {
 	if !p.sleeping {
 		return
 	}
+	pos := p.sleepPos
+	switch bed := tx.Block(pos).(type) {
+	case block.Bed:
+		bed.Sleeper, bed.Occupied = nil, false
+		tx.SetBlock(pos, bed, nil)
+		p.standUpFromBed(tx, pos, bed.Facing)
+	case block.StrawBed:
+		bed.Sleeper, bed.Occupied = nil, false
+		tx.SetBlock(pos, bed, nil)
+		bed.StopSleeping(pos, tx)
+		p.standUpFromBed(tx, pos, bed.Facing)
+	}
 	p.sleeping = false
+	p.sleepPos = cube.Pos{}
 
 	tx.BroadcastSleepingIndicator()
 
@@ -1489,11 +1523,6 @@ func (p *Player) wakeInTx(tx *world.Tx) {
 	releaseBorrowedViewers(tx, viewers, release)
 	p.updateState()
 
-	pos := p.sleepPos
-	if b, ok := tx.Block(pos).(block.Bed); ok {
-		b.Sleeper, b.Occupied = nil, false
-		tx.SetBlock(pos, b, nil)
-	}
 }
 
 // Sleeping returns true if the player is currently sleeping, along with the position of the bed the player is sleeping
@@ -3275,6 +3304,20 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		p.ReleaseShoulderParrots()
 		p.cancelItemUse()
 		return
+	}
+	if p.sleeping {
+		switch bed := tx.Block(p.sleepPos).(type) {
+		case block.StrawBed:
+			if _, valid := bed.SleepHeight(p.sleepPos, tx); !valid || !tx.IsDarkOutside() {
+				p.wakeInTx(tx)
+			}
+		case block.Bed:
+			if !tx.IsDarkOutside() {
+				p.wakeInTx(tx)
+			}
+		default:
+			p.wakeInTx(tx)
+		}
 	}
 	if p.sleeping {
 		p.timeSinceRest = 0

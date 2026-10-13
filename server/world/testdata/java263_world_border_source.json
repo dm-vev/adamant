@@ -1,0 +1,198 @@
+{
+  "source": "MCP-Reborn-26.2 source tree, minecraft_version=26.3; actual net.minecraft.world.level.border.WorldBorder invoked",
+  "java": "25.0.4.1",
+  "api": [
+    "WorldBorder.setCenter",
+    "WorldBorder.setSize",
+    "isWithinBounds(BlockPos|Vec3|ChunkPos|AABB|double,double)",
+    "clampVec3ToBound",
+    "clampToBounds",
+    "lerpSizeBetween(from,to,ticks,gameTime)",
+    "tick()",
+    "WorldBorder.Settings.CODEC.encodeStart/decode(JsonOps.INSTANCE)"
+  ],
+  "static_fractional_small": {
+    "bounds": {
+      "size": 4.0,
+      "center": [
+        10.25,
+        -4.75
+      ],
+      "minX": 8.25,
+      "maxX": 12.25,
+      "minZ": -6.75,
+      "maxZ": -2.75
+    },
+    "acceptance": {
+      "point_min_x": true,
+      "point_max_x": false,
+      "point_min_z": true,
+      "point_max_z": false,
+      "blockpos_min_int": true,
+      "vec3_center": true,
+      "aabb_edge_epsilon_straddle": true,
+      "aabb_beyond_epsilon_rejected": false,
+      "chunk_origin": false
+    },
+    "clamp_inside_limits": [
+      12.249990000000253,
+      71.0,
+      -6.75
+    ],
+    "clamp_blockpos": "BlockPos{x=12, y=71, z=-7}",
+    "max_size_constant": 59999968.0,
+    "max_size_hex_double": "0x1.c9c37p25",
+    "max_size_default_bounds": {
+      "size": 59999968.0,
+      "center": [
+        0.0,
+        0.0
+      ],
+      "minX": -29999984.0,
+      "maxX": 29999984.0,
+      "minZ": -29999984.0,
+      "maxZ": 29999984.0
+    }
+  },
+  "absolute_clamp": {
+    "requested_center": [
+      29999980,
+      -29999980
+    ],
+    "actual_bounds": {
+      "size": 100.0,
+      "center": [
+        29999980.0,
+        -29999980.0
+      ],
+      "minX": 29999930.0,
+      "maxX": 29999984.0,
+      "minZ": -29999984.0,
+      "maxZ": -29999930.0
+    },
+    "limits": [
+      -29999984,
+      29999984
+    ],
+    "clamp_outside": [
+      29999983.99999,
+      -29999984.0
+    ]
+  },
+  "shrinking_transition": [
+    {
+      "stage": "beginning",
+      "gameTimeArgument": 1000,
+      "ticksAdvanced": 0,
+      "bounds": {
+        "size": 20.0,
+        "center": [
+          0.0,
+          0.0
+        ],
+        "minX": -10.0,
+        "maxX": 10.0,
+        "minZ": -10.0,
+        "maxZ": 10.0
+      },
+      "remainingTicks": 8,
+      "status": "SHRINKING",
+      "playerAabb": [
+        8.7,
+        0.0,
+        0.0,
+        9.3,
+        1.8,
+        0.6
+      ],
+      "playerAabbAccepted": true
+    },
+    {
+      "stage": "middle",
+      "gameTimeArgument": 1000,
+      "ticksAdvanced": 4,
+      "bounds": {
+        "size": 12.0,
+        "center": [
+          0.0,
+          0.0
+        ],
+        "minX": -7.0,
+        "maxX": 7.0,
+        "minZ": -7.0,
+        "maxZ": 7.0
+      },
+      "remainingTicks": 4,
+      "status": "SHRINKING",
+      "playerAabb": [
+        8.7,
+        0.0,
+        0.0,
+        9.3,
+        1.8,
+        0.6
+      ],
+      "playerAabbAccepted": false
+    },
+    {
+      "stage": "end",
+      "gameTimeArgument": 1000,
+      "ticksAdvanced": 8,
+      "bounds": {
+        "size": 4.0,
+        "center": [
+          0.0,
+          0.0
+        ],
+        "minX": -2.0,
+        "maxX": 2.0,
+        "minZ": -2.0,
+        "maxZ": 2.0
+      },
+      "remainingTicks": 0,
+      "status": "STATIONARY",
+      "playerAabbAccepted": false
+    }
+  ],
+  "settings_codec": {
+    "encoded_payload": {
+      "center_x": 12.5,
+      "center_z": -3.25,
+      "damage_per_block": 0.2,
+      "safe_zone": 5.0,
+      "warning_blocks": 5,
+      "warning_time": 15,
+      "size": 36.8,
+      "lerp_time": 18,
+      "lerp_target": 8.0
+    },
+    "source_settings": "Settings[centerX=12.5, centerZ=-3.25, damagePerBlock=0.2, safeZone=5.0, warningBlocks=5, warningTime=15, size=36.8, lerpTime=18, lerpTarget=8.0]",
+    "decoded_settings": "Settings[centerX=12.5, centerZ=-3.25, damagePerBlock=0.2, safeZone=5.0, warningBlocks=5, warningTime=15, size=36.8, lerpTime=18, lerpTarget=8.0]",
+    "source_bounds": {
+      "size": 36.8,
+      "center": [
+        12.5,
+        -3.25
+      ],
+      "minX": -6.699999999999999,
+      "maxX": 31.7,
+      "minZ": -22.45,
+      "maxZ": 15.95
+    },
+    "source_remaining_ticks": 18,
+    "reloaded_bounds_at_initialization": {
+      "size": 36.8,
+      "center": [
+        12.5,
+        -3.25
+      ],
+      "minX": -5.899999999999999,
+      "maxX": 30.9,
+      "minZ": -21.65,
+      "maxZ": 15.149999999999999
+    },
+    "reloaded_remaining_ticks": 18,
+    "reloaded_target": 8.0,
+    "reloaded_status": "SHRINKING"
+  }
+}

@@ -85,7 +85,7 @@ func (b Bed) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx
 	side, sidePos := b, pos.Side(b.Facing.Face())
 	side.Head = true
 
-	if !replaceableWith(tx, sidePos, side) {
+	if !replaceableWith(tx, sidePos, side) || sidePos.OutOfBounds(tx.Range()) || !tx.World().WithinBorder(sidePos) {
 		return
 	}
 	if !supportedFromBelow(sidePos, tx) {
@@ -155,23 +155,19 @@ func (b Bed) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *i
 		s.Messaget(chat.MessageRespawnPointSet)
 	}
 
-	time := w.Time() % world.TimeFull
-	if !tx.Thundering() {
-		if !tx.Raining() && (time <= world.TimeSleep || time >= world.TimeWake) {
-			s.Messaget(chat.MessageNoSleep)
-			return true
-		}
-		if time <= world.TimeSleepWithRain || time >= world.TimeWakeWithRain {
-			s.Messaget(chat.MessageNoSleep)
-			return true
-		}
+	if !tx.IsDarkOutside() {
+		s.Messaget(chat.MessageNoSleep)
+		return true
 	}
 	if headSide.Occupied {
 		s.Messaget(chat.MessageBedIsOccupied)
 		return true
 	}
 
-	// TODO: add a check for when monsters are nearby
+	if bedRestUnsafe(headPos, tx, s) {
+		s.Messaget(chat.MessageNoSleepMonsters)
+		return true
+	}
 
 	// If the sleeper is a player, bind the current world transaction so Sleep()
 	// can run synchronously without reacquiring a new transaction.

@@ -24,7 +24,7 @@ func TestTemplateEntityYawMatchesSourceFloatArithmetic(t *testing.T) {
 	}
 	for _, fixture := range fixtures {
 		t.Run(fmt.Sprintf("%g/%d/%d", fixture.Yaw, fixture.Rotation, fixture.Mirror), func(t *testing.T) {
-			template := Template{Entities: []Entity{{NBT: map[string]any{"id": "minecraft:villager", "Rotation": []any{fixture.Yaw, float32(0)}}}}}
+			template := Template{Entities: []Entity{{NBT: map[string]any{"id": "minecraft:villager", "Rotation": []float32{fixture.Yaw, 0}}}}}
 			entities := template.PlaceEntities([3]int32{}, fixture.Rotation, fixture.Mirror, Bounds{Min: [3]int32{-1, -1, -1}, Max: [3]int32{1, 1, 1}}, 0)
 			if len(entities) != 1 {
 				t.Fatalf("template lost the in-bounds entity: %d records", len(entities))

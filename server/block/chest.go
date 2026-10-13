@@ -2,17 +2,17 @@ package block
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"strings"
-	"sync"
-	"time"
 )
 
 // Chest is a container block which may be used to store items. Chests may also be paired to create a bigger
@@ -125,45 +125,8 @@ func (c Chest) GenerateLoot(tx *world.Tx, pos cube.Pos) error {
 	if c.lootTable == "" {
 		return nil
 	}
-	sequence, err := loot.RandomSequence(c.lootTable)
-	if err != nil {
+	if err := fillContainerLoot(tx, pos, c.inventory, c.lootTable, c.lootSeed, "minecraft:chest"); err != nil {
 		return err
-	}
-	random := tx.LootRandomSequence(sequence, c.lootSeed)
-	stacks, err := loot.Generate(c.lootTable, c.lootSeed, loot.Context{
-		Random:         random,
-		RandomSequence: tx.LootRandomSequence,
-		Block:          "minecraft:chest",
-		Origin:         pos.Vec3Centre(),
-	})
-	if err != nil {
-		return err
-	}
-	parts := make([]item.Stack, 0, len(stacks))
-	for _, stack := range stacks {
-		for !stack.Empty() {
-			count := min(stack.Count(), stack.MaxCount())
-			parts = append(parts, stack.Grow(count-stack.Count()))
-			stack = stack.Grow(-count)
-		}
-	}
-	slots := c.inventory.Slots()
-	free := make([]int, 0, len(slots))
-	for slot, stack := range slots {
-		if stack.Empty() {
-			free = append(free, slot)
-		}
-	}
-	if len(parts) > len(free) {
-		return fmt.Errorf("loot table %q produced %d stacks for %d empty chest slots", c.lootTable, len(parts), len(free))
-	}
-	for _, stack := range parts {
-		freeIndex := int(random.NextInt(int32(len(free))))
-		slot := free[freeIndex]
-		free = append(free[:freeIndex], free[freeIndex+1:]...)
-		if err := c.inventory.SetItem(slot, stack); err != nil {
-			return err
-		}
 	}
 	c.lootTable, c.lootSeed = "", 0
 	if owner, ok := tx.Block(pos).(chestBlock); ok {

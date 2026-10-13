@@ -123,6 +123,26 @@ func placeJavaGenerationMossyCarpet(context *javaShapeContext, pos cube.Pos) {
 	context.generation.SetJavaBlockState(pos, base, 2)
 }
 
+// JavaGenerationFireState applies BaseFireBlock.getState against live
+// generation states, including Source flammability and sturdy-face metadata.
+func JavaGenerationFireState(access JavaGenerationShapeAccess, pos cube.Pos) uint32 {
+	context := javaShapeContext{generation: access, pos: pos}
+	below := context.at(pos.Side(cube.FaceDown))
+	if context.tag(below, "minecraft:soul_fire_base_blocks") {
+		return javaDefault("soul_fire")
+	}
+	state := javaDefault("fire")
+	support := javaGenerationShape(below)
+	if support.FireCanBurn || support.Sturdy&(1<<uint(cube.FaceUp)) != 0 {
+		return state
+	}
+	for _, face := range [...]cube.Face{cube.FaceUp, cube.FaceNorth, cube.FaceSouth, cube.FaceWest, cube.FaceEast} {
+		property := [...]string{"down", "up", "north", "south", "west", "east"}[face]
+		state = javaWith(state, property, javaGenerationShape(context.at(pos.Side(face))).FireCanBurn)
+	}
+	return state
+}
+
 // UpdateJavaTemplateShapes applies StructureTemplate's immediate shape phase.
 // Call it for one knownShape=false placement, after successful block writes,
 // liquid refill and actor loading, but before entities or data markers. Positions

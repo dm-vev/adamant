@@ -78,8 +78,8 @@ func placeModernTemplateFeature(region *featureRegion, config map[string]any, or
 	if totalWeight == 0 {
 		panic("overworld: Java template weighted list has no positive-weight entries")
 	}
+	entry := entries[0]
 	choice := random.NextInt(int32(totalWeight))
-	var entry modernTemplateEntry
 	for _, candidate := range entries {
 		if choice < candidate.weight {
 			entry = candidate
@@ -151,11 +151,9 @@ func placeModernTemplateFeature(region *featureRegion, config map[string]any, or
 	}
 	// Palette selection and processors using StructurePlaceSettings.getRandom
 	// share the placement stream. RuleProcessor owns a position-seeded stream.
-	chunkX, chunkZ := region.writeOriginX, region.writeOriginZ
-	clip := javastructure.Bounds{
-		Min: [3]int32{(chunkX - 1) * 16, region.MinY(), (chunkZ - 1) * 16},
-		Max: [3]int32{(chunkX+2)*16 - 1, region.MaxY(), (chunkZ+2)*16 - 1},
-	}
+	// TemplateFeature does not set a bounding box. Process all descriptors and
+	// entities; the live region independently rejects out-of-build/window writes.
+	clip := javastructure.Bounds{Min: [3]int32{-1 << 31, -1 << 31, -1 << 31}, Max: [3]int32{1<<31 - 1, 1<<31 - 1, 1<<31 - 1}}
 	placement, err := template.Place(palette, placeOrigin, rotation, javastructure.NoMirror, clip, region.f.seed, processors...)
 	if err != nil {
 		panic(fmt.Errorf("overworld: placing Java template %q: %w", entry.name, err))
@@ -163,7 +161,10 @@ func placeModernTemplateFeature(region *featureRegion, config map[string]any, or
 	placement.TemplateUpdateFlags = 3
 	placement.TemplateKnownShape = false
 	for i := range placement.Blocks {
-		javastructure.SeedRandomizableContainerLoot(&placement.Blocks[i], random)
+		p := placement.Blocks[i].Pos
+		if p[1] >= region.MinY() && p[1] <= region.MaxY() && region.withinWriteArea(featurePos{p[0], p[1], p[2]}) {
+			javastructure.SeedRandomizableContainerLoot(&placement.Blocks[i], random)
+		}
 	}
 	region.f.applyStructurePlacement(region, placement)
 

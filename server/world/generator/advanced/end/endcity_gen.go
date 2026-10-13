@@ -1,6 +1,8 @@
 package end
 
 import (
+	"math"
+	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -631,8 +633,11 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			if !publish {
 				continue
 			}
+			// LivingEntity's constructor draws an unseeded Entity.random yaw in
+			// radians; sentries skip finalizeSpawn, so the value is retained.
 			result.Entities = append(result.Entities, entity.NewShulker(world.EntitySpawnOpts{
 				Position: mgl64.Vec3{float64(marker.Pos[0]) + 0.5, float64(marker.Pos[1]), float64(marker.Pos[2]) + 0.5},
+				Rotation: cube.Rotation{float64(rand.Float32() * float32(2*math.Pi)), 0},
 			}, entity.ShulkerBehaviourConfig{}))
 		case strings.HasPrefix(metadata, "Elytra"):
 			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, c) {

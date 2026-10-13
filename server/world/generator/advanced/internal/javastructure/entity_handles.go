@@ -32,11 +32,13 @@ func (p Placement) NewEntityHandles(factory EntityFactory) ([]*world.EntityHandl
 	var create func(Entity, *world.EntityHandle) error
 	create = func(e Entity, vehicle *world.EntityHandle) error {
 		var rotation cube.Rotation
-		if values, ok := e.NBT["Rotation"].([]any); ok && len(values) >= 2 {
-			if yaw, ok := number(values[0]); ok {
+		if count, ok := templateListLen(e.NBT["Rotation"]); ok && count >= 2 {
+			rawYaw, _ := templateListValue(e.NBT["Rotation"], 0)
+			if yaw, ok := number(rawYaw); ok {
 				rotation[0] = yaw
 			}
-			if pitch, ok := number(values[1]); ok {
+			rawPitch, _ := templateListValue(e.NBT["Rotation"], 1)
+			if pitch, ok := number(rawPitch); ok {
 				rotation[1] = pitch
 			}
 		}

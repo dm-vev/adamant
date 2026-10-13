@@ -106,6 +106,63 @@ func JavaBlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string
 			}
 			data["pairx"], data["pairz"] = pos[0]+dx, pos[2]+dz
 		}
+	case "end_gateway":
+		if raw, exists := data["exit_portal"]; exists {
+			var coordinates [3]int32
+			switch exit := raw.(type) {
+			case []int32:
+				if len(exit) != len(coordinates) {
+					return nil, fmt.Errorf("Java end gateway exit_portal has %d coordinates", len(exit))
+				}
+				copy(coordinates[:], exit)
+			case []any:
+				if len(exit) != len(coordinates) {
+					return nil, fmt.Errorf("Java end gateway exit_portal has %d coordinates", len(exit))
+				}
+				for i, value := range exit {
+					n, valid := javaNBTInt(value)
+					if !valid || n < -1<<31 || n > 1<<31-1 {
+						return nil, fmt.Errorf("Java end gateway exit_portal has invalid coordinate %v", value)
+					}
+					coordinates[i] = int32(n)
+				}
+			default:
+				return nil, fmt.Errorf("Java end gateway exit_portal has type %T, want int array", raw)
+			}
+			data["ExitPortal"] = map[string]any{"X": coordinates[0], "Y": coordinates[1], "Z": coordinates[2]}
+			delete(data, "exit_portal")
+		}
+		if age, exists := data["Age"]; exists {
+			value, valid := javaNBTInt(age)
+			if !valid {
+				return nil, fmt.Errorf("Java end gateway Age has type %T, want integer", age)
+			}
+			data["Age"] = value
+		}
+		if exact, ok := data["ExactTeleport"].(bool); ok {
+			data["ExactTeleport"] = uint8(0)
+			if exact {
+				data["ExactTeleport"] = uint8(1)
+			}
+		} else if exact, exists := data["ExactTeleport"]; exists {
+			value, valid := javaNBTInt(exact)
+			if !valid {
+				return nil, fmt.Errorf("Java end gateway ExactTeleport has type %T, want byte", exact)
+			}
+			data["ExactTeleport"] = uint8(value)
+		}
+		data = block.NewEndGateway().DecodeNBT(data).(block.EndGateway).EncodeNBT()
+		data["x"], data["y"], data["z"] = pos[0], pos[1], pos[2]
+	case "structure_block", "jigsaw":
+		var err error
+		if id == "structure_block" {
+			data, err = convertStructureBlock(state, data)
+		} else {
+			data, err = convertJigsaw(data)
+		}
+		if err != nil {
+			return nil, err
+		}
 	case "bell":
 		// Java's BellBlockEntity has no saved ringing state; native Bell actors
 		// still require their reset transient fields and unset direction marker.
@@ -188,7 +245,7 @@ func JavaBlockEntityPayload(state world.BlockState, pos [3]int32, nbt map[string
 }
 
 var javaBlockEntityIDs = map[string]string{
-	"chest": "Chest", "trapped_chest": "Chest", "barrel": "Barrel",
+	"chest": "Chest", "trapped_chest": "Chest", "barrel": "Barrel", "ender_chest": "EnderChest",
 	"furnace": "Furnace", "smoker": "Smoker", "blast_furnace": "BlastFurnace",
 	"brewing_stand": "BrewingStand", "hopper": "Hopper", "dispenser": "Dispenser", "dropper": "Dropper",
 	"chiseled_bookshelf": "ChiseledBookshelf",
@@ -200,7 +257,8 @@ var javaBlockEntityIDs = map[string]string{
 	"creaking_heart": "CreakingHeart", "comparator": "Comparator", "bell": "Bell",
 	"sculk_shrieker": "SculkShrieker",
 	"sculk_sensor":   "SculkSensor", "calibrated_sculk_sensor": "CalibratedSculkSensor",
-	"lectern": "Lectern",
+	"lectern":         "Lectern",
+	"structure_block": "StructureBlock", "jigsaw": "JigsawBlock",
 }
 
 func convertChiseledBookshelfItems(raw any) ([]any, error) {

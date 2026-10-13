@@ -35,8 +35,6 @@ type End struct {
 	fireRID       uint32
 	endGatewayRID uint32
 
-	chorusPlantStates [64]world.NativeState
-	chorusFlowerRIDs  [6]uint32
 	chorusMaxDistance int
 
 	spikes       [10]java26.EndSpike
@@ -77,23 +75,6 @@ func NewEnd(seed int64) *End {
 		chorusMaxDistance: 8,
 	}
 	g.pool.New = func() any { return &endScratch{heights: make([]float32, 3*33*3)} }
-	for age := range g.chorusFlowerRIDs {
-		g.chorusFlowerRIDs[age] = mustStateRID("minecraft:chorus_flower", map[string]any{"age": int32(age)})
-	}
-	for mask := range g.chorusPlantStates {
-		state, err := world.ResolveState(world.DefaultBlockRegistry, world.BlockState{
-			Name: "minecraft:chorus_plant",
-			Properties: map[string]any{
-				"down": mask&1 != 0, "up": mask&2 != 0,
-				"north": mask&4 != 0, "east": mask&8 != 0,
-				"south": mask&16 != 0, "west": mask&32 != 0,
-			},
-		})
-		if err != nil {
-			panic(err)
-		}
-		g.chorusPlantStates[mask] = state
-	}
 	for mask := range g.ironBarsRIDs {
 		g.ironBarsRIDs[mask] = world.BlockRuntimeID(block.IronBars{
 			NorthConnection: mask&1 != 0,
@@ -452,107 +433,6 @@ func (g *End) generateEndIsland(origin endFeatureOrigin, centreX, centreY, centr
 			}
 		}
 		f -= float64(r.Intn(2)) + 0.5
-	}
-}
-
-func (g *End) generateChorusPlant(region endFeatureOrigin, x, y, z int, r *endRand, maxDistance int) {
-	g.setChorusPlant(region, x, y, z)
-	g.growChorusRecursive(region, x, y, z, r, x, z, maxDistance, 0)
-}
-
-// setChorusPlant matches getStateWithConnections at the instant of the write.
-// Growth explicitly refreshes the preceding segment after adding its neighbor.
-func (g *End) setChorusPlant(region endFeatureOrigin, x, y, z int) {
-	if y < region.region.minY || y > region.region.maxY || !region.inWriteRadius(x, z) {
-		return
-	}
-	mask := 0
-	for side, offset := range [...]cube.Pos{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}} {
-		rid := region.block(x+offset[0], y+offset[1], z+offset[2])
-		connected := rid == g.chorusPlantStates[0].Block
-		if !connected {
-			for _, flower := range g.chorusFlowerRIDs {
-				if rid == flower {
-					connected = true
-					break
-				}
-			}
-		}
-		// Java 26.3's supports_chorus_plant tag contains only end_stone.
-		if connected || side == 0 && rid == g.endStoneRID {
-			mask |= 1 << side
-		}
-	}
-	region.region.setLayers(x, y, z, g.chorusPlantStates[mask])
-}
-
-func (g *End) growChorusRecursive(region endFeatureOrigin, x, y, z int, r *endRand, originX, originZ, maxDistance, depth int) {
-	i := int(r.Intn(4) + 1)
-	if depth == 0 {
-		i++
-	}
-	for j := 0; j < i; j++ {
-		yy := y + j + 1
-		if !g.areAllHorizontalNeighborsAir(region, x, yy, z, -1) {
-			return
-		}
-		g.setChorusPlant(region, x, yy, z)
-		g.setChorusPlant(region, x, yy-1, z)
-	}
-	branched := false
-	if depth < 4 {
-		l := int(r.Intn(4))
-		if depth == 0 {
-			l++
-		}
-		for k := 0; k < l; k++ {
-			dx, dz, opposite := randomHorizontal(r)
-			nx, nz := x+dx, z+dz
-			ny := y + i
-			if abs(nx-originX) >= maxDistance || abs(nz-originZ) >= maxDistance {
-				continue
-			}
-			if !g.isAir(region, nx, ny, nz) || !g.isAir(region, nx, ny-1, nz) {
-				continue
-			}
-			if !g.areAllHorizontalNeighborsAir(region, nx, ny, nz, opposite) {
-				continue
-			}
-			branched = true
-			g.setChorusPlant(region, nx, ny, nz)
-			g.setChorusPlant(region, x, ny, z)
-			g.growChorusRecursive(region, nx, ny, nz, r, originX, originZ, maxDistance, depth+1)
-		}
-	}
-	if !branched {
-		region.setBlock(x, y+i, z, g.chorusFlowerRIDs[5])
-	}
-}
-
-func (g *End) isAir(region endFeatureOrigin, x, y, z int) bool {
-	return region.block(x, y, z) == g.airRID
-}
-
-func (g *End) areAllHorizontalNeighborsAir(region endFeatureOrigin, x, y, z, excluding int) bool {
-	dirs := [4][2]int{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
-	for i, d := range dirs {
-		if i != excluding && !g.isAir(region, x+d[0], y, z+d[1]) {
-			return false
-		}
-	}
-	return true
-}
-
-func randomHorizontal(r *endRand) (dx, dz, opposite int) {
-	switch r.Intn(4) {
-	case 0:
-		return 0, -1, 2 // North, opposite South.
-	case 1:
-		return 1, 0, 3 // East, opposite West.
-	case 2:
-		return 0, 1, 0 // South, opposite North.
-	default:
-		return -1, 0, 1 // West, opposite East.
 	}
 }
 

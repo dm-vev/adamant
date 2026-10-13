@@ -3,13 +3,16 @@ package world
 import "strconv"
 
 // CloneNativeEntityNBT deep-copies native entity NBT, including typed NBT
-// arrays and nested compounds.
+// arrays and nested compounds, excluding the temporary decoder registry context.
 func CloneNativeEntityNBT(data map[string]any) map[string]any {
 	if data == nil {
 		return nil
 	}
 	out := make(map[string]any, len(data))
 	for key, value := range data {
+		if key == blockRegistryNBTKey {
+			continue
+		}
 		out[key] = cloneNativeEntityNBTValue(value, false)
 	}
 	return out
@@ -17,13 +20,17 @@ func CloneNativeEntityNBT(data map[string]any) map[string]any {
 
 // CloneJavaEntityNBT deep-copies a source payload for the native NBT encoder.
 // Java signed bytes and byte arrays retain their payload bits using Go's native
-// unsigned-byte representation. Field names and other NBT types are unchanged.
+// unsigned-byte representation. Other NBT fields are unchanged; the temporary
+// decoder registry context is excluded.
 func CloneJavaEntityNBT(data map[string]any) map[string]any {
 	if data == nil {
 		return nil
 	}
 	out := make(map[string]any, len(data))
 	for key, value := range data {
+		if key == blockRegistryNBTKey {
+			continue
+		}
 		out[key] = cloneNativeEntityNBTValue(value, true)
 	}
 	return out

@@ -31,6 +31,8 @@ type Barrel struct {
 	inventory *inventory.Inventory
 	viewerMu  *sync.RWMutex
 	viewers   map[ContainerViewer]struct{}
+	lootTable string
+	lootSeed  int64
 }
 
 // NewBarrel creates a new initialised barrel. The inventory is properly initialised.
@@ -53,8 +55,26 @@ func NewBarrel() Barrel {
 func (Barrel) ContainerSize() int { return 27 }
 
 // Inventory returns the inventory of the barrel. The size of the inventory will be 27.
-func (b Barrel) Inventory(*world.Tx, cube.Pos) *inventory.Inventory {
+func (b Barrel) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
+	if b.lootTable != "" {
+		if err := b.GenerateLoot(tx, pos); err != nil {
+			panic(err)
+		}
+	}
 	return b.inventory
+}
+
+// GenerateLoot resolves a source loot table once, retaining its seed until access.
+func (b Barrel) GenerateLoot(tx *world.Tx, pos cube.Pos) error {
+	if b.lootTable == "" {
+		return nil
+	}
+	if err := fillContainerLoot(tx, pos, b.inventory, b.lootTable, b.lootSeed, "minecraft:barrel"); err != nil {
+		return err
+	}
+	b.lootTable, b.lootSeed = "", 0
+	tx.SetBlockEntity(pos, b)
+	return nil
 }
 
 // WithName returns the barrel after applying a specific name to the block.
@@ -153,6 +173,8 @@ func (b Barrel) DecodeNBT(data map[string]any) any {
 	// Preserve the block state bits so the decoded block matches the stored runtime ID.
 	b.Open = open
 	b.CustomName = nbtconv.String(data, "CustomName")
+	b.lootTable = nbtconv.String(data, "LootTable")
+	b.lootSeed = nbtconv.Int64(data, "LootTableSeed")
 	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
 	return b
 }
@@ -160,10 +182,10 @@ func (b Barrel) DecodeNBT(data map[string]any) any {
 // EncodeNBT ...
 func (b Barrel) EncodeNBT() map[string]any {
 	if b.inventory == nil {
-		facing, customName := b.Facing, b.CustomName
+		facing, customName, lootTable, lootSeed := b.Facing, b.CustomName, b.lootTable, b.lootSeed
 		//noinspection GoAssignmentToReceiver
 		b = NewBarrel()
-		b.Facing, b.CustomName = facing, customName
+		b.Facing, b.CustomName, b.lootTable, b.lootSeed = facing, customName, lootTable, lootSeed
 	}
 	m := map[string]any{
 		"Items": nbtconv.InvToNBT(b.inventory),
@@ -171,6 +193,9 @@ func (b Barrel) EncodeNBT() map[string]any {
 	}
 	if b.CustomName != "" {
 		m["CustomName"] = b.CustomName
+	}
+	if b.lootTable != "" {
+		m["LootTable"], m["LootTableSeed"] = b.lootTable, b.lootSeed
 	}
 	return m
 }

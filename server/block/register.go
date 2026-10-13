@@ -12,6 +12,7 @@ import (
 // init registers all blocks implemented by Dragonfly.
 func init() {
 	world.RegisterBlock(Air{})
+	registerAll(allStrawBeds())
 	world.RegisterBlock(Allow{})
 	world.RegisterBlock(Amethyst{})
 	world.RegisterBlock(AncientDebris{})
@@ -380,6 +381,7 @@ func init() {
 
 func init() {
 	world.RegisterItem(Air{})
+	world.RegisterItem(StrawBed{})
 	world.RegisterItem(Amethyst{})
 	world.RegisterItem(AncientDebris{})
 	world.RegisterItem(Andesite{Polished: true})
