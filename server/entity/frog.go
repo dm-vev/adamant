@@ -66,6 +66,7 @@ type frogBehaviour struct {
 	variant, nextWander int
 	speed               float64
 	dead                bool
+	tongue              frogTongue
 }
 
 // Frog is a living amphibian runtime entity. Tadpoles convert into this runtime at Java's age threshold.
@@ -86,15 +87,21 @@ func (b *frogBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dead {
 		return nil
 	}
-	if b.nextWander > 0 {
-		b.nextWander--
-	}
 	vel := e.data.Vel
-	if b.nextWander == 0 {
-		b.nextWander = 40 + int(b.random.NextInt(41))
-		vel = vel.Add(mgl64.Vec3{(float64(b.random.NextFloat())*2 - 1) * b.speed * .1, 0, (float64(b.random.NextFloat())*2 - 1) * b.speed * .1})
+	if walk, busy := b.tongue.tick(e, tx, navigatorTick(e)); busy {
+		vel[0], vel[2] = walk[0], walk[2]
+	} else {
+		if b.nextWander > 0 {
+			b.nextWander--
+		}
+		if b.nextWander == 0 {
+			b.nextWander = 40 + int(b.random.NextInt(41))
+			vel = vel.Add(mgl64.Vec3{(float64(b.random.NextFloat())*2 - 1) * b.speed * .1, 0, (float64(b.random.NextFloat())*2 - 1) * b.speed * .1})
+		}
 	}
-	return b.movement.TickMovement(e, e.Position(), vel, e.data.Rot, e.data.Rot, tx)
+	m := b.movement.TickMovement(e, e.Position(), vel, e.data.Rot, e.data.Rot, tx)
+	e.data.Pos, e.data.Vel = m.Position(), m.Velocity()
+	return m
 }
 func (f *Frog) Health() float64        { return f.behaviour().health.Health() }
 func (f *Frog) MaxHealth() float64     { return f.behaviour().health.MaxHealth() }
