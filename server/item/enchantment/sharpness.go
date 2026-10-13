@@ -38,8 +38,13 @@ func (sharpness) Addend(level int) float64 {
 }
 
 // CompatibleWithEnchantment ...
-func (sharpness) CompatibleWithEnchantment(item.EnchantmentType) bool {
-	return true
+func (sharpness) CompatibleWithEnchantment(t item.EnchantmentType) bool {
+	switch t.(type) {
+	case smite, baneOfArthropods:
+		return false
+	default:
+		return true
+	}
 }
 
 // CompatibleWithItem ...

@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-type gcCommand struct{}
+type gcCommand struct{ opGate }
 
 func newGCCommand(_ serverAdapter) cmd.Command {
 	return cmd.New("gc", "Runs chunk cleanup and triggers a Go garbage collection cycle.", nil, gcCommand{})

@@ -108,6 +108,62 @@ func (w *World) SetBorderCenter(x, z float64) {
 	w.border.settings.CenterX, w.border.settings.CenterZ = x, z
 }
 
+// SetBorderDamage changes the damage applied per block outside the safe zone.
+func (w *World) SetBorderDamage(damage float64) {
+	if w == nil {
+		return
+	}
+	w.set.Lock()
+	w.border.settings.DamagePerBlock = damage
+	w.set.Unlock()
+}
+
+// SetBorderSafeZone changes the distance outside the border at which damage starts.
+func (w *World) SetBorderSafeZone(distance float64) {
+	if w == nil {
+		return
+	}
+	w.set.Lock()
+	w.border.settings.SafeZone = distance
+	w.set.Unlock()
+}
+
+// SetBorderWarningBlocks changes the warning distance in blocks.
+func (w *World) SetBorderWarningBlocks(distance int32) {
+	if w == nil {
+		return
+	}
+	w.set.Lock()
+	w.border.settings.WarningBlocks = distance
+	w.set.Unlock()
+}
+
+// SetBorderWarningTime changes the warning lead time in seconds.
+func (w *World) SetBorderWarningTime(seconds int32) {
+	if w == nil {
+		return
+	}
+	w.set.Lock()
+	w.border.settings.WarningTime = seconds
+	w.set.Unlock()
+}
+
+// SetBorderSize adds to the target size over ticks, retaining the current state as the transition origin.
+func (w *World) AddBorderSize(amount float64, ticks int64) {
+	if w == nil {
+		return
+	}
+	w.set.Lock()
+	defer w.set.Unlock()
+	b := &w.border
+	target := b.settings.Size + amount
+	b.from, b.previousSize, b.duration = b.settings.Size, b.settings.Size, ticks
+	b.settings.LerpTarget, b.settings.LerpTime = target, ticks
+	if ticks <= 0 || b.settings.Size == target {
+		b.settings.Size, b.previousSize, b.settings.LerpTime, b.duration = target, target, 0, 0
+	}
+}
+
 // SetBorderSize transitions from the current size over ticks. Zero ticks sets
 // a static extent. Border progress uses game ticks, not wall-clock time.
 func (w *World) SetBorderSize(size float64, ticks int64) {

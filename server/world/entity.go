@@ -683,6 +683,8 @@ type EntityRegistryConfig struct {
 	// NaturalSpawnTick runs source-defined natural ecology once per world tick.
 	NaturalSpawnTick func(*Tx)
 	Item             func(opts EntitySpawnOpts, it any) *EntityHandle
+	// EyeOfEnder throws an eye of ender signal towards a located stronghold.
+	EyeOfEnder func(opts EntitySpawnOpts, target mgl64.Vec3) *EntityHandle
 	// ExperienceOrbs creates the source denominations for a block's XP reward.
 	ExperienceOrbs func(pos mgl64.Vec3, amount int) []*EntityHandle
 	NewFromBucket  func(opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle

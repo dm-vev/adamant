@@ -16,6 +16,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
 	"github.com/go-gl/mathgl/mgl64"
@@ -72,6 +73,15 @@ type World struct {
 	// tick is the per-world tick counter used by worlds that do not advance the
 	// shared Settings, such as the Nether, End and custom dimensions.
 	tick                      int64
+	tickFrozen                atomic.Bool
+	stepTicks                 atomic.Int64
+	sprintTicks               atomic.Int64
+	tickRate                  atomic.Uint64
+	forcedChunksMu            sync.RWMutex
+	forcedChunks              map[ChunkPos]struct{}
+	forcedChunksLoaded        bool
+	scoreboardOnce            sync.Once
+	scoreboardModel           *scoreboard.Model
 	handler                   atomic.Pointer[Handler]
 	structureReferenceQueryMu sync.Mutex
 	structureReferenceMu      sync.Mutex
@@ -122,7 +132,8 @@ type World struct {
 	weatherRandMu sync.Mutex
 	weatherRand   *rand.Rand
 
-	tps atomic.Uint64
+	autoSaveDisabled atomic.Bool
+	tps              atomic.Uint64
 
 	// Scheduled updates are partitioned by native registry: blocks drain before
 	// fluids, and each queue owns ticks by their scheduled position.
@@ -1904,6 +1915,7 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 		w.saveLootRandomSequences()
 		w.saveBorder()
 		w.saveGenerationState()
+		w.saveScoreboard()
 	}
 }
 
@@ -2035,6 +2047,7 @@ func (w *World) close() {
 			w.save(w.closeChunk)(tx)
 		}
 		w.saveLootRandomSequences()
+		w.saveScoreboard()
 	})
 	w.scheduleMu.Lock()
 	w.closeAcceptingEntityTasks.Store(false)
@@ -2621,7 +2634,9 @@ func (w *World) autoSave() {
 		case <-closeUnused.C:
 			<-w.exec(w.closeUnusedChunks)
 		case <-save.C:
-			w.Save()
+			if !w.autoSaveDisabled.Load() {
+				w.Save()
+			}
 		case <-w.closing:
 			w.running.Done()
 			return
@@ -2636,6 +2651,9 @@ func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, bloc
 		return 0, 0, 0
 	}
 	for pos, c := range w.chunks {
+		if _, forced := w.forcedChunks[pos]; forced {
+			continue
+		}
 		if !c.Ready() || len(w.chunkRequests[pos]) != 0 || len(c.viewers) != 0 || len(c.loaders) != 0 {
 			continue
 		}

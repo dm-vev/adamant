@@ -9,6 +9,7 @@ import (
 )
 
 type gamemodeCommand struct {
+	opGate
 	Mode    gameModeValue              `cmd:"mode"`
 	Targets cmd.Optional[[]cmd.Target] `cmd:"target"`
 }

@@ -135,6 +135,7 @@ func init() {
 		SplashPotionType,
 		TNTType,
 		TextType,
+		EyeOfEnderType,
 	})
 }
 
@@ -179,6 +180,7 @@ var conf = world.EntityRegistryConfig{
 	Item: func(opts world.EntitySpawnOpts, it any) *world.EntityHandle {
 		return NewItem(opts, it.(item.Stack))
 	},
+	EyeOfEnder: NewEyeOfEnder,
 	Boat: func(opts world.EntitySpawnOpts, variant int) *world.EntityHandle {
 		return NewBoat(opts, variant)
 	},

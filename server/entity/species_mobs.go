@@ -397,7 +397,7 @@ func (s *speciesState) Tick(e *Ent, tx *world.Tx) *Movement {
 				if s.charged {
 					power = 6
 				}
-				(block.ExplosionConfig{SpawnFire: s.charged}).Explode(tx, world.NewEntityExplosionSource(m, power))
+				(block.ExplosionConfig{SpawnFire: s.charged, NoBlockDamage: mobGriefingDisabled(tx)}).Explode(tx, world.NewEntityExplosionSource(m, power))
 				m.kill()
 				return nil
 			}

@@ -11,12 +11,12 @@ import (
 func TestWhitelistOperatorsBypass(t *testing.T) {
 	dir := t.TempDir()
 	whitelistPath := filepath.Join(dir, "white-list.txt")
-	opsPath := filepath.Join(dir, "ops.txt")
+	opsPath := filepath.Join(dir, "ops.json")
 
 	if err := os.WriteFile(whitelistPath, []byte("bob\r\n"), 0644); err != nil {
 		t.Fatalf("write whitelist: %v", err)
 	}
-	if err := os.WriteFile(opsPath, []byte("alice\r\n"), 0644); err != nil {
+	if err := os.WriteFile(opsPath, []byte("[\"alice\"]\n"), 0644); err != nil {
 		t.Fatalf("write ops: %v", err)
 	}
 
@@ -47,12 +47,12 @@ func TestWhitelistOperatorsBypass(t *testing.T) {
 func TestWhitelistOperatorsEmptyNameRejects(t *testing.T) {
 	dir := t.TempDir()
 	whitelistPath := filepath.Join(dir, "white-list.txt")
-	opsPath := filepath.Join(dir, "ops.txt")
+	opsPath := filepath.Join(dir, "ops.json")
 
 	if err := os.WriteFile(whitelistPath, []byte(""), 0644); err != nil {
 		t.Fatalf("write whitelist: %v", err)
 	}
-	if err := os.WriteFile(opsPath, []byte("alice\r\n"), 0644); err != nil {
+	if err := os.WriteFile(opsPath, []byte("[\"alice\"]\n"), 0644); err != nil {
 		t.Fatalf("write ops: %v", err)
 	}
 

@@ -902,7 +902,22 @@ func mobKilledByPlayer(src world.DamageSource) bool {
 	killer := mobKiller(src)
 	return killer != nil && killer.H().Type().EncodeEntity() == "minecraft:player"
 }
+
+func mobGriefingDisabled(tx *world.Tx) bool {
+	if value, ok := tx.World().GameRule("mob_griefing"); ok {
+		if enabled, valid := value.(bool); valid {
+			return !enabled
+		}
+	}
+	return false
+}
 func dropMobLoot(tx *world.Tx, pos mgl64.Vec3, id string, src world.DamageSource) {
+	if rule, ok := tx.World().GameRule("do_mob_loot"); ok && rule == false {
+		return
+	}
+	if rule, ok := tx.World().GameRule("do_entity_drops"); ok && rule == false {
+		return
+	}
 	tableID := "minecraft:entities/" + id[len("minecraft:"):]
 	sequence, err := loot.RandomSequence(tableID)
 	if err != nil {
@@ -917,7 +932,12 @@ func dropMobLoot(tx *world.Tx, pos mgl64.Vec3, id string, src world.DamageSource
 			tool, _ := user.HeldItems()
 			ctx.ToolStack = tool
 			ctx.Tool = tool.Item()
-			// Looting is unavailable in this item registry; preserve the tool and player context without inventing an enchantment.
+			for _, ench := range tool.Enchantments() {
+				if ench.Type().Name() == "Looting" {
+					ctx.Looting = ench.Level()
+					break
+				}
+			}
 		}
 	}
 	drops, err := loot.Generate(tableID, 0, ctx)

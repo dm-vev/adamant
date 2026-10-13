@@ -595,7 +595,7 @@ func ghastFireballHit(e *Ent, tx *world.Tx, target trace.Result) {
 			}
 		}
 	}
-	(block.ExplosionConfig{SpawnFire: true}).Explode(tx, world.NewEntityExplosionSource(e, 1))
+	(block.ExplosionConfig{SpawnFire: true, NoBlockDamage: mobGriefingDisabled(tx)}).Explode(tx, world.NewEntityExplosionSource(e, 1))
 	tx.PlaySound(e.Position(), sound.Custom{Name: "entity.generic.explode", Volume: 1, Pitch: 1})
 }
 func (ghastFireballType) EncodeEntity() string { return "minecraft:fireball" }

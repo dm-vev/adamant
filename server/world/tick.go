@@ -33,7 +33,7 @@ const (
 // entities, blocks and other features such as the time and weather of the
 // world, as required.
 func (t ticker) tickLoop(w *World) {
-	tc := time.NewTicker(t.interval)
+	tc := time.NewTimer(t.interval)
 	defer tc.Stop()
 	lastTick := time.Now()
 	var (
@@ -71,6 +71,13 @@ func (t ticker) tickLoop(w *World) {
 				}
 			}
 			<-w.exec(t.tick)
+			interval := t.interval
+			if w.sprintTicks.Load() > 0 {
+				interval = time.Millisecond
+			} else if rate := w.TickRate(); rate > 0 {
+				interval = time.Duration(float64(time.Second) / rate)
+			}
+			tc.Reset(interval)
 		case <-w.closing:
 			// World is being closed: Stop ticking and get rid of a task.
 			w.running.Done()
@@ -93,6 +100,15 @@ func (t ticker) tick(tx *Tx) {
 	viewers, loaders := tx.World().allViewers()
 	w := tx.World()
 	defer w.releaseViewers(viewers)
+	w.loadForcedChunks()
+	for pos := range w.forcedChunks {
+		tx.chunk(pos)
+	}
+	runStep := w.tickFrozen.Load() && w.stepTicks.Load() > 0
+	if w.tickFrozen.Load() && !runStep {
+		t.tickFrozenPlayers(tx, w.CurrentTick())
+		return
+	}
 
 	var spawnX, spawnZ int
 	resolveSpawnY := false
@@ -115,9 +131,8 @@ func (t ticker) tick(tx *Tx) {
 	}
 
 	w.set.Lock()
-	if len(viewers) == 0 && w.set.CurrentTick != 0 && !w.conf.Synchronous {
-		// Don't continue ticking if no viewers are in the world. Synchronous
-		// worlds only tick on explicit AdvanceTick calls, so they always tick.
+	if len(viewers) == 0 && w.set.CurrentTick != 0 && !w.conf.Synchronous && len(w.forcedChunks) == 0 && w.sprintTicks.Load() == 0 && !runStep {
+		// Don't continue ticking if no viewers or forced chunks are in the world.
 		w.set.Unlock()
 		return
 	}
@@ -132,8 +147,10 @@ func (t ticker) tick(tx *Tx) {
 	} else {
 		w.tick++
 	}
+	if runStep {
+		w.stepTicks.Add(-1)
+	}
 	w.border.tick()
-
 	rain, thunder, tick, tim := w.set.Raining, w.set.Thundering && w.set.Raining, w.currentTickLocked(), int(w.set.Time)
 	timeCycle := w.set.TimeCycle
 
@@ -165,23 +182,45 @@ func (t ticker) tick(tx *Tx) {
 			}
 		}
 	}
-	if thunder {
-		w.tickLightning(tx)
+	if !w.tickFrozen.Load() || runStep {
+		if thunder {
+			w.tickLightning(tx)
+		}
+		if w.dragonFight != nil {
+			w.dragonFight.Tick(tx)
+		}
+		t.tickEntities(tx, tick)
+		if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
+			spawnTick(tx)
+		}
+		tx.TickRaids()
+		w.scheduledBlockTicks.tick(tx, tick, loaders...)
+		w.scheduledFluidTicks.tick(tx, tick, loaders...)
+		t.tickBlocksRandomly(tx, loaders, tick)
+		t.performNeighbourUpdates(tx)
+		w.redstone.tick(tx, tick)
+	}
+	if w.sprintTicks.Load() > 0 {
+		w.sprintTicks.Add(-1)
 	}
 
-	if w.dragonFight != nil {
-		w.dragonFight.Tick(tx)
+}
+
+// tickFrozenPlayers preserves player-side processing while suppressing world simulation.
+func (t ticker) tickFrozenPlayers(tx *Tx, tick int64) {
+	w := tx.World()
+	for _, ref := range w.entityColumns {
+		col := ref.col
+		for index := 0; col != nil && index < len(col.Entities); {
+			handle := col.Entities[index]
+			if handle.Type().EncodeEntity() == "minecraft:player" {
+				t.tickEntityHandle(tx, tick, handle, entityChunkRef{col: col, pos: ref.pos}, true)
+			}
+			if index < len(col.Entities) && col.Entities[index] == handle {
+				index++
+			}
+		}
 	}
-	t.tickEntities(tx, tick)
-	if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
-		spawnTick(tx)
-	}
-	tx.TickRaids()
-	w.scheduledBlockTicks.tick(tx, tick, loaders...)
-	w.scheduledFluidTicks.tick(tx, tick, loaders...)
-	t.tickBlocksRandomly(tx, loaders, tick)
-	t.performNeighbourUpdates(tx)
-	w.redstone.tick(tx, tick)
 }
 
 type inhabitedTimePlayer struct {
@@ -276,15 +315,26 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 		r = int32(w.tickRange())
 		g randUint4
 	)
-	if r == 0 {
-		// NOP if the simulation distance is 0.
+	if r == 0 && len(w.forcedChunks) == 0 {
+		// NOP if the simulation distance is 0 and no forced chunks exist.
 		return
 	}
 	columns := w.activeColumns
-	if w.conf.Synchronous {
+	if w.conf.Synchronous || len(w.forcedChunks) != 0 {
 		columns = make([]columnRef, 0, len(w.chunks))
 		for pos, col := range w.chunks {
-			columns = append(columns, columnRef{pos: pos, col: col})
+			if w.conf.Synchronous {
+				columns = append(columns, columnRef{pos: pos, col: col})
+			} else if _, forced := w.forcedChunks[pos]; forced {
+				columns = append(columns, columnRef{pos: pos, col: col})
+			}
+		}
+		if !w.conf.Synchronous {
+			for _, ref := range w.activeColumns {
+				if _, forced := w.forcedChunks[ref.pos]; !forced {
+					columns = append(columns, ref)
+				}
+			}
 		}
 		slices.SortFunc(columns, func(a, b columnRef) int {
 			if a.pos[0] < b.pos[0] || a.pos[0] == b.pos[0] && a.pos[1] < b.pos[1] {
@@ -302,14 +352,15 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 	randomTickSpeed := w.conf.RandomTickSpeed
 	doRandomTicks := randomTickSpeed > 0
 
-	areas := w.scratchLoaderAreas
-	if cap(areas) < len(loaders) {
-		areas = make([]loaderActiveArea, 0, len(loaders))
-	} else {
-		areas = areas[:0]
+	areas := w.scratchLoaderAreas[:0]
+	if cap(areas) < len(loaders)+len(w.forcedChunks) {
+		areas = make([]loaderActiveArea, 0, len(loaders)+len(w.forcedChunks))
 	}
 	for _, loader := range loaders {
 		areas = append(areas, loader.activeArea(r))
+	}
+	for pos := range w.forcedChunks {
+		areas = append(areas, loaderActiveArea{pos: pos, radius: 0})
 	}
 	w.scratchLoaderAreas = areas
 
@@ -853,7 +904,7 @@ func (w *World) scheduledTickChunkEligible(pos ChunkPos, areas []loaderActiveAre
 	if w.generationPending(pos, col) {
 		return false
 	}
-	return w.conf.Synchronous || columnWithinAreas(pos, areas)
+	return w.conf.Synchronous || columnWithinAreas(pos, areas) || w.IsChunkForced(pos)
 }
 
 func compareScheduledTickDrainOrder(a, b scheduledTick) int {

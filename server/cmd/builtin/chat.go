@@ -9,6 +9,7 @@ import (
 )
 
 type sayCommand struct {
+	opGate
 	Message cmd.Varargs `cmd:"message"`
 }
 

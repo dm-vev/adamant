@@ -695,7 +695,8 @@ func (p *Player) blocksUnder() (low, high cube.Pos) {
 // final damage dealt to the Player and if the Player was vulnerable to this
 // kind of damage.
 func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
-	if _, ok := p.Effect(effect.FireResistance); (ok && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
+	_, fireResistant := p.Effect(effect.FireResistance)
+	if p.frostWalkerProtectsFrom(src) || (fireResistant && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
 	}
 	totalDamage := p.FinalDamageFrom(dmg, src)
@@ -999,8 +1000,10 @@ func (p *Player) kill(src world.DamageSource) {
 
 	p.StopFishing(p.tx, false)
 
-	keepInv := false
-	p.Handler().HandleDeath(p, src, &keepInv)
+	keepInv := gameruleBool(p.tx.World(), "keep_inventory", false)
+	handledKeepInv := false
+	p.Handler().HandleDeath(p, src, &handledKeepInv)
+	keepInv = keepInv || handledKeepInv
 	p.StopSneaking()
 	p.StopSprinting()
 
@@ -2452,13 +2455,14 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	if s, ok := i.Enchantment(enchantment.Sharpness); ok {
 		dmg += enchantment.Sharpness.Addend(s.Level())
 		viewers, release := borrowViewers(p.tx, living.Position())
-		// Enchanted hit particles trigger frequently; reuse the pooled buffer so melee combat stays allocation
-		// free even when multiple players swing simultaneously.
+		// Enchanted hit particles trigger frequently; reuse the pooled buffer so multiple players swinging simultaneously doesn't allocate.
 		for _, v := range viewers {
 			v.ViewEntityAction(living, entity.EnchantedHitAction{})
 		}
 		releaseBorrowedViewers(p.tx, viewers, release)
 	}
+	target := living.H().Type().EncodeEntity()
+	dmg += java26MobDamageBonus(i, target)
 	if imp, ok := i.Enchantment(enchantment.Impaling); ok {
 		if bonus := enchantment.Impaling.Damage(imp.Level(), living, p.tx); bonus > 0 {
 			dmg += bonus
@@ -2497,6 +2501,12 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 	if !vulnerable {
 		return true
+	}
+	if _, ok := i.Enchantment(enchantment.BaneOfArthropods); ok && arthropodEntity(target) {
+		if slowed, ok := living.(interface{ AddEffect(effect.Effect) }); ok {
+			duration := time.Duration((1.5 + rand.Float64()*2) * float64(time.Second))
+			slowed.AddEffect(effect.New(effect.Slowness, 4, duration))
+		}
 	}
 	if critical {
 		viewers, release := borrowViewers(p.tx, living.Position())
@@ -2749,13 +2759,18 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 	}
 	held, _ := p.HeldItems()
 	drops := p.drops(pos, held, b)
-
+	tileDrops := gameruleBool(p.tx.World(), "do_tile_drops", true)
+	if !tileDrops {
+		drops = nil
+	}
 	xp := 0
-	if breakable, ok := b.(block.Breakable); ok && !p.GameMode().CreativeInventory() {
-		if source, ok := b.(interface{ SourceExperience(*world.Tx) int }); ok {
-			xp = source.SourceExperience(p.tx)
-		} else if _, hasSilkTouch := held.Enchantment(enchantment.SilkTouch); !hasSilkTouch {
-			xp = breakable.BreakInfo().XPDrops.RandomValue()
+	if tileDrops {
+		if breakable, ok := b.(block.Breakable); ok && !p.GameMode().CreativeInventory() {
+			if source, ok := b.(interface{ SourceExperience(*world.Tx) int }); ok {
+				xp = source.SourceExperience(p.tx)
+			} else if _, hasSilkTouch := held.Enchantment(enchantment.SilkTouch); !hasSilkTouch {
+				xp = breakable.BreakInfo().XPDrops.RandomValue()
+			}
 		}
 	}
 
@@ -2763,6 +2778,9 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 	if p.Handler().HandleBlockBreak(ctx, pos, &drops, &xp); ctx.Cancelled() {
 		p.resendNearbyBlocks(pos)
 		return
+	}
+	if !tileDrops {
+		drops, xp = nil, 0
 	}
 	held, left := p.HeldItems()
 
@@ -3349,6 +3367,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 
 	p.checkBlockCollisions(p.data.Vel)
 	p.onGround = p.checkOnGround(mgl64.Vec3{})
+	p.tickFrostWalker()
 	p.checkEntitySteppers()
 
 	p.effects.Tick(p, p.tx)
@@ -3755,8 +3774,9 @@ func (p *Player) tickAirSupply() {
 // is full enough.
 func (p *Player) tickFood() {
 	state := p.hunger.tickState()
-	foodRegenerates := p.tx.World().Difficulty().FoodRegenerates()
-	if state.foodTick%10 == 0 && (state.canQuicklyRegenerate || foodRegenerates) {
+	naturalRegeneration := gameruleBool(p.tx.World(), "natural_regeneration", true)
+	foodRegenerates := p.tx.World().Difficulty().FoodRegenerates() && naturalRegeneration
+	if naturalRegeneration && state.foodTick%10 == 0 && (state.canQuicklyRegenerate || foodRegenerates) {
 		if foodRegenerates {
 			p.AddFood(1)
 		}
@@ -3765,7 +3785,7 @@ func (p *Player) tickFood() {
 		}
 	}
 	if state.foodTick == 1 {
-		if state.canRegenerate {
+		if naturalRegeneration && state.canRegenerate {
 			p.regenerate(!foodRegenerates)
 		} else if state.starving {
 			p.starve()
@@ -3786,6 +3806,15 @@ func (p *Player) regenerate(exhaust bool) {
 	if exhaust && regenerated > 0 {
 		p.Exhaust(6)
 	}
+}
+
+func gameruleBool(w *world.World, name string, fallback bool) bool {
+	if value, ok := w.GameRule(name); ok {
+		if enabled, ok := value.(bool); ok {
+			return enabled
+		}
+	}
+	return fallback
 }
 
 // starve deals starvation damage to the player if the difficult allows it. In peaceful mode, no damage will

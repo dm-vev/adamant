@@ -2,7 +2,6 @@ package session
 
 import (
 	"fmt"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -10,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"math"
@@ -311,6 +311,9 @@ func (h *ItemStackRequestHandler) handleTransfer(from, to protocol.StackRequestS
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
 	i, _ := h.itemInSlot(from, s, tx)
+	if err := ensureBindingAllowsRemoval(i, from, to, c); err != nil {
+		return err
+	}
 	if i.Count() < int(count) {
 		return fmt.Errorf("client tried subtracting %v from item count, but there are only %v", count, i.Count())
 	}
@@ -438,6 +441,12 @@ func (h *ItemStackRequestHandler) handleSwap(a *protocol.SwapStackRequestAction,
 	}
 	i, _ := h.itemInSlot(a.Source, s, tx)
 	dest, _ := h.itemInSlot(a.Destination, s, tx)
+	if err := ensureBindingAllowsRemoval(i, a.Source, a.Destination, c); err != nil {
+		return err
+	}
+	if err := ensureBindingAllowsRemoval(dest, a.Destination, a.Source, c); err != nil {
+		return err
+	}
 	if err := ensureUnlockedForInventoryMove(i, a.Source, a.Destination, s, tx); err != nil {
 		return err
 	}
@@ -518,6 +527,9 @@ func (h *ItemStackRequestHandler) handleDrop(a *protocol.DropStackRequestAction,
 		return fmt.Errorf("source slot out of sync: %w", err)
 	}
 	i, _ := h.itemInSlot(a.Source, s, tx)
+	if err := ensureBindingAllowsRemoval(i, a.Source, protocol.StackRequestSlotInfo{}, c); err != nil {
+		return err
+	}
 	if err := ensureUnlockedForInventoryRemoval(i, a.Source); err != nil {
 		return err
 	}

@@ -52,11 +52,13 @@ type Server struct {
 	customBlocks     []protocol.BlockEntry
 	customItems      []protocol.ItemEntry
 	customDimensions []protocol.DimensionDefinition
-
-	whitelist *Whitelist
-
-	listeners []Listener
-	incoming  chan incoming
+	whitelist        *Whitelist
+	operators        *operatorsList
+	bans             *banList
+	idleTimeout      atomic.Int64
+	idleStop         chan struct{}
+	listeners        []Listener
+	incoming         chan incoming
 
 	pmu sync.RWMutex
 	// p holds a map of all players currently connected to the server. When they
@@ -116,6 +118,7 @@ func (srv *Server) Listen() {
 	srv.conf.Log.Info("Dragonfly server started.", "mc-version", protocol.CurrentVersion, "go-version", info.GoVersion, "commit", revision)
 	srv.startListening()
 	go srv.wait()
+	go srv.idleTimeoutLoop()
 }
 
 // Accept accepts incoming players into the server, returning an iterator that
@@ -387,7 +390,7 @@ func (srv *Server) Close() error {
 
 // close stops the server, storing player and world data to disk.
 func (srv *Server) close() {
-	srv.conf.Log.Info("Server closing...")
+	close(srv.idleStop)
 
 	srv.conf.Log.Debug("Disconnecting players...")
 	for p := range srv.Players(nil) {

@@ -13,7 +13,7 @@ import (
 const bellRingTicks = 50
 
 // Bell is a transparent block that can be placed on the floor, ceiling, or walls and rung by interacting with it.
-// Village and raid behaviour is intentionally not implemented.
+// Java's raider glowing has no Bedrock representation.
 type Bell struct {
 	transparent
 	sourceWaterDisplacer
@@ -131,7 +131,8 @@ func (b Bell) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 		return
 	}
 	b.ringTicks++
-	if b.ringTicks >= bellRingTicks {
+	// Java starts resonance at tick 50 and keeps the ringing state for 60 ticks.
+	if b.ringTicks >= bellRingTicks+10 {
 		b.Toggle, b.ringTicks = false, 0
 	}
 	tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})

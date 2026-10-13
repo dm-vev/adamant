@@ -1,13 +1,40 @@
 package builtin
 
 import (
+	"iter"
 	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/player"
+	"github.com/df-mc/dragonfly/server/world"
 )
+
+// onlinePlayers yields the players in the transaction's world.
+func onlinePlayers(tx *world.Tx) iter.Seq[*player.Player] {
+	return func(yield func(*player.Player) bool) {
+		for e := range tx.Players() {
+			if p, ok := e.(*player.Player); ok && !yield(p) {
+				return
+			}
+		}
+	}
+}
+
+// singleTarget enforces Java's single-entity selector arguments on the
+// framework's multi-target parameter type.
+func singleTarget(targets []cmd.Target, o *cmd.Output) (cmd.Target, bool) {
+	if len(targets) != 1 {
+		if len(targets) == 0 {
+			o.Errort(cmd.MessageNoTargets)
+		} else {
+			o.Errorf("Only one entity is allowed, but the provided selector allows more than one")
+		}
+		return nil, false
+	}
+	return targets[0], true
+}
 
 type namedSource interface {
 	Name() string

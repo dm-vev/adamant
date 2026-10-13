@@ -128,6 +128,7 @@ type Session struct {
 	closeBackground    chan struct{}
 
 	overflowStreak  atomic.Uint32
+	lastActivity    atomic.Int64
 	overflowLastLog atomic.Int64
 
 	inputLocksMu sync.RWMutex
@@ -244,7 +245,9 @@ func (conf Config) New(conn Conn) *Session {
 		debugShapes:            make(map[int]debug.Shape),
 		debugShapeUpdates:      make([]debugShapeUpdate, 0, 256),
 		abilityResendDelay:     defaultAbilityResendDelay,
+		lastActivity:           atomic.Int64{},
 	}
+	s.lastActivity.Store(time.Now().UnixNano())
 	s.viewLayer = world.NewViewLayer(s)
 	// Initialize heldSlot before any inventory callbacks can fire.
 	s.heldSlot.Store(new(uint32))
@@ -667,6 +670,7 @@ func (s *Session) ChunkRadius() int32 {
 // handlePacket handles an incoming packet, processing it accordingly. If the packet had invalid data or was
 // otherwise not valid in its context, an error is returned.
 func (s *Session) handlePacket(pk packet.Packet, tx *world.Tx, c Controllable) (err error) {
+	s.lastActivity.Store(time.Now().UnixNano())
 	handler, ok := s.handlers[pk.ID()]
 	if !ok {
 		s.conf.Log.Debug("unhandled packet", "packet", fmt.Sprintf("%T", pk), "data", fmt.Sprintf("%+v", pk)[1:])

@@ -8,7 +8,7 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// EnderEye is the item used to fill End portal frames. The stronghold-locating throw is not implemented.
+// EnderEye is the item used to fill End portal frames and locate strongholds.
 type EnderEye struct{}
 
 // EncodeItem ...
@@ -41,5 +41,26 @@ func (EnderEye) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx
 		tx.PlaySound(pos.Vec3Centre(), sound.EndPortalCreated{})
 	}
 	ctx.SubtractFromCount(1)
+	return true
+}
+
+// Use throws an eye of ender towards the nearest stronghold, as Java
+// EnderEyeItem.use. Without a located stronghold the item is not consumed.
+func (EnderEye) Use(tx *world.Tx, user User, ctx *UseContext) bool {
+	create := tx.World().EntityRegistry().Config().EyeOfEnder
+	if create == nil || tx.World().Dimension() != world.Overworld {
+		return false
+	}
+	loc, ok, err := tx.World().FindNearestMapFeature("minecraft:eye_of_ender_located", cube.PosFromVec3(user.Position()), 100, false)
+	if err != nil || !ok {
+		return false
+	}
+	// Java spawns the eye at the user's mid-height (getY(0.5)).
+	pos := user.Position().Add(mgl64.Vec3{0, .9})
+	tx.AddEntity(create(world.EntitySpawnOpts{Position: pos}, loc.Position.Vec3()))
+	tx.PlaySound(pos, sound.ItemThrow{})
+	if creative, ok := user.(interface{ GameMode() world.GameMode }); !ok || !creative.GameMode().CreativeInventory() {
+		ctx.SubtractFromCount(1)
+	}
 	return true
 }

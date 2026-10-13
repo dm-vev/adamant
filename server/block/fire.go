@@ -43,11 +43,11 @@ func neighboursFlammable(pos cube.Pos, tx *world.Tx) bool {
 
 // infinitelyBurning returns true if fire can infinitely burn at the specified position.
 func infinitelyBurning(pos cube.Pos, tx *world.Tx) bool {
-	switch block := tx.Block(pos.Side(cube.FaceDown)).(type) {
-	// TODO: Magma Block
-	case Netherrack:
+	switch tx.Block(pos.Side(cube.FaceDown)).(type) {
+	case Magma, Netherrack:
 		return true
 	case Bedrock:
+		block := tx.Block(pos.Side(cube.FaceDown)).(Bedrock)
 		return block.InfiniteBurning
 	}
 	return false
@@ -82,7 +82,11 @@ func rainingAround(pos cube.Pos, tx *world.Tx) bool {
 
 // tick ...
 func (f Fire) tick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
-	if f.Type == SoulFire() {
+	if f.Type == SoulFire() || func() bool {
+		value, ok := tx.World().GameRule("do_fire_tick")
+		enabled, valid := value.(bool)
+		return ok && valid && !enabled
+	}() {
 		return
 	}
 	infinitelyBurns := infinitelyBurning(pos, tx)

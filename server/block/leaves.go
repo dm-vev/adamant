@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -74,8 +75,7 @@ func (l Leaves) RandomTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 			tx.SetBlock(pos, l, nil)
 			return
 		}
-		tx.SetBlock(pos, nil, nil)
-		for _, drop := range l.BreakInfo().Drops(item.ToolNone{}, nil) {
+		for _, drop := range leavesDrops(l, item.ToolNone{}, nil, tx, pos) {
 			dropItem(tx, drop, pos.Vec3Centre())
 		}
 	}
@@ -99,26 +99,29 @@ func (l Leaves) BreakInfo() BreakInfo {
 	return newBreakInfo(0.2, alwaysHarvestable, func(t item.Tool) bool {
 		return t.ToolType() == item.TypeShears || t.ToolType() == item.TypeHoe
 	}, func(t item.Tool, enchantments []item.Enchantment) []item.Stack {
-		if t.ToolType() == item.TypeShears || hasSilkTouch(enchantments) {
-			return []item.Stack{item.NewStack(l, 1)}
-		}
-		fortune := fortuneLevel(enchantments)
-		var drops []item.Stack
-
-		// TODO: Drop saplings.
-
-		stickChances := []float64{0.02, 0.022222222, 0.025, 0.033333333}
-		if rand.Float64() < stickChances[min(fortune, 3)] {
-			drops = append(drops, item.NewStack(item.Stick{}, rand.IntN(2)+1))
-		}
-		if wood, ok := l.Type.Wood(); ok && (wood == OakWood() || wood == DarkOakWood()) {
-			appleChances := []float64{0.005, 0.005555556, 0.00625, 0.008333333}
-			if rand.Float64() < appleChances[min(fortune, 3)] {
-				drops = append(drops, item.NewStack(item.Apple{}, 1))
-			}
-		}
-		return drops
+		return leavesDrops(l, t, enchantments, nil, cube.Pos{})
 	})
+}
+
+func leavesDrops(l Leaves, tool item.Tool, enchantments []item.Enchantment, tx *world.Tx, pos cube.Pos) []item.Stack {
+	stack, ok := tool.(world.Item)
+	if !ok {
+		stack = l
+	}
+	toolStack := item.NewStack(stack, 1).WithForcedEnchantments(enchantments...)
+	table := "minecraft:blocks/" + l.Type.String()
+	context := loot.Context{
+		Tool: stack, ToolStack: toolStack, Block: "minecraft:" + l.Type.String(),
+		BlockState: l, Origin: pos.Vec3Centre(), Tx: tx,
+	}
+	if tx != nil {
+		context.RandomSequence = tx.LootRandomSequence
+	}
+	drops, err := loot.Generate(table, rand.Int64(), context)
+	if err != nil {
+		panic(err)
+	}
+	return drops
 }
 
 // CompostChance ...

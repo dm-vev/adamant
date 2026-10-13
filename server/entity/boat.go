@@ -650,8 +650,13 @@ func (b *Boat) ControlsVehicle(passenger world.Entity) bool {
 
 // Interact handles interaction with the boat.
 func (b *Boat) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
+	return b.Mount(tx, user)
+}
+
+// Mount adds passenger to the boat if a seat is free.
+func (b *Boat) Mount(tx *world.Tx, passenger world.Entity) bool {
 	if beh := b.base(); beh != nil {
-		return beh.Mount(b.Ent, tx, user)
+		return beh.Mount(b.Ent, tx, passenger)
 	}
 	return false
 }

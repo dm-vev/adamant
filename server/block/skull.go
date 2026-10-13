@@ -9,8 +9,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// TODO: Dragon Heads can be powered by redstone
-
 // Skull is a decorative block. There are seven types of skulls: player, zombie, skeleton, wither skeleton, creeper,
 // dragon, and piglin.
 type Skull struct {
@@ -70,6 +68,7 @@ func (s Skull) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.
 	place(tx, pos, s, user, ctx)
 	return placed(ctx)
 }
+
 // Placed completes a Wither construction pattern when a Wither Skeleton Skull is placed.
 func (s Skull) Placed(pos cube.Pos, tx *world.Tx, previous world.Block) {
 	if s.Type != WitherSkeletonSkull() {
@@ -118,12 +117,23 @@ func (s Skull) DecodeNBT(data map[string]interface{}) interface{} {
 	return s
 }
 
-// EncodeNBT ...
 func (s Skull) EncodeNBT() map[string]interface{} {
 	return map[string]interface{}{
 		"id": "Skull", "SkullType": uint8(255), "Rotation": float32(s.Attach.o.Yaw()),
-		"DoingAnimation": boolByte(s.Powered), "MouthTickCount": s.AnimationTicks,
+		"DoingAnimation": boolByte(s.Powered), "MouthMoving": boolByte(s.Powered), "MouthTickCount": s.AnimationTicks,
 	}
+}
+
+// Tick advances the mouth animation while this dragon or piglin head receives redstone power.
+func (s Skull) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
+	if s.Type != DragonHead() && s.Type != PiglinHead() {
+		return
+	}
+	s.Powered = tx.RedstonePower(pos) > 0
+	if s.Powered {
+		s.AnimationTicks++
+	}
+	tx.SetBlock(pos, s, nil)
 }
 
 // EncodeBlock ...

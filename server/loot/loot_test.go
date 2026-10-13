@@ -42,7 +42,7 @@ func TestMatchToolPredicateChecksMissingToolTagsAndEnchantments(t *testing.T) {
 	stack := item.NewStack(pickaxe, 1).WithEnchantments(item.NewEnchantment(enchantment.Fortune, 2))
 	ctx := Context{ToolStack: stack}
 	predicate := map[string]any{
-		"items": "#minecraft:pickaxes",
+		"items":      "#minecraft:pickaxes",
 		"components": map[string]any{"predicates": map[string]any{"minecraft:enchantments": []any{map[string]any{"enchantments": "#minecraft:non_treasure", "levels": map[string]any{"min": float64(2)}}}}},
 	}
 	if ok, err := matchToolPredicate(predicate, &ctx); err != nil || !ok {
@@ -111,8 +111,8 @@ func TestInlineLootTableValueExpandsItsPools(t *testing.T) {
 
 func TestSetEnchantmentsPreservesOthersAndAppliesAddMode(t *testing.T) {
 	for _, test := range []struct {
-		name string
-		add bool
+		name        string
+		add         bool
 		level, want float64
 	}{
 		{name: "replace", level: 1, want: 1},
@@ -127,7 +127,9 @@ func TestSetEnchantmentsPreservesOthersAndAppliesAddMode(t *testing.T) {
 				{Type: "minecraft:set_enchantments", Add: test.add, Enchantments: map[string]any{"minecraft:fortune": test.level}},
 			}}
 			stack, err := makeStack(e, &Context{})
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			if got := lootEnchantmentLevel(stack, "minecraft:fortune"); got != int(test.want) {
 				t.Fatalf("fortune level = %d, want %d", got, int(test.want))
 			}

@@ -13,11 +13,11 @@ func init() {
 	item.RegisterEnchantment(7, DepthStrider)
 	item.RegisterEnchantment(8, AquaAffinity)
 	item.RegisterEnchantment(9, Sharpness)
-	// TODO: (10) Smite. (Requires undead mobs)
-	// TODO: (11) Bane of Arthropods. (Requires arthropod mobs)
+	item.RegisterEnchantment(10, Smite)
+	item.RegisterEnchantment(11, BaneOfArthropods)
 	item.RegisterEnchantment(12, Knockback)
 	item.RegisterEnchantment(13, FireAspect)
-	// TODO: (14) Looting.
+	item.RegisterEnchantment(14, Looting)
 	item.RegisterEnchantment(15, Efficiency)
 	item.RegisterEnchantment(16, SilkTouch)
 	item.RegisterEnchantment(17, Unbreaking)
@@ -26,11 +26,10 @@ func init() {
 	item.RegisterEnchantment(20, Punch)
 	item.RegisterEnchantment(21, Flame)
 	item.RegisterEnchantment(22, Infinity)
-	item.RegisterEnchantment(23, LuckOfTheSea)
 	item.RegisterEnchantment(24, Lure)
-	// TODO: (25) Frost Walker.
+	item.RegisterEnchantment(25, FrostWalker)
 	item.RegisterEnchantment(26, Mending)
-	// TODO: (27) Curse of Binding.
+	item.RegisterEnchantment(27, CurseOfBinding)
 	item.RegisterEnchantment(28, CurseOfVanishing)
 	item.RegisterEnchantment(29, Impaling)
 	item.RegisterEnchantment(30, Riptide)

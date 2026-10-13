@@ -868,12 +868,17 @@ func (m *Minecart) SetVehicleInput(strafe, forward float64) {
 }
 
 // Interact handles interaction with the minecart.
-func (m *Minecart) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+func (m *Minecart) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
+	return m.Mount(tx, user)
+}
+
+// Mount seats passenger in a rideable minecart without a display block.
+func (m *Minecart) Mount(tx *world.Tx, passenger world.Entity) bool {
 	if b := m.base(); b != nil && b.rideable {
 		if _, hasDisplay := b.DisplayBlock(); hasDisplay {
 			return false
 		}
-		return b.Mount(m.Ent, tx, user)
+		return b.Mount(m.Ent, tx, passenger)
 	}
 	return false
 }

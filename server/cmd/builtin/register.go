@@ -6,6 +6,7 @@ import (
 
 // Register registers the built-in command set on the provided server.
 func Register(srv serverAdapter) {
+	commandServer = srv
 	cmd.Register(newAboutCommand(srv))
 	cmd.Register(newHelpCommand())
 	cmd.Register(newListCommand(srv))
@@ -19,4 +20,9 @@ func Register(srv serverAdapter) {
 	cmd.Register(newGCCommand(srv))
 	cmd.Register(newWhitelistCommand(srv))
 	cmd.Register(newClearCommand())
+	registerPlayerCommands(srv)
+	registerWorldCommands(srv)
+	registerAdminCommands(srv)
+	registerScoreboardCommands(srv)
+	registerDataCommands(srv)
 }

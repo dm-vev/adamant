@@ -10,33 +10,39 @@ import (
 )
 
 type whitelistAddCommand struct {
+	adminPermission
 	srv  serverAdapter
 	Add  cmd.SubCommand `cmd:"add"`
 	Name string         `cmd:"player"`
 }
 
 type whitelistOnCommand struct {
+	adminPermission
 	srv serverAdapter
 	On  cmd.SubCommand `cmd:"on"`
 }
 
 type whitelistOffCommand struct {
+	adminPermission
 	srv serverAdapter
 	Off cmd.SubCommand `cmd:"off"`
 }
 
 type whitelistReloadCommand struct {
+	adminPermission
 	srv    serverAdapter
 	Reload cmd.SubCommand `cmd:"reload"`
 }
 
 type whitelistRemoveCommand struct {
+	adminPermission
 	srv    serverAdapter
 	Remove cmd.SubCommand `cmd:"remove"`
 	Name   string         `cmd:"player"`
 }
 
 type whitelistListCommand struct {
+	adminPermission
 	srv  serverAdapter
 	List cmd.SubCommand `cmd:"list"`
 }
@@ -46,12 +52,12 @@ func newWhitelistCommand(srv serverAdapter) cmd.Command {
 		"whitelist",
 		"Manages the whitelist.",
 		[]string{"allowlist"},
-		whitelistAddCommand{srv: srv},
-		whitelistOnCommand{srv: srv},
-		whitelistOffCommand{srv: srv},
-		whitelistReloadCommand{srv: srv},
-		whitelistRemoveCommand{srv: srv},
-		whitelistListCommand{srv: srv},
+		whitelistAddCommand{adminPermission: adminPermission{srv}, srv: srv},
+		whitelistOnCommand{adminPermission: adminPermission{srv}, srv: srv},
+		whitelistOffCommand{adminPermission: adminPermission{srv}, srv: srv},
+		whitelistReloadCommand{adminPermission: adminPermission{srv}, srv: srv},
+		whitelistRemoveCommand{adminPermission: adminPermission{srv}, srv: srv},
+		whitelistListCommand{adminPermission: adminPermission{srv}, srv: srv},
 	)
 }
 

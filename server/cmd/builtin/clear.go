@@ -8,6 +8,7 @@ import (
 )
 
 type clearCommand struct {
+	opGate
 	Targets cmd.Optional[[]cmd.Target] `cmd:"target"`
 }
 

@@ -240,11 +240,17 @@ func (conf Config) New() *Server {
 		incoming:   make(chan incoming),
 		p:          make(map[uuid.UUID]*onlinePlayer),
 		dimensions: make(map[world.Dimension]*world.World),
+		idleStop:   make(chan struct{}),
 	}
 	if wl, ok := conf.Allower.(*Whitelist); ok {
 		srv.whitelist = wl
 	} else if holder, ok := conf.Allower.(interface{ underlyingWhitelist() *Whitelist }); ok {
 		srv.whitelist = holder.underlyingWhitelist()
+	}
+	if access, ok := conf.Allower.(interface {
+		adminAccess() (*operatorsList, *banList)
+	}); ok {
+		srv.operators, srv.bans = access.adminAccess()
 	}
 	registerQueryServer(srv)
 	for _, lf := range conf.Listeners {
@@ -533,14 +539,17 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 	wl.SetEnabled(uc.Whitelist.Enabled)
 	wl.SetKickMessage(uc.Whitelist.Reason)
 
-	// Lumi/Nukkit exempts operators (ops.txt) from whitelist checks. Load the ops file from the same directory as the
-	// whitelist so that deployments can keep access control files together.
-	opsPath := filepath.Join(filepath.Dir(whitelistFile), "ops.txt")
-	ops, err := loadOperators(opsPath)
+	// Keep operator and ban data beside the configured whitelist.
+	baseDir := filepath.Dir(whitelistFile)
+	ops, err := loadOperators(filepath.Join(baseDir, "ops.json"))
 	if err != nil {
 		return conf, fmt.Errorf("load ops list: %w", err)
 	}
-	conf.Allower = whitelistOperatorsAllower{whitelist: wl, operators: ops}
+	bans, err := loadBans(filepath.Join(baseDir, "banned-players.json"))
+	if err != nil {
+		return conf, fmt.Errorf("load bans: %w", err)
+	}
+	conf.Allower = adminAllower{base: whitelistOperatorsAllower{whitelist: wl, operators: ops}, operators: ops, bans: bans}
 	if uc.Players.SaveData {
 		conf.PlayerProvider, err = playerdb.NewProvider(uc.Players.Folder)
 		if err != nil {

@@ -630,6 +630,20 @@ func testCondition(x condition, c *Context) (bool, error) {
 		}
 		ok, e := testCondition(*x.Inverted, c)
 		return !ok, e
+	case "minecraft:table_bonus":
+		// Java BonusLevelTableCondition: the tool's enchantment level indexes
+		// the chance table, clamped to its last entry.
+		enchantment, _ := x.Raw["enchantment"].(string)
+		chances, ok := x.Raw["chances"].([]any)
+		if !ok || len(chances) == 0 {
+			return false, fmt.Errorf("loot table_bonus condition has no chances")
+		}
+		level := min(lootEnchantmentLevel(c.ToolStack, enchantment), len(chances)-1)
+		chance, ok := chances[level].(float64)
+		if !ok {
+			return false, fmt.Errorf("invalid loot table_bonus chance %T", chances[level])
+		}
+		return c.Random.NextFloat() < float32(chance), nil
 	case "minecraft:tool/can_silk_touch":
 		return lootEnchantmentLevel(c.ToolStack, "minecraft:silk_touch") > 0, nil
 	case "minecraft:tool/can_shear":

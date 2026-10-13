@@ -16,13 +16,17 @@ var WitherSkullType witherSkullType
 
 type witherSkullType struct{}
 
-func (witherSkullType) EncodeEntity() string { return "minecraft:wither_skull" }
+func (witherSkullType) EncodeEntity() string        { return "minecraft:wither_skull" }
 func (witherSkullType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .5, .25) }
 func (witherSkullType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
-	if d.Data == nil { witherSkullConfig(nil, false).Apply(d) }
-	return &Ent{tx:tx, handle:h, data:d}
+	if d.Data == nil {
+		witherSkullConfig(nil, false).Apply(d)
+	}
+	return &Ent{tx: tx, handle: h, data: d}
 }
-func (witherSkullType) DecodeNBT(_ map[string]any, d *world.EntityData) { witherSkullConfig(nil, false).Apply(d) }
+func (witherSkullType) DecodeNBT(_ map[string]any, d *world.EntityData) {
+	witherSkullConfig(nil, false).Apply(d)
+}
 func (witherSkullType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
 func witherSkullConfig(owner *world.EntityHandle, charged bool) ProjectileBehaviourConfig {
@@ -32,12 +36,14 @@ func witherSkullConfig(owner *world.EntityHandle, charged bool) ProjectileBehavi
 			if hit, ok := target.(trace.EntityResult); ok {
 				if living, ok := hit.Entity().(Living); ok {
 					duration := time.Second * 10
-					if charged { duration = time.Second * 40 }
+					if charged {
+						duration = time.Second * 40
+					}
 					living.AddEffect(effect.New(effect.Wither, 1, duration))
 				}
 			}
-			block.ExplosionConfig{SuppressUnderwaterImpact:true}.Explode(tx, world.NewEntityExplosionSource(e, 1))
-			tx.PlaySound(e.Position(), sound.Custom{Name:"mob.wither.break_block",Volume:1,Pitch:1})
+			block.ExplosionConfig{SuppressUnderwaterImpact: true, NoBlockDamage: mobGriefingDisabled(tx)}.Explode(tx, world.NewEntityExplosionSource(e, 1))
+			tx.PlaySound(e.Position(), sound.Custom{Name: "mob.wither.break_block", Volume: 1, Pitch: 1})
 		},
 	}
 }
@@ -45,7 +51,9 @@ func witherSkullConfig(owner *world.EntityHandle, charged bool) ProjectileBehavi
 // NewWitherSkull creates a Wither skull with owner attribution and charge state.
 func NewWitherSkull(opts world.EntitySpawnOpts, owner world.Entity, charged bool) *world.EntityHandle {
 	var h *world.EntityHandle
-	if owner != nil { h = owner.H() }
+	if owner != nil {
+		h = owner.H()
+	}
 	return opts.New(WitherSkullType, witherSkullConfig(h, charged))
 }
 

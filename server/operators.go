@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -10,10 +11,10 @@ import (
 	"sync"
 )
 
-// operatorsList tracks operator names loaded from a Nukkit-style ops.txt file.
+// operatorsList tracks operator names persisted as a JSON array.
 //
-// Lumi/Nukkit treats operators as exempt from whitelist checks. We keep this list separate from Whitelist so that the
-// whitelist feature stays self-contained and operator behaviour can be composed without changing the public API.
+// Operators bypass whitelist enforcement and receive command permissions.
+
 type operatorsList struct {
 	mu       sync.RWMutex
 	players  map[string]struct{}
@@ -65,10 +66,11 @@ func (o *operatorsList) reloadFromDisk() error {
 		}
 		return fmt.Errorf("read ops: %w", err)
 	}
-
-	players, order := parseNameList(contents)
-	o.players = players
-	o.order = order
+	var names []string
+	if err := json.Unmarshal(contents, &names); err != nil {
+		return fmt.Errorf("decode ops: %w", err)
+	}
+	o.players, o.order = parseNameSlice(names)
 	return nil
 }
 
@@ -79,30 +81,24 @@ func (o *operatorsList) writeLocked() error {
 			return fmt.Errorf("create ops directory: %w", err)
 		}
 	}
-
-	var b strings.Builder
-	for _, name := range o.order {
-		b.WriteString(name)
-		b.WriteString("\r\n")
+	contents, err := json.MarshalIndent(o.order, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode ops: %w", err)
 	}
-	if err := os.WriteFile(o.filePath, []byte(b.String()), 0644); err != nil {
+	if err := os.WriteFile(o.filePath, append(contents, '\n'), 0644); err != nil {
 		return fmt.Errorf("write ops: %w", err)
 	}
 	return nil
 }
 
-func parseNameList(contents []byte) (map[string]struct{}, []string) {
-	players := make(map[string]struct{})
-
-	content := strings.ReplaceAll(string(contents), "\r\n", "\n")
-	lines := strings.Split(content, "\n")
-	order := make([]string, 0, len(lines))
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
+func parseNameSlice(names []string) (map[string]struct{}, []string) {
+	players := make(map[string]struct{}, len(names))
+	order := make([]string, 0, len(names))
+	for _, name := range names {
+		key := normalizeName(name)
+		if key == "" {
 			continue
 		}
-		key := normalizeName(trimmed)
 		if _, exists := players[key]; exists {
 			continue
 		}

@@ -42,9 +42,9 @@ func (curseOfVanishing) CompatibleWithItem(i world.Item) bool {
 	_, com := i.(item.Compass)
 	_, dur := i.(item.Durable)
 	_, rec := i.(item.RecoveryCompass)
-	// TODO: Carrot on a Stick
-	// TODO: Warped Fungus on a Stick
-	return arm || com || dur || rec
+	_, carrot := i.(item.CarrotOnAStick)
+	_, fungus := i.(item.WarpedFungusOnAStick)
+	return arm || com || dur || rec || carrot || fungus
 }
 
 // Treasure ...
