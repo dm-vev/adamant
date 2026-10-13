@@ -236,22 +236,6 @@ func allUnderwaterTNT() []world.Block {
 	return []world.Block{UnderwaterTNT{}, UnderwaterTNT{Explode: true}}
 }
 
-// PowderSnow is a soft snow block.
-type PowderSnow struct {
-	transparent
-	empty
-}
-
-// BreakInfo ...
-func (PowderSnow) BreakInfo() BreakInfo {
-	return newBreakInfo(0.25, neverHarvestable, shovelEffective, simpleDrops())
-}
-
-// EncodeBlock ...
-func (PowderSnow) EncodeBlock() (string, map[string]any) {
-	return "minecraft:powder_snow", nil
-}
-
 // Sculk is a block of the deep dark. Sculk charges travel through it, growing
 // sculk sensors and shriekers on top of it.
 type Sculk struct {

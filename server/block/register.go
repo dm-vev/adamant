@@ -195,6 +195,7 @@ func init() {
 	world.RegisterBlock(LegacyStonecutter{})
 	world.RegisterBlock(NetherReactor{})
 	world.RegisterBlock(PowderSnow{})
+	registerAll(allCauldrons())
 	world.RegisterBlock(Sculk{})
 	registerAll(allSculkVeins())
 	registerAll(allSculkCatalysts())
@@ -688,6 +689,8 @@ func init() {
 	world.RegisterItem(item.Bucket{Content: item.LiquidBucketContent(Lava{})})
 	world.RegisterItem(item.Bucket{Content: item.LiquidBucketContent(Water{})})
 	world.RegisterItem(item.Bucket{Content: item.MilkBucketContent()})
+	world.RegisterItem(item.Bucket{Content: item.SolidBucketContent(PowderSnow{})})
+	world.RegisterItem(Cauldron{})
 
 	for _, b := range allLight() {
 		world.RegisterItem(b.(world.Item))

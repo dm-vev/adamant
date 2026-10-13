@@ -681,7 +681,30 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeSculkSoul,
 			Position:  vec64To32(pos),
 		})
+	case particle.CauldronEffect:
+		s.writePacket(&packet.LevelEvent{
+			EventType: cauldronLevelEvents[pa.Kind],
+			Position:  vec64To32(pos),
+			EventData: nbtconv.Int32FromRGBA(pa.Colour),
+		})
 	}
+}
+
+// cauldronLevelEvents maps cauldron effects to their Bedrock level events.
+var cauldronLevelEvents = [...]int32{
+	particle.CauldronExplode:        packet.LevelEventCauldronExplode,
+	particle.CauldronDyeArmour:      packet.LevelEventCauldronDyeArmor,
+	particle.CauldronCleanArmour:    packet.LevelEventCauldronCleanArmor,
+	particle.CauldronFillPotion:     packet.LevelEventCauldronFillPotion,
+	particle.CauldronTakePotion:     packet.LevelEventCauldronTakePotion,
+	particle.CauldronFillWater:      packet.LevelEventCauldronFillWater,
+	particle.CauldronTakeWater:      packet.LevelEventCauldronTakeWater,
+	particle.CauldronAddDye:         packet.LevelEventCauldronAddDye,
+	particle.CauldronCleanBanner:    packet.LevelEventCauldronCleanBanner,
+	particle.CauldronFillLava:       packet.LevelEventCauldronFillLava,
+	particle.CauldronTakeLava:       packet.LevelEventCauldronTakeLava,
+	particle.CauldronFillPowderSnow: packet.LevelEventCauldronFillPowderSnow,
+	particle.CauldronTakePowderSnow: packet.LevelEventCauldronTakePowderSnow,
 }
 
 // tierToSoundEvent converts an item.ArmourTier to a sound event associated with equipping it.

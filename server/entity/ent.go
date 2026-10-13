@@ -258,6 +258,12 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	m := e.Behaviour().Tick(e, tx)
 	tickLeash(e, tx, m)
 	checkEntityInsiders(tx, e)
+	if frozen := e.data.FrozenTicks; frozen > 0 || e.data.InPowderSnow || e.data.WasInPowderSnow {
+		TickFreezing(tx, e.living(), e.data)
+		if e.data.FrozenTicks != frozen {
+			e.updateState()
+		}
+	}
 	if e.finishPendingPortalTravel(tx) {
 		if m != nil {
 			m.releaseViewers()

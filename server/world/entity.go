@@ -590,6 +590,14 @@ type EntityData struct {
 	FireDuration      time.Duration
 	Age               time.Duration
 	Riding            *EntityHandle
+	// FrozenTicks is Java's Entity.ticksFrozen: how far the entity froze in
+	// powder snow, up to 140 when it is fully frozen.
+	FrozenTicks int
+	// InPowderSnow is set while the entity's box is inside powder snow during
+	// the current tick.
+	InPowderSnow bool
+	// WasInPowderSnow is InPowderSnow of the previous tick.
+	WasInPowderSnow bool
 
 	// NativeNBT retains the original actor payload so entity serializers can
 	// update known fields without discarding fields unknown to this server.

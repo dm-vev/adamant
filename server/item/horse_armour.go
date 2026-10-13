@@ -1,5 +1,7 @@
 package item
 
+import "image/color"
+
 // horseArmour is a shared implementation for the various horse armour items.
 type horseArmour struct{}
 
@@ -9,11 +11,31 @@ func (horseArmour) MaxCount() int {
 }
 
 // LeatherHorseArmour is a type of horse armour that offers minimal protection.
-type LeatherHorseArmour struct{ horseArmour }
+type LeatherHorseArmour struct {
+	horseArmour
+	// Colour is the dyed colour of the armour. The zero colour is undyed.
+	Colour color.RGBA
+}
 
 // EncodeItem ...
 func (LeatherHorseArmour) EncodeItem() (string, int16) {
 	return "minecraft:leather_horse_armor", 0
+}
+
+// EncodeNBT preserves the armour's custom dye colour.
+func (l LeatherHorseArmour) EncodeNBT() map[string]any {
+	if l.Colour == (color.RGBA{}) {
+		return nil
+	}
+	return map[string]any{"customColor": int32FromRGBA(l.Colour)}
+}
+
+// DecodeNBT restores the armour's custom dye colour.
+func (l LeatherHorseArmour) DecodeNBT(data map[string]any) any {
+	if v, ok := data["customColor"].(int32); ok {
+		l.Colour = rgbaFromInt32(v)
+	}
+	return l
 }
 
 // CopperHorseArmour is a type of horse armour crafted from copper.

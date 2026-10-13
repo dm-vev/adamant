@@ -1,22 +1,31 @@
 package item
 
 import (
+	"strings"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"time"
 )
 
 // BucketContent is the content of a bucket.
 type BucketContent struct {
 	liquid world.Liquid
+	solid  world.Block
 	milk   bool
 }
 
 // LiquidBucketContent returns a new BucketContent with the liquid passed in.
 func LiquidBucketContent(l world.Liquid) BucketContent {
 	return BucketContent{liquid: l}
+}
+
+// SolidBucketContent returns a new BucketContent carrying a solid block, such
+// as powder snow, which the bucket places like a block item.
+func SolidBucketContent(b world.Block) BucketContent {
+	return BucketContent{solid: b}
 }
 
 // MilkBucketContent returns a new BucketContent with the milk flag set.
@@ -30,12 +39,21 @@ func (b BucketContent) Liquid() (world.Liquid, bool) {
 	return b.liquid, b.liquid != nil
 }
 
+// Solid returns the solid block that a Bucket with this BucketContent places.
+func (b BucketContent) Solid() (world.Block, bool) {
+	return b.solid, b.solid != nil
+}
+
 // String converts the BucketContent to a string.
 func (b BucketContent) String() string {
-	if b.milk {
+	switch {
+	case b.milk:
 		return "milk"
-	} else if b.liquid != nil {
+	case b.liquid != nil:
 		return b.liquid.LiquidType()
+	case b.solid != nil:
+		name, _ := b.solid.EncodeBlock()
+		return strings.TrimPrefix(name, "minecraft:")
 	}
 	return ""
 }
@@ -87,7 +105,7 @@ func (b Bucket) Consume(_ *world.Tx, c Consumer) Stack {
 
 // Empty returns true if the bucket is empty.
 func (b Bucket) Empty() bool {
-	return b.Content.liquid == nil && !b.Content.milk
+	return b.Content.liquid == nil && b.Content.solid == nil && !b.Content.milk
 }
 
 // FuelInfo ...
@@ -97,6 +115,7 @@ func (b Bucket) FuelInfo() FuelInfo {
 	}
 	return FuelInfo{}
 }
+
 // UseOnEntity captures a bucketable entity into its filled bucket item.
 func (b Bucket) UseOnEntity(target world.Entity, tx *world.Tx, _ User, ctx *UseContext) bool {
 	if b.Empty() {
@@ -146,12 +165,32 @@ func (b Bucket) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	if b.Empty() {
 		return b.fillFrom(pos, tx, ctx)
 	}
+	if solid, ok := b.Content.Solid(); ok {
+		return b.placeSolid(pos, face, solid, tx, ctx)
+	}
 	liq := b.Content.liquid.WithDepth(8, false)
 	if !b.placeLiquid(pos, liq, tx) && !b.placeLiquid(pos.Side(face), liq, tx) {
 		return false
 	}
 
 	tx.PlaySound(pos.Vec3Centre(), sound.BucketEmpty{Liquid: b.Content.liquid})
+	ctx.NewItem = NewStack(Bucket{}, 1)
+	ctx.NewItemSurvivalOnly = true
+	ctx.SubtractFromCount(1)
+	return true
+}
+
+// placeSolid ports SolidBucketItem: the block is placed like a block item, in
+// the clicked block if replaceable and against it otherwise.
+func (b Bucket) placeSolid(pos cube.Pos, face cube.Face, solid world.Block, tx *world.Tx, ctx *UseContext) bool {
+	if !replaceableWith(tx.Block(pos), solid) {
+		pos = pos.Side(face)
+	}
+	if pos.OutOfBounds(tx.Range()) || !replaceableWith(tx.Block(pos), solid) {
+		return false
+	}
+	tx.SetBlock(pos, solid, nil)
+	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "bucket.empty." + b.Content.String(), ExtraData: -1})
 	ctx.NewItem = NewStack(Bucket{}, 1)
 	ctx.NewItemSurvivalOnly = true
 	ctx.SubtractFromCount(1)
@@ -175,6 +214,15 @@ func (b Bucket) placeLiquid(pos cube.Pos, liq world.Liquid, tx *world.Tx) bool {
 // fillFrom fills a bucket from the liquid at the position passed in the world. If there is no liquid or if
 // the liquid is no source, fillFrom returns false.
 func (b Bucket) fillFrom(pos cube.Pos, tx *world.Tx, ctx *UseContext) bool {
+	if pickup, ok := tx.Block(pos).(interface{ BucketPickup() bool }); ok && pickup.BucketPickup() {
+		content := SolidBucketContent(tx.Block(pos))
+		tx.SetBlock(pos, nil, nil)
+		tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "bucket.fill." + content.String(), ExtraData: -1})
+		ctx.NewItem = NewStack(Bucket{Content: content}, 1)
+		ctx.NewItemSurvivalOnly = true
+		ctx.SubtractFromCount(1)
+		return true
+	}
 	liquid, ok := tx.Liquid(pos)
 	if !ok {
 		return false

@@ -47,6 +47,7 @@ var (
 	deathLightning   = deathTranslation("death.attack.lightningBolt", 1, "%v was struck by lightning")
 	deathFlyIntoWall = deathTranslation("death.attack.flyIntoWall", 1, "%v experienced kinetic energy")
 	deathStarve      = deathTranslation("death.attack.starve", 1, "%v starved to death")
+	deathFreeze      = deathTranslation("death.attack.freeze", 1, "%v froze to death")
 )
 
 // deathMessage ports DamageSource.getLocalizedDeathMessage onto the Bedrock
@@ -105,6 +106,8 @@ func deathMessage(victim string, pos cube.Pos, src world.DamageSource, tx *world
 		return one(deathInWall)
 	case entity.DrowningDamageSource:
 		return one(deathDrown)
+	case entity.FreezeDamageSource:
+		return one(deathFreeze)
 	case entity.VoidDamageSource:
 		return one(deathOutOfWorld)
 	case entity.LightningDamageSource:

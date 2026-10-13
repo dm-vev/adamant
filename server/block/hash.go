@@ -49,6 +49,7 @@ const (
 	hashCarpet
 	hashCarrot
 	hashCartographyTable
+	hashCauldron
 	hashCaveVines
 	hashChemicalHeat
 	hashChest
@@ -510,6 +511,10 @@ func (c Carrot) Hash() (uint64, uint64) {
 
 func (CartographyTable) Hash() (uint64, uint64) {
 	return hashCartographyTable, 0
+}
+
+func (c Cauldron) Hash() (uint64, uint64) {
+	return hashCauldron, uint64(c.FillLevel) | uint64(c.Liquid)<<8
 }
 
 func (v CaveVines) Hash() (uint64, uint64) {

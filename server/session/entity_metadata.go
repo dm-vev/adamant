@@ -133,6 +133,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if o, ok := e.(onFire); ok && o.OnFireDuration() > 0 {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagOnFire)
 	}
+	if f, ok := e.(interface{ FreezingStrength() float32 }); ok {
+		m[protocol.EntityDataKeyFreezingEffectStrength] = f.FreezingStrength()
+	}
+	if sh, ok := e.(interface{ Shaking() bool }); ok && sh.Shaking() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShaking)
+	}
 	if db, ok := e.(doorBreaker); ok && db.CanBreakDoors() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagDoorBreaker)
 	}

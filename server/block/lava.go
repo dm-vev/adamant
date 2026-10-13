@@ -46,6 +46,7 @@ func (l Lava) ReplaceableBy(b world.Block) bool {
 
 // EntityInside ...
 func (l Lava) EntityInside(_ cube.Pos, _ *world.Tx, e world.Entity) {
+	clearFreeze(e)
 	if fallEntity, ok := e.(fallDistanceEntity); ok {
 		fallEntity.ResetFallDistance()
 	}
@@ -54,6 +55,17 @@ func (l Lava) EntityInside(_ cube.Pos, _ *world.Tx, e world.Entity) {
 			l.Hurt(4, LavaDamageSource{})
 		}
 		flammable.SetOnFire(15 * time.Second)
+	}
+}
+
+// clearFreeze ports InsideBlockEffectType.CLEAR_FREEZE of fire and lava: the
+// entity thaws completely.
+func clearFreeze(e world.Entity) {
+	if f, ok := e.(interface {
+		FrozenTicks() int
+		SetFrozenTicks(int)
+	}); ok && f.FrozenTicks() > 0 {
+		f.SetFrozenTicks(0)
 	}
 }
 

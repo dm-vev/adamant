@@ -28,6 +28,44 @@ func (w *World) tickPrecipitation(tx *Tx, chunk ChunkPos) {
 	if !raining || !w.Dimension().WeatherCycle() {
 		return
 	}
+	w.accumulateSnow(tx, top)
+	if p := tx.precipitationAt(below); p != PrecipitationNone {
+		if receiver, ok := tx.Block(below).(PrecipitationReceiver); ok {
+			receiver.HandlePrecipitation(below, tx, p)
+		}
+	}
+}
+
+// Precipitation is the kind of weather falling at a position.
+type Precipitation uint8
+
+const (
+	PrecipitationNone Precipitation = iota
+	PrecipitationRain
+	PrecipitationSnow
+)
+
+// PrecipitationReceiver is a block that reacts to rain or snow falling onto
+// it, as Block.handlePrecipitation.
+type PrecipitationReceiver interface {
+	HandlePrecipitation(pos cube.Pos, tx *Tx, p Precipitation)
+}
+
+// precipitationAt ports Biome.getPrecipitationAt: no precipitation in dry
+// biomes, snow where it is cold enough and rain elsewhere.
+func (tx *Tx) precipitationAt(pos cube.Pos) Precipitation {
+	if !tx.biome(pos).HasPrecipitation() {
+		return PrecipitationNone
+	}
+	if tx.coldEnoughToSnow(pos) {
+		return PrecipitationSnow
+	}
+	return PrecipitationRain
+}
+
+// accumulateSnow adds a snow layer at top up to max_snow_accumulation_height
+// layers where snow can form.
+func (w *World) accumulateSnow(tx *Tx, top cube.Pos) {
 	maxHeight := w.GameRuleInt("max_snow_accumulation_height")
 	if maxHeight <= 0 || !tx.shouldSnow(top) {
 		return

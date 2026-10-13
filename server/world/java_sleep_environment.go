@@ -3,10 +3,16 @@ package world
 // IsDarkOutside evaluates Java 26.3's Overworld SKY_LIGHT_LEVEL timeline and
 // Level.isDarkOutside predicate. Fixed-time dimensions are never dark outside.
 func (tx *Tx) IsDarkOutside() bool {
+	return tx.SkyDarken() >= 4
+}
+
+// SkyDarken returns Java's Level.skyDarken: how many levels the time of day
+// and weather lower sky light. It is zero outside the Overworld.
+func (tx *Tx) SkyDarken() int {
 	if tx.World().Dimension() != Overworld {
-		return false
+		return 0
 	}
-	return int32(float32(15)-javaSleepSkyLight(tx.World().Time(), tx.Raining(), tx.Thundering())) >= 4
+	return int(int32(float32(15) - javaSleepSkyLight(tx.World().Time(), tx.Raining(), tx.Thundering())))
 }
 
 // javaSleepSkyLight follows the registered minecraft:day MULTIPLY track and

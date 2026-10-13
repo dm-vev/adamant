@@ -728,6 +728,17 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 			return 0, false
 		}
 	}
+	// Player.isInvulnerableTo: the is_fall and is_freezing damage types.
+	switch src.(type) {
+	case entity.FallDamageSource:
+		if !w.GameRuleBool("fall_damage") {
+			return 0, false
+		}
+	case entity.FreezeDamageSource:
+		if !w.GameRuleBool("freeze_damage") {
+			return 0, false
+		}
+	}
 	_, fireResistant := p.Effect(effect.FireResistance)
 	if p.frostWalkerProtectsFrom(src) || (fireResistant && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
@@ -1695,6 +1706,24 @@ func (p *Player) Inventory() *inventory.Inventory {
 func (p *Player) Armour() *inventory.Armour {
 	return p.armour
 }
+
+// EnterPowderSnow marks the player as inside powder snow this tick, freezing
+// it further unless it wears leather armour or is a spectator.
+func (p *Player) EnterPowderSnow() { entity.EnterPowderSnow(p, p.data) }
+
+// FrozenTicks returns how far the player froze in powder snow, up to 140.
+func (p *Player) FrozenTicks() int { return p.data.FrozenTicks }
+
+// SetFrozenTicks sets how far the player froze, as Entity.setTicksFrozen.
+func (p *Player) SetFrozenTicks(ticks int) {
+	if p.data.FrozenTicks != ticks {
+		p.data.FrozenTicks = max(0, ticks)
+		p.updateState()
+	}
+}
+
+// FreezingStrength returns the freezing overlay strength from 0 to 1.
+func (p *Player) FreezingStrength() float32 { return entity.FreezingStrength(p.data) }
 
 // WearingCreakingDisguise reports whether the player's helmet is a carved pumpkin.
 func (p *Player) WearingCreakingDisguise() bool {
@@ -3423,6 +3452,12 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	}
 
 	p.checkBlockCollisions(p.data.Vel)
+	if frozen := p.data.FrozenTicks; frozen > 0 || p.data.InPowderSnow || p.data.WasInPowderSnow {
+		entity.TickFreezing(p.tx, p, p.data)
+		if p.data.FrozenTicks != frozen {
+			p.updateState()
+		}
+	}
 	p.onGround = p.checkOnGround(mgl64.Vec3{})
 	p.tickFrostWalker()
 	p.checkEntitySteppers()

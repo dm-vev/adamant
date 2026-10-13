@@ -1,6 +1,11 @@
 package entity
 
 import (
+	"hash/fnv"
+	"math"
+	"math/rand/v2"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -11,9 +16,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"hash/fnv"
-	"math"
-	"time"
 )
 
 type hostileMobType struct {
@@ -93,6 +95,12 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		c.raidID, c.raidWave, c.raidLeader = nbtconv.Int64(java, "RaidID"), int(nbtconv.Int32(java, "RaidWave")), nbtconv.Bool(java, "RaidLeader")
 		c.headDropGuaranteed = nbtconv.Bool(java, "RaidBannerDrop")
 		c.patrolLeader, c.patrolling = nbtconv.Bool(java, "PatrolLeader"), nbtconv.Bool(java, "Patrolling")
+		c.freezingTime = int(nbtconv.Int32(java, "FreezingTime"))
+		if _, ok := java["StrayConversionTime"]; ok {
+			if n := nbtconv.Int32(java, "StrayConversionTime"); n != -1 {
+				c.strayConversionTime, c.strayConverting = int(n), true
+			}
+		}
 		if target, ok := java["patrol_target"].([]int32); ok && len(target) == 3 {
 			c.patrolTarget, c.hasPatrolTarget = cube.Pos{int(target[0]), int(target[1]), int(target[2])}, true
 		}
@@ -104,6 +112,9 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	if source, ok := n["equipment"].(map[string]any); ok {
 		if hand, ok := source["mainhand"].(map[string]any); ok {
 			c.main, _ = item.StackFromJavaNBT(hand)
+		}
+		if head, ok := source["head"].(map[string]any); ok {
+			c.head, _ = item.StackFromJavaNBT(head)
 		}
 	}
 	equipment := ReadNativeMobEquipment(n)
@@ -117,8 +128,9 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		c.head = hostileStackFromNative(equipment.Armor[0])
 	}
 	if c.head.Empty() {
-		if armor, ok := n["ArmorItems"].([]any); ok && len(armor) > 0 {
-			if raw, ok := armor[0].(map[string]any); ok {
+		// Pre-1.21.5 Java ArmorItems lists feet, legs, chest and head.
+		if armor, ok := n["ArmorItems"].([]any); ok && len(armor) == 4 {
+			if raw, ok := armor[3].(map[string]any); ok {
 				if stack, err := item.StackFromJavaNBT(raw); err == nil && !stack.Empty() {
 					c.head = stack
 				}
@@ -172,7 +184,10 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 		native[key] = value
 	}
 	javaState := map[string]any{"InWaterTime": int32(b.conversionTime), "RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader, "RaidBannerDrop": b.headDropGuaranteed,
-		"PatrolLeader": b.patrolLeader, "Patrolling": b.patrolling}
+		"PatrolLeader": b.patrolLeader, "Patrolling": b.patrolling, "FreezingTime": int32(b.freezingTime), "StrayConversionTime": int32(-1)}
+	if b.strayConverting {
+		javaState["StrayConversionTime"] = int32(b.strayConversionTime)
+	}
 	if b.hasPatrolTarget {
 		javaState["patrol_target"] = []int32{int32(b.patrolTarget[0]), int32(b.patrolTarget[1]), int32(b.patrolTarget[2])}
 	}
@@ -201,6 +216,8 @@ type hostileConfig struct {
 	patrolLeader, patrolling, hasPatrolTarget               bool
 	patrolTarget                                            cube.Pos
 	spawnData                                               map[string]any
+	freezingTime, strayConversionTime                       int
+	strayConverting                                         bool
 }
 
 func (c hostileConfig) Apply(d *world.EntityData) {
@@ -226,6 +243,7 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 		conversionTime: c.conversionTime, cureTicks: c.cureTicks, main: c.main, head: c.head, profession: c.profession, villagerType: c.villagerType,
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
 		patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget,
+		freezingTime: c.freezingTime, strayConversionTime: c.strayConversionTime, strayConverting: c.strayConverting,
 	}
 }
 
@@ -304,6 +322,8 @@ type hostileState struct {
 	patrolCooldown                                                                int
 	spawnData                                                                     map[string]any
 	ridingLinkPending                                                             bool
+	freezingTime, strayConversionTime                                             int
+	strayConverting                                                               bool
 }
 type HostileMob struct{ *Ent }
 type Zombie struct{ *HostileMob }
@@ -470,10 +490,10 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 		b.spellCooldown--
 	}
 	if b.kind == "minecraft:zombie" || b.kind == "minecraft:zombie_villager" || b.kind == "minecraft:skeleton" || b.kind == "minecraft:stray" || b.kind == "minecraft:bogged" || b.kind == "minecraft:parched" {
-		p := cube.PosFromVec3(e.Position())
-		if tx.SkyLight(p) >= 15 && !tx.RainingAt(p) {
-			e.SetOnFire(8 * time.Second)
-		}
+		b.burnUndead(e, tx)
+	}
+	if b.kind == "minecraft:skeleton" && b.tickStrayConversion(e, tx) {
+		return nil
 	}
 	if b.kind == "minecraft:zombie" || b.kind == "minecraft:husk" {
 		p := cube.PosFromVec3(e.Position())
@@ -859,6 +879,75 @@ func (m *HostileMob) IsCaptain() bool {
 		return false
 	}
 	return b.head.Comparable(ominousBannerStack())
+}
+
+// tickStrayConversion ports the skeleton's freezing ConversionTracker: after
+// 140 ticks in powder snow a skeleton shakes for 300 ticks and then becomes a
+// stray that keeps its equipment. It reports whether the skeleton converted.
+func (b *hostileState) tickStrayConversion(e *Ent, tx *world.Tx) bool {
+	if !e.data.WasInPowderSnow {
+		b.freezingTime = -1
+		if b.strayConverting {
+			b.strayConverting = false
+			e.updateState()
+		}
+		return false
+	}
+	if !b.strayConverting {
+		if b.freezingTime++; b.freezingTime >= 140 {
+			b.strayConversionTime, b.strayConverting = 300, true
+			e.updateState()
+		}
+		return false
+	}
+	if b.strayConversionTime--; b.strayConversionTime >= 0 {
+		return false
+	}
+	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion"}
+	tx.AddEntity(opts.New(StrayType, hostileConfig{kind: StrayType.id, main: b.main, head: b.head, canPickupLoot: b.canPickupLoot}))
+	tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "convert_to_stray", ExtraData: -1})
+	_ = e.CloseIn(tx)
+	return true
+}
+
+// Shaking reports whether the skeleton shakes while it converts to a stray.
+func (m *HostileMob) Shaking() bool { return m.state().strayConverting }
+
+// burnUndead ports Mob.burnUndead: in a sun burn tick a helmet takes the heat
+// and wears down, otherwise the mob catches fire for eight seconds.
+func (b *hostileState) burnUndead(e *Ent, tx *world.Tx) {
+	if !sunBurnTick(e, tx) {
+		return
+	}
+	if b.head.Empty() {
+		if e.OnFireDuration() < 8*time.Second {
+			e.SetOnFire(8 * time.Second)
+		}
+		return
+	}
+	if _, durable := b.head.Item().(item.Durable); durable {
+		b.head = b.head.Damage(rand.IntN(2))
+	}
+}
+
+// sunBurnTick ports Mob.isSunBurnTick: in daylight a mob that sees the sky and
+// is not in water, rain or powder snow burns with a chance growing with the
+// brightness at its eyes.
+func sunBurnTick(e *Ent, tx *world.Tx) bool {
+	if tx.World().Dimension() != world.Overworld || tx.IsDarkOutside() {
+		return false
+	}
+	eye := cube.PosFromVec3(EyePosition(e))
+	brightness := float32(max(int(tx.SkyLight(eye))-tx.SkyDarken(), int(tx.Light(eye)))) / 15
+	brightness /= 4 - 3*brightness
+	if brightness <= 0.5 || rand.Float32()*30 >= (brightness-0.4)*2 {
+		return false
+	}
+	feet := cube.PosFromVec3(e.Position())
+	if liquid, ok := tx.Liquid(feet); ok && liquid.LiquidType() == "water" || tx.RainingAt(feet) || e.data.InPowderSnow || e.data.WasInPowderSnow {
+		return false
+	}
+	return tx.SkyLight(eye) >= 15
 }
 func (m *HostileMob) convertVillager(tx *world.Tx, target world.Entity) {
 	if target.H().Type().EncodeEntity() != "minecraft:villager" {

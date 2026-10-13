@@ -107,6 +107,33 @@ type SculkChargePop struct{ particle }
 // SculkSoul is a soul released by a blooming sculk catalyst.
 type SculkSoul struct{ particle }
 
+// CauldronEffect is a Bedrock cauldron interaction, which the client plays as
+// its particles and sound. Colour is the dye or potion colour involved.
+type CauldronEffect struct {
+	particle
+	Kind   CauldronEffectKind
+	Colour color.RGBA
+}
+
+// CauldronEffectKind is the interaction a CauldronEffect shows.
+type CauldronEffectKind uint8
+
+const (
+	CauldronExplode CauldronEffectKind = iota
+	CauldronDyeArmour
+	CauldronCleanArmour
+	CauldronFillPotion
+	CauldronTakePotion
+	CauldronFillWater
+	CauldronTakeWater
+	CauldronAddDye
+	CauldronCleanBanner
+	CauldronFillLava
+	CauldronTakeLava
+	CauldronFillPowderSnow
+	CauldronTakePowderSnow
+)
+
 // particle serves as a base for all particles in this package.
 type particle struct{}
 
