@@ -33,6 +33,8 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 		{"minecraft:sheep", item.Wheat{}},
 		{"minecraft:pig", block.Carrot{}},
 		{"minecraft:chicken", block.WheatSeeds{}},
+		{"minecraft:horse", item.GoldenCarrot{}},
+		{"minecraft:llama", block.HayBale{}},
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {

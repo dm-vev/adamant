@@ -211,7 +211,8 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		m[protocol.EntityDataKeyCustomDisplay] = byte(boolByte(d.CustomDisplay()))
 	}
 	if c, ok := e.(containerMeta); ok {
-		m[protocol.EntityDataKeyContainerType] = c.ContainerType()
+		// The dedicated server sends the container type as a byte.
+		m[protocol.EntityDataKeyContainerType] = byte(c.ContainerType())
 		m[protocol.EntityDataKeyContainerSize] = c.ContainerSize()
 		m[protocol.EntityDataKeyContainerStrengthModifier] = c.ContainerStrengthModifier()
 	}
@@ -328,11 +329,37 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if mv, ok := e.(markVariable); ok {
 		m[protocol.EntityDataKeyMarkVariant] = mv.MarkVariant()
 	}
+	if mount, ok := e.(interface{ MountState() entity.MountState }); ok {
+		addMountMetadata(mount.MountState(), m)
+	}
 	if iv, ok := e.(hurtDuration); ok {
 		m[protocol.EntityDataKeyHurt] = uint8(iv.HurtDuration().Milliseconds() / 50)
 	}
 	if pi, ok := e.(armourStand); ok {
 		m[protocol.EntityDataKeyPoseIndex] = int32(pi.PoseIndex())
+	}
+}
+
+// addMountMetadata writes the flags and data Bedrock clients show of horses,
+// llamas and camels, as the dedicated server sends them.
+func addMountMetadata(s entity.MountState, m protocol.EntityMetadata) {
+	for flag, set := range map[uint8]bool{protocol.EntityDataFlagSaddled: s.Saddled, protocol.EntityDataFlagTamed: s.Tamed, protocol.EntityDataFlagChested: s.Chested, protocol.EntityDataFlagSitting: s.Sitting,
+		protocol.EntityDataFlagKeyboardControlled: s.Controlled, protocol.EntityDataFlagPowerJump: s.PowerJump, protocol.EntityDataFlagDash: s.Dash} {
+		if set {
+			m.SetFlag(protocol.EntityDataKeyFlags, flag)
+		}
+	}
+	// The dedicated server sends the eating and standing flags of horses in
+	// the actor data minecarts keep their display block in.
+	m[protocol.EntityDataKeyDisplayBlockState] = s.HorseFlags
+	if s.ContainerSize > 0 {
+		m[protocol.EntityDataKeyContainerType] = byte(protocol.ContainerTypeHorse)
+		m[protocol.EntityDataKeyContainerSize] = s.ContainerSize
+		m[protocol.EntityDataKeyContainerStrengthModifier] = s.StrengthModifier
+	}
+	if s.MaxStrength > 0 {
+		m[protocol.EntityDataKeyStrength] = s.Strength
+		m[protocol.EntityDataKeyStrengthMax] = s.MaxStrength
 	}
 }
 

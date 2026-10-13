@@ -142,11 +142,12 @@ func TestCatalystOutOfRangeLeavesExperience(t *testing.T) {
 func TestMountDeathDropsEquipmentAndChest(t *testing.T) {
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
-		donkey := tx.AddEntity(entity.NewDonkey(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}})).(*entity.Donkey)
-		owner := addDeathTestPlayer(tx)
-		for range 3 {
-			donkey.Interact(tx, owner, &item.UseContext{})
+		h, err := entity.NewFromJavaNBT(map[string]any{"id": "minecraft:donkey", "Tame": byte(1)}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})
+		if err != nil {
+			t.Fatal(err)
 		}
+		donkey := tx.AddEntity(h).(*entity.Donkey)
+		owner := addDeathTestPlayer(tx)
 		owner.SetHeldItems(item.NewStack(block.Chest{}, 1), item.Stack{})
 		donkey.Interact(tx, owner, &item.UseContext{})
 		owner.SetHeldItems(item.NewStack(item.Saddle{}, 1), item.Stack{})

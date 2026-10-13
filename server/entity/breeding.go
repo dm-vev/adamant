@@ -253,15 +253,28 @@ func freePartner(a breeder, tx *world.Tx) breeder {
 }
 
 // canMate ports Animal.canMate: two different animals of the same type that
-// are both in love, plus any conditions of the species.
+// are both in love, plus any conditions of the species. Species that override
+// canMate entirely, like horses mating with donkeys, decide themselves.
 func canMate(a, partner breeder) bool {
-	if partner.H() == a.H() || partner.H().Type() != a.H().Type() || partner.Dead() {
+	if partner.H() == a.H() || partner.Dead() {
+		return false
+	}
+	if m, ok := a.(crossBreeder); ok {
+		return m.matesWith(partner)
+	}
+	if partner.H().Type() != a.H().Type() {
 		return false
 	}
 	if c, ok := a.(mateChecker); ok && !c.canMateWith(partner) {
 		return false
 	}
 	return a.breedingState().InLove() && partner.breedingState().InLove()
+}
+
+// crossBreeder is a breeder that picks its partners itself, like horses
+// that mate with donkeys.
+type crossBreeder interface {
+	matesWith(partner breeder) bool
 }
 
 // panicking reports whether a breeder is fleeing from danger.

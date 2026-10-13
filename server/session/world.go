@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image/color"
 	"maps"
+	"math"
 	"math/rand/v2"
 	"strings"
 	"time"
@@ -157,6 +158,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		EntityUniqueID:   s.entityUniqueID(e),
 		EntityRuntimeID:  runtimeID,
 		EntityType:       id,
+		Attributes:       mobAttributes(e),
 		EntityMetadata:   metadata,
 		EntityProperties: entityProperties(e),
 		EntityLinks:      links,
@@ -166,6 +168,44 @@ func (s *Session) ViewEntity(e world.Entity) {
 		Yaw:              float32(yaw),
 		HeadYaw:          float32(yaw),
 		BodyYaw:          float32(yaw),
+	})
+}
+
+// mobHealth is a mob whose health clients show, as riders do of their mount.
+type mobHealth interface {
+	Health() float64
+	MaxHealth() float64
+}
+
+// mobAttributes returns the attributes the dedicated server sends of a mob:
+// its health, its movement speed and the jump strength of horses.
+func mobAttributes(e world.Entity) []protocol.AttributeValue {
+	var attributes []protocol.AttributeValue
+	if h, ok := e.(mobHealth); ok {
+		attributes = append(attributes, protocol.AttributeValue{Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth())})
+	}
+	if s, ok := e.(interface{ Speed() float64 }); ok {
+		attributes = append(attributes, protocol.AttributeValue{Name: "minecraft:movement", Value: float32(s.Speed()), Max: math.MaxFloat32})
+	}
+	if j, ok := e.(interface{ JumpStrength() float64 }); ok {
+		attributes = append(attributes, protocol.AttributeValue{Name: "minecraft:horse.jump_strength", Value: float32(j.JumpStrength()), Max: math.MaxFloat32})
+	}
+	return attributes
+}
+
+// viewMobHealth sends the current health of a mob other than a player.
+func (s *Session) viewMobHealth(e world.Entity) {
+	h, ok := e.(mobHealth)
+	if !ok || e.H().Type().EncodeEntity() == "minecraft:player" {
+		return
+	}
+	s.writePacket(&packet.UpdateAttributes{
+		EntityRuntimeID: s.entityRuntimeID(e),
+		Attributes: []protocol.Attribute{{
+			AttributeValue: protocol.AttributeValue{Name: "minecraft:health", Value: float32(h.Health()), Max: float32(h.MaxHealth())},
+			DefaultMax:     float32(h.MaxHealth()),
+			Default:        float32(h.MaxHealth()),
+		}},
 	})
 }
 
@@ -1378,6 +1418,7 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventHurt,
 		})
+		s.viewMobHealth(e)
 	case entity.CriticalHitAction:
 		if act.Count <= 0 {
 			act.Count = 55
@@ -1496,6 +1537,10 @@ func (s *Session) ViewEntityState(e world.Entity) {
 		EntityMetadata:   s.entityMetadata(e),
 		EntityProperties: entityProperties(e),
 	})
+	if _, mount := e.(interface{ MountState() entity.MountState }); mount {
+		// Riders see the health of their mount, which feeding restores.
+		s.viewMobHealth(e)
+	}
 }
 
 // entityMetadata returns the metadata of an entity as viewed by the session, including any overrides

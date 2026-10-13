@@ -62,8 +62,8 @@ func TestSourceMountTemplateStateSurvivesMCDB(t *testing.T) {
 				if got, want := mount.AgeTicks(), int(nbtconv.Int32(source, "Age")); got != want {
 					t.Errorf("age=%d, want %d", got, want)
 				}
-				if kind == "minecraft:horse" && mount.Variant() != int(nbtconv.Int32(source, "Variant")) {
-					t.Errorf("variant=%d", mount.Variant())
+				if kind == "minecraft:horse" && mount.b().variant != int(nbtconv.Int32(source, "Variant")) {
+					t.Errorf("variant=%d", mount.b().variant)
 				}
 				if kind == "minecraft:camel" && mount.b().lastPoseTick != nbtconv.Int64(source, "LastPoseTick") {
 					t.Errorf("LastPoseTick=%d", mount.b().lastPoseTick)
