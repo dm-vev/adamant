@@ -190,6 +190,7 @@ type CatBehaviour struct {
 	nextWander           int
 	navigator            Navigator
 	breeding             breeding
+	panic                panicState
 }
 
 func (c *CatBehaviour) Variant() int32 { return int32(c.variant) }
@@ -204,7 +205,10 @@ func (c *Cat) SpeciesType() world.EntityType { return CatType }
 func (c *Cat) b() *CatBehaviour              { return c.Behaviour().(*CatBehaviour) }
 func (c *Cat) Tick(tx *world.Tx, n int64)    { c.b().effects.Tick(c, tx); c.Ent.Tick(tx, n) }
 func (b *CatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if partner, ok := tickBreeding(&Cat{Ent: e}, tx); ok {
+	panicking := b.panic.run(e, tx, &b.navigator)
+	if partner, ok := tickBreeding(&Cat{Ent: e}, tx); panicking {
+		b.nextWander = 20
+	} else if ok {
 		navigateToPartner(&b.navigator, e, tx, partner)
 		b.nextWander = 20
 	} else if b.tamed && !b.sitting {
@@ -266,6 +270,11 @@ func (b *CatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	v := e.data.Vel
 	r := e.data.Rot
+	speed := b.speed
+	if panicking {
+		// TamableAnimalPanicGoal at 1.5 times the movement speed.
+		speed = groundSpeed(.3, 1.5)
+	}
 	if p, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .6); ok {
 		d := p.Sub(e.data.Pos)
 		d[1] = 0
@@ -273,18 +282,21 @@ func (b *CatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			v[0], v[2] = d[0]*speed, d[2]*speed
 			r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
 		}
 	} else {
 		v[0], v[2] = 0, 0
 	}
-	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx)
+	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx).apply(e)
 }
 func (c *Cat) Health() float64        { return c.b().health.Health() }
 func (c *Cat) MaxHealth() float64     { return c.b().health.MaxHealth() }
 func (c *Cat) SetMaxHealth(v float64) { c.b().health.SetMaxHealth(v) }
 func (c *Cat) Dead() bool             { return c.b().dead || c.Health() <= 0 }
+
+// Panicking reports whether the cat runs from danger.
+func (c *Cat) Panicking() bool { return c.b().panic.active }
 func (c *Cat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b := c.b()
 	if c.Dead() || d <= 0 || (s.Fire() && c.hasEffect(effect.FireResistance)) {
@@ -294,6 +306,7 @@ func (c *Cat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	b.panic.hurt(s, c.tx.CurrentTick())
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)

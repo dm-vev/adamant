@@ -92,6 +92,7 @@ type MooshroomBehaviour struct {
 	navigator          Navigator
 	mc                 *MovementComputer
 	breeding           breeding
+	panic              panicState
 }
 
 func (m *Mooshroom) behaviour() *MooshroomBehaviour { return m.Behaviour().(*MooshroomBehaviour) }
@@ -103,7 +104,12 @@ func (b *MooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if partner, ok := tickBreeding(&Mooshroom{Ent: e}, tx); ok {
+	panicking := b.panic.run(e, tx, &b.navigator)
+	speed := b.speed
+	if partner, ok := tickBreeding(&Mooshroom{Ent: e}, tx); panicking {
+		// AbstractCow's PanicGoal runs at twice the movement speed.
+		speed = groundSpeed(.2, 2)
+	} else if ok {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 40 + rand.IntN(81)
@@ -123,7 +129,7 @@ func (b *MooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			v[0], v[2] = d[0]*speed, d[2]*speed
 		}
 	} else {
 		v[0], v[2] = 0, 0
@@ -140,6 +146,9 @@ func (m *Mooshroom) SetMaxHealth(v float64) {
 	b.health = math.Min(v, b.health)
 }
 func (m *Mooshroom) Dead() bool { return m.behaviour().dead || m.Health() <= 0 }
+
+// Panicking reports whether the mooshroom runs from danger.
+func (m *Mooshroom) Panicking() bool { return m.behaviour().panic.active }
 func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if m.Dead() || v <= 0 {
 		return 0, false
@@ -158,6 +167,7 @@ func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := m.behaviour()
 	b.health -= v
+	b.panic.hurt(src, m.tx.CurrentTick())
 	resetLove(m)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)

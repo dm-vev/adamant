@@ -36,6 +36,7 @@ type foxState struct {
 	next                               int
 	navigator                          Navigator
 	mc                                 *MovementComputer
+	panic                              panicState
 }
 
 func NewFox(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(FoxType, FoxConfig{}) }
@@ -134,7 +135,13 @@ func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 	if s.sleeping && nearestFoxThreat(e, tx, 12) != nil {
 		s.sleeping = false
 	}
-	if s.sleeping || s.sitting {
+	if s.panic.run(e, tx, &s.navigator) {
+		// FoxPanicGoal interrupts sleeping, sitting and stalking.
+		s.sleeping, s.sitting, s.crouching = false, false, false
+		if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
+			f.moveToward(target, groundSpeed(.3, 2.2))
+		}
+	} else if s.sleeping || s.sitting {
 		v := e.Velocity()
 		v[0], v[2] = 0, 0
 		e.data.Vel = v
@@ -150,7 +157,7 @@ func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 			} else {
 				s.crouching = true
 				s.sitting = false
-				f.moveToward(target.Position())
+				f.moveToward(target.Position(), s.speed)
 				if delta.Len() < 4 && e.data.Vel[1] <= 0 {
 					v := e.Velocity()
 					v[1] = .42
@@ -173,7 +180,7 @@ func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 		if !s.crouching {
 			if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
-				f.moveToward(target)
+				f.moveToward(target, s.speed)
 			}
 		}
 	}
@@ -230,7 +237,7 @@ func nearestFoxPrey(e *Ent, tx *world.Tx, r float64) world.Entity {
 	}
 	return nearest
 }
-func (f *Fox) moveToward(p mgl64.Vec3) {
+func (f *Fox) moveToward(p mgl64.Vec3, speed float64) {
 	d := p.Sub(f.Position())
 	d[1] = 0
 	if d.Len() == 0 {
@@ -238,7 +245,7 @@ func (f *Fox) moveToward(p mgl64.Vec3) {
 	}
 	d = d.Normalize()
 	v := f.Velocity()
-	v[0], v[2] = d[0]*f.b().speed, d[2]*f.b().speed
+	v[0], v[2] = d[0]*speed, d[2]*speed
 	f.SetVelocity(v)
 	r := f.Rotation()
 	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
@@ -248,11 +255,15 @@ func (f *Fox) Health() float64        { return f.b().health.Health() }
 func (f *Fox) MaxHealth() float64     { return f.b().health.MaxHealth() }
 func (f *Fox) SetMaxHealth(v float64) { f.b().health.SetMaxHealth(v) }
 func (f *Fox) Dead() bool             { return f.b().dead || f.Health() <= 0 }
+
+// Panicking reports whether the fox runs from danger.
+func (f *Fox) Panicking() bool { return f.b().panic.active }
 func (f *Fox) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if f.Dead() || d <= 0 {
 		return 0, false
 	}
 	f.b().health.AddHealth(-d)
+	f.b().panic.hurt(src, f.tx.CurrentTick())
 	f.view(HurtAction{})
 	onMobHurt(f.tx, f)
 	if f.Dead() {

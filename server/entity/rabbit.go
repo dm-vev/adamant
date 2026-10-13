@@ -80,6 +80,7 @@ type RabbitBehaviour struct {
 	navigator                          Navigator
 	mc                                 *MovementComputer
 	breeding                           breeding
+	panic                              panicState
 }
 
 func (r *Rabbit) behaviour() *RabbitBehaviour { return r.Behaviour().(*RabbitBehaviour) }
@@ -88,11 +89,12 @@ func (r *Rabbit) Tick(tx *world.Tx, t int64) {
 	r.Ent.Tick(tx, t)
 }
 func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	panicking := b.panic.run(e, tx, &b.navigator)
 	partner, inLove := tickBreeding(&Rabbit{Ent: e}, tx)
 	if b.attackCooldown > 0 {
 		b.attackCooldown--
 	}
-	if b.killer {
+	if b.killer && !panicking {
 		if target := rabbitKillerTarget(e, tx); target != nil {
 			start, goal := cube.PosFromVec3(e.Position()), cube.PosFromVec3(target.Position())
 			b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
@@ -107,9 +109,12 @@ func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if inLove {
+	switch {
+	case panicking:
+		// RabbitPanicGoal owns the navigator.
+	case inLove:
 		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
+	case b.navigator.Index >= len(b.navigator.Path) && b.next == 0:
 		b.next = 30 + rand.IntN(61)
 		start := cube.PosFromVec3(e.Position())
 		for range 5 {
@@ -123,6 +128,10 @@ func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.killer {
 		b.speed = .35
 	}
+	speed := b.speed
+	if panicking {
+		speed = groundSpeed(.3, 2.2)
+	}
 	if p, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .5); ok {
 		d := p.Sub(e.data.Pos)
 		d[1] = 0
@@ -130,7 +139,7 @@ func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			v[0], v[2] = d[0]*speed, d[2]*speed
 		}
 	} else {
 		v[0], v[2] = 0, 0
@@ -170,6 +179,9 @@ func (r *Rabbit) SetMaxHealth(v float64) {
 	b.health = math.Min(v, b.health)
 }
 func (r *Rabbit) Dead() bool { return r.behaviour().dead || r.Health() <= 0 }
+
+// Panicking reports whether the rabbit runs from danger.
+func (r *Rabbit) Panicking() bool { return r.behaviour().panic.active }
 func (r *Rabbit) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if r.Dead() || v <= 0 {
 		return 0, false
@@ -180,6 +192,7 @@ func (r *Rabbit) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := r.behaviour()
 	b.health -= v
+	b.panic.hurt(src, r.tx.CurrentTick())
 	resetLove(r)
 	r.viewAction(HurtAction{})
 	onMobHurt(r.tx, r)

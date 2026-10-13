@@ -111,7 +111,7 @@ func (b *batBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	if b.resting {
 		b.mc.Gravity = 0
-		return b.mc.TickMovement(e, e.data.Pos, mgl64.Vec3{}, e.data.Rot, e.data.Rot, tx)
+		return b.mc.TickMovement(e, e.data.Pos, mgl64.Vec3{}, e.data.Rot, e.data.Rot, tx).apply(e)
 	}
 	b.mc.Gravity = .08
 	if !b.hasTarget || b.nextMove <= 0 {

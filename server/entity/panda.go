@@ -34,6 +34,7 @@ type pandaState struct {
 	next                                                    int
 	navigator                                               Navigator
 	mc                                                      *MovementComputer
+	panic                                                   panicState
 }
 
 func NewPanda(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(PandaType, PandaConfig{}) }
@@ -60,7 +61,9 @@ func (c PandaConfig) New() *pandaState {
 	if h <= 0 {
 		h = m
 	}
-	return &pandaState{health: NewHealthManager(h, m), effects: NewEffectManager(), age: c.Age, variant: max(0, min(c.Variant, 6)), gene: max(0, min(c.Gene, 6)), hiddenGene: max(0, min(c.HiddenGene, 6)), sneeze: c.SneezeTicks, unhappy: c.UnhappyTicks, rolling: c.Rolling, sitting: c.Sitting, lying: c.LyingOnBack, speed: .15, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &pandaState{health: NewHealthManager(h, m), effects: NewEffectManager(), age: c.Age, variant: max(0, min(c.Variant, 6)), gene: max(0, min(c.Gene, 6)), hiddenGene: max(0, min(c.HiddenGene, 6)), sneeze: c.SneezeTicks, unhappy: c.UnhappyTicks, rolling: c.Rolling, sitting: c.Sitting, lying: c.LyingOnBack, speed: .15, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
+		// PandaPanicGoal only reacts to fire, lava, freezing, cactus and lightning.
+		panic: panicState{environmental: true}}
 }
 func (pandaType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*pandaState)
@@ -97,7 +100,11 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 	if s.unhappy > 0 {
 		s.unhappy--
 	}
-	if s.rolling || s.sitting || s.lying {
+	// PandaPanicGoal stops while the panda sits.
+	panicking := !s.sitting && s.panic.run(e, tx, &s.navigator)
+	if panicking {
+		s.rolling, s.lying = false, false
+	} else if s.rolling || s.sitting || s.lying {
 		if s.sitting && s.next%120 == 0 {
 			s.sitting = false
 		}
@@ -130,6 +137,10 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	rot, v := e.data.Rot, e.data.Vel
+	speed := s.speed
+	if panicking {
+		speed = groundSpeed(.15, 2)
+	}
 	if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), 1.3); ok && !s.sitting && !s.lying {
 		d := target.Sub(e.data.Pos)
 		d[1] = 0
@@ -137,7 +148,7 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 			s.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*s.speed, d[2]*s.speed
+			v[0], v[2] = d[0]*speed, d[2]*speed
 		}
 	} else {
 		v[0], v[2] = 0, 0
@@ -170,11 +181,15 @@ func (p *Panda) Health() float64        { return p.b().health.Health() }
 func (p *Panda) MaxHealth() float64     { return p.b().health.MaxHealth() }
 func (p *Panda) SetMaxHealth(v float64) { p.b().health.SetMaxHealth(v) }
 func (p *Panda) Dead() bool             { return p.b().dead || p.Health() <= 0 }
+
+// Panicking reports whether the panda runs from fire or other hazards.
+func (p *Panda) Panicking() bool { return p.b().panic.active }
 func (p *Panda) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() || d <= 0 {
 		return 0, false
 	}
 	p.b().health.AddHealth(-d)
+	p.b().panic.hurt(src, p.tx.CurrentTick())
 	p.view(HurtAction{})
 	onMobHurt(p.tx, p)
 	if p.Dead() {

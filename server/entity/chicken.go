@@ -105,6 +105,7 @@ type ChickenBehaviour struct {
 	navigator                      Navigator
 	dead, jockey                   bool
 	breeding                       breeding
+	panic                          panicState
 }
 
 func (c *Chicken) behaviour() *ChickenBehaviour { return c.Behaviour().(*ChickenBehaviour) }
@@ -113,6 +114,7 @@ func (c *Chicken) Tick(tx *world.Tx, current int64) {
 	c.Ent.Tick(tx, current)
 }
 func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	panicking := b.panic.run(e, tx, &b.navigator)
 	partner, inLove := tickBreeding(&Chicken{Ent: e}, tx)
 	if b.ageTicks >= 0 && !b.jockey {
 		b.eggTimer--
@@ -131,7 +133,10 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if inLove {
+	speed := b.speed
+	if panicking {
+		speed = groundSpeed(.25, 1.4)
+	} else if inLove {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.chooseWanderPath(e, tx)
@@ -145,7 +150,7 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			dir := delta.Normalize()
-			velocity[0], velocity[2] = dir[0]*b.speed, dir[2]*b.speed
+			velocity[0], velocity[2] = dir[0]*speed, dir[2]*speed
 			rot[0] = math.Atan2(-dir[0], dir[2]) * 180 / math.Pi
 		}
 	} else {
@@ -170,6 +175,9 @@ func (c *Chicken) Health() float64        { return c.behaviour().health.Health()
 func (c *Chicken) MaxHealth() float64     { return c.behaviour().health.MaxHealth() }
 func (c *Chicken) SetMaxHealth(v float64) { c.behaviour().health.SetMaxHealth(v) }
 func (c *Chicken) Dead() bool             { return c.behaviour().dead || c.Health() <= 0 }
+
+// Panicking reports whether the chicken runs from danger.
+func (c *Chicken) Panicking() bool { return c.behaviour().panic.active }
 func (c *Chicken) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if c.Dead() || damage <= 0 || (src.Fire() && c.hasEffect(effect.FireResistance)) {
 		return 0, false
@@ -178,6 +186,7 @@ func (c *Chicken) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage *= effect.Resistance.Multiplier(src, res.Level())
 	}
 	c.behaviour().health.AddHealth(-damage)
+	c.behaviour().panic.hurt(src, c.tx.CurrentTick())
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)

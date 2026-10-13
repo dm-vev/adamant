@@ -93,6 +93,7 @@ type SheepBehaviour struct {
 	nextWander                   int
 	mc                           *MovementComputer
 	breeding                     breeding
+	panic                        panicState
 }
 
 func (s *SheepBehaviour) Baby() bool        { return s.ageTicks < 0 }
@@ -102,6 +103,7 @@ func (s *Sheep) Tick(tx *world.Tx, current int64) {
 	s.Ent.Tick(tx, current)
 }
 func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	panicking := b.panic.run(e, tx, &b.navigator)
 	partner, inLove := tickBreeding(&Sheep{Ent: e}, tx)
 	// EatBlockGoal: a sheared sheep regrows only after eating a grass block.
 	if b.sheared && b.regrowTicks > 0 {
@@ -118,7 +120,10 @@ func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if inLove {
+	speed := b.speed
+	if panicking {
+		speed = groundSpeed(.23, 1.25)
+	} else if inLove {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.choosePath(e, tx)
@@ -131,7 +136,7 @@ func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d := delta.Normalize()
-			vel[0], vel[2] = d[0]*b.speed, d[2]*b.speed
+			vel[0], vel[2] = d[0]*speed, d[2]*speed
 			rot[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
 		}
 	} else {
@@ -160,6 +165,9 @@ func (s *Sheep) SetMaxHealth(v float64) {
 	b.health = math.Min(b.health, v)
 }
 func (s *Sheep) Dead() bool { return s.behaviour().dead || s.Health() <= 0 }
+
+// Panicking reports whether the sheep runs from danger.
+func (s *Sheep) Panicking() bool { return s.behaviour().panic.active }
 func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() || v <= 0 {
 		return 0, false
@@ -170,6 +178,7 @@ func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := s.behaviour()
 	b.health -= v
+	b.panic.hurt(src, s.tx.CurrentTick())
 	resetLove(s)
 	s.viewAction(HurtAction{})
 	onMobHurt(s.tx, s)

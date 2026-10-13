@@ -121,7 +121,7 @@ func (b *parrotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	if b.sitting {
 		b.hasTarget = false
-		return b.mc.TickMovement(e, e.data.Pos, mgl64.Vec3{}, e.data.Rot, e.data.Rot, tx)
+		return b.mc.TickMovement(e, e.data.Pos, mgl64.Vec3{}, e.data.Rot, e.data.Rot, tx).apply(e)
 	}
 	var owner world.Entity
 	if b.tame && b.owner != "" {
@@ -155,7 +155,7 @@ func (b *parrotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	b.nextMove--
 	b.mc.Gravity = .04
-	return b.mc.TickMovement(e, e.data.Pos, delta, e.data.Rot, e.data.Rot, tx)
+	return b.mc.TickMovement(e, e.data.Pos, delta, e.data.Rot, e.data.Rot, tx).apply(e)
 }
 func (p *Parrot) Variant() int      { return p.b().variant }
 func (p *Parrot) Tamed() bool       { return p.b().tame }

@@ -289,7 +289,7 @@ func (b *AquaticMobBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		_ = e.CloseIn(tx)
 		return nil
 	}
-	return b.movement.TickMovement(e, e.Position(), vel, e.data.Rot, e.data.Rot, tx)
+	return b.movement.TickMovement(e, e.Position(), vel, e.data.Rot, e.data.Rot, tx).apply(e)
 }
 func (b *AquaticMobBehaviour) tickPuffer(e *Ent, tx *world.Tx) {
 	box := e.H().Type().BBox(aquaticWorldEntity(e)).Translate(e.Position()).Grow(2)

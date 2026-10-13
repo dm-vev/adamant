@@ -238,7 +238,7 @@ func (b *CopperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	} else {
 		v[0], v[2] = 0, 0
 	}
-	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx)
+	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx).apply(e)
 }
 func (b *CopperGolemBehaviour) findContainer(e *Ent, tx *world.Tx) {
 	origin := cube.PosFromVec3(e.Position())

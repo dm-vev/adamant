@@ -156,6 +156,7 @@ type CowBehaviour struct {
 	navigator         Navigator
 	nextWander        int
 	breeding          breeding
+	panic             panicState
 	dead              bool
 }
 
@@ -174,7 +175,12 @@ func (b *CowBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if partner, ok := tickBreeding(&Cow{Ent: e}, tx); ok {
+	panicking := b.panic.run(e, tx, &b.navigator)
+	speed := b.speed
+	if partner, ok := tickBreeding(&Cow{Ent: e}, tx); panicking {
+		// AbstractCow's PanicGoal runs at twice the movement speed.
+		speed = groundSpeed(.2, 2)
+	} else if ok {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.chooseWanderPath(e, tx)
@@ -185,7 +191,7 @@ func (b *CowBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		delta[1] = 0
 		if delta.Len() > 0.25 {
 			direction := delta.Normalize()
-			velocity[0], velocity[2] = direction[0]*b.speed, direction[2]*b.speed
+			velocity[0], velocity[2] = direction[0]*speed, direction[2]*speed
 			rot[0] = math.Atan2(-direction[0], direction[2]) * 180 / math.Pi
 		}
 	} else {
@@ -220,6 +226,9 @@ func (c *Cow) SetMaxHealth(v float64) { c.behaviour().health.SetMaxHealth(v) }
 // Dead reports whether the cow has died.
 func (c *Cow) Dead() bool { return c.behaviour().dead || c.Health() <= 0 }
 
+// Panicking reports whether the cow runs from danger.
+func (c *Cow) Panicking() bool { return c.behaviour().panic.active }
+
 // Hurt damages the cow and kills it if its health is exhausted.
 func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if c.Dead() || damage <= 0 || (src.Fire() && c.hasEffect(effect.FireResistance)) {
@@ -229,6 +238,7 @@ func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage *= effect.Resistance.Multiplier(src, resistance.Level())
 	}
 	c.behaviour().health.AddHealth(-damage)
+	c.behaviour().panic.hurt(src, c.tx.CurrentTick())
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)

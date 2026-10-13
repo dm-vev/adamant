@@ -119,7 +119,7 @@ var patrolSpawners sync.Map
 // patrolSpawnTick ports PatrolSpawner.tick for the overworld.
 func patrolSpawnTick(tx *world.Tx, random *java26.Random) {
 	w := tx.World()
-	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || !w.SpawnMobsEnabled() || !w.GameRuleBool("spawn_patrols") {
+	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || !w.MonsterSpawningEnabled() || !w.GameRuleBool("spawn_patrols") {
 		return
 	}
 	v, _ := patrolSpawners.LoadOrStore(w, new(int))

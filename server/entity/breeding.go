@@ -169,6 +169,11 @@ func tickBreeding(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
 			viewBreederState(a)
 		}
 	}
+	if panicking(a) {
+		// PanicGoal outranks BreedGoal, which stops and forgets its partner.
+		b.partner, b.loveTime = nil, 0
+		return mgl64.Vec3{}, false
+	}
 	return breedGoal(a, tx)
 }
 

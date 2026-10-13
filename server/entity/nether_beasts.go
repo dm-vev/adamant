@@ -22,18 +22,19 @@ const (
 )
 
 type netherBeastState struct {
-	health                                                                                 *HealthManager
-	kind                                                                                   netherBeastKind
-	effects                                                                                *EffectManager
-	mc                                                                                     *MovementComputer
-	age, attackCooldown, conversion, breedCooldown, panicTicks, loveTicks, boost, boostMax int
-	immune, saddled, dead, suffocating                                                     bool
-	targetUUID                                                                             string
-	passenger                                                                              *world.EntityHandle
-	steer, steerYaw, speed                                                                 float64
-	navigator                                                                              Navigator
-	wander, repellentScan                                                                  int
-	repellent                                                                              *cube.Pos
+	health                                                                     *HealthManager
+	kind                                                                       netherBeastKind
+	effects                                                                    *EffectManager
+	mc                                                                         *MovementComputer
+	age, attackCooldown, conversion, breedCooldown, loveTicks, boost, boostMax int
+	immune, saddled, dead, suffocating                                         bool
+	targetUUID                                                                 string
+	passenger                                                                  *world.EntityHandle
+	steer, steerYaw, speed                                                     float64
+	navigator                                                                  Navigator
+	wander, repellentScan                                                      int
+	repellent                                                                  *cube.Pos
+	panic                                                                      panicState
 }
 type netherBeastConfig struct {
 	kind                       netherBeastKind
@@ -161,9 +162,6 @@ func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	if s.breedCooldown > 0 {
 		s.breedCooldown--
-	}
-	if s.panicTicks > 0 {
-		s.panicTicks--
 	}
 	if s.loveTicks > 0 {
 		s.loveTicks--
@@ -304,6 +302,12 @@ func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
 		return beastWander(s, e, tx)
 	}
 	if s.kind == striderKind {
+		if s.panic.run(e, tx, &s.navigator) {
+			if p, ok := s.navigator.Tick(e.Position(), navigatorTick(e), .9); ok {
+				beastMoveAt(e, p, groundSpeed(.175, 1.65))
+			}
+			return beastMoveFinish(s, e, tx)
+		}
 		if target := beastTemptPlayer(tx, e.Position()); target != nil {
 			beastMove(s, e, tx, target.Position())
 			return beastMoveFinish(s, e, tx)
@@ -347,14 +351,18 @@ func beastBreed(s *netherBeastState, e *Ent, tx *world.Tx) bool {
 	return false
 }
 func beastMove(s *netherBeastState, e *Ent, tx *world.Tx, p mgl64.Vec3) {
+	speed := s.speed
+	if s.kind == striderKind && s.suffocating {
+		speed *= .6
+	}
+	beastMoveAt(e, p, speed)
+}
+
+func beastMoveAt(e *Ent, p mgl64.Vec3, speed float64) {
 	d := p.Sub(e.Position())
 	d[1] = 0
 	if d.Len() > 0 {
 		d = d.Normalize()
-	}
-	speed := s.speed
-	if s.kind == striderKind && s.suffocating {
-		speed *= .6
 	}
 	v := e.data.Vel
 	v[0], v[2] = d[0]*speed, d[2]*speed
@@ -558,6 +566,7 @@ func beastHurt(e *Ent, self world.Entity, b *netherBeastState, d float64, src wo
 		d *= effect.Resistance.Multiplier(src, r.Level())
 	}
 	b.health.AddHealth(-d)
+	b.panic.hurt(src, e.tx.CurrentTick())
 	beastViewAction(e, HurtAction{})
 	onMobHurt(e.tx, self)
 	if b.health.Health() <= 0 {
@@ -605,6 +614,9 @@ func (z *Zoglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
 func (s *Strider) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	return beastHurt(s.Ent, s, s.beast(), d, src)
 }
+
+// Panicking reports whether the strider runs from danger.
+func (s *Strider) Panicking() bool { return s.beast().panic.active }
 
 // dropCustomDeathLoot drops a strider's saddle, a preserved equipment item.
 func (s *Strider) dropCustomDeathLoot(bool, int) {

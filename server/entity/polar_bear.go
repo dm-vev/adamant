@@ -32,6 +32,7 @@ type polarBearState struct {
 	next           int
 	navigator      Navigator
 	mc             *MovementComputer
+	panic          panicState
 }
 
 func NewPolarBear(o world.EntitySpawnOpts) *world.EntityHandle {
@@ -89,8 +90,14 @@ func (s *polarBearState) Tick(e *Ent, tx *world.Tx) *Movement {
 	if s.cooldown > 0 {
 		s.cooldown--
 	}
-	target := nearestPolarBearTarget(e, tx)
-	if target != nil {
+	// Cubs panic from any danger, adults only from fire and other hazards.
+	s.panic.environmental = s.age >= 0
+	if s.panic.run(e, tx, &s.navigator) {
+		s.standing = false
+		if waypoint, ok := s.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
+			p.moveTowardAt(waypoint, groundSpeed(.25, 2))
+		}
+	} else if target := nearestPolarBearTarget(e, tx); target != nil {
 		dist := target.Position().Sub(e.Position()).Len()
 		cubNearby := false
 		if s.age >= 0 {
@@ -140,7 +147,9 @@ func (s *polarBearState) Tick(e *Ent, tx *world.Tx) *Movement {
 	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
 	return m
 }
-func (p *PolarBear) moveToward(pos mgl64.Vec3) {
+func (p *PolarBear) moveToward(pos mgl64.Vec3) { p.moveTowardAt(pos, p.b().speed) }
+
+func (p *PolarBear) moveTowardAt(pos mgl64.Vec3, speed float64) {
 	d := pos.Sub(p.Position())
 	d[1] = 0
 	if d.Len() == 0 {
@@ -148,7 +157,7 @@ func (p *PolarBear) moveToward(pos mgl64.Vec3) {
 	}
 	d = d.Normalize()
 	v := p.Velocity()
-	v[0], v[2] = d[0]*p.b().speed, d[2]*p.b().speed
+	v[0], v[2] = d[0]*speed, d[2]*speed
 	p.SetVelocity(v)
 	r := p.Rotation()
 	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
@@ -190,11 +199,15 @@ func (p *PolarBear) Health() float64        { return p.b().health.Health() }
 func (p *PolarBear) MaxHealth() float64     { return p.b().health.MaxHealth() }
 func (p *PolarBear) SetMaxHealth(v float64) { p.b().health.SetMaxHealth(v) }
 func (p *PolarBear) Dead() bool             { return p.b().dead || p.Health() <= 0 }
+
+// Panicking reports whether the polar bear runs from danger.
+func (p *PolarBear) Panicking() bool { return p.b().panic.active }
 func (p *PolarBear) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() || d <= 0 {
 		return 0, false
 	}
 	p.b().health.AddHealth(-d)
+	p.b().panic.hurt(src, p.tx.CurrentTick())
 	p.view(HurtAction{})
 	onMobHurt(p.tx, p)
 	if p.Dead() {

@@ -172,7 +172,7 @@ func (b *SulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			v[1] = .42 + float64(b.size)*.08
 		}
 	}
-	return b.mc.TickMovement(s, e.data.Pos, v, rot, e.data.Rot, tx)
+	return b.mc.TickMovement(s, e.data.Pos, v, rot, e.data.Rot, tx).apply(e)
 }
 func (s *SulfurCube) pickUpNearby(tx *world.Tx) {
 	pos := s.Position()

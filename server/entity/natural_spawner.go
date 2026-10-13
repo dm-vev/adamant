@@ -39,7 +39,9 @@ func NaturalSpawnTick(tx *world.Tx) {
 			players = append(players, p)
 		}
 	}
-	if len(players) == 0 {
+	// Java skips every spawning category and custom spawner without
+	// spawn_mobs, but still despawns.
+	if len(players) == 0 || !w.SpawnMobsEnabled() {
 		naturalDespawn(tx)
 		return
 	}
@@ -58,7 +60,7 @@ func NaturalSpawnTick(tx *world.Tx) {
 	for i := range maxPerCategory {
 		maxPerCategory[i] *= len(players)
 	}
-	if w.Difficulty() == world.DifficultyPeaceful {
+	if w.Difficulty() == world.DifficultyPeaceful || !w.MonsterSpawningEnabled() {
 		maxPerCategory[spawnMonster] = 0
 	}
 	for _, player := range players {
@@ -146,7 +148,7 @@ func NaturalSpawnTick(tx *world.Tx) {
 
 func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *java26.Random) {
 	w := tx.World()
-	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || !w.GameRuleBool("spawn_phantoms") || w.Time()%24000 < 13000 || w.Time()%24000 > 23000 {
+	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || !w.MonsterSpawningEnabled() || !w.GameRuleBool("spawn_phantoms") || w.Time()%24000 < 13000 || w.Time()%24000 > 23000 {
 		return
 	}
 	if tx.CurrentTick()%1800 != 0 {

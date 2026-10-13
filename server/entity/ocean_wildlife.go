@@ -2,6 +2,7 @@ package entity
 
 import (
 	"math"
+	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -107,7 +108,8 @@ func (c oceanWildlifeConfig) New() *oceanWildlifeBehaviour {
 	if c.id == "minecraft:dolphin" && moistness == 0 {
 		moistness = 2400
 	}
-	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true}, speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ, loveTicks: c.loveTicks, nextWander: 1}
+	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true}, speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ, loveTicks: c.loveTicks, nextWander: 1,
+		panic: panicState{water: 7}}
 }
 
 type Squid struct{ *oceanWildlife }
@@ -125,6 +127,8 @@ type oceanWildlifeBehaviour struct {
 	swim                                                                                                                                      mgl64.Vec3
 	mate                                                                                                                                      *world.EntityHandle
 	hasEgg, gotFish, hasTreasure, homeSet, dead                                                                                               bool
+	panic                                                                                                                                     panicState
+	panicGoal                                                                                                                                 mgl64.Vec3
 }
 
 func (m *oceanWildlife) b() *oceanWildlifeBehaviour { return m.Behaviour().(*oceanWildlifeBehaviour) }
@@ -218,8 +222,32 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 				b.mate = nil
 			}
 		}
+		// TurtlePanicGoal: a hurt turtle heads for water within seven blocks,
+		// or a random spot nearby, at 1.2 times its speed.
+		panicking := false
+		if b.panic.shouldPanic(tx.CurrentTick()) {
+			if !b.panic.active || b.panicGoal.Sub(e.Position()).Len() < 1 {
+				random := java26.NewLegacyRandom(rand.Int64())
+				m := randomPosMob{tx: tx, pos: e.Position(), home: noHome, profile: GroundProfile{Width: 1.2, Height: .4}, random: &random}
+				goal, ok := b.panic.target(e, m)
+				b.panic.active, b.panicGoal = ok, goal.Vec3Middle()
+			}
+			panicking = b.panic.active
+		} else {
+			b.panic.active = false
+		}
+		if panicking {
+			target = b.panicGoal
+		}
 		if inWater {
 			vel = wildlifeSteer(e, vel, target, .025*(b.speed/.25), .12*(b.speed/.25))
+		} else if panicking {
+			// TurtleMoveControl halves the speed of turtles on land.
+			if d := target.Sub(e.Position()); math.Hypot(d[0], d[2]) > 0 {
+				d[1] = 0
+				d = d.Normalize().Mul(groundSpeed(max(.25*1.2/2, .06), 1))
+				vel[0], vel[2] = d[0], d[2]
+			}
 		} else if b.hasEgg {
 			if home.Vec3().Sub(cube.PosFromVec3(e.Position()).Vec3()).Len() <= 1 {
 				if _, ok := tx.Block(home.Side(cube.FaceDown)).(block.Sand); ok {
@@ -321,7 +349,7 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if vel[0]*vel[0]+vel[2]*vel[2] > .0001 {
 		rot[0] = math.Atan2(-vel[0], vel[2]) * 180 / math.Pi
 	}
-	return b.movement.TickMovement(e, e.Position(), vel, rot, rot, tx)
+	return b.movement.TickMovement(e, e.Position(), vel, rot, rot, tx).apply(e)
 }
 func (b *oceanWildlifeBehaviour) chooseSwim(e *Ent, tx *world.Tx) {
 	seed := int64(e.Position()[0]*341873128712+e.Position()[1]*132897987541+e.Position()[2]*42317861) + int64(b.ticks)
@@ -373,6 +401,9 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 		return 0, false
 	}
 	b.health.AddHealth(-d)
+	if b.id == "minecraft:turtle" {
+		b.panic.hurt(src, m.tx.CurrentTick())
+	}
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
 	if b.id == "minecraft:glow_squid" {
@@ -536,6 +567,9 @@ func (t *Turtle) SetHomePos(pos cube.Pos) {
 	b.homeSet = true
 }
 func (t *Turtle) HomePos() cube.Pos { b := t.b(); return cube.Pos{b.homeX, b.homeY, b.homeZ} }
+
+// Panicking reports whether the turtle runs from danger.
+func (t *Turtle) Panicking() bool { return t.b().panic.active }
 
 var _ world.EntityType = oceanWildlifeType{}
 var _ Living = (*oceanWildlife)(nil)

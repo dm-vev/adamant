@@ -260,7 +260,7 @@ func (b *AllayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	} else {
 		v[0], v[2], v[1] = 0, 0, 0
 	}
-	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx)
+	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx).apply(e)
 }
 func (a *Allay) HeldItems() (item.Stack, item.Stack) { return a.b().held, item.Stack{} }
 func (a *Allay) SetHeldItems(main, off item.Stack)   { a.b().held = main; a.updateState() }

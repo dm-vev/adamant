@@ -116,6 +116,7 @@ type PigBehaviour struct {
 	next              int
 	mc                *MovementComputer
 	breeding          breeding
+	panic             panicState
 }
 
 func (p *PigBehaviour) Variant() int32  { return int32(p.variant) }
@@ -139,7 +140,11 @@ func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if partner, ok := tickBreeding(&Pig{Ent: e}, tx); ok {
+	panicking := b.panic.run(e, tx, &b.navigator)
+	speed := b.speed
+	if partner, ok := tickBreeding(&Pig{Ent: e}, tx); panicking {
+		speed = groundSpeed(.25, 1.25)
+	} else if ok {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 40 + rand.IntN(81)
@@ -163,7 +168,7 @@ func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			vel[0], vel[2] = d[0]*b.speed, d[2]*b.speed
+			vel[0], vel[2] = d[0]*speed, d[2]*speed
 		}
 	} else {
 		vel[0], vel[2] = 0, 0
@@ -180,6 +185,9 @@ func (p *Pig) SetMaxHealth(v float64) {
 	b.health = math.Min(v, b.health)
 }
 func (p *Pig) Dead() bool { return p.behaviour().dead || p.Health() <= 0 }
+
+// Panicking reports whether the pig runs from danger.
+func (p *Pig) Panicking() bool { return p.behaviour().panic.active }
 func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	if p.Dead() || v <= 0 {
 		return 0, false
@@ -201,6 +209,7 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	}
 	b := p.behaviour()
 	b.health -= v
+	b.panic.hurt(s, p.tx.CurrentTick())
 	resetLove(p)
 	p.viewAction(HurtAction{})
 	onMobHurt(p.tx, p)

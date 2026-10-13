@@ -1,0 +1,119 @@
+package entity_test
+
+import (
+	"testing"
+
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
+)
+
+// panicDistance is how far a Java mob with the movement speed attribute
+// and PanicGoal speed modifier passed runs in 20 ticks on normal ground.
+func panicDistance(attribute, modifier float64) float64 {
+	s := attribute * modifier
+	return 20 * .98 * s * s / (1 - .6*.91)
+}
+
+func panicking(tx *world.Tx, h *world.EntityHandle) bool {
+	e, _ := h.Entity(tx)
+	return e.(interface{ Panicking() bool }).Panicking()
+}
+
+// startsPanicking reports whether the mob panics within a few ticks. Like
+// Java's PanicGoal it may not find a spot to run to on its first try.
+func startsPanicking(w *world.World, h *world.EntityHandle) bool {
+	for range 5 {
+		w.AdvanceTick()
+		started := false
+		<-w.Exec(func(tx *world.Tx) { started = panicking(tx, h) })
+		if started {
+			return true
+		}
+	}
+	return false
+}
+
+func hurt(w *world.World, h *world.EntityHandle, src func(tx *world.Tx) world.DamageSource) {
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := h.Entity(tx)
+		e.(entity.Living).Hurt(1, src(tx))
+	})
+}
+
+func playerAttack(tx *world.Tx) world.DamageSource {
+	return entity.AttackDamageSource{Attacker: addSurvivalPlayer(tx, mgl64.Vec3{2.5, 64, .5})}
+}
+
+func TestAnimalsPanicWhenHurt(t *testing.T) {
+	cases := []struct {
+		id                  string
+		nbt                 map[string]any
+		attribute, modifier float64
+	}{
+		{id: "minecraft:cow", attribute: .2, modifier: 2},
+		{id: "minecraft:mooshroom", attribute: .2, modifier: 2},
+		{id: "minecraft:pig", attribute: .25, modifier: 1.25},
+		{id: "minecraft:sheep", attribute: .23, modifier: 1.25},
+		{id: "minecraft:chicken", attribute: .25, modifier: 1.4},
+		{id: "minecraft:rabbit", attribute: .3, modifier: 2.2},
+		{id: "minecraft:cat", attribute: .3, modifier: 1.5},
+		{id: "minecraft:fox", attribute: .3, modifier: 2.2},
+		{id: "minecraft:polar_bear", nbt: map[string]any{"Age": int32(-24000)}, attribute: .25, modifier: 2},
+		// TurtleMoveControl halves the speed of turtles on land.
+		{id: "minecraft:turtle", attribute: .15, modifier: 1},
+		{id: "minecraft:strider", attribute: .175, modifier: 1.65},
+	}
+	for _, c := range cases {
+		t.Run(c.id, func(t *testing.T) {
+			w := traderTestWorld(t)
+			var h *world.EntityHandle
+			<-w.Exec(func(tx *world.Tx) { h = spawnAnimal(t, tx, c.id, .5, c.nbt) })
+			w.AdvanceTick()
+			<-w.Exec(func(tx *world.Tx) {
+				if panicking(tx, h) {
+					t.Fatal("animal panics before it is hurt")
+				}
+			})
+			hurt(w, h, playerAttack)
+			if !startsPanicking(w, h) {
+				t.Fatal("hurt animal does not panic")
+			}
+			var last mgl64.Vec3
+			<-w.Exec(func(tx *world.Tx) { e, _ := h.Entity(tx); last = e.Position() })
+			run := 0.0
+			for range 20 {
+				w.AdvanceTick()
+				<-w.Exec(func(tx *world.Tx) {
+					e, _ := h.Entity(tx)
+					pos := e.Position()
+					pos[1], last[1] = 0, 0
+					run, last = run+pos.Sub(last).Len(), pos
+				})
+			}
+			if want := .75 * panicDistance(c.attribute, c.modifier); run < want {
+				t.Fatalf("panicking %s ran %.2f blocks in a second, want at least %.2f", c.id, run, want)
+			}
+		})
+	}
+}
+
+func TestWolvesAndPandasOnlyPanicFromHazards(t *testing.T) {
+	for _, id := range []string{"minecraft:wolf", "minecraft:panda"} {
+		t.Run(id, func(t *testing.T) {
+			w := traderTestWorld(t)
+			var h *world.EntityHandle
+			<-w.Exec(func(tx *world.Tx) { h = spawnAnimal(t, tx, id, .5, nil) })
+			w.AdvanceTick()
+			hurt(w, h, playerAttack)
+			if startsPanicking(w, h) {
+				t.Fatal("panics from an attack")
+			}
+			hurt(w, h, func(*world.Tx) world.DamageSource { return block.FireDamageSource{} })
+			if !startsPanicking(w, h) {
+				t.Fatal("does not panic from fire")
+			}
+		})
+	}
+}

@@ -326,6 +326,8 @@ func (c WolfBehaviourConfig) New() *WolfBehaviour {
 		speed: 0.3, tamed: c.Tamed, angry: c.Angry, sitting: c.Sitting, ownerUUID: c.OwnerUUID,
 		collarColor: collar, variant: uint8(max(0, min(c.Variant, 7))), ageTicks: c.AgeTicks, nextWander: 1,
 		soundVariant: soundVariant, bodyArmor: armor,
+		// Wolves only panic from fire, lava, freezing, cactus and lightning.
+		panic: panicState{environmental: true},
 	}
 }
 
@@ -343,6 +345,7 @@ type WolfBehaviour struct {
 	navigator                            Navigator
 	bodyArmor                            item.Stack
 	breeding                             breeding
+	panic                                panicState
 }
 
 // Wolf is a tameable passive wolf with owner and body armour state.
@@ -362,6 +365,7 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			}
 		}
 	}
+	panicking := b.panic.run(e, tx, &b.navigator)
 	partner, inLove := tickBreeding(&Wolf{Ent: e}, tx)
 	if b.sitting {
 		b.navigator.Path, b.navigator.Index = nil, 0
@@ -371,7 +375,7 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.followCooldown > 0 {
 		b.followCooldown--
 	}
-	if b.tamed && b.owner != nil && b.followCooldown == 0 {
+	if b.tamed && b.owner != nil && b.followCooldown == 0 && !panicking {
 		if owner, ok := b.owner.Entity(tx); ok && e.Position().Sub(owner.Position()).LenSqr() > 100 {
 			start, goal := cube.PosFromVec3(e.Position()), cube.PosFromVec3(owner.Position())
 			b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 256}, navigatorTick(e))
@@ -381,7 +385,11 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if inLove {
+	speed := b.speed
+	if panicking {
+		// TamableAnimalPanicGoal at 1.5 times the movement speed.
+		speed = groundSpeed(.3, 1.5)
+	} else if inLove {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 && !(b.tamed && b.owner != nil) {
 		b.chooseWanderPath(e, tx)
@@ -394,7 +402,7 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			dir := delta.Normalize()
-			velocity[0], velocity[2] = dir[0]*b.speed, dir[2]*b.speed
+			velocity[0], velocity[2] = dir[0]*speed, dir[2]*speed
 			rot[0] = math.Atan2(-dir[0], dir[2]) * 180 / math.Pi
 		}
 	} else {
@@ -419,6 +427,9 @@ func (w *Wolf) Health() float64        { return w.behaviour().health.Health() }
 func (w *Wolf) MaxHealth() float64     { return w.behaviour().health.MaxHealth() }
 func (w *Wolf) SetMaxHealth(v float64) { w.behaviour().health.SetMaxHealth(v) }
 func (w *Wolf) Dead() bool             { return w.behaviour().dead || w.Health() <= 0 }
+
+// Panicking reports whether the wolf runs from fire or other hazards.
+func (w *Wolf) Panicking() bool { return w.behaviour().panic.active }
 func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	b := w.behaviour()
 	if w.Dead() || damage <= 0 || (src.Fire() && w.hasEffect(effect.FireResistance)) {
@@ -432,6 +443,7 @@ func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage = wolfArmourDamage(damage)
 	}
 	b.health.AddHealth(-damage)
+	b.panic.hurt(src, w.tx.CurrentTick())
 	resetLove(w)
 	w.viewAction(HurtAction{})
 	onMobHurt(w.tx, w)

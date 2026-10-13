@@ -165,7 +165,7 @@ func (b *ocelotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	} else {
 		v[0], v[2] = 0, 0
 	}
-	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx)
+	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx).apply(e)
 }
 func ocelotFish(i world.Item) bool {
 	switch v := i.(type) {
