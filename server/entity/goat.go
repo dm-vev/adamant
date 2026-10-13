@@ -69,7 +69,8 @@ func (c GoatConfig) New() *GoatBehaviour {
 	if !c.LeftHorn && !c.RightHorn {
 		c.LeftHorn, c.RightHorn = true, true
 	}
-	return &GoatBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, screaming: c.Screaming, leftHorn: c.LeftHorn, rightHorn: c.RightHorn, next: 40 + rand.IntN(81), speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &GoatBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, screaming: c.Screaming, leftHorn: c.LeftHorn, rightHorn: c.RightHorn, next: 40 + rand.IntN(81), speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager(),
+		panic: panicState{brain: true}}
 }
 
 // Goat models source screaming, ramming cooldown and breakable horns.
@@ -83,6 +84,7 @@ type GoatBehaviour struct {
 	navigator                            Navigator
 	mc                                   *MovementComputer
 	breeding                             breeding
+	panic                                panicState
 }
 
 func (g *Goat) behaviour() *GoatBehaviour { return g.Behaviour().(*GoatBehaviour) }
@@ -97,7 +99,12 @@ func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if partner, ok := tickBreeding(&Goat{Ent: e}, tx); ok {
+	panicking := b.panic.run(e, tx, &b.navigator)
+	speed := b.speed
+	if partner, ok := tickBreeding(&Goat{Ent: e}, tx); panicking {
+		// GoatAi's AnimalPanic runs at twice the movement speed.
+		speed = groundSpeed(.2, 2)
+	} else if ok {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 40 + rand.IntN(81)
@@ -117,7 +124,7 @@ func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			v[0], v[2] = d[0]*speed, d[2]*speed
 		}
 	} else {
 		v[0], v[2] = 0, 0
@@ -134,6 +141,9 @@ func (g *Goat) SetMaxHealth(v float64) {
 	b.health = math.Min(v, b.health)
 }
 func (g *Goat) Dead() bool { return g.behaviour().dead || g.Health() <= 0 }
+
+// Panicking reports whether the goat runs from danger.
+func (g *Goat) Panicking() bool { return g.behaviour().panic.active }
 func (g *Goat) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if g.Dead() || v <= 0 {
 		return 0, false
@@ -144,6 +154,7 @@ func (g *Goat) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := g.behaviour()
 	b.health -= v
+	b.panic.hurt(src, g.tx.CurrentTick())
 	resetLove(g)
 	g.viewAction(HurtAction{})
 	onMobHurt(g.tx, g)

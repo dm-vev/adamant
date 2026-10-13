@@ -120,7 +120,8 @@ func (c CopperGolemBehaviourConfig) New() *CopperGolemBehaviour {
 	if !c.healthSet && health <= 0 {
 		health = maxHealth
 	}
-	return &CopperGolemBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .2, weather: max(0, min(c.WeatherState, 3)), state: max(0, min(c.State, 4)), waxed: c.Waxed, nextWeatheringTick: c.NextWeatheringTick, antenna: c.Antenna, carried: c.Carried, cooldown: 60, nextWander: 1}
+	return &CopperGolemBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .2, weather: max(0, min(c.WeatherState, 3)), state: max(0, min(c.State, 4)), waxed: c.Waxed, nextWeatheringTick: c.NextWeatheringTick, antenna: c.Antenna, carried: c.Carried, cooldown: 60, nextWander: 1,
+		panic: panicState{brain: true}}
 }
 
 type CopperGolemBehaviour struct {
@@ -140,6 +141,7 @@ type CopperGolemBehaviour struct {
 	target               cube.Pos
 	targetSet            bool
 	interactTicks        int
+	panic                panicState
 }
 
 // CopperGolem is a mobile item-sorting golem that oxidises over time.
@@ -217,7 +219,11 @@ func (b *CopperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.cooldown > 0 {
 		b.cooldown--
 	}
-	if b.targetSet {
+	speed := b.speed
+	if b.panic.run(e, tx, &b.navigator) {
+		// CopperGolemAi's AnimalPanic runs at 1.5 times its speed.
+		speed = groundSpeed(.2, 1.5)
+	} else if b.targetSet {
 		b.followTarget(e, tx)
 	} else if b.cooldown == 0 {
 		b.findContainer(e, tx)
@@ -232,7 +238,7 @@ func (b *CopperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			v[0], v[2] = d[0]*speed, d[2]*speed
 			r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
 		}
 	} else {
@@ -492,6 +498,9 @@ func (c *CopperGolem) Health() float64        { return c.b().health.Health() }
 func (c *CopperGolem) MaxHealth() float64     { return c.b().health.MaxHealth() }
 func (c *CopperGolem) SetMaxHealth(v float64) { c.b().health.SetMaxHealth(v) }
 func (c *CopperGolem) Dead() bool             { return c.b().dead || c.Health() <= 0 }
+
+// Panicking reports whether the copper golem runs from danger.
+func (c *CopperGolem) Panicking() bool { return c.b().panic.active }
 func (c *CopperGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b := c.b()
 	if c.Dead() || d <= 0 || s.Fire() && c.hasEffect(effect.FireResistance) {
@@ -504,6 +513,7 @@ func (c *CopperGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	b.panic.hurt(s, c.tx.CurrentTick())
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)
 	if c.Dead() {

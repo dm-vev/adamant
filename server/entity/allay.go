@@ -173,7 +173,8 @@ func (c AllayBehaviourConfig) New() *AllayBehaviour {
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &AllayBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: 0, Drag: .02, DragBeforeGravity: true}, speed: .1, likedPlayer: c.LikedPlayer, duplicationCooldown: max(0, c.Cooldown), dancing: c.Dancing, inventory: c.Inventory, held: c.Held, nextPickup: 1}
+	return &AllayBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: 0, Drag: .02, DragBeforeGravity: true}, speed: .1, likedPlayer: c.LikedPlayer, duplicationCooldown: max(0, c.Cooldown), dancing: c.Dancing, inventory: c.Inventory, held: c.Held, nextPickup: 1,
+		panic: panicState{brain: true}}
 }
 
 type AllayBehaviour struct {
@@ -190,6 +191,7 @@ type AllayBehaviour struct {
 	jukebox                    cube.Pos
 	hasJukebox                 bool
 	navigator                  Navigator
+	panic                      panicState
 }
 type Allay struct{ *Ent }
 
@@ -212,7 +214,7 @@ func (a *Allay) Tick(tx *world.Tx, n int64) {
 	if !canDuplicate && b.duplicationCooldown == 0 {
 		a.updateState()
 	}
-	if b.dancing && a.isPanicking() {
+	if b.dancing && a.Panicking() {
 		a.SetDancing(false)
 	}
 	if b.dancing && b.hasJukebox && a.Position().Sub(b.jukebox.Vec3()).Len() > 32 {
@@ -230,6 +232,7 @@ func (a *Allay) Tick(tx *world.Tx, n int64) {
 	a.Ent.Tick(tx, n)
 }
 func (b *AllayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	speed := b.speed
 	var target world.Entity
 	if b.likedPlayer != "" {
 		for p := range tx.Players() {
@@ -239,7 +242,10 @@ func (b *AllayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			}
 		}
 	}
-	if target != nil && target.Position().Sub(e.Position()).Len() > 3 {
+	if b.panic.run(e, tx, &b.navigator) {
+		// AllayAi's AnimalPanic flies at 2.5 times its speed.
+		speed *= 2.5
+	} else if target != nil && target.Position().Sub(e.Position()).Len() > 3 {
 		b.navigator.MoveTo(tx, cube.PosFromVec3(e.Position()), cube.PosFromVec3(target.Position()), GroundProfile{MaxVisitedNodes: 256, AllowWater: true}, navigatorTick(e))
 	} else if b.held.Empty() && b.nextPickup == 0 {
 		b.navigator.Path, b.navigator.Index = nil, 0
@@ -253,7 +259,7 @@ func (b *AllayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v = d.Mul(b.speed)
+			v = d.Mul(speed)
 			r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
 			r[1] = math.Atan2(d[1], math.Hypot(d[0], d[2])) * 180 / math.Pi
 		}
@@ -277,6 +283,7 @@ func (a *Allay) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	b.panic.hurt(s, a.tx.CurrentTick())
 	a.viewAction(HurtAction{})
 	onMobHurt(a.tx, a)
 	if a.Dead() {
@@ -308,12 +315,14 @@ func (a *Allay) SetSpeed(v float64)           { a.b().speed = v }
 func (a *Allay) hasEffect(t effect.Type) bool { _, ok := a.b().effects.Effect(t); return ok }
 func (a *Allay) Dancing() bool                { return a.b().dancing }
 func (a *Allay) SetDancing(v bool) {
-	if (!v || !a.isPanicking()) && a.b().dancing != v {
+	if (!v || !a.Panicking()) && a.b().dancing != v {
 		a.b().dancing = v
 		a.updateState()
 	}
 }
-func (a *Allay) isPanicking() bool { return a.OnFireDuration() > 0 }
+
+// Panicking reports whether the allay flees from danger.
+func (a *Allay) Panicking() bool { return a.b().panic.active }
 func (a *Allay) SetJukeboxPlaying(pos cube.Pos, playing bool) {
 	b := a.b()
 	if playing {

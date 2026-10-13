@@ -89,7 +89,8 @@ func (c SnifferConfig) New() *SnifferBehaviour {
 	if next == 0 {
 		next = 80 + rand.IntN(81)
 	}
-	return &SnifferBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, sniffTicks: c.SniffTicks, digTicks: c.DigTicks, sniffing: c.Sniffing, next: next, digPos: c.DigPos, explored: append([]cube.Pos(nil), c.Explored...), speed: .1, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &SnifferBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, sniffTicks: c.SniffTicks, digTicks: c.DigTicks, sniffing: c.Sniffing, next: next, digPos: c.DigPos, explored: append([]cube.Pos(nil), c.Explored...), speed: .1, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager(),
+		panic: panicState{brain: true}}
 }
 
 // Sniffer owns source sniff-to-dig continuation memory, not just a wandering profile.
@@ -105,6 +106,7 @@ type SnifferBehaviour struct {
 	navigator                       Navigator
 	mc                              *MovementComputer
 	breeding                        breeding
+	panic                           panicState
 }
 
 func (s *Sniffer) behaviour() *SnifferBehaviour { return s.Behaviour().(*SnifferBehaviour) }
@@ -113,6 +115,11 @@ func (s *Sniffer) Tick(tx *world.Tx, t int64) {
 	s.Ent.Tick(tx, t)
 }
 func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	panicking := b.panic.run(e, tx, &b.navigator)
+	if panicking {
+		// SnifferAi resets sniffing and digging when the sniffer panics.
+		b.sniffing, b.sniffTicks, b.digTicks = false, 0, 0
+	}
 	partner, inLove := tickBreeding(&Sniffer{Ent: e}, tx)
 	if b.digTicks > 0 {
 		b.digTicks--
@@ -139,10 +146,13 @@ func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if inLove && b.digTicks == 0 {
+	switch {
+	case panicking:
+		// AnimalPanic owns the navigator.
+	case inLove && b.digTicks == 0:
 		b.sniffing, b.sniffTicks = false, 0
 		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && b.digTicks == 0 {
+	case b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && b.digTicks == 0:
 		b.sniffing = true
 		b.sniffTicks = 40 + rand.IntN(41)
 		b.next = 1200
@@ -164,7 +174,11 @@ func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			speed := b.speed
+			if panicking {
+				speed = groundSpeed(.1, 2)
+			}
+			v[0], v[2] = d[0]*speed, d[2]*speed
 		}
 	} else {
 		v[0], v[2] = 0, 0
@@ -206,6 +220,9 @@ func (s *Sniffer) SetMaxHealth(v float64) {
 	b.health = math.Min(v, b.health)
 }
 func (s *Sniffer) Dead() bool { return s.behaviour().dead || s.Health() <= 0 }
+
+// Panicking reports whether the sniffer runs from danger.
+func (s *Sniffer) Panicking() bool { return s.behaviour().panic.active }
 func (s *Sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() || v <= 0 {
 		return 0, false
@@ -216,6 +233,7 @@ func (s *Sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := s.behaviour()
 	b.health -= v
+	b.panic.hurt(src, s.tx.CurrentTick())
 	resetLove(s)
 	s.viewAction(HurtAction{})
 	onMobHurt(s.tx, s)

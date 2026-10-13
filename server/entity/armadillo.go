@@ -64,7 +64,8 @@ func (c ArmadilloConfig) New() *ArmadilloBehaviour {
 	if c.ScuteTicks == 0 {
 		c.ScuteTicks = 6000 + rand.IntN(6001)
 	}
-	return &ArmadilloBehaviour{health: c.Health, maxHealth: c.MaxHealth, effects: NewEffectManager(), age: c.Age, scuteTicks: c.ScuteTicks, rollTicks: c.RollTicks, threatCooldown: c.ThreatCooldown, rolling: c.Rolling, next: 40 + rand.IntN(81), speed: .15, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &ArmadilloBehaviour{health: c.Health, maxHealth: c.MaxHealth, effects: NewEffectManager(), age: c.Age, scuteTicks: c.ScuteTicks, rollTicks: c.RollTicks, threatCooldown: c.ThreatCooldown, rolling: c.Rolling, next: 40 + rand.IntN(81), speed: .15, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
+		panic: panicState{brain: true, environmental: true}}
 }
 func (a *Armadillo) FinalizeSpawn(_ string, r *java26.Random) {
 	if r != nil {
@@ -92,11 +93,19 @@ type ArmadilloBehaviour struct {
 	navigator                                        Navigator
 	mc                                               *MovementComputer
 	breeding                                         breeding
+	panic                                            panicState
 }
 
 func (a *Armadillo) behaviour() *ArmadilloBehaviour { return a.Behaviour().(*ArmadilloBehaviour) }
 func (a *Armadillo) Tick(tx *world.Tx, t int64)     { a.behaviour().effects.Tick(a, tx); a.Ent.Tick(tx, t) }
 func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	// ArmadilloPanic only panics on environmental damage and rolls out
+	// when it starts.
+	wasPanicking := b.panic.active
+	panicking := b.panic.run(e, tx, &b.navigator)
+	if panicking && !wasPanicking {
+		b.rolling, b.rollTicks = false, 0
+	}
 	partner, inLove := tickBreeding(&Armadillo{Ent: e}, tx)
 	if b.threatCooldown > 0 {
 		b.threatCooldown--
@@ -117,7 +126,9 @@ func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if inLove && !b.rolling {
+	if panicking {
+		// AnimalPanic owns the navigator.
+	} else if inLove && !b.rolling {
 		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && !b.rolling {
 		b.next = 40 + rand.IntN(81)
@@ -139,7 +150,11 @@ func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.navigator.Index++
 		} else {
 			d = d.Normalize()
-			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			speed := b.speed
+			if panicking {
+				speed = groundSpeed(.14, 2)
+			}
+			v[0], v[2] = d[0]*speed, d[2]*speed
 		}
 	} else {
 		v[0], v[2] = 0, 0
@@ -165,6 +180,9 @@ func (a *Armadillo) SetMaxHealth(v float64) {
 	b.health = math.Min(v, b.health)
 }
 func (a *Armadillo) Dead() bool { return a.behaviour().dead || a.Health() <= 0 }
+
+// Panicking reports whether the armadillo runs from danger.
+func (a *Armadillo) Panicking() bool { return a.behaviour().panic.active }
 func (a *Armadillo) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	b := a.behaviour()
 	if a.Dead() || v <= 0 || (src.Fire() && a.hasEffect(effect.FireResistance)) {
@@ -180,6 +198,7 @@ func (a *Armadillo) Hurt(v float64, src world.DamageSource) (float64, bool) {
 		v *= .5
 	}
 	b.health -= v
+	b.panic.hurt(src, a.tx.CurrentTick())
 	resetLove(a)
 	a.viewAction(HurtAction{})
 	onMobHurt(a.tx, a)

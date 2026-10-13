@@ -23,6 +23,10 @@ type panicState struct {
 	// water is the distance at which the mob looks for water to run to even
 	// when it does not burn, as turtles do. Zero only looks while burning.
 	water int
+	// brain makes the panic last 100 to 120 ticks once it starts, as with
+	// the AnimalPanic behaviour of mobs with brains.
+	brain bool
+	until int64
 }
 
 // hurt records Java's LivingEntity.lastDamageSource.
@@ -60,15 +64,43 @@ func (p *panicState) target(e *Ent, m randomPosMob) (cube.Pos, bool) {
 // panics: it keeps following its path and picks a new target whenever the
 // path ends while the panic lasts.
 func (p *panicState) run(e *Ent, tx *world.Tx, nav *Navigator) bool {
+	tick := tx.CurrentTick()
+	if p.brain {
+		return p.runBrain(e, tx, nav, tick)
+	}
 	if p.active {
 		if nav.Index < len(nav.Path) {
 			return true
 		}
 		p.active = false
 	}
-	if !p.shouldPanic(tx.CurrentTick()) {
+	if !p.shouldPanic(tick) {
 		return false
 	}
+	p.active = p.flee(e, tx, nav)
+	return p.active
+}
+
+// runBrain ports AnimalPanic: once started by damage the panic lasts 100 to
+// 120 ticks, during which the mob runs to a new spot whenever it arrives.
+func (p *panicState) runBrain(e *Ent, tx *world.Tx, nav *Navigator, tick int64) bool {
+	if tick >= p.until {
+		if !p.shouldPanic(tick) {
+			p.active = false
+			return false
+		}
+		p.until = tick + 100 + int64(rand.IntN(21))
+		nav.Path, nav.Index, nav.HasTarget = nil, 0, false
+	}
+	p.active = true
+	if nav.Index >= len(nav.Path) {
+		p.flee(e, tx, nav)
+	}
+	return true
+}
+
+// flee sets a path on nav to the spot the panicking mob runs to.
+func (p *panicState) flee(e *Ent, tx *world.Tx, nav *Navigator) bool {
 	box := e.H().Type().BBox(e)
 	random := java26.NewLegacyRandom(rand.Int64())
 	m := randomPosMob{tx: tx, pos: e.data.Pos, home: noHome, profile: GroundProfile{Width: box.Width(), Height: box.Height()}, random: &random}
@@ -81,7 +113,6 @@ func (p *panicState) run(e *Ent, tx *world.Tx, nav *Navigator) bool {
 		return false
 	}
 	nav.Path, nav.Index, nav.Target, nav.HasTarget, nav.LastComputeTick = path, 0, goal, true, navigatorTick(e)
-	p.active = true
 	return true
 }
 

@@ -3,6 +3,8 @@ package entity_test
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -69,14 +71,22 @@ func TestHurtVillagersCalmDown(t *testing.T) {
 	})
 }
 
-// panickingVillagerGolems hurts three villagers every second for ten seconds
-// and returns how many iron golems they summoned.
+// panickingVillagerGolems hurts three villagers penned in a 5x5 yard every
+// second for ten seconds and returns how many iron golems they summoned.
 func panickingVillagerGolems(t *testing.T, slept bool) int {
 	w := traderTestWorld(t)
 	var villagers []*world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
+		for x := -3; x <= 3; x++ {
+			for z := -3; z <= 3; z++ {
+				if x == -3 || x == 3 || z == -3 || z == 3 {
+					tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+					tx.SetBlock(cube.Pos{x, 65, z}, block.Stone{}, nil)
+				}
+			}
+		}
 		for i := range 3 {
-			v := addVillager(t, tx, mgl64.Vec3{float64(i*2) + .5, 64, .5})
+			v := addVillager(t, tx, mgl64.Vec3{float64(i*2) - 1.5, 64, .5})
 			if slept {
 				v.MarkSlept(tx.CurrentTick())
 			}

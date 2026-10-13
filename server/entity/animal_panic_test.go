@@ -64,6 +64,11 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 		// TurtleMoveControl halves the speed of turtles on land.
 		{id: "minecraft:turtle", attribute: .15, modifier: 1},
 		{id: "minecraft:strider", attribute: .175, modifier: 1.65},
+		{id: "minecraft:goat", attribute: .2, modifier: 2},
+		{id: "minecraft:sniffer", attribute: .1, modifier: 2},
+		// SmoothSwimmingMoveControl walks at a tenth of the frog's speed.
+		{id: "minecraft:frog", attribute: .1, modifier: 2},
+		{id: "minecraft:copper_golem", attribute: .2, modifier: 1.5},
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
@@ -99,8 +104,8 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 	}
 }
 
-func TestWolvesAndPandasOnlyPanicFromHazards(t *testing.T) {
-	for _, id := range []string{"minecraft:wolf", "minecraft:panda"} {
+func TestWolvesPandasAndArmadillosOnlyPanicFromHazards(t *testing.T) {
+	for _, id := range []string{"minecraft:wolf", "minecraft:panda", "minecraft:armadillo"} {
 		t.Run(id, func(t *testing.T) {
 			w := traderTestWorld(t)
 			var h *world.EntityHandle
@@ -116,4 +121,31 @@ func TestWolvesAndPandasOnlyPanicFromHazards(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestBrainPanicLastsFiveSeconds checks AnimalPanic: unlike PanicGoal, which
+// forgets the damage after two seconds, a mob with a brain panics for 100 to
+// 120 ticks after one hit.
+func TestBrainPanicLastsFiveSeconds(t *testing.T) {
+	w := traderTestWorld(t)
+	var h *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) { h = spawnAnimal(t, tx, "minecraft:goat", .5, nil) })
+	w.AdvanceTick()
+	hurt(w, h, playerAttack)
+	for range 95 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if !panicking(tx, h) {
+			t.Fatal("goat calmed down before the panic's minimum duration")
+		}
+	})
+	for range 30 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if panicking(tx, h) {
+			t.Fatal("goat still panics after the panic's maximum duration")
+		}
+	})
 }

@@ -69,7 +69,8 @@ func (c frogConfig) Apply(data *world.EntityData) {
 	if !c.healthSet {
 		h = 10
 	}
-	data.Data = &frogBehaviour{health: NewHealthManager(h, 10), effects: NewEffectManager(), variant: c.variant, age: c.age, pregnant: c.pregnant, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, random: java26.NewLegacyRandom(int64(c.variant)), speed: 1, nextWander: 1}
+	data.Data = &frogBehaviour{health: NewHealthManager(h, 10), effects: NewEffectManager(), variant: c.variant, age: c.age, pregnant: c.pregnant, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, random: java26.NewLegacyRandom(int64(c.variant)), speed: 1, nextWander: 1,
+		panic: panicState{brain: true}}
 }
 
 type frogBehaviour struct {
@@ -89,6 +90,8 @@ type frogBehaviour struct {
 	landTarget   mgl64.Vec3
 	hasLand      bool
 	nextLandScan int
+	panic        panicState
+	navigator    Navigator
 }
 
 // Frog is a living amphibian runtime entity. Tadpoles convert into this runtime at Java's age threshold.
@@ -111,8 +114,12 @@ func (b *frogBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	frog := &Frog{Ent: e}
 	partner, inLove := tickBreeding(frog, tx)
-	vel := e.data.Vel
-	if walk, busy := b.tongue.tick(e, tx, navigatorTick(e)); busy {
+	vel, rot := e.data.Vel, e.data.Rot
+	if b.panic.run(e, tx, &b.navigator) {
+		// FrogAi's AnimalPanic: SmoothSwimmingMoveControl walks at a tenth
+		// of the frog's speed of 1 on land.
+		vel, rot, _ = steer(e, &b.navigator, groundSpeed(.1, 2), .5)
+	} else if walk, busy := b.tongue.tick(e, tx, navigatorTick(e)); busy {
 		vel[0], vel[2] = walk[0], walk[2]
 	} else if inLove {
 		vel = frogWalkTo(e, vel, partner)
@@ -129,8 +136,8 @@ func (b *frogBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			vel = vel.Add(mgl64.Vec3{(float64(b.random.NextFloat())*2 - 1) * b.speed * .1, 0, (float64(b.random.NextFloat())*2 - 1) * b.speed * .1})
 		}
 	}
-	m := b.movement.TickMovement(e, e.Position(), vel, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel = m.Position(), m.Velocity()
+	m := b.movement.TickMovement(e, e.Position(), vel, rot, e.data.Rot, tx)
+	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
 	return m
 }
 
@@ -238,6 +245,9 @@ func (f *Frog) Health() float64        { return f.behaviour().health.Health() }
 func (f *Frog) MaxHealth() float64     { return f.behaviour().health.MaxHealth() }
 func (f *Frog) SetMaxHealth(v float64) { f.behaviour().health.SetMaxHealth(v) }
 func (f *Frog) Dead() bool             { return f.behaviour().dead || f.Health() <= 0 }
+
+// Panicking reports whether the frog runs from danger.
+func (f *Frog) Panicking() bool { return f.behaviour().panic.active }
 func (f *Frog) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if f.Dead() || d <= 0 {
 		return 0, false
@@ -245,6 +255,7 @@ func (f *Frog) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	b := f.behaviour()
 	before := b.health.Health()
 	b.health.AddHealth(-d)
+	b.panic.hurt(src, f.tx.CurrentTick())
 	resetLove(f)
 	dealt := before - b.health.Health()
 	f.viewAction(HurtAction{})
