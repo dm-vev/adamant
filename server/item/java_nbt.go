@@ -25,12 +25,7 @@ func StackFromJavaNBT(data map[string]any) (Stack, error) {
 		it = KnowledgeBook{}
 	} else {
 		var ok bool
-		nativeID := id
-		if id == "minecraft:jack_o_lantern" {
-			nativeID = "minecraft:lit_pumpkin"
-		}
-		it, ok = world.ItemByName(nativeID, 0)
-		if !ok {
+		if it, ok = javaItem(id); !ok {
 			return Stack{}, fmt.Errorf("unsupported Java item %q", id)
 		}
 	}
@@ -131,6 +126,8 @@ func StackFromJavaNBT(data map[string]any) (Stack, error) {
 			if unbreakable(value) { s = s.AsUnbreakable() }
 		case "minecraft:enchantments", "minecraft:stored_enchantments", "ench", "Enchantments", "StoredEnchantments":
 			applyJavaEnchantments(&s, value)
+		case "minecraft:potion_contents", "Potion":
+			s = javaPotionContents(s, value)
 	}
 
 	}

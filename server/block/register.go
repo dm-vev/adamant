@@ -501,6 +501,14 @@ func init() {
 	world.RegisterItem(Dirt{Coarse: true})
 	world.RegisterItem(Dirt{})
 	world.RegisterItem(Dispenser{})
+	world.RegisterItem(Dropper{})
+	world.RegisterItem(SweetBerries{})
+	world.RegisterItem(CreakingHeart{Axis: cube.Y})
+	for _, waxed := range []bool{false, true} {
+		for _, oxidation := range OxidationTypes() {
+			world.RegisterItem(CopperBulb{Oxidation: oxidation, Waxed: waxed})
+		}
+	}
 	world.RegisterItem(DragonEgg{})
 	world.RegisterItem(DriedKelp{})
 	world.RegisterItem(DriedGhast{})

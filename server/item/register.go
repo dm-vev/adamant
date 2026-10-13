@@ -74,6 +74,8 @@ func init() {
 	world.RegisterItem(Egg{Variant: EggBlue})
 	world.RegisterItem(Egg{Variant: EggBrown})
 	world.RegisterItem(Elytra{})
+	world.RegisterItem(EmptyMap{})
+	world.RegisterItem(EmptyMap{Locator: true})
 	world.RegisterItem(Emerald{})
 	world.RegisterItem(EnchantedApple{})
 	world.RegisterItem(EnchantedBook{})

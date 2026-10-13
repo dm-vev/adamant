@@ -17,7 +17,7 @@ func fillContainerLoot(tx *world.Tx, pos cube.Pos, inv *inventory.Inventory, tab
 	}
 	random := tx.LootRandomSequence(sequence, seed)
 	stacks, err := loot.Generate(table, seed, loot.Context{
-		Random: random, RandomSequence: tx.LootRandomSequence,
+		Random: random, RandomSequence: tx.LootRandomSequence, Tx: tx,
 		Block: blockName, Origin: pos.Vec3Centre(),
 	})
 	if err != nil {

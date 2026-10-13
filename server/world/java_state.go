@@ -116,6 +116,13 @@ func JavaState(registry chunk.BlockRegistry, state NativeState) (BlockState, err
 	return reverseNativeState(registry, state)
 }
 
+// JavaStateOf returns the Java block state of a registered block without
+// liquid.
+func JavaStateOf(b Block) (BlockState, error) {
+	air := DefaultBlockRegistry.AirRuntimeID()
+	return JavaState(DefaultBlockRegistry, NativeState{Block: BlockRuntimeID(b), Liquid: air})
+}
+
 // WithJavaState attaches the known source state to its native projection. It
 // omits metadata when the native layers already identify the complete source
 // state. Actor-backed projections may supply their source state here as well.

@@ -39,6 +39,10 @@ type StructureAtFinder interface {
 	FindStructureAt(structureTag string, position cube.Pos) (StructureLocation, bool, error)
 }
 
+// ErrNoStructureLookup is returned for structure queries in worlds whose
+// generator places no Java structures.
+var ErrNoStructureLookup = errors.New("generator does not support structure lookup")
+
 // FindNearestMapFeature returns an unreferenced Java structure start when
 // skipReferenced is true. A successful lookup does not consume the result;
 // callers must call RecordStructureReference only after the operation that
@@ -49,7 +53,7 @@ func (w *World) FindNearestMapFeature(structureTag string, origin cube.Pos, sear
 	}
 	locator, ok := w.conf.Generator.(StructureLocator)
 	if !ok {
-		return StructureLocation{}, false, fmt.Errorf("find nearest map feature: generator %T does not support structure lookup", w.conf.Generator)
+		return StructureLocation{}, false, fmt.Errorf("find nearest map feature: %w: %T", ErrNoStructureLookup, w.conf.Generator)
 	}
 	if searchRadius < 0 {
 		return StructureLocation{}, false, fmt.Errorf("find nearest map feature: negative search radius %d", searchRadius)
@@ -130,7 +134,7 @@ func (w *World) RecordStructureAt(structureTag string, position cube.Pos) (bool,
 	}
 	locator, ok := w.conf.Generator.(StructureAtFinder)
 	if !ok {
-		return false, fmt.Errorf("record structure at: generator %T does not support structure lookup", w.conf.Generator)
+		return false, fmt.Errorf("record structure at: %w: %T", ErrNoStructureLookup, w.conf.Generator)
 	}
 	location, found, err := locator.FindStructureAt(structureTag, position)
 	if err != nil || !found {

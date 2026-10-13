@@ -1,6 +1,7 @@
 package item
 
 import (
+	"strings"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -80,6 +81,34 @@ func NauseaStew() StewType {
 // StewTypes ...
 func StewTypes() []StewType {
 	return []StewType{NightVisionPoppyStew(), JumpBoostStew(), WeaknessStew(), BlindnessBluetStew(), PoisonStew(), SaturationDandelionStew(), SaturationOrchidStew(), FireResistanceStew(), RegenerationStew(), WitherStew(), NightVisionTorchflowerStew(), BlindnessEyeblossomStew(), NauseaStew()}
+}
+
+// StewTypeFromJavaEffect returns the suspicious stew giving the Java mob
+// effect passed, for loot and trades that set a stew effect.
+func StewTypeFromJavaEffect(id string) (StewType, bool) {
+	switch strings.TrimPrefix(id, "minecraft:") {
+	case "night_vision":
+		return NightVisionPoppyStew(), true
+	case "jump_boost":
+		return JumpBoostStew(), true
+	case "weakness":
+		return WeaknessStew(), true
+	case "blindness":
+		return BlindnessBluetStew(), true
+	case "poison":
+		return PoisonStew(), true
+	case "saturation":
+		return SaturationDandelionStew(), true
+	case "fire_resistance":
+		return FireResistanceStew(), true
+	case "regeneration":
+		return RegenerationStew(), true
+	case "wither":
+		return WitherStew(), true
+	case "nausea":
+		return NauseaStew(), true
+	}
+	return StewType{}, false
 }
 
 type stewType uint8

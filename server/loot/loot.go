@@ -3,12 +3,17 @@ package loot
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/item"
 	_ "github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
@@ -372,7 +377,7 @@ type Context struct {
 	DirectEntity world.Entity
 	// DamageTags holds the damage type tags of Damage, e.g.
 	// "minecraft:is_projectile".
-	DamageTags map[string]bool
+	DamageTags       map[string]bool
 	EntityNBT        map[string]any
 	SourceEntityType string
 	Contents         []item.Stack
@@ -476,6 +481,24 @@ func integerNumber(v any, c *Context) (int, error) {
 			return lo + int(c.Random.NextInt(int32(hi-lo+1))), nil
 		case "minecraft:constant":
 			return integerNumber(n["value"], c)
+		case "minecraft:binomial":
+			// BinomialDistributionGenerator: the successes of n trials of
+			// chance p.
+			trials, e := integerNumber(n["n"], c)
+			if e != nil {
+				return 0, e
+			}
+			p, e := number(n["p"], c)
+			if e != nil {
+				return 0, e
+			}
+			successes := 0
+			for range trials {
+				if c.Random.NextFloat() < float32(p) {
+					successes++
+				}
+			}
+			return successes, nil
 		default:
 			return 0, fmt.Errorf("unsupported integer loot number provider %v", n["type"])
 		}
@@ -681,9 +704,87 @@ func testCondition(x condition, c *Context) (bool, error) {
 			_, ok = c.ToolStack.Item().(item.Shears)
 		}
 		return ok, nil
+	case "minecraft:match_block":
+		return testMatchBlock(x.Raw, c)
 	default:
 		return false, fmt.Errorf("unsupported loot condition %q", kind)
 	}
+}
+
+// testMatchBlock ports MatchBlock: the block of the context is one of the
+// listed blocks or tag and its Java state properties match the exact values
+// or ranges given.
+func testMatchBlock(raw map[string]any, c *Context) (bool, error) {
+	name := c.Block
+	properties := map[string]any{}
+	if c.BlockState != nil {
+		state, err := world.JavaStateOf(c.BlockState)
+		if err != nil {
+			return false, err
+		}
+		name, properties = state.Name, state.Properties
+	}
+	if name == "" {
+		return false, nil
+	}
+	if blocks, ok := raw["blocks"]; ok {
+		matched, err := blockInSet(blocks, name)
+		if err != nil || !matched {
+			return false, err
+		}
+	}
+	wanted, _ := raw["state"].(map[string]any)
+	for key, want := range wanted {
+		have, ok := properties[key]
+		if !ok {
+			return false, nil
+		}
+		value := fmt.Sprint(have)
+		switch w := want.(type) {
+		case string:
+			if value != w {
+				return false, nil
+			}
+		case map[string]any:
+			n, err := strconv.Atoi(value)
+			if err != nil {
+				return false, nil
+			}
+			if lo, ok := w["min"].(string); ok {
+				if bound, err := strconv.Atoi(lo); err != nil || n < bound {
+					return false, nil
+				}
+			}
+			if hi, ok := w["max"].(string); ok {
+				if bound, err := strconv.Atoi(hi); err != nil || n > bound {
+					return false, nil
+				}
+			}
+		default:
+			return false, fmt.Errorf("invalid match_block state value %T", want)
+		}
+	}
+	return true, nil
+}
+
+// blockInSet reports whether the Java block is in a holder set: one block, a
+// list of blocks or a #tag.
+func blockInSet(set any, name string) (bool, error) {
+	switch s := set.(type) {
+	case string:
+		if tag, ok := strings.CutPrefix(s, "#"); ok {
+			return javadata.BlockTagContains(tag, name)
+		}
+		return normalize(s) == normalize(name), nil
+	case []any:
+		for _, entry := range s {
+			if id, ok := entry.(string); ok && normalize(id) == normalize(name) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+	return false, fmt.Errorf("invalid block set %T", set)
 }
 func testLocationCheck(raw any, c *Context) (bool, error) {
 	predicate, ok := raw.(map[string]any)
@@ -1080,6 +1181,11 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 	count := 1
 	components := make(map[string]any)
 	setEnchantmentsApplied := false
+	// The stew effect, exploration map and filters replace the item once it
+	// exists.
+	var stew *item.StewType
+	var exploration map[string]any
+	var filters []map[string]any
 	mods := append([]modifier(nil), e.Functions...)
 	mods = append(mods, e.Modifier...)
 	for _, m := range mods {
@@ -1271,10 +1377,18 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 				return item.Stack{}, err
 			}
 			components["minecraft:ominous_bottle_amplifier"] = int32(max(0, min(4, amplifier)))
-		case "minecraft:exploration_map", "minecraft:copy_state", "minecraft:set_instrument", "minecraft:set_stew_effect":
+		case "minecraft:set_stew_effect":
+			chosen, err := lootStewEffect(m, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			stew = chosen
+		case "minecraft:exploration_map":
+			exploration = m.Raw
+		case "minecraft:copy_state", "minecraft:set_instrument":
 			return item.Stack{}, fmt.Errorf("loot modifier %q requires context-specific component support", m.Type)
 		case "minecraft:filtered":
-			return item.Stack{}, fmt.Errorf("loot modifier %q requires predicate evaluation", m.Type)
+			filters = append(filters, m.Raw)
 		default:
 			return item.Stack{}, fmt.Errorf("unsupported loot modifier %q", m.Type)
 		}
@@ -1282,20 +1396,132 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 	if count <= 0 {
 		return item.Stack{}, nil
 	}
-	// Java renamed the powered rail item, while Dragonfly's native item
-	// registry retains Bedrock's golden_rail identifier.
-	registryID := id
-	if registryID == "minecraft:powered_rail" {
-		registryID = "minecraft:golden_rail"
-	}
-	native, err := item.StackFromJavaNBT(map[string]any{"id": registryID, "count": int32(count), "components": components})
+	native, err := item.StackFromJavaNBT(map[string]any{"id": id, "count": int32(count), "components": components})
 	if err != nil {
 		return item.Stack{}, fmt.Errorf("decode loot item %q: %w", id, err)
 	}
 	if setEnchantmentsApplied && id == "minecraft:book" {
 		native = native.WithItem(item.EnchantedBook{})
 	}
+	if _, ok := native.Item().(item.SuspiciousStew); ok && stew != nil {
+		native = item.NewSuspiciousStewStack(*stew).Grow(native.Count() - 1)
+	}
+	if exploration != nil {
+		if native, err = lootExplorationMap(native, exploration, c); err != nil {
+			return item.Stack{}, err
+		}
+	}
+	for _, filter := range filters {
+		if native, err = lootFiltered(native, filter); err != nil || native.Empty() {
+			return item.Stack{}, err
+		}
+	}
 	return native, nil
+}
+
+// lootFiltered ports FilteredFunction for its use after exploration maps:
+// the on_pass or on_fail function runs depending on the item filter, and the
+// discard function removes the item.
+func lootFiltered(stack item.Stack, raw map[string]any) (item.Stack, error) {
+	filter, _ := raw["item_filter"].(map[string]any)
+	pass := true
+	if predicates, ok := filter["predicates"].(map[string]any); ok {
+		for key := range predicates {
+			switch key {
+			case "minecraft:map_id":
+				m, isMap := stack.Item().(item.FilledMap)
+				pass = pass && isMap && (m.HasNativeID || m.HasJavaID)
+			default:
+				return item.Stack{}, fmt.Errorf("filtered item predicate %q is unsupported", key)
+			}
+		}
+	}
+	branch := "on_fail"
+	if pass {
+		branch = "on_pass"
+	}
+	function, ok := raw[branch].(map[string]any)
+	if !ok {
+		return stack, nil
+	}
+	if kind, _ := function["type"].(string); kind != "minecraft:discard" {
+		return item.Stack{}, fmt.Errorf("filtered function %q is unsupported", kind)
+	}
+	return item.Stack{}, nil
+}
+
+// lootStewEffect ports SetStewEffectFunction: one of the listed effects with
+// its duration in seconds, or nil if none are listed.
+func lootStewEffect(m modifier, c *Context) (*item.StewType, error) {
+	effects, _ := m.Raw["effects"].([]any)
+	if len(effects) == 0 {
+		return nil, nil
+	}
+	entry, _ := effects[c.Random.NextInt(int32(len(effects)))].(map[string]any)
+	id, _ := entry["type"].(string)
+	stew, ok := item.StewTypeFromJavaEffect(id)
+	if !ok {
+		return nil, fmt.Errorf("set_stew_effect references unsupported effect %q", id)
+	}
+	seconds, err := integerNumber(entry["duration"], c)
+	if err != nil {
+		return nil, err
+	}
+	if seconds > 0 {
+		stew = stew.WithDuration(time.Duration(seconds) * time.Second)
+	}
+	return &stew, nil
+}
+
+// lootExplorationMap ports ExplorationMapFunction: a map, empty or one of
+// Java's named map items, becomes a map to the nearest structure of the
+// destination tag around the loot origin, and stays unmapped if there is
+// none.
+func lootExplorationMap(stack item.Stack, raw map[string]any, c *Context) (item.Stack, error) {
+	var target item.FilledMap
+	switch m := stack.Item().(type) {
+	case item.FilledMap:
+		target = m
+	case item.EmptyMap:
+	default:
+		return stack, nil
+	}
+	if c.Tx == nil {
+		return stack, nil
+	}
+	destination, _ := raw["destination"].(string)
+	if destination == "" {
+		destination = "minecraft:on_treasure_maps"
+	}
+	decorationName, _ := raw["decoration"].(string)
+	if decorationName == "" {
+		decorationName = "minecraft:mansion"
+	}
+	decoration, ok := world.MapDecorationTypeFromJava(decorationName)
+	if !ok {
+		return item.Stack{}, fmt.Errorf("exploration_map has unsupported decoration %q", decorationName)
+	}
+	zoom, searchRadius, skipKnown := 2.0, 50.0, true
+	if v, ok := raw["zoom"].(float64); ok {
+		zoom = v
+	}
+	if v, ok := raw["search_radius"].(float64); ok {
+		searchRadius = v
+	}
+	if v, ok := raw["skip_existing_chunks"].(bool); ok {
+		skipKnown = v
+	}
+	data, found, err := c.Tx.CreateExplorationMap(cube.PosFromVec3(c.Origin), destination, decoration, uint8(zoom), int(searchRadius), skipKnown)
+	if errors.Is(err, world.ErrMapDataUnavailable) {
+		// A world without map storage cannot hold the map, as if no
+		// structure were found.
+		return stack, nil
+	}
+	if err != nil || !found {
+		return stack, err
+	}
+	target.NativeID, target.HasNativeID, target.JavaID, target.HasJavaID = data.ID, true, data.JavaID, data.HasJavaID
+	return stack.WithItem(target), nil
 }
 
 func lootEnchantmentLevel(stack item.Stack, id string) int {

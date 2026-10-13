@@ -263,7 +263,7 @@ func villagerExplorationMap(v *Villager, tx *world.Tx, stack item.Stack, modifie
 	if destination==""{return stack,false,fmt.Errorf("villager exploration map has no destination structure tag")}
 	decorationName:=stringValue(modifier["decoration"])
 	if decorationName==""{decorationName="minecraft:woodland_mansion"}
-	decoration,ok:=villagerMapDecorationType(decorationName)
+	decoration,ok:=world.MapDecorationTypeFromJava(decorationName)
 	if !ok{return stack,false,fmt.Errorf("villager exploration map has unsupported decoration %q",decorationName)}
 	zoom:=2
 	if _,exists:=modifier["zoom"];exists{zoom=number(modifier["zoom"])}
@@ -272,38 +272,11 @@ func villagerExplorationMap(v *Villager, tx *world.Tx, stack item.Stack, modifie
 	if _,exists:=modifier["search_radius"];exists{searchRadius=number(modifier["search_radius"])}
 	skipExisting:=true
 	if configured,exists:=modifier["skip_existing_chunks"].(bool);exists{skipExisting=configured}
-	origin:=cube.PosFromVec3(v.Position())
-	if skipExisting {
-		if _,err:=tx.World().RecordStructureAt(destination,origin);err!=nil{return stack,false,err}
-	}
-	location,found,err:=tx.World().FindNearestMapFeature(destination,origin,searchRadius,skipExisting)
-	if err!=nil{return stack,false,err}
-	if !found{return stack,false,nil}
-	data,err:=tx.CreateMap(location.Position,uint8(zoom))
-	if err!=nil{return stack,false,err}
-	data.UnlimitedTracking=true
-	if err:=tx.World().StoreMapData(data);err!=nil{return stack,false,err}
-	if _,err:=tx.RenderMapBiomePreview(data.ID);err!=nil{return stack,false,err}
-	if err:=tx.AddMapDecorationAt(data.ID,decoration,8,1,location.Position,"+");err!=nil{return stack,false,err}
-	if err:=tx.World().RecordStructureReference(location);err!=nil{return stack,false,err}
+	data,found,err:=tx.CreateExplorationMap(cube.PosFromVec3(v.Position()),destination,decoration,uint8(zoom),searchRadius,skipExisting)
+	if err!=nil||!found{return stack,false,err}
 	mapItem.NativeID,mapItem.HasNativeID=data.ID,true
 	mapItem.JavaID,mapItem.HasJavaID=data.JavaID,data.HasJavaID
 	return stack.WithItem(mapItem),true,nil
-}
-func villagerMapDecorationType(name string)(byte,bool) {
-	switch strings.TrimPrefix(name,"minecraft:") {
-	case "woodland_mansion":return 14,true
-	case "monument":return 15,true
-	case "village_desert":return 17,true
-	case "village_plains":return 18,true
-	case "village_savanna":return 19,true
-	case "village_snowy":return 20,true
-	case "village_taiga":return 21,true
-	case "jungle_temple":return 22,true
-	case "swamp_hut":return 23,true
-	case "trial_chambers":return 24,true
-	default:return 0,false
-	}
 }
 
 func villagerItemFilter(stack item.Stack, raw any) bool {
@@ -379,41 +352,24 @@ func villagerSetStewEffect(effects any, random *java26.Random) item.Stack {
 		name = stringValue(row["type"])
 		duration = time.Duration(number(row["duration"])) * time.Second
 	}
-	var stew item.StewType
-	switch name {
-	case "minecraft:night_vision": stew = item.NightVisionPoppyStew()
-	case "minecraft:jump_boost": stew = item.JumpBoostStew()
-	case "minecraft:weakness": stew = item.WeaknessStew()
-	case "minecraft:blindness": stew = item.BlindnessBluetStew()
-	case "minecraft:poison": stew = item.PoisonStew()
-	case "minecraft:saturation": stew = item.SaturationDandelionStew()
-	default: return item.Stack{}
+	stew, ok := item.StewTypeFromJavaEffect(name)
+	if !ok {
+		return item.Stack{}
 	}
-	return item.NewSuspiciousStewStack(stew.WithDuration(duration))
+	if duration > 0 {
+		stew = stew.WithDuration(duration)
+	}
+	return item.NewSuspiciousStewStack(stew)
 }
 
 func villagerSetPotion(stack item.Stack, id string) item.Stack {
-	value, ok := villagerPotionFromID(id)
+	value, ok := potion.FromJavaID(id)
 	if !ok { return item.Stack{} }
 	switch stack.Item().(type) {
 	case item.Potion: return stack.WithItem(item.Potion{Type:value})
 	case item.Arrow: return stack.WithItem(item.Arrow{Tip:value})
 	default: return item.Stack{}
 	}
-}
-
-var villagerPotionNames = []string{"water","mundane","long_mundane","thick","awkward","night_vision","long_night_vision","invisibility","long_invisibility","leaping","long_leaping","strong_leaping","fire_resistance","long_fire_resistance","swiftness","long_swiftness","strong_swiftness","slowness","long_slowness","water_breathing","long_water_breathing","healing","strong_healing","harming","strong_harming","poison","long_poison","strong_poison","regeneration","long_regeneration","strong_regeneration","strength","long_strength","strong_strength","weakness","long_weakness","wither","turtle_master","long_turtle_master","strong_turtle_master","slow_falling","long_slow_falling","strong_slowness"}
-
-func villagerPotionFromID(id string) (potion.Potion,bool) {
-	id=strings.TrimPrefix(id,"minecraft:")
-	potions:=potion.All()
-	for index,name:=range villagerPotionNames { if name==id&&index<len(potions){return potions[index],true} }
-	return potion.Potion{},false
-}
-func villagerPotionID(value potion.Potion) string {
-	index:=int(value.Uint8())
-	if index>=0&&index<len(villagerPotionNames){return "minecraft:"+villagerPotionNames[index]}
-	return "minecraft:water"
 }
 
 func enchantVillagerEquipment(stack item.Stack, level int, tag string, assets *villagerTradeAssets, random *java26.Random) (item.Stack, bool) {
