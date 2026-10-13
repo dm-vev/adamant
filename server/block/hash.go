@@ -130,6 +130,7 @@ const (
 	hashFireflyBush
 	hashFletchingTable
 	hashFlower
+	hashFlowerPot
 	hashFloweringAzalea
 	hashFrogSpawn
 	hashFroglight
@@ -186,6 +187,7 @@ const (
 	hashLegacyStonecutter
 	hashLever
 	hashLight
+	hashLightningRod
 	hashLilyPad
 	hashLitPumpkin
 	hashLodestone
@@ -837,6 +839,10 @@ func (f Flower) Hash() (uint64, uint64) {
 	return hashFlower, uint64(f.Type.Uint8())
 }
 
+func (FlowerPot) Hash() (uint64, uint64) {
+	return hashFlowerPot, 0
+}
+
 func (FloweringAzalea) Hash() (uint64, uint64) {
 	return hashFloweringAzalea, 0
 }
@@ -1059,6 +1065,10 @@ func (l Lever) Hash() (uint64, uint64) {
 
 func (l Light) Hash() (uint64, uint64) {
 	return hashLight, uint64(l.Level)
+}
+
+func (r LightningRod) Hash() (uint64, uint64) {
+	return hashLightningRod, uint64(r.Facing) | uint64(boolByte(r.Powered))<<3 | uint64(r.Oxidation.Uint8())<<4 | uint64(boolByte(r.Waxed))<<6
 }
 
 func (LilyPad) Hash() (uint64, uint64) {

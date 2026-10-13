@@ -169,8 +169,11 @@ var conf = world.EntityRegistryConfig{
 	EnderPearl:         NewEnderPearl,
 	FallingBlock:       NewFallingBlock,
 	Lightning:          NewLightning,
-	ArmourStand:        NewArmourStand,
-	Cushion:            NewCushion,
+	VisualLightning: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return NewLightningWithDamage(opts, 0, false, 0)
+	},
+	ArmourStand: NewArmourStand,
+	Cushion:     NewCushion,
 	Shulker: func(opts world.EntitySpawnOpts) *world.EntityHandle {
 		return NewShulker(opts, ShulkerBehaviourConfig{})
 	},

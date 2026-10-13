@@ -1,6 +1,7 @@
 package world
 
 import (
+	"strings"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -205,17 +206,30 @@ func (w weather) tickLightning(tx *Tx) {
 	}
 }
 
-// strikeLightning attempts to strike lightning in the world at a specific
-// ChunkPos. The final position is influenced by living entities that might be
-// near the lightning strike. If there is no rain at the final position
-// selected, the lightning strike will fail.
+// strikeLightning ports the strike of ServerLevel.tickThunder at a random
+// position of the chunk, redirected to a lightning rod or an exposed entity.
+// With a chance scaled by the local difficulty the strike instead spawns a
+// skeleton trap horse under a harmless bolt.
 func (w weather) strikeLightning(tx *Tx, c ChunkPos) {
-	if w.w.conf.Entities.conf.Lightning == nil {
+	conf := w.w.conf.Entities.conf
+	if conf.Lightning == nil {
 		return
 	}
-	if pos := w.lightningPosition(tx, c); tx.ThunderingAt(cube.PosFromVec3(pos)) {
-		tx.AddEntity(w.w.conf.Entities.conf.Lightning(EntitySpawnOpts{Position: pos}))
+	pos := w.lightningPosition(tx, c)
+	blockPos := cube.PosFromVec3(pos)
+	if !tx.ThunderingAt(blockPos) {
+		return
 	}
+	belowName, _ := tx.Block(blockPos.Side(cube.FaceDown)).EncodeBlock()
+	trap := w.w.GameRuleBool("spawn_mobs") && w.w.r.Float64() < float64(tx.LocalDifficulty(blockPos).Effective)*0.01 && !strings.HasSuffix(belowName, "lightning_rod")
+	if trap && conf.SpawnMobFromNBT != nil && conf.VisualLightning != nil {
+		if horse := conf.SpawnMobFromNBT("minecraft:skeleton_horse", EntitySpawnOpts{Position: pos, SpawnReason: "event"}, map[string]any{"SkeletonTrap": true, "Age": int32(0)}); horse != nil {
+			tx.AddEntity(horse)
+		}
+		tx.AddEntity(conf.VisualLightning(EntitySpawnOpts{Position: pos}))
+		return
+	}
+	tx.AddEntity(conf.Lightning(EntitySpawnOpts{Position: pos}))
 }
 
 // lightningPosition finds a random position in the ChunkPos to strike
@@ -225,7 +239,11 @@ func (w weather) lightningPosition(tx *Tx, c ChunkPos) mgl64.Vec3 {
 	v := w.w.r.Int32()
 	x, z := float64(c[0]<<4+(v&0xf)), float64(c[1]<<4+((v>>8)&0xf))
 
-	vec := w.adjustPositionToEntities(tx, mgl64.Vec3{x, float64(tx.HighestBlock(int(x), int(z)) + 1), z})
+	center := cube.Pos{int(x), tx.HighestBlock(int(x), int(z)) + 1, int(z)}
+	if rod, ok := tx.findLightningRod(center); ok {
+		return rod.Side(cube.FaceUp).Vec3Middle()
+	}
+	vec := w.adjustPositionToEntities(tx, mgl64.Vec3{x, float64(center.Y()), z})
 	if pos := cube.PosFromVec3(vec); len(tx.Block(pos).Model().BBox(pos, tx)) != 0 {
 		// If lightning is about to strike inside a block that is not fully
 		// transparent. In this case, move the lightning up by one block so that
@@ -233,6 +251,18 @@ func (w weather) lightningPosition(tx *Tx, c ChunkPos) mgl64.Vec3 {
 		return vec.Add(mgl64.Vec3{0, 1})
 	}
 	return vec
+}
+
+// findLightningRod ports ServerLevel.findLightningRod: the closest lightning
+// rod POI within 128 blocks that is the top block of its column.
+func (tx *Tx) findLightningRod(center cube.Pos) (cube.Pos, bool) {
+	rod, _, ok := tx.NearestPOI(center, Other, 128, func(p POI) bool {
+		return strings.HasSuffix(p.Type, "lightning_rod")
+	})
+	if !ok || tx.HighestBlock(rod.X(), rod.Z()) != rod.Y() {
+		return cube.Pos{}, false
+	}
+	return rod, true
 }
 
 // adjustPositionToEntities adjusts the mgl64.Vec3 passed to the position of

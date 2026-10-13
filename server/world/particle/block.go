@@ -107,6 +107,19 @@ type SculkChargePop struct{ particle }
 // SculkSoul is a soul released by a blooming sculk catalyst.
 type SculkSoul struct{ particle }
 
+// ElectricSpark is the spark of lightning striking a lightning rod or cleaning
+// copper. Data is the rod's axis, or -1 for copper.
+type ElectricSpark struct {
+	particle
+	Data int32
+}
+
+// EyeblossomTransform is the trail of an eyeblossom opening or closing.
+type EyeblossomTransform struct {
+	particle
+	Open bool
+}
+
 // CauldronEffect is a Bedrock cauldron interaction, which the client plays as
 // its particles and sound. Colour is the dye or potion colour involved.
 type CauldronEffect struct {

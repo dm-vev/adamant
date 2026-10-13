@@ -17,7 +17,7 @@ func (Mycelium) Hash() (uint64, uint64) {
 // SoilFor ...
 func (m Mycelium) SoilFor(block world.Block) bool {
 	switch block.(type) {
-	case ShortGrass, Fern, DoubleTallGrass, Flower, DoubleFlower, NetherSprouts, DeadBush, SugarCane, TreeSapling:
+	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, NetherSprouts, DeadBush, SugarCane, TreeSapling:
 		return true
 	}
 	return false

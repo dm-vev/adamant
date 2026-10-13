@@ -252,6 +252,8 @@ func init() {
 	registerAll(allCarpet())
 	registerAll(allCarrots())
 	registerAll(allCopperBulbs())
+	registerAll(allLightningRods())
+	world.RegisterBlock(FlowerPot{})
 	registerAll(allIronChains())
 	registerAll(allChests())
 	registerAll(allTrappedChests())
@@ -821,7 +823,10 @@ func init() {
 	}
 	world.RegisterItem(IronDoor{})
 	world.RegisterItem(IronTrapdoor{})
+	world.RegisterItem(FlowerPot{})
 	for _, o := range OxidationTypes() {
+		world.RegisterItem(LightningRod{Facing: cube.FaceUp, Oxidation: o})
+		world.RegisterItem(LightningRod{Facing: cube.FaceUp, Oxidation: o, Waxed: true})
 		world.RegisterItem(CopperBars{Oxidation: o})
 		world.RegisterItem(CopperBars{Oxidation: o, Waxed: true})
 		world.RegisterItem(CopperChain{Oxidation: o})

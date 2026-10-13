@@ -687,6 +687,21 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			Position:  vec64To32(pos),
 			EventData: nbtconv.Int32FromRGBA(pa.Colour),
 		})
+	case particle.ElectricSpark:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticlesElectricSpark,
+			Position:  vec64To32(pos),
+			EventData: pa.Data,
+		})
+	case particle.EyeblossomTransform:
+		kind := int32(packet.ParticleTypeEyeblossomClose)
+		if pa.Open {
+			kind = packet.ParticleTypeEyeblossomOpen
+		}
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticleLegacyEvent | kind,
+			Position:  vec64To32(pos),
+		})
 	}
 }
 

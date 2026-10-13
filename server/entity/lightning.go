@@ -1,12 +1,15 @@
 package entity
 
 import (
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/go-gl/mathgl/mgl64"
 	"math/rand/v2"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/particle"
+	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // NewLightning creates a lightning entity. The lightning entity will be
@@ -26,14 +29,15 @@ func NewLightningWithDamage(opts world.EntitySpawnOpts, dmg float64, blockFire b
 		EntityFireDuration: entityFireDuration,
 		BlockFire:          blockFire,
 		state:              2,
-		lifetime:           rand.IntN(4) + 1,
+		lifetime:           rand.IntN(3) + 1,
 	}).tick
 	return opts.New(LightningType, conf)
 }
 
 var lightningConf = StationaryBehaviourConfig{SpawnSounds: []world.Sound{sound.Explosion{}, sound.Thunder{}}, ExistenceDuration: time.Second}
 
-// lightningState holds the state of a lightning entity.
+// lightningState holds the state of a lightning entity. state is Java's
+// LightningBolt.life and lifetime its remaining flashes.
 type lightningState struct {
 	Damage             float64
 	EntityFireDuration time.Duration
@@ -41,26 +45,79 @@ type lightningState struct {
 	state, lifetime    int
 }
 
-// tick carries out lightning logic, dealing damage and setting blocks/entities
-// on fire when appropriate.
+// tick ports LightningBolt.tick: the strike lights fires, powers a struck
+// lightning rod, cleans oxidised copper and emits lightning_strike; then the
+// bolt flashes a few times, damaging nearby entities while visible.
 func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 	pos := e.Position()
-
+	if s.state == 2 {
+		if d := tx.World().Difficulty(); s.BlockFire && (d == world.DifficultyNormal || d == world.DifficultyHard) {
+			s.spawnFire(tx, cube.PosFromVec3(pos), 4)
+		}
+		strike := cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 1e-6}))
+		if rod, ok := tx.Block(strike).(block.LightningRod); ok {
+			rod.Strike(strike, tx)
+		}
+		clearCopperOnLightningStrike(tx, strike)
+		tx.EmitGameEvent(world.GameEventLightningStrike, pos, world.GameEventContext{Source: e})
+	}
 	if s.state--; s.state < 0 {
 		if s.lifetime == 0 {
-                _ = e.CloseIn(tx)
+			_ = e.CloseIn(tx)
+			return
 		} else if s.state < -rand.IntN(10) {
 			s.lifetime--
 			s.state = 1
-
-			if s.BlockFire && tx.World().Difficulty().FireSpreadIncrease() >= 10 {
-				s.spreadFire(tx, cube.PosFromVec3(pos))
+			if s.BlockFire {
+				s.spawnFire(tx, cube.PosFromVec3(pos), 0)
 			}
 		}
 	}
-	if s.state > 0 {
+	if s.state >= 0 {
 		s.dealDamage(e, tx)
 	}
+}
+
+// clearCopperOnLightningStrike ports LightningBolt.clearCopperOnLightningStrike:
+// struck unwaxed copper loses all oxidation, and 3-5 random walks of up to
+// eight steps through neighbouring copper each remove one oxidation level.
+func clearCopperOnLightningStrike(tx *world.Tx, struck cube.Pos) {
+	copper, ok := tx.Block(struck).(block.Oxidisable)
+	if !ok {
+		return
+	}
+	if copper.CanOxidate() {
+		tx.SetBlock(struck, copper.WithOxidationLevel(block.UnoxidisedOxidation()), nil)
+	}
+	for range rand.IntN(3) + 3 {
+		walk := struck
+		for range rand.IntN(8) + 1 {
+			next, ok := cleanRandomCopperNear(tx, walk)
+			if !ok {
+				break
+			}
+			walk = next
+		}
+	}
+}
+
+// cleanRandomCopperNear ports randomStepCleaningCopper: of ten random
+// positions within one block, the first unwaxed copper block loses one
+// oxidation level and becomes the next step.
+func cleanRandomCopperNear(tx *world.Tx, pos cube.Pos) (cube.Pos, bool) {
+	for range 10 {
+		candidate := pos.Add(cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1})
+		copper, ok := tx.Block(candidate).(block.Oxidisable)
+		if !ok || !copper.CanOxidate() {
+			continue
+		}
+		if previous, ok := copper.OxidationLevel().Decrease(); ok {
+			tx.SetBlock(candidate, copper.WithOxidationLevel(previous), nil)
+		}
+		tx.AddParticle(candidate.Vec3Centre(), particle.ElectricSpark{Data: -1})
+		return candidate, true
+	}
+	return cube.Pos{}, false
 }
 
 // dealDamage deals damage to all entities around the lightning and sets them
@@ -81,14 +138,22 @@ func (s *lightningState) dealDamage(e *Ent, tx *world.Tx) {
 	}
 }
 
-// spreadFire attempts to place fire at the position of the lightning and does
-// 4 additional attempts to spread it around that position.
-func (s *lightningState) spreadFire(tx *world.Tx, pos cube.Pos) {
-	s.fire().Start(tx, pos)
-	for i := 0; i < 4; i++ {
-		// Use the original strike position for each offset so spread doesn't drift.
-		offset := cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1}
-		s.fire().Start(tx, pos.Add(offset))
+// spawnFire ports LightningBolt.spawnFire: fire lights at the strike and at
+// additional random positions next to it, only in air where fire survives and
+// fire may spread.
+func (s *lightningState) spawnFire(tx *world.Tx, pos cube.Pos, additional int) {
+	if !tx.CanSpreadFireAround(pos) {
+		return
+	}
+	s.lightFire(tx, pos)
+	for range additional {
+		s.lightFire(tx, pos.Add(cube.Pos{rand.IntN(3) - 1, rand.IntN(3) - 1, rand.IntN(3) - 1}))
+	}
+}
+
+func (s *lightningState) lightFire(tx *world.Tx, pos cube.Pos) {
+	if _, air := tx.Block(pos).(block.Air); air {
+		s.fire().Start(tx, pos)
 	}
 }
 

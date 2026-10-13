@@ -731,12 +731,15 @@ type EntityRegistryConfig struct {
 	WindCharge         func(opts EntitySpawnOpts, owner Entity) *EntityHandle
 	SplashPotion       func(opts EntitySpawnOpts, t any, owner Entity) *EntityHandle
 	Lightning          func(opts EntitySpawnOpts) *EntityHandle
-	EndCrystal         func(opts EntitySpawnOpts, showBase bool) *EntityHandle
-	Shulker            func(opts EntitySpawnOpts) *EntityHandle
-	ShulkerBullet      func(opts EntitySpawnOpts, owner, target *EntityHandle) *EntityHandle
-	Cushion            func(opts EntitySpawnOpts, color int) *EntityHandle
-	ArmourStand        func(opts EntitySpawnOpts) *EntityHandle
-	FishingHook        func(opts EntitySpawnOpts, owner Entity, rod any) *EntityHandle
+	// VisualLightning creates a bolt that neither damages nor lights fires,
+	// as the bolt of a skeleton trap.
+	VisualLightning func(opts EntitySpawnOpts) *EntityHandle
+	EndCrystal      func(opts EntitySpawnOpts, showBase bool) *EntityHandle
+	Shulker         func(opts EntitySpawnOpts) *EntityHandle
+	ShulkerBullet   func(opts EntitySpawnOpts, owner, target *EntityHandle) *EntityHandle
+	Cushion         func(opts EntitySpawnOpts, color int) *EntityHandle
+	ArmourStand     func(opts EntitySpawnOpts) *EntityHandle
+	FishingHook     func(opts EntitySpawnOpts, owner Entity, rod any) *EntityHandle
 	// RaidSpawner creates a registered raider with its raid wave metadata before
 	// the entity is published to world viewers.
 	RaidSpawner func(opts EntitySpawnOpts, entityID string, raidID int64, wave int, leader bool) *EntityHandle
