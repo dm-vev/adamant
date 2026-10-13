@@ -118,8 +118,12 @@ type playerData struct {
 	lastDamage  float64
 	immuneUntil time.Time
 
-	deathPos         *mgl64.Vec3
-	deathDimension   world.Dimension
+	deathPos       *mgl64.Vec3
+	deathDimension world.Dimension
+	// deathEffects are the effects the player died with. Like a Java
+	// ServerPlayer removed as killed, their on-death behaviour runs when
+	// the player respawns.
+	deathEffects     []effect.Effect
 	respawnDimension world.Dimension
 	respawnPosition  cube.Pos
 	respawnRotation  cube.Rotation
@@ -843,6 +847,7 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	}
 
 	p.Wake()
+	entity.TriggerHurtEffects(p.tx, p, p.Effects())
 
 	if p.Dead() {
 		p.kill(src)
@@ -1094,7 +1099,8 @@ func (p *Player) kill(src world.DamageSource) {
 		p.dropItems()
 	}
 	entity.DropWitherRose(p.tx, pos, src)
-	for _, e := range p.Effects() {
+	p.deathEffects = p.Effects()
+	for _, e := range p.deathEffects {
 		p.RemoveEffect(e.Type())
 	}
 
@@ -1194,6 +1200,10 @@ func (p *Player) respawn(f func(p *Player)) {
 
 	sess := p.session()
 	src := p.tx.World()
+	if p.deathPos != nil {
+		entity.TriggerDeathEffects(p.tx, p, *p.deathPos, p.deathEffects)
+	}
+	p.deathEffects = nil
 	handle := p.tx.RemoveEntity(p)
 	// restore re-adds the player through tx and finishes with f or the normal
 	// quit path; the fallback branches below share it.
@@ -3875,7 +3885,7 @@ func (p *Player) tickAirSupply() {
 		}
 		p.breathing = false
 		p.updateState()
-	} else if !p.breathing && p.airSupplyTicks < p.maxAirSupplyTicks {
+	} else if !p.breathing && p.airSupplyTicks < p.maxAirSupplyTicks && !p.airFrozen() {
 		p.airSupplyTicks = min(p.airSupplyTicks+5, p.maxAirSupplyTicks)
 		p.breathing = p.airSupplyTicks == p.maxAirSupplyTicks
 		p.updateState()
@@ -3957,7 +3967,18 @@ func (p *Player) canBreathe() bool {
 	canTakeDamage := p.GameMode().AllowsTakingDamage()
 	_, waterBreathing := p.effects.Effect(effect.WaterBreathing)
 	_, conduitPower := p.effects.Effect(effect.ConduitPower)
-	return !canTakeDamage || waterBreathing || conduitPower || (!p.insideOfWater() && !p.insideOfSolid())
+	_, nautilus := p.effects.Effect(effect.BreathOfTheNautilus)
+	return !canTakeDamage || waterBreathing || conduitPower || nautilus || (!p.insideOfWater() && !p.insideOfSolid())
+}
+
+// airFrozen ports MobEffectUtil.shouldEffectsRefillAirsupply: underwater,
+// Breath of the Nautilus holds the air supply where it is unless Water
+// Breathing or Conduit Power refill it.
+func (p *Player) airFrozen() bool {
+	_, nautilus := p.effects.Effect(effect.BreathOfTheNautilus)
+	_, waterBreathing := p.effects.Effect(effect.WaterBreathing)
+	_, conduitPower := p.effects.Effect(effect.ConduitPower)
+	return nautilus && !waterBreathing && !conduitPower && p.insideOfWater()
 }
 
 // breathingDistanceBelowEyes is the lowest distance the player can be in water and still be able to breathe based on
@@ -4250,6 +4271,9 @@ func (p *Player) Breathing() bool {
 		return true
 	}
 	if _, ok := p.Effect(effect.ConduitPower); ok {
+		return true
+	}
+	if _, ok := p.Effect(effect.BreathOfTheNautilus); ok {
 		return true
 	}
 	return p.breathing

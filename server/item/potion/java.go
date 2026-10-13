@@ -11,7 +11,8 @@ var javaIDs = [...]string{
 	"long_water_breathing", "healing", "strong_healing", "harming", "strong_harming", "poison", "long_poison",
 	"strong_poison", "regeneration", "long_regeneration", "strong_regeneration", "strength", "long_strength",
 	"strong_strength", "weakness", "long_weakness", "wither", "turtle_master", "long_turtle_master",
-	"strong_turtle_master", "slow_falling", "long_slow_falling", "strong_slowness",
+	"strong_turtle_master", "slow_falling", "long_slow_falling", "strong_slowness", "wind_charged", "weaving", "oozing",
+	"infested",
 }
 
 // FromJavaID returns the potion with the Java identifier passed, with or

@@ -383,6 +383,7 @@ func (b *Bee) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b.state().health.AddHealth(-d)
+	onMobHurt(b.tx, b)
 	if b.Dead() {
 		b.die(src)
 	} else {

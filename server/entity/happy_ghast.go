@@ -459,6 +459,7 @@ func (h *HappyGhast) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	old := h.Health()
 	b.health.AddHealth(-v)
+	onMobHurt(h.tx, h)
 	if h.Dead() {
 		h.viewAction(DeathAction{})
 		dropAllDeathLoot(h.tx, h, src)

@@ -58,12 +58,13 @@ func (c RabbitConfig) New() *RabbitBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &RabbitBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 99)), age: c.Age, killer: c.Variant == 99, next: 30 + rand.IntN(61), speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &RabbitBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 99)), age: c.Age, killer: c.Variant == 99, next: 30 + rand.IntN(61), speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Rabbit is a small prey animal with source variant, crop-raiding and killer-bunny state.
 type Rabbit struct{ *Ent }
 type RabbitBehaviour struct {
+	effects                            *EffectManager
 	health, maxHealth                  float64
 	variant, age, next, attackCooldown int
 	dead, killer                       bool
@@ -73,7 +74,10 @@ type RabbitBehaviour struct {
 }
 
 func (r *Rabbit) behaviour() *RabbitBehaviour { return r.Behaviour().(*RabbitBehaviour) }
-func (r *Rabbit) Tick(tx *world.Tx, t int64)  { r.Ent.Tick(tx, t) }
+func (r *Rabbit) Tick(tx *world.Tx, t int64) {
+	r.behaviour().effects.Tick(r, tx)
+	r.Ent.Tick(tx, t)
+}
 func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.age < 0 {
 		b.age = min(0, b.age+1)
@@ -161,9 +165,14 @@ func (r *Rabbit) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if r.Dead() || v <= 0 {
 		return 0, false
 	}
+	var ok bool
+	if v, ok = mobEffectDamage(r.behaviour().effects, v, src); !ok {
+		return 0, false
+	}
 	b := r.behaviour()
 	b.health -= v
 	r.viewAction(HurtAction{})
+	onMobHurt(r.tx, r)
 	if r.Dead() {
 		b.dead = true
 		r.viewAction(DeathAction{})

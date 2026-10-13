@@ -1068,6 +1068,7 @@ func (m *Mount) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	old := b.health.Health()
 	b.health.AddHealth(-v)
 	m.viewAction(HurtAction{})
+	onMobHurt(m.tx, m)
 	if m.Dead() {
 		m.die(src)
 	}

@@ -45,8 +45,13 @@ func init() {
 	Register(28, BadOmen)
 	Register(29, HeroOfTheVillage)
 	Register(30, Darkness)
-	Register(31, RaidOmen)
-	Register(32, TrialOmen)
+	Register(31, TrialOmen)
+	Register(32, RaidOmen)
+	Register(33, WindCharged)
+	Register(34, Weaving)
+	Register(35, Oozing)
+	Register(36, Infested)
+	Register(37, BreathOfTheNautilus)
 }
 
 var (

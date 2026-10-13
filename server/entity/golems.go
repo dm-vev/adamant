@@ -614,6 +614,7 @@ func (m golemLiving) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	m.b.health.AddHealth(-d)
 	m.viewAction(HurtAction{})
+	onMobHurt(m.tx, m)
 	if m.Dead() {
 		m.b.dead = true
 		m.viewAction(DeathAction{})

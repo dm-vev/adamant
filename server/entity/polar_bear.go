@@ -196,6 +196,7 @@ func (p *PolarBear) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	p.b().health.AddHealth(-d)
 	p.view(HurtAction{})
+	onMobHurt(p.tx, p)
 	if p.Dead() {
 		p.b().dead = true
 		p.view(DeathAction{})

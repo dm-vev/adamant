@@ -431,6 +431,7 @@ func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-damage)
 	w.viewAction(HurtAction{})
+	onMobHurt(w.tx, w)
 	if w.Dead() {
 		w.die(src)
 	}

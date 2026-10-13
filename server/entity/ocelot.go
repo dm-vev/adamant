@@ -187,6 +187,7 @@ func (o *Ocelot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-d)
 	o.viewAction(HurtAction{})
+	onMobHurt(o.tx, o)
 	if o.Dead() {
 		b.dead = true
 		o.viewAction(DeathAction{})

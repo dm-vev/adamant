@@ -116,6 +116,7 @@ func (f *Frog) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-d)
 	dealt := before - b.health.Health()
 	f.viewAction(HurtAction{})
+	onMobHurt(f.tx, f)
 	if f.Dead() {
 		b.dead = true
 		f.viewAction(DeathAction{})

@@ -792,6 +792,7 @@ func (m *oceanMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-d)
 	m.viewAction(HurtAction{})
+	onMobHurt(m.tx, m)
 	if (b.kind == oceanGuardian || b.kind == oceanElderGuardian) && b.thornsCooldown == 0 {
 		if s, ok := src.(AttackDamageSource); ok {
 			if l, ok := s.Attacker.(Living); ok {

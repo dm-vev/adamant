@@ -77,12 +77,13 @@ func (c SheepConfig) New() *SheepBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &SheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, regrowTicks: c.RegrowTicks, speed: .23, nextWander: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &SheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, regrowTicks: c.RegrowTicks, speed: .23, nextWander: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Sheep is a concrete Java sheep, including wool and grazing state.
 type Sheep struct{ *Ent }
 type SheepBehaviour struct {
+	effects                      *EffectManager
 	health, maxHealth            float64
 	ageTicks, color, regrowTicks int
 	sheared, dead                bool
@@ -92,9 +93,12 @@ type SheepBehaviour struct {
 	mc                           *MovementComputer
 }
 
-func (s *SheepBehaviour) Baby() bool              { return s.ageTicks < 0 }
-func (s *Sheep) behaviour() *SheepBehaviour       { return s.Behaviour().(*SheepBehaviour) }
-func (s *Sheep) Tick(tx *world.Tx, current int64) { s.Ent.Tick(tx, current) }
+func (s *SheepBehaviour) Baby() bool        { return s.ageTicks < 0 }
+func (s *Sheep) behaviour() *SheepBehaviour { return s.Behaviour().(*SheepBehaviour) }
+func (s *Sheep) Tick(tx *world.Tx, current int64) {
+	s.behaviour().effects.Tick(s, tx)
+	s.Ent.Tick(tx, current)
+}
 func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.ageTicks < 0 {
 		b.ageTicks = min(0, b.ageTicks+1)
@@ -158,9 +162,14 @@ func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() || v <= 0 {
 		return 0, false
 	}
+	var ok bool
+	if v, ok = mobEffectDamage(s.behaviour().effects, v, src); !ok {
+		return 0, false
+	}
 	b := s.behaviour()
 	b.health -= v
 	s.viewAction(HurtAction{})
+	onMobHurt(s.tx, s)
 	if s.Dead() {
 		b.dead = true
 		s.viewAction(DeathAction{})

@@ -28,9 +28,13 @@ func NewEffectManager(eff ...effect.Effect) *EffectManager {
 // Tick method is called.
 // Effect levels of 0 or below will not do anything.
 // Effect returns the final effect it added to the entity. That might be the effect passed or an effect with
-// a higher level/duration than the one passed. Add panics if the effect has a negative duration or level.
+// a higher level/duration than the one passed, or no effect if the entity is immune to it. Add panics if the
+// effect has a negative duration or level.
 func (m *EffectManager) Add(e effect.Effect, entity Living) effect.Effect {
 	m.validateEffect(e)
+	if effectImmune(entity, e.Type()) {
+		return effect.Effect{}
+	}
 
 	m.mu.Lock()
 	initialActions := m.collectInitialActionsLocked()

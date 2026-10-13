@@ -386,6 +386,7 @@ func (a *AquaticMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-d)
 	dealt := old - a.Health()
 	a.viewAction(HurtAction{})
+	onMobHurt(a.tx, a)
 	if a.Dead() {
 		b.dead = true
 		a.viewAction(DeathAction{})

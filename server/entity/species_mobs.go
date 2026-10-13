@@ -653,6 +653,7 @@ func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	s.health.AddHealth(-d)
 	m.view(HurtAction{})
+	onMobHurt(m.tx, m)
 	if m.Dead() {
 		if s.kind == slimeSpecies && s.size > 1 {
 			for i := range 2 {

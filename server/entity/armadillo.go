@@ -174,6 +174,7 @@ func (a *Armadillo) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b.health -= v
 	a.viewAction(HurtAction{})
+	onMobHurt(a.tx, a)
 	if a.Dead() {
 		b.dead = true
 		a.viewAction(DeathAction{})

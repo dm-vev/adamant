@@ -422,6 +422,7 @@ func (v *Villager) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-d)
 	v.viewAction(HurtAction{})
+	onMobHurt(v.tx, v)
 	if v.Dead() {
 		b.dead = true
 		v.releasePOIs(v.tx)

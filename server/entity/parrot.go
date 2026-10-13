@@ -278,6 +278,7 @@ func (p *Parrot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b.sitting = false
 	b.health.AddHealth(-d)
 	p.viewAction(HurtAction{})
+	onMobHurt(p.tx, p)
 	if p.Dead() {
 		b.dead = true
 		p.viewAction(DeathAction{})

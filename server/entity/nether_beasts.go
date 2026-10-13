@@ -559,6 +559,7 @@ func beastHurt(e *Ent, self world.Entity, b *netherBeastState, d float64, src wo
 	}
 	b.health.AddHealth(-d)
 	beastViewAction(e, HurtAction{})
+	onMobHurt(e.tx, self)
 	if b.health.Health() <= 0 {
 		b.dead = true
 		beastViewAction(e, DeathAction{})

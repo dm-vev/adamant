@@ -309,6 +309,7 @@ func (b *Breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	}
 	s.health.AddHealth(-damage)
 	b.viewAction(HurtAction{})
+	onMobHurt(b.tx, b)
 	if b.Dead() {
 		s.dead = true
 		b.viewAction(DeathAction{})

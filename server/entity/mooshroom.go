@@ -71,12 +71,13 @@ func (c MooshroomConfig) New() *MooshroomBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &MooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &MooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Mooshroom is a separately modeled mushroom-field bovine with red/brown type and bowl milking.
 type Mooshroom struct{ *Ent }
 type MooshroomBehaviour struct {
+	effects            *EffectManager
 	health, maxHealth  float64
 	variant, age, next int
 	dead               bool
@@ -87,7 +88,10 @@ type MooshroomBehaviour struct {
 }
 
 func (m *Mooshroom) behaviour() *MooshroomBehaviour { return m.Behaviour().(*MooshroomBehaviour) }
-func (m *Mooshroom) Tick(tx *world.Tx, t int64)     { m.Ent.Tick(tx, t) }
+func (m *Mooshroom) Tick(tx *world.Tx, t int64) {
+	m.behaviour().effects.Tick(m, tx)
+	m.Ent.Tick(tx, t)
+}
 func (b *MooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.age < 0 {
 		b.age = min(0, b.age+1)
@@ -142,9 +146,14 @@ func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 			return 0, true
 		}
 	}
+	var ok bool
+	if v, ok = mobEffectDamage(m.behaviour().effects, v, src); !ok {
+		return 0, false
+	}
 	b := m.behaviour()
 	b.health -= v
 	m.viewAction(HurtAction{})
+	onMobHurt(m.tx, m)
 	if m.Dead() {
 		b.dead = true
 		m.viewAction(DeathAction{})

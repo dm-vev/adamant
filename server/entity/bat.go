@@ -157,6 +157,7 @@ func (b *Bat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	st.health.AddHealth(-d)
+	onMobHurt(b.tx, b)
 	if b.Dead() {
 		st.dead = true
 		b.viewAction(DeathAction{})

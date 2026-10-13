@@ -269,6 +269,7 @@ func (w *Witch) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	onMobHurt(w.tx, w)
 	if w.Dead() {
 		b.dead = true
 		w.viewAction(DeathAction{})

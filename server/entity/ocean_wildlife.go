@@ -374,6 +374,7 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	}
 	b.health.AddHealth(-d)
 	m.viewAction(HurtAction{})
+	onMobHurt(m.tx, m)
 	if b.id == "minecraft:glow_squid" {
 		b.darkTicks = 100
 	}

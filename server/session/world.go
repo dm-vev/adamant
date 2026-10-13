@@ -1014,6 +1014,10 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		if so.Continuous {
 			pk.SoundType = packet.SoundEventGeyserContinuousEruptionStart
 		}
+	case sound.WindChargeImpact:
+		pk.SoundType = packet.SoundEventWindChargeBurst
+	case sound.BreezeWindChargeBurst:
+		pk.SoundType = packet.SoundEventBreezeWindChargeBurst
 	case sound.Fizz:
 		pk.SoundType = packet.SoundEventFizz
 	case sound.PointedDripstoneCauldronDrip:

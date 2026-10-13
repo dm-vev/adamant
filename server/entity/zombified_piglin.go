@@ -302,6 +302,7 @@ func (z *ZombifiedPiglin) Hurt(d float64, src world.DamageSource) (float64, bool
 	s.health.AddHealth(-d)
 	s.hurtBy(z.Ent, z.tx, mobKiller(src))
 	z.viewAction(HurtAction{})
+	onMobHurt(z.tx, z)
 	if z.Dead() {
 		s.dead = true
 		z.viewAction(DeathAction{})

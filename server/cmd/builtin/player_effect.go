@@ -54,6 +54,8 @@ func effectType(name string) effect.Type {
 		"levitation": effect.Levitation, "fatal_poison": effect.FatalPoison, "conduit_power": effect.ConduitPower,
 		"slow_falling": effect.SlowFalling, "bad_omen": effect.BadOmen, "hero_of_the_village": effect.HeroOfTheVillage,
 		"darkness": effect.Darkness, "raid_omen": effect.RaidOmen, "trial_omen": effect.TrialOmen,
+		"wind_charged": effect.WindCharged, "weaving": effect.Weaving, "oozing": effect.Oozing,
+		"infested": effect.Infested, "breath_of_the_nautilus": effect.BreathOfTheNautilus,
 	}
 	return names[name]
 }

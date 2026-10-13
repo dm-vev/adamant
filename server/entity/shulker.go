@@ -249,6 +249,7 @@ func (s *Shulker) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-damage)
 	s.viewAction(HurtAction{})
+	onMobHurt(s.tx, s)
 	if s.Dead() {
 		s.die(src)
 	} else if b.health.Health() < b.health.MaxHealth()*0.5 && rand.IntN(4) == 0 {

@@ -62,12 +62,13 @@ func (c GoatConfig) New() *GoatBehaviour {
 	if !c.LeftHorn && !c.RightHorn {
 		c.LeftHorn, c.RightHorn = true, true
 	}
-	return &GoatBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, screaming: c.Screaming, leftHorn: c.LeftHorn, rightHorn: c.RightHorn, next: 40 + rand.IntN(81), speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &GoatBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, screaming: c.Screaming, leftHorn: c.LeftHorn, rightHorn: c.RightHorn, next: 40 + rand.IntN(81), speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Goat models source screaming, ramming cooldown and breakable horns.
 type Goat struct{ *Ent }
 type GoatBehaviour struct {
+	effects                              *EffectManager
 	health, maxHealth                    float64
 	age, next, ramCooldown               int
 	screaming, leftHorn, rightHorn, dead bool
@@ -76,8 +77,11 @@ type GoatBehaviour struct {
 	mc                                   *MovementComputer
 }
 
-func (g *Goat) behaviour() *GoatBehaviour  { return g.Behaviour().(*GoatBehaviour) }
-func (g *Goat) Tick(tx *world.Tx, t int64) { g.Ent.Tick(tx, t) }
+func (g *Goat) behaviour() *GoatBehaviour { return g.Behaviour().(*GoatBehaviour) }
+func (g *Goat) Tick(tx *world.Tx, t int64) {
+	g.behaviour().effects.Tick(g, tx)
+	g.Ent.Tick(tx, t)
+}
 func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.age < 0 {
 		b.age = min(0, b.age+1)
@@ -127,9 +131,14 @@ func (g *Goat) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if g.Dead() || v <= 0 {
 		return 0, false
 	}
+	var ok bool
+	if v, ok = mobEffectDamage(g.behaviour().effects, v, src); !ok {
+		return 0, false
+	}
 	b := g.behaviour()
 	b.health -= v
 	g.viewAction(HurtAction{})
+	onMobHurt(g.tx, g)
 	if g.Dead() {
 		b.dead = true
 		g.viewAction(DeathAction{})

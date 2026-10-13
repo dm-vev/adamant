@@ -126,5 +126,9 @@ type WindChargeShoot struct{ sound }
 // WindChargeImpact is a sound played when a wind charge bursts.
 type WindChargeImpact struct{ sound }
 
+// BreezeWindChargeBurst is a sound played when a breeze's wind charge, or the
+// gust of an entity dying with Wind Charged, bursts.
+type BreezeWindChargeBurst struct{ sound }
+
 // Totem is a sound played when a player uses a totem.
 type Totem struct{ sound }

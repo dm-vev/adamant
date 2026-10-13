@@ -86,12 +86,13 @@ func (c SnifferConfig) New() *SnifferBehaviour {
 	if next == 0 {
 		next = 80 + rand.IntN(81)
 	}
-	return &SnifferBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, sniffTicks: c.SniffTicks, digTicks: c.DigTicks, sniffing: c.Sniffing, next: next, digPos: c.DigPos, explored: append([]cube.Pos(nil), c.Explored...), speed: .1, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &SnifferBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, sniffTicks: c.SniffTicks, digTicks: c.DigTicks, sniffing: c.Sniffing, next: next, digPos: c.DigPos, explored: append([]cube.Pos(nil), c.Explored...), speed: .1, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Sniffer owns source sniff-to-dig continuation memory, not just a wandering profile.
 type Sniffer struct{ *Ent }
 type SnifferBehaviour struct {
+	effects                         *EffectManager
 	health, maxHealth               float64
 	age, sniffTicks, digTicks, next int
 	sniffing, dead                  bool
@@ -103,7 +104,10 @@ type SnifferBehaviour struct {
 }
 
 func (s *Sniffer) behaviour() *SnifferBehaviour { return s.Behaviour().(*SnifferBehaviour) }
-func (s *Sniffer) Tick(tx *world.Tx, t int64)   { s.Ent.Tick(tx, t) }
+func (s *Sniffer) Tick(tx *world.Tx, t int64) {
+	s.behaviour().effects.Tick(s, tx)
+	s.Ent.Tick(tx, t)
+}
 func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.age < 0 {
 		b.age = min(0, b.age+1)
@@ -201,9 +205,14 @@ func (s *Sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() || v <= 0 {
 		return 0, false
 	}
+	var ok bool
+	if v, ok = mobEffectDamage(s.behaviour().effects, v, src); !ok {
+		return 0, false
+	}
 	b := s.behaviour()
 	b.health -= v
 	s.viewAction(HurtAction{})
+	onMobHurt(s.tx, s)
 	if s.Dead() {
 		b.dead = true
 		s.viewAction(DeathAction{})

@@ -293,6 +293,7 @@ func (w *Warden) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	s.health.AddHealth(-d)
 	w.viewAction(HurtAction{})
+	onMobHurt(w.tx, w)
 	if w.Dead() {
 		s.dead = true
 		w.viewAction(DeathAction{})
@@ -553,6 +554,7 @@ func (p *Phantom) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s := p.state()
 	s.health.AddHealth(-d)
 	p.viewAction(HurtAction{})
+	onMobHurt(p.tx, p)
 	if p.Dead() {
 		s.dead = true
 		p.viewAction(DeathAction{})
@@ -825,6 +827,7 @@ func (w *Wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s.health.AddHealth(-d)
 	w.updateBossBar()
 	w.viewAction(HurtAction{})
+	onMobHurt(w.tx, w)
 	if s.health.Health() <= 0 {
 		s.dead = true
 		s.death = 1

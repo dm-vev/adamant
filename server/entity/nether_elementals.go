@@ -442,6 +442,7 @@ func (s *netherState) Hurt(e *Ent, self world.Entity, d float64, src world.Damag
 		viewer.ViewEntityAction(e, HurtAction{})
 	}
 	e.tx.ReleaseViewers(viewers)
+	onMobHurt(e.tx, self)
 	if s.health.Health() <= 0 {
 		s.dead = true
 		viewers = e.tx.Viewers(e.Position())

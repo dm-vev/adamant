@@ -17,7 +17,8 @@ import (
 // by src: the entity_die game event, which the nearest sculk catalyst answers
 // by absorbing the mob's experience, the loot table rolled with the dying
 // entity, its killer and the killer's weapon, the experience orbs and the
-// Wither's wither rose. It also awards the killing player's totalKillCount.
+// Wither's wither rose. It also awards the killing player's totalKillCount
+// and runs the on-death behaviour of the mob's effects.
 func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 	killer, player := deathCredit(tx, src)
 	if player != nil && killer == player {
@@ -68,6 +69,7 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 		}
 	}
 	DropWitherRose(tx, e.Position(), src)
+	onMobKilled(tx, e)
 }
 
 // DropWitherRose ports LivingEntity.createWitherRose for an entity that died

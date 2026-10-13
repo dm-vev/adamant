@@ -505,6 +505,7 @@ func (c *CopperGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-d)
 	c.viewAction(HurtAction{})
+	onMobHurt(c.tx, c)
 	soundName := "entity.copper_golem.hurt"
 	if b.weather == 2 {
 		soundName = "entity.copper_golem.weathered_hurt"

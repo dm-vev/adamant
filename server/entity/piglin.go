@@ -348,6 +348,7 @@ func (p *Piglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	s.health.AddHealth(-d)
 	p.viewAction(HurtAction{})
+	onMobHurt(p.tx, p)
 	if p.Dead() {
 		s.dead = true
 		p.viewAction(DeathAction{})

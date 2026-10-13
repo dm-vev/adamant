@@ -225,6 +225,26 @@ func StrongSlowness() Potion {
 	return Potion{42}
 }
 
+// WindCharging ...
+func WindCharging() Potion {
+	return Potion{43}
+}
+
+// Weaving ...
+func Weaving() Potion {
+	return Potion{44}
+}
+
+// Oozing ...
+func Oozing() Potion {
+	return Potion{45}
+}
+
+// Infestation ...
+func Infestation() Potion {
+	return Potion{46}
+}
+
 // From returns a Potion by the ID given.
 func From(id int32) Potion {
 	return Potion{potion(id)}
@@ -318,6 +338,14 @@ func (p Potion) Effects() []effect.Effect {
 		return []effect.Effect{effect.New(effect.SlowFalling, 1, 90*time.Second)}
 	case LongSlowFalling():
 		return []effect.Effect{effect.New(effect.SlowFalling, 1, 4*time.Minute)}
+	case WindCharging():
+		return []effect.Effect{effect.New(effect.WindCharged, 1, 3*time.Minute)}
+	case Weaving():
+		return []effect.Effect{effect.New(effect.Weaving, 1, 3*time.Minute)}
+	case Oozing():
+		return []effect.Effect{effect.New(effect.Oozing, 1, 3*time.Minute)}
+	case Infestation():
+		return []effect.Effect{effect.New(effect.Infested, 1, 3*time.Minute)}
 	}
 	return []effect.Effect{}
 }
@@ -338,6 +366,6 @@ func All() []Potion {
 		LongWaterBreathing(), Healing(), StrongHealing(), Harming(), StrongHarming(), Poison(), LongPoison(),
 		StrongPoison(), Regeneration(), LongRegeneration(), StrongRegeneration(), Strength(), LongStrength(),
 		StrongStrength(), Weakness(), LongWeakness(), Wither(), TurtleMaster(), LongTurtleMaster(), StrongTurtleMaster(),
-		SlowFalling(), LongSlowFalling(), StrongSlowness(),
+		SlowFalling(), LongSlowFalling(), StrongSlowness(), WindCharging(), Weaving(), Oozing(), Infestation(),
 	}
 }

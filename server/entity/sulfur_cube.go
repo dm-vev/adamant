@@ -241,6 +241,7 @@ func (s *SulfurCube) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-d)
 	s.viewAction(HurtAction{})
+	onMobHurt(s.tx, s)
 	if s.Dead() {
 		s.die(src)
 	}

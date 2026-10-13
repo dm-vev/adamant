@@ -254,6 +254,7 @@ func (f *Fox) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	f.b().health.AddHealth(-d)
 	f.view(HurtAction{})
+	onMobHurt(f.tx, f)
 	if f.Dead() {
 		s := f.b()
 		s.dead = true

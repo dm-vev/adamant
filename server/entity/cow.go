@@ -228,6 +228,7 @@ func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	}
 	c.behaviour().health.AddHealth(-damage)
 	c.viewAction(HurtAction{})
+	onMobHurt(c.tx, c)
 	if c.Dead() {
 		c.die(src)
 	}

@@ -278,6 +278,7 @@ func (a *Allay) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-d)
 	a.viewAction(HurtAction{})
+	onMobHurt(a.tx, a)
 	if a.Dead() {
 		a.die(s)
 	}

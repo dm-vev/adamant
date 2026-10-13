@@ -97,12 +97,13 @@ func (c PigConfig) New() *PigBehaviour {
 	if sv != "big" && sv != "mini" {
 		sv = "classic"
 	}
-	return &PigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, next: 40 + rand.IntN(81)}
+	return &PigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, next: 40 + rand.IntN(81), effects: NewEffectManager()}
 }
 
 // Pig is a concrete passive pig with growth, saddle and ridden steering state.
 type Pig struct{ *Ent }
 type PigBehaviour struct {
+	effects           *EffectManager
 	health, maxHealth float64
 	age, variant      int
 	soundVariant      string
@@ -119,6 +120,7 @@ func (p *PigBehaviour) Variant() int32  { return int32(p.variant) }
 func (p *PigBehaviour) Baby() bool      { return p.age < 0 }
 func (p *Pig) behaviour() *PigBehaviour { return p.Behaviour().(*PigBehaviour) }
 func (p *Pig) Tick(tx *world.Tx, t int64) {
+	p.behaviour().effects.Tick(p, tx)
 	p.Ent.Tick(tx, t)
 	b := p.behaviour()
 	if b.passenger != nil {
@@ -192,9 +194,14 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 			return 0, true
 		}
 	}
+	var ok bool
+	if v, ok = mobEffectDamage(p.behaviour().effects, v, s); !ok {
+		return 0, false
+	}
 	b := p.behaviour()
 	b.health -= v
 	p.viewAction(HurtAction{})
+	onMobHurt(p.tx, p)
 	if p.Dead() {
 		b.dead = true
 		p.viewAction(DeathAction{})

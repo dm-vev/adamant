@@ -291,6 +291,7 @@ func (c *Cat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	b.health.AddHealth(-d)
 	c.viewAction(HurtAction{})
+	onMobHurt(c.tx, c)
 	if c.Dead() {
 		c.die(s)
 	}
