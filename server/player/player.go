@@ -1045,9 +1045,24 @@ func (p *Player) kill(src world.DamageSource) {
 	p.StopSprinting()
 
 	pos := p.Position()
+	// Player.getBaseExperienceReward: nothing with keepInventory or in
+	// spectator mode. A sculk catalyst handling entity_die absorbs it.
+	xp := &world.DeathExperience{Eligible: true}
+	if !keepInv && p.GameMode() != world.GameModeSpectator {
+		xp.Amount = min(p.experience.Level()*7, 100)
+	}
+	p.tx.EmitGameEvent(world.GameEventEntityDie, pos, world.GameEventContext{Source: p, Experience: xp})
 	if !keepInv {
+		if !xp.Consumed {
+			for _, orb := range entity.NewExperienceOrbs(pos, xp.Amount) {
+				p.tx.AddEntity(orb)
+			}
+		}
+		p.experience.Reset()
+		p.session().SendExperience(p.ExperienceLevel(), p.ExperienceProgress())
 		p.dropItems()
 	}
+	entity.DropWitherRose(p.tx, pos, src)
 	for _, e := range p.Effects() {
 		p.RemoveEffect(e.Type())
 	}
@@ -1079,14 +1094,9 @@ func finishDying(p *Player) {
 	}
 }
 
-// dropItems drops all items and experience of the Player on the ground in random directions.
+// dropItems drops all items of the Player on the ground in random directions.
 func (p *Player) dropItems() {
 	pos := p.Position()
-	for _, orb := range entity.NewExperienceOrbs(pos, int(math.Min(float64(p.experience.Level()*7), 100))) {
-		p.tx.AddEntity(orb)
-	}
-	p.experience.Reset()
-	p.session().SendExperience(p.ExperienceLevel(), p.ExperienceProgress())
 
 	p.MoveItemsToInventory()
 	for _, it := range append(p.inv.Clear(), append(p.armour.Clear(), p.offHand.Clear()...)...) {

@@ -664,6 +664,23 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			EventType: packet.LevelEventParticleLegacyEvent | 88,
 			Position:  vec64To32(pos),
 		})
+	case particle.SculkCharge, particle.SculkChargePop:
+		block := cube.PosFromVec3(pos)
+		data := map[string]any{"x": int32(block.X()), "y": int32(block.Y()), "z": int32(block.Z())}
+		event := int32(packet.LevelEventSculkChargePop)
+		if charge, ok := pa.(particle.SculkCharge); ok {
+			event = packet.LevelEventSculkCharge
+			data["charge"], data["facing"] = int16(charge.Charge), int16(charge.Faces)
+		}
+		buf := bytes.NewBuffer(nil)
+		_ = nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian).Encode(data)
+		encoded := buf.Bytes()
+		s.writePacket(&packet.LevelEventGeneric{EventID: event, SerialisedEventData: encoded[2 : len(encoded)-1]})
+	case particle.SculkSoul:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeSculkSoul,
+			Position:  vec64To32(pos),
+		})
 	}
 }
 

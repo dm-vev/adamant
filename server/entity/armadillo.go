@@ -177,7 +177,7 @@ func (a *Armadillo) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if a.Dead() {
 		b.dead = true
 		a.viewAction(DeathAction{})
-		dropMobLoot(a.tx, a.Position(), "minecraft:armadillo", src)
+		dropAllDeathLoot(a.tx, a, src)
 		_ = a.CloseIn(a.tx)
 	}
 	return v, true

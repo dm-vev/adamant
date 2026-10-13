@@ -252,7 +252,8 @@ func (PowderSnow) EncodeBlock() (string, map[string]any) {
 	return "minecraft:powder_snow", nil
 }
 
-// Sculk is a decorative block found in the deep dark.
+// Sculk is a block of the deep dark. Sculk charges travel through it, growing
+// sculk sensors and shriekers on top of it.
 type Sculk struct {
 	solid
 	bassDrum
@@ -260,7 +261,7 @@ type Sculk struct {
 
 // BreakInfo ...
 func (s Sculk) BreakInfo() BreakInfo {
-	return newBreakInfo(0.2, alwaysHarvestable, hoeEffective, oneOf(s)).withXPDropRange(1, 1).withBlastResistance(0.2)
+	return newBreakInfo(0.2, alwaysHarvestable, hoeEffective, silkTouchOnlyDrop(s)).withXPDropRange(1, 1).withBlastResistance(0.2)
 }
 
 // EncodeItem ...

@@ -1,16 +1,16 @@
 package entity
 
 import (
+	"hash/fnv"
+	"math"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"hash/fnv"
-	"math"
 )
 
 // WitchType is the Java witch entity type.
@@ -273,8 +273,7 @@ func (w *Witch) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		b.dead = true
 		w.viewAction(DeathAction{})
 		w.tx.RaiderKilled(w, raidDamageAttacker(s))
-		n := int(b.random.NextInt(3)) + 1
-		w.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: w.Position()}, item.NewStack(item.Stick{}, n)))
+		dropAllDeathLoot(w.tx, w, s)
 		_ = w.CloseIn(w.tx)
 	} else {
 		w.viewAction(HurtAction{})

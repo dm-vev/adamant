@@ -682,6 +682,8 @@ type EntityRegistryConfig struct {
 	OminousItemSpawner func(opts EntitySpawnOpts, stack any, delay int64) *EntityHandle
 	// NaturalSpawnTick runs source-defined natural ecology once per world tick.
 	NaturalSpawnTick func(*Tx)
+	// EntityCollisions pushes overlapping entities apart once per world tick.
+	EntityCollisions func(*Tx)
 	Item             func(opts EntitySpawnOpts, it any) *EntityHandle
 	// Painting creates a painting occupying pos and facing away from its wall,
 	// choosing a canvas that fits. It returns nil if none fits.

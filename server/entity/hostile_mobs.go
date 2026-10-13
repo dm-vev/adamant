@@ -92,6 +92,10 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		c.conversionTime = int(nbtconv.Int32(java, "InWaterTime"))
 		c.raidID, c.raidWave, c.raidLeader = nbtconv.Int64(java, "RaidID"), int(nbtconv.Int32(java, "RaidWave")), nbtconv.Bool(java, "RaidLeader")
 		c.headDropGuaranteed = nbtconv.Bool(java, "RaidBannerDrop")
+		c.patrolLeader, c.patrolling = nbtconv.Bool(java, "PatrolLeader"), nbtconv.Bool(java, "Patrolling")
+		if target, ok := java["patrol_target"].([]int32); ok && len(target) == 3 {
+			c.patrolTarget, c.hasPatrolTarget = cube.Pos{int(target[0]), int(target[1]), int(target[2])}, true
+		}
 		if data, ok := java["SpawnData"].(map[string]any); ok {
 			c.spawnData = CloneNativeMobNBT(data)
 		}
@@ -167,7 +171,11 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 	for key, value := range EncodeNativeMobEquipment(equipment) {
 		native[key] = value
 	}
-	javaState := map[string]any{"InWaterTime": int32(b.conversionTime), "RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader, "RaidBannerDrop": b.headDropGuaranteed}
+	javaState := map[string]any{"InWaterTime": int32(b.conversionTime), "RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader, "RaidBannerDrop": b.headDropGuaranteed,
+		"PatrolLeader": b.patrolLeader, "Patrolling": b.patrolling}
+	if b.hasPatrolTarget {
+		javaState["patrol_target"] = []int32{int32(b.patrolTarget[0]), int32(b.patrolTarget[1]), int32(b.patrolTarget[2])}
+	}
 	if b.spawnData != nil {
 		javaState["SpawnData"] = CloneNativeMobNBT(b.spawnData)
 	}
@@ -190,6 +198,8 @@ type hostileConfig struct {
 	raidID                                                  int64
 	raidWave                                                int
 	raidLeader, headDropGuaranteed                          bool
+	patrolLeader, patrolling, hasPatrolTarget               bool
+	patrolTarget                                            cube.Pos
 	spawnData                                               map[string]any
 }
 
@@ -215,6 +225,7 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 		speed: speed, attack: t.attack, kind: c.kind, baby: c.baby, canBreakDoors: c.canBreakDoors, canPickupLoot: c.canPickupLoot,
 		conversionTime: c.conversionTime, cureTicks: c.cureTicks, main: c.main, head: c.head, profession: c.profession, villagerType: c.villagerType,
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
+		patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget,
 	}
 }
 
@@ -288,6 +299,9 @@ type hostileState struct {
 	raidID                                                                        int64
 	raidWave                                                                      int
 	raidLeader, headDropGuaranteed                                                bool
+	patrolLeader, patrolling, hasPatrolTarget                                     bool
+	patrolTarget                                                                  cube.Pos
+	patrolCooldown                                                                int
 	spawnData                                                                     map[string]any
 	ridingLinkPending                                                             bool
 }
@@ -515,6 +529,9 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.hoverTime++
 			p := b.anchor.Add(mgl64.Vec3{math.Sin(float64(b.hoverTime) / 40), .4 + math.Sin(float64(b.hoverTime)/20)*.25, math.Cos(float64(b.hoverTime) / 40)})
 			b.move(e, tx, p)
+			return nil
+		}
+		if b.patrolTick(e, tx) {
 			return nil
 		}
 		b.wanderTick(e, tx)
@@ -801,11 +818,47 @@ func (m *HostileMob) viewAction(a world.EntityAction) {
 	m.tx.ReleaseViewers(v)
 }
 func (m *HostileMob) dropLoot(src world.DamageSource) {
-	b := m.state()
-	if b.headDropGuaranteed && !b.head.Empty() {
-		m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, b.head))
+	dropAllDeathLoot(m.tx, m, src)
+}
+
+// headDropChance is the Java drop chance of the head slot: a raid banner is
+// preserved, other headgear uses the default 8.5%.
+func (m *HostileMob) headDropChance() float32 {
+	if m.state().headDropGuaranteed {
+		return 2
 	}
-	dropMobLoot(m.tx, m.Position(), b.kind, src)
+	return .085
+}
+
+// dropCustomDeathLoot ports Mob.dropCustomDeathLoot for the mainhand and
+// head slots the hostile mob represents.
+func (m *HostileMob) dropCustomDeathLoot(killedByPlayer bool, looting int) {
+	b := m.state()
+	dropMobEquipment(m.tx, m, b.main, .085, killedByPlayer, looting)
+	dropMobEquipment(m.tx, m, b.head, m.headDropChance(), killedByPlayer, looting)
+}
+
+// experienceEquipment counts the worn items that may drop, which
+// Mob.getBaseExperienceReward rewards.
+func (m *HostileMob) experienceEquipment() int {
+	b, n := m.state(), 0
+	if !b.main.Empty() {
+		n++
+	}
+	if !b.head.Empty() && m.headDropChance() <= 1 {
+		n++
+	}
+	return n
+}
+
+// IsCaptain ports Raider.isCaptain: a raid or patrol leader wearing the
+// ominous banner.
+func (m *HostileMob) IsCaptain() bool {
+	b := m.state()
+	if !b.raidLeader && !b.patrolLeader || b.head.Empty() {
+		return false
+	}
+	return b.head.Comparable(ominousBannerStack())
 }
 func (m *HostileMob) convertVillager(tx *world.Tx, target world.Entity) {
 	if target.H().Type().EncodeEntity() != "minecraft:villager" {
@@ -945,7 +998,16 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *java26.Random) {
 	case "minecraft:vindicator":
 		b.main = item.NewStack(item.Axe{Tier: item.ToolTierIron}, 1)
 	}
-	if b.raidLeader {
+	// PatrollingMonster.finalizeSpawn: outside patrols, events and
+	// structures, 6% of raiders that can lead become patrol leaders; patrol
+	// spawns patrol.
+	if hostileRaidMob(b.kind) && b.kind != "minecraft:ravager" && reason != "patrol" && reason != "event" && reason != "structure" && r.NextFloat() < .06 {
+		b.patrolLeader = true
+	}
+	if reason == "patrol" {
+		b.patrolling = true
+	}
+	if b.raidLeader || b.patrolLeader {
 		b.head = ominousBannerStack()
 		b.headDropGuaranteed = true
 	}

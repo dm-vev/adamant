@@ -190,6 +190,9 @@ func (t ticker) tick(tx *Tx) {
 			w.dragonFight.Tick(tx)
 		}
 		t.tickEntities(tx, tick)
+		if collide := w.EntityRegistry().Config().EntityCollisions; collide != nil {
+			collide(tx)
+		}
 		if spawnTick := w.EntityRegistry().Config().NaturalSpawnTick; spawnTick != nil {
 			spawnTick(tx)
 		}

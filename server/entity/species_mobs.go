@@ -11,7 +11,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -619,6 +618,9 @@ func (m *speciesMob) wakeInfested(tx *world.Tx) {
 	}
 }
 func (m *speciesMob) kill() { s := m.s(); s.dead = true; m.view(DeathAction{}); _ = m.CloseIn(m.tx) }
+
+// CubeSize returns the Java Slime.getSize used by the cube_mob loot predicate.
+func (m *speciesMob) CubeSize() int { return m.s().size }
 func (m *speciesMob) view(a world.EntityAction) {
 	v := m.tx.Viewers(m.Position())
 	for _, x := range v {
@@ -660,37 +662,9 @@ func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 			}
 		}
 		m.kill()
-		m.dropSpecies(src)
+		dropAllDeathLoot(m.tx, m, src)
 	}
 	return d, true
-}
-func (m *speciesMob) dropSpecies(src world.DamageSource) {
-	id := speciesType(m.kind).EncodeEntity()
-	table := "minecraft:entities/" + id[len("minecraft:"):]
-	sequence, err := loot.RandomSequence(table)
-	if err != nil {
-		return
-	}
-	ctx := loot.Context{Entity: id, Origin: m.Position(), Random: m.tx.LootRandomSequence(sequence, 0)}
-	if killer := mobKiller(src); killer != nil {
-		ctx.Player = killer
-		ctx.PlayerKilled = killer.H().Type().EncodeEntity() == "minecraft:player"
-		if user, ok := killer.(interface {
-			HeldItems() (item.Stack, item.Stack)
-		}); ok {
-			ctx.ToolStack, _ = user.HeldItems()
-			if !ctx.ToolStack.Empty() {
-				ctx.Tool = ctx.ToolStack.Item()
-			}
-		}
-	}
-	drops, err := loot.Generate(table, 0, ctx)
-	if err != nil {
-		return
-	}
-	for _, stack := range drops {
-		m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, stack))
-	}
 }
 func (m *speciesMob) Heal(h float64, _ world.HealingSource) float64 {
 	if h <= 0 || m.Dead() {

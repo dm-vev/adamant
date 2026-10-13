@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -9,7 +11,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
 )
 
 // PandaType is the registered Java panda species.
@@ -178,7 +179,7 @@ func (p *Panda) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		p.b().dead = true
 		p.view(DeathAction{})
-		dropFamilyMobLoot(p.tx, p.Position(), "minecraft:panda", src)
+		dropAllDeathLoot(p.tx, p, src)
 		_ = p.CloseIn(p.tx)
 	} else {
 		p.b().unhappy = 80

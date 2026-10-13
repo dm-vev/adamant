@@ -170,7 +170,7 @@ func (b *happyGhastBehaviour) followNearbyAdult(e *Ent, tx *world.Tx) {
 	best := math.MaxFloat64
 	for candidate := range tx.EntitiesWithin(box) {
 		h, ok := candidate.(*HappyGhast)
-		if !ok || h.H() == e.H() || h.IsBaby() {
+		if !ok || h.H() == e.H() || h.Baby() {
 			continue
 		}
 		d := h.Position().Sub(e.Position()).LenSqr()
@@ -435,7 +435,7 @@ func (h *HappyGhast) ShearHarness(tx *world.Tx, _ world.Entity) bool {
 	return true
 }
 func (h *HappyGhast) Harnessed() bool        { return h.state().harness }
-func (h *HappyGhast) IsBaby() bool           { return h.state().age < 0 }
+func (h *HappyGhast) Baby() bool           { return h.state().age < 0 }
 func (h *HappyGhast) AgeTicks() int          { return h.state().age }
 func (h *HappyGhast) Health() float64        { return h.state().health.Health() }
 func (h *HappyGhast) MaxHealth() float64     { return h.state().health.MaxHealth() }
@@ -461,6 +461,7 @@ func (h *HappyGhast) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-v)
 	if h.Dead() {
 		h.viewAction(DeathAction{})
+		dropAllDeathLoot(h.tx, h, src)
 		_ = h.CloseIn(h.tx)
 	} else {
 		h.viewAction(HurtAction{})

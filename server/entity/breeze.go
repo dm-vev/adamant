@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -313,18 +312,11 @@ func (b *Breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if b.Dead() {
 		s.dead = true
 		b.viewAction(DeathAction{})
-		killer := breezeDamageAttacker(src)
-		if killer != nil && killer.H().Type().EncodeEntity() == "minecraft:player" {
-			n := 1 + int(s.random.NextInt(2))
-			b.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: b.Position()}, item.NewStack(item.BreezeRod{}, n)))
-			for _, orb := range NewExperienceOrbs(b.Position(), 10) {
-				b.tx.AddEntity(orb)
-			}
-		}
-		b.tx.PlaySound(b.Position(), sound.Custom{Name: "entity.breeze.death", Volume: 1, Pitch: 1})
+		dropAllDeathLoot(b.tx, b, src)
+		b.tx.PlaySound(b.Position(), sound.Custom{Name: "mob.breeze.death", Volume: 1, Pitch: 1})
 		_ = b.CloseIn(b.tx)
 	} else {
-		b.tx.PlaySound(b.Position(), sound.Custom{Name: "entity.breeze.hurt", Volume: 1, Pitch: 1})
+		b.tx.PlaySound(b.Position(), sound.Custom{Name: "mob.breeze.hurt", Volume: 1, Pitch: 1})
 	}
 	return damage, true
 }

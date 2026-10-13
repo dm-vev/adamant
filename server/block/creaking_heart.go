@@ -446,11 +446,11 @@ func (h CreakingHeart) spreadResin(origin cube.Pos, tx *world.Tx) (cube.Pos, boo
 					}
 				}
 				face = face.Opposite()
-				updated := resin.withFace(face, true)
-				if updated == resin {
+				if resin.Faces.Has(face) {
 					continue
 				}
-				tx.SetBlock(pos, updated, nil)
+				resin.Faces = resin.Faces.With(face, true)
+				tx.SetBlock(pos, resin, nil)
 				return pos, true
 			}
 		}

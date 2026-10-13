@@ -11,7 +11,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -251,7 +250,7 @@ func (s *Shulker) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-damage)
 	s.viewAction(HurtAction{})
 	if s.Dead() {
-		s.die()
+		s.die(src)
 	} else if b.health.Health() < b.health.MaxHealth()*0.5 && rand.IntN(4) == 0 {
 		b.teleportSomewhere(s.Ent, s.tx)
 	}
@@ -279,16 +278,14 @@ func (s *Shulker) viewAction(action world.EntityAction) {
 	}
 	s.tx.ReleaseViewers(viewers)
 }
-func (s *Shulker) die() {
+func (s *Shulker) die(src world.DamageSource) {
 	b := s.behaviour()
 	if b.dead {
 		return
 	}
 	b.dead = true
 	s.viewAction(DeathAction{})
-	if rand.IntN(2) == 0 {
-		s.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: s.Position()}, item.NewStack(item.ShulkerShell{}, 1)))
-	}
+	dropAllDeathLoot(s.tx, s, src)
 	_ = s.CloseIn(s.tx)
 }
 func (b *ShulkerBehaviour) findNewAttachment(e *Ent, tx *world.Tx) {

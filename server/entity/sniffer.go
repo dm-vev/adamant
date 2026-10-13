@@ -207,7 +207,7 @@ func (s *Sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() {
 		b.dead = true
 		s.viewAction(DeathAction{})
-		dropMobLoot(s.tx, s.Position(), "minecraft:sniffer", src)
+		dropAllDeathLoot(s.tx, s, src)
 		_ = s.CloseIn(s.tx)
 	}
 	return v, true

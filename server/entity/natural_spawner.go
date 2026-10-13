@@ -42,6 +42,7 @@ func NaturalSpawnTick(tx *world.Tx) {
 	}
 	seed := w.Seed() ^ int64(uint64(tx.CurrentTick())*0x9e3779b97f4a7c15)
 	random := java26.NewLegacyRandom(seed)
+	patrolSpawnTick(tx, &random)
 	counts := [8]int{}
 	for e := range tx.Entities() {
 		if _, living := e.(Living); living {

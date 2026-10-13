@@ -1,6 +1,10 @@
 package entity
 
 import (
+	"math"
+	"math/rand/v2"
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -8,9 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"math/rand/v2"
-	"strings"
 )
 
 // FoxType is the registered Java fox species.
@@ -247,7 +248,7 @@ func (f *Fox) Health() float64        { return f.b().health.Health() }
 func (f *Fox) MaxHealth() float64     { return f.b().health.MaxHealth() }
 func (f *Fox) SetMaxHealth(v float64) { f.b().health.SetMaxHealth(v) }
 func (f *Fox) Dead() bool             { return f.b().dead || f.Health() <= 0 }
-func (f *Fox) Hurt(d float64, _ world.DamageSource) (float64, bool) {
+func (f *Fox) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if f.Dead() || d <= 0 {
 		return 0, false
 	}
@@ -261,6 +262,7 @@ func (f *Fox) Hurt(d float64, _ world.DamageSource) (float64, bool) {
 			f.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: f.Position()}, s.held))
 			s.held = item.Stack{}
 		}
+		dropAllDeathLoot(f.tx, f, src)
 		_ = f.CloseIn(f.tx)
 	}
 	return d, true

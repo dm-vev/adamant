@@ -130,7 +130,7 @@ func (b *beeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.hasStung {
 		b.stingTicks++
 		if b.stingTicks >= 1200 {
-			mob.die()
+			mob.die(nil)
 			return nil
 		}
 	}
@@ -384,7 +384,7 @@ func (b *Bee) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	b.state().health.AddHealth(-d)
 	if b.Dead() {
-		b.die()
+		b.die(src)
 	} else {
 		b.viewAction(HurtAction{})
 	}
@@ -418,13 +418,14 @@ func (b *Bee) viewAction(a world.EntityAction) {
 	}
 	b.tx.ReleaseViewers(vs)
 }
-func (b *Bee) die() {
+func (b *Bee) die(src world.DamageSource) {
 	s := b.state()
 	if s.dead {
 		return
 	}
 	s.dead = true
 	b.viewAction(DeathAction{})
+	dropAllDeathLoot(b.tx, b, src)
 	_ = b.CloseIn(b.tx)
 }
 

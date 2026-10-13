@@ -171,7 +171,7 @@ func (c *Chicken) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	c.behaviour().health.AddHealth(-damage)
 	c.viewAction(HurtAction{})
 	if c.Dead() {
-		c.die()
+		c.die(src)
 	}
 	return damage, true
 }
@@ -214,17 +214,21 @@ func (c *Chicken) viewAction(a world.EntityAction) {
 	}
 	c.tx.ReleaseViewers(vs)
 }
-func (c *Chicken) die() {
+func (c *Chicken) die(src world.DamageSource) {
 	b := c.behaviour()
 	if b.dead {
 		return
 	}
 	b.dead = true
 	c.viewAction(DeathAction{})
-	tx := c.tx
-	if n := rand.IntN(3); n > 0 {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position()}, item.NewStack(item.Feather{}, n)))
-	}
-	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position()}, item.NewStack(item.Chicken{Cooked: c.OnFireDuration() > 0}, 1)))
-	_ = c.CloseIn(tx)
+	dropAllDeathLoot(c.tx, c, src)
+	_ = c.CloseIn(c.tx)
+}
+
+// Baby reports whether the chicken is a chick.
+func (c *Chicken) Baby() bool { return c.behaviour().ageTicks < 0 }
+
+// LootComponents exposes the chicken variant to loot predicates.
+func (c *Chicken) LootComponents() map[string]any {
+	return map[string]any{"minecraft:chicken/variant": "minecraft:" + []string{"temperate", "cold", "warm"}[min(c.behaviour().variant, 2)]}
 }

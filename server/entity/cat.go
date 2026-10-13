@@ -2,6 +2,10 @@ package entity
 
 import (
 	"encoding/binary"
+	"hash/fnv"
+	"math"
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -11,9 +15,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
-	"hash/fnv"
-	"math"
-	"strings"
 )
 
 // CatType is the Java minecraft:cat entity type.
@@ -291,7 +292,7 @@ func (c *Cat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-d)
 	c.viewAction(HurtAction{})
 	if c.Dead() {
-		c.die()
+		c.die(s)
 	}
 	return d, true
 }
@@ -404,13 +405,14 @@ func (c *Cat) viewAction(a world.EntityAction) {
 	}
 	c.tx.ReleaseViewers(vs)
 }
-func (c *Cat) die() {
+func (c *Cat) die(src world.DamageSource) {
 	b := c.b()
 	if b.dead {
 		return
 	}
 	b.dead = true
 	c.viewAction(DeathAction{})
+	dropAllDeathLoot(c.tx, c, src)
 	_ = c.CloseIn(c.tx)
 }
 

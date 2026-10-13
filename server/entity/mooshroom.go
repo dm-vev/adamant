@@ -148,7 +148,7 @@ func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if m.Dead() {
 		b.dead = true
 		m.viewAction(DeathAction{})
-		dropMobLoot(m.tx, m.Position(), "minecraft:mooshroom", src)
+		dropAllDeathLoot(m.tx, m, src)
 		_ = m.CloseIn(m.tx)
 	}
 	return v, true

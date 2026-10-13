@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -8,7 +10,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
 )
 
 // Each nether beast has a distinct native type and concrete public entity.
@@ -544,7 +545,7 @@ func (s *Strider) SetMaxHealth(v float64) { s.beast().health.SetMaxHealth(v) }
 func (h *Hoglin) Dead() bool              { return h.beast().dead || h.Health() <= 0 }
 func (z *Zoglin) Dead() bool              { return z.beast().dead || z.Health() <= 0 }
 func (s *Strider) Dead() bool             { return s.beast().dead || s.Health() <= 0 }
-func beastHurt(e *Ent, b *netherBeastState, d float64, src world.DamageSource) (float64, bool) {
+func beastHurt(e *Ent, self world.Entity, b *netherBeastState, d float64, src world.DamageSource) (float64, bool) {
 	if d <= 0 || b.dead {
 		return 0, false
 	}
@@ -561,14 +562,7 @@ func beastHurt(e *Ent, b *netherBeastState, d float64, src world.DamageSource) (
 	if b.health.Health() <= 0 {
 		b.dead = true
 		beastViewAction(e, DeathAction{})
-		id := "hoglin"
-		if b.kind == zoglinKind {
-			id = "zoglin"
-		}
-		if b.kind == striderKind {
-			id = "strider"
-		}
-		dropMobLoot(e.tx, e.Position(), "minecraft:"+id, src)
+		dropAllDeathLoot(e.tx, self, src)
 		_ = e.CloseIn(e.tx)
 	}
 	return d, true
@@ -602,13 +596,20 @@ func (h *Hoglin) KnockBack(p mgl64.Vec3, f, k float64)  { beastKnock(h.Ent, p, f
 func (z *Zoglin) KnockBack(p mgl64.Vec3, f, k float64)  { beastKnock(z.Ent, p, f, k) }
 func (s *Strider) KnockBack(p mgl64.Vec3, f, k float64) { beastKnock(s.Ent, p, f, k) }
 func (h *Hoglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
-	return beastHurt(h.Ent, h.beast(), d, src)
+	return beastHurt(h.Ent, h, h.beast(), d, src)
 }
 func (z *Zoglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
-	return beastHurt(z.Ent, z.beast(), d, src)
+	return beastHurt(z.Ent, z, z.beast(), d, src)
 }
 func (s *Strider) Hurt(d float64, src world.DamageSource) (float64, bool) {
-	return beastHurt(s.Ent, s.beast(), d, src)
+	return beastHurt(s.Ent, s, s.beast(), d, src)
+}
+
+// dropCustomDeathLoot drops a strider's saddle, a preserved equipment item.
+func (s *Strider) dropCustomDeathLoot(bool, int) {
+	if s.beast().saddled {
+		dropMobEquipment(s.tx, s, item.NewStack(item.Saddle{}, 1), 2, false, 0)
+	}
 }
 func (h *Hoglin) AddEffect(e effect.Effect)   { h.beast().effects.Add(e, h) }
 func (z *Zoglin) AddEffect(e effect.Effect)   { z.beast().effects.Add(e, z) }

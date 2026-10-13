@@ -388,12 +388,7 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	if m.Dead() {
 		b.dead = true
 		m.viewAction(DeathAction{})
-		switch b.id {
-		case "minecraft:squid":
-			m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, item.NewStack(item.InkSac{}, 1)))
-		case "minecraft:glow_squid":
-			m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, item.NewStack(item.InkSac{Glowing: true}, 1)))
-		}
+		dropAllDeathLoot(m.tx, m, src)
 		_ = m.CloseIn(m.tx)
 	}
 	return d, true

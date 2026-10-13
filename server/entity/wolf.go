@@ -432,7 +432,7 @@ func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-damage)
 	w.viewAction(HurtAction{})
 	if w.Dead() {
-		w.die()
+		w.die(src)
 	}
 	return damage, true
 }
@@ -589,7 +589,7 @@ func (w *Wolf) viewAction(a world.EntityAction) {
 	}
 	w.tx.ReleaseViewers(vs)
 }
-func (w *Wolf) die() {
+func (w *Wolf) die(src world.DamageSource) {
 	b := w.behaviour()
 	if b.dead {
 		return
@@ -599,6 +599,7 @@ func (w *Wolf) die() {
 	if !b.bodyArmor.Empty() {
 		w.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: w.Position()}, b.bodyArmor))
 	}
+	dropAllDeathLoot(w.tx, w, src)
 	_ = w.CloseIn(w.tx)
 }
 

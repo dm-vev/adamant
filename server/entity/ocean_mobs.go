@@ -2,6 +2,9 @@ package entity
 
 import (
 	"encoding/json"
+	"math"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -10,8 +13,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"time"
 )
 
 // The ocean hostile and mount types share only their low-level living and swim
@@ -849,10 +850,15 @@ func (m *oceanMob) die(src world.DamageSource) {
 	}
 	b.dead = true
 	m.viewAction(DeathAction{})
-	killedByPlayer := oceanKilledByPlayer(src)
-	looting := oceanLootingLevel(src)
-	// Source iterates EquipmentSlot.VALUES: mainhand, offhand, armor
-	// (feet, legs, chest, head), body, saddle. Only represented slots roll.
+	dropAllDeathLoot(m.tx, m, src)
+	_ = m.CloseIn(m.tx)
+}
+
+// dropCustomDeathLoot ports Mob.dropCustomDeathLoot over EquipmentSlot.VALUES:
+// mainhand, offhand, armor (feet, legs, chest, head), body, saddle. Only the
+// represented slots roll.
+func (m *oceanMob) dropCustomDeathLoot(killedByPlayer bool, looting int) {
+	b := m.b()
 	m.dropEquipment("mainhand", b.mainHand, killedByPlayer, looting)
 	m.dropEquipment("offhand", b.offHand, killedByPlayer, looting)
 	m.dropEquipment("head", b.head, killedByPlayer, looting)
@@ -860,26 +866,50 @@ func (m *oceanMob) die(src world.DamageSource) {
 	if b.saddle {
 		m.dropEquipment("saddle", item.NewStack(item.Saddle{}, 1), killedByPlayer, looting)
 	}
-	_ = m.CloseIn(m.tx)
 }
+
+// experienceEquipment counts the worn items that may drop, which
+// Mob.getBaseExperienceReward rewards.
+func (m *oceanMob) experienceEquipment() int {
+	b, n := m.b(), 0
+	for _, slot := range [...]struct {
+		name  string
+		stack item.Stack
+	}{{"mainhand", b.mainHand}, {"offhand", b.offHand}, {"head", b.head}} {
+		if !slot.stack.Empty() && m.dropChance(slot.name) <= 1 {
+			n++
+		}
+	}
+	return n
+}
+
+func (m *oceanMob) dropChance(slot string) float32 {
+	if chance, ok := m.b().dropChances[slot]; ok {
+		return float32(chance)
+	}
+	return .085
+}
+
 func (m *oceanMob) dropEquipment(slot string, stack item.Stack, killedByPlayer bool, looting int) {
+	dropMobEquipment(m.tx, m, stack, m.dropChance(slot), killedByPlayer, looting)
+}
+
+// dropMobEquipment ports one slot of Mob.dropCustomDeathLoot: a worn item
+// rolls its drop chance, raised by looting, when a player killed the mob or
+// the chance exceeds 1 (a preserved item, which also keeps its durability).
+func dropMobEquipment(tx *world.Tx, e world.Entity, stack item.Stack, chance float32, killedByPlayer bool, looting int) {
 	if stack.Empty() {
 		return
 	}
-	chance, ok := m.b().dropChances[slot]
-	if !ok {
-		chance = .085
-	}
-	preserve := float32(chance) > 1
+	preserve := chance > 1
 	if chance == 0 || (!killedByPlayer && !preserve) {
 		return
 	}
 	if oceanStackEnchantmentLevel(stack, "Curse of Vanishing", "minecraft:vanishing_curse") > 0 {
 		return
 	}
-	dropChance := oceanEquipmentDropChance(float32(chance), looting)
-	random := m.H().JavaRandom()
-	if random.NextFloat() >= dropChance {
+	random := e.H().JavaRandom()
+	if random.NextFloat() >= oceanEquipmentDropChance(chance, looting) {
 		return
 	}
 	if !preserve {
@@ -891,7 +921,7 @@ func (m *oceanMob) dropEquipment(slot string, stack item.Stack, killedByPlayer b
 			}
 		}
 	}
-	m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, stack))
+	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, stack))
 }
 func oceanEquipmentDropChance(chance float32, looting int) float32 {
 	if looting > 0 {

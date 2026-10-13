@@ -7,54 +7,53 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// ResinClump is a multi-face block similar to lichen.
+// ResinClump is a multi-face block that creaking hearts grow on pale oak logs.
 type ResinClump struct {
 	transparent
-	replaceable
 	empty
 	sourceWaterDisplacer
 
-	Down  bool
-	Up    bool
-	North bool
-	South bool
-	West  bool
-	East  bool
+	// Faces are the sides of the clump's space it covers.
+	Faces MultiFace
 }
+
+// resinClumpSpreader places resin clump faces for players.
+var resinClumpSpreader = multifaceSpreader[ResinClump]{block: ResinClump{}, types: defaultMultifaceSpreadOrder}
+
+func (r ResinClump) multiFaces() MultiFace                 { return r.Faces }
+func (r ResinClump) withMultiFaces(f MultiFace) world.Block { r.Faces = f; return r }
 
 // SideClosed allows water to flow through the clump's empty collision shape.
 func (ResinClump) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool { return false }
 
 var _ world.LiquidDisplacer = ResinClump{}
 
-// BreakInfo ...
-func (r ResinClump) BreakInfo() BreakInfo {
-	return newBreakInfo(0.2, func(t item.Tool) bool {
-		return t.ToolType() == item.TypeAxe || t.ToolType() == item.TypeShears
-	}, func(t item.Tool) bool {
-		return t.ToolType() == item.TypeAxe || t.ToolType() == item.TypeShears
-	}, oneOf(r))
+// ReplaceableBy ports MultifaceBlock.canBeReplaced: any other block replaces
+// a clump, while more resin only fills a vacant face.
+func (r ResinClump) ReplaceableBy(b world.Block) bool {
+	_, resin := b.(ResinClump)
+	return !resin || r.Faces != 63
 }
 
-// UseOnBlock ...
+// BreakInfo ports the instantly broken RESIN_CLUMP, which drops one clump per
+// covered face with any tool.
+func (r ResinClump) BreakInfo() BreakInfo {
+	return newBreakInfo(0, alwaysHarvestable, nothingEffective, func(item.Tool, []item.Enchantment) []item.Stack {
+		if r.Faces == 0 {
+			return nil
+		}
+		return []item.Stack{item.NewStack(ResinClump{}, r.Faces.Count())}
+	})
+}
+
+// UseOnBlock attaches a clump face to the clicked block side.
 func (r ResinClump) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	pos, face, used := firstReplaceable(tx, pos, face, r)
-	if !used {
-		return false
-	}
+	return placeMultiface(pos, face, tx, user, ctx, resinClumpSpreader)
+}
 
-	target := tx.Block(pos.Side(face.Opposite()))
-	if !target.Model().FaceSolid(pos.Side(face.Opposite()), face, tx) {
-		return false
-	}
-
-	if existing, ok := tx.Block(pos).(ResinClump); ok {
-		r = existing
-	}
-	r = r.withFace(face, true)
-
-	place(tx, pos, r, user, ctx)
-	return placed(ctx)
+// NeighbourUpdateTick drops faces whose supporting block is gone.
+func (r ResinClump) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	updateMultiface(r, pos, tx)
 }
 
 // EncodeItem ...
@@ -64,80 +63,13 @@ func (ResinClump) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (r ResinClump) EncodeBlock() (string, map[string]any) {
-	var bits uint8
-	if r.Down {
-		bits |= 1 << 0
-	}
-	if r.Up {
-		bits |= 1 << 1
-	}
-	if r.South {
-		bits |= 1 << 2
-	}
-	if r.West {
-		bits |= 1 << 3
-	}
-	if r.North {
-		bits |= 1 << 4
-	}
-	if r.East {
-		bits |= 1 << 5
-	}
-	return "minecraft:resin_clump", map[string]any{"multi_face_direction_bits": int32(bits)}
-}
-
-func (r ResinClump) withFace(face cube.Face, attached bool) ResinClump {
-	switch face {
-	case cube.FaceDown:
-		r.Down = attached
-	case cube.FaceUp:
-		r.Up = attached
-	case cube.FaceNorth:
-		r.North = attached
-	case cube.FaceSouth:
-		r.South = attached
-	case cube.FaceWest:
-		r.West = attached
-	case cube.FaceEast:
-		r.East = attached
-	}
-	return r
-}
-
-func (r ResinClump) directionBits() uint8 {
-	var bits uint8
-	if r.Down {
-		bits |= 1 << 0
-	}
-	if r.Up {
-		bits |= 1 << 1
-	}
-	if r.South {
-		bits |= 1 << 2
-	}
-	if r.West {
-		bits |= 1 << 3
-	}
-	if r.North {
-		bits |= 1 << 4
-	}
-	if r.East {
-		bits |= 1 << 5
-	}
-	return bits
+	return "minecraft:resin_clump", map[string]any{"multi_face_direction_bits": int32(r.Faces)}
 }
 
 // allResinClumps returns all resin clump states.
 func allResinClumps() (b []world.Block) {
-	for i := 0; i < 64; i++ {
-		b = append(b, ResinClump{
-			Down:  i&(1<<0) != 0,
-			Up:    i&(1<<1) != 0,
-			South: i&(1<<2) != 0,
-			West:  i&(1<<3) != 0,
-			North: i&(1<<4) != 0,
-			East:  i&(1<<5) != 0,
-		})
+	for _, faces := range allMultiFaces() {
+		b = append(b, ResinClump{Faces: faces})
 	}
 	return
 }

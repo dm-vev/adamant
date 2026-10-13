@@ -160,6 +160,7 @@ func (b *Bat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if b.Dead() {
 		st.dead = true
 		b.viewAction(DeathAction{})
+		dropAllDeathLoot(b.tx, b, s)
 		_ = b.CloseIn(b.tx)
 	} else {
 		b.viewAction(HurtAction{})

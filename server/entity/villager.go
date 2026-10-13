@@ -30,7 +30,7 @@ func (villagerType) Open(tx *world.Tx, h *world.EntityHandle, data *world.Entity
 }
 func (villagerType) EncodeEntity() string { return "minecraft:villager" }
 func (villagerType) BBox(e world.Entity) cube.BBox {
-	if v, ok := e.(*Villager); ok && v.IsBaby() {
+	if v, ok := e.(*Villager); ok && v.Baby() {
 		return cube.Box(-.245, 0, -.245, .245, .98, .245)
 	}
 	return cube.Box(-.3, 0, -.3, .3, 1.95, .3)
@@ -426,6 +426,7 @@ func (v *Villager) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		b.dead = true
 		v.releasePOIs(v.tx)
 		v.viewAction(DeathAction{})
+		dropAllDeathLoot(v.tx, v, src)
 		_ = v.CloseIn(v.tx)
 	}
 	return d, true
@@ -438,7 +439,7 @@ func (v *Villager) Heal(h float64, _ world.HealingSource) float64 {
 	v.behaviour().health.AddHealth(h)
 	return v.Health() - old
 }
-func (v *Villager) IsBaby() bool   { return v.behaviour().age < 0 }
+func (v *Villager) Baby() bool   { return v.behaviour().age < 0 }
 func (v *Villager) Age() int       { return v.behaviour().age }
 func (v *Villager) SetAge(age int) { v.behaviour().age = age }
 func (v *Villager) CanBreed() bool {
@@ -806,7 +807,7 @@ func (b *VillagerBehaviour) tickPOI(v *Villager, tx *world.Tx, current int64) {
 				b.meetingPoint, b.hasMeetingPoint = pos, true
 			}
 		}
-		if !v.IsBaby() && !b.hasJobSite && !b.hasPotentialJobSite && b.profession != "minecraft:nitwit" {
+		if !v.Baby() && !b.hasJobSite && !b.hasPotentialJobSite && b.profession != "minecraft:nitwit" {
 			pos, _, found := tx.NearestPOI(cube.PosFromVec3(v.Position()), world.Workstation, 48, func(p world.POI) bool {
 				profession := villagerProfessionForWorkstation(p.Type)
 				return p.Vacant() && profession != "" && (b.profession == "minecraft:none" || b.profession == profession)
@@ -1001,7 +1002,7 @@ func villagerHasWorkstation(tx *world.Tx, pos cube.Pos, profession string, owner
 	return ok && poi.Kind == world.Workstation && villagerOwnsPOI(poi, owner) && villagerPOIMatchesProfession(poi.Type, profession)
 }
 func (v *Villager) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
-	if v.IsBaby() {
+	if v.Baby() {
 		return true
 	}
 	v.bindTx(tx)

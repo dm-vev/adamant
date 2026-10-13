@@ -167,7 +167,7 @@ func (r *Rabbit) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if r.Dead() {
 		b.dead = true
 		r.viewAction(DeathAction{})
-		dropMobLoot(r.tx, r.Position(), "minecraft:rabbit", src)
+		dropAllDeathLoot(r.tx, r, src)
 		_ = r.CloseIn(r.tx)
 	}
 	return v, true

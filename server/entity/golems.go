@@ -376,7 +376,7 @@ func (b *golemState) offerFlowerToVillager(tx *world.Tx, e *Ent) bool {
 	for other := range tx.Entities() {
 		eligible := false
 		if villager, ok := other.(*Villager); ok {
-			eligible = villager.IsBaby()
+			eligible = villager.Baby()
 		}
 		if copper, ok := other.(*CopperGolem); ok {
 			eligible = copper.Antenna().Empty()
@@ -616,26 +616,11 @@ func (m golemLiving) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	m.viewAction(HurtAction{})
 	if m.Dead() {
 		m.b.dead = true
-		m.dropLoot()
 		m.viewAction(DeathAction{})
+		dropAllDeathLoot(m.tx, m.Ent, s)
 		_ = m.CloseIn(m.tx)
 	}
 	return d, true
-}
-func (m golemLiving) dropLoot() {
-	tx := m.tx
-	pos := m.Position()
-	drop := func(it world.Item, n int) {
-		if n > 0 {
-			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, item.NewStack(it, n)))
-		}
-	}
-	if m.b.kind == ironKind {
-		drop(item.IronIngot{}, 3+rand.IntN(3))
-		drop(block.Flower{Type: block.Poppy()}, rand.IntN(3))
-	} else {
-		drop(item.Snowball{}, rand.IntN(16))
-	}
 }
 func (m golemLiving) Heal(h float64, _ world.HealingSource) float64 {
 	if h <= 0 || m.Dead() {

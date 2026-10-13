@@ -138,6 +138,7 @@ const (
 	hashGlass
 	hashGlassPane
 	hashGlazedTerracotta
+	hashGlowLichen
 	hashGlowingObsidian
 	hashGlowstone
 	hashGold
@@ -261,6 +262,8 @@ const (
 	hashSand
 	hashSandstone
 	hashSculk
+	hashSculkCatalyst
+	hashSculkVein
 	hashSeaGrass
 	hashSeaLantern
 	hashSeaPickle
@@ -865,6 +868,10 @@ func (t GlazedTerracotta) Hash() (uint64, uint64) {
 	return hashGlazedTerracotta, uint64(t.Colour.Uint8()) | uint64(t.Facing)<<4 | uint64(boolByte(t.legacyFacing))<<7
 }
 
+func (g GlowLichen) Hash() (uint64, uint64) {
+	return hashGlowLichen, uint64(g.Faces)
+}
+
 func (GlowingObsidian) Hash() (uint64, uint64) {
 	return hashGlowingObsidian, 0
 }
@@ -1338,7 +1345,7 @@ func (r ResinBricks) Hash() (uint64, uint64) {
 }
 
 func (r ResinClump) Hash() (uint64, uint64) {
-	return hashResinClump, uint64(boolByte(r.Down)) | uint64(boolByte(r.Up))<<1 | uint64(boolByte(r.North))<<2 | uint64(boolByte(r.South))<<3 | uint64(boolByte(r.West))<<4 | uint64(boolByte(r.East))<<5
+	return hashResinClump, uint64(r.Faces)
 }
 
 func (r RespawnAnchor) Hash() (uint64, uint64) {
@@ -1355,6 +1362,14 @@ func (s Sandstone) Hash() (uint64, uint64) {
 
 func (Sculk) Hash() (uint64, uint64) {
 	return hashSculk, 0
+}
+
+func (c SculkCatalyst) Hash() (uint64, uint64) {
+	return hashSculkCatalyst, uint64(boolByte(c.Bloom))
+}
+
+func (v SculkVein) Hash() (uint64, uint64) {
+	return hashSculkVein, uint64(v.Faces)
 }
 
 func (s SeaGrass) Hash() (uint64, uint64) {

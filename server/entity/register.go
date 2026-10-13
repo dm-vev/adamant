@@ -145,6 +145,7 @@ func init() {
 var conf = world.EntityRegistryConfig{
 	TieLeashedEntities: TieLeashedEntities,
 	Painting:           CreatePainting,
+	EntityCollisions:   TickEntityCollisions,
 	NewFromBucket:      NewFromBucket,
 	EnderDragon:        NewEnderDragon,
 	DragonFight:        newDragonFight,

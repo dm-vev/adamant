@@ -149,6 +149,6 @@ func checkPreparedPassiveSourceState(t *testing.T, actor world.Entity, source ma
 		data := source["VillagerData"].(map[string]any)
 		check("type", actor.Variant(), data["type"])
 		check("profession", actor.Profession(), data["profession"])
-		check("baby", actor.IsBaby(), age < 0)
+		check("baby", actor.Baby(), age < 0)
 	}
 }

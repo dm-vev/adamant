@@ -63,7 +63,7 @@ func (f Flower) BoneMeal(pos cube.Pos, tx *world.Tx) (result item.BoneMealResult
 
 // NeighbourUpdateTick ...
 func (f Flower) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !supportsVegetation(f, tx.Block(pos.Side(cube.FaceDown))) {
+	if !f.canSurviveOn(tx.Block(pos.Side(cube.FaceDown))) {
 		breakBlock(f, pos, tx)
 	}
 }
@@ -71,12 +71,37 @@ func (f Flower) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // UseOnBlock ...
 func (f Flower) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, f)
-	if !used || !supportsVegetation(f, tx.Block(pos.Side(cube.FaceDown))) {
+	if !used || !f.canSurviveOn(tx.Block(pos.Side(cube.FaceDown))) {
 		return false
 	}
 
 	place(tx, pos, f, user, ctx)
 	return placed(ctx)
+}
+
+// canSurviveOn ports FlowerBlock.mayPlaceOn, which WitherRoseBlock extends to
+// netherrack, soul sand and soul soil.
+func (f Flower) canSurviveOn(below world.Block) bool {
+	if f.Type == WitherRose() {
+		switch below.(type) {
+		case Netherrack, SoulSand, SoulSoil:
+			return true
+		}
+	}
+	return supportsVegetation(f, below)
+}
+
+// PlantWitherRose ports LivingEntity.createWitherRose for a mob killed by a
+// Wither while mob griefing is enabled: a wither rose is planted at pos if
+// the space is air and the rose can survive there. It reports whether the
+// rose was planted.
+func PlantWitherRose(tx *world.Tx, pos cube.Pos) bool {
+	rose := Flower{Type: WitherRose()}
+	if _, air := tx.Block(pos).(Air); !air || !rose.canSurviveOn(tx.Block(pos.Side(cube.FaceDown))) {
+		return false
+	}
+	tx.SetBlock(pos, rose, nil)
+	return true
 }
 
 // HasLiquidDrops ...

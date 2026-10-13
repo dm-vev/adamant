@@ -12,10 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
-	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -299,12 +296,7 @@ func (w *Warden) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if w.Dead() {
 		s.dead = true
 		w.viewAction(DeathAction{})
-		w.dropSourceLoot("minecraft:warden", src)
-		if mobKilledByPlayer(src) {
-			for _, orb := range NewExperienceOrbs(w.Position(), 5) {
-				w.tx.AddEntity(orb)
-			}
-		}
+		w.dropSourceLoot(src)
 		_ = w.CloseIn(w.tx)
 	}
 	return d, true
@@ -564,12 +556,7 @@ func (p *Phantom) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		s.dead = true
 		p.viewAction(DeathAction{})
-		p.dropSourceLoot("minecraft:phantom", src)
-		if mobKilledByPlayer(src) {
-			for _, orb := range NewExperienceOrbs(p.Position(), 5) {
-				p.tx.AddEntity(orb)
-			}
-		}
+		p.dropSourceLoot(src)
 		_ = p.CloseIn(p.tx)
 	}
 	return d, true
@@ -843,12 +830,7 @@ func (w *Wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		s.death = 1
 		w.viewAction(DeathAction{})
 		w.removeBossBar()
-		w.dropSourceLoot("minecraft:wither", src)
-		if mobKilledByPlayer(src) {
-			for _, orb := range NewExperienceOrbs(w.Position(), 50) {
-				w.tx.AddEntity(orb)
-			}
-		}
+		w.dropSourceLoot(src)
 		w.tx.PlaySound(w.Position(), sound.Custom{Name: "mob.wither.death", Volume: 1, Pitch: 1})
 	}
 	return d, true
@@ -880,15 +862,9 @@ func (w *Wither) viewAction(a world.EntityAction) {
 	w.tx.ReleaseViewers(v)
 }
 
-func (w *Warden) dropSourceLoot(id string, src world.DamageSource) {
-	dropMobLoot(w.tx, w.Position(), id, src)
-}
-func (p *Phantom) dropSourceLoot(id string, src world.DamageSource) {
-	dropMobLoot(p.tx, p.Position(), id, src)
-}
-func (w *Wither) dropSourceLoot(id string, src world.DamageSource) {
-	dropMobLoot(w.tx, w.Position(), id, src)
-}
+func (w *Warden) dropSourceLoot(src world.DamageSource)  { dropAllDeathLoot(w.tx, w, src) }
+func (p *Phantom) dropSourceLoot(src world.DamageSource) { dropAllDeathLoot(p.tx, p, src) }
+func (w *Wither) dropSourceLoot(src world.DamageSource)  { dropAllDeathLoot(w.tx, w, src) }
 
 // DamageSourceKiller returns the entity credited with a kill: the attacker of
 // a melee source or the owner of a projectile.
@@ -914,47 +890,6 @@ func mobKilledByPlayer(src world.DamageSource) bool {
 
 func mobGriefingDisabled(tx *world.Tx) bool {
 	return !tx.World().GameRuleBool("mob_griefing")
-}
-func dropMobLoot(tx *world.Tx, pos mgl64.Vec3, id string, src world.DamageSource) {
-	// LivingEntity.die awards the killing player's totalKillCount regardless
-	// of loot rules.
-	if killer := mobKiller(src); killer != nil && killer.H().Type().EncodeEntity() == "minecraft:player" {
-		if named, ok := killer.(interface{ Name() string }); ok {
-			tx.World().Scoreboard().AddCriteria(scoreboard.TotalKillCount, named.Name(), 1)
-		}
-	}
-	if !tx.World().GameRuleBool("mob_drops") {
-		return
-	}
-	tableID := "minecraft:entities/" + id[len("minecraft:"):]
-	sequence, err := loot.RandomSequence(tableID)
-	if err != nil {
-		panic(err)
-	}
-	ctx := loot.Context{Entity: id, Origin: pos, Random: tx.LootRandomSequence(sequence, 0)}
-	if killer := mobKiller(src); killer != nil && killer.H().Type().EncodeEntity() == "minecraft:player" {
-		ctx.Player, ctx.PlayerKilled = killer, true
-		if user, ok := killer.(interface {
-			HeldItems() (item.Stack, item.Stack)
-		}); ok {
-			tool, _ := user.HeldItems()
-			ctx.ToolStack = tool
-			ctx.Tool = tool.Item()
-			for _, ench := range tool.Enchantments() {
-				if ench.Type().Name() == "Looting" {
-					ctx.Looting = ench.Level()
-					break
-				}
-			}
-		}
-	}
-	drops, err := loot.Generate(tableID, 0, ctx)
-	if err != nil {
-		panic(err)
-	}
-	for _, stack := range drops {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, stack))
-	}
 }
 func nativeBossMovementSpeed(n map[string]any, fallback float64) float64 {
 	attributes, _ := n["Attributes"].([]any)

@@ -279,7 +279,7 @@ func (a *Allay) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-d)
 	a.viewAction(HurtAction{})
 	if a.Dead() {
-		a.die()
+		a.die(s)
 	}
 	return d, true
 }
@@ -446,7 +446,7 @@ func (a *Allay) viewAction(e world.EntityAction) {
 	}
 	a.tx.ReleaseViewers(vs)
 }
-func (a *Allay) die() {
+func (a *Allay) die(src world.DamageSource) {
 	b := a.b()
 	if b.dead {
 		return
@@ -454,6 +454,7 @@ func (a *Allay) die() {
 	b.dead = true
 	a.dropHeldAndInventory(a.tx)
 	a.viewAction(DeathAction{})
+	dropAllDeathLoot(a.tx, a, src)
 	_ = a.CloseIn(a.tx)
 }
 func (a *Allay) DuplicationCooldown() time.Duration {

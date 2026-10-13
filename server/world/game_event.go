@@ -1,8 +1,10 @@
 package world
 
 import (
+	"cmp"
 	"encoding/binary"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -72,6 +74,25 @@ type GameEventContext struct {
 	Sneaking          bool
 	Spectator         bool
 	DampensVibrations bool
+	// Experience is the experience of an entity_die source. A sculk catalyst
+	// handling the event consumes it so the entity drops none.
+	Experience *DeathExperience
+}
+
+// DeathExperience is the experience a dying entity would award, as Java's
+// LivingEntity.getExperienceReward and shouldDropExperience.
+type DeathExperience struct {
+	Amount   int
+	Eligible bool
+	Consumed bool
+}
+
+// GameEventHandler is a block actor that handles game events itself, like a
+// Java listener with DeliveryMode.BY_DISTANCE: every handler within its radius
+// receives the event after the dispatch scan, nearest first.
+type GameEventHandler interface {
+	GameEventRadius() int
+	HandleGameEvent(tx *Tx, pos cube.Pos, event GameEvent, position mgl64.Vec3, context GameEventContext)
 }
 
 // VibrationInfo is one selected event travelling to a listener.
@@ -235,12 +256,16 @@ func (tx *Tx) EmitGameEvent(event GameEvent, position mgl64.Vec3, context GameEv
 			}
 		}
 	}
-	if context.Spectator || context.DampensVibrations ||
+	vibrationsFiltered := context.Spectator || context.DampensVibrations ||
 		(context.Sneaking && isSneakingIgnored(event)) ||
-		w.gameEventBlockFlags(context.AffectedState)&vibrationDampening != 0 {
-		return
-	}
+		w.gameEventBlockFlags(context.AffectedState)&vibrationDampening != 0
 	sourcePos := cube.PosFromVec3(position)
+	type handlerInfo struct {
+		pos      cube.Pos
+		handler  GameEventHandler
+		distance float64
+	}
+	var handlers []handlerInfo
 	radius := 16
 	switch event {
 	case GameEventShriek:
@@ -259,8 +284,15 @@ func (tx *Tx) EmitGameEvent(event GameEvent, position mgl64.Vec3, context GameEv
 				if section := listenerPos.Y() >> 4; section < minY || section > maxY {
 					continue
 				}
+				if handler, ok := actor.(GameEventHandler); ok {
+					radius := handler.GameEventRadius()
+					d := listenerPos.Sub(sourcePos)
+					if d.X()*d.X()+d.Y()*d.Y()+d.Z()*d.Z() <= radius*radius {
+						handlers = append(handlers, handlerInfo{pos: listenerPos, handler: handler, distance: position.Sub(listenerPos.Vec3Centre()).LenSqr()})
+					}
+				}
 				listener, ok := actor.(VibrationListener)
-				if !ok {
+				if !ok || vibrationsFiltered {
 					continue
 				}
 				data := listener.VibrationData()
@@ -297,6 +329,10 @@ func (tx *Tx) EmitGameEvent(event GameEvent, position mgl64.Vec3, context GameEv
 				}
 			}
 		}
+	}
+	slices.SortStableFunc(handlers, func(a, b handlerInfo) int { return cmp.Compare(a.distance, b.distance) })
+	for _, h := range handlers {
+		h.handler.HandleGameEvent(tx, h.pos, event, position, context)
 	}
 }
 

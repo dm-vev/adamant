@@ -305,7 +305,7 @@ func (z *ZombifiedPiglin) Hurt(d float64, src world.DamageSource) (float64, bool
 	if z.Dead() {
 		s.dead = true
 		z.viewAction(DeathAction{})
-		dropMobLoot(z.tx, z.Position(), "minecraft:zombified_piglin", src)
+		dropAllDeathLoot(z.tx, z, src)
 		_ = z.CloseIn(z.tx)
 	}
 	return d, true

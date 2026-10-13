@@ -351,7 +351,7 @@ func (p *Piglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		s.dead = true
 		p.viewAction(DeathAction{})
-		dropMobLoot(p.tx, p.Position(), "minecraft:piglin", src)
+		dropAllDeathLoot(p.tx, p, src)
 		_ = p.CloseIn(p.tx)
 	}
 	return d, true

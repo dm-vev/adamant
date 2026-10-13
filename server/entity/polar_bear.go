@@ -1,15 +1,15 @@
 package entity
 
 import (
+	"math"
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"math/rand/v2"
 )
 
 // PolarBearType is the registered Java polar bear species.
@@ -199,7 +199,7 @@ func (p *PolarBear) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		p.b().dead = true
 		p.view(DeathAction{})
-		dropFamilyMobLoot(p.tx, p.Position(), "minecraft:polar_bear", src)
+		dropAllDeathLoot(p.tx, p, src)
 		_ = p.CloseIn(p.tx)
 	}
 	return d, true
@@ -236,23 +236,3 @@ func (p *PolarBear) view(a world.EntityAction) {
 
 var _ Living = (*PolarBear)(nil)
 var _ world.EntityType = polarBearType{}
-
-func dropFamilyMobLoot(tx *world.Tx, pos mgl64.Vec3, id string, source world.DamageSource) {
-	table := "minecraft:entities/" + id[len("minecraft:"):]
-	sequence, err := loot.RandomSequence(table)
-	if err != nil {
-		return
-	}
-	context := loot.Context{Entity: id, Origin: pos, Random: tx.LootRandomSequence(sequence, 0)}
-	if player := raidDamageAttacker(source); player != nil {
-		context.Player = player
-		context.PlayerKilled = player.H().Type().EncodeEntity() == "minecraft:player"
-	}
-	drops, err := loot.Generate(table, 0, context)
-	if err != nil {
-		return
-	}
-	for _, stack := range drops {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, stack))
-	}
-}

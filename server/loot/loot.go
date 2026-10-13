@@ -90,6 +90,7 @@ type modifier struct {
 	Predicate                json.RawMessage `json:"predicate"`
 	Components               map[string]any  `json:"components"`
 	Name                     any             `json:"name"`
+	Amplifier                any             `json:"amplifier"`
 	Raw                      map[string]any  `json:"-"`
 	randomEnchantmentOptions []string
 }
@@ -366,6 +367,12 @@ type Context struct {
 	ThisEntity       world.Entity
 	SourceEntity     world.Entity
 	EntityProperties map[string]any
+	// DirectEntity is the entity that directly dealt the killing damage, such
+	// as a projectile; SourceEntity is the one responsible for it.
+	DirectEntity world.Entity
+	// DamageTags holds the damage type tags of Damage, e.g.
+	// "minecraft:is_projectile".
+	DamageTags map[string]bool
 	EntityNBT        map[string]any
 	SourceEntityType string
 	Contents         []item.Stack
@@ -601,14 +608,36 @@ func testCondition(x condition, c *Context) (bool, error) {
 			return true, nil
 		}
 		return c.Random.NextFloat() <= float32(1/c.ExplosionRadius), nil
-	case "minecraft:killed_by_player":
-		return c.PlayerKilled, nil
+	case "minecraft:entity_properties":
+		return testEntityPredicate(x, c)
+	case "minecraft:damage_source_properties":
+		return testDamageSourcePredicate(x, c)
+	case "minecraft:random_chance_with_enchanted_bonus":
+		// LootItemRandomChanceWithEnchantedBonusCondition: the attacker's
+		// enchantment level selects the enchanted chance.
+		enchantment, _ := x.Raw["enchantment"].(string)
+		level := c.Looting
+		if enchantment != "minecraft:looting" || level == 0 {
+			level = lootEnchantmentLevel(c.ToolStack, enchantment)
+		}
+		chance, ok := x.Raw["unenchanted_chance"].(float64)
+		if !ok {
+			return false, fmt.Errorf("invalid unenchanted chance %T", x.Raw["unenchanted_chance"])
+		}
+		if level > 0 {
+			v, err := levelBasedValue(x.Raw["enchanted_chance"], level)
+			if err != nil {
+				return false, err
+			}
+			chance = v
+		}
+		return c.Random.NextFloat() < float32(chance), nil
 	case "minecraft:random_chance":
 		return c.Random.NextFloat() < float32(x.Chance), nil
 	case "minecraft:location_check":
 		return testLocationCheck(x.Predicate, c)
-	case "minecraft:entity_properties":
-		return testEntityPredicate(x, c)
+	case "minecraft:killed_by_player":
+		return c.PlayerKilled, nil
 	case "minecraft:match_tool":
 		return matchToolPredicate(x.Predicate, c)
 	case "minecraft:all_of":
@@ -788,23 +817,23 @@ func matchesIntRange(raw any, value int) (bool, error) {
 	}
 }
 func testEntityPredicate(x condition, c *Context) (bool, error) {
-	entityPresent := false
-	switch x.Entity {
-	case "this":
-		entityPresent = c.Entity != "" || c.ThisEntity != nil || c.EntityProperties != nil || c.EntityNBT != nil
-	case "attacker":
-		entityPresent = c.SourceEntity != nil || c.SourceEntityType != ""
-	case "attacking_player":
-		entityPresent = c.Player != nil
-	default:
-		return false, nil
-	}
-	if !entityPresent {
-		return false, nil
-	}
 	predicate, ok := x.Predicate.(map[string]any)
 	if !ok {
 		return false, fmt.Errorf("invalid entity predicate %T", x.Predicate)
+	}
+	if e := entityFor(x.Entity, c); e != nil {
+		return matchEntity(e, predicate, c)
+	}
+	// Callers without a live entity describe it by type and properties.
+	entityPresent := false
+	switch x.Entity {
+	case "this":
+		entityPresent = c.Entity != "" || c.EntityProperties != nil || c.EntityNBT != nil
+	case "attacker", "direct_attacker":
+		entityPresent = c.SourceEntityType != ""
+	}
+	if !entityPresent {
+		return false, nil
 	}
 	for key, want := range predicate {
 		switch key {
@@ -1216,8 +1245,33 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 				components = make(map[string]any)
 			}
 		case "minecraft:furnace_smelt":
-			return item.Stack{}, fmt.Errorf("loot modifier %q requires recipe registry support", m.Type)
-		case "minecraft:exploration_map", "minecraft:copy_state", "minecraft:set_instrument", "minecraft:set_ominous_bottle_amplifier", "minecraft:set_stew_effect":
+			// SmeltItemFunction: the item becomes its furnace product, keeping
+			// the count; unsmeltable items are left unchanged.
+			base, err := item.StackFromJavaNBT(map[string]any{"id": id, "count": int32(max(count, 1)), "components": components})
+			if err != nil {
+				return item.Stack{}, err
+			}
+			smeltable, ok := base.Item().(item.Smeltable)
+			if !ok || smeltable.SmeltInfo().Product.Empty() {
+				break
+			}
+			result, err := item.StackToJavaNBT(item.NewStack(smeltable.SmeltInfo().Product.Item(), max(count, 1)))
+			if err != nil {
+				return item.Stack{}, err
+			}
+			id = result["id"].(string)
+			components, _ = result["components"].(map[string]any)
+			if components == nil {
+				components = make(map[string]any)
+			}
+		case "minecraft:set_ominous_bottle_amplifier":
+			// SetOminousBottleAmplifierFunction: amplifier clamped to 0..4.
+			amplifier, err := integerNumber(m.Amplifier, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			components["minecraft:ominous_bottle_amplifier"] = int32(max(0, min(4, amplifier)))
+		case "minecraft:exploration_map", "minecraft:copy_state", "minecraft:set_instrument", "minecraft:set_stew_effect":
 			return item.Stack{}, fmt.Errorf("loot modifier %q requires context-specific component support", m.Type)
 		case "minecraft:filtered":
 			return item.Stack{}, fmt.Errorf("loot modifier %q requires predicate evaluation", m.Type)

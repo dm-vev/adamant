@@ -1,15 +1,16 @@
 package entity
 
 import (
+	"math"
+	"math/rand/v2"
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"math/rand/v2"
-	"strings"
 )
 
 // NewPig creates an adult, unsaddled Java pig.
@@ -197,7 +198,7 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		b.dead = true
 		p.viewAction(DeathAction{})
-		dropMobLoot(p.tx, p.Position(), "minecraft:pig", s)
+		dropAllDeathLoot(p.tx, p, s)
 		_ = p.CloseIn(p.tx)
 	}
 	return v, true
@@ -226,6 +227,13 @@ func (p *Pig) viewAction(a world.EntityAction) {
 		v.ViewEntityAction(p, a)
 	}
 	p.tx.ReleaseViewers(vs)
+}
+
+// dropCustomDeathLoot drops a pig's saddle, a preserved equipment item.
+func (p *Pig) dropCustomDeathLoot(bool, int) {
+	if p.behaviour().saddled {
+		dropMobEquipment(p.tx, p, item.NewStack(item.Saddle{}, 1), 2, false, 0)
+	}
 }
 func (p *Pig) Age() int      { return p.behaviour().age }
 func (p *Pig) Saddled() bool { return p.behaviour().saddled }

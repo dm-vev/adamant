@@ -133,7 +133,7 @@ func (g *Goat) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if g.Dead() {
 		b.dead = true
 		g.viewAction(DeathAction{})
-		dropMobLoot(g.tx, g.Position(), "minecraft:goat", src)
+		dropAllDeathLoot(g.tx, g, src)
 		_ = g.CloseIn(g.tx)
 	}
 	return v, true

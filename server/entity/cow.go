@@ -9,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -230,7 +229,7 @@ func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	c.behaviour().health.AddHealth(-damage)
 	c.viewAction(HurtAction{})
 	if c.Dead() {
-		c.die()
+		c.die(src)
 	}
 	return damage, true
 }
@@ -287,20 +286,19 @@ func (c *Cow) viewAction(action world.EntityAction) {
 	c.tx.ReleaseViewers(viewers)
 }
 
-func (c *Cow) die() {
+func (c *Cow) die(src world.DamageSource) {
 	b := c.behaviour()
 	if b.dead {
 		return
 	}
 	b.dead = true
 	c.viewAction(DeathAction{})
-	tx := c.tx
-	if leather := rand.IntN(3); leather > 0 {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position()}, item.NewStack(item.Leather{}, leather)))
-	}
-	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position()}, item.NewStack(item.Beef{Cooked: c.OnFireDuration() > 0}, rand.IntN(3)+1)))
-	_ = c.CloseIn(tx)
+	dropAllDeathLoot(c.tx, c, src)
+	_ = c.CloseIn(c.tx)
 }
+
+// Baby reports whether the cow is a calf.
+func (c *Cow) Baby() bool { return c.behaviour().ageTicks < 0 }
 
 // Milk returns whether an empty bucket can be used on the cow.
 func (c *Cow) Milk(_ *world.Tx) bool {

@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -9,7 +11,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
 )
 
 // OcelotType is the source minecraft:ocelot species. Trusting an ocelot never
@@ -189,6 +190,7 @@ func (o *Ocelot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if o.Dead() {
 		b.dead = true
 		o.viewAction(DeathAction{})
+		dropAllDeathLoot(o.tx, o, s)
 		_ = o.CloseIn(o.tx)
 	}
 	return d, true

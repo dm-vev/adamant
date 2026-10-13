@@ -524,7 +524,7 @@ func (c *CopperGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		b.dead = true
 		c.viewAction(DeathAction{})
 		c.dropEquipment(c.tx)
-		c.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position()}, item.NewStack(item.CopperIngot{}, 1+c.b().randomInt(3))))
+		dropAllDeathLoot(c.tx, c, s)
 		_ = c.CloseIn(c.tx)
 	}
 	return d, true

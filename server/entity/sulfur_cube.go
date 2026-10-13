@@ -126,7 +126,7 @@ func (b *SulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		b.fuse--
 		if b.fuse == 0 {
 			(block.ExplosionConfig{}).Explode(tx, world.NewEntityExplosionSource(s, 3))
-			s.die()
+			s.die(ExplosionDamageSource{Source: world.NewEntityExplosionSource(s, 3)})
 		}
 	}
 	if b.age < 0 {
@@ -242,7 +242,7 @@ func (s *SulfurCube) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	b.health.AddHealth(-d)
 	s.viewAction(HurtAction{})
 	if s.Dead() {
-		s.die()
+		s.die(src)
 	}
 	return d, true
 }
@@ -276,13 +276,14 @@ func (s *SulfurCube) viewAction(a world.EntityAction) {
 	}
 	s.tx.ReleaseViewers(vs)
 }
-func (s *SulfurCube) die() {
+func (s *SulfurCube) die(src world.DamageSource) {
 	b := s.b()
 	if b.dead {
 		return
 	}
 	b.dead = true
 	s.viewAction(DeathAction{})
+	dropAllDeathLoot(s.tx, s, src)
 	if !b.bodyItem.Empty() {
 		s.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: s.Position()}, b.bodyItem))
 	}

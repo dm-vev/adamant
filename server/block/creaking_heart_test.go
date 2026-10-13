@@ -104,7 +104,7 @@ func TestCreakingResinPreservesSourceWater(t *testing.T) {
 			t.Fatalf("resin placement = %v, %v; want source water %v", pos, ok, water)
 		}
 		resin, ok := tx.Block(water).(ResinClump)
-		if !ok || resin != (ResinClump{}).withFace(cube.FaceDown, true) {
+		if !ok || resin.Faces != MultiFace(0).With(cube.FaceDown, true) {
 			t.Fatalf("resin did not attach toward log: %#v", tx.Block(water))
 		}
 		liquid, ok := tx.Liquid(water)

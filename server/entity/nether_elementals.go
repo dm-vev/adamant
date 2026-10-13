@@ -10,7 +10,6 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -430,7 +429,7 @@ func hurtMob(e world.Entity, d float64, source world.Entity) {
 		l.Hurt(d, AttackDamageSource{Attacker: source})
 	}
 }
-func (s *netherState) Hurt(e *Ent, d float64, src world.DamageSource) (float64, bool) {
+func (s *netherState) Hurt(e *Ent, self world.Entity, d float64, src world.DamageSource) (float64, bool) {
 	if s.dead || d <= 0 {
 		return 0, false
 	}
@@ -450,37 +449,10 @@ func (s *netherState) Hurt(e *Ent, d float64, src world.DamageSource) (float64, 
 			viewer.ViewEntityAction(e, DeathAction{})
 		}
 		e.tx.ReleaseViewers(viewers)
-		s.drop(e, src)
+		dropAllDeathLoot(e.tx, self, src)
 		e.CloseIn(e.tx)
 	}
 	return d, true
-}
-func (s *netherState) drop(e *Ent, src world.DamageSource) {
-	id := speciesIDNether(s.kind)
-	sequence, err := loot.RandomSequence("minecraft:entities/" + id)
-	if err != nil {
-		return
-	}
-	ctx := loot.Context{Entity: id, Origin: e.Position(), Random: e.tx.LootRandomSequence(sequence, 0)}
-	switch p := src.(type) {
-	case AttackDamageSource:
-		if p.Attacker != nil {
-			ctx.Player = p.Attacker
-			ctx.PlayerKilled = p.Attacker.H().Type().EncodeEntity() == "minecraft:player"
-		}
-	case ProjectileDamageSource:
-		if p.Owner != nil {
-			ctx.Player = p.Owner
-			ctx.PlayerKilled = p.Owner.H().Type().EncodeEntity() == "minecraft:player"
-		}
-	}
-	drops, err := loot.Generate("minecraft:entities/"+id, 0, ctx)
-	if err != nil {
-		return
-	}
-	for _, stack := range drops {
-		e.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, stack))
-	}
 }
 func (m *Ghast) Health() float64        { return m.n().health.Health() }
 func (m *Ghast) MaxHealth() float64     { return m.n().health.MaxHealth() }
@@ -488,22 +460,22 @@ func (m *Ghast) SetMaxHealth(v float64) { m.n().health.SetMaxHealth(v) }
 func (m *Ghast) Dead() bool             { return m.n().dead || m.Health() <= 0 }
 func (m *Ghast) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if p, ok := s.(ProjectileDamageSource); ok && p.Projectile != nil && p.Projectile.H().Type().EncodeEntity() == "minecraft:fireball" && p.Owner != nil && p.Owner.H().Type().EncodeEntity() == "minecraft:player" {
-		return m.n().Hurt(m.Ent, 1000, s)
+		return m.n().Hurt(m.Ent, m, 1000, s)
 	}
-	return m.n().Hurt(m.Ent, d, s)
+	return m.n().Hurt(m.Ent, m, d, s)
 }
 func (m *Blaze) Health() float64                                      { return m.n().health.Health() }
 func (m *Blaze) MaxHealth() float64                                   { return m.n().health.MaxHealth() }
 func (m *Blaze) SetMaxHealth(v float64)                               { m.n().health.SetMaxHealth(v) }
 func (m *Blaze) Dead() bool                                           { return m.n().dead || m.Health() <= 0 }
-func (m *Blaze) Hurt(d float64, s world.DamageSource) (float64, bool) { return m.n().Hurt(m.Ent, d, s) }
+func (m *Blaze) Hurt(d float64, s world.DamageSource) (float64, bool) { return m.n().Hurt(m.Ent, m, d, s) }
 func (m *MagmaCube) Health() float64                                  { return m.n().health.Health() }
 func (m *MagmaCube) MaxHealth() float64                               { return m.n().health.MaxHealth() }
 func (m *MagmaCube) SetMaxHealth(v float64)                           { m.n().health.SetMaxHealth(v) }
 func (m *MagmaCube) Dead() bool                                       { return m.n().dead || m.Health() <= 0 }
 func (m *MagmaCube) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b := m.n()
-	actual, ok := b.Hurt(m.Ent, d, s)
+	actual, ok := b.Hurt(m.Ent, m, d, s)
 	if ok && m.Dead() && b.size > 1 {
 		for i := range 2 + int(b.random.NextInt(3)) {
 			size := b.slime.ChildSize()
@@ -517,6 +489,9 @@ func (m *MagmaCube) Hurt(d float64, s world.DamageSource) (float64, bool) {
 func NewMagmaCubeWithSize(o world.EntitySpawnOpts, size int) *world.EntityHandle {
 	return o.New(MagmaCubeType, netherConfig{kind: magmaKind, size: size})
 }
+
+// CubeSize returns the Java Slime.getSize of the magma cube.
+func (m *MagmaCube) CubeSize() int { return m.n().size }
 func (m *Ghast) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
 func (m *Blaze) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
 func (m *MagmaCube) Heal(h float64, _ world.HealingSource) float64 { return healNether(m.n(), h) }

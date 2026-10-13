@@ -164,6 +164,7 @@ func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() {
 		b.dead = true
 		s.viewAction(DeathAction{})
+		dropAllDeathLoot(s.tx, s, src)
 		_ = s.CloseIn(s.tx)
 	}
 	return v, true
@@ -199,6 +200,14 @@ func (s *Sheep) WoolColor() int { return s.behaviour().color }
 
 // Sheared reports whether the sheep currently has no fleece.
 func (s *Sheep) Sheared() bool { return s.behaviour().sheared }
+
+// Baby reports whether the sheep is a lamb.
+func (s *Sheep) Baby() bool { return s.behaviour().ageTicks < 0 }
+
+// LootComponents exposes the sheep colour to loot predicates.
+func (s *Sheep) LootComponents() map[string]any {
+	return map[string]any{"minecraft:sheep/color": item.Colours()[s.behaviour().color].String()}
+}
 
 // Shear returns the source wool drop and removes the sheep's fleece once.
 func (s *Sheep) Shear(_ *world.Tx) item.Stack {

@@ -92,6 +92,21 @@ type Lava struct{ particle }
 // DustPlume is a particle that shows up when an item is successfully inserted into a decorated pot.
 type DustPlume struct{ particle }
 
+// SculkCharge is a sculk charge resting on a block. Charge is the logarithmic
+// particle count and Faces the multi-face bits (down, up, south, west, north,
+// east) the charge covers.
+type SculkCharge struct {
+	particle
+	Charge int
+	Faces  uint8
+}
+
+// SculkChargePop is a sculk charge dissipating at a block.
+type SculkChargePop struct{ particle }
+
+// SculkSoul is a soul released by a blooming sculk catalyst.
+type SculkSoul struct{ particle }
+
 // particle serves as a base for all particles in this package.
 type particle struct{}
 

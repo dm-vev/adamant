@@ -1,6 +1,9 @@
 package entity
 
 import (
+	"math"
+
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -8,8 +11,8 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
 )
 
 // Mount species share the native equine inventory, taming and passenger rules;
@@ -503,9 +506,14 @@ func (m *Mount) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) boo
 		return true
 	}
 	if b.kind == mountDonkey || b.kind == mountMule || b.kind == mountLlama || b.kind == mountTraderLlama {
-		if !b.chested && held.Empty() && b.tamed {
+		// AbstractChestedHorse.mobInteract: a tamed adult takes a chest.
+		if _, chest := held.Item().(block.Chest); chest && !b.chested && b.tamed && b.ageTicks >= 0 {
 			b.chested = true
-			b.chestItems = make([]item.Stack, b.strength*3)
+			b.chestItems = make([]item.Stack, b.chestSize())
+			if ctx != nil {
+				ctx.SubtractFromCount(1)
+			}
+			tx.PlaySound(m.Position(), sound.Custom{Name: "mob.horse.armor", Volume: 1, Pitch: 1})
 			return true
 		}
 	}
@@ -855,10 +863,7 @@ func (m *Mount) SpitAt(tx *world.Tx, target world.Entity) bool {
 }
 func (b *MountBehaviour) chestInventory() *inventory.Inventory {
 	if b.chestInv == nil && b.chested {
-		size := max(b.strength*3, len(b.chestItems))
-		if size < 1 {
-			size = 1
-		}
+		size := max(b.chestSize(), len(b.chestItems), 1)
 		if len(b.chestItems) < size {
 			b.chestItems = append(b.chestItems, make([]item.Stack, size-len(b.chestItems))...)
 		}
@@ -868,6 +873,15 @@ func (b *MountBehaviour) chestInventory() *inventory.Inventory {
 		}
 	}
 	return b.chestInv
+}
+
+// chestSize ports AbstractChestedHorse.getInventoryColumns: llamas carry three
+// slots per strength, donkeys and mules five columns of three.
+func (b *MountBehaviour) chestSize() int {
+	if b.kind == mountLlama || b.kind == mountTraderLlama {
+		return b.strength * 3
+	}
+	return 15
 }
 
 func mountSpecies(kind mountKind, native string, width, height float64) world.EntityType {
@@ -1053,7 +1067,61 @@ func (m *Mount) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	b := m.b()
 	old := b.health.Health()
 	b.health.AddHealth(-v)
+	m.viewAction(HurtAction{})
+	if m.Dead() {
+		m.die(src)
+	}
 	return old - b.health.Health(), true
+}
+
+// die ejects the riders, drops the mount's loot and equipment and removes it.
+func (m *Mount) die(src world.DamageSource) {
+	tx := m.tx
+	for _, h := range m.b().passengers {
+		if h == nil {
+			continue
+		}
+		if passenger, ok := h.Entity(tx); ok {
+			m.Dismount(tx, passenger)
+		}
+	}
+	m.viewAction(DeathAction{})
+	dropAllDeathLoot(tx, m, src)
+	_ = m.CloseIn(tx)
+}
+
+func (m *Mount) viewAction(a world.EntityAction) {
+	viewers := m.tx.Viewers(m.Position())
+	for _, v := range viewers {
+		v.ViewEntityAction(m, a)
+	}
+	m.tx.ReleaseViewers(viewers)
+}
+
+// dropCustomDeathLoot drops the saddle and body armour or carpet, which the
+// player equipped and Java therefore always drops.
+func (m *Mount) dropCustomDeathLoot(bool, int) {
+	b := m.b()
+	if b.saddled {
+		dropMobEquipment(m.tx, m, item.NewStack(item.Saddle{}, 1), 2, false, 0)
+	}
+	dropMobEquipment(m.tx, m, b.armor, 2, false, 0)
+}
+
+// dropEquipment ports AbstractChestedHorse.dropEquipment: the chest and its
+// contents drop.
+func (m *Mount) dropEquipment() {
+	b := m.b()
+	if !b.chested {
+		return
+	}
+	for _, stack := range b.chestItems {
+		if !stack.Empty() {
+			m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, stack))
+		}
+	}
+	m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, item.NewStack(block.Chest{}, 1)))
+	b.chested, b.chestItems, b.chestInv = false, nil, nil
 }
 func (m *Mount) Heal(v float64, _ world.HealingSource) float64 {
 	if v <= 0 || m.Dead() {
@@ -1072,7 +1140,7 @@ func (m *Mount) KnockBack(src mgl64.Vec3, force, height float64) {
 	m.SetVelocity(m.Velocity().Add(d.Normalize().Mul(force).Add(mgl64.Vec3{0, height, 0})))
 }
 func (m *Mount) Speed() float64             { return m.b().movementSpeed }
-func (m *Mount) SetSpeed(v float64)          { m.b().movementSpeed = v }
+func (m *Mount) SetSpeed(v float64)         { m.b().movementSpeed = v }
 func (m *Mount) AddEffect(e effect.Effect)  { m.b().effects.Add(e, m) }
 func (m *Mount) RemoveEffect(e effect.Type) { m.b().effects.Remove(e, m) }
 func (m *Mount) Effects() []effect.Effect   { return m.b().effects.Effects() }

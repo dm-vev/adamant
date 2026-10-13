@@ -3,6 +3,7 @@ package entity
 import (
 	"math"
 	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -146,10 +147,10 @@ func (b *parrotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	} else {
 		delta = delta.Normalize().Mul(b.speed * .4)
 		if delta[1] < -.025*(b.speed/.2) {
-			delta[1] = -.025*(b.speed/.2)
+			delta[1] = -.025 * (b.speed / .2)
 		}
 		if delta[1] > .035*(b.speed/.2) {
-			delta[1] = .035*(b.speed/.2)
+			delta[1] = .035 * (b.speed / .2)
 		}
 	}
 	b.nextMove--
@@ -280,6 +281,7 @@ func (p *Parrot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		b.dead = true
 		p.viewAction(DeathAction{})
+		dropAllDeathLoot(p.tx, p, s)
 		_ = p.CloseIn(p.tx)
 	}
 	return d, true
