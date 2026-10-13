@@ -229,6 +229,8 @@ const (
 	hashPinkPetals
 	hashPiston
 	hashPistonHead
+	hashPitcherCrop
+	hashPitcherPlant
 	hashPlanks
 	hashPodzol
 	hashPointedDripstone
@@ -267,6 +269,7 @@ const (
 	hashRespawnAnchor
 	hashSand
 	hashSandstone
+	hashScaffolding
 	hashSculk
 	hashSculkCatalyst
 	hashSculkVein
@@ -286,6 +289,7 @@ const (
 	hashSmithingTable
 	hashSmoker
 	hashSmoothBasalt
+	hashSnifferEgg
 	hashSnow
 	hashSoulSand
 	hashSoulSoil
@@ -311,6 +315,7 @@ const (
 	hashTintedGlass
 	hashTorch
 	hashTorchflower
+	hashTorchflowerCrop
 	hashTripwire
 	hashTripwireHook
 	hashTuff
@@ -1240,6 +1245,14 @@ func (p PistonHead) Hash() (uint64, uint64) {
 	return hashPistonHead, uint64(p.Facing) | uint64(boolByte(p.Sticky))<<3
 }
 
+func (c PitcherCrop) Hash() (uint64, uint64) {
+	return hashPitcherCrop, uint64(c.Growth) | uint64(boolByte(c.UpperPart))<<8
+}
+
+func (p PitcherPlant) Hash() (uint64, uint64) {
+	return hashPitcherPlant, uint64(boolByte(p.UpperPart))
+}
+
 func (p Planks) Hash() (uint64, uint64) {
 	return hashPlanks, uint64(p.Wood.Uint8())
 }
@@ -1392,6 +1405,10 @@ func (s Sandstone) Hash() (uint64, uint64) {
 	return hashSandstone, uint64(s.Type.Uint8()) | uint64(boolByte(s.Red))<<2
 }
 
+func (s Scaffolding) Hash() (uint64, uint64) {
+	return hashScaffolding, uint64(s.Distance)
+}
+
 func (Sculk) Hash() (uint64, uint64) {
 	return hashSculk, 0
 }
@@ -1466,6 +1483,10 @@ func (s Smoker) Hash() (uint64, uint64) {
 
 func (SmoothBasalt) Hash() (uint64, uint64) {
 	return hashSmoothBasalt, 0
+}
+
+func (e SnifferEgg) Hash() (uint64, uint64) {
+	return hashSnifferEgg, uint64(e.Hatch)
 }
 
 func (Snow) Hash() (uint64, uint64) {
@@ -1566,6 +1587,10 @@ func (t Torch) Hash() (uint64, uint64) {
 
 func (Torchflower) Hash() (uint64, uint64) {
 	return hashTorchflower, 0
+}
+
+func (c TorchflowerCrop) Hash() (uint64, uint64) {
+	return hashTorchflowerCrop, uint64(c.Growth)
 }
 
 func (t Tripwire) Hash() (uint64, uint64) {

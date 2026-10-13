@@ -334,32 +334,6 @@ func (t Target) DecodeNBT(data map[string]any) any {
 	return t
 }
 
-// Torchflower is a decorative flower.
-type Torchflower struct {
-	transparent
-	empty
-}
-
-// BreakInfo ...
-func (t Torchflower) BreakInfo() BreakInfo {
-	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(t))
-}
-
-// CompostChance ...
-func (Torchflower) CompostChance() float64 {
-	return 0.65
-}
-
-// EncodeItem ...
-func (Torchflower) EncodeItem() (name string, meta int16) {
-	return "minecraft:torchflower", 0
-}
-
-// EncodeBlock ...
-func (Torchflower) EncodeBlock() (string, map[string]any) {
-	return "minecraft:torchflower", nil
-}
-
 // Fungus is a Nether fungus plant.
 type Fungus struct {
 	transparent

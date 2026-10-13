@@ -239,6 +239,9 @@ func (s *Sniffer) viewAction(a world.EntityAction) {
 }
 func (s *Sniffer) Sniffing() bool { return s.behaviour().sniffing }
 func (s *Sniffer) Digging() bool  { return s.behaviour().digTicks > 0 }
+
+// SetAge sets the age in ticks; negative ages are babies growing up.
+func (s *Sniffer) SetAge(age int) { s.behaviour().age = age }
 func (s *Sniffer) Feed(st item.Stack) bool {
 	b := s.behaviour()
 	if st.Empty() || b.age >= 0 {

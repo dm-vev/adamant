@@ -127,6 +127,10 @@ type DripstoneDrip struct{ particle }
 // the client plays as its landing sound.
 type PointedDripstoneLand struct{ particle }
 
+// EggCrack is the burst of particles around an egg cracking on a hatch boosting
+// block.
+type EggCrack struct{ particle }
+
 // CauldronEffect is a Bedrock cauldron interaction, which the client plays as
 // its particles and sound. Colour is the dye or potion colour involved.
 type CauldronEffect struct {

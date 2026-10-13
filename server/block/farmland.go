@@ -21,7 +21,7 @@ type Farmland struct {
 // SoilFor ...
 func (f Farmland) SoilFor(block world.Block) bool {
 	switch block.(type) {
-	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, NetherSprouts, PinkPetals, DeadBush, SweetBerries, TreeSapling, Azalea, FloweringAzalea:
+	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, PitcherPlant, NetherSprouts, PinkPetals, DeadBush, SweetBerries, TreeSapling, Azalea, FloweringAzalea:
 		return true
 	}
 	return false

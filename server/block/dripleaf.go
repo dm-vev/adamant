@@ -318,10 +318,10 @@ func (SmallDripleaf) Model() world.BlockModel { return smallDripleafModel{} }
 // SideClosed lets water flow around the plant.
 func (SmallDripleaf) SideClosed(cube.Pos, cube.Pos, *world.Tx) bool { return false }
 
-// BreakInfo ports the shears-only loot table.
+// BreakInfo ports the shears-only loot table, for either half.
 func (d SmallDripleaf) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, shearsEffective, func(t item.Tool, _ []item.Enchantment) []item.Stack {
-		if t.ToolType() != item.TypeShears || d.UpperPart {
+		if t.ToolType() != item.TypeShears {
 			return nil
 		}
 		return []item.Stack{item.NewStack(SmallDripleaf{}, 1)}

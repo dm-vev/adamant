@@ -23,7 +23,7 @@ func (m MuddyMangroveRoots) BreakInfo() BreakInfo {
 // SoilFor ...
 func (MuddyMangroveRoots) SoilFor(block world.Block) bool {
 	switch block.(type) {
-	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, NetherSprouts, PinkPetals, BambooSapling, Bamboo, SweetBerries, TreeSapling:
+	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, PitcherPlant, NetherSprouts, PinkPetals, BambooSapling, Bamboo, SweetBerries, TreeSapling:
 		return true
 	}
 	return false

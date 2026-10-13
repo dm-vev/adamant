@@ -691,6 +691,8 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesDripstoneDrip, Position: vec64To32(pos)})
 	case particle.PointedDripstoneLand:
 		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventSoundPointedDripstoneLand, Position: vec64To32(pos)})
+	case particle.EggCrack:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticleTurtleEgg, Position: vec64To32(pos)})
 	case particle.ElectricSpark:
 		s.writePacket(&packet.LevelEvent{
 			EventType: packet.LevelEventParticlesElectricSpark,

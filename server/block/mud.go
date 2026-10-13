@@ -10,7 +10,7 @@ type Mud struct {
 // SoilFor ...
 func (Mud) SoilFor(block world.Block) bool {
 	switch block.(type) {
-	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, NetherSprouts, PinkPetals, DeadBush, BambooSapling, Bamboo, SweetBerries, TreeSapling:
+	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, PitcherPlant, NetherSprouts, PinkPetals, DeadBush, BambooSapling, Bamboo, SweetBerries, TreeSapling:
 		return true
 	}
 	return false

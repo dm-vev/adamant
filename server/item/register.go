@@ -149,8 +149,6 @@ func init() {
 	world.RegisterItem(PrismarineShard{})
 	world.RegisterItem(Pufferfish{})
 	world.RegisterItem(PumpkinPie{})
-	world.RegisterItem(PitcherPod{})
-	world.RegisterItem(TorchflowerSeeds{})
 	world.RegisterItem(Saddle{})
 	world.RegisterItem(RabbitFoot{})
 	world.RegisterItem(RabbitHide{})

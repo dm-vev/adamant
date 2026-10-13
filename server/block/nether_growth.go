@@ -174,7 +174,7 @@ type DirtWithRoots struct {
 // SoilFor ...
 func (d DirtWithRoots) SoilFor(block world.Block) bool {
 	switch block.(type) {
-	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, NetherSprouts, PinkPetals, SugarCane, DeadBush, TreeSapling:
+	case ShortGrass, Fern, DoubleTallGrass, Flower, GoldenDandelion, Torchflower, Eyeblossom, DoubleFlower, PitcherPlant, NetherSprouts, PinkPetals, SugarCane, DeadBush, TreeSapling:
 		return true
 	}
 	return false
