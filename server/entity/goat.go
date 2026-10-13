@@ -72,8 +72,7 @@ type GoatBehaviour struct {
 	age, next, ramCooldown               int
 	screaming, leftHorn, rightHorn, dead bool
 	speed                                float64
-	path                                 []cube.Pos
-	index                                int
+	navigator                            Navigator
 	mc                                   *MovementComputer
 }
 
@@ -89,23 +88,22 @@ func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if b.index >= len(b.path) && b.next == 0 {
+	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 40 + rand.IntN(81)
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
 			goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-			if p := findPath(tx, start, goal, 128, false, false); len(p) > 0 {
-				b.path, b.index = p, 0
+			if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
 				break
 			}
 		}
 	}
 	rot, v := e.data.Rot, e.data.Vel
-	if b.index < len(b.path) {
-		d := b.path[b.index].Vec3().Add(mgl64.Vec3{.5, 0, .5}).Sub(e.data.Pos)
+	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
+		d := target.Sub(e.data.Pos)
 		d[1] = 0
 		if d.Len() < .25 {
-			b.index++
+			b.navigator.Index++
 		} else {
 			d = d.Normalize()
 			v[0], v[2] = d[0]*b.speed, d[2]*b.speed

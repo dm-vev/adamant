@@ -46,14 +46,20 @@ func (t TNT) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx 
 	return false
 }
 
-// Ignite ...
+// Ignite primes the TNT unless the tnt_explodes gamerule is off.
 func (t TNT) Ignite(pos cube.Pos, tx *world.Tx, owner world.Entity) bool {
+	if !tx.World().GameRuleBool("tnt_explodes") {
+		return false
+	}
 	spawnTnt(pos, tx, time.Second*4, owner)
 	return true
 }
 
-// Explode ...
+// Explode primes TNT caught in an explosion with Java's shortened random fuse.
 func (t TNT) Explode(src world.ExplosionSource, pos cube.Pos, tx *world.Tx) {
+	if !tx.World().GameRuleBool("tnt_explodes") {
+		return
+	}
 	spawnTnt(pos, tx, time.Second/2+time.Duration(rand.IntN(int(time.Second+time.Second/2))), world.ExplosionCausingEntity(src, tx))
 }
 

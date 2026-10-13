@@ -189,8 +189,7 @@ type AllayBehaviour struct {
 	nextPickup                 int
 	jukebox                    cube.Pos
 	hasJukebox                 bool
-	path                       []cube.Pos
-	pathIndex                  int
+	navigator                  Navigator
 }
 type Allay struct{ *Ent }
 
@@ -241,18 +240,17 @@ func (b *AllayBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	if target != nil && target.Position().Sub(e.Position()).Len() > 3 {
-		b.path = findPath(tx, cube.PosFromVec3(e.Position()), cube.PosFromVec3(target.Position()), 256, true, false)
-		b.pathIndex = 0
+		b.navigator.MoveTo(tx, cube.PosFromVec3(e.Position()), cube.PosFromVec3(target.Position()), GroundProfile{MaxVisitedNodes: 256, AllowWater: true}, navigatorTick(e))
 	} else if b.held.Empty() && b.nextPickup == 0 {
-		b.path = nil
+		b.navigator.Path, b.navigator.Index = nil, 0
 	}
 	v := e.data.Vel
 	r := e.data.Rot
-	if b.pathIndex < len(b.path) {
-		p := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{.5, .5, .5})
+	if p, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .6); ok {
+		p[1] += .5
 		d := p.Sub(e.data.Pos)
 		if d.Len() < .35 {
-			b.pathIndex++
+			b.navigator.Index++
 		} else {
 			d = d.Normalize()
 			v = d.Mul(b.speed)

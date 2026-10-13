@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"math/rand/v2"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -10,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
+	"math/rand/v2"
 )
 
 // PandaType is the registered Java panda species.
@@ -31,8 +31,7 @@ type pandaState struct {
 	rolling, sitting, lying, dead                           bool
 	speed                                                   float64
 	next                                                    int
-	path                                                    []cube.Pos
-	index                                                   int
+	navigator                                               Navigator
 	mc                                                      *MovementComputer
 }
 
@@ -112,8 +111,7 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 		if s.next > 0 {
 			s.next--
 		}
-		if s.index >= len(s.path) && s.next == 0 {
-			s.next = 40 + rand.IntN(81)
+		if s.navigator.Index >= len(s.navigator.Path) && s.next == 0 {
 			if s.variant == 3 && rand.IntN(4) == 0 {
 				s.rolling = true
 			} else if s.variant == 1 && rand.IntN(8) == 0 {
@@ -124,19 +122,18 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 			start := cube.PosFromVec3(e.Position())
 			for range 4 {
 				goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-				if p := findPath(tx, start, goal, 128, false, false); len(p) > 0 {
-					s.path, s.index = p, 0
+				if s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
 					break
 				}
 			}
 		}
 	}
 	rot, v := e.data.Rot, e.data.Vel
-	if s.index < len(s.path) && !s.sitting && !s.lying {
-		d := s.path[s.index].Vec3().Add(mgl64.Vec3{.5, 0, .5}).Sub(e.data.Pos)
+	if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), 1.3); ok && !s.sitting && !s.lying {
+		d := target.Sub(e.data.Pos)
 		d[1] = 0
 		if d.Len() < .25 {
-			s.index++
+			s.navigator.Index++
 		} else {
 			d = d.Normalize()
 			v[0], v[2] = d[0]*s.speed, d[2]*s.speed

@@ -534,7 +534,7 @@ func executeCondition(words []string, src cmd.Source, ctx cmd.ExecutionContext, 
 		}
 		masked := words[10] == "masked"
 		lo, hi := cube.Min(a, b), cube.Max(a, b)
-		if (hi[0]-lo[0]+1)*(hi[1]-lo[1]+1)*(hi[2]-lo[2]+1) > commandModificationBlockLimit {
+		if (hi[0]-lo[0]+1)*(hi[1]-lo[1]+1)*(hi[2]-lo[2]+1) > tx.World().GameRuleInt("max_block_modifications") {
 			return 0, 0, fmt.Errorf("too many blocks in the specified area")
 		}
 		count := 0

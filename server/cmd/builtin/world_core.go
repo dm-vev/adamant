@@ -128,9 +128,6 @@ func registerWorldCoreCommands(srv serverAdapter) {
 	cmd.Register(cmd.New("locate", "Finds a nearby structure, biome, or point of interest.", nil, locateCommand{worldOpCommand: guard}))
 }
 
-// commandModificationBlockLimit is Java's default command_modification_block_limit.
-const commandModificationBlockLimit = 32768
-
 type setBlockMode string
 
 func (setBlockMode) Type() string                { return "SetBlockMode" }
@@ -154,11 +151,11 @@ func (cloneCloneMode) Type() string                { return "CloneMode" }
 func (cloneCloneMode) Options(cmd.Source) []string { return []string{"normal", "force", "move"} }
 
 // commandBox returns the inclusive block box and rejects volumes over Java's limit.
-func commandBox(a, b mgl64.Vec3, o *cmd.Output) (lo, hi cube.Pos, volume int, ok bool) {
+func commandBox(tx *world.Tx, a, b mgl64.Vec3, o *cmd.Output) (lo, hi cube.Pos, volume int, ok bool) {
 	lo, hi = cube.Min(cube.PosFromVec3(a), cube.PosFromVec3(b)), cube.Max(cube.PosFromVec3(a), cube.PosFromVec3(b))
 	volume = (hi[0] - lo[0] + 1) * (hi[1] - lo[1] + 1) * (hi[2] - lo[2] + 1)
-	if volume > commandModificationBlockLimit {
-		o.Errorf("Too many blocks in the specified area (maximum %d, specified %d)", commandModificationBlockLimit, volume)
+	if limit := tx.World().GameRuleInt("max_block_modifications"); volume > limit {
+		o.Errorf("Too many blocks in the specified area (maximum %d, specified %d)", limit, volume)
 		return lo, hi, volume, false
 	}
 	return lo, hi, volume, true
@@ -230,7 +227,7 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 			return
 		}
 	}
-	lo, hi, _, ok := commandBox(from, to, o)
+	lo, hi, _, ok := commandBox(tx, from, to, o)
 	if !ok {
 		return
 	}
@@ -282,7 +279,7 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 // Run ports CloneCommands: masked skips air, move clears the source and normal
 // mode rejects overlapping source and destination regions.
 func (c cloneCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	lo, hi, _, ok := commandBox(c.Begin, c.End, o)
+	lo, hi, _, ok := commandBox(tx, c.Begin, c.End, o)
 	if !ok {
 		return
 	}

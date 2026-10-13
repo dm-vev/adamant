@@ -96,8 +96,7 @@ type ChickenBehaviour struct {
 	speed                          float64
 	ageTicks, eggTimer, nextWander int
 	variant                        int
-	path                           []cube.Pos
-	pathIndex                      int
+	navigator                      Navigator
 	dead, jockey                   bool
 }
 
@@ -125,17 +124,16 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if b.pathIndex >= len(b.path) && b.nextWander == 0 {
+	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.chooseWanderPath(e, tx)
 	}
 	velocity := e.data.Vel
 	rot := e.data.Rot
-	if b.pathIndex < len(b.path) {
-		goal := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	if goal, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .4); ok {
 		delta := goal.Sub(e.data.Pos)
 		delta[1] = 0
 		if delta.Len() < .25 {
-			b.pathIndex++
+			b.navigator.Index++
 		} else {
 			dir := delta.Normalize()
 			velocity[0], velocity[2] = dir[0]*b.speed, dir[2]*b.speed
@@ -153,12 +151,11 @@ func (b *ChickenBehaviour) chooseWanderPath(e *Ent, tx *world.Tx) {
 	start := cube.PosFromVec3(e.Position())
 	for range 4 {
 		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		if path := findPath(tx, start, goal, 128, false, false); len(path) > 0 {
-			b.path, b.pathIndex = path, 0
+		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
 			return
 		}
 	}
-	b.path, b.pathIndex = nil, 0
+	b.navigator.Path, b.navigator.Index = nil, 0
 }
 func (c *Chicken) Health() float64        { return c.behaviour().health.Health() }
 func (c *Chicken) MaxHealth() float64     { return c.behaviour().health.MaxHealth() }

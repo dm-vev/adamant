@@ -172,6 +172,14 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	} else if o, ok := e.(owned); ok && o.Owner() != nil {
 		m[protocol.EntityDataKeyOwner] = s.handleUniqueID(o.Owner())
 	}
+	if l, ok := e.(leashed); ok {
+		if id := l.HolderLeashID(); id != 0 {
+			if s.ent != nil && id == s.ent.UniqueID() {
+				id = int64(selfEntityRuntimeID)
+			}
+			m[protocol.EntityDataKeyLeashHolder] = id
+		}
+	}
 	if sc, ok := e.(scaled); ok {
 		m[protocol.EntityDataKeyScale] = float32(sc.Scale())
 	}
@@ -392,6 +400,11 @@ type scaled interface {
 
 type owned interface {
 	Owner() *world.EntityHandle
+}
+
+// leashed is an entity held by a lead; HolderLeashID is the holder's unique ID.
+type leashed interface {
+	HolderLeashID() int64
 }
 
 type named interface {

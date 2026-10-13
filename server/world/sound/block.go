@@ -173,6 +173,12 @@ type ItemFrameRemove struct{ sound }
 // ItemFrameRotate is a sound played when an item frame's item is rotated.
 type ItemFrameRotate struct{ sound }
 
+// HangingPlace is a sound played when a painting is hung on a wall.
+type HangingPlace struct{ sound }
+
+// HangingBreak is a sound played when a painting is broken.
+type HangingBreak struct{ sound }
+
 // FurnaceCrackle is a sound played every one to five seconds from a furnace.
 type FurnaceCrackle struct{ sound }
 

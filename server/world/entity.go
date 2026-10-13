@@ -683,8 +683,13 @@ type EntityRegistryConfig struct {
 	// NaturalSpawnTick runs source-defined natural ecology once per world tick.
 	NaturalSpawnTick func(*Tx)
 	Item             func(opts EntitySpawnOpts, it any) *EntityHandle
+	// Painting creates a painting occupying pos and facing away from its wall,
+	// choosing a canvas that fits. It returns nil if none fits.
+	Painting func(tx *Tx, pos cube.Pos, facing cube.Direction) *EntityHandle
 	// EyeOfEnder throws an eye of ender signal towards a located stronghold.
 	EyeOfEnder func(opts EntitySpawnOpts, target mgl64.Vec3) *EntityHandle
+	// TieLeashedEntities attaches entities held by a user to a fence knot.
+	TieLeashedEntities func(pos cube.Pos, tx *Tx, user Entity) bool
 	// ExperienceOrbs creates the source denominations for a block's XP reward.
 	ExperienceOrbs func(pos mgl64.Vec3, amount int) []*EntityHandle
 	NewFromBucket  func(opts EntitySpawnOpts, entityID string, data map[string]any) *EntityHandle

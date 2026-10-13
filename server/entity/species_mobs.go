@@ -70,8 +70,8 @@ type speciesState struct {
 	carried                                  map[string]any
 	core                                     *SlimeCore
 	passenger                                *world.EntityHandle
-	path                                     []cube.Pos
-	pathIndex, wander                        int
+	navigator                                Navigator
+	wander                                   int
 }
 type Spider struct{ *speciesMob }
 type CaveSpider struct{ *speciesMob }
@@ -528,16 +528,15 @@ func (m *speciesMob) wander() *Movement {
 	if s.wander > 0 {
 		s.wander--
 	}
-	if s.pathIndex >= len(s.path) && s.wander == 0 {
+	if s.navigator.Index >= len(s.navigator.Path) && s.wander == 0 {
 		s.wander = 40
-		p := cube.PosFromVec3(m.Position())
-		s.path = findPath(m.tx, p, p.Add(cube.Pos{int(s.random.NextInt(11)) - 5, 0, int(s.random.NextInt(11)) - 5}), 80, false, false)
-		s.pathIndex = 0
+		start := cube.PosFromVec3(m.Position())
+		goal := start.Add(cube.Pos{int(s.random.NextInt(11)) - 5, 0, int(s.random.NextInt(11)) - 5})
+		s.navigator.MoveTo(m.tx, start, goal, GroundProfile{MaxVisitedNodes: 80}, navigatorTick(m.Ent))
 	}
-	if s.pathIndex < len(s.path) {
-		p := s.path[s.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	if p, ok := s.navigator.Tick(m.Position(), navigatorTick(m.Ent), .9); ok {
 		if p.Sub(m.Position()).Len() < .4 {
-			s.pathIndex++
+			s.navigator.Index++
 		} else {
 			return speciesMove(s, m.Ent, m.tx, p)
 		}

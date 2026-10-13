@@ -256,6 +256,7 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	}
 
 	m := e.Behaviour().Tick(e, tx)
+	tickLeash(e, tx, m)
 	checkEntityInsiders(tx, e)
 	if e.finishPendingPortalTravel(tx) {
 		if m != nil {

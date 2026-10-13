@@ -13,6 +13,13 @@ import (
 func init() {
 	world.RegisterBlock(Air{})
 	registerAll(allStrawBeds())
+	for mode := CommandBlockImpulse; mode <= CommandBlockChain; mode++ {
+		for _, facing := range cube.Faces() {
+			for _, conditional := range []bool{false, true} {
+				world.RegisterBlock(CommandBlock{Mode: mode, Facing: facing, Conditional: conditional})
+			}
+		}
+	}
 	world.RegisterBlock(Allow{})
 	world.RegisterBlock(Amethyst{})
 	world.RegisterBlock(AncientDebris{})

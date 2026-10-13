@@ -40,71 +40,84 @@ func (h *pathHeap) Pop() any {
 	return item
 }
 
-func findPath(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allowDoors bool) []cube.Pos {
-	return findPathWithEvaluator(tx, start, goal, maxNodes, allowWater, allowDoors, nil)
-}
-
-func findPathWithEvaluator(tx *world.Tx, start, goal cube.Pos, maxNodes int, allowWater, allowDoors bool, allowed func(cube.Pos) bool) []cube.Pos {
+// FindGroundPath finds a route using Java-like eight-way ground navigation.
+func FindGroundPath(tx *world.Tx, start, goal cube.Pos, profile GroundProfile) []cube.Pos {
 	if start == goal {
 		return nil
 	}
-
+	if profile.StepHeight < 0 {
+		profile.StepHeight = 0
+	}
+	if profile.StepHeight == 0 {
+		profile.StepHeight = 1
+	}
+	if profile.MaxFall <= 0 {
+		profile.MaxFall = 3
+	}
+	if profile.MaxVisitedNodes <= 0 {
+		if profile.FollowRange > 0 {
+			profile.MaxVisitedNodes = int(math.Floor(profile.FollowRange * 16))
+		}
+		if profile.MaxVisitedNodes <= 0 {
+			profile.MaxVisitedNodes = 256
+		}
+	}
 	open := pathHeap{}
 	heap.Init(&open)
-
-	capHint := maxNodes
-	if capHint < 0 {
-		capHint = 0
-	}
-	// Store nodes as pointers so heap references stay valid if the slice grows.
-	index := make(map[cube.Pos]*pathNode, capHint)
-	startNode := &pathNode{pos: start, g: 0, f: heuristic(start, goal)}
-	index[start] = startNode
-	heap.Push(&open, startNode)
-	nodesCount := 1
-
-	closed := make(map[cube.Pos]struct{}, capHint)
-
-	for open.Len() > 0 && nodesCount < maxNodes {
+	index := make(map[cube.Pos]*pathNode, profile.MaxVisitedNodes)
+	closed := make(map[cube.Pos]struct{}, profile.MaxVisitedNodes)
+	n := &pathNode{pos: start, f: heuristic(start, goal)}
+	index[start] = n
+	heap.Push(&open, n)
+	expanded := 0
+	for open.Len() > 0 && expanded < profile.MaxVisitedNodes {
 		current := heap.Pop(&open).(*pathNode)
-		if current.pos == goal {
-			return reconstructPath(current)
-		}
-		if _, ok := closed[current.pos]; ok {
+		if _, seen := closed[current.pos]; seen {
 			continue
 		}
 		closed[current.pos] = struct{}{}
-
-		for _, dir := range []cube.Face{cube.FaceNorth, cube.FaceSouth, cube.FaceEast, cube.FaceWest} {
-			next, ok := nextStep(tx, current.pos, dir, allowWater, allowDoors)
-			if !ok {
-				continue
-			}
-			if allowed != nil && !allowed(next) {
-				continue
-			}
-			if _, ok := closed[next]; ok {
-				continue
-			}
-			g := current.g + stepCost(tx, next, allowWater)
-			if node, ok := index[next]; ok {
-				if g < node.g {
-					node.g = g
-					node.f = g + heuristic(next, goal)
-					node.parent = current
-					heap.Fix(&open, node.index)
+		expanded++
+		if current.pos == goal {
+			return reconstructPath(current)
+		}
+		for dx := -1; dx <= 1; dx++ {
+			for dz := -1; dz <= 1; dz++ {
+				if dx == 0 && dz == 0 {
+					continue
 				}
-				continue
+				for dy := profile.StepHeight; dy >= -profile.MaxFall; dy-- {
+					next := current.pos.Add(cube.Pos{dx, dy, dz})
+					if !groundWalkable(tx, next, profile) {
+						continue
+					}
+					// Java diagonal movement requires both orthogonal sides to be
+					// traversable; checking them at the destination height prevents corner clipping.
+					if dx != 0 && dz != 0 {
+						if !groundWalkable(tx, current.pos.Add(cube.Pos{dx, dy, 0}), profile) ||
+							!groundWalkable(tx, current.pos.Add(cube.Pos{0, dy, dz}), profile) {
+							continue
+						}
+					}
+					if profile.Allowed != nil && !profile.Allowed(next) {
+						continue
+					}
+					if _, seen := closed[next]; seen {
+						continue
+					}
+					cost := groundStepCost(tx, next, profile)*math.Hypot(float64(dx), float64(dz)) + math.Abs(float64(dy))
+					g := current.g + cost
+					if old := index[next]; old != nil {
+						if g < old.g {
+							old.g, old.parent, old.f = g, current, g+heuristic(next, goal)
+							heap.Fix(&open, old.index)
+						}
+						continue
+					}
+					node := &pathNode{pos: next, g: g, f: g + heuristic(next, goal), parent: current}
+					index[next] = node
+					heap.Push(&open, node)
+				}
 			}
-			node := &pathNode{
-				pos:    next,
-				g:      g,
-				f:      g + heuristic(next, goal),
-				parent: current,
-			}
-			index[next] = node
-			heap.Push(&open, node)
-			nodesCount++
 		}
 	}
 	return nil
@@ -123,88 +136,98 @@ func reconstructPath(current *pathNode) []cube.Pos {
 }
 
 func heuristic(a, b cube.Pos) float64 {
-	dx := float64(a.X() - b.X())
-	dy := float64(a.Y() - b.Y())
-	dz := float64(a.Z() - b.Z())
-	return math.Abs(dx) + math.Abs(dy) + math.Abs(dz)
+	dx, dy, dz := float64(a.X()-b.X()), float64(a.Y()-b.Y()), float64(a.Z()-b.Z())
+	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-func stepCost(tx *world.Tx, pos cube.Pos, allowWater bool) float64 {
+func groundStepCost(tx *world.Tx, pos cube.Pos, p GroundProfile) float64 {
 	cost := 1.0
 	if l, ok := tx.Liquid(pos); ok {
 		switch l.(type) {
 		case block.Water:
-			if allowWater {
-				cost += 4
+			if p.AllowWater {
+				cost += 8
 			} else {
-				cost += 100
+				return 1e6
 			}
 		case block.Lava:
-			cost += 10
+			return 1e6
 		default:
-			cost += 6
+			cost += 8
 		}
 	}
-	if _, ok := tx.Block(pos).(block.Fire); ok {
-		cost += 8
+	switch b := tx.Block(pos).(type) {
+	case block.Fire:
+		cost += 16
+	case block.WoodDoor:
+		if !b.Open && !p.AllowDoors {
+			return 1e6
+		}
+	case block.CopperDoor:
+		if !b.Open && !p.AllowDoors {
+			return 1e6
+		}
 	}
 	return cost
 }
 
-func nextStep(tx *world.Tx, current cube.Pos, dir cube.Face, allowWater, allowDoors bool) (cube.Pos, bool) {
-	next := current.Side(dir)
-	if walkable(tx, next, allowWater, allowDoors) {
-		return next, true
-	}
-	up := next.Side(cube.FaceUp)
-	if walkable(tx, up, allowWater, allowDoors) && solidBelow(tx, up) {
-		return up, true
-	}
-	down := next.Side(cube.FaceDown)
-	if walkable(tx, down, allowWater, allowDoors) && solidBelow(tx, down) {
-		return down, true
-	}
-	return cube.Pos{}, false
-}
-
-func walkable(tx *world.Tx, pos cube.Pos, allowWater, allowDoors bool) bool {
+func groundWalkable(tx *world.Tx, pos cube.Pos, p GroundProfile) bool {
 	if pos.OutOfBounds(tx.Range()) {
 		return false
 	}
-	if allowDoors {
+	if liquid, ok := tx.Liquid(pos); ok {
+		switch liquid.(type) {
+		case block.Lava:
+			return false
+		case block.Water:
+			if !p.AllowWater {
+				return false
+			}
+		default:
+			if !p.AllowWater {
+				return false
+			}
+		}
+	}
+	if !p.AllowDoors {
 		switch b := tx.Block(pos).(type) {
 		case block.WoodDoor:
 			if !b.Open {
-				return true
+				return false
 			}
 		case block.CopperDoor:
 			if !b.Open {
-				return true
+				return false
 			}
 		}
 	}
-	if !allowWater {
-		if _, ok := tx.Liquid(pos); ok {
-			return false
+	width := p.Width
+	if width <= 0 {
+		width = .6
+	}
+	height := p.Height
+	if height <= 0 {
+		height = 1.8
+	}
+	radius := int(math.Floor(width / 2))
+	vertical := int(math.Ceil(height))
+	for dx := -radius; dx <= radius; dx++ {
+		for dz := -radius; dz <= radius; dz++ {
+			for dy := range vertical {
+				clearance := pos.Add(cube.Pos{dx, dy, dz})
+				if clearance.OutOfBounds(tx.Range()) || !isPassable(tx, clearance) {
+					return false
+				}
+			}
 		}
-	}
-	if !isPassable(tx, pos) {
-		return false
-	}
-	above := pos.Side(cube.FaceUp)
-	if !isPassable(tx, above) {
-		return false
 	}
 	return solidBelow(tx, pos)
 }
 
 func solidBelow(tx *world.Tx, pos cube.Pos) bool {
 	below := pos.Side(cube.FaceDown)
-	boxes := tx.Block(below).Model().BBox(below, tx)
-	return len(boxes) > 0
+	return len(tx.Block(below).Model().BBox(below, tx)) > 0
 }
-
 func isPassable(tx *world.Tx, pos cube.Pos) bool {
-	b := tx.Block(pos)
-	return len(b.Model().BBox(pos, tx)) == 0
+	return len(tx.Block(pos).Model().BBox(pos, tx)) == 0
 }

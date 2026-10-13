@@ -33,8 +33,7 @@ type foxState struct {
 	held                               item.Stack
 	speed                              float64
 	next                               int
-	path                               []cube.Pos
-	index                              int
+	navigator                          Navigator
 	mc                                 *MovementComputer
 }
 
@@ -161,22 +160,18 @@ func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 		if s.next > 0 {
 			s.next--
 		}
-		if s.index >= len(s.path) && s.next == 0 {
+		if s.navigator.Index >= len(s.navigator.Path) && s.next == 0 {
 			s.next = 40 + rand.IntN(81)
 			start := cube.PosFromVec3(e.Position())
 			for range 4 {
 				goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-				if path := findPath(tx, start, goal, 128, false, false); len(path) > 0 {
-					s.path, s.index = path, 0
+				if s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
 					break
 				}
 			}
 		}
-		if !s.crouching && s.index < len(s.path) {
-			target := s.path[s.index].Vec3().Add(mgl64.Vec3{.5, 0, .5})
-			if target.Sub(e.Position()).Len() < .25 {
-				s.index++
-			} else {
+		if !s.crouching {
+			if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
 				f.moveToward(target)
 			}
 		}

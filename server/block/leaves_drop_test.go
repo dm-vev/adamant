@@ -13,7 +13,8 @@ func TestLeavesLootTables(t *testing.T) {
 	defer w.Close()
 	seen := map[string]bool{}
 	job := w.Do(func(tx *world.Tx) {
-		for range 1000 {
+		// Apples drop with a 1/200 chance: 5000 rolls make a miss ~1e-11 likely.
+		for range 5000 {
 			for _, drop := range leavesDrops(Leaves{Type: OakLeaves()}, item.ToolNone{}, nil, tx, cube.Pos{}) {
 				name, _ := drop.Item().EncodeItem()
 				seen[name] = true

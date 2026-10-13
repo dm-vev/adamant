@@ -21,7 +21,7 @@ const (
 )
 
 type netherBeastState struct {
-	health                                                                                  *HealthManager
+	health                                                                                 *HealthManager
 	kind                                                                                   netherBeastKind
 	effects                                                                                *EffectManager
 	mc                                                                                     *MovementComputer
@@ -30,8 +30,8 @@ type netherBeastState struct {
 	targetUUID                                                                             string
 	passenger                                                                              *world.EntityHandle
 	steer, steerYaw, speed                                                                 float64
-	path                                                                                   []cube.Pos
-	pathIndex, wander, repellentScan                                                       int
+	navigator                                                                              Navigator
+	wander, repellentScan                                                                  int
 	repellent                                                                              *cube.Pos
 }
 type netherBeastConfig struct {
@@ -385,7 +385,7 @@ func beastWander(s *netherBeastState, e *Ent, tx *world.Tx) *Movement {
 	if s.wander > 0 {
 		s.wander--
 	}
-	if s.pathIndex >= len(s.path) && s.wander == 0 {
+	if s.navigator.Index >= len(s.navigator.Path) && s.wander == 0 {
 		s.wander = 50
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
@@ -393,16 +393,14 @@ func beastWander(s *netherBeastState, e *Ent, tx *world.Tx) *Movement {
 			if s.kind == striderKind && s.suffocating && !nearBlock(tx, goal.Vec3(), "minecraft:lava", 8, 3) {
 				continue
 			}
-			if path := findPath(tx, start, goal, 96, false, false); len(path) > 0 {
-				s.path, s.pathIndex = path, 0
+			if s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 96}, navigatorTick(e)) {
 				break
 			}
 		}
 	}
-	if s.pathIndex < len(s.path) {
-		p := s.path[s.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	if p, ok := s.navigator.Tick(e.Position(), navigatorTick(e), .9); ok {
 		if p.Sub(e.Position()).Len() < .3 {
-			s.pathIndex++
+			s.navigator.Index++
 		} else {
 			beastMove(s, e, tx, p)
 		}

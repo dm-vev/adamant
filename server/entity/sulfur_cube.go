@@ -4,18 +4,18 @@ import (
 	"math"
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
 const (
-	sulfurCubeMaxSize = 2
+	sulfurCubeMaxSize     = 2
 	sulfurCubePickupDelay = 100
 )
 
@@ -46,10 +46,19 @@ func (sulfurCubeType) BBox(e world.Entity) cube.BBox {
 }
 func (sulfurCubeType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	c := SulfurCubeBehaviourConfig{Size: int(nbtconv.Int32(m, "Size")) + 1, Age: int(nbtconv.Int32(m, "Age")), PickupTimer: int(nbtconv.Int32(m, "pickup_timer")), Fuse: int(nbtconv.Int32(m, "fuse")), FromBucket: nbtconv.Bool(m, "from_bucket") || nbtconv.Bool(m, "FromBucket")}
-	if c.Size < 1 { c.Size = 1 }
-	if _, ok := m["Health"]; ok { c.Health = float64(nbtconv.Float32(m, "Health")); c.healthSet = true }
-	if _, ok := m["MaxHealth"]; ok { c.MaxHealth = float64(nbtconv.Float32(m, "MaxHealth")) }
-	if body, ok := m["BodyItem"].(map[string]any); ok { c.BodyItem = decodeSulfurCubeStack(body) }
+	if c.Size < 1 {
+		c.Size = 1
+	}
+	if _, ok := m["Health"]; ok {
+		c.Health = float64(nbtconv.Float32(m, "Health"))
+		c.healthSet = true
+	}
+	if _, ok := m["MaxHealth"]; ok {
+		c.MaxHealth = float64(nbtconv.Float32(m, "MaxHealth"))
+	}
+	if body, ok := m["BodyItem"].(map[string]any); ok {
+		c.BodyItem = decodeSulfurCubeStack(body)
+	}
 	data.Data = c.New()
 }
 func (sulfurCubeType) EncodeNBT(data *world.EntityData) map[string]any {
@@ -66,12 +75,13 @@ func (sulfurCubeType) EncodeNBT(data *world.EntityData) map[string]any {
 
 // SulfurCubeBehaviourConfig configures native SulfurCube state.
 type SulfurCubeBehaviourConfig struct {
-	Health, MaxHealth float64
+	Health, MaxHealth            float64
 	Age, Size, PickupTimer, Fuse int
-	FromBucket bool
-	BodyItem item.Stack
-	healthSet bool
+	FromBucket                   bool
+	BodyItem                     item.Stack
+	healthSet                    bool
 }
+
 func (c SulfurCubeBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
 func (c SulfurCubeBehaviourConfig) New() *SulfurCubeBehaviour {
 	size := c.Size
@@ -90,22 +100,25 @@ func (c SulfurCubeBehaviourConfig) New() *SulfurCubeBehaviour {
 	return &SulfurCubeBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, size: size, age: c.Age, pickupTimer: c.PickupTimer, fuse: c.Fuse, fromBucket: c.FromBucket, bodyItem: c.BodyItem, speed: .2 + .1*float64(size), jumpDelay: 10 + rand.IntN(20), nextWander: 1}
 }
 
-type SulfurCube struct { *Ent }
+type SulfurCube struct{ *Ent }
 type SulfurCubeBehaviour struct {
-	health *HealthManager
-	effects *EffectManager
-	mc *MovementComputer
+	health                                              *HealthManager
+	effects                                             *EffectManager
+	mc                                                  *MovementComputer
 	size, age, pickupTimer, fuse, nextWander, jumpDelay int
-	fromBucket, dead bool
-	bodyItem item.Stack
-	speed float64
-	path []cube.Pos
-	pathIndex int
+	fromBucket, dead                                    bool
+	bodyItem                                            item.Stack
+	speed                                               float64
+	navigator                                           Navigator
 }
+
 func (s *SulfurCube) b() *SulfurCubeBehaviour { return s.Behaviour().(*SulfurCubeBehaviour) }
-func (s *SulfurCube) Tick(tx *world.Tx, current int64) { s.b().effects.Tick(s, tx); s.Ent.Tick(tx, current) }
+func (s *SulfurCube) Tick(tx *world.Tx, current int64) {
+	s.b().effects.Tick(s, tx)
+	s.Ent.Tick(tx, current)
+}
 func (b *SulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	s := &SulfurCube{Ent:e}
+	s := &SulfurCube{Ent: e}
 	if b.pickupTimer > 0 {
 		b.pickupTimer--
 	}
@@ -133,17 +146,27 @@ func (b *SulfurCubeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	s.applyContactDamage(tx)
 	v, rot := e.data.Vel, e.data.Rot
-	if b.pathIndex >= len(b.path) && b.nextWander == 0 { s.chooseWander(tx) }
-	if b.pathIndex < len(b.path) && b.bodyItem.Empty() {
-		target := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
-		d := target.Sub(e.data.Pos); d[1] = 0
-		if d.Len() < .25 { b.pathIndex++ } else { d = d.Normalize(); v[0], v[2] = d[0]*b.speed, d[2]*b.speed; rot[0] = math.Atan2(-d[0],d[2])*180/math.Pi }
-	} else { v[0], v[2] = 0, 0 }
+	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
+		s.chooseWander(tx)
+	}
+	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), float64(b.size)*.6); ok && b.bodyItem.Empty() {
+		d := target.Sub(e.data.Pos)
+		d[1] = 0
+		if d.Len() < .25 {
+			b.navigator.Index++
+		} else {
+			d = d.Normalize()
+			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
+			rot[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
+		}
+	} else {
+		v[0], v[2] = 0, 0
+	}
 	if b.bodyItem.Empty() && b.mc.OnGround() {
 		b.jumpDelay--
 		if b.jumpDelay <= 0 {
 			b.jumpDelay = 10 + rand.IntN(20)
-			if b.pathIndex < len(b.path) {
+			if b.navigator.Index < len(b.navigator.Path) {
 				b.jumpDelay /= 3
 			}
 			v[1] = .42 + float64(b.size)*.08
@@ -185,20 +208,27 @@ func (s *SulfurCube) pickUpNearby(tx *world.Tx) {
 		return
 	}
 	start, goal := cube.PosFromVec3(pos), cube.PosFromVec3(target.Position())
-	if path := findPath(tx, start, goal, 128, false, false); len(path) > 0 {
-		b.path, b.pathIndex, b.nextWander = path, 0, 20
+	if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(s.Ent)) {
+		b.nextWander = 20
 	}
 }
 func (s *SulfurCube) chooseWander(tx *world.Tx) {
-	b:=s.b(); b.nextWander=40+rand.IntN(81); start:=cube.PosFromVec3(s.Position())
-	for range 4 { goal:=start.Add(cube.Pos{rand.IntN(13)-6,0,rand.IntN(13)-6}); if p:=findPath(tx,start,goal,128,false,false); len(p)>0 { b.path,b.pathIndex=p,0; return } }
-	b.path,b.pathIndex=nil,0
+	b := s.b()
+	b.nextWander = 40 + rand.IntN(81)
+	start := cube.PosFromVec3(s.Position())
+	for range 4 {
+		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
+		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(s.Ent)) {
+			return
+		}
+	}
+	b.navigator.Path, b.navigator.Index = nil, 0
 }
-func (s *SulfurCube) Health() float64 { return s.b().health.Health() }
-func (s *SulfurCube) MaxHealth() float64 { return s.b().health.MaxHealth() }
+func (s *SulfurCube) Health() float64        { return s.b().health.Health() }
+func (s *SulfurCube) MaxHealth() float64     { return s.b().health.MaxHealth() }
 func (s *SulfurCube) SetMaxHealth(v float64) { s.b().health.SetMaxHealth(v) }
-func (s *SulfurCube) Dead() bool { return s.b().dead || s.Health() <= 0 }
-func (s *SulfurCube) Hurt(d float64, src world.DamageSource) (float64,bool) {
+func (s *SulfurCube) Dead() bool             { return s.b().dead || s.Health() <= 0 }
+func (s *SulfurCube) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	b := s.b()
 	if s.Dead() || d <= 0 || src.Fire() && s.hasEffect(effect.FireResistance) {
 		return 0, false
@@ -216,15 +246,36 @@ func (s *SulfurCube) Hurt(d float64, src world.DamageSource) (float64,bool) {
 	}
 	return d, true
 }
-func (s *SulfurCube) Heal(h float64,_ world.HealingSource) float64 { if s.Dead()||h<=0{return 0}; old:=s.Health();s.b().health.AddHealth(h);return s.Health()-old }
-func (s *SulfurCube) KnockBack(src mgl64.Vec3, force,height float64) { d:=s.Position().Sub(src);d[1]=0;if d.Len()!=0{d=d.Normalize().Mul(force)};d[1]=height;s.SetVelocity(d) }
-func (s *SulfurCube) AddEffect(e effect.Effect){s.b().effects.Add(e,s)}
-func (s *SulfurCube) RemoveEffect(t effect.Type){s.b().effects.Remove(t,s)}
-func (s *SulfurCube) Effects()[]effect.Effect{return s.b().effects.Effects()}
-func (s *SulfurCube) Speed()float64{return s.b().speed}
-func (s *SulfurCube) SetSpeed(v float64){s.b().speed=v}
-func (s *SulfurCube) hasEffect(t effect.Type)bool{_,ok:=s.b().effects.Effect(t);return ok}
-func (s *SulfurCube) viewAction(a world.EntityAction){vs:=s.tx.Viewers(s.Position());for _,v:=range vs{v.ViewEntityAction(s,a)};s.tx.ReleaseViewers(vs)}
+func (s *SulfurCube) Heal(h float64, _ world.HealingSource) float64 {
+	if s.Dead() || h <= 0 {
+		return 0
+	}
+	old := s.Health()
+	s.b().health.AddHealth(h)
+	return s.Health() - old
+}
+func (s *SulfurCube) KnockBack(src mgl64.Vec3, force, height float64) {
+	d := s.Position().Sub(src)
+	d[1] = 0
+	if d.Len() != 0 {
+		d = d.Normalize().Mul(force)
+	}
+	d[1] = height
+	s.SetVelocity(d)
+}
+func (s *SulfurCube) AddEffect(e effect.Effect)    { s.b().effects.Add(e, s) }
+func (s *SulfurCube) RemoveEffect(t effect.Type)   { s.b().effects.Remove(t, s) }
+func (s *SulfurCube) Effects() []effect.Effect     { return s.b().effects.Effects() }
+func (s *SulfurCube) Speed() float64               { return s.b().speed }
+func (s *SulfurCube) SetSpeed(v float64)           { s.b().speed = v }
+func (s *SulfurCube) hasEffect(t effect.Type) bool { _, ok := s.b().effects.Effect(t); return ok }
+func (s *SulfurCube) viewAction(a world.EntityAction) {
+	vs := s.tx.Viewers(s.Position())
+	for _, v := range vs {
+		v.ViewEntityAction(s, a)
+	}
+	s.tx.ReleaseViewers(vs)
+}
 func (s *SulfurCube) die() {
 	b := s.b()
 	if b.dead {
@@ -251,10 +302,12 @@ func (s *SulfurCube) die() {
 	}
 	_ = s.CloseIn(s.tx)
 }
-func (s *SulfurCube) FromBucket() bool{return s.b().fromBucket}
-func (s *SulfurCube) SetFromBucket(v bool){s.b().fromBucket=v}
-func (s *SulfurCube) CanBePickedUpWithBucket(bucket item.Bucket)bool{return bucket.Empty()}
-func (s *SulfurCube) BucketItem()item.Stack{return item.NewStack(item.MobBucket{Entity:"minecraft:sulfur_cube"},1)}
+func (s *SulfurCube) FromBucket() bool                                { return s.b().fromBucket }
+func (s *SulfurCube) SetFromBucket(v bool)                            { s.b().fromBucket = v }
+func (s *SulfurCube) CanBePickedUpWithBucket(bucket item.Bucket) bool { return bucket.Empty() }
+func (s *SulfurCube) BucketItem() item.Stack {
+	return item.NewStack(item.MobBucket{Entity: "minecraft:sulfur_cube"}, 1)
+}
 func (s *SulfurCube) SaveToBucket(stack item.Stack) item.Stack {
 	b := s.b()
 	data := map[string]any{"Health": float32(b.health.Health()), "Size": int32(b.size - 1), "Age": int32(b.age), "FromBucket": byte(1)}
@@ -285,7 +338,9 @@ func (s *SulfurCube) LoadFromBucket(stack item.Stack) {
 		b.bodyItem = decodeSulfurCubeStack(body)
 	}
 }
-func (s *SulfurCube) BucketPickupSound()world.Sound{return sound.Custom{Name:"item.bucket.fill_sulfur_cube",Volume:1,Pitch:1}}
+func (s *SulfurCube) BucketPickupSound() world.Sound {
+	return sound.Custom{Name: "item.bucket.fill_sulfur_cube", Volume: 1, Pitch: 1}
+}
 func (s *SulfurCube) equipItem(stack item.Stack) bool {
 	b := s.b()
 	if b.age < 0 || !s.swallowable(stack) {
@@ -316,12 +371,24 @@ func (s *SulfurCube) swallowable(stack item.Stack) bool {
 		return false
 	}
 }
-func (s *SulfurCube) CanEquipBodyArmor(_ world.Entity) bool { return s.b().bodyItem.Empty() && s.b().age >= 0 }
-func (s *SulfurCube) EquipBodyArmor(_ *world.Tx, _ world.Entity, stack world.Item) bool { return s.equipItem(item.NewStack(stack, 1)) }
+func (s *SulfurCube) CanEquipBodyArmor(_ world.Entity) bool {
+	return s.b().bodyItem.Empty() && s.b().age >= 0
+}
+func (s *SulfurCube) EquipBodyArmor(_ *world.Tx, _ world.Entity, stack world.Item) bool {
+	return s.equipItem(item.NewStack(stack, 1))
+}
 func (s *SulfurCube) BodyItem() item.Stack { return s.b().bodyItem }
-func (s *SulfurCube) Shear() item.Stack { b := s.b(); out := b.bodyItem; b.bodyItem = item.Stack{}; b.pickupTimer = sulfurCubePickupDelay; return out }
+func (s *SulfurCube) Shear() item.Stack {
+	b := s.b()
+	out := b.bodyItem
+	b.bodyItem = item.Stack{}
+	b.pickupTimer = sulfurCubePickupDelay
+	return out
+}
 func (s *SulfurCube) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) bool {
-	carrier, ok := from.(interface{ HeldItems() (item.Stack, item.Stack) })
+	carrier, ok := from.(interface {
+		HeldItems() (item.Stack, item.Stack)
+	})
 	if !ok {
 		return false
 	}
@@ -417,10 +484,14 @@ func (s *SulfurCube) applyContactDamage(tx *world.Tx) {
 		living.Hurt(1, AttackDamageSource{Attacker: s})
 	}
 }
-func (s *SulfurCube) RequiresCustomPersistence() bool { return s.b().fromBucket || !s.b().bodyItem.Empty() }
+func (s *SulfurCube) RequiresCustomPersistence() bool {
+	return s.b().fromBucket || !s.b().bodyItem.Empty()
+}
 func (s *SulfurCube) CanBePickedFromInside() bool { return s.b().bodyItem.Empty() }
 func encodeSulfurCubeStack(stack item.Stack) map[string]any {
-	if stack.Empty() { return nil }
+	if stack.Empty() {
+		return nil
+	}
 	return item.WriteNBT(stack, true)
 }
 func decodeSulfurCubeStack(data map[string]any) item.Stack { return item.ReadNBT(data, nil) }

@@ -98,8 +98,7 @@ type SnifferBehaviour struct {
 	digPos                          cube.Pos
 	explored                        []cube.Pos
 	speed                           float64
-	path                            []cube.Pos
-	index                           int
+	navigator                       Navigator
 	mc                              *MovementComputer
 }
 
@@ -134,15 +133,14 @@ func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if b.index >= len(b.path) && b.next == 0 && b.digTicks == 0 {
+	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && b.digTicks == 0 {
 		b.sniffing = true
 		b.sniffTicks = 40 + rand.IntN(41)
 		b.next = 1200
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
 			goal := start.Add(cube.Pos{rand.IntN(17) - 8, 0, rand.IntN(17) - 8})
-			if p := findPath(tx, start, goal, 160, false, false); len(p) > 0 {
-				b.path, b.index = p, 0
+			if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 160}, navigatorTick(e)) {
 				break
 			}
 		}
@@ -150,11 +148,11 @@ func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	rot, v := e.data.Rot, e.data.Vel
 	if b.digTicks > 0 || b.sniffing {
 		v[0], v[2] = 0, 0
-	} else if b.index < len(b.path) {
-		d := b.path[b.index].Vec3().Add(mgl64.Vec3{.5, 0, .5}).Sub(e.data.Pos)
+	} else if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), 1.4); ok {
+		d := target.Sub(e.data.Pos)
 		d[1] = 0
 		if d.Len() < .3 {
-			b.index++
+			b.navigator.Index++
 		} else {
 			d = d.Normalize()
 			v[0], v[2] = d[0]*b.speed, d[2]*b.speed

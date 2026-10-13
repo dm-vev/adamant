@@ -41,8 +41,7 @@ type golemState struct {
 	angerTarget                  string
 	angerTicks                   int
 	offerTarget                  string
-	path                         []cube.Pos
-	pathIndex                    int
+	navigator                    Navigator
 }
 type golemConfig struct {
 	kind                              golemKind
@@ -425,15 +424,14 @@ func (b *golemState) wanderTick(e *Ent, tx *world.Tx) *Movement {
 	start := cube.PosFromVec3(e.Position())
 	if b.kind == ironKind {
 		inVillage := tx.IsVillage(start)
-		if !inVillage && (len(b.path) == 0 || b.pathIndex >= len(b.path)) {
+		if !inVillage && (len(b.navigator.Path) == 0 || b.navigator.Index >= len(b.navigator.Path)) {
 			if b.wander == 0 {
 				if target, ok := golemVillagePOI(tx, start, true); ok {
-					b.path = findPath(tx, start, target, 100, false, false)
-					b.pathIndex = 0
+					b.navigator.MoveTo(tx, start, target, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
 					b.wander = 10
 				}
 			}
-		} else if inVillage && b.pathIndex >= len(b.path) && b.wander == 0 {
+		} else if inVillage && b.navigator.Index >= len(b.navigator.Path) && b.wander == 0 {
 			var target cube.Pos
 			found := false
 			if rand.Float64() < .3 {
@@ -455,22 +453,19 @@ func (b *golemState) wanderTick(e *Ent, tx *world.Tx) *Movement {
 				}
 			}
 			if found {
-				b.path = findPath(tx, start, target, 100, false, false)
-				b.pathIndex = 0
+				b.navigator.MoveTo(tx, start, target, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
 				b.wander = 240
 			}
 		}
 	}
-	if b.pathIndex >= len(b.path) && b.wander == 0 {
+	if b.navigator.Index >= len(b.navigator.Path) && b.wander == 0 {
 		b.wander = 60
 		g := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		b.path = findPath(tx, start, g, 100, false, false)
-		b.pathIndex = 0
+		b.navigator.MoveTo(tx, start, g, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
 	}
-	if b.pathIndex < len(b.path) {
-		p := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	if p, ok := b.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
 		if p.Sub(e.Position()).Len() < .4 {
-			b.pathIndex++
+			b.navigator.Index++
 		} else {
 			return b.move(e, tx, p)
 		}

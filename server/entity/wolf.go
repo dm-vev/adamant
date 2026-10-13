@@ -18,12 +18,22 @@ import (
 )
 
 // NewWolf creates a worldless wolf handle.
-func NewWolf(opts world.EntitySpawnOpts, conf WolfBehaviourConfig) *world.EntityHandle { return opts.New(WolfType,conf) }
+func NewWolf(opts world.EntitySpawnOpts, conf WolfBehaviourConfig) *world.EntityHandle {
+	return opts.New(WolfType, conf)
+}
+
 var WolfType wolfType
+
 type wolfType struct{}
-func (wolfType) Open(tx *world.Tx,handle *world.EntityHandle,data *world.EntityData)world.Entity{if data.Data==nil{WolfBehaviourConfig{}.Apply(data)};return &Wolf{Ent:&Ent{tx:tx,handle:handle,data:data}}}
-func (wolfType) EncodeEntity()string{return "minecraft:wolf"}
-func (wolfType) BBox(world.Entity)cube.BBox{return cube.Box(-0.4,0,-0.4,0.4,0.85,0.4)}
+
+func (wolfType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
+	if data.Data == nil {
+		WolfBehaviourConfig{}.Apply(data)
+	}
+	return &Wolf{Ent: &Ent{tx: tx, handle: handle, data: data}}
+}
+func (wolfType) EncodeEntity() string        { return "minecraft:wolf" }
+func (wolfType) BBox(world.Entity) cube.BBox { return cube.Box(-0.4, 0, -0.4, 0.4, 0.85, 0.4) }
 func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	c := WolfBehaviourConfig{}
 	javaState := ReadNativeMobJavaState(m)
@@ -154,7 +164,7 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
 		"Tame": boolByte(b.tamed), "Sitting": boolByte(b.sitting), "Age": int32(b.ageTicks),
 		"CollarColor": int32(b.collarColor), "Angry": boolByte(b.angry),
-		"variant":      "minecraft:" + []string{"pale", "spotted", "snowy", "black", "ash", "rusty", "woods", "chestnut"}[min(b.variant, 7)],
+		"variant":       "minecraft:" + []string{"pale", "spotted", "snowy", "black", "ash", "rusty", "woods", "chestnut"}[min(b.variant, 7)],
 		"sound_variant": "minecraft:" + b.soundVariant,
 	})
 	if b.ownerUUID != "" {
@@ -196,13 +206,20 @@ func nativeWolfArmorStack(armor NativeMobItem) (item.Stack, bool) {
 }
 func wolfVariant(s string) int {
 	switch strings.TrimPrefix(s, "minecraft:") {
-	case "spotted": return 1
-	case "snowy": return 2
-	case "black": return 3
-	case "ash": return 4
-	case "rusty": return 5
-	case "woods": return 6
-	case "chestnut": return 7
+	case "spotted":
+		return 1
+	case "snowy":
+		return 2
+	case "black":
+		return 3
+	case "ash":
+		return 4
+	case "rusty":
+		return 5
+	case "woods":
+		return 6
+	case "chestnut":
+		return 7
 	}
 	return 0
 }
@@ -214,7 +231,9 @@ func javaUUIDString(value any) string {
 	case [4]int32:
 		parts = uuid[:]
 	case []any:
-		if len(uuid) != 4 { return "" }
+		if len(uuid) != 4 {
+			return ""
+		}
 		parts = make([]int32, 4)
 		for i, part := range uuid {
 			switch n := part.(type) {
@@ -231,7 +250,9 @@ func javaUUIDString(value any) string {
 	default:
 		return ""
 	}
-	if len(parts) != 4 { return "" }
+	if len(parts) != 4 {
+		return ""
+	}
 	raw := make([]byte, 16)
 	for i, part := range parts {
 		binary.BigEndian.PutUint32(raw[i*4:], uint32(part))
@@ -246,7 +267,9 @@ func javaUUIDFromHalves(most, least int64) string {
 
 func javaUUIDIntArray(uuid string) []int32 {
 	raw, err := hex.DecodeString(strings.ReplaceAll(uuid, "-", ""))
-	if err != nil || len(raw) != 16 { return nil }
+	if err != nil || len(raw) != 16 {
+		return nil
+	}
 	parts := make([]int32, 4)
 	for i := range parts {
 		parts[i] = int32(binary.BigEndian.Uint32(raw[i*4:]))
@@ -255,23 +278,34 @@ func javaUUIDIntArray(uuid string) []int32 {
 }
 
 type WolfBehaviourConfig struct {
-	Health, MaxHealth float64
-	Tamed, Angry, Sitting bool
-	OwnerUUID, SoundVariant string
-	CollarColor uint8
+	Health, MaxHealth              float64
+	Tamed, Angry, Sitting          bool
+	OwnerUUID, SoundVariant        string
+	CollarColor                    uint8
 	Variant, AgeTicks, ArmorDamage int
-	BodyArmor item.WolfArmor
-	bodyArmorStack item.Stack
-	healthSet, collarSet bool
+	BodyArmor                      item.WolfArmor
+	bodyArmorStack                 item.Stack
+	healthSet, collarSet           bool
 }
+
 func (c WolfBehaviourConfig) Apply(data *world.EntityData) { data.Data = c.New() }
 func (c WolfBehaviourConfig) New() *WolfBehaviour {
 	maxHealth := c.MaxHealth
-	if maxHealth <= 0 { if c.Tamed { maxHealth = 40 } else { maxHealth = 8 } }
+	if maxHealth <= 0 {
+		if c.Tamed {
+			maxHealth = 40
+		} else {
+			maxHealth = 8
+		}
+	}
 	health := c.Health
-	if !c.healthSet && health <= 0 { health = maxHealth }
+	if !c.healthSet && health <= 0 {
+		health = maxHealth
+	}
 	collar := c.CollarColor
-	if !c.collarSet && collar == 0 { collar = 14 }
+	if !c.collarSet && collar == 0 {
+		collar = 14
+	}
 	armor := c.bodyArmorStack
 	if armor.Empty() && c.BodyArmor != (item.WolfArmor{}) {
 		armor = item.NewStack(c.BodyArmor, 1).WithDurability(c.BodyArmor.DurabilityInfo().MaxDurability - c.ArmorDamage)
@@ -287,7 +321,7 @@ func (c WolfBehaviourConfig) New() *WolfBehaviour {
 	}
 	return &WolfBehaviour{
 		health: NewHealthManager(health, maxHealth), effects: NewEffectManager(),
-		mc: &MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
+		mc:    &MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
 		speed: 0.3, tamed: c.Tamed, angry: c.Angry, sitting: c.Sitting, ownerUUID: c.OwnerUUID,
 		collarColor: collar, variant: uint8(max(0, min(c.Variant, 7))), ageTicks: c.AgeTicks, nextWander: 1,
 		soundVariant: soundVariant, bodyArmor: armor,
@@ -295,24 +329,28 @@ func (c WolfBehaviourConfig) New() *WolfBehaviour {
 }
 
 type WolfBehaviour struct {
-	health *HealthManager
-	effects *EffectManager
-	mc *MovementComputer
-	speed float64
-	tamed, angry, sitting, dead bool
-	owner *world.EntityHandle
-	ownerUUID string
-	collarColor, variant uint8
-	soundVariant string
+	health                               *HealthManager
+	effects                              *EffectManager
+	mc                                   *MovementComputer
+	speed                                float64
+	tamed, angry, sitting, dead          bool
+	owner                                *world.EntityHandle
+	ownerUUID                            string
+	collarColor, variant                 uint8
+	soundVariant                         string
 	ageTicks, nextWander, followCooldown int
-	path []cube.Pos
-	pathIndex int
-	bodyArmor item.Stack
+	navigator                            Navigator
+	bodyArmor                            item.Stack
 }
+
 // Wolf is a tameable passive wolf with owner and body armour state.
-type Wolf struct{*Ent}
-func(w *Wolf)behaviour()*WolfBehaviour{return w.Behaviour().(*WolfBehaviour)}
-func(w *Wolf)Tick(tx *world.Tx,current int64){w.behaviour().effects.Tick(w,tx);w.Ent.Tick(tx,current)}
+type Wolf struct{ *Ent }
+
+func (w *Wolf) behaviour() *WolfBehaviour { return w.Behaviour().(*WolfBehaviour) }
+func (w *Wolf) Tick(tx *world.Tx, current int64) {
+	w.behaviour().effects.Tick(w, tx)
+	w.Ent.Tick(tx, current)
+}
 func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.tamed && b.owner == nil && b.ownerUUID != "" {
 		for candidate := range tx.Entities() {
@@ -326,6 +364,7 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		b.ageTicks = min(0, b.ageTicks+1)
 	}
 	if b.sitting {
+		b.navigator.Path, b.navigator.Index = nil, 0
 		e.data.Vel = mgl64.Vec3{}
 		return nil
 	}
@@ -335,25 +374,22 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.tamed && b.owner != nil && b.followCooldown == 0 {
 		if owner, ok := b.owner.Entity(tx); ok && e.Position().Sub(owner.Position()).LenSqr() > 100 {
 			start, goal := cube.PosFromVec3(e.Position()), cube.PosFromVec3(owner.Position())
-			if path := findPath(tx, start, goal, 256, false, false); len(path) != 0 {
-				b.path, b.pathIndex = path, 0
-			}
+			b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 256}, navigatorTick(e))
 			b.followCooldown = 20
 		}
 	}
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if b.pathIndex >= len(b.path) && b.nextWander == 0 && !(b.tamed && b.owner != nil) {
+	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 && !(b.tamed && b.owner != nil) {
 		b.chooseWanderPath(e, tx)
 	}
 	velocity, rot := e.data.Vel, e.data.Rot
-	if b.pathIndex < len(b.path) {
-		goal := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{0.5, 0, 0.5})
-		delta := goal.Sub(e.data.Pos)
+	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
+		delta := target.Sub(e.data.Pos)
 		delta[1] = 0
-		if delta.Len() < 0.3 {
-			b.pathIndex++
+		if delta.Len() < .3 {
+			b.navigator.Index++
 		} else {
 			dir := delta.Normalize()
 			velocity[0], velocity[2] = dir[0]*b.speed, dir[2]*b.speed
@@ -366,14 +402,74 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
 	return m
 }
-func(b *WolfBehaviour)chooseWanderPath(e *Ent,tx *world.Tx){b.nextWander=40+rand.IntN(81);start:=cube.PosFromVec3(e.Position());for range 4{goal:=start.Add(cube.Pos{rand.IntN(13)-6,0,rand.IntN(13)-6});if path:=findPath(tx,start,goal,128,false,false);len(path)>0{b.path,b.pathIndex=path,0;return}};b.path,b.pathIndex=nil,0}
-func(w *Wolf)Health()float64{return w.behaviour().health.Health()};func(w *Wolf)MaxHealth()float64{return w.behaviour().health.MaxHealth()};func(w *Wolf)SetMaxHealth(v float64){w.behaviour().health.SetMaxHealth(v)};func(w *Wolf)Dead()bool{return w.behaviour().dead||w.Health()<=0}
-func(w *Wolf)Hurt(damage float64,src world.DamageSource)(float64,bool){b:=w.behaviour();if w.Dead()||damage<=0||(src.Fire()&&w.hasEffect(effect.FireResistance)){return 0,false};if res,ok:=b.effects.Effect(effect.Resistance);ok{damage*=effect.Resistance.Multiplier(src,res.Level())};if !b.bodyArmor.Empty(){b.bodyArmor=b.bodyArmor.Damage(max(1,int(math.Ceil(damage))));damage=wolfArmourDamage(damage)};b.health.AddHealth(-damage);w.viewAction(HurtAction{});if w.Dead(){w.die()};return damage,true}
-func wolfArmourDamage(d float64)float64{reduction:=min(20.0,max(11.0/5,11-d/2));return d*(1-reduction/25)}
-func(w *Wolf)Heal(h float64,_ world.HealingSource)float64{if w.Dead()||h<=0{return 0};old:=w.Health();w.behaviour().health.AddHealth(h);return w.Health()-old}
-func(w *Wolf)KnockBack(src mgl64.Vec3,force,height float64){d:=w.Position().Sub(src);d[1]=0;if d.Len()!=0{d=d.Normalize().Mul(force)};d[1]=height;w.SetVelocity(d)}
-func(w *Wolf)AddEffect(e effect.Effect){w.behaviour().effects.Add(e,w)};func(w *Wolf)RemoveEffect(t effect.Type){w.behaviour().effects.Remove(t,w)};func(w *Wolf)Effects()[]effect.Effect{return w.behaviour().effects.Effects()};func(w *Wolf)Speed()float64{return w.behaviour().speed};func(w *Wolf)SetSpeed(v float64){w.behaviour().speed=v};func(w *Wolf)hasEffect(t effect.Type)bool{_,ok:=w.behaviour().effects.Effect(t);return ok}
-func(w *Wolf)Tamed()bool{return w.behaviour().tamed};func(w *Wolf)Owner()*world.EntityHandle{return w.behaviour().owner};func(w *Wolf)Angry()bool{return w.behaviour().angry};func(w *Wolf)SetSitting(sit bool){w.behaviour().sitting=sit};func(w *Wolf)Variant()uint8{return w.behaviour().variant};func(w *Wolf)CollarColor()uint8{return w.behaviour().collarColor};func(w *Wolf)BodyArmor()item.Stack{return w.behaviour().bodyArmor}
+func (b *WolfBehaviour) chooseWanderPath(e *Ent, tx *world.Tx) {
+	b.nextWander = 40 + rand.IntN(81)
+	start := cube.PosFromVec3(e.Position())
+	for range 4 {
+		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
+		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
+			return
+		}
+	}
+	b.navigator.Path, b.navigator.Index = nil, 0
+}
+func (w *Wolf) Health() float64        { return w.behaviour().health.Health() }
+func (w *Wolf) MaxHealth() float64     { return w.behaviour().health.MaxHealth() }
+func (w *Wolf) SetMaxHealth(v float64) { w.behaviour().health.SetMaxHealth(v) }
+func (w *Wolf) Dead() bool             { return w.behaviour().dead || w.Health() <= 0 }
+func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
+	b := w.behaviour()
+	if w.Dead() || damage <= 0 || (src.Fire() && w.hasEffect(effect.FireResistance)) {
+		return 0, false
+	}
+	if res, ok := b.effects.Effect(effect.Resistance); ok {
+		damage *= effect.Resistance.Multiplier(src, res.Level())
+	}
+	if !b.bodyArmor.Empty() {
+		b.bodyArmor = b.bodyArmor.Damage(max(1, int(math.Ceil(damage))))
+		damage = wolfArmourDamage(damage)
+	}
+	b.health.AddHealth(-damage)
+	w.viewAction(HurtAction{})
+	if w.Dead() {
+		w.die()
+	}
+	return damage, true
+}
+func wolfArmourDamage(d float64) float64 {
+	reduction := min(20.0, max(11.0/5, 11-d/2))
+	return d * (1 - reduction/25)
+}
+func (w *Wolf) Heal(h float64, _ world.HealingSource) float64 {
+	if w.Dead() || h <= 0 {
+		return 0
+	}
+	old := w.Health()
+	w.behaviour().health.AddHealth(h)
+	return w.Health() - old
+}
+func (w *Wolf) KnockBack(src mgl64.Vec3, force, height float64) {
+	d := w.Position().Sub(src)
+	d[1] = 0
+	if d.Len() != 0 {
+		d = d.Normalize().Mul(force)
+	}
+	d[1] = height
+	w.SetVelocity(d)
+}
+func (w *Wolf) AddEffect(e effect.Effect)    { w.behaviour().effects.Add(e, w) }
+func (w *Wolf) RemoveEffect(t effect.Type)   { w.behaviour().effects.Remove(t, w) }
+func (w *Wolf) Effects() []effect.Effect     { return w.behaviour().effects.Effects() }
+func (w *Wolf) Speed() float64               { return w.behaviour().speed }
+func (w *Wolf) SetSpeed(v float64)           { w.behaviour().speed = v }
+func (w *Wolf) hasEffect(t effect.Type) bool { _, ok := w.behaviour().effects.Effect(t); return ok }
+func (w *Wolf) Tamed() bool                  { return w.behaviour().tamed }
+func (w *Wolf) Owner() *world.EntityHandle   { return w.behaviour().owner }
+func (w *Wolf) Angry() bool                  { return w.behaviour().angry }
+func (w *Wolf) SetSitting(sit bool)          { w.behaviour().sitting = sit }
+func (w *Wolf) Variant() uint8               { return w.behaviour().variant }
+func (w *Wolf) CollarColor() uint8           { return w.behaviour().collarColor }
+func (w *Wolf) BodyArmor() item.Stack        { return w.behaviour().bodyArmor }
 func (w *Wolf) CanShearBodyArmor(user world.Entity) bool {
 	b := w.behaviour()
 	return user != nil && user.H() != nil && b.tamed && b.ownerUUID != "" &&
@@ -402,7 +498,7 @@ func (w *Wolf) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool
 			return false
 		}
 		b.sitting = !b.sitting
-		b.path, b.pathIndex = nil, 0
+		b.navigator.Path, b.navigator.Index = nil, 0
 		if b.sitting {
 			w.SetVelocity(mgl64.Vec3{})
 		}
@@ -424,28 +520,88 @@ func (w *Wolf) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool
 func wolfFoodNutrition(food any) (int, bool) {
 	switch foodItem := food.(type) {
 	case item.Beef:
-		if foodItem.Cooked { return 8, true }; return 3, true
+		if foodItem.Cooked {
+			return 8, true
+		}
+		return 3, true
 	case item.Porkchop:
-		if foodItem.Cooked { return 8, true }; return 3, true
+		if foodItem.Cooked {
+			return 8, true
+		}
+		return 3, true
 	case item.Mutton:
-		if foodItem.Cooked { return 6, true }; return 2, true
+		if foodItem.Cooked {
+			return 6, true
+		}
+		return 2, true
 	case item.Chicken:
-		if foodItem.Cooked { return 6, true }; return 2, true
+		if foodItem.Cooked {
+			return 6, true
+		}
+		return 2, true
 	case item.Rabbit:
-		if foodItem.Cooked { return 5, true }; return 3, true
+		if foodItem.Cooked {
+			return 5, true
+		}
+		return 3, true
 	case item.RottenFlesh:
 		return 4, true
 	}
 	return 0, false
 }
-func(w *Wolf)TameWithBone(tx *world.Tx,user world.Entity)bool{b:=w.behaviour();if b.tamed{return false};if rand.IntN(3)==0{b.tamed=true;b.owner=user.H();b.ownerUUID=user.H().UUID().String();b.health.SetMaxHealth(40);b.health.AddHealth(40);b.angry=false;tx.PlaySound(w.Position(),sound.Custom{Name:"entity.wolf.tame",Volume:1,Pitch:1})}else{tx.PlaySound(w.Position(),sound.Custom{Name:"entity.wolf.whine",Volume:1,Pitch:1})};return true}
+func (w *Wolf) TameWithBone(tx *world.Tx, user world.Entity) bool {
+	b := w.behaviour()
+	if b.tamed {
+		return false
+	}
+	if rand.IntN(3) == 0 {
+		b.tamed = true
+		b.owner = user.H()
+		b.ownerUUID = user.H().UUID().String()
+		b.health.SetMaxHealth(40)
+		b.health.AddHealth(40)
+		b.angry = false
+		tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.tame", Volume: 1, Pitch: 1})
+	} else {
+		tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.whine", Volume: 1, Pitch: 1})
+	}
+	return true
+}
 func (w *Wolf) CanEquipBodyArmor(user world.Entity) bool {
 	b := w.behaviour()
 	return b.tamed && user != nil && user.H() != nil && b.ownerUUID != "" && b.ownerUUID == user.H().UUID().String() && b.ageTicks >= 0 && b.bodyArmor.Empty()
 }
-func(w *Wolf)EquipBodyArmor(tx *world.Tx,user world.Entity,armor world.Item)bool{if !w.CanEquipBodyArmor(user){return false};if _,ok:=armor.(item.WolfArmor);!ok{return false};w.behaviour().bodyArmor=item.NewStack(armor,1);tx.PlaySound(w.Position(),sound.Custom{Name:"entity.wolf.armor_equip",Volume:1,Pitch:1});return true}
-func(w *Wolf)viewAction(a world.EntityAction){vs:=w.tx.Viewers(w.Position());for _,v:=range vs{v.ViewEntityAction(w,a)};w.tx.ReleaseViewers(vs)}
-func(w *Wolf)die(){b:=w.behaviour();if b.dead{return};b.dead=true;w.viewAction(DeathAction{});if !b.bodyArmor.Empty(){w.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position:w.Position()},b.bodyArmor))};_ = w.CloseIn(w.tx)}
+func (w *Wolf) EquipBodyArmor(tx *world.Tx, user world.Entity, armor world.Item) bool {
+	if !w.CanEquipBodyArmor(user) {
+		return false
+	}
+	if _, ok := armor.(item.WolfArmor); !ok {
+		return false
+	}
+	w.behaviour().bodyArmor = item.NewStack(armor, 1)
+	tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.armor_equip", Volume: 1, Pitch: 1})
+	return true
+}
+func (w *Wolf) viewAction(a world.EntityAction) {
+	vs := w.tx.Viewers(w.Position())
+	for _, v := range vs {
+		v.ViewEntityAction(w, a)
+	}
+	w.tx.ReleaseViewers(vs)
+}
+func (w *Wolf) die() {
+	b := w.behaviour()
+	if b.dead {
+		return
+	}
+	b.dead = true
+	w.viewAction(DeathAction{})
+	if !b.bodyArmor.Empty() {
+		w.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: w.Position()}, b.bodyArmor))
+	}
+	_ = w.CloseIn(w.tx)
+}
+
 // FinalizeSpawn selects a shared sound variant for members of the same pack.
 func (w *Wolf) FinalizeSpawn(_ string, random *java26.Random) {
 	if random == nil {

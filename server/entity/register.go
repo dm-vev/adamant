@@ -13,6 +13,7 @@ var DefaultRegistry world.EntityRegistry
 
 func init() {
 	DefaultRegistry = conf.New([]world.EntityType{
+		PaintingType,
 		ChickenType,
 		HorseType,
 		DonkeyType,
@@ -115,6 +116,7 @@ func init() {
 		BoatType,
 		ChestBoatType,
 		MinecartType,
+		CommandBlockMinecartType,
 		ChestMinecartType,
 		CowType,
 		HopperMinecartType,
@@ -136,20 +138,23 @@ func init() {
 		TNTType,
 		TextType,
 		EyeOfEnderType,
+		LeashKnotType,
 	})
 }
 
 var conf = world.EntityRegistryConfig{
-	NewFromBucket:    NewFromBucket,
-	EnderDragon:      NewEnderDragon,
-	DragonFight:      newDragonFight,
-	GolemPattern:     trySpawnConstructedGolem,
-	RaidSpawner:      NewRaidSpawner,
-	SpawnMob:         spawnMob,
-	NaturalSpawnTick: NaturalSpawnTick,
-	SpawnMobFromNBT:  spawnMobFromNBT,
-	ExperienceOrbs:   NewExperienceOrbs,
-	SmallFireball:    NewSmallFireball,
+	TieLeashedEntities: TieLeashedEntities,
+	Painting:           CreatePainting,
+	NewFromBucket:      NewFromBucket,
+	EnderDragon:        NewEnderDragon,
+	DragonFight:        newDragonFight,
+	GolemPattern:       trySpawnConstructedGolem,
+	RaidSpawner:        NewRaidSpawner,
+	SpawnMob:           spawnMob,
+	NaturalSpawnTick:   NaturalSpawnTick,
+	SpawnMobFromNBT:    spawnMobFromNBT,
+	ExperienceOrbs:     NewExperienceOrbs,
+	SmallFireball:      NewSmallFireball,
 	OminousItemSpawner: func(opts world.EntitySpawnOpts, stack any, delay int64) *world.EntityHandle {
 		return NewOminousItemSpawner(opts, stack.(item.Stack), delay)
 	},

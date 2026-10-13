@@ -1,8 +1,8 @@
 package entity
 
 import (
-	"math"
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -142,7 +142,7 @@ func NaturalSpawnTick(tx *world.Tx) {
 
 func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *java26.Random) {
 	w := tx.World()
-	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || w.Time()%24000 < 13000 || w.Time()%24000 > 23000 {
+	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || !w.GameRuleBool("spawn_phantoms") || w.Time()%24000 < 13000 || w.Time()%24000 > 23000 {
 		return
 	}
 	if tx.CurrentTick()%1800 != 0 {

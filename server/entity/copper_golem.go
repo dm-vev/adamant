@@ -136,8 +136,7 @@ type CopperGolemBehaviour struct {
 	carried              item.Stack
 	lastLightningBolt    string
 	cooldown, nextWander int
-	path                 []cube.Pos
-	pathIndex            int
+	navigator            Navigator
 	target               cube.Pos
 	targetSet            bool
 	interactTicks        int
@@ -180,7 +179,7 @@ func TrySpawnCopperGolemPattern(tx *world.Tx, pumpkinPos cube.Pos) bool {
 }
 
 func (*CopperGolem) SpeciesType() world.EntityType { return CopperGolemType }
-func (c *CopperGolem) b() *CopperGolemBehaviour { return c.Behaviour().(*CopperGolemBehaviour) }
+func (c *CopperGolem) b() *CopperGolemBehaviour    { return c.Behaviour().(*CopperGolemBehaviour) }
 
 // FinalizeSpawn plays the one-time creation sound.
 func (c *CopperGolem) FinalizeSpawn(_ string, _ *java26.Random) {
@@ -226,12 +225,11 @@ func (b *CopperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		b.wander(e, tx)
 	}
 	v, r := e.data.Vel, e.data.Rot
-	if b.pathIndex < len(b.path) {
-		p := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	if p, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
 		d := p.Sub(e.data.Pos)
 		d[1] = 0
 		if d.Len() < .3 {
-			b.pathIndex++
+			b.navigator.Index++
 		} else {
 			d = d.Normalize()
 			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
@@ -278,7 +276,7 @@ func (b *CopperGolemBehaviour) setPath(tx *world.Tx, start, container cube.Pos) 
 	targets := [...]cube.Pos{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}
 	var best []cube.Pos
 	for _, delta := range targets {
-		path := findPath(tx, start, container.Add(delta), 2048, false, false)
+		path := FindGroundPath(tx, start, container.Add(delta), GroundProfile{MaxVisitedNodes: 2048})
 		if len(path) != 0 && (len(best) == 0 || len(path) < len(best)) {
 			best = path
 		}
@@ -287,11 +285,11 @@ func (b *CopperGolemBehaviour) setPath(tx *world.Tx, start, container cube.Pos) 
 		b.cooldown = 40
 		return
 	}
-	b.path, b.pathIndex, b.target, b.targetSet = best, 0, container, true
+	b.navigator = Navigator{Path: best, Target: container, HasTarget: true}
 	b.interactTicks = 0
 }
 func (b *CopperGolemBehaviour) followTarget(e *Ent, tx *world.Tx) {
-	if b.pathIndex < len(b.path) {
+	if b.navigator.Index < len(b.navigator.Path) {
 		return
 	}
 	b.interactTicks++
@@ -302,7 +300,7 @@ func (b *CopperGolemBehaviour) followTarget(e *Ent, tx *world.Tx) {
 	})
 	if !ok {
 		b.targetSet = false
-		b.path = nil
+		b.navigator.Path = nil
 		b.state = 0
 		return
 	}
@@ -344,8 +342,9 @@ func (b *CopperGolemBehaviour) followTarget(e *Ent, tx *world.Tx) {
 	}
 	if b.interactTicks >= 60 {
 		container.StopOpen(tx, b.target)
-		b.targetSet, b.path = false, nil
-		b.pathIndex, b.interactTicks, b.state = 0, 0, 0
+		b.targetSet = false
+		b.navigator.Path, b.navigator.Index = nil, 0
+		b.interactTicks, b.state = 0, 0
 		b.cooldown = 60 + b.randomInt(41)
 	}
 }
@@ -400,8 +399,8 @@ func (b *CopperGolemBehaviour) wander(e *Ent, tx *world.Tx) {
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
 			goal := start.Add(cube.Pos{b.randomInt(13) - 6, 0, b.randomInt(13) - 6})
-			if p := findPath(tx, start, goal, 128, false, false); len(p) > 0 {
-				b.path, b.pathIndex = p, 0
+			if p := FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}); len(p) > 0 {
+				b.navigator = Navigator{Path: p, Target: goal, HasTarget: true}
 				break
 			}
 		}

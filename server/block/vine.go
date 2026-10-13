@@ -148,6 +148,9 @@ func (v Vines) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 
 // RandomTick ...
 func (v Vines) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	if !tx.World().GameRuleBool("spread_vines") {
+		return
+	}
 	if r.Float64() > 0.25 {
 		// Vines have a 25% chance of spreading.
 		return

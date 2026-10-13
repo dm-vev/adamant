@@ -146,19 +146,19 @@ type Cow struct{ *Ent }
 
 type CowBehaviour struct {
 	BaseBehaviour
-	health                *HealthManager
-	effects               *EffectManager
-	mc                    *MovementComputer
-	variant, ageTicks     int
-	soundVariant          string
-	speed                 float64
-	path                  []cube.Pos
-	pathIndex, nextWander int
-	dead                  bool
+	health            *HealthManager
+	effects           *EffectManager
+	mc                *MovementComputer
+	variant, ageTicks int
+	soundVariant      string
+	speed             float64
+	navigator         Navigator
+	nextWander        int
+	dead              bool
 }
 
 func (c *CowBehaviour) Variant() int32 { return int32(c.variant) }
-func (c *CowBehaviour) Baby() bool { return c.ageTicks < 0 }
+func (c *CowBehaviour) Baby() bool     { return c.ageTicks < 0 }
 
 func (c *Cow) behaviour() *CowBehaviour { return c.Behaviour().(*CowBehaviour) }
 
@@ -175,17 +175,14 @@ func (b *CowBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if b.pathIndex >= len(b.path) && b.nextWander == 0 {
+	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.chooseWanderPath(e, tx)
 	}
 	rot, velocity := e.data.Rot, e.data.Vel
-	if b.pathIndex < len(b.path) {
-		target := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{0.5, 0, 0.5})
+	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
 		delta := target.Sub(e.data.Pos)
 		delta[1] = 0
-		if delta.Len() < 0.25 {
-			b.pathIndex++
-		} else {
+		if delta.Len() > 0.25 {
 			direction := delta.Normalize()
 			velocity[0], velocity[2] = direction[0]*b.speed, direction[2]*b.speed
 			rot[0] = math.Atan2(-direction[0], direction[2]) * 180 / math.Pi
@@ -203,13 +200,11 @@ func (b *CowBehaviour) chooseWanderPath(e *Ent, tx *world.Tx) {
 	start := cube.PosFromVec3(e.Position())
 	for range 4 {
 		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		path := findPath(tx, start, goal, 128, false, false)
-		if len(path) != 0 {
-			b.path, b.pathIndex = path, 0
+		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
 			return
 		}
 	}
-	b.path, b.pathIndex = nil, 0
+	b.navigator.Path, b.navigator.Index = nil, 0
 }
 
 // Health returns the cow's current health.

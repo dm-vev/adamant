@@ -83,8 +83,7 @@ type ArmadilloBehaviour struct {
 	age, scuteTicks, rollTicks, threatCooldown, next int
 	rolling, dead                                    bool
 	speed                                            float64
-	path                                             []cube.Pos
-	index                                            int
+	navigator                                        Navigator
 	mc                                               *MovementComputer
 }
 
@@ -113,13 +112,12 @@ func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if b.index >= len(b.path) && b.next == 0 && !b.rolling {
+	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && !b.rolling {
 		b.next = 40 + rand.IntN(81)
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
 			goal := start.Add(cube.Pos{rand.IntN(9) - 4, 0, rand.IntN(9) - 4})
-			if p := findPath(tx, start, goal, 96, false, false); len(p) > 0 {
-				b.path, b.index = p, 0
+			if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 96}, navigatorTick(e)) {
 				break
 			}
 		}
@@ -127,11 +125,11 @@ func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	rot, v := e.data.Rot, e.data.Vel
 	if b.rolling {
 		v[0], v[2] = 0, 0
-	} else if b.index < len(b.path) {
-		d := b.path[b.index].Vec3().Add(mgl64.Vec3{.5, 0, .5}).Sub(e.data.Pos)
+	} else if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .7); ok {
+		d := target.Sub(e.data.Pos)
 		d[1] = 0
 		if d.Len() < .2 {
-			b.index++
+			b.navigator.Index++
 		} else {
 			d = d.Normalize()
 			v[0], v[2] = d[0]*b.speed, d[2]*b.speed
@@ -191,8 +189,8 @@ func (a *Armadillo) hasEffect(t effect.Type) bool {
 func (a *Armadillo) AddEffect(e effect.Effect)  { a.behaviour().effects.Add(e, a) }
 func (a *Armadillo) RemoveEffect(t effect.Type) { a.behaviour().effects.Remove(t, a) }
 func (a *Armadillo) Effects() []effect.Effect   { return a.behaviour().effects.Effects() }
-func (a *Armadillo) Speed() float64 { return a.behaviour().speed }
-func (a *Armadillo) SetSpeed(v float64) { a.behaviour().speed = v }
+func (a *Armadillo) Speed() float64             { return a.behaviour().speed }
+func (a *Armadillo) SetSpeed(v float64)         { a.behaviour().speed = v }
 func (a *Armadillo) Heal(v float64, _ world.HealingSource) float64 {
 	if a.Dead() || v <= 0 {
 		return 0

@@ -221,10 +221,9 @@ type creakingState struct {
 	lookTicks                                                                   int
 	target                                                                      *world.EntityHandle
 	nearestPlayers                                                              []*world.EntityHandle
-	path                                                                        []cube.Pos
+	navigator                                                                   Navigator
 	pathGoal                                                                    cube.Pos
 	hasPathGoal                                                                 bool
-	pathIndex                                                                   int
 	canMove                                                                     bool
 	lastHurtByPlayer                                                            uuid.UUID
 	lastHurtByPlayerMemoryTime                                                  int
@@ -378,7 +377,7 @@ func (s *creakingState) refreshPlayers(e *Ent, tx *world.Tx) {
 		target, ok := s.target.Entity(tx)
 		if !ok || !creakingCanAttack(target) || target.H().Type().EncodeEntity() != "minecraft:player" || !creakingVisible(e, target, tx) {
 			s.target = nil
-			s.path = nil
+			s.navigator.Path, s.navigator.Index = nil, 0
 			s.hasPathGoal = false
 		}
 	}
@@ -498,7 +497,7 @@ func creakingVisible(e *Ent, p world.Entity, tx *world.Tx) bool {
 func (s *creakingState) activate(e *Ent, tx *world.Tx, target world.Entity) {
 	s.active = true
 	s.target = target.H()
-	s.path = nil
+	s.navigator.Path, s.navigator.Index = nil, 0
 	s.hasPathGoal = false
 	playCreakingSoundAt(e, tx, "mob.warning", e.Position().Add(mgl64.Vec3{0, 2.295, 0}))
 	playCreakingSoundAt(e, tx, "stare", e.Position().Add(mgl64.Vec3{0, 2.295, 0}))
@@ -507,7 +506,7 @@ func (s *creakingState) activate(e *Ent, tx *world.Tx, target world.Entity) {
 func (s *creakingState) deactivate(e *Ent, tx *world.Tx) {
 	s.active = false
 	s.target = nil
-	s.path = nil
+	s.navigator.Path, s.navigator.Index = nil, 0
 	s.hasPathGoal = false
 	playCreakingSound(e, tx, "deactivate")
 }
@@ -533,7 +532,7 @@ func (s *creakingState) tickIdle(e *Ent, tx *world.Tx) {
 		s.idleTicks--
 		return
 	}
-	if len(s.path) == 0 || s.pathIndex >= len(s.path) {
+	if len(s.navigator.Path) == 0 || s.navigator.Index >= len(s.navigator.Path) {
 		keys := [3]float64{
 			-math.Pow(float64(s.random.NextFloat()), .5),
 			-math.Pow(float64(s.random.NextFloat()), .5),
@@ -551,7 +550,7 @@ func (s *creakingState) tickIdle(e *Ent, tx *world.Tx) {
 				if s.lookTarget != nil {
 					if target, ok := s.lookTarget.Entity(tx); ok && target.Position().Sub(e.Position()).LenSqr() > 9 {
 						s.setPath(e, tx, cube.PosFromVec3(target.Position()))
-						if len(s.path) > 0 {
+						if len(s.navigator.Path) > 0 {
 							return
 						}
 					}
@@ -571,7 +570,7 @@ func (s *creakingState) tickFight(e *Ent, tx *world.Tx) {
 	target, ok := s.target.Entity(tx)
 	if !ok || !creakingCanAttack(target) || target.H().Type().EncodeEntity() != "minecraft:player" || !creakingVisible(e, target, tx) {
 		s.target = nil
-		s.path = nil
+		s.navigator.Path, s.navigator.Index = nil, 0
 		s.hasPathGoal = false
 		return
 	}
@@ -579,7 +578,7 @@ func (s *creakingState) tickFight(e *Ent, tx *world.Tx) {
 		s.setPath(e, tx, cube.PosFromVec3(target.Position()))
 		s.followPath(e, tx, 1)
 	} else {
-		s.path = nil
+		s.navigator.Path, s.navigator.Index = nil, 0
 	}
 	if !s.canMove || s.attackCooldown > 0 || s.targetOutOfReach(e, target) || !creakingVisible(e, target, tx) {
 		return
@@ -621,7 +620,7 @@ func (s *creakingState) setRandomPath(e *Ent, tx *world.Tx, horizontal, vertical
 		for goal.Y() < tx.Range()[1] && !isPassable(tx, goal) {
 			goal = goal.Side(cube.FaceUp)
 		}
-		if !found && walkable(tx, goal, false, true) {
+		if !found && groundWalkable(tx, goal, GroundProfile{AllowDoors: true}) {
 			chosen, found = goal, true
 		}
 	}
@@ -636,28 +635,27 @@ func (s *creakingState) setPath(e *Ent, tx *world.Tx, goal cube.Pos) {
 	}
 	s.pathGoal, s.hasPathGoal = goal, true
 	start := cube.PosFromVec3(e.Position())
+	profile := GroundProfile{MaxVisitedNodes: 512, AllowWater: true, AllowDoors: true}
 	if s.bound {
 		homeDistance := start.Sub(s.home).Vec3().LenSqr()
-		s.path = findPathWithEvaluator(tx, start, goal, 512, true, true, func(node cube.Pos) bool {
+		profile.Allowed = func(node cube.Pos) bool {
 			distance := node.Sub(s.home).Vec3().LenSqr()
 			return distance <= 1024 || distance < homeDistance
-		})
-	} else {
-		s.path = findPath(tx, start, goal, 512, true, true)
+		}
 	}
-	s.pathIndex = 0
+	s.navigator.MoveTo(tx, start, goal, profile, navigatorTick(e))
+	s.navigator.Index = 0
 }
 func (s *creakingState) followPath(e *Ent, tx *world.Tx, speed float64) {
-	if s.pathIndex >= len(s.path) {
+	if s.navigator.Index >= len(s.navigator.Path) {
 		e.SetVelocity(mgl64.Vec3{})
 		return
 	}
-	node := s.path[s.pathIndex]
-	target := node.Vec3Centre()
+	target := s.navigator.Path[s.navigator.Index].Vec3Centre()
 	delta := target.Sub(e.Position())
 	delta[1] = 0
 	if delta.Len() < .25 {
-		s.pathIndex++
+		s.navigator.Index++
 		return
 	}
 	if delta.Len() == 0 {

@@ -697,6 +697,15 @@ func (p *Player) blocksUnder() (low, high cube.Pos) {
 // final damage dealt to the Player and if the Player was vulnerable to this
 // kind of damage.
 func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
+	w := p.tx.World()
+	if !w.GameRuleBool("fire_damage") && src.Fire() {
+		return 0, false
+	}
+	if !w.GameRuleBool("drowning_damage") {
+		if _, ok := src.(entity.DrowningDamageSource); ok {
+			return 0, false
+		}
+	}
 	_, fireResistant := p.Effect(effect.FireResistance)
 	if p.frostWalkerProtectsFrom(src) || (fireResistant && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
@@ -1003,6 +1012,7 @@ func (p *Player) kill(src world.DamageSource) {
 	p.StopFishing(p.tx, false)
 
 	p.awardDeathScores(src)
+	p.broadcastDeathMessage(src)
 	keepInv := p.tx.World().GameRuleBool("keep_inventory")
 	handledKeepInv := false
 	p.Handler().HandleDeath(p, src, &handledKeepInv)
@@ -2356,6 +2366,9 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 			return false
 		}
 	} else if !piercing && !p.canReach(e.Position()) {
+		return false
+	}
+	if _, isPlayer := e.(*Player); isPlayer && !p.tx.World().GameRuleBool("pvp") {
 		return false
 	}
 

@@ -123,6 +123,9 @@ func (s *Session) ViewEntity(e world.Entity) {
 			s.ViewSkin(e)
 		}
 		return
+	case *entity.Painting:
+		s.viewPainting(v)
+		return
 	case *entity.Ent:
 		switch e.H().Type() {
 		case entity.ItemType:
@@ -781,6 +784,18 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 	case sound.ItemFrameRotate:
 		s.writePacket(&packet.LevelEvent{
 			EventType: packet.LevelEventSoundItemFrameRotateItem,
+			Position:  vec64To32(pos),
+		})
+		return
+	case sound.HangingPlace:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventSoundItemFramePlace,
+			Position:  vec64To32(pos),
+		})
+		return
+	case sound.HangingBreak:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventSoundItemFrameBreak,
 			Position:  vec64To32(pos),
 		})
 		return

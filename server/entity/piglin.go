@@ -26,15 +26,15 @@ type piglinState struct {
 	home                                                               cube.Pos
 	homeSet                                                            bool
 	homeDimension                                                      string
-	path                                                               []cube.Pos
-	pathIndex, wander                                                  int
+	navigator                                                          Navigator
+	wander                                                             int
 	main                                                               item.Stack
 	armor                                                              [4]item.Stack
 	speed                                                              float64
 }
 type Piglin struct{ *Ent }
 type piglinConfig struct {
-	health, maxHealth                                   float64
+	health, maxHealth                                    float64
 	baby, admire, dancing, cannotHunt                    bool
 	conversion, attackCooldown, admireTicks, barterTicks int
 	target                                               string
@@ -70,7 +70,9 @@ func (c piglinConfig) Apply(d *world.EntityData) {
 		hp = c.health
 	}
 	maxHealth := c.maxHealth
-	if maxHealth <= 0 { maxHealth = 16 }
+	if maxHealth <= 0 {
+		maxHealth = 16
+	}
 	d.Data = &piglinState{health: NewHealthManager(hp, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, baby: c.baby, admire: c.admire, dancing: c.dancing, cannotHunt: c.cannotHunt, conversion: c.conversion, attackCooldown: c.attackCooldown, admireTicks: c.admireTicks, barterTicks: c.barterTicks, target: c.target, home: c.home, homeSet: c.homeSet, homeDimension: c.homeDimension, main: c.main, armor: c.armor, speed: .35}
 }
 func (PiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
@@ -83,7 +85,7 @@ func (PiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	if len(eq.Armor) > 0 {
 		for i := range c.armor {
 			if i < len(eq.Armor) {
-				c.armor[i] = piglinStackFromNative(eq.Armor[i:i+1])
+				c.armor[i] = piglinStackFromNative(eq.Armor[i : i+1])
 			}
 		}
 	}
@@ -314,16 +316,15 @@ func piglinWander(s *piglinState, e *Ent, tx *world.Tx) *Movement {
 	if s.wander > 0 {
 		s.wander--
 	}
-	if s.pathIndex >= len(s.path) && s.wander == 0 {
+	if s.navigator.Index >= len(s.navigator.Path) && s.wander == 0 {
 		s.wander = 50
-		p := cube.PosFromVec3(e.Position())
-		s.path = findPath(tx, p, p.Add(cube.Pos{int(s.random.NextInt(11)) - 5, 0, int(s.random.NextInt(11)) - 5}), 80, false, false)
-		s.pathIndex = 0
+		start := cube.PosFromVec3(e.Position())
+		goal := start.Add(cube.Pos{int(s.random.NextInt(11)) - 5, 0, int(s.random.NextInt(11)) - 5})
+		s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 80}, navigatorTick(e))
 	}
-	if s.pathIndex < len(s.path) {
-		q := s.path[s.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	if q, ok := s.navigator.Tick(e.Position(), navigatorTick(e), .6); ok {
 		if q.Sub(e.Position()).Len() < .4 {
-			s.pathIndex++
+			s.navigator.Index++
 		} else {
 			return piglinMove(s, e, tx, q)
 		}
@@ -415,7 +416,7 @@ func (p *Piglin) FinalizeSpawn(reason string, r *java26.Random) {
 	}
 }
 func (p *Piglin) HeldItems() (item.Stack, item.Stack) { return p.p().main, item.Stack{} }
-func (p *Piglin) SetHeldItems(main, _ item.Stack) { p.p().main = main }
+func (p *Piglin) SetHeldItems(main, _ item.Stack)     { p.p().main = main }
 func (p *Piglin) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	a := p.p().armor
 	return a[0], a[1], a[2], a[3]

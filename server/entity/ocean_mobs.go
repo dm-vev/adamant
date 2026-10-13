@@ -478,16 +478,14 @@ type oceanBehaviour struct {
 	mc                                                                              *MovementComputer
 	speed, followRange, knockbackResistance                                         float64
 	dead, fromBucket, tamed, saddle, canBreakDoors, canPickupLoot, baby, leftHanded bool
-	age, air, dashCooldown, beamTicks, nextWander, ticks, pathCooldown              int
+	age, air, dashCooldown, beamTicks, nextWander, ticks                            int
 	bodyArmorMaterial                                                               int
 	variant                                                                         string
 	mainHand, offHand, head                                                         item.Stack
 	dropChances                                                                     map[string]float64
 	beamTarget                                                                      *world.EntityHandle
 	vehicleStrafe, vehicleForward                                                   float64
-	path                                                                            []cube.Pos
-	pathTarget                                                                      cube.Pos
-	pathIndex                                                                       int
+	navigator                                                                       Navigator
 	attackCooldown, thornsCooldown                                                  int
 	swim                                                                            mgl64.Vec3
 }
@@ -522,7 +520,7 @@ func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 func (b *oceanBehaviour) tickDrowned(e *Ent, tx *world.Tx) *Movement {
 	target := oceanNearestTarget(tx, e.Position(), b.followRange)
 	if target == nil {
-		b.path = nil
+		b.navigator.Path, b.navigator.Index = nil, 0
 		b.wander(e, tx, .03)
 		return b.move(e, tx)
 	}
@@ -720,29 +718,20 @@ func oceanNearestTarget(tx *world.Tx, p mgl64.Vec3, r float64) world.Entity {
 func (b *oceanBehaviour) pathToward(e *Ent, tx *world.Tx, target mgl64.Vec3) bool {
 	start := cube.PosFromVec3(e.Position())
 	goal := cube.PosFromVec3(target)
-	if b.pathCooldown > 0 {
-		b.pathCooldown--
-	}
-	if len(b.path) == 0 || b.pathTarget != goal || b.pathCooldown == 0 {
-		b.path = findPath(tx, start, goal, 128, true, false)
-		b.pathTarget = goal
-		b.pathIndex = 0
-		b.pathCooldown = 10
-	}
-	for b.pathIndex < len(b.path) {
-		waypoint := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128, AllowWater: true}, navigatorTick(e))
+	if waypoint, ok := b.navigator.Tick(e.Position(), navigatorTick(e), .6); ok {
 		delta := waypoint.Sub(e.Position())
 		delta[1] = 0
 		if delta.Len() < .35 {
-			b.pathIndex++
-			continue
+			b.navigator.Index++
+			return true
 		}
 		direction := delta.Normalize()
 		e.data.Vel[0], e.data.Vel[2] = direction[0]*b.speed, direction[2]*b.speed
 		e.data.Rot[0] = math.Atan2(-direction[0], direction[2]) * 180 / math.Pi
 		return true
 	}
-	b.path = nil
+	b.navigator.Path = nil
 	return false
 }
 func (m *oceanMob) FinalizeSpawn(reason string, random *java26.Random) {

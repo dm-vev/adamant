@@ -273,8 +273,7 @@ type hostileState struct {
 	random                                                                        java26.Random
 	speed, attack                                                                 float64
 	cooldown, wander, bowCooldown, spellCooldown, hoverTime, doorTicks, cureTicks int
-	path                                                                          []cube.Pos
-	pathIndex                                                                     int
+	navigator                                                                     Navigator
 	doorPos                                                                       cube.Pos
 	dead                                                                          bool
 	kind                                                                          string
@@ -716,17 +715,15 @@ func (b *hostileState) wanderTick(e *Ent, tx *world.Tx) {
 	if b.wander > 0 {
 		b.wander--
 	}
-	if b.pathIndex >= len(b.path) && b.wander == 0 {
+	if b.navigator.Index >= len(b.navigator.Path) && b.wander == 0 {
 		b.wander = 50
-		s := cube.PosFromVec3(e.Position())
-		g := s.Add(cube.Pos{int(b.random.NextInt(11)) - 5, 0, int(b.random.NextInt(11)) - 5})
-		b.path = findPath(tx, s, g, 100, false, false)
-		b.pathIndex = 0
+		start := cube.PosFromVec3(e.Position())
+		goal := start.Add(cube.Pos{int(b.random.NextInt(11)) - 5, 0, int(b.random.NextInt(11)) - 5})
+		b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
 	}
-	if b.pathIndex < len(b.path) {
-		p := b.path[b.pathIndex].Vec3().Add(mgl64.Vec3{.5, 0, .5})
+	if p, ok := b.navigator.Tick(e.Position(), navigatorTick(e), .6); ok {
 		if p.Sub(e.Position()).Len() < .3 {
-			b.pathIndex++
+			b.navigator.Index++
 		} else {
 			b.move(e, tx, p)
 		}
