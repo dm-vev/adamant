@@ -1467,6 +1467,15 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       event,
 		})
+	case entity.DrinkAction:
+		event := byte(packet.ActorEventDrinkPotion)
+		if act.Milk {
+			event = packet.ActorEventDrinkMilk
+		}
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       event,
+		})
 	case entity.LoveHeartsAction:
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),

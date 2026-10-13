@@ -145,7 +145,6 @@ type wanderingTraderBehaviour struct {
 	goal         traderGoal
 	panic        panicState
 	noActionTime int
-	ambient      ambientSoundTimer
 	look         *world.EntityHandle
 	lookTicks    int
 
@@ -188,13 +187,6 @@ func (b *wanderingTraderBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	t := &WanderingTrader{Ent: e}
 	customer, trading := b.trading.tick(tx, e.data.Pos)
 	b.tickUseItem(t, tx)
-	if b.ambient.tick(&b.random, 80) {
-		name := "entity.wandering_trader.ambient"
-		if trading {
-			name = "entity.wandering_trader.trade"
-		}
-		tx.PlaySound(e.Position(), sound.Custom{Name: name, Volume: 1, Pitch: voicePitch(&b.random)})
-	}
 	b.tickNoActionTime(e, tx)
 	var v mgl64.Vec3
 	var r cube.Rotation
@@ -449,21 +441,19 @@ func (b *wanderingTraderBehaviour) tickUseItem(t *WanderingTrader, tx *world.Tx)
 		}
 		return
 	}
-	// LivingEntity.updateUsingItem: the drinking sound plays every four
-	// ticks once a quarter of the drink has passed, and once more when done.
-	if b.useTicks < 25 && b.useTicks%4 == 0 {
-		b.playDrinkSound(t, tx)
-	}
 	if b.useTicks--; b.useTicks > 0 {
 		return
 	}
-	b.playDrinkSound(t, tx)
-	finish := "entity.wandering_trader.reappeared"
+	// Bedrock clients play the drinking sounds for the drink event; the
+	// trader then announces that it disappeared or reappeared.
+	_, milk := b.using.Item().(item.Bucket)
+	t.viewAction(DrinkAction{Milk: milk})
+	finish := "reappeared"
 	if p, ok := b.using.Item().(item.Potion); ok {
 		for _, eff := range p.Type.Effects() {
 			t.AddEffect(eff)
 		}
-		finish = "entity.wandering_trader.disappeared"
+		finish = "disappeared"
 	} else {
 		for _, eff := range t.Effects() {
 			t.RemoveEffect(eff.Type())
@@ -471,21 +461,12 @@ func (b *wanderingTraderBehaviour) tickUseItem(t *WanderingTrader, tx *world.Tx)
 	}
 	b.using = item.Stack{}
 	t.viewItems(tx)
-	tx.PlaySound(t.Position(), sound.Custom{Name: finish, Volume: 1, Pitch: float64(b.random.NextFloat()*.2 + .9)})
+	tx.PlaySound(t.Position(), sound.NativeEvent{SoundType: finish, EntityType: "minecraft:wandering_trader", EntityUniqueID: t.H().UniqueID(), ExtraData: -1})
 }
 
 func (b *wanderingTraderBehaviour) startUsing(t *WanderingTrader, tx *world.Tx, stack item.Stack) {
 	b.using, b.useTicks = stack, traderUseDuration
 	t.viewItems(tx)
-}
-
-func (b *wanderingTraderBehaviour) playDrinkSound(t *WanderingTrader, tx *world.Tx) {
-	name := "entity.wandering_trader.drink_potion"
-	if _, milk := b.using.Item().(item.Bucket); milk {
-		name = "entity.wandering_trader.drink_milk"
-	}
-	volume := .5 + .5*float64(b.random.NextInt(2))
-	tx.PlaySound(t.Position(), sound.Custom{Name: name, Volume: volume, Pitch: float64((b.random.NextFloat()-b.random.NextFloat())*.2 + 1)})
 }
 
 // viewItems shows the item in the trader's hand and whether it is drinking.
@@ -696,7 +677,6 @@ func (t *WanderingTrader) CompleteMerchantTrade(tx *world.Tx, _ world.Entity, in
 		return false, nil
 	}
 	o.Uses++
-	b.ambient.reset(80)
 	if tx != nil && o.RewardXP {
 		spawnTradeXP(tx, t.Position(), 3+int(b.random.NextInt(4)))
 	}

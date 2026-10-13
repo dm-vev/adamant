@@ -80,6 +80,13 @@ type TameAction struct {
 	Succeeded bool
 }
 
+// DrinkAction shows a mob finishing a drink of a potion, or of milk.
+type DrinkAction struct {
+	action
+	// Milk is set if the mob drank milk.
+	Milk bool
+}
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}

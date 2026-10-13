@@ -314,10 +314,7 @@ func (b *Breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		s.dead = true
 		b.viewAction(DeathAction{})
 		dropAllDeathLoot(b.tx, b, src)
-		b.tx.PlaySound(b.Position(), sound.Custom{Name: "mob.breeze.death", Volume: 1, Pitch: 1})
 		_ = b.CloseIn(b.tx)
-	} else {
-		b.tx.PlaySound(b.Position(), sound.Custom{Name: "mob.breeze.hurt", Volume: 1, Pitch: 1})
 	}
 	return damage, true
 }
