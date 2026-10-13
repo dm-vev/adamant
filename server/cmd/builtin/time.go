@@ -101,15 +101,20 @@ func (t timeQueryCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("world unavailable")
 		return
 	}
-	time := w.Time()
+	var value int
 	switch strings.ToLower(string(t.Type)) {
-	case "daytime", "gametime":
-		o.Printf("%d", time%24000)
+	case "daytime":
+		value = w.Time() % 24000
+	case "gametime":
+		value = int(w.CurrentTick())
 	case "day":
-		o.Printf("%d", time/24000)
+		value = w.Time() / 24000
 	default:
 		o.Errort(cmd.MessageParameterInvalid, string(t.Type))
+		return
 	}
+	o.SetResult(value)
+	o.Printf("The time is %d", value)
 }
 
 var presetTimeTicks = map[timeSetPreset]int{

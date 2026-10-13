@@ -95,6 +95,7 @@ func (c experienceQueryCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	if c.Unit == "levels" {
 		n = p.ExperienceLevel()
 	}
+	o.SetResult(n)
 	o.Printf("%s has %d experience %s.", p.Name(), n, unitName(c.Unit))
 }
 func unitName(u experienceUnit) string {

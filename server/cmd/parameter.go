@@ -53,6 +53,7 @@ type DynamicEnum interface {
 	Enum
 	Dynamic() bool
 }
+
 // SubCommand represents a subcommand that may be added as a static value that must be written. Adding
 // multiple Runnable implementations to the command in New with different SubCommand fields as the
 // first parameter allows for commands with subcommands.

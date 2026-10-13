@@ -13,6 +13,8 @@ type serverAdapter interface {
 	MaxPlayerCount() int
 	Close() error
 	World() *world.World
+	Nether() *world.World
+	End() *world.World
 	StartTime() time.Time
 	WhitelistEnabled() bool
 	WhitelistSetEnabled(enabled bool) error

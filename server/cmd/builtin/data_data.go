@@ -3,12 +3,12 @@ package builtin
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 type dataCommand struct {
@@ -88,13 +88,19 @@ func (c dataCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 			out.Error("data entity requires a target")
 			return
 		}
-		ctx, hasContext := cmd.ExecutionContextOf(src)
-		if !hasContext {
-			ctx.Executor, _ = src.(world.Entity)
+		targets, err := cmd.ResolveTargets(words[2], src, tx)
+		if err != nil {
+			out.Error(err)
+			return
 		}
-		entities := selectEntities(words[2], tx, ctx.Executor)
+		var entities []world.Entity
+		for _, t := range targets {
+			if e, ok := t.(world.Entity); ok {
+				entities = append(entities, e)
+			}
+		}
 		if len(entities) == 0 {
-			out.Error(cmd.MessageNoTargets)
+			out.Errort(cmd.MessageNoTargets)
 			return
 		}
 		for _, entity := range entities {
@@ -106,8 +112,10 @@ func (c dataCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 						out.Error("missing data path " + words[3])
 						return
 					}
+					out.SetResult(dataResult(v))
 					out.Printf("%s", formatData(v))
 				} else {
+					out.SetResult(dataResult(tag))
 					out.Printf("%s", formatData(tag))
 				}
 				continue
@@ -141,16 +149,12 @@ func (c dataCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 		out.Error("unsupported data target")
 		return
 	}
-	ctx, hasContext := cmd.ExecutionContextOf(src)
-	base := src.Position()
-	if hasContext {
-		base = ctx.Position
-	}
-	pos, used, err := parseDataPos(words[2:], base)
+	vec, err := cmd.ResolveCoordinates(words[2:5], src)
 	if err != nil {
 		out.Error(err)
 		return
 	}
+	pos, used := cube.PosFromVec3(vec), 3
 	b := tx.Block(pos)
 	actor, ok := b.(world.NBTer)
 	if action == "get" {
@@ -160,15 +164,16 @@ func (c dataCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 		}
 		tag := actor.EncodeNBT()
 		if used < len(words[2:]) {
-			key := words[2+used]
-			v, exists := tag[key]
+			v, exists := nbtPath(tag, words[2+used])
 			if !exists {
-				out.Error("missing data key " + key)
+				out.Error("missing data path " + words[2+used])
 				return
 			}
+			out.SetResult(dataResult(v))
 			out.Printf("%s", formatData(v))
 			return
 		}
+		out.SetResult(dataResult(tag))
 		out.Printf("%s", formatData(tag))
 		return
 	}
@@ -213,16 +218,6 @@ func (c dataCommand) Run(src cmd.Source, out *cmd.Output, tx *world.Tx) {
 	out.Error("unsupported data action")
 }
 
-func parseDataPos(words []string, base mgl64.Vec3) (cube.Pos, int, error) {
-	if len(words) < 3 {
-		return cube.Pos{}, 0, fmt.Errorf("expected block coordinates")
-	}
-	x, y, z, err := parseCoords(words[:3], base)
-	if err != nil {
-		return cube.Pos{}, 0, err
-	}
-	return cube.Pos{int(x), int(y), int(z)}, 3, nil
-}
 func formatData(value any) string {
 	b, err := json.Marshal(value)
 	if err != nil {
@@ -243,4 +238,39 @@ func nbtPath(tag map[string]any, path string) (any, bool) {
 		}
 	}
 	return value, true
+}
+
+// dataResult is DataCommands.getSingleTag's result: numbers truncate to an
+// int, strings and collections return their length.
+func dataResult(v any) int {
+	switch value := v.(type) {
+	case bool:
+		if value {
+			return 1
+		}
+		return 0
+	case uint8:
+		return int(value)
+	case int8:
+		return int(value)
+	case int16:
+		return int(value)
+	case int32:
+		return int(value)
+	case int64:
+		return int(value)
+	case int:
+		return value
+	case float32:
+		return int(math.Floor(float64(value)))
+	case float64:
+		return int(math.Floor(value))
+	case string:
+		return len(value)
+	case map[string]any:
+		return len(value)
+	case []any:
+		return len(value)
+	}
+	return 0
 }

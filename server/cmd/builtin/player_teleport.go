@@ -347,84 +347,114 @@ func (c spreadPlayersUnderCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx
 
 type spreadPosition struct{ x, z float64 }
 
+// spreadPlayers ports SpreadPlayersCommand: positions start uniformly in the
+// square range, are pushed one block away from the average of too-close
+// neighbours, and unsafe positions are re-rolled, for at most 10000 rounds.
 func spreadPlayers(tx *world.Tx, o *cmd.Output, center mgl64.Vec3, distance, maxRange float64, maxHeight int, targets []cmd.Target) {
 	players := playersFromTargets(targets)
-	if len(players) == 0 || distance < 0 || maxRange <= 0 {
-		o.Errort(cmd.MessageParameterInvalid, "spreadplayers")
+	if len(players) == 0 {
+		o.Errort(cmd.MessageNoTargets)
 		return
+	}
+	if distance < 0 || maxRange < distance+1 {
+		o.Errorf("Maximum range must be at least spread distance + 1")
+		return
+	}
+	if maxHeight < tx.Range().Min() {
+		o.Errorf("maxHeight is below the world's minimum height")
+		return
+	}
+	minX, minZ := center[0]-maxRange, center[2]-maxRange
+	maxX, maxZ := center[0]+maxRange, center[2]+maxRange
+	randomize := func(p *spreadPosition) {
+		p.x = minX + rand.Float64()*(maxX-minX)
+		p.z = minZ + rand.Float64()*(maxZ-minZ)
 	}
 	positions := make([]spreadPosition, len(players))
 	for i := range positions {
-		positions[i] = spreadPosition{center[0] + (rand.Float64()*2-1)*maxRange, center[2] + (rand.Float64()*2-1)*maxRange}
+		randomize(&positions[i])
 	}
-	for iteration := 0; iteration < 10000; iteration++ {
-		moved := false
+	iteration, collisions := 0, true
+	for ; iteration < 10000 && collisions; iteration++ {
+		collisions = false
 		for i := range positions {
-			dx, dz := 0.0, 0.0
+			p := &positions[i]
+			neighbours, avgX, avgZ := 0, 0.0, 0.0
 			for j := range positions {
 				if i == j {
 					continue
 				}
-				x, z := positions[i].x-positions[j].x, positions[i].z-positions[j].z
-				d := math.Hypot(x, z)
-				if d < distance {
-					if d < 1e-6 {
-						x, z = rand.Float64()*2-1, rand.Float64()*2-1
-						d = math.Hypot(x, z)
-					}
-					dx += x / d * (distance - d)
-					dz += z / d * (distance - d)
+				n := positions[j]
+				if math.Hypot(p.x-n.x, p.z-n.z) < distance {
+					neighbours++
+					avgX += n.x - p.x
+					avgZ += n.z - p.z
 				}
 			}
-			if dx != 0 || dz != 0 {
-				positions[i].x += dx
-				positions[i].z += dz
-				moved = true
+			if neighbours > 0 {
+				avgX, avgZ = avgX/float64(neighbours), avgZ/float64(neighbours)
+				if length := math.Hypot(avgX, avgZ); length > 0 {
+					p.x -= avgX / length
+					p.z -= avgZ / length
+				} else {
+					randomize(p)
+				}
+				collisions = true
 			}
-			x, z := positions[i].x-center[0], positions[i].z-center[2]
-			d := math.Hypot(x, z)
-			if d > maxRange {
-				positions[i].x = center[0] + x/d*maxRange
-				positions[i].z = center[2] + z/d*maxRange
-				moved = true
+			clamped := spreadPosition{min(max(p.x, minX), maxX), min(max(p.z, minZ), maxZ)}
+			if clamped != *p {
+				*p = clamped
+				collisions = true
 			}
 		}
-		if !moved {
-			break
+		if !collisions {
+			for i := range positions {
+				if _, safe := spreadSpawnY(tx, positions[i], maxHeight); !safe {
+					randomize(&positions[i])
+					collisions = true
+				}
+			}
 		}
+	}
+	if iteration >= 10000 {
+		o.Errorf("Could not spread %d players around %g, %g (too many players for space - try using spread of at most %g)", len(players), center[0], center[2], distance)
+		return
 	}
 	for i, p := range players {
-		x, z := int(math.Floor(positions[i].x)), int(math.Floor(positions[i].z))
-		y, ok := spreadSafeGround(tx, x, z, maxHeight)
-		if !ok {
-			o.Errort(cmd.MessageParameterInvalid, "safe position")
-			return
-		}
-		p.Teleport(mgl64.Vec3{positions[i].x, float64(y), positions[i].z})
+		y, _ := spreadSpawnY(tx, positions[i], maxHeight)
+		p.Teleport(mgl64.Vec3{math.Floor(positions[i].x) + .5, float64(y), math.Floor(positions[i].z) + .5})
 	}
-	o.Printf("Spread %d players.", len(players))
+	o.Printf("Spread %d players around %g, %g", len(players), center[0], center[2])
 }
-func spreadSafeGround(tx *world.Tx, x, z, maxHeight int) (int, bool) {
-	r := tx.Range()
-	if maxHeight < r.Min() {
-		return 0, false
+
+// spreadSpawnY ports Position.getSpawnY and isSafe: the first non-air block
+// below two air blocks, scanning down from maxHeight, that is neither a
+// liquid nor fire.
+func spreadSpawnY(tx *world.Tx, p spreadPosition, maxHeight int) (int, bool) {
+	x, z := int(math.Floor(p.x)), int(math.Floor(p.z))
+	isAir := func(y int) bool {
+		name, _ := tx.Block(cube.Pos{x, y, z}).EncodeBlock()
+		return name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air"
 	}
-	if maxHeight > r.Max() {
-		maxHeight = r.Max()
+	y := maxHeight + 1
+	airAbove2, airAbove1 := isAir(y), isAir(y-1)
+	spawnY := maxHeight + 1
+	for y--; y > tx.Range().Min(); {
+		y--
+		current := isAir(y)
+		if !current && airAbove1 && airAbove2 {
+			spawnY = y + 1
+			break
+		}
+		airAbove2, airAbove1 = airAbove1, current
 	}
-	for y := maxHeight; y >= r.Min(); y-- {
-		b := tx.Block(cube.Pos{x, y, z})
-		name, _ := b.EncodeBlock()
-		if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" {
-			continue
-		}
-		if name == "minecraft:lava" || name == "minecraft:fire" || name == "minecraft:soul_fire" {
-			return 0, false
-		}
-		above, _ := tx.Block(cube.Pos{x, y + 1, z}).EncodeBlock()
-		if above == "minecraft:air" || above == "minecraft:cave_air" || above == "minecraft:void_air" {
-			return y + 1, true
-		}
+	ground := cube.Pos{x, spawnY - 1, z}
+	if ground[1] >= maxHeight {
+		return spawnY, false
 	}
-	return 0, false
+	if _, liquid := tx.Liquid(ground); liquid {
+		return spawnY, false
+	}
+	name, _ := tx.Block(ground).EncodeBlock()
+	return spawnY, name != "minecraft:fire" && name != "minecraft:soul_fire"
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	_ "github.com/df-mc/dragonfly/server/world/biome"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 func TestFillBiomeChangesOnlyMatchingBiomeCells(t *testing.T) {
@@ -25,7 +26,7 @@ func TestFillBiomeChangesOnlyMatchingBiomeCells(t *testing.T) {
 		tx.SetBiome(cube.Pos{1, 64, 0}, desert)
 		out := &cmd.Output{}
 		(fillBiomeReplaceCommand{
-			fillBiomeCommand: fillBiomeCommand{X1: 0, Y1: 64, Z1: 0, X2: 1, Y2: 64, Z2: 0, Biome: "minecraft:desert"},
+			fillBiomeCommand: fillBiomeCommand{From: mgl64.Vec3{0, 64, 0}, To: mgl64.Vec3{1, 64, 0}, Biome: "minecraft:desert"},
 			Filter:           "minecraft:plains",
 		}).Run(nil, out, tx)
 		if out.ErrorCount() != 0 {

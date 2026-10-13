@@ -179,6 +179,52 @@ func (m *Model) ResetScore(objective, entity string) bool {
 	delete(o.Scores, entity)
 	return ok
 }
+
+// Holders returns every score holder tracked by any objective, sorted.
+func (m *Model) Holders() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	seen := map[string]struct{}{}
+	for _, o := range m.Objectives {
+		for holder := range o.Scores {
+			seen[holder] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for holder := range seen {
+		out = append(out, holder)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// HolderScores returns the holder's score in each objective that tracks it.
+func (m *Model) HolderScores(holder string) map[string]int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := map[string]int{}
+	for name, o := range m.Objectives {
+		if v, ok := o.Scores[holder]; ok {
+			out[name] = v
+		}
+	}
+	return out
+}
+
+// ResetHolder removes the holder from every objective, as `scoreboard
+// players reset <holder>` without an objective does.
+func (m *Model) ResetHolder(holder string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	removed := false
+	for _, o := range m.Objectives {
+		if _, ok := o.Scores[holder]; ok {
+			delete(o.Scores, holder)
+			removed = true
+		}
+	}
+	return removed
+}
 func (m *Model) SetDisplay(slot, objective string) error {
 	if slot != "list" && slot != "sidebar" && slot != "belowName" {
 		return ErrInvalid

@@ -10,9 +10,32 @@ import (
 // Output holds the output of a command execution. It holds success messages
 // and error messages, which the source of a command execution gets sent.
 type Output struct {
-	errors   []error
-	messages []fmt.Stringer
+	errors    []error
+	messages  []fmt.Stringer
+	result    int
+	resultSet bool
 }
+
+// SetResult records the command's integer result, as returned by a Java
+// command and stored by `execute store result`.
+func (o *Output) SetResult(v int) {
+	o.result, o.resultSet = v, true
+}
+
+// Result returns the command result. Without an explicit result, a command
+// that produced no errors returns 1 and a failed command returns 0.
+func (o *Output) Result() int {
+	if len(o.errors) != 0 {
+		return 0
+	}
+	if o.resultSet {
+		return o.result
+	}
+	return 1
+}
+
+// Success reports whether the command completed without errors.
+func (o *Output) Success() bool { return len(o.errors) == 0 }
 
 // Errorf formats an error message and adds it to the command output.
 func (o *Output) Errorf(format string, a ...any) {

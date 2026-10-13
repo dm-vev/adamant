@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -44,32 +46,32 @@ func operatorAllowed(srv serverAdapter, src cmd.Source) bool {
 
 type setBlockCommand struct {
 	worldOpCommand
-	X     int    `cmd:"x"`
-	Y     int    `cmd:"y"`
-	Z     int    `cmd:"z"`
-	Block string `cmd:"block"`
+	Position mgl64.Vec3                 `cmd:"pos"`
+	Block    string                     `cmd:"block"`
+	Mode     cmd.Optional[setBlockMode] `cmd:"mode"`
 }
 type fillCommand struct {
 	worldOpCommand
-	X1    int    `cmd:"x1"`
-	Y1    int    `cmd:"y1"`
-	Z1    int    `cmd:"z1"`
-	X2    int    `cmd:"x2"`
-	Y2    int    `cmd:"y2"`
-	Z2    int    `cmd:"z2"`
-	Block string `cmd:"block"`
+	From  mgl64.Vec3             `cmd:"from"`
+	To    mgl64.Vec3             `cmd:"to"`
+	Block string                 `cmd:"block"`
+	Mode  cmd.Optional[fillMode] `cmd:"mode"`
+}
+type fillReplaceCommand struct {
+	worldOpCommand
+	From    mgl64.Vec3           `cmd:"from"`
+	To      mgl64.Vec3           `cmd:"to"`
+	Block   string               `cmd:"block"`
+	Replace cmd.SubCommand       `cmd:"replace"`
+	Filter  cmd.Optional[string] `cmd:"filter"`
 }
 type cloneCommand struct {
 	worldOpCommand
-	X1 int `cmd:"x1"`
-	Y1 int `cmd:"y1"`
-	Z1 int `cmd:"z1"`
-	X2 int `cmd:"x2"`
-	Y2 int `cmd:"y2"`
-	Z2 int `cmd:"z2"`
-	DX int `cmd:"dx"`
-	DY int `cmd:"dy"`
-	DZ int `cmd:"dz"`
+	Begin       mgl64.Vec3                   `cmd:"begin"`
+	End         mgl64.Vec3                   `cmd:"end"`
+	Destination mgl64.Vec3                   `cmd:"destination"`
+	Mask        cmd.Optional[cloneMaskMode]  `cmd:"maskMode"`
+	Clone       cmd.Optional[cloneCloneMode] `cmd:"cloneMode"`
 }
 type weatherCommand struct {
 	worldOpCommand
@@ -93,16 +95,12 @@ type gameruleCommand struct {
 type seedCommand struct{ worldOpCommand }
 type summonCommand struct {
 	worldOpCommand
-	Entity string  `cmd:"entity"`
-	X      float64 `cmd:"x"`
-	Y      float64 `cmd:"y"`
-	Z      float64 `cmd:"z"`
+	Entity   string                   `cmd:"entity"`
+	Position cmd.Optional[mgl64.Vec3] `cmd:"pos"`
 }
 type setWorldSpawnCommand struct {
 	worldOpCommand
-	X int `cmd:"x"`
-	Y int `cmd:"y"`
-	Z int `cmd:"z"`
+	Position cmd.Optional[mgl64.Vec3] `cmd:"pos"`
 }
 type defaultGameModeCommand struct {
 	worldOpCommand
@@ -117,7 +115,7 @@ type locateCommand struct {
 func registerWorldCoreCommands(srv serverAdapter) {
 	guard := worldOpCommand{srv: srv}
 	cmd.Register(cmd.New("setblock", "Sets a block at a position.", nil, setBlockCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("fill", "Fills a region with a block.", nil, fillCommand{worldOpCommand: guard}))
+	cmd.Register(cmd.New("fill", "Fills a region with a block.", nil, fillCommand{worldOpCommand: guard}, fillReplaceCommand{worldOpCommand: guard}))
 	cmd.Register(cmd.New("clone", "Copies blocks from one region to another.", nil, cloneCommand{worldOpCommand: guard}))
 	cmd.Register(cmd.New("weather", "Changes the weather.", nil, weatherCommand{worldOpCommand: guard}))
 	cmd.Register(cmd.New("difficulty", "Changes or queries the world difficulty.", nil, difficultyCommand{worldOpCommand: guard}))
@@ -130,54 +128,203 @@ func registerWorldCoreCommands(srv serverAdapter) {
 	cmd.Register(cmd.New("locate", "Finds a nearby structure, biome, or point of interest.", nil, locateCommand{worldOpCommand: guard}))
 }
 
+// commandModificationBlockLimit is Java's default command_modification_block_limit.
+const commandModificationBlockLimit = 32768
+
+type setBlockMode string
+
+func (setBlockMode) Type() string                { return "SetBlockMode" }
+func (setBlockMode) Options(cmd.Source) []string { return []string{"destroy", "keep", "replace"} }
+
+type fillMode string
+
+func (fillMode) Type() string { return "FillMode" }
+func (fillMode) Options(cmd.Source) []string {
+	return []string{"destroy", "hollow", "keep", "outline", "replace"}
+}
+
+type cloneMaskMode string
+
+func (cloneMaskMode) Type() string                { return "MaskMode" }
+func (cloneMaskMode) Options(cmd.Source) []string { return []string{"replace", "masked"} }
+
+type cloneCloneMode string
+
+func (cloneCloneMode) Type() string                { return "CloneMode" }
+func (cloneCloneMode) Options(cmd.Source) []string { return []string{"normal", "force", "move"} }
+
+// commandBox returns the inclusive block box and rejects volumes over Java's limit.
+func commandBox(a, b mgl64.Vec3, o *cmd.Output) (lo, hi cube.Pos, volume int, ok bool) {
+	lo, hi = cube.Min(cube.PosFromVec3(a), cube.PosFromVec3(b)), cube.Max(cube.PosFromVec3(a), cube.PosFromVec3(b))
+	volume = (hi[0] - lo[0] + 1) * (hi[1] - lo[1] + 1) * (hi[2] - lo[2] + 1)
+	if volume > commandModificationBlockLimit {
+		o.Errorf("Too many blocks in the specified area (maximum %d, specified %d)", commandModificationBlockLimit, volume)
+		return lo, hi, volume, false
+	}
+	return lo, hi, volume, true
+}
+
+func isAir(b world.Block) bool {
+	name, _ := b.EncodeBlock()
+	return name == "minecraft:air"
+}
+
+// destroyCommandBlock breaks a block with drops, as Level.destroyBlock(pos, true).
+func destroyCommandBlock(tx *world.Tx, pos cube.Pos) {
+	if breakable, ok := tx.Block(pos).(block.Breakable); ok && !isAir(tx.Block(pos)) {
+		for _, drop := range breakable.BreakInfo().Drops(item.ToolNone{}, nil) {
+			tx.AddEntity(tx.World().EntityRegistry().Config().Item(world.EntitySpawnOpts{Position: pos.Vec3Centre()}, drop))
+		}
+	}
+	tx.SetBlock(pos, nil, nil)
+}
+
 func (s setBlockCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	b, err := commandBlock(tx.World(), s.Block)
 	if err != nil {
 		o.Error(err.Error())
 		return
 	}
-	tx.SetBlock(cube.Pos{s.X, s.Y, s.Z}, b, nil)
-	o.Print("Block placed.")
+	pos := cube.PosFromVec3(s.Position)
+	if pos.OutOfBounds(tx.Range()) {
+		o.Error("Cannot place blocks outside of the world")
+		return
+	}
+	switch s.Mode.LoadOr("replace") {
+	case "keep":
+		if !isAir(tx.Block(pos)) {
+			o.Error("Could not set the block")
+			return
+		}
+	case "destroy":
+		destroyCommandBlock(tx, pos)
+	}
+	if tx.Block(pos) == b {
+		o.Error("Could not set the block")
+		return
+	}
+	tx.SetBlock(pos, b, nil)
+	o.Printf("Changed the block at %d, %d, %d", pos[0], pos[1], pos[2])
 }
+
 func (f fillCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	b, err := commandBlock(tx.World(), f.Block)
+	fillBlocks(tx, o, f.From, f.To, f.Block, string(f.Mode.LoadOr("replace")), "")
+}
+
+func (f fillReplaceCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+	fillBlocks(tx, o, f.From, f.To, f.Block, "replace", f.Filter.LoadOr(""))
+}
+
+// fillBlocks ports FillCommand's modes: outline/hollow touch only the shell
+// (hollow clears the interior), keep only fills air and destroy drops items.
+func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, filter string) {
+	b, err := commandBlock(tx.World(), spec)
 	if err != nil {
 		o.Error(err.Error())
 		return
 	}
-	lo, hi := cube.Pos{f.X1, f.Y1, f.Z1}, cube.Pos{f.X2, f.Y2, f.Z2}
-	lo, hi = cube.Min(lo, hi), cube.Max(lo, hi)
+	var match world.Block
+	if filter != "" {
+		if match, err = commandBlock(tx.World(), filter); err != nil {
+			o.Error(err.Error())
+			return
+		}
+	}
+	lo, hi, _, ok := commandBox(from, to, o)
+	if !ok {
+		return
+	}
+	air, _ := world.BlockByName("minecraft:air", nil)
 	count := 0
 	for x := lo[0]; x <= hi[0]; x++ {
 		for y := lo[1]; y <= hi[1]; y++ {
 			for z := lo[2]; z <= hi[2]; z++ {
-				tx.SetBlock(cube.Pos{x, y, z}, b, nil)
+				pos := cube.Pos{x, y, z}
+				if pos.OutOfBounds(tx.Range()) {
+					continue
+				}
+				shell := x == lo[0] || x == hi[0] || y == lo[1] || y == hi[1] || z == lo[2] || z == hi[2]
+				place := b
+				switch mode {
+				case "outline":
+					if !shell {
+						continue
+					}
+				case "hollow":
+					if !shell {
+						place = air
+					}
+				case "keep":
+					if !isAir(tx.Block(pos)) {
+						continue
+					}
+				case "destroy":
+					destroyCommandBlock(tx, pos)
+				}
+				if match != nil && tx.Block(pos) != match {
+					continue
+				}
+				if tx.Block(pos) == place {
+					continue
+				}
+				tx.SetBlock(pos, place, nil)
 				count++
 			}
 		}
 	}
-	o.Printf("Filled %d blocks.", count)
+	if count == 0 {
+		o.Error("No blocks were filled")
+		return
+	}
+	o.Printf("Successfully filled %d block(s)", count)
 }
+
+// Run ports CloneCommands: masked skips air, move clears the source and normal
+// mode rejects overlapping source and destination regions.
 func (c cloneCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	lo, hi := cube.Min(cube.Pos{c.X1, c.Y1, c.Z1}, cube.Pos{c.X2, c.Y2, c.Z2}), cube.Max(cube.Pos{c.X1, c.Y1, c.Z1}, cube.Pos{c.X2, c.Y2, c.Z2})
+	lo, hi, _, ok := commandBox(c.Begin, c.End, o)
+	if !ok {
+		return
+	}
+	dest := cube.PosFromVec3(c.Destination)
+	size := hi.Sub(lo)
+	destHi := dest.Add(size)
+	mask, mode := c.Mask.LoadOr("replace"), c.Clone.LoadOr("normal")
+	overlap := dest[0] <= hi[0] && destHi[0] >= lo[0] && dest[1] <= hi[1] && destHi[1] >= lo[1] && dest[2] <= hi[2] && destHi[2] >= lo[2]
+	if mode == "normal" && overlap {
+		o.Error("The source and destination can not overlap")
+		return
+	}
 	type cell struct {
 		p cube.Pos
 		b world.Block
 	}
-	cells := make([]cell, 0)
+	cells := make([]cell, 0, (size[0]+1)*(size[1]+1)*(size[2]+1))
 	for x := lo[0]; x <= hi[0]; x++ {
 		for y := lo[1]; y <= hi[1]; y++ {
 			for z := lo[2]; z <= hi[2]; z++ {
 				p := cube.Pos{x, y, z}
-				cells = append(cells, cell{p, tx.Block(p)})
+				b := tx.Block(p)
+				if mask == "masked" && isAir(b) {
+					continue
+				}
+				cells = append(cells, cell{p, b})
 			}
 		}
 	}
-	for _, v := range cells {
-		dst := cube.Pos{v.p[0] - lo[0] + c.DX, v.p[1] - lo[1] + c.DY, v.p[2] - lo[2] + c.DZ}
-		tx.SetBlock(dst, v.b, nil)
+	if mode == "move" {
+		for _, v := range cells {
+			tx.SetBlock(v.p, nil, nil)
+		}
 	}
-	o.Printf("Cloned %d blocks.", len(cells))
+	for _, v := range cells {
+		tx.SetBlock(dest.Add(v.p.Sub(lo)), v.b, nil)
+	}
+	if len(cells) == 0 {
+		o.Error("No blocks were cloned")
+		return
+	}
+	o.Printf("Successfully cloned %d block(s)", len(cells))
 }
 func (w weatherCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	dur := time.Duration(w.Duration.LoadOr(600)) * time.Second
@@ -342,7 +489,7 @@ func (g gameruleCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 func (seedCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	o.Printf("Seed: %d", tx.World().Seed())
 }
-func (s summonCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+func (s summonCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	id := s.Entity
 	if !strings.Contains(id, ":") {
 		id = "minecraft:" + id
@@ -352,7 +499,11 @@ func (s summonCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("this world has no mob registry")
 		return
 	}
-	h := spawn(id, world.EntitySpawnOpts{Position: mgl64.Vec3{s.X, s.Y, s.Z}, SpawnReason: "command"})
+	pos, ok := s.Position.Load()
+	if !ok {
+		pos = src.Position()
+	}
+	h := spawn(id, world.EntitySpawnOpts{Position: pos, SpawnReason: "command"})
 	if h == nil {
 		o.Error("unknown or unsupported entity")
 		return
@@ -360,9 +511,14 @@ func (s summonCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	tx.AddEntity(h)
 	o.Printf("Summoned %s.", id)
 }
-func (s setWorldSpawnCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	tx.World().SetSpawn(cube.Pos{s.X, s.Y, s.Z})
-	o.Print("Set world spawn.")
+func (s setWorldSpawnCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	pos, ok := s.Position.Load()
+	if !ok {
+		pos = src.Position()
+	}
+	spawn := cube.PosFromVec3(pos)
+	tx.World().SetSpawn(spawn)
+	o.Printf("Set the world spawn point to %d, %d, %d", spawn[0], spawn[1], spawn[2])
 }
 func (g defaultGameModeCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	mode, label, ok := parseGameMode(g.Mode)

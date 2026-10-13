@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/df-mc/dragonfly/server/internal/sliceutil"
-	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl64"
-	"math/rand/v2"
+	"math"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // Line represents a command line holding command arguments that were passed upon the execution of the
@@ -235,17 +236,100 @@ func (p parser) sub(line *Line, name string) error {
 	return MessageParameterInvalid.F(arg)
 }
 
-// vec3 ...
+// vec3 parses three coordinates. Like Java WorldCoordinates, `~` is relative
+// to the execution position per axis; `^` (LocalCoordinates) is relative to
+// the execution rotation and must be used for all three axes.
 func (p parser) vec3(line *Line, v reflect.Value) error {
-	if err := p.float(line, v.Index(0)); err != nil {
+	args, ok := line.NextN(3)
+	if !ok {
+		return line.UsageError()
+	}
+	pos, err := ResolveCoordinates(args, line.src)
+	if err != nil {
 		return err
 	}
-	line.RemoveNext()
-	if err := p.float(line, v.Index(1)); err != nil {
-		return err
+	v.Set(reflect.ValueOf(pos))
+	// parseArgument consumes the final coordinate.
+	line.RemoveN(2)
+	return nil
+}
+
+// ResolveCoordinates resolves Java world (~) or local (^) coordinates relative
+// to src, including execute contexts.
+func ResolveCoordinates(args []string, src Source) (mgl64.Vec3, error) {
+	local := 0
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "^") {
+			local++
+		}
 	}
-	line.RemoveNext()
-	return p.float(line, v.Index(2))
+	if local != 0 && local != 3 {
+		return mgl64.Vec3{}, MessageParameterInvalid.F(strings.Join(args, " "))
+	}
+	var offsets mgl64.Vec3
+	for i, arg := range args {
+		value := strings.TrimLeft(arg, "~^")
+		if len(arg)-len(value) > 1 {
+			return mgl64.Vec3{}, MessageNumberInvalid.F(arg)
+		}
+		if value != "" {
+			f, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return mgl64.Vec3{}, MessageNumberInvalid.F(arg)
+			}
+			offsets[i] = f
+		}
+	}
+	origin := sourcePosition(src)
+	if local == 3 {
+		return localCoordinates(origin, sourceRotation(src), offsets), nil
+	}
+	var pos mgl64.Vec3
+	for i, arg := range args {
+		pos[i] = offsets[i]
+		if strings.HasPrefix(arg, "~") {
+			pos[i] += origin[i]
+		}
+	}
+	return pos, nil
+}
+
+// localCoordinates ports LocalCoordinates.getPosition: offsets are left, up
+// and forwards relative to the execution rotation.
+func localCoordinates(origin mgl64.Vec3, rotation cube.Rotation, offsets mgl64.Vec3) mgl64.Vec3 {
+	const rad = math.Pi / 180
+	yaw, pitch := rotation.Yaw(), rotation.Pitch()
+	yCos, ySin := math.Cos((yaw+90)*rad), math.Sin((yaw+90)*rad)
+	xCos, xSin := math.Cos(-pitch*rad), math.Sin(-pitch*rad)
+	xCosUp, xSinUp := math.Cos((-pitch+90)*rad), math.Sin((-pitch+90)*rad)
+	forwards := mgl64.Vec3{yCos * xCos, xSin, ySin * xCos}
+	up := mgl64.Vec3{yCos * xCosUp, xSinUp, ySin * xCosUp}
+	left := forwards.Cross(up).Mul(-1)
+	return origin.Add(left.Mul(offsets[0])).Add(up.Mul(offsets[1])).Add(forwards.Mul(offsets[2]))
+}
+
+// sourcePosition is the execution position, including execute's anchor.
+func sourcePosition(src Source) mgl64.Vec3 {
+	if src == nil {
+		return mgl64.Vec3{}
+	}
+	pos := src.Position()
+	if context, ok := ExecutionContextOf(src); ok && context.Anchor == Eyes {
+		if eyed, ok := context.Executor.(interface{ EyeHeight() float64 }); ok {
+			pos[1] += eyed.EyeHeight()
+		}
+	}
+	return pos
+}
+
+func sourceRotation(src Source) cube.Rotation {
+	if context, ok := ExecutionContextOf(src); ok {
+		return context.Rotation
+	}
+	if rotated, ok := src.(interface{ Rotation() cube.Rotation }); ok {
+		return rotated.Rotation()
+	}
+	return cube.Rotation{}
 }
 
 // varargs ...
@@ -274,42 +358,21 @@ func (p parser) parseTargets(line *Line, tx *world.Tx) ([]Target, error) {
 	if !ok {
 		return nil, line.UsageError()
 	}
-	if strings.HasPrefix(first, "@") && tx == nil {
-		return nil, MessageNoTargets.F()
-	}
-	switch first[:min(len(first), 2)] {
-	case "@p":
-		if len(players) == 0 {
-			return nil, nil
+	if strings.HasPrefix(first, "@") {
+		if tx == nil {
+			return nil, MessageNoTargets.F()
 		}
-		pos := line.src.Position()
-		nearest := players[0]
-		nearestDistance := nearest.Position().Sub(pos).Len()
-		for _, p := range players[1:] {
-			if distance := p.Position().Sub(pos).Len(); distance < nearestDistance {
-				nearest = p
-				nearestDistance = distance
-			}
-		}
-		return []Target{nearest}, nil
-	case "@e":
-		return entities, nil
-	case "@a":
-		return sliceutil.Convert[Target](players), nil
-	case "@s":
-		return []Target{line.src}, nil
-	case "@r":
-		if len(players) == 0 {
-			return nil, nil
-		}
-		return []Target{players[rand.IntN(len(players))]}, nil
-	default:
-		target, err := p.parsePlayer(first, players)
+		selector, err := parseSelector(first, line.src)
 		if err != nil {
 			return nil, err
 		}
-		return []Target{target}, nil
+		return selector.selectTargets(line.src, entities, players), nil
 	}
+	target, err := p.parsePlayer(first, players)
+	if err != nil {
+		return nil, err
+	}
+	return []Target{target}, nil
 }
 
 // parsePlayer attempts to find a target whose name matches the name passed.

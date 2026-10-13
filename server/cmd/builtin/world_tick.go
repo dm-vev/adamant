@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 type tickQueryCommand struct {
@@ -77,13 +78,9 @@ type forceLoadQueryCommand struct {
 
 type fillBiomeCommand struct {
 	worldOpCommand
-	X1    int    `cmd:"x1"`
-	Y1    int    `cmd:"y1"`
-	Z1    int    `cmd:"z1"`
-	X2    int    `cmd:"x2"`
-	Y2    int    `cmd:"y2"`
-	Z2    int    `cmd:"z2"`
-	Biome string `cmd:"biome"`
+	From  mgl64.Vec3 `cmd:"from"`
+	To    mgl64.Vec3 `cmd:"to"`
+	Biome string     `cmd:"biome"`
 }
 type fillBiomeReplaceCommand struct {
 	opGate
@@ -264,8 +261,8 @@ func fillBiome(c fillBiomeCommand, filter string, hasFilter bool, o *cmd.Output,
 			return
 		}
 	}
-	lo := cube.Min(cube.Pos{c.X1, c.Y1, c.Z1}, cube.Pos{c.X2, c.Y2, c.Z2})
-	hi := cube.Max(cube.Pos{c.X1, c.Y1, c.Z1}, cube.Pos{c.X2, c.Y2, c.Z2})
+	lo := cube.Min(cube.PosFromVec3(c.From), cube.PosFromVec3(c.To))
+	hi := cube.Max(cube.PosFromVec3(c.From), cube.PosFromVec3(c.To))
 	count := 0
 	touched := map[world.ChunkPos]struct{}{}
 	for x := lo[0]; x <= hi[0]; x++ {

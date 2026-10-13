@@ -1,26 +1,34 @@
 package builtin
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+// Objective subcommands follow Java syntax: scoreboard objectives add|remove|list.
 type scoreboardObjectiveAdd struct {
 	adminPermission
-	Add      cmd.SubCommand     `cmd:"add"`
-	Name     string             `cmd:"objective"`
-	Criteria scoreboardCriteria `cmd:"criteria"`
-	Display  string             `cmd:"displayName"`
+	Objectives cmd.SubCommand       `cmd:"objectives"`
+	Add        cmd.SubCommand       `cmd:"add"`
+	Name       string               `cmd:"objective"`
+	Criteria   scoreboardCriteria   `cmd:"criteria"`
+	Display    cmd.Optional[string] `cmd:"displayName"`
 }
 type scoreboardObjectiveRemove struct {
 	adminPermission
-	Remove cmd.SubCommand `cmd:"remove"`
-	Name   string         `cmd:"objective"`
+	Objectives cmd.SubCommand `cmd:"objectives"`
+	Remove     cmd.SubCommand `cmd:"remove"`
+	Name       string         `cmd:"objective"`
 }
 type scoreboardObjectiveList struct {
 	adminPermission
-	List cmd.SubCommand `cmd:"list"`
+	Objectives cmd.SubCommand `cmd:"objectives"`
+	List       cmd.SubCommand `cmd:"list"`
 }
 type scoreboardScoreSet struct {
 	adminPermission
@@ -37,6 +45,41 @@ type scoreboardScoreAdd struct {
 	Holder    string         `cmd:"targets"`
 	Objective string         `cmd:"objective"`
 	Value     int            `cmd:"score"`
+}
+type scoreboardScoreRemove struct {
+	adminPermission
+	Players   cmd.SubCommand `cmd:"players"`
+	Remove    cmd.SubCommand `cmd:"remove"`
+	Holder    string         `cmd:"targets"`
+	Objective string         `cmd:"objective"`
+	Value     int            `cmd:"score"`
+}
+type scoreboardScoreGet struct {
+	adminPermission
+	Players   cmd.SubCommand `cmd:"players"`
+	Get       cmd.SubCommand `cmd:"get"`
+	Holder    string         `cmd:"target"`
+	Objective string         `cmd:"objective"`
+}
+type scoreboardScoreReset struct {
+	adminPermission
+	Players   cmd.SubCommand       `cmd:"players"`
+	Reset     cmd.SubCommand       `cmd:"reset"`
+	Holder    string               `cmd:"targets"`
+	Objective cmd.Optional[string] `cmd:"objective"`
+}
+type scoreboardScoreList struct {
+	adminPermission
+	Players cmd.SubCommand       `cmd:"players"`
+	List    cmd.SubCommand       `cmd:"list"`
+	Holder  cmd.Optional[string] `cmd:"target"`
+}
+type scoreboardScoreEnable struct {
+	adminPermission
+	Players   cmd.SubCommand `cmd:"players"`
+	Enable    cmd.SubCommand `cmd:"enable"`
+	Holder    string         `cmd:"targets"`
+	Objective string         `cmd:"objective"`
 }
 type scoreboardScoreOperation struct {
 	adminPermission
@@ -72,7 +115,8 @@ func (c scoreboardObjectiveAdd) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("world unavailable")
 		return
 	}
-	if err := m.AddObjective(c.Name, c.Display, scoreboard.Criteria(c.Criteria)); err != nil {
+	// Java uses the objective name as display name when none is given.
+	if err := m.AddObjective(c.Name, c.Display.LoadOr(c.Name), scoreboard.Criteria(c.Criteria)); err != nil {
 		o.Errorf("cannot add objective: %v", err)
 		return
 	}
@@ -100,45 +144,231 @@ func (scoreboardObjectiveList) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	}
 	o.Printf("Objectives: %v", m.ObjectiveNames())
 }
-func (c scoreboardScoreSet) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	m := scoreboardModel(tx)
-	if m == nil {
-		o.Error("world unavailable")
-		return
+
+// scoreHolders resolves a Java ScoreHolderArgument: `*` is every tracked
+// holder, selectors resolve to player names or entity UUIDs, and any other
+// text is a literal (fake player) name.
+func scoreHolders(spec string, src cmd.Source, tx *world.Tx, m *scoreboard.Model) ([]string, error) {
+	switch {
+	case spec == "*":
+		return m.Holders(), nil
+	case strings.HasPrefix(spec, "@"):
+		targets, err := cmd.ResolveTargets(spec, src, tx)
+		if err != nil {
+			return nil, err
+		}
+		names := make([]string, 0, len(targets))
+		for _, t := range targets {
+			if name := scoreHolderName(t); name != "" {
+				names = append(names, name)
+			}
+		}
+		if len(names) == 0 {
+			return nil, cmd.MessageNoTargets.F()
+		}
+		return names, nil
+	default:
+		return []string{spec}, nil
 	}
-	if err := m.SetScore(c.Objective, c.Holder, c.Value); err != nil {
-		o.Errorf("cannot set score: %v", err)
-		return
-	}
-	refreshScoreboard(tx, m)
-	o.Printf("Set %s's score in %s to %d.", c.Holder, c.Objective, c.Value)
 }
-func (c scoreboardScoreAdd) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+
+// scoreHolderName is Entity.getScoreboardName: players use their name and
+// other entities their UUID.
+func scoreHolderName(t cmd.Target) string {
+	if p, ok := t.(*player.Player); ok {
+		return p.Name()
+	}
+	if e, ok := t.(world.Entity); ok {
+		return e.H().UUID().String()
+	}
+	return ""
+}
+
+func (c scoreboardScoreSet) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	updateScores(src, o, tx, c.Holder, c.Objective, func(m *scoreboard.Model, holder string) (int, error) {
+		return c.Value, m.SetScore(c.Objective, holder, c.Value)
+	})
+}
+func (c scoreboardScoreAdd) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	updateScores(src, o, tx, c.Holder, c.Objective, func(m *scoreboard.Model, holder string) (int, error) {
+		return m.AddScore(c.Objective, holder, c.Value)
+	})
+}
+func (c scoreboardScoreRemove) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	updateScores(src, o, tx, c.Holder, c.Objective, func(m *scoreboard.Model, holder string) (int, error) {
+		return m.AddScore(c.Objective, holder, -c.Value)
+	})
+}
+
+// updateScores applies change to each holder; the result is the last value for
+// one holder or the holder count, as in Java ScoreboardCommand.
+func updateScores(src cmd.Source, o *cmd.Output, tx *world.Tx, spec, objective string, change func(*scoreboard.Model, string) (int, error)) {
 	m := scoreboardModel(tx)
 	if m == nil {
 		o.Error("world unavailable")
 		return
 	}
-	v, err := m.AddScore(c.Objective, c.Holder, c.Value)
+	if obj, ok := m.Objective(objective); !ok {
+		o.Errorf("Unknown scoreboard objective '%s'", objective)
+		return
+	} else if obj.Criteria != scoreboard.Dummy && obj.Criteria != scoreboard.Trigger {
+		o.Errorf("That objective is read-only and cannot be set")
+		return
+	}
+	holders, err := scoreHolders(spec, src, tx, m)
 	if err != nil {
-		o.Errorf("cannot add score: %v", err)
+		o.Error(err)
 		return
 	}
+	last := 0
+	for _, holder := range holders {
+		if last, err = change(m, holder); err != nil {
+			o.Errorf("cannot change score: %v", err)
+			return
+		}
+	}
 	refreshScoreboard(tx, m)
-	o.Printf("Set %s's score in %s to %d.", c.Holder, c.Objective, v)
+	if len(holders) == 1 {
+		o.SetResult(last)
+		o.Printf("Set [%s] for %s to %d", objective, holders[0], last)
+		return
+	}
+	o.SetResult(len(holders))
+	o.Printf("Set [%s] for %d entities", objective, len(holders))
 }
-func (c scoreboardScoreOperation) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+
+func (c scoreboardScoreGet) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	m := scoreboardModel(tx)
 	if m == nil {
 		o.Error("world unavailable")
 		return
 	}
-	if err := m.Operate(c.TargetObjective, c.Target, string(c.Operator), c.SourceObjective, c.Source); err != nil {
-		o.Errorf("cannot operate on scores: %v", err)
+	holders, err := scoreHolders(c.Holder, src, tx, m)
+	if err != nil {
+		o.Error(err)
 		return
 	}
+	if len(holders) != 1 {
+		o.Errorf("Only one entity is allowed, but the provided selector allows more than one")
+		return
+	}
+	v, ok := m.Score(c.Objective, holders[0])
+	if !ok {
+		o.Errorf("Can't get value of %s for %s; none is set", c.Objective, holders[0])
+		return
+	}
+	o.SetResult(v)
+	o.Printf("%s has %d [%s]", holders[0], v, c.Objective)
+}
+
+func (c scoreboardScoreReset) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	m := scoreboardModel(tx)
+	if m == nil {
+		o.Error("world unavailable")
+		return
+	}
+	holders, err := scoreHolders(c.Holder, src, tx, m)
+	if err != nil {
+		o.Error(err)
+		return
+	}
+	objective, single := c.Objective.Load()
+	for _, holder := range holders {
+		if single {
+			m.ResetScore(objective, holder)
+		} else {
+			m.ResetHolder(holder)
+		}
+	}
 	refreshScoreboard(tx, m)
-	o.Printf("Updated %s's score in %s.", c.Target, c.TargetObjective)
+	o.SetResult(len(holders))
+	o.Printf("Reset scores for %d entities", len(holders))
+}
+
+func (c scoreboardScoreList) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	m := scoreboardModel(tx)
+	if m == nil {
+		o.Error("world unavailable")
+		return
+	}
+	spec, ok := c.Holder.Load()
+	if !ok {
+		holders := m.Holders()
+		o.SetResult(len(holders))
+		o.Printf("There are %d tracked entities: %s", len(holders), strings.Join(holders, ", "))
+		return
+	}
+	holders, err := scoreHolders(spec, src, tx, m)
+	if err != nil {
+		o.Error(err)
+		return
+	}
+	for _, holder := range holders {
+		scores := m.HolderScores(holder)
+		names := make([]string, 0, len(scores))
+		for name := range scores {
+			names = append(names, name)
+		}
+		slices.Sort(names)
+		o.SetResult(len(scores))
+		o.Printf("%s has %d scores:", holder, len(scores))
+		for _, name := range names {
+			o.Printf("[%s]: %d", name, scores[name])
+		}
+	}
+}
+
+func (c scoreboardScoreEnable) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	m := scoreboardModel(tx)
+	if m == nil {
+		o.Error("world unavailable")
+		return
+	}
+	if obj, ok := m.Objective(c.Objective); !ok || obj.Criteria != scoreboard.Trigger {
+		o.Errorf("You can only enable trigger-objectives")
+		return
+	}
+	holders, err := scoreHolders(c.Holder, src, tx, m)
+	if err != nil {
+		o.Error(err)
+		return
+	}
+	for _, holder := range holders {
+		m.SetTriggerEnabled(holder, true)
+	}
+	o.Printf("Enabled trigger %s for %d entities", c.Objective, len(holders))
+}
+
+func (c scoreboardScoreOperation) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	m := scoreboardModel(tx)
+	if m == nil {
+		o.Error("world unavailable")
+		return
+	}
+	targets, err := scoreHolders(c.Target, src, tx, m)
+	if err != nil {
+		o.Error(err)
+		return
+	}
+	sources, err := scoreHolders(c.Source, src, tx, m)
+	if err != nil {
+		o.Error(err)
+		return
+	}
+	for _, target := range targets {
+		for _, source := range sources {
+			if err := m.Operate(c.TargetObjective, target, string(c.Operator), c.SourceObjective, source); err != nil {
+				o.Errorf("cannot operate on scores: %v", err)
+				return
+			}
+		}
+	}
+	refreshScoreboard(tx, m)
+	if len(targets) == 1 {
+		v, _ := m.Score(c.TargetObjective, targets[0])
+		o.SetResult(v)
+	}
+	o.Printf("Updated [%s] for %d entities", c.TargetObjective, len(targets))
 }
 func scoreboardModel(tx *world.Tx) *scoreboard.Model {
 	if tx == nil {
@@ -156,6 +386,11 @@ func newScoreboardCommand(srv serverAdapter) cmd.Command {
 		scoreboardSetDisplay{adminPermission: permission},
 		scoreboardScoreSet{adminPermission: permission},
 		scoreboardScoreAdd{adminPermission: permission},
+		scoreboardScoreRemove{adminPermission: permission},
+		scoreboardScoreGet{adminPermission: permission},
+		scoreboardScoreReset{adminPermission: permission},
+		scoreboardScoreList{adminPermission: permission},
+		scoreboardScoreEnable{adminPermission: permission},
 		scoreboardScoreOperation{adminPermission: permission},
 	)
 }

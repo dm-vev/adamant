@@ -7,6 +7,7 @@ import (
 
 type scoreboardSetDisplay struct {
 	adminPermission
+	Objectives cmd.SubCommand        `cmd:"objectives"`
 	SetDisplay cmd.SubCommand        `cmd:"setdisplay"`
 	Slot       scoreboardDisplaySlot `cmd:"slot"`
 	Objective  cmd.Optional[string]  `cmd:"objective"`
