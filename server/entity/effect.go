@@ -43,6 +43,7 @@ func (m *EffectManager) Add(e effect.Effect, entity Living) effect.Effect {
 
 	m.applyActions(entity, initialActions)
 	m.applyAction(entity, action)
+	refreshEffectState(entity, action)
 	return result
 }
 
@@ -55,6 +56,29 @@ func (m *EffectManager) Remove(e effect.Type, entity Living) {
 
 	m.applyActions(entity, initialActions)
 	m.applyAction(entity, action)
+	refreshEffectState(entity, action)
+}
+
+// refreshEffectState resends a mob's metadata when a lasting effect starts or
+// ends, so that viewers see its effect particles and invisibility. Players
+// update their own state.
+func refreshEffectState(entity Living, action effectAction) {
+	if action.start == nil && action.end == nil {
+		return
+	}
+	mob, ok := entity.(interface{ currentTx() *world.Tx })
+	if !ok || mob.currentTx() == nil {
+		return
+	}
+	tx := mob.currentTx()
+	if _, inWorld := entity.H().Entity(tx); !inWorld {
+		return
+	}
+	viewers := tx.Viewers(entity.Position())
+	for _, v := range viewers {
+		v.ViewEntityState(entity)
+	}
+	tx.ReleaseViewers(viewers)
 }
 
 // Effect returns the effect instance and true if the entity has the effect. If not found, it will return an empty

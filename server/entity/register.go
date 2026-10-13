@@ -33,6 +33,7 @@ func init() {
 		SnifferType,
 		FrogType,
 		VillagerType,
+		WanderingTraderType,
 		WitchType,
 		ZombieType,
 		ZombieVillagerType,

@@ -411,7 +411,7 @@ func (s *SulfurCube) Prime() bool {
 		return false
 	}
 	s.b().fuse = 80
-	s.tx.PlaySound(s.Position(), sound.Custom{Name: "block.tnt.primed", Volume: 1, Pitch: 1})
+	s.tx.PlaySound(s.Position(), sound.Custom{Name: "entity.tnt.primed", Volume: 1, Pitch: 1})
 	return true
 }
 func (s *SulfurCube) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
@@ -422,7 +422,7 @@ func (s *SulfurCube) Interact(tx *world.Tx, user item.User, ctx *item.UseContext
 	if s.b().age < 0 && sulfurCubeFood(held) {
 		s.b().age = min(0, s.b().age+max(1, -s.b().age/10))
 		ctx.SubtractFromCount(1)
-		tx.PlaySound(s.Position(), sound.Custom{Name: "entity.sulfur_cube.small_eat", Volume: 1, Pitch: 1})
+		tx.PlaySound(s.Position(), sound.Custom{Name: "entity.small_sulfur_cube.eat", Volume: 1, Pitch: 1})
 		return true
 	}
 	if s.b().age >= 0 {

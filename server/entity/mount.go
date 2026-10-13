@@ -89,6 +89,8 @@ type MountBehaviour struct {
 	traderDespawn                    int
 	lastPoseTick                     int64
 	spitCooldown                     int
+	spitTarget                       *world.EntityHandle
+	defendStamp                      int64
 }
 
 func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -128,16 +130,8 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		b.loveTicks--
 		b.breedNearby(e, tx)
 	}
-	if b.kind == mountTraderLlama {
-		if b.traderDespawn == 0 {
-			b.traderDespawn = 47999
-		}
-		b.traderDespawn--
-		if b.traderDespawn <= 0 {
-			_ = e.CloseIn(tx)
-			return nil
-		}
-		b.followTrader(e, tx)
+	if b.kind == mountTraderLlama && b.traderLlamaDespawn(e, tx) {
+		return nil
 	}
 	b.followCaravan(e, tx)
 	b.updatePassengers(e, tx)
@@ -193,28 +187,49 @@ func (b *MountBehaviour) restorePassengers(e *Ent, tx *world.Tx) {
 		}
 	}
 }
-func (b *MountBehaviour) followTrader(e *Ent, tx *world.Tx) {
-	box := cube.Box(-32, -12, -32, 32, 12, 32).Translate(e.Position())
-	var target world.Entity
-	nearest := 32.0
-	for candidate := range tx.EntitiesWithin(box) {
-		if candidate.H().Type().EncodeEntity() != "minecraft:wandering_trader" {
-			continue
-		}
-		d := candidate.Position().Sub(e.Position())
-		d[1] = 0
-		length := d.Len()
-		if length < nearest {
-			target = candidate
-			nearest = length
+// leashedTrader returns the wandering trader whose lead holds the mob.
+func leashedTrader(e *Ent, tx *world.Tx) (*WanderingTrader, bool) {
+	id := e.HolderLeashID()
+	if id == 0 {
+		return nil, false
+	}
+	for candidate := range tx.Entities() {
+		if candidate.H().UniqueID() == id {
+			trader, ok := candidate.(*WanderingTrader)
+			return trader, ok
 		}
 	}
-	if target != nil && nearest > 5 {
-		d := target.Position().Sub(e.Position())
-		d[1] = 0
-		e.data.Vel = e.data.Vel.Add(d.Normalize().Mul(.025))
-	}
+	return nil, false
 }
+
+// traderLlamaDespawn ports TraderLlama.maybeDespawn: an untamed, unnamed
+// trader llama that no player rides and that is free or on its trader's
+// lead leaves together with its trader, or 47999 ticks after it lost it.
+func (b *MountBehaviour) traderLlamaDespawn(e *Ent, tx *world.Tx) bool {
+	trader, leashedToTrader := leashedTrader(e, tx)
+	if b.tamed || e.data.Name != "" || e.HolderLeashID() != 0 && !leashedToTrader || b.riddenByPlayer() {
+		return false
+	}
+	if b.traderDespawn == 0 {
+		b.traderDespawn = 47999
+	}
+	if leashedToTrader {
+		b.traderDespawn = trader.DespawnDelay() - 1
+	} else {
+		b.traderDespawn--
+	}
+	if b.traderDespawn > 0 {
+		return false
+	}
+	e.DetachLeash(tx, false)
+	_ = e.CloseIn(tx)
+	return true
+}
+
+func (b *MountBehaviour) riddenByPlayer() bool {
+	return b.passengers[0] != nil && b.passengers[0].Type().EncodeEntity() == "minecraft:player"
+}
+
 func (b *MountBehaviour) defendWithSpit(e *Ent, tx *world.Tx) {
 	if b.kind != mountLlama && b.kind != mountTraderLlama {
 		return
@@ -223,45 +238,53 @@ func (b *MountBehaviour) defendWithSpit(e *Ent, tx *world.Tx) {
 		b.spitCooldown--
 		return
 	}
-	box := cube.Box(-16, -8, -16, 16, 8, 16).Translate(e.Position())
-	var target world.Entity
-	best := 256.0
-	traderNearby := false
-	if b.kind == mountTraderLlama {
-		for candidate := range tx.EntitiesWithin(box) {
-			if candidate.H().Type().EncodeEntity() == "minecraft:wandering_trader" {
-				traderNearby = true
-				break
-			}
-		}
-	}
-	for candidate := range tx.EntitiesWithin(box) {
-		id := candidate.H().Type().EncodeEntity()
-		if id == "minecraft:wandering_trader" {
-			traderNearby = true
-			continue
-		}
-		eligible := false
-		if b.kind == mountLlama && id == "minecraft:wolf" {
-			if wolf, ok := candidate.(*Wolf); ok {
-				eligible = !wolf.Tamed()
-			}
-		}
-		if b.kind == mountTraderLlama && traderNearby && (id == "minecraft:zombie" || id == "minecraft:husk" || id == "minecraft:drowned" || id == "minecraft:evoker" || id == "minecraft:pillager" || id == "minecraft:vindicator") {
-			eligible = true
-		}
-		if !eligible {
-			continue
-		}
-		d := candidate.Position().Sub(e.Position()).LenSqr()
-		if d < best {
-			target = candidate
-			best = d
-		}
-	}
-	if target != nil && (&Mount{Ent: e}).SpitAt(tx, target) {
+	if target := b.llamaTarget(e, tx); target != nil && (&Mount{Ent: e}).SpitAt(tx, target) {
 		b.spitCooldown = 60
 	}
+}
+
+// llamaTarget returns what a llama spits at. A trader llama turns on whoever
+// last hurt the trader leading it (TraderLlamaDefendWanderingTraderGoal) and
+// otherwise targets zombies other than zombified piglins and illagers; any
+// llama targets untamed wolves within ten blocks.
+func (b *MountBehaviour) llamaTarget(e *Ent, tx *world.Tx) world.Entity {
+	if b.kind == mountTraderLlama {
+		if trader, ok := leashedTrader(e, tx); ok {
+			if attacker, stamp, ok := trader.lastAttacker(tx); ok && stamp != b.defendStamp {
+				b.defendStamp, b.spitTarget = stamp, attacker.H()
+			}
+		}
+	}
+	if b.spitTarget != nil {
+		if target, ok := b.spitTarget.Entity(tx); ok && target.Position().Sub(e.Position()).LenSqr() <= 20*20 {
+			if l, living := target.(Living); !living || !l.Dead() {
+				return target
+			}
+		}
+		b.spitTarget = nil
+	}
+	var target world.Entity
+	best := math.MaxFloat64
+	for candidate := range tx.EntitiesWithin(cube.Box(-20, -4, -20, 20, 4, 20).Translate(e.Position())) {
+		id := candidate.H().Type().EncodeEntity()
+		d := candidate.Position().Sub(e.Position()).LenSqr()
+		eligible := false
+		switch {
+		case id == "minecraft:wolf":
+			wolf, ok := candidate.(*Wolf)
+			eligible = ok && !wolf.Tamed() && d <= 10*10
+		case b.kind == mountTraderLlama && zombieClass[id] && id != "minecraft:zombified_piglin",
+			b.kind == mountTraderLlama && (id == "minecraft:pillager" || id == "minecraft:vindicator" || id == "minecraft:evoker" || id == "minecraft:illusioner"):
+			eligible = true
+		}
+		if eligible && d < best && lineVisible(e, tx, candidate) {
+			target, best = candidate, d
+		}
+	}
+	if target != nil {
+		b.spitTarget = target.H()
+	}
+	return target
 }
 func (b *MountBehaviour) followCaravan(e *Ent, tx *world.Tx) {
 	if b.kind != mountLlama && b.kind != mountTraderLlama {
@@ -530,6 +553,11 @@ func (m *Mount) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) boo
 			opener.OpenEntityContainer(m, b.chestInventory(), mountContainerChest, tx)
 			return true
 		}
+	}
+	if _, led := leashedTrader(m.Ent, tx); led && b.kind == mountTraderLlama {
+		// TraderLlama.doPlayerRide: a trader's llama cannot be ridden or
+		// tamed while the trader leads it.
+		return false
 	}
 	if held.Empty() && !b.tamed {
 		b.trust++
@@ -974,7 +1002,9 @@ func (t mountType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	b.trap = nbtconv.Bool(state, "SkeletonTrap")
 	b.trapTime = int(nbtconv.Int32(state, "SkeletonTrapTime"))
 	b.caravanHead = nbtconv.Bool(state, "CaravanHead")
-	b.traderDespawn = int(nbtconv.Int32(state, "TraderDespawn"))
+	if _, ok := state["DespawnDelay"]; ok {
+		b.traderDespawn = int(nbtconv.Int32(state, "DespawnDelay"))
+	}
 	b.caravanLeaderUUID, _ = state["CaravanLeaderUUID"].(string)
 	b.armor = mountStackFromNative(ReadNativeMobEquipment(n).Armor)
 	if b.chested {
@@ -1017,7 +1047,10 @@ func (t mountType) EncodeNBT(d *world.EntityData) map[string]any {
 	for k, v := range EncodeNativeMobEquipment(equipment) {
 		native[k] = v
 	}
-	state := map[string]any{"Tamed": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Trust": int32(b.trust), "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "CaravanHead": b.caravanHead, "CaravanLeaderUUID": b.caravanLeaderUUID, "TraderDespawn": int32(b.traderDespawn), "LastPoseTick": b.lastPoseTick}
+	state := map[string]any{"Tamed": b.tamed, "Saddled": b.saddled, "ChestedHorse": b.chested, "Strength": int32(b.strength), "Variant": int32(b.variant), "Age": int32(b.ageTicks), "Health": float32(b.health.Health()), "Sitting": b.sitting, "JumpStrength": b.jumpStrength, "DashCooldown": int32(b.dashCooldown), "Trust": int32(b.trust), "SkeletonTrap": b.trap, "SkeletonTrapTime": int32(b.trapTime), "CaravanHead": b.caravanHead, "CaravanLeaderUUID": b.caravanLeaderUUID, "LastPoseTick": b.lastPoseTick}
+	if b.kind == mountTraderLlama {
+		state["DespawnDelay"] = int32(b.traderDespawn)
+	}
 	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, native), state)
 }
 func mountNativeStack(s item.Stack, previous NativeMobItem) NativeMobItem {

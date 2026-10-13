@@ -51,7 +51,7 @@ func (e TurtleEgg) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	e = e.normalized()
 	if e.Hatch<2 { e.Hatch++;tx.SetBlock(pos,e,nil);tx.PlaySound(pos.Vec3Centre(),sound.Custom{Name:"block.turtle_egg.crack",Volume:.7,Pitch:.95+float64(r.Float32())*.1});return }
 	tx.SetBlock(pos,nil,nil)
-	tx.PlaySound(pos.Vec3Centre(),sound.Custom{Name:"block.turtle_egg.hatch",Volume:.7,Pitch:.95+float64(r.Float32())*.1})
+	tx.PlaySound(pos.Vec3Centre(),sound.Custom{Name:"entity.turtle.egg_hatch",Volume:.7,Pitch:.95+float64(r.Float32())*.1})
 	for i:=range int(e.Eggs){opts:=world.EntitySpawnOpts{Position:pos.Vec3().Add(mgl64.Vec3{.3+float64(i)*.2,0,.3}),SpawnReason:"breeding"}
 		h:=tx.World().EntityRegistry().Config().SpawnMob("minecraft:turtle",opts)
 		if h==nil{continue};tx.AddEntity(h);if spawned,ok:=h.Entity(tx);ok{if ageable,ok:=spawned.(interface{SetAge(int)});ok{ageable.SetAge(-24000)};if turtle,ok:=spawned.(interface{SetHomePos(cube.Pos)});ok{turtle.SetHomePos(pos)}}

@@ -1016,7 +1016,7 @@ func (m *oceanMob) EquipBodyArmor(tx *world.Tx, user world.Entity, armor world.I
 		return false
 	}
 	m.b().bodyArmorMaterial = int(a.Material)
-	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.nautilus.armor_equip", Volume: 1, Pitch: 1})
+	tx.PlaySound(m.Position(), sound.Custom{Name: "item.armor.equip_nautilus", Volume: 1, Pitch: 1})
 	return true
 }
 func (m *oceanMob) RemoveBodyArmor(tx *world.Tx) item.Stack {
@@ -1029,7 +1029,7 @@ func (m *oceanMob) RemoveBodyArmor(tx *world.Tx) item.Stack {
 	return armor
 }
 func (m *oceanMob) ArmorShearingSound() world.Sound {
-	return sound.Custom{Name: "entity.nautilus.armor_unequip", Volume: 1, Pitch: 1}
+	return sound.Custom{Name: "item.armor.unequip_nautilus", Volume: 1, Pitch: 1}
 }
 func (m *oceanMob) CanShearBodyArmor(world.Entity) bool {
 	return !m.hasPassenger(m.tx) && !m.BodyArmor().Empty()
@@ -1065,7 +1065,7 @@ func (m *oceanMob) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) 
 			if b.tamed && !b.saddle {
 				b.saddle = true
 				ctx.SubtractFromCount(1)
-				tx.PlaySound(m.Position(), sound.Custom{Name: "entity.nautilus.saddle_equip", Volume: 1, Pitch: 1})
+				tx.PlaySound(m.Position(), sound.Custom{Name: "item.nautilus_saddle_equip", Volume: 1, Pitch: 1})
 				return true
 			}
 		case item.Cod:

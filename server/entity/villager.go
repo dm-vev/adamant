@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -102,31 +103,7 @@ func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 			}
 		}
 	}
-	if o, ok := source["Offers"].(map[string]any); ok {
-		for _, raw := range nbtconv.Slice(o, "Recipes") {
-			m, ok := raw.(map[string]any)
-			if !ok {
-				continue
-			}
-			a, err := villagerStack(m["buy"])
-			if err != nil || a.Empty() {
-				continue
-			}
-			b, err := villagerStack(m["sell"])
-			if err != nil || b.Empty() {
-				continue
-			}
-			var second item.Stack
-			if rawSecond, exists := m["buyB"]; exists {
-				second, _ = villagerStack(rawSecond)
-			}
-			c.Offers = append(c.Offers, MerchantOffer{Input: a, SecondaryInput: second, Output: b,
-				Uses: int(nbtconv.Int32(m, "uses")), MaxUses: int(nbtconv.Int32(m, "maxUses")),
-				XP: int(nbtconv.Int32(m, "xp")), RewardXP: nbtconv.Bool(m, "rewardExp"),
-				Demand: int(nbtconv.Int32(m, "demand")), SpecialPrice: int(nbtconv.Int32(m, "specialPrice")),
-				PriceMultiplier: nbtconv.Float32(m, "priceMultiplier")})
-		}
-	}
+	c.Offers = readMerchantOffers(source)
 	if _, exists := source["OffersGenerated"]; exists {
 		c.OffersGenerated = nbtconv.Bool(source, "OffersGenerated")
 	} else {
@@ -136,17 +113,7 @@ func (villagerType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 }
 func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*VillagerBehaviour)
-	rows := make([]any, 0, len(b.offers))
-	for _, offer := range b.offers {
-		row := map[string]any{"buy": villagerWriteStack(offer.Input), "sell": villagerWriteStack(offer.Output),
-			"uses": int32(offer.Uses), "maxUses": int32(offer.MaxUses), "xp": int32(offer.XP),
-			"rewardExp": boolByte(offer.RewardXP), "demand": int32(offer.Demand), "specialPrice": int32(offer.SpecialPrice),
-			"priceMultiplier": offer.PriceMultiplier}
-		if !offer.SecondaryInput.Empty() {
-			row["buyB"] = villagerWriteStack(offer.SecondaryInput)
-		}
-		rows = append(rows, row)
-	}
+	rows := writeMerchantOffers(b.offers)
 	gossips := make([]any, 0)
 	inventoryRows := make([]any, 0)
 	for slot, stack := range b.inventory.Slots() {
@@ -165,7 +132,7 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 	result := map[string]any{"Health": float32(b.health.Health()), "Xp": int32(b.xp), "FoodLevel": uint8(b.foodLevel),
 		"Age": int32(b.age), "VillagerDataFinalized": boolByte(b.finalized), "OffersGenerated": boolByte(b.offersGenerated),
 		"VillagerData": map[string]any{"type": b.villagerType, "profession": b.profession, "level": int32(b.level)},
-		"Inventory":    inventoryRows, "Offers": map[string]any{"Recipes": rows}, "Gossips": gossips, "LastGossipDecay": b.lastGossipDecay,
+		"Inventory":    inventoryRows, "Offers": rows, "Gossips": gossips, "LastGossipDecay": b.lastGossipDecay,
 		"LastRestock": b.lastRestock, "RestocksToday": int32(b.restocksToday), "VillagerLastSlept": b.lastSlept,
 		"VillagerHasSlept": boolByte(b.hasSlept), "VillagerGolemDetectedUntil": b.golemDetectedUntil}
 	if b.hasJobSite {
@@ -200,6 +167,56 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 		delete(javaState, "VillagerMeetingPoint")
 	}
 	return MergeNativeMobJavaState(native, javaState)
+}
+
+// readMerchantOffers decodes AbstractVillager's Offers compound. The tier is
+// Bedrock's zero-based trade UI tier, which Java does not store.
+func readMerchantOffers(source map[string]any) []MerchantOffer {
+	o, ok := source["Offers"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	var offers []MerchantOffer
+	for _, raw := range nbtconv.Slice(o, "Recipes") {
+		m, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		a, err := villagerStack(m["buy"])
+		if err != nil || a.Empty() {
+			continue
+		}
+		b, err := villagerStack(m["sell"])
+		if err != nil || b.Empty() {
+			continue
+		}
+		var second item.Stack
+		if rawSecond, exists := m["buyB"]; exists {
+			second, _ = villagerStack(rawSecond)
+		}
+		offers = append(offers, MerchantOffer{Input: a, SecondaryInput: second, Output: b,
+			Uses: int(nbtconv.Int32(m, "uses")), MaxUses: int(nbtconv.Int32(m, "maxUses")),
+			XP: int(nbtconv.Int32(m, "xp")), RewardXP: nbtconv.Bool(m, "rewardExp"),
+			Demand: int(nbtconv.Int32(m, "demand")), SpecialPrice: int(nbtconv.Int32(m, "specialPrice")),
+			PriceMultiplier: nbtconv.Float32(m, "priceMultiplier"), Tier: int(nbtconv.Int32(m, "tier"))})
+	}
+	return offers
+}
+
+// writeMerchantOffers encodes offers as AbstractVillager's Offers compound.
+func writeMerchantOffers(offers []MerchantOffer) map[string]any {
+	rows := make([]any, 0, len(offers))
+	for _, offer := range offers {
+		row := map[string]any{"buy": villagerWriteStack(offer.Input), "sell": villagerWriteStack(offer.Output),
+			"uses": int32(offer.Uses), "maxUses": int32(offer.MaxUses), "xp": int32(offer.XP),
+			"rewardExp": boolByte(offer.RewardXP), "demand": int32(offer.Demand), "specialPrice": int32(offer.SpecialPrice),
+			"priceMultiplier": offer.PriceMultiplier, "tier": int32(offer.Tier)}
+		if !offer.SecondaryInput.Empty() {
+			row["buyB"] = villagerWriteStack(offer.SecondaryInput)
+		}
+		rows = append(rows, row)
+	}
+	return map[string]any{"Recipes": rows}
 }
 func villagerUUIDNBT(target string) []int32 {
 	id, err := uuid.Parse(target)
@@ -360,6 +377,7 @@ type VillagerBehaviour struct {
 	age, foodLevel, restocksToday                                                                         int
 	jobSite, potentialJobSite, home, meetingPoint                                                         cube.Pos
 	finalized, offersGenerated, hasSlept, hasJobSite, hasPotentialJobSite, hasHome, hasMeetingPoint, dead bool
+	trading                                                                                               tradingPlayer
 }
 
 func (b *VillagerBehaviour) Baby() bool { return b.age < 0 }
@@ -370,7 +388,13 @@ func (v *Villager) behaviour() *VillagerBehaviour { return v.Behaviour().(*Villa
 func (v *Villager) Tick(tx *world.Tx, current int64) {
 	b := v.behaviour()
 	b.tickGossip(current)
-	b.tickPOI(v, tx, current)
+	if customer, trading := b.trading.tick(tx, v.Position()); trading {
+		// While trading the villager stands still and faces its customer.
+		v.data.Vel[0], v.data.Vel[2] = 0, 0
+		v.data.Rot = faceTowards(v.data.Rot, v.Position(), customer.Position())
+	} else {
+		b.tickPOI(v, tx, current)
+	}
 	v.tickRestock(tx, current)
 	b.effects.Tick(v, tx)
 	v.Ent.Tick(tx, current)
@@ -380,6 +404,12 @@ func (v *Villager) Tick(tx *world.Tx, current int64) {
 		b.age = max(0, b.age-1)
 	}
 }
+
+// StartTrading claims the villager for a trading player.
+func (v *Villager) StartTrading(user *world.EntityHandle) bool { return v.behaviour().trading.start(user) }
+
+// StopTrading ends a trade with user.
+func (v *Villager) StopTrading(user *world.EntityHandle) { v.behaviour().trading.stop(user) }
 func (b *VillagerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	m := b.movement.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
 	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
@@ -610,7 +640,21 @@ func (v *Villager) Effects() []effect.Effect     { return v.behaviour().effects.
 func (v *Villager) Speed() float64               { return v.behaviour().speed }
 func (v *Villager) SetSpeed(speed float64)       { v.behaviour().speed = speed }
 func (v *Villager) hasEffect(t effect.Type) bool { _, ok := v.behaviour().effects.Effect(t); return ok }
-func (v *Villager) MerchantName() string         { return v.behaviour().profession }
+// MerchantName returns the Bedrock trade screen title of the profession.
+func (v *Villager) MerchantName() string {
+	name := strings.TrimPrefix(v.behaviour().profession, "minecraft:")
+	switch name {
+	case "armorer":
+		name = "armor"
+	case "leatherworker":
+		name = "leather"
+	case "toolsmith":
+		name = "tool"
+	case "weaponsmith":
+		name = "weapon"
+	}
+	return "entity.villager." + name
+}
 func (v *Villager) MerchantProfession() string   { return v.behaviour().profession }
 func (v *Villager) MerchantLevel() int           { return v.behaviour().level }
 func (v *Villager) MerchantOffers() ([]MerchantOffer, error) {
@@ -678,7 +722,22 @@ func (v *Villager) CompleteMerchantTrade(tx *world.Tx, user world.Entity, index 
 	if user != nil {
 		b.addGossip(user.H().UUID().String(), "trading", 2)
 	}
+	if tx != nil && o.RewardXP {
+		// Villager.rewardTradeXp: 3-6 experience, 5 more on promotion.
+		amount := 3 + rand.IntN(4)
+		if newLevel != oldLevel {
+			amount += 5
+		}
+		spawnTradeXP(tx, v.Position(), amount)
+	}
 	return true, nil
+}
+
+// spawnTradeXP drops trade experience half a block above the merchant.
+func spawnTradeXP(tx *world.Tx, pos mgl64.Vec3, amount int) {
+	for _, orb := range NewExperienceOrbs(pos.Add(mgl64.Vec3{0, .5}), amount) {
+		tx.AddEntity(orb)
+	}
 }
 func (b *VillagerBehaviour) reputation(target string) int {
 	values := b.gossips[target]

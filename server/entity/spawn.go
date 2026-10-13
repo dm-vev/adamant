@@ -155,6 +155,8 @@ func spawnMob(id string, opts world.EntitySpawnOpts) *world.EntityHandle {
 		return NewVillager(opts)
 	case "minecraft:vindicator":
 		return NewVindicator(opts)
+	case "minecraft:wandering_trader":
+		return NewWanderingTrader(opts)
 	case "minecraft:warden":
 		return NewWarden(opts)
 	case "minecraft:witch":

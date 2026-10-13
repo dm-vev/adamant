@@ -182,7 +182,7 @@ func (p *Parrot) imitateNearby(tx *world.Tx) {
 	if b.dead {
 		return
 	}
-	sounds := map[string]string{"minecraft:blaze": "entity.parrot.imitate.blaze", "minecraft:creeper": "entity.parrot.imitate.creeper", "minecraft:drowned": "entity.parrot.imitate.drowned", "minecraft:elder_guardian": "entity.parrot.imitate.elder_guardian", "minecraft:ender_dragon": "entity.parrot.imitate.ender_dragon", "minecraft:enderman": "entity.parrot.imitate.enderman", "minecraft:endermite": "entity.parrot.imitate.endermite", "minecraft:evoker": "entity.parrot.imitate.evoker", "minecraft:ghast": "entity.parrot.imitate.ghast", "minecraft:guardian": "entity.parrot.imitate.guardian", "minecraft:hoglin": "entity.parrot.imitate.hoglin", "minecraft:husk": "entity.parrot.imitate.husk", "minecraft:illusioner": "entity.parrot.imitate.illusioner", "minecraft:magma_cube": "entity.parrot.imitate.magma_cube", "minecraft:phantom": "entity.parrot.imitate.phantom", "minecraft:piglin": "entity.parrot.imitate.piglin", "minecraft:piglin_brute": "entity.parrot.imitate.piglin_brute", "minecraft:pillager": "entity.parrot.imitate.pillager", "minecraft:ravager": "entity.parrot.imitate.ravager", "minecraft:shulker": "entity.parrot.imitate.shulker", "minecraft:silverfish": "entity.parrot.imitate.silverfish", "minecraft:skeleton": "entity.parrot.imitate.skeleton", "minecraft:slime": "entity.parrot.imitate.slime", "minecraft:spider": "entity.parrot.imitate.spider", "minecraft:stray": "entity.parrot.imitate.stray", "minecraft:vex": "entity.parrot.imitate.vex", "minecraft:vindicator": "entity.parrot.imitate.vindicator", "minecraft:warden": "entity.parrot.imitate.warden", "minecraft:witch": "entity.parrot.imitate.witch", "minecraft:wither": "entity.parrot.imitate.wither", "minecraft:wither_skeleton": "entity.parrot.imitate.wither_skeleton", "minecraft:zoglin": "entity.parrot.imitate.zoglin", "minecraft:zombie": "entity.parrot.imitate.zombie", "minecraft:zombie_villager": "entity.parrot.imitate.zombie_villager"}
+	sounds := parrotImitations
 	var candidates []string
 	for e := range tx.Entities() {
 		if e == p || e.Position().Sub(p.Position()).Len() > 20 {
@@ -195,6 +195,32 @@ func (p *Parrot) imitateNearby(tx *world.Tx) {
 	if len(candidates) > 0 {
 		tx.PlaySound(p.Position(), sound.Custom{Name: candidates[b.random.NextInt(int32(len(candidates)))], Volume: .7, Pitch: 1})
 	}
+}
+
+// parrotImitations ports Parrot.MOB_SOUND_MAP. Bedrock parrots imitate happy
+// ghasts, which Java leaves silent.
+var parrotImitations = map[string]string{
+	"minecraft:blaze": "entity.parrot.imitate.blaze", "minecraft:bogged": "entity.parrot.imitate.bogged",
+	"minecraft:breeze": "entity.parrot.imitate.breeze", "minecraft:camel_husk": "entity.parrot.imitate.camel_husk",
+	"minecraft:cave_spider": "entity.parrot.imitate.spider", "minecraft:creaking": "entity.parrot.imitate.creaking",
+	"minecraft:creeper": "entity.parrot.imitate.creeper", "minecraft:drowned": "entity.parrot.imitate.drowned",
+	"minecraft:elder_guardian": "entity.parrot.imitate.elder_guardian", "minecraft:ender_dragon": "entity.parrot.imitate.ender_dragon",
+	"minecraft:endermite": "entity.parrot.imitate.endermite", "minecraft:evoker": "entity.parrot.imitate.evoker",
+	"minecraft:ghast": "entity.parrot.imitate.ghast", "minecraft:guardian": "entity.parrot.imitate.guardian",
+	"minecraft:happy_ghast": "mob.imitate.happy_ghast", "minecraft:hoglin": "entity.parrot.imitate.hoglin",
+	"minecraft:husk": "entity.parrot.imitate.husk", "minecraft:illusioner": "entity.parrot.imitate.illusioner",
+	"minecraft:magma_cube": "entity.parrot.imitate.magma_cube", "minecraft:parched": "entity.parrot.imitate.parched",
+	"minecraft:phantom": "entity.parrot.imitate.phantom", "minecraft:piglin": "entity.parrot.imitate.piglin",
+	"minecraft:piglin_brute": "entity.parrot.imitate.piglin_brute", "minecraft:pillager": "entity.parrot.imitate.pillager",
+	"minecraft:ravager": "entity.parrot.imitate.ravager", "minecraft:shulker": "entity.parrot.imitate.shulker",
+	"minecraft:silverfish": "entity.parrot.imitate.silverfish", "minecraft:skeleton": "entity.parrot.imitate.skeleton",
+	"minecraft:slime": "entity.parrot.imitate.slime", "minecraft:spider": "entity.parrot.imitate.spider",
+	"minecraft:stray": "entity.parrot.imitate.stray", "minecraft:vex": "entity.parrot.imitate.vex",
+	"minecraft:vindicator": "entity.parrot.imitate.vindicator", "minecraft:warden": "entity.parrot.imitate.warden",
+	"minecraft:witch": "entity.parrot.imitate.witch", "minecraft:wither": "entity.parrot.imitate.wither",
+	"minecraft:wither_skeleton": "entity.parrot.imitate.wither_skeleton", "minecraft:zoglin": "entity.parrot.imitate.zoglin",
+	"minecraft:zombie": "entity.parrot.imitate.zombie", "minecraft:zombie_horse": "entity.parrot.imitate.zombie_horse",
+	"minecraft:zombie_nautilus": "entity.parrot.imitate.zombie_nautilus", "minecraft:zombie_villager": "entity.parrot.imitate.zombie_villager",
 }
 func (p *Parrot) CanLandOnShoulder(owner world.Entity) bool {
 	return p.b().tame && p.b().owner != "" && owner != nil && owner.H().UUID().String() == p.b().owner && !p.b().sitting && p.b().cooldown <= 0 && p.Position().Sub(owner.Position()).Len() < 1.5

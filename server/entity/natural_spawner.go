@@ -29,6 +29,9 @@ const (
 // Java legacy random stream independently of terrain and decoration generation.
 func NaturalSpawnTick(tx *world.Tx) {
 	w := tx.World()
+	// WanderingTraderSpawner owns its own random and ticks without players.
+	traderRandom := java26.NewLegacyRandom(w.Seed() ^ int64(uint64(tx.CurrentTick())*0x632be59bd9b4e019))
+	wanderingTraderSpawnTick(tx, &traderRandom)
 	players := make([]world.Entity, 0, 4)
 	for p := range tx.Players() {
 		mode, ok := p.(interface{ GameMode() world.GameMode })

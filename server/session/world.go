@@ -1643,6 +1643,9 @@ func (s *Session) OpenMerchant(e world.Entity, merchant entity.Merchant, tx *wor
 		return
 	}
 	s.closeCurrentContainer(tx, false)
+	if trader, ok := merchant.(entity.TradingMerchant); ok && !trader.StartTrading(s.ent) {
+		return
+	}
 	nextID := s.nextWindowID()
 	pos := e.Position()
 	openPos := cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
@@ -1672,7 +1675,7 @@ func (s *Session) sendMerchantOffers(e world.Entity, merchant entity.Merchant, u
 		TradeTier:         int32(level),
 		VillagerUniqueID:  s.entityUniqueID(e),
 		EntityUniqueID:    s.entityUniqueID(user),
-		DisplayName:       merchant.MerchantProfession(),
+		DisplayName:       merchant.MerchantName(),
 		NewTradeUI:        true,
 		DemandBasedPrices: true,
 		SerialisedOffers:  serializedOffers,

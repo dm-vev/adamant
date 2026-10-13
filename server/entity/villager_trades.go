@@ -14,6 +14,8 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 //go:embed villager_trades.json
 var villagerTradeJSON []byte
@@ -80,16 +82,37 @@ func (v *Villager) ensureVillagerOffers() error {
 func (v *Villager) addVillagerTradeLevel(level int) error {
 	b := v.behaviour()
 	if level < 1 || level > 5 || b.profession == "" || b.profession == "minecraft:none" || b.profession == "minecraft:nitwit" { return nil }
+	offers, err := appendTradeSetOffers(v.tradeContext(), fmt.Sprintf("%s/level_%d", b.profession, level), level-1, b.offers)
+	if err != nil { return err }
+	b.offers = offers
+	return nil
+}
+
+// tradeContext carries what Java's villager trade loot context reads from the
+// merchant: the world, the merchant entity, its origin and villager variant.
+type tradeContext struct {
+	tx      *world.Tx
+	id      uuid.UUID
+	pos     mgl64.Vec3
+	variant string
+}
+
+func (v *Villager) tradeContext() tradeContext {
+	return tradeContext{tx: v.tx, id: v.H().UUID(), pos: v.Position(), variant: v.Variant()}
+}
+
+// appendTradeSetOffers ports AbstractVillager.addOffersFromTradeSet: it rolls
+// the set's number of offers from its trade tag and appends them to offers
+// with the zero-based Bedrock trade tier.
+func appendTradeSetOffers(ctx tradeContext, setName string, tier int, offers []MerchantOffer) ([]MerchantOffer, error) {
 	assets := loadVillagerTradeAssets()
-	setName := fmt.Sprintf("%s/level_%d", b.profession, level)
 	set, ok := assets.TradeSets[setName]
-	if !ok || set.Amount <= 0 { return nil }
+	if !ok || set.Amount <= 0 { return offers, nil }
 	tagName := strings.TrimPrefix(set.Trades, "#")
-	if _,ok:=assets.TradeTags[tagName];!ok{return nil}
+	if _,ok:=assets.TradeTags[tagName];!ok{return offers, nil}
 	choices := villagerTagValues(assets.TradeTags,tagName,make(map[string]bool))
-	if len(choices)==0{return nil}
-	start:=len(b.offers)
-	random := java26.NewXoroshiroRandom(villagerTradeSeed(v, set.RandomSequence))
+	if len(choices)==0{return offers, nil}
+	random := java26.NewXoroshiroRandom(villagerTradeSeed(ctx, set.RandomSequence))
 	for made := 0; made < set.Amount && len(choices) != 0; {
 		index := int(random.NextInt(int32(len(choices))))
 		tradeName := choices[index]
@@ -97,18 +120,18 @@ func (v *Villager) addVillagerTradeLevel(level int) error {
 		offer, valid := MerchantOffer{}, false
 		if exists {
 			var err error
-			offer,valid,err=v.makeVillagerOffer(definition,level,assets,&random)
-			if err!=nil { b.offers=b.offers[:start];return err }
+			offer,valid,err=makeMerchantOffer(ctx,definition,tier,assets,&random)
+			if err!=nil { return nil, err }
 		}
 		if valid {
-			b.offers = append(b.offers, offer)
+			offers = append(offers, offer)
 			made++
 			if !set.AllowDuplicates { choices = append(choices[:index], choices[index+1:]...) }
 		} else {
 			choices = append(choices[:index], choices[index+1:]...)
 		}
 	}
-	return nil
+	return offers, nil
 }
 func villagerTagValues(tags map[string]villagerTradeTag,name string,visiting map[string]bool) []string {
 	if visiting[name]{return nil}
@@ -123,19 +146,17 @@ func villagerTagValues(tags map[string]villagerTradeTag,name string,visiting map
 	return values
 }
 
-func villagerTradeSeed(v *Villager, sequence string) int64 {
-	seed := uint64(v.tx.World().Seed())
-	id := v.H().UUID()
-	for _, value := range id { seed = (seed ^ uint64(value)) * 0x100000001b3 }
+func villagerTradeSeed(ctx tradeContext, sequence string) int64 {
+	seed := uint64(ctx.tx.World().Seed())
+	for _, value := range ctx.id { seed = (seed ^ uint64(value)) * 0x100000001b3 }
 	for _, value := range []byte(sequence) { seed = (seed ^ uint64(value)) * 0x100000001b3 }
-	pos := v.Position()
-	seed ^= uint64(int64(math.Floor(pos[0]))) * 0x9e3779b97f4a7c15
-	seed ^= uint64(int64(math.Floor(pos[2]))) * 0xc2b2ae3d27d4eb4f
+	seed ^= uint64(int64(math.Floor(ctx.pos[0]))) * 0x9e3779b97f4a7c15
+	seed ^= uint64(int64(math.Floor(ctx.pos[2]))) * 0xc2b2ae3d27d4eb4f
 	return int64(seed)
 }
 
-func (v *Villager) makeVillagerOffer(def villagerTrade, tier int, assets *villagerTradeAssets, random *java26.Random) (MerchantOffer, bool, error) {
-	if !villagerTradePredicate(def.MerchantPredicate, v.Variant()) { return MerchantOffer{}, false, nil }
+func makeMerchantOffer(ctx tradeContext, def villagerTrade, tier int, assets *villagerTradeAssets, random *java26.Random) (MerchantOffer, bool, error) {
+	if !villagerTradePredicate(def.MerchantPredicate, ctx.variant) { return MerchantOffer{}, false, nil }
 	output, err := villagerTradeOutputStack(def.Gives)
 	if err != nil || output.Empty() { return MerchantOffer{}, false, nil }
 	additionalCost := 0
@@ -148,7 +169,7 @@ func (v *Villager) makeVillagerOffer(def villagerTrade, tier int, assets *villag
 		}
 		var valid bool
 		for _, modifier := range modifiers {
-			output, additionalCost, valid, err = applyVillagerItemModifier(v,v.tx,output,additionalCost,modifier,assets,random)
+			output, additionalCost, valid, err = applyVillagerItemModifier(ctx,output,additionalCost,modifier,assets,random)
 			if err != nil { return MerchantOffer{},false,err }
 			if !valid { return MerchantOffer{}, false, nil }
 		}
@@ -211,7 +232,7 @@ func villagerTradePredicate(predicate map[string]any, variant string) bool {
 	return false
 }
 
-func applyVillagerItemModifier(v *Villager, tx *world.Tx, stack item.Stack, additionalCost int, modifier map[string]any, assets *villagerTradeAssets, random *java26.Random) (item.Stack, int, bool, error) {
+func applyVillagerItemModifier(ctx tradeContext, stack item.Stack, additionalCost int, modifier map[string]any, assets *villagerTradeAssets, random *java26.Random) (item.Stack, int, bool, error) {
 	kind, _ := modifier["type"].(string)
 	switch kind {
 	case "minecraft:enchant_randomly":
@@ -234,7 +255,7 @@ func applyVillagerItemModifier(v *Villager, tx *world.Tx, stack item.Stack, addi
 		if boolValue(modifier["include_additional_cost_component"]) && baseLevel > 0 { additionalCost += baseLevel }
 		return stack, additionalCost, true,nil
 	case "minecraft:exploration_map":
-		mapStack,valid,err:=villagerExplorationMap(v,tx,stack,modifier)
+		mapStack,valid,err:=villagerExplorationMap(ctx,stack,modifier)
 		if err!=nil{return stack,additionalCost,false,err}
 		return mapStack,additionalCost,valid,nil
 	case "minecraft:filtered":
@@ -255,7 +276,8 @@ func applyVillagerItemModifier(v *Villager, tx *world.Tx, stack item.Stack, addi
 		return stack, additionalCost, false,nil
 	}
 }
-func villagerExplorationMap(v *Villager, tx *world.Tx, stack item.Stack, modifier map[string]any) (item.Stack,bool,error) {
+func villagerExplorationMap(ctx tradeContext, stack item.Stack, modifier map[string]any) (item.Stack,bool,error) {
+	tx := ctx.tx
 	mapItem,ok:=stack.Item().(item.FilledMap)
 	if !ok{return stack,false,nil}
 	if tx==nil{return stack,false,fmt.Errorf("villager exploration map requires an active world transaction")}
@@ -272,7 +294,7 @@ func villagerExplorationMap(v *Villager, tx *world.Tx, stack item.Stack, modifie
 	if _,exists:=modifier["search_radius"];exists{searchRadius=number(modifier["search_radius"])}
 	skipExisting:=true
 	if configured,exists:=modifier["skip_existing_chunks"].(bool);exists{skipExisting=configured}
-	data,found,err:=tx.CreateExplorationMap(cube.PosFromVec3(v.Position()),destination,decoration,uint8(zoom),searchRadius,skipExisting)
+	data,found,err:=tx.CreateExplorationMap(cube.PosFromVec3(ctx.pos),destination,decoration,uint8(zoom),searchRadius,skipExisting)
 	if err!=nil||!found{return stack,false,err}
 	mapItem.NativeID,mapItem.HasNativeID=data.ID,true
 	mapItem.JavaID,mapItem.HasJavaID=data.JavaID,data.HasJavaID

@@ -322,7 +322,7 @@ func (b *CopperGolemBehaviour) followTarget(e *Ent, tx *world.Tx) {
 		}
 	}
 	if b.interactTicks == 9 {
-		name := [...]string{"entity.copper_golem.item_get", "entity.copper_golem.item_get", "entity.copper_golem.no_item_get", "entity.copper_golem.item_drop", "entity.copper_golem.no_item_drop"}[b.state]
+		name := [...]string{"entity.copper_golem.no_item_get", "entity.copper_golem.no_item_get", "entity.copper_golem.no_item_no_get", "entity.copper_golem.item_drop", "entity.copper_golem.item_no_drop"}[b.state]
 		tx.PlaySound(e.Position(), sound.Custom{Name: name, Volume: 1, Pitch: 1})
 	}
 	if b.interactTicks == 20 {
@@ -508,16 +508,16 @@ func (c *CopperGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	onMobHurt(c.tx, c)
 	soundName := "entity.copper_golem.hurt"
 	if b.weather == 2 {
-		soundName = "entity.copper_golem.weathered_hurt"
+		soundName = "entity.copper_golem_weathered.hurt"
 	} else if b.weather == 3 {
-		soundName = "entity.copper_golem.oxidized_hurt"
+		soundName = "entity.copper_golem_oxidized.hurt"
 	}
 	if b.health.Health() <= 0 {
 		soundName = "entity.copper_golem.death"
 		if b.weather == 2 {
-			soundName = "entity.copper_golem.weathered_death"
+			soundName = "entity.copper_golem_weathered.death"
 		} else if b.weather == 3 {
-			soundName = "entity.copper_golem.oxidized_death"
+			soundName = "entity.copper_golem_oxidized.death"
 		}
 	}
 	c.tx.PlaySound(c.Position(), sound.Custom{Name: soundName, Volume: 1, Pitch: 1})

@@ -504,7 +504,6 @@ func (w *Wolf) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool
 	if nutrition, food := wolfFoodNutrition(main.Item()); b.tamed && food && ctx != nil && w.Health() < w.MaxHealth() {
 		w.Heal(2*float64(nutrition), nil)
 		ctx.SubtractFromCount(1)
-		tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.eat", Volume: 1, Pitch: 1})
 		return true
 	}
 	if feedBreeder(w, user, ctx) {
@@ -635,7 +634,7 @@ func (w *Wolf) EquipBodyArmor(tx *world.Tx, user world.Entity, armor world.Item)
 		return false
 	}
 	w.behaviour().bodyArmor = item.NewStack(armor, 1)
-	tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.armor_equip", Volume: 1, Pitch: 1})
+	tx.PlaySound(w.Position(), sound.Custom{Name: "item.armor.equip_wolf", Volume: 1, Pitch: 1})
 	return true
 }
 func (w *Wolf) viewAction(a world.EntityAction) {

@@ -2,6 +2,7 @@ package session
 
 import (
 	"math"
+	"slices"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -127,7 +128,11 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagBreathing)
 		}
 	}
-	if i, ok := e.(invisible); ok && i.Invisible() {
+	if i, ok := e.(invisible); ok {
+		if i.Invisible() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagInvisible)
+		}
+	} else if eff, ok := e.(effectBearer); ok && slices.ContainsFunc(eff.Effects(), func(ef effect.Effect) bool { return ef.Type() == effect.Invisibility }) {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagInvisible)
 	}
 	if i, ok := e.(immobile); ok && i.Immobile() {

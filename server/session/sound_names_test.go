@@ -19,8 +19,8 @@ func TestJavaSoundsPlayTheirBedrockDefinitions(t *testing.T) {
 	t.Cleanup(viewer.CloseConnection)
 	for _, name := range []string{
 		"entity.cat.purr",
-		// Bedrock wolves make no sound when eating.
-		"entity.wolf.eat",
+		// Bedrock parrots cannot imitate hoglins.
+		"entity.parrot.imitate.hoglin",
 		"item.spear.lunge_2",
 		// Bedrock definitions pass through as they are.
 		"random.glass",

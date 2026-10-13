@@ -65,3 +65,36 @@ func (n *Navigator) Tick(position mgl64.Vec3, tick int64, width float64) (mgl64.
 func navigatorTick(e *Ent) int64 {
 	return int64(e.Age() / (50 * 1e6))
 }
+
+// groundSpeed returns the horizontal velocity that makes a mob cover a Java
+// mob's distance per tick walking over blocks with friction 0.6. In Java,
+// MoveControl sets the speed and forward input to attribute*modifier, the
+// input decays by 0.98 and friction keeps 0.546 of the velocity after each
+// move, so the mob covers 0.98*s*s/(1-0.546) blocks per tick. The movement
+// computer applies that friction before moving, hence the final division.
+func groundSpeed(attribute, modifier float64) float64 {
+	s := attribute * modifier
+	return .98 * s * s / (1 - .6*.91) / (.6 * .91)
+}
+
+// steer returns the horizontal velocity and rotation that move e along nav
+// at speed, or false with the mob standing still once the path is done.
+func steer(e *Ent, nav *Navigator, speed, width float64) (mgl64.Vec3, cube.Rotation, bool) {
+	v, r := e.data.Vel, e.data.Rot
+	target, ok := nav.Tick(e.data.Pos, navigatorTick(e), width)
+	if !ok {
+		v[0], v[2] = 0, 0
+		return v, r, false
+	}
+	d := target.Sub(e.data.Pos)
+	d[1] = 0
+	if d.Len() < .25 {
+		nav.Index++
+		v[0], v[2] = 0, 0
+		return v, r, true
+	}
+	d = d.Normalize()
+	v[0], v[2] = d[0]*speed, d[2]*speed
+	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
+	return v, r, true
+}

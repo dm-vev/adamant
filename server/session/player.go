@@ -81,6 +81,9 @@ func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
 			}); ok {
 				container.RemoveViewer(s)
 			}
+			if trader, ok := ent.(entity.TradingMerchant); ok {
+				trader.StopTrading(s.ent)
+			}
 		}
 		return
 	}
