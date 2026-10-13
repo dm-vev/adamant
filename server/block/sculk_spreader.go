@@ -523,15 +523,15 @@ func pushEntitiesUp(tx *world.Tx, pos cube.Pos, old world.Block) {
 }
 
 // javaBlockTag reports whether the Java state of the block at pos is in the
-// vanilla block tag.
+// vanilla block tag. Native-only blocks without a Java state are in no tag.
 func javaBlockTag(tx *world.Tx, pos cube.Pos, tag string) bool {
 	id, err := tx.JavaBlockStateID(pos)
 	if err != nil {
-		panic(err)
+		return false
 	}
 	name, ok := javadata.BlockStateName(id)
 	if !ok {
-		panic("block has no Java state name")
+		return false
 	}
 	contains, err := javadata.BlockTagContains(tag, name)
 	if err != nil {

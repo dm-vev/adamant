@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -74,9 +75,9 @@ func encodeStairsBlock(block world.Block) string {
 		return "mud_brick"
 	case NetherBricks:
 		if block.Type == RedNetherBricks() {
-			return "nether_brick"
+			return "red_nether_brick"
 		}
-		return "red_nether_brick"
+		return "nether_brick"
 	case Planks:
 		return block.Wood.String()
 	case PolishedBlackstoneBrick:
@@ -145,6 +146,10 @@ func encodeStairsBlock(block world.Block) string {
 		if !block.Chiseled {
 			return "tuff_brick"
 		}
+	case Wool:
+		return block.Colour.String() + "_wool"
+	case Concrete:
+		return block.Colour.String() + "_concrete"
 	}
 	panic("invalid block used for stairs")
 }
@@ -205,6 +210,9 @@ func StairsBlocks() []world.Block {
 	for _, o := range OxidationTypes() {
 		b = append(b, Copper{Type: CutCopper(), Oxidation: o})
 		b = append(b, Copper{Type: CutCopper(), Oxidation: o, Waxed: true})
+	}
+	for _, c := range item.Colours() {
+		b = append(b, Wool{Colour: c}, Concrete{Colour: c})
 	}
 	return b
 }

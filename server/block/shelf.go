@@ -99,6 +99,7 @@ const (
 	shelfCherry
 	shelfPaleOak
 	shelfBamboo
+	shelfPoplar
 )
 
 // Uint8 returns the material as a uint8.
@@ -133,6 +134,8 @@ func (m ShelfMaterial) String() string {
 		return "pale_oak"
 	case shelfBamboo:
 		return "bamboo"
+	case shelfPoplar:
+		return "poplar"
 	}
 	panic("unknown shelf material")
 }
@@ -146,6 +149,6 @@ func (m ShelfMaterial) Flammable() bool {
 func ShelfMaterials() []ShelfMaterial {
 	return []ShelfMaterial{
 		shelfOak, shelfSpruce, shelfBirch, shelfJungle, shelfAcacia, shelfDarkOak,
-		shelfCrimson, shelfWarped, shelfMangrove, shelfCherry, shelfPaleOak, shelfBamboo,
+		shelfCrimson, shelfWarped, shelfMangrove, shelfCherry, shelfPaleOak, shelfBamboo, shelfPoplar,
 	}
 }

@@ -1007,6 +1007,13 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		pk.SoundType = packet.SoundEventBreak
 	case sound.ItemUseOn:
 		pk.SoundType, pk.ExtraData = packet.SoundEventItemUseOn, int32(s.br.BlockRuntimeID(so.Block))
+	case sound.BlockBounce:
+		pk.SoundType, pk.ExtraData = packet.SoundEventBounce, int32(s.br.BlockRuntimeID(so.Block))
+	case sound.GeyserEruptionStart:
+		pk.SoundType = packet.SoundEventGeyserEruptionStart
+		if so.Continuous {
+			pk.SoundType = packet.SoundEventGeyserContinuousEruptionStart
+		}
 	case sound.Fizz:
 		pk.SoundType = packet.SoundEventFizz
 	case sound.PointedDripstoneCauldronDrip:

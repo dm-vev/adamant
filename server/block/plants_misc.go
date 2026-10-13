@@ -213,7 +213,7 @@ type FireflyBush struct {
 
 // NeighbourUpdateTick ...
 func (b FireflyBush) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !supportsVegetation(b, tx.Block(pos.Side(cube.FaceDown))) {
+	if !onVegetationSoil(tx, pos) {
 		breakBlock(b, pos, tx)
 	}
 }
@@ -221,11 +221,16 @@ func (b FireflyBush) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // UseOnBlock ...
 func (b FireflyBush) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, b)
-	if !used || !supportsVegetation(b, tx.Block(pos.Side(cube.FaceDown))) {
+	if !used || !onVegetationSoil(tx, pos) {
 		return false
 	}
 	place(tx, pos, b, user, ctx)
 	return placed(ctx)
+}
+
+// BoneMeal spreads the bush to a free neighbour.
+func (b FireflyBush) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
+	return spreadToNeighbour(tx, pos, b)
 }
 
 // HasLiquidDrops ...
@@ -267,7 +272,7 @@ type Bush struct {
 
 // NeighbourUpdateTick ...
 func (b Bush) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !supportsVegetation(b, tx.Block(pos.Side(cube.FaceDown))) {
+	if !onVegetationSoil(tx, pos) {
 		breakBlock(b, pos, tx)
 	}
 }
@@ -275,11 +280,16 @@ func (b Bush) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // UseOnBlock ...
 func (b Bush) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, b)
-	if !used || !supportsVegetation(b, tx.Block(pos.Side(cube.FaceDown))) {
+	if !used || !onVegetationSoil(tx, pos) {
 		return false
 	}
 	place(tx, pos, b, user, ctx)
 	return placed(ctx)
+}
+
+// BoneMeal spreads the bush to a free neighbour.
+func (b Bush) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResult {
+	return spreadToNeighbour(tx, pos, b)
 }
 
 // HasLiquidDrops ...

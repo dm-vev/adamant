@@ -22,6 +22,7 @@ const (
 	buttonBamboo
 	buttonStone
 	buttonPolishedBlackstone
+	buttonPoplar
 )
 
 // WoodButton returns a wooden button type (oak).
@@ -35,7 +36,7 @@ func ButtonTypes() []ButtonType {
 	return []ButtonType{
 		{buttonOak}, {buttonSpruce}, {buttonBirch}, {buttonJungle}, {buttonAcacia}, {buttonDarkOak},
 		{buttonCrimson}, {buttonWarped}, {buttonMangrove}, {buttonCherry}, {buttonPaleOak},
-		{buttonBamboo}, {buttonStone}, {buttonPolishedBlackstone},
+		{buttonBamboo}, {buttonPoplar}, {buttonStone}, {buttonPolishedBlackstone},
 	}
 }
 
@@ -69,6 +70,8 @@ func (b ButtonType) blockName() string {
 		return "stone_button"
 	case buttonPolishedBlackstone:
 		return "polished_blackstone_button"
+	case buttonPoplar:
+		return "poplar_button"
 	}
 	panic("unknown button type")
 }
@@ -77,6 +80,11 @@ func (b ButtonType) Uint8() uint8 {
 	return uint8(b.button)
 }
 
+// pressTicks ports BlockSetType.ticksToStayPressed: 20 ticks for stone
+// buttons and 30 for wooden ones.
 func (b ButtonType) pressTicks() int {
+	if b.button == buttonStone || b.button == buttonPolishedBlackstone {
+		return 20
+	}
 	return 30
 }

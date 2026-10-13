@@ -24,13 +24,14 @@ const (
 	platePolishedBlackstone
 	plateLightWeighted
 	plateHeavyWeighted
+	platePoplar
 )
 
 // PressurePlateTypes returns all supported pressure plate types.
 func PressurePlateTypes() []PressurePlateType {
 	return []PressurePlateType{
 		{plateWood}, {plateSpruce}, {plateBirch}, {plateJungle}, {plateAcacia}, {plateDarkOak},
-		{plateCrimson}, {plateWarped}, {plateMangrove}, {plateCherry}, {platePaleOak}, {plateBamboo},
+		{plateCrimson}, {plateWarped}, {plateMangrove}, {plateCherry}, {platePaleOak}, {plateBamboo}, {platePoplar},
 		{plateStone}, {platePolishedBlackstone}, {plateLightWeighted}, {plateHeavyWeighted},
 	}
 }
@@ -69,6 +70,8 @@ func (p PressurePlateType) blockName() string {
 		return "light_weighted_pressure_plate"
 	case plateHeavyWeighted:
 		return "heavy_weighted_pressure_plate"
+	case platePoplar:
+		return "poplar_pressure_plate"
 	}
 	panic("unknown pressure plate type")
 }

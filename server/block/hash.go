@@ -240,6 +240,7 @@ const (
 	hashPolishedTuff
 	hashPortal
 	hashPotato
+	hashPotentSulfur
 	hashPowderSnow
 	hashPressurePlate
 	hashPrismarine
@@ -254,6 +255,7 @@ const (
 	hashRawGold
 	hashRawIron
 	hashRedMushroom
+	hashRedShrub
 	hashRedstoneBlock
 	hashRedstoneComparator
 	hashRedstoneLamp
@@ -277,6 +279,7 @@ const (
 	hashSeaLantern
 	hashSeaPickle
 	hashShelf
+	hashShelfMushroom
 	hashShortDryGrass
 	hashShortGrass
 	hashShroomlight
@@ -486,7 +489,7 @@ func (Bush) Hash() (uint64, uint64) {
 }
 
 func (b Button) Hash() (uint64, uint64) {
-	return hashButton, uint64(b.Type.Uint8()) | uint64(b.Facing)<<4 | uint64(boolByte(b.Pressed))<<7
+	return hashButton, uint64(b.Type.Uint8()) | uint64(b.Facing)<<5 | uint64(boolByte(b.Pressed))<<8
 }
 
 func (c Cactus) Hash() (uint64, uint64) {
@@ -1289,12 +1292,16 @@ func (p Potato) Hash() (uint64, uint64) {
 	return hashPotato, uint64(p.Growth)
 }
 
+func (s PotentSulfur) Hash() (uint64, uint64) {
+	return hashPotentSulfur, uint64(s.State)
+}
+
 func (PowderSnow) Hash() (uint64, uint64) {
 	return hashPowderSnow, 0
 }
 
 func (p PressurePlate) Hash() (uint64, uint64) {
-	return hashPressurePlate, uint64(p.Type.Uint8()) | uint64(p.Signal)<<4
+	return hashPressurePlate, uint64(p.Type.Uint8()) | uint64(p.Signal)<<5
 }
 
 func (p Prismarine) Hash() (uint64, uint64) {
@@ -1343,6 +1350,10 @@ func (RawIron) Hash() (uint64, uint64) {
 
 func (RedMushroom) Hash() (uint64, uint64) {
 	return hashRedMushroom, 0
+}
+
+func (RedShrub) Hash() (uint64, uint64) {
+	return hashRedShrub, 0
 }
 
 func (RedstoneBlock) Hash() (uint64, uint64) {
@@ -1434,7 +1445,11 @@ func (s SeaPickle) Hash() (uint64, uint64) {
 }
 
 func (s Shelf) Hash() (uint64, uint64) {
-	return hashShelf, uint64(s.Material.Uint8()) | uint64(s.Facing)<<4 | uint64(boolByte(s.Powered))<<7 | uint64(s.PoweredShelfType)<<8
+	return hashShelf, uint64(s.Material.Uint8()) | uint64(s.Facing)<<5 | uint64(boolByte(s.Powered))<<8 | uint64(s.PoweredShelfType)<<9
+}
+
+func (m ShelfMushroom) Hash() (uint64, uint64) {
+	return hashShelfMushroom, uint64(m.Facing) | uint64(boolByte(m.Grown))<<3
 }
 
 func (ShortDryGrass) Hash() (uint64, uint64) {

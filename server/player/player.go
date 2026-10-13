@@ -353,6 +353,12 @@ func (p *Player) FallDistance() float64 {
 	return p.fallDistance
 }
 
+// SetFallDistance sets how far the player counts as having fallen, as
+// geysers capping it do.
+func (p *Player) SetFallDistance(distance float64) {
+	p.fallDistance = distance
+}
+
 // SendTitle sends a title to the player. The title may be configured to change the duration it is displayed
 // and the text it shows.
 // If non-empty, the subtitle is shown in a smaller font below the title. The same counts for the action text

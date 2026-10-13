@@ -248,6 +248,8 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ")", 3
 	case "DripleafTilt":
 		return "uint64(" + s + ")", 2
+	case "PotentSulfurState":
+		return "uint64(" + s + ")", 3
 	case "int32":
 		return "uint64(uint32(" + s + "))", 32
 	case "Block":
@@ -268,7 +270,7 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		// Assuming these were all based on metadata, it should be safe to assume a bit size of 4 for this.
 		return "uint64(" + s + ".Uint8())", 4
 	case "ButtonType", "PressurePlateType", "ShelfMaterial":
-		return "uint64(" + s + ".Uint8())", 4
+		return "uint64(" + s + ".Uint8())", 5
 	case "CoralType", "SkullType", "StairCorner":
 		return "uint64(" + s + ".Uint8())", 3
 	case "LeverOrientation":

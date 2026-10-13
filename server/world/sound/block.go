@@ -46,6 +46,20 @@ type BigDripleafTilt struct {
 	Up bool
 }
 
+// BlockBounce is played when an entity bounces off a bouncy block.
+type BlockBounce struct {
+	sound
+	// Block is the block bounced off.
+	Block world.Block
+}
+
+// GeyserEruptionStart is played when a potent sulfur geyser starts erupting.
+type GeyserEruptionStart struct {
+	sound
+	// Continuous is set for a geyser over lava, which never stops.
+	Continuous bool
+}
+
 // AnvilLand is played when an anvil lands on the ground.
 type AnvilLand struct{ sound }
 

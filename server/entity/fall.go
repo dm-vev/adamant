@@ -34,6 +34,10 @@ func (e *Ent) FallDistance() float64 { return e.data.FallDistance }
 // do.
 func (e *Ent) ResetFallDistance() { e.data.FallDistance = 0 }
 
+// SetFallDistance sets how far the entity counts as having fallen, as
+// geysers capping it do.
+func (e *Ent) SetFallDistance(distance float64) { e.data.FallDistance = distance }
+
 // tickFall ports Entity.checkFallDamage for the movement of a tick: falling
 // out of water builds up fall distance, which the entity lands with when the
 // movement ends on the ground. Boats, like AbstractBoat, never land with it.

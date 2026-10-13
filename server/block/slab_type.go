@@ -84,9 +84,9 @@ func encodeSlabBlock(block world.Block, double bool) (id string, suffix string) 
 		return "mud_brick", suffix
 	case NetherBricks:
 		if block.Type == RedNetherBricks() {
-			return "nether_brick", suffix
+			return "red_nether_brick", suffix
 		}
-		return "red_nether_brick", suffix
+		return "nether_brick", suffix
 	case Planks:
 		return block.Wood.String(), suffix
 	case PetrifiedOak:
@@ -165,6 +165,8 @@ func encodeSlabBlock(block world.Block, double bool) (id string, suffix string) 
 		}
 	case Wool:
 		return block.Colour.String() + "_wool", suffix
+	case Concrete:
+		return block.Colour.String() + "_concrete", suffix
 	}
 	panic("invalid block used for slab")
 }
@@ -224,7 +226,7 @@ func SlabBlocks() []world.Block {
 		b = append(b, Planks{Wood: w})
 	}
 	for _, c := range item.Colours() {
-		b = append(b, Wool{Colour: c})
+		b = append(b, Wool{Colour: c}, Concrete{Colour: c})
 	}
 	b = append(b, PetrifiedOak{})
 	for _, o := range OxidationTypes() {
