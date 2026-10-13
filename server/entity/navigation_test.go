@@ -117,7 +117,9 @@ func TestCowFollowsNavigatorThroughWindingCorridor(t *testing.T) {
 			t.Fatal("cow did not spawn")
 		}
 		cow := ent.(*Cow)
-		if !cow.behaviour().navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 1024}, 1) {
+		goals := &cow.behaviour().goals
+		goals.running = goalStroll
+		if !goals.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 1024}, 1) {
 			t.Fatal("cow route through winding corridor was not found")
 		}
 		for tick := int64(1); tick <= 2000; tick++ {

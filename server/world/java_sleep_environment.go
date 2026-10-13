@@ -1,5 +1,7 @@
 package world
 
+import "github.com/df-mc/dragonfly/server/block/cube"
+
 // IsDarkOutside evaluates Java 26.3's Overworld SKY_LIGHT_LEVEL timeline and
 // Level.isDarkOutside predicate. Fixed-time dimensions are never dark outside.
 func (tx *Tx) IsDarkOutside() bool {
@@ -13,6 +15,12 @@ func (tx *Tx) SkyDarken() int {
 		return 0
 	}
 	return int(int32(float32(15) - javaSleepSkyLight(tx.World().Time(), tx.Raining(), tx.Thundering())))
+}
+
+// RawBrightness ports Level.getMaxLocalRawBrightness: the block light or the
+// sky light lowered by the time of day and weather, whichever is brighter.
+func (tx *Tx) RawBrightness(pos cube.Pos) int {
+	return max(int(tx.blockLight(pos)), int(tx.SkyLight(pos))-tx.SkyDarken())
 }
 
 // javaSleepSkyLight follows the registered minecraft:day MULTIPLY track and

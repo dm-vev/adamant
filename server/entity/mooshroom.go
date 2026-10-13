@@ -77,22 +77,21 @@ func (c MooshroomConfig) New() *MooshroomBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &MooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &MooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Mooshroom is a separately modeled mushroom-field bovine with red/brown type and bowl milking.
 type Mooshroom struct{ *Ent }
 type MooshroomBehaviour struct {
-	effects            *EffectManager
-	health, maxHealth  float64
-	variant, age, next int
-	dead               bool
-	lastLightningBolt  string
-	speed              float64
-	navigator          Navigator
-	mc                 *MovementComputer
-	breeding           breeding
-	panic              panicState
+	effects           *EffectManager
+	health, maxHealth float64
+	variant, age      int
+	dead              bool
+	lastLightningBolt string
+	speed             float64
+	mc                *MovementComputer
+	breeding          breeding
+	goals             animalGoals
 }
 
 func (m *Mooshroom) behaviour() *MooshroomBehaviour { return m.Behaviour().(*MooshroomBehaviour) }
@@ -101,42 +100,9 @@ func (m *Mooshroom) Tick(tx *world.Tx, t int64) {
 	m.Ent.Tick(tx, t)
 }
 func (b *MooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.next > 0 {
-		b.next--
-	}
-	panicking := b.panic.run(e, tx, &b.navigator)
-	speed := b.speed
-	if partner, ok := tickBreeding(&Mooshroom{Ent: e}, tx); panicking {
-		// AbstractCow's PanicGoal runs at twice the movement speed.
-		speed = groundSpeed(.2, 2)
-	} else if ok {
-		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
-		b.next = 40 + rand.IntN(81)
-		start := cube.PosFromVec3(e.Position())
-		for range 4 {
-			goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-			if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-				break
-			}
-		}
-	}
-	rot, v := e.data.Rot, e.data.Vel
-	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
-		d := target.Sub(e.data.Pos)
-		d[1] = 0
-		if d.Len() < .25 {
-			b.navigator.Index++
-		} else {
-			d = d.Normalize()
-			v[0], v[2] = d[0]*speed, d[2]*speed
-		}
-	} else {
-		v[0], v[2] = 0, 0
-	}
-	m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
+	m := &Mooshroom{Ent: e}
+	vel, rot := b.goals.tick(e, tx, m, animalGoalSpec{speed: b.speed, panic: 2, breed: 1, tempt: 1.25, tempting: m.breedingFood, parent: 1.25, stroll: 1, reach: .9})
+	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
 }
 func (m *Mooshroom) Health() float64    { return m.behaviour().health }
 func (m *Mooshroom) MaxHealth() float64 { return m.behaviour().maxHealth }
@@ -148,7 +114,7 @@ func (m *Mooshroom) SetMaxHealth(v float64) {
 func (m *Mooshroom) Dead() bool { return m.behaviour().dead || m.Health() <= 0 }
 
 // Panicking reports whether the mooshroom runs from danger.
-func (m *Mooshroom) Panicking() bool { return m.behaviour().panic.active }
+func (m *Mooshroom) Panicking() bool { return m.behaviour().goals.panic.active }
 func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if m.Dead() || v <= 0 {
 		return 0, false
@@ -167,7 +133,7 @@ func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := m.behaviour()
 	b.health -= v
-	b.panic.hurt(src, m.tx.CurrentTick())
+	b.goals.hurt(src, m.tx.CurrentTick())
 	resetLove(m)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)

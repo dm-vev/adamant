@@ -407,9 +407,11 @@ func recipeDyeColour(i recipe.Item) (item.Colour, bool) {
 // vanilla block tag, as item tags copied from block tags hold.
 func blockItemInTag(stack item.Stack, tag string) bool {
 	b, ok := stack.Item().(world.Block)
-	if !ok || stack.Empty() {
-		return false
-	}
+	return ok && !stack.Empty() && blockInTag(b, tag)
+}
+
+// blockInTag reports whether the block is in the vanilla block tag.
+func blockInTag(b world.Block, tag string) bool {
 	state, err := world.JavaStateOf(b)
 	if err != nil {
 		return false

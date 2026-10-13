@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -91,21 +92,20 @@ func (c ChickenBehaviourConfig) New() *ChickenBehaviour {
 	if !c.eggTimerSet {
 		c.EggLayTime = 6000 + rand.IntN(6000)
 	}
-	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, variant: c.Variant, jockey: c.Jockey, nextWander: 1}
+	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, variant: c.Variant, jockey: c.Jockey}
 }
 
 type Chicken struct{ *Ent }
 type ChickenBehaviour struct {
-	health                         *HealthManager
-	effects                        *EffectManager
-	mc                             *MovementComputer
-	speed                          float64
-	ageTicks, eggTimer, nextWander int
-	variant                        int
-	navigator                      Navigator
-	dead, jockey                   bool
-	breeding                       breeding
-	panic                          panicState
+	health             *HealthManager
+	effects            *EffectManager
+	mc                 *MovementComputer
+	speed              float64
+	ageTicks, eggTimer int
+	variant            int
+	dead, jockey       bool
+	breeding           breeding
+	goals              animalGoals
 }
 
 func (c *Chicken) behaviour() *ChickenBehaviour { return c.Behaviour().(*ChickenBehaviour) }
@@ -114,11 +114,10 @@ func (c *Chicken) Tick(tx *world.Tx, current int64) {
 	c.Ent.Tick(tx, current)
 }
 func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	panicking := b.panic.run(e, tx, &b.navigator)
-	partner, inLove := tickBreeding(&Chicken{Ent: e}, tx)
+	chicken := &Chicken{Ent: e}
+	vel, rot := b.goals.tick(e, tx, chicken, animalGoalSpec{speed: b.speed, panic: 1.4, breed: 1, tempt: 1, tempting: chicken.breedingFood, parent: 1.1, stroll: 1, reach: .4})
 	if b.ageTicks >= 0 && !b.jockey {
-		b.eggTimer--
-		if b.eggTimer <= 0 {
+		if b.eggTimer--; b.eggTimer <= 0 {
 			b.eggTimer = 6000 + rand.IntN(6000)
 			egg := item.Egg{}
 			switch b.variant {
@@ -127,49 +126,12 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			case 2:
 				egg.Variant = item.EggBrown
 			}
+			tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "plop", EntityType: "minecraft:chicken", ExtraData: -1})
 			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, item.NewStack(egg, 1)))
+			tx.EmitGameEvent(world.GameEventEntityPlace, e.Position(), world.GameEventContext{Source: chicken})
 		}
 	}
-	if b.nextWander > 0 {
-		b.nextWander--
-	}
-	speed := b.speed
-	if panicking {
-		speed = groundSpeed(.25, 1.4)
-	} else if inLove {
-		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
-		b.chooseWanderPath(e, tx)
-	}
-	velocity := e.data.Vel
-	rot := e.data.Rot
-	if goal, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .4); ok {
-		delta := goal.Sub(e.data.Pos)
-		delta[1] = 0
-		if delta.Len() < .25 {
-			b.navigator.Index++
-		} else {
-			dir := delta.Normalize()
-			velocity[0], velocity[2] = dir[0]*speed, dir[2]*speed
-			rot[0] = math.Atan2(-dir[0], dir[2]) * 180 / math.Pi
-		}
-	} else {
-		velocity[0], velocity[2] = 0, 0
-	}
-	m := b.mc.TickMovement(e, e.data.Pos, velocity, e.data.Rot, rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (b *ChickenBehaviour) chooseWanderPath(e *Ent, tx *world.Tx) {
-	b.nextWander = 40 + rand.IntN(81)
-	start := cube.PosFromVec3(e.Position())
-	for range 4 {
-		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-			return
-		}
-	}
-	b.navigator.Path, b.navigator.Index = nil, 0
+	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
 }
 func (c *Chicken) Health() float64        { return c.behaviour().health.Health() }
 func (c *Chicken) MaxHealth() float64     { return c.behaviour().health.MaxHealth() }
@@ -177,7 +139,7 @@ func (c *Chicken) SetMaxHealth(v float64) { c.behaviour().health.SetMaxHealth(v)
 func (c *Chicken) Dead() bool             { return c.behaviour().dead || c.Health() <= 0 }
 
 // Panicking reports whether the chicken runs from danger.
-func (c *Chicken) Panicking() bool { return c.behaviour().panic.active }
+func (c *Chicken) Panicking() bool { return c.behaviour().goals.panic.active }
 func (c *Chicken) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if c.Dead() || damage <= 0 || (src.Fire() && c.hasEffect(effect.FireResistance)) {
 		return 0, false
@@ -186,7 +148,7 @@ func (c *Chicken) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage *= effect.Resistance.Multiplier(src, res.Level())
 	}
 	c.behaviour().health.AddHealth(-damage)
-	c.behaviour().panic.hurt(src, c.tx.CurrentTick())
+	c.behaviour().goals.hurt(src, c.tx.CurrentTick())
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)

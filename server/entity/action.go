@@ -87,6 +87,9 @@ type DrinkAction struct {
 	Milk bool
 }
 
+// EatGrassAction shows a sheep lowering its head to eat grass.
+type EatGrassAction struct{ action }
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}

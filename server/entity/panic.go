@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -101,9 +100,7 @@ func (p *panicState) runBrain(e *Ent, tx *world.Tx, nav *Navigator, tick int64) 
 
 // flee sets a path on nav to the spot the panicking mob runs to.
 func (p *panicState) flee(e *Ent, tx *world.Tx, nav *Navigator) bool {
-	box := e.H().Type().BBox(e)
-	random := java26.NewLegacyRandom(rand.Int64())
-	m := randomPosMob{tx: tx, pos: e.data.Pos, home: noHome, profile: GroundProfile{Width: box.Width(), Height: box.Height()}, random: &random}
+	m := newRandomPosMob(e, tx)
 	goal, ok := p.target(e, m)
 	if !ok {
 		return false

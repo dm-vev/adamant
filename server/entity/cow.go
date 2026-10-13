@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math"
-	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -153,10 +151,8 @@ type CowBehaviour struct {
 	variant, ageTicks int
 	soundVariant      string
 	speed             float64
-	navigator         Navigator
-	nextWander        int
 	breeding          breeding
-	panic             panicState
+	goals             animalGoals
 	dead              bool
 }
 
@@ -172,46 +168,9 @@ func (c *Cow) Tick(tx *world.Tx, current int64) {
 }
 
 func (b *CowBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.nextWander > 0 {
-		b.nextWander--
-	}
-	panicking := b.panic.run(e, tx, &b.navigator)
-	speed := b.speed
-	if partner, ok := tickBreeding(&Cow{Ent: e}, tx); panicking {
-		// AbstractCow's PanicGoal runs at twice the movement speed.
-		speed = groundSpeed(.2, 2)
-	} else if ok {
-		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
-		b.chooseWanderPath(e, tx)
-	}
-	rot, velocity := e.data.Rot, e.data.Vel
-	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
-		delta := target.Sub(e.data.Pos)
-		delta[1] = 0
-		if delta.Len() > 0.25 {
-			direction := delta.Normalize()
-			velocity[0], velocity[2] = direction[0]*speed, direction[2]*speed
-			rot[0] = math.Atan2(-direction[0], direction[2]) * 180 / math.Pi
-		}
-	} else {
-		velocity[0], velocity[2] = 0, 0
-	}
-	m := b.mc.TickMovement(e, e.data.Pos, velocity, e.data.Rot, rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-
-func (b *CowBehaviour) chooseWanderPath(e *Ent, tx *world.Tx) {
-	b.nextWander = 40 + rand.IntN(81)
-	start := cube.PosFromVec3(e.Position())
-	for range 4 {
-		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-			return
-		}
-	}
-	b.navigator.Path, b.navigator.Index = nil, 0
+	cow := &Cow{Ent: e}
+	vel, rot := b.goals.tick(e, tx, cow, animalGoalSpec{speed: b.speed, panic: 2, breed: 1, tempt: 1.25, tempting: cow.breedingFood, parent: 1.25, stroll: 1, reach: .9})
+	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
 }
 
 // Health returns the cow's current health.
@@ -227,7 +186,7 @@ func (c *Cow) SetMaxHealth(v float64) { c.behaviour().health.SetMaxHealth(v) }
 func (c *Cow) Dead() bool { return c.behaviour().dead || c.Health() <= 0 }
 
 // Panicking reports whether the cow runs from danger.
-func (c *Cow) Panicking() bool { return c.behaviour().panic.active }
+func (c *Cow) Panicking() bool { return c.behaviour().goals.panic.active }
 
 // Hurt damages the cow and kills it if its health is exhausted.
 func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
@@ -238,7 +197,7 @@ func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage *= effect.Resistance.Multiplier(src, resistance.Level())
 	}
 	c.behaviour().health.AddHealth(-damage)
-	c.behaviour().panic.hurt(src, c.tx.CurrentTick())
+	c.behaviour().goals.hurt(src, c.tx.CurrentTick())
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)

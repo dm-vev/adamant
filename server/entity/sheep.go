@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -43,7 +44,7 @@ func (sheepType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if s == nil {
 		s = m
 	}
-	c := SheepConfig{WoolColor: sheepNBTColor(s["Color"]), Sheared: nbtconv.Bool(s, "Sheared"), RegrowTicks: int(nbtconv.Int32(s, "RegrowTicks")), AgeTicks: int(nbtconv.Int32(s, "Age"))}
+	c := SheepConfig{WoolColor: sheepNBTColor(s["Color"]), Sheared: nbtconv.Bool(s, "Sheared"), AgeTicks: int(nbtconv.Int32(s, "Age"))}
 	if a, ok := nativeMobAttribute(m, "minecraft:health"); ok {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
@@ -60,14 +61,14 @@ func (sheepType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*SheepBehaviour)
 	attr := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
 	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attr})
-	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared)), "RegrowTicks": int32(b.regrowTicks)})))
+	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared))})))
 }
 
 // SheepConfig configures a sheep's saved source state.
 type SheepConfig struct {
-	Health, MaxHealth                float64
-	AgeTicks, WoolColor, RegrowTicks int
-	Sheared                          bool
+	Health, MaxHealth   float64
+	AgeTicks, WoolColor int
+	Sheared             bool
 }
 
 func (c SheepConfig) Apply(d *world.EntityData) { d.Data = c.New() }
@@ -78,22 +79,23 @@ func (c SheepConfig) New() *SheepBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &SheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, regrowTicks: c.RegrowTicks, speed: .23, nextWander: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &SheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, speed: .23, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Sheep is a concrete Java sheep, including wool and grazing state.
 type Sheep struct{ *Ent }
 type SheepBehaviour struct {
-	effects                      *EffectManager
-	health, maxHealth            float64
-	ageTicks, color, regrowTicks int
-	sheared, dead                bool
-	speed                        float64
-	navigator                    Navigator
-	nextWander                   int
-	mc                           *MovementComputer
-	breeding                     breeding
-	panic                        panicState
+	effects           *EffectManager
+	health, maxHealth float64
+	ageTicks, color   int
+	sheared, dead     bool
+	speed             float64
+	mc                *MovementComputer
+	breeding          breeding
+	goals             animalGoals
+	// eatTicks is the eatAnimationTick of the running EatBlockGoal.
+	eatTicks int
+	sheep    *Sheep
 }
 
 func (s *SheepBehaviour) Baby() bool        { return s.ageTicks < 0 }
@@ -103,59 +105,71 @@ func (s *Sheep) Tick(tx *world.Tx, current int64) {
 	s.Ent.Tick(tx, current)
 }
 func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	panicking := b.panic.run(e, tx, &b.navigator)
-	partner, inLove := tickBreeding(&Sheep{Ent: e}, tx)
-	// EatBlockGoal: a sheared sheep regrows only after eating a grass block.
-	if b.sheared && b.regrowTicks > 0 {
-		b.regrowTicks--
-	}
-	if b.sheared && b.regrowTicks == 0 {
-		p := cube.PosFromVec3(e.Position()).Side(cube.FaceDown)
-		name, _ := tx.Block(p).EncodeBlock()
-		if name == "minecraft:grass_block" {
-			tx.SetBlock(p, block.Dirt{}, nil)
-			b.sheared = false
-		}
-	}
-	if b.nextWander > 0 {
-		b.nextWander--
-	}
-	speed := b.speed
-	if panicking {
-		speed = groundSpeed(.23, 1.25)
-	} else if inLove {
-		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
-		b.choosePath(e, tx)
-	}
-	rot, vel := e.data.Rot, e.data.Vel
-	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
-		delta := target.Sub(e.data.Pos)
-		delta[1] = 0
-		if delta.Len() < .25 {
-			b.navigator.Index++
-		} else {
-			d := delta.Normalize()
-			vel[0], vel[2] = d[0]*speed, d[2]*speed
-			rot[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-		}
-	} else {
-		vel[0], vel[2] = 0, 0
-	}
-	m := b.mc.TickMovement(e, e.data.Pos, vel, e.data.Rot, rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
+	b.sheep = &Sheep{Ent: e}
+	vel, rot := b.goals.tick(e, tx, b.sheep, animalGoalSpec{speed: b.speed, panic: 1.25, breed: 1, tempt: 1.1, tempting: b.sheep.breedingFood, parent: 1.1, species: b, stroll: 1, reach: .9})
+	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
 }
-func (b *SheepBehaviour) choosePath(e *Ent, tx *world.Tx) {
-	b.nextWander = 40 + rand.IntN(81)
-	start := cube.PosFromVec3(e.Position())
-	for range 4 {
-		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-			return
+
+// run ports EatBlockGoal: now and then a sheep, far more often a lamb,
+// lowers its head for 40 ticks and eats the grass it stands in or the grass
+// block it stands on, which regrows its wool and lets a lamb grow up faster.
+func (b *SheepBehaviour) run(e *Ent, tx *world.Tx) bool {
+	if b.eatTicks == 0 {
+		chance := 1000
+		if b.ageTicks < 0 {
+			chance = 50
 		}
+		pos := cube.PosFromVec3(e.Position())
+		if rand.IntN(chance) != 0 || !blockInTag(tx.Block(pos), "edible_for_sheep") && !sheepGrass(tx, pos.Side(cube.FaceDown)) {
+			return false
+		}
+		b.eatTicks = 40
+		b.sheep.viewAction(EatGrassAction{})
+		return true
 	}
-	b.navigator.Path, b.navigator.Index = nil, 0
+	if b.eatTicks--; b.eatTicks == 4 {
+		b.eat(e, tx)
+	}
+	return b.eatTicks > 0
+}
+
+// stop ends EatBlockGoal when a goal of higher priority runs.
+func (b *SheepBehaviour) stop() { b.eatTicks = 0 }
+
+// eat ports the bite of EatBlockGoal.tick and Sheep.ate.
+func (b *SheepBehaviour) eat(e *Ent, tx *world.Tx) {
+	pos := cube.PosFromVec3(e.Position())
+	griefing := tx.World().GameRuleBool("mob_griefing")
+	switch {
+	case blockInTag(tx.Block(pos), "edible_for_sheep"):
+		if griefing {
+			eaten := tx.Block(pos)
+			tx.SetBlock(pos, nil, nil)
+			tx.AddParticle(pos.Vec3Centre(), particle.BlockBreak{Block: eaten})
+		}
+	case sheepGrass(tx, pos.Side(cube.FaceDown)):
+		if griefing {
+			below := pos.Side(cube.FaceDown)
+			tx.AddParticle(below.Vec3Centre(), particle.BlockBreak{Block: tx.Block(below)})
+			tx.SetBlock(below, block.Dirt{}, nil)
+		}
+	default:
+		return
+	}
+	tx.EmitGameEvent(world.GameEventEat, e.Position(), world.GameEventContext{Source: b.sheep})
+	if b.sheared {
+		b.sheared = false
+		viewBreederState(b.sheep)
+	}
+	if b.ageTicks < 0 && !b.breeding.ageLocked {
+		ageUp(b.sheep, 60, false)
+	}
+}
+
+// sheepGrass reports whether pos holds a grass block.
+func sheepGrass(tx *world.Tx, pos cube.Pos) bool {
+	_, ok := tx.Block(pos).(block.Grass)
+	return ok
 }
 func (s *Sheep) Health() float64    { return s.behaviour().health }
 func (s *Sheep) MaxHealth() float64 { return s.behaviour().maxHealth }
@@ -167,7 +181,7 @@ func (s *Sheep) SetMaxHealth(v float64) {
 func (s *Sheep) Dead() bool { return s.behaviour().dead || s.Health() <= 0 }
 
 // Panicking reports whether the sheep runs from danger.
-func (s *Sheep) Panicking() bool { return s.behaviour().panic.active }
+func (s *Sheep) Panicking() bool { return s.behaviour().goals.panic.active }
 func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() || v <= 0 {
 		return 0, false
@@ -178,7 +192,7 @@ func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := s.behaviour()
 	b.health -= v
-	b.panic.hurt(src, s.tx.CurrentTick())
+	b.goals.hurt(src, s.tx.CurrentTick())
 	resetLove(s)
 	s.viewAction(HurtAction{})
 	onMobHurt(s.tx, s)
@@ -237,7 +251,7 @@ func (s *Sheep) Shear(_ *world.Tx) item.Stack {
 		return item.Stack{}
 	}
 	b.sheared = true
-	b.regrowTicks = 200 + rand.IntN(1001)
+	viewBreederState(s)
 	stacks, err := loot.Generate("minecraft:shearing/sheep/"+item.Colours()[b.color].String(), rand.Int64(), loot.Context{Entity: "minecraft:sheep", Origin: s.Position()})
 	if err != nil || len(stacks) == 0 {
 		return item.Stack{}

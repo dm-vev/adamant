@@ -2,7 +2,6 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -98,7 +97,7 @@ func (c PigConfig) New() *PigBehaviour {
 	if sv != "big" && sv != "mini" {
 		sv = "classic"
 	}
-	return &PigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, next: 40 + rand.IntN(81), effects: NewEffectManager()}
+	return &PigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
 }
 
 // Pig is a concrete passive pig with growth, saddle and ridden steering state.
@@ -112,11 +111,9 @@ type PigBehaviour struct {
 	speed, steer      float64
 	passenger         *world.EntityHandle
 	lastLightningBolt string
-	navigator         Navigator
-	next              int
 	mc                *MovementComputer
 	breeding          breeding
-	panic             panicState
+	goals             animalGoals
 }
 
 func (p *PigBehaviour) Variant() int32  { return int32(p.variant) }
@@ -137,45 +134,20 @@ func (p *Pig) Tick(tx *world.Tx, t int64) {
 	}
 }
 func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.next > 0 {
-		b.next--
-	}
-	panicking := b.panic.run(e, tx, &b.navigator)
-	speed := b.speed
-	if partner, ok := tickBreeding(&Pig{Ent: e}, tx); panicking {
-		speed = groundSpeed(.25, 1.25)
-	} else if ok {
-		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
-		b.next = 40 + rand.IntN(81)
-		start := cube.PosFromVec3(e.Position())
-		for range 4 {
-			goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-			if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-				break
-			}
-		}
-	}
-	rot, vel := e.data.Rot, e.data.Vel
+	pig := &Pig{Ent: e}
+	vel, rot := b.goals.tick(e, tx, pig, animalGoalSpec{speed: b.speed, panic: 1.25, breed: 1, tempt: 1.2, tempting: pig.tempting, parent: 1.1, stroll: 1, reach: .9})
 	if b.steer != 0 {
+		rot = e.data.Rot
 		rot[0] += b.steer * 4
 		d := rot.Vec3()
 		vel[0], vel[2] = d[0]*b.speed, d[2]*b.speed
-	} else if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
-		d := target.Sub(e.data.Pos)
-		d[1] = 0
-		if d.Len() < .25 {
-			b.navigator.Index++
-		} else {
-			d = d.Normalize()
-			vel[0], vel[2] = d[0]*speed, d[2]*speed
-		}
-	} else {
-		vel[0], vel[2] = 0, 0
 	}
-	m := b.mc.TickMovement(e, e.data.Pos, vel, e.data.Rot, rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
+	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+}
+
+// tempting ports the two TemptGoals of Pig: a carrot on a stick or pig food.
+func (p *Pig) tempting(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:carrot_on_a_stick") || p.breedingFood(stack)
 }
 func (p *Pig) Health() float64    { return p.behaviour().health }
 func (p *Pig) MaxHealth() float64 { return p.behaviour().maxHealth }
@@ -187,7 +159,7 @@ func (p *Pig) SetMaxHealth(v float64) {
 func (p *Pig) Dead() bool { return p.behaviour().dead || p.Health() <= 0 }
 
 // Panicking reports whether the pig runs from danger.
-func (p *Pig) Panicking() bool { return p.behaviour().panic.active }
+func (p *Pig) Panicking() bool { return p.behaviour().goals.panic.active }
 func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	if p.Dead() || v <= 0 {
 		return 0, false
@@ -209,7 +181,7 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	}
 	b := p.behaviour()
 	b.health -= v
-	b.panic.hurt(s, p.tx.CurrentTick())
+	b.goals.hurt(s, p.tx.CurrentTick())
 	resetLove(p)
 	p.viewAction(HurtAction{})
 	onMobHurt(p.tx, p)

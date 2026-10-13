@@ -2,6 +2,7 @@ package entity
 
 import (
 	"math"
+	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -55,6 +56,23 @@ type randomPosMob struct {
 	home    mobHome
 	profile GroundProfile
 	random  *java26.Random
+	// weight is the mob's getWalkTargetValue. Without one every position
+	// weighs the same, as for PathfinderMob.
+	weight func(cube.Pos) float64
+}
+
+// newRandomPosMob returns the RandomPos state of e with a fresh random
+// source and, for animals, Animal's preference for grass and light.
+func newRandomPosMob(e *Ent, tx *world.Tx) randomPosMob {
+	box := e.H().Type().BBox(e)
+	random := java26.NewLegacyRandom(rand.Int64())
+	m := randomPosMob{tx: tx, pos: e.data.Pos, home: noHome, profile: GroundProfile{Width: box.Width(), Height: box.Height()}, random: &random}
+	if full, ok := e.H().Entity(tx); ok {
+		if _, animal := full.(breeder); animal {
+			m.weight = animalWalkTarget(tx)
+		}
+	}
+	return m
 }
 
 // restricted ports GoalUtils.mobRestricted: the home only restricts
@@ -144,15 +162,48 @@ func pathMalus(tx *world.Tx, pos cube.Pos) bool {
 	return false
 }
 
-// generate ports RandomPos.generateRandomPos: ten attempts, the first valid
-// candidate wins as every candidate weighs the same.
+// generate ports RandomPos.generateRandomPos: of ten attempts the valid
+// candidate the mob values most wins, the first one on a tie.
 func (m randomPosMob) generate(candidate func() (cube.Pos, bool)) (cube.Pos, bool) {
+	var best cube.Pos
+	found, bestWeight := false, math.Inf(-1)
 	for range 10 {
-		if pos, ok := candidate(); ok {
-			return pos, true
+		pos, ok := candidate()
+		if !ok {
+			continue
+		}
+		weight := 0.0
+		if m.weight != nil {
+			weight = m.weight(pos)
+		}
+		if weight > bestWeight {
+			best, bestWeight, found = pos, weight, true
 		}
 	}
-	return cube.Pos{}, false
+	return best, found
+}
+
+// animalWalkTarget ports Animal.getWalkTargetValue: animals prefer grass
+// blocks and otherwise brighter spots.
+func animalWalkTarget(tx *world.Tx) func(cube.Pos) float64 {
+	return func(pos cube.Pos) float64 {
+		if _, grass := tx.Block(pos.Side(cube.FaceDown)).(block.Grass); grass {
+			return 10
+		}
+		return pathfindingLightCost(tx, pos)
+	}
+}
+
+// pathfindingLightCost ports LevelReader.getPathfindingCostFromLightLevels:
+// the dimension's brightness curve of the light at pos, less a half.
+func pathfindingLightCost(tx *world.Tx, pos cube.Pos) float64 {
+	v := float32(tx.RawBrightness(pos)) / 15
+	curved := v / (4 - 3*v)
+	var ambient float32
+	if tx.World().Dimension() == world.Nether {
+		ambient = .1
+	}
+	return float64(curved+ambient*(1-curved)) - .5
 }
 
 // randomPos ports DefaultRandomPos.getPos.
