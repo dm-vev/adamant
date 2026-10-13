@@ -184,3 +184,38 @@ func TestHorsesFinalizeRandomAttributes(t *testing.T) {
 		}
 	})
 }
+
+// TestRiddenHorsesRunAtJavaSpeed checks AbstractHorse.travelRidden: a horse
+// with the default movement speed of 0.225 that its rider steers forward
+// covers 0.225/(1-0.546) blocks per tick, about ten blocks a second.
+func TestRiddenHorsesRunAtJavaSpeed(t *testing.T) {
+	w := traderTestWorld(t)
+	var h, rider *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		h = spawnAnimal(t, tx, "minecraft:horse", .5, map[string]any{"Tame": byte(1), "Saddled": byte(1), "Health": float32(53)})
+	})
+	rider = rideHorse(t, w, h)
+	steer := func() {
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := h.Entity(tx)
+			p, _ := rider.Entity(tx)
+			e.(entity.VehicleInputWithRider).SetVehicleInputFrom(p, 0, 1)
+		})
+	}
+	var start mgl64.Vec3
+	for range 20 {
+		steer()
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) { start = entityPos(tx, h) })
+	for range 20 {
+		steer()
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		want := 20 * .225 / (1 - .6*.91)
+		if d := horizontalDistance(entityPos(tx, h), start); d < want*.9 || d > want*1.1 {
+			t.Fatalf("ridden horse covered %.2f blocks in a second, want %.2f", d, want)
+		}
+	})
+}

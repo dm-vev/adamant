@@ -557,3 +557,63 @@ func horseMaxHealth(random *java26.Random) float64 {
 func horseJumpStrength(random *java26.Random) float64 {
 	return float64(float32(.4)) + random.NextDouble()*.2 + random.NextDouble()*.2 + random.NextDouble()*.2
 }
+
+// travelRidden ports LivingEntity.travelRidden for horses: the rider's input,
+// half as strong sideways and a quarter backwards, accelerates the horse by
+// its movement speed on the ground and a tenth of it in the air, and the
+// horse keeps Java's friction of the block below times 0.91, or 0.91 in the
+// air. A rearing horse and a camel that sits or changes its pose stay put.
+func (b *MountBehaviour) travelRidden(m *Mount, tx *world.Tx) (mgl64.Vec3, cube.Rotation) {
+	e := m.Ent
+	direction := b.direction
+	if direction.LenSqr() == 0 {
+		direction = e.Rotation().Vec3()
+	}
+	yaw := math.Atan2(-direction[0], direction[2])
+	pitch := -math.Atan2(direction[1], math.Hypot(direction[0], direction[2])) * 180 / math.Pi
+	rot := cube.Rotation{yaw * 180 / math.Pi, pitch * .5}
+	onGround := b.mc.OnGround()
+	strafe, forward := b.strafe*.5, b.forward
+	if forward <= 0 {
+		forward *= .25
+	}
+	if b.refuseToMove(tx) || onGround && b.standCounter > 0 {
+		strafe, forward = 0, 0
+	}
+	blockFriction := .6
+	if f, ok := tx.Block(cube.PosFromVec3(e.Position()).Side(cube.FaceDown)).(interface{ Friction() float64 }); ok {
+		blockFriction = f.Friction()
+	}
+	speed := b.movementSpeed
+	if b.camel() {
+		if s, ok := b.rider(tx).(interface{ Sprinting() bool }); ok && s.Sprinting() && b.dashCooldown == 0 {
+			// Camel.getRiddenSpeed: sprinting riders go faster.
+			speed += .1
+		}
+	}
+	accel, keep, mcKeep := speed*.216/(blockFriction*blockFriction*blockFriction), blockFriction*.91, .98*blockFriction
+	if !onGround {
+		accel, keep, mcKeep = speed*.1, .91, .98
+	}
+	input := mgl64.Vec2{strafe, forward}
+	if l := input.Len(); l > 1 {
+		input = input.Mul(1 / l)
+	}
+	input = input.Mul(accel)
+	sin, cos := math.Sin(yaw), math.Cos(yaw)
+	// The movement computer slows the velocity by its own friction before
+	// moving, so it is set to move the horse as far as Java does.
+	vel := e.data.Vel
+	vel[0] = (vel[0]*keep + input[0]*cos - input[1]*sin) / mcKeep
+	vel[2] = (vel[2]*keep + input[1]*cos + input[0]*sin) / mcKeep
+	return vel, rot
+}
+
+// rider returns the first passenger of the mount.
+func (b *MountBehaviour) rider(tx *world.Tx) world.Entity {
+	if b.passengers[0] == nil {
+		return nil
+	}
+	e, _ := b.passengers[0].Entity(tx)
+	return e
+}

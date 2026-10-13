@@ -153,14 +153,7 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	vel, rot := b.tickHorse(m, tx)
 	if b.controlled() {
-		direction := b.direction
-		if direction.LenSqr() == 0 {
-			direction = e.Rotation().Vec3()
-		}
-		vel = e.data.Vel
-		vel[0] += direction[0]*b.forward*.055 + direction[2]*b.strafe*.035
-		vel[2] += direction[2]*b.forward*.055 - direction[0]*b.strafe*.035
-		rot = cube.Rotation{math.Atan2(-direction[0], direction[2]) * 180 / math.Pi, 0}
+		vel, rot = b.travelRidden(m, tx)
 	}
 	mv := b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
 	b.updatePassengers(e, tx)
@@ -322,13 +315,26 @@ func (m *Mount) SetJumpStrength(v float64) {
 
 // JumpStrength returns the horse jump strength attribute.
 func (m *Mount) JumpStrength() float64 { return m.b().jumpStrength }
+
+// Jump ports AbstractHorse.executeRidersJump at full charge: a saddled horse
+// on the ground jumps with its jump strength and leaps forward if its rider
+// moves forward.
 func (m *Mount) Jump() bool {
 	b := m.b()
-	if !b.saddled || b.dashCooldown > 0 || b.sitting {
+	if !b.saddled || b.dashCooldown > 0 || b.sitting || !b.mc.OnGround() {
 		return false
 	}
 	v := m.Velocity()
 	v[1] = b.jumpStrength
+	if b.forward > 0 {
+		direction := b.direction
+		if direction.LenSqr() == 0 {
+			direction = m.Rotation().Vec3()
+		}
+		yaw := math.Atan2(-direction[0], direction[2])
+		v[0] -= .4 * math.Sin(yaw) / .98
+		v[2] += .4 * math.Cos(yaw) / .98
+	}
 	m.SetVelocity(v)
 	return true
 }
