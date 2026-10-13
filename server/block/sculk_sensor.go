@@ -235,8 +235,10 @@ func (s SculkSensor) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	}
 }
 func (s SculkSensor) RedstonePower(_ cube.Pos, _ *world.Tx, _ cube.Face) int { return s.JavaPower() }
+// RedstoneStrongPower ports SculkSensorBlock.getDirectSignal: the sensor
+// strongly powers the block below it.
 func (s SculkSensor) RedstoneStrongPower(_ cube.Pos, tx *world.Tx, face cube.Face) int {
-	if face == cube.FaceUp {
+	if face == cube.FaceDown {
 		return s.RedstonePower(cube.Pos{}, tx, face)
 	}
 	return 0
@@ -374,8 +376,10 @@ func (s CalibratedSculkSensor) RedstonePower(pos cube.Pos, tx *world.Tx, face cu
 	}
 	return s.SculkSensor.RedstonePower(pos, tx, face)
 }
+// RedstoneStrongPower strongly powers the block below the sensor, as the
+// plain sculk sensor does.
 func (s CalibratedSculkSensor) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
-	if face == cube.FaceUp {
+	if face == cube.FaceDown {
 		return s.RedstonePower(pos, tx, face)
 	}
 	return 0

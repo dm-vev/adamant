@@ -511,7 +511,8 @@ func (d PointedDripstone) EntityLand(_ cube.Pos, _ *world.Tx, e world.Entity, di
 	*distance = 0
 }
 
-// fallDamageTaker is an entity taking fall damage.
+// fallDamageTaker is an entity taking fall damage. A nil source is plain
+// fall damage.
 type fallDamageTaker interface {
 	CauseFallDamage(distance, multiplier float64, src world.DamageSource)
 }

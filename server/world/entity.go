@@ -600,6 +600,9 @@ type EntityData struct {
 	WasInPowderSnow bool
 	// OnGround is set while the entity's last movement ended on a surface.
 	OnGround bool
+	// FallDistance is how far the entity fell since it last stood on the
+	// ground.
+	FallDistance float64
 
 	// NativeNBT retains the original actor payload so entity serializers can
 	// update known fields without discarding fields unknown to this server.

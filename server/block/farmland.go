@@ -69,15 +69,26 @@ func (f Farmland) hydrated(pos cube.Pos, tx *world.Tx) bool {
 	return false
 }
 
-// EntityLand ...
-func (f Farmland) EntityLand(pos cube.Pos, tx *world.Tx, e world.Entity, _ *float64) {
-	if living, ok := e.(livingEntity); ok {
-		if fall, ok := living.(fallDistanceEntity); ok && rand.Float64() < fall.FallDistance()-0.5 {
-			ctx := tx.Event()
-			if tx.World().Handler().HandleCropTrample(ctx, pos); !ctx.Cancelled() {
-				tx.SetBlock(pos, Dirt{}, nil)
-			}
-		}
+// EntityLand ports FarmlandBlock.fallOn: a living entity landing from more
+// than half a block may trample the farmland into dirt, with a chance of the
+// distance minus 0.5, if it is large enough and a player or mob_griefing is
+// on.
+func (f Farmland) EntityLand(pos cube.Pos, tx *world.Tx, e world.Entity, distance *float64) {
+	if _, ok := e.(livingEntity); !ok || rand.Float64() >= *distance-0.5 {
+		return
+	}
+	if _, player := e.(interface{ GameMode() world.GameMode }); !player && !tx.World().GameRuleBool("mob_griefing") {
+		return
+	}
+	box := e.H().Type().BBox(e)
+	if width := box.Width(); width*width*box.Height() <= 0.512 {
+		return
+	}
+	ctx := tx.Event()
+	if tx.World().Handler().HandleCropTrample(ctx, pos); !ctx.Cancelled() {
+		tx.SetBlock(pos, Dirt{}, nil)
+		pushEntitiesUp(tx, pos, f)
+		tx.EmitGameEvent(world.GameEventBlockChange, pos.Vec3Centre(), world.GameEventContext{Source: e, AffectedState: Dirt{}})
 	}
 }
 

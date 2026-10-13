@@ -24,11 +24,19 @@ func (HayBale) Instrument() sound.Instrument {
 	return sound.Banjo()
 }
 
-// EntityLand ...
+// EntityLand ports HayBlock.fallOn: landing entities take a fifth of the fall
+// damage.
 func (h HayBale) EntityLand(_ cube.Pos, _ *world.Tx, e world.Entity, distance *float64) {
-	if _, ok := e.(fallDistanceEntity); ok {
-		*distance *= 0.2
+	scaleFallDamage(e, distance, 0.2)
+}
+
+// scaleFallDamage makes a landing entity take its fall damage multiplied by
+// multiplier instead of the plain fall damage.
+func scaleFallDamage(e world.Entity, distance *float64, multiplier float64) {
+	if f, ok := e.(fallDamageTaker); ok {
+		f.CauseFallDamage(*distance, multiplier, nil)
 	}
+	*distance = 0
 }
 
 // UseOnBlock ...

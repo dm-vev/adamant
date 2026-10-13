@@ -673,11 +673,15 @@ func (p *Player) fall(distance float64) {
 
 // CauseFallDamage hurts the player for landing after falling distance blocks,
 // the three blocks above the safe fall distance multiplied by multiplier, with
-// the damage source passed. Jump Boost raises the safe fall distance and the
-// fall_damage game rule disables the damage.
+// the damage source passed, or entity.FallDamageSource if nil. Jump Boost
+// raises the safe fall distance and the fall_damage game rule disables the
+// damage.
 func (p *Player) CauseFallDamage(distance, multiplier float64, src world.DamageSource) {
 	if !p.tx.World().FallDamage() {
 		return
+	}
+	if src == nil {
+		src = entity.FallDamageSource{}
 	}
 	dmg := distance - 3
 	if boost, ok := p.Effect(effect.JumpBoost); ok {
@@ -686,7 +690,9 @@ func (p *Player) CauseFallDamage(distance, multiplier float64, src world.DamageS
 	if dmg < 0.5 {
 		return
 	}
-	p.Hurt(math.Ceil(dmg*multiplier), src)
+	if dmg = math.Ceil(dmg * multiplier); dmg > 0 {
+		p.Hurt(dmg, src)
+	}
 }
 
 // landedOn returns the first block.EntityLander the Player came to rest on, along with its position.

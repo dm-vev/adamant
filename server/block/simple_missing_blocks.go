@@ -44,6 +44,12 @@ func (HoneyBlock) Friction() float64 {
 	return 0.8
 }
 
+// EntityLand ports HoneyBlock.fallOn: landing entities take a fifth of the
+// fall damage.
+func (HoneyBlock) EntityLand(_ cube.Pos, _ *world.Tx, e world.Entity, distance *float64) {
+	scaleFallDamage(e, distance, 0.2)
+}
+
 // EntityInside ...
 func (HoneyBlock) EntityInside(pos cube.Pos, _ *world.Tx, e world.Entity) {
 	v, ok := e.(velocityEntity)

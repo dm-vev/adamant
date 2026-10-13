@@ -266,6 +266,7 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	m := e.Behaviour().Tick(e, tx)
 	if m != nil {
 		e.data.OnGround = m.onGround
+		e.tickFall(tx, m)
 	}
 	tickLeash(e, tx, m)
 	checkEntityInsiders(tx, e)
