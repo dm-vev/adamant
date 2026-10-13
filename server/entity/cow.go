@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -68,6 +69,7 @@ func (cowType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		conf.SoundVariant = value
 	}
 	data.Data = conf.New()
+	data.Data.(*CowBehaviour).breeding.decodeNBT(source)
 }
 func (cowType) EncodeNBT(data *world.EntityData) map[string]any {
 	cow := data.Data.(*CowBehaviour)
@@ -77,10 +79,10 @@ func (cowType) EncodeNBT(data *world.EntityData) map[string]any {
 		DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth(),
 	}})
 	native := MergeNativeMobNBT(data.NativeNBT, map[string]any{"Attributes": attributes})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), cow.breeding.encodeNBT(map[string]any{
 		"Age": int32(cow.ageTicks), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[min(cow.variant, 2)],
 		"sound_variant": "minecraft:" + cow.soundVariant,
-	})
+	}))
 	return MergeNativeMobJavaState(native, javaState)
 }
 
@@ -153,6 +155,7 @@ type CowBehaviour struct {
 	speed             float64
 	navigator         Navigator
 	nextWander        int
+	breeding          breeding
 	dead              bool
 }
 
@@ -168,13 +171,12 @@ func (c *Cow) Tick(tx *world.Tx, current int64) {
 }
 
 func (b *CowBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.ageTicks < 0 {
-		b.ageTicks = min(0, b.ageTicks+1)
-	}
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
+	if partner, ok := tickBreeding(&Cow{Ent: e}, tx); ok {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.chooseWanderPath(e, tx)
 	}
 	rot, velocity := e.data.Rot, e.data.Vel
@@ -227,6 +229,7 @@ func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage *= effect.Resistance.Multiplier(src, resistance.Level())
 	}
 	c.behaviour().health.AddHealth(-damage)
+	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)
 	if c.Dead() {
@@ -312,6 +315,25 @@ func (c *Cow) MilkSound() world.Sound {
 }
 
 var _ Milkable = (*Cow)(nil)
+
+// Interact feeds the cow wheat to breed it or let a calf grow up faster.
+func (c *Cow) Interact(_ *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return feedBreeder(c, user, ctx)
+}
+
+// InLove reports whether the cow is in love.
+func (c *Cow) InLove() bool { return c.behaviour().breeding.InLove() }
+
+func (c *Cow) breedingState() *breeding { return &c.behaviour().breeding }
+func (c *Cow) ageTicks() *int           { return &c.behaviour().ageTicks }
+
+func (c *Cow) breedingFood(stack item.Stack) bool { return itemNamed(stack, "minecraft:wheat") }
+
+// breedOffspring ports Cow.getBreedOffspring: the calf takes the variant of
+// either parent.
+func (c *Cow) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	return babyAt(c).New(CowType, CowConfig{AgeTicks: babyStartAge, Variant: randomParent(c.behaviour().variant, partner.(*Cow).behaviour().variant)})
+}
 
 // FinalizeSpawn assigns the randomized cow sound set used for newly spawned mobs.
 func (c *Cow) FinalizeSpawn(_ string, random *java26.Random) {

@@ -622,6 +622,15 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			EventData: (int32(pa.Colour.A) << 24) | (int32(pa.Colour.R) << 16) | (int32(pa.Colour.G) << 8) | int32(pa.Colour.B),
 			Position:  vec64To32(pos),
 		})
+	case particle.MobGrowth:
+		t := packet.ParticleTypeResetMobGrowth
+		if pa.Paused {
+			t = packet.ParticleTypePauseMobGrowth
+		}
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticleLegacyEvent | int32(t),
+			Position:  vec64To32(pos),
+		})
 	case particle.WindBurst:
 		s.writePacket(&packet.LevelEvent{
 			EventType: packet.LevelEventParticlesWindExplosion,
@@ -1014,6 +1023,13 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		if so.Continuous {
 			pk.SoundType = packet.SoundEventGeyserContinuousEruptionStart
 		}
+	case sound.MobGrowth:
+		pk.SoundType = packet.SoundEventResetGrowth
+		if so.Paused {
+			pk.SoundType = packet.SoundEventPauseGrowth
+		}
+	case sound.FrogSpawnHatch:
+		pk.SoundType = packet.SoundEventFrogspawnHatched
 	case sound.WindChargeImpact:
 		pk.SoundType = packet.SoundEventWindChargeBurst
 	case sound.BreezeWindChargeBurst:
@@ -1435,6 +1451,11 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFishhookTease,
+		})
+	case entity.LoveHeartsAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventInLoveHearts,
 		})
 	}
 }

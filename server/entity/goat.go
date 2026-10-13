@@ -1,14 +1,15 @@
 package entity
 
 import (
+	"math"
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"math/rand/v2"
 )
 
 // NewGoat creates a normal adult goat.
@@ -25,8 +26,13 @@ func (goatType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) w
 	}
 	return &Goat{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
-func (goatType) EncodeEntity() string          { return "minecraft:goat" }
-func (goatType) BBox(e world.Entity) cube.BBox { return cube.Box(-.45, 0, -.45, .45, 1.3, .45) }
+func (goatType) EncodeEntity() string { return "minecraft:goat" }
+func (goatType) BBox(e world.Entity) cube.BBox {
+	if g, ok := e.(*Goat); ok && g.behaviour().age < 0 {
+		return cube.Box(-.225, 0, -.225, .225, .65, .225)
+	}
+	return cube.Box(-.45, 0, -.45, .45, 1.3, .45)
+}
 func (goatType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	s := ReadNativeMobJavaState(m)
 	if s == nil {
@@ -37,11 +43,12 @@ func (goatType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
+	d.Data.(*GoatBehaviour).breeding.decodeNBT(s)
 }
 func (goatType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*GoatBehaviour)
 	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.age), "IsScreamingGoat": byte(boolByte(b.screaming)), "HasLeftHorn": byte(boolByte(b.leftHorn)), "HasRightHorn": byte(boolByte(b.rightHorn))}))
+	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "IsScreamingGoat": byte(boolByte(b.screaming)), "HasLeftHorn": byte(boolByte(b.leftHorn)), "HasRightHorn": byte(boolByte(b.rightHorn))})))
 }
 
 // GoatConfig configures source goat state.
@@ -75,6 +82,7 @@ type GoatBehaviour struct {
 	speed                                float64
 	navigator                            Navigator
 	mc                                   *MovementComputer
+	breeding                             breeding
 }
 
 func (g *Goat) behaviour() *GoatBehaviour { return g.Behaviour().(*GoatBehaviour) }
@@ -83,16 +91,15 @@ func (g *Goat) Tick(tx *world.Tx, t int64) {
 	g.Ent.Tick(tx, t)
 }
 func (b *GoatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.age < 0 {
-		b.age = min(0, b.age+1)
-	}
 	if b.ramCooldown > 0 {
 		b.ramCooldown--
 	}
 	if b.next > 0 {
 		b.next--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
+	if partner, ok := tickBreeding(&Goat{Ent: e}, tx); ok {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 40 + rand.IntN(81)
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
@@ -137,6 +144,7 @@ func (g *Goat) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := g.behaviour()
 	b.health -= v
+	resetLove(g)
 	g.viewAction(HurtAction{})
 	onMobHurt(g.tx, g)
 	if g.Dead() {
@@ -201,28 +209,25 @@ func (g *Goat) BreakHorn(left bool) bool {
 	}
 	return false
 }
-func (g *Goat) Feed(s item.Stack) bool {
-	b := g.behaviour()
-	if s.Empty() || b.age >= 0 {
-		return false
-	}
-	name, _ := s.Item().EncodeItem()
-	if name != "minecraft:wheat" {
-		return false
-	}
-	b.age = min(0, b.age+1200)
-	return true
-}
+
+// Interact feeds the goat wheat to breed it or let a kid grow up faster.
 func (g *Goat) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
-	if u == nil || c == nil {
-		return false
-	}
-	held, _ := u.HeldItems()
-	if g.Feed(held) {
-		c.SubtractFromCount(1)
-		return true
-	}
-	return false
+	return feedBreeder(g, u, c)
+}
+
+// InLove reports whether the goat is in love.
+func (g *Goat) InLove() bool { return g.behaviour().breeding.InLove() }
+
+func (g *Goat) breedingState() *breeding { return &g.behaviour().breeding }
+func (g *Goat) ageTicks() *int           { return &g.behaviour().age }
+
+func (g *Goat) breedingFood(stack item.Stack) bool { return itemNamed(stack, "minecraft:wheat") }
+
+// breedOffspring ports Goat.getBreedOffspring: the kid screams like a
+// randomly picked parent, or with a 2% chance regardless.
+func (g *Goat) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	screaming := randomParent(g, partner.(*Goat)).behaviour().screaming || rand.Float64() < 0.02
+	return babyAt(g).New(GoatType, GoatConfig{Age: babyStartAge, Screaming: screaming})
 }
 
 var _ Interactable = (*Goat)(nil)
@@ -242,4 +247,4 @@ func (g *Goat) FinalizeSpawn(_ string, r *java26.Random) {
 	}
 }
 
-var _ = item.Wheat{}
+var _ breeder = (*Goat)(nil)

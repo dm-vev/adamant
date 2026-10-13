@@ -58,6 +58,7 @@ func (pigType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.MaxHealth = float64(nbtconv.Float32(map[string]any{"MaxHealth": v}, "MaxHealth"))
 	}
 	d.Data = c.New()
+	d.Data.(*PigBehaviour).breeding.decodeNBT(s)
 }
 func pigVariant(value string) int {
 	switch strings.TrimPrefix(value, "minecraft:") {
@@ -73,7 +74,7 @@ func (pigType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*PigBehaviour)
 	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
 	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": a, "Variant": int32(b.variant)})
-	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.age), "Saddle": byte(boolByte(b.saddled)), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[b.variant], "sound_variant": "minecraft:" + b.soundVariant}))
+	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Saddle": byte(boolByte(b.saddled)), "variant": "minecraft:" + [...]string{"temperate", "warm", "cold"}[b.variant], "sound_variant": "minecraft:" + b.soundVariant})))
 }
 
 // PigConfig supplies a pig's persistent Java state.
@@ -114,6 +115,7 @@ type PigBehaviour struct {
 	navigator         Navigator
 	next              int
 	mc                *MovementComputer
+	breeding          breeding
 }
 
 func (p *PigBehaviour) Variant() int32  { return int32(p.variant) }
@@ -134,13 +136,12 @@ func (p *Pig) Tick(tx *world.Tx, t int64) {
 	}
 }
 func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.age < 0 {
-		b.age = min(0, b.age+1)
-	}
 	if b.next > 0 {
 		b.next--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
+	if partner, ok := tickBreeding(&Pig{Ent: e}, tx); ok {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 40 + rand.IntN(81)
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
@@ -200,6 +201,7 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	}
 	b := p.behaviour()
 	b.health -= v
+	resetLove(p)
 	p.viewAction(HurtAction{})
 	onMobHurt(p.tx, p)
 	if p.Dead() {
@@ -319,29 +321,47 @@ func (p *Pig) viewLink(tx *world.Tx, h *world.EntityHandle, on bool) {
 	}
 	tx.ReleaseViewers(vs)
 }
+
+// Interact ports Pig.mobInteract: a saddled pig is ridden unless fed or the
+// player sneaks, food breeds it or lets a piglet grow, and a saddle saddles
+// it.
 func (p *Pig) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 	if u == nil {
 		return false
 	}
 	b := p.behaviour()
 	held, _ := u.HeldItems()
-	name := ""
-	if !held.Empty() {
-		name, _ = held.Item().EncodeItem()
+	sneaking := false
+	if s, ok := u.(interface{ Sneaking() bool }); ok {
+		sneaking = s.Sneaking()
 	}
-	if c != nil && b.age < 0 && (name == "minecraft:carrot" || name == "minecraft:potato" || name == "minecraft:beetroot") {
-		b.age = min(0, b.age+1200)
-		c.SubtractFromCount(1)
+	if !p.breedingFood(held) && b.saddled && b.passenger == nil && !sneaking {
+		return p.Mount(tx, u)
+	}
+	if c != nil && feedBreeder(p, u, c) {
 		return true
 	}
 	if _, ok := held.Item().(item.Saddle); ok && c != nil && p.Saddle() {
 		c.SubtractFromCount(1)
 		return true
 	}
-	if b.saddled && b.passenger == nil {
-		return p.Mount(tx, u)
-	}
 	return false
+}
+
+// InLove reports whether the pig is in love.
+func (p *Pig) InLove() bool { return p.behaviour().breeding.InLove() }
+
+func (p *Pig) breedingState() *breeding { return &p.behaviour().breeding }
+func (p *Pig) ageTicks() *int           { return &p.behaviour().age }
+
+func (p *Pig) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:carrot", "minecraft:potato", "minecraft:beetroot")
+}
+
+// breedOffspring ports Pig.getBreedOffspring: the piglet takes the variant of
+// either parent.
+func (p *Pig) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	return babyAt(p).New(PigType, PigConfig{Age: babyStartAge, Variant: randomParent(p.behaviour().variant, partner.(*Pig).behaviour().variant)})
 }
 func (p *Pig) FinalizeSpawn(_ string, r *java26.Random) {
 	if r != nil {

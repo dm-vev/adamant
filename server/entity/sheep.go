@@ -54,12 +54,13 @@ func (sheepType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.MaxHealth = float64(nbtconv.Float32(map[string]any{"h": h}, "h"))
 	}
 	d.Data = c.New()
+	d.Data.(*SheepBehaviour).breeding.decodeNBT(s)
 }
 func (sheepType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*SheepBehaviour)
 	attr := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
 	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attr})
-	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared)), "RegrowTicks": int32(b.regrowTicks)}))
+	return MergeNativeMobJavaState(native, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Color": byte(b.color), "Sheared": byte(boolByte(b.sheared)), "RegrowTicks": int32(b.regrowTicks)})))
 }
 
 // SheepConfig configures a sheep's saved source state.
@@ -91,6 +92,7 @@ type SheepBehaviour struct {
 	navigator                    Navigator
 	nextWander                   int
 	mc                           *MovementComputer
+	breeding                     breeding
 }
 
 func (s *SheepBehaviour) Baby() bool        { return s.ageTicks < 0 }
@@ -100,9 +102,7 @@ func (s *Sheep) Tick(tx *world.Tx, current int64) {
 	s.Ent.Tick(tx, current)
 }
 func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.ageTicks < 0 {
-		b.ageTicks = min(0, b.ageTicks+1)
-	}
+	partner, inLove := tickBreeding(&Sheep{Ent: e}, tx)
 	// EatBlockGoal: a sheared sheep regrows only after eating a grass block.
 	if b.sheared && b.regrowTicks > 0 {
 		b.regrowTicks--
@@ -118,7 +118,9 @@ func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
+	if inLove {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.choosePath(e, tx)
 	}
 	rot, vel := e.data.Rot, e.data.Vel
@@ -168,6 +170,7 @@ func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := s.behaviour()
 	b.health -= v
+	resetLove(s)
 	s.viewAction(HurtAction{})
 	onMobHurt(s.tx, s)
 	if s.Dead() {
@@ -232,25 +235,39 @@ func (s *Sheep) Shear(_ *world.Tx) item.Stack {
 	}
 	return stacks[0]
 }
+
+// Interact feeds the sheep wheat to breed it or let a lamb grow up faster,
+// or dyes its fleece.
 func (s *Sheep) Interact(_ *world.Tx, user item.User, ctx *item.UseContext) bool {
 	if user == nil || ctx == nil {
 		return false
 	}
-	held, _ := user.HeldItems()
-	if held.Empty() {
-		return false
+	if feedBreeder(s, user, ctx) {
+		return true
 	}
+	held, _ := user.HeldItems()
 	if dye, ok := held.Item().(item.Dye); ok {
 		s.behaviour().color = sheepColor(dye.Colour.String())
 		ctx.SubtractFromCount(1)
 		return true
 	}
-	if name, _ := held.Item().EncodeItem(); name == "minecraft:wheat" && s.behaviour().ageTicks < 0 {
-		s.behaviour().ageTicks = min(0, s.behaviour().ageTicks+1200)
-		ctx.SubtractFromCount(1)
-		return true
-	}
 	return false
+}
+
+// InLove reports whether the sheep is in love.
+func (s *Sheep) InLove() bool { return s.behaviour().breeding.InLove() }
+
+func (s *Sheep) breedingState() *breeding { return &s.behaviour().breeding }
+func (s *Sheep) ageTicks() *int           { return &s.behaviour().ageTicks }
+
+func (s *Sheep) breedingFood(stack item.Stack) bool { return itemNamed(stack, "minecraft:wheat") }
+
+// breedOffspring ports Sheep.getBreedOffspring: the lamb's fleece has the
+// colour two dyes of the parents' colours craft into, or the colour of
+// either parent if they craft into none.
+func (s *Sheep) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	colour := mixedDyeColour(item.Colours()[s.behaviour().color], item.Colours()[partner.(*Sheep).behaviour().color])
+	return babyAt(s).New(SheepType, SheepConfig{AgeTicks: babyStartAge, WoolColor: sheepColor(colour.String())})
 }
 
 var _ Interactable = (*Sheep)(nil)

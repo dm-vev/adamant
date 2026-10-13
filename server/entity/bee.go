@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -21,9 +22,12 @@ var BeeType beeType
 type beeType struct{}
 
 func (beeType) EncodeEntity() string { return "minecraft:bee" }
-func (beeType) BBox(world.Entity) cube.BBox {
-	const halfWidth = float64(float32(.55)) / 2
-	return cube.Box(-halfWidth, 0, -halfWidth, halfWidth, float64(float32(.5)), halfWidth)
+func (beeType) BBox(e world.Entity) cube.BBox {
+	halfWidth, height := float64(float32(.55))/2, float64(float32(.5))
+	if b, ok := e.(*Bee); ok && b.state().age < 0 {
+		halfWidth, height = halfWidth/2, height/2
+	}
+	return cube.Box(-halfWidth, 0, -halfWidth, halfWidth, height, halfWidth)
 }
 func (beeType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
@@ -55,15 +59,17 @@ func (beeType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		c.anger = int(nbtconv.Int32(j, "AngerTime"))
 		c.hive = decodeBeePos(j, "hive_pos")
 		c.flower = decodeBeePos(j, "flower_pos")
+		c.age = int(nbtconv.Int32(j, "Age"))
 	}
 	c.Apply(d)
+	d.Data.(*beeBehaviour).breeding.decodeNBT(j)
 }
 func (beeType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*beeBehaviour)
 	h := b.health
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: 10, Current: h.Health(), DefaultMin: 0, DefaultMax: 10, Min: 0, Max: 10}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 2, Current: 2, DefaultMin: 0, DefaultMax: 2, Min: 0, Max: 2}})
 	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
-	j := map[string]any{"HasNectar": byte(boolByte(b.hasNectar)), "HasStung": byte(boolByte(b.hasStung)), "CropsGrownSincePollination": int32(b.crops), "TicksSincePollination": int32(b.noNectar), "CannotEnterHiveTicks": int32(b.stayOut), "AngerTime": int32(b.anger)}
+	j := b.breeding.encodeNBT(map[string]any{"HasNectar": byte(boolByte(b.hasNectar)), "HasStung": byte(boolByte(b.hasStung)), "CropsGrownSincePollination": int32(b.crops), "TicksSincePollination": int32(b.noNectar), "CannotEnterHiveTicks": int32(b.stayOut), "AngerTime": int32(b.anger), "Age": int32(b.age)})
 	if b.hasHive {
 		j["hive_pos"] = encodeBeePos(b.hive)
 	}
@@ -84,10 +90,10 @@ func encodeBeePos(p cube.Pos) map[string]any {
 }
 
 type beeConfig struct {
-	health                                      float64
-	hasNectar, hasStung                         bool
-	crops, noNectar, stayOut, stingTicks, anger int
-	hive, flower                                cube.Pos
+	health                                           float64
+	hasNectar, hasStung                              bool
+	crops, noNectar, stayOut, stingTicks, anger, age int
+	hive, flower                                     cube.Pos
 }
 
 func (c beeConfig) Apply(d *world.EntityData) { d.Data = c.New() }
@@ -95,7 +101,7 @@ func (c beeConfig) New() *beeBehaviour {
 	if c.health <= 0 {
 		c.health = 10
 	}
-	return &beeBehaviour{health: NewHealthManager(c.health, 10), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .01, Drag: .08, DragBeforeGravity: true}, hasNectar: c.hasNectar, hasStung: c.hasStung, crops: c.crops, noNectar: c.noNectar, stayOut: c.stayOut, stingTicks: c.stingTicks, anger: c.anger, hive: c.hive, flower: c.flower, hasHive: c.hive != (cube.Pos{}), hasFlower: c.flower != (cube.Pos{}), random: java26.NewLegacyRandom(0), speed: .12}
+	return &beeBehaviour{health: NewHealthManager(c.health, 10), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .01, Drag: .08, DragBeforeGravity: true}, hasNectar: c.hasNectar, hasStung: c.hasStung, crops: c.crops, noNectar: c.noNectar, stayOut: c.stayOut, stingTicks: c.stingTicks, anger: c.anger, age: c.age, hive: c.hive, flower: c.flower, hasHive: c.hive != (cube.Pos{}), hasFlower: c.flower != (cube.Pos{}), random: java26.NewLegacyRandom(0), speed: .12}
 }
 
 type beeBehaviour struct {
@@ -108,6 +114,8 @@ type beeBehaviour struct {
 	crops, noNectar, stayOut, stingTicks, anger, pollination, locateCooldown, cropCooldown int
 	target                                                                                 world.Entity
 	speed                                                                                  float64
+	age                                                                                    int
+	breeding                                                                               breeding
 }
 type Bee struct{ *Ent }
 
@@ -118,6 +126,7 @@ func (b *Bee) Tick(tx *world.Tx, n int64)                   { b.state().effects.
 func (b *beeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	mob := &Bee{Ent: e}
 	pos := cube.PosFromVec3(e.Position())
+	partner, inLove := tickBreeding(mob, tx)
 	if b.stayOut > 0 {
 		b.stayOut--
 	}
@@ -140,11 +149,17 @@ func (b *beeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		if movement, handled := beeHiveStep(b, mob, tx, pos); handled {
 			return movement
 		}
+		if inLove {
+			return beeFly(b, e, tx, partner)
+		}
 	} else {
 		if b.hasHive && (night || tx.RainingAt(pos) || b.noNectar > 3600) {
 			if movement, handled := beeHiveStep(b, mob, tx, pos); handled {
 				return movement
 			}
+		}
+		if inLove {
+			return beeFly(b, e, tx, partner)
 		}
 		b.noNectar++
 		if !night && !tx.RainingAt(pos) {
@@ -383,6 +398,7 @@ func (b *Bee) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b.state().health.AddHealth(-d)
+	resetLove(b)
 	onMobHurt(b.tx, b)
 	if b.Dead() {
 		b.die(src)
@@ -428,6 +444,28 @@ func (b *Bee) die(src world.DamageSource) {
 	b.viewAction(DeathAction{})
 	dropAllDeathLoot(b.tx, b, src)
 	_ = b.CloseIn(b.tx)
+}
+
+// Interact feeds the bee flowers to breed it or let a baby bee grow up
+// faster.
+func (b *Bee) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
+	return feedBreeder(b, u, ctx)
+}
+
+// Baby reports whether the bee is a baby.
+func (b *Bee) Baby() bool { return b.state().age < 0 }
+
+// InLove reports whether the bee is in love.
+func (b *Bee) InLove() bool { return b.state().breeding.InLove() }
+
+func (b *Bee) breedingState() *breeding { return &b.state().breeding }
+func (b *Bee) ageTicks() *int           { return &b.state().age }
+
+// breedingFood reports whether the stack is in #bee_food, the flowers.
+func (b *Bee) breedingFood(stack item.Stack) bool { return blockItemInTag(stack, "flowers") }
+
+func (b *Bee) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
+	return babyAt(b).New(BeeType, beeConfig{age: babyStartAge})
 }
 
 var _ world.EntityType = beeType{}

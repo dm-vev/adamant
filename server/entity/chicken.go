@@ -28,8 +28,13 @@ func (chickenType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.En
 	}
 	return &Chicken{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
-func (chickenType) EncodeEntity() string        { return "minecraft:chicken" }
-func (chickenType) BBox(world.Entity) cube.BBox { return cube.Box(-0.2, 0, -0.2, 0.2, 0.7, 0.2) }
+func (chickenType) EncodeEntity() string { return "minecraft:chicken" }
+func (chickenType) BBox(e world.Entity) cube.BBox {
+	if c, ok := e.(*Chicken); ok && c.behaviour().ageTicks < 0 {
+		return cube.Box(-0.1, 0, -0.1, 0.1, 0.35, 0.1)
+	}
+	return cube.Box(-0.2, 0, -0.2, 0.2, 0.7, 0.2)
+}
 func (chickenType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := ChickenBehaviourConfig{}
 	if _, ok := m["Health"]; ok {
@@ -59,11 +64,12 @@ func (chickenType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	}
 	conf.Jockey = nbtconv.Bool(m, "IsChickenJockey")
 	data.Data = conf.New()
+	data.Data.(*ChickenBehaviour).breeding.decodeNBT(m)
 }
 func (chickenType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*ChickenBehaviour)
 	variant := []string{"temperate", "cold", "warm"}[min(b.variant, 2)]
-	return map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Age": int32(b.ageTicks), "EggLayTime": int32(b.eggTimer), "variant": "minecraft:" + variant, "IsChickenJockey": boolByte(b.jockey)}
+	return b.breeding.encodeNBT(map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Age": int32(b.ageTicks), "EggLayTime": int32(b.eggTimer), "variant": "minecraft:" + variant, "IsChickenJockey": boolByte(b.jockey)})
 }
 
 type ChickenBehaviourConfig struct {
@@ -98,6 +104,7 @@ type ChickenBehaviour struct {
 	variant                        int
 	navigator                      Navigator
 	dead, jockey                   bool
+	breeding                       breeding
 }
 
 func (c *Chicken) behaviour() *ChickenBehaviour { return c.Behaviour().(*ChickenBehaviour) }
@@ -106,8 +113,8 @@ func (c *Chicken) Tick(tx *world.Tx, current int64) {
 	c.Ent.Tick(tx, current)
 }
 func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	b.ageTicks = min(0, b.ageTicks+1)
-	if b.ageTicks == 0 && !b.jockey {
+	partner, inLove := tickBreeding(&Chicken{Ent: e}, tx)
+	if b.ageTicks >= 0 && !b.jockey {
 		b.eggTimer--
 		if b.eggTimer <= 0 {
 			b.eggTimer = 6000 + rand.IntN(6000)
@@ -124,7 +131,9 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
+	if inLove {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
 		b.chooseWanderPath(e, tx)
 	}
 	velocity := e.data.Vel
@@ -169,6 +178,7 @@ func (c *Chicken) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage *= effect.Resistance.Multiplier(src, res.Level())
 	}
 	c.behaviour().health.AddHealth(-damage)
+	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)
 	if c.Dead() {
@@ -232,4 +242,27 @@ func (c *Chicken) Baby() bool { return c.behaviour().ageTicks < 0 }
 // LootComponents exposes the chicken variant to loot predicates.
 func (c *Chicken) LootComponents() map[string]any {
 	return map[string]any{"minecraft:chicken/variant": "minecraft:" + []string{"temperate", "cold", "warm"}[min(c.behaviour().variant, 2)]}
+}
+
+// Interact feeds the chicken seeds to breed it or let a chick grow up
+// faster.
+func (c *Chicken) Interact(_ *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return feedBreeder(c, user, ctx)
+}
+
+// InLove reports whether the chicken is in love.
+func (c *Chicken) InLove() bool { return c.behaviour().breeding.InLove() }
+
+func (c *Chicken) breedingState() *breeding { return &c.behaviour().breeding }
+func (c *Chicken) ageTicks() *int           { return &c.behaviour().ageTicks }
+
+// breedingFood reports whether the stack is in #chicken_food.
+func (c *Chicken) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:wheat_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:beetroot_seeds", "minecraft:torchflower_seeds", "minecraft:pitcher_pod")
+}
+
+// breedOffspring ports Chicken.getBreedOffspring: the chick takes the
+// variant of either parent.
+func (c *Chicken) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	return babyAt(c).New(ChickenType, ChickenBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(c.behaviour().variant, partner.(*Chicken).behaviour().variant)})
 }

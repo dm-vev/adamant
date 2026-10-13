@@ -30,8 +30,13 @@ func (armadilloType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityDa
 	}
 	return &Armadillo{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
-func (armadilloType) EncodeEntity() string          { return "minecraft:armadillo" }
-func (armadilloType) BBox(e world.Entity) cube.BBox { return cube.Box(-.35, 0, -.35, .35, .65, .35) }
+func (armadilloType) EncodeEntity() string { return "minecraft:armadillo" }
+func (armadilloType) BBox(e world.Entity) cube.BBox {
+	if a, ok := e.(*Armadillo); ok && a.behaviour().age < 0 {
+		return cube.Box(-.21, 0, -.21, .21, .39, .21)
+	}
+	return cube.Box(-.35, 0, -.35, .35, .65, .35)
+}
 func (armadilloType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	s := ReadNativeMobJavaState(m)
 	if s == nil {
@@ -42,11 +47,12 @@ func (armadilloType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
+	d.Data.(*ArmadilloBehaviour).breeding.decodeNBT(s)
 }
 func (armadilloType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*ArmadilloBehaviour)
 	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.age), "ScuteTime": int32(b.scuteTicks), "Rolling": byte(boolByte(b.rolling)), "RollTicks": int32(b.rollTicks), "ThreatCooldown": int32(b.threatCooldown)}))
+	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "ScuteTime": int32(b.scuteTicks), "Rolling": byte(boolByte(b.rolling)), "RollTicks": int32(b.rollTicks), "ThreatCooldown": int32(b.threatCooldown)})))
 }
 func (c ArmadilloConfig) New() *ArmadilloBehaviour {
 	if c.MaxHealth <= 0 {
@@ -85,18 +91,17 @@ type ArmadilloBehaviour struct {
 	speed                                            float64
 	navigator                                        Navigator
 	mc                                               *MovementComputer
+	breeding                                         breeding
 }
 
 func (a *Armadillo) behaviour() *ArmadilloBehaviour { return a.Behaviour().(*ArmadilloBehaviour) }
 func (a *Armadillo) Tick(tx *world.Tx, t int64)     { a.behaviour().effects.Tick(a, tx); a.Ent.Tick(tx, t) }
 func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.age < 0 {
-		b.age = min(0, b.age+1)
-	}
+	partner, inLove := tickBreeding(&Armadillo{Ent: e}, tx)
 	if b.threatCooldown > 0 {
 		b.threatCooldown--
 	}
-	if b.scuteTicks > 0 {
+	if b.scuteTicks > 0 && b.age >= 0 {
 		b.scuteTicks--
 		if b.scuteTicks == 0 {
 			dropArmadilloShed(e, tx)
@@ -112,7 +117,9 @@ func (b *ArmadilloBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && !b.rolling {
+	if inLove && !b.rolling {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && !b.rolling {
 		b.next = 40 + rand.IntN(81)
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
@@ -173,6 +180,7 @@ func (a *Armadillo) Hurt(v float64, src world.DamageSource) (float64, bool) {
 		v *= .5
 	}
 	b.health -= v
+	resetLove(a)
 	a.viewAction(HurtAction{})
 	onMobHurt(a.tx, a)
 	if a.Dead() {
@@ -246,29 +254,25 @@ func (a *Armadillo) Brush() item.Stack {
 	}
 	return stacks[0]
 }
-func (a *Armadillo) Feed(s item.Stack) bool {
-	b := a.behaviour()
-	if s.Empty() || b.age >= 0 {
-		return false
-	}
-	name, _ := s.Item().EncodeItem()
-	if name != "minecraft:spider_eye" {
-		return false
-	}
-	b.age = min(0, b.age+1200)
-	return true
-}
+
+// Interact feeds the armadillo spider eyes to breed it or let a pup grow up
+// faster.
 func (a *Armadillo) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
-	if u == nil || c == nil {
-		return false
-	}
-	held, _ := u.HeldItems()
-	if a.Feed(held) {
-		c.SubtractFromCount(1)
-		return true
-	}
-	return false
+	return feedBreeder(a, u, c)
+}
+
+// InLove reports whether the armadillo is in love.
+func (a *Armadillo) InLove() bool { return a.behaviour().breeding.InLove() }
+
+func (a *Armadillo) breedingState() *breeding { return &a.behaviour().breeding }
+func (a *Armadillo) ageTicks() *int           { return &a.behaviour().age }
+
+func (a *Armadillo) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:spider_eye")
+}
+
+func (a *Armadillo) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
+	return babyAt(a).New(ArmadilloType, ArmadilloConfig{Age: babyStartAge})
 }
 
 var _ Interactable = (*Armadillo)(nil)
-var _ = item.SpiderEye{}

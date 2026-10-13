@@ -101,6 +101,11 @@ func (e *Ent) Position() mgl64.Vec3 {
 	return e.data.Pos
 }
 
+// currentTx returns the transaction the entity was opened in.
+func (e *Ent) currentTx() *world.Tx {
+	return e.tx
+}
+
 // Velocity returns the current velocity of the entity. The values in the Vec3 returned represent the speed on
 // that axis in blocks/tick.
 func (e *Ent) Velocity() mgl64.Vec3 {

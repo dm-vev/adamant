@@ -458,6 +458,7 @@ func init() {
 	world.RegisterItem(PitcherPlant{})
 	world.RegisterItem(Scaffolding{})
 	world.RegisterItem(SnifferEgg{})
+	world.RegisterItem(FrogSpawn{})
 	world.RegisterItem(ShelfMushroom{})
 	world.RegisterItem(NewPotentSulfur())
 	world.RegisterItem(RedShrub{})

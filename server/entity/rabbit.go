@@ -1,14 +1,16 @@
 package entity
 
 import (
+	"math"
+	"math/rand/v2"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"math/rand/v2"
 )
 
 // NewRabbit creates a common brown rabbit.
@@ -25,8 +27,13 @@ func (rabbitType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 	}
 	return &Rabbit{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
-func (rabbitType) EncodeEntity() string          { return "minecraft:rabbit" }
-func (rabbitType) BBox(e world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .5, .25) }
+func (rabbitType) EncodeEntity() string { return "minecraft:rabbit" }
+func (rabbitType) BBox(e world.Entity) cube.BBox {
+	if r, ok := e.(*Rabbit); ok && r.behaviour().age < 0 {
+		return cube.Box(-.125, 0, -.125, .125, .25, .125)
+	}
+	return cube.Box(-.25, 0, -.25, .25, .5, .25)
+}
 func (rabbitType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	s := ReadNativeMobJavaState(m)
 	if s == nil {
@@ -37,11 +44,12 @@ func (rabbitType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
+	d.Data.(*RabbitBehaviour).breeding.decodeNBT(s)
 }
 func (rabbitType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*RabbitBehaviour)
 	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant)}))
+	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant)})))
 }
 
 // RabbitConfig controls variant and age.
@@ -71,6 +79,7 @@ type RabbitBehaviour struct {
 	speed                              float64
 	navigator                          Navigator
 	mc                                 *MovementComputer
+	breeding                           breeding
 }
 
 func (r *Rabbit) behaviour() *RabbitBehaviour { return r.Behaviour().(*RabbitBehaviour) }
@@ -79,9 +88,7 @@ func (r *Rabbit) Tick(tx *world.Tx, t int64) {
 	r.Ent.Tick(tx, t)
 }
 func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.age < 0 {
-		b.age = min(0, b.age+1)
-	}
+	partner, inLove := tickBreeding(&Rabbit{Ent: e}, tx)
 	if b.attackCooldown > 0 {
 		b.attackCooldown--
 	}
@@ -100,7 +107,9 @@ func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
+	if inLove {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 30 + rand.IntN(61)
 		start := cube.PosFromVec3(e.Position())
 		for range 5 {
@@ -171,6 +180,7 @@ func (r *Rabbit) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := r.behaviour()
 	b.health -= v
+	resetLove(r)
 	r.viewAction(HurtAction{})
 	onMobHurt(r.tx, r)
 	if r.Dead() {
@@ -208,28 +218,55 @@ func (r *Rabbit) viewAction(a world.EntityAction) {
 }
 func (r *Rabbit) Variant() int { return r.behaviour().variant }
 func (r *Rabbit) Killer() bool { return r.behaviour().killer }
-func (r *Rabbit) Feed(food item.Stack) bool {
-	b := r.behaviour()
-	if food.Empty() || b.age >= 0 {
-		return false
-	}
-	name, _ := food.Item().EncodeItem()
-	if name != "minecraft:carrot" && name != "minecraft:golden_carrot" && name != "minecraft:dandelion" {
-		return false
-	}
-	b.age = min(0, b.age+1200)
-	return true
-}
+
+// Interact feeds the rabbit to breed it or let a kit grow up faster.
 func (r *Rabbit) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
-	if u == nil || c == nil {
-		return false
+	return feedBreeder(r, u, c)
+}
+
+// InLove reports whether the rabbit is in love.
+func (r *Rabbit) InLove() bool { return r.behaviour().breeding.InLove() }
+
+func (r *Rabbit) breedingState() *breeding { return &r.behaviour().breeding }
+func (r *Rabbit) ageTicks() *int           { return &r.behaviour().age }
+
+// breedingFood reports whether the stack is in #rabbit_food.
+func (r *Rabbit) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:carrot", "minecraft:golden_carrot", "minecraft:dandelion")
+}
+
+// breedOffspring ports Rabbit.getBreedOffspring: the kit takes the variant
+// of either parent, or 1 in 20 times the variant of the biome it is born in.
+func (r *Rabbit) breedOffspring(tx *world.Tx, partner breeder) *world.EntityHandle {
+	variant := rabbitBiomeVariant(tx, cube.PosFromVec3(r.Position()))
+	if rand.IntN(20) != 0 {
+		variant = randomParent(partner.(*Rabbit).behaviour().variant, r.behaviour().variant)
 	}
-	held, _ := u.HeldItems()
-	if r.Feed(held) {
-		c.SubtractFromCount(1)
-		return true
+	return babyAt(r).New(RabbitType, RabbitConfig{Age: babyStartAge, Variant: variant})
+}
+
+// rabbitBiomeVariant ports Rabbit.getRandomRabbitVariant: white or
+// splotched rabbits in #spawns_white_rabbits, gold ones in
+// #spawns_gold_rabbits, and brown, salt and pepper or black ones elsewhere.
+func rabbitBiomeVariant(tx *world.Tx, pos cube.Pos) int {
+	biome := tx.Biome(pos).String()
+	roll := rand.IntN(100)
+	if white, _ := javadata.BiomeTagContains("spawns_white_rabbits", biome); white {
+		if roll < 80 {
+			return 1
+		}
+		return 3
 	}
-	return false
+	if gold, _ := javadata.BiomeTagContains("spawns_gold_rabbits", biome); gold {
+		return 4
+	}
+	switch {
+	case roll < 50:
+		return 0
+	case roll < 90:
+		return 5
+	}
+	return 2
 }
 
 var _ Interactable = (*Rabbit)(nil)

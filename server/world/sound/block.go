@@ -60,6 +60,17 @@ type GeyserEruptionStart struct {
 	Continuous bool
 }
 
+// FrogSpawnHatch is played when frogspawn hatches into tadpoles.
+type FrogSpawnHatch struct{ sound }
+
+// MobGrowth is played when a golden dandelion pauses or resumes the growth
+// of a baby.
+type MobGrowth struct {
+	sound
+	// Paused is set when the growth was paused.
+	Paused bool
+}
+
 // AnvilLand is played when an anvil lands on the ground.
 type AnvilLand struct{ sound }
 

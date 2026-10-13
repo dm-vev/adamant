@@ -68,6 +68,10 @@ type FishHookBiteAction struct{ action }
 // FishHookTeaseAction triggers the tease animation when a fish is attracted to the hook.
 type FishHookTeaseAction struct{ action }
 
+// LoveHeartsAction shows the burst of hearts of an animal falling in love or
+// breeding.
+type LoveHeartsAction struct{ action }
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}

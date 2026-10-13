@@ -93,22 +93,6 @@ func (HoneyBlock) EncodeBlock() (string, map[string]any) {
 	return "minecraft:honey_block", nil
 }
 
-// FrogSpawn is a decorative block placed on top of water by frogs.
-type FrogSpawn struct {
-	transparent
-	empty
-}
-
-// BreakInfo ...
-func (FrogSpawn) BreakInfo() BreakInfo {
-	return newBreakInfo(0, neverHarvestable, nothingEffective, simpleDrops())
-}
-
-// EncodeBlock ...
-func (FrogSpawn) EncodeBlock() (string, map[string]any) {
-	return "minecraft:frog_spawn", nil
-}
-
 // FrostedIce is temporary ice created by the Frost Walker enchantment.
 type FrostedIce struct {
 	transparent

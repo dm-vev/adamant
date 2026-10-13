@@ -4,12 +4,14 @@ import (
 	"math"
 	"math/rand/v2"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -54,6 +56,7 @@ func (snifferType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
+	d.Data.(*SnifferBehaviour).breeding.decodeNBT(s)
 }
 func (snifferType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*SnifferBehaviour)
@@ -62,7 +65,7 @@ func (snifferType) EncodeNBT(d *world.EntityData) map[string]any {
 	for _, p := range b.explored {
 		positions = append(positions, int32(p[0]), int32(p[1]), int32(p[2]))
 	}
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.age), "SniffTicks": int32(b.sniffTicks), "DigTicks": int32(b.digTicks), "Sniffing": byte(boolByte(b.sniffing)), "Next": int32(b.next), "DigX": int32(b.digPos[0]), "DigY": int32(b.digPos[1]), "DigZ": int32(b.digPos[2]), "ExploredPositions": positions}))
+	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "SniffTicks": int32(b.sniffTicks), "DigTicks": int32(b.digTicks), "Sniffing": byte(boolByte(b.sniffing)), "Next": int32(b.next), "DigX": int32(b.digPos[0]), "DigY": int32(b.digPos[1]), "DigZ": int32(b.digPos[2]), "ExploredPositions": positions})))
 }
 
 // SnifferConfig restores sniff/dig memory and age.
@@ -101,6 +104,7 @@ type SnifferBehaviour struct {
 	speed                           float64
 	navigator                       Navigator
 	mc                              *MovementComputer
+	breeding                        breeding
 }
 
 func (s *Sniffer) behaviour() *SnifferBehaviour { return s.Behaviour().(*SnifferBehaviour) }
@@ -109,9 +113,7 @@ func (s *Sniffer) Tick(tx *world.Tx, t int64) {
 	s.Ent.Tick(tx, t)
 }
 func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.age < 0 {
-		b.age = min(0, b.age+1)
-	}
+	partner, inLove := tickBreeding(&Sniffer{Ent: e}, tx)
 	if b.digTicks > 0 {
 		b.digTicks--
 		if b.digTicks == 0 {
@@ -137,7 +139,10 @@ func (b *SnifferBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.next > 0 {
 		b.next--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && b.digTicks == 0 {
+	if inLove && b.digTicks == 0 {
+		b.sniffing, b.sniffTicks = false, 0
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 && b.digTicks == 0 {
 		b.sniffing = true
 		b.sniffTicks = 40 + rand.IntN(41)
 		b.next = 1200
@@ -211,6 +216,7 @@ func (s *Sniffer) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := s.behaviour()
 	b.health -= v
+	resetLove(s)
 	s.viewAction(HurtAction{})
 	onMobHurt(s.tx, s)
 	if s.Dead() {
@@ -251,28 +257,33 @@ func (s *Sniffer) Digging() bool  { return s.behaviour().digTicks > 0 }
 
 // SetAge sets the age in ticks; negative ages are babies growing up.
 func (s *Sniffer) SetAge(age int) { s.behaviour().age = age }
-func (s *Sniffer) Feed(st item.Stack) bool {
-	b := s.behaviour()
-	if st.Empty() || b.age >= 0 {
-		return false
-	}
-	name, _ := st.Item().EncodeItem()
-	if name != "minecraft:torchflower_seeds" {
-		return false
-	}
-	b.age = min(0, b.age+1200)
-	return true
-}
+
+// Interact feeds the sniffer torchflower seeds to breed it or let a snifflet
+// grow up faster.
 func (s *Sniffer) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
-	if u == nil || c == nil {
-		return false
-	}
-	held, _ := u.HeldItems()
-	if s.Feed(held) {
-		c.SubtractFromCount(1)
-		return true
-	}
-	return false
+	return feedBreeder(s, u, c)
+}
+
+// InLove reports whether the sniffer is in love.
+func (s *Sniffer) InLove() bool { return s.behaviour().breeding.InLove() }
+
+func (s *Sniffer) breedingState() *breeding { return &s.behaviour().breeding }
+func (s *Sniffer) ageTicks() *int           { return &s.behaviour().age }
+
+func (s *Sniffer) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:torchflower_seeds")
+}
+
+func (s *Sniffer) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
+	return babyAt(s).New(SnifferType, SnifferConfig{Age: babyStartAge})
+}
+
+// spawnChildFromBreeding ports Sniffer.spawnChildFromBreeding: instead of a
+// snifflet, the sniffer lays a sniffer egg item with a plop.
+func (s *Sniffer) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
+	finishBreeding(s, partner, tx)
+	tx.PlaySound(s.Position(), sound.NativeEvent{SoundType: "plop", EntityType: "minecraft:sniffer", ExtraData: -1})
+	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: s.Position()}, item.NewStack(block.SnifferEgg{}, 1)))
 }
 
 var _ Interactable = (*Sniffer)(nil)

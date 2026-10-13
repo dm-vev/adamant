@@ -14,7 +14,7 @@ import (
 )
 
 // OcelotType is the source minecraft:ocelot species. Trusting an ocelot never
-// converts it into a tameable cat: it only stops fleeing from that player.
+// converts it into a tameable cat: it only stops fleeing from players.
 var OcelotType ocelotType
 
 type ocelotType struct{}
@@ -25,8 +25,13 @@ func (ocelotType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 	}
 	return &Ocelot{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
-func (ocelotType) EncodeEntity() string        { return "minecraft:ocelot" }
-func (ocelotType) BBox(world.Entity) cube.BBox { return cube.Box(-.3, 0, -.3, .3, .7, .3) }
+func (ocelotType) EncodeEntity() string { return "minecraft:ocelot" }
+func (ocelotType) BBox(e world.Entity) cube.BBox {
+	if o, ok := e.(*Ocelot); ok && o.b().age < 0 {
+		return cube.Box(-.15, 0, -.15, .15, .35, .15)
+	}
+	return cube.Box(-.3, 0, -.3, .3, .7, .3)
+}
 func (ocelotType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c := ocelotBehaviourConfig{}
 	s := ReadNativeMobJavaState(m)
@@ -51,20 +56,23 @@ func (ocelotType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health = c.MaxHealth
 	}
 	c.healthSet = true
-	c.Trusting = nbtconv.String(s, "Trusting")
+	c.Trusting = nbtconv.Bool(s, "Trusting")
+	c.Age = int(nbtconv.Int32(s, "Age"))
 	c.Apply(d)
+	d.Data.(*ocelotBehaviour).breeding.decodeNBT(s)
 }
 func (ocelotType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*ocelotBehaviour)
 	h := b.health
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
 	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs})
-	return MergeNativeMobJavaState(m, map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Trusting": b.trusting})
+	return MergeNativeMobJavaState(m, b.breeding.encodeNBT(map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Trusting": boolByte(b.trusting), "Age": int32(b.age)}))
 }
 
 type ocelotBehaviourConfig struct {
 	Health, MaxHealth float64
-	Trusting          string
+	Trusting          bool
+	Age               int
 	healthSet         bool
 }
 
@@ -76,7 +84,7 @@ func (c ocelotBehaviourConfig) New() *ocelotBehaviour {
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &ocelotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), trusting: c.Trusting, nextWander: 1}
+	return &ocelotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), trusting: c.Trusting, age: c.Age, nextWander: 1}
 }
 
 type ocelotBehaviour struct {
@@ -84,10 +92,12 @@ type ocelotBehaviour struct {
 	effects    *EffectManager
 	mc         *MovementComputer
 	random     java26.Random
-	trusting   string
+	trusting   bool
 	dead       bool
+	age        int
 	nextWander int
 	navigator  Navigator
+	breeding   breeding
 }
 type Ocelot struct{ *Ent }
 
@@ -98,6 +108,7 @@ func (*Ocelot) SpeciesType() world.EntityType { return OcelotType }
 func (o *Ocelot) b() *ocelotBehaviour         { return o.Behaviour().(*ocelotBehaviour) }
 func (o *Ocelot) Tick(tx *world.Tx, n int64)  { o.b().effects.Tick(o, tx); o.Ent.Tick(tx, n) }
 func (b *ocelotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
+	partner, inLove := tickBreeding(&Ocelot{Ent: e}, tx)
 	var nearest world.Entity
 	distance := 8.0
 	for p := range tx.Players() {
@@ -106,7 +117,7 @@ func (b *ocelotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			nearest, distance = p, d
 		}
 	}
-	trusted := nearest != nil && nearest.H().UUID().String() == b.trusting
+	trusted := b.trusting
 	tempting := false
 	if nearest != nil && !trusted {
 		if u, ok := nearest.(item.User); ok {
@@ -123,6 +134,8 @@ func (b *ocelotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 		goal := cube.PosFromVec3(e.Position().Add(away.Normalize().Mul(7)))
 		b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
+	} else if inLove {
+		navigateToPartner(&b.navigator, e, tx, partner)
 	} else if nearest != nil && !trusted && tempting && distance < 10 {
 		b.navigator.MoveTo(tx, start, cube.PosFromVec3(nearest.Position()), GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
 	} else if b.navigator.Index >= len(b.navigator.Path) {
@@ -164,7 +177,12 @@ func ocelotFish(i world.Item) bool {
 	}
 	return false
 }
-func (o *Ocelot) TrustingPlayer() string { return o.b().trusting }
+
+// Trusting reports whether the ocelot trusts players and no longer flees.
+func (o *Ocelot) Trusting() bool { return o.b().trusting }
+
+// Baby reports whether the ocelot is a kitten.
+func (o *Ocelot) Baby() bool             { return o.b().age < 0 }
 func (o *Ocelot) Health() float64        { return o.b().health.Health() }
 func (o *Ocelot) MaxHealth() float64     { return o.b().health.MaxHealth() }
 func (o *Ocelot) SetMaxHealth(h float64) { o.b().health.SetMaxHealth(h) }
@@ -186,6 +204,7 @@ func (o *Ocelot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	resetLove(o)
 	o.viewAction(HurtAction{})
 	onMobHurt(o.tx, o)
 	if o.Dead() {
@@ -211,23 +230,43 @@ func (o *Ocelot) Effects() []effect.Effect     { return o.b().effects.Effects() 
 func (o *Ocelot) Speed() float64               { return .23 }
 func (o *Ocelot) SetSpeed(float64)             {}
 func (o *Ocelot) hasEffect(t effect.Type) bool { _, ok := o.b().effects.Effect(t); return ok }
+
+// Interact ports Ocelot.mobInteract: an ocelot that does not trust players
+// yet takes fish from a player within 3 blocks and starts trusting players
+// one in three times. Fish otherwise breeds it or lets a kitten grow up
+// faster.
 func (o *Ocelot) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
+	if u == nil || ctx == nil {
+		return false
+	}
 	main, _ := u.HeldItems()
-	if !ocelotFish(main.Item()) {
-		return false
-	}
 	b := o.b()
-	if b.trusting == u.H().UUID().String() {
-		return false
+	if !b.trusting && !main.Empty() && ocelotFish(main.Item()) && u.Position().Sub(o.Position()).LenSqr() < 9 {
+		ctx.SubtractFromCount(1)
+		if b.random.NextInt(3) == 0 {
+			b.trusting = true
+			tx.PlaySound(o.Position(), sound.Custom{Name: "entity.ocelot.ambient", Volume: 1, Pitch: 1})
+		} else {
+			tx.PlaySound(o.Position(), sound.Custom{Name: "entity.ocelot.hurt", Volume: 1, Pitch: 1})
+		}
+		return true
 	}
-	ctx.SubtractFromCount(1)
-	if b.random.NextInt(3) == 0 {
-		b.trusting = u.H().UUID().String()
-		tx.PlaySound(o.Position(), sound.Custom{Name: "entity.ocelot.ambient", Volume: 1, Pitch: 1})
-	} else {
-		tx.PlaySound(o.Position(), sound.Custom{Name: "entity.ocelot.hurt", Volume: 1, Pitch: 1})
-	}
-	return true
+	return feedBreeder(o, u, ctx)
+}
+
+// InLove reports whether the ocelot is in love.
+func (o *Ocelot) InLove() bool { return o.b().breeding.InLove() }
+
+func (o *Ocelot) breedingState() *breeding { return &o.b().breeding }
+func (o *Ocelot) ageTicks() *int           { return &o.b().age }
+
+// breedingFood reports whether the stack is in #ocelot_food.
+func (o *Ocelot) breedingFood(stack item.Stack) bool {
+	return !stack.Empty() && ocelotFish(stack.Item())
+}
+
+func (o *Ocelot) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
+	return babyAt(o).New(OcelotType, ocelotBehaviourConfig{Age: babyStartAge})
 }
 func (o *Ocelot) viewAction(a world.EntityAction) {
 	vs := o.tx.Viewers(o.Position())

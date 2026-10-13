@@ -17,6 +17,14 @@ type EggSmash struct{ particle }
 // WindBurst is a particle shown when a wind charge detonates.
 type WindBurst struct{ particle }
 
+// MobGrowth is shown over a baby whose growth a golden dandelion paused or
+// resumed.
+type MobGrowth struct {
+	particle
+	// Paused is set when the growth was paused.
+	Paused bool
+}
+
 // Splash is a particle that shows up when a splash potion is splashed.
 type Splash struct {
 	particle

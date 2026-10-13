@@ -30,8 +30,13 @@ func (mooshroomType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityDa
 	}
 	return &Mooshroom{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
-func (mooshroomType) EncodeEntity() string          { return "minecraft:mooshroom" }
-func (mooshroomType) BBox(e world.Entity) cube.BBox { return cube.Box(-.45, 0, -.45, .45, 1.4, .45) }
+func (mooshroomType) EncodeEntity() string { return "minecraft:mooshroom" }
+func (mooshroomType) BBox(e world.Entity) cube.BBox {
+	if m, ok := e.(*Mooshroom); ok && m.behaviour().age < 0 {
+		return cube.Box(-.225, 0, -.225, .225, .7, .225)
+	}
+	return cube.Box(-.45, 0, -.45, .45, 1.4, .45)
+}
 func (mooshroomType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	s := ReadNativeMobJavaState(m)
 	if s == nil {
@@ -45,6 +50,7 @@ func (mooshroomType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
+	d.Data.(*MooshroomBehaviour).breeding.decodeNBT(s)
 }
 func (mooshroomType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*MooshroomBehaviour)
@@ -53,7 +59,7 @@ func (mooshroomType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.variant == 1 {
 		variant = "brown"
 	}
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.age), "Type": variant, "LastLightningBolt": b.lastLightningBolt}))
+	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "Type": variant, "LastLightningBolt": b.lastLightningBolt})))
 }
 
 // MooshroomConfig configures variant and age.
@@ -85,6 +91,7 @@ type MooshroomBehaviour struct {
 	speed              float64
 	navigator          Navigator
 	mc                 *MovementComputer
+	breeding           breeding
 }
 
 func (m *Mooshroom) behaviour() *MooshroomBehaviour { return m.Behaviour().(*MooshroomBehaviour) }
@@ -93,13 +100,12 @@ func (m *Mooshroom) Tick(tx *world.Tx, t int64) {
 	m.Ent.Tick(tx, t)
 }
 func (b *MooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.age < 0 {
-		b.age = min(0, b.age+1)
-	}
 	if b.next > 0 {
 		b.next--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
+	if partner, ok := tickBreeding(&Mooshroom{Ent: e}, tx); ok {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.next == 0 {
 		b.next = 40 + rand.IntN(81)
 		start := cube.PosFromVec3(e.Position())
 		for range 4 {
@@ -152,6 +158,7 @@ func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	b := m.behaviour()
 	b.health -= v
+	resetLove(m)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
 	if m.Dead() {
@@ -194,17 +201,40 @@ func (m *Mooshroom) Milk(_ *world.Tx) bool { return !m.Dead() && m.behaviour().a
 func (m *Mooshroom) MilkSound() world.Sound {
 	return sound.Custom{Name: "entity.mooshroom.milk", Volume: 1, Pitch: 1}
 }
+
+// Interact fills a bowl with stew from an adult, or feeds the mooshroom wheat
+// to breed it or let a calf grow up faster.
 func (m *Mooshroom) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
-	if u == nil || ctx == nil || !m.Milk(m.tx) {
+	if u == nil || ctx == nil {
 		return false
 	}
 	held, _ := u.HeldItems()
-	if _, ok := held.Item().(item.Bowl); !ok {
-		return false
+	if _, ok := held.Item().(item.Bowl); ok && m.Milk(m.tx) {
+		ctx.SubtractFromCount(1)
+		ctx.NewItem = item.NewStack(item.MushroomStew{}, 1)
+		return true
 	}
-	ctx.SubtractFromCount(1)
-	ctx.NewItem = item.NewStack(item.MushroomStew{}, 1)
-	return true
+	return feedBreeder(m, u, ctx)
+}
+
+// InLove reports whether the mooshroom is in love.
+func (m *Mooshroom) InLove() bool { return m.behaviour().breeding.InLove() }
+
+func (m *Mooshroom) breedingState() *breeding { return &m.behaviour().breeding }
+func (m *Mooshroom) ageTicks() *int           { return &m.behaviour().age }
+
+func (m *Mooshroom) breedingFood(stack item.Stack) bool { return itemNamed(stack, "minecraft:wheat") }
+
+// breedOffspring ports MushroomCow.getOffspringVariant: the calf takes the
+// type of either parent, and parents of one type have a 1 in 1024 chance of
+// a calf of the other type.
+func (m *Mooshroom) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	own, other := m.behaviour().variant, partner.(*Mooshroom).behaviour().variant
+	variant := randomParent(own, other)
+	if own == other && rand.IntN(1024) == 0 {
+		variant = 1 - own
+	}
+	return babyAt(m).New(MooshroomType, MooshroomConfig{Age: babyStartAge, Variant: variant})
 }
 func (m *Mooshroom) Shear(tx *world.Tx) item.Stack {
 	if m.Dead() {

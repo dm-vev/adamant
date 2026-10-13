@@ -111,6 +111,7 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		}
 	}
 	data.Data = c.New()
+	data.Data.(*WolfBehaviour).breeding.decodeNBT(source)
 }
 func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*WolfBehaviour)
@@ -161,12 +162,12 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	}
 	native = MergeNativeMobNBT(native, EncodeNativeMobEquipment(equipment))
 
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), b.breeding.encodeNBT(map[string]any{
 		"Tame": boolByte(b.tamed), "Sitting": boolByte(b.sitting), "Age": int32(b.ageTicks),
 		"CollarColor": int32(b.collarColor), "Angry": boolByte(b.angry),
 		"variant":       "minecraft:" + []string{"pale", "spotted", "snowy", "black", "ash", "rusty", "woods", "chestnut"}[min(b.variant, 7)],
 		"sound_variant": "minecraft:" + b.soundVariant,
-	})
+	}))
 	if b.ownerUUID != "" {
 		if owner := javaUUIDIntArray(b.ownerUUID); owner != nil {
 			javaState["Owner"] = owner
@@ -341,6 +342,7 @@ type WolfBehaviour struct {
 	ageTicks, nextWander, followCooldown int
 	navigator                            Navigator
 	bodyArmor                            item.Stack
+	breeding                             breeding
 }
 
 // Wolf is a tameable passive wolf with owner and body armour state.
@@ -360,9 +362,7 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			}
 		}
 	}
-	if b.ageTicks < 0 {
-		b.ageTicks = min(0, b.ageTicks+1)
-	}
+	partner, inLove := tickBreeding(&Wolf{Ent: e}, tx)
 	if b.sitting {
 		b.navigator.Path, b.navigator.Index = nil, 0
 		e.data.Vel = mgl64.Vec3{}
@@ -381,7 +381,9 @@ func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.nextWander > 0 {
 		b.nextWander--
 	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 && !(b.tamed && b.owner != nil) {
+	if inLove {
+		navigateToPartner(&b.navigator, e, tx, partner)
+	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 && !(b.tamed && b.owner != nil) {
 		b.chooseWanderPath(e, tx)
 	}
 	velocity, rot := e.data.Vel, e.data.Rot
@@ -430,6 +432,7 @@ func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		damage = wolfArmourDamage(damage)
 	}
 	b.health.AddHealth(-damage)
+	resetLove(w)
 	w.viewAction(HurtAction{})
 	onMobHurt(w.tx, w)
 	if w.Dead() {
@@ -487,6 +490,10 @@ func (w *Wolf) RemoveBodyArmor(_ *world.Tx) item.Stack {
 func (w *Wolf) ArmorShearingSound() world.Sound {
 	return sound.Custom{Name: "item.armor.unequip_wolf", Volume: 1, Pitch: 1}
 }
+
+// Interact ports Wolf.mobInteract: a hurt tamed wolf heals twice the
+// nutrition of food it is fed, food otherwise breeds it or lets a pup grow
+// up faster, and its owner makes it sit or stand.
 func (w *Wolf) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	if user == nil || user.H() == nil {
 		return false
@@ -494,30 +501,64 @@ func (w *Wolf) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool
 	b := w.behaviour()
 	isOwner := b.tamed && b.ownerUUID != "" && b.ownerUUID == user.H().UUID().String()
 	main, _ := user.HeldItems()
-	if main.Empty() {
-		if !isOwner {
-			return false
-		}
-		b.sitting = !b.sitting
-		b.navigator.Path, b.navigator.Index = nil, 0
-		if b.sitting {
-			w.SetVelocity(mgl64.Vec3{})
-		}
+	if nutrition, food := wolfFoodNutrition(main.Item()); b.tamed && food && ctx != nil && w.Health() < w.MaxHealth() {
+		w.Heal(2*float64(nutrition), nil)
+		ctx.SubtractFromCount(1)
+		tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.eat", Volume: 1, Pitch: 1})
 		return true
 	}
-	nutrition, food := wolfFoodNutrition(main.Item())
-	if !isOwner || !food || ctx == nil || (b.ageTicks >= 0 && w.Health() >= w.MaxHealth()) {
+	if feedBreeder(w, user, ctx) {
+		return true
+	}
+	if !isOwner {
 		return false
 	}
-	if b.ageTicks < 0 {
-		b.ageTicks = min(0, b.ageTicks+1200)
+	b.sitting = !b.sitting
+	b.navigator.Path, b.navigator.Index = nil, 0
+	if b.sitting {
+		w.SetVelocity(mgl64.Vec3{})
 	}
-	w.Heal(float64(nutrition), nil)
-	ctx.SubtractFromCount(1)
-	tx.PlaySound(w.Position(), sound.Custom{Name: "entity.wolf.eat", Volume: 1, Pitch: 1})
 	return true
 }
 
+// Sitting reports whether the wolf sits as its owner ordered.
+func (w *Wolf) Sitting() bool { return w.behaviour().sitting }
+
+// InLove reports whether the wolf is in love.
+func (w *Wolf) InLove() bool { return w.behaviour().breeding.InLove() }
+
+func (w *Wolf) breedingState() *breeding { return &w.behaviour().breeding }
+func (w *Wolf) ageTicks() *int           { return &w.behaviour().ageTicks }
+
+// breedingFood reports whether the stack is in #wolf_food.
+func (w *Wolf) breedingFood(stack item.Stack) bool {
+	_, food := wolfFoodNutrition(stack.Item())
+	return food
+}
+
+// canMateWith ports Wolf.canMate: only tamed wolves breed, and not with a
+// sitting partner.
+func (w *Wolf) canMateWith(partner breeder) bool {
+	p := partner.(*Wolf).behaviour()
+	return w.behaviour().tamed && p.tamed && !p.sitting
+}
+
+// breedOffspring ports Wolf.getBreedOffspring: the pup takes the variant of
+// either parent and a random sound variant, and the pup of a tamed wolf
+// belongs to its owner with the collar colours of the parents mixed.
+func (w *Wolf) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	b, p := w.behaviour(), partner.(*Wolf).behaviour()
+	sounds := [...]string{"classic", "puglin", "sad", "angry", "grumpy", "big", "cute"}
+	conf := WolfBehaviourConfig{AgeTicks: babyStartAge, Variant: int(randomParent(b.variant, p.variant)), SoundVariant: sounds[rand.IntN(len(sounds))]}
+	if b.tamed {
+		collar := mixedDyeColour(item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
+		conf.Tamed, conf.OwnerUUID, conf.CollarColor, conf.collarSet = true, b.ownerUUID, collar.Uint8(), true
+	}
+	return babyAt(w).New(WolfType, conf)
+}
+
+// wolfFoodNutrition returns the nutrition of items in #wolf_food: meat, fish
+// and rabbit stew.
 func wolfFoodNutrition(food any) (int, bool) {
 	switch foodItem := food.(type) {
 	case item.Beef:
@@ -547,6 +588,20 @@ func wolfFoodNutrition(food any) (int, bool) {
 		return 3, true
 	case item.RottenFlesh:
 		return 4, true
+	case item.Cod:
+		if foodItem.Cooked {
+			return 5, true
+		}
+		return 2, true
+	case item.Salmon:
+		if foodItem.Cooked {
+			return 6, true
+		}
+		return 2, true
+	case item.TropicalFish, item.Pufferfish:
+		return 1, true
+	case item.RabbitStew:
+		return 10, true
 	}
 	return 0, false
 }

@@ -80,13 +80,14 @@ func (catType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.SoundVariant = strings.TrimPrefix(value, "minecraft:")
 	}
 	d.Data = c.New()
+	d.Data.(*CatBehaviour).breeding.decodeNBT(source)
 }
 func (catType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*CatBehaviour)
 	health := b.health
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
 	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": int32(b.collarColor)})
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": int32(b.collarColor)}))
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
 		javaState["Owner"] = owner
 	} else {
@@ -189,6 +190,7 @@ type CatBehaviour struct {
 	collarColor          uint8
 	nextWander           int
 	navigator            Navigator
+	breeding             breeding
 }
 
 func (c *CatBehaviour) Variant() int32 { return int32(c.variant) }
@@ -203,7 +205,10 @@ func (c *Cat) SpeciesType() world.EntityType { return CatType }
 func (c *Cat) b() *CatBehaviour              { return c.Behaviour().(*CatBehaviour) }
 func (c *Cat) Tick(tx *world.Tx, n int64)    { c.b().effects.Tick(c, tx); c.Ent.Tick(tx, n) }
 func (b *CatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.tamed && !b.sitting {
+	if partner, ok := tickBreeding(&Cat{Ent: e}, tx); ok {
+		navigateToPartner(&b.navigator, e, tx, partner)
+		b.nextWander = 20
+	} else if b.tamed && !b.sitting {
 		var owner world.Entity
 		for p := range tx.Players() {
 			if p.H().UUID().String() == b.ownerUUID {
@@ -290,6 +295,7 @@ func (c *Cat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)
 	if c.Dead() {
@@ -349,43 +355,42 @@ func (c *Cat) TameWithFish(tx *world.Tx, user world.Entity) bool {
 	}
 	return true
 }
+
+// AcceptItem ports Cat.mobInteract: its owner dyes its collar, heals it with
+// fish while hurt or makes it sit or stand, fish tames a wild cat, and fish
+// otherwise breeds a cat or lets a kitten grow up faster.
 func (c *Cat) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) bool {
 	u, ok := from.(item.User)
 	if !ok {
 		return false
 	}
 	main, _ := u.HeldItems()
-	s := main
 	b := c.b()
-	if s.Empty() {
-		if b.tamed && b.ownerUUID == from.H().UUID().String() {
-			c.SetSitting(!b.sitting)
-			return true
-		}
-		return false
-	}
-	it := s.Item()
-	fish := catFish(it)
-	if fish && !b.tamed {
-		ctx.SubtractFromCount(1)
-		c.TameWithFish(tx, from)
-		return true
-	}
+	fish := !main.Empty() && catFish(main.Item())
 	if b.tamed && b.ownerUUID == from.H().UUID().String() {
-		if d, ok := it.(item.Dye); ok && d.Colour.Uint8() != b.collarColor {
-			c.SetCollarColor(d.Colour.Uint8())
-			ctx.SubtractFromCount(1)
-			return true
-		}
-		if fish && c.Health() < c.MaxHealth() {
+		if d, ok := main.Item().(item.Dye); ok && !main.Empty() {
+			if d.Colour.Uint8() != b.collarColor {
+				c.SetCollarColor(d.Colour.Uint8())
+				ctx.SubtractFromCount(1)
+				return true
+			}
+		} else if fish && c.Health() < c.MaxHealth() {
 			c.Heal(2, nil)
 			ctx.SubtractFromCount(1)
+			return true
+		}
+		if feedBreeder(c, u, ctx) {
 			return true
 		}
 		c.SetSitting(!b.sitting)
 		return true
 	}
-	return false
+	if fish && !b.tamed {
+		ctx.SubtractFromCount(1)
+		c.TameWithFish(tx, from)
+		return true
+	}
+	return feedBreeder(c, u, ctx)
 }
 func catFish(i world.Item) bool {
 	switch v := i.(type) {
@@ -398,6 +403,33 @@ func catFish(i world.Item) bool {
 }
 func (c *Cat) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	return c.AcceptItem(u, tx, ctx)
+}
+
+// InLove reports whether the cat is in love.
+func (c *Cat) InLove() bool { return c.b().breeding.InLove() }
+
+func (c *Cat) breedingState() *breeding { return &c.b().breeding }
+func (c *Cat) ageTicks() *int           { return &c.b().ageTicks }
+
+// breedingFood reports whether the stack is in #cat_food.
+func (c *Cat) breedingFood(stack item.Stack) bool { return !stack.Empty() && catFish(stack.Item()) }
+
+// canMateWith ports Cat.canMate: only tamed cats breed.
+func (c *Cat) canMateWith(partner breeder) bool {
+	return c.b().tamed && partner.(*Cat).b().tamed
+}
+
+// breedOffspring ports Cat.getBreedOffspring: the kitten takes the variant
+// of either parent, and the kitten of a tamed cat belongs to its owner with
+// the collar colours of the parents mixed.
+func (c *Cat) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	b, p := c.b(), partner.(*Cat).b()
+	conf := CatBehaviourConfig{AgeTicks: babyStartAge, Variant: randomParent(b.variant, p.variant), variantSet: true}
+	if b.tamed {
+		collar := mixedDyeColour(item.Colours()[b.collarColor%16], item.Colours()[p.collarColor%16])
+		conf.Tamed, conf.OwnerUUID, conf.CollarColor, conf.collarSet = true, b.ownerUUID, collar.Uint8(), true
+	}
+	return babyAt(c).New(CatType, conf)
 }
 func (c *Cat) viewAction(a world.EntityAction) {
 	vs := c.tx.Viewers(c.Position())
