@@ -629,6 +629,13 @@ func (b *Boat) base() *BoatBehaviour {
 	return boatBaseBehaviour(b.Behaviour())
 }
 
+// JavaEntityID returns the Java entity type of the boat, which names its wood
+// like the boat item does.
+func (b *Boat) JavaEntityID() string {
+	id, _ := item.Boat{Variant: item.BoatVariantFromInt(int(b.base().Variant()))}.EncodeItem()
+	return id
+}
+
 // SetVehicleInput updates the input used by the boat.
 func (b *Boat) SetVehicleInput(strafe, forward float64) {
 	if beh := b.base(); beh != nil {
@@ -850,6 +857,13 @@ func (b *ChestBoat) chest() *ChestBoatBehaviour {
 		return beh
 	}
 	return nil
+}
+
+// JavaEntityID returns the Java entity type of the chest boat, which names its
+// wood like the chest boat item does.
+func (b *ChestBoat) JavaEntityID() string {
+	id, _ := item.ChestBoat{Variant: item.BoatVariantFromInt(int(b.base().Variant()))}.EncodeItem()
+	return id
 }
 
 // Interact handles interaction with a chest boat.

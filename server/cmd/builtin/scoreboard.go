@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
-	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -159,7 +158,7 @@ func scoreHolders(spec string, src cmd.Source, tx *world.Tx, m *scoreboard.Model
 		}
 		names := make([]string, 0, len(targets))
 		for _, t := range targets {
-			if name := scoreHolderName(t); name != "" {
+			if name := cmd.ScoreHolderName(t); name != "" {
 				names = append(names, name)
 			}
 		}
@@ -170,18 +169,6 @@ func scoreHolders(spec string, src cmd.Source, tx *world.Tx, m *scoreboard.Model
 	default:
 		return []string{spec}, nil
 	}
-}
-
-// scoreHolderName is Entity.getScoreboardName: players use their name and
-// other entities their UUID.
-func scoreHolderName(t cmd.Target) string {
-	if p, ok := t.(*player.Player); ok {
-		return p.Name()
-	}
-	if e, ok := t.(world.Entity); ok {
-		return e.H().UUID().String()
-	}
-	return ""
 }
 
 func (c scoreboardScoreSet) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {

@@ -362,7 +362,7 @@ func (p parser) parseTargets(line *Line, tx *world.Tx) ([]Target, error) {
 		if tx == nil {
 			return nil, MessageNoTargets.F()
 		}
-		selector, err := parseSelector(first, line.src)
+		selector, err := parseSelector(first, line.src, tx)
 		if err != nil {
 			return nil, err
 		}

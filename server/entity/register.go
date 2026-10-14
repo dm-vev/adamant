@@ -70,6 +70,7 @@ func init() {
 		DrownedType,
 		PiglinType{},
 		PiglinBruteType{},
+		ZombifiedPiglinType{},
 		HoglinType,
 		ZoglinType,
 		StriderType,

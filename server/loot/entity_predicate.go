@@ -36,10 +36,17 @@ var bedrockToJavaEntity = map[string]string{
 	"minecraft:xp_bottle":              "minecraft:experience_bottle",
 	"minecraft:splash_potion":          "minecraft:splash_potion",
 	"minecraft:ender_pearl":            "minecraft:ender_pearl",
+	"minecraft:eye_of_ender_signal":    "minecraft:eye_of_ender",
+	"minecraft:fishing_hook":           "minecraft:fishing_bobber",
 }
 
-// JavaEntityID returns the Java entity type identifier of an entity.
+// JavaEntityID returns the Java entity type identifier of an entity. Entities
+// whose Java type depends on their state, like boats of each wood, report it
+// through a JavaEntityID method.
 func JavaEntityID(e world.Entity) string {
+	if typed, ok := e.(interface{ JavaEntityID() string }); ok {
+		return typed.JavaEntityID()
+	}
 	id := e.H().Type().EncodeEntity()
 	if java, ok := bedrockToJavaEntity[id]; ok {
 		return java

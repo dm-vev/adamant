@@ -32,6 +32,12 @@ func BiomeTagContains(tag, biome string) (bool, error) {
 	return tagContains("biome_tag", tag, biome)
 }
 
+// EntityTypeTagContains resolves and caches a vanilla entity type tag and all
+// nested references. entityType is a Java entity type identifier.
+func EntityTypeTagContains(tag, entityType string) (bool, error) {
+	return tagContains("entity_type_tag", tag, entityType)
+}
+
 // BlockTagMembers returns the ordered, recursively expanded vanilla block-tag entries.
 func BlockTagMembers(tag string) ([]string, error) {
 	compiled, err := compileTag(tagKey{kind: "block_tag", name: normalizeTagName(tag)})
