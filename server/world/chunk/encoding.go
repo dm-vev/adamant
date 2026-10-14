@@ -259,6 +259,9 @@ func (diskEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, e pa
 }
 
 // networkEncoding implements the Chunk encoding for sending over network.
+// Block palettes hold network block hashes, as BDS sends them with block
+// network ID hashes enabled: clients resolve a hash by its state, not by the
+// position of the state in their own palette.
 type networkEncoding struct{}
 
 func (networkEncoding) network() byte { return 1 }
@@ -273,6 +276,13 @@ func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, pe paletteEn
 				rid = 0
 			}
 			_ = protocol.WriteVarint32(buf, int32(rid))
+		}
+		return
+	}
+	if br, ok := blockPaletteRegistry(pe); ok {
+		for _, val := range p.values {
+			hash, _ := br.RuntimeIDToHash(val)
+			_ = protocol.WriteVarint32(buf, int32(hash))
 		}
 		return
 	}
@@ -291,8 +301,9 @@ func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, p
 		}
 	}
 
-	blocks, temp := make([]uint32, paletteCount), int32(0)
-	for i := int32(0); i < paletteCount; i++ {
+	br, blocks := blockPaletteRegistry(pe)
+	values, temp := make([]uint32, paletteCount), int32(0)
+	for i := range paletteCount {
 		if err := protocol.Varint32(buf, &temp); err != nil {
 			return nil, fmt.Errorf("error decoding palette entry: %w", err)
 		}
@@ -304,8 +315,26 @@ func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, p
 			} else {
 				val = 0
 			}
+		} else if blocks {
+			rid, found := br.HashToRuntimeID(val)
+			if !found {
+				return nil, fmt.Errorf("unknown network block hash %v", val)
+			}
+			val = rid
 		}
-		blocks[i] = val
+		values[i] = val
 	}
-	return &Palette{values: blocks, size: blockSize}, nil
+	return &Palette{values: values, size: blockSize}, nil
+}
+
+// blockPaletteRegistry returns the registry a block palette encoding resolves
+// its states with.
+func blockPaletteRegistry(pe paletteEncoding) (BlockRegistry, bool) {
+	switch pe := pe.(type) {
+	case BlockPaletteEncoding:
+		return pe.Blocks, pe.Blocks != nil
+	case blockPaletteMigrationEncoding:
+		return pe.Blocks, pe.Blocks != nil
+	}
+	return nil, false
 }

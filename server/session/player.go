@@ -1412,7 +1412,7 @@ func stackFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemStack {
 
 	var blockRuntimeID uint32
 	if b, ok := it.Item().(world.Block); ok {
-		blockRuntimeID = br.BlockRuntimeID(b)
+		blockRuntimeID = networkBlockID(br, b)
 	}
 
 	rid, meta, _ := world.ItemRuntimeID(it.Item())
@@ -1434,13 +1434,16 @@ func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack {
 	if !ok {
 		t = block.Air{}
 	}
-	if it.BlockRuntimeID > 0 {
-		// It shouldn't matter if it (for whatever reason) wasn't able to get the block runtime ID,
-		// since on the next line, we assert that the block is an item. If it didn't succeed, it'll
-		// return air anyway.
-		b, _ := br.BlockByRuntimeID(uint32(it.BlockRuntimeID))
-		if t, ok = b.(world.Item); !ok {
-			t = block.Air{}
+	if it.BlockRuntimeID != 0 {
+		// Clients name the block of a block item by its network block hash. An
+		// unknown hash or a block that is no item leaves air.
+		t = block.Air{}
+		if rid, known := br.HashToRuntimeID(uint32(it.BlockRuntimeID)); known {
+			if b, found := br.BlockByRuntimeID(rid); found {
+				if blockItem, isItem := b.(world.Item); isItem {
+					t = blockItem
+				}
+			}
 		}
 	}
 	//noinspection SpellCheckingInspection

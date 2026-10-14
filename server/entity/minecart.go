@@ -209,17 +209,6 @@ func (b *MinecartBehaviour) DisplayBlock() (world.Block, bool) {
 	return nil, false
 }
 
-// DisplayTile returns the raw display tile value.
-func (b *MinecartBehaviour) DisplayTile() int32 {
-	if bl := b.displayBlock; bl != nil {
-		return int32(world.BlockRuntimeID(bl))
-	}
-	if bl, ok := blockFromDisplayTile(b.displayTile); ok {
-		return int32(world.BlockRuntimeID(bl))
-	}
-	return b.displayTile
-}
-
 // DisplayOffset returns the display offset.
 func (b *MinecartBehaviour) DisplayOffset() int {
 	return b.displayOffset

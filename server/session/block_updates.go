@@ -27,10 +27,17 @@ type blockUpdateData struct {
 	nbt       map[string]any
 }
 
+// networkBlockID returns the ID clients know a block by: its network block
+// hash, as BDS sends block IDs with block network ID hashes enabled.
+func networkBlockID(br world.BlockRegistry, b world.Block) uint32 {
+	hash, _ := br.RuntimeIDToHash(br.BlockRuntimeID(b))
+	return hash
+}
+
 func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 	update := blockUpdateData{
 		pos:       protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		runtimeID: s.br.BlockRuntimeID(b),
+		runtimeID: networkBlockID(s.br, b),
 		layer:     uint32(layer),
 	}
 	if v, ok := b.(world.NBTer); ok {

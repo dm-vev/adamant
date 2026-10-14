@@ -678,6 +678,9 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 		}, session.ClientGameRules(srv.world)...),
 
 		ServerAuthoritativeInventory: true,
+		// Like BDS, name blocks by network block hash so clients resolve every
+		// state by its contents instead of by its index in their own palette.
+		UseBlockNetworkIDHashes: true,
 		PlayerMovementSettings: protocol.PlayerMovementSettings{
 			ServerAuthoritativeBlockBreaking: true,
 		},

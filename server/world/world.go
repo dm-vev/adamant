@@ -3205,7 +3205,7 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 		}
 		col.addEntity(w.entityFromNBT(t, e.ID, e.Data))
 	}
-	w.decodeBlockEntities(col, c.BlockEntities)
+	w.decodeBlockEntities(col, w.dropStaleBlockEntities(col, c.BlockEntities))
 	blockTicks := make([]scheduledTick, 0, len(c.ScheduledTicks))
 	fluidTicks := make([]scheduledTick, 0, len(c.ScheduledTicks))
 	for _, saved := range c.ScheduledTicks {
@@ -3250,6 +3250,32 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 	w.scheduledFluidTicks.add(fluidTicks)
 	col.markReady()
 	return col
+}
+
+// dropStaleBlockEntities removes saved block entities of blocks that have
+// none, as BDS discards block actors without a matching block. Worlds saved
+// while such a block was still unimplemented hold these records. The column
+// is marked modified so it is saved again without them.
+func (w *World) dropStaleBlockEntities(col *Column, entities []chunk.BlockEntity) []chunk.BlockEntity {
+	var kept []chunk.BlockEntity
+	for i, be := range entities {
+		rid := col.Chunk.Block(uint8(be.Pos[0]), int16(be.Pos[1]), uint8(be.Pos[2]), 0)
+		if w.conf.Blocks.NBTBlock(rid) {
+			if kept != nil {
+				kept = append(kept, be)
+			}
+			continue
+		}
+		if kept == nil {
+			kept = append(make([]chunk.BlockEntity, 0, len(entities)), entities[:i]...)
+		}
+	}
+	if kept == nil {
+		return entities
+	}
+	col.modified = true
+	w.conf.Log.Debug("read column: dropped block entities of blocks without one", "count", len(entities)-len(kept))
+	return kept
 }
 
 // finishGeneration transfers generated payloads to owner-thread world state.

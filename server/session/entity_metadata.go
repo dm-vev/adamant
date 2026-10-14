@@ -207,7 +207,11 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagIgnited)
 	}
 	if d, ok := e.(displayTile); ok {
-		m[protocol.EntityDataKeyDisplayBlockState] = d.DisplayTile()
+		var display int32
+		if b, ok := d.DisplayBlock(); ok {
+			display = int32(networkBlockID(s.br, b))
+		}
+		m[protocol.EntityDataKeyDisplayBlockState] = display
 		m[protocol.EntityDataKeyDisplayOffset] = int32(d.DisplayOffset())
 		m[protocol.EntityDataKeyCustomDisplay] = byte(boolByte(d.CustomDisplay()))
 	}
@@ -559,7 +563,7 @@ type endCrystalMeta interface {
 }
 
 type displayTile interface {
-	DisplayTile() int32
+	DisplayBlock() (world.Block, bool)
 	DisplayOffset() int
 	CustomDisplay() bool
 }
