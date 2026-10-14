@@ -862,6 +862,11 @@ func (e *testEntity) Rotation() cube.Rotation {
 }
 
 func (e *testEntity) Tick(*Tx, int64) {
+	if config, ok := e.data.Data.(slowTickerConfig); ok {
+		config.ticks.Add(1)
+		time.Sleep(config.delay)
+		return
+	}
 	if config, ok := e.data.Data.(boundaryTickerConfig); ok {
 		*config.ticks++
 		if config.crossBoundary && *config.ticks == 1 {
@@ -1057,5 +1062,42 @@ func TestChunkRequestsDoNotWaitForGeneratorBacklog(t *testing.T) {
 	case <-done:
 	case <-time.After(10 * time.Second):
 		t.Fatalf("only %d of %d requested chunks completed", loaded.Load(), requests)
+	}
+}
+
+// slowTickerConfig makes a test entity take delay to tick.
+type slowTickerConfig struct {
+	delay time.Duration
+	ticks *atomic.Int64
+}
+
+func (c slowTickerConfig) Apply(data *EntityData) { data.Data = c }
+
+// TestWorldTicksTwentyTimesPerSecondWhenTicksTakeTime checks the world keeps
+// Java's fixed tick schedule: a tick taking a fifth of its interval still
+// leaves 20 ticks per second, instead of each tick being delayed by the
+// duration of the one before.
+func TestWorldTicksTwentyTimesPerSecondWhenTicksTakeTime(t *testing.T) {
+	w := Config{}.New()
+	defer w.Close()
+	var slowTicks atomic.Int64
+	loader := NewLoader(1, w, NopViewer{})
+	<-w.Exec(func(tx *Tx) {
+		loader.Move(tx, mgl64.Vec3{1, 4, 1})
+		loader.Load(tx, 9)
+		tx.AddEntity(EntitySpawnOpts{Position: mgl64.Vec3{1, 4, 1}}.New(testEntityType{}, slowTickerConfig{delay: 10 * time.Millisecond, ticks: &slowTicks}))
+	})
+	defer w.Exec(func(tx *Tx) { loader.Close(tx) })
+	start, first := time.Now(), w.CurrentTick()
+	time.Sleep(3 * time.Second)
+	ticks, elapsed := w.CurrentTick()-first, time.Since(start)
+	if slowTicks.Load() < ticks/2 {
+		t.Fatalf("the slow entity ticked %d times in %d world ticks", slowTicks.Load(), ticks)
+	}
+	if rate := float64(ticks) / elapsed.Seconds(); rate < 19.5 {
+		t.Fatalf("world ticked %.2f times per second, want 20", rate)
+	}
+	if tps := w.TPS(); tps < 19.5 {
+		t.Fatalf("TPS reads %.2f, want 20", tps)
 	}
 }

@@ -27,19 +27,29 @@ const (
 	tpsWarningThreshold        = 19.0
 	passiveMaintenanceInterval = 80
 	maxNeighbourUpdatesPerTick = 16384
+	// overloadedThreshold and overloadWarningInterval are Java's
+	// MinecraftServer OVERLOADED_THRESHOLD_NANOS and
+	// OVERLOADED_WARNING_INTERVAL_NANOS.
+	overloadedThreshold     = time.Second
+	overloadWarningInterval = 10 * time.Second
 )
 
 // tickLoop starts ticking the World 20 times every second, updating all
 // entities, blocks and other features such as the time and weather of the
-// world, as required.
+// world, as required. Like Java's MinecraftServer.runServer, ticks keep a
+// fixed schedule: each is due one interval after the one before, however
+// long ticking took, and ticks that fell behind run back to back until the
+// world caught up.
 func (t ticker) tickLoop(w *World) {
+	next := time.Now().Add(t.interval)
 	tc := time.NewTimer(t.interval)
 	defer tc.Stop()
 	lastTick := time.Now()
 	var (
-		durationSum time.Duration
-		ticksCount  int
-		warned      bool
+		durationSum         time.Duration
+		ticksCount          int
+		warned              bool
+		lastOverloadWarning time.Time
 	)
 	for {
 		select {
@@ -70,14 +80,26 @@ func (t ticker) tickLoop(w *World) {
 					ticksCount = 0
 				}
 			}
-			<-w.exec(t.tick)
+			// next is when this tick was due. Like Java, a world more than a
+			// second and twenty ticks behind skips the ticks it missed, at
+			// most once per overload warning, then schedules the next tick.
+			sprinting := w.sprintTicks.Load() > 0
 			interval := t.interval
-			if w.sprintTicks.Load() > 0 {
-				interval = time.Millisecond
-			} else if rate := w.TickRate(); rate > 0 {
+			if rate := w.TickRate(); rate > 0 {
 				interval = time.Duration(float64(time.Second) / rate)
 			}
-			tc.Reset(interval)
+			if sprinting {
+				next, lastOverloadWarning = tickStart, tickStart
+				interval = time.Millisecond
+			} else if behind := tickStart.Sub(next); behind > overloadedThreshold+20*interval && next.Sub(lastOverloadWarning) >= overloadWarningInterval+100*interval {
+				ticks := behind / interval
+				w.conf.Log.Warn("Can't keep up! Is the server overloaded?", "behind", behind.Round(time.Millisecond), "ticks", int64(ticks))
+				next = next.Add(ticks * interval)
+				lastOverloadWarning = next
+			}
+			next = next.Add(interval)
+			<-w.exec(t.tick)
+			tc.Reset(time.Until(next))
 		case <-w.closing:
 			// World is being closed: Stop ticking and get rid of a task.
 			w.running.Done()
