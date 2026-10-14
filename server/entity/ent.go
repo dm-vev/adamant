@@ -151,6 +151,19 @@ func (e *Ent) setRotation(rotation cube.Rotation) {
 	e.data.Rot = rotation
 }
 
+// Move moves the entity by a delta and turns it by a delta yaw and pitch, as
+// commands like /tp and /rotate do.
+func (e *Ent) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
+	pos := e.data.Pos.Add(deltaPos)
+	rot := cube.Rotation{e.data.Rot.Yaw() + deltaYaw, e.data.Rot.Pitch() + deltaPitch}
+	viewers := e.tx.Viewers(e.data.Pos)
+	e.data.Pos, e.data.Rot = pos, rot
+	for _, v := range viewers {
+		v.ViewEntityMovement(e, pos, rot, e.data.OnGround)
+	}
+	e.tx.ReleaseViewers(viewers)
+}
+
 // Age returns the total time lived of this entity. It increases by
 // time.Second/20 for every time Tick is called.
 func (e *Ent) Age() time.Duration {

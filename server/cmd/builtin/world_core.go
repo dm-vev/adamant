@@ -126,6 +126,9 @@ func registerWorldCoreCommands(srv serverAdapter) {
 	cmd.Register(cmd.New("setworldspawn", "Sets the world spawn position.", nil, setWorldSpawnCommand{worldOpCommand: guard}))
 	cmd.Register(cmd.New("defaultgamemode", "Sets the default game mode.", nil, defaultGameModeCommand{worldOpCommand: guard}))
 	cmd.Register(cmd.New("locate", "Finds a nearby structure, biome, or point of interest.", nil, locateCommand{worldOpCommand: guard}))
+	registerPlaceCommand(guard)
+	registerRotateCommand(guard)
+	registerSpectateCommand(guard)
 }
 
 type setBlockMode string

@@ -252,6 +252,16 @@ func (s *Session) handleUniqueID(h *world.EntityHandle) int64 {
 	return h.UniqueID()
 }
 
+// ViewSpectatedEntity attaches the camera of the client to an entity, as BDS
+// does for /camera attach_to_entity, or detaches it again if e is nil.
+func (s *Session) ViewSpectatedEntity(e world.Entity) {
+	if e == nil {
+		s.writePacket(&packet.CameraInstruction{DetachFromEntity: protocol.Option(true)})
+		return
+	}
+	s.writePacket(&packet.CameraInstruction{AttachToEntity: protocol.Option(s.entityUniqueID(e))})
+}
+
 // ViewEntityGameMode ...
 func (s *Session) ViewEntityGameMode(e world.Entity) {
 	if s.entityHidden(e) {

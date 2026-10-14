@@ -106,8 +106,13 @@ type structurePlacement struct {
 // template with the position of its lowest corner at pos, mirrored and
 // rotated around pos. Structure voids leave the world untouched. Blocks are
 // placed without block updates, which their neighbours receive once the
-// blocks around them are placed.
-func (tx *Tx) PlaceStructure(t *StructureTemplate, pos cube.Pos, p StructurePlacement) {
+// blocks around them are placed. It reports false, placing nothing, for an
+// empty template or one with only entities that are ignored.
+func (tx *Tx) PlaceStructure(t *StructureTemplate, pos cube.Pos, p StructurePlacement) bool {
+	hasBlocks := slices.ContainsFunc(t.blocks, func(b Block) bool { return b != nil })
+	if t.size[0] < 1 || t.size[1] < 1 || t.size[2] < 1 || !hasBlocks && (p.IgnoreEntities || len(t.entities) == 0) {
+		return false
+	}
 	w := tx.World()
 	seed := p.Seed
 	if seed == 0 {
@@ -153,7 +158,7 @@ func (tx *Tx) PlaceStructure(t *StructureTemplate, pos cube.Pos, p StructurePlac
 	if p.Animation == StructureAnimationNone || p.AnimationDuration <= 0 || len(placements) < 2 {
 		tx.placeStructureBlocks(placements, p.KnownShape)
 		placeEntities(tx)
-		return
+		return true
 	}
 	// Bedrock animates structures bottom up.
 	slices.SortStableFunc(placements, func(a, b structurePlacement) int {
@@ -177,6 +182,7 @@ func (tx *Tx) PlaceStructure(t *StructureTemplate, pos cube.Pos, p StructurePlac
 			}
 		})
 	}
+	return true
 }
 
 // placeStructureBlocks sets the blocks of a structure, then sends block

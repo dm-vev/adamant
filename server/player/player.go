@@ -150,6 +150,9 @@ type playerData struct {
 	prevWorld *world.World
 
 	fishingHook *world.EntityHandle
+	// spectating is the entity the camera of the player follows, as Java's
+	// ServerPlayer.camera when it is not the player itself.
+	spectating *world.EntityHandle
 }
 
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players
@@ -1851,6 +1854,53 @@ func (p *Player) SetGameMode(mode world.GameMode) {
 	if mode.AllowsTakingDamage() {
 		p.session().SendHealth(p.Health(), p.MaxHealth(), p.absorptionHealth)
 	}
+	if mode != world.GameModeSpectator {
+		p.Spectate(nil)
+	}
+}
+
+// Spectate makes the camera of the player follow an entity, ported from
+// ServerPlayer.setCamera: the player moves to the entity and follows it until
+// it sneaks, leaves spectator mode or the entity is gone. A nil entity
+// returns the camera to the player.
+func (p *Player) Spectate(e world.Entity) {
+	var h *world.EntityHandle
+	if e != nil {
+		h = e.H()
+	}
+	if h == p.spectating {
+		return
+	}
+	p.spectating = h
+	if e != nil {
+		p.Teleport(e.Position())
+	}
+	p.session().ViewSpectatedEntity(e)
+}
+
+// Spectating returns the entity the camera of the player follows, if any.
+func (p *Player) Spectating() (world.Entity, bool) {
+	if p.spectating == nil {
+		return nil, false
+	}
+	return p.spectating.Entity(p.tx)
+}
+
+// tickSpectating ports the camera part of ServerPlayer.tick: the player keeps
+// up with the entity it spectates and stops when it sneaks or the entity is
+// gone.
+func (p *Player) tickSpectating() {
+	if p.spectating == nil {
+		return
+	}
+	e, ok := p.spectating.Entity(p.tx)
+	if mortal, isMortal := e.(interface{ Dead() bool }); !ok || isMortal && mortal.Dead() || p.Sneaking() {
+		p.Spectate(nil)
+		return
+	}
+	if e.Position().Sub(p.Position()).LenSqr() > 1e-4 {
+		p.Teleport(e.Position())
+	}
 }
 
 // GameMode returns the current game mode assigned to the player. If not changed, the game mode returned will
@@ -3461,6 +3511,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	if p.insideOfWater() || p.Flying() || p.sleeping || p.fallDistance > 0.5 || blockName == "minecraft:powder_snow" {
 		p.ReleaseShoulderParrots()
 	}
+	p.tickSpectating()
 	p.tickCarriedMaps(current)
 	p.tickScoreboard(tx, current)
 	p.tickMapFrames(current)

@@ -204,10 +204,10 @@ func (c teleportFacingEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.T
 	o.Printf("Teleported %d entities.", len(c.Targets))
 }
 
+// moveTeleportTarget ports Entity.teleportTo: the target turns before it
+// teleports, so the teleport a player's client receives carries the new
+// rotation as Java's single position packet does.
 func moveTeleportTarget(target cmd.Target, position mgl64.Vec3, yaw, pitch float64) {
-	if teleporter, ok := target.(interface{ Teleport(mgl64.Vec3) }); ok {
-		teleporter.Teleport(position)
-	}
 	if mover, ok := target.(interface {
 		Move(mgl64.Vec3, float64, float64)
 	}); ok {
@@ -215,6 +215,9 @@ func moveTeleportTarget(target cmd.Target, position mgl64.Vec3, yaw, pitch float
 			rotation := rotatable.Rotation()
 			mover.Move(mgl64.Vec3{}, yaw-rotation.Yaw(), pitch-rotation.Pitch())
 		}
+	}
+	if teleporter, ok := target.(interface{ Teleport(mgl64.Vec3) }); ok {
+		teleporter.Teleport(position)
 	}
 }
 func teleportLookAt(from, to mgl64.Vec3) (yaw, pitch float64) {
