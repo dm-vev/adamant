@@ -219,8 +219,31 @@ func (tx *Tx) VillageSections(pos cube.Pos, radius int) []cube.Pos {
 
 func absInt(v int) int { if v < 0 { return -v }; return v }
 
+// poiClass is the POI a block state is, if any.
+type poiClass struct {
+	poi POI
+	ok  bool
+}
+
+// poiTypeOf returns the POI the block state with runtime ID rid is, using a
+// table of every state built on first use.
+func (w *World) poiTypeOf(rid uint32) (POI, bool) {
+	w.poiClassesOnce.Do(func() {
+		blocks := w.conf.Blocks.Blocks()
+		w.poiClasses = make([]poiClass, len(blocks))
+		for i, b := range blocks {
+			w.poiClasses[i].poi, w.poiClasses[i].ok = poiType(b)
+		}
+	})
+	if int(rid) >= len(w.poiClasses) {
+		return POI{}, false
+	}
+	class := w.poiClasses[rid]
+	return class.poi, class.ok
+}
+
 func (w *World) updatePOI(pos cube.Pos, b Block) {
-	next, ok := poiType(b)
+	next, ok := w.poiTypeOf(w.conf.Blocks.BlockRuntimeID(b))
 	if !ok {
 		delete(w.pois, pos)
 		return
@@ -240,7 +263,10 @@ func normalizePOIOwners(p *POI) {
 }
 
 
+// indexPOIChunk indexes the POIs of a column that became ready, keeping the
+// owners of POIs that remain.
 func (w *World) indexPOIChunk(pos ChunkPos, col *Column) {
+	col.poisIndexed = true
 	previous := make(map[cube.Pos]POI)
 	for poiPos, poi := range w.pois {
 		if int32(poiPos[0]>>4) == pos[0] && int32(poiPos[2]>>4) == pos[1] {
@@ -263,8 +289,7 @@ func (w *World) indexPOIChunk(pos ChunkPos, col *Column) {
 		hasPOI := false
 		for _, storage := range sub.Layers() {
 			for paletteIndex := range storage.Palette().Len() {
-				rid := storage.Palette().Value(uint16(paletteIndex))
-				if _, ok := poiType(w.conf.Blocks.BlockByRuntimeIDOrAir(rid)); ok {
+				if _, ok := w.poiTypeOf(storage.Palette().Value(uint16(paletteIndex))); ok {
 					hasPOI = true
 					break
 				}
@@ -279,14 +304,16 @@ func (w *World) indexPOIChunk(pos ChunkPos, col *Column) {
 		for z := range 16 {
 			for x := range 16 {
 				for y := minY; y <= maxY; y++ {
-					blockPos := cube.Pos{int(pos[0])*16 + x, y, int(pos[1])*16 + z}
-					if poi, ok := poiType(w.blockInChunk(col, blockPos)); ok {
-						if old, exists := previous[blockPos]; exists && old.Kind == poi.Kind && old.Type == poi.Type {
-							poi.Owners = append([]uuid.UUID(nil), old.Owners...)
-						}
-						normalizePOIOwners(&poi)
-						w.pois[blockPos] = poi
+					poi, ok := w.poiTypeOf(col.Chunk.Block(uint8(x), int16(y), uint8(z), 0))
+					if !ok {
+						continue
 					}
+					blockPos := cube.Pos{int(pos[0])*16 + x, y, int(pos[1])*16 + z}
+					if old, exists := previous[blockPos]; exists && old.Kind == poi.Kind && old.Type == poi.Type {
+						poi.Owners = append([]uuid.UUID(nil), old.Owners...)
+					}
+					normalizePOIOwners(&poi)
+					w.pois[blockPos] = poi
 				}
 			}
 		}

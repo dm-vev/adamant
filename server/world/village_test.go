@@ -43,3 +43,31 @@ func TestNativePOITransitions(t *testing.T) {
 		if poi, ok := tx.POI(pos); !ok || poi.Kind != Workstation || poi.Type != "minecraft:stonecutter" { t.Fatalf("native stonecutter: %+v, found=%v", poi, ok) }
 	})
 }
+
+// TestReadingLoadedChunkDoesNotRescanPOIs checks reading a block of a loaded
+// chunk does no work per read, such as indexing the POIs of the chunk again:
+// it allocates nothing, even in a chunk holding a POI.
+func TestReadingLoadedChunkDoesNotRescanPOIs(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	w := Config{Blocks: registry, Dim: End, Synchronous: true}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *Tx) {
+		pos := cube.Pos{3, 64, 3}
+		rid, ok := registry.StateToRuntimeID("minecraft:stonecutter_block", nil)
+		if !ok {
+			t.Fatal("unknown stonecutter state")
+		}
+		tx.SetBlock(pos, registry.BlockByRuntimeIDOrAir(rid), nil)
+		if _, ok := tx.POI(pos); !ok {
+			t.Fatal("the stonecutter is no POI")
+		}
+		beside := pos.Side(cube.FaceEast)
+		if allocs := testing.AllocsPerRun(100, func() { tx.Block(beside) }); allocs != 0 {
+			t.Fatalf("reading a block of a loaded chunk allocated %v times", allocs)
+		}
+		if _, ok := tx.POI(pos); !ok {
+			t.Fatal("reading blocks lost the POI")
+		}
+	})
+}

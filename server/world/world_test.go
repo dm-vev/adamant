@@ -1018,3 +1018,44 @@ func (*testTickerBlock) EncodeNBT() map[string]any {
 func (b *testTickerBlock) Tick(int64, cube.Pos, *Tx) {
 	b.ticks++
 }
+
+// gatedGenerator generates empty chunks once gate is closed.
+type gatedGenerator struct{ gate chan struct{} }
+
+func (g gatedGenerator) GenerateChunk(ChunkPos, *chunk.Chunk, GenerationContext) GenerationResult {
+	<-g.gate
+	return GenerationResult{}
+}
+func (gatedGenerator) DefaultSpawn(Dimension) cube.Pos { return cube.Pos{} }
+
+// TestChunkRequestsDoNotWaitForGeneratorBacklog checks requesting more chunks
+// than the generator workers keep up with returns at once instead of
+// stalling the world goroutine, and every request completes once they do.
+func TestChunkRequestsDoNotWaitForGeneratorBacklog(t *testing.T) {
+	gate := make(chan struct{})
+	w := Config{Generator: gatedGenerator{gate: gate}, GeneratorWorkers: 1, GeneratorQueueSize: 1}.New()
+	defer w.Close()
+	const requests = 32
+	var loaded atomic.Int32
+	done := make(chan struct{})
+	requested := w.exec(func(tx *Tx) {
+		for x := range int32(requests) {
+			w.loadChunkAsync(tx, ChunkPos{x, 0}, func(*Tx, *Column) {
+				if loaded.Add(1) == requests {
+					close(done)
+				}
+			})
+		}
+	})
+	select {
+	case <-requested:
+	case <-time.After(3 * time.Second):
+		t.Fatal("requesting chunks waited for the generator workers")
+	}
+	close(gate)
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("only %d of %d requested chunks completed", loaded.Load(), requests)
+	}
+}

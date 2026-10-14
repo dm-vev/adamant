@@ -101,7 +101,6 @@ type World struct {
 	running      sync.WaitGroup
 
 	generatorRunning sync.WaitGroup
-	generatorEnqueue sync.WaitGroup
 
 	// chunks holds a cache of chunks currently loaded. These chunks are cleared
 	// from this map after some time of not being used.
@@ -146,6 +145,10 @@ type World struct {
 	redstone            *redstoneEngine
 	neighbourUpdates    []neighbourUpdate
 	pois                map[cube.Pos]POI
+	// poiClasses classifies the POI of every block state by runtime ID. It is
+	// built on first use, once the block registry is final.
+	poiClasses          []poiClass
+	poiClassesOnce      sync.Once
 	raids               map[int64]*Raid
 	raidByRaider        map[uuid.UUID]int64
 	nextRaidID          int64
@@ -167,10 +170,10 @@ type World struct {
 	viewerMu sync.Mutex
 	viewers  map[*Loader]Viewer
 
-	generatorQueue chan generationTask
-	// generatorQueueSaturation counts how often chunk generation tasks had to
-	// wait because the worker queue was full. We use this to
-	// rate-limit backpressure warnings so operators can tune queue/worker sizes.
+	generatorQueue *generationQueue
+	// generatorQueueSaturation counts how often more chunk generation tasks
+	// waited than GeneratorQueueSize. We use this to rate-limit backlog
+	// warnings so operators can tune the worker count.
 	generatorQueueSaturation atomic.Uint64
 	lastQueueSaturationLog   atomic.Uint64
 }
@@ -2029,7 +2032,7 @@ func (w *World) close() {
 	w.scheduleMu.Unlock()
 
 	w.scheduling.Wait()
-	w.generatorEnqueue.Wait()
+	w.drainGenerationQueue()
 	w.generatorRunning.Wait()
 	w.scheduleMu.Lock()
 	w.closeAcceptingEntityTasks.Store(true)
@@ -2351,7 +2354,9 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 	if !c.Ready() {
 		return
 	}
-	w.indexPOIChunk(pos, c)
+	if !c.poisIndexed {
+		w.indexPOIChunk(pos, c)
+	}
 	w.finishGeneration(tx, c)
 	callbacks := w.chunkRequests[pos]
 	if len(callbacks) == 0 {
@@ -2373,64 +2378,42 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 }
 
 // generateChunkAsync schedules an asynchronous chunk generation task for the given position.
-// It ensures that no new tasks are enqueued once the world begins shutting down.
-// If shutdown is in progress, the column is immediately marked as ready to avoid deadlocks.
-//
-// This prevents chunks from being stuck in a "not ready" state during shutdown,
-// which could otherwise cause Close() or c.waitReady() to block forever.
+// The task joins the queue of the generator workers without waiting, so the
+// world goroutine requesting chunks keeps ticking while the workers catch up.
+// If shutdown is in progress, the column is immediately marked as ready, so
+// Close() and c.waitReady() never block on a chunk that will not be generated.
 func (w *World) generateChunkAsync(pos ChunkPos, col *Column) {
 	task := generationTask{pos: pos, col: col, context: w.generationContext()}
-	w.scheduleMu.Lock()
 	if w.closed.Load() {
-		w.scheduleMu.Unlock()
 		col.markReady()
 		return
 	}
 	if w.conf.Synchronous {
-		w.scheduleMu.Unlock()
 		w.runGenerationTask(task)
 		return
 	}
-
-	select {
-	case w.generatorQueue <- task:
-		w.scheduleMu.Unlock()
-	default:
-		w.generatorEnqueue.Add(1)
-		w.scheduleMu.Unlock()
-		w.handleGeneratorBackpressure()
-		select {
-		case <-w.closeStarted:
-			col.markReady()
-		case w.generatorQueue <- task:
-		}
-		w.generatorEnqueue.Done()
+	waiting, ok := w.generatorQueue.push(task)
+	if !ok {
+		col.markReady()
+		return
+	}
+	if waiting > w.conf.GeneratorQueueSize {
+		w.handleGeneratorBackpressure(waiting)
 	}
 }
 
-// generatorWorker continuously processes generation tasks from the generator queue.
-// Each worker runs in its own goroutine and terminates gracefully when w.closing is closed.
-//
-// Behavior:
-//   - Processes tasks received from w.generatorQueue by invoking runGenerationTask.
-//   - On shutdown, drains any remaining tasks in the queue to ensure that all
-//     columns are marked ready and no goroutine remains blocked waiting for generation.
+// generatorWorker processes generation tasks from the generator queue until
+// the queue is closed at shutdown.
 func (w *World) generatorWorker() {
 	defer w.running.Done()
 	defer w.generatorRunning.Done()
 
 	for {
-		select {
-		case task := <-w.generatorQueue:
-			// A new generation task is available — process it immediately.
-			w.runGenerationTask(task)
-
-		case <-w.closeStarted:
-			// Shutdown signal received — mark all remaining queued columns as ready.
-			w.generatorEnqueue.Wait()
-			w.drainGenerationQueue()
+		task, ok := w.generatorQueue.pop()
+		if !ok {
 			return
 		}
+		w.runGenerationTask(task)
 	}
 }
 
@@ -2536,30 +2519,19 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 	return blockEntities
 }
 
-// drainGenerationQueue flushes any remaining tasks in the generator queue.
-// It is called during shutdown to ensure that every column waiting for
-// generation is marked as ready, preventing potential deadlocks.
-//
-// This function runs until the queue is empty.
+// drainGenerationQueue closes the generator queue at shutdown and marks the
+// columns of the tasks no worker took ready, so nothing waits for them.
 func (w *World) drainGenerationQueue() {
-	for {
-		select {
-		case task := <-w.generatorQueue:
-			// Mark the column as ready without performing generation,
-			// since the world is shutting down and workers will not continue.
-			task.col.markReady()
-
-		default:
-			// Queue is empty — exit the draining loop.
-			return
-		}
+	for _, task := range w.generatorQueue.close() {
+		task.col.markReady()
 	}
 }
 
-// handleGeneratorBackpressure increments backpressure counters and emits a throttled
-// warning when the generator queue saturates. This gives operators concrete guidance on
-// adjusting parallelism or profiling I/O bottlenecks under heavy terrain generation load.
-func (w *World) handleGeneratorBackpressure() {
+// handleGeneratorBackpressure counts a chunk request made while more
+// generation tasks waited than GeneratorQueueSize and emits a throttled
+// warning, giving operators guidance on the worker count under heavy terrain
+// generation load.
+func (w *World) handleGeneratorBackpressure(waiting int) {
 	count := w.generatorQueueSaturation.Add(1)
 	now := uint64(time.Now().UnixNano())
 	last := w.lastQueueSaturationLog.Load()
@@ -2572,9 +2544,10 @@ func (w *World) handleGeneratorBackpressure() {
 	}
 
 	w.conf.Log.Warn(
-		"world generator queue saturated: chunk generation backlog detected.",
-		"queued_tasks", count,
-		"queue_size", cap(w.generatorQueue),
+		"world generator backlog: chunk generation tasks are waiting for workers.",
+		"waiting_tasks", waiting,
+		"backlog_events", count,
+		"backlog_threshold", w.conf.GeneratorQueueSize,
 		"workers", w.conf.GeneratorWorkers,
 	)
 }
@@ -2684,6 +2657,9 @@ type pendingMissingBlockState struct {
 type Column struct {
 	modified      bool
 	InhabitedTime uint64
+	// poisIndexed is set once the POIs of the column were indexed after it
+	// became ready. Block writes keep them current from then on.
+	poisIndexed bool
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult

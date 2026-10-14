@@ -59,11 +59,11 @@ type Config struct {
 	// higher worker count, but profiling is recommended when the generator is
 	// constrained by external I/O (for example LevelDB access).
 	GeneratorWorkers int
-	// GeneratorQueueSize specifies the amount of chunk generation tasks that
-	// may be queued waiting for a worker. If set to 0 or lower, a queue size
-	// proportional to the worker count will be selected automatically. Under
-	// sustained heavy load you may want to raise the queue size together with
-	// GeneratorWorkers to avoid backpressure warnings.
+	// GeneratorQueueSize specifies how many chunk generation tasks may wait for
+	// a worker before a backlog warning is logged. Further tasks still queue:
+	// chunk requests never wait for the workers. If set to 0 or lower, a size
+	// proportional to the worker count is selected automatically. A sustained
+	// backlog suggests raising GeneratorWorkers.
 	GeneratorQueueSize int
 	// ReadOnly specifies if the World should be read-only, meaning no new data
 	// will be written to the Provider.
@@ -233,7 +233,7 @@ func (conf Config) New() *World {
 		closeStarted:        make(chan struct{}),
 		closing:             make(chan struct{}),
 		queue:               make(chan transaction, 128),
-		generatorQueue:      make(chan generationTask, conf.GeneratorQueueSize),
+		generatorQueue:      newGenerationQueue(),
 		r:                   rand.New(conf.RandSource),
 		conf:                conf,
 		ra:                  conf.Dim.Range(),

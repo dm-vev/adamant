@@ -107,10 +107,11 @@ type Config struct {
 	// pre-generating terrain heavily, but profile if the generator is limited
 	// by I/O (for example LevelDB operations).
 	GeneratorWorkers int
-	// GeneratorQueueSize limits how many chunk generation jobs may wait for a
-	// worker. If set to 0 or lower, a queue size proportional to the worker
-	// count will be chosen automatically. Increase it alongside
-	// GeneratorWorkers if the logs report generator queue saturation.
+	// GeneratorQueueSize is how many chunk generation jobs may wait for a
+	// worker before a backlog warning is logged. Further jobs still queue:
+	// chunk requests never wait for the workers. If set to 0 or lower, a size
+	// proportional to the worker count will be chosen automatically. Raise
+	// GeneratorWorkers if the logs report a sustained backlog.
 	GeneratorQueueSize int
 	// OverworldSeed is the seed for a new world in all dimensions. Existing
 	// provider metadata takes precedence. Zero is a valid, deterministic seed.
@@ -403,8 +404,9 @@ type UserConfig struct {
 		// dedicated to generating chunks. Set to 0 to automatically select a
 		// reasonable default based on the host's CPU count.
 		GeneratorWorkers int
-		// GeneratorQueueSize determines how many chunk generation jobs can wait
-		// for a worker. Set to 0 to use an automatically chosen size.
+		// GeneratorQueueSize is how many chunk generation jobs may wait for a
+		// worker before a backlog warning is logged. Set to 0 to use an
+		// automatically chosen size.
 		GeneratorQueueSize int
 		// DisableOverworld disables the overworld dimension entirely. Nether and End portals can still be activated,
 		// but will not teleport entities to the overworld while it is disabled.
