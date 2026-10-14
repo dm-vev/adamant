@@ -48,11 +48,15 @@ func newSculkSensorData() *sculkSensorData {
 	return &sculkSensorData{}
 }
 
-func (d sculkSensorData) nativeListenerNBT() map[string]any {
+// putNativeListener writes the native VibrationListener the sensor was
+// loaded with, or the {selector: {}} BDS writes for a fresh listener.
+func (d sculkSensorData) putNativeListener(m map[string]any) map[string]any {
 	if d.nativeVibrationListener != nil {
-		return d.nativeVibrationListener
+		m["VibrationListener"] = d.nativeVibrationListener
+	} else {
+		m["VibrationListener"] = map[string]any{"selector": map[string]any{}}
 	}
-	return map[string]any{"event": int32(28), "selector": map[string]any{}}
+	return m
 }
 
 // SculkSensor stores Java listener and comparator memory in actor data while
@@ -257,16 +261,15 @@ func (s SculkSensor) dataValue() sculkSensorData {
 }
 func (s SculkSensor) EncodeNBT() map[string]any {
 	d := s.dataValue()
-	return map[string]any{
+	return d.putNativeListener(map[string]any{
 		"id":                 "SculkSensor",
 		"BlockEntityVersion": int32(0),
-		"VibrationListener":  d.nativeListenerNBT(),
 		"adamant:java": map[string]any{
 			"power":                    int32(d.power),
 			"last_vibration_frequency": int32(d.lastVibrationFrequency),
 			"listener":                 d.listener.EncodeNBT(),
 		},
-	}
+	})
 }
 func (s SculkSensor) DecodeNBT(m map[string]any) any {
 	d := newSculkSensorData()
@@ -399,16 +402,15 @@ func (s CalibratedSculkSensor) EntityStepOn(pos cube.Pos, tx *world.Tx, entity w
 }
 func (s CalibratedSculkSensor) EncodeNBT() map[string]any {
 	d := s.dataValue()
-	return map[string]any{
+	return d.putNativeListener(map[string]any{
 		"id":                 "CalibratedSculkSensor",
 		"BlockEntityVersion": int32(0),
-		"VibrationListener":  d.nativeListenerNBT(),
 		"adamant:java": map[string]any{
 			"power":                    int32(d.power),
 			"last_vibration_frequency": int32(d.lastVibrationFrequency),
 			"listener":                 d.listener.EncodeNBT(),
 		},
-	}
+	})
 }
 func (s CalibratedSculkSensor) DecodeNBT(m map[string]any) any {
 	s.SculkSensor = s.SculkSensor.DecodeNBT(m).(SculkSensor)

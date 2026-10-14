@@ -80,7 +80,7 @@ func (d Dispenser) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wo
 		return false
 	}
 	d = NewDispenser()
-	d.Facing = face.Opposite()
+	d.Facing = placerFacing(user, pos)
 	place(tx, pos, d, user, ctx)
 	return placed(ctx)
 }

@@ -103,6 +103,21 @@ func (v BoatVariant) chestBoatItemName() string {
 	}
 }
 
+// BoatVariantFromID resolves the identifier of a boat or chest boat, such as
+// minecraft:oak_boat or minecraft:bamboo_chest_raft, which Java and Bedrock
+// share for both the item and the entity.
+func BoatVariantFromID(id string) (variant BoatVariant, chest, ok bool) {
+	for _, v := range BoatVariants() {
+		switch id {
+		case v.boatItemName():
+			return v, false, true
+		case v.chestBoatItemName():
+			return v, true, true
+		}
+	}
+	return BoatVariantOak, false, false
+}
+
 // Boat is an item that spawns a boat entity.
 type Boat struct {
 	// Variant determines the wood variant used for this boat.

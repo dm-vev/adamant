@@ -282,10 +282,7 @@ func (c rideCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Errort(cmd.MessageParameterInvalid, "vehicle")
 		return
 	}
-	mounter, ok := vehicle.(interface {
-		Mount(*world.Tx, world.Entity) bool
-	})
-	if !ok || !mounter.Mount(tx, rider) {
+	if !entity.MountVehicle(tx, vehicle, rider) {
 		o.Errort(cmd.MessageParameterInvalid, "vehicle")
 		return
 	}

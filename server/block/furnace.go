@@ -106,62 +106,18 @@ func (f Furnace) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, 
 }
 
 // EncodeNBT ...
-func (f Furnace) EncodeNBT() map[string]interface{} {
+func (f Furnace) EncodeNBT() map[string]any {
 	if f.smelter == nil {
 		//noinspection GoAssignmentToReceiver
 		f = NewFurnace(f.Facing)
 	}
-	remaining, maximum, cook := f.Durations()
-	burnTimeTicks := smelterTicks(remaining)
-	cookTimeTicks := smelterTicks(cook)
-	burnDurationTicks := smelterBurnDurationTicks(remaining, maximum, time.Second*10)
-	maxTimeTicks := smelterTicks(maximum)
-	return map[string]interface{}{
-		"BurnTime": burnTimeTicks,
-		"CookTime": cookTimeTicks,
-		// BurnDuration is the UI-scaled burn progress, while MaxTime persists the full fuel duration.
-		"BurnDuration": burnDurationTicks,
-		"MaxTime":      maxTimeTicks,
-		"StoredXpInt":  int16(f.Experience()),
-		"Items":        nbtconv.InvToNBT(f.inventory),
-		"id":           "Furnace",
-	}
+	return smelterActorNBT("Furnace", f.smelter)
 }
 
 // DecodeNBT ...
-func (f Furnace) DecodeNBT(data map[string]interface{}) interface{} {
-	burnTimeTicks := nbtconv.Int16(data, "BurnTime")
-	if burnTimeTicks < 0 {
-		burnTimeTicks = 0
-	}
-	cookTimeTicks := nbtconv.Int16(data, "CookTime")
-	if cookTimeTicks < 0 {
-		cookTimeTicks = 0
-	}
-	burnDurationTicks := nbtconv.Int16(data, "BurnDuration")
-	if burnDurationTicks < 0 {
-		burnDurationTicks = 0
-	}
-	maxTimeTicks := nbtconv.Int16(data, "MaxTime")
-	if maxTimeTicks < 0 {
-		maxTimeTicks = 0
-	}
-
-	requirementTicks := smelterTicks(time.Second * 10)
-	maxTimeTicks = smelterNBTMaxTimeTicks(burnTimeTicks, maxTimeTicks, burnDurationTicks, requirementTicks)
-	if burnTimeTicks == 0 {
-		cookTimeTicks = 0
-	}
-
-	remaining := time.Duration(burnTimeTicks) * time.Millisecond * 50
-	maximum := time.Duration(maxTimeTicks) * time.Millisecond * 50
-	cook := time.Duration(cookTimeTicks) * time.Millisecond * 50
-
-	xpValue, ok := data["StoredXpInt"].(int16)
-	if !ok {
-		xpValue, _ = data["StoredXPInt"].(int16)
-	}
-	xp := int(xpValue)
+func (f Furnace) DecodeNBT(data map[string]any) any {
+	remaining, maximum, cook := smelterActorDurations(data)
+	xp := smelterStoredXP(data)
 	lit := f.Lit
 
 	//noinspection GoAssignmentToReceiver

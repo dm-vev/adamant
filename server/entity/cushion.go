@@ -73,7 +73,7 @@ func (b *CushionBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 	b.passenger = nil
 	if passenger, ok := h.Entity(tx); ok { if r, ok := passenger.(Rider); ok { r.SetRiding(nil) } }
 	viewers := tx.Viewers(e.Position())
-	for _, v := range viewers { if lv,ok:=v.(interface{ViewEntityLinkType(*world.EntityHandle,*world.EntityHandle,LinkType,bool)});ok { lv.ViewEntityLinkType(e.H(),h,LinkPassenger,false) } else if lv,ok:=v.(interface{ViewEntityLink(*world.EntityHandle,*world.EntityHandle,bool)});ok { lv.ViewEntityLink(e.H(),h,false) } }
+	for _, v := range viewers { if lv,ok:=v.(interface{ViewEntityLinkType(*world.EntityHandle,*world.EntityHandle,LinkType,bool)});ok { lv.ViewEntityLinkType(e.H(),h,LinkRider,false) } else if lv,ok:=v.(interface{ViewEntityLink(*world.EntityHandle,*world.EntityHandle,bool)});ok { lv.ViewEntityLink(e.H(),h,false) } }
 	tx.ReleaseViewers(viewers)
 }
 
@@ -89,7 +89,7 @@ func (c *Cushion) Mount(tx *world.Tx, passenger world.Entity) bool {
 	r, ok := passenger.(Rider)
 	if !ok || r.Riding() != nil { return false }
 	b.passenger = passenger.H()
-	r.SetRiding(c.H())
+	seatRider(r, c)
 	c.broadcastLink(tx,passenger.H(),true)
 	if mover,ok:=passenger.(interface{Teleport(mgl64.Vec3)});ok { mover.Teleport(c.Position().Add(mgl64.Vec3{0,0.25,0})) }
 	return true
@@ -102,13 +102,19 @@ func (c *Cushion) Dismount(tx *world.Tx, passenger world.Entity) {
 	c.broadcastLink(tx,h,false)
 }
 func (c *Cushion) Passenger() *world.EntityHandle { return c.Behaviour().(*CushionBehaviour).passenger }
+
+// RiderSeat returns the seat of Bedrock's cushion, which turns its rider
+// sideways.
+func (c *Cushion) RiderSeat(rider world.Entity) world.RiderSeat {
+	return seat{pos: mgl64.Vec3{0, 0.1875, 0}, rotate: -90, hasRotate: true}.riderSeat(rider)
+}
 func (c *Cushion) Links() []Link {
-	if h:=c.Passenger();h!=nil { return []Link{{Ridden:c.H(),Rider:h,Type:LinkPassenger}} }
+	if h:=c.Passenger();h!=nil { return []Link{{Ridden:c.H(),Rider:h,Type:LinkRider}} }
 	return nil
 }
 func (c *Cushion) broadcastLink(tx *world.Tx, rider *world.EntityHandle, mounted bool) {
 	viewers:=tx.Viewers(c.Position())
-	for _,v:=range viewers { if lv,ok:=v.(interface{ViewEntityLinkType(*world.EntityHandle,*world.EntityHandle,LinkType,bool)});ok { lv.ViewEntityLinkType(c.H(),rider,LinkPassenger,mounted) } else if lv,ok:=v.(interface{ViewEntityLink(*world.EntityHandle,*world.EntityHandle,bool)});ok { lv.ViewEntityLink(c.H(),rider,mounted) } }
+	for _,v:=range viewers { if lv,ok:=v.(interface{ViewEntityLinkType(*world.EntityHandle,*world.EntityHandle,LinkType,bool)});ok { lv.ViewEntityLinkType(c.H(),rider,LinkRider,mounted) } else if lv,ok:=v.(interface{ViewEntityLink(*world.EntityHandle,*world.EntityHandle,bool)});ok { lv.ViewEntityLink(c.H(),rider,mounted) } }
 	tx.ReleaseViewers(viewers)
 }
 func (c *Cushion) Destroy(tx *world.Tx, _ world.DamageSource, _ world.Entity) bool {

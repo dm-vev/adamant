@@ -443,6 +443,9 @@ func (c Chest) EncodeNBT() map[string]any {
 	if c.lootTable != "" {
 		m["LootTable"] = c.lootTable
 		m["LootTableSeed"] = c.lootSeed
+	} else {
+		// BDS marks chests players place as not findable.
+		m["Findable"] = byte(0)
 	}
 	return m
 }

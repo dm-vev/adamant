@@ -3082,7 +3082,7 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: w.EntityNBT(e)})
 	}
 	for pos, be := range col.BlockEntities {
-		c.BlockEntities = append(c.BlockEntities, chunk.BlockEntity{Pos: pos, Data: be.(NBTer).EncodeNBT()})
+		c.BlockEntities = append(c.BlockEntities, chunk.BlockEntity{Pos: pos, Data: BlockActorNBT(be.(NBTer).EncodeNBT(), pos)})
 	}
 	// Scheduled ticks are emitted above in per-queue insertion order. Their
 	// positions, rather than the generated source column, determine ownership.

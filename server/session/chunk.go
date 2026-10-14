@@ -2,6 +2,7 @@ package session
 
 import (
 	"bytes"
+	"strings"
 	"sync"
 
 	"github.com/cespare/xxhash/v2"
@@ -422,7 +423,7 @@ func encodeSubChunkBlockEntities(col *world.Column, ind int16) []byte {
 func encodeAllBlockEntities(buf *bytes.Buffer, blockEntities map[cube.Pos]world.Block) {
 	enc := nbt.NewEncoderWithEncoding(buf, nbt.NetworkLittleEndian)
 	for pos, block := range blockEntities {
-		nbtBlock, ok := block.(world.NBTer)
+		nbtBlock, ok := clientBlockActor(block)
 		if !ok {
 			continue
 		}
@@ -436,7 +437,7 @@ func encodeSubChunkEntities(buf *bytes.Buffer, col *world.Column, ind int16) {
 		if col.Chunk.SubIndex(int16(pos.Y())) != ind {
 			continue
 		}
-		nbtBlock, ok := block.(world.NBTer)
+		nbtBlock, ok := clientBlockActor(block)
 		if !ok {
 			continue
 		}
@@ -444,11 +445,29 @@ func encodeSubChunkEntities(buf *bytes.Buffer, col *world.Column, ind int16) {
 	}
 }
 
-func encodeBlockEntityNBT(enc *nbt.Encoder, pos cube.Pos, nbtBlock world.NBTer) {
-	data := nbtBlock.EncodeNBT()
-	if data == nil {
-		data = map[string]any{}
+// clientBlockActor returns the block as a block actor clients are sent, if
+// it has NBT Bedrock knows a block actor for.
+func clientBlockActor(b world.Block) (world.NBTer, bool) {
+	if _, serverOnly := b.(world.ServerOnlyNBTer); serverOnly {
+		return nil, false
 	}
-	data["x"], data["y"], data["z"] = int32(pos[0]), int32(pos[1]), int32(pos[2])
-	_ = enc.Encode(data)
+	nbtBlock, ok := b.(world.NBTer)
+	return nbtBlock, ok
+}
+
+func encodeBlockEntityNBT(enc *nbt.Encoder, pos cube.Pos, nbtBlock world.NBTer) {
+	_ = enc.Encode(clientActorNBT(nbtBlock.EncodeNBT(), pos))
+}
+
+// clientActorNBT returns the block actor compound clients are sent for a
+// block at pos with the NBT data passed: Bedrock's actor without the
+// adamant: keys holding state only the server uses.
+func clientActorNBT(data map[string]any, pos cube.Pos) map[string]any {
+	actor := world.BlockActorNBT(data, pos)
+	for key := range actor {
+		if strings.HasPrefix(key, "adamant:") {
+			delete(actor, key)
+		}
+	}
+	return actor
 }

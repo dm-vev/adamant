@@ -120,11 +120,12 @@ func TestSetEnchantmentsPreservesOthersAndAppliesAddMode(t *testing.T) {
 		{name: "remove", level: 0, want: 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			add := test.add
 			e := entry{Type: "minecraft:item", Name: "minecraft:diamond_pickaxe", Modifier: modifierList{
 				{Type: "minecraft:set_components", Components: map[string]any{
 					"minecraft:enchantments": map[string]any{"minecraft:fortune": float64(2), "minecraft:mending": float64(1)},
 				}},
-				{Type: "minecraft:set_enchantments", Add: test.add, Enchantments: map[string]any{"minecraft:fortune": test.level}},
+				{Type: "minecraft:set_enchantments", Add: &add, Enchantments: map[string]any{"minecraft:fortune": test.level}},
 			}}
 			stack, err := makeStack(e, &Context{})
 			if err != nil {

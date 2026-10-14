@@ -361,6 +361,23 @@ func (m *Mount) Dash(_ *world.Tx, passenger world.Entity) bool {
 	return true
 }
 
+// steed returns the mount itself. Horses, donkeys, camels and the other
+// species embed *Mount in a field named Mount, which hides the Mount method;
+// steed reaches it through them.
+func (m *Mount) steed() *Mount { return m }
+
+// MountVehicle mounts passenger on vehicle, reporting whether it could. It
+// reaches the Mount method of every vehicle, including horse species.
+func MountVehicle(tx *world.Tx, vehicle, passenger world.Entity) bool {
+	if s, ok := vehicle.(interface{ steed() *Mount }); ok {
+		return s.steed().Mount(tx, passenger)
+	}
+	m, ok := vehicle.(interface {
+		Mount(*world.Tx, world.Entity) bool
+	})
+	return ok && m.Mount(tx, passenger)
+}
+
 // Mount ports AbstractHorse.doPlayerRide: the passenger mounts even an
 // untamed horse, which stops eating and rearing. Camels carry two.
 func (m *Mount) Mount(tx *world.Tx, passenger world.Entity) bool {
@@ -381,11 +398,32 @@ func (m *Mount) Mount(tx *world.Tx, passenger world.Entity) bool {
 	}
 	b.eating, b.eatingCounter, b.standCounter = false, 0, 0
 	b.passengers[seat] = passenger.H()
-	r.SetRiding(m.H())
+	seatRider(r, m)
 	m.broadcastLink(tx, passenger.H(), true)
 	tx.PlaySound(m.Position(), sound.NativeEvent{SoundType: "mount", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
 	m.updateState()
 	return true
+}
+
+// RiderSeat returns the seat of the species' Bedrock rideable component:
+// camels seat their second rider behind the first.
+func (m *Mount) RiderSeat(rider world.Entity) world.RiderSeat {
+	b := m.b()
+	pos := mgl64.Vec3{0, 1.1, -0.2}
+	switch b.kind {
+	case mountDonkey:
+		pos[1] = 0.925
+	case mountMule:
+		pos[1] = 0.975
+	case mountLlama, mountTraderLlama:
+		pos = mgl64.Vec3{0, 1.17, -0.3}
+	case mountCamel, mountCamelHusk:
+		pos = mgl64.Vec3{0, 1.905, 0.5}
+		if b.passengers[1] == rider.H() {
+			pos[2] = -0.5
+		}
+	}
+	return seat{pos: pos}.riderSeat(rider)
 }
 func (m *Mount) Dismount(tx *world.Tx, passenger world.Entity) {
 	b := m.b()
@@ -401,12 +439,16 @@ func (m *Mount) Dismount(tx *world.Tx, passenger world.Entity) {
 	m.updateState()
 }
 func (m *Mount) broadcastLink(tx *world.Tx, h *world.EntityHandle, link bool) {
+	linkType := LinkPassenger
+	if m.b().passengers[0] == h {
+		linkType = LinkRider
+	}
 	viewers := tx.Viewers(m.Position())
 	for _, v := range viewers {
 		if lv, ok := v.(interface {
 			ViewEntityLinkType(*world.EntityHandle, *world.EntityHandle, LinkType, bool)
 		}); ok {
-			lv.ViewEntityLinkType(m.H(), h, LinkPassenger, link)
+			lv.ViewEntityLinkType(m.H(), h, linkType, link)
 		} else if lv, ok := v.(interface {
 			ViewEntityLink(*world.EntityHandle, *world.EntityHandle, bool)
 		}); ok {
@@ -633,7 +675,7 @@ func (b *MountBehaviour) triggerSkeletonTrap(e *Ent, tx *world.Tx) bool {
 				return
 			}
 			horse.b().passengers[0] = riderEntity.H()
-			rider.SetRiding(horse.H())
+			seatRider(rider, horse)
 			horse.broadcastLink(tx, riderEntity.H(), true)
 		}
 		spawnPair(&Mount{Ent: e})

@@ -1,26 +1,47 @@
 package block
 
-import "time"
+import (
+	"time"
 
-// smelterNBTMaxTimeTicks resolves the maximum fuel duration from NBT tags.
-// Expected behavior is to prefer MaxTime and only fall back when older saves lack it.
-// The old format stored the max fuel time in BurnDuration, which otherwise is UI-scaled.
-func smelterNBTMaxTimeTicks(burnTimeTicks, maxTimeTicks, burnDurationTicks, requirementTicks int16) int16 {
-	if maxTimeTicks > 0 {
-		return maxTimeTicks
+	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+)
+
+// smelterActorNBT writes a furnace, blast furnace or smoker actor as BDS
+// does: BurnTime is the fuel left and BurnDuration how long the burning fuel
+// lasts in all, both in ticks.
+func smelterActorNBT(id string, s *smelter) map[string]any {
+	remaining, maximum, cook := s.Durations()
+	return map[string]any{
+		"BurnTime":     smelterTicks(remaining),
+		"BurnDuration": smelterTicks(maximum),
+		"CookTime":     smelterTicks(cook),
+		"StoredXPInt":  int32(s.Experience()),
+		"Items":        nbtconv.InvToNBT(s.inventory),
+		"id":           id,
 	}
-	if burnDurationTicks > requirementTicks {
-		return burnDurationTicks
-	}
-	if burnTimeTicks > 0 {
-		return burnTimeTicks
-	}
-	return 0
 }
 
-// smelterBurnDurationTicks scales remaining fuel into the client-facing burn duration.
-// The client-visible value is expected to be scaled to the per-item cook requirement, not the full fuel time.
-// Writing full fuel ticks previously caused incorrect fuel bars after reload or chunk send.
+// smelterActorDurations reads the fuel left, the burning fuel's full
+// duration and the cooking progress from a smelter actor. Worlds saved by
+// earlier versions kept the full duration in MaxTime, with BurnDuration
+// scaled to the cooking time.
+func smelterActorDurations(data map[string]any) (remaining, maximum, cook time.Duration) {
+	burn := max(nbtconv.Int16(data, "BurnTime"), 0)
+	cooked := max(nbtconv.Int16(data, "CookTime"), 0)
+	full := max(nbtconv.Int16(data, "BurnDuration"), 0)
+	if legacy := nbtconv.Int16(data, "MaxTime"); legacy > 0 {
+		full = legacy
+	}
+	full = max(full, burn)
+	if burn == 0 {
+		cooked = 0
+	}
+	const tick = time.Millisecond * 50
+	return time.Duration(burn) * tick, time.Duration(full) * tick, time.Duration(cooked) * tick
+}
+
+// smelterBurnDurationTicks scales remaining fuel into the burn duration
+// furnace viewers are sent, relative to the per-item cooking time.
 func smelterBurnDurationTicks(remaining, maximum, requirement time.Duration) int16 {
 	remainingTicks := smelterTicks(remaining)
 	if remainingTicks <= 0 {

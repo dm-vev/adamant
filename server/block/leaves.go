@@ -60,24 +60,31 @@ func findLog(pos cube.Pos, tx *world.Tx, visited *[]cube.Pos, distance int) bool
 	return logFound
 }
 
-// RandomTick ...
+// leavesUpdateBitOpts sets only a leaf's update_bit. Like BDS, flagging or
+// clearing it does not notify the neighbours: otherwise every leaf of a tree
+// would keep flagging the next one.
+var leavesUpdateBitOpts = &world.SetOpts{DisableBlockUpdates: true}
+
+// RandomTick decays a flagged leaf that no longer reaches a log: it drops its
+// loot and is removed, as LeavesBlock.randomTick does.
 func (l Leaves) RandomTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if !l.Persistent && l.ShouldUpdate {
 		if findLog(pos, tx, &[]cube.Pos{}, 0) {
 			l.ShouldUpdate = false
-			tx.SetBlock(pos, l, nil)
+			tx.SetBlock(pos, l, leavesUpdateBitOpts)
 			return
 		}
 		ctx := tx.Event()
 		if tx.World().Handler().HandleLeavesDecay(ctx, pos); ctx.Cancelled() {
 			// Prevent immediate re-updating.
 			l.ShouldUpdate = false
-			tx.SetBlock(pos, l, nil)
+			tx.SetBlock(pos, l, leavesUpdateBitOpts)
 			return
 		}
 		for _, drop := range leavesDrops(l, item.ToolNone{}, nil, tx, pos) {
 			dropItem(tx, drop, pos.Vec3Centre())
 		}
+		tx.SetBlock(pos, nil, nil)
 	}
 }
 
@@ -85,7 +92,7 @@ func (l Leaves) RandomTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 func (l Leaves) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	if !l.Persistent && !l.ShouldUpdate {
 		l.ShouldUpdate = true
-		tx.SetBlock(pos, l, nil)
+		tx.SetBlock(pos, l, leavesUpdateBitOpts)
 	}
 }
 

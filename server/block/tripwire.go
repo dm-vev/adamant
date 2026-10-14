@@ -33,13 +33,14 @@ func (t Tripwire) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, simpleDrops(item.NewStack(item.String{}, 1)))
 }
 
-// UseOnBlock ...
+// UseOnBlock places string as BDS does, always with suspended_bit set,
+// whether or not a block supports it.
 func (t Tripwire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, t)
 	if !used {
 		return false
 	}
-	t.Suspended = !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx)
+	t.Suspended = true
 	place(tx, pos, t, user, ctx)
 	updateTripwireConnections(pos, tx)
 	updateTripwireFrom(pos, tx)
@@ -48,11 +49,6 @@ func (t Tripwire) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 
 // NeighbourUpdateTick ...
 func (t Tripwire) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	suspended := !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx)
-	if suspended != t.Suspended {
-		t.Suspended = suspended
-		tx.SetBlock(pos, t, nil)
-	}
 	updateTripwireConnections(pos, tx)
 	updateTripwireFrom(pos, tx)
 }

@@ -132,10 +132,15 @@ var unknownFace = cube.Face(len(cube.Faces()))
 // unknownDirection is a direction that is used for certain block items. This should not be exposed in the API.
 var unknownDirection = cube.Direction(len(cube.Directions()))
 
-func calculateFace(user item.User, placePos cube.Pos) cube.Face {
+// placerFacing ports the facing BDS gives a dispenser, dropper, crafter,
+// barrel, piston or observer placed at placePos by user: up or down when user
+// stands in one of the nine block columns around the block with its eyes
+// more than two blocks above, or anywhere below, the block, and otherwise the
+// horizontal direction pointing back at user.
+func placerFacing(user item.User, placePos cube.Pos) cube.Face {
 	userPos := user.Position()
-	dx := math.Abs(userPos[0] - (float64(placePos[0]) + 0.5))
-	dz := math.Abs(userPos[2] - (float64(placePos[2]) + 0.5))
+	dx := math.Abs(math.Floor(userPos[0]) - float64(placePos[0]))
+	dz := math.Abs(math.Floor(userPos[2]) - float64(placePos[2]))
 	if dx < 2.0 && dz < 2.0 {
 		y := userPos[1]
 		if eyed, ok := user.(interface{ EyeHeight() float64 }); ok {

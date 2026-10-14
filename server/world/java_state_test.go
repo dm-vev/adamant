@@ -475,3 +475,32 @@ func TestJavaHangingSignAttachments(t *testing.T) {
 		}
 	}
 }
+
+// TestJavaPistonFacingsMatchBDS checks Java piston and piston head facings
+// map to the facing_direction BDS gives them: pistons number the horizontal
+// directions the other way round, so a piston pushing east is 4.
+func TestJavaPistonFacingsMatchBDS(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	want := map[string]int32{"down": 0, "up": 1, "north": 3, "south": 2, "west": 5, "east": 4}
+	for _, name := range []string{"piston", "sticky_piston", "piston_head"} {
+		for facing, native := range want {
+			source := BlockState{Name: "minecraft:" + name, Properties: map[string]any{"facing": facing}}
+			state, err := ResolveState(registry, source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, nativeProps, _ := registry.RuntimeIDToState(state.Block)
+			if nativeProps["facing_direction"] != native {
+				t.Fatalf("%s facing %s: facing_direction = %v, want %d", name, facing, nativeProps["facing_direction"], native)
+			}
+			back, err := JavaState(registry, state)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if back.Properties["facing"] != facing {
+				t.Fatalf("%s facing_direction %d: Java facing = %v, want %s", name, native, back.Properties["facing"], facing)
+			}
+		}
+	}
+}

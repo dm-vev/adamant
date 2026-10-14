@@ -35,22 +35,31 @@ func (d IronDoor) Model() world.BlockModel {
 }
 
 // NeighbourUpdateTick breaks the door when its other half or the support
-// below the lower half is gone.
-func (d IronDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+// below the lower half is gone, checking only the side the update came from.
+func (d IronDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
+	below, above := doorUpdateFrom(pos, changed)
 	if d.Top {
-		if _, ok := tx.Block(pos.Side(cube.FaceDown)).(IronDoor); !ok {
+		if _, ok := tx.Block(pos.Side(cube.FaceDown)).(IronDoor); below && !ok {
 			breakBlockNoDrops(d, pos, tx)
 			return
 		}
-	} else if below := pos.Side(cube.FaceDown); !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) {
+	} else if support := pos.Side(cube.FaceDown); below && !tx.Block(support).Model().FaceSolid(support, cube.FaceUp, tx) {
 		breakBlockNoDrops(d, pos, tx)
 		dropItem(tx, item.NewStack(d, 1), pos.Vec3Centre())
 		return
-	} else if _, ok := tx.Block(pos.Side(cube.FaceUp)).(IronDoor); !ok {
+	} else if _, ok := tx.Block(pos.Side(cube.FaceUp)).(IronDoor); above && !ok {
 		breakBlockNoDrops(d, pos, tx)
 		return
 	}
 	tx.Redstone().ScheduleUpdate(pos)
+}
+
+// doorUpdateFrom reports whether an update from changed lets a door half at
+// pos check the block below and the block above it. Like
+// DoorBlock.updateShape, a door reacts only to the blocks above and below
+// it; an update of the door itself checks both.
+func doorUpdateFrom(pos, changed cube.Pos) (below, above bool) {
+	return changed == pos || changed == pos.Side(cube.FaceDown), changed == pos || changed == pos.Side(cube.FaceUp)
 }
 
 // RedstonePowerUpdate opens the door while either half is powered.

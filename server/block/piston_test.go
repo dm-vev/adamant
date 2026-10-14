@@ -24,6 +24,10 @@ func (*pistonTestUser) UsingItem() bool                     { return false }
 func (*pistonTestUser) ReleaseItem()                        {}
 func (*pistonTestUser) UseItem()                            {}
 
+// TestPistonFacing checks pistons face the way BDS places and encodes them:
+// the head points up or down at a user standing in a neighbouring block
+// column, and back at the user otherwise. BDS numbers horizontal piston
+// directions opposite to other blocks: facing_direction 4 pushes east.
 func TestPistonFacing(t *testing.T) {
 	tests := []struct {
 		name string
@@ -34,10 +38,11 @@ func TestPistonFacing(t *testing.T) {
 	}{
 		{"down", cube.FaceDown, mgl64.Vec3{0.5, -1, 0.5}, cube.Rotation{}, 0},
 		{"up", cube.FaceUp, mgl64.Vec3{0.5, 3, 0.5}, cube.Rotation{}, 1},
-		{"north", cube.FaceNorth, mgl64.Vec3{0.5, 1, -3}, cube.Rotation{0, 0}, 2},
-		{"south", cube.FaceSouth, mgl64.Vec3{0.5, 1, 3}, cube.Rotation{180, 0}, 3},
-		{"west", cube.FaceWest, mgl64.Vec3{-3, 1, 0.5}, cube.Rotation{-90, 0}, 4},
-		{"east", cube.FaceEast, mgl64.Vec3{3, 1, 0.5}, cube.Rotation{90, 0}, 5},
+		{"north", cube.FaceNorth, mgl64.Vec3{0.5, 1, -3}, cube.Rotation{0, 0}, 3},
+		{"south", cube.FaceSouth, mgl64.Vec3{0.5, 1, 3}, cube.Rotation{180, 0}, 2},
+		{"west", cube.FaceWest, mgl64.Vec3{-3, 1, 0.5}, cube.Rotation{-90, 0}, 5},
+		{"east", cube.FaceEast, mgl64.Vec3{3, 1, 0.5}, cube.Rotation{90, 0}, 4},
+		{"above two columns away", cube.FaceEast, mgl64.Vec3{2.3, 3, 0.5}, cube.Rotation{90, 0}, 4},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -58,10 +63,6 @@ func TestPistonFacing(t *testing.T) {
 			if got := properties["facing_direction"]; got != int32(test.want) {
 				t.Fatalf("facing_direction = %v (%T), want %d (int32)", got, got, test.want)
 			}
-			if got := piston.EncodeNBT()["facing"]; got != test.want {
-				t.Fatalf("NBT facing = %v (%T), want %d (uint8)", got, got, test.want)
-			}
-
 			decoded := piston.DecodeNBT(piston.EncodeNBT()).(Piston)
 			if decoded.Facing != test.face {
 				t.Fatalf("decoded facing = %v, want runtime state %v", decoded.Facing, test.face)
@@ -204,6 +205,60 @@ func TestPistonRestoresMovingBlockWithRegistry(t *testing.T) {
 		}
 		if got.Count() != 2 || got.Item() != custom {
 			t.Fatalf("moved chest item = %#v x%d, want %#v x2", got.Item(), got.Count(), custom)
+		}
+	})
+}
+
+// TestLegacyExtendedPistonHeadIsTurnedBack loads an extended piston as
+// earlier versions saved it: horizontal facings encoded the other way
+// round, the piston's own facing kept in its NBT. Its first tick turns the
+// head, which loaded backwards, to face the way the piston pushes.
+func TestLegacyExtendedPistonHeadIsTurnedBack(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+	<-w.Exec(func(tx *world.Tx) {
+		pos := cube.Pos{0, 64, 0}
+		// The old state facing_direction 5 now decodes as a piston pushing
+		// west; its NBT still says east.
+		loaded := Piston{Facing: cube.FaceWest}.DecodeNBT(map[string]any{
+			"id": "PistonArm", "facing": uint8(cube.FaceEast), "State": uint8(pistonStateExtended), "NewState": uint8(pistonStateExtended),
+			"Progress": float32(1), "LastProgress": float32(1),
+		}).(Piston)
+		if loaded.Facing != cube.FaceEast {
+			t.Fatalf("loaded piston faces %v, want east", loaded.Facing)
+		}
+		tx.SetBlock(pos, loaded, nil)
+		tx.SetBlock(pos.Side(cube.FaceEast), PistonHead{Facing: cube.FaceWest}, nil)
+		tx.Block(pos).(Piston).Tick(0, pos, tx)
+		if head := tx.Block(pos.Side(cube.FaceEast)).(PistonHead); head.Facing != cube.FaceEast {
+			t.Fatalf("head faces %v after the first tick, want east", head.Facing)
+		}
+		if !tx.Block(pos).(Piston).extended(pos, tx) {
+			t.Fatal("repaired piston is not extended")
+		}
+	})
+}
+
+// TestBlockedPistonWantsToExtend checks a powered piston that cannot push
+// stays retracted with NewState extending in its actor, as BDS sends it, and
+// goes back to NewState retracted once unpowered.
+func TestBlockedPistonWantsToExtend(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+	pos, source := cube.Pos{0, 0, 0}, cube.Pos{-1, 0, 0}
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(pos, Piston{Facing: cube.FaceEast}, nil)
+		tx.SetBlock(pos.Side(cube.FaceEast), Obsidian{}, nil)
+		tx.SetBlock(source, RedstoneBlock{}, nil)
+		tx.Block(pos).(Piston).RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
+		got := tx.Block(pos).(Piston)
+		if got.Moving || got.State != pistonStateRetracted || got.NewState != pistonStateExtending {
+			t.Fatalf("blocked piston State/NewState = %d/%d moving %v, want 0/1 still", got.State, got.NewState, got.Moving)
+		}
+		tx.SetBlock(source, Air{}, nil)
+		tx.Block(pos).(Piston).RedstonePowerActionUpdate(pos, tx, world.RedstoneUpdate{})
+		if got := tx.Block(pos).(Piston); got.NewState != pistonStateRetracted {
+			t.Fatalf("unpowered blocked piston NewState = %d, want 0", got.NewState)
 		}
 	})
 }

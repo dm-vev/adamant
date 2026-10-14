@@ -51,17 +51,19 @@ func (d WoodDoor) Model() world.BlockModel {
 	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right}
 }
 
-// NeighbourUpdateTick ...
-func (d WoodDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+// NeighbourUpdateTick breaks the door when its other half or the support
+// below the lower half is gone, checking only the side the update came from.
+func (d WoodDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
+	below, above := doorUpdateFrom(pos, changed)
 	if d.Top {
-		if _, ok := tx.Block(pos.Side(cube.FaceDown)).(WoodDoor); !ok {
+		if _, ok := tx.Block(pos.Side(cube.FaceDown)).(WoodDoor); below && !ok {
 			breakBlockNoDrops(d, pos, tx)
 			return
 		}
-	} else if solid := tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx); !solid {
+	} else if support := pos.Side(cube.FaceDown); below && !tx.Block(support).Model().FaceSolid(support, cube.FaceUp, tx) {
 		breakBlock(d, pos, tx)
 		return
-	} else if _, ok := tx.Block(pos.Side(cube.FaceUp)).(WoodDoor); !ok {
+	} else if _, ok := tx.Block(pos.Side(cube.FaceUp)).(WoodDoor); above && !ok {
 		breakBlockNoDrops(d, pos, tx)
 		return
 	}

@@ -92,12 +92,6 @@ func TestBoatPassengerSeatHeight(t *testing.T) {
 		behaviour.passengers[0] = passengerHandle
 		behaviour.updatePassengers(boat.Ent, tx)
 
-		offset := passenger.Position()[1] - boat.Position()[1]
-		if got, want := behaviour.SeatOffset()[1], float32(1.02001); got != want {
-			t.Fatalf("seat metadata offset = %v, want %v", got, want)
-		} else if got != float32(offset) {
-			t.Fatalf("seat metadata offset = %v, passenger offset = %v", got, offset)
-		}
 		rim := boat.Position()[1] + BoatType.BBox(boat).Max()[1]
 		eyeY := passenger.Position()[1] + rider.EyeHeight()
 		if passenger.Position()[1] <= rim || eyeY <= rim {
@@ -154,4 +148,50 @@ func TestChestBoatNBTRoundTrip(t *testing.T) {
 	if got.variant != 9 || stack.Count() != 3 {
 		t.Fatalf("chest boat round trip: variant=%d stack=%v nbt=%v", got.variant, stack, nbt)
 	}
+}
+
+// TestBoatReseatsRidersAsTheySit checks riders take Bedrock's boat seats:
+// a lone rider sits centred, a second rider moves the first forward and
+// sits behind it, and turning sideways depends on the rider's family.
+func TestBoatReseatsRidersAsTheySit(t *testing.T) {
+	w := world.Config{Synchronous: true}.New()
+	defer w.Close()
+
+	pos := mgl64.Vec3{0, 4, 0}
+	boatHandle := NewBoat(world.EntitySpawnOpts{Position: pos}, 0)
+	skeletonHandle := NewSkeleton(world.EntitySpawnOpts{Position: pos})
+	cowHandle := NewCow(world.EntitySpawnOpts{Position: pos})
+	<-w.Exec(func(tx *world.Tx) {
+		boat := tx.AddEntity(boatHandle).(*Boat)
+		skeleton := tx.AddEntity(skeletonHandle).(interface {
+			world.Entity
+			RiderSeat() world.RiderSeat
+		})
+		cow := tx.AddEntity(cowHandle).(interface {
+			world.Entity
+			RiderSeat() world.RiderSeat
+		})
+		centre := world.RiderSeat{Position: mgl64.Vec3{0, -0.2, 0}, LockRotation: true, LockRotationDegrees: 90, RotateRider: true, RotateRiderDegrees: -90}
+		if !boat.Mount(tx, skeleton) {
+			t.Fatal("skeleton did not mount the boat")
+		}
+		if got := skeleton.RiderSeat(); got != centre {
+			t.Fatalf("lone rider seat = %+v, want %+v", got, centre)
+		}
+		if !boat.Mount(tx, cow) {
+			t.Fatal("cow did not mount the boat")
+		}
+		front := world.RiderSeat{Position: mgl64.Vec3{0.2, -0.2, 0}, LockRotation: true, LockRotationDegrees: 90, RotateRider: true, RotateRiderDegrees: -90}
+		back := world.RiderSeat{Position: mgl64.Vec3{-0.6, -0.2, 0}, LockRotation: true, LockRotationDegrees: 90, RotateRider: true}
+		if got := skeleton.RiderSeat(); got != front {
+			t.Fatalf("first of two riders seat = %+v, want %+v", got, front)
+		}
+		if got := cow.RiderSeat(); got != back {
+			t.Fatalf("second of two riders seat = %+v, want %+v", got, back)
+		}
+		boat.Dismount(tx, cow)
+		if got := skeleton.RiderSeat(); got != centre {
+			t.Fatalf("rider left alone seat = %+v, want %+v", got, centre)
+		}
+	})
 }

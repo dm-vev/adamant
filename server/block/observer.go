@@ -39,7 +39,7 @@ func (o Observer) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 	if !used {
 		return false
 	}
-	o.Facing = calculateFace(user, pos).Opposite()
+	o.Facing = placerFacing(user, pos).Opposite()
 	o.Powered = false
 	place(tx, pos, o, user, ctx)
 	return placed(ctx)

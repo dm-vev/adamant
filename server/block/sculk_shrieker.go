@@ -276,11 +276,11 @@ func (s SculkShrieker) DecodeNBT(m map[string]any) any {
 	return s
 }
 func (s SculkShrieker) EncodeNBT() map[string]any {
-	data := map[string]any{
-		"id": "SculkShrieker", "BlockEntityVersion": int32(0),
-		"VibrationListener": world.CloneNativeEntityNBT(s.nativeVibrationListener),
-	}
-	if s.nativeVibrationListener == nil {
+	data := map[string]any{"id": "SculkShrieker", "BlockEntityVersion": int32(0)}
+	// BDS writes {selector: {}} for a fresh listener.
+	if s.nativeVibrationListener != nil {
+		data["VibrationListener"] = world.CloneNativeEntityNBT(s.nativeVibrationListener)
+	} else {
 		data["VibrationListener"] = map[string]any{"selector": map[string]any{}}
 	}
 	javaState := world.CloneNativeEntityNBT(s.javaState)

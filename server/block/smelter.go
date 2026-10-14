@@ -290,3 +290,17 @@ func (s *smelter) tickSmelting(requirement time.Duration, lit bool, supported fu
 	s.mu.Unlock()
 	return lit, inventoryChanged
 }
+
+// smelterStoredXP reads the experience a furnace, blast furnace or smoker
+// stores. BDS writes it as the int StoredXPInt; worlds saved before this
+// server did too wrote a short, under either spelling.
+func smelterStoredXP(data map[string]any) int {
+	if xp, ok := data["StoredXPInt"].(int32); ok {
+		return int(xp)
+	}
+	if xp, ok := data["StoredXPInt"].(int16); ok {
+		return int(xp)
+	}
+	xp, _ := data["StoredXpInt"].(int16)
+	return int(xp)
+}

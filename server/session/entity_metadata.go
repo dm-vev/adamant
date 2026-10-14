@@ -12,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -39,6 +38,11 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagLingering)
 	}
 	addAmbientSoundMetadata(e, m)
+	var seat world.RiderSeat
+	if r, ok := e.(riderSeat); ok {
+		seat = r.RiderSeat()
+	}
+	writeSeatMetadata(m, seat)
 	s.addSpecificMetadata(e, m)
 	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		s.addSpecificMetadata(beh.Behaviour(), m)
@@ -244,14 +248,8 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m[protocol.EntityDataKeyInteractText] = text
 		}
 	}
-	if r, ok := e.(rider); ok && r.Riding() != nil {
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRiding)
-	}
 	if r, ok := e.(rideTarget); ok {
 		m[protocol.EntityDataKeyCanRideTarget] = byte(boolByte(r.CanRideTarget()))
-	}
-	if s, ok := e.(seatOffset); ok {
-		m[protocol.EntityDataKeySeatOffset] = s.SeatOffset()
 	}
 	if ec, ok := e.(endCrystalMeta); ok {
 		if ec.ShowBase() {
@@ -598,14 +596,24 @@ type interactText interface {
 	InteractText() string
 }
 
-type rider interface {
-	Riding() *world.EntityHandle
+type riderSeat interface {
+	RiderSeat() world.RiderSeat
 }
 
 type rideTarget interface {
 	CanRideTarget() bool
 }
 
-type seatOffset interface {
-	SeatOffset() mgl32.Vec3
+// writeSeatMetadata writes the seat an entity rides, or last rode, in. BDS
+// sends these keys for every entity and sets them on riders, never on
+// vehicles, and marks riding only through entity links. It leaves out the
+// seat position of an entity that has not sat anywhere yet.
+func writeSeatMetadata(m protocol.EntityMetadata, seat world.RiderSeat) {
+	if seat.Position != (mgl64.Vec3{}) {
+		m[protocol.EntityDataKeySeatOffset] = vec64To32(seat.Position)
+	}
+	m[protocol.EntityDataKeySeatLockPassengerRotation] = byte(boolByte(seat.LockRotation))
+	m[protocol.EntityDataKeySeatLockPassengerRotationDegrees] = float32(seat.LockRotationDegrees)
+	m[protocol.EntityDataKeySeatRotationOffset] = byte(boolByte(seat.RotateRider))
+	m[protocol.EntityDataKeySeatRotationOffsetDegrees] = float32(seat.RotateRiderDegrees)
 }

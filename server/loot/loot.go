@@ -80,7 +80,7 @@ type modifier struct {
 	Count                    any             `json:"count"`
 	Min                      any             `json:"min"`
 	Max                      any             `json:"max"`
-	Add                      any             `json:"add"`
+	Add                      *bool           `json:"add"`
 	Multiplier               any             `json:"multiplier"`
 	Condition                *condition      `json:"condition"`
 	Conditions               []condition     `json:"conditions"`
@@ -1178,16 +1178,20 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 	if id == "" {
 		return item.Stack{}, fmt.Errorf("loot item entry has no name")
 	}
-	count := 1
-	components := make(map[string]any)
+	mods := append([]modifier(nil), e.Functions...)
+	mods = append(mods, e.Modifier...)
+	return applyModifiers(id, 1, make(map[string]any), mods, c)
+}
+
+// applyModifiers runs loot functions on an item given by its Java id, count
+// and components, and returns the native stack they leave.
+func applyModifiers(id string, count int, components map[string]any, mods []modifier, c *Context) (item.Stack, error) {
 	setEnchantmentsApplied := false
 	// The stew effect, exploration map and filters replace the item once it
 	// exists.
 	var stew *item.StewType
 	var exploration map[string]any
 	var filters []map[string]any
-	mods := append([]modifier(nil), e.Functions...)
-	mods = append(mods, e.Modifier...)
 	for _, m := range mods {
 		if m.Condition != nil {
 			ok, err := testCondition(*m.Condition, c)
@@ -1210,6 +1214,10 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 			n, err := integerNumber(m.Count, c)
 			if err != nil {
 				return item.Stack{}, err
+			}
+			// SetItemCountFunction adds to the count when add is set.
+			if m.Add != nil && *m.Add {
+				n += count
 			}
 			count = n
 		case "minecraft:limit_count":
@@ -1249,11 +1257,17 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 				count += int(c.Random.NextInt(int32(level + 1)))
 			}
 		case "minecraft:set_damage":
-			damage, err := number(m.Damage, c)
+			value, err := number(m.Damage, c)
 			if err != nil {
 				return item.Stack{}, err
 			}
-			components["minecraft:damage"] = int32(damage)
+			damage, ok, err := lootSetDamage(id, components, float32(value), m.Add != nil && *m.Add)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			if ok {
+				components["minecraft:damage"] = damage
+			}
 		case "minecraft:set_components":
 			for k, v := range m.Components {
 				if k == "minecraft:enchantments" || k == "minecraft:stored_enchantments" {
@@ -1274,14 +1288,7 @@ func makeStack(e entry, c *Context) (item.Stack, error) {
 				components[k] = v
 			}
 		case "minecraft:set_enchantments":
-			add := false
-			if m.Add != nil {
-				var ok bool
-				add, ok = m.Add.(bool)
-				if !ok {
-					return item.Stack{}, fmt.Errorf("invalid set-enchantments add value %T", m.Add)
-				}
-			}
+			add := m.Add != nil && *m.Add
 			levels := map[string]any{}
 			if existing, ok := components["minecraft:enchantments"].(map[string]any); ok {
 				for id, level := range existing {

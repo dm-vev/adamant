@@ -138,7 +138,7 @@ func (b Barrel) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	}
 	//noinspection GoAssignmentToReceiver
 	b = NewBarrel()
-	b.Facing = calculateFace(user, pos)
+	b.Facing = placerFacing(user, pos)
 
 	place(tx, pos, b, user, ctx)
 	return placed(ctx)
@@ -196,6 +196,9 @@ func (b Barrel) EncodeNBT() map[string]any {
 	}
 	if b.lootTable != "" {
 		m["LootTable"], m["LootTableSeed"] = b.lootTable, b.lootSeed
+	} else {
+		// BDS marks barrels players place as not findable.
+		m["Findable"] = byte(0)
 	}
 	return m
 }

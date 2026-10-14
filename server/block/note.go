@@ -40,12 +40,25 @@ func (n Note) instrument(pos cube.Pos, tx *world.Tx) sound.Instrument {
 
 func (n Note) DecodeNBT(data map[string]any) any {
 	n.Pitch = int(nbtconv.Uint8(data, "note"))
-	n.Powered = nbtconv.Bool(data, "powered")
+	n.Powered = nbtconv.Bool(javaActorState(data), "powered")
 	return n
 }
 
+// EncodeNBT encodes the Music block actor as BDS does, with only the note.
+// Whether the block is powered, the rising edge Java's POWERED state tracks
+// and Bedrock has no state for, is kept for the server only.
 func (n Note) EncodeNBT() map[string]any {
-	return map[string]any{"note": byte(n.Pitch), "powered": boolByte(n.Powered)}
+	return map[string]any{"id": "Music", "note": byte(n.Pitch), "adamant:java": map[string]any{"powered": boolByte(n.Powered)}}
+}
+
+// javaActorState returns the server-only Java state a block actor keeps
+// under adamant:java, or the actor itself if it was saved before that state
+// moved there.
+func javaActorState(data map[string]any) map[string]any {
+	if state, ok := data["adamant:java"].(map[string]any); ok {
+		return state
+	}
+	return data
 }
 
 func (n Note) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {

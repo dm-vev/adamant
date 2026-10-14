@@ -253,17 +253,31 @@ func (p *Pig) ControlsVehicle(passenger world.Entity) bool {
 	r, ok := passenger.(Rider)
 	return ok && p.behaviour().saddled && r.Riding() == p.H()
 }
+
+// RiderSeat returns the seat of Bedrock's pig, which seats riders lower
+// once saddled.
+func (p *Pig) RiderSeat(rider world.Entity) world.RiderSeat {
+	y := 0.7
+	if p.behaviour().saddled {
+		y = 0.63
+	}
+	return seat{pos: mgl64.Vec3{0, y, 0}}.riderSeat(rider)
+}
+
+// Mount seats passenger on the pig as Entity.startRiding does when forced,
+// as /ride does: unlike riding it by hand, which Interact allows only once
+// saddled, the pig need not wear a saddle.
 func (p *Pig) Mount(tx *world.Tx, passenger world.Entity) bool {
 	if passenger == nil || p.Dead() {
 		return false
 	}
 	r, ok := passenger.(Rider)
 	b := p.behaviour()
-	if !ok || r.Riding() != nil || !b.saddled || b.passenger != nil {
+	if !ok || r.Riding() != nil || b.passenger != nil {
 		return false
 	}
 	b.passenger = passenger.H()
-	r.SetRiding(p.H())
+	seatRider(r, p)
 	p.viewLink(tx, b.passenger, true)
 	if t, ok := passenger.(interface{ Teleport(mgl64.Vec3) }); ok {
 		t.Teleport(p.Position().Add(mgl64.Vec3{0, .9, 0}))

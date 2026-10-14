@@ -80,22 +80,29 @@ func (b CommandBlock) Activate(_ cube.Pos, _ cube.Face, _ *world.Tx, u item.User
 }
 
 // EncodeNBT serializes Java/BDS command actor state using BDS actor keys.
+// LastOutput holds the whole message, so its parameters are always empty.
 func (b CommandBlock) EncodeNBT() map[string]any {
 	return map[string]any{
 		"id": "CommandBlock", "Command": b.Command, "CustomName": b.CustomName, "LastOutput": b.LastOutput,
+		"LastOutputParams": []string{}, "LastExecution": b.lastExecutionTick,
 		"TrackOutput": boolByte(b.TrackOutput), "SuccessCount": int32(b.SuccessCount), "auto": boolByte(!b.NeedsRedstone),
 		"powered": boolByte(b.Powered), "conditionMet": boolByte(b.ConditionMet), "TickDelay": int32(b.TickDelay),
 		"ExecuteOnFirstTick": boolByte(b.ExecuteOnFirstTick), "LPCommandMode": int32(b.Mode),
-		"LPCondionalMode": boolByte(b.Conditional), "LPRedstoneMode": boolByte(!b.NeedsRedstone), "Version": int32(26),
+		"LPCondionalMode": boolByte(b.Conditional), "LPRedstoneMode": boolByte(!b.NeedsRedstone), "Version": int32(52),
 	}
 }
 
-// DecodeNBT restores command actor state.
+// DecodeNBT restores command actor state. Like a fresh Java or BDS command
+// block, an actor without TrackOutput tracks its output.
 func (b CommandBlock) DecodeNBT(m map[string]any) any {
 	b.Command = nbtconv.String(m, "Command")
 	b.CustomName = nbtconv.String(m, "CustomName")
 	b.LastOutput = nbtconv.String(m, "LastOutput")
-	b.TrackOutput = nbtconv.Bool(m, "TrackOutput")
+	b.TrackOutput = true
+	if _, ok := m["TrackOutput"]; ok {
+		b.TrackOutput = nbtconv.Bool(m, "TrackOutput")
+	}
+	b.lastExecutionTick = nbtconv.Int64(m, "LastExecution")
 	b.SuccessCount = int(nbtconv.Int32(m, "SuccessCount"))
 	b.Powered = nbtconv.Bool(m, "powered")
 	b.ConditionMet = nbtconv.Bool(m, "conditionMet")

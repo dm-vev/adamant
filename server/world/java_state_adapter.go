@@ -1638,6 +1638,9 @@ func javaProperties(nativeName, javaName string, nativeProps map[string]any) (ma
 			if !ok {
 				return nil, fmt.Errorf("java state codec: cannot reverse native facing %s=%v on %s", key, value, nativeName)
 			}
+			if isPistonFamily(javaName) {
+				facing = pistonNativeHorizontal(facing)
+			}
 			if javaName != "minecraft:jigsaw" {
 				if strings.HasSuffix(javaName, "_door") {
 					switch facing {
@@ -2632,6 +2635,9 @@ func convertJavaFacing(target string, value any, javaName string) (any, error) {
 		return facing, nil
 	}
 	if target == "facing_direction" || target == "minecraft:facing_direction" {
+		if isPistonFamily(javaName) {
+			facing = pistonNativeHorizontal(facing)
+		}
 		switch facing {
 		case "down":
 			return int32(0), nil
@@ -2692,6 +2698,29 @@ func nativeFacing(key string, value any) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// isPistonFamily reports whether a Java block is a piston or its head, whose
+// Bedrock facing_direction numbers the horizontal directions the other way
+// round: on BDS, facing_direction 4 pushes east and 5 west.
+func isPistonFamily(javaName string) bool {
+	return javaName == "minecraft:piston" || javaName == "minecraft:sticky_piston" || javaName == "minecraft:piston_head"
+}
+
+// pistonNativeHorizontal swaps a horizontal facing between Java's direction
+// and the one Bedrock's piston facing_direction number names.
+func pistonNativeHorizontal(facing string) string {
+	switch facing {
+	case "north":
+		return "south"
+	case "south":
+		return "north"
+	case "east":
+		return "west"
+	case "west":
+		return "east"
+	}
+	return facing
 }
 
 func nativeDirection(value any) (string, bool) {

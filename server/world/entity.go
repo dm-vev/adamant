@@ -590,6 +590,9 @@ type EntityData struct {
 	FireDuration      time.Duration
 	Age               time.Duration
 	Riding            *EntityHandle
+	// Seat is the seat of the vehicle the entity rides, or last rode: like
+	// Bedrock, the entity keeps it after dismounting.
+	Seat RiderSeat
 	// FrozenTicks is Java's Entity.ticksFrozen: how far the entity froze in
 	// powder snow, up to 140 when it is fully frozen.
 	FrozenTicks int
@@ -609,6 +612,22 @@ type EntityData struct {
 	NativeNBT map[string]any
 
 	Data any
+}
+
+// RiderSeat is the seat a rider takes on its vehicle, as a seat of Bedrock's
+// minecraft:rideable component places it. Clients render riders from it.
+type RiderSeat struct {
+	// Position is the rider's offset from the vehicle.
+	Position mgl64.Vec3
+	// LockRotation reports whether the rider can turn only
+	// LockRotationDegrees away from the vehicle. Seats without a lock
+	// report 181 degrees.
+	LockRotation        bool
+	LockRotationDegrees float64
+	// RotateRider reports whether the rider faces RotateRiderDegrees away
+	// from the vehicle.
+	RotateRider        bool
+	RotateRiderDegrees float64
 }
 
 // Entity represents an Entity in the world, typically an object that may be moved around and can be

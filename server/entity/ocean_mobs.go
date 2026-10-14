@@ -1040,7 +1040,45 @@ func (m *oceanMob) Dismount(tx *world.Tx, passenger world.Entity) {
 	}
 	if r, ok := passenger.(Rider); ok && r.Riding() == m.H() {
 		r.SetRiding(nil)
+		m.viewLink(tx, passenger.H(), false)
 	}
+}
+
+// Mount seats passenger on a tamed, saddled nautilus.
+func (m *oceanMob) Mount(tx *world.Tx, passenger world.Entity) bool {
+	b := m.b()
+	if passenger == nil || (b.kind != oceanNautilus && b.kind != oceanZombieNautilus) || !b.tamed || !b.saddle || m.hasPassenger(tx) {
+		return false
+	}
+	r, ok := passenger.(Rider)
+	if !ok || r.Riding() != nil {
+		return false
+	}
+	seatRider(r, m)
+	m.viewLink(tx, passenger.H(), true)
+	return true
+}
+
+// RiderSeat returns the seat of Bedrock's nautilus and zombie nautilus: a
+// wild zombie nautilus seats its drowned further back.
+func (m *oceanMob) RiderSeat(rider world.Entity) world.RiderSeat {
+	pos := mgl64.Vec3{0, 0.925, 0}
+	if b := m.b(); b.kind == oceanZombieNautilus && !b.tamed {
+		pos[2] = -0.2
+	}
+	return seat{pos: pos}.riderSeat(rider)
+}
+
+func (m *oceanMob) viewLink(tx *world.Tx, rider *world.EntityHandle, mounted bool) {
+	viewers := tx.Viewers(m.Position())
+	for _, v := range viewers {
+		if lv, ok := v.(interface {
+			ViewEntityLinkType(*world.EntityHandle, *world.EntityHandle, LinkType, bool)
+		}); ok {
+			lv.ViewEntityLinkType(m.H(), rider, LinkRider, mounted)
+		}
+	}
+	tx.ReleaseViewers(viewers)
 }
 func (m *oceanMob) hasPassenger(tx *world.Tx) bool {
 	for passenger := range tx.Entities() {
@@ -1103,9 +1141,8 @@ func (m *oceanMob) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) 
 			}
 		}
 	}
-	if b.tamed && b.saddle && !m.hasPassenger(tx) {
-		if rider, ok := user.(Rider); ok && rider.Riding() == nil {
-			rider.SetRiding(m.H())
+	if b.tamed && b.saddle {
+		if passenger, ok := user.(world.Entity); ok && m.Mount(tx, passenger) {
 			return true
 		}
 	}

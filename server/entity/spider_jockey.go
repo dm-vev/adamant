@@ -18,7 +18,7 @@ func (m *speciesMob) Mount(tx *world.Tx, passenger world.Entity) bool {
 		return false
 	}
 	m.s().passenger = passenger.H()
-	rider.SetRiding(m.H())
+	seatRider(rider, m)
 	m.viewLink(tx, passenger.H(), true)
 	m.updateJockey(tx)
 	return true
@@ -48,6 +48,18 @@ func (m *speciesMob) DismountAll(_ *Ent, tx *world.Tx) {
 	m.s().passenger = nil
 }
 
+// RiderSeat returns the seat of Bedrock's spider, whose jockey groups seat
+// bogged lower and wither skeletons centred.
+func (m *speciesMob) RiderSeat(rider world.Entity) world.RiderSeat {
+	pos := mgl64.Vec3{0, 0.54, -0.1}
+	switch rider.H().Type().EncodeEntity() {
+	case "minecraft:bogged":
+		pos[1] = 0.325
+	case "minecraft:wither_skeleton":
+		pos[2] = 0
+	}
+	return seat{pos: pos}.riderSeat(rider)
+}
 func (m *speciesMob) Links() []Link {
 	if h := m.s().passenger; h != nil {
 		return []Link{{Ridden: m.H(), Rider: h, Type: LinkRider}}

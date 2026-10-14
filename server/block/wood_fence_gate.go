@@ -54,7 +54,10 @@ func (f WoodFenceGate) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 	if !used {
 		return false
 	}
-	f.Facing = user.Rotation().Direction()
+	// BDS places a closed gate facing back at the player, where Java faces it
+	// away. Closed gates look the same either way, and opening turns the gate
+	// to swing away from the player in both.
+	f.Facing = user.Rotation().Direction().Opposite()
 	f.Lowered = f.shouldBeLowered(pos, tx)
 
 	place(tx, pos, f, user, ctx)

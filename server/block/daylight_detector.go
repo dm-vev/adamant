@@ -2,14 +2,16 @@ package block
 
 import (
 	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// daylightUpdateTicks is how often, in game ticks, a daylight detector
+// measures the sky: DaylightDetectorBlock.tickEntity runs on every 20th tick.
 const daylightUpdateTicks = 20
 
 // DaylightDetector is a sensor that outputs power based on the current daylight level.
@@ -27,40 +29,32 @@ func (d DaylightDetector) BreakInfo() BreakInfo {
 	return newBreakInfo(0.2, alwaysHarvestable, nothingEffective, oneOf(d))
 }
 
-// UseOnBlock ...
+// UseOnBlock places the detector unpowered: like Java's default state, it
+// only measures the sky on its next update tick.
 func (d DaylightDetector) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, d)
 	if !used {
 		return false
 	}
-	if !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx) {
-		return false
-	}
-	d.Signal = d.daylightSignal(pos, tx)
+	d.Signal = 0
 	place(tx, pos, d, user, ctx)
-	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	return placed(ctx)
 }
 
-// Activate ...
+// Activate inverts the detector and measures the sky at once, as
+// DaylightDetectorBlock.useWithoutItem does.
 func (d DaylightDetector) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	d.Inverted = !d.Inverted
+	tx.SetBlock(pos, d, nil)
 	d.updateSignal(pos, tx)
 	return true
 }
 
-// NeighbourUpdateTick ...
-func (d DaylightDetector) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx) {
-		breakBlock(d, pos, tx)
-		return
+// Tick measures the sky on every 20th game tick.
+func (d DaylightDetector) Tick(currentTick int64, pos cube.Pos, tx *world.Tx) {
+	if currentTick%daylightUpdateTicks == 0 {
+		d.updateSignal(pos, tx)
 	}
-	d.updateSignal(pos, tx)
-}
-
-// ScheduledTick ...
-func (d DaylightDetector) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	d.updateSignal(pos, tx)
 }
 
 func (d DaylightDetector) RedstonePower(cube.Pos, *world.Tx, cube.Face) int {
@@ -72,6 +66,16 @@ func (d DaylightDetector) RedstoneStrongPower(_ cube.Pos, _ *world.Tx, face cube
 		return d.Signal
 	}
 	return 0
+}
+
+// EncodeNBT encodes the DaylightDetector block actor.
+func (d DaylightDetector) EncodeNBT() map[string]any {
+	return map[string]any{"id": "DaylightDetector"}
+}
+
+// DecodeNBT keeps the detector's state: its block actor holds no data.
+func (d DaylightDetector) DecodeNBT(map[string]any) any {
+	return d
 }
 
 // EncodeItem ...
@@ -89,38 +93,30 @@ func (d DaylightDetector) EncodeBlock() (string, map[string]any) {
 }
 
 func (d DaylightDetector) updateSignal(pos cube.Pos, tx *world.Tx) {
-	newSignal := d.daylightSignal(pos, tx)
-	if newSignal != d.Signal {
-		d.Signal = newSignal
+	if signal := d.daylightSignal(pos, tx); signal != d.Signal {
+		d.Signal = signal
 		tx.SetBlock(pos, d, nil)
 		tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	}
-	tx.ScheduleBlockUpdate(pos, d, redstoneTicks(daylightUpdateTicks))
 }
 
+// daylightSignal ports DaylightDetectorBlock.updateSignalStrength: the sky
+// brightness, scaled by the cosine of the sun angle eased a fifth of the way
+// towards the nearest noon, or inverted.
 func (d DaylightDetector) daylightSignal(pos cube.Pos, tx *world.Tx) int {
-	sky := int(tx.SkyLight(pos))
-	if sky <= 0 {
-		return d.applyInversion(0)
-	}
-	time := tx.World().Time() % world.TimeFull
-	angle := float64(time) / float64(world.TimeFull) * (2 * math.Pi)
-	brightness := math.Sin(angle)
-	if brightness < 0 {
-		brightness = 0
-	}
-	signal := int(math.Round(brightness * float64(sky)))
-	if signal > 15 {
-		signal = 15
-	}
-	return d.applyInversion(signal)
-}
-
-func (d DaylightDetector) applyInversion(signal int) int {
+	target := int(tx.SkyLight(pos)) - tx.SkyDarken()
+	sunAngle := tx.SunAngle() * float32(math.Pi/180)
 	if d.Inverted {
-		return 15 - signal
+		target = 15 - target
+	} else if target > 0 {
+		offset := float32(0)
+		if sunAngle >= float32(math.Pi) {
+			offset = float32(math.Pi * 2)
+		}
+		sunAngle += (offset - sunAngle) * 0.2
+		target = int(math.Floor(float64(float32(target)*java26.Cos(float64(sunAngle)) + 0.5)))
 	}
-	return signal
+	return min(max(target, 0), 15)
 }
 
 func allDaylightDetectors() (detectors []world.Block) {

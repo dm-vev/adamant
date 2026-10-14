@@ -4,7 +4,9 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 func TestTripwireConnectionsTrackNeighboursAndPreserveState(t *testing.T) {
@@ -100,6 +102,25 @@ func TestTripwirePowerTransitionPreservesConnections(t *testing.T) {
 		if got.Powered || !got.Attached || !got.Disarmed || !got.Suspended ||
 			!got.NorthConnection || !got.EastConnection || !got.SouthConnection || !got.WestConnection {
 			t.Fatalf("power transition lost tripwire state: %#v", got)
+		}
+	})
+}
+
+// TestStringPlacesSuspendedTripwire checks string places tripwire like BDS:
+// suspended whether or not a block is below it.
+func TestStringPlacesSuspendedTripwire(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+	<-w.Exec(func(tx *world.Tx) {
+		target := cube.Pos{0, 64, 0}
+		tx.SetBlock(target, Stone{}, nil)
+		user := &pistonTestUser{pos: mgl64.Vec3{3, 66, 0.5}}
+		for _, face := range []cube.Face{cube.FaceUp, cube.FaceEast} {
+			(item.String{}).UseOnBlock(target, face, mgl64.Vec3{}, tx, user, &item.UseContext{})
+			wire, ok := tx.Block(target.Side(face)).(Tripwire)
+			if !ok || !wire.Suspended {
+				t.Fatalf("string on the %v face placed %#v, want suspended tripwire", face, tx.Block(target.Side(face)))
+			}
 		}
 	})
 }

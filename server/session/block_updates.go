@@ -1,7 +1,6 @@
 package session
 
 import (
-	"maps"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -40,12 +39,9 @@ func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 		runtimeID: networkBlockID(s.br, b),
 		layer:     uint32(layer),
 	}
-	if v, ok := b.(world.NBTer); ok {
+	if v, ok := clientBlockActor(b); ok {
 		if nbtData := v.EncodeNBT(); nbtData != nil {
-			// Clone to avoid mutating block-owned NBT maps that may be reused elsewhere.
-			nbtCopy := maps.Clone(nbtData)
-			nbtCopy["x"], nbtCopy["y"], nbtCopy["z"] = int32(pos.X()), int32(pos.Y()), int32(pos.Z())
-			update.nbt = nbtCopy
+			update.nbt = clientActorNBT(nbtData, pos)
 		}
 	}
 

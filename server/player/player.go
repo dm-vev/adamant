@@ -3255,6 +3255,20 @@ func (p *Player) SetRiding(r *world.EntityHandle) {
 	p.data.Riding = r
 }
 
+// RiderSeat returns the seat of the vehicle the player rides, or last rode.
+func (p *Player) RiderSeat() world.RiderSeat {
+	return p.data.Seat
+}
+
+// SetRiderSeat changes the seat the player rides in and shows it to viewers.
+func (p *Player) SetRiderSeat(s world.RiderSeat) {
+	if p.data.Seat == s {
+		return
+	}
+	p.data.Seat = s
+	p.updateState()
+}
+
 // Collect makes the player collect the item stack passed, adding it to the inventory. The amount of items that could
 // be added is returned.
 func (p *Player) Collect(s item.Stack) (int, bool) {

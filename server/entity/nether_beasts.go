@@ -757,9 +757,13 @@ func striderController(p world.Entity) bool {
 	}
 	return false
 }
+
+// Mount seats p on the strider as Entity.startRiding does when forced, as
+// /ride does: unlike riding it by hand, which Interact allows only once
+// saddled, the strider need not wear a saddle.
 func (s *Strider) Mount(tx *world.Tx, p world.Entity) bool {
 	b := s.beast()
-	if p == nil || !b.saddled || b.passenger != nil {
+	if p == nil || b.passenger != nil {
 		return false
 	}
 	r, ok := p.(Rider)
@@ -767,7 +771,7 @@ func (s *Strider) Mount(tx *world.Tx, p world.Entity) bool {
 		return false
 	}
 	b.passenger = p.H()
-	r.SetRiding(s.H())
+	seatRider(r, s)
 	if v, ok := p.(interface{ Teleport(mgl64.Vec3) }); ok {
 		v.Teleport(s.Position().Add(mgl64.Vec3{0, 1.05, 0}))
 	}
@@ -785,13 +789,23 @@ func (s *Strider) Dismount(tx *world.Tx, p world.Entity) {
 	s.beast().passenger = nil
 	s.beast().steer = 0
 }
+
+// RiderSeat returns the seat of Bedrock's strider, which centres a baby
+// strider riding its parent.
+func (s *Strider) RiderSeat(rider world.Entity) world.RiderSeat {
+	pos := mgl64.Vec3{0, 1.7, -0.2}
+	if rider.H().Type() == s.H().Type() {
+		pos[2] = 0
+	}
+	return seat{pos: pos}.riderSeat(rider)
+}
 func (s *Strider) broadcast(tx *world.Tx, h *world.EntityHandle, link bool) {
 	vs := tx.Viewers(s.Position())
 	for _, v := range vs {
 		if lv, ok := v.(interface {
 			ViewEntityLinkType(*world.EntityHandle, *world.EntityHandle, LinkType, bool)
 		}); ok {
-			lv.ViewEntityLinkType(s.H(), h, LinkPassenger, link)
+			lv.ViewEntityLinkType(s.H(), h, LinkRider, link)
 		} else if lv, ok := v.(interface {
 			ViewEntityLink(*world.EntityHandle, *world.EntityHandle, bool)
 		}); ok {

@@ -649,7 +649,7 @@ func blockMatches(tx *world.Tx, pos cube.Pos, spec string) (bool, error) {
 	if len(props) == 0 {
 		return current == name, nil
 	}
-	want, err := commandBlock(tx.World(), spec)
+	want, _, err := commandBlock(tx.World(), spec)
 	if err != nil {
 		return false, err
 	}

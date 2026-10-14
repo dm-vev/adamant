@@ -53,13 +53,15 @@ func (t RedstoneTorch) BreakInfo() BreakInfo {
 
 func (t RedstoneTorch) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, face, used := firstReplaceable(tx, pos, face, t)
-	if !used || face == cube.FaceDown {
+	if !used {
 		return false
 	}
 	if _, ok := tx.Block(pos).(world.Liquid); ok {
 		return false
 	}
-	if !tx.Block(pos.Side(face.Opposite())).Model().FaceSolid(pos.Side(face.Opposite()), face, tx) {
+	// Torches cannot hang from a ceiling: like BDS, a click on a block's
+	// bottom looks for another support as a click on an unsupported side does.
+	if face == cube.FaceDown || !tx.Block(pos.Side(face.Opposite())).Model().FaceSolid(pos.Side(face.Opposite()), face, tx) {
 		fallbackFace, ok := findTorchPlacementFace(pos, tx)
 		if !ok {
 			return false

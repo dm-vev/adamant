@@ -1139,13 +1139,13 @@ func (m *HostileMob) finalizeHuskCamel(reason string, r *java26.Random) {
 	if camel == nil {
 		return
 	}
-	m.SetRiding(camel.H())
 	camel.b().passengers[0] = m.H()
+	seatRider(m, camel)
 	m.state().ridingLinkPending = true
 	rider := m.tx.AddEntity(NewParched(opts))
 	if parched, ok := rider.(*Parched); ok {
-		parched.SetRiding(camel.H())
 		camel.b().passengers[1] = parched.H()
+		seatRider(parched, camel)
 		parched.state().ridingLinkPending = true
 	}
 }

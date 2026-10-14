@@ -313,7 +313,8 @@ func (t Target) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 // RedstonePower returns the target's current hit signal.
 func (t Target) RedstonePower(cube.Pos, *world.Tx, cube.Face) int { return int(t.Signal) }
 
-// EncodeNBT ...
+// EncodeNBT saves the output signal, which Java keeps in the block's POWER
+// state and Bedrock's target block has no state for.
 func (t Target) EncodeNBT() map[string]any {
 	return map[string]any{"id": "Target", "OutputSignal": int32(t.Signal)}
 }
@@ -323,6 +324,10 @@ func (t Target) DecodeNBT(data map[string]any) any {
 	t.Signal = uint8(min(max(nbtconv.Int32(data, "OutputSignal"), 0), 15))
 	return t
 }
+
+// ServerOnlyNBT keeps the output signal from clients: BDS sends no block
+// actor for target blocks.
+func (Target) ServerOnlyNBT() {}
 
 // Fungus is a Nether fungus plant.
 type Fungus struct {

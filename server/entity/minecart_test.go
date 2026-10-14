@@ -108,12 +108,6 @@ func TestMinecartPassengerSeatHeight(t *testing.T) {
 		behaviour.passenger = passengerHandle
 		behaviour.updatePassenger(cart.Ent, tx)
 
-		offset := passenger.Position()[1] - cart.Position()[1]
-		if got, want := behaviour.SeatOffset()[1], float32(0.75); got != want {
-			t.Fatalf("seat metadata offset = %v, want %v", got, want)
-		} else if got != float32(offset) {
-			t.Fatalf("seat metadata offset = %v, passenger offset = %v", got, offset)
-		}
 		rim := cart.Position()[1] + MinecartType.BBox(cart).Max()[1]
 		eyeY := passenger.Position()[1] + rider.EyeHeight()
 		if passenger.Position()[1] <= rim || eyeY <= rim {

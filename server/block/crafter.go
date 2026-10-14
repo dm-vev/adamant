@@ -109,13 +109,12 @@ func (c Crafter) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *worl
 		return false
 	}
 	c = NewCrafter()
-	c.Facing = user.Rotation().Direction().Opposite().Face()
-	if c.Facing == cube.FaceUp || c.Facing == cube.FaceDown {
-		horizontal := cube.Rotation{user.Rotation().Yaw()}.Direction().Face()
-		c.Top = horizontal
-		if c.Facing == cube.FaceDown {
-			c.Top = horizontal.Opposite()
-		}
+	// BDS faces a crafter like a dispenser. Facing up or down, its top points
+	// back at the player, both ways; Java points an upward crafter's top away.
+	c.Facing = placerFacing(user, pos)
+	c.Top = cube.FaceUp
+	if c.Facing.Axis() == cube.Y {
+		c.Top = user.Rotation().Direction().Opposite().Face()
 	}
 	place(tx, pos, c, user, ctx)
 	return placed(ctx)
@@ -390,28 +389,44 @@ func crafterOrientation(front, top cube.Face) string {
 	}
 	return "north_up"
 }
+// EncodeNBT encodes the Crafter block actor as BDS does, its disabled slots
+// as a bit mask. Triggering and crafting are block states; the remaining
+// crafting ticks are kept so a crafter saved mid-craft finishes.
 func (c Crafter) EncodeNBT() map[string]any {
 	if c.inventory == nil {
 		facing, top, triggered, crafting, disabled, name := c.Facing, c.Top, c.Triggered, c.Crafting, c.DisabledSlots, c.CustomName
 		c = NewCrafter()
 		c.Facing, c.Top, c.Triggered, c.Crafting, c.DisabledSlots, c.CustomName = facing, top, triggered, crafting, disabled, name
 	}
-	disabled := make([]any, 0, 9)
-	for slot := range 9 {
-		if c.DisabledSlots&(1<<slot) != 0 { disabled = append(disabled, int32(slot)) }
-	}
 	m := map[string]any{
-		"id": "Crafter", "Items": nbtconv.InvToNBT(c.inventory), "disabled_slots": disabled,
-		"triggered": int32(boolByte(c.Triggered)), "crafting_ticks_remaining": c.CraftingTicksRemaining,
+		"id": "Crafter", "Items": nbtconv.InvToNBT(c.inventory), "disabled_slots": int16(c.DisabledSlots),
+		"adamant:java": map[string]any{"crafting_ticks_remaining": c.CraftingTicksRemaining},
 	}
-	if c.CustomName != "" { m["CustomName"] = c.CustomName }
+	if c.CustomName != "" {
+		m["CustomName"] = c.CustomName
+	}
 	return m
 }
+
+// DecodeNBT decodes a Crafter block actor, keeping the block states it was
+// decoded with. Crafters saved before disabled slots became a bit mask list
+// their slot numbers.
 func (c Crafter) DecodeNBT(data map[string]any) any {
-	facing, top := c.Facing, c.Top; c = NewCrafter(); c.Facing, c.Top = facing, top
-	c.Triggered = nbtconv.Int32(data,"triggered") != 0; c.CraftingTicksRemaining = nbtconv.Int32(data,"crafting_ticks_remaining"); c.Crafting = c.CraftingTicksRemaining > 0
-	c.CustomName = nbtconv.String(data,"CustomName"); nbtconv.InvFromNBT(c.inventory, nbtconv.Slice(data,"Items"), data)
-	for _, raw := range nbtconv.Slice(data,"disabled_slots") { if slot, ok := raw.(int32); ok && slot >= 0 && slot < 9 { c.DisabledSlots |= 1 << uint(slot) } }
+	facing, top, triggered, crafting := c.Facing, c.Top, c.Triggered, c.Crafting
+	c = NewCrafter()
+	c.Facing, c.Top, c.Triggered, c.Crafting = facing, top, triggered, crafting
+	c.CraftingTicksRemaining = nbtconv.Int32(javaActorState(data), "crafting_ticks_remaining")
+	c.CustomName = nbtconv.String(data, "CustomName")
+	nbtconv.InvFromNBT(c.inventory, nbtconv.Slice(data, "Items"), data)
+	if _, ok := data["disabled_slots"].(int16); ok {
+		c.DisabledSlots = uint16(nbtconv.Int16(data, "disabled_slots")) & 0x1ff
+		return c
+	}
+	for _, raw := range nbtconv.Slice(data, "disabled_slots") {
+		if slot, ok := raw.(int32); ok && slot >= 0 && slot < 9 {
+			c.DisabledSlots |= 1 << uint(slot)
+		}
+	}
 	return c
 }
 

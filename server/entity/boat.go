@@ -10,7 +10,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -147,9 +146,63 @@ func (b *BoatBehaviour) CanRideTarget() bool {
 	return true
 }
 
-// SeatOffset returns the seat offset metadata for the boat.
-func (b *BoatBehaviour) SeatOffset() mgl32.Vec3 {
-	return mgl32.Vec3{0, float32(boatSeatOffset), 0}
+// RiderSeat returns the seat rider takes, as Bedrock's boat and chest boat
+// seat riders: one rider sits centred, two sit front and back, and a chest
+// boat seats its one rider in front of the chest. A bamboo raft seats riders
+// higher.
+func (b *BoatBehaviour) RiderSeat(rider world.Entity) world.RiderSeat {
+	y := -0.2
+	if b.variant == boatVariantBamboo {
+		y = 0.1
+	}
+	s := seat{pos: mgl64.Vec3{0, y, 0}, lock: 90, hasLock: true, rotate: -90, hasRotate: true}
+	shared := b.maxPassengers == 1 || b.passengerCount() > 1
+	if shared {
+		s.pos[0] = 0.2
+		if b.maxPassengers > 1 && b.seatIndex(rider.H()) == 1 {
+			s.pos[0] = -0.6
+		}
+		if !boatTurnsRider(rider, b.maxPassengers > 1) {
+			s.rotate = 0
+		}
+	}
+	return s.riderSeat(rider)
+}
+
+// boatVariantBamboo is the boat variant of the bamboo raft.
+const boatVariantBamboo = 7
+
+// boatTurnedFamilies are the entities Bedrock's boats turn sideways in a
+// shared seat: their type families appear in the seats' rotate_rider_by.
+var boatTurnedFamilies = map[string]bool{
+	"minecraft:player": true, "minecraft:blaze": true, "minecraft:creeper": true, "minecraft:enderman": true,
+	"minecraft:pillager": true, "minecraft:vindicator": true, "minecraft:evocation_illager": true,
+	"minecraft:magma_cube": true, "minecraft:piglin": true, "minecraft:piglin_brute": true,
+	"minecraft:skeleton": true, "minecraft:stray": true, "minecraft:wither_skeleton": true, "minecraft:bogged": true,
+	"minecraft:parched": true, "minecraft:slime": true, "minecraft:villager": true, "minecraft:villager_v2": true,
+	"minecraft:wandering_trader": true, "minecraft:witch": true, "minecraft:zombie": true, "minecraft:husk": true,
+	"minecraft:drowned": true, "minecraft:zombie_villager": true, "minecraft:zombie_villager_v2": true,
+	"minecraft:zombie_pigman": true,
+}
+
+// boatTurnsRider reports whether a boat turns rider sideways in a shared
+// seat. Only the boat, not the chest boat, turns happy ghasts.
+func boatTurnsRider(rider world.Entity, boat bool) bool {
+	id := rider.H().Type().EncodeEntity()
+	return boatTurnedFamilies[id] || boat && id == "minecraft:happy_ghast"
+}
+
+// reseatPassengers gives every passenger the seat it now takes, after a
+// passenger mounted or dismounted.
+func (b *BoatBehaviour) reseatPassengers(e *Ent, tx *world.Tx) {
+	for _, h := range b.passengers[:b.maxPassengers] {
+		if h == nil {
+			continue
+		}
+		if passenger, ok := h.Entity(tx); ok {
+			reseatRider(passenger, e)
+		}
+	}
 }
 
 // Variant returns the boat variant metadata value.
@@ -210,8 +263,9 @@ func (b *BoatBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) bool
 	}
 	b.passengers[seat] = passenger.H()
 	if r, ok := passenger.(Rider); ok {
-		r.SetRiding(e.H())
+		seatRider(r, e)
 	}
+	b.reseatPassengers(e, tx)
 	b.broadcastLink(e, tx, passenger.H(), b.linkTypeForSeat(seat), true)
 	b.broadcastState(e, tx)
 	b.broadcastPassengerState(tx, passenger.H())
@@ -415,6 +469,7 @@ func (b *BoatBehaviour) dismountHandle(e *Ent, tx *world.Tx, passenger *world.En
 		b.broadcastPassengerState(tx, promoted)
 	}
 
+	b.reseatPassengers(e, tx)
 	b.broadcastState(e, tx)
 	b.broadcastPassengerState(tx, passenger)
 }

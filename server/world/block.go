@@ -2,6 +2,7 @@ package world
 
 import (
 	"image"
+	"maps"
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -197,6 +198,28 @@ type NBTer interface {
 	DecodeNBT(data map[string]any) any
 	// EncodeNBT encodes the Entity into a map which can then be encoded as NBT to be written.
 	EncodeNBT() map[string]any
+}
+
+// ServerOnlyNBTer is implemented by blocks that keep server state in NBT
+// although Bedrock has no block actor for them, such as a target block's
+// output signal. Their NBT is saved but never sent to clients.
+type ServerOnlyNBTer interface {
+	NBTer
+	ServerOnlyNBT()
+}
+
+// BlockActorNBT returns the block actor compound of a block at pos with the
+// NBT data passed, as Bedrock writes it: the data with the block's position,
+// and a BlockEntityVersion of 0 unless the data sets one. data is not
+// modified.
+func BlockActorNBT(data map[string]any, pos cube.Pos) map[string]any {
+	out := make(map[string]any, len(data)+4)
+	maps.Copy(out, data)
+	if _, ok := out["BlockEntityVersion"]; !ok {
+		out["BlockEntityVersion"] = int32(0)
+	}
+	out["x"], out["y"], out["z"] = int32(pos[0]), int32(pos[1]), int32(pos[2])
+	return out
 }
 
 // LiquidDisplacer represents a block that is able to displace a liquid to a different world layer, without

@@ -196,6 +196,20 @@ func (e *Ent) SetRiding(r *world.EntityHandle) {
 	e.data.Riding = r
 }
 
+// RiderSeat returns the seat of the vehicle the entity rides, or last rode.
+func (e *Ent) RiderSeat() world.RiderSeat {
+	return e.data.Seat
+}
+
+// SetRiderSeat changes the seat the entity rides in and shows it to viewers.
+func (e *Ent) SetRiderSeat(s world.RiderSeat) {
+	if e.data.Seat == s {
+		return
+	}
+	e.data.Seat = s
+	e.updateState()
+}
+
 // Extinguish ...
 func (e *Ent) Extinguish() {
 	e.SetOnFire(0)

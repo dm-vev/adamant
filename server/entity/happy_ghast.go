@@ -326,7 +326,7 @@ func (h *HappyGhast) Mount(tx *world.Tx, p world.Entity) bool {
 		if x == nil {
 			b.riders[i] = p.H()
 			b.still = 0
-			r.SetRiding(h.H())
+			seatRider(r, h)
 			h.viewLink(tx, p.H(), true)
 			return true
 		}
@@ -349,13 +349,32 @@ func (h *HappyGhast) Dismount(tx *world.Tx, p world.Entity) {
 		}
 	}
 }
+
+// happyGhastSeats are the seats of Bedrock's harnessed happy ghast: riders
+// fill them front, left, back and right.
+var happyGhastSeats = [len(happyGhastBehaviour{}.riders)]mgl64.Vec3{{0, 3.8, 1.7}, {-1.7, 3.8, 0}, {0, 3.8, -1.7}, {1.7, 3.8, 0}}
+
+// RiderSeat returns the seat rider fills on the harness.
+func (h *HappyGhast) RiderSeat(rider world.Entity) world.RiderSeat {
+	pos := happyGhastSeats[0]
+	for i, x := range h.state().riders {
+		if x == rider.H() {
+			pos = happyGhastSeats[i]
+		}
+	}
+	return seat{pos: pos}.riderSeat(rider)
+}
 func (h *HappyGhast) viewLink(tx *world.Tx, r *world.EntityHandle, on bool) {
+	linkType := LinkPassenger
+	if h.state().riders[0] == r {
+		linkType = LinkRider
+	}
 	vs := tx.Viewers(h.Position())
 	for _, v := range vs {
 		if lv, ok := v.(interface {
 			ViewEntityLinkType(*world.EntityHandle, *world.EntityHandle, LinkType, bool)
 		}); ok {
-			lv.ViewEntityLinkType(h.H(), r, LinkPassenger, on)
+			lv.ViewEntityLinkType(h.H(), r, linkType, on)
 		} else if lv, ok := v.(interface {
 			ViewEntityLink(*world.EntityHandle, *world.EntityHandle, bool)
 		}); ok {

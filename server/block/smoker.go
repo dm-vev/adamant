@@ -107,62 +107,18 @@ func (s Smoker) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _
 }
 
 // EncodeNBT ...
-func (s Smoker) EncodeNBT() map[string]interface{} {
+func (s Smoker) EncodeNBT() map[string]any {
 	if s.smelter == nil {
 		//noinspection GoAssignmentToReceiver
 		s = NewSmoker(s.Facing)
 	}
-	remaining, maximum, cook := s.Durations()
-	burnTimeTicks := smelterTicks(remaining)
-	cookTimeTicks := smelterTicks(cook)
-	burnDurationTicks := smelterBurnDurationTicks(remaining, maximum, time.Second*5)
-	maxTimeTicks := smelterTicks(maximum)
-	return map[string]interface{}{
-		"BurnTime": burnTimeTicks,
-		"CookTime": cookTimeTicks,
-		// BurnDuration is the UI-scaled burn progress, while MaxTime persists the full fuel duration.
-		"BurnDuration": burnDurationTicks,
-		"MaxTime":      maxTimeTicks,
-		"StoredXpInt":  int16(s.Experience()),
-		"Items":        nbtconv.InvToNBT(s.inventory),
-		"id":           "Smoker",
-	}
+	return smelterActorNBT("Smoker", s.smelter)
 }
 
 // DecodeNBT ...
-func (s Smoker) DecodeNBT(data map[string]interface{}) interface{} {
-	burnTimeTicks := nbtconv.Int16(data, "BurnTime")
-	if burnTimeTicks < 0 {
-		burnTimeTicks = 0
-	}
-	cookTimeTicks := nbtconv.Int16(data, "CookTime")
-	if cookTimeTicks < 0 {
-		cookTimeTicks = 0
-	}
-	burnDurationTicks := nbtconv.Int16(data, "BurnDuration")
-	if burnDurationTicks < 0 {
-		burnDurationTicks = 0
-	}
-	maxTimeTicks := nbtconv.Int16(data, "MaxTime")
-	if maxTimeTicks < 0 {
-		maxTimeTicks = 0
-	}
-
-	requirementTicks := smelterTicks(time.Second * 5)
-	maxTimeTicks = smelterNBTMaxTimeTicks(burnTimeTicks, maxTimeTicks, burnDurationTicks, requirementTicks)
-	if burnTimeTicks == 0 {
-		cookTimeTicks = 0
-	}
-
-	remaining := time.Duration(burnTimeTicks) * time.Millisecond * 50
-	maximum := time.Duration(maxTimeTicks) * time.Millisecond * 50
-	cook := time.Duration(cookTimeTicks) * time.Millisecond * 50
-
-	xpValue, ok := data["StoredXpInt"].(int16)
-	if !ok {
-		xpValue, _ = data["StoredXPInt"].(int16)
-	}
-	xp := int(xpValue)
+func (s Smoker) DecodeNBT(data map[string]any) any {
+	remaining, maximum, cook := smelterActorDurations(data)
+	xp := smelterStoredXP(data)
 	lit := s.Lit
 
 	//noinspection GoAssignmentToReceiver

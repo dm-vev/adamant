@@ -87,7 +87,7 @@ func (d Dropper) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *worl
 		return false
 	}
 	d = NewDropper()
-	d.Facing = face.Opposite()
+	d.Facing = placerFacing(user, pos)
 	place(tx, pos, d, user, ctx)
 	return placed(ctx)
 }

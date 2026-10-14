@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -181,9 +180,9 @@ func (b *MinecartBehaviour) CanRideTarget() bool {
 	return b.rideable
 }
 
-// SeatOffset returns the seat offset for riders.
-func (b *MinecartBehaviour) SeatOffset() mgl32.Vec3 {
-	return mgl32.Vec3{0, float32(minecartSeatOffset), 0}
+// RiderSeat returns the seat of Bedrock's minecart: one rider, centred.
+func (b *MinecartBehaviour) RiderSeat(rider world.Entity) world.RiderSeat {
+	return seat{pos: mgl64.Vec3{0, -0.2, 0}}.riderSeat(rider)
 }
 
 // SetVehicleInput updates the input used by the minecart.
@@ -284,7 +283,7 @@ func (b *MinecartBehaviour) Mount(e *Ent, tx *world.Tx, passenger world.Entity) 
 	}
 	b.passenger = passenger.H()
 	if r, ok := passenger.(Rider); ok {
-		r.SetRiding(e.H())
+		seatRider(r, e)
 	}
 	b.broadcastLink(e, tx, passenger.H(), true)
 	b.broadcastState(e, tx)

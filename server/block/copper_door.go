@@ -70,34 +70,27 @@ func (d CopperDoor) WithOxidationLevel(o OxidationType) Oxidisable {
 	return d
 }
 
-// NeighbourUpdateTick ...
-func (d CopperDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	updated := false
-
+// NeighbourUpdateTick breaks the door when its other half or the support
+// below the lower half is gone, checking only the side the update came from,
+// and keeps both halves oxidised and waxed alike.
+func (d CopperDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
+	below, above := doorUpdateFrom(pos, changed)
+	other, otherChanged := pos.Side(cube.FaceUp), above
 	if d.Top {
-		if b, ok := tx.Block(pos.Side(cube.FaceDown)).(CopperDoor); !ok {
-			breakBlockNoDrops(d, pos, tx)
-			return
-		} else if d.Oxidation != b.Oxidation || d.Waxed != b.Waxed {
-			d.Oxidation = b.Oxidation
-			d.Waxed = b.Waxed
-			updated = true
-		}
-	} else if solid := tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx); !solid {
+		other, otherChanged = pos.Side(cube.FaceDown), below
+	} else if support := pos.Side(cube.FaceDown); below && !tx.Block(support).Model().FaceSolid(support, cube.FaceUp, tx) {
 		// CopperDoor is pickaxeHarvestable, so don't use breakBlock() here.
 		breakBlockNoDrops(d, pos, tx)
 		dropItem(tx, item.NewStack(d, 1), pos.Vec3Centre())
 		return
-	} else if b, ok := tx.Block(pos.Side(cube.FaceUp)).(CopperDoor); !ok {
-		breakBlockNoDrops(d, pos, tx)
-		return
-	} else if d.Oxidation != b.Oxidation || d.Waxed != b.Waxed {
-		d.Oxidation = b.Oxidation
-		d.Waxed = b.Waxed
-		updated = true
 	}
-
-	if updated {
+	if b, ok := tx.Block(other).(CopperDoor); !ok {
+		if otherChanged {
+			breakBlockNoDrops(d, pos, tx)
+			return
+		}
+	} else if d.Oxidation != b.Oxidation || d.Waxed != b.Waxed {
+		d.Oxidation, d.Waxed = b.Oxidation, b.Waxed
 		tx.SetBlock(pos, d, nil)
 	}
 	tx.Redstone().ScheduleUpdate(pos)

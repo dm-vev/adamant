@@ -52,18 +52,36 @@ func TestRideCommandMountsAndDismounts(t *testing.T) {
 		p := tx.AddEntity(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 0}}.New(player.Type, player.Config{Name: "Rider", Position: mgl64.Vec3{0, 64, 0}, GameMode: world.GameModeCreative})).(*player.Player)
 		boat := tx.AddEntity(entity.NewBoat(world.EntitySpawnOpts{Position: mgl64.Vec3{1, 64, 0}}, 0)).(*entity.Boat)
 		ride := cmd.New("ride", "", nil, rideCommand{}, dismountCommand{})
-		if out := runTestCommand(ride, "Rider mount @e[type=minecraft:boat]", tx); out.ErrorCount() != 0 {
-			// Fall back to an explicit two-entity selector when type filters are unsupported.
-			(rideCommand{Target: []cmd.Target{p}, Vehicle: []cmd.Target{boat}}).Run(nil, &cmd.Output{}, tx)
+		if out := runTestCommand(ride, "Rider mount @e[type=minecraft:oak_boat,limit=1,sort=nearest]", tx); out.ErrorCount() != 0 {
+			t.Fatalf("mount errors: %v", out.Errors())
 		}
-		if p.Riding() == nil {
-			t.Fatal("player did not mount boat")
+		if p.Riding() != boat.H() {
+			t.Fatal("player did not mount the boat")
 		}
 		if out := runTestCommand(ride, "Rider dismount", tx); out.ErrorCount() != 0 {
 			t.Fatalf("dismount errors: %v", out.Errors())
 		}
 		if p.Riding() != nil {
 			t.Fatal("player remained mounted")
+		}
+		// Horse species embed *Mount in a field that hides the Mount method.
+		horse := tx.AddEntity(entity.NewHorse(world.EntitySpawnOpts{Position: mgl64.Vec3{-1, 64, 0}}))
+		if out := runTestCommand(ride, "Rider mount @e[type=minecraft:horse,limit=1]", tx); out.ErrorCount() != 0 {
+			t.Fatalf("horse mount errors: %v", out.Errors())
+		}
+		if p.Riding() != horse.H() {
+			t.Fatal("player did not mount the horse")
+		}
+		if out := runTestCommand(ride, "Rider dismount", tx); out.ErrorCount() != 0 {
+			t.Fatalf("horse dismount errors: %v", out.Errors())
+		}
+		// Like Java's forced startRiding, /ride needs no saddle.
+		pig := tx.AddEntity(entity.NewPig(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 2}}))
+		if out := runTestCommand(ride, "Rider mount @e[type=minecraft:pig,limit=1]", tx); out.ErrorCount() != 0 {
+			t.Fatalf("pig mount errors: %v", out.Errors())
+		}
+		if p.Riding() != pig.H() {
+			t.Fatal("player did not mount the unsaddled pig")
 		}
 	})
 }

@@ -22,7 +22,7 @@ func (g giveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Errort(cmd.MessageNoTargets)
 		return
 	}
-	it, ok := world.ItemByName(g.Item, 0)
+	it, ok := javaItemArgument(g.Item)
 	if !ok {
 		o.Errort(cmd.MessageParameterInvalid, g.Item)
 		return
@@ -44,4 +44,14 @@ func (g giveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		}
 	}
 	o.Printf("Gave %d [%s] to %s.", count, g.Item, joinNames(ps))
+}
+
+// javaItemArgument resolves a Java item argument such as "lever",
+// "minecraft:oak_button" or "red_bed" to its item.
+func javaItemArgument(id string) (world.Item, bool) {
+	s, err := item.StackFromJavaNBT(map[string]any{"id": id})
+	if err != nil {
+		return nil, false
+	}
+	return s.Item(), true
 }

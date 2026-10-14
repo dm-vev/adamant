@@ -38,6 +38,11 @@ type Piston struct {
 	State        uint8
 	NewState     uint8
 	Attached     []cube.Pos
+
+	// legacyFacing is set on pistons saved with the facing field earlier
+	// versions wrote, when horizontal heads were encoded the other way
+	// round: their extended head loads turned back towards the piston.
+	legacyFacing bool
 }
 
 // BreakInfo ...
@@ -51,7 +56,7 @@ func (p Piston) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	if !used {
 		return false
 	}
-	p.Facing = calculateFace(user, pos)
+	p.Facing = placerFacing(user, pos)
 	place(tx, pos, p, user, ctx)
 	if placed(ctx) {
 		tx.ScheduleBlockUpdate(pos, p, 0)
@@ -74,17 +79,27 @@ func (p Piston) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, _ world.Re
 	p.handleState(pos, tx)
 }
 
-// Tick ...
+// Tick advances a moving piston as PistonMovingBlockEntity.tick does: the
+// previous progress catches up with the progress, and the move finishes on
+// the tick after the progress reached its end. Clients animate the move
+// themselves, so like BDS only its start and finish are sent to them.
 func (p Piston) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
+	if p.legacyFacing {
+		p.legacyFacing = false
+		front := pos.Side(p.Facing)
+		if head, ok := tx.Block(front).(PistonHead); ok && p.Facing.Axis() != cube.Y && head.Facing == p.Facing.Opposite() {
+			tx.SetBlock(front, PistonHead{Facing: p.Facing, Sticky: head.Sticky}, nil)
+		}
+		tx.SetBlockEntity(pos, p)
+	}
 	if !p.Moving {
 		return
 	}
-	if p.Extending {
+	p.LastProgress = p.Progress
+	if p.Extending && p.LastProgress < 1 {
 		p.Progress = min(1, p.Progress+pistonMoveStep)
-		p.LastProgress = min(1, p.LastProgress+pistonMoveStep)
-	} else {
+	} else if !p.Extending && p.LastProgress > 0 {
 		p.Progress = max(0, p.Progress-pistonMoveStep)
-		p.LastProgress = max(0, p.LastProgress-pistonMoveStep)
 	}
 
 	p.moveCollidedEntities(pos, tx)
@@ -92,7 +107,7 @@ func (p Piston) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 		p.finishMove(pos, tx)
 		return
 	}
-	p.store(pos, tx)
+	tx.SetBlockEntity(pos, p)
 }
 
 func (p Piston) handleState(pos cube.Pos, tx *world.Tx) {
@@ -117,8 +132,13 @@ func (p Piston) handleState(pos cube.Pos, tx *world.Tx) {
 			return
 		}
 	}
-	if p.Powered != powered {
-		p.Powered = powered
+	// Like BDS, a powered piston that cannot extend keeps wanting to.
+	newState := p.State
+	if powered && p.State == pistonStateRetracted {
+		newState = pistonStateExtending
+	}
+	if p.Powered != powered || p.NewState != newState {
+		p.Powered, p.NewState = powered, newState
 		p.store(pos, tx)
 	}
 }
@@ -173,7 +193,7 @@ func (p Piston) doMove(pos cube.Pos, tx *world.Tx, extending bool) bool {
 		if !extending {
 			moveDir = moveDir.Opposite()
 		}
-		if !p.spawnMovingBlocks(pos, calc.toMove, moveDir, tx) {
+		if !p.spawnMovingBlocks(pos, calc.toMove, moveDir, extending, tx) {
 			return false
 		}
 	}
@@ -200,14 +220,12 @@ func (p *Piston) startMove(extending bool, blocks []cube.Pos) {
 	if extending {
 		p.State = pistonStateExtending
 		p.NewState = pistonStateExtending
-		p.Progress = 0
-		p.LastProgress = -pistonMoveStep
+		p.Progress, p.LastProgress = 0, 0
 		return
 	}
 	p.State = pistonStateRetracting
 	p.NewState = pistonStateRetracting
-	p.Progress = 1
-	p.LastProgress = 1 + pistonMoveStep
+	p.Progress, p.LastProgress = 1, 1
 }
 
 func (p *Piston) finishMove(pos cube.Pos, tx *world.Tx) {
@@ -260,13 +278,13 @@ func (p *Piston) finishMove(pos cube.Pos, tx *world.Tx) {
 	tx.ScheduleBlockUpdate(pos, *p, redstoneTicks(1))
 }
 
-func (p Piston) spawnMovingBlocks(pistonPos cube.Pos, blocks []cube.Pos, dir cube.Face, tx *world.Tx) bool {
+func (p Piston) spawnMovingBlocks(pistonPos cube.Pos, blocks []cube.Pos, dir cube.Face, extending bool, tx *world.Tx) bool {
 	for i := len(blocks) - 1; i >= 0; i-- {
 		from := blocks[i]
 		to := from.Side(dir)
 		b := tx.Block(from)
 		movingEntity := encodeNestedBlockEntity(from, b)
-		tx.SetBlock(to, MovingBlock{Moving: b, MovingEntity: movingEntity, PistonPos: pistonPos}, nil)
+		tx.SetBlock(to, MovingBlock{Moving: b, MovingEntity: movingEntity, PistonPos: pistonPos, Expanding: extending}, nil)
 		tx.SetBlock(from, nil, nil)
 	}
 	return true
@@ -391,42 +409,48 @@ func (p Piston) store(pos cube.Pos, tx *world.Tx) {
 	tx.SetBlock(pos, p, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 }
 
-// EncodeNBT ...
+// EncodeNBT encodes the PistonArm block actor with the fields BDS writes.
+// Only a retracted piston is movable. BDS writes block positions as an int
+// array, or as an empty list when there are none.
 func (p Piston) EncodeNBT() map[string]any {
-	attached := make([]int32, 0, len(p.Attached)*3)
-	for _, pos := range p.Attached {
-		attached = append(attached, int32(pos.X()), int32(pos.Y()), int32(pos.Z()))
+	var attached any = []any{}
+	if len(p.Attached) > 0 {
+		coords := make([]int32, 0, len(p.Attached)*3)
+		for _, pos := range p.Attached {
+			coords = append(coords, int32(pos.X()), int32(pos.Y()), int32(pos.Z()))
+		}
+		attached = coords
 	}
 	return map[string]any{
 		"id":             "PistonArm",
 		"Progress":       p.Progress,
 		"LastProgress":   p.LastProgress,
-		"isMovable":      !p.Moving,
-		"facing":         uint8(pistonFacingDirection(p.Facing)),
-		"Extending":      boolByte(p.Extending),
-		"powered":        boolByte(p.Powered),
+		"isMovable":      boolByte(p.State == pistonStateRetracted),
 		"AttachedBlocks": attached,
-		"BreakBlocks":    []int32{},
+		"BreakBlocks":    []any{},
 		"Sticky":         boolByte(p.Sticky),
 		"State":          p.State,
 		"NewState":       p.NewState,
 	}
 }
 
-// DecodeNBT ...
+// DecodeNBT decodes a PistonArm block actor. Whether the piston extends and
+// is powered follows from its state. Pistons saved before the facing
+// stopped being written keep the facing they were saved with.
 func (p Piston) DecodeNBT(data map[string]any) any {
 	if _, ok := data["facing"]; ok {
 		p.Facing = cube.Face(nbtconv.Uint8(data, "facing"))
+		p.legacyFacing = true
 	}
 	if _, ok := data["Sticky"]; ok {
 		p.Sticky = nbtconv.Bool(data, "Sticky")
 	}
 	p.Progress = nbtconv.Float32(data, "Progress")
 	p.LastProgress = nbtconv.Float32(data, "LastProgress")
-	p.Powered = nbtconv.Bool(data, "powered")
 	p.State = nbtconv.Uint8(data, "State")
 	p.NewState = nbtconv.Uint8(data, "NewState")
-	p.Extending = nbtconv.Bool(data, "Extending")
+	p.Extending = p.State == pistonStateExtending || p.State == pistonStateExtended
+	p.Powered = p.Extending
 	p.Moving = p.State == pistonStateExtending || p.State == pistonStateRetracting
 	p.Attached = decodePistonAttachedBlocks(data)
 	return p
@@ -510,23 +534,15 @@ func (p PistonHead) EncodeBlock() (string, map[string]any) {
 	return "minecraft:piston_arm_collision", map[string]any{"facing_direction": pistonFacingDirection(p.Facing)}
 }
 
+// pistonFacingDirection returns the facing_direction state Bedrock gives a
+// piston whose head points towards face. Bedrock numbers horizontal piston
+// directions opposite to every other block: facing_direction 4, west for
+// other blocks, is a piston pushing east.
 func pistonFacingDirection(face cube.Face) int32 {
-	switch face {
-	case cube.FaceDown:
-		return 0
-	case cube.FaceUp:
-		return 1
-	case cube.FaceNorth:
-		return 2
-	case cube.FaceSouth:
-		return 3
-	case cube.FaceWest:
-		return 4
-	case cube.FaceEast:
-		return 5
-	default:
+	if face.Axis() == cube.Y {
 		return int32(face)
 	}
+	return int32(face.Opposite())
 }
 
 func isEmptyOrReplaceable(tx *world.Tx, pos cube.Pos) bool {

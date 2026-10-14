@@ -180,7 +180,7 @@ func destroyCommandBlock(tx *world.Tx, pos cube.Pos) {
 }
 
 func (s setBlockCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	b, err := commandBlock(tx.World(), s.Block)
+	b, source, err := commandBlock(tx.World(), s.Block)
 	if err != nil {
 		o.Error(err.Error())
 		return
@@ -199,11 +199,11 @@ func (s setBlockCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 	case "destroy":
 		destroyCommandBlock(tx, pos)
 	}
-	if tx.Block(pos) == b {
+	if sameBlockState(tx.Block(pos), b) {
 		o.Error("Could not set the block")
 		return
 	}
-	tx.SetBlock(pos, b, nil)
+	tx.SetBlockFromCommand(pos, freshBlockEntity(b), source)
 	o.Printf("Changed the block at %d, %d, %d", pos[0], pos[1], pos[2])
 }
 
@@ -218,14 +218,14 @@ func (f fillReplaceCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 // fillBlocks ports FillCommand's modes: outline/hollow touch only the shell
 // (hollow clears the interior), keep only fills air and destroy drops items.
 func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, filter string) {
-	b, err := commandBlock(tx.World(), spec)
+	b, source, err := commandBlock(tx.World(), spec)
 	if err != nil {
 		o.Error(err.Error())
 		return
 	}
 	var match world.Block
 	if filter != "" {
-		if match, err = commandBlock(tx.World(), filter); err != nil {
+		if match, _, err = commandBlock(tx.World(), filter); err != nil {
 			o.Error(err.Error())
 			return
 		}
@@ -235,6 +235,7 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 		return
 	}
 	air, _ := world.BlockByName("minecraft:air", nil)
+	airSource := world.BlockState{Name: "minecraft:air"}
 	count := 0
 	for x := lo[0]; x <= hi[0]; x++ {
 		for y := lo[1]; y <= hi[1]; y++ {
@@ -244,7 +245,7 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 					continue
 				}
 				shell := x == lo[0] || x == hi[0] || y == lo[1] || y == hi[1] || z == lo[2] || z == hi[2]
-				place := b
+				place, placeSource := b, source
 				switch mode {
 				case "outline":
 					if !shell {
@@ -252,7 +253,7 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 					}
 				case "hollow":
 					if !shell {
-						place = air
+						place, placeSource = air, airSource
 					}
 				case "keep":
 					if !isAir(tx.Block(pos)) {
@@ -261,13 +262,13 @@ func fillBlocks(tx *world.Tx, o *cmd.Output, from, to mgl64.Vec3, spec, mode, fi
 				case "destroy":
 					destroyCommandBlock(tx, pos)
 				}
-				if match != nil && tx.Block(pos) != match {
+				if match != nil && !sameBlockState(tx.Block(pos), match) {
 					continue
 				}
-				if tx.Block(pos) == place {
+				if sameBlockState(tx.Block(pos), place) {
 					continue
 				}
-				tx.SetBlock(pos, place, nil)
+				tx.SetBlockFromCommand(pos, freshBlockEntity(place), placeSource)
 				count++
 			}
 		}
@@ -296,8 +297,9 @@ func (c cloneCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		return
 	}
 	type cell struct {
-		p cube.Pos
-		b world.Block
+		p      cube.Pos
+		b      world.Block
+		liquid world.Liquid
 	}
 	cells := make([]cell, 0, (size[0]+1)*(size[1]+1)*(size[2]+1))
 	for x := lo[0]; x <= hi[0]; x++ {
@@ -308,7 +310,8 @@ func (c cloneCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 				if mask == "masked" && isAir(b) {
 					continue
 				}
-				cells = append(cells, cell{p, b})
+				liquid, _ := tx.Liquid(p)
+				cells = append(cells, cell{p, clonedBlockEntity(b), liquid})
 			}
 		}
 	}
@@ -318,7 +321,11 @@ func (c cloneCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 		}
 	}
 	for _, v := range cells {
-		tx.SetBlock(dest.Add(v.p.Sub(lo)), v.b, nil)
+		p := dest.Add(v.p.Sub(lo))
+		tx.SetBlockKnownShape(p, v.b)
+		if v.liquid != nil {
+			tx.SetLiquid(p, v.liquid)
+		}
 	}
 	if len(cells) == 0 {
 		o.Error("No blocks were cloned")
@@ -515,13 +522,41 @@ func (s summonCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	if !ok {
 		pos = src.Position()
 	}
-	h := spawn(id, world.EntitySpawnOpts{Position: pos, SpawnReason: "command"})
+	opts := world.EntitySpawnOpts{Position: pos, SpawnReason: "command"}
+	h := spawn(id, opts)
+	if h == nil {
+		h = summonVehicle(tx.World().EntityRegistry().Config(), id, opts)
+	}
 	if h == nil {
 		o.Error("unknown or unsupported entity")
 		return
 	}
 	tx.AddEntity(h)
 	o.Printf("Summoned %s.", id)
+}
+
+// summonVehicle spawns the minecarts, boats and rafts Java's summon accepts
+// besides mobs, or returns nil for other identifiers.
+func summonVehicle(conf world.EntityRegistryConfig, id string, opts world.EntitySpawnOpts) *world.EntityHandle {
+	minecarts := map[string]func(world.EntitySpawnOpts) *world.EntityHandle{
+		"minecraft:minecart":        conf.Minecart,
+		"minecraft:chest_minecart":  conf.MinecartChest,
+		"minecraft:hopper_minecart": conf.MinecartHopper,
+		"minecraft:tnt_minecart":    conf.MinecartTNT,
+	}
+	if create := minecarts[id]; create != nil {
+		return create(opts)
+	}
+	variant, chest, ok := item.BoatVariantFromID(id)
+	switch {
+	case !ok:
+		return nil
+	case chest && conf.ChestBoat != nil:
+		return conf.ChestBoat(opts, variant.Int())
+	case !chest && conf.Boat != nil:
+		return conf.Boat(opts, variant.Int())
+	}
+	return nil
 }
 func (s setWorldSpawnCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	pos, ok := s.Position.Load()
@@ -581,20 +616,55 @@ func (l locateCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 		o.Error("locate kind must be structure, biome, or poi")
 	}
 }
-func commandBlock(w *world.World, spec string) (world.Block, error) {
+
+// commandBlock parses a Java block argument into its native block and the
+// Java state it names, with only the properties the argument gives.
+func commandBlock(w *world.World, spec string) (world.Block, world.BlockState, error) {
 	name, props, err := parseCommandBlockSpec(spec)
 	if err != nil {
-		return nil, err
+		return nil, world.BlockState{}, err
 	}
-	state, err := world.ResolveState(w.BlockRegistry(), world.BlockState{Name: name, Properties: props})
+	source := world.BlockState{Name: name, Properties: props}
+	state, err := world.ResolveState(w.BlockRegistry(), source)
 	if err != nil {
-		return nil, err
+		return nil, world.BlockState{}, err
 	}
 	b, ok := w.BlockRegistry().BlockByRuntimeID(state.Block)
 	if !ok {
-		return nil, fmt.Errorf("unknown block %s", name)
+		return nil, world.BlockState{}, fmt.Errorf("unknown block %s", name)
 	}
-	return b, nil
+	return b, source, nil
+}
+
+// freshBlockEntity gives a block with a block entity its own, newly created
+// block entity, as Java's EntityBlock.newBlockEntity does for every placed
+// block. Registry blocks carry no block entity data, so placing them as-is
+// would leave inventories and smelting state uninitialised or shared.
+func freshBlockEntity(b world.Block) world.Block {
+	if nbter, ok := b.(world.NBTer); ok {
+		if fresh, ok := nbter.DecodeNBT(map[string]any{}).(world.Block); ok {
+			return fresh
+		}
+	}
+	return b
+}
+
+// clonedBlockEntity copies a block's block entity through its NBT, as Java's
+// /clone copies the saved block entity, so the copy shares no inventory or
+// other state with the original.
+func clonedBlockEntity(b world.Block) world.Block {
+	if nbter, ok := b.(world.NBTer); ok {
+		if copied, ok := world.DecodeNBT(nbter, nbter.EncodeNBT()).(world.Block); ok {
+			return copied
+		}
+	}
+	return b
+}
+
+// sameBlockState reports whether two blocks are the same block state, which
+// is what Java's Level.setBlock compares when deciding nothing changed.
+func sameBlockState(a, b world.Block) bool {
+	return world.BlockRuntimeID(a) == world.BlockRuntimeID(b)
 }
 func parseCommandBlockSpec(spec string) (string, map[string]any, error) {
 	name := spec
