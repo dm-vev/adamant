@@ -40,6 +40,10 @@ func TestStructureActorSourceBytesSurviveNativeSerialization(t *testing.T) {
 	if got := persisted["adamant:java"]; !reflect.DeepEqual(got, want) {
 		t.Fatalf("source byte metadata corrupted native actor stream: got=%v want=%v", got, want)
 	}
+	// The chunk encoder writes the position of every block entity.
+	delete(payload, "x")
+	delete(payload, "y")
+	delete(payload, "z")
 	if !reflect.DeepEqual(persisted, payload) {
 		t.Fatalf("native actor retained transient decoder data or lost fields: got=%v want=%v", persisted, payload)
 	}

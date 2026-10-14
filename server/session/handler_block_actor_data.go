@@ -29,10 +29,28 @@ func (b BlockActorDataHandler) Handle(p packet.Packet, s *Session, tx *world.Tx,
 			return b.handleSign(pk, pos, s, tx, c, false)
 		case "HangingSign":
 			return b.handleSign(pk, pos, s, tx, c, true)
+		case "JigsawBlock":
+			return b.handleJigsaw(pk, pos, s, tx, c)
 		}
 		return fmt.Errorf("unhandled block actor data ID %v", id)
 	}
 	return fmt.Errorf("block actor data without 'id' tag: %v", pk.NBTData)
+}
+
+// handleJigsaw ports ServerGamePacketListenerImpl.handleSetJigsawBlock: the
+// jigsaw editor of an operator in creative mode sets the names, pool, final
+// state, joint and priorities of a jigsaw.
+func (b BlockActorDataHandler) handleJigsaw(pk *packet.BlockActorData, pos cube.Pos, s *Session, tx *world.Tx, c Controllable) error {
+	if !canUseGameMasterBlocks(c) {
+		return fmt.Errorf("only creative operators may edit jigsaw blocks")
+	}
+	j, ok := tx.Block(pos).(block.Jigsaw)
+	if !ok {
+		s.conf.Log.Debug("no jigsaw at position of jigsaw block actor data", "pos", pos.String())
+		return nil
+	}
+	tx.SetBlock(pos, j.DecodeNBT(pk.NBTData).(block.Jigsaw), nil)
+	return nil
 }
 
 // handleSign handles the BlockActorData packet sent when editing a sign and validates the expected sign variant.

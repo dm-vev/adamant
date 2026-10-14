@@ -218,6 +218,16 @@ func init() {
 		}
 	}
 	world.RegisterBlock(StructureVoid{})
+	// Blocks placed without data, as by /setblock, start with the settings of
+	// a new block entity.
+	for _, mode := range StructureBlockModes() {
+		world.RegisterBlock(NewStructureBlock(mode))
+	}
+	for _, facing := range cube.Faces() {
+		for rotation := range 4 {
+			world.RegisterBlock(NewJigsaw(facing, rotation))
+		}
+	}
 	world.RegisterBlock(Target{})
 	world.RegisterBlock(Torchflower{})
 	world.RegisterBlock(ClientRequestPlaceholderBlock{})
@@ -690,6 +700,8 @@ func init() {
 	world.RegisterItem(TuffBricks{Chiseled: true})
 	world.RegisterItem(PolishedTuff{})
 	world.RegisterItem(StructureVoid{})
+	world.RegisterItem(StructureBlock{})
+	world.RegisterItem(Jigsaw{})
 	world.RegisterItem(UnknownBlock{})
 	world.RegisterItem(UnderwaterTorch{})
 	world.RegisterItem(WeepingVines{})

@@ -3103,12 +3103,7 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 			continue
 		}
 
-		data := MergeNativeEntityNBT(e.encodeNBT(), e.t.EncodeNBT(&e.data))
-		if encode := w.conf.Entities.Config().EncodeSharedNBT; encode != nil {
-			maps.Copy(data, encode(&e.data))
-		}
-		data["identifier"] = e.t.EncodeEntity()
-		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: data})
+		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: w.EntityNBT(e)})
 	}
 	for pos, be := range col.BlockEntities {
 		c.BlockEntities = append(c.BlockEntities, chunk.BlockEntity{Pos: pos, Data: be.(NBTer).EncodeNBT()})
@@ -3116,6 +3111,29 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 	// Scheduled ticks are emitted above in per-queue insertion order. Their
 	// positions, rather than the generated source column, determine ownership.
 	return c
+}
+
+// EntityNBT encodes the native NBT an entity is saved with, in the world
+// save and in structure templates.
+func (w *World) EntityNBT(e *EntityHandle) map[string]any {
+	data := MergeNativeEntityNBT(e.encodeNBT(), e.t.EncodeNBT(&e.data))
+	if encode := w.conf.Entities.Config().EncodeSharedNBT; encode != nil {
+		maps.Copy(data, encode(&e.data))
+	}
+	data["identifier"] = e.t.EncodeEntity()
+	return data
+}
+
+// entityFromNBT decodes an entity of a type from the native NBT it was saved
+// with, giving it the unique ID passed.
+func (w *World) entityFromNBT(t EntityType, id int64, data map[string]any) *EntityHandle {
+	return withBlockRegistryNBT(data, w.conf.Blocks, func() *EntityHandle {
+		h := entityFromData(t, id, data)
+		if decode := w.conf.Entities.Config().DecodeSharedNBT; decode != nil {
+			decode(&h.data, data)
+		}
+		return h
+	})
 }
 
 // nativeScheduledTickState keeps the actual native state when it still matches
@@ -3185,13 +3203,7 @@ func (w *World) columnFrom(c *chunk.Column, pos ChunkPos) *Column {
 			w.conf.Log.Error("read column: unknown entity type", "ID", e.ID, "type", eid)
 			continue
 		}
-		col.addEntity(withBlockRegistryNBT(e.Data, w.conf.Blocks, func() *EntityHandle {
-			h := entityFromData(t, e.ID, e.Data)
-			if decode := w.conf.Entities.Config().DecodeSharedNBT; decode != nil {
-				decode(&h.data, e.Data)
-			}
-			return h
-		}))
+		col.addEntity(w.entityFromNBT(t, e.ID, e.Data))
 	}
 	w.decodeBlockEntities(col, c.BlockEntities)
 	blockTicks := make([]scheduledTick, 0, len(c.ScheduledTicks))

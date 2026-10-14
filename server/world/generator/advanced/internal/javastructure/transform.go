@@ -2,8 +2,6 @@ package javastructure
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -11,22 +9,22 @@ import (
 )
 
 // Rotation is a clockwise rotation around the template origin, viewed from above.
-type Rotation uint8
+type Rotation = world.StructureRotation
 
 const (
-	None Rotation = iota
-	Clockwise90
-	Clockwise180
-	CounterClockwise90
+	None               = world.StructureRotationNone
+	Clockwise90        = world.StructureRotationClockwise90
+	Clockwise180       = world.StructureRotationClockwise180
+	CounterClockwise90 = world.StructureRotationCounterClockwise90
 )
 
 // Mirror matches Java StructurePlaceSettings.Mirror.
-type Mirror uint8
+type Mirror = world.StructureMirror
 
 const (
-	NoMirror  Mirror = iota
-	LeftRight        // invert Z
-	FrontBack        // invert X
+	NoMirror  = world.StructureMirrorNone
+	LeftRight = world.StructureMirrorLeftRight // invert Z
+	FrontBack = world.StructureMirrorFrontBack // invert X
 )
 
 // Bounds is an inclusive world-space clip cuboid.
@@ -55,141 +53,7 @@ func TransformPosition(pos [3]int32, mirror Mirror, rotation Rotation) [3]int32 
 
 // TransformState applies Java's horizontal block-state rotation/mirror properties without modifying the input.
 func TransformState(state world.BlockState, mirror Mirror, rotation Rotation) world.BlockState {
-	out := state
-	if state.Properties == nil {
-		return out
-	}
-	props := make(map[string]any, len(state.Properties))
-	for k, v := range state.Properties {
-		if isCardinal(k) {
-			k = transformDirection(k, mirror, rotation)
-		}
-		if str, ok := v.(string); ok {
-			switch {
-			case k == "facing":
-				v = transformDirection(str, mirror, rotation)
-			case k == "orientation":
-				v = transformOrientation(str, mirror, rotation)
-			case isRailShape(str):
-				v = transformRail(str, mirror, rotation)
-			}
-		}
-		props[k] = v
-	}
-	if axis, ok := props["axis"].(string); ok && (rotation == Clockwise90 || rotation == CounterClockwise90) {
-		if axis == "x" {
-			props["axis"] = "z"
-		} else if axis == "z" {
-			props["axis"] = "x"
-		}
-	}
-	if value, exists := props["rotation"]; exists {
-		n, valid := integer(value)
-		if text, ok := value.(string); ok {
-			var err error
-			n, err = strconv.ParseInt(text, 10, 64)
-			valid = err == nil
-		}
-		if valid {
-			props["rotation"] = int32(transformRotation(uint8(n), mirror, rotation))
-		}
-	}
-	if shape, ok := props["shape"].(string); ok && mirror != NoMirror {
-		if strings.Contains(shape, "_left") {
-			props["shape"] = strings.Replace(shape, "_left", "_right", 1)
-		} else if strings.Contains(shape, "_right") {
-			props["shape"] = strings.Replace(shape, "_right", "_left", 1)
-		}
-	}
-	if hinge, ok := props["hinge"].(string); ok && mirror != NoMirror {
-		if hinge == "left" {
-			props["hinge"] = "right"
-		} else if hinge == "right" {
-			props["hinge"] = "left"
-		}
-	}
-	out.Properties = props
-	return out
-}
-
-func isCardinal(d string) bool { return d == "north" || d == "south" || d == "east" || d == "west" }
-func transformDirection(direction string, mirror Mirror, rotation Rotation) string {
-	var vector [3]int32
-	switch direction {
-	case "north":
-		vector[2] = -1
-	case "south":
-		vector[2] = 1
-	case "west":
-		vector[0] = -1
-	case "east":
-		vector[0] = 1
-	default:
-		return direction
-	}
-	transformed := TransformPosition(vector, mirror, rotation)
-	switch {
-	case transformed[0] > 0:
-		return "east"
-	case transformed[0] < 0:
-		return "west"
-	case transformed[2] > 0:
-		return "south"
-	default:
-		return "north"
-	}
-}
-
-func transformOrientation(value string, mirror Mirror, rotation Rotation) string {
-	parts := strings.Split(value, "_")
-	for i, part := range parts {
-		parts[i] = transformDirection(part, mirror, rotation)
-	}
-	return strings.Join(parts, "_")
-}
-
-func transformRotation(value uint8, mirror Mirror, rotation Rotation) uint8 {
-	// Java's 16-step rotation property has south=0 and increases clockwise.
-	v := int(value & 15)
-	if mirror == LeftRight {
-		v = (8 - v) & 15
-	} else if mirror == FrontBack {
-		v = (16 - v) & 15
-	}
-	switch rotation {
-	case Clockwise90:
-		v += 4
-	case Clockwise180:
-		v += 8
-	case CounterClockwise90:
-		v += 12
-	}
-	return uint8(v & 15)
-}
-
-func isRailShape(s string) bool {
-	return s == "north_south" || s == "east_west" || strings.HasPrefix(s, "ascending_") || strings.Contains(s, "_north") || strings.Contains(s, "_south") || strings.Contains(s, "_east") || strings.Contains(s, "_west")
-}
-func transformRail(s string, m Mirror, r Rotation) string {
-	if s == "north_south" || s == "east_west" {
-		if r == Clockwise90 || r == CounterClockwise90 {
-			if s == "north_south" {
-				return "east_west"
-			}
-			return "north_south"
-		}
-		return s
-	}
-	if strings.HasPrefix(s, "ascending_") {
-		return "ascending_" + transformDirection(strings.TrimPrefix(s, "ascending_"), m, r)
-	}
-	first, second, _ := strings.Cut(s, "_")
-	first, second = transformDirection(first, m, r), transformDirection(second, m, r)
-	// Java's corner names always put the north/south direction first.
-	if first == "east" || first == "west" {
-		first, second = second, first
-	}
-	return first + "_" + second
+	return world.TransformJavaState(state, mirror, rotation)
 }
 
 // ProcessContext provides the stable template-space and world-space coordinates and deterministic placement seed.
@@ -315,7 +179,7 @@ func (t *Template) place(palette int, origin [3]int32, rotation Rotation, mirror
 		if !inside(block.Pos, clip) {
 			continue
 		}
-		block.State = TransformState(block.State, mirror, rotation)
+		block.State = world.TransformJavaState(block.State, mirror, rotation)
 		nativeBlock, adapted, err := NativeBlockForJavaState(block.State)
 		if err != nil {
 			return Placement{}, fmt.Errorf("java structure state at %v: %w", block.Pos, err)

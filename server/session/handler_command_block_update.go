@@ -6,7 +6,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -20,7 +19,7 @@ func (CommandBlockUpdateHandler) Handle(p packet.Packet, s *Session, tx *world.T
 		return fmt.Errorf("invalid command block mode %d", pk.Mode)
 	}
 	pos := cube.Pos{int(pk.Position[0]), int(pk.Position[1]), int(pk.Position[2])}
-	if !c.GameMode().CreativeInventory() || !cmd.IsOperator(c.Name()) {
+	if !canUseGameMasterBlocks(c) {
 		return fmt.Errorf("only creative operators may edit command blocks")
 	}
 	if !pk.Block {

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 type connector struct {
@@ -104,8 +105,8 @@ func (r *jigsawPoolRegistry) shuffledConnectors(out []connector, parts []jigsawP
 		for axis := range 3 {
 			joint.pos[axis] += origin[axis]
 		}
-		joint.front = transformDirection(joint.front, mirror, rotation)
-		joint.top = transformDirection(joint.top, mirror, rotation)
+		joint.front = world.TransformJavaDirection(joint.front, mirror, rotation)
+		joint.top = world.TransformJavaDirection(joint.top, mirror, rotation)
 	}
 	for i := len(out) - 1; i > 0; i-- {
 		j := int(random.NextInt(int32(i + 1)))

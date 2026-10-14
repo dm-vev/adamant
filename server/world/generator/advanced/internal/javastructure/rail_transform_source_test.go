@@ -27,7 +27,7 @@ func TestRailStateTransformsMatchJava263(t *testing.T) {
 	for _, source := range cases {
 		t.Run(fmt.Sprintf("%s/%s/mirror_%d/rotation_%d", source.Block, source.Shape, source.Mirror, source.Rotation), func(t *testing.T) {
 			state := world.BlockState{Name: source.Block, Properties: map[string]any{"shape": source.Shape}}
-			got := TransformState(state, source.Mirror, source.Rotation)
+			got := world.TransformJavaState(state, source.Mirror, source.Rotation)
 			if got.Properties["shape"] != source.Transformed {
 				t.Fatalf("transformed rail shape=%v, Source=%s", got.Properties["shape"], source.Transformed)
 			}

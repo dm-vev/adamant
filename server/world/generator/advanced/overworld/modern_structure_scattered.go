@@ -82,7 +82,7 @@ func sourcePieceState(state world.BlockState, direction string) world.BlockState
 	if direction == "east" || direction == "west" {
 		rotation = javastructure.Clockwise90
 	}
-	transformed := javastructure.TransformState(state, mirror, rotation)
+	transformed := world.TransformJavaState(state, mirror, rotation)
 	// StairBlock.mirror only exchanges left/right shapes on the mirrored axis.
 	if mirror != javastructure.NoMirror && strings.HasSuffix(state.Name, "_stairs") {
 		if facing, _ := state.Properties["facing"].(string); facing == "east" || facing == "west" {

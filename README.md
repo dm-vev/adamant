@@ -414,6 +414,8 @@ Startup also exercises shrieker, bookshelf, vault and trial-spawner registration
 
 Isolated BDS captures establish sensor phases as native palette state, with Java power/listener memory stored separately in `adamant:java`. Native sensor listeners include `event=28`; shrieker listeners do not. A real offline RakNet client receives the emitted `LevelEventGeneric` event **2027** and decodes its **109-byte** ordered network-NBT payload: `origin`, float32 speed **20**, `target`, float32 lifetime **0.2** for a four-tick vibration. This verifies the packet boundary, not graphical-client presentation.
 
+Structure blocks and jigsaws follow captures from BDS 1.26.52: their block-entity keys and defaults, the `StructureBlockUpdate` editor settings, `StructureTemplateDataRequest` queries/exports and the jigsaw editor's `BlockActorData`. Templates are stored as Bedrock `.mcstructure` NBT under BDS's `structuretemplate_<name>` LevelDB keys, and a BDS-saved template loads with its stairs, chest and air. Loading keeps rotated or mirrored structures inside the box at the offset; all five BDS rotation/mirror placements of an asymmetric 3×1×2 template are reproduced block for block. Redstone triggers, in-memory saves, corner unloading, integrity and vanilla data-pack templates such as `minecraft:igloo/top` follow Java's `StructureTemplateManager`. A real offline client saved, queried, exported and rotated a structure and edited a jigsaw. Education Edition blocks (chalkboard, compound creator, element constructor, lab table, material reducer) are not implemented: they belong to the Education toggle, not to vanilla Bedrock or Java gameplay.
+
 ## Getting Started
 Requirements: **Go 1.26+**
 

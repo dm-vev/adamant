@@ -722,6 +722,8 @@ func (s *Session) registerHandlers() {
 		packet.IDRespawn:                        &RespawnHandler{},
 		packet.IDSetPlayerInventoryOptions:      nil,
 		packet.IDSubChunkRequest:                &SubChunkRequestHandler{},
+		packet.IDStructureBlockUpdate:           &StructureBlockUpdateHandler{},
+		packet.IDStructureTemplateDataRequest:   &StructureTemplateDataRequestHandler{},
 		packet.IDText:                           &TextHandler{},
 		packet.IDServerBoundLoadingScreen:       &ServerBoundLoadingScreenHandler{},
 		packet.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},

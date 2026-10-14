@@ -225,6 +225,9 @@ func (conf Config) New() *Server {
 	// is used in some vanilla paths.
 	conf.Blocks.Finalize()
 	world.DefaultBlockRegistry.Finalize()
+	// Structure blocks load the templates of the vanilla data pack, as Java's
+	// StructureTemplateManager does.
+	world.SetBuiltinStructureTemplates(advanced.VanillaStructureTemplate)
 	conf.OverworldSeed = conf.WorldProvider.Settings().ResolveSeed(conf.OverworldSeed)
 
 	if !conf.DisableResourceBuilding {

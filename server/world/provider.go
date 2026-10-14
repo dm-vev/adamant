@@ -90,6 +90,12 @@ type providerRef struct {
 	trackerSaved   atomic.Uint64
 	writable       atomic.Bool
 	providerClosed bool
+
+	// structures holds the structure templates saved or loaded through the
+	// provider, shared by the dimensions it stores, as Java's
+	// StructureTemplateManager.
+	structureMu sync.Mutex
+	structures  map[string]*StructureTemplate
 }
 
 func newProviderRef(provider Provider, writable bool) *providerRef {

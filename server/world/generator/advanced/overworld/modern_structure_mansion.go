@@ -77,7 +77,7 @@ func (p modernMansionPiece) AfterTemplatePlacement(clip javastructure.Bounds, en
 			case "ChestSouth":
 				facing = "south"
 			}
-			state := javastructure.TransformState(world.BlockState{
+			state := world.TransformJavaState(world.BlockState{
 				Name: "minecraft:chest", Properties: map[string]any{"facing": facing},
 			}, javastructure.NoMirror, p.rotation)
 			out.PostShapeBlocks = append(out.PostShapeBlocks, javastructure.Block{

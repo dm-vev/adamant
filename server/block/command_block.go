@@ -76,11 +76,7 @@ func (b CommandBlock) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 	return placed(ctx)
 }
 func (b CommandBlock) Activate(_ cube.Pos, _ cube.Face, _ *world.Tx, u item.User, _ *item.UseContext) bool {
-	player, ok := u.(interface {
-		Name() string
-		GameMode() world.GameMode
-	})
-	return ok && player.GameMode().CreativeInventory() && cmd.IsOperator(player.Name())
+	return canUseGameMasterBlocks(u)
 }
 
 // EncodeNBT serializes Java/BDS command actor state using BDS actor keys.
