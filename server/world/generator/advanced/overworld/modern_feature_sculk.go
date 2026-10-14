@@ -337,9 +337,7 @@ func sculkPlaceVein(region *featureRegion, pos featurePos, face string) bool {
 			props["waterlogged"] = true
 		}
 	}
-	if featureInsideTarget(region.target, pos) {
-		region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
-	}
+	region.markPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)})
 	return region.setWithFlags(pos, sculkResolveState(region, "sculk_vein", props), 2)
 }
 

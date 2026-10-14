@@ -95,11 +95,9 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 				}
 				if y >= 4 {
 					region.setWithFlags(p, caveAirState, 2)
-					if featureInsideTarget(region.target, p) {
-						region.result.ScheduleTick(chunk.ScheduledTick{
-							Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.BlockTick, Type: "minecraft:cave_air",
-						})
-					}
+					region.scheduleTick(chunk.ScheduledTick{
+						Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.BlockTick, Type: "minecraft:cave_air",
+					})
 					region.markAboveForPostProcessing(p)
 				} else {
 					featureSetNativeBlockFlag2(region, p, fluidState, fluidActor)

@@ -14,7 +14,8 @@ import (
 )
 
 // These source chunks execute NoiseBasedChunkGenerator.buildTerrain followed
-// by all nine applyBiomeDecoration origins. Structures are disabled on both
+// by all nine applyBiomeDecoration origins in one WorldGenRegion, the
+// composition DecorateInOneRegion runs. Structures are disabled on both
 // sides; noise, surfaces, carvers and every available placed feature remain on.
 func TestOverworldDecorationMatchesJava263(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
@@ -37,7 +38,13 @@ func TestOverworldDecorationMatchesJava263(t *testing.T) {
 			g := NewOverworld(fixture.Seed)
 			g.modernStructures.sets = nil
 			c := chunk.New(world.DefaultBlockRegistry, world.Overworld.Range())
-			result := g.GenerateChunk(fixture.Chunk, c, world.GenerationContext{})
+			base := g.terrainColumn(fixture.Chunk, false)
+			*c = *base.c.Clone()
+			result := g.modernFeatures.DecorateInOneRegion(fixture.Chunk, c, world.GenerationContext{})
+			decorationMarkers := result.PostProcessing
+			result.PostProcessing = nil
+			appendPostProcessing(&result, base.postProcessing)
+			appendPostProcessing(&result, decorationMarkers)
 			for _, handle := range result.Entities {
 				t.Cleanup(func() {
 					if err := handle.Close(); err != nil {

@@ -159,11 +159,9 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 						if fluidName == "empty" {
 							continue
 						}
-						if featureInsideTarget(region.target, adjacent) {
-							region.result.ScheduleTick(chunk.ScheduledTick{
-								Pos: cube.Pos{int(adjacent.x), int(adjacent.y), int(adjacent.z)}, Kind: chunk.FluidTick, Type: "minecraft:" + fluidName,
-							})
-						}
+						region.scheduleTick(chunk.ScheduledTick{
+							Pos: cube.Pos{int(adjacent.x), int(adjacent.y), int(adjacent.z)}, Kind: chunk.FluidTick, Type: "minecraft:" + fluidName,
+						})
 					}
 				} else {
 					if !sampled {
@@ -284,9 +282,7 @@ func geodeSetNativeBlock(region *featureRegion, pos featurePos, state world.Nati
 	default:
 		return true
 	}
-	if featureInsideTarget(region.target, marker) {
-		region.result.MarkForPostProcessing(cube.Pos{int(marker.x), int(marker.y), int(marker.z)}, region.c.Range())
-	}
+	region.markPostProcessing(cube.Pos{int(marker.x), int(marker.y), int(marker.z)})
 	return true
 }
 

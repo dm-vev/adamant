@@ -61,6 +61,9 @@ type ModernFeatures struct {
 	carvers      map[string]modernFeatureConfig
 	temperatures map[string]float64
 	featureRanks [][]map[string]int
+	// origins caches what the features of each origin chunk write, shared by
+	// the chunks around it that are decorated with them.
+	origins originRecordCache
 }
 
 // NewModernFeatures loads the actual embedded Java biome, placed-feature, configured-feature and carver data.
@@ -259,91 +262,151 @@ func (f *ModernFeatures) buildFeatureRanks() {
 	}
 }
 
+// Decorate places the structures and features of the chunk at pos and the
+// features of its neighbours that reach into it. The features of every
+// origin chunk come from one record, computed once against the origins that
+// precede it, so a feature crossing a chunk border is the same in every chunk
+// it reaches. The structures of the chunk are placed as it decorates, since
+// their pieces keep state from chunk to chunk.
 func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	result := world.GenerationResult{}
 	region := newFeatureRegion(f, c, pos, &result)
-	minQuartY, maxQuartY := region.MinY()>>2, region.MaxY()>>2
-	for oz := int32(-1); oz <= 1; oz++ {
-		for ox := int32(-1); ox <= 1; ox++ {
-			originChunkX, originChunkZ := int32(pos[0])+ox, int32(pos[1])+oz
-			originX, originZ := originChunkX<<4, originChunkZ<<4
-			region.SetOrigin(originChunkX, originChunkZ)
-			possible := make(map[string]struct{})
-			minQuartX, maxQuartX := (originX>>2)-4, (originX>>2)+7
-			minQuartZ, maxQuartZ := (originZ>>2)-4, (originZ>>2)+7
-			for qy := minQuartY; qy <= maxQuartY; qy++ {
-				for qz := minQuartZ; qz <= maxQuartZ; qz++ {
-					for qx := minQuartX; qx <= maxQuartX; qx++ {
-						name := normalizeJavaResource(f.source.JavaNoiseBiomeAt(qx, qy, qz))
-						if _, ok := f.biomes[name]; !ok {
-							panic("overworld: Java noise biome source returned unknown biome " + name)
-						}
-						possible[name] = struct{}{}
-					}
-				}
+	for _, origin := range decorationOrigins(pos) {
+		record := f.originRecord(origin, c.BlockRegistry(), c.Range(), context)
+		region.SetOrigin(origin[0], origin[1])
+		for step := range record.steps {
+			if origin == pos {
+				f.placeStructures(region, origin, step, context, false)
 			}
-			generationSteps := max(len(f.featureRanks), 11)
-			for step := 0; step < generationSteps; step++ {
-				structureRandom := javaFeatureRandom(f.seed, originX, originZ, 0, step)
-				env := javastructure.ProcessorEnvironment{
-					BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
-					JavaBiomeAt: f.source.JavaBiomeAt,
-					BaseHeight:  region.Height,
-					SeaLevel:    f.source.SeaLevel(),
-					MotionBlockingNoLeavesHeight: func(x, z int32) int32 {
-						return region.placementHeight(x, z, "MOTION_BLOCKING_NO_LEAVES")
-					},
-					JavaBlockStateID: func(x, y, z int32) (uint32, error) {
-						return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
-					},
-					HasChestBlockEntity: func(x, y, z int32) bool {
-						return region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)})
-					},
-					SetBlockEntityLootTable: func(x, y, z int32, table string, seed int64) {
-						region.setBlockEntityLootTable(cube.Pos{int(x), int(y), int(z)}, table, seed)
-					},
-					CanWriteBlock: func(x, y, z int32) bool {
-						return region.withinWriteArea(featurePos{x, y, z})
-					},
-					Range:                   region.Range(),
-					TransientStructureState: originChunkX != int32(pos[0]) || originChunkZ != int32(pos[1]),
-					WorldSeed:               f.seed,
-					Random:                  &structureRandom,
-					LevelRandom:             region.JavaRandom(),
-					GenerationContext:       context,
-					PlaceFeature: func(feature any, pos [3]int32, random *java26.Random) bool {
-						return region.PlacePlacedFeature(feature, pos, random)
-					},
+			record.steps[step].apply(region)
+		}
+		f.origins.release(origin)
+	}
+	return result
+}
+
+// DecorateInOneRegion decorates the chunk at pos by running the nine origins
+// around it one after another in a single region, as one Java WorldGenRegion
+// applying applyBiomeDecoration for each of them does. The features of the
+// neighbours then depend on the chunk being decorated, so generators use
+// Decorate. This is the composition Java decoration captures are taken in.
+func (f *ModernFeatures) DecorateInOneRegion(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
+	result := world.GenerationResult{}
+	region := newFeatureRegion(f, c, pos, &result)
+	for _, origin := range decorationOrigins(pos) {
+		f.decorateOrigin(region, origin, context, origin != pos, nil)
+	}
+	return result
+}
+
+// generationSteps returns the number of decoration steps of an origin.
+func (f *ModernFeatures) generationSteps() int {
+	return max(len(f.featureRanks), 11)
+}
+
+// decorateOrigin runs every decoration step of origin in region: its
+// structures, which only read shared piece state if transient, then its
+// features. The features are recorded into record if it is not nil.
+func (f *ModernFeatures) decorateOrigin(region *featureRegion, origin world.ChunkPos, context world.GenerationContext, transient bool, record *originRecord) {
+	region.SetOrigin(origin[0], origin[1])
+	possible := f.possibleBiomes(region, origin)
+	for step := range f.generationSteps() {
+		f.placeStructures(region, origin, step, context, transient)
+		if record != nil {
+			region.recording = &record.steps[step]
+		}
+		f.placeFeatures(region, origin, step, possible)
+		region.recording = nil
+	}
+}
+
+// possibleBiomes returns the noise biomes Java's decoration of origin
+// considers: those of the quarts around the chunk at every height.
+func (f *ModernFeatures) possibleBiomes(region *featureRegion, origin world.ChunkPos) map[string]struct{} {
+	originX, originZ := origin[0]<<4, origin[1]<<4
+	minQuartY, maxQuartY := region.MinY()>>2, region.MaxY()>>2
+	minQuartX, maxQuartX := (originX>>2)-4, (originX>>2)+7
+	minQuartZ, maxQuartZ := (originZ>>2)-4, (originZ>>2)+7
+	possible := make(map[string]struct{})
+	for qy := minQuartY; qy <= maxQuartY; qy++ {
+		for qz := minQuartZ; qz <= maxQuartZ; qz++ {
+			for qx := minQuartX; qx <= maxQuartX; qx++ {
+				name := normalizeJavaResource(f.source.JavaNoiseBiomeAt(qx, qy, qz))
+				if _, ok := f.biomes[name]; !ok {
+					panic("overworld: Java noise biome source returned unknown biome " + name)
 				}
-				f.source.PlaceStructureStep(world.ChunkPos{originChunkX, originChunkZ}, step, env, func(placement javastructure.Placement) { f.applyStructurePlacement(region, placement) })
-				if step >= len(f.featureRanks) {
-					continue
-				}
-				rankSets := f.featureRanks[step]
-				ranks := rankSets[0]
-				features := make([]string, 0)
-				selected := make(map[string]struct{})
-				for name := range possible {
-					biome := f.biomes[name]
-					if step >= len(biome.stages) {
-						continue
-					}
-					for _, feature := range biome.stages[step] {
-						if _, exists := selected[feature]; !exists {
-							selected[feature] = struct{}{}
-							features = append(features, feature)
-						}
-					}
-				}
-				sort.Slice(features, func(i, j int) bool { return ranks[features[i]] < ranks[features[j]] })
-				for _, name := range features {
-					random := javaFeatureRandom(f.seed, originX, originZ, ranks[name], step)
-					f.placeFeature(region, originX, originZ, name, random)
-				}
+				possible[name] = struct{}{}
 			}
 		}
 	}
-	return result
+	return possible
+}
+
+// placeStructures places the structure pieces of one decoration step of
+// origin. Transient placements read shared piece state without changing it.
+func (f *ModernFeatures) placeStructures(region *featureRegion, origin world.ChunkPos, step int, context world.GenerationContext, transient bool) {
+	originX, originZ := origin[0]<<4, origin[1]<<4
+	structureRandom := javaFeatureRandom(f.seed, originX, originZ, 0, step)
+	env := javastructure.ProcessorEnvironment{
+		BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
+		JavaBiomeAt: f.source.JavaBiomeAt,
+		BaseHeight:  region.Height,
+		SeaLevel:    f.source.SeaLevel(),
+		MotionBlockingNoLeavesHeight: func(x, z int32) int32 {
+			return region.placementHeight(x, z, "MOTION_BLOCKING_NO_LEAVES")
+		},
+		JavaBlockStateID: func(x, y, z int32) (uint32, error) {
+			return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
+		},
+		HasChestBlockEntity: func(x, y, z int32) bool {
+			return region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)})
+		},
+		SetBlockEntityLootTable: func(x, y, z int32, table string, seed int64) {
+			region.setBlockEntityLootTable(cube.Pos{int(x), int(y), int(z)}, table, seed)
+		},
+		CanWriteBlock: func(x, y, z int32) bool {
+			return region.withinWriteArea(featurePos{x, y, z})
+		},
+		Range:                   region.Range(),
+		TransientStructureState: transient,
+		WorldSeed:               f.seed,
+		Random:                  &structureRandom,
+		LevelRandom:             region.JavaRandom(),
+		GenerationContext:       context,
+		PlaceFeature: func(feature any, pos [3]int32, random *java26.Random) bool {
+			return region.PlacePlacedFeature(feature, pos, random)
+		},
+	}
+	f.source.PlaceStructureStep(origin, step, env, func(placement javastructure.Placement) { f.applyStructurePlacement(region, placement) })
+}
+
+// placeFeatures places the features of one decoration step of origin in
+// rank order.
+func (f *ModernFeatures) placeFeatures(region *featureRegion, origin world.ChunkPos, step int, possible map[string]struct{}) {
+	if step >= len(f.featureRanks) {
+		return
+	}
+	originX, originZ := origin[0]<<4, origin[1]<<4
+	ranks := f.featureRanks[step][0]
+	features := make([]string, 0)
+	selected := make(map[string]struct{})
+	for name := range possible {
+		biome := f.biomes[name]
+		if step >= len(biome.stages) {
+			continue
+		}
+		for _, feature := range biome.stages[step] {
+			if _, exists := selected[feature]; !exists {
+				selected[feature] = struct{}{}
+				features = append(features, feature)
+			}
+		}
+	}
+	sort.Slice(features, func(i, j int) bool { return ranks[features[i]] < ranks[features[j]] })
+	for _, name := range features {
+		random := javaFeatureRandom(f.seed, originX, originZ, ranks[name], step)
+		f.placeFeature(region, originX, originZ, name, random)
+	}
 }
 
 func javaFeatureRandom(seed int64, chunkX, chunkZ int32, index, stage int) java26.Random {
@@ -941,14 +1004,14 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 	applyTemplatePostShapeBlocks(region, placement.PostShapeBlocks, templatePlacementFlags(placement))
 	placement.Entities = append(placement.Entities, placement.PostShapeEntities...)
 	for _, pos := range placement.PostProcessing {
-		if featureInsideTarget(region.target, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+		if region.inTarget(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
 			region.result.MarkForPostProcessing(pos, region.c.Range())
 		}
 	}
 	entities := make([]javastructure.Entity, 0, len(placement.Entities))
 	for _, record := range placement.Entities {
 		x, z := int32(math.Floor(record.Pos[0])), int32(math.Floor(record.Pos[2]))
-		if x>>4 == int32(region.target[0]) && z>>4 == int32(region.target[1]) {
+		if region.inTarget(featurePos{x: x, z: z}) {
 			entities = append(entities, record)
 		}
 	}

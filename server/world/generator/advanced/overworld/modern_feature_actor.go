@@ -8,7 +8,7 @@ import (
 )
 
 func (r *featureRegion) setProjectionWithFlags(pos featurePos, state world.NativeState, flags int) bool {
-	if pos.y < r.MinY() || pos.y > r.MaxY() || !featureInsideTarget(r.target, pos) {
+	if pos.y < r.MinY() || pos.y > r.MaxY() || !r.inTarget(pos) {
 		return false
 	}
 	if _, _, ok := r.c.BlockRegistry().RuntimeIDToState(state.Block); !ok {
@@ -91,8 +91,11 @@ func (r *featureRegion) refreshTemplateActor(pos cube.Pos) {
 	if !found {
 		delete(r.blockActorData, pos)
 	}
-	if featureInsideTarget(r.target, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+	p := featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	if r.inTarget(p) {
 		r.replaceBlockEntityPayload(pos, payloads)
+	} else if r.recording != nil {
+		r.recording.actor(entry, r.nativeState(p))
 	}
 }
 

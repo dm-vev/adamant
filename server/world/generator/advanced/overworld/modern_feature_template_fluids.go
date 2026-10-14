@@ -49,7 +49,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 			continue
 		}
 		written = append(written, cube.Pos{int(pos.x), int(pos.y), int(pos.z)})
-		if structurePieceWrites && featureInsideTarget(region.target, pos) {
+		if structurePieceWrites && region.recordsAt(pos) {
 			state := region.nativeState(pos)
 			for _, rid := range [2]uint32{state.Block, state.Liquid} {
 				if !registry.LiquidBlock(rid) {
@@ -73,7 +73,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 				break
 			}
 			if structurePieceShapeCheckBlock(state, registry) {
-				region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
+				region.markPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)})
 			}
 		}
 		if !applyWaterlogging {
@@ -102,7 +102,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 					continue
 				}
 				*entry = wet
-				if featureInsideTarget(region.target, pos) {
+				if region.recordsAt(pos) {
 					region.reserveJavaTick(chunk.ScheduledTick{
 						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
 					})
@@ -164,7 +164,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 					panic(err)
 				}
 				region.Set(pos, state)
-				if featureInsideTarget(region.target, pos) {
+				if region.recordsAt(pos) {
 					region.reserveJavaTick(chunk.ScheduledTick{
 						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
 					})

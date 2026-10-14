@@ -20,11 +20,17 @@ type featureTickReservation struct {
 }
 
 type featureRegion struct {
-	f                       *ModernFeatures
-	c                       *chunk.Chunk
-	writeOriginX            int32
-	writeOriginZ            int32
-	target                  world.ChunkPos
+	f            *ModernFeatures
+	c            *chunk.Chunk
+	writeOriginX int32
+	writeOriginZ int32
+	target       world.ChunkPos
+	// hasTarget is false for a region that records the features of an
+	// origin: every position is then read from the overlay and the source.
+	hasTarget bool
+	// recording collects the writes and side outputs of the origin step that
+	// runs while it is set.
+	recording               *originStep
 	result                  *world.GenerationResult
 	overlay                 map[featurePos]world.NativeState
 	placementHeights        map[featureHeightKey]int32
@@ -41,7 +47,7 @@ func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, 
 		panic("overworld: invalid Java feature region")
 	}
 	return &featureRegion{
-		f: f, c: c, target: target, result: result,
+		f: f, c: c, target: target, hasTarget: true, result: result,
 		overlay:           make(map[featurePos]world.NativeState),
 		scheduledTicks:    make(map[featureTickReservation]struct{}),
 		blockActorRecords: make(map[cube.Pos]javastructure.Block),
@@ -51,9 +57,60 @@ func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, 
 	}
 }
 
+// newRecordingRegion returns a region without a target chunk, which records
+// what an origin's features write. registry and r describe the chunks the
+// records are applied to.
+func newRecordingRegion(f *ModernFeatures, registry chunk.BlockRegistry, r cube.Range) *featureRegion {
+	region := newFeatureRegion(f, chunk.New(registry, r), world.ChunkPos{}, &world.GenerationResult{})
+	region.hasTarget = false
+	return region
+}
+
 func (r *featureRegion) SetOrigin(chunkX, chunkZ int32) {
 	r.writeOriginX, r.writeOriginZ = chunkX, chunkZ
 }
+
+// inTarget reports whether p lies in the target chunk.
+func (r *featureRegion) inTarget(p featurePos) bool {
+	return r.hasTarget && featureInsideTarget(r.target, p)
+}
+
+// recordsAt reports whether side outputs at p are kept: those of the target
+// chunk, or any of the origin being recorded.
+func (r *featureRegion) recordsAt(p featurePos) bool {
+	return r.inTarget(p) || r.recording != nil
+}
+
+// markPostProcessing marks pos for post-processing in the target chunk or in
+// the record of the running origin.
+func (r *featureRegion) markPostProcessing(pos cube.Pos) {
+	if r.inTarget(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+		r.result.MarkForPostProcessing(pos, r.c.Range())
+	} else if r.recording != nil {
+		r.recording.markers = append(r.recording.markers, pos)
+	}
+}
+
+// addEntity adds an entity spawned at pos to the target chunk or to the
+// record of the running origin, which spawns it for the chunk it lands in.
+func (r *featureRegion) addEntity(pos cube.Pos, spawn func() *world.EntityHandle) {
+	if r.inTarget(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+		r.result.Entities = append(r.result.Entities, spawn())
+	} else if r.recording != nil {
+		r.recording.entities = append(r.recording.entities, recordedEntity{pos: pos, spawn: spawn})
+	}
+}
+
+// scheduleTick schedules a generated tick in the target chunk or in the
+// record of the running origin.
+func (r *featureRegion) scheduleTick(tick chunk.ScheduledTick) {
+	if r.inTarget(featurePos{int32(tick.Pos[0]), int32(tick.Pos[1]), int32(tick.Pos[2])}) {
+		r.result.ScheduleTick(tick)
+	} else if r.recording != nil {
+		r.recording.ticks = append(r.recording.ticks, tick)
+	}
+}
+
 func absFeatureInt(v int32) uint32 {
 	if v < 0 {
 		return uint32(-int64(v))
@@ -74,7 +131,7 @@ func (r *featureRegion) nativeState(p featurePos) world.NativeState {
 	if state, ok := r.overlay[p]; ok {
 		return state
 	}
-	if featureInsideTarget(r.target, p) && p.y >= r.MinY() && p.y <= r.MaxY() {
+	if r.inTarget(p) && p.y >= r.MinY() && p.y <= r.MaxY() {
 		return world.NativeStateAt(r.c, uint8(p.x&15), int16(p.y), uint8(p.z&15))
 	}
 	return r.f.source.BaseState(p.x, p.y, p.z)
@@ -132,12 +189,15 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 	}
 	r.overlay[p] = state
 	r.invalidatePlacementHeight(p)
-	if featureInsideTarget(r.target, p) {
+	if r.inTarget(p) {
 		x, z := uint8(p.x&15), uint8(p.z&15)
 		world.SetNativeState(r.c, x, int16(p.y), z, state)
-		if flags&16 == 0 {
-			r.markBlockPostProcessing(p, state)
-		}
+	}
+	if r.recording != nil {
+		r.recording.write(p, previous, state)
+	}
+	if r.recordsAt(p) && flags&16 == 0 {
+		r.markBlockPostProcessing(p, state)
 	}
 	if !changedBlock {
 		if _, exists := r.blockActorRecords[cube.Pos{int(p.x), int(p.y), int(p.z)}]; exists {
@@ -154,6 +214,9 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 func (r *featureRegion) removeBlockEntityPayloads(pos cube.Pos) {
 	delete(r.blockActorRecords, pos)
 	delete(r.blockActorData, pos)
+	if r.recording != nil {
+		delete(r.recording.actors, pos)
+	}
 	entities := r.result.BlockEntities
 	kept := entities[:0]
 	for _, actor := range entities {
@@ -245,12 +308,12 @@ func (r *featureRegion) markBlockPostProcessing(p featurePos, state world.Native
 	}
 	switch normalizeJavaResource(name) {
 	case "brown_mushroom", "red_mushroom":
-		r.result.MarkForPostProcessing(cube.Pos{int(p.x), int(p.y), int(p.z)}, r.c.Range())
+		r.markPostProcessing(cube.Pos{int(p.x), int(p.y), int(p.z)})
 	case "soul_sand", "magma_block":
 		above := featurePos{p.x, p.y + 1, p.z}
 		name, _ := r.State(above)
 		if normalizeJavaResource(name) != "air" && normalizeJavaResource(name) != "cave_air" && normalizeJavaResource(name) != "void_air" {
-			r.result.MarkForPostProcessing(cube.Pos{int(above.x), int(above.y), int(above.z)}, r.c.Range())
+			r.markPostProcessing(cube.Pos{int(above.x), int(above.y), int(above.z)})
 		}
 	}
 }
@@ -263,9 +326,7 @@ func (r *featureRegion) markAboveForPostProcessing(p featurePos) {
 		if name == "air" || name == "cave_air" || name == "void_air" {
 			return
 		}
-		if featureInsideTarget(r.target, marked) {
-			r.result.MarkForPostProcessing(cube.Pos{int(marked.x), int(marked.y), int(marked.z)}, r.c.Range())
-		}
+		r.markPostProcessing(cube.Pos{int(marked.x), int(marked.y), int(marked.z)})
 	}
 }
 func (r *featureRegion) scheduledBlockID(state world.NativeState) uint32 {
@@ -794,11 +855,9 @@ func placeModernSpringRegion(region *featureRegion, config map[string]any, p fea
 		panic(err)
 	}
 	region.setWithFlags(p, world.ResolveStateID(region.c.BlockRegistry(), id), 2)
-	if featureInsideTarget(region.target, p) {
-		region.result.ScheduleTick(chunk.ScheduledTick{
-			Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.FluidTick, Type: world.NormaliseBlockName(fluidType),
-		})
-	}
+	region.scheduleTick(chunk.ScheduledTick{
+		Pos: cube.Pos{int(p.x), int(p.y), int(p.z)}, Kind: chunk.FluidTick, Type: world.NormaliseBlockName(fluidType),
+	})
 	return true
 }
 

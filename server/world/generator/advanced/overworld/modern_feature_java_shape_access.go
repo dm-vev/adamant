@@ -74,9 +74,7 @@ func (r *featureRegion) reserveJavaTick(tick chunk.ScheduledTick) bool {
 		return false
 	}
 	r.scheduledTicks[key] = struct{}{}
-	if featureInsideTarget(r.target, featurePos{int32(tick.Pos[0]), int32(tick.Pos[1]), int32(tick.Pos[2])}) {
-		r.result.ScheduleTick(tick)
-	}
+	r.scheduleTick(tick)
 	return true
 }
 

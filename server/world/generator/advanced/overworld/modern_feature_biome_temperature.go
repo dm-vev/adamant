@@ -79,7 +79,7 @@ func (r *featureRegion) biomeShouldFreezeFor(biome string, p featurePos, checkNe
 }
 
 func (r *featureRegion) blockLight(p featurePos) uint8 {
-	if p.y < r.MinY() || p.y > r.MaxY() || !featureInsideTarget(r.target, p) {
+	if p.y < r.MinY() || p.y > r.MaxY() || !r.inTarget(p) {
 		return 0
 	}
 	return r.c.SubChunk(int16(p.y)).BlockLight(uint8(p.x&15), uint8(p.y&15), uint8(p.z&15))

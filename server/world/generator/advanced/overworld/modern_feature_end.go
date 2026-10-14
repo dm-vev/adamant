@@ -274,17 +274,18 @@ func placeModernEndSpikeColumn(region *featureRegion, config map[string]any, ori
 	}
 	yaw := float64(random.NextFloat() * 360)
 	pos := cube.Pos{spike.X, int(int32(spike.Height) + 1), spike.Z}
-	if featureInsideTarget(region.target, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+	if region.recordsAt(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
 		crystal := entity.EndCrystalBehaviourConfig{ShowBase: true, PermanentlyInvulnerable: config["crystal_invulnerable"] == true}
 		if raw, exists := config["crystal_beam_target"]; exists {
 			target := raw.([]any)
 			beam := mgl64.Vec3{float64(javaIntProviderValue(target[0])), float64(javaIntProviderValue(target[1])), float64(javaIntProviderValue(target[2]))}
 			crystal.BeamTarget = &beam
 		}
-		region.result.Entities = append(region.result.Entities, entity.NewEndCrystal(world.EntitySpawnOpts{
+		opts := world.EntitySpawnOpts{
 			Position: mgl64.Vec3{float64(spike.X) + 0.5, float64(pos[1]), float64(spike.Z) + 0.5},
 			Rotation: cube.Rotation{yaw, 0}, SpawnReason: "STRUCTURE",
-		}, crystal))
+		}
+		region.addEntity(pos, func() *world.EntityHandle { return entity.NewEndCrystal(opts, crystal) })
 	}
 	region.SetJavaBlockState(cube.Pos{spike.X, spike.Height, spike.Z}, modernEndFeatureIDs.bedrock, 3)
 	region.SetJavaBlockState(pos, world.JavaGenerationFireState(region, pos), 3)

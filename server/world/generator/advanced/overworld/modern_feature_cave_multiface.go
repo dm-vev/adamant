@@ -108,9 +108,7 @@ func multifacePlaceAt(region *featureRegion, blockName string, support any, pos 
 		}
 		// Source ignores the setter's return value, then marks and consumes spread RNG.
 		region.setWithFlags(pos, world.ResolveStateID(region.c.BlockRegistry(), stateID), 3)
-		if featureInsideTarget(region.target, pos) {
-			region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
-		}
+		region.markPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)})
 		if random.NextFloat() < chance {
 			multifaceSpreadFromFace(region, blockName, pos, stateID, direction, random)
 		}
@@ -165,9 +163,7 @@ func multifacePlaceFace(region *featureRegion, blockName string, pos featurePos,
 	if !valid {
 		return false
 	}
-	if featureInsideTarget(region.target, pos) {
-		region.result.MarkForPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, region.c.Range())
-	}
+	region.markPostProcessing(cube.Pos{int(pos.x), int(pos.y), int(pos.z)})
 	return region.setWithFlags(pos, world.ResolveStateID(region.c.BlockRegistry(), stateID), 2)
 }
 
