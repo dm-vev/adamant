@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -78,7 +79,15 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 			// during the first 52 ticks of a world.
 			w.SetTime(6000)
 			var h *world.EntityHandle
-			<-w.Exec(func(tx *world.Tx) { h = spawnAnimal(t, tx, c.id, .5, c.nbt) })
+			<-w.Exec(func(tx *world.Tx) {
+				// Camels on grass may stop to eat it even while panicking.
+				for x := -20; x <= 20; x++ {
+					for z := -20; z <= 20; z++ {
+						tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
+					}
+				}
+				h = spawnAnimal(t, tx, c.id, .5, c.nbt)
+			})
 			w.AdvanceTick()
 			<-w.Exec(func(tx *world.Tx) {
 				if panicking(tx, h) {

@@ -348,6 +348,7 @@ func (c *Cat) SetVariant(v int) {
 func (c *Cat) CollarColor() uint8     { return c.b().collarColor }
 func (c *Cat) SetCollarColor(v uint8) { c.b().collarColor = v % 16; c.updateState() }
 func (c *Cat) Sitting() bool          { return c.b().sitting }
+func (c *Cat) moveFlagHeld() bool   { return c.b().sitting }
 func (c *Cat) SetSitting(v bool)      { c.b().sitting = v; c.b().navigator.Path = nil; c.updateState() }
 
 // TameWithFish makes the Java one-in-three fish-taming roll and records the owner.

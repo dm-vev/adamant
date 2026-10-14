@@ -35,6 +35,9 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 		{"minecraft:chicken", block.WheatSeeds{}},
 		{"minecraft:horse", item.GoldenCarrot{}},
 		{"minecraft:llama", block.HayBale{}},
+		{"minecraft:rabbit", block.Carrot{}},
+		{"minecraft:turtle", block.SeaGrass{}},
+		{"minecraft:panda", block.Bamboo{}},
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
@@ -60,28 +63,32 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 	}
 }
 
-// TestBabiesFollowAdults checks FollowParentGoal: a calf more than three
-// blocks from the nearest grown cow walks up to it.
+// TestBabiesFollowAdults checks FollowParentGoal: a baby more than three
+// blocks from the nearest grown animal of its kind walks up to it.
 func TestBabiesFollowAdults(t *testing.T) {
-	w := traderTestWorld(t)
-	var adult, calf *world.EntityHandle
-	<-w.Exec(func(tx *world.Tx) { adult = spawnAnimal(t, tx, "minecraft:cow", .5, nil) })
-	// With no player around for five seconds the adult stops strolling.
-	for range 110 {
-		w.AdvanceTick()
+	for _, id := range []string{"minecraft:cow", "minecraft:polar_bear"} {
+		t.Run(id, func(t *testing.T) {
+			w := traderTestWorld(t)
+			var adult, baby *world.EntityHandle
+			<-w.Exec(func(tx *world.Tx) { adult = spawnAnimal(t, tx, id, .5, nil) })
+			// With no player around for five seconds a cow stops strolling.
+			for range 110 {
+				w.AdvanceTick()
+			}
+			<-w.Exec(func(tx *world.Tx) {
+				pos := entityPos(tx, adult)
+				baby = spawnAnimal(t, tx, id, pos[0]+7, map[string]any{"Age": int32(-24000)})
+			})
+			closest := 100.0
+			for range 100 {
+				w.AdvanceTick()
+				<-w.Exec(func(tx *world.Tx) { closest = min(closest, horizontalDistance(entityPos(tx, baby), entityPos(tx, adult))) })
+			}
+			if closest > 3.5 {
+				t.Fatalf("baby came no closer than %.2f blocks to the only adult, want it to follow to within 3 blocks", closest)
+			}
+		})
 	}
-	<-w.Exec(func(tx *world.Tx) {
-		pos := entityPos(tx, adult)
-		calf = spawnAnimal(t, tx, "minecraft:cow", pos[0]+7, map[string]any{"Age": int32(-24000)})
-	})
-	for range 100 {
-		w.AdvanceTick()
-	}
-	<-w.Exec(func(tx *world.Tx) {
-		if d := horizontalDistance(entityPos(tx, calf), entityPos(tx, adult)); d > 3.5 {
-			t.Fatalf("calf is %.2f blocks from the only adult cow, want it to follow to within 3 blocks", d)
-		}
-	})
 }
 
 // TestSheepEatGrassToRegrowWool checks EatBlockGoal: a sheared lamb grazes
@@ -115,6 +122,66 @@ func TestSheepEatGrassToRegrowWool(t *testing.T) {
 		}
 		if dirt != 1 {
 			t.Fatalf("grazing left %d dirt blocks, want the grass block the lamb ate", dirt)
+		}
+	})
+}
+
+// TestRabbitsFleeFromPlayers checks RabbitAvoidEntityGoal: a rabbit runs away
+// from a survival player without carrots that comes within eight blocks.
+func TestRabbitsFleeFromPlayers(t *testing.T) {
+	w := traderTestWorld(t)
+	var h *world.EntityHandle
+	playerPos := mgl64.Vec3{5.5, 64, .5}
+	<-w.Exec(func(tx *world.Tx) {
+		h = spawnAnimal(t, tx, "minecraft:rabbit", .5, nil)
+		addSurvivalPlayer(tx, playerPos)
+	})
+	for range 60 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if d := horizontalDistance(entityPos(tx, h), playerPos); d < 8 {
+			t.Fatalf("rabbit stayed %.2f blocks from a player, want it to flee beyond eight blocks", d)
+		}
+	})
+}
+
+// TestBeesFollowFlowers checks the bee's TemptGoal: a calm bee flies up to a
+// player holding a flower.
+func TestBeesFollowFlowers(t *testing.T) {
+	w := traderTestWorld(t)
+	var h *world.EntityHandle
+	eye := mgl64.Vec3{9.5, 64 + 1.62, .5}
+	<-w.Exec(func(tx *world.Tx) {
+		h = spawnAnimal(t, tx, "minecraft:bee", .5, nil)
+		addSurvivalPlayer(tx, mgl64.Vec3{9.5, 64, .5}).SetHeldItems(item.NewStack(block.Flower{}, 1), item.Stack{})
+	})
+	closest := 100.0
+	for range 200 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) { closest = min(closest, entityPos(tx, h).Sub(eye).Len()) })
+	}
+	if closest > 3.5 {
+		t.Fatalf("bee came no closer than %.2f blocks to a player holding a flower", closest)
+	}
+}
+
+// TestWorriedPandasFleeFromPlayers checks PandaAvoidGoal: a worried panda
+// runs from a player within eight blocks.
+func TestWorriedPandasFleeFromPlayers(t *testing.T) {
+	w := traderTestWorld(t)
+	var worried *world.EntityHandle
+	playerPos := mgl64.Vec3{4.5, 64, .5}
+	<-w.Exec(func(tx *world.Tx) {
+		worried = spawnAnimal(t, tx, "minecraft:panda", .5, map[string]any{"Variant": int32(2), "MainGene": int32(2), "HiddenGene": int32(2)})
+		addSurvivalPlayer(tx, playerPos)
+	})
+	for range 100 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if d := horizontalDistance(entityPos(tx, worried), playerPos); d < 8 {
+			t.Fatalf("worried panda stayed %.2f blocks from a player, want it to flee beyond eight blocks", d)
 		}
 	})
 }

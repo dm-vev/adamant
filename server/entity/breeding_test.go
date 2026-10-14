@@ -145,7 +145,13 @@ func TestFeedingBabiesSpeedsUpGrowth(t *testing.T) {
 // breed.
 func breedPair(t *testing.T, id string, food world.Item, nbt map[string]any) *world.World {
 	t.Helper()
-	w := breedingTestWorld(t)
+	return breedPairIn(t, breedingTestWorld(t), id, food, nbt)
+}
+
+// breedPairIn feeds two adults of the type passed in the world given and
+// waits for them to breed.
+func breedPairIn(t *testing.T, w *world.World, id string, food world.Item, nbt map[string]any) *world.World {
+	t.Helper()
 	<-w.Exec(func(tx *world.Tx) {
 		p := addDeathTestPlayer(tx)
 		a, b := spawnAnimal(t, tx, id, 0.5, nbt), spawnAnimal(t, tx, id, 2.5, nbt)
@@ -175,6 +181,9 @@ func TestFarmAnimalsBreedOnTheirFood(t *testing.T) {
 		// take the fish as an offer of trust.
 		{"minecraft:ocelot", item.Cod{}},
 		{"minecraft:bee", block.Flower{Type: block.Dandelion()}},
+		{"minecraft:fox", block.SweetBerries{}},
+		{"minecraft:hoglin", block.Fungus{}},
+		{"minecraft:strider", block.Fungus{Warped: true}},
 	}
 	for _, c := range cases {
 		w := breedPair(t, c.id, c.food, nil)
@@ -392,6 +401,91 @@ func TestGoldenDandelionPausesBabyGrowth(t *testing.T) {
 		}
 		if !feed(t, tx, p, locked, item.Wheat{}) {
 			t.Fatal("unlocked calf did not eat wheat to grow")
+		}
+	})
+}
+
+// TestPandasNeedBambooNearbyToBreed checks PandaBreedGoal: pandas in love
+// only breed with bamboo growing within eight blocks.
+func TestPandasNeedBambooNearbyToBreed(t *testing.T) {
+	for _, bamboo := range []bool{false, true} {
+		w := breedingTestWorld(t)
+		<-w.Exec(func(tx *world.Tx) {
+			if bamboo {
+				tx.SetBlock(cube.Pos{1, 64, 5}, block.Bamboo{}, nil)
+			}
+			p := addDeathTestPlayer(tx)
+			a, b := spawnAnimal(t, tx, "minecraft:panda", 0.5, nil), spawnAnimal(t, tx, "minecraft:panda", 2.5, nil)
+			if !feed(t, tx, p, a, block.Bamboo{}) || !feed(t, tx, p, b, block.Bamboo{}) {
+				t.Fatal("pandas did not eat bamboo")
+			}
+		})
+		for range 200 {
+			w.AdvanceTick()
+		}
+		<-w.Exec(func(tx *world.Tx) {
+			if n, want := countEntities(tx, "minecraft:panda"), map[bool]int{false: 2, true: 3}[bamboo]; n != want {
+				t.Fatalf("bamboo nearby %v: %d pandas after breeding, want %d", bamboo, n, want)
+			}
+		})
+	}
+}
+
+// TestBredTurtlesLayEggsAtHome checks TurtleBreedGoal and TurtleLayEggGoal:
+// instead of a baby, the turtle carries eggs it lays on the sand of its home.
+func TestBredTurtlesLayEggsAtHome(t *testing.T) {
+	w := breedingTestWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -1; x <= 3; x++ {
+			// Stone keeps the sand from falling into the void.
+			tx.SetBlock(cube.Pos{x, 62, 0}, block.Stone{}, nil)
+			tx.SetBlock(cube.Pos{x, 63, 0}, block.Sand{}, nil)
+		}
+	})
+	w = breedPairIn(t, w, "minecraft:turtle", block.SeaGrass{}, nil)
+	for range 400 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		eggs := 0
+		for x := -1; x <= 3; x++ {
+			if _, ok := tx.Block(cube.Pos{x, 64, 0}).(block.TurtleEgg); ok {
+				eggs++
+			}
+		}
+		if n := countEntities(tx, "minecraft:turtle"); n != 2 || eggs != 1 {
+			t.Fatalf("%d turtles and %d egg blocks, want 2 and 1", n, eggs)
+		}
+	})
+}
+
+// TestAxolotlsBreedOnTropicalFishBuckets checks Axolotl.usePlayerItem: a
+// bucket of tropical fish puts an axolotl in love and leaves a water bucket.
+func TestAxolotlsBreedOnTropicalFishBuckets(t *testing.T) {
+	w := breedingTestWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		p := addDeathTestPlayer(tx)
+		a, b := spawnAnimal(t, tx, "minecraft:axolotl", 0.5, nil), spawnAnimal(t, tx, "minecraft:axolotl", 2.5, nil)
+		for _, h := range []*world.EntityHandle{a, b} {
+			e, _ := h.Entity(tx)
+			p.SetHeldItems(item.NewStack(item.FishBucket{MobBucket: item.MobBucket{Entity: "minecraft:tropical_fish"}}, 1), item.Stack{})
+			ctx := &item.UseContext{}
+			if !e.(interface {
+				AcceptItem(world.Entity, *world.Tx, *item.UseContext) bool
+			}).AcceptItem(p, tx, ctx) || !inLove(tx, h) {
+				t.Fatal("axolotl did not take the bucket of tropical fish")
+			}
+			if bucket, ok := ctx.NewItem.Item().(item.Bucket); !ok || !ctx.ReplaceHeldItem || bucket.Empty() {
+				t.Fatalf("feeding left %v in the hand, want a water bucket", ctx.NewItem)
+			}
+		}
+	})
+	for range 200 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if n := countEntities(tx, "minecraft:axolotl"); n != 3 {
+			t.Fatalf("%d axolotls after breeding, want 3", n)
 		}
 	})
 }

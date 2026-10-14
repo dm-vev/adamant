@@ -20,6 +20,7 @@ type animalGoals struct {
 	navigator Navigator
 	tempt     temptGoal
 	parent    followParentGoal
+	avoid     avoidGoal
 	look      lookGoal
 	// noActionTime is Mob.noActionTime: how long no player came within 32
 	// blocks. Animals left alone that long stop strolling.
@@ -37,6 +38,7 @@ const (
 	goalBreed
 	goalTempt
 	goalParent
+	goalAvoid
 	goalSpecies
 	goalStroll
 )
@@ -72,6 +74,9 @@ type animalGoalSpec struct {
 	lookDistance float64
 	// reach is how close the animal gets to a path node before it moves on.
 	reach float64
+	// avoid are the AvoidEntityGoals of the species, ranked after following
+	// a parent.
+	avoid []avoidSpec
 	// species is the goal of the species ranked above strolling, if any.
 	species speciesGoal
 }
@@ -119,6 +124,11 @@ func (g *animalGoals) tick(e *Ent, tx *world.Tx, a breeder, s animalGoalSpec) (m
 		}
 	} else {
 		g.parent.stop()
+	}
+	if goal == goalIdle && len(s.avoid) != 0 {
+		if speed, ok := g.avoid.next(e, tx, &g.navigator, s.avoid, g.running == goalAvoid); ok {
+			goal, modifier, g.running = goalAvoid, speed, goalAvoid
+		}
 	}
 	if goal == goalIdle && s.species != nil {
 		if s.species.run(e, tx) {
@@ -356,8 +366,13 @@ type followParentGoal struct {
 	timeToRecalcPath int
 }
 
+// aged is a mob with an AgeableMob age: negative while it is a baby.
+type aged interface {
+	ageTicks() *int
+}
+
 // next ports FollowParentGoal.canUse and canContinueToUse.
-func (g *followParentGoal) next(e *Ent, tx *world.Tx, a breeder, r parentRange) (world.Entity, bool) {
+func (g *followParentGoal) next(e *Ent, tx *world.Tx, a aged, r parentRange) (world.Entity, bool) {
 	if *a.ageTicks() >= 0 {
 		g.stop()
 		return nil, false
@@ -377,7 +392,7 @@ func (g *followParentGoal) next(e *Ent, tx *world.Tx, a breeder, r parentRange) 
 	var closest world.Entity
 	best := math.MaxFloat64
 	for other := range tx.EntitiesWithin(box) {
-		adult, ok := other.(breeder)
+		adult, ok := other.(aged)
 		if !ok || other.H().Type() != e.H().Type() || *adult.ageTicks() < 0 {
 			continue
 		}
@@ -479,4 +494,74 @@ func lookRotation(e *Ent, target mgl64.Vec3) cube.Rotation {
 func navigateTo(nav *Navigator, e *Ent, tx *world.Tx, target mgl64.Vec3) {
 	box := e.H().Type().BBox(e)
 	nav.MoveTo(tx, cube.PosFromVec3(e.Position()), cube.PosFromVec3(target), GroundProfile{MaxVisitedNodes: 128, Width: box.Width(), Height: box.Height()}, navigatorTick(e))
+}
+
+// avoidSpec is an AvoidEntityGoal of a species: the animal flees from the
+// nearest visible entity it matches within distance blocks, sprinting while
+// it is within seven blocks.
+type avoidSpec struct {
+	match        func(world.Entity) bool
+	distance     float64
+	walk, sprint float64
+}
+
+// avoidGoal ports AvoidEntityGoal.
+type avoidGoal struct {
+	from *world.EntityHandle
+	spec int
+}
+
+// next ports AvoidEntityGoal.canUse, canContinueToUse and tick and returns the
+// speed modifier of the fleeing animal: it runs to a spot up to 16 blocks
+// away from the entity, if that is further from it, until it arrives.
+func (g *avoidGoal) next(e *Ent, tx *world.Tx, nav *Navigator, specs []avoidSpec, running bool) (float64, bool) {
+	if running && g.from != nil && nav.Index < len(nav.Path) {
+		s := specs[g.spec]
+		if from, ok := g.from.Entity(tx); ok && from.Position().Sub(e.Position()).LenSqr() < 49 {
+			return s.sprint, true
+		}
+		return s.walk, true
+	}
+	g.from = nil
+	for i, s := range specs {
+		from := nearestToAvoid(e, tx, s)
+		if from == nil {
+			continue
+		}
+		m := newRandomPosMob(e, tx)
+		goal, ok := m.randomPosAway(16, 7, from.Position())
+		if !ok || from.Position().Sub(goal.Vec3Middle()).LenSqr() < from.Position().Sub(e.Position()).LenSqr() {
+			continue
+		}
+		path := FindGroundPath(tx, cube.PosFromVec3(e.Position()), goal, m.profile)
+		if len(path) == 0 {
+			continue
+		}
+		nav.Path, nav.Index, nav.Target, nav.HasTarget, nav.LastComputeTick = path, 0, goal, true, navigatorTick(e)
+		g.from, g.spec = from.H(), i
+		if from.Position().Sub(e.Position()).LenSqr() < 49 {
+			return s.sprint, true
+		}
+		return s.walk, true
+	}
+	return 0, false
+}
+
+// nearestToAvoid returns the nearest entity an AvoidEntityGoal flees from:
+// one it matches that can be targeted in combat and that it sees.
+func nearestToAvoid(e *Ent, tx *world.Tx, s avoidSpec) world.Entity {
+	var nearest world.Entity
+	best := math.MaxFloat64
+	for other := range tx.EntitiesWithin(e.H().Type().BBox(e).Translate(e.Position()).GrowVec3(mgl64.Vec3{s.distance, 3, s.distance})) {
+		if other.H() == e.H() || !s.match(other) || !combatTargetable(other) {
+			continue
+		}
+		d := other.Position().Sub(e.Position()).LenSqr()
+		r := max(s.distance*visibilityPercent(other), 2)
+		if d > r*r || d >= best || !lineVisible(e, tx, other) {
+			continue
+		}
+		nearest, best = other, d
+	}
+	return nearest
 }

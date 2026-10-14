@@ -47,6 +47,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.iron_golem.repair":                  "mob.irongolem.repair",
 	"entity.mooshroom.milk":                     "mob.cow.milk",
 	"entity.nautilus.eat":                       "mob.nautilus.eat",
+	"entity.panda.cant_breed":                   "mob.panda.cant_breed",
 	"entity.panda.sneeze":                       "mob.panda.sneeze",
 	"entity.parrot.eat":                         "mob.parrot.eat",
 	"entity.parrot.imitate.blaze":               "mob.imitate.blaze",

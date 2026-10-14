@@ -33,6 +33,7 @@ type polarBearState struct {
 	navigator      Navigator
 	mc             *MovementComputer
 	panic          panicState
+	parent         followParentGoal
 }
 
 func NewPolarBear(o world.EntitySpawnOpts) *world.EntityHandle {
@@ -124,6 +125,14 @@ func (s *polarBearState) Tick(e *Ent, tx *world.Tx) *Movement {
 				p.moveToward(waypoint)
 			}
 		}
+	} else if parent, ok := s.parent.next(e, tx, p, parentRange{}.orDefault()); ok {
+		// FollowParentGoal: cubs keep close to adults at 1.25 times their
+		// speed.
+		s.standing = false
+		s.parent.follow(e, tx, &s.navigator, parent)
+		if waypoint, ok := s.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
+			p.moveTowardAt(waypoint, groundSpeed(.25, 1.25))
+		}
 	} else {
 		s.standing = false
 		if s.next > 0 {
@@ -147,6 +156,10 @@ func (s *polarBearState) Tick(e *Ent, tx *world.Tx) *Movement {
 	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
 	return m
 }
+
+// ageTicks returns the age of the polar bear, negative for cubs.
+func (p *PolarBear) ageTicks() *int { return &p.b().age }
+
 func (p *PolarBear) moveToward(pos mgl64.Vec3) { p.moveTowardAt(pos, p.b().speed) }
 
 func (p *PolarBear) moveTowardAt(pos mgl64.Vec3, speed float64) {

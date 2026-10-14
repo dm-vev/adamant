@@ -753,6 +753,8 @@ func (m *Mount) MarkVariant() int32 {
 }
 func (m *Mount) Sitting() bool { return m.b().sitting }
 
+func (m *Mount) moveFlagHeld() bool { return m.b().sitting }
+
 // SetSitting makes a camel sit down or stand up.
 func (m *Mount) SetSitting(v bool) {
 	switch b := m.b(); {

@@ -12,6 +12,7 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // FoxType is the registered Java fox species.
@@ -28,7 +29,7 @@ type FoxConfig struct {
 type foxState struct {
 	health                             *HealthManager
 	effects                            *EffectManager
-	age, variant, inLove               int
+	age, variant                       int
 	sleeping, crouching, sitting, dead bool
 	trusted                            []string
 	held                               item.Stack
@@ -37,6 +38,8 @@ type foxState struct {
 	navigator                          Navigator
 	mc                                 *MovementComputer
 	panic                              panicState
+	parent                             followParentGoal
+	breeding                           breeding
 }
 
 func NewFox(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(FoxType, FoxConfig{}) }
@@ -79,7 +82,7 @@ func (foxType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	d.Data = c.New()
 	state := d.Data.(*foxState)
-	state.inLove = int(nbtconv.Int32(s, "InLove"))
+	state.breeding.decodeNBT(s)
 	if equipment := ReadNativeMobEquipment(n); len(equipment.Mainhand) > 0 {
 		state.held = item.ReadNBT(equipment.Mainhand[0].Raw, nil)
 	}
@@ -96,9 +99,12 @@ func (foxType) EncodeNBT(d *world.EntityData) map[string]any {
 			canonical[key] = value
 		}
 	}
-	return MergeNativeMobJavaState(canonical, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), map[string]any{"Age": int32(s.age), "Type": int32(s.variant), "Sleeping": s.sleeping, "Crouching": s.crouching, "Sitting": s.sitting, "InLove": int32(s.inLove), "Trusted": append([]string(nil), s.trusted...)}))
+	return MergeNativeMobJavaState(canonical, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Type": int32(s.variant), "Sleeping": s.sleeping, "Crouching": s.crouching, "Sitting": s.sitting, "Trusted": append([]string(nil), s.trusted...)})))
 }
 func (f *Fox) b() *foxState { return f.Behaviour().(*foxState) }
+
+// ageTicks returns the age of the fox, negative for kits.
+func (f *Fox) ageTicks() *int { return &f.b().age }
 func (f *Fox) Tick(tx *world.Tx, n int64) {
 	f.b().effects.Tick(f, tx)
 	f.Ent.Tick(tx, n)
@@ -113,25 +119,10 @@ func (f *Fox) Tick(tx *world.Tx, n int64) {
 		s.crouching = false
 		f.SetVelocity(mgl64.Vec3{})
 	}
-	if s.inLove > 0 {
-		s.inLove--
-		for e := range tx.EntitiesWithin(cube.Box(-8, -4, -8, 8, 4, 8).Translate(f.Position())) {
-			partner, ok := e.(*Fox)
-			if !ok || partner == f || !partner.CanBreed() {
-				continue
-			}
-			if h := f.BreedWith(tx, partner, ptrJavaRandom(rand.Int64())); h != nil {
-				tx.AddEntity(h)
-				break
-			}
-		}
-	}
 }
 func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 	f := &Fox{e}
-	if s.age < 0 {
-		s.age = min(0, s.age+1)
-	}
+	partner, inLove := tickBreeding(f, tx)
 	if s.sleeping && nearestFoxThreat(e, tx, 12) != nil {
 		s.sleeping = false
 	}
@@ -141,12 +132,34 @@ func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 		if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
 			f.moveToward(target, groundSpeed(.3, 2.2))
 		}
+	} else if inLove {
+		// FoxBreedGoal clears the sleeping, sitting and stalking states of
+		// the fox when it starts.
+		s.sleeping, s.sitting, s.crouching = false, false, false
+		navigateToPartner(&s.navigator, e, tx, partner)
+		if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
+			f.moveToward(target, s.speed)
+		}
 	} else if s.sleeping || s.sitting {
 		v := e.Velocity()
 		v[0], v[2] = 0, 0
 		e.data.Vel = v
 	} else {
-		if target := nearestFoxPrey(e, tx, 12); target != nil {
+		target := nearestFoxPrey(e, tx, 12)
+		if target == nil {
+			if parent, ok := s.parent.next(e, tx, f, parentRange{}.orDefault()); ok {
+				// FoxFollowParentGoal: kits keep close to adults at 1.25
+				// times their speed.
+				s.parent.follow(e, tx, &s.navigator, parent)
+				if waypoint, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
+					f.moveToward(waypoint, groundSpeed(.3, 1.25))
+				}
+				m := s.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
+				e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
+				return m
+			}
+		}
+		if target != nil {
 			delta := target.Position().Sub(e.Position())
 			if delta.Len() < 1.2 {
 				if living, ok := target.(Living); ok {
@@ -264,6 +277,7 @@ func (f *Fox) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	f.b().health.AddHealth(-d)
 	f.b().panic.hurt(src, f.tx.CurrentTick())
+	resetLove(f)
 	f.view(HurtAction{})
 	onMobHurt(f.tx, f)
 	if f.Dead() {
@@ -313,55 +327,33 @@ func (f *Fox) Sleeping() bool  { return f.b().sleeping }
 func (f *Fox) Sitting() bool   { return f.b().sitting }
 func (f *Fox) Crouching() bool { return f.b().crouching }
 func (f *Fox) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
-	if u == nil || ctx == nil || f.Dead() {
+	if u == nil || f.Dead() {
 		return false
 	}
-	held, _ := u.HeldItems()
-	if !f.Feed(held) {
-		return false
-	}
-	ctx.SubtractFromCount(1)
-	return true
+	return feedBreeder(f, u, ctx)
 }
-func (f *Fox) Feed(food item.Stack) bool {
-	if food.Empty() {
-		return false
-	}
-	name, _ := food.Item().EncodeItem()
-	if name != "minecraft:sweet_berries" && name != "minecraft:glow_berries" {
-		return false
-	}
-	s := f.b()
-	if s.age < 0 {
-		s.age = min(0, s.age+1200)
-		return true
-	}
-	if s.inLove == 0 {
-		s.inLove = 600
-		return true
-	}
-	return false
+
+// InLove reports whether the fox is in love.
+func (f *Fox) InLove() bool { return f.b().breeding.InLove() }
+
+func (f *Fox) breedingState() *breeding { return &f.b().breeding }
+
+// breedingFood reports whether the stack is in #fox_food.
+func (f *Fox) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:sweet_berries", "minecraft:glow_berries")
 }
-func (f *Fox) CanBreed() bool { return !f.Dead() && f.b().age == 0 && f.b().inLove > 0 }
-func (f *Fox) BreedWith(tx *world.Tx, partner *Fox, r *java26.Random) *world.EntityHandle {
-	if partner == nil || partner == f || r == nil || !f.CanBreed() || !partner.CanBreed() {
-		return nil
-	}
-	a, b := f.b(), partner.b()
-	a.age, b.age = 6000, 6000
-	a.inLove, b.inLove = 0, 0
-	variant := a.variant
-	if r.NextInt(2) == 1 {
-		variant = b.variant
-	}
-	trusted := append([]string(nil), a.trusted...)
-	for _, id := range b.trusted {
-		if len(trusted) < 2 && (len(trusted) == 0 || trusted[0] != id) {
-			trusted = append(trusted, id)
+
+// breedOffspring ports Fox.getBreedOffspring and FoxBreedGoal.breed: the kit
+// takes the variant of either parent and trusts the players that fed them.
+func (f *Fox) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	mate := partner.(*Fox)
+	var trusted []string
+	for _, cause := range []uuid.UUID{f.b().breeding.loveCause, mate.b().breeding.loveCause} {
+		if cause != uuid.Nil && (len(trusted) == 0 || trusted[0] != cause.String()) {
+			trusted = append(trusted, cause.String())
 		}
 	}
-	pos := f.Position().Add(partner.Position()).Mul(.5)
-	return world.EntitySpawnOpts{Position: pos}.New(FoxType, FoxConfig{Age: -24000, Variant: variant, Trusted: trusted})
+	return babyAt(f).New(FoxType, FoxConfig{Age: babyStartAge, Variant: randomParent(f.b().variant, mate.b().variant), Trusted: trusted})
 }
 func (f *Fox) FinalizeSpawn(_ string, r *java26.Random) {
 	if r == nil {
@@ -390,7 +382,6 @@ func (f *Fox) FinalizeSpawn(_ string, r *java26.Random) {
 	}
 	s.variant = variant
 }
-func ptrJavaRandom(seed int64) *java26.Random { r := java26.NewLegacyRandom(seed); return &r }
 
 type foxSpawnCohort struct{ variant, count int }
 

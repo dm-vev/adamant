@@ -2,6 +2,7 @@ package entity
 
 import (
 	"math"
+	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -9,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -22,19 +24,24 @@ const (
 )
 
 type netherBeastState struct {
-	health                                                                     *HealthManager
-	kind                                                                       netherBeastKind
-	effects                                                                    *EffectManager
-	mc                                                                         *MovementComputer
-	age, attackCooldown, conversion, breedCooldown, loveTicks, boost, boostMax int
-	immune, saddled, dead, suffocating                                         bool
-	targetUUID                                                                 string
-	passenger                                                                  *world.EntityHandle
-	steer, steerYaw, speed                                                     float64
-	navigator                                                                  Navigator
-	wander, repellentScan                                                      int
-	repellent                                                                  *cube.Pos
-	panic                                                                      panicState
+	health                                           *HealthManager
+	kind                                             netherBeastKind
+	effects                                          *EffectManager
+	mc                                               *MovementComputer
+	age, attackCooldown, conversion, boost, boostMax int
+	immune, saddled, dead, suffocating               bool
+	targetUUID                                       string
+	passenger                                        *world.EntityHandle
+	steer, steerYaw, speed                           float64
+	navigator                                        Navigator
+	wander, repellentScan                            int
+	repellent                                        *cube.Pos
+	panic                                            panicState
+	parent                                           followParentGoal
+	breeding                                         breeding
+	// pacified counts down the ticks a hoglin stays peaceful after it saw a
+	// repellent, as BecomePassiveIfMemoryPresent remembers.
+	pacified int
 }
 type netherBeastConfig struct {
 	kind                       netherBeastKind
@@ -102,6 +109,9 @@ type Strider struct{ *Ent }
 func (h *Hoglin) beast() *netherBeastState  { return h.Behaviour().(*netherBeastState) }
 func (z *Zoglin) beast() *netherBeastState  { return z.Behaviour().(*netherBeastState) }
 func (s *Strider) beast() *netherBeastState { return s.Behaviour().(*netherBeastState) }
+
+// ageTicks returns the age of the strider, negative while it is young.
+func (s *Strider) ageTicks() *int { return &s.beast().age }
 func (t netherBeastType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	j := ReadNativeMobJavaState(n)
 	if j == nil {
@@ -119,8 +129,7 @@ func (t netherBeastType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	c.Apply(d)
 	s := d.Data.(*netherBeastState)
-	s.breedCooldown = int(nbtconv.Int32(j, "BreedCooldown"))
-	s.loveTicks = int(nbtconv.Int32(j, "InLove"))
+	s.breeding.decodeNBT(j)
 	s.suffocating = nbtconv.Bool(j, "Suffocating")
 	s.boost = int(nbtconv.Int32(j, "BoostTime"))
 	s.boostMax = int(nbtconv.Int32(j, "BoostTimeMax"))
@@ -143,7 +152,10 @@ func (t netherBeastType) EncodeNBT(d *world.EntityData) map[string]any {
 	if j == nil {
 		j = make(map[string]any)
 	}
-	j["Age"], j["AttackCooldown"], j["BreedCooldown"], j["InLove"] = int32(s.age), int32(s.attackCooldown), int32(s.breedCooldown), int32(s.loveTicks)
+	j["Age"], j["AttackCooldown"] = int32(s.age), int32(s.attackCooldown)
+	if t.kind != zoglinKind {
+		s.breeding.encodeNBT(j)
+	}
 	j["Suffocating"], j["BoostTime"], j["BoostTimeMax"] = byte(boolByte(s.suffocating)), int32(s.boost), int32(s.boostMax)
 	return MergeNativeMobJavaState(out, j)
 }
@@ -154,17 +166,18 @@ func (h *Hoglin) Tick(tx *world.Tx, n int64)     { h.beast().effects.Tick(h, tx)
 func (z *Zoglin) Tick(tx *world.Tx, n int64)     { z.beast().effects.Tick(z, tx); z.Ent.Tick(tx, n) }
 func (s *Strider) Tick(tx *world.Tx, n int64)    { s.beast().effects.Tick(s, tx); s.Ent.Tick(tx, n) }
 func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if s.age < 0 {
-		s.age = min(0, s.age+1)
+	// Hoglins and striders are animals that grow up and breed; zoglins stay
+	// as they were born.
+	var partner mgl64.Vec3
+	var inLove bool
+	switch s.kind {
+	case hoglinKind:
+		partner, inLove = tickBreeding(&Hoglin{Ent: e}, tx)
+	case striderKind:
+		partner, inLove = tickBreeding(&Strider{Ent: e}, tx)
 	}
 	if s.attackCooldown > 0 {
 		s.attackCooldown--
-	}
-	if s.breedCooldown > 0 {
-		s.breedCooldown--
-	}
-	if s.loveTicks > 0 {
-		s.loveTicks--
 	}
 	if s.boost > 0 {
 		s.boost--
@@ -177,9 +190,11 @@ func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
 			s.repellent = nearestHoglinRepellent(tx, e.Position(), 8, 4)
 			s.repellentScan = 10
 		}
-	}
-	if beastBreed(s, e, tx) {
-		return nil
+		if s.repellent != nil {
+			s.pacified = 200
+		} else if s.pacified > 0 {
+			s.pacified--
+		}
 	}
 	switch s.kind {
 	case hoglinKind:
@@ -255,6 +270,12 @@ func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 		return beastMoveFinish(s, e, tx)
 	}
+	if s.kind == hoglinKind && inLove {
+		// AnimalMakeLove: a breeding hoglin forgets its attack target and
+		// walks to its partner at 0.6 times its speed.
+		beastMoveAt(e, partner, groundSpeed(.3, .6))
+		return beastMoveFinish(s, e, tx)
+	}
 	if target != nil && s.kind != striderKind {
 		if dist < 2.25 && s.attackCooldown == 0 {
 			damage := 6.0
@@ -308,8 +329,21 @@ func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
 			}
 			return beastMoveFinish(s, e, tx)
 		}
+		if inLove {
+			// BreedGoal: the strider walks to its partner.
+			beastMove(s, e, tx, partner)
+			return beastMoveFinish(s, e, tx)
+		}
 		if target := beastTemptPlayer(tx, e.Position()); target != nil {
 			beastMove(s, e, tx, target.Position())
+			return beastMoveFinish(s, e, tx)
+		}
+		if parent, ok := s.parent.next(e, tx, &Strider{Ent: e}, parentRange{}.orDefault()); ok {
+			// FollowParentGoal: young striders keep close to adults.
+			s.parent.follow(e, tx, &s.navigator, parent)
+			if p, ok := s.navigator.Tick(e.Position(), navigatorTick(e), .9); ok {
+				beastMoveAt(e, p, groundSpeed(.175, 1))
+			}
 			return beastMoveFinish(s, e, tx)
 		}
 		if s.suffocating {
@@ -321,34 +355,6 @@ func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
 		return beastWander(s, e, tx)
 	}
 	return beastWander(s, e, tx)
-}
-func beastBreed(s *netherBeastState, e *Ent, tx *world.Tx) bool {
-	if s.kind == zoglinKind || s.age < 0 || s.loveTicks <= 0 || s.breedCooldown > 0 {
-		return false
-	}
-	for other := range tx.EntitiesWithin(cube.Box(-8, -4, -8, 8, 4, 8).Translate(e.Position())) {
-		if other == e || other.H().Type() != e.H().Type() {
-			continue
-		}
-		mate, ok := other.(interface{ beast() *netherBeastState })
-		if !ok {
-			continue
-		}
-		m := mate.beast()
-		if m.age < 0 || m.loveTicks <= 0 || m.breedCooldown > 0 {
-			continue
-		}
-		s.loveTicks, m.loveTicks = 0, 0
-		s.breedCooldown, m.breedCooldown = 6000, 6000
-		opts := world.EntitySpawnOpts{Position: e.Position(), SpawnReason: "breeding"}
-		if s.kind == hoglinKind {
-			tx.AddEntity(opts.New(HoglinType, netherBeastConfig{kind: hoglinKind, age: -24000}))
-		} else {
-			tx.AddEntity(opts.New(StriderType, netherBeastConfig{kind: striderKind, age: -24000}))
-		}
-		return true
-	}
-	return false
 }
 func beastMove(s *netherBeastState, e *Ent, tx *world.Tx, p mgl64.Vec3) {
 	speed := s.speed
@@ -567,6 +573,12 @@ func beastHurt(e *Ent, self world.Entity, b *netherBeastState, d float64, src wo
 	}
 	b.health.AddHealth(-d)
 	b.panic.hurt(src, e.tx.CurrentTick())
+	if a, ok := self.(breeder); ok {
+		// Animal.hurtServer ends love mode, and Hoglin.wasHurtBy ends its
+		// peace with the attacker.
+		resetLove(a)
+		b.pacified = 0
+	}
 	beastViewAction(e, HurtAction{})
 	onMobHurt(e.tx, self)
 	if b.health.Health() <= 0 {
@@ -649,10 +661,6 @@ func beastKnock(e *Ent, p mgl64.Vec3, f, k float64) {
 	e.SetVelocity(d)
 }
 func (h *Hoglin) FinalizeSpawn(reason string, r *java26.Random) {
-	if reason == "breeding" {
-		h.beast().age = -24000
-		return
-	}
 	if r == nil {
 		return
 	}
@@ -666,10 +674,6 @@ func (h *Hoglin) FinalizeSpawn(reason string, r *java26.Random) {
 }
 func (z *Zoglin) FinalizeSpawn(_ string, _ *java26.Random) {}
 func (s *Strider) FinalizeSpawn(reason string, r *java26.Random) {
-	if reason == "breeding" {
-		s.beast().age = -24000
-		return
-	}
 	if reason == "jockey" || r == nil {
 		return
 	}
@@ -692,61 +696,40 @@ func (s *Strider) FinalizeSpawn(reason string, r *java26.Random) {
 		}
 	}
 }
-func (h *Hoglin) Feed(food item.Stack) bool {
-	b := h.beast()
-	if food.Empty() {
-		return false
-	}
-	name, _ := food.Item().EncodeItem()
-	if name != "minecraft:crimson_fungus" {
-		return false
-	}
-	if b.age < 0 {
-		b.age = min(0, b.age+1200)
-		return true
-	}
-	if b.breedCooldown > 0 || b.loveTicks > 0 {
-		return false
-	}
-	b.loveTicks = 600
-	return true
+
+// InLove reports whether the hoglin is in love.
+func (h *Hoglin) InLove() bool { return h.beast().breeding.InLove() }
+
+func (h *Hoglin) breedingState() *breeding { return &h.beast().breeding }
+
+// ageTicks returns the age of the hoglin, negative while it is a piglet.
+func (h *Hoglin) ageTicks() *int { return &h.beast().age }
+
+// breedingFood reports whether the stack is in #hoglin_food.
+func (h *Hoglin) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:crimson_fungus")
 }
-func (h *Hoglin) Breed(tx *world.Tx, partner *Hoglin) *world.EntityHandle {
-	if partner == nil || h == partner || h.beast().age < 0 || partner.beast().age < 0 || h.beast().breedCooldown > 0 || partner.beast().breedCooldown > 0 {
-		return nil
-	}
-	h.beast().breedCooldown, partner.beast().breedCooldown = 6000, 6000
-	child := world.EntitySpawnOpts{Position: h.Position(), SpawnReason: "breeding"}.New(HoglinType, netherBeastConfig{kind: hoglinKind, age: -24000})
-	tx.AddEntity(child)
-	return child
+
+// canFallInLove ports Hoglin.canFallInLove: a hoglin pacified by a
+// repellent will not fall in love.
+func (h *Hoglin) canFallInLove() bool { return h.beast().pacified == 0 }
+
+func (h *Hoglin) breedOffspring(*world.Tx, breeder) *world.EntityHandle {
+	return babyAt(h).New(HoglinType, netherBeastConfig{kind: hoglinKind, age: babyStartAge})
 }
-func (s *Strider) Feed(food item.Stack) bool {
-	b := s.beast()
-	if food.Empty() {
-		return false
-	}
-	name, _ := food.Item().EncodeItem()
-	if name != "minecraft:warped_fungus" {
-		return false
-	}
-	if b.age < 0 {
-		b.age = min(0, b.age+1200)
-		return true
-	}
-	if b.breedCooldown > 0 || b.loveTicks > 0 {
-		return false
-	}
-	b.loveTicks = 600
-	return true
+
+// InLove reports whether the strider is in love.
+func (s *Strider) InLove() bool { return s.beast().breeding.InLove() }
+
+func (s *Strider) breedingState() *breeding { return &s.beast().breeding }
+
+// breedingFood reports whether the stack is in #strider_food.
+func (s *Strider) breedingFood(stack item.Stack) bool {
+	return itemNamed(stack, "minecraft:warped_fungus")
 }
-func (s *Strider) Breed(tx *world.Tx, partner *Strider) *world.EntityHandle {
-	if partner == nil || s == partner || s.beast().age < 0 || partner.beast().age < 0 || s.beast().breedCooldown > 0 || partner.beast().breedCooldown > 0 {
-		return nil
-	}
-	s.beast().breedCooldown, partner.beast().breedCooldown = 6000, 6000
-	child := world.EntitySpawnOpts{Position: s.Position(), SpawnReason: "breeding"}.New(StriderType, netherBeastConfig{kind: striderKind, age: -24000})
-	tx.AddEntity(child)
-	return child
+
+func (s *Strider) breedOffspring(*world.Tx, breeder) *world.EntityHandle {
+	return babyAt(s).New(StriderType, netherBeastConfig{kind: striderKind, age: babyStartAge})
 }
 func (s *Strider) SetVehicleInput(strafe, forward float64) { s.beast().steer = forward }
 func (s *Strider) SetVehicleInputFrom(passenger world.Entity, strafe, forward float64) {
@@ -817,48 +800,42 @@ func (s *Strider) broadcast(tx *world.Tx, h *world.EntityHandle, link bool) {
 	}
 	tx.ReleaseViewers(vs)
 }
+
+// Interact ports Strider.mobInteract: a saddled strider carries a player who
+// is not holding its food or sneaking, warped fungus feeds it, and a saddle
+// saddles an adult.
 func (s *Strider) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
 	if u == nil {
 		return false
 	}
 	b := s.beast()
 	held, _ := u.HeldItems()
-	name := ""
-	if !held.Empty() {
-		name, _ = held.Item().EncodeItem()
+	food := s.breedingFood(held)
+	sneaking, ok := u.(interface{ Sneaking() bool })
+	if !food && b.saddled && b.passenger == nil && (!ok || !sneaking.Sneaking()) {
+		return s.Mount(tx, u)
 	}
-	if name == "minecraft:warped_fungus" && s.Feed(held) {
-		if c != nil {
-			c.SubtractFromCount(1)
+	if feedBreeder(s, u, c) {
+		if food {
+			tx.PlaySound(s.Position(), sound.Custom{Name: "entity.strider.eat", Volume: 1, Pitch: 1 + (rand.Float64()-rand.Float64())*.2})
 		}
 		return true
 	}
-	if name == "minecraft:saddle" && !b.saddled && b.age >= 0 {
+	if itemNamed(held, "minecraft:saddle") && !b.saddled && b.age >= 0 {
 		b.saddled = true
 		if c != nil {
 			c.SubtractFromCount(1)
 		}
 		return true
 	}
-	if b.saddled && b.passenger == nil {
-		return s.Mount(tx, u)
-	}
 	return false
 }
 func (s *Strider) Saddled() bool     { return s.beast().saddled }
 func (s *Strider) Suffocating() bool { return s.beast().suffocating }
+
+// Interact ports Animal.mobInteract for hoglins: crimson fungus feeds them.
 func (h *Hoglin) Interact(_ *world.Tx, u item.User, c *item.UseContext) bool {
-	if u == nil {
-		return false
-	}
-	held, _ := u.HeldItems()
-	if h.Feed(held) {
-		if c != nil {
-			c.SubtractFromCount(1)
-		}
-		return true
-	}
-	return false
+	return u != nil && feedBreeder(h, u, c)
 }
 func (s *Strider) Dash(_ *world.Tx, passenger world.Entity) bool {
 	b := s.beast()

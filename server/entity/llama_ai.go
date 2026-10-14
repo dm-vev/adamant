@@ -202,14 +202,14 @@ func (b *MountBehaviour) updateLlamaTarget(m *Mount, tx *world.Tx) {
 	s.target, s.hurtByTarget, s.didSpit, s.unseen = nil, false, false, 0
 	if s.hurtBy != nil && s.hurtByStamp != s.retaliatedFor {
 		s.retaliatedFor = s.hurtByStamp
-		if attacker, ok := s.hurtBy.Entity(tx); ok && llamaTargetable(attacker) {
+		if attacker, ok := s.hurtBy.Entity(tx); ok && combatTargetable(attacker) {
 			s.target, s.hurtByTarget = attacker.H(), true
 			return
 		}
 	}
 	if b.kind == mountTraderLlama {
 		if trader, ok := leashedTrader(m.Ent, tx); ok {
-			if attacker, stamp, ok := trader.lastAttacker(tx); ok && stamp != s.defendStamp && llamaTargetable(attacker) {
+			if attacker, stamp, ok := trader.lastAttacker(tx); ok && stamp != s.defendStamp && combatTargetable(attacker) {
 				s.defendStamp, s.target = stamp, attacker.H()
 				return
 			}
@@ -244,7 +244,7 @@ func (b *MountBehaviour) currentTarget(m *Mount, tx *world.Tx) world.Entity {
 		return nil
 	}
 	target, ok := s.target.Entity(tx)
-	if !ok || !llamaTargetable(target) || target.Position().Sub(m.Position()).LenSqr() > 16*16 {
+	if !ok || !combatTargetable(target) || target.Position().Sub(m.Position()).LenSqr() > 16*16 {
 		return nil
 	}
 	if lineVisible(m.Ent, tx, target) {
@@ -255,9 +255,9 @@ func (b *MountBehaviour) currentTarget(m *Mount, tx *world.Tx) world.Entity {
 	return target
 }
 
-// llamaTargetable reports whether a llama may target the entity: living
-// and, for players, in a game mode that takes damage.
-func llamaTargetable(e world.Entity) bool {
+// combatTargetable ports TargetingConditions.forCombat's rule on targets:
+// living and, for players, in a game mode that takes damage.
+func combatTargetable(e world.Entity) bool {
 	if l, ok := e.(Living); ok && l.Dead() {
 		return false
 	}
@@ -270,7 +270,7 @@ func nearestLlamaTarget(m *Mount, tx *world.Tx, r float64, mustSee bool, match f
 	var target world.Entity
 	best := math.MaxFloat64
 	for e := range tx.EntitiesWithin(m.H().Type().BBox(m).Translate(m.Position()).GrowVec3(mgl64.Vec3{r, 4, r})) {
-		if e.H() == m.H() || !match(e.H().Type().EncodeEntity(), e) || !llamaTargetable(e) {
+		if e.H() == m.H() || !match(e.H().Type().EncodeEntity(), e) || !combatTargetable(e) {
 			continue
 		}
 		d := e.Position().Sub(m.Position()).LenSqr()

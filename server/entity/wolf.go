@@ -535,6 +535,8 @@ func (w *Wolf) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool
 // Sitting reports whether the wolf sits as its owner ordered.
 func (w *Wolf) Sitting() bool { return w.behaviour().sitting }
 
+func (w *Wolf) moveFlagHeld() bool { return w.behaviour().sitting }
+
 // InLove reports whether the wolf is in love.
 func (w *Wolf) InLove() bool { return w.behaviour().breeding.InLove() }
 

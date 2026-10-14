@@ -2,6 +2,7 @@ package entity
 
 import (
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/item"
@@ -24,20 +25,47 @@ var tropicalFishCommonVariants = [...]int32{
 }
 var tropicalFishPatterns = [...]int32{0, 0x100, 0x200, 0x300, 0x400, 0x500, 1, 0x101, 0x201, 0x301, 0x401, 0x501}
 
-// AcceptItem implements axolotl's tropical-fish-bucket food and breeding interaction.
-func (b *AquaticMobBehaviour) AcceptItem(_ *Ent, from world.Entity, _ *world.Tx, ctx *item.UseContext) bool {
-	if b.id != "minecraft:axolotl" || ctx == nil || b.ageLocked { return false }
+// AcceptItem ports Animal.mobInteract and Axolotl.usePlayerItem for
+// axolotls: a bucket of tropical fish feeds them and leaves a water bucket.
+func (b *AquaticMobBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx, ctx *item.UseContext) bool {
 	user, ok := from.(item.User)
-	if !ok { return false }
+	if b.id != "minecraft:axolotl" || ctx == nil || !ok {
+		return false
+	}
+	a := &Axolotl{&AquaticMob{Ent: e}}
 	held, _ := user.HeldItems()
-	bucket, ok := held.Item().(item.FishBucket)
-	if !ok || bucket.Entity != "minecraft:tropical_fish" { return false }
-	if b.age == 0 && b.loveTicks > 0 { return false }
-	if b.age < 0 { b.age = min(0, b.age+max(1, -b.age/10)) } else if b.age > 0 { b.age = max(0, b.age-max(1, b.age/10)) } else { b.loveTicks = 600 }
-	ctx.NewItem = item.NewStack(item.Bucket{}, 1)
-	ctx.ReplaceHeldItem = true
-	ctx.SubtractFromCount(1)
+	if !feedBreeder(a, user, ctx) {
+		return false
+	}
+	if a.breedingFood(held) {
+		ctx.NewItem = item.NewStack(item.Bucket{Content: item.LiquidBucketContent(block.Water{Still: true, Depth: 8})}, 1)
+		ctx.ReplaceHeldItem = true
+	}
 	return true
+}
+
+// InLove reports whether the axolotl is in love.
+func (a *Axolotl) InLove() bool { return a.behaviour().breeding.InLove() }
+
+func (a *Axolotl) breedingState() *breeding { return &a.behaviour().breeding }
+func (a *Axolotl) ageTicks() *int           { return &a.behaviour().age }
+
+// breedingFood reports whether the stack is in #axolotl_food, a bucket of
+// tropical fish.
+func (a *Axolotl) breedingFood(stack item.Stack) bool {
+	bucket, ok := stack.Item().(item.FishBucket)
+	return ok && !stack.Empty() && bucket.Entity == "minecraft:tropical_fish"
+}
+
+// breedOffspring ports Axolotl.getBreedOffspring: the baby takes the variant
+// of either parent, or is blue with a chance of 1 in 1200.
+func (a *Axolotl) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	b := a.behaviour()
+	variant := randomParent(b.variant, partner.(*Axolotl).behaviour().variant)
+	if b.random.NextInt(1200) == 0 {
+		variant = 4
+	}
+	return babyAt(a).New(AxolotlType, AquaticMobConfig{ID: "minecraft:axolotl", MaxHealth: 14, Variant: variant, Age: babyStartAge})
 }
 
 type aquaticSchoolGroupData struct {
@@ -121,7 +149,7 @@ func (b *AquaticMobBehaviour) schoolingLeader(e *Ent, tx *world.Tx) world.Entity
 }
 
 // tickAxolotl ports aquatic target sensing, attack cadence, and breeding behavior.
-func (b *AquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx, velocity mgl64.Vec3) mgl64.Vec3 {
+func (b *AquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx, velocity, partner mgl64.Vec3, inLove bool) mgl64.Vec3 {
 	if b.attackCooldown > 0 { b.attackCooldown-- }
 	if b.huntingCooldown > 0 { b.huntingCooldown-- }
 	if b.playDeadTicks > 0 { return velocity }
@@ -146,7 +174,14 @@ func (b *AquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx, velocity mgl64.V
 		}
 		if target != nil { b.target = target.H() }
 	}
-	if target == nil { return velocity }
+	if target == nil {
+		if inLove {
+			// AnimalMakeLove: the axolotl swims to its partner at a third
+			// of the speed it chases prey with.
+			return aquaticSteer(b, e, tx, partner, .1*.2/.6)
+		}
+		return velocity
+	}
 
 	delta := target.Position().Sub(e.Position())
 	distance := delta.Len()
@@ -161,23 +196,6 @@ func (b *AquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx, velocity mgl64.V
 		}
 	}
 	return velocity
-}
-
-func (b *AquaticMobBehaviour) tryBreedAxolotl(e *Ent, tx *world.Tx) {
-	if b.id != "minecraft:axolotl" || b.age != 0 || b.loveTicks == 0 { return }
-	box := cube.Box(-8, -8, -8, 8, 8, 8).Translate(e.Position())
-	for candidate := range tx.EntitiesWithin(box) {
-		if candidate.H() == e.handle || candidate.H().Type().EncodeEntity() != "minecraft:axolotl" { continue }
-		partner, ok := candidate.(interface{ behaviour() *AquaticMobBehaviour })
-		if !ok || partner.behaviour().age != 0 || partner.behaviour().loveTicks == 0 { continue }
-		variant := b.variant
-		if b.random.NextInt(1200) == 0 { variant = 4 } else if b.random.NextBoolean() { variant = partner.behaviour().variant }
-		baby := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot}.New(AxolotlType, AquaticMobConfig{ID: "minecraft:axolotl", MaxHealth: 14, Variant: variant, Age: -24000})
-		tx.AddEntity(baby)
-		b.age, partner.behaviour().age = 6000, 6000
-		b.loveTicks, partner.behaviour().loveTicks = 0, 0
-		return
-	}
 }
 
 func axolotlCanAttack(target world.Entity, huntAllowed bool, tx *world.Tx) bool {

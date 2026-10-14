@@ -65,14 +65,33 @@ func (t oceanWildlifeType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	c.treasureY = int(nbtconv.Int32(m, "TreasurePosY"))
 	c.treasureZ = int(nbtconv.Int32(m, "TreasurePosZ"))
 	c.moistness = int(nbtconv.Int32(m, "Moistness"))
-	c.loveTicks = int(nbtconv.Int32(m, "InLove"))
+	if t.id == "minecraft:turtle" {
+		c.homeX, c.homeY, c.homeZ, c.homeSet = turtleHomePos(m["home_pos"])
+	}
 	c.Apply(d)
+	if t.id == "minecraft:turtle" {
+		d.Data.(*oceanWildlifeBehaviour).breeding.decodeNBT(m)
+	}
+}
+
+// turtleHomePos reads the home_pos tag of a turtle, an int array as Java's
+// BlockPos codec writes, or the X, Y and Z compound older saves hold.
+func turtleHomePos(v any) (x, y, z int, ok bool) {
+	switch pos := v.(type) {
+	case []int32:
+		if len(pos) == 3 {
+			return int(pos[0]), int(pos[1]), int(pos[2]), true
+		}
+	case map[string]any:
+		return int(nbtconv.Int32(pos, "X")), int(nbtconv.Int32(pos, "Y")), int(nbtconv.Int32(pos, "Z")), true
+	}
+	return 0, 0, 0, false
 }
 func (t oceanWildlifeType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*oceanWildlifeBehaviour)
-	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(b.health.Health()), "Age": int32(b.age), "Air": int16(b.air), "InLove": int32(b.loveTicks)})
+	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Health": float32(b.health.Health()), "Age": int32(b.age), "Air": int16(b.air)})
 	if b.id == "minecraft:turtle" {
-		m = MergeNativeMobNBT(m, map[string]any{"home_pos": map[string]any{"X": int32(b.homeX), "Y": int32(b.homeY), "Z": int32(b.homeZ)}, "has_egg": boolByte(b.hasEgg)})
+		m = MergeNativeMobNBT(m, b.breeding.encodeNBT(map[string]any{"home_pos": []int32{int32(b.homeX), int32(b.homeY), int32(b.homeZ)}, "has_egg": boolByte(b.hasEgg)}))
 	}
 	if b.id == "minecraft:dolphin" {
 		m = MergeNativeMobNBT(m, map[string]any{"GotFish": boolByte(b.gotFish), "HasTreasure": boolByte(b.hasTreasure), "TreasurePosX": int32(b.treasureX), "TreasurePosY": int32(b.treasureY), "TreasurePosZ": int32(b.treasureZ), "Moistness": int32(b.moistness)})
@@ -84,11 +103,11 @@ func (t oceanWildlifeType) EncodeNBT(d *world.EntityData) map[string]any {
 }
 
 type oceanWildlifeConfig struct {
-	id                                                                                              string
-	maxHealth, health                                                                               float64
-	healthSet                                                                                       bool
-	age, air, moistness, darkTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ, loveTicks int
-	hasEgg, gotFish, hasTreasure, homeSet                                                           bool
+	id                                                                                   string
+	maxHealth, health                                                                    float64
+	healthSet                                                                            bool
+	age, air, moistness, darkTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
+	hasEgg, gotFish, hasTreasure, homeSet                                                bool
 }
 
 func (c oceanWildlifeConfig) Apply(d *world.EntityData) { d.Data = c.New() }
@@ -108,7 +127,7 @@ func (c oceanWildlifeConfig) New() *oceanWildlifeBehaviour {
 	if c.id == "minecraft:dolphin" && moistness == 0 {
 		moistness = 2400
 	}
-	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true}, speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ, loveTicks: c.loveTicks, nextWander: 1,
+	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true}, speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ, nextWander: 1,
 		panic: panicState{water: 7}}
 }
 
@@ -118,17 +137,18 @@ type Turtle struct{ *oceanWildlife }
 type Dolphin struct{ *oceanWildlife }
 type oceanWildlife struct{ *Ent }
 type oceanWildlifeBehaviour struct {
-	id                                                                                                                                        string
-	health                                                                                                                                    *HealthManager
-	effects                                                                                                                                   *EffectManager
-	movement                                                                                                                                  *MovementComputer
-	speed                                                                                                                                     float64
-	age, air, moistness, ticks, nextWander, inkCooldown, darkTicks, layTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ, loveTicks int
-	swim                                                                                                                                      mgl64.Vec3
-	mate                                                                                                                                      *world.EntityHandle
-	hasEgg, gotFish, hasTreasure, homeSet, dead                                                                                               bool
-	panic                                                                                                                                     panicState
-	panicGoal                                                                                                                                 mgl64.Vec3
+	id                                                                                                                             string
+	health                                                                                                                         *HealthManager
+	effects                                                                                                                        *EffectManager
+	movement                                                                                                                       *MovementComputer
+	speed                                                                                                                          float64
+	age, air, moistness, ticks, nextWander, inkCooldown, darkTicks, layTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
+	swim                                                                                                                           mgl64.Vec3
+	breeding                                                                                                                       breeding
+	hasEgg, gotFish, hasTreasure, homeSet, dead                                                                                    bool
+	panic                                                                                                                          panicState
+	panicGoal                                                                                                                      mgl64.Vec3
+	tempt                                                                                                                          temptGoal
 }
 
 func (m *oceanWildlife) b() *oceanWildlifeBehaviour { return m.Behaviour().(*oceanWildlifeBehaviour) }
@@ -144,38 +164,13 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	b.ticks++
 	_, inWater := tx.Liquid(cube.PosFromVec3(e.Position()))
 	vel := e.data.Vel
-	if b.id == "minecraft:turtle" && b.age == -1 {
-		dropTurtleGrowth(e, tx)
-	}
-	if b.id == "minecraft:turtle" && b.loveTicks > 0 && !b.hasEgg {
-		b.loveTicks--
-		var partner *Turtle
-		best := 16.0
-		for other := range tx.Entities() {
-			candidate, ok := other.(*Turtle)
-			if !ok || candidate.H() == e.handle || candidate.Baby() || candidate.b().hasEgg || candidate.b().loveTicks <= 0 {
-				continue
-			}
-			distance := candidate.Position().Sub(e.Position()).LenSqr()
-			if distance < best {
-				partner, best = candidate, distance
-			}
+	var partner mgl64.Vec3
+	var inLove bool
+	if b.id == "minecraft:turtle" {
+		if b.age == -1 {
+			dropTurtleGrowth(e, tx)
 		}
-		if partner != nil {
-			b.mate = partner.H()
-			partner.b().mate = e.handle
-			if best <= 4 {
-				b.loveTicks = 0
-				partner.b().loveTicks = 0
-				b.mate = nil
-				partner.b().mate = nil
-				if !b.hasEgg {
-					b.hasEgg = true
-				}
-				b.age = 6000
-				partner.b().age = 6000
-			}
-		}
+		partner, inLove = tickBreeding(&Turtle{&oceanWildlife{Ent: e}}, tx)
 	}
 	switch b.id {
 	case "minecraft:squid", "minecraft:glow_squid":
@@ -208,19 +203,11 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			b.homeX, b.homeY, b.homeZ = p.X(), p.Y(), p.Z()
 			b.homeSet = true
 		}
-		if b.age < 0 {
-			b.age++
-		} else if b.age > 0 {
-			b.age--
-		}
 		home := cube.Pos{b.homeX, b.homeY, b.homeZ}
 		target := home.Vec3().Add(mgl64.Vec3{.5, 0, .5})
-		if b.mate != nil && !b.hasEgg {
-			if partner, ok := b.mate.Entity(tx); ok {
-				target = partner.Position()
-			} else {
-				b.mate = nil
-			}
+		if inLove {
+			// TurtleBreedGoal: the turtle heads for its partner.
+			target = partner
 		}
 		// TurtlePanicGoal: a hurt turtle heads for water within seven blocks,
 		// or a random spot nearby, at 1.2 times its speed.
@@ -239,13 +226,31 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		if panicking {
 			target = b.panicGoal
 		}
-		if inWater {
+		// TemptGoal: a turtle follows a player holding seagrass at 1.1 times
+		// its speed until it is 2.5 blocks away.
+		tempted := false
+		if !panicking && !inLove && !b.hasEgg {
+			if p, ok := b.tempt.next(e, tx, func(s item.Stack) bool { return itemNamed(s, "minecraft:seagrass") }, false); ok {
+				tempted, target = true, p.Position()
+			}
+		} else {
+			b.tempt.stop()
+		}
+		if tempted && e.Position().Sub(target).LenSqr() < 2.5*2.5 {
+			vel[0], vel[2] = 0, 0
+		} else if inWater {
 			vel = wildlifeSteer(e, vel, target, .025*(b.speed/.25), .12*(b.speed/.25))
-		} else if panicking {
+		} else if panicking || tempted || inLove {
 			// TurtleMoveControl halves the speed of turtles on land.
+			modifier := 1.0
+			if panicking {
+				modifier = 1.2
+			} else if tempted {
+				modifier = 1.1
+			}
 			if d := target.Sub(e.Position()); math.Hypot(d[0], d[2]) > 0 {
 				d[1] = 0
-				d = d.Normalize().Mul(groundSpeed(max(.25*1.2/2, .06), 1))
+				d = d.Normalize().Mul(groundSpeed(max(.25*modifier/2, .06), 1))
 				vel[0], vel[2] = d[0], d[2]
 			}
 		} else if b.hasEgg {
@@ -256,7 +261,9 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 						wildlifeLayEgg(tx, home)
 						b.hasEgg = false
 						b.layTicks = 0
-						b.loveTicks = 600
+						// TurtleLayEggGoal: the turtle may fall in love
+						// again right away.
+						b.breeding.inLove = 600
 					}
 				}
 			} else {
@@ -403,6 +410,7 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	b.health.AddHealth(-d)
 	if b.id == "minecraft:turtle" {
 		b.panic.hurt(src, m.tx.CurrentTick())
+		resetLove(&Turtle{m})
 	}
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
@@ -467,12 +475,7 @@ func (m *oceanWildlife) Interact(tx *world.Tx, user item.User, ctx *item.UseCont
 	held, _ := user.HeldItems()
 	switch b.id {
 	case "minecraft:turtle":
-		if _, ok := held.Item().(block.SeaGrass); !ok || held.Empty() || b.age < 0 || b.hasEgg {
-			return false
-		}
-		ctx.SubtractFromCount(1)
-		b.loveTicks = 600
-		return true
+		return feedBreeder(&Turtle{m}, user, ctx)
 	case "minecraft:dolphin":
 		if held.Empty() {
 			return false
@@ -570,6 +573,36 @@ func (t *Turtle) HomePos() cube.Pos { b := t.b(); return cube.Pos{b.homeX, b.hom
 
 // Panicking reports whether the turtle runs from danger.
 func (t *Turtle) Panicking() bool { return t.b().panic.active }
+
+// InLove reports whether the turtle is in love.
+func (t *Turtle) InLove() bool { return t.b().breeding.InLove() }
+
+func (t *Turtle) breedingState() *breeding { return &t.b().breeding }
+func (t *Turtle) ageTicks() *int           { return &t.b().age }
+
+// breedingFood reports whether the stack is in #turtle_food, seagrass.
+func (t *Turtle) breedingFood(stack item.Stack) bool { return itemNamed(stack, "minecraft:seagrass") }
+
+// canStartBreeding ports TurtleBreedGoal.canUse: a turtle carrying an egg
+// does not look for another partner.
+func (t *Turtle) canStartBreeding(*world.Tx) bool { return !t.b().hasEgg }
+
+func (t *Turtle) breedOffspring(*world.Tx, breeder) *world.EntityHandle { return nil }
+
+// spawnChildFromBreeding ports TurtleBreedGoal.breed: instead of a baby, the
+// turtle gets an egg to lay at its home beach.
+func (t *Turtle) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
+	t.b().hasEgg = true
+	setAge(t, parentAgeAfterBreeding)
+	setAge(partner, parentAgeAfterBreeding)
+	resetLove(t)
+	resetLove(partner)
+	if tx.World().GameRuleBool("mob_drops") {
+		for _, orb := range NewExperienceOrbs(t.Position(), 1+rand.IntN(7)) {
+			tx.AddEntity(orb)
+		}
+	}
+}
 
 var _ world.EntityType = oceanWildlifeType{}
 var _ Living = (*oceanWildlife)(nil)

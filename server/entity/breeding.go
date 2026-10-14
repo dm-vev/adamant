@@ -85,7 +85,7 @@ func feedBreeder(a breeder, user item.User, ctx *item.UseContext) bool {
 		player, isPlayer := user.(interface{ UUID() uuid.UUID })
 		isPlayer = isPlayer && user.H() != nil && user.H().Type().EncodeEntity() == "minecraft:player"
 		switch {
-		case *age == 0 && b.inLove <= 0 && isPlayer:
+		case *age == 0 && b.inLove <= 0 && isPlayer && fallsInLove(a):
 			ctx.SubtractFromCount(1)
 			b.inLove, b.loveCause = loveDuration, player.UUID()
 			viewBreederAction(a, LoveHeartsAction{})
@@ -106,6 +106,13 @@ func feedBreeder(a breeder, user item.User, ctx *item.UseContext) bool {
 		return true
 	}
 	return false
+}
+
+// fallsInLove ports Animal.canFallInLove beyond not being in love yet, which
+// species like hoglins restrict further.
+func fallsInLove(a breeder) bool {
+	c, ok := a.(interface{ canFallInLove() bool })
+	return !ok || c.canFallInLove()
 }
 
 // ageUp ports AgeableMob.ageUp: the age moves the seconds passed towards
@@ -191,8 +198,9 @@ func resetLove(a breeder) {
 // doing so and is within 3 blocks.
 func breedGoal(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
 	b := a.breedingState()
-	// Sitting pets keep their move flag busy, so the goal cannot run.
-	if s, ok := a.(interface{ Sitting() bool }); ok && s.Sitting() {
+	// Sitting pets and camels, and rolling pandas, keep their move flag busy,
+	// so the goal cannot run.
+	if s, ok := a.(interface{ moveFlagHeld() bool }); ok && s.moveFlagHeld() {
 		b.partner, b.loveTime = nil, 0
 		return mgl64.Vec3{}, false
 	}
@@ -207,6 +215,9 @@ func breedGoal(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
 		if partner = freePartner(a, tx); partner == nil {
 			return mgl64.Vec3{}, false
 		}
+		if s, ok := a.(breedGoalStarter); ok && !s.canStartBreeding(tx) {
+			return mgl64.Vec3{}, false
+		}
 		b.partner = partner.H()
 	}
 	b.loveTime++
@@ -216,6 +227,12 @@ func breedGoal(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
 		return mgl64.Vec3{}, false
 	}
 	return partner.Position(), true
+}
+
+// breedGoalStarter is a breeder whose BreedGoal has conditions to start
+// beyond finding a partner, like pandas that need bamboo nearby.
+type breedGoalStarter interface {
+	canStartBreeding(tx *world.Tx) bool
 }
 
 // goalPartner returns the loaded, living partner of the running BreedGoal.

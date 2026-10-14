@@ -116,6 +116,8 @@ type beeBehaviour struct {
 	speed                                                                                  float64
 	age                                                                                    int
 	breeding                                                                               breeding
+	tempt                                                                                  temptGoal
+	parent                                                                                 followParentGoal
 }
 type Bee struct{ *Ent }
 
@@ -145,6 +147,14 @@ func (b *beeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	timeOfDay := tx.World().Time() % 24000
 	night := timeOfDay >= 13000 && timeOfDay < 23000
+	// TemptGoal: a calm bee follows a player holding a flower until it is
+	// 2.5 blocks away, before it heads for flowers or its hive.
+	if p, ok := b.tempt.next(e, tx, func(s item.Stack) bool { return blockItemInTag(s, "flowers") }, false); ok && b.anger == 0 && !inLove {
+		if p.Position().Sub(e.Position()).LenSqr() >= 2.5*2.5 {
+			return beeFly(b, e, tx, EyePosition(p))
+		}
+		return beeFly(b, e, tx, e.Position())
+	}
 	if b.hasNectar {
 		if movement, handled := beeHiveStep(b, mob, tx, pos); handled {
 			return movement
@@ -218,6 +228,10 @@ func (b *beeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	if b.hasFlower {
 		return beeFly(b, e, tx, b.flower.Vec3().Add(mgl64.Vec3{.5, .5, .5}))
+	}
+	if parent, ok := b.parent.next(e, tx, mob, parentRange{}.orDefault()); ok {
+		// FollowParentGoal: young bees keep close to adults.
+		return beeFly(b, e, tx, parent.Position())
 	}
 	return beeWander(b, e, tx)
 }

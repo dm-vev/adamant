@@ -3,6 +3,7 @@ package entity
 import (
 	"math/rand/v2"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/java26"
@@ -26,15 +27,23 @@ type PandaConfig struct {
 	Rolling, Sitting, LyingOnBack bool
 }
 type pandaState struct {
-	health                                                  *HealthManager
-	effects                                                 *EffectManager
-	age, variant, gene, hiddenGene, sneeze, unhappy, inLove int
-	rolling, sitting, lying, dead                           bool
-	speed                                                   float64
-	next                                                    int
-	navigator                                               Navigator
-	mc                                                      *MovementComputer
-	panic                                                   panicState
+	health                                          *HealthManager
+	effects                                         *EffectManager
+	age, variant, gene, hiddenGene, sneeze, unhappy int
+	rolling, sitting, lying, dead                   bool
+	speed                                           float64
+	next                                            int
+	navigator                                       Navigator
+	mc                                              *MovementComputer
+	panic                                           panicState
+	tempt                                           temptGoal
+	avoid                                           avoidGoal
+	parent                                          followParentGoal
+	avoiding                                        bool
+	breeding                                        breeding
+	// unhappyCooldown is the tick before which a panda in love without
+	// bamboo nearby does not sulk again.
+	unhappyCooldown int64
 }
 
 func NewPanda(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(PandaType, PandaConfig{}) }
@@ -53,23 +62,42 @@ func (pandaType) BBox(e world.Entity) cube.BBox {
 }
 func (c PandaConfig) Apply(d *world.EntityData) { d.Data = c.New() }
 func (c PandaConfig) New() *pandaState {
+	variant := max(0, min(c.Variant, 6))
 	m := c.MaxHealth
 	if m <= 0 {
 		m = 20
+		if variant == 5 {
+			m = 10
+		}
 	}
 	h := c.Health
 	if h <= 0 {
 		h = m
 	}
-	return &pandaState{health: NewHealthManager(h, m), effects: NewEffectManager(), age: c.Age, variant: max(0, min(c.Variant, 6)), gene: max(0, min(c.Gene, 6)), hiddenGene: max(0, min(c.HiddenGene, 6)), sneeze: c.SneezeTicks, unhappy: c.UnhappyTicks, rolling: c.Rolling, sitting: c.Sitting, lying: c.LyingOnBack, speed: .15, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
+	s := &pandaState{health: NewHealthManager(h, m), effects: NewEffectManager(), age: c.Age, variant: variant, gene: max(0, min(c.Gene, 6)), hiddenGene: max(0, min(c.HiddenGene, 6)), sneeze: c.SneezeTicks, unhappy: c.UnhappyTicks, rolling: c.Rolling, sitting: c.Sitting, lying: c.LyingOnBack, speed: .15, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
 		// PandaPanicGoal only reacts to fire, lava, freezing, cactus and lightning.
 		panic: panicState{environmental: true}}
+	if variant == 1 {
+		s.speed = .07
+	}
+	return s
+}
+
+// setAttributes ports Panda.setAttributes: weak pandas have 10 health and lazy
+// ones walk at less than half the speed.
+func (s *pandaState) setAttributes() {
+	if s.variant == 5 {
+		s.health.SetMaxHealth(10)
+	}
+	if s.variant == 1 {
+		s.speed = .07
+	}
 }
 func (pandaType) EncodeNBT(d *world.EntityData) map[string]any {
 	s := d.Data.(*pandaState)
 	m := s.health.MaxHealth()
 	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: m, Current: s.health.Health(), DefaultMin: 0, DefaultMax: m, Min: 0, Max: m}})
-	state := map[string]any{"Age": int32(s.age), "Variant": int32(s.variant), "MainGene": int32(s.gene), "HiddenGene": int32(s.hiddenGene), "SneezeTicks": int32(s.sneeze), "UnhappyTicks": int32(s.unhappy), "InLove": int32(s.inLove), "Rolling": s.rolling, "Sitting": s.sitting, "LyingOnBack": s.lying}
+	state := s.breeding.encodeNBT(map[string]any{"Age": int32(s.age), "Variant": int32(s.variant), "MainGene": int32(s.gene), "HiddenGene": int32(s.hiddenGene), "SneezeTicks": int32(s.sneeze), "UnhappyTicks": int32(s.unhappy), "Rolling": s.rolling, "Sitting": s.sitting, "LyingOnBack": s.lying})
 	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), state))
 }
 func (pandaType) DecodeNBT(n map[string]any, d *world.EntityData) {
@@ -82,12 +110,11 @@ func (pandaType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
 	d.Data = c.New()
-	d.Data.(*pandaState).inLove = int(nbtconv.Int32(s, "InLove"))
+	d.Data.(*pandaState).breeding.decodeNBT(s)
 }
 func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if s.age < 0 {
-		s.age = min(0, s.age+1)
-	}
+	p := &Panda{Ent: e}
+	partner, inLove := tickBreeding(p, tx)
 	if s.sneeze > 0 {
 		s.sneeze--
 		if s.sneeze == 0 {
@@ -98,12 +125,27 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	if s.unhappy > 0 {
+		if s.unhappy == 29 || s.unhappy == 14 {
+			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.panda.cant_breed", Volume: 1, Pitch: 1})
+		}
 		s.unhappy--
 	}
 	// PandaPanicGoal stops while the panda sits.
 	panicking := !s.sitting && s.panic.run(e, tx, &s.navigator)
+	modifier := 1.0
 	if panicking {
 		s.rolling, s.lying = false, false
+		modifier = 2
+	} else if inLove {
+		// PandaBreedGoal: the panda gets up to walk to its partner.
+		s.sitting, s.lying, s.avoiding = false, false, false
+		navigateToPartner(&s.navigator, e, tx, partner)
+	} else if player, ok := s.tempt.next(e, tx, func(st item.Stack) bool { return itemNamed(st, "minecraft:bamboo") }, false); ok {
+		// TemptGoal: a panda follows a player holding bamboo.
+		s.rolling, s.sitting, s.lying, s.avoiding = false, false, false, false
+		s.tempt.follow(e, tx, &s.navigator, player, 2.5)
+	} else if m, ok := s.pandaAvoid(e, tx); ok {
+		modifier = m
 	} else if s.rolling || s.sitting || s.lying {
 		if s.sitting && s.next%120 == 0 {
 			s.sitting = false
@@ -115,6 +157,11 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 			s.lying = false
 			s.next = 40 + rand.IntN(81)
 		}
+	} else if parent, ok := s.parent.next(e, tx, p, parentRange{}.orDefault()); ok {
+		// FollowParentGoal: cubs keep close to adults at 1.25 times their
+		// speed.
+		s.parent.follow(e, tx, &s.navigator, parent)
+		modifier = 1.25
 	} else {
 		if s.next > 0 {
 			s.next--
@@ -136,11 +183,8 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 			}
 		}
 	}
+	speed := groundSpeed(s.speed, modifier)
 	rot, v := e.data.Rot, e.data.Vel
-	speed := s.speed
-	if panicking {
-		speed = groundSpeed(.15, 2)
-	}
 	if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), 1.3); ok && !s.sitting && !s.lying {
 		d := target.Sub(e.data.Pos)
 		d[1] = 0
@@ -157,25 +201,34 @@ func (s *pandaState) Tick(e *Ent, tx *world.Tx) *Movement {
 	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
 	return m
 }
+
+// pandaAvoid are the PandaAvoidGoals: worried pandas flee from players within
+// eight blocks and monsters within four.
+var pandaAvoid = []avoidSpec{
+	{match: func(e world.Entity) bool { return e.H().Type().EncodeEntity() == "minecraft:player" }, distance: 8, walk: 2, sprint: 2},
+	{match: func(e world.Entity) bool { return monsterClass[e.H().Type().EncodeEntity()] }, distance: 4, walk: 2, sprint: 2},
+}
+
+// pandaAvoid runs the PandaAvoidGoals of a worried panda that can perform an
+// action: one that is not lying on its back, scared by a thunderstorm,
+// rolling or sitting.
+func (s *pandaState) pandaAvoid(e *Ent, tx *world.Tx) (float64, bool) {
+	if s.variant != 2 || s.lying || s.rolling || s.sitting || tx.Thundering() {
+		s.avoiding = false
+		return 0, false
+	}
+	modifier, ok := s.avoid.next(e, tx, &s.navigator, pandaAvoid, s.avoiding)
+	s.avoiding = ok
+	return modifier, ok
+}
+
 func (p *Panda) b() *pandaState { return p.Behaviour().(*pandaState) }
+
+// ageTicks returns the age of the panda, negative for cubs.
+func (p *Panda) ageTicks() *int { return &p.b().age }
 func (p *Panda) Tick(tx *world.Tx, n int64) {
 	p.b().effects.Tick(p, tx)
 	p.Ent.Tick(tx, n)
-	b := p.b()
-	if b.inLove > 0 {
-		b.inLove--
-		for e := range tx.EntitiesWithin(cube.Box(-8, -4, -8, 8, 4, 8).Translate(p.Position())) {
-			partner, ok := e.(*Panda)
-			if !ok || partner == p || !partner.CanBreed() {
-				continue
-			}
-			r := java26.NewLegacyRandom(rand.Int64())
-			if h := p.BreedWith(tx, partner, &r); h != nil {
-				tx.AddEntity(h)
-				break
-			}
-		}
-	}
 }
 func (p *Panda) Health() float64        { return p.b().health.Health() }
 func (p *Panda) MaxHealth() float64     { return p.b().health.MaxHealth() }
@@ -190,6 +243,7 @@ func (p *Panda) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	}
 	p.b().health.AddHealth(-d)
 	p.b().panic.hurt(src, p.tx.CurrentTick())
+	resetLove(p)
 	p.view(HurtAction{})
 	onMobHurt(p.tx, p)
 	if p.Dead() {
@@ -235,81 +289,156 @@ func (p *Panda) Variant() int    { return p.b().variant }
 func (p *Panda) Gene() int       { return p.b().gene }
 func (p *Panda) HiddenGene() int { return p.b().hiddenGene }
 func (p *Panda) Age() int        { return p.b().age }
-func (p *Panda) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
+
+// Interact ports Panda.mobInteract. Bamboo grows a cub, puts an adult in
+// love, or else makes it sit down to eat; a golden dandelion pauses a cub's
+// growth. A worried panda scared by a thunderstorm ignores players, and one
+// lying on its back only rolls over.
+func (p *Panda) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	if u == nil || ctx == nil || p.Dead() {
 		return false
 	}
-	held, _ := u.HeldItems()
-	if held.Empty() {
+	b := p.b()
+	if b.variant == 2 && tx.Thundering() {
 		return false
 	}
-	b := p.b()
-	name, _ := held.Item().EncodeItem()
-	switch name {
-	case "minecraft:bamboo":
-		if b.age >= 0 {
-			b.sitting = true
-			b.rolling = false
-			b.next = 100
-			if b.inLove == 0 {
-				b.inLove = 600
-			}
-		}
-		ctx.SubtractFromCount(1)
+	if b.lying {
+		b.lying = false
 		return true
-	case "minecraft:cake":
-		if b.age < 0 {
-			b.age = min(0, b.age+1200)
-			ctx.SubtractFromCount(1)
-			return true
+	}
+	held, _ := u.HeldItems()
+	if !p.breedingFood(held) {
+		return b.age < 0 && feedBreeder(p, u, ctx)
+	}
+	if b.age < 0 && !b.breeding.ageLocked || b.age == 0 && !b.breeding.InLove() {
+		return feedBreeder(p, u, ctx)
+	}
+	if b.age < 0 || b.sitting {
+		return false
+	}
+	if _, ok := tx.Liquid(cube.PosFromVec3(p.Position())); ok {
+		return false
+	}
+	// tryToSit and eat: the panda stops to munch on the bamboo.
+	b.sitting, b.rolling, b.next = true, false, 100
+	b.navigator.Path, b.navigator.Index, b.navigator.HasTarget = nil, 0, false
+	ctx.SubtractFromCount(1)
+	return true
+}
+
+// InLove reports whether the panda is in love.
+func (p *Panda) InLove() bool { return p.b().breeding.InLove() }
+
+func (p *Panda) breedingState() *breeding { return &p.b().breeding }
+
+// breedingFood reports whether the stack is in #panda_food.
+func (p *Panda) breedingFood(stack item.Stack) bool { return itemNamed(stack, "minecraft:bamboo") }
+
+// moveFlagHeld reports whether the panda rolls, which PandaRollGoal does not
+// let other goals interrupt.
+func (p *Panda) moveFlagHeld() bool { return p.b().rolling }
+
+// canStartBreeding ports PandaBreedGoal.canUse: a panda only breeds with
+// bamboo growing within eight blocks. Without it, the panda sulks for 32
+// ticks, at most once every 30 seconds.
+func (p *Panda) canStartBreeding(tx *world.Tx) bool {
+	b := p.b()
+	if b.unhappy != 0 {
+		return false
+	}
+	if pandaBambooNearby(tx, cube.PosFromVec3(p.Position())) {
+		return true
+	}
+	if b.unhappyCooldown <= tx.CurrentTick() {
+		b.unhappy, b.unhappyCooldown = 32, tx.CurrentTick()+600
+	}
+	return false
+}
+
+// pandaBambooNearby ports PandaBreedGoal.canFindBamboo: bamboo in a square of
+// radius seven around the panda, up to two blocks above it.
+func pandaBambooNearby(tx *world.Tx, pos cube.Pos) bool {
+	for y := range 3 {
+		for x := -7; x <= 7; x++ {
+			for z := -7; z <= 7; z++ {
+				if _, ok := tx.Block(pos.Add(cube.Pos{x, y, z})).(block.Bamboo); ok {
+					return true
+				}
+			}
 		}
 	}
 	return false
 }
-func (p *Panda) CanBreed() bool { return !p.Dead() && p.b().age == 0 && p.b().inLove > 0 }
-func (p *Panda) BreedWith(tx *world.Tx, partner *Panda, r *java26.Random) *world.EntityHandle {
-	if partner == nil || partner == p || r == nil || !p.CanBreed() || !partner.CanBreed() {
-		return nil
+
+// breedOffspring ports Panda.getBreedOffspring and setGeneFromParents: the
+// cub inherits a random gene of each parent, either of which mutates with a
+// chance of 1 in 32.
+func (p *Panda) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
+	a, b := p.b(), partner.(*Panda).b()
+	r := java26.NewLegacyRandom(rand.Int64())
+	oneOf := func(s *pandaState) int {
+		if r.NextBoolean() {
+			return s.gene
+		}
+		return s.hiddenGene
 	}
-	a, b := p.b(), partner.b()
-	a.age, b.age = 6000, 6000
-	a.inLove, b.inLove = 0, 0
-	gene := a.gene
-	if r.NextInt(2) == 1 {
-		gene = b.gene
+	var main, hidden int
+	if r.NextBoolean() {
+		main, hidden = oneOf(a), oneOf(b)
+	} else {
+		main, hidden = oneOf(b), oneOf(a)
 	}
-	hidden := a.hiddenGene
-	if r.NextInt(2) == 1 {
-		hidden = b.hiddenGene
+	if r.NextInt(32) == 0 {
+		main = pandaRandomGene(&r)
 	}
-	variant := gene
-	if gene != hidden && (gene == 4 || gene == 5) {
-		variant = 0
+	if r.NextInt(32) == 0 {
+		hidden = pandaRandomGene(&r)
 	}
-	pos := p.Position().Add(partner.Position()).Mul(.5)
-	return world.EntitySpawnOpts{Position: pos}.New(PandaType, PandaConfig{Age: -24000, Variant: variant, Gene: gene, HiddenGene: hidden})
+	return babyAt(p).New(PandaType, PandaConfig{Age: babyStartAge, Variant: pandaVariant(main, hidden), Gene: main, HiddenGene: hidden})
 }
+
+// pandaGroup is the AgeableMobGroupData of naturally spawned pandas.
+type pandaGroup struct{ size int }
+
+// FinalizeSpawn ports Panda.finalizeSpawn: each panda rolls its genes, and
+// after the first panda of a group each has a 20% chance to be a cub.
 func (p *Panda) FinalizeSpawn(_ string, r *java26.Random) {
 	if r == nil {
 		return
 	}
 	b := p.b()
-	g := p.H().SpawnGroup()
-	if g != nil {
-		if v, ok := g.Data.(pandaGenePair); ok {
-			b.gene, b.hiddenGene = v.main, v.hidden
-			b.variant = pandaVariant(b.gene, b.hiddenGene)
-			return
-		}
-	}
-	b.gene = int(r.NextInt(7))
-	b.hiddenGene = int(r.NextInt(7))
+	b.gene, b.hiddenGene = pandaRandomGene(r), pandaRandomGene(r)
 	b.variant = pandaVariant(b.gene, b.hiddenGene)
-	if g != nil {
-		g.Data = pandaGenePair{b.gene, b.hiddenGene}
+	b.setAttributes()
+	g := p.H().SpawnGroup()
+	if g == nil {
+		return
 	}
-	if b.gene == 5 && r.NextInt(32) == 0 {
-		b.sneeze = 20
+	group, _ := g.Data.(pandaGroup)
+	if group.size > 0 && r.NextFloat() <= .2 {
+		b.age = babyStartAge
+	}
+	group.size++
+	g.Data = group
+}
+
+// pandaRandomGene ports Panda.Gene.getRandom.
+func pandaRandomGene(r *java26.Random) int {
+	switch n := r.NextInt(16); {
+	case n == 0:
+		return 1
+	case n == 1:
+		return 2
+	case n == 2:
+		return 3
+	case n == 4:
+		return 6
+	case n < 9:
+		return 5
+	case n < 11:
+		return 4
+	default:
+		return 0
 	}
 }
 func pandaVariant(main, hidden int) int {
@@ -318,8 +447,6 @@ func pandaVariant(main, hidden int) int {
 	}
 	return main
 }
-
-type pandaGenePair struct{ main, hidden int }
 
 var _ Living = (*Panda)(nil)
 var _ Interactable = (*Panda)(nil)
