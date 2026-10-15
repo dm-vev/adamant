@@ -232,6 +232,9 @@ type BlastFurnaceCrackle struct{ sound }
 // SmokerCrackle is a sound played every one to five seconds from a smoker.
 type SmokerCrackle struct{ sound }
 
+// ConduitAttack is a sound played by a conduit when it damages its target.
+type ConduitAttack struct{ sound }
+
 // ComposterEmpty is a sound played when a composter has been emptied.
 type ComposterEmpty struct{ sound }
 

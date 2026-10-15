@@ -236,7 +236,10 @@ func (t ticker) tickFrozenPlayers(tx *Tx, tick int64) {
 	w := tx.World()
 	for _, ref := range w.entityColumns {
 		col := ref.col
-		for index := 0; col != nil && index < len(col.Entities); {
+		if col == nil || !col.Ready() {
+			continue
+		}
+		for index := 0; index < len(col.Entities); {
 			handle := col.Entities[index]
 			if handle.Type().EncodeEntity() == "minecraft:player" {
 				t.tickEntityHandle(tx, tick, handle, entityChunkRef{col: col, pos: ref.pos}, true)
@@ -509,7 +512,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 	// owning chunk again later in the tick.
 	for _, ref := range w.entityColumns {
 		col := ref.col
-		if col == nil || len(col.Entities) == 0 {
+		if col == nil || len(col.Entities) == 0 || !col.Ready() {
 			continue
 		}
 		if w.conf.Synchronous || len(col.viewers) > 0 {
@@ -575,50 +578,11 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 		}
 	}
 	if state.pos != chunkPos {
-		oldPos := state.pos
-		state.pos = chunkPos
-
-		newChunk := tx.chunk(chunkPos)
-		newChunk.addEntity(handle)
-		newChunk.modified = true
-		w.addEntityColumn(chunkPos, newChunk)
-
-		var viewers map[Viewer]struct{}
-		if oldPos == ref.pos && ref.col != nil {
-			if ref.col.removeEntity(handle) {
-				ref.col.modified = true
-			}
-			if len(ref.col.Entities) == 0 {
-				w.removeEntityColumn(ref.pos)
-			}
-			viewers = ref.col.viewers
-		} else if old, ok := w.chunks[oldPos]; ok {
-			if old.removeEntity(handle) {
-				old.modified = true
-			}
-			if len(old.Entities) == 0 {
-				w.removeEntityColumn(oldPos)
-			}
-			viewers = old.viewers
-		}
-
-		if len(viewers) > 0 || len(newChunk.viewers) > 0 {
-			// Entity handles lazily open their backing implementation. We memoise the first load so repeated
-			// viewers or ticker calls reuse the same pointer and avoid repeated provider work each tick.
-			if entity == nil {
-				entity = state.entity(tx, handle)
-			}
-			ent := entity
-			for v := range viewers {
-				if _, ok := newChunk.viewers[v]; !ok {
-					v.HideEntity(ent)
-				}
-			}
-			for v := range newChunk.viewers {
-				if _, ok := viewers[v]; !ok {
-					showEntity(ent, v)
-				}
-			}
+		entity = w.moveEntityChunk(tx, handle, state, chunkPos, ref)
+		if c := w.chunks[chunkPos]; c == nil || !c.Ready() {
+			// As in Java, an entity in a chunk that is not loaded yet, like a
+			// player teleported into ungenerated terrain, waits for it.
+			return
 		}
 	}
 
@@ -686,6 +650,67 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	if state.isTicker && state.ticker != nil {
 		state.ticker.Tick(tx, tick)
 	}
+}
+
+// moveEntityChunk moves the entity from the chunk it is listed in, ref if
+// that is its listed chunk, to chunkPos and shows or hides it to the viewers
+// that gain or lose it. It returns the entity if it had to open it. The new
+// chunk is loaded or queued for generation without waiting for it.
+func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState, chunkPos ChunkPos, ref entityChunkRef) Entity {
+	oldPos := state.pos
+	state.pos = chunkPos
+
+	newChunk, ok := w.chunks[chunkPos]
+	if !ok {
+		var err error
+		if newChunk, err = w.loadChunk(chunkPos); err != nil {
+			w.conf.Log.Error("load chunk: "+err.Error(), "X", chunkPos[0], "Z", chunkPos[1])
+		}
+	}
+	newChunk.addEntity(handle)
+	if newChunk.Ready() {
+		// The generator worker owns the flag of a chunk it is still filling and
+		// marks it modified itself.
+		newChunk.modified = true
+	}
+	w.addEntityColumn(chunkPos, newChunk)
+
+	var viewers map[Viewer]struct{}
+	if oldPos == ref.pos && ref.col != nil {
+		if ref.col.removeEntity(handle) {
+			ref.col.modified = true
+		}
+		if len(ref.col.Entities) == 0 {
+			w.removeEntityColumn(ref.pos)
+		}
+		viewers = ref.col.viewers
+	} else if old, ok := w.chunks[oldPos]; ok {
+		if old.removeEntity(handle) {
+			old.modified = true
+		}
+		if len(old.Entities) == 0 {
+			w.removeEntityColumn(oldPos)
+		}
+		viewers = old.viewers
+	}
+
+	if len(viewers) == 0 && len(newChunk.viewers) == 0 {
+		return nil
+	}
+	// Entity handles lazily open their backing implementation. The opened
+	// entity is returned so the caller reuses the same pointer.
+	ent := state.entity(tx, handle)
+	for v := range viewers {
+		if _, ok := newChunk.viewers[v]; !ok {
+			v.HideEntity(ent)
+		}
+	}
+	for v := range newChunk.viewers {
+		if _, ok := viewers[v]; !ok {
+			showEntity(ent, v)
+		}
+	}
+	return ent
 }
 
 // randUint4 is a structure used to generate random uint4s.

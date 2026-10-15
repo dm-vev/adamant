@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // fallDamageImmune is Java's #fall_damage_immune entity type tag.
@@ -56,6 +57,10 @@ func (e *Ent) tickFall(tx *world.Tx, m *Movement) {
 	}
 	if distance := e.data.FallDistance; distance > 0 {
 		e.fallOn(tx, distance)
+		// Java reports the landing with the block the entity stands on, so
+		// vibration-dampening blocks muffle it.
+		under := cube.PosFromVec3(e.data.Pos.Sub(mgl64.Vec3{0, 0.2, 0}))
+		tx.EmitGameEvent(world.GameEventHitGround, e.data.Pos, world.GameEventContext{Source: e.living(), AffectedState: tx.Block(under)})
 	}
 	e.data.FallDistance = 0
 }

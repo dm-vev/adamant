@@ -147,9 +147,9 @@ func (c clearEffectCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 }
 
 func enchantmentType(name string) item.EnchantmentType {
-	name = strings.TrimPrefix(strings.ToLower(name), "minecraft:")
+	name = "minecraft:" + strings.TrimPrefix(strings.ToLower(name), "minecraft:")
 	for _, e := range item.Enchantments() {
-		if strings.ToLower(strings.ReplaceAll(e.Name(), " ", "_")) == name {
+		if item.JavaEnchantmentID(e) == name {
 			return e
 		}
 	}

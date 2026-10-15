@@ -559,6 +559,9 @@ func (s *Strider) SetMaxHealth(v float64) { s.beast().health.SetMaxHealth(v) }
 func (h *Hoglin) Dead() bool              { return h.beast().dead || h.Health() <= 0 }
 func (z *Zoglin) Dead() bool              { return z.beast().dead || z.Health() <= 0 }
 func (s *Strider) Dead() bool             { return s.beast().dead || s.Health() <= 0 }
+
+// IsSensitiveToWater reports that water hurts striders, as Strider does.
+func (s *Strider) IsSensitiveToWater() bool { return true }
 func beastHurt(e *Ent, self world.Entity, b *netherBeastState, d float64, src world.DamageSource) (float64, bool) {
 	if d <= 0 || b.dead {
 		return 0, false

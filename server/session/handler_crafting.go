@@ -57,6 +57,9 @@ func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackReques
 	if craft.Block() != "crafting_table" {
 		return fmt.Errorf("recipe with network id %v is not a crafting table recipe", a.RecipeNetworkID)
 	}
+	if s.recipeLocked(craft, tx) {
+		return fmt.Errorf("recipe with network id %v is locked", a.RecipeNetworkID)
+	}
 
 	timesCrafted := int(a.NumberOfCrafts)
 	if timesCrafted < 1 {
@@ -669,6 +672,9 @@ func (h *ItemStackRequestHandler) handleAutoCraft(a *protocol.AutoCraftRecipeSta
 	if craft.Block() != "crafting_table" {
 		return fmt.Errorf("recipe with network id %v is not a crafting table recipe", a.RecipeNetworkID)
 	}
+	if s.recipeLocked(craft, tx) {
+		return fmt.Errorf("recipe with network id %v is locked", a.RecipeNetworkID)
+	}
 
 	timesCrafted := int(a.NumberOfCrafts)
 	if timesCrafted < 1 {
@@ -985,4 +991,29 @@ func (h *ItemStackRequestHandler) tryDynamicCraft(s *Session, tx *world.Tx, time
 	}
 
 	return fmt.Errorf("no matching recipe found for crafting grid")
+}
+
+// recipeLocked ports RecipeCraftingHolder.setRecipeUsed: with
+// limited_crafting on, a player crafts a crafting recipe only once it is
+// unlocked. Special recipes, which Bedrock serves as multi and dynamic
+// recipes, are never locked.
+func (s *Session) recipeLocked(r recipe.Recipe, tx *world.Tx) bool {
+	if tx == nil || s.ent == nil || !tx.World().GameRuleBool("limited_crafting") {
+		return false
+	}
+	e, ok := s.ent.Entity(tx)
+	if !ok {
+		return false
+	}
+	unlocker, ok := e.(interface{ UnlockedRecipeIDs() []string })
+	if !ok {
+		return false
+	}
+	unlocked := unlocker.UnlockedRecipeIDs()
+	for _, id := range recipe.JavaRecipeIDs(r) {
+		if slices.Contains(unlocked, id) {
+			return false
+		}
+	}
+	return true
 }

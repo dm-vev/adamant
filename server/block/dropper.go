@@ -114,7 +114,7 @@ func (d Dropper) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.
 // RedstonePowerPostUpdate schedules dispensing after an uncancelled rising edge.
 func (d Dropper) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, oldPower, newPower int) {
 	if oldPower == 0 && newPower > 0 {
-		tx.ScheduleBlockUpdate(pos, after, redstoneTicks(2))
+		tx.ScheduleBlockUpdate(pos, after, gameTicks(4))
 	}
 }
 

@@ -780,13 +780,7 @@ func (m *oceanMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if m.Dead() || d <= 0 || (src.Fire() && m.hasEffect(effect.FireResistance)) {
 		return 0, false
 	}
-	if armor := m.BodyArmor(); !armor.Empty() && src.ReducedByArmour() {
-		if a, ok := armor.Item().(item.NautilusArmor); ok {
-			points, toughness := a.DefencePoints(), a.Toughness()
-			reduction := min(20.0, max(points/5, points-d/(2+toughness/4)))
-			d *= 1 - reduction/25
-		}
-	}
+	d = damageAfterBodyArmour(d, src, m.BodyArmor())
 	if res, ok := b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(src, res.Level())
 	}

@@ -7,8 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func redstoneTicks(ticks int) time.Duration {
-	return time.Duration(max(ticks, 1)) * time.Second / 10
+func gameTicks(ticks int) time.Duration {
+	return time.Duration(max(ticks, 1)) * time.Second / 20
 }
 
 func redstonePowered(pos cube.Pos, tx *world.Tx) bool {

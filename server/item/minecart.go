@@ -68,6 +68,21 @@ func (MinecartTNT) EncodeItem() (string, int16) { return "minecraft:tnt_minecart
 // MaxCount returns the max stack size.
 func (MinecartTNT) MaxCount() int { return 1 }
 
+// MinecartCommandBlock is a command block minecart item.
+type MinecartCommandBlock struct{}
+
+// UseOnBlock places a command block minecart on a rail.
+func (MinecartCommandBlock) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+	create := tx.World().EntityRegistry().Config().MinecartCommandBlock
+	return spawnMinecartOnRail(pos, tx, ctx, create, "command_block_minecart")
+}
+
+// EncodeItem returns the command block minecart item ID.
+func (MinecartCommandBlock) EncodeItem() (string, int16) { return "minecraft:command_block_minecart", 0 }
+
+// MaxCount returns the max stack size.
+func (MinecartCommandBlock) MaxCount() int { return 1 }
+
 func spawnMinecartOnRail(pos cube.Pos, tx *world.Tx, ctx *UseContext, create func(world.EntitySpawnOpts) *world.EntityHandle, name string) bool {
 	ascending, ok := railInfo(tx.Block(pos))
 	if !ok {

@@ -212,6 +212,10 @@ var conf = world.EntityRegistryConfig{
 	MinecartTNT: func(opts world.EntitySpawnOpts) *world.EntityHandle {
 		return opts.New(TNTMinecartType, tntMinecartConf)
 	},
+	// Like a new BaseCommandBlock, the minecart tracks its output.
+	MinecartCommandBlock: func(opts world.EntitySpawnOpts) *world.EntityHandle {
+		return NewCommandBlockMinecart(opts, CommandBlockMinecartConfig{TrackOutput: true})
+	},
 	LingeringPotion: func(opts world.EntitySpawnOpts, t any, owner world.Entity) *world.EntityHandle {
 		return NewLingeringPotion(opts, t.(potion.Potion), owner)
 	},

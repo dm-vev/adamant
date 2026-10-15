@@ -67,12 +67,5 @@ func mixWolfArmorDyes(current color.RGBA, dyes []item.Colour) color.RGBA {
 }
 
 func init() {
-	empty := NewItemTag("", 0)
-	scute := item.NewStack(item.ArmadilloScute{}, 1)
-	Register(NewShaped([]Item{
-		scute, empty, empty,
-		scute, scute, scute,
-		scute, empty, scute,
-	}, item.NewStack(item.WolfArmor{}, 1), NewShape(3, 3), "crafting_table"))
 	RegisterDynamic(wolfArmorDyeRecipe{})
 }

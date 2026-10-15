@@ -352,7 +352,7 @@ func stackHasEnchantment(stack item.Stack, m map[string]any) bool {
 		}
 	case nil:
 		for _, e := range stack.Enchantments() {
-			ids = append(ids, enchantmentID(e.Type()))
+			ids = append(ids, item.JavaEnchantmentID(e.Type()))
 		}
 	}
 	for _, id := range ids {

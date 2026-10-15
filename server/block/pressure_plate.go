@@ -87,7 +87,7 @@ func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
 	newSignal := p.signalForEntities(pos, tx)
 	if newSignal == p.Signal {
 		if newSignal > 0 {
-			tx.ScheduleBlockUpdate(pos, p, redstoneTicks(1))
+			tx.ScheduleBlockUpdate(pos, p, gameTicks(p.Type.pressedTicks()))
 		}
 		return
 	}
@@ -95,7 +95,7 @@ func (p PressurePlate) updateSignal(pos cube.Pos, tx *world.Tx) {
 	tx.SetBlock(pos, p, nil)
 	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	if newSignal > 0 {
-		tx.ScheduleBlockUpdate(pos, p, redstoneTicks(1))
+		tx.ScheduleBlockUpdate(pos, p, gameTicks(p.Type.pressedTicks()))
 	}
 }
 

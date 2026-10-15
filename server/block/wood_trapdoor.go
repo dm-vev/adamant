@@ -67,13 +67,14 @@ func (t WoodTrapdoor) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.U
 	return true
 }
 
-func (t WoodTrapdoor) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
-	powered := power > 0
-	if powered == t.Open {
-		return t, false
+// RedstoneEdgeUpdate opens or closes the block when its signal switches, as
+// Java's POWERED property tracks.
+func (t WoodTrapdoor) RedstoneEdgeUpdate(_ cube.Pos, _ *world.Tx, oldPower, newPower int) (world.Block, bool) {
+	if signal := newPower > 0; signal != (oldPower > 0) && signal != t.Open {
+		t.Open = signal
+		return t, true
 	}
-	t.Open = powered
-	return t, true
+	return t, false
 }
 
 func (t WoodTrapdoor) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, _, _ int) {

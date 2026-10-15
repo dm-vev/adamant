@@ -84,6 +84,15 @@ func (p PressurePlateType) weighted() bool {
 	return p.plate == plateLightWeighted || p.plate == plateHeavyWeighted
 }
 
+// pressedTicks ports BasePressurePlateBlock.getPressedTime: how long a
+// pressed plate waits before checking again for entities on it.
+func (p PressurePlateType) pressedTicks() int {
+	if p.weighted() {
+		return 10
+	}
+	return 20
+}
+
 func (p PressurePlateType) maxWeight() int {
 	switch p.plate {
 	case plateLightWeighted:

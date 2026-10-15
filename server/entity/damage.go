@@ -63,6 +63,13 @@ type (
 	}
 	// WindChargeDamageSource is used for damage caused by a wind charge burst.
 	WindChargeDamageSource struct{}
+	// SplashPotionDamageSource is the indirect magic damage a splash of water
+	// deals to entities that water hurts.
+	SplashPotionDamageSource struct {
+		// Projectile is the thrown potion and Owner the entity that threw
+		// it, if any.
+		Projectile, Owner world.Entity
+	}
 )
 
 func (FallDamageSource) ReducedByArmour() bool     { return false }
@@ -119,10 +126,36 @@ func (WindChargeDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool
 }
 func (WindChargeDamageSource) IgnoreTotem() bool { return false }
 
+func (SplashPotionDamageSource) ReducedByResistance() bool { return true }
+func (SplashPotionDamageSource) ReducedByArmour() bool     { return false }
+func (SplashPotionDamageSource) Fire() bool                { return false }
+func (SplashPotionDamageSource) IgnoreTotem() bool         { return false }
+
 // ArmourEffectivenessMultiplier returns the armour scaling applied for the smash attack.
 func (s MaceSmashDamageSource) ArmourEffectivenessMultiplier() float64 {
 	if s.ArmourMultiplier <= 0 {
 		return 0
 	}
 	return s.ArmourMultiplier
+}
+
+// bodyArmour is armour an animal wears on its body, such as horse or
+// nautilus armour.
+type bodyArmour interface {
+	DefencePoints() float64
+	Toughness() float64
+	KnockBackResistance() float64
+}
+
+// damageAfterBodyArmour ports CombatRules.getDamageAfterAbsorb for the body
+// armour an animal wears: damage armour reduces is lowered by its defence,
+// less so the harder the hit unless the armour is tough.
+func damageAfterBodyArmour(d float64, src world.DamageSource, armour item.Stack) float64 {
+	a, ok := armour.Item().(bodyArmour)
+	if armour.Empty() || !ok || !src.ReducedByArmour() {
+		return d
+	}
+	points, toughness := float32(a.DefencePoints()), float32(2+a.Toughness()/4)
+	real := min(max(points-float32(d)/toughness, points*0.2), 20)
+	return d * float64(1-real/25)
 }

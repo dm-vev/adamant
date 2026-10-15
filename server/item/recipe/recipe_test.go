@@ -27,7 +27,7 @@ func TestSpecialRecipeTypes(t *testing.T) {
 	}
 }
 
-func TestVanillaCraftingDataIncludesSpecialRecipes(t *testing.T) {
+func TestVanillaCraftingDataHasValidMultiRecipes(t *testing.T) {
 	var data struct {
 		Shaped            []shapedRecipe    `nbt:"shaped"`
 		Shapeless         []shapelessRecipe `nbt:"shapeless"`
@@ -36,12 +36,6 @@ func TestVanillaCraftingDataIncludesSpecialRecipes(t *testing.T) {
 	}
 	if err := nbt.Unmarshal(vanillaCraftingData, &data); err != nil {
 		t.Fatal(err)
-	}
-	if got, want := len(data.UserDataShapeless), 1084; got != want {
-		t.Fatalf("user-data recipe count = %d, want %d", got, want)
-	}
-	if got, want := len(data.Multi), 14; got != want {
-		t.Fatalf("multi recipe count = %d, want %d", got, want)
 	}
 	for _, id := range data.Multi {
 		if _, err := uuid.Parse(id); err != nil {

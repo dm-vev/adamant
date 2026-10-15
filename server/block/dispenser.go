@@ -105,7 +105,7 @@ func (d Dispenser) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (worl
 
 func (d Dispenser) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, oldPower, newPower int) {
 	if oldPower == 0 && newPower > 0 {
-		tx.ScheduleBlockUpdate(pos, after, redstoneTicks(2))
+		tx.ScheduleBlockUpdate(pos, after, gameTicks(4))
 	}
 }
 
@@ -178,7 +178,7 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		} else {
 			d.eject(tx, opts, stack.Grow(1-stack.Count()))
 		}
-	case item.Minecart, item.MinecartChest, item.MinecartHopper, item.MinecartTNT:
+	case item.Minecart, item.MinecartChest, item.MinecartHopper, item.MinecartTNT, item.MinecartCommandBlock:
 		front := pos.Side(d.Facing)
 		if IsRail(tx.Block(front)) {
 			opts = world.EntitySpawnOpts{Position: front.Vec3Middle().Add(mgl64.Vec3{0, 0.0625, 0})}
@@ -196,6 +196,8 @@ func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 				tx.AddEntity(conf.MinecartHopper(opts))
 			case item.MinecartTNT:
 				tx.AddEntity(conf.MinecartTNT(opts))
+			case item.MinecartCommandBlock:
+				tx.AddEntity(conf.MinecartCommandBlock(opts))
 			}
 		} else {
 			d.eject(tx, opts, stack.Grow(1-stack.Count()))

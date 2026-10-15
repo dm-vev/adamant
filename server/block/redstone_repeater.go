@@ -72,7 +72,7 @@ func (r RedstoneRepeater) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand
 		tx.SetBlock(pos, r, &world.SetOpts{DisableBlockUpdates: true})
 		tx.DoBlockUpdatesAround(outputPos)
 		if !r.shouldBePowered(pos, tx) {
-			tx.ScheduleBlockUpdate(pos, r, redstoneTicks(r.delayTicks()))
+			tx.ScheduleBlockUpdate(pos, r, gameTicks(r.delayTicks()))
 		}
 	}
 }
@@ -85,7 +85,7 @@ func (r RedstoneRepeater) updateState(pos cube.Pos, tx *world.Tx) {
 	if r.Powered == shouldPower {
 		return
 	}
-	tx.ScheduleBlockUpdate(pos, r, redstoneTicks(r.delayTicks()))
+	tx.ScheduleBlockUpdate(pos, r, gameTicks(r.delayTicks()))
 }
 
 func (r RedstoneRepeater) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {

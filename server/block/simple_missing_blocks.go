@@ -11,28 +11,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// Conduit is an underwater utility block.
-type Conduit struct {
-	transparent
-	solid
-	sourceWaterDisplacer
-}
-
-// BreakInfo ...
-func (c Conduit) BreakInfo() BreakInfo {
-	return newBreakInfo(3, pickaxeHarvestable, pickaxeEffective, oneOf(c)).withBlastResistance(3)
-}
-
-// EncodeItem ...
-func (Conduit) EncodeItem() (name string, meta int16) {
-	return "minecraft:conduit", 0
-}
-
-// EncodeBlock ...
-func (Conduit) EncodeBlock() (string, map[string]any) {
-	return "minecraft:conduit", nil
-}
-
 // HoneyBlock is a sticky block made from honey bottles.
 type HoneyBlock struct {
 	transparent

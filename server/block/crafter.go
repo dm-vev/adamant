@@ -135,7 +135,7 @@ func (c Crafter) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.
 	return c, true
 }
 func (c Crafter) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, oldPower, newPower int) {
-	if oldPower == 0 && newPower > 0 { tx.ScheduleBlockUpdate(pos, after, redstoneTicks(2)) }
+	if oldPower == 0 && newPower > 0 { tx.ScheduleBlockUpdate(pos, after, gameTicks(4)) }
 }
 func (c Crafter) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) { c.craft(pos, tx) }
 func (c Crafter) Tick(_ int64, pos cube.Pos, tx *world.Tx) {

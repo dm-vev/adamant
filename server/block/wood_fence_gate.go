@@ -74,13 +74,14 @@ func (f WoodFenceGate) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	tx.SetBlock(pos, f, nil)
 }
 
-func (f WoodFenceGate) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
-	powered := power > 0
-	if powered == f.Open {
-		return f, false
+// RedstoneEdgeUpdate opens or closes the block when its signal switches, as
+// Java's POWERED property tracks.
+func (f WoodFenceGate) RedstoneEdgeUpdate(_ cube.Pos, _ *world.Tx, oldPower, newPower int) (world.Block, bool) {
+	if signal := newPower > 0; signal != (oldPower > 0) && signal != f.Open {
+		f.Open = signal
+		return f, true
 	}
-	f.Open = powered
-	return f, true
+	return f, false
 }
 
 func (f WoodFenceGate) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after world.Block, _, _ int) {

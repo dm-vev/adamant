@@ -62,13 +62,14 @@ func doorUpdateFrom(pos, changed cube.Pos) (below, above bool) {
 	return changed == pos || changed == pos.Side(cube.FaceDown), changed == pos || changed == pos.Side(cube.FaceUp)
 }
 
-// RedstonePowerUpdate opens the door while either half is powered.
-func (d IronDoor) RedstonePowerUpdate(pos cube.Pos, tx *world.Tx, power int) (world.Block, bool) {
-	powered := power > 0 || tx.RedstonePower(pos.Side(cube.Face(boolByte(!d.Top)))) > 0
-	if powered == d.Open {
+// RedstoneEdgeUpdate opens or closes the door when the signal of either half
+// switches.
+func (d IronDoor) RedstoneEdgeUpdate(pos cube.Pos, tx *world.Tx, oldPower, newPower int) (world.Block, bool) {
+	signal, switched := doorSignalSwitch(pos, d.Top, tx, oldPower, newPower)
+	if !switched || signal == d.Open {
 		return d, false
 	}
-	d.Open = powered
+	d.Open = signal
 	return d, true
 }
 
@@ -186,10 +187,10 @@ func (t IronTrapdoor) UseOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Ve
 	return placed(ctx)
 }
 
-// RedstonePowerUpdate opens the trapdoor while powered.
-func (t IronTrapdoor) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
-	if powered := power > 0; powered != t.Open {
-		t.Open = powered
+// RedstoneEdgeUpdate opens or closes the trapdoor when its signal switches.
+func (t IronTrapdoor) RedstoneEdgeUpdate(_ cube.Pos, _ *world.Tx, oldPower, newPower int) (world.Block, bool) {
+	if signal := newPower > 0; signal != (oldPower > 0) && signal != t.Open {
+		t.Open = signal
 		return t, true
 	}
 	return t, false

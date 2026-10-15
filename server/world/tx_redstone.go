@@ -17,6 +17,12 @@ func (r RedstoneTransaction) ScheduleUpdate(pos cube.Pos) {
 	r.tx.World().redstone.invalidateAround(pos, pos, RedstoneUpdateCauseScheduledTick, r.tx.Range())
 }
 
+// ObservedPower returns the input power the engine last observed at pos when
+// it updated the block there.
+func (r RedstoneTransaction) ObservedPower(pos cube.Pos) int {
+	return r.tx.World().redstone.power[pos]
+}
+
 // Torch returns a transaction-scoped handle for transient redstone torch state at pos.
 func (r RedstoneTransaction) Torch(pos cube.Pos) RedstoneTorchTransaction {
 	return RedstoneTorchTransaction{tx: r.tx, pos: pos}

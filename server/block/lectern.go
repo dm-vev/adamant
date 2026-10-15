@@ -134,7 +134,7 @@ func (l Lectern) TurnPage(pos cube.Pos, tx *world.Tx, page int) error {
 	l.Powered = true
 	tx.SetBlock(pos, l, nil)
 	notifyComparatorUpdate(pos, tx)
-	tx.ScheduleBlockUpdate(pos, l, redstoneTicks(1))
+	tx.ScheduleBlockUpdate(pos, l, gameTicks(2))
 	return nil
 }
 

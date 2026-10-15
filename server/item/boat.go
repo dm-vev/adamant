@@ -22,6 +22,7 @@ const (
 	BoatVariantBamboo
 	BoatVariantCherry
 	BoatVariantPaleOak
+	BoatVariantPoplar
 )
 
 // BoatVariants returns all supported boat variants.
@@ -37,6 +38,7 @@ func BoatVariants() []BoatVariant {
 		BoatVariantBamboo,
 		BoatVariantCherry,
 		BoatVariantPaleOak,
+		BoatVariantPoplar,
 	}
 }
 
@@ -47,7 +49,7 @@ func (v BoatVariant) Int() int {
 
 // BoatVariantFromInt converts an integer to a boat variant, defaulting to oak for unknown values.
 func BoatVariantFromInt(variant int) BoatVariant {
-	if variant < int(BoatVariantOak) || variant > int(BoatVariantPaleOak) {
+	if variant < int(BoatVariantOak) || variant > int(BoatVariantPoplar) {
 		return BoatVariantOak
 	}
 	return BoatVariant(variant)
@@ -73,6 +75,8 @@ func (v BoatVariant) boatItemName() string {
 		return "minecraft:cherry_boat"
 	case BoatVariantPaleOak:
 		return "minecraft:pale_oak_boat"
+	case BoatVariantPoplar:
+		return "minecraft:poplar_boat"
 	default:
 		return "minecraft:oak_boat"
 	}
@@ -98,6 +102,8 @@ func (v BoatVariant) chestBoatItemName() string {
 		return "minecraft:cherry_chest_boat"
 	case BoatVariantPaleOak:
 		return "minecraft:pale_oak_chest_boat"
+	case BoatVariantPoplar:
+		return "minecraft:poplar_chest_boat"
 	default:
 		return "minecraft:oak_chest_boat"
 	}

@@ -18,11 +18,10 @@ type SplashableBlock interface {
 	Splash(tx *world.Tx, pos cube.Pos)
 }
 
-// SplashableEntity is an entity that can be splashed with a splash bottle.
-type SplashableEntity interface {
-	world.Entity
-	// Splash is called when a water bottle splashes onto an entity.
-	Splash(tx *world.Tx, pos mgl64.Vec3)
+// waterSensitive is an entity that water hurts, such as an enderman or a
+// blaze, as LivingEntity.isSensitiveToWater reports.
+type waterSensitive interface {
+	IsSensitiveToWater() bool
 }
 
 // potionSplash returns a function that creates a potion splash with a specific
@@ -87,18 +86,44 @@ func potionSplash(durMul float64, pot potion.Potion, linger bool) func(e *Ent, t
 				if b, ok := tx.Block(resultPos).(SplashableBlock); ok {
 					b.Splash(tx, resultPos)
 				}
-			case trace.EntityResult:
-				// TODO: Damage endermen, blazes, striders and snow golems when implemented and rehydrate axolotls.
 			}
-
-			for otherE := range filterLiving(tx.EntitiesWithin(box.GrowVec3(mgl64.Vec3{8.25, 4.25, 8.25}))) {
-				if splashE, ok := otherE.(SplashableEntity); ok {
-					splashE.Splash(tx, otherE.Position())
-				}
-			}
+			splashWater(e, tx, box)
 		}
 		if linger {
 			tx.AddEntity(NewAreaEffectCloud(world.EntitySpawnOpts{Position: pos}, pot))
+		}
+	}
+}
+
+// splashWater ports AbstractThrownPotion.affectEntitiesAround for water:
+// within four blocks, living entities sensitive to water take one point of
+// indirect magic damage and burning ones are extinguished, and every
+// axolotl in the area is rehydrated.
+func splashWater(e *Ent, tx *world.Tx, box cube.BBox) {
+	area := box.GrowVec3(mgl64.Vec3{4, 2, 4})
+	var owner world.Entity
+	if p, ok := e.Behaviour().(*ProjectileBehaviour); ok && p.Owner() != nil {
+		owner, _ = p.Owner().Entity(tx)
+	}
+	for other := range filterLiving(tx.EntitiesWithin(area)) {
+		if !other.H().Type().BBox(other).Translate(other.Position()).IntersectsWith(area) {
+			continue
+		}
+		if axolotl, ok := other.(*Axolotl); ok {
+			axolotl.Rehydrate()
+		}
+		if other.Position().Sub(e.Position()).LenSqr() >= 16 {
+			continue
+		}
+		living := other.(Living)
+		if sensitive, ok := other.(waterSensitive); ok && sensitive.IsSensitiveToWater() {
+			living.Hurt(1, SplashPotionDamageSource{Projectile: e, Owner: owner})
+		}
+		if burning, ok := other.(interface {
+			OnFireDuration() time.Duration
+			Extinguish()
+		}); ok && burning.OnFireDuration() > 0 && !living.Dead() {
+			burning.Extinguish()
 		}
 	}
 }

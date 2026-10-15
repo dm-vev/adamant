@@ -89,7 +89,7 @@ func (t Tripwire) updatePowered(pos cube.Pos, tx *world.Tx) {
 	powered := tripwirePowered(pos, tx)
 	if powered == t.Powered {
 		if powered {
-			tx.ScheduleBlockUpdate(pos, t, redstoneTicks(1))
+			tx.ScheduleBlockUpdate(pos, t, gameTicks(10))
 		}
 		return
 	}
@@ -97,7 +97,7 @@ func (t Tripwire) updatePowered(pos cube.Pos, tx *world.Tx) {
 	tx.SetBlock(pos, t, nil)
 	updateTripwireFrom(pos, tx)
 	if powered {
-		tx.ScheduleBlockUpdate(pos, t, redstoneTicks(1))
+		tx.ScheduleBlockUpdate(pos, t, gameTicks(10))
 	}
 }
 

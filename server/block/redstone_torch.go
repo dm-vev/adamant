@@ -74,7 +74,7 @@ func (t RedstoneTorch) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 	place(tx, pos, t, user, ctx)
 	ok := placed(ctx)
 	if ok {
-		tx.ScheduleBlockUpdate(pos, t, redstoneTicks(1))
+		tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
 	}
 	return ok
 }
@@ -91,11 +91,11 @@ func (t RedstoneTorch) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) 
 	if burnedOut, recoverable := torch.BurnoutStatus(); burnedOut {
 		if t.recoverBurnout(pos, changed, tx, recoverable, false, t.attachmentPowered(pos, tx)) {
 			torch.ClearBurnout()
-			tx.ScheduleBlockUpdate(pos, t, redstoneTicks(1))
+			tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
 		}
 		return
 	}
-	tx.ScheduleBlockUpdate(pos, t, redstoneTicks(1))
+	tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
 }
 
 // ScheduledTick refreshes the lit state after the torch's one-redstone-tick inversion delay.
@@ -167,7 +167,7 @@ func (t RedstoneTorch) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, upd
 			return
 		}
 		torch.ClearBurnout()
-		tx.ScheduleBlockUpdate(pos, t, redstoneTicks(1))
+		tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
 		return
 	}
 	attachmentPowered := t.attachmentPowered(pos, tx)
@@ -177,7 +177,7 @@ func (t RedstoneTorch) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, upd
 	if attachmentPowered && redstoneTorchSelfTriggered(pos, update) {
 		torch.MarkSelfTriggered()
 	}
-	tx.ScheduleBlockUpdate(pos, t, redstoneTicks(1))
+	tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
 }
 
 // attachmentPowered reports whether the block the torch is attached to is powered.

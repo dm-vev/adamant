@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"strings"
-
-	"github.com/df-mc/dragonfly/server/item"
 )
 
 type itemTag struct {
@@ -150,10 +148,6 @@ func itemInTag(itemID, tagID string) bool {
 	_, ok = members[normalize(itemID)]
 	return ok
 }
-func enchantmentID(enchantment item.EnchantmentType) string {
-	return normalize("minecraft:" + strings.ToLower(strings.ReplaceAll(enchantment.Name(), " ", "_")))
-}
-
 func enchantmentTagMembers(tagID string) (map[string]struct{}, error) {
 	if !strings.Contains(tagID, ":") {
 		tagID = "minecraft:" + tagID

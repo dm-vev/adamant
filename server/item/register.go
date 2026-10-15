@@ -65,6 +65,7 @@ func init() {
 	world.RegisterItem(Crossbow{})
 	world.RegisterItem(Diamond{})
 	world.RegisterItem(DiamondHorseArmour{})
+	world.RegisterItem(NetheriteHorseArmour{})
 	world.RegisterItem(DiscFragment{})
 	world.RegisterItem(DragonBreath{})
 	world.RegisterItem(EndCrystal{})
@@ -121,6 +122,7 @@ func init() {
 	world.RegisterItem(MinecartChest{})
 	world.RegisterItem(MinecartHopper{})
 	world.RegisterItem(MinecartTNT{})
+	world.RegisterItem(MinecartCommandBlock{})
 	for _, variant := range BoatVariants() {
 		world.RegisterItem(Boat{Variant: variant})
 		world.RegisterItem(ChestBoat{Variant: variant})

@@ -51,6 +51,22 @@ func (q *generationQueue) pop() (generationTask, bool) {
 	return task, true
 }
 
+// prioritize moves the waiting task that generates pos, if any, to the front
+// of the queue so the next free worker takes it. The world goroutine calls it
+// before it waits for a chunk it needs now.
+func (q *generationQueue) prioritize(pos ChunkPos) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for i := q.head; i < len(q.tasks); i++ {
+		if q.tasks[i].pos == pos {
+			task := q.tasks[i]
+			copy(q.tasks[q.head+1:i+1], q.tasks[q.head:i])
+			q.tasks[q.head] = task
+			return
+		}
+	}
+}
+
 // close stops the queue and returns the tasks no worker took.
 func (q *generationQueue) close() []generationTask {
 	q.mu.Lock()

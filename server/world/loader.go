@@ -125,6 +125,7 @@ func (l *Loader) Load(tx *Tx, n int) {
 	l.mu.RLock()
 	queueLen := len(l.loadQueue)
 	l.mu.RUnlock()
+	ignored := l.ignoredByChunkLoading(tx)
 	queued := 0
 	for processed := 0; queued < n && processed < queueLen; processed++ {
 		l.mu.Lock()
@@ -144,6 +145,12 @@ func (l *Loader) Load(tx *Tx, n int) {
 			continue
 		}
 		w := l.w
+		if _, loaded := w.chunks[pos]; ignored && !loaded {
+			// The viewer waits for something else to load the chunk.
+			l.loadQueue = append(l.loadQueue, pos)
+			l.mu.Unlock()
+			continue
+		}
 		l.pending[pos] = struct{}{}
 		l.loadQueue = append(l.loadQueue, pos)
 		l.mu.Unlock()
@@ -158,6 +165,21 @@ func (l *Loader) Load(tx *Tx, n int) {
 			l.mu.Unlock()
 		}
 	}
+}
+
+// SpectatingViewer is a Viewer that may watch the world as a spectator.
+type SpectatingViewer interface {
+	Viewer
+	// Spectating reports whether the viewer watches as a spectator.
+	Spectating(tx *Tx) bool
+}
+
+// ignoredByChunkLoading reports whether the loader loads no chunks of its
+// own, as ChunkMap ignores a spectator while spectators_generate_chunks is
+// off: it only sees chunks that something else loaded.
+func (l *Loader) ignoredByChunkLoading(tx *Tx) bool {
+	spectator, ok := l.viewer.(SpectatingViewer)
+	return ok && !tx.World().GameRuleBool("spectators_generate_chunks") && spectator.Spectating(tx)
 }
 
 // viewChunk passes a loaded chunk to the Loader's Viewer. If the chunk failed

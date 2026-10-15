@@ -204,6 +204,13 @@ type AquaticMobBehaviour struct {
 }
 type AquaticMob struct{ *Ent }
 type Axolotl struct{ *AquaticMob }
+
+// Rehydrate ports Axolotl.rehydrate: a splash of water gives an axolotl out
+// of water 1800 more ticks of air, up to its maximum.
+func (a *Axolotl) Rehydrate() {
+	b := a.behaviour()
+	b.airTicks = max(b.airTicks-1800, 0)
+}
 type Cod struct{ *AquaticMob }
 type Pufferfish struct{ *AquaticMob }
 type Salmon struct{ *AquaticMob }

@@ -787,9 +787,18 @@ func (s *Session) SendHealth(health, max, absorption float64) {
 	})
 }
 
-// SendEffect sends an effects passed to the player.
+// SendEffect sends an effect newly added to the player.
 func (s *Session) SendEffect(e effect.Effect) {
-	s.SendEffectRemoval(e.Type())
+	s.sendEffect(e, packet.MobEffectAdd)
+}
+
+// SendEffectModification sends an effect of the player that replaced one of
+// the same type, which BDS sends as a modification rather than a new effect.
+func (s *Session) SendEffectModification(e effect.Effect) {
+	s.sendEffect(e, packet.MobEffectModify)
+}
+
+func (s *Session) sendEffect(e effect.Effect, op byte) {
 	id, _ := effect.ID(e.Type())
 	dur := e.Duration() / (time.Second / 20)
 	if e.Infinite() {
@@ -797,7 +806,7 @@ func (s *Session) SendEffect(e effect.Effect) {
 	}
 	s.writePacket(&packet.MobEffect{
 		EntityRuntimeID: selfEntityRuntimeID,
-		Operation:       packet.MobEffectAdd,
+		Operation:       op,
 		EffectType:      int32(id),
 		Amplifier:       int32(e.Level() - 1),
 		Particles:       !e.ParticlesHidden(),

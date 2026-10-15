@@ -136,7 +136,7 @@ func (c RedstoneComparator) updateOutput(pos cube.Pos, tx *world.Tx) {
 	if target == c.Output && c.Powered == shouldPower {
 		return
 	}
-	tx.ScheduleBlockUpdate(pos, c, redstoneTicks(2))
+	tx.ScheduleBlockUpdate(pos, c, gameTicks(2))
 }
 
 func (c RedstoneComparator) targetOutput(pos cube.Pos, tx *world.Tx) uint8 {

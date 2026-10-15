@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
 // StackFromJavaNBT decodes a Java 1.20.5+ item stack compound into a Dragonfly
@@ -128,6 +129,14 @@ func StackFromJavaNBT(data map[string]any) (Stack, error) {
 			applyJavaEnchantments(&s, value)
 		case "minecraft:potion_contents", "Potion":
 			s = javaPotionContents(s, value)
+		case "minecraft:instrument":
+			if horn, ok := s.Item().(GoatHorn); ok {
+				id, _ := value.(string)
+				if horn.Type, ok = GoatHornFromJavaInstrument(id); !ok {
+					return Stack{}, fmt.Errorf("unknown Java goat horn instrument %v", value)
+				}
+				s = s.WithItem(horn)
+			}
 	}
 
 	}
@@ -211,6 +220,9 @@ func StackToJavaNBT(stack Stack) (map[string]any, error) {
 			components["minecraft:recipes"] = recipes
 		}
 	}
+	if horn, ok := stack.Item().(GoatHorn); ok {
+		components["minecraft:instrument"] = JavaInstrumentID(horn.Type)
+	}
 	if bottle, ok := stack.Item().(OminousBottle); ok {
 		if bottle.Amplifier < 0 || bottle.Amplifier > 4 {
 			return nil, fmt.Errorf("ominous bottle amplifier %d is outside 0..4", bottle.Amplifier)
@@ -250,7 +262,7 @@ func StackToJavaNBT(stack Stack) (map[string]any, error) {
 		}
 		// Retain source-only enchantments that the native registry cannot expose.
 		for _, enchantment := range enchantments {
-			levels["minecraft:"+strings.ToLower(strings.ReplaceAll(enchantment.Type().Name(), " ", "_"))] = int32(enchantment.Level())
+			levels[JavaEnchantmentID(enchantment.Type())] = int32(enchantment.Level())
 		}
 		components[component] = levels
 	}
@@ -268,8 +280,7 @@ func applyJavaEnchantments(s *Stack, value any) {
 	}
 	byName := make(map[string]EnchantmentType)
 	for _, enchantment := range Enchantments() {
-		name := strings.ToLower(strings.ReplaceAll(enchantment.Name(), " ", "_"))
-		byName[name] = enchantment
+		byName[strings.TrimPrefix(JavaEnchantmentID(enchantment), "minecraft:")] = enchantment
 	}
 	var found []Enchantment
 	for name, rawLevel := range levels {
@@ -281,6 +292,36 @@ func applyJavaEnchantments(s *Stack, value any) {
 		}
 	}
 	*s = s.WithForcedEnchantments(found...)
+}
+
+// JavaEnchantmentID returns the Java registry ID of an enchantment: its name
+// in snake case, except for the curses, which Java names after their effect.
+func JavaEnchantmentID(e EnchantmentType) string {
+	switch name := e.Name(); name {
+	case "Curse of Binding":
+		return "minecraft:binding_curse"
+	case "Curse of Vanishing":
+		return "minecraft:vanishing_curse"
+	default:
+		return "minecraft:" + strings.ToLower(strings.ReplaceAll(name, " ", "_"))
+	}
+}
+
+// JavaInstrumentID returns the Java instrument a goat horn plays, such as
+// minecraft:ponder_goat_horn.
+func JavaInstrumentID(h sound.Horn) string {
+	return "minecraft:" + strings.ToLower(h.Name()) + "_goat_horn"
+}
+
+// GoatHornFromJavaInstrument returns the goat horn playing a Java
+// instrument.
+func GoatHornFromJavaInstrument(id string) (sound.Horn, bool) {
+	for _, h := range sound.GoatHorns() {
+		if JavaInstrumentID(h) == id || strings.TrimPrefix(JavaInstrumentID(h), "minecraft:") == id {
+			return h, true
+		}
+	}
+	return sound.Horn{}, false
 }
 
 func unbreakable(value any) bool {

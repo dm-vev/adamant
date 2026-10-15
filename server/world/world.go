@@ -863,6 +863,8 @@ func (tx *Tx) setBlockEntity(pos cube.Pos, b Block) {
 	}
 	b = w.replacePositionTrackingBlock(pos, c.BlockEntities[pos], b)
 	c.BlockEntities[pos] = b
+	// Chunk and sub-chunk responses cache encoded block entities.
+	c.invalidateBlockEntityPayloads()
 	c.modified = true
 }
 
@@ -1353,17 +1355,23 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	pos := state.pos
 	w.Handler().HandleEntityDespawn(tx, e)
 
-	c := tx.chunk(pos)
-	if c.removeEntity(handle) {
-		c.modified = true
-	}
-	if len(c.Entities) == 0 {
-		w.removeEntityColumn(pos)
+	// The entity's chunk is loaded, though it may still be generating if the
+	// entity was teleported there.
+	c, loaded := w.chunks[pos]
+	if loaded {
+		if c.removeEntity(handle) && c.Ready() {
+			c.modified = true
+		}
+		if len(c.Entities) == 0 {
+			w.removeEntityColumn(pos)
+		}
 	}
 
 	w.removeEntityFromViewLayers(e)
-	for v := range c.viewers {
-		v.HideEntity(e)
+	if loaded {
+		for v := range c.viewers {
+			v.HideEntity(e)
+		}
 	}
 	w.removePendingRider(handle)
 	delete(w.entities, handle)
@@ -1949,6 +1957,18 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 // in it are closed.
 func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 	w.finishGeneration(tx, c)
+	// An entity moved by a teleport stays listed in its old chunk until its
+	// next tick. It moves to the chunk it is in now rather than closing with
+	// the chunk it left: a teleported player would otherwise be kicked.
+	for _, e := range slices.Clone(c.Entities) {
+		state, ok := w.entities[e]
+		if !ok || state.pos != pos {
+			continue
+		}
+		if now := chunkPosFromVec3(e.data.Pos); now != pos {
+			w.moveEntityChunk(tx, e, state, now, entityChunkRef{pos: pos, col: c})
+		}
+	}
 	for _, e := range slices.Clone(c.Entities) {
 		if _, ok := e.Entity(tx); ok {
 			continue
@@ -2213,21 +2233,32 @@ func (tx *Tx) chunk(pos ChunkPos) *Column {
 	w := tx.World()
 	c, ok := w.chunks[pos]
 	if ok {
-		c.waitReady()
+		w.waitColumnReady(pos, c)
 		c.ensureLight(w, pos)
 		w.finishChunkRequest(tx, pos, c)
 		return c
 	}
 	c, err := w.loadChunk(pos)
-	if !c.Ready() {
-		c.waitReady()
-	}
+	w.waitColumnReady(pos, c)
 	c.ensureLight(w, pos)
 	w.finishChunkRequest(tx, pos, c)
 	if err != nil {
 		w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
 	}
 	return c
+}
+
+// waitColumnReady waits for the column at pos to finish generating. Its
+// generation first moves ahead of the queued chunks nothing waits for yet,
+// so the world goroutine waits for one chunk rather than the whole backlog.
+func (w *World) waitColumnReady(pos ChunkPos, c *Column) {
+	if c.Ready() {
+		return
+	}
+	if w.generatorQueue != nil {
+		w.generatorQueue.prioritize(pos)
+	}
+	c.waitReady()
 }
 
 func (w *World) chunkLoaded(pos ChunkPos) bool {

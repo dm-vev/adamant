@@ -632,6 +632,10 @@ func (m *speciesMob) Health() float64        { return m.s().health.Health() }
 func (m *speciesMob) MaxHealth() float64     { return m.s().health.MaxHealth() }
 func (m *speciesMob) SetMaxHealth(v float64) { m.s().health.SetMaxHealth(v) }
 func (m *speciesMob) Dead() bool             { return m.s().dead || m.Health() <= 0 }
+
+// IsSensitiveToWater reports whether water hurts the mob, as it hurts
+// endermen.
+func (m *speciesMob) IsSensitiveToWater() bool { return m.s().kind == endermanSpecies }
 func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s := m.s()
 	if m.Dead() || d <= 0 {
@@ -646,6 +650,16 @@ func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		if s.kind == endermanSpecies {
 			m.teleportRandom(m.tx)
 			return 0, false
+		}
+	case SplashPotionDamageSource:
+		// Enderman.hurtServer: a splash of water hurts, then the enderman
+		// teleports away.
+		if s.kind == endermanSpecies {
+			defer func() {
+				if !m.Dead() {
+					m.teleportRandom(m.tx)
+				}
+			}()
 		}
 	}
 	if s.kind == silverfishSpecies {

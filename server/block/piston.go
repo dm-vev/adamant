@@ -275,7 +275,7 @@ func (p *Piston) finishMove(pos cube.Pos, tx *world.Tx) {
 	p.Moving = false
 	p.Attached = nil
 	p.store(pos, tx)
-	tx.ScheduleBlockUpdate(pos, *p, redstoneTicks(1))
+	tx.ScheduleBlockUpdate(pos, *p, gameTicks(2))
 }
 
 func (p Piston) spawnMovingBlocks(pistonPos cube.Pos, blocks []cube.Pos, dir cube.Face, extending bool, tx *world.Tx) bool {

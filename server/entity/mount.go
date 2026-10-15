@@ -699,7 +699,7 @@ func mountArmor(s item.Stack) bool {
 		return false
 	}
 	switch s.Item().(type) {
-	case item.LeatherHorseArmour, item.CopperHorseArmour, item.IronHorseArmour, item.GoldenHorseArmour, item.DiamondHorseArmour:
+	case item.LeatherHorseArmour, item.CopperHorseArmour, item.IronHorseArmour, item.GoldenHorseArmour, item.DiamondHorseArmour, item.NetheriteHorseArmour:
 		return true
 	default:
 		return false
@@ -1086,6 +1086,7 @@ func (m *Mount) Hurt(v float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b := m.b()
+	v = damageAfterBodyArmour(v, src, b.armor)
 	var ok bool
 	if v, ok = mobEffectDamage(b.effects, v, src); !ok {
 		return 0, false
@@ -1173,6 +1174,11 @@ func (m *Mount) KnockBack(src mgl64.Vec3, force, height float64) {
 	d[1] = 0
 	if d.LenSqr() == 0 {
 		return
+	}
+	// LivingEntity.knockback: knockback resistance, such as netherite horse
+	// armour's, weakens the push.
+	if a, ok := m.b().armor.Item().(bodyArmour); ok && !m.b().armor.Empty() {
+		force, height = force*(1-a.KnockBackResistance()), height*(1-a.KnockBackResistance())
 	}
 	m.SetVelocity(m.Velocity().Add(d.Normalize().Mul(force).Add(mgl64.Vec3{0, height, 0})))
 }

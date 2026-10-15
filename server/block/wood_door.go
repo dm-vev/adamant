@@ -71,13 +71,13 @@ func (d WoodDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
 	tx.Redstone().ScheduleUpdate(pos)
 }
 
-func (d WoodDoor) RedstonePowerUpdate(pos cube.Pos, tx *world.Tx, power int) (world.Block, bool) {
-	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
-	powered := power > 0 || tx.RedstonePower(otherPos) > 0
-	if powered == d.Open {
+// RedstoneEdgeUpdate opens or closes the door when its signal switches.
+func (d WoodDoor) RedstoneEdgeUpdate(pos cube.Pos, tx *world.Tx, oldPower, newPower int) (world.Block, bool) {
+	signal, switched := doorSignalSwitch(pos, d.Top, tx, oldPower, newPower)
+	if !switched || signal == d.Open {
 		return d, false
 	}
-	d.Open = powered
+	d.Open = signal
 	return d, true
 }
 
@@ -191,4 +191,15 @@ func allDoors() (doors []world.Block) {
 		}
 	}
 	return
+}
+
+// doorSignalSwitch ports DoorBlock.neighborChanged: a door's signal is the
+// power of either half, and the door only opens or closes when that signal
+// switches, which Java keeps as its POWERED property. The engine's last
+// observed power of each half stands in for it.
+func doorSignalSwitch(pos cube.Pos, top bool, tx *world.Tx, oldPower, newPower int) (signal, switched bool) {
+	other := pos.Side(cube.Face(boolByte(!top)))
+	was := oldPower > 0 || tx.Redstone().ObservedPower(other) > 0
+	signal = newPower > 0 || tx.RedstonePower(other) > 0
+	return signal, signal != was
 }

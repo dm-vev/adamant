@@ -868,7 +868,7 @@ func RailInfo(b world.Block) (RailDirection, bool, bool) {
 func (r DetectorRail) updatePowered(pos cube.Pos, tx *world.Tx, powered bool) {
 	if r.Powered == powered {
 		if powered {
-			tx.ScheduleBlockUpdate(pos, r, redstoneTicks(1))
+			tx.ScheduleBlockUpdate(pos, r, gameTicks(20))
 		}
 		return
 	}
@@ -877,7 +877,7 @@ func (r DetectorRail) updatePowered(pos cube.Pos, tx *world.Tx, powered bool) {
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(cube.FaceDown))
 	if powered {
-		tx.ScheduleBlockUpdate(pos, r, redstoneTicks(1))
+		tx.ScheduleBlockUpdate(pos, r, gameTicks(20))
 	}
 }
 

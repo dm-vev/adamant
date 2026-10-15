@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -29,11 +30,12 @@ type table struct {
 	Modifier       modifierList `json:"modifier"`
 }
 type pool struct {
-	Rolls      any         `json:"rolls"`
-	BonusRolls any         `json:"bonus_rolls"`
-	Entries    []entry     `json:"entries"`
-	Condition  *condition  `json:"condition"`
-	Conditions []condition `json:"conditions"`
+	Rolls      any          `json:"rolls"`
+	BonusRolls any          `json:"bonus_rolls"`
+	Entries    []entry      `json:"entries"`
+	Condition  *condition   `json:"condition"`
+	Conditions []condition  `json:"conditions"`
+	Modifier   modifierList `json:"modifier"`
 }
 type entry struct {
 	Type       string       `json:"type"`
@@ -221,7 +223,7 @@ func matchesEnchantmentSubpredicate(predicate map[string]any, stack item.Stack) 
 			return false, fmt.Errorf("unknown registered enchantment %q", name)
 		}
 		for _, enchanted := range stack.Enchantments() {
-			id := enchantmentID(enchanted.Type())
+			id := item.JavaEnchantmentID(enchanted.Type())
 			matches := false
 			if tag {
 				_, matches = tagMembers[id]
@@ -432,7 +434,9 @@ func Generate(id string, seed int64, ctx Context) ([]item.Stack, error) {
 			if err != nil {
 				return nil, err
 			}
-			for _, e := range selected {
+			// LootPool and LootTable decorate every item with their own
+			// functions after the entry's.
+			for _, e := range withModifiers(selected, p.Modifier, t.Modifier) {
 				s, err := makeStack(e, &ctx)
 				if err != nil {
 					return nil, err
@@ -444,6 +448,24 @@ func Generate(id string, seed int64, ctx Context) ([]item.Stack, error) {
 		}
 	}
 	return out, nil
+}
+
+// withModifiers returns copies of entries whose items also go through the
+// functions passed, in order, after their own.
+func withModifiers(entries []entry, extra ...[]modifier) []entry {
+	n := 0
+	for _, mods := range extra {
+		n += len(mods)
+	}
+	if n == 0 {
+		return entries
+	}
+	out := make([]entry, len(entries))
+	for i, e := range entries {
+		e.Modifier = slices.Concat(append([][]modifier{e.Modifier}, extra...)...)
+		out[i] = e
+	}
+	return out
 }
 func normalize(s string) string {
 	if !strings.Contains(s, ":") {
@@ -1126,10 +1148,12 @@ func expand(e entry, c *Context) ([]entry, error) {
 				if err != nil {
 					return nil, err
 				}
-				out = append(out, x...)
+				out = append(out, withModifiers(x, p.Modifier)...)
 			}
 		}
-		return out, nil
+		// The nested table's functions, then the reference's own, apply to
+		// every item the nested table yields.
+		return withModifiers(out, nested.Modifier, e.Functions, e.Modifier), nil
 	case "minecraft:alternatives":
 		for _, child := range children {
 			x, err := choose([]entry{child}, c)
@@ -1320,7 +1344,9 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 			components["minecraft:enchantments"] = levels
 			setEnchantmentsApplied = true
 		case "minecraft:copy_components":
-			return item.Stack{}, fmt.Errorf("loot modifier %q requires source entity/block components", m.Type)
+			if err := lootCopyComponents(m.Raw, components, c); err != nil {
+				return item.Stack{}, err
+			}
 		case "minecraft:set_potion":
 			components["minecraft:potion_contents"] = map[string]any{"potion": m.Potion}
 		case "minecraft:set_name":
@@ -1392,8 +1418,18 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 			stew = chosen
 		case "minecraft:exploration_map":
 			exploration = m.Raw
-		case "minecraft:copy_state", "minecraft:set_instrument":
-			return item.Stack{}, fmt.Errorf("loot modifier %q requires context-specific component support", m.Type)
+		case "minecraft:copy_state":
+			if err := lootCopyState(m.Raw, components, c); err != nil {
+				return item.Stack{}, err
+			}
+		case "minecraft:set_instrument":
+			instrument, err := lootInstrument(m.Options, c)
+			if err != nil {
+				return item.Stack{}, err
+			}
+			if instrument != "" {
+				components["minecraft:instrument"] = instrument
+			}
 		case "minecraft:filtered":
 			filters = append(filters, m.Raw)
 		default:
@@ -1534,7 +1570,7 @@ func lootExplorationMap(stack item.Stack, raw map[string]any, c *Context) (item.
 func lootEnchantmentLevel(stack item.Stack, id string) int {
 	want := normalize(id)
 	for _, e := range stack.Enchantments() {
-		if enchantmentID(e.Type()) == want {
+		if item.JavaEnchantmentID(e.Type()) == want {
 			return e.Level()
 		}
 	}
@@ -1543,7 +1579,7 @@ func lootEnchantmentLevel(stack item.Stack, id string) int {
 func registeredEnchantmentType(id string) (item.EnchantmentType, bool) {
 	want := normalize(id)
 	for _, enchantment := range item.Enchantments() {
-		if enchantmentID(enchantment) == want {
+		if item.JavaEnchantmentID(enchantment) == want {
 			return enchantment, true
 		}
 	}

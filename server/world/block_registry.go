@@ -415,11 +415,35 @@ func (br *BasicBlockRegistry) Finalize() {
 		}
 		br.networkhashToRids[netHash] = rid
 		br.ridsToNetworkhash[rid] = netHash
+		if client, ok := clientDoorProperties(properties); ok {
+			br.ridsToNetworkhash[rid], networkHashScratch = networkBlockHash(name, client, networkHashScratch)
+		}
 	}
 	if !foundAir {
 		panic("BlockRegistry.Finalize: no minecraft:air block state registered")
 	}
 	br.finalized = true
+}
+
+// clientDoorProperties returns the state BDS sends for the upper half of an
+// open door. Only the lower half carries open_bit on Bedrock, while the
+// server keeps Java's open state on both halves, so the upper half is sent
+// closed.
+func clientDoorProperties(properties map[string]any) (map[string]any, bool) {
+	if _, door := properties["door_hinge_bit"]; !door {
+		return nil, false
+	}
+	upper, open := properties["upper_block_bit"], properties["open_bit"]
+	if (upper != true && upper != uint8(1)) || (open != true && open != uint8(1)) {
+		return nil, false
+	}
+	client := maps.Clone(properties)
+	if open == true {
+		client["open_bit"] = false
+	} else {
+		client["open_bit"] = uint8(0)
+	}
+	return client, true
 }
 
 // AirRuntimeID returns the runtime ID of the air block.

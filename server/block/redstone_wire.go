@@ -244,7 +244,7 @@ func redstoneWireNonSolidComponent(pos cube.Pos, b world.Block, tx *world.Tx, fa
 		return false
 	}
 	switch b.(type) {
-	case world.RedstonePowerConsumer, world.RedstonePowerAction, world.RedstonePowerContextAction:
+	case world.RedstonePowerConsumer, world.RedstoneEdgeConsumer, world.RedstonePowerAction, world.RedstonePowerContextAction:
 		return true
 	}
 	return false
@@ -273,6 +273,7 @@ func redstoneWireRelevant(b world.Block) bool {
 		world.RedstoneStrongPowerSource,
 		world.RedstonePowerRelayer,
 		world.RedstonePowerConsumer,
+		world.RedstoneEdgeConsumer,
 		world.RedstonePowerAction,
 		world.RedstonePowerContextAction:
 		return true

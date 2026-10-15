@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -27,11 +28,14 @@ import (
 // DB implements a world provider for the Minecraft world format, which
 // is based on a leveldb database.
 type DB struct {
-	conf     Config
-	ldb      *leveldb.DB
-	dir      string
-	ldat     *leveldat.Data
-	lmu      sync.Mutex
+	conf Config
+	ldb  *leveldb.DB
+	dir  string
+	ldat *leveldat.Data
+	lmu  sync.Mutex
+	// emu serialises column stores, which read the stored entity lists
+	// and records of other chunks to decide what to delete.
+	emu      sync.Mutex
 	set      *world.Settings
 	endFight map[string]any
 }
@@ -526,6 +530,13 @@ func (db *DB) entities(k dbKey) ([]chunk.Entity, error) {
 	for i := 0; i < len(ids); i += 8 {
 		id := int64(binary.LittleEndian.Uint64(ids[i : i+8]))
 		data, err := db.ldb.Get(entityIndex(id), nil)
+		if errors.Is(err, leveldb.ErrNotFound) {
+			// A world saved before ownership checks may list an entity whose
+			// record another chunk's save removed. The entity is gone, so the
+			// rest of the chunk loads and the next save drops the reference.
+			db.conf.Log.Debug("skip missing entity record", "ID", id)
+			continue
+		}
 		if err != nil {
 			db.conf.Log.Error("read entity: "+err.Error(), "ID", id)
 			return nil, err
@@ -663,6 +674,8 @@ func (db *DB) storeColumn(k dbKey, col *chunk.Column) error {
 	db.storeBiomes(batch, k, data.Biomes)
 	db.storeSubChunks(batch, k, data.SubChunks, col.Chunk.Range())
 	db.storeFinalisation(batch, k, finalisationPopulated)
+	db.emu.Lock()
+	defer db.emu.Unlock()
 	db.storeEntities(batch, k, col.Entities)
 	db.storeBlockEntities(batch, k, col.BlockEntities)
 	db.storeScheduledUpdates(batch, k, col.ScheduledTicks)
@@ -715,9 +728,11 @@ func (db *DB) storeEntities(batch *leveldb.Batch, k dbKey, entities []chunk.Enti
 		}
 	}
 
+	owner := entityOwner(k)
 	newIDs := make([]int64, 0, len(entities))
 	for _, e := range entities {
 		e.Data["UniqueID"] = e.ID
+		e.Data[entityOwnerKey] = owner
 		b, err := nbt.MarshalEncoding(e.Data, nbt.LittleEndian)
 		if err != nil {
 			db.conf.Log.Error("store entities: encode NBT: " + err.Error())
@@ -727,9 +742,10 @@ func (db *DB) storeEntities(batch *leveldb.Batch, k dbKey, entities []chunk.Enti
 		newIDs = append(newIDs, e.ID)
 	}
 
-	// Remove entities that are no longer referenced.
+	// Remove entities that left the chunk, unless another chunk already
+	// stored them after they moved there.
 	for _, uniqueID := range previousIDs {
-		if !slices.Contains(newIDs, uniqueID) {
+		if !slices.Contains(newIDs, uniqueID) && db.ownsEntity(k, uniqueID) {
 			batch.Delete(entityIndex(uniqueID))
 		}
 	}
@@ -746,6 +762,44 @@ func (db *DB) storeEntities(batch *leveldb.Batch, k dbKey, entities []chunk.Enti
 
 	// Remove old entity data for this chunk.
 	batch.Delete(k.Sum(keyEntitiesOld))
+}
+
+// entityOwnerKey is the entity record field naming the chunk whose entity
+// list holds the entity.
+const entityOwnerKey = "adamant:owner"
+
+// entityOwner returns the owner field of entities stored in the chunk k.
+func entityOwner(k dbKey) map[string]any {
+	dim, _ := world.DimensionID(k.dim)
+	return map[string]any{"x": k.pos[0], "z": k.pos[1], "dim": int32(dim)}
+}
+
+// ownsEntity reports whether the stored record of the entity belongs to the
+// chunk k. Records without an owner field, written before it existed, belong
+// to the chunk holding their position.
+func (db *DB) ownsEntity(k dbKey, id int64) bool {
+	data, err := db.ldb.Get(entityIndex(id), nil)
+	if err != nil {
+		return false
+	}
+	var record map[string]any
+	if err := nbt.UnmarshalEncoding(data, &record, nbt.LittleEndian); err != nil {
+		return true
+	}
+	if owner, ok := record[entityOwnerKey].(map[string]any); ok {
+		want := entityOwner(k)
+		return owner["x"] == want["x"] && owner["z"] == want["z"] && owner["dim"] == want["dim"]
+	}
+	pos, ok := record["Pos"].([]any)
+	if !ok || len(pos) != 3 {
+		return true
+	}
+	x, xOK := pos[0].(float32)
+	z, zOK := pos[2].(float32)
+	if !xOK || !zOK {
+		return true
+	}
+	return world.ChunkPos{int32(math.Floor(float64(x))) >> 4, int32(math.Floor(float64(z))) >> 4} == k.pos
 }
 
 func entityIndex(id int64) []byte {

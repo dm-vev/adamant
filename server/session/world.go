@@ -1228,6 +1228,8 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 			Position:  vec64To32(pos),
 		})
 		return
+	case sound.ConduitAttack:
+		pk.SoundType = packet.SoundEventConduitAttack
 	case sound.ComposterEmpty:
 		pk.SoundType = packet.SoundEventComposterEmpty
 	case sound.ComposterFill:

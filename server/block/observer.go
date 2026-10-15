@@ -56,7 +56,7 @@ func (o Observer) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.
 	if observerPulsePending(tx.World(), pos) {
 		return
 	}
-	tx.ScheduleBlockUpdate(pos, o, redstoneTicks(1))
+	tx.ScheduleBlockUpdate(pos, o, gameTicks(2))
 }
 
 // ScheduledTick ...
@@ -71,7 +71,7 @@ func (o Observer) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	o.Powered = true
 	tx.SetBlock(pos, o, nil)
 	tx.DoBlockUpdatesAround(pos.Side(o.Facing.Opposite()))
-	tx.ScheduleBlockUpdate(pos, o, redstoneTicks(2))
+	tx.ScheduleBlockUpdate(pos, o, gameTicks(2))
 }
 
 func (o Observer) RedstonePower(_ cube.Pos, _ *world.Tx, face cube.Face) int {

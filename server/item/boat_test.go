@@ -22,6 +22,7 @@ func TestBoatEncodeItemByVariant(t *testing.T) {
 		{variant: item.BoatVariantBamboo, name: "minecraft:bamboo_raft"},
 		{variant: item.BoatVariantCherry, name: "minecraft:cherry_boat"},
 		{variant: item.BoatVariantPaleOak, name: "minecraft:pale_oak_boat"},
+		{variant: item.BoatVariantPoplar, name: "minecraft:poplar_boat"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -51,6 +52,7 @@ func TestChestBoatEncodeItemByVariant(t *testing.T) {
 		{variant: item.BoatVariantBamboo, name: "minecraft:bamboo_chest_raft"},
 		{variant: item.BoatVariantCherry, name: "minecraft:cherry_chest_boat"},
 		{variant: item.BoatVariantPaleOak, name: "minecraft:pale_oak_chest_boat"},
+		{variant: item.BoatVariantPoplar, name: "minecraft:poplar_chest_boat"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

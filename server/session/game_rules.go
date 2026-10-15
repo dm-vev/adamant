@@ -34,6 +34,7 @@ var clientGameRules = map[string]string{
 	"entity_drops":                 "doentitydrops",
 	"random_tick_speed":            "randomtickspeed",
 	"max_command_sequence_length":  "maxcommandchainlength",
+	"limited_crafting":             "dolimitedcrafting",
 }
 
 // ClientGameRules returns the Bedrock client view of the world's gamerules,
@@ -63,4 +64,18 @@ func clientGameRuleValue(v any) any {
 		return uint32(max(n, 0))
 	}
 	return v
+}
+
+// Spectating reports whether the player of the session watches as a
+// spectator, whose chunk loading spectators_generate_chunks controls.
+func (s *Session) Spectating(tx *world.Tx) bool {
+	if s.ent == nil {
+		return false
+	}
+	e, ok := s.ent.Entity(tx)
+	if !ok {
+		return false
+	}
+	g, ok := e.(interface{ GameMode() world.GameMode })
+	return ok && g.GameMode() == world.GameModeSpectator
 }

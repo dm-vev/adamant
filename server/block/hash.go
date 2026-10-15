@@ -433,7 +433,7 @@ func (b BeetrootSeeds) Hash() (uint64, uint64) {
 }
 
 func (b Bell) Hash() (uint64, uint64) {
-	return hashBell, uint64(b.Attach.Uint8()) | uint64(b.Facing)<<2 | uint64(boolByte(b.Toggle))<<5
+	return hashBell, uint64(b.Attach.Uint8()) | uint64(b.Facing)<<2 | uint64(boolByte(b.Powered))<<5
 }
 
 func (d BigDripleaf) Hash() (uint64, uint64) {

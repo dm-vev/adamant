@@ -86,6 +86,14 @@ type RedstonePowerConsumer interface {
 	RedstonePowerUpdate(pos cube.Pos, tx *Tx, power int) (after Block, changed bool)
 }
 
+// RedstoneEdgeConsumer is implemented by blocks whose block state changes only
+// when their input power switches on or off, as Java blocks that keep a
+// POWERED property do: a door opened by hand stays open until its signal
+// changes. oldPower is the power the engine last observed at pos.
+type RedstoneEdgeConsumer interface {
+	RedstoneEdgeUpdate(pos cube.Pos, tx *Tx, oldPower, newPower int) (after Block, changed bool)
+}
+
 // RedstonePowerPostUpdater may be implemented by consumers that need to apply side effects after an uncancelled
 // redstone state update, such as syncing the other half of a door.
 type RedstonePowerPostUpdater interface {
@@ -479,6 +487,8 @@ func (e *redstoneEngine) update(tx *Tx, pos cube.Pos, d redstoneDirty, newPower 
 	after, blockChanged := b, false
 	if consumer, ok := b.(RedstonePowerConsumer); ok {
 		after, blockChanged = consumer.RedstonePowerUpdate(pos, tx, newPower)
+	} else if consumer, ok := b.(RedstoneEdgeConsumer); ok {
+		after, blockChanged = consumer.RedstoneEdgeUpdate(pos, tx, oldPower, newPower)
 	}
 	action, hasAction := b.(RedstonePowerAction)
 	contextAction, hasContextAction := b.(RedstonePowerContextAction)
@@ -1174,6 +1184,9 @@ func redstoneStepFace(from, to cube.Pos) cube.Face {
 func classifyRedstoneBlock(b Block) (source, consumer, action, relayer bool) {
 	_, source = b.(RedstonePowerSource)
 	_, consumer = b.(RedstonePowerConsumer)
+	if !consumer {
+		_, consumer = b.(RedstoneEdgeConsumer)
+	}
 	_, action = b.(RedstonePowerAction)
 	if !action {
 		_, action = b.(RedstonePowerContextAction)

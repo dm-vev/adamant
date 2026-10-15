@@ -40,7 +40,7 @@ func (l RedstoneLamp) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, upda
 		return
 	}
 	if !powered && l.Lit {
-		tx.ScheduleBlockUpdate(pos, l, redstoneTicks(4))
+		tx.ScheduleBlockUpdate(pos, l, gameTicks(4))
 	}
 }
 

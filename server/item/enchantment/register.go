@@ -26,6 +26,7 @@ func init() {
 	item.RegisterEnchantment(20, Punch)
 	item.RegisterEnchantment(21, Flame)
 	item.RegisterEnchantment(22, Infinity)
+	item.RegisterEnchantment(23, LuckOfTheSea)
 	item.RegisterEnchantment(24, Lure)
 	item.RegisterEnchantment(25, FrostWalker)
 	item.RegisterEnchantment(26, Mending)

@@ -69,3 +69,51 @@ type DiamondHorseArmour struct{ horseArmour }
 func (DiamondHorseArmour) EncodeItem() (string, int16) {
 	return "minecraft:diamond_horse_armor", 0
 }
+
+// NetheriteHorseArmour is the most protective horse armour, which does not
+// burn.
+type NetheriteHorseArmour struct{ horseArmour }
+
+// EncodeItem ...
+func (NetheriteHorseArmour) EncodeItem() (string, int16) {
+	return "minecraft:netherite_horse_armor", 0
+}
+
+// FireProof ...
+func (NetheriteHorseArmour) FireProof() bool { return true }
+
+// The protection of horse armour is the body defence of its Java armour
+// material.
+
+// DefencePoints ...
+func (LeatherHorseArmour) DefencePoints() float64 { return 3 }
+
+// DefencePoints ...
+func (CopperHorseArmour) DefencePoints() float64 { return 4 }
+
+// DefencePoints ...
+func (IronHorseArmour) DefencePoints() float64 { return 5 }
+
+// DefencePoints ...
+func (GoldenHorseArmour) DefencePoints() float64 { return 7 }
+
+// DefencePoints ...
+func (DiamondHorseArmour) DefencePoints() float64 { return 11 }
+
+// Toughness ...
+func (DiamondHorseArmour) Toughness() float64 { return 2 }
+
+// DefencePoints ...
+func (NetheriteHorseArmour) DefencePoints() float64 { return 19 }
+
+// Toughness ...
+func (NetheriteHorseArmour) Toughness() float64 { return 3 }
+
+// KnockBackResistance ...
+func (NetheriteHorseArmour) KnockBackResistance() float64 { return 0.1 }
+
+// Toughness ...
+func (horseArmour) Toughness() float64 { return 0 }
+
+// KnockBackResistance ...
+func (horseArmour) KnockBackResistance() float64 { return 0 }

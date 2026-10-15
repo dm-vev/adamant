@@ -197,6 +197,9 @@ func (m *Blaze) n() *netherState                { return m.Behaviour().(*netherS
 func (m *MagmaCube) n() *netherState            { return m.Behaviour().(*netherState) }
 func (m *Ghast) Tick(tx *world.Tx, n int64)     { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (m *Blaze) Tick(tx *world.Tx, n int64)     { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
+
+// IsSensitiveToWater reports that water hurts blazes, as Blaze does.
+func (m *Blaze) IsSensitiveToWater() bool { return true }
 func (m *MagmaCube) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (s *netherState) Tick(e *Ent, tx *world.Tx) *Movement {
 	switch s.kind {

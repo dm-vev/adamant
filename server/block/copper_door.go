@@ -96,13 +96,13 @@ func (d CopperDoor) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
 	tx.Redstone().ScheduleUpdate(pos)
 }
 
-func (d CopperDoor) RedstonePowerUpdate(pos cube.Pos, tx *world.Tx, power int) (world.Block, bool) {
-	otherPos := pos.Side(cube.Face(boolByte(!d.Top)))
-	powered := power > 0 || tx.RedstonePower(otherPos) > 0
-	if powered == d.Open {
+// RedstoneEdgeUpdate opens or closes the door when its signal switches.
+func (d CopperDoor) RedstoneEdgeUpdate(pos cube.Pos, tx *world.Tx, oldPower, newPower int) (world.Block, bool) {
+	signal, switched := doorSignalSwitch(pos, d.Top, tx, oldPower, newPower)
+	if !switched || signal == d.Open {
 		return d, false
 	}
-	d.Open = powered
+	d.Open = signal
 	return d, true
 }
 

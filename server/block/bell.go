@@ -10,6 +10,8 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+// bellRingTicks is the Ticks count at which a Bell stops ringing and its
+// idle count wraps. BDS counts two a tick while ringing and one while still.
 const bellRingTicks = 50
 
 // Bell is a transparent block that can be placed on the floor, ceiling, or walls and rung by interacting with it.
@@ -22,10 +24,12 @@ type Bell struct {
 	Attach BellAttachment
 	// Facing represents the horizontal direction of the Bell.
 	Facing cube.Direction
-	// Toggle is true while the Bell is ringing.
-	Toggle bool
+	// Powered is true while the Bell receives redstone power. It rings when
+	// power starts.
+	Powered bool
 
-	ringTicks     int
+	ringing       bool
+	ticks         int
 	ringDirection cube.Face
 }
 
@@ -49,11 +53,16 @@ func (b Bell) Ring(pos cube.Pos, tx *world.Tx, face cube.Face) bool {
 	if !b.canRing(face) {
 		return false
 	}
-	b.Toggle, b.ringTicks = true, 0
+	b.ring(pos, tx, face)
+	return true
+}
+
+// ring ports BellBlock.attemptToRing: the bell swings towards face.
+func (b Bell) ring(pos cube.Pos, tx *world.Tx, face cube.Face) {
+	b.ringing, b.ticks = true, 0
 	b.ringDirection = face
 	tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 	tx.PlaySound(pos.Vec3Centre(), sound.BellRing{})
-	return true
 }
 
 // UseOnBlock ...
@@ -91,20 +100,25 @@ func (b Bell) UseOnBlock(
 	return placed(ctx)
 }
 
-// NeighbourUpdateTick ...
+// NeighbourUpdateTick drops a Bell that lost its support and, as
+// BellBlock.neighborChanged, rings it towards its facing when redstone power
+// starts.
 func (b Bell) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	switch b.Attach {
 	case StandingBellAttachment():
 		if !bellSupportSolid(tx, pos, cube.FaceDown) {
 			breakBlock(b, pos, tx)
+			return
 		}
 	case HangingBellAttachment():
 		if !bellSupportSolid(tx, pos, cube.FaceUp) {
 			breakBlock(b, pos, tx)
+			return
 		}
 	case SideBellAttachment():
 		if !bellSupportSolid(tx, pos, b.Facing.Face().Opposite()) {
 			breakBlock(b, pos, tx)
+			return
 		}
 	case MultipleBellAttachment():
 		face := b.Facing.Face()
@@ -121,21 +135,31 @@ func (b Bell) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 			tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 		default:
 			breakBlock(b, pos, tx)
+			return
 		}
+	}
+	if powered := redstonePowered(pos, tx); powered != b.Powered {
+		b.Powered = powered
+		if powered {
+			b.ring(pos, tx, b.Facing.Face())
+			return
+		}
+		tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 	}
 }
 
-// Tick ...
+// Tick advances the Ticks count of the Bell as BDS does: two a tick while
+// ringing until it reaches 50 and the bell stops, one a tick while still,
+// wrapping at 50.
 func (b Bell) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
-	if !b.Toggle {
-		return
+	if b.ringing {
+		if b.ticks += 2; b.ticks >= bellRingTicks {
+			b.ringing, b.ticks = false, 0
+		}
+	} else if b.ticks++; b.ticks >= bellRingTicks {
+		b.ticks = 0
 	}
-	b.ringTicks++
-	// Java starts resonance at tick 50 and keeps the ringing state for 60 ticks.
-	if b.ringTicks >= bellRingTicks+10 {
-		b.Toggle, b.ringTicks = false, 0
-	}
-	tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
+	tx.SetBlockEntity(pos, b)
 }
 
 // Model ...
@@ -148,7 +172,7 @@ func (b Bell) EncodeBlock() (string, map[string]any) {
 	return "minecraft:bell", map[string]any{
 		"attachment": b.Attach.String(),
 		"direction":  int32(horizontalDirection(b.Facing)),
-		"toggle_bit": boolByte(b.Toggle),
+		"toggle_bit": boolByte(b.Powered),
 	}
 }
 
@@ -162,17 +186,20 @@ func (b Bell) EncodeNBT() map[string]any {
 	return map[string]any{
 		"id":                 "Bell",
 		"BlockEntityVersion": int32(0),
-		"Ringing":            boolByte(b.Toggle),
-		"Ticks":              int32(b.ringTicks),
-		"Direction":          int32(b.ringFace()),
+		"Ringing":            boolByte(b.ringing),
+		"Ticks":              int32(b.ticks),
+		"Direction":          b.ringDirectionID(),
 	}
 }
 
 // DecodeNBT ...
 func (b Bell) DecodeNBT(data map[string]any) any {
-	b.Toggle = nbtconv.Bool(data, "Ringing")
-	b.ringTicks = int(nbtconv.Int32(data, "Ticks"))
-	b.ringDirection = cube.Face(nbtconv.Int32(data, "Direction"))
+	b.ringing = nbtconv.Bool(data, "Ringing")
+	b.ticks = int(nbtconv.Int32(data, "Ticks"))
+	b.ringDirection = cube.Face(255)
+	if direction, ok := data["Direction"].(int32); ok {
+		b.ringDirection = bellRingFace(direction)
+	}
 	return b
 }
 
@@ -185,11 +212,24 @@ func (b Bell) canRing(face cube.Face) bool {
 	return face.Axis() != cube.Y && face.Axis() != b.Facing.Face().Axis()
 }
 
-func (b Bell) ringFace() cube.Face {
+// ringDirectionID returns the Direction the bell last swung towards as the
+// Bedrock horizontal direction the block state uses, or 255 if it never rang.
+func (b Bell) ringDirectionID() int32 {
 	if b.ringDirection < cube.FaceNorth || b.ringDirection > cube.FaceEast {
-		return cube.Face(255)
+		return 255
 	}
-	return b.ringDirection
+	return int32(horizontalDirection(b.ringDirection.Direction()))
+}
+
+// bellRingFace returns the face of a Bedrock horizontal direction stored as
+// Direction, or an invalid face for 255.
+func bellRingFace(id int32) cube.Face {
+	for _, d := range cube.Directions() {
+		if int32(horizontalDirection(d)) == id {
+			return d.Face()
+		}
+	}
+	return cube.Face(255)
 }
 
 func bellSupportSolid(tx *world.Tx, pos cube.Pos, face cube.Face) bool {
@@ -202,7 +242,7 @@ func allBells() (bells []world.Block) {
 	for _, a := range BellAttachments() {
 		for _, d := range cube.Directions() {
 			bells = append(bells, Bell{Attach: a, Facing: d})
-			bells = append(bells, Bell{Attach: a, Facing: d, Toggle: true})
+			bells = append(bells, Bell{Attach: a, Facing: d, Powered: true})
 		}
 	}
 	return

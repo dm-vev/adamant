@@ -988,7 +988,15 @@ func (p *Player) sendFood() {
 // AddEffect will overwrite any effects present if the level of the effect is higher than the existing one, or
 // if the effects' levels are equal and the new effect has a longer duration.
 func (p *Player) AddEffect(e effect.Effect) {
-	p.session().SendEffect(p.effects.Add(e, p))
+	_, had := p.effects.Effect(e.Type())
+	switch res := p.effects.Add(e, p); {
+	case res.Type() == nil:
+		// The player is immune to the effect.
+	case had:
+		p.session().SendEffectModification(res)
+	default:
+		p.session().SendEffect(res)
+	}
 	p.updateState()
 }
 
