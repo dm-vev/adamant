@@ -159,6 +159,10 @@ type World struct {
 	scratchRandom                []cube.Pos
 	scratchBlockEntities         []cube.Pos
 	scratchLoaderAreas           []loaderActiveArea
+	scratchFocus                 []ChunkPos
+	// saver writes saved columns in the background; it is nil for
+	// synchronous and read-only worlds, which write them at once.
+	saver *chunkSaver
 	scratchInhabitedPlayers      []inhabitedTimePlayer
 	scratchPostProcessingColumns []columnRef
 
@@ -1891,6 +1895,27 @@ func (w *World) Save() {
 		return
 	}
 	<-w.exec(w.save(w.saveChunk))
+	w.finishSave()
+}
+
+// SaveWorld saves the world of the transaction like World.Save, from within
+// the transaction, where Save would wait for the goroutine running it. As
+// Java's save-all without flush, it does not wait for the chunks to reach
+// the disk.
+func (tx *Tx) SaveWorld() {
+	w := tx.World()
+	w.save(w.saveChunk)(tx)
+	if !w.conf.ReadOnly {
+		w.savePositionTracking()
+	}
+}
+
+// finishSave waits for the chunks saved to reach the disk, as saving did when
+// it wrote them itself, and saves the position tracking data.
+func (w *World) finishSave() {
+	if w.saver != nil {
+		w.saver.flush()
+	}
 	if !w.conf.ReadOnly {
 		w.savePositionTracking()
 	}
@@ -1935,6 +1960,13 @@ func (w *World) save(f func(*Tx, ChunkPos, *Column)) execFunc {
 
 // saveChunk saves a chunk and its entities to disk after compacting the chunk.
 func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
+	w.persistChunk(tx, pos, c, true)
+}
+
+// persistChunk saves the column at pos. A live column stays loaded and keeps
+// changing, so the background saver gets a copy of its blocks; a closing
+// column is handed over as it is.
+func (w *World) persistChunk(tx *Tx, pos ChunkPos, c *Column, live bool) {
 	// Column generation runs in background workers. Saving is performed on the world transaction goroutine and must
 	// not access columns that are still being generated.
 	if !c.Ready() {
@@ -1944,12 +1976,39 @@ func (w *World) saveChunk(tx *Tx, pos ChunkPos, c *Column) {
 	// Mutable entity state is not tracked by the block-column dirty flag.
 	// Loaded inventories and species state must be snapshotted even when no
 	// block or entity position has changed since the column was read.
-	if !w.conf.ReadOnly && (c.modified || len(c.Entities) != 0) {
-		c.Compact()
-		if err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, w.columnTo(c, pos)); err != nil {
-			w.conf.Log.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
-		}
+	if w.conf.ReadOnly || !c.modified && len(c.Entities) == 0 {
+		return
 	}
+	c.Compact()
+	col := w.columnTo(c, pos)
+	if w.saver == nil {
+		w.writeColumn(pos, col)
+		return
+	}
+	if live {
+		col.Chunk = c.Chunk.Clone()
+		col.PostProcessing = clonePostProcessing(col.PostProcessing)
+	}
+	w.saver.store(pos, col)
+}
+
+// writeColumn stores col through the provider.
+func (w *World) writeColumn(pos ChunkPos, col *chunk.Column) {
+	if err := w.conf.Provider.StoreColumn(pos, w.conf.Dim, col); err != nil {
+		w.conf.Log.Error("save chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+	}
+}
+
+// clonePostProcessing copies the post-processing marks of a column.
+func clonePostProcessing(sections [][]uint16) [][]uint16 {
+	if sections == nil {
+		return nil
+	}
+	clone := make([][]uint16, len(sections))
+	for i, section := range sections {
+		clone[i] = slices.Clone(section)
+	}
+	return clone
 }
 
 // closeChunk saves a chunk and its entities to disk after compacting the chunk.
@@ -1983,7 +2042,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			}
 		}
 	}
-	w.saveChunk(tx, pos, c)
+	w.persistChunk(tx, pos, c, false)
 	w.scheduledBlockTicks.removeChunk(pos)
 	w.scheduledFluidTicks.removeChunk(pos)
 	w.redstone.removeChunk(pos)
@@ -2075,6 +2134,9 @@ func (w *World) close() {
 		w.saveLootRandomSequences()
 		w.saveScoreboard()
 	})
+	if w.saver != nil {
+		w.saver.close()
+	}
 	w.scheduleMu.Lock()
 	w.closeAcceptingEntityTasks.Store(false)
 	w.scheduleMu.Unlock()
@@ -2278,7 +2340,11 @@ func (w *World) chunkLoaded(pos ChunkPos) bool {
 // This function guarantees that the returned *Column will eventually become ready,
 // even if generation is canceled due to shutdown.
 func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
-	// Attempt to load the column from the persistent provider (e.g. LevelDB).
+	// Attempt to load the column from the persistent provider (e.g. LevelDB),
+	// after a save of it still waiting for the background saver.
+	if w.saver != nil {
+		w.saver.writeNow(pos)
+	}
 	column, err := w.conf.Provider.LoadColumn(pos, w.conf.Dim)
 
 	switch {
@@ -2455,6 +2521,10 @@ func (w *World) generatorWorker() {
 // This design guarantees that no waiting goroutine (e.g., loadChunk callers)
 // will hang indefinitely due to an unmarked column.
 func (w *World) runGenerationTask(task generationTask) {
+	if task.col.Ready() {
+		// The chunk was closed while its task waited: nothing reads it.
+		return
+	}
 	// Chunk generation is performed on background workers. World transactions must treat not-yet-ready columns as
 	// immutable: once markReady() is called, the generation worker will no longer mutate the column. The ready flag
 	// acts as a synchronization point to safely publish generated chunk contents to the transaction goroutine.
@@ -2548,6 +2618,19 @@ func (w *World) generatedBlockEntities(pos ChunkPos, c *chunk.Chunk) map[cube.Po
 		}
 	}
 	return blockEntities
+}
+
+// focusGeneration orders the waiting generation tasks by the distance of their
+// chunks to the loaders passed.
+func (w *World) focusGeneration(loaders []*Loader) {
+	focus := w.scratchFocus[:0]
+	for _, l := range loaders {
+		l.mu.RLock()
+		focus = append(focus, l.pos)
+		l.mu.RUnlock()
+	}
+	w.generatorQueue.setFocus(focus)
+	w.scratchFocus = focus
 }
 
 // drainGenerationQueue closes the generator queue at shutdown and marks the

@@ -329,6 +329,16 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 				out.Errort(cmd.MessageUnknown, words[1])
 				return
 			}
+			if ctx.Executor != nil && ctx.Executor.H().World() != tx.World() {
+				// Execute's level changes the command context, not the entity's
+				// owning world. Run entity-mutating commands using a fresh Tx for
+				// the executor's world while retaining the target-level context.
+				executor := ctx.Executor
+				executor.H().Do(func(entityTx *world.Tx, _ world.Entity) {
+					command.Execute(strings.Join(words[2:], " "), cmd.WithContext(src, ctx), entityTx)
+				})
+				return
+			}
 			command.Execute(strings.Join(words[2:], " "), cmd.WithContext(src, ctx), tx)
 			return
 		default:

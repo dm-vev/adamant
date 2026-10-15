@@ -359,12 +359,43 @@ func TestLoaderEvictsChunksOutsideRadius(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	// From chunk (0, 3) the target is 2.8 chunks away, beyond the radius
+	// chunks are loaded within.
 	<-w.Exec(func(tx *Tx) {
-		loader.Move(tx, mgl64.Vec3{0, 0, 32})
+		loader.Move(tx, mgl64.Vec3{0, 0, 48})
 	})
 
 	if _, ok := loader.Chunk(target); ok {
 		t.Fatalf("chunk %v was not evicted after moving outside radius", target)
+	}
+}
+
+// TestLoaderKeepsChunksItWouldLoad checks that moving keeps a chunk the
+// loader would load from its new position, rather than unloading it and
+// loading it again.
+func TestLoaderKeepsChunksItWouldLoad(t *testing.T) {
+	w := Config{Dim: Overworld, Provider: NopProvider{}, Generator: NopGenerator{}}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	loader := NewLoader(2, w, nopViewer{})
+	<-w.Exec(func(tx *Tx) { loader.Move(tx, mgl64.Vec3{}) })
+
+	// (2, 1) is 2.2 chunks from both (0, 0) and (0, 2): the loader loads it
+	// from either.
+	target := ChunkPos{2, 1}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		<-w.Exec(func(tx *Tx) { loader.Load(tx, 32) })
+		if _, ok := loader.Chunk(target); ok {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("chunk %v was never loaded", target)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	<-w.Exec(func(tx *Tx) { loader.Move(tx, mgl64.Vec3{0, 0, 32}) })
+	if _, ok := loader.Chunk(target); !ok {
+		t.Fatalf("chunk %v was unloaded although the loader loads it from its new position", target)
 	}
 }
 

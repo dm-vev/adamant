@@ -28,6 +28,7 @@ func (g *Nether) applyJavaNetherMaterial(chunkX, chunkZ int, c *chunk.Chunk) {
 	if maxY > 127 {
 		maxY = 127
 	}
+	biomes := newNetherChunkBiomes(g, chunkX, chunkZ)
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
 			worldX, worldZ := int32(chunkX*16)+int32(x), int32(chunkZ*16)+int32(z)
@@ -84,7 +85,7 @@ func (g *Nether) applyJavaNetherMaterial(chunkX, chunkZ int, c *chunk.Chunk) {
 					"minecraft:crimson_forest",
 					"minecraft:warped_forest",
 					"minecraft:basalt_deltas",
-				}[g.biomeIndexAt(worldX, y32, worldZ)]
+				}[biomes.index(worldX, y32, worldZ)]
 				switch name {
 				case "minecraft:basalt_deltas":
 					if underCeiling {

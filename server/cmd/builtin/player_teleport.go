@@ -89,27 +89,35 @@ func (c teleportSelfPositionCommand) Allow(src cmd.Source) bool {
 	return worldOpCommand{c.srv}.Allow(src)
 }
 
-func (c teleportPositionCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	teleportToPosition(c.Targets, c.Position, o)
+func (c teleportPositionCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
+	teleportToPosition(c.Targets, c.Position, o, src, tx)
 }
 
-func (c teleportSelfPositionCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
+func (c teleportSelfPositionCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {
 	self, ok := commandExecutor(src)
 	if !ok {
 		o.Errort(cmd.MessageNoTargets)
 		return
 	}
-	teleportToPosition([]cmd.Target{self}, c.Position, o)
+	teleportToPosition([]cmd.Target{self}, c.Position, o, src, tx)
 }
 
 // teleportToPosition keeps each target's rotation, as Java does when no
 // rotation argument is given.
-func teleportToPosition(targets []cmd.Target, pos mgl64.Vec3, o *cmd.Output) {
+func teleportToPosition(targets []cmd.Target, pos mgl64.Vec3, o *cmd.Output, src cmd.Source, tx *world.Tx) {
 	if len(targets) == 0 {
 		o.Errort(cmd.MessageNoTargets)
 		return
 	}
+	var destination = tx.World()
+	if context, ok := cmd.ExecutionContextOf(src); ok && context.World != nil {
+		destination = context.World
+	}
 	for _, t := range targets {
+		if p, ok := t.(*player.Player); ok && p.H().World() != destination {
+			p.TeleportToWorld(tx, destination, pos)
+			continue
+		}
 		if p, ok := t.(interface{ Teleport(mgl64.Vec3) }); ok {
 			p.Teleport(pos)
 		}

@@ -32,7 +32,10 @@ type Provider interface {
 	// leveldb.ErrNotFound) equals true.
 	LoadColumn(pos ChunkPos, dim Dimension) (*chunk.Column, error)
 	// StoreColumn stores a world.Column at a position and dimension in the DB.
-	// An error is returned if storing was unsuccessful.
+	// An error is returned if storing was unsuccessful. Worlds that are not
+	// Synchronous store columns from a background goroutine, one at a time,
+	// while the world goroutine keeps loading columns at other positions, so
+	// the two must be safe to call concurrently.
 	StoreColumn(pos ChunkPos, dim Dimension, col *chunk.Column) error
 }
 

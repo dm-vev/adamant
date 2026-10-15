@@ -2,15 +2,28 @@ package world
 
 import "sync"
 
-// generationQueue is a first-in first-out queue of chunk generation tasks
-// shared by the generator workers. Pushing never blocks, so the world
-// goroutine requesting chunks never waits for the workers.
+// generationQueue holds the chunk generation tasks shared by the generator
+// workers. Workers take the task of the chunk nearest to a loader first, as
+// Java generates the chunks with the lowest ticket level first, so the chunks
+// next to a player never wait behind those at the edge of a view. Pushing
+// never blocks, so the world goroutine requesting chunks never waits for the
+// workers.
 type generationQueue struct {
-	mu     sync.Mutex
-	ready  sync.Cond
-	tasks  []generationTask
-	head   int
+	mu    sync.Mutex
+	ready sync.Cond
+	tasks []queuedGeneration
+	next  uint64
+	// focus holds the chunk positions of the loaders.
+	focus  []ChunkPos
 	closed bool
+}
+
+// queuedGeneration is a waiting task, numbered in the order it was pushed.
+type queuedGeneration struct {
+	task generationTask
+	seq  uint64
+	// awaited is set for the chunk the world goroutine waits for.
+	awaited bool
 }
 
 func newGenerationQueue() *generationQueue {
@@ -27,41 +40,79 @@ func (q *generationQueue) push(task generationTask) (int, bool) {
 	if q.closed {
 		return 0, false
 	}
-	if q.head == len(q.tasks) {
-		q.tasks, q.head = q.tasks[:0], 0
-	}
-	q.tasks = append(q.tasks, task)
+	q.tasks = append(q.tasks, queuedGeneration{task: task, seq: q.next})
+	q.next++
 	q.ready.Signal()
-	return len(q.tasks) - q.head, true
+	return len(q.tasks), true
 }
 
-// pop waits for the next task. It returns false once the queue is closed.
+// setFocus sets the chunk positions of the loaders that tasks are ordered by.
+func (q *generationQueue) setFocus(focus []ChunkPos) {
+	q.mu.Lock()
+	q.focus = append(q.focus[:0], focus...)
+	q.mu.Unlock()
+}
+
+// pop waits for the next task: the awaited one, otherwise the one nearest
+// to a loader, otherwise the oldest. It returns false once the queue is
+// closed.
 func (q *generationQueue) pop() (generationTask, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	for q.head == len(q.tasks) && !q.closed {
+	for len(q.tasks) == 0 && !q.closed {
 		q.ready.Wait()
 	}
 	if q.closed {
 		return generationTask{}, false
 	}
-	task := q.tasks[q.head]
-	q.tasks[q.head] = generationTask{}
-	q.head++
+	best := 0
+	bestDist := q.distance(q.tasks[0].task.pos)
+	for i := 1; i < len(q.tasks); i++ {
+		candidate, current := &q.tasks[i], &q.tasks[best]
+		if candidate.awaited != current.awaited {
+			if candidate.awaited {
+				best, bestDist = i, q.distance(candidate.task.pos)
+			}
+			continue
+		}
+		dist := q.distance(candidate.task.pos)
+		if dist < bestDist || dist == bestDist && candidate.seq < current.seq {
+			best, bestDist = i, dist
+		}
+	}
+	task := q.tasks[best].task
+	last := len(q.tasks) - 1
+	q.tasks[best] = q.tasks[last]
+	q.tasks[last] = queuedGeneration{}
+	q.tasks = q.tasks[:last]
 	return task, true
 }
 
-// prioritize moves the waiting task that generates pos, if any, to the front
-// of the queue so the next free worker takes it. The world goroutine calls it
-// before it waits for a chunk it needs now.
+// distance returns the squared distance from pos to the nearest loader, or
+// zero if there are none.
+func (q *generationQueue) distance(pos ChunkPos) int64 {
+	if len(q.focus) == 0 {
+		return 0
+	}
+	nearest := int64(-1)
+	for _, f := range q.focus {
+		dx, dz := int64(pos[0]-f[0]), int64(pos[1]-f[1])
+		if d := dx*dx + dz*dz; nearest < 0 || d < nearest {
+			nearest = d
+		}
+	}
+	return nearest
+}
+
+// prioritize makes the waiting task that generates pos, if any, the next one
+// a free worker takes. The world goroutine calls it before it waits for a
+// chunk it needs now.
 func (q *generationQueue) prioritize(pos ChunkPos) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	for i := q.head; i < len(q.tasks); i++ {
-		if q.tasks[i].pos == pos {
-			task := q.tasks[i]
-			copy(q.tasks[q.head+1:i+1], q.tasks[q.head:i])
-			q.tasks[q.head] = task
+	for i := range q.tasks {
+		if q.tasks[i].task.pos == pos {
+			q.tasks[i].awaited = true
 			return
 		}
 	}
@@ -73,7 +124,10 @@ func (q *generationQueue) close() []generationTask {
 	defer q.mu.Unlock()
 	q.closed = true
 	q.ready.Broadcast()
-	remaining := q.tasks[q.head:]
-	q.tasks, q.head = nil, 0
+	remaining := make([]generationTask, 0, len(q.tasks))
+	for _, t := range q.tasks {
+		remaining = append(remaining, t.task)
+	}
+	q.tasks = nil
 	return remaining
 }

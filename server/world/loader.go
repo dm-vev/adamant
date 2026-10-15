@@ -118,16 +118,22 @@ func (l *Loader) Move(tx *Tx, pos mgl64.Vec3) {
 	l.populateLoadQueue()
 }
 
+// generationRequestsPerLoad is how many chunks handed to the generator count
+// as one chunk that loads on the world goroutine: a generation request only
+// queues a task, while loading reads and decodes the chunk from disk.
+const generationRequestsPerLoad = 4
+
 // Load queues up to n chunks around the loader's centre, from the middle outwards, to be loaded in
-// the background. The Viewer's ViewChunk is called for each chunk once ready, which may be after Load
-// returns. Load does nothing for n <= 0.
+// the background, or up to generationRequestsPerLoad times as many that must be generated. The Viewer's
+// ViewChunk is called for each chunk once ready, which may be after Load returns. Load does nothing for
+// n <= 0.
 func (l *Loader) Load(tx *Tx, n int) {
 	l.mu.RLock()
 	queueLen := len(l.loadQueue)
 	l.mu.RUnlock()
 	ignored := l.ignoredByChunkLoading(tx)
-	queued := 0
-	for processed := 0; queued < n && processed < queueLen; processed++ {
+	budget, spent := n*generationRequestsPerLoad, 0
+	for processed := 0; spent < budget && processed < queueLen; processed++ {
 		l.mu.Lock()
 		if l.closed || l.changing || l.w == nil || l.w != tx.World() {
 			l.mu.Unlock()
@@ -154,7 +160,6 @@ func (l *Loader) Load(tx *Tx, n int) {
 		l.pending[pos] = struct{}{}
 		l.loadQueue = append(l.loadQueue, pos)
 		l.mu.Unlock()
-		queued++
 
 		if !w.loadChunkAsync(tx, pos, func(tx2 *Tx, col *Column) {
 			l.viewChunk(tx2, pos, col)
@@ -163,6 +168,11 @@ func (l *Loader) Load(tx *Tx, n int) {
 			delete(l.pending, pos)
 			l.queueLoad(pos)
 			l.mu.Unlock()
+		}
+		if c, ok := w.chunks[pos]; ok && !c.Ready() {
+			spent++
+		} else {
+			spent += generationRequestsPerLoad
 		}
 	}
 }
@@ -298,11 +308,11 @@ func (l *Loader) world(new *World) {
 }
 
 // evictUnused gets rid of chunks in the loaded map which are no longer within the chunk radius of the loader,
-// and should therefore be removed.
+// and should therefore be removed. It uses the radius chunks are loaded within, so that the chunks at the edge
+// are not unloaded and loaded again every time the loader moves.
 func (l *Loader) evictUnused(tx *Tx) {
 	for pos := range l.loaded {
-		diffX, diffZ := float64(pos[0])-float64(l.pos[0]), float64(pos[1])-float64(l.pos[1])
-		if math.Hypot(diffX, diffZ) > float64(l.r) {
+		if !l.withinLoadRadius(pos) {
 			delete(l.loaded, pos)
 			l.w.removeViewer(tx, pos, l)
 		}

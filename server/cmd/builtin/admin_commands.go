@@ -206,8 +206,8 @@ func (c banListCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Print(strings.Join(entries, ", "))
 	}
 }
-func (c saveAllCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
-	if err := c.srv.SaveAll(); err != nil {
+func (c saveAllCmd) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
+	if err := c.srv.SaveAll(tx); err != nil {
 		o.Error(err)
 		return
 	}

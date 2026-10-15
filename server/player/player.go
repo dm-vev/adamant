@@ -3102,6 +3102,27 @@ func (p *Player) Teleport(pos mgl64.Vec3) {
 	p.forceTeleport(pos)
 }
 
+// TeleportToWorld transfers the player to destination and places them at pos,
+// as a teleport command run in another dimension does. The caller must own
+// the player's current world transaction. If the destination is closed, the
+// player stays where they were.
+func (p *Player) TeleportToWorld(tx *world.Tx, destination *world.World, pos mgl64.Vec3) {
+	if destination == nil || destination == tx.World() {
+		p.Teleport(pos)
+		return
+	}
+	handle := tx.RemoveEntity(p)
+	task := destination.Do(func(destinationTx *world.Tx) {
+		np := destinationTx.AddEntity(handle).(*Player)
+		np.Teleport(pos)
+		np.session().SendRespawn(pos, p)
+		np.SetVisible()
+	})
+	if errors.Is(task.Err(), world.ErrWorldClosed) {
+		tx.AddEntity(handle)
+	}
+}
+
 // forceTeleport teleports the player without calling the Handler.
 func (p *Player) forceTeleport(pos mgl64.Vec3) {
 	p.Wake()

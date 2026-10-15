@@ -32,7 +32,9 @@ type serverAdapter interface {
 	PardonIP(ip string) (bool, error)
 	BanEntries(ip bool) ([]string, error)
 	Banned(addr string, name string) (string, bool)
-	SaveAll() error
+	// SaveAll saves every dimension. tx is the transaction the command runs
+	// in, nil from the console.
+	SaveAll(tx *world.Tx) error
 	SaveEnabled(enabled bool)
 	SaveEnabledState() bool
 	SetIdleTimeout(minutes int)

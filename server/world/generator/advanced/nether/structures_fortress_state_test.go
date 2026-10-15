@@ -419,8 +419,7 @@ func TestFortressStateSurvivesMCDBRestartPreviewAndCacheEviction(t *testing.T) {
 	afterRestart.featureSource.mu.Lock()
 	afterRestart.featureSource.chunks = make(map[world.ChunkPos]*chunk.Chunk)
 	afterRestart.featureSource.order = nil
-	afterRestart.featureSource.terrain = make(map[world.ChunkPos]*chunk.Chunk)
-	afterRestart.featureSource.terrainOrder = nil
+	afterRestart.featureSource.terrain = newNetherTerrainCache(2048)
 	afterRestart.featureSource.mu.Unlock()
 
 	replayed := fortressRenderCall(afterRestart, chestChunk, false, afterRestart.featureSource.BaseBlock)

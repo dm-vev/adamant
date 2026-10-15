@@ -162,11 +162,12 @@ func (*Nether) DefaultSpawn(world.Dimension) cube.Pos {
 
 func (g *Nether) fillBiomes(chunkX, chunkZ int, c *chunk.Chunk) {
 	minY, maxY := int16(c.Range().Min()), int16(c.Range().Max())
+	biomes := newNetherChunkBiomes(g, chunkX, chunkZ)
 	for x := uint8(0); x < 16; x++ {
 		for z := uint8(0); z < 16; z++ {
 			worldX, worldZ := int32(chunkX*16)+int32(x), int32(chunkZ*16)+int32(z)
 			for y := minY; y <= maxY; y++ {
-				index := g.biomeIndexAt(worldX, int32(y), worldZ)
+				index := biomes.index(worldX, int32(y), worldZ)
 				c.SetBiome(x, y, z, g.biomeIDs[index])
 			}
 		}
@@ -175,7 +176,11 @@ func (g *Nether) fillBiomes(chunkX, chunkZ int, c *chunk.Chunk) {
 
 func (g *Nether) biomeIndexAt(x, y, z int32) int {
 	quartX, _, quartZ := java26.FiddledBiomeQuart(g.biomeZoomSeed, x, y, z)
-	switch g.biomes.Biome(quartX*4, quartZ*4) {
+	return netherBiomeIndex(g.biomes.Biome(quartX*4, quartZ*4))
+}
+
+func netherBiomeIndex(name string) int {
+	switch name {
 	case "minecraft:soul_sand_valley":
 		return 1
 	case "minecraft:crimson_forest":
@@ -187,6 +192,36 @@ func (g *Nether) biomeIndexAt(x, y, z int32) int {
 	default:
 		return 0
 	}
+}
+
+type netherChunkBiomes struct {
+	g         *Nether
+	minQuartX int32
+	minQuartZ int32
+	indices   [6][6]uint8
+	computed  [6][6]bool
+}
+
+func newNetherChunkBiomes(g *Nether, chunkX, chunkZ int) netherChunkBiomes {
+	return netherChunkBiomes{
+		g:         g,
+		minQuartX: int32(chunkX*4 - 1),
+		minQuartZ: int32(chunkZ*4 - 1),
+	}
+}
+
+func (b *netherChunkBiomes) indexAtQuart(quartX, quartZ int32) int {
+	x, z := int(quartX-b.minQuartX), int(quartZ-b.minQuartZ)
+	if !b.computed[x][z] {
+		b.indices[x][z] = uint8(netherBiomeIndex(b.g.biomes.Biome(quartX*4, quartZ*4)))
+		b.computed[x][z] = true
+	}
+	return int(b.indices[x][z])
+}
+
+func (b *netherChunkBiomes) index(x, y, z int32) int {
+	quartX, _, quartZ := java26.FiddledBiomeQuart(b.g.biomeZoomSeed, x, y, z)
+	return b.indexAtQuart(quartX, quartZ)
 }
 
 func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScratch, beard *javastructure.Beardifier) {

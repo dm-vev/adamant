@@ -54,8 +54,9 @@ type Config struct {
 	// generates completely empty chunks.
 	Generator Generator
 	// GeneratorWorkers specifies the number of background workers used to run
-	// chunk generation. If set to 0 or lower, a worker count matching the
-	// number of logical CPUs is used. Large terrain preloads may benefit from a
+	// chunk generation. If set to 0 or lower, one worker fewer than the
+	// logical CPUs is used, as Java sizes its background executor, leaving a
+	// CPU to the world tick and the network. Large terrain preloads may benefit from a
 	// higher worker count, but profiling is recommended when the generator is
 	// constrained by external I/O (for example LevelDB access).
 	GeneratorWorkers int
@@ -135,7 +136,7 @@ func (conf Config) New() *World {
 		conf.Generator = NopGenerator{}
 	}
 	if conf.GeneratorWorkers <= 0 {
-		conf.GeneratorWorkers = runtime.NumCPU()
+		conf.GeneratorWorkers = runtime.NumCPU() - 1
 	}
 	if conf.GeneratorWorkers <= 0 {
 		conf.GeneratorWorkers = 1
@@ -245,6 +246,9 @@ func (conf Config) New() *World {
 	}
 	if err := w.loadBorder(); err != nil {
 		panic(err)
+	}
+	if !conf.Synchronous && !conf.ReadOnly {
+		w.saver = newChunkSaver(w)
 	}
 	w.loadLootRandomSequences()
 	w.loadVillagePOIs()

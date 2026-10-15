@@ -111,7 +111,12 @@ func (srv *Server) Banned(addr, name string) (string, bool) {
 	}
 	return srv.bans.banned(addr, name)
 }
-func (srv *Server) SaveAll() error {
+
+// SaveAll saves every dimension. tx is the transaction a command runs in, or
+// nil: its own world is saved through it, as Save would wait for the world
+// goroutine running the command, and the others are saved without waiting,
+// as one of them may be waiting for this world.
+func (srv *Server) SaveAll(tx *world.Tx) error {
 	seen := map[*world.World]struct{}{}
 	for _, w := range srv.dimensions {
 		if w == nil {
@@ -121,7 +126,14 @@ func (srv *Server) SaveAll() error {
 			continue
 		}
 		seen[w] = struct{}{}
-		w.Save()
+		switch {
+		case tx == nil:
+			w.Save()
+		case tx.World() == w:
+			tx.SaveWorld()
+		default:
+			go w.Save()
+		}
 	}
 	return nil
 }

@@ -16,16 +16,19 @@ import (
 // netherFeatureSource exposes the immutable base-terrain and biome queries used
 // by Java structure processors and placed-feature modifiers.
 type netherFeatureSource struct {
-	generator    *Nether
-	mu           sync.Mutex
-	chunks       map[world.ChunkPos]*chunk.Chunk
-	order        []world.ChunkPos
-	terrain      map[world.ChunkPos]*chunk.Chunk
-	terrainOrder []world.ChunkPos
+	generator *Nether
+	mu        sync.Mutex
+	chunks    map[world.ChunkPos]*chunk.Chunk
+	order     []world.ChunkPos
+	terrain   *netherTerrainCache
 }
 
 func newNetherFeatureSource(g *Nether) *netherFeatureSource {
-	return &netherFeatureSource{generator: g, chunks: make(map[world.ChunkPos]*chunk.Chunk), terrain: make(map[world.ChunkPos]*chunk.Chunk)}
+	return &netherFeatureSource{
+		generator: g,
+		chunks:    make(map[world.ChunkPos]*chunk.Chunk),
+		terrain:   newNetherTerrainCache(2048),
+	}
 }
 
 func (s *netherFeatureSource) UseLegacyRandomSource() bool { return false }
@@ -250,26 +253,9 @@ func max32(a, b int32) int32 {
 }
 
 func (s *netherFeatureSource) terrainChunk(pos world.ChunkPos) *chunk.Chunk {
-	s.mu.Lock()
-	cached := s.terrain[pos]
-	s.mu.Unlock()
-	if cached != nil {
-		return cached
-	}
-	g := s.generator
-	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 127})
-	g.prepareTerrain(pos, c)
-	s.mu.Lock()
-	if cached = s.terrain[pos]; cached == nil {
-		s.terrain[pos] = c.Clone()
-		s.terrainOrder = append(s.terrainOrder, pos)
-		for len(s.terrainOrder) > 16 {
-			old := s.terrainOrder[0]
-			s.terrainOrder = s.terrainOrder[1:]
-			delete(s.terrain, old)
-		}
-		cached = s.terrain[pos]
-	}
-	s.mu.Unlock()
-	return cached
+	return s.terrain.load(pos, func() *chunk.Chunk {
+		c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 127})
+		s.generator.prepareTerrain(pos, c)
+		return c
+	})
 }
