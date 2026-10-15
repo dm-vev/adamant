@@ -76,6 +76,24 @@ func (w *World) generationNeighbourhoodReady(pos ChunkPos) bool {
 	return true
 }
 
+// entityTickingReady reports whether the entities of the chunk at pos tick:
+// Java ticks them only once the chunks within two chunks of it are generated.
+// A synchronous world generates the chunks it reads on demand instead.
+func (w *World) entityTickingReady(pos ChunkPos) bool {
+	if w.conf.Synchronous {
+		return true
+	}
+	for dx := range int32(5) {
+		for dz := range int32(5) {
+			col := w.chunks[ChunkPos{pos[0] + dx - 2, pos[1] + dz - 2}]
+			if col == nil || !col.Ready() {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (w *World) postProcessGeneration(tx *Tx, pos ChunkPos, col *Column) {
 	context := javaShapeContext{tx: tx}
 	for section, positions := range col.postProcessing {

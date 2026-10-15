@@ -34,7 +34,11 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 	work := g.modernPool.Get().(*modernTerrainScratch)
 	defer g.modernPool.Put(work)
 	baseX, baseZ := pos[0]*16, pos[1]*16
-	work.lattice.Prepare(g.noise, g.zoomSeed, baseX, baseZ)
+	var biomes java26.QuartBiomes
+	if !raw {
+		biomes = g.quartBiomes(pos)
+	}
+	work.lattice.Prepare(g.noise, g.zoomSeed, baseX, baseZ, biomes)
 	work.aquifer.Prepare(g.noise, baseX, baseZ)
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{int(modernMinY), int(modernMaxY)})
 	entry := &previewCacheEntry{pos: pos, c: c}
@@ -126,9 +130,15 @@ func (s modernTerrainSource) JavaFeatureBiomeNames() []string {
 	return modernJavaBiomeNames[:]
 }
 
+// JavaNoiseBiomeAt reads the noise biome from the biomes of its chunk when
+// the decoration of the chunks around it sampled them, and samples it alone
+// otherwise, as for the scattered positions of structure placement.
 func (s modernTerrainSource) JavaNoiseBiomeAt(quartX, quartY, quartZ int32) string {
-	column := s.generator.noise.SampleBiomeColumn(quartX*4, quartZ*4)
-	return column.Biome(max(-16, min(quartY, 79)) * 4)
+	quartY = max(-16, min(quartY, 79))
+	if biomes, ok := s.generator.chunkBiomes.get(world.ChunkPos{quartX >> 2, quartZ >> 2}); ok {
+		return java26.OverworldBiomeName(biomes.index[quartX&3][quartZ&3][quartY-chunkBiomeMinQuartY])
+	}
+	return s.generator.noise.SampleBiomeColumn(quartX*4, quartZ*4).Biome(quartY * 4)
 }
 
 func (s modernTerrainSource) JavaBiomeAt(x, y, z int32) string {
@@ -142,6 +152,12 @@ func (s modernTerrainSource) BaseState(x, y, z int32) world.NativeState {
 	}
 	entry := s.generator.terrainColumn(world.ChunkPos{x >> 4, z >> 4}, s.raw)
 	return world.NativeStateAt(entry.c, uint8(x&15), int16(y), uint8(z&15))
+}
+
+// BaseChunk returns the chunk holding the base states of the chunk at pos
+// within the build height.
+func (s modernTerrainSource) BaseChunk(pos world.ChunkPos) *chunk.Chunk {
+	return s.generator.terrainColumn(pos, s.raw).c
 }
 
 func (s modernTerrainSource) BaseBlock(x, y, z int32) world.Block {

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
@@ -31,6 +32,14 @@ type ModernFeatureSource interface {
 	JavaGenerationDepth() int32
 	JavaFluidTickDelay(name string) int32
 	PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement))
+}
+
+// baseTopSource is a ModernFeatureSource that knows the top of its base
+// terrain columns, which heightmap scans of a column start below.
+type baseTopSource interface {
+	// BaseTop returns a height at or above the highest non-air base state of
+	// the column.
+	BaseTop(x, z int32) int32
 }
 
 type modernBiomeFeatures struct {
@@ -64,6 +73,8 @@ type ModernFeatures struct {
 	// origins caches what the features of each origin chunk write, shared by
 	// the chunks around it that are decorated with them.
 	origins originRecordCache
+	// heightmaps caches the heightmap predicates of each native state.
+	heightmaps sync.Map
 }
 
 // NewModernFeatures loads the actual embedded Java biome, placed-feature, configured-feature and carver data.
@@ -271,8 +282,16 @@ func (f *ModernFeatures) buildFeatureRanks() {
 func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	result := world.GenerationResult{}
 	region := newFeatureRegion(f, c, pos, &result)
-	for _, origin := range decorationOrigins(pos) {
-		record := f.originRecord(origin, c.BlockRegistry(), c.Range(), context)
+	origins := decorationOrigins(pos)
+	// The records other chunks are computing are waited for only after this
+	// chunk computed those it took on.
+	var records [len(origins)]*originRecordEntry
+	for i, origin := range origins {
+		records[i] = f.originRecord(origin, c.BlockRegistry(), c.Range(), context)
+	}
+	for i, origin := range origins {
+		<-records[i].done
+		record := records[i].record
 		region.SetOrigin(origin[0], origin[1])
 		for step := range record.steps {
 			if origin == pos {
@@ -328,6 +347,21 @@ func (f *ModernFeatures) possibleBiomes(region *featureRegion, origin world.Chun
 	minQuartX, maxQuartX := (originX>>2)-4, (originX>>2)+7
 	minQuartZ, maxQuartZ := (originZ>>2)-4, (originZ>>2)+7
 	possible := make(map[string]struct{})
+	if source, ok := f.source.(modernTerrainSource); ok && source.generator != nil {
+		// The quarts span the origin chunk and the chunks around it.
+		for dz := int32(-1); dz <= 1; dz++ {
+			for dx := int32(-1); dx <= 1; dx++ {
+				for _, biome := range source.JavaNoiseBiomesInChunk(world.ChunkPos{origin[0] + dx, origin[1] + dz}, minQuartY, maxQuartY) {
+					name := normalizeJavaResource(biome)
+					if _, ok := f.biomes[name]; !ok {
+						panic("overworld: Java noise biome source returned unknown biome " + name)
+					}
+					possible[name] = struct{}{}
+				}
+			}
+		}
+		return possible
+	}
 	for qy := minQuartY; qy <= maxQuartY; qy++ {
 		for qz := minQuartZ; qz <= maxQuartZ; qz++ {
 			for qx := minQuartX; qx <= maxQuartX; qx++ {

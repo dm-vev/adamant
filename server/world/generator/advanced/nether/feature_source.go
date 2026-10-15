@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	overworldFeatures "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
 )
 
 // netherFeatureSource exposes the immutable base-terrain and biome queries used
@@ -89,6 +90,11 @@ func (s *netherFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	}
 	c := s.baseChunk(world.ChunkPos{x >> 4, z >> 4})
 	return world.NativeStateAt(c, uint8(x&15), int16(y), uint8(z&15))
+}
+
+func (s *netherFeatureSource) BaseTop(x, z int32) int32 {
+	c := s.baseChunk(world.ChunkPos{x >> 4, z >> 4})
+	return min(overworldFeatures.NativeColumnTop(c, uint8(x&15), uint8(z&15)), 127)
 }
 
 func (s *netherFeatureSource) BaseHeight(x, z int32, oceanFloor bool) int32 {

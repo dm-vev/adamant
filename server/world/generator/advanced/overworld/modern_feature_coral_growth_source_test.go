@@ -83,7 +83,7 @@ func TestCoralGrowthMatchesJava263Source(t *testing.T) {
 				}
 			}
 			initial := make(map[featurePos]world.NativeState, len(region.overlay))
-			for pos, state := range region.overlay {
+			for pos, state := range region.overlayByPos() {
 				initial[pos] = state
 			}
 			feature := map[string]any{
@@ -112,7 +112,7 @@ func TestCoralGrowthMatchesJava263Source(t *testing.T) {
 				pos := featurePos{block.Pos[0], block.Pos[1], block.Pos[2]}
 				want[pos] = block.State
 			}
-			for pos, native := range region.overlay {
+			for pos, native := range region.overlayByPos() {
 				if before, ok := initial[pos]; ok && before == native {
 					continue
 				}

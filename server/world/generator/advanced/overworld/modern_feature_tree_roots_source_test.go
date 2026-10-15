@@ -114,7 +114,7 @@ func TestMangroveRootsMatchJava263Source(t *testing.T) {
 				t.Fatalf("unknown random algorithm %q", test.Algorithm)
 			}
 			before := make(map[featurePos]world.NativeState, len(region.overlay))
-			for p, native := range region.overlay {
+			for p, native := range region.overlayByPos() {
 				before[p] = native
 			}
 			wantBlocks := make(map[featurePos]bool, len(test.Blocks))
@@ -141,7 +141,7 @@ func TestMangroveRootsMatchJava263Source(t *testing.T) {
 					wantRoots = append(wantRoots, p)
 				}
 			}
-			for p, native := range region.overlay {
+			for p, native := range region.overlayByPos() {
 				if previous, exists := before[p]; exists && previous == native {
 					continue
 				}

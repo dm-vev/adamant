@@ -30,10 +30,19 @@ type featureRegion struct {
 	hasTarget bool
 	// recording collects the writes and side outputs of the origin step that
 	// runs while it is set.
-	recording               *originStep
-	result                  *world.GenerationResult
-	overlay                 map[featurePos]world.NativeState
-	placementHeights        map[featureHeightKey]int32
+	recording *originStep
+	result    *world.GenerationResult
+	// overlay holds the states written to the region, by featureKey.
+	overlay map[uint64]world.NativeState
+	// columns holds the overlay tops and heightmap heights of the columns,
+	// by featureColumnKey.
+	columns map[uint64]featureColumn
+	// base is the source of the region when it is the generated terrain,
+	// whose immutable chunks baseChunks keeps once read.
+	base                    *modernTerrainSource
+	baseChunks              map[world.ChunkPos]*chunk.Chunk
+	lastBasePos             world.ChunkPos
+	lastBase                *chunk.Chunk
 	javaRandoms             map[[2]int32]*java26.Random
 	scheduledTicks          map[featureTickReservation]struct{}
 	blockActorRecords       map[cube.Pos]javastructure.Block
@@ -46,9 +55,13 @@ func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, 
 	if f == nil || c == nil || result == nil {
 		panic("overworld: invalid Java feature region")
 	}
+	var base *modernTerrainSource
+	if source, ok := f.source.(modernTerrainSource); ok && source.generator != nil {
+		base = &source
+	}
 	return &featureRegion{
-		f: f, c: c, target: target, hasTarget: true, result: result,
-		overlay:           make(map[featurePos]world.NativeState),
+		f: f, c: c, target: target, hasTarget: true, result: result, base: base,
+		overlay:           make(map[uint64]world.NativeState),
 		scheduledTicks:    make(map[featureTickReservation]struct{}),
 		blockActorRecords: make(map[cube.Pos]javastructure.Block),
 		blockActorData:    make(map[cube.Pos]map[string]any),
@@ -127,14 +140,59 @@ func (r *featureRegion) State(p featurePos) (string, map[string]any) {
 	return javaState.Name, javaState.Properties
 }
 
+// featureKey packs p for the maps of a region. The low 26 bits of x and z
+// and 12 bits of y tell apart all positions of a region, which spans a few
+// chunks and the build height.
+func featureKey(p featurePos) uint64 {
+	return uint64(uint32(p.x)&0x3ffffff) | uint64(uint32(p.z)&0x3ffffff)<<26 | uint64(uint32(p.y)&0xfff)<<52
+}
+
+// featureColumnKey packs the column x, z for the maps of a region.
+func featureColumnKey(x, z int32) uint64 {
+	return uint64(uint32(x)) | uint64(uint32(z))<<32
+}
+
 func (r *featureRegion) nativeState(p featurePos) world.NativeState {
-	if state, ok := r.overlay[p]; ok {
+	if p.y < r.MinY() || p.y > r.MaxY() {
+		return r.f.source.BaseState(p.x, p.y, p.z)
+	}
+	if state, ok := r.overlay[featureKey(p)]; ok {
 		return state
 	}
-	if r.inTarget(p) && p.y >= r.MinY() && p.y <= r.MaxY() {
+	if r.inTarget(p) {
 		return world.NativeStateAt(r.c, uint8(p.x&15), int16(p.y), uint8(p.z&15))
 	}
-	return r.f.source.BaseState(p.x, p.y, p.z)
+	return r.baseState(p)
+}
+
+// baseState returns the state of the base terrain at p.
+func (r *featureRegion) baseState(p featurePos) world.NativeState {
+	if r.base == nil {
+		return r.f.source.BaseState(p.x, p.y, p.z)
+	}
+	c := r.baseChunk(world.ChunkPos{p.x >> 4, p.z >> 4})
+	if p.y < int32(c.Range().Min()) || p.y > int32(c.Range().Max()) {
+		return r.f.source.BaseState(p.x, p.y, p.z)
+	}
+	return world.NativeStateAt(c, uint8(p.x&15), int16(p.y), uint8(p.z&15))
+}
+
+// baseChunk returns the base chunk at pos, looking it up in the source once
+// for the region.
+func (r *featureRegion) baseChunk(pos world.ChunkPos) *chunk.Chunk {
+	if r.lastBase != nil && r.lastBasePos == pos {
+		return r.lastBase
+	}
+	c, ok := r.baseChunks[pos]
+	if !ok {
+		c = r.base.BaseChunk(pos)
+		if r.baseChunks == nil {
+			r.baseChunks = make(map[world.ChunkPos]*chunk.Chunk)
+		}
+		r.baseChunks[pos] = c
+	}
+	r.lastBasePos, r.lastBase = pos, c
+	return c
 }
 
 func (r *featureRegion) Block(p featurePos) world.Block {
@@ -187,7 +245,8 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 	if changedBlock {
 		r.removeBlockEntityPayloads(cube.Pos{int(p.x), int(p.y), int(p.z)})
 	}
-	r.overlay[p] = state
+	r.overlay[featureKey(p)] = state
+	r.noteOverlay(p)
 	r.invalidatePlacementHeight(p)
 	if r.inTarget(p) {
 		x, z := uint8(p.x&15), uint8(p.z&15)

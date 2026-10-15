@@ -101,7 +101,7 @@ func TestSpeleothemFeaturesMatchJava263Source(t *testing.T) {
 			for _, row := range tc.States {
 				want[speleothemSourcePos(t, row.Pos)] = speleothemSourceStateID(t, row.State)
 			}
-			for pos, state := range region.overlay {
+			for pos, state := range region.overlayByPos() {
 				got := state.CanonicalJavaID(c.BlockRegistry())
 				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
 					continue

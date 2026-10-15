@@ -794,14 +794,14 @@ func TestScheduledTicksWaitForLoadedTickingDestination(t *testing.T) {
 		tx.chunk(source)
 		queue.scheduleAt(registry, pos, b, 1, 0)
 		queue.tick(tx, 1, loader)
-		if w.chunkLoaded(destination) || ticks != 0 || len(queue.ticks) != 1 {
-			t.Fatalf("unloaded destination after collection: loaded=%t callbacks=%d pending=%d", w.chunkLoaded(destination), ticks, len(queue.ticks))
+		if w.chunkLoaded(destination) || ticks != 0 || queue.listed() != 1 {
+			t.Fatalf("unloaded destination after collection: loaded=%t callbacks=%d pending=%d", w.chunkLoaded(destination), ticks, queue.listed())
 		}
 
 		tx.SetBlock(pos, b, nil)
 		queue.tick(tx, 2, loader)
-		if ticks != 0 || len(queue.ticks) != 1 {
-			t.Fatalf("non-ticking destination after collection: callbacks=%d pending=%d", ticks, len(queue.ticks))
+		if ticks != 0 || queue.listed() != 1 {
+			t.Fatalf("non-ticking destination after collection: callbacks=%d pending=%d", ticks, queue.listed())
 		}
 
 		loader.pos = destination
@@ -898,18 +898,18 @@ func TestScheduledTickBudgetAndUnpackedOrder(t *testing.T) {
 	for i := range tickCount {
 		pos := cube.Pos{i & 15, minY + i/(16*16), (i / 16) & 15}
 		tick := scheduledTick{pos: pos, btype: "test:scheduled_tick", t: 1, order: int64(i)}
-		large.ticks = append(large.ticks, tick)
+		large.push(tick)
 		large.scheduledTicks[scheduledTickIndex{pos: pos, typeName: tick.btype}] = 1
 	}
 	runWorld(w, func(tx *Tx) {
 		tx.chunk(ChunkPos{})
 		large.tick(tx, 1)
-		if len(large.ticks) != 1 || len(large.scheduledTicks) != 1 {
-			t.Fatalf("ticks left after one capped drain = %d, identities=%d, want 1 each", len(large.ticks), len(large.scheduledTicks))
+		if large.listed() != 1 || len(large.scheduledTicks) != 1 {
+			t.Fatalf("ticks left after one capped drain = %d, identities=%d, want 1 each", large.listed(), len(large.scheduledTicks))
 		}
 		large.tick(tx, 2)
-		if len(large.ticks) != 0 || len(large.scheduledTicks) != 0 {
-			t.Fatalf("ticks after second drain = %d, identities=%d, want empty", len(large.ticks), len(large.scheduledTicks))
+		if large.listed() != 0 || len(large.scheduledTicks) != 0 {
+			t.Fatalf("ticks after second drain = %d, identities=%d, want empty", large.listed(), len(large.scheduledTicks))
 		}
 	})
 }
@@ -950,8 +950,8 @@ func TestScheduledTickQueueRemoveChunkClearsSchedule(t *testing.T) {
 	queue.schedule(registry, pos, b, time.Second)
 	queue.removeChunk(chunkPosFromBlockPos(pos))
 
-	if len(queue.ticks) != 0 {
-		t.Fatalf("ticks after removeChunk = %v, want empty", queue.ticks)
+	if queue.listed() != 0 {
+		t.Fatalf("ticks after removeChunk = %d, want empty", queue.listed())
 	}
 	if len(queue.scheduledTicks) != 0 {
 		t.Fatalf("scheduled ticks after removeChunk = %v, want empty", queue.scheduledTicks)
@@ -1561,4 +1561,13 @@ type redstoneSolidModel struct{}
 func (redstoneSolidModel) BBox(cube.Pos, BlockSource) []cube.BBox { return nil }
 func (redstoneSolidModel) FaceSolid(cube.Pos, cube.Face, BlockSource) bool {
 	return true
+}
+
+// listed returns the number of ticks the queue holds for its chunks.
+func (queue *scheduledTickQueue) listed() int {
+	n := 0
+	for _, list := range queue.chunks {
+		n += len(list.ticks)
+	}
+	return n
 }

@@ -16,8 +16,10 @@ import (
 // originRecordCacheSize bounds the origin records kept for the chunks around
 // them that are still to be decorated. A record is dropped once the nine
 // chunks around its origin applied it; the bound covers chunks that are
-// never generated.
-const originRecordCacheSize = 256
+// never generated. Generation spreading out from a player keeps the records
+// of about three rings of chunks, some 600 at a view distance of 32 chunks:
+// an evicted record is computed again, decorating five origins.
+const originRecordCacheSize = 1024
 
 // originRecord holds what the features of one origin chunk wrote, step by
 // step, when they ran after the origins that precede it.
@@ -157,16 +159,15 @@ func (f *ModernFeatures) computeOriginRecord(origin world.ChunkPos, registry chu
 	return record
 }
 
-// originRecord returns the record of origin, computing it once for all the
-// chunks decorated with it.
-func (f *ModernFeatures) originRecord(origin world.ChunkPos, registry chunk.BlockRegistry, r cube.Range, context world.GenerationContext) *originRecord {
+// originRecord returns the entry of the record of origin, computing the
+// record if no other chunk is: the record is ready once done is closed.
+func (f *ModernFeatures) originRecord(origin world.ChunkPos, registry chunk.BlockRegistry, r cube.Range, context world.GenerationContext) *originRecordEntry {
 	entry, owner := f.origins.acquire(origin)
 	if owner {
 		entry.record = f.computeOriginRecord(origin, registry, r, context)
 		close(entry.done)
 	}
-	<-entry.done
-	return entry.record
+	return entry
 }
 
 // originRecordCache keeps recent origin records, computing each once even

@@ -125,6 +125,7 @@ type Overworld struct {
 	mineshaftCache sync.Map // world.ChunkPos -> *mineshaftStructure (nil when absent)
 	previewCache   *previewCache
 	biomeDataCache *biomeDataCache
+	chunkBiomes    chunkBiomeCache
 	previewScratch sync.Pool
 	lakeShapePool  sync.Pool
 
@@ -152,6 +153,12 @@ type scratch struct {
 	surfaceBuf []float64
 }
 
+// previewCacheSize bounds the surfaced terrain previews kept for decoration,
+// which reads the terrain up to three chunks from the chunk it decorates:
+// generation spreading out from a player reads some 1400 chunks at a view
+// distance of 32 chunks. A preview evicted too early is built again.
+const previewCacheSize = 2048
+
 // New returns a Java 26.3 Overworld generator using the provided seed.
 func New(seed int64) *Overworld {
 	return NewOverworld(seed)
@@ -168,7 +175,7 @@ func NewOverworld(seed int64) *Overworld {
 		waterRID:     world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
 		lavaRID:      world.BlockRuntimeID(block.Lava{Depth: 8, Still: true}),
 		rawCache:     newPreviewCache(128),
-		previewCache: newPreviewCache(128),
+		previewCache: newPreviewCache(previewCacheSize),
 	}
 	g.modernPool.New = func() any { return new(modernTerrainScratch) }
 	g.modernSurface = newModernSurface(seed)

@@ -124,7 +124,7 @@ func TestVegetationPatchFeaturesMatchJava263Source(t *testing.T) {
 				pos := featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}
 				want[pos] = speleothemSourceStateID(t, row.State)
 			}
-			for pos, state := range region.overlay {
+			for pos, state := range region.overlayByPos() {
 				got := state.CanonicalJavaID(c.BlockRegistry())
 				initial := terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry())
 				if got == initial {

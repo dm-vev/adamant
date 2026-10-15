@@ -42,7 +42,7 @@ func TestVoidPlatformMatchesJava263(t *testing.T) {
 				t.Errorf("following stream=%d, Java wants %d", next, tc.Next)
 			}
 			positions := make([]featurePos, 0, len(region.overlay))
-			for p := range region.overlay {
+			for p := range region.overlayByPos() {
 				positions = append(positions, p)
 			}
 			slices.SortFunc(positions, func(a, b featurePos) int {

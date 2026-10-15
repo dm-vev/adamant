@@ -119,7 +119,7 @@ func TestLargeDripstoneMatchesJava263Source(t *testing.T) {
 				t.Fatalf("unknown scenario %q", test.Scenario)
 			}
 			before := make(map[featurePos]world.NativeState, len(region.overlay))
-			for p, native := range region.overlay {
+			for p, native := range region.overlayByPos() {
 				before[p] = native
 			}
 			var random java26.Random
@@ -161,7 +161,7 @@ func TestLargeDripstoneMatchesJava263Source(t *testing.T) {
 					}
 				}
 			}
-			for p, native := range region.overlay {
+			for p, native := range region.overlayByPos() {
 				if old, exists := before[p]; exists && old == native {
 					continue
 				}

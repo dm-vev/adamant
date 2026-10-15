@@ -176,7 +176,7 @@ func TestFossilMatchesJava263SourceFixtures(t *testing.T) {
 				t.Errorf("nextLong=%d, Source=%d", got, wantNext)
 			}
 			gotStates := make([]string, 0, len(region.overlay))
-			for p, state := range region.overlay {
+			for p, state := range region.overlayByPos() {
 				js, err := world.JavaState(world.DefaultBlockRegistry, state)
 				if err != nil {
 					t.Fatal(err)

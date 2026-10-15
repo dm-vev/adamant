@@ -314,7 +314,7 @@ func (s *modernStructures) Prepare(pos world.ChunkPos) *modernStructureContext {
 		pieces = append(pieces, start.rigid...)
 		junctions = append(junctions, start.junctions...)
 	}
-	ctx.beardifier = javastructure.NewBeardifier(pieces, junctions)
+	ctx.beardifier = javastructure.NewChunkBeardifier(pos[0], pos[1], pieces, junctions)
 	return ctx
 }
 

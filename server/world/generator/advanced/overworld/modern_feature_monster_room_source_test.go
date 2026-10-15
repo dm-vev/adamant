@@ -213,7 +213,7 @@ func TestMonsterRoomMatchesJava263Source(t *testing.T) {
 				t.Errorf("nextLong=%d, Source=%d", got, tc.NextLong)
 			}
 			changes := make([]string, 0, len(region.overlay))
-			for p, state := range region.overlay {
+			for p, state := range region.overlayByPos() {
 				if state == source.BaseState(p.x, p.y, p.z) {
 					continue
 				}

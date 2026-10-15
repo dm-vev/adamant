@@ -25,16 +25,33 @@ func OverworldBiomeName(index uint8) string {
 // erosion, depth and ridge climate coordinates. Ties use tree order rather than
 // a thread-local previous result, so chunk generation order cannot change them.
 func FindOverworldBiome(climate [6]float32) string {
-	return overworldBiomeNames[findOverworldBiomeIndex(climate)]
+	return overworldBiomeNames[findOverworldBiomeIndex(climate, nil)]
 }
 
-func findOverworldBiomeIndex(climate [6]float32) uint8 {
+// ClimateHint remembers the leaf a climate search found. Like the last result
+// of Java's Climate.RTree it bounds the next search, which nearby climates
+// make much shorter; unlike it, the result never depends on the hint.
+type ClimateHint struct {
+	leaf uint16
+	ok   bool
+}
+
+func findOverworldBiomeIndex(climate [6]float32, hint *ClimateHint) uint8 {
 	var target [6]int64
 	for axis, value := range climate {
 		target[axis] = int64(value * 10000)
 	}
 	root := uint16(binary.LittleEndian.Uint32(overworldClimateTree[4:8]))
-	best, _ := searchClimateTree(root, &target, 0, math.MaxInt64)
+	best, distance := uint16(0), int64(math.MaxInt64)
+	if hint != nil && hint.ok {
+		// Subtrees farther than the hinted leaf hold no leaf the search could
+		// return, so it still finds the first nearest leaf in tree order.
+		best, distance = hint.leaf, climateDistance(climateNode(hint.leaf), &target, math.MaxInt64)+1
+	}
+	best, _ = searchClimateTree(root, &target, best, distance)
+	if hint != nil {
+		hint.leaf, hint.ok = best, true
+	}
 	return climateNode(best)[27]
 }
 

@@ -358,7 +358,7 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 			if len(result.PostProcessing) != len(lastCall.Markers) {
 				t.Errorf("native postprocessing=%v, Source=%v", result.PostProcessing, lastCall.Markers)
 			}
-			for pos := range region.overlay {
+			for pos := range region.overlayByPos() {
 				name, _ := region.State(pos)
 				if name == "minecraft:structure_block" {
 					t.Errorf("marker remained in final world state at %v", pos)

@@ -115,7 +115,7 @@ func TestBonusChestMatchesJava263(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got, ok := region.overlay[p]; !ok || got != want {
+				if got, ok := region.overlay[featureKey(p)]; !ok || got != want {
 					t.Errorf("at %v: got %+v present=%v, source projection %+v", p, got, ok, want)
 				}
 			}

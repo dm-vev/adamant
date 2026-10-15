@@ -103,7 +103,7 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 					t.Fatal(err)
 				}
 				p := featurePos{v.Position[0], v.Position[1], v.Position[2]}
-				if got, ok := region.overlay[p]; !ok || got != want {
+				if got, ok := region.overlay[featureKey(p)]; !ok || got != want {
 					t.Errorf("at %v got=%v present=%v source=%v", p, got, ok, want)
 				}
 			}

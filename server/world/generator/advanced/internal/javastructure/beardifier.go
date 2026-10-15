@@ -41,6 +41,28 @@ func NewBeardifier(pieces []RigidPiece, junctions []Junction) *Beardifier {
 	return &Beardifier{pieces: append([]RigidPiece(nil), pieces...), junctions: append([]Junction(nil), junctions...)}
 }
 
+// NewChunkBeardifier returns the Beardifier of the chunk at chunkX, chunkZ. As
+// Beardifier.forStructuresInChunk, it keeps the pieces within 12 blocks of the
+// chunk and the junctions whose source lies within 12 blocks of it: the others
+// add nothing to the densities of the chunk.
+func NewChunkBeardifier(chunkX, chunkZ int32, pieces []RigidPiece, junctions []Junction) *Beardifier {
+	minX, minZ := chunkX*16, chunkZ*16
+	maxX, maxZ := minX+15, minZ+15
+	b := &Beardifier{}
+	for _, piece := range pieces {
+		box := piece.Bounds
+		if box.Max[0] >= minX-12 && box.Min[0] <= maxX+12 && box.Max[2] >= minZ-12 && box.Min[2] <= maxZ+12 {
+			b.pieces = append(b.pieces, piece)
+		}
+	}
+	for _, junction := range junctions {
+		if junction.X > minX-12 && junction.Z > minZ-12 && junction.X < maxX+12 && junction.Z < maxZ+12 {
+			b.junctions = append(b.junctions, junction)
+		}
+	}
+	return b
+}
+
 // AdjustDensity returns the Java Beardifier density contribution at the block coordinate.
 func (b *Beardifier) AdjustDensity(x,y,z int32) float32 {
 	if b == nil { return 0 }
@@ -49,6 +71,10 @@ func (b *Beardifier) AdjustDensity(x,y,z int32) float32 {
 		box := piece.Bounds
 		dx := max(int32(0),max(box.Min[0]-x,x-box.Max[0]))
 		dz := max(int32(0),max(box.Min[2]-z,z-box.Max[2]))
+		if dx >= 12 || dz >= 12 {
+			// Every adjustment adds nothing this far from the piece.
+			continue
+		}
 		groundY := box.Min[1]+piece.GroundLevelDelta
 		dyToGround := y-groundY
 		var dy int32

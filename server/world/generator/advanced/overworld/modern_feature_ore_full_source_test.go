@@ -137,7 +137,7 @@ func TestOreFeaturesMatchFullJava263Source(t *testing.T) {
 				}
 				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = id
 			}
-			for pos, state := range region.overlay {
+			for pos, state := range region.overlayByPos() {
 				got := state.CanonicalJavaID(c.BlockRegistry())
 				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
 					continue

@@ -32,10 +32,17 @@ const (
 	cellVeinB
 )
 
+// QuartBiomes returns the index, as OverworldBiomeName names it, of the noise
+// biome at a quart with quartY within -16..79: the biome FindOverworldBiome
+// gives for the climate there.
+type QuartBiomes func(quartX, quartY, quartZ int32) uint8
+
 // Prepare samples one complete -64..319 chunk plus interpolation/biome borders.
-// zoomSeed is the world seed transformed once with BiomeZoomSeed.
-func (c *OverworldChunk) Prepare(noise *OverworldNoise, zoomSeed int64, baseX, baseZ int32) {
+// zoomSeed is the world seed transformed once with BiomeZoomSeed. The noise
+// biomes are read from biomes if it is not nil.
+func (c *OverworldChunk) Prepare(noise *OverworldNoise, zoomSeed int64, baseX, baseZ int32, biomes QuartBiomes) {
 	c.noise, c.zoomSeed, c.baseX, c.baseZ = noise, zoomSeed, baseX, baseZ
+	var hint ClimateHint
 	for x := range 6 {
 		wx := baseX + int32(x-1)*4
 		for z := range 6 {
@@ -44,8 +51,13 @@ func (c *OverworldChunk) Prepare(noise *OverworldNoise, zoomSeed int64, baseX, b
 			c.columns[x][z] = column
 			for y := range 98 {
 				quartY := int32(y - 17)
-				blockY := max(-16, min(quartY, 79)) * 4
-				index := findOverworldBiomeIndex([6]float32{column.Temperature, column.Vegetation, column.Continentalness, column.Erosion, column.Depth(blockY), column.Weirdness})
+				clampedY := max(-16, min(quartY, 79))
+				var index uint8
+				if biomes != nil {
+					index = biomes(wx>>2, clampedY, wz>>2)
+				} else {
+					index = findOverworldBiomeIndex([6]float32{column.Temperature, column.Vegetation, column.Continentalness, column.Erosion, column.Depth(clampedY * 4), column.Weirdness}, &hint)
+				}
 				c.biomes[x][z][y] = overworldBiomeCell{index: index, fiddle: biomeFiddleAt(zoomSeed, wx>>2, quartY, wz>>2)}
 			}
 			if x == 0 || z == 0 {
@@ -126,7 +138,7 @@ func (c *OverworldChunk) BiomeIndexAt(x, y, z int32) uint8 {
 		qx, qy, qz := FiddledBiomeQuart(c.zoomSeed, x, y, z)
 		column := c.noise.SampleBiomeColumn(qx*4, qz*4)
 		blockY := max(-16, min(qy, 79)) * 4
-		return findOverworldBiomeIndex([6]float32{column.Temperature, column.Vegetation, column.Continentalness, column.Erosion, column.Depth(blockY), column.Weirdness})
+		return findOverworldBiomeIndex([6]float32{column.Temperature, column.Vegetation, column.Continentalness, column.Erosion, column.Depth(blockY), column.Weirdness}, nil)
 	}
 	ax, ay, az := localX-2, y-2, localZ-2
 	px, py, pz := (ax>>2)+1, (ay>>2)+17, (az>>2)+1

@@ -154,3 +154,13 @@ func TestBlockPredicateIdentifiersAndOffset(t *testing.T) {
 		}
 	}
 }
+
+// overlayByPos returns the overlay of the region by position.
+func (r *featureRegion) overlayByPos() map[featurePos]world.NativeState {
+	states := make(map[featurePos]world.NativeState, len(r.overlay))
+	for key, state := range r.overlay {
+		pos := featurePos{int32(uint32(key)<<6) >> 6, int32(uint32(key>>52)<<20) >> 20, int32(uint32(key>>26)<<6) >> 6}
+		states[pos] = state
+	}
+	return states
+}

@@ -164,7 +164,7 @@ func TestSnowAndFreezeMatchesJava263Source(t *testing.T) {
 				t.Errorf("nextLong=%d, Source=%d", got, tc.NextLong)
 			}
 			got := make([]string, 0, len(region.overlay))
-			for p, state := range region.overlay {
+			for p, state := range region.overlayByPos() {
 				javaState, err := world.JavaState(world.DefaultBlockRegistry, state)
 				if err != nil {
 					t.Fatal(err)

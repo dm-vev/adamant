@@ -2,79 +2,186 @@ package overworld
 
 import (
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-type featureHeightKey struct {
-	x, z int32
-	kind string
+// featureColumn holds what a region knows of a column: the highest write to
+// its overlay and the heights its heightmap scans found.
+type featureColumn struct {
+	overlayTop int32
+	hasOverlay bool
+	// known has a bit for every heightmap kind with a height.
+	known  uint8
+	height [heightmapKinds]int32
 }
 
+// invalidatePlacementHeight forgets the heights of the column of p that a
+// write at p may change.
 func (r *featureRegion) invalidatePlacementHeight(p featurePos) {
-	if r.placementHeights == nil {
-		return
-	}
+	key := featureColumnKey(p.x, p.z)
 	// ProtoChunk stops updating the WORLDGEN heightmaps at TERRAIN status.
-	for _, kind := range [...]string{"WORLD_SURFACE", "OCEAN_FLOOR", "MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES"} {
-		delete(r.placementHeights, featureHeightKey{p.x, p.z, kind})
+	if column, ok := r.columns[key]; ok && column.known&^heightmapFrozenKinds != 0 {
+		column.known &= heightmapFrozenKinds
+		r.columns[key] = column
 	}
 }
+
 func (r *featureRegion) placementHeight(x, z int32, heightmap string) int32 {
-	key := featureHeightKey{x, z, heightmap}
-	if height, ok := r.placementHeights[key]; ok {
-		return height
+	kind, mask, frozen := heightmapOf(heightmap)
+	key := featureColumnKey(x, z)
+	column := r.columns[key]
+	if column.known&(1<<kind) != 0 {
+		return column.height[kind]
 	}
-	frozen := heightmap == "WORLD_SURFACE_WG" || heightmap == "OCEAN_FLOOR_WG"
-	for y := r.MaxY(); y >= r.MinY(); y-- {
+	height := r.MinY()
+	for y := min(r.MaxY(), r.columnTop(x, z, frozen)); y >= r.MinY(); y-- {
 		var state world.NativeState
 		if frozen {
-			state = r.f.source.BaseState(x, y, z)
+			state = r.baseState(featurePos{x, y, z})
 		} else {
 			state = r.nativeState(featurePos{x, y, z})
 		}
-		javaState, err := world.JavaState(r.c.BlockRegistry(), state)
-		if err != nil {
-			panic(err)
-		}
-		name := normalizeJavaResource(javaState.Name)
-		matches := false
-		switch heightmap {
-		case "WORLD_SURFACE", "WORLD_SURFACE_WG":
-			matches = name != "air" && name != "cave_air" && name != "void_air"
-		case "OCEAN_FLOOR", "OCEAN_FLOOR_WG":
-			matches, err = javadata.BlockTagContains("minecraft:blocks_motion_in_heightmap", name)
-			if err != nil {
-				panic(err)
-			}
-		case "MOTION_BLOCKING":
-			matches, err = javadata.BlockTagContains("minecraft:blocks_motion_in_heightmap", name)
-			if err != nil {
-				panic(err)
-			}
-			matches = matches || featureStateHasFluid(r.c, state)
-		case "MOTION_BLOCKING_NO_LEAVES":
-			matches, err = javadata.BlockTagContains("minecraft:blocks_motion_in_heightmap_no_leaves", name)
-			if err != nil {
-				panic(err)
-			}
-			matches = matches || featureStateHasFluid(r.c, state)
-		default:
-			panic("overworld: unsupported Java heightmap " + heightmap)
-		}
-		if matches {
-			if r.placementHeights == nil {
-				r.placementHeights = make(map[featureHeightKey]int32)
-			}
-			r.placementHeights[key] = y + 1
-			return y + 1
+		if r.f.heightmapFlags(r.c, state)&mask != 0 {
+			height = y + 1
+			break
 		}
 	}
-	if r.placementHeights == nil {
-		r.placementHeights = make(map[featureHeightKey]int32)
+	column.known |= 1 << kind
+	column.height[kind] = height
+	if r.columns == nil {
+		r.columns = make(map[uint64]featureColumn)
 	}
-	r.placementHeights[key] = r.MinY()
-	return r.MinY()
+	r.columns[key] = column
+	return height
+}
+
+// columnTop returns a height at or above every block the heightmap scan of the
+// column can read, so the scan skips the air above them: the base terrain for
+// the WORLDGEN heightmaps, otherwise the target chunk or base terrain and the
+// writes of the features.
+func (r *featureRegion) columnTop(x, z int32, frozen bool) int32 {
+	var top int32
+	switch {
+	case !frozen && r.inTarget(featurePos{x, r.MinY(), z}):
+		top = NativeColumnTop(r.c, uint8(x&15), uint8(z&15))
+	case r.base != nil:
+		top = NativeColumnTop(r.baseChunk(world.ChunkPos{x >> 4, z >> 4}), uint8(x&15), uint8(z&15))
+	default:
+		source, ok := r.f.source.(baseTopSource)
+		if !ok {
+			return r.MaxY()
+		}
+		top = source.BaseTop(x, z)
+	}
+	if frozen {
+		return top
+	}
+	if column, ok := r.columns[featureColumnKey(x, z)]; ok && column.hasOverlay {
+		top = max(top, column.overlayTop)
+	}
+	return top
+}
+
+// noteOverlay records that the overlay holds a state at p.
+func (r *featureRegion) noteOverlay(p featurePos) {
+	key := featureColumnKey(p.x, p.z)
+	column, ok := r.columns[key]
+	if ok && column.hasOverlay && column.overlayTop >= p.y {
+		return
+	}
+	column.overlayTop, column.hasOverlay = p.y, true
+	if r.columns == nil {
+		r.columns = make(map[uint64]featureColumn)
+	}
+	r.columns[key] = column
+}
+
+// NativeColumnTop returns the highest y of the column holding a non-air
+// state in either layer, or one below the chunk if it holds none.
+func NativeColumnTop(c *chunk.Chunk, x, z uint8) int32 {
+	air := c.BlockRegistry().AirRuntimeID()
+	subs := c.Sub()
+	for index := len(subs) - 1; index >= 0; index-- {
+		sub := subs[index]
+		if sub.Empty() {
+			continue
+		}
+		layers := sub.Layers()
+		for y := 15; y >= 0; y-- {
+			for _, layer := range layers {
+				if layer.At(x, uint8(y), z) != air {
+					return int32(c.SubY(int16(index))) + int32(y)
+				}
+			}
+		}
+	}
+	return int32(c.Range()[0]) - 1
+}
+
+// Heightmap predicates of a native state.
+const (
+	heightmapWorldSurface uint8 = 1 << iota
+	heightmapMotion
+	heightmapMotionNoLeaves
+	heightmapFluid
+)
+
+// heightmapKinds is the number of Java heightmaps; heightmapFrozenKinds has
+// the bits of the WORLDGEN ones among them.
+const (
+	heightmapKinds             = 6
+	heightmapFrozenKinds uint8 = 1<<1 | 1<<3
+)
+
+// heightmapOf returns the index of a Java heightmap, the predicates it counts
+// a block by and whether it is a WORLDGEN heightmap frozen at the base
+// terrain.
+func heightmapOf(heightmap string) (kind, mask uint8, frozen bool) {
+	switch heightmap {
+	case "WORLD_SURFACE":
+		return 0, heightmapWorldSurface, false
+	case "WORLD_SURFACE_WG":
+		return 1, heightmapWorldSurface, true
+	case "OCEAN_FLOOR":
+		return 2, heightmapMotion, false
+	case "OCEAN_FLOOR_WG":
+		return 3, heightmapMotion, true
+	case "MOTION_BLOCKING":
+		return 4, heightmapMotion | heightmapFluid, false
+	case "MOTION_BLOCKING_NO_LEAVES":
+		return 5, heightmapMotionNoLeaves | heightmapFluid, false
+	}
+	panic("overworld: unsupported Java heightmap " + heightmap)
+}
+
+// heightmapFlags returns the heightmap predicates the native state meets. Its
+// Java state and tags are resolved once per state: heightmap scans test every
+// block of a column.
+func (f *ModernFeatures) heightmapFlags(c *chunk.Chunk, state world.NativeState) uint8 {
+	if flags, ok := f.heightmaps.Load(state); ok {
+		return flags.(uint8)
+	}
+	javaState, err := world.JavaState(c.BlockRegistry(), state)
+	if err != nil {
+		panic(err)
+	}
+	name := normalizeJavaResource(javaState.Name)
+	var flags uint8
+	if name != "air" && name != "cave_air" && name != "void_air" {
+		flags |= heightmapWorldSurface
+	}
+	if javaBlockTagContains("minecraft:blocks_motion_in_heightmap", name) {
+		flags |= heightmapMotion
+	}
+	if javaBlockTagContains("minecraft:blocks_motion_in_heightmap_no_leaves", name) {
+		flags |= heightmapMotionNoLeaves
+	}
+	if featureStateHasFluid(c, state) {
+		flags |= heightmapFluid
+	}
+	f.heightmaps.Store(state, flags)
+	return flags
 }
 
 // countEveryLayerPositions mirrors CountOnEveryLayerPlacement.modify and its

@@ -120,6 +120,13 @@ func (c OverworldColumn) Biome(y int32) string {
 	return FindOverworldBiome([6]float32{c.Temperature, c.Vegetation, c.Continentalness, c.Erosion, c.Depth(y), c.Weirdness})
 }
 
+// BiomeIndexNear returns the index of the biome Biome returns, which
+// OverworldBiomeName names, searching from the climate hint of a nearby
+// earlier search.
+func (c OverworldColumn) BiomeIndexNear(y int32, hint *ClimateHint) uint8 {
+	return findOverworldBiomeIndex([6]float32{c.Temperature, c.Vegetation, c.Continentalness, c.Erosion, c.Depth(y), c.Weirdness}, hint)
+}
+
 func (n *OverworldNoise) PreliminarySurfaceHeight(x, z int32) int32 {
 	column, _, _ := n.shapeColumn(x, z)
 	return preliminarySurfaceHeight(column)

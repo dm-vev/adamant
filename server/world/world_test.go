@@ -1081,10 +1081,11 @@ func TestWorldTicksTwentyTimesPerSecondWhenTicksTakeTime(t *testing.T) {
 	w := Config{}.New()
 	defer w.Close()
 	var slowTicks atomic.Int64
-	loader := NewLoader(1, w, NopViewer{})
+	// Entities tick once the chunks within two chunks of theirs are loaded.
+	loader := NewLoader(3, w, NopViewer{})
 	<-w.Exec(func(tx *Tx) {
 		loader.Move(tx, mgl64.Vec3{1, 4, 1})
-		loader.Load(tx, 9)
+		loader.Load(tx, 64)
 		tx.AddEntity(EntitySpawnOpts{Position: mgl64.Vec3{1, 4, 1}}.New(testEntityType{}, slowTickerConfig{delay: 10 * time.Millisecond, ticks: &slowTicks}))
 	})
 	defer w.Exec(func(tx *Tx) { loader.Close(tx) })

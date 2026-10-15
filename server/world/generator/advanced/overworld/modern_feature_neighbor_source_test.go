@@ -111,7 +111,7 @@ func TestRandomNeighborSpreadMatchesJava263Source(t *testing.T) {
 				}
 				want[featurePos{state.Pos[0], state.Pos[1], state.Pos[2]}] = id
 			}
-			for p, n := range region.overlay {
+			for p, n := range region.overlayByPos() {
 				expected, ok := want[p]
 				if !ok {
 					t.Errorf("unexpected Source placement at %v", p)

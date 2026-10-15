@@ -103,7 +103,7 @@ func TestDeltaFeatureMatchesJava263Source(t *testing.T) {
 				state := deltaSourceState(t, row.State)
 				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = state.CanonicalJavaID(c.BlockRegistry())
 			}
-			for p, state := range region.overlay {
+			for p, state := range region.overlayByPos() {
 				expected, ok := want[p]
 				if !ok {
 					t.Errorf("unexpected placement at %v", p)

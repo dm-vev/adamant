@@ -115,7 +115,7 @@ func TestBlockBlobFeatureMatchesJava263Source(t *testing.T) {
 			for _, row := range tc.States {
 				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalJavaID(c.BlockRegistry())
 			}
-			for pos, state := range region.overlay {
+			for pos, state := range region.overlayByPos() {
 				gotID := state.CanonicalJavaID(c.BlockRegistry())
 				if gotID == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
 					continue

@@ -172,7 +172,7 @@ func TestRootSystemMatchesJava263Source(t *testing.T) {
 					}
 				}
 			}
-			for p, state := range region.overlay {
+			for p, state := range region.overlayByPos() {
 				if old, ok := before[p]; ok && old == state {
 					continue
 				}

@@ -8,6 +8,9 @@ import (
 
 type compiledTag struct {
 	members map[string]struct{}
+	// short holds the minecraft members by path, so names without a
+	// namespace are looked up without building the full name.
+	short   map[string]struct{}
 	ordered []string
 	err     error
 }
@@ -21,6 +24,10 @@ var javaTagCache = struct {
 	sync.Mutex
 	tags map[tagKey]compiledTag
 }{tags: make(map[tagKey]compiledTag)}
+
+// compiledTags holds every finished tag for lookups without the lock, which
+// generation workers make for every block they test.
+var compiledTags sync.Map
 
 // BlockTagContains resolves and caches a vanilla block tag and all nested references.
 func BlockTagContains(tag, block string) (bool, error) {
@@ -74,9 +81,13 @@ func compileTag(key tagKey) (compiledTag, error) {
 		return compiledTag{}, fmt.Errorf("unsupported %s tag namespace %q", strings.TrimSuffix(key.kind, "_tag"), namespace)
 	}
 	key.name = normalizeTagName(key.name)
+	if compiled, ok := compiledTags.Load(key); ok {
+		return compiled.(compiledTag), compiled.(compiledTag).err
+	}
 	javaTagCache.Lock()
 	compiled := compileTagLocked(key, make(map[tagKey]bool))
 	javaTagCache.Unlock()
+	compiledTags.Store(key, compiled)
 	return compiled, compiled.err
 }
 
@@ -85,16 +96,13 @@ func tagContains(kind, rawTag, value string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, ok := compiled.members[canonicalResourceName(value)]
-	return ok, nil
-}
-
-func canonicalResourceName(name string) string {
-	name = strings.TrimPrefix(name, "#")
-	if !strings.Contains(name, ":") {
-		return "minecraft:" + name
+	value = strings.TrimPrefix(value, "#")
+	if strings.IndexByte(value, ':') < 0 {
+		_, ok := compiled.short[value]
+		return ok, nil
 	}
-	return name
+	_, ok := compiled.members[value]
+	return ok, nil
 }
 
 func compileTagLocked(key tagKey, visiting map[tagKey]bool) compiledTag {
@@ -165,7 +173,13 @@ func compileTagLocked(key tagKey, visiting map[tagKey]bool) compiledTag {
 			ordered = append(ordered, member)
 		}
 	}
-	result := compiledTag{members: members, ordered: ordered}
+	short := make(map[string]struct{}, len(members))
+	for member := range members {
+		if path, ok := strings.CutPrefix(member, "minecraft:"); ok {
+			short[path] = struct{}{}
+		}
+	}
+	result := compiledTag{members: members, short: short, ordered: ordered}
 	javaTagCache.tags[key] = result
 	return result
 }

@@ -1,6 +1,7 @@
 package world
 
 import (
+	"cmp"
 	"math"
 	"math/rand/v2"
 	"slices"
@@ -20,6 +21,9 @@ type ticker struct {
 type entityChunkRef struct {
 	col *Column
 	pos ChunkPos
+	// waiting is set while chunks within two chunks of pos are still
+	// generating, so that only players in the chunk tick.
+	waiting bool
 }
 
 const (
@@ -527,7 +531,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 }
 
 func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, active bool) {
-	ref := entityChunkRef{col: col, pos: pos}
+	ref := entityChunkRef{col: col, pos: pos, waiting: active && !tx.World().entityTickingReady(pos)}
 	for index := 0; index < len(col.Entities); {
 		handle := col.Entities[index]
 		t.tickEntityHandle(tx, tick, handle, ref, active)
@@ -558,7 +562,7 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 	if active && handle.data.Riding != nil {
 		vehicle := handle.data.Riding
 		if vehicleState, loaded := w.entities[vehicle]; loaded {
-			vehicleRef := entityChunkRef{pos: vehicleState.pos, col: w.chunks[vehicleState.pos]}
+			vehicleRef := entityChunkRef{pos: vehicleState.pos, col: w.chunks[vehicleState.pos], waiting: !w.entityTickingReady(vehicleState.pos)}
 			t.tickEntityHandle(tx, tick, vehicle, vehicleRef, true)
 		}
 	}
@@ -584,6 +588,17 @@ func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref e
 			// player teleported into ungenerated terrain, waits for it.
 			return
 		}
+	}
+	waiting := ref.waiting
+	if chunkPos != ref.pos {
+		waiting = active && !w.entityTickingReady(chunkPos)
+	}
+	if waiting && handle.t.EncodeEntity() != "minecraft:player" {
+		// Java ticks the entities of a chunk only once the chunks within two
+		// chunks of it are generated: until then they keep still and do not
+		// age, and never stall the tick reading a chunk still generating.
+		state.lastTick = tick
+		return
 	}
 
 	if !active {
@@ -734,28 +749,65 @@ func (g *randUint4) uint4(r *rand.Rand) uint8 {
 
 // scheduledTickQueue stores one Java tick registry's scheduled updates.
 type scheduledTickQueue struct {
-	ticks           []scheduledTick
-	dispatch        []scheduledTick
-	run             []scheduledTick
-	groups          []scheduledTickGroup
-	groupHeap       []int
-	selectedIndices []int
-	scheduledTicks  map[scheduledTickIndex]int64
-	pendingTicks    []scheduledTick
-	deferredChunks  map[ChunkPos]int
-	saveTicks       []scheduledTick
-	processing      bool
-	fluid           bool
-	currentTick     int64
-	nextOrder       int64
+	// chunks holds the ticks of each chunk in the order they were scheduled.
+	chunks         map[ChunkPos]*scheduledChunkTicks
+	dispatch       []scheduledTick
+	run            []scheduledTick
+	selected       []scheduledTick
+	groups         []scheduledTickGroup
+	groupHeap      []int
+	scheduledTicks map[scheduledTickIndex]int64
+	pendingTicks   []scheduledTick
+	deferredChunks map[ChunkPos]int
+	saveTicks      []scheduledTick
+	processing     bool
+	fluid          bool
+	currentTick    int64
+	nextOrder      int64
+}
+
+// scheduledChunkTicks holds the ticks of a chunk in the order they were
+// scheduled, so that a tick only visits the chunks with ticks due.
+type scheduledChunkTicks struct {
+	ticks []scheduledTick
+	// due is the earliest trigger tick of the ticks not deferred.
+	due int64
+}
+
+// updateDue recomputes the earliest trigger tick of the chunk.
+func (list *scheduledChunkTicks) updateDue() {
+	list.due = math.MaxInt64
+	for _, t := range list.ticks {
+		if !t.deferred {
+			list.due = min(list.due, t.t)
+		}
+	}
+}
+
+// push appends t to the ticks of its chunk.
+func (queue *scheduledTickQueue) push(t scheduledTick) {
+	pos := chunkPosFromBlockPos(t.pos)
+	list := queue.chunks[pos]
+	if list == nil {
+		list = &scheduledChunkTicks{due: math.MaxInt64}
+		if queue.chunks == nil {
+			queue.chunks = make(map[ChunkPos]*scheduledChunkTicks)
+		}
+		queue.chunks[pos] = list
+	}
+	list.ticks = append(list.ticks, t)
+	if !t.deferred {
+		list.due = min(list.due, t.t)
+	}
 }
 
 type scheduledTick struct {
-	pos        cube.Pos
-	btype      string
-	t          int64
-	priority   int32
-	order      int64
+	pos      cube.Pos
+	btype    string
+	t        int64
+	priority int32
+	order    int64
+	// queueIndex is the index of the tick among the ticks of its chunk.
 	queueIndex int
 	deferred   bool // t is a relative saved delay until block-ticking promotion.
 }
@@ -798,7 +850,7 @@ func newScheduledTickQueueForKind(tick int64, fluid bool) *scheduledTickQueue {
 // then dispatches the collected batch. Fluid ticks run after the block queue.
 func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 	queue.currentTick = tick
-	if len(queue.ticks) == 0 {
+	if len(queue.chunks) == 0 {
 		return
 	}
 
@@ -817,14 +869,17 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 		}
 	}
 	queue.dispatch = queue.dispatch[:0]
-	ticks := queue.ticks
-	for i, t := range ticks {
-		pos := chunkPosFromBlockPos(t.pos)
-		if t.deferred || t.t > tick || !w.scheduledTickChunkEligible(pos, areas) {
+	for pos, list := range queue.chunks {
+		if list.due > tick || !w.scheduledTickChunkEligible(pos, areas) {
 			continue
 		}
-		t.queueIndex = i
-		queue.dispatch = append(queue.dispatch, t)
+		for i, t := range list.ticks {
+			if t.deferred || t.t > tick {
+				continue
+			}
+			t.queueIndex = i
+			queue.dispatch = append(queue.dispatch, t)
+		}
 	}
 	slices.SortFunc(queue.dispatch, func(a, b scheduledTick) int {
 		aPos, bPos := chunkPosFromBlockPos(a.pos), chunkPosFromBlockPos(b.pos)
@@ -858,31 +913,16 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 	}
 
 	queue.run = queue.run[:0]
-	queue.selectedIndices = queue.selectedIndices[:0]
 	for len(queue.groupHeap) != 0 && len(queue.run) < maxScheduledTicksPerTick {
 		group := queue.popScheduledTickGroup()
 		current := &queue.groups[group]
-		t := queue.dispatch[current.next]
-		queue.run = append(queue.run, t)
-		queue.selectedIndices = append(queue.selectedIndices, t.queueIndex)
+		queue.run = append(queue.run, queue.dispatch[current.next])
 		current.next++
 		if current.next < current.end {
 			queue.pushScheduledTickGroup(group)
 		}
 	}
-	if len(queue.run) != 0 {
-		slices.Sort(queue.selectedIndices)
-		dst, selected := 0, 0
-		for i, t := range ticks {
-			if selected < len(queue.selectedIndices) && queue.selectedIndices[selected] == i {
-				selected++
-				continue
-			}
-			ticks[dst] = t
-			dst++
-		}
-		queue.ticks = ticks[:dst]
-	}
+	queue.removeSelected()
 
 	// LevelChunkTicks.poll removes every collected identity during collection,
 	// before any callback can schedule a replacement of another collected tick.
@@ -938,14 +978,49 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 		}
 	}
 	queue.processing = false
-	queue.ticks = append(queue.ticks, queue.pendingTicks...)
+	for _, t := range queue.pendingTicks {
+		queue.push(t)
+	}
+	clear(queue.pendingTicks)
 	queue.pendingTicks = queue.pendingTicks[:0]
 	queue.dispatch = queue.dispatch[:0]
 	queue.run = queue.run[:0]
 	queue.groups = queue.groups[:0]
 	queue.groupHeap = queue.groupHeap[:0]
-	queue.selectedIndices = queue.selectedIndices[:0]
 	w.scratchLoaderAreas = areas[:0]
+}
+
+// removeSelected removes the ticks collected to run from their chunks,
+// keeping the order of the others.
+func (queue *scheduledTickQueue) removeSelected() {
+	queue.selected = append(queue.selected[:0], queue.run...)
+	slices.SortFunc(queue.selected, func(a, b scheduledTick) int {
+		aPos, bPos := chunkPosFromBlockPos(a.pos), chunkPosFromBlockPos(b.pos)
+		return cmp.Or(cmp.Compare(aPos[0], bPos[0]), cmp.Compare(aPos[1], bPos[1]), cmp.Compare(a.queueIndex, b.queueIndex))
+	})
+	for start := 0; start < len(queue.selected); {
+		pos := chunkPosFromBlockPos(queue.selected[start].pos)
+		list := queue.chunks[pos]
+		dst, next := 0, start
+		for i, t := range list.ticks {
+			if next < len(queue.selected) && queue.selected[next].queueIndex == i && chunkPosFromBlockPos(queue.selected[next].pos) == pos {
+				next++
+				continue
+			}
+			list.ticks[dst] = t
+			dst++
+		}
+		clear(list.ticks[dst:])
+		list.ticks = list.ticks[:dst]
+		if dst == 0 {
+			delete(queue.chunks, pos)
+		} else {
+			list.updateDue()
+		}
+		start = next
+	}
+	clear(queue.selected)
+	queue.selected = queue.selected[:0]
 }
 
 func (w *World) scheduledTickChunkEligible(pos ChunkPos, areas []loaderActiveArea) bool {
@@ -1078,7 +1153,7 @@ func (queue *scheduledTickQueue) insertTypeTick(pos cube.Pos, typeName string, d
 	if queue.processing {
 		queue.pendingTicks = append(queue.pendingTicks, t)
 	} else {
-		queue.ticks = append(queue.ticks, t)
+		queue.push(t)
 	}
 	return true
 }
@@ -1108,7 +1183,10 @@ func (queue *scheduledTickQueue) activateChunk(pos ChunkPos, now int64) {
 			}
 		}
 	}
-	activate(queue.ticks)
+	if list := queue.chunks[pos]; list != nil {
+		activate(list.ticks)
+		list.updateDue()
+	}
 	activate(queue.pendingTicks)
 	delete(queue.deferredChunks, pos)
 }
@@ -1180,7 +1258,11 @@ func (queue *scheduledTickQueue) fromChunk(pos ChunkPos) []chunk.SavedScheduledT
 		kind = chunk.FluidTick
 	}
 	ordered := queue.saveTicks[:0]
-	for _, pending := range [2][]scheduledTick{queue.ticks, queue.pendingTicks} {
+	var listed []scheduledTick
+	if list := queue.chunks[pos]; list != nil {
+		listed = list.ticks
+	}
+	for _, pending := range [2][]scheduledTick{listed, queue.pendingTicks} {
 		for _, t := range pending {
 			if pos == chunkPosFromBlockPos(t.pos) {
 				ordered = append(ordered, t)
@@ -1223,17 +1305,19 @@ func (queue *scheduledTickQueue) fromChunk(pos ChunkPos) []chunk.SavedScheduledT
 // removeChunk removes all scheduled ticks positioned within a ChunkPos.
 func (queue *scheduledTickQueue) removeChunk(pos ChunkPos) {
 	delete(queue.deferredChunks, pos)
-	queue.ticks = slices.DeleteFunc(queue.ticks, func(tick scheduledTick) bool {
-		return chunkPosFromBlockPos(tick.pos) == pos
-	})
-	queue.pendingTicks = slices.DeleteFunc(queue.pendingTicks, func(tick scheduledTick) bool {
-		return chunkPosFromBlockPos(tick.pos) == pos
-	})
-	for index := range queue.scheduledTicks {
-		if chunkPosFromBlockPos(index.pos) == pos {
-			delete(queue.scheduledTicks, index)
+	if list := queue.chunks[pos]; list != nil {
+		for _, tick := range list.ticks {
+			delete(queue.scheduledTicks, scheduledTickIndex{pos: tick.pos, typeName: tick.btype})
 		}
+		delete(queue.chunks, pos)
 	}
+	queue.pendingTicks = slices.DeleteFunc(queue.pendingTicks, func(tick scheduledTick) bool {
+		if chunkPosFromBlockPos(tick.pos) != pos {
+			return false
+		}
+		delete(queue.scheduledTicks, scheduledTickIndex{pos: tick.pos, typeName: tick.btype})
+		return true
+	})
 }
 
 func (queue *scheduledTickQueue) add(ticks []scheduledTick) {
@@ -1249,6 +1333,6 @@ func (queue *scheduledTickQueue) add(ticks []scheduledTick) {
 			queue.reserveDeferredChunk(chunkPosFromBlockPos(t.pos))
 		}
 		queue.scheduledTicks[index] = t.t
-		queue.ticks = append(queue.ticks, t)
+		queue.push(t)
 	}
 }
