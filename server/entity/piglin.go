@@ -20,6 +20,7 @@ type piglinState struct {
 	effects                                                            *EffectManager
 	mc                                                                 *MovementComputer
 	random                                                             java26.Random
+	randomInitialized                                                  bool
 	baby, admire, dancing, charging, cannotHunt, dead                  bool
 	conversion, attackCooldown, admireTicks, barterTicks, retreatTicks int
 	target                                                             string
@@ -50,13 +51,19 @@ func (PiglinType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 	if d.Data == nil {
 		(piglinConfig{}).Apply(d)
 	}
-	e := &Ent{tx: tx, handle: h, data: d}
-	if h != nil {
+	return openPiglin(tx, h, d)
+}
+
+// openPiglin seeds the shared piglin-family stream once, because an entity view
+// may be reopened many times while its behaviour state remains live.
+func openPiglin(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) *Piglin {
+	s := d.Data.(*piglinState)
+	if h != nil && !s.randomInitialized {
 		u := h.UUID()
-		r := java26.NewLegacyRandom(int64(fnv64(u[:])))
-		e.Behaviour().(*piglinState).random = r
+		s.random = java26.NewLegacyRandom(int64(fnv64(u[:])))
+		s.randomInitialized = true
 	}
-	return &Piglin{e}
+	return &Piglin{&Ent{tx: tx, handle: h, data: d}}
 }
 func (PiglinType) BBox(e world.Entity) cube.BBox {
 	if p, ok := e.(*Piglin); ok && p.p().baby {
