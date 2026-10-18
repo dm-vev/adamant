@@ -162,6 +162,8 @@ type ShulkerBehaviour struct {
 	peek, color    uint8
 	attackCooldown int
 	dead           bool
+	target         *world.EntityHandle
+	unseenTicks    int
 }
 
 func (s *Shulker) behaviour() *ShulkerBehaviour { return s.Behaviour().(*ShulkerBehaviour) }
@@ -178,49 +180,82 @@ func (b *ShulkerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if !b.canStayAt(tx, cube.PosFromVec3(e.Position()), b.attachFace) {
 		b.findNewAttachment(e, tx)
 	}
-	if b.attackCooldown > 0 {
-		b.attackCooldown--
-	}
 	b.updateAttack(e, tx)
 	e.data.Vel = mgl64.Vec3{}
 	return nil
 }
 func (b *ShulkerBehaviour) updateAttack(e *Ent, tx *world.Tx) {
-	var nearest Living
-	nearestDistance := 16.0 * 16.0
-	for target := range tx.EntitiesWithin(shulkerType{}.BBox(nil).Translate(e.Position()).Grow(16)) {
-		living, ok := target.(Living)
-		if !ok || living.Dead() || target.H() == e.H() {
-			continue
-		}
-		if target.H().Type().EncodeEntity() != "minecraft:player" {
-			continue
-		}
-		delta := target.Position().Sub(e.Position())
-		distance := delta.LenSqr()
-		if distance < nearestDistance {
-			nearest, nearestDistance = living, distance
-		}
-	}
-	if nearest == nil {
-		if b.peek > 0 {
-			b.peek -= min(b.peek, uint8(5))
-		}
+	target := b.attackTarget(e, tx)
+	if target == nil {
+		b.peek = 0
 		return
 	}
-	b.peek = min(b.peek+5, 100)
-	if b.attackCooldown > 0 || nearestDistance >= 400 {
+	// Peek is the target opening sent to the client, not an animation frame.
+	b.peek = 100
+	b.attackCooldown--
+	if b.attackCooldown > 0 {
 		return
 	}
 	pos := e.Position().Add(mgl64.Vec3{0, .5, 0})
-	delta := nearest.Position().Add(mgl64.Vec3{0, .5, 0}).Sub(pos)
+	delta := target.Position().Add(mgl64.Vec3{0, .5, 0}).Sub(pos)
 	velocity := mgl64.Vec3{}
 	if delta.Len() != 0 {
 		velocity = delta.Normalize().Mul(.15)
 	}
-	tx.AddEntity(NewShulkerBullet(world.EntitySpawnOpts{Position: pos, Velocity: velocity}, e.H(), nearest.H()))
+	tx.AddEntity(NewShulkerBullet(world.EntitySpawnOpts{Position: pos, Velocity: velocity}, e.H(), target.H()))
 	b.attackCooldown = 20 + rand.IntN(91)
 }
+
+func (b *ShulkerBehaviour) attackTarget(e *Ent, tx *world.Tx) world.Entity {
+	if tx.World().Difficulty() == world.DifficultyPeaceful {
+		b.target, b.unseenTicks = nil, 0
+		return nil
+	}
+	if b.target != nil {
+		target, loaded := b.target.Entity(tx)
+		if loaded && combatTargetable(target) && target.Position().Sub(e.Position()).LenSqr() <= 16*16 {
+			if shulkerVisible(e, tx, target) {
+				b.unseenTicks = 0
+			} else {
+				b.unseenTicks++
+			}
+			if b.unseenTicks <= 60 {
+				return target
+			}
+		}
+		b.target, b.unseenTicks = nil, 0
+	}
+
+	// ShulkerNearestAttackGoal searches only four blocks along the attachment
+	// axis. A new target must be visible; an existing one has 60 ticks of memory.
+	grow := mgl64.Vec3{16, 4, 16}
+	switch b.attachFace {
+	case cube.FaceWest, cube.FaceEast:
+		grow = mgl64.Vec3{4, 16, 16}
+	case cube.FaceNorth, cube.FaceSouth:
+		grow = mgl64.Vec3{16, 16, 4}
+	}
+	var nearest world.Entity
+	nearestDistance := 16.0 * 16.0
+	for target := range tx.EntitiesWithin(shulkerType{}.BBox(nil).Translate(e.Position()).GrowVec3(grow)) {
+		if target.H().Type().EncodeEntity() != "minecraft:player" || !combatTargetable(target) {
+			continue
+		}
+		distance := target.Position().Sub(e.Position()).LenSqr()
+		if distance < nearestDistance && shulkerVisible(e, tx, target) {
+			nearest, nearestDistance = target, distance
+		}
+	}
+	if nearest != nil {
+		b.target, b.attackCooldown = nearest.H(), 20
+	}
+	return nearest
+}
+
+func shulkerVisible(e *Ent, tx *world.Tx, target world.Entity) bool {
+	return dragonLineOfSight(tx, e.Position().Add(mgl64.Vec3{0, .5, 0}), EyePosition(target))
+}
+
 func (s *Shulker) Health() float64 { return s.behaviour().health.Health() }
 
 // AttachFace returns the face to which the shulker is attached.
