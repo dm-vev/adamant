@@ -124,6 +124,7 @@ type ProjectileBehaviour struct {
 	mc          *MovementComputer
 	ageCollided int
 	close       bool
+	leftOwner   bool
 
 	collisionPos cube.Pos
 	collided     bool
@@ -173,6 +174,7 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		_ = e.CloseIn(tx)
 		return nil
 	}
+	lt.checkLeftOwner(e, tx)
 
 	if lt.collided && lt.tickAttached(e, tx) {
 		if lt.ageCollided > 1200 {
@@ -418,10 +420,55 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e, pos: end, vel: vel, dpos: end.Sub(pos), dvel: vel.Sub(velBefore), rot: rot}, hit
 }
 
+// checkLeftOwner keeps the launcher's vehicle/passengers out of the trace until
+// the projectile's swept box clears them, as Projectile.checkLeftOwner does.
+func (lt *ProjectileBehaviour) checkLeftOwner(e *Ent, tx *world.Tx) {
+	if lt.leftOwner {
+		return
+	}
+	owner := lt.owner(tx)
+	if owner == nil {
+		lt.leftOwner = true
+		return
+	}
+	if vehicle, ok := rootVehicle(tx, owner).Entity(tx); ok {
+		owner = vehicle
+	}
+	box := e.H().Type().BBox(e).Translate(e.Position()).Extend(e.Velocity()).Grow(1)
+	lt.leftOwner = !projectileOwnerOverlaps(tx, owner, box)
+}
+
+func projectileOwnerOverlaps(tx *world.Tx, owner world.Entity, box cube.BBox) bool {
+	mode, hasMode := owner.(interface{ GameMode() world.GameMode })
+	_, living := owner.(Living)
+	_, destructible := owner.(Destructible)
+	if (!hasMode || mode.GameMode().HasCollision()) && (living || destructible) &&
+		box.IntersectsWith(owner.H().Type().BBox(owner).Translate(owner.Position())) {
+		return true
+	}
+	if linker, ok := owner.(Linker); ok {
+		for _, link := range linker.Links() {
+			if link.Ridden != owner.H() {
+				continue
+			}
+			if passenger, ok := link.Rider.Entity(tx); ok && projectileOwnerOverlaps(tx, passenger, box) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // ignores returns a function to ignore entities in trace.Perform that are
-// either a spectator, not damageable, the entity itself, its owner in the first
-// 5 ticks, or an entity it already collided with.
+// either a spectator, not damageable, the entity itself, its owner's vehicle
+// group before it has left that group, or an entity it already collided with.
 func (lt *ProjectileBehaviour) ignores(e *Ent) trace.EntityFilter {
+	var ownerVehicle *world.EntityHandle
+	if !lt.leftOwner {
+		if owner := lt.owner(e.tx); owner != nil {
+			ownerVehicle = rootVehicle(e.tx, owner)
+		}
+	}
 	return func(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
 		return func(yield func(world.Entity) bool) {
 			for other := range seq {
@@ -430,7 +477,7 @@ func (lt *ProjectileBehaviour) ignores(e *Ent) trace.EntityFilter {
 				itself := e.H() == other.H()
 				_, living := other.(Living)
 				_, destructible := other.(Destructible)
-				owner := e.data.Age < time.Second/4 && lt.conf.Owner == other.H()
+				owner := ownerVehicle != nil && rootVehicle(e.tx, other) == ownerVehicle
 				collidedEntity := slices.Contains(lt.collidedEntities, other.H())
 				if spectator || itself || (!living && !destructible) || owner || collidedEntity {
 					continue

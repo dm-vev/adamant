@@ -133,19 +133,25 @@ func TestShulkerBulletHitAppliesLevitation(t *testing.T) {
 	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
+		owner := tx.AddEntity(NewShulker(world.EntitySpawnOpts{
+			Position: mgl64.Vec3{6.5, 70, 8.5},
+		}, ShulkerBehaviourConfig{Peek: 100})).(*Shulker)
 		target := tx.AddEntity(NewShulker(world.EntitySpawnOpts{
-			Position: mgl64.Vec3{8.5, 70, 8.5},
+			Position: mgl64.Vec3{12.5, 70, 8.5},
 		}, ShulkerBehaviourConfig{Peek: 100})).(*Shulker)
 		handle := NewShulkerBullet(world.EntitySpawnOpts{
-			Position: mgl64.Vec3{6, 70.5, 8.5},
+			Position: owner.Position().Add(mgl64.Vec3{0, .5, 0}),
 			Velocity: mgl64.Vec3{.15, 0, 0},
-		}, nil, target.H())
+		}, owner.H(), target.H())
 		bullet := tx.AddEntity(handle).(*Ent)
 		for tick := range 40 {
 			if _, loaded := handle.Entity(tx); !loaded {
 				break
 			}
 			bullet.Tick(tx, int64(tick))
+		}
+		if owner.Health() != 30 || len(owner.Effects()) != 0 {
+			t.Errorf("bullet hit its launcher: health=%v effects=%v", owner.Health(), owner.Effects())
 		}
 		if target.Health() != 26 {
 			t.Errorf("health after bullet hit = %v, want 26", target.Health())
@@ -173,4 +179,35 @@ func TestShulkerNativeVariantOverridesGenericColor(t *testing.T) {
 			t.Errorf("native Variant %d with generic Color 5 decoded shell colour %d", variant, got)
 		}
 	}
+}
+
+func TestShulkerBulletCanHitOwnerAfterLeaving(t *testing.T) {
+	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+	<-w.Exec(func(tx *world.Tx) {
+		owner := tx.AddEntity(NewShulker(world.EntitySpawnOpts{
+			Position: mgl64.Vec3{8.5, 70, 8.5},
+		}, ShulkerBehaviourConfig{Peek: 100})).(*Shulker)
+		handle := NewShulkerBullet(world.EntitySpawnOpts{
+			Position: mgl64.Vec3{12.5, 70.5, 8.5},
+			Velocity: mgl64.Vec3{.15, 0, 0},
+		}, owner.H(), nil)
+		bullet := tx.AddEntity(handle).(*Ent)
+		bullet.Tick(tx, 0)
+		bullet.SetVelocity(mgl64.Vec3{-1, 0, 0})
+		for tick := range 4 {
+			bullet.Tick(tx, int64(tick+1))
+		}
+		if owner.Health() != 26 {
+			t.Fatalf("returning bullet left launcher health %v, want 26", owner.Health())
+		}
+		effects := owner.Effects()
+		if len(effects) != 1 || effects[0].Type() != effect.Levitation || effects[0].Level() != 1 {
+			t.Fatalf("effects after returning bullet hit = %v, want Levitation I", effects)
+		}
+		bullet.Tick(tx, 5)
+		if _, loaded := handle.Entity(tx); loaded {
+			t.Error("returning bullet remained in world after its hit")
+		}
+	})
 }
