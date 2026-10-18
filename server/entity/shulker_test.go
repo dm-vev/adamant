@@ -2,8 +2,10 @@ package entity
 
 import (
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/go-gl/mathgl/mgl64"
@@ -42,9 +44,9 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 	if !ok || health.Current != 18 || health.Base != 30 {
 		t.Fatalf("native shulker health attribute = %#v, want current 18/base 30", health)
 	}
-	color, ok := NativeMobColor(nbt)
-	if !ok || color != 5 {
-		t.Fatalf("native shulker color = %d, want 5", color)
+	variant, ok := NativeMobVariant(nbt)
+	if !ok || variant != 5 {
+		t.Fatalf("native shulker variant = %d, want 5", variant)
 	}
 }
 
@@ -123,6 +125,52 @@ func TestShulkerSurvivesMCDBRestart(t *testing.T) {
 	for i, restored := range found {
 		if !restored {
 			t.Errorf("shulker %d disappeared after MCDB restart", i)
+		}
+	}
+}
+
+func TestShulkerBulletHitAppliesLevitation(t *testing.T) {
+	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
+	defer w.Close()
+	<-w.Exec(func(tx *world.Tx) {
+		target := tx.AddEntity(NewShulker(world.EntitySpawnOpts{
+			Position: mgl64.Vec3{8.5, 70, 8.5},
+		}, ShulkerBehaviourConfig{Peek: 100})).(*Shulker)
+		handle := NewShulkerBullet(world.EntitySpawnOpts{
+			Position: mgl64.Vec3{6, 70.5, 8.5},
+			Velocity: mgl64.Vec3{.15, 0, 0},
+		}, nil, target.H())
+		bullet := tx.AddEntity(handle).(*Ent)
+		for tick := range 40 {
+			if _, loaded := handle.Entity(tx); !loaded {
+				break
+			}
+			bullet.Tick(tx, int64(tick))
+		}
+		if target.Health() != 26 {
+			t.Errorf("health after bullet hit = %v, want 26", target.Health())
+		}
+		effects := target.Effects()
+		if len(effects) != 1 || effects[0].Type() != effect.Levitation ||
+			effects[0].Level() != 1 || effects[0].Duration() != 10*time.Second {
+			t.Fatalf("effects after bullet hit = %v, want Levitation I for 10 seconds", effects)
+		}
+		if _, loaded := handle.Entity(tx); loaded {
+			t.Error("bullet remained in world after its hit")
+		}
+	})
+}
+
+func TestShulkerNativeVariantOverridesGenericColor(t *testing.T) {
+	for _, variant := range []int32{0, 15, 16} {
+		var data world.EntityData
+		ShulkerType.DecodeNBT(map[string]any{
+			"Variant": variant,
+			"Color":   byte(5),
+		}, &data)
+		shulker := ShulkerType.Open(nil, nil, &data).(*Shulker)
+		if got := shulker.Color(); got != uint8(variant) {
+			t.Errorf("native Variant %d with generic Color 5 decoded shell colour %d", variant, got)
 		}
 	}
 }

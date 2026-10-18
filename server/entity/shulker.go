@@ -96,11 +96,11 @@ func (shulkerType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	} else if value, ok := m["Peek"]; ok {
 		conf.Peek = nativeNBTByte(value)
 	}
-	if value, ok := source["Color"]; ok {
-		conf.Color = nativeNBTByte(value)
-		conf.colorSet = true
-	} else if colour, ok := NativeMobColor(m); ok {
-		conf.Color, conf.colorSet = colour, true
+	// Bedrock stores the shell colour in Variant, not the generic Color tag.
+	if variant, ok := NativeMobVariant(m); ok && variant >= 0 && variant <= 16 {
+		conf.Color, conf.colorSet = uint8(variant), true
+	} else if value, ok := source["Color"]; ok {
+		conf.Color, conf.colorSet = nativeNBTByte(value), true
 	}
 	if _, ok := source["Health"]; ok {
 		conf.Health = float64(nbtconv.Float32(source, "Health"))
@@ -121,10 +121,7 @@ func (shulkerType) EncodeNBT(data *world.EntityData) map[string]any {
 		Name: "minecraft:health", Base: b.health.MaxHealth(), Current: b.health.Health(),
 		DefaultMin: 0, DefaultMax: b.health.MaxHealth(), Min: 0, Max: b.health.MaxHealth(),
 	}})
-	native := map[string]any{"Attributes": attributes}
-	if b.color < 16 {
-		native = SetNativeMobColor(native, byte(b.color))
-	}
+	native := map[string]any{"Attributes": attributes, "Variant": int32(b.color)}
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
 		"AttachFace": b.attachFace.String(), "Peek": b.peek, "Color": b.color,
 	})
@@ -169,8 +166,13 @@ type ShulkerBehaviour struct {
 
 func (s *Shulker) behaviour() *ShulkerBehaviour { return s.Behaviour().(*ShulkerBehaviour) }
 func (s *Shulker) Tick(tx *world.Tx, current int64) {
-	s.behaviour().effects.Tick(s, tx)
+	b := s.behaviour()
+	face, peek, pos := b.attachFace, b.peek, s.Position()
+	b.effects.Tick(s, tx)
 	s.Ent.Tick(tx, current)
+	if b.attachFace != face || b.peek != peek || s.Position() != pos {
+		s.updateState()
+	}
 }
 func (b *ShulkerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if !b.canStayAt(tx, cube.PosFromVec3(e.Position()), b.attachFace) {
@@ -253,7 +255,9 @@ func (s *Shulker) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() {
 		s.die(src)
 	} else if b.health.Health() < b.health.MaxHealth()*0.5 && rand.IntN(4) == 0 {
-		b.teleportSomewhere(s.Ent, s.tx)
+		if b.teleportSomewhere(s.Ent, s.tx) {
+			s.updateState()
+		}
 	}
 	return damage, true
 }
@@ -272,6 +276,13 @@ func (s *Shulker) Effects() []effect.Effect                        { return s.be
 func (s *Shulker) Speed() float64                                  { return 0 }
 func (s *Shulker) SetSpeed(float64)                                {}
 func (s *Shulker) hasEffect(t effect.Type) bool                    { _, ok := s.behaviour().effects.Effect(t); return ok }
+func (s *Shulker) updateState() {
+	viewers := s.tx.Viewers(s.Position())
+	for _, viewer := range viewers {
+		viewer.ViewEntityState(s)
+	}
+	s.tx.ReleaseViewers(viewers)
+}
 func (s *Shulker) viewAction(action world.EntityAction) {
 	viewers := s.tx.Viewers(s.Position())
 	for _, viewer := range viewers {
@@ -315,7 +326,7 @@ func (b *ShulkerBehaviour) teleportSomewhere(e *Ent, tx *world.Tx) bool {
 		}
 		for face := cube.FaceDown; face <= cube.FaceEast; face++ {
 			if b.canStayAt(tx, target, face) {
-				e.data.Pos = mgl64.Vec3{float64(target[0]) + .5, float64(target[1]), float64(target[2]) + .5}
+				e.Teleport(mgl64.Vec3{float64(target[0]) + .5, float64(target[1]), float64(target[2]) + .5})
 				b.attachFace, b.peek = face, 0
 				return true
 			}
@@ -338,7 +349,7 @@ func (c shulkerBulletConf) Apply(data *world.EntityData) {
 		Hit: func(_ *Ent, tx *world.Tx, hit trace.Result) {
 			if result, ok := hit.(trace.EntityResult); ok {
 				if living, ok := result.Entity().(Living); ok {
-					living.AddEffect(effect.New(effect.Levitation, 0, 10*time.Second))
+					living.AddEffect(effect.New(effect.Levitation, 1, 10*time.Second))
 				}
 			}
 		},

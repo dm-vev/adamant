@@ -88,6 +88,15 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSheared)
 		}
 	}
+	if shulker, ok := e.(*entity.Shulker); ok {
+		// BDS uses Variant for shell colour and separate attachment metadata.
+		m[protocol.EntityDataKeyVariant] = int32(shulker.Color())
+		m[protocol.EntityDataKeyPeekID] = int32(shulker.Peek())
+		m[protocol.EntityDataKeyAttachFace] = byte(shulker.AttachFace())
+		m[protocol.EntityDataKeyAttached] = int16(1)
+		pos := cube.PosFromVec3(shulker.Position())
+		m[protocol.EntityDataKeyAttachedPosition] = protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	}
 	if parrot, ok := e.(*entity.Parrot); ok {
 		m[protocol.EntityDataKeyVariant] = int32(parrot.Variant())
 		if parrot.Tamed() {
