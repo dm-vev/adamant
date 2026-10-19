@@ -23,6 +23,10 @@ func (h *ServerBoundLoadingScreenHandler) Handle(p packet.Packet, s *Session, _ 
 	switch {
 	case !ok || expected == 0:
 		return nil
+	case int32(v-expected) < 0:
+		// A later transfer may supersede this screen before its ACK arrives.
+		// Compare serial numbers across wraparound; never clear the newer one.
+		return nil
 	case v != expected:
 		return fmt.Errorf("expected loading screen ID %d, got %d", expected, v)
 	case pk.Type == packet.LoadingScreenTypeEnd:

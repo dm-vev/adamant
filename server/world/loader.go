@@ -1,7 +1,6 @@
 package world
 
 import (
-	"maps"
 	"math"
 	"sync"
 
@@ -31,8 +30,9 @@ type Loader struct {
 	activeRadius   int32
 	activeRadiusSq int64
 
-	closed   bool
-	changing bool
+	closed    bool
+	changing  bool
+	detaching int
 }
 
 // NewLoader creates a new loader using the chunk radius passed. Chunks beyond this radius from the position
@@ -42,6 +42,7 @@ type Loader struct {
 func NewLoader(chunkRadius int, world *World, v Viewer) *Loader {
 	l := &Loader{r: chunkRadius, loaded: make(map[ChunkPos]*Column), pending: make(map[ChunkPos]struct{}), viewer: v}
 	l.world(world)
+	world.initWorldViewer(v)
 	return l
 }
 
@@ -52,70 +53,72 @@ func (l *Loader) World() *World {
 	return l.w
 }
 
-// ChangeWorld changes the World of the Loader. The currently loaded chunks are reset and any future loading
-// is done from the new World.
+// ChangeWorld changes the World of the Loader. Old chunks are detached on their
+// owner without waiting here: two worlds may exchange players simultaneously.
+// Loading in the new world waits until every prior detach has finished, so old
+// entity hides cannot overtake publication of the new view.
 func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	l.changeMu.Lock()
-	defer l.changeMu.Unlock()
 
 	l.mu.Lock()
 	if l.closed {
 		l.mu.Unlock()
+		l.changeMu.Unlock()
 		return
 	}
-	old := l.w
-	loaded := maps.Clone(l.loaded)
+	old, loaded, viewer := l.w, l.loaded, l.viewer
 	l.changing = true
-	clear(l.loaded)
+	l.detaching++
+	l.loaded = make(map[ChunkPos]*Column)
 	clear(l.pending)
 	l.loadQueue = l.loadQueue[:0]
 	l.mu.Unlock()
 
-	removeLoaded := func(tx *Tx) {
-		for pos := range loaded {
-			tx.World().removeViewer(tx, pos, l)
-		}
-	}
-	if tx.World() == old {
-		removeLoaded(tx)
-	} else {
-		select {
-		case <-old.exec(removeLoaded):
-		case <-old.queueClosing:
-		}
-	}
 	old.viewerMu.Lock()
 	delete(old.viewers, l)
 	old.viewerMu.Unlock()
 
 	l.mu.Lock()
 	l.world(new)
-	l.changing = false
 	l.mu.Unlock()
+	l.changeMu.Unlock()
+	defer l.detach(tx, old, loaded, viewer)
+	new.initWorldViewer(viewer)
 }
 
 // ChangeRadius changes the maximum chunk radius of the Loader.
 func (l *Loader) ChangeRadius(tx *Tx, new int) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
+	if l.closed {
+		l.mu.Unlock()
+		return
+	}
 	l.r = new
-	l.evictUnused(tx)
+	w, viewer := l.w, l.viewer
+	evicted := l.evictUnused()
 	l.populateLoadQueue()
+	l.mu.Unlock()
+	if len(evicted) != 0 {
+		l.detach(tx, w, evicted, viewer)
+	}
 }
 
 // Move moves the loader to the position passed. The position is translated to a chunk position to load
 func (l *Loader) Move(tx *Tx, pos mgl64.Vec3) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	chunkPos := chunkPosFromVec3(pos)
-	if chunkPos == l.pos {
+	if l.closed || chunkPos == l.pos {
+		l.mu.Unlock()
 		return
 	}
 	l.pos = chunkPos
-	l.evictUnused(tx)
+	w, viewer := l.w, l.viewer
+	evicted := l.evictUnused()
 	l.populateLoadQueue()
+	l.mu.Unlock()
+	if len(evicted) != 0 {
+		l.detach(tx, w, evicted, viewer)
+	}
 }
 
 // generationRequestsPerLoad is how many chunks handed to the generator count
@@ -188,7 +191,10 @@ type SpectatingViewer interface {
 // own, as ChunkMap ignores a spectator while spectators_generate_chunks is
 // off: it only sees chunks that something else loaded.
 func (l *Loader) ignoredByChunkLoading(tx *Tx) bool {
-	spectator, ok := l.viewer.(SpectatingViewer)
+	l.mu.RLock()
+	viewer := l.viewer
+	l.mu.RUnlock()
+	spectator, ok := viewer.(SpectatingViewer)
 	return ok && !tx.World().GameRuleBool("spectators_generate_chunks") && spectator.Spectating(tx)
 }
 
@@ -259,44 +265,75 @@ func (l *Loader) Chunk(pos ChunkPos) (*Column, bool) {
 	return c, ok
 }
 
-// Close closes the loader. It unloads all chunks currently loaded for the viewer, and hides all entities that
-// are currently shown to it.
+// Close closes the loader and prevents further chunk publication. Removal from
+// another world's chunks is queued there rather than blocking this owner.
 func (l *Loader) Close(tx *Tx) {
 	l.changeMu.Lock()
-	defer l.changeMu.Unlock()
 
 	l.mu.Lock()
 	if l.closed {
 		l.mu.Unlock()
+		l.changeMu.Unlock()
 		return
 	}
-	w := l.w
-	loaded := l.loaded
-	l.loaded = map[ChunkPos]*Column{}
+	w, loaded, viewer := l.w, l.loaded, l.viewer
+	l.loaded = make(map[ChunkPos]*Column)
 	clear(l.pending)
 	l.closed = true
+	l.changing = true
+	l.detaching++
+	l.viewer = nil
 	l.mu.Unlock()
 
-	removeLoaded := func(tx *Tx) {
-		for pos := range loaded {
-			w.removeViewer(tx, pos, l)
-		}
-	}
-	if tx.World() == w {
-		removeLoaded(tx)
-	} else {
-		select {
-		case <-w.exec(removeLoaded):
-		case <-w.queueClosing:
-		}
-	}
 	w.viewerMu.Lock()
 	delete(w.viewers, l)
 	w.viewerMu.Unlock()
+	l.changeMu.Unlock()
+	l.detach(tx, w, loaded, viewer)
+}
 
-	l.mu.Lock()
-	l.viewer = nil
-	l.mu.Unlock()
+// detach owns the captured view, not the loader's current view. Counting all
+// pending detaches also protects rapid A->B->A changes and Close during a change.
+func (l *Loader) detach(tx *Tx, w *World, loaded map[ChunkPos]*Column, viewer Viewer) {
+	remove := func(tx *Tx) {
+		for pos, col := range loaded {
+			w.removeViewerFrom(tx, pos, col, l, viewer, true)
+		}
+	}
+	finish := func() {
+		l.mu.Lock()
+		l.detaching--
+		l.changing = l.detaching != 0
+		l.mu.Unlock()
+	}
+	if tx.World() == w {
+		defer finish()
+		remove(tx)
+		return
+	}
+	task := w.Do(remove)
+	select {
+	case <-task.Done():
+		if task.Err() != ErrWorldClosed {
+			finish()
+			return
+		}
+		select {
+		case <-w.queueClosing:
+			finish()
+			return
+		default:
+		}
+	default:
+	}
+	task.OnDone(func(err error) {
+		if err == ErrWorldClosed {
+			// Rejected work was not run. Shutdown removes the old views; wait
+			// off-owner for that before letting a replacement view appear.
+			<-w.queueClosing
+		}
+		finish()
+	})
 }
 
 // world sets the loader's world, adds them to the world's viewer list, then starts populating the load queue.
@@ -307,16 +344,24 @@ func (l *Loader) world(new *World) {
 	l.populateLoadQueue()
 }
 
-// evictUnused gets rid of chunks in the loaded map which are no longer within the chunk radius of the loader,
-// and should therefore be removed. It uses the radius chunks are loaded within, so that the chunks at the edge
-// are not unloaded and loaded again every time the loader moves.
-func (l *Loader) evictUnused(tx *Tx) {
-	for pos := range l.loaded {
+// evictUnused removes chunks beyond the retention radius from the loader's map.
+// The caller holds mu and detaches the captured view after releasing it.
+func (l *Loader) evictUnused() map[ChunkPos]*Column {
+	var evicted map[ChunkPos]*Column
+	for pos, col := range l.loaded {
 		if !l.withinLoadRadius(pos) {
+			if evicted == nil {
+				evicted = make(map[ChunkPos]*Column)
+			}
+			evicted[pos] = col
 			delete(l.loaded, pos)
-			l.w.removeViewer(tx, pos, l)
 		}
 	}
+	if len(evicted) != 0 {
+		l.changing = true
+		l.detaching++
+	}
+	return evicted
 }
 
 // withinLoadRadius checks if a chunk position is within the Loader's radius.

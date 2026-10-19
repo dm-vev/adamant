@@ -242,7 +242,7 @@ func executeChain(src cmd.Source, ctx cmd.ExecutionContext, words []string, out 
 			rest := words[2:]
 			next := ctx
 			// The remaining chain needs the target world's transaction.
-			target.Exec(func(other *world.Tx) { executeChain(src, next, rest, out, other, forks) })
+			target.Do(func(other *world.Tx) { executeChain(src, next, rest, out, other, forks) })
 			return
 		case "on":
 			if len(words) < 2 {

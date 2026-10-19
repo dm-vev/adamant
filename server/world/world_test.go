@@ -2,6 +2,7 @@ package world
 
 import (
 	"context"
+	"encoding/json"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 type neighbourUpdateCountingProvider struct {
@@ -73,6 +75,36 @@ func TestWorldTickAdvancesRaidCelebration(t *testing.T) {
 	w.AdvanceTick()
 	if raid.celebrationTicks != 11 {
 		t.Fatalf("raid celebration ticks after world tick = %d, want 11", raid.celebrationTicks)
+	}
+}
+
+func TestTickRaidsPrunesStoppedRaids(t *testing.T) {
+	memory := &WorldDataMemory{}
+	w := Config{Provider: NopProvider{WorldData: memory}, Synchronous: true}.New()
+	defer w.Close()
+
+	member := uuid.MustParse("f99dd0f3-6cc0-4f02-bcd2-3a51cbb5e91b")
+	w.raids[1] = &Raid{id: 1, status: RaidStopped, members: map[uuid.UUID]struct{}{member: {}}}
+	w.raidByRaider[member] = 1
+	<-w.Exec(func(tx *Tx) { tx.TickRaids() })
+
+	if _, exists := w.raids[1]; exists {
+		t.Fatal("stopped raid remained in the manager")
+	}
+	if _, exists := w.raidByRaider[member]; exists {
+		t.Fatal("stopped raid retained its raider index")
+	}
+	w.saveRaids()
+	data, err := memory.load(w.raidDataNamespace())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved []raidSave
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if len(saved) != 0 {
+		t.Fatalf("stopped raid was persisted: %+v", saved)
 	}
 }
 

@@ -1330,9 +1330,24 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 	handle.state = state
 	w.resolveEntityRiding(handle)
 
-	c := tx.chunk(pos)
+	// Entity membership is owner-only even while the terrain worker fills the
+	// column. Like Java's entity sections, attaching an entity must not await
+	// terrain generation; block reads retain their normal readiness checks.
+	c, loaded := w.chunks[pos]
+	if !loaded {
+		var err error
+		if c, err = w.loadChunk(pos); err != nil {
+			w.conf.Log.Error("load chunk: "+err.Error(), "X", pos[0], "Z", pos[1])
+		}
+	}
+	if c.Ready() {
+		c = tx.chunk(pos)
+	}
 	c.addEntity(handle)
-	c.modified = true
+	if c.Ready() {
+		// The worker owns this flag before publication and dirties it itself.
+		c.modified = true
+	}
 	w.addEntityColumn(pos, c)
 
 	e := state.entity(tx, handle)
@@ -2193,14 +2208,18 @@ func (w *World) addWorldViewer(l *Loader) {
 	w.viewerMu.Lock()
 	w.viewers[l] = l.viewer
 	w.viewerMu.Unlock()
+}
 
-	l.viewer.ViewTime(w.Time())
-	l.viewer.ViewTimeCycle(w.TimeCycle())
+// initWorldViewer sends initial state without holding loader or viewer locks:
+// viewers may re-enter the loader from any of these callbacks.
+func (w *World) initWorldViewer(viewer Viewer) {
+	viewer.ViewTime(w.Time())
+	viewer.ViewTimeCycle(w.TimeCycle())
 	w.set.Lock()
 	raining, thundering := w.set.Raining, w.set.Raining && w.set.Thundering
 	w.set.Unlock()
-	l.viewer.ViewWeather(raining, thundering)
-	l.viewer.ViewWorldSpawn(w.Spawn())
+	viewer.ViewWeather(raining, thundering)
+	viewer.ViewWorldSpawn(w.Spawn())
 }
 
 // addViewer adds a viewer to the World at a given position. Any events that
@@ -2261,7 +2280,7 @@ func (w *World) removeViewerFrom(tx *Tx, pos ChunkPos, expected *Column, loader 
 		}
 	}
 
-	if closeUnused && len(c.viewers) == 0 && len(c.loaders) == 0 {
+	if closeUnused && len(c.viewers) == 0 && len(c.loaders) == 0 && !w.retainedByForcedChunk(pos) {
 		w.closeChunk(tx, pos, c)
 	}
 }
@@ -2526,9 +2545,9 @@ func (w *World) runGenerationTask(task generationTask) {
 		// The chunk was closed while its task waited: nothing reads it.
 		return
 	}
-	// Chunk generation is performed on background workers. World transactions must treat not-yet-ready columns as
-	// immutable: once markReady() is called, the generation worker will no longer mutate the column. The ready flag
-	// acts as a synchronization point to safely publish generated chunk contents to the transaction goroutine.
+	// Generation owns terrain, block entities and cached terrain payloads until
+	// markReady publishes them. Entity/viewer membership remains owner-only,
+	// including while generation is pending.
 	defer func() {
 		// Always recover from panics during generation to prevent worker termination.
 		if r := recover(); r != nil {
@@ -2742,7 +2761,7 @@ func (w *World) CollectGarbage(tx *Tx) (chunksCollected, entitiesCollected, bloc
 		return 0, 0, 0
 	}
 	for pos, c := range w.chunks {
-		if _, forced := w.forcedChunks[pos]; forced {
+		if w.retainedByForcedChunk(pos) {
 			continue
 		}
 		if !c.Ready() || len(w.chunkRequests[pos]) != 0 || len(c.viewers) != 0 || len(c.loaders) != 0 {

@@ -129,7 +129,10 @@ func (t ticker) tick(tx *Tx) {
 	w.focusGeneration(loaders)
 	w.loadForcedChunks()
 	for pos := range w.forcedChunks {
-		tx.chunk(pos)
+		w.loadForcedChunk(pos)
+		if c := w.chunks[pos]; c != nil && c.Ready() {
+			tx.chunk(pos)
+		}
 	}
 	runStep := w.tickFrozen.Load() && w.stepTicks.Load() > 0
 	if w.tickFrozen.Load() && !runStep {
@@ -401,7 +404,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 				continue
 			}
 			c := ref.col
-			if c == nil || !c.Ready() || w.generationPending(ref.pos, c) {
+			if !w.blockTickingReady(ref.pos, c) {
 				continue
 			}
 			blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
@@ -424,7 +427,7 @@ func (t ticker) tickBlocksRandomly(tx *Tx, loaders []*Loader, tick int64) {
 			continue
 		}
 		c := ref.col
-		if c == nil || !c.Ready() || w.generationPending(ref.pos, c) {
+		if !w.blockTickingReady(ref.pos, c) {
 			continue
 		}
 		blockEntities = append(blockEntities, c.tickerBlockEntityPositions()...)
@@ -688,7 +691,7 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 
 	var viewers map[Viewer]struct{}
 	if oldPos == ref.pos && ref.col != nil {
-		if ref.col.removeEntity(handle) {
+		if ref.col.removeEntity(handle) && ref.col.Ready() {
 			ref.col.modified = true
 		}
 		if len(ref.col.Entities) == 0 {
@@ -696,7 +699,7 @@ func (w *World) moveEntityChunk(tx *Tx, handle *EntityHandle, state *entityState
 		}
 		viewers = ref.col.viewers
 	} else if old, ok := w.chunks[oldPos]; ok {
-		if old.removeEntity(handle) {
+		if old.removeEntity(handle) && old.Ready() {
 			old.modified = true
 		}
 		if len(old.Entities) == 0 {
@@ -1024,7 +1027,7 @@ func (w *World) scheduledTickChunkEligible(pos ChunkPos, areas []loaderActiveAre
 		return false
 	}
 	col := w.chunks[pos]
-	if w.generationPending(pos, col) {
+	if !w.blockTickingReady(pos, col) {
 		return false
 	}
 	return w.conf.Synchronous || columnWithinAreas(pos, areas) || w.IsChunkForced(pos)

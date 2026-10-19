@@ -13,14 +13,20 @@ import (
 // The accumulated float distance and integer next-step boundary deliberately
 // retain overshoot; resetting distance at each event changes walking cadence.
 func (p *Player) emitMovementGameEvents(delta mgl64.Vec3) {
-	p.updateMovementSupport(delta)
-	if p.Flying() || p.onGround && p.Sneaking() || p.Riding() != nil {
+	if p.GameMode() == world.GameModeSpectator || p.Flying() || p.onGround && p.Sneaking() || p.Riding() != nil {
 		return
 	}
 	supportPos := p.movementOnPos(float32(1e-5))
-	support := p.tx.Block(supportPos)
-	climbing, _ := p.tx.MovementBlockProperties(support)
+	support, loaded := p.tx.BlockLoaded(supportPos)
 	distance := math.Sqrt(delta[0]*delta[0] + delta[2]*delta[2])
+	if !loaded {
+		p.moveEventDistance += float32(distance * float64(float32(0.6)))
+		if p.nextMoveEventStep == 0 {
+			p.nextMoveEventStep = 1
+		}
+		return
+	}
+	climbing, _ := p.tx.MovementBlockProperties(support)
 	if climbing {
 		distance = delta.Len()
 	}
@@ -37,7 +43,11 @@ func (p *Player) emitMovementGameEvents(delta mgl64.Vec3) {
 
 	effectPos := p.movementOnPos(float32(0.2))
 	same := effectPos == supportPos
-	produced := p.movementStep(p.tx.Block(effectPos), delta, same)
+	effect, loaded := p.tx.BlockLoaded(effectPos)
+	if !loaded {
+		return
+	}
+	produced := p.movementStep(effect, delta, same)
 	if !same {
 		// Both support checks run even when the first one produces effects.
 		fromSupport := p.movementStep(support, delta, true)
@@ -72,7 +82,11 @@ func (p *Player) movementOnPos(offset float32) cube.Pos {
 	}
 	pos := p.movementSupport
 	if offset > float32(1e-5) {
-		_, high := p.tx.MovementBlockProperties(p.tx.Block(pos))
+		b, loaded := p.tx.BlockLoaded(pos)
+		if !loaded {
+			return pos
+		}
+		_, high := p.tx.MovementBlockProperties(b)
 		if !high {
 			pos[1] = int(math.Floor(p.Position()[1] - float64(offset)))
 		}
@@ -112,7 +126,11 @@ func (p *Player) findMovementSupport(area cube.BBox) (cube.Pos, bool) {
 				if found && (distance > bestDistance || distance == bestDistance && !after) {
 					continue
 				}
-				for _, box := range p.tx.Block(pos).Model().BBox(pos, p.tx) {
+				b, loaded := p.tx.BlockLoaded(pos)
+				if !loaded {
+					continue
+				}
+				for _, box := range b.Model().BBox(pos, p.tx) {
 					if box.Translate(pos.Vec3()).IntersectsWith(area) {
 						best, bestDistance, found = pos, distance, true
 						break
@@ -131,6 +149,9 @@ func (p *Player) movementTouchesWater() bool {
 		for y := low[1]; y <= high[1]; y++ {
 			for z := low[2]; z <= high[2]; z++ {
 				pos := cube.Pos{x, y, z}
+				if !p.movementChunkReady(pos) {
+					continue
+				}
 				liquid, ok := p.tx.Liquid(pos)
 				if !ok {
 					continue

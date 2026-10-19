@@ -25,10 +25,13 @@ type Lava struct {
 }
 
 // neighboursLavaFlammable returns true if one a block adjacent to the passed position is flammable.
+// LavaFluid.isFlammable ignores neighbours whose chunks are not loaded, so only inspect ready columns here.
 func neighboursLavaFlammable(pos cube.Pos, tx *world.Tx) bool {
 	for i := cube.Face(0); i < 6; i++ {
-		if flammable, ok := tx.Block(pos.Side(i)).(Flammable); ok && flammable.FlammabilityInfo().LavaFlammable {
-			return true
+		if b, loaded := tx.BlockLoaded(pos.Side(i)); loaded {
+			if flammable, ok := b.(Flammable); ok && flammable.FlammabilityInfo().LavaFlammable {
+				return true
+			}
 		}
 	}
 	return false
@@ -75,17 +78,26 @@ func (l Lava) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	if i > 0 {
 		for j := 0; j < i; j++ {
 			pos = pos.Add(cube.Pos{r.IntN(3) - 1, 1, r.IntN(3) - 1})
-			if _, ok := tx.Block(pos).(Air); ok {
-				if neighboursLavaFlammable(pos, tx) {
-					Fire{}.Start(tx, pos)
-				}
+			b, loaded := tx.BlockLoaded(pos)
+			if !loaded {
+				return
+			}
+			if _, ok := b.(Air); ok && neighboursLavaFlammable(pos, tx) {
+				Fire{}.Start(tx, pos)
 			}
 		}
-	} else {
 		for j := 0; j < 3; j++ {
 			pos = pos.Add(cube.Pos{r.IntN(3) - 1, 0, r.IntN(3) - 1})
-			if _, ok := tx.Block(pos.Side(cube.FaceUp)).(Air); ok {
-				if flammable, ok := tx.Block(pos).(Flammable); ok && flammable.FlammabilityInfo().LavaFlammable && flammable.FlammabilityInfo().Encouragement > 0 {
+			b, loaded := tx.BlockLoaded(pos)
+			if !loaded {
+				return
+			}
+			above, loaded := tx.BlockLoaded(pos.Side(cube.FaceUp))
+			if !loaded {
+				return
+			}
+			if _, ok := above.(Air); ok {
+				if flammable, ok := b.(Flammable); ok && flammable.FlammabilityInfo().LavaFlammable && flammable.FlammabilityInfo().Encouragement > 0 {
 					Fire{}.Start(tx, pos)
 				}
 			}

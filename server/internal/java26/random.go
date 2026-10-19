@@ -16,9 +16,11 @@ type State struct {
 	HasGaussian bool `json:"has_gaussian"`
 }
 const (
-	legacyMultiplier uint64 = 25214903917
-	legacyAddend     uint64 = 11
-	legacyMask       uint64 = (1 << 48) - 1
+	legacyMultiplier        uint64 = 25214903917
+	legacyAddend            uint64 = 11
+	legacyMask              uint64 = (1 << 48) - 1
+	xoroshiroZeroState0     uint64 = 0x9e3779b97f4a7c15
+	xoroshiroZeroState1     uint64 = 7640891576956012809
 )
 
 // Random is a mutable Java26 random stream. Copying it copies its stream state.
@@ -36,7 +38,12 @@ func (r Random) State() State {
 
 // FromState restores a Java random stream from its complete mutable state.
 func FromState(state State) Random {
-	return Random{legacy:state.Legacy, xorLo:state.XorLo, xorHi:state.XorHi, legacyMode:state.LegacyMode, worldgenMode:state.WorldgenMode, gaussian:state.Gaussian, hasGaussian:state.HasGaussian}
+	r := Random{legacy: state.Legacy, xorLo: state.XorLo, xorHi: state.XorHi, legacyMode: state.LegacyMode, worldgenMode: state.WorldgenMode, gaussian: state.Gaussian, hasGaussian: state.HasGaussian}
+	// Java's Xoroshiro128PlusPlus constructor replaces the all-zero state.
+	if !r.legacyMode && r.xorLo|r.xorHi == 0 {
+		r.xorLo, r.xorHi = xoroshiroZeroState0, xoroshiroZeroState1
+	}
+	return r
 }
 
 func NewLegacyRandom(seed int64) Random {
@@ -109,7 +116,7 @@ func (r *Random) SetSeed(seed int64) {
 		lo, hi := upgradeSeed(seed)
 		r.xorLo, r.xorHi = mixStafford13(lo), mixStafford13(hi)
 		if r.xorLo|r.xorHi == 0 {
-			r.xorLo, r.xorHi = uint64(0x9e3779b97f4a7c15), uint64(7640891576956012809)
+			r.xorLo, r.xorHi = xoroshiroZeroState0, xoroshiroZeroState1
 		}
 	}
 	if !r.worldgenMode {
@@ -251,7 +258,7 @@ func upgradeSeed(seed int64) (uint64, uint64) {
 }
 func newXoroshiro(lo, hi uint64) Random {
 	if lo|hi == 0 {
-		lo, hi = uint64(0x9e3779b97f4a7c15), uint64(7640891576956012809)
+		lo, hi = xoroshiroZeroState0, xoroshiroZeroState1
 	}
 	return Random{xorLo: lo, xorHi: hi}
 }

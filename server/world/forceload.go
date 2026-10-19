@@ -43,11 +43,52 @@ func (tx *Tx) ForceChunk(pos ChunkPos, force bool) error {
 	}
 	w.forcedChunksMu.Unlock()
 	if force {
+		w.loadForcedChunk(pos)
 		if c := tx.chunk(pos); c != nil {
 			c.modified = true
 		}
 	}
 	return w.saveForcedChunks()
+}
+
+// loadForcedChunk requests the FULL neighbourhood needed by the centre's
+// block-ticking ticket. Restored tickets must not wait on generation each tick.
+func (w *World) loadForcedChunk(pos ChunkPos) {
+	radius := int32(1)
+	if w.conf.Synchronous {
+		radius = 0
+	}
+	for dx := -radius; dx <= radius; dx++ {
+		for dz := -radius; dz <= radius; dz++ {
+			neighbour := ChunkPos{pos[0] + dx, pos[1] + dz}
+			if _, loaded := w.chunks[neighbour]; loaded {
+				continue
+			}
+			if _, err := w.loadChunk(neighbour); err != nil {
+				w.conf.Log.Error("load forced chunk: "+err.Error(), "X", neighbour[0], "Z", neighbour[1])
+			}
+		}
+	}
+}
+
+func (w *World) retainedByForcedChunk(pos ChunkPos) bool {
+	w.forcedChunksMu.RLock()
+	defer w.forcedChunksMu.RUnlock()
+	if len(w.forcedChunks) == 0 {
+		return false
+	}
+	radius := int32(1)
+	if w.conf.Synchronous {
+		radius = 0
+	}
+	for dx := -radius; dx <= radius; dx++ {
+		for dz := -radius; dz <= radius; dz++ {
+			if _, forced := w.forcedChunks[ChunkPos{pos[0] + dx, pos[1] + dz}]; forced {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ClearForcedChunks removes all forced chunk tickets. It must run on the world owner.

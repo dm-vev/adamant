@@ -6,7 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// CheckEntityInsiders checks if the entity is colliding with any EntityInsider blocks.
+// CheckEntityInsiders applies inside-block effects from available terrain without loading or waiting for chunks.
 func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
 	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
 
@@ -14,7 +14,10 @@ func CheckEntityInsiders(tx *world.Tx, box cube.BBox, e world.Entity) {
 		for x := low[0]; x <= high[0]; x++ {
 			for z := low[2]; z <= high[2]; z++ {
 				blockPos := cube.Pos{x, y, z}
-				b := tx.Block(blockPos)
+				b, loaded := tx.BlockLoaded(blockPos)
+				if !loaded {
+					continue
+				}
 				if collide, ok := b.(block.EntityInsider); ok {
 					collide.EntityInside(blockPos, tx, e)
 					if _, liquid := b.(world.Liquid); liquid {

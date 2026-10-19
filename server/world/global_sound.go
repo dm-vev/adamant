@@ -37,6 +37,6 @@ func (tx *Tx) PlayGlobalSound(pos mgl64.Vec3, s Sound) {
 	}
 	w.set.Unlock()
 	for _, other := range others {
-		other.Exec(playFar)
+		other.Do(playFar)
 	}
 }

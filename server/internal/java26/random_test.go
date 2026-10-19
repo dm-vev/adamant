@@ -116,6 +116,33 @@ func TestWorldgenRandomJavaVectors(t *testing.T) {
 		})
 	}
 }
+func TestFromStateRepairsZeroXoroshiroState(t *testing.T) {
+	for _, state := range []State{{}, {WorldgenMode: true}} {
+		got := FromState(state)
+		want := newXoroshiro(0, 0)
+		want.worldgenMode = state.WorldgenMode
+		javaFirstLong := int64(6807859099481836695)
+		if state.WorldgenMode {
+			javaFirstLong = 6807859100550271991
+		}
+		if gotLong, wantLong := got.NextLong(), want.NextLong(); gotLong != javaFirstLong || gotLong != wantLong {
+			t.Fatalf("first restored long = %d, want Java zero-state repair %d", gotLong, javaFirstLong)
+		}
+		if got.State() != want.State() {
+			t.Fatalf("restored state after draw = %+v, want Java zero-state repair %+v", got.State(), want.State())
+		}
+		if got.NextGaussian() != want.NextGaussian() {
+			t.Fatal("restored Gaussian stream differs from Java zero-state repair")
+		}
+	}
+
+	// LegacyRandomSource permits an all-zero LCG state; the Xoroshiro repair
+	// must not change it.
+	legacy := State{LegacyMode: true}
+	if got := FromState(legacy).State(); got != legacy {
+		t.Fatalf("restored legacy state = %+v, want %+v", got, legacy)
+	}
+}
 
 func TestWorldgenRandomSeedPreservesGaussianCache(t *testing.T) {
 	r := NewWorldgenRandom(123456789)

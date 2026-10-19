@@ -1199,7 +1199,7 @@ func (s *Session) SendDebugShapes(dim world.Dimension) {
 			continue
 		}
 		s.debugShapes[update.id] = update.shape
-		shapes = append(shapes, debugShapeToProtocol(update.shape, dim, s.shapeAttachedEntityRuntimeID(update.shape)))
+		shapes = append(shapes, debugShapeToProtocol(update.shape, dim, s.shapeAttachedEntityRuntimeID(update.shape), update.id))
 	}
 	s.debugShapeUpdates = s.debugShapeUpdates[:0]
 	s.debugShapesMu.Unlock()
@@ -1286,10 +1286,10 @@ func (s *Session) shapeAttachedEntityRuntimeID(shape debug.Shape) uint64 {
 
 // debugShapeToProtocol converts a debug shape to its protocol representation. It also provides defaults
 // for some fields such as colour, scale and other per-shape properties.
-func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntityID uint64) protocol.PrimitiveShape {
+func debugShapeToProtocol(shape debug.Shape, dim world.Dimension, attachedEntityID uint64, networkID int) protocol.PrimitiveShape {
 	dimID, _ := world.DimensionID(dim)
 	ps := protocol.PrimitiveShape{
-		NetworkID:   uint64(shape.ShapeID()),
+		NetworkID:   uint64(networkID),
 		DimensionID: protocol.Option(int32(dimID)),
 	}
 	if attachedEntityID > 0 {

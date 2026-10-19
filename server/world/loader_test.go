@@ -214,7 +214,7 @@ func countLoader(loaders []*Loader, target *Loader) int {
 func TestChunkCallbackDoesNotReenterLoader(t *testing.T) {
 	w := New()
 	nested := ChunkPos{1, 0}
-	v := &reentrantViewer{pos: cube.Pos{int(nested[0]) * 16, 0, int(nested[1]) * 16}}
+	v := &reentrantViewer{pos: cube.Pos{int(nested[0]) * 16, 0, int(nested[1]) * 16}, done: make(chan struct{})}
 	l := NewLoader(1, w, v)
 	h := EntitySpawnOpts{Position: mgl64.Vec3{0.5, 4, 0.5}}.New(reentrantEntityType{}, reentrantEntityConfig{})
 
@@ -233,8 +233,10 @@ func TestChunkCallbackDoesNotReenterLoader(t *testing.T) {
 	if err := task.Wait(ctx); err != nil {
 		t.Fatalf("chunk callback re-entered the Loader and deadlocked the world owner: %v", err)
 	}
-	if !v.read {
-		t.Fatal("viewer never read a block in the pending chunk, test did not reproduce the case")
+	select {
+	case <-v.done:
+	case <-ctx.Done():
+		t.Fatal("viewer did not finish reading the pending chunk")
 	}
 	if _, ok := l.Chunk(nested); !ok {
 		t.Fatal("nested chunk callback did not complete")
@@ -248,6 +250,7 @@ type reentrantViewer struct {
 	NopViewer
 	pos  cube.Pos
 	read bool
+	done chan struct{}
 }
 
 func (v *reentrantViewer) ViewEntity(e Entity) {
@@ -255,6 +258,7 @@ func (v *reentrantViewer) ViewEntity(e Entity) {
 		return
 	}
 	v.read = true
+	defer close(v.done)
 	e.(*reentrantEntity).tx.Block(v.pos)
 }
 

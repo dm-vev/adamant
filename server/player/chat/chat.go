@@ -57,36 +57,39 @@ func (chat *Chat) Writet(t Translation, a ...any) {
 // Subscribe adds a subscriber to the chat, sending it every message written to
 // the chat. In order to remove it again, use Chat.Unsubscribe().
 func (chat *Chat) Subscribe(s Subscriber) {
+	id := s.UUID()
 	chat.m.Lock()
 	defer chat.m.Unlock()
 	if chat.subscribers == nil {
 		// Chat was closed.
 		return
 	}
-	chat.subscribers[s.UUID()] = s
+	chat.subscribers[id] = s
 }
 
 // Subscribed checks if a subscriber is currently subscribed to the chat.
 func (chat *Chat) Subscribed(s Subscriber) bool {
+	id := s.UUID()
 	chat.m.Lock()
 	defer chat.m.Unlock()
 	if chat.subscribers == nil {
 		return false
 	}
-	_, ok := chat.subscribers[s.UUID()]
+	_, ok := chat.subscribers[id]
 	return ok
 }
 
 // Unsubscribe removes a subscriber from the chat, so that messages written to
 // the chat will no longer be sent to it.
 func (chat *Chat) Unsubscribe(s Subscriber) {
+	id := s.UUID()
 	chat.m.Lock()
 	defer chat.m.Unlock()
 	if chat.subscribers == nil {
 		// Chat was closed.
 		return
 	}
-	delete(chat.subscribers, s.UUID())
+	delete(chat.subscribers, id)
 }
 
 // Close closes the chat, removing all subscribers from it.

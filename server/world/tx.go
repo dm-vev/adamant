@@ -291,8 +291,9 @@ func (tx *Tx) PlaySound(pos mgl64.Vec3, s Sound) {
 
 // AddEntity adds an EntityHandle to a World. The Entity will be visible to all
 // viewers of the World that have the chunk at the EntityHandle's position. If
-// the chunk that the EntityHandle is in is not yet loaded, it will first be
-// loaded. AddEntity panics if the EntityHandle is already in a world.
+// the chunk that the EntityHandle is in is not yet loaded, loading or generation
+// is started without waiting for terrain. Block reads still wait for generation.
+// AddEntity panics if the EntityHandle is already in a world.
 // AddEntity returns the Entity created by the EntityHandle.
 func (tx *Tx) AddEntity(e *EntityHandle) Entity {
 	return tx.World().addEntity(tx, e)

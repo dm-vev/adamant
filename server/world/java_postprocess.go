@@ -11,7 +11,7 @@ import (
 func (t ticker) promoteGeneration(tx *Tx, loaders []*Loader) {
 	w := tx.World()
 	radius := int32(w.tickRange())
-	if radius == 0 {
+	if radius == 0 && len(w.forcedChunks) == 0 {
 		return
 	}
 	areas := w.scratchLoaderAreas[:0]
@@ -39,6 +39,16 @@ func (t ticker) promoteGeneration(tx *Tx, loaders []*Loader) {
 			if ref.col.Ready() && columnWithinAreas(ref.pos, areas) && w.generationPending(ref.pos, ref.col) {
 				columns = append(columns, ref)
 			}
+		}
+		for pos := range w.forcedChunks {
+			col := w.chunks[pos]
+			if col == nil || !col.Ready() || !w.generationPending(pos, col) {
+				continue
+			}
+			if _, active := w.activeColumnIndex[pos]; active && columnWithinAreas(pos, areas) {
+				continue
+			}
+			columns = append(columns, columnRef{pos: pos, col: col})
 		}
 	}
 	for _, ref := range columns {
@@ -74,6 +84,14 @@ func (w *World) generationNeighbourhoodReady(pos ChunkPos) bool {
 		}
 	}
 	return true
+}
+
+// blockTickingReady follows Java's prepareTickingChunk: the centre and its
+// eight FULL neighbours must be generated before block simulation starts.
+// Synchronous worlds generate dependencies on demand instead.
+func (w *World) blockTickingReady(pos ChunkPos, col *Column) bool {
+	return col != nil && col.Ready() && !w.generationPending(pos, col) &&
+		(w.conf.Synchronous || w.generationNeighbourhoodReady(pos))
 }
 
 // entityTickingReady reports whether the entities of the chunk at pos tick:

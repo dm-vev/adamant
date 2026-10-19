@@ -193,9 +193,12 @@ func (w weather) enableWeatherCycle(v bool) {
 // lightning in each one with a 1/100,000 chance.
 func (w weather) tickLightning(tx *Tx) {
 	positions := make([]ChunkPos, 0, len(w.w.chunks)/100000)
-	for pos := range w.w.chunks {
-		// Wiki: For each loaded chunk, every tick there is a 1⁄100,000 chance
-		// of an attempted lightning strike during a thunderstorm
+	for pos, col := range w.w.chunks {
+		// Java samples thunder only in entity-ticking chunks. In particular,
+		// a tracked column that is still generating is not eligible.
+		if !col.Ready() || !w.w.entityTickingReady(pos) || w.w.generationPending(pos, col) {
+			continue
+		}
 		if w.w.r.IntN(100000) == 0 {
 			positions = append(positions, pos)
 		}

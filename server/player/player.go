@@ -145,7 +145,7 @@ type playerData struct {
 
 	hunger *hungerManager
 
-	once sync.Once
+	closing atomic.Bool
 
 	prevWorld *world.World
 
@@ -663,7 +663,9 @@ func (p *Player) updateFallState(distanceThisTick float64) {
 		if p.fallDistance > 0 {
 			low, _ := p.blocksUnder()
 			support := cube.Pos{low[0], low[1] - 1, low[2]}
-			p.emitGameEvent(world.GameEventHitGround, p.Position(), p.tx.Block(support))
+			if state, loaded := p.tx.BlockLoaded(support); loaded {
+				p.emitGameEvent(world.GameEventHitGround, p.Position(), state)
+			}
 		}
 		if p.fallDistance > 3 {
 			p.fall(p.fallDistance)
@@ -714,8 +716,10 @@ func (p *Player) landedOn() (cube.Pos, block.EntityLander, bool) {
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
 			pos := cube.Pos{x, low[1], z}
-			if lander, ok := p.tx.Block(pos).(block.EntityLander); ok {
-				return pos, lander, true
+			if b, loaded := p.tx.BlockLoaded(pos); loaded {
+				if lander, ok := b.(block.EntityLander); ok {
+					return pos, lander, true
+				}
 			}
 		}
 	}
@@ -3200,12 +3204,16 @@ func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 		}
 	}
 
-	_, submergedBefore := p.tx.Liquid(cube.PosFromVec3(pos.Add(mgl64.Vec3{0, p.EyeHeight()})))
-	_, submergedAfter := p.tx.Liquid(cube.PosFromVec3(res.Add(mgl64.Vec3{0, p.EyeHeight()})))
-	if submergedBefore != submergedAfter {
-		// Player wasn't either breathing before and no longer isn't, or wasn't breathing before and now is,
-		// so send the updated metadata.
-		p.session().ViewEntityState(p)
+	beforePos := cube.PosFromVec3(pos.Add(mgl64.Vec3{0, p.EyeHeight()}))
+	afterPos := cube.PosFromVec3(res.Add(mgl64.Vec3{0, p.EyeHeight()}))
+	if p.movementChunkReady(beforePos) && p.movementChunkReady(afterPos) {
+		_, submergedBefore := p.tx.Liquid(beforePos)
+		_, submergedAfter := p.tx.Liquid(afterPos)
+		if submergedBefore != submergedAfter {
+			// Player wasn't either breathing before and no longer isn't, or wasn't breathing before and now is,
+			// so send the updated metadata.
+			p.session().ViewEntityState(p)
+		}
 	}
 
 	p.onGround = p.checkOnGround(deltaPos)
@@ -3532,17 +3540,19 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		return
 	}
 	if p.sleeping {
-		switch bed := tx.Block(p.sleepPos).(type) {
-		case block.StrawBed:
-			if _, valid := bed.SleepHeight(p.sleepPos, tx); !valid || !tx.IsDarkOutside() {
+		if bed, loaded := tx.BlockLoaded(p.sleepPos); loaded {
+			switch bed := bed.(type) {
+			case block.StrawBed:
+				if _, valid := bed.SleepHeight(p.sleepPos, tx); !valid || !tx.IsDarkOutside() {
+					p.wakeInTx(tx)
+				}
+			case block.Bed:
+				if !tx.IsDarkOutside() {
+					p.wakeInTx(tx)
+				}
+			default:
 				p.wakeInTx(tx)
 			}
-		case block.Bed:
-			if !tx.IsDarkOutside() {
-				p.wakeInTx(tx)
-			}
-		default:
-			p.wakeInTx(tx)
 		}
 	}
 	if p.sleeping {
@@ -3550,7 +3560,10 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	} else if p.timeSinceRest < int32(^uint32(0)>>1) {
 		p.timeSinceRest++
 	}
-	blockName, _ := p.tx.Block(cube.PosFromVec3(p.Position())).EncodeBlock()
+	blockName := ""
+	if b, loaded := p.tx.BlockLoaded(cube.PosFromVec3(p.Position())); loaded {
+		blockName, _ = b.EncodeBlock()
+	}
 	if p.insideOfWater() || p.Flying() || p.sleeping || p.fallDistance > 0.5 || blockName == "minecraft:powder_snow" {
 		p.ReleaseShoulderParrots()
 	}
@@ -3558,10 +3571,13 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	p.tickCarriedMaps(current)
 	p.tickScoreboard(tx, current)
 	p.tickMapFrames(current)
-	if _, ok := p.tx.Liquid(cube.PosFromVec3(p.Position())); !ok {
-		p.StopSwimming()
-		if _, ok := p.Armour().Helmet().Item().(item.TurtleShell); ok {
-			p.AddEffect(effect.New(effect.WaterBreathing, 1, time.Second*10).WithoutParticles())
+	liquidPos := cube.PosFromVec3(p.Position())
+	if p.movementChunkReady(liquidPos) {
+		if _, ok := p.tx.Liquid(liquidPos); !ok {
+			p.StopSwimming()
+			if _, ok := p.Armour().Helmet().Item().(item.TurtleShell); ok {
+				p.AddEffect(effect.New(effect.WaterBreathing, 1, time.Second*10).WithoutParticles())
+			}
 		}
 	}
 
@@ -4082,6 +4098,9 @@ const breathingDistanceBelowEyes = 0.11111111
 // insideOfWater returns true if the player is currently underwater.
 func (p *Player) insideOfWater() bool {
 	pos := cube.PosFromVec3(entity.EyePosition(p))
+	if !p.movementChunkReady(pos) {
+		return false
+	}
 	if l, ok := p.tx.Liquid(pos); ok {
 		if _, ok := l.(block.Water); ok {
 			d := float64(l.SpreadDecay()) + 1
@@ -4096,8 +4115,15 @@ func (p *Player) insideOfWater() bool {
 
 // insideOfSolid returns true if the player is inside a solid block.
 func (p *Player) insideOfSolid() bool {
+	if p.GameMode() == world.GameModeSpectator {
+		return false
+	}
 	pos := cube.PosFromVec3(entity.EyePosition(p))
-	b, box := p.tx.Block(pos), p.handle.Type().BBox(p).Translate(p.Position())
+	b, loaded := p.tx.BlockLoaded(pos)
+	if !loaded {
+		return false
+	}
+	box := p.handle.Type().BBox(p).Translate(p.Position())
 
 	_, solid := b.Model().(model.Solid)
 	if !solid {
@@ -4122,6 +4148,9 @@ func (p *Player) insideOfSolid() bool {
 
 // checkCollisions checks the player's block collisions.
 func (p *Player) checkBlockCollisions(vel mgl64.Vec3) {
+	if p.GameMode() == world.GameModeSpectator {
+		return
+	}
 	entityBBox := Type.BBox(p).Translate(p.Position())
 	deltaX, deltaY, deltaZ := vel[0], vel[1], vel[2]
 
@@ -4138,8 +4167,12 @@ func (p *Player) checkBlockCollisions(vel mgl64.Vec3) {
 		for x := minX; x <= maxX; x++ {
 			for z := minZ; z <= maxZ; z++ {
 				pos := cube.Pos{x, y, z}
-				boxes := p.tx.Block(pos).Model().BBox(pos, p.tx)
-				for _, box := range boxes {
+				b, loaded := p.tx.BlockLoaded(pos)
+				// BlockLoaded never waits; unready positions have no collision shape to apply yet.
+				if !loaded {
+					continue
+				}
+				for _, box := range b.Model().BBox(pos, p.tx) {
 					blocks = append(blocks, box.Translate(pos.Vec3()))
 				}
 			}
@@ -4174,6 +4207,12 @@ func (p *Player) checkBlockCollisions(vel mgl64.Vec3) {
 	p.collidedVertically = !mgl64.FloatEqual(deltaY, vel[1])
 }
 
+// movementChunkReady reports whether a block-position read is safe without loading or waiting.
+func (p *Player) movementChunkReady(pos cube.Pos) bool {
+	_, ready := p.tx.ChunkState(world.ChunkPosition(pos))
+	return ready
+}
+
 // checkEntitySteppers checks if the player is standing on any EntityStepper blocks.
 func (p *Player) checkEntitySteppers() {
 	if !p.OnGround() {
@@ -4183,7 +4222,11 @@ func (p *Player) checkEntitySteppers() {
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
 			pos := cube.Pos{x, low[1], z}
-			stepper, ok := p.tx.Block(pos).(block.EntityStepper)
+			b, loaded := p.tx.BlockLoaded(pos)
+			if !loaded {
+				continue
+			}
+			stepper, ok := b.(block.EntityStepper)
 			if !ok {
 				continue
 			}
@@ -4195,24 +4238,36 @@ func (p *Player) checkEntitySteppers() {
 
 // checkOnGround checks if the player is currently considered to be on the ground.
 func (p *Player) checkOnGround(deltaPos mgl64.Vec3) bool {
+	if p.GameMode() == world.GameModeSpectator {
+		return false
+	}
 	// Probe straight down (0.05 plus this tick's descent) instead of along the
 	// whole movement, so a block the player falls past at its side is not ground.
 	box := Type.BBox(p).Translate(p.Position()).Extend(mgl64.Vec3{0, -0.05}).Extend(mgl64.Vec3{0, math.Min(deltaPos[1], 0)})
 	b := box.Grow(1)
-
 	epsilon := mgl64.Vec3{mgl64.Epsilon, mgl64.Epsilon, mgl64.Epsilon}
 	low, high := cube.PosFromVec3(b.Min().Add(epsilon)), cube.PosFromVec3(b.Max().Sub(epsilon))
+
+	unavailable := false
 	for x := low[0]; x <= high[0]; x++ {
 		for z := low[2]; z <= high[2]; z++ {
 			for y := low[1]; y < high[1]; y++ {
 				pos := cube.Pos{x, y, z}
-				for _, bb := range p.tx.Block(pos).Model().BBox(pos, p.tx) {
+				b, loaded := p.tx.BlockLoaded(pos)
+				if !loaded {
+					unavailable = true
+					continue
+				}
+				for _, bb := range b.Model().BBox(pos, p.tx) {
 					if bb.Translate(pos.Vec3()).IntersectsWith(box) {
 						return true
 					}
 				}
 			}
 		}
+	}
+	if unavailable {
+		return p.onGround
 	}
 	return false
 }
@@ -4232,6 +4287,9 @@ func (p *Player) SetScale(s float64) {
 
 // OnGround checks if the player is considered to be on the ground.
 func (p *Player) OnGround() bool {
+	if p.GameMode() == world.GameModeSpectator {
+		return false
+	}
 	if p.session() == session.Nop {
 		return p.mc.OnGround()
 	}
@@ -4580,25 +4638,27 @@ func (p *Player) canReach(pos mgl64.Vec3) bool {
 // Disconnect closes the player and removes it from the world.
 // Disconnect, unlike Close, allows a custom message to be passed to show to the player when it is
 // disconnected. The message is formatted following the rules of fmt.Sprintln without a newline at the end.
-// The player is removed from its current world before Disconnect returns and
-// must not be used afterwards. If the player is dead, it first respawns: the
-// remaining teardown completes on the owner of the world it respawns into.
+// The first call removes the player from its current world before returning.
+// Calls made after teardown starts return without waiting, including calls from
+// quit callbacks. The player must not be used afterwards. If the player is dead,
+// it first respawns: teardown completes on the owner of its respawn world.
 func (p *Player) Disconnect(msg ...any) {
-	p.once.Do(func() {
+	if p.closing.CompareAndSwap(false, true) {
 		p.close(format(msg))
-	})
+	}
 }
 
 // Close closes the player and removes it from the world.
 // Close disconnects the player with a 'Connection closed.' message. Disconnect should be used to disconnect a
 // player with a custom message.
-// The player is removed from its current world before Close returns and must
-// not be used afterwards. If the player is dead, it first respawns: the
-// remaining teardown completes on the owner of the world it respawns into.
+// The first call removes the player from its current world before returning.
+// Calls made after teardown starts return without waiting, including calls from
+// quit callbacks. The player must not be used afterwards. If the player is dead,
+// it first respawns: teardown completes on the owner of its respawn world.
 func (p *Player) Close() error {
-	p.once.Do(func() {
+	if p.closing.CompareAndSwap(false, true) {
 		p.close("Connection closed.")
-	})
+	}
 	return nil
 }
 

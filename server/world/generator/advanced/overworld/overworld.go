@@ -117,10 +117,6 @@ type Overworld struct {
 
 	biomeProvider *biomeProvider
 
-	populationQueue chan populationJob
-	popOnce         sync.Once
-	world           worldPointer
-
 	scatteredCache sync.Map // world.ChunkPos -> *scatteredStructure (nil when absent)
 	mineshaftCache sync.Map // world.ChunkPos -> *mineshaftStructure (nil when absent)
 	previewCache   *previewCache

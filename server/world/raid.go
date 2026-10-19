@@ -231,6 +231,15 @@ func (tx *Tx) TickRaids() {
 		if r == nil {
 			continue
 		}
+		if r.status == RaidStopped {
+			for member := range r.members {
+				if w.raidByRaider[member] == id {
+					delete(w.raidByRaider, member)
+				}
+			}
+			delete(w.raids, id)
+			continue
+		}
 		if r.status == RaidVictory || r.status == RaidDefeat {
 			r.celebrationTicks++
 			tx.updateRaidBar(r)

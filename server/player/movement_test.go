@@ -2,13 +2,116 @@ package player
 
 import (
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
+type blockedMovementGenerator struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (g *blockedMovementGenerator) DefaultSpawn(world.Dimension) cube.Pos { return cube.Pos{} }
+
+func (g *blockedMovementGenerator) GenerateChunk(pos world.ChunkPos, _ *chunk.Chunk, _ world.GenerationContext) world.GenerationResult {
+	if pos == (world.ChunkPos{2, 0}) {
+		close(g.started)
+		<-g.release
+	}
+	return world.GenerationResult{}
+}
+
+func TestPlayerMoveDoesNotWaitForGeneratingCollisionChunk(t *testing.T) {
+	g := &blockedMovementGenerator{started: make(chan struct{}), release: make(chan struct{})}
+	w := world.Config{Generator: g, GeneratorWorkers: 1}.New()
+	pos := mgl64.Vec3{31.5, 64, 0.5}
+	var p *Player
+	var loader *world.Loader
+	var ready <-chan struct{}
+	requested := make(chan struct{})
+	aboutToMove := make(chan struct{})
+	moveDone := make(chan struct{})
+	task := w.Exec(func(tx *world.Tx) {
+		p = tx.AddEntity(world.EntitySpawnOpts{Position: pos}.New(Type, Config{Position: pos, GameMode: world.GameModeSurvival})).(*Player)
+		loader = world.NewLoader(1, w, world.NopViewer{})
+		loader.Move(tx, pos)
+		loader.Load(tx, 9)
+		ready, _ = tx.ChunkReadySignal(world.ChunkPos{2, 0})
+		close(requested)
+		select {
+		case <-g.started:
+		case <-g.release:
+			close(moveDone)
+			return
+		}
+		close(aboutToMove)
+		p.Move(mgl64.Vec3{0.2}, 0, 0)
+		close(moveDone)
+	})
+	released := false
+	release := func() {
+		if !released {
+			close(g.release)
+			released = true
+		}
+	}
+	defer func() {
+		release()
+		<-w.Exec(func(tx *world.Tx) { loader.Close(tx) })
+		_ = w.Close()
+	}()
+	select {
+	case <-aboutToMove:
+	case <-time.After(5 * time.Second):
+		t.Fatal("generation did not start")
+	}
+	select {
+	case <-moveDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("movement waited for an unready chunk")
+	}
+	select {
+	case <-task:
+	case <-time.After(2 * time.Second):
+		t.Fatal("movement transaction did not finish")
+	}
+	var moved mgl64.Vec3
+	<-w.Exec(func(*world.Tx) { moved = p.Position() })
+	if moved[0] != pos[0]+0.2 {
+		t.Fatalf("movement position = %v, want %v", moved, pos[0]+0.2)
+	}
+
+	release()
+	select {
+	case <-ready:
+	case <-time.After(5 * time.Second):
+		t.Fatal("chunk did not become ready after generation was released")
+	}
+	var collided, burned bool
+	<-w.Exec(func(tx *world.Tx) {
+		previous := p.tx
+		p.tx = tx
+		defer func() { p.tx = previous }()
+		tx.SetBlock(cube.Pos{34, 64, 0}, block.Cobblestone{}, nil)
+		p.Move(mgl64.Vec3{1.4}, 0, 0)
+		collided = p.collidedHorizontally
+		tx.SetBlock(cube.Pos{33, 64, 0}, block.Lava{Still: true, Depth: 8}, nil)
+		health := p.Health()
+		p.Move(mgl64.Vec3{0.1}, 0, 0)
+		burned = p.Health() < health
+	})
+	if !collided {
+		t.Fatal("ready-world movement did not detect the collision block")
+	}
+	if !burned {
+		t.Fatal("ready-world movement did not apply inside-lava damage")
+	}
+}
 func TestPlayerGroundDetection(t *testing.T) {
 	tests := []struct {
 		name     string

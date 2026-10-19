@@ -806,6 +806,15 @@ func TestScheduledTicksWaitForLoadedTickingDestination(t *testing.T) {
 
 		loader.pos = destination
 		queue.tick(tx, 3, loader)
+		if ticks != 0 || queue.listed() != 1 {
+			t.Fatalf("destination without FULL neighbours after collection: callbacks=%d pending=%d", ticks, queue.listed())
+		}
+		for dx := -1; dx <= 1; dx++ {
+			for dz := -1; dz <= 1; dz++ {
+				tx.chunk(ChunkPos{destination[0] + int32(dx), destination[1] + int32(dz)})
+			}
+		}
+		queue.tick(tx, 4, loader)
 	})
 	if ticks != 1 {
 		t.Fatalf("scheduled callback count after destination became ticking = %d, want 1", ticks)

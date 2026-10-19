@@ -285,7 +285,7 @@ func (f Fire) Start(tx *world.Tx, pos cube.Pos) {
 
 // Place ...
 func (Fire) Place(pos cube.Pos, w *world.World) bool {
-	w.Exec(func(tx *world.Tx) {
+	w.Do(func(tx *world.Tx) {
 		portal.TryActivateNetherPortal(tx, pos)
 	})
 	return true

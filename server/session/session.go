@@ -33,8 +33,9 @@ import (
 // Session handles incoming packets from connections and sends outgoing packets by providing a thin layer
 // of abstraction over direct packets. A Session basically 'controls' an entity.
 type Session struct {
-	conf           Config
-	once, connOnce sync.Once
+	conf            Config
+	teardownStarted atomic.Bool
+	connOnce        sync.Once
 
 	ent  *world.EntityHandle
 	conn Conn
@@ -345,13 +346,15 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 
 // Close closes the session, which in turn closes the controllable and the connection that the session
 // manages. Close ensures the method only runs code on the first call.
+// Calls made after teardown has started return without waiting, so teardown
+// callbacks may close the session again.
 // A nil transaction may be passed for a Controllable that is no longer in any
 // world; world-bound teardown (container close, chunk loader, entity removal)
 // is then skipped.
 func (s *Session) Close(tx *world.Tx, c Controllable) {
-	s.once.Do(func() {
+	if s.teardownStarted.CompareAndSwap(false, true) {
 		s.close(tx, c)
-	})
+	}
 }
 
 // close closes the session, which in turn closes the controllable and the connection that the session

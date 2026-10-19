@@ -22,7 +22,12 @@ func (p *Player) frostWalkerProtectsFrom(src world.DamageSource) bool {
 	case block.MagmaDamageSource:
 		return true
 	case block.FireDamageSource:
-		_, campfire := p.tx.Block(cube.PosFromVec3(p.Position()).Side(cube.FaceDown)).(block.Campfire)
+		pos := cube.PosFromVec3(p.Position()).Side(cube.FaceDown)
+		b, loaded := p.tx.BlockLoaded(pos)
+		if !loaded {
+			return false
+		}
+		_, campfire := b.(block.Campfire)
 		return campfire
 	default:
 		return false
@@ -42,11 +47,18 @@ func (p *Player) tickFrostWalker() {
 	for x := -radius; x <= radius; x++ {
 		for z := -radius; z <= radius; z++ {
 			pos := cube.Pos{centre[0] + x, centre[1] - 1, centre[2] + z}
+			if !p.movementChunkReady(pos) {
+				continue
+			}
 			liquid, ok := p.tx.Liquid(pos)
 			if !ok || liquid.LiquidType() != "water" || liquid.LiquidDepth() != 8 {
 				continue
 			}
-			if _, air := p.tx.Block(pos.Side(cube.FaceUp)).(block.Air); !air {
+			above, loaded := p.tx.BlockLoaded(pos.Side(cube.FaceUp))
+			if !loaded {
+				continue
+			}
+			if _, air := above.(block.Air); !air {
 				continue
 			}
 			if math.Hypot(float64(x), float64(z)) > float64(radius)+0.5 {
