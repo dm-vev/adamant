@@ -126,67 +126,80 @@ func TestNeighbourUpdatesDoNotLoadMissingChunks(t *testing.T) {
 }
 
 func TestNeighbourUpdatesWaitForTrackedChunkReadiness(t *testing.T) {
-	w := Config{Synchronous: true}.New()
+	var updates []string
+	block := &neighbourMechanicsTestBlock{name: "bubble", updates: &updates}
+	registry := NewBlockRegistry()
+	name, properties := block.EncodeBlock()
+	registry.RegisterBlockState(BlockState{Name: name, Properties: properties})
+	registry.RegisterBlock(block)
+	w := Config{Blocks: registry, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
 	chunkPos := ChunkPos{1, 0}
-	col := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+	col := newColumn(chunk.New(registry, w.Range()))
+	col.SetBlock(0, 64, 0, 0, registry.BlockRuntimeID(block))
 	w.chunks[chunkPos] = col
-	w.neighbourUpdates = append(w.neighbourUpdates, neighbourUpdate{
-		pos:       cube.Pos{16, 0, 0},
-		neighbour: cube.Pos{15, 0, 0},
-	})
+	w.updateNeighbour(cube.Pos{16, 64, 0}, cube.Pos{15, 64, 0})
 
 	w.AdvanceTick()
-	if got := len(w.neighbourUpdates); got != 1 {
-		t.Fatalf("pending neighbour updates = %d, want 1", got)
+	if len(updates) != 0 {
+		t.Fatalf("generating chunk received neighbour callbacks: %v", updates)
 	}
 	col.fillLight(chunkPos)
 	col.markReady()
 	w.AdvanceTick()
-	if got := len(w.neighbourUpdates); got != 0 {
-		t.Fatalf("pending neighbour updates after readiness = %d, want 0", got)
+	if len(updates) != 1 || updates[0] != "bubble" {
+		t.Fatalf("callbacks after chunk readiness = %v, want [bubble]", updates)
 	}
 }
 
-func TestNeighbourUpdatesRotatePendingFrontAndLimitReadyTail(t *testing.T) {
+func TestNeighbourUpdatesDeferGeneratingChunksWithoutLosingReadyWork(t *testing.T) {
+	var updates []string
+	pendingBlock := &neighbourMechanicsTestBlock{name: "redstone", updates: &updates}
+	readyBlock := &neighbourMechanicsTestBlock{name: "bubble", updates: &updates}
+	registry := NewBlockRegistry()
+	for _, block := range []*neighbourMechanicsTestBlock{pendingBlock, readyBlock} {
+		name, properties := block.EncodeBlock()
+		registry.RegisterBlockState(BlockState{Name: name, Properties: properties})
+		registry.RegisterBlock(block)
+	}
 	provider := &neighbourUpdateCountingProvider{NopProvider: NopProvider{WorldData: &WorldDataMemory{}}}
-	w := Config{Provider: provider, Synchronous: true}.New()
+	w := Config{Blocks: registry, Provider: provider, Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
 
 	pendingChunk, readyChunk := ChunkPos{1, 0}, ChunkPos{2, 0}
-	w.chunks[pendingChunk] = newColumn(chunk.New(w.conf.Blocks, w.Range()))
-	ready := newColumn(chunk.New(w.conf.Blocks, w.Range()))
+	pending := newColumn(chunk.New(registry, w.Range()))
+	pending.SetBlock(0, 64, 0, 0, registry.BlockRuntimeID(pendingBlock))
+	w.chunks[pendingChunk] = pending
+	ready := newColumn(chunk.New(registry, w.Range()))
+	ready.SetBlock(0, 64, 0, 0, registry.BlockRuntimeID(readyBlock))
 	ready.fillLight(readyChunk)
 	ready.markReady()
 	w.chunks[readyChunk] = ready
 
-	pendingPos, readyPos := cube.Pos{16, 0, 0}, cube.Pos{32, 0, 0}
-	pendingCount, readyCount := maxNeighbourUpdatesPerTick+1, maxNeighbourUpdatesPerTick+1
-	w.neighbourUpdates = make([]neighbourUpdate, 0, pendingCount+readyCount)
-	for range pendingCount {
-		w.neighbourUpdates = append(w.neighbourUpdates, neighbourUpdate{pos: pendingPos})
+	for range maxNeighbourUpdatesPerTick {
+		w.updateNeighbour(cube.Pos{16, 64, 0}, cube.Pos{})
 	}
-	for range readyCount {
-		w.neighbourUpdates = append(w.neighbourUpdates, neighbourUpdate{pos: readyPos})
+	for range 2 {
+		w.updateNeighbour(cube.Pos{32, 64, 0}, cube.Pos{})
 	}
-	capacity, loads := cap(w.neighbourUpdates), provider.loads.Load()
-
+	loads := provider.loads.Load()
 	w.AdvanceTick()
+	w.AdvanceTick()
+	if len(updates) != 2 || updates[0] != "bubble" || updates[1] != "bubble" {
+		t.Fatalf("ready callbacks behind generating work = %v, want [bubble bubble]", updates)
+	}
 
-	if got := len(w.neighbourUpdates); got != pendingCount+1 {
-		t.Fatalf("remaining neighbour updates = %d, want %d", got, pendingCount+1)
+	pending.fillLight(pendingChunk)
+	pending.markReady()
+	w.AdvanceTick()
+	if len(updates) != maxNeighbourUpdatesPerTick+2 {
+		t.Fatalf("callbacks after generation = %d, want %d", len(updates), maxNeighbourUpdatesPerTick+2)
 	}
-	if w.neighbourUpdates[0].pos != readyPos {
-		t.Fatalf("first remaining update = %v, want ready update %v", w.neighbourUpdates[0].pos, readyPos)
-	}
-	for i, update := range w.neighbourUpdates[1:] {
-		if update.pos != pendingPos {
-			t.Fatalf("remaining update %d = %v, want pending update %v", i+1, update.pos, pendingPos)
+	for i, update := range updates[2:] {
+		if update != "redstone" {
+			t.Fatalf("deferred callback %d = %q, want redstone", i, update)
 		}
-	}
-	if got := cap(w.neighbourUpdates); got != capacity {
-		t.Fatalf("neighbour update queue capacity = %d, want %d", got, capacity)
 	}
 	if got := provider.loads.Load(); got != loads {
 		t.Fatalf("neighbour updates loaded %d additional chunks", got-loads)
@@ -216,11 +229,15 @@ func TestNeighbourUpdatesMixedReadinessPreservesMechanicsOrder(t *testing.T) {
 		tx.SetLiquid(liquidPos, liquid)
 		tx.SetBlock(redstonePos, redstone, opts)
 	})
-	w.neighbourUpdates = []neighbourUpdate{
+	w.AdvanceTick()
+	updates = nil
+	for _, update := range []neighbourUpdate{
 		{pos: cube.Pos{16, 64, 0}},
 		{pos: bubblePos},
 		{pos: liquidPos},
 		{pos: redstonePos},
+	} {
+		w.neighbourUpdates.push(update)
 	}
 	w.chunks[ChunkPos{1, 0}] = newColumn(chunk.New(w.conf.Blocks, w.Range()))
 
@@ -234,9 +251,6 @@ func TestNeighbourUpdatesMixedReadinessPreservesMechanicsOrder(t *testing.T) {
 		if updates[i] != want[i] {
 			t.Fatalf("mechanics updates = %v, want %v", updates, want)
 		}
-	}
-	if got := w.neighbourUpdates; len(got) != 1 || got[0].pos != (cube.Pos{16, 64, 0}) {
-		t.Fatalf("pending neighbour updates = %v, want generating entry", got)
 	}
 }
 

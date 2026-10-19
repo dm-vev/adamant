@@ -23,15 +23,24 @@ func TestStaleBlockEntitiesAreDroppedOnLoad(t *testing.T) {
 	if !ok {
 		t.Fatal("no stone state")
 	}
+	lava, ok := world.DefaultBlockRegistry.StateToRuntimeID("minecraft:lava", map[string]any{"liquid_depth": int32(0)})
+	if !ok {
+		t.Fatal("no full source lava state")
+	}
 	at := cube.Pos{2*16 + 1, 64, -3*16 + 1}
+	lavaAt := cube.Pos{2*16 + 2, 64, -3*16 + 1}
 	c := chunk.New(world.DefaultBlockRegistry, world.Overworld.Range())
 	c.SetBlock(1, 64, 1, 0, stone)
+	c.SetBlock(2, 64, 1, 0, lava)
 	db, err := Open(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale := chunk.BlockEntity{Pos: at, Data: map[string]any{"x": int32(at[0]), "y": int32(at[1]), "z": int32(at[2])}}
-	if err := db.StoreColumn(pos, world.Overworld, &chunk.Column{Chunk: c, BlockEntities: []chunk.BlockEntity{stale}}); err != nil {
+	stale := []chunk.BlockEntity{
+		{Pos: at, Data: map[string]any{"x": int32(at[0]), "y": int32(at[1]), "z": int32(at[2])}},
+		{Pos: lavaAt, Data: map[string]any{"id": "Chest", "x": int32(lavaAt[0]), "y": int32(lavaAt[1]), "z": int32(lavaAt[2])}},
+	}
+	if err := db.StoreColumn(pos, world.Overworld, &chunk.Column{Chunk: c, BlockEntities: stale}); err != nil {
 		t.Fatal(err)
 	}
 	_ = db.Close()
@@ -46,6 +55,9 @@ func TestStaleBlockEntitiesAreDroppedOnLoad(t *testing.T) {
 	<-w.Exec(func(tx *world.Tx) {
 		if name, _ := tx.Block(at).EncodeBlock(); name != "minecraft:stone" {
 			t.Errorf("loaded %s, want stone", name)
+		}
+		if name, _ := tx.Block(lavaAt).EncodeBlock(); name != "minecraft:lava" {
+			t.Errorf("loaded %s, want lava", name)
 		}
 	})
 	w.Save()

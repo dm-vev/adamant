@@ -3,12 +3,15 @@ package overworld
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"testing"
+
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	java26 "github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"os"
-	"testing"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
 )
 
 type templateFeatureSource struct {
@@ -155,5 +158,74 @@ func TestTemplateRuleObservesPriorFeature(t *testing.T) {
 	}
 	if got := region.nativeState(origin); got != native("gold_block") {
 		t.Fatalf("at %v got=%v, want rule output replacing the earlier feature", origin, got)
+	}
+}
+
+func TestLavaSubmergedStructurePublishesOnlyFinalBlockActors(t *testing.T) {
+	world.DefaultBlockRegistry.Finalize()
+	lavaProcessor, err := javastructure.LoadProcessors(nil, []javastructure.ProcessorSpec{{Type: "lava_submerged_block"}}, javastructure.ProcessorEnvironment{
+		BaseBlock: func(x, _, _ int32) world.Block {
+			if x == 8 {
+				return block.Lava{Depth: 8, Still: true}
+			}
+			return block.Stone{}
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chest := world.BlockState{Name: "minecraft:chest", Properties: map[string]any{
+		"facing": "north", "type": "single", "waterlogged": false,
+	}}
+	template := javastructure.Template{
+		Size: [3]int32{2, 1, 1},
+		Palettes: [][]javastructure.Block{{
+			{
+				Pos:   [3]int32{0, 0, 0},
+				State: chest,
+				NBT: map[string]any{
+					"id": "minecraft:chest", "LootTable": "minecraft:chests/ruined_portal", "LootTableSeed": int64(1),
+				},
+			},
+			{
+				Pos:   [3]int32{1, 0, 0},
+				State: chest,
+				NBT: map[string]any{
+					"id": "minecraft:chest", "LootTable": "minecraft:chests/ruined_portal", "LootTableSeed": int64(2),
+				},
+			},
+		}},
+	}
+	placement, err := template.Place(0, [3]int32{8, 64, 8}, javastructure.None, javastructure.NoMirror,
+		javastructure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 127, 15}}, 0, lavaProcessor...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(placement.Blocks) != 2 || placement.Blocks[0].State.Name != "minecraft:lava" ||
+		placement.Blocks[0].NBT["id"] != "minecraft:chest" {
+		t.Fatalf("lava processor output = %#v, want lava with preserved source chest NBT", placement.Blocks)
+	}
+
+	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 127})
+	result := &world.GenerationResult{}
+	region := newFeatureRegion(&ModernFeatures{}, c, world.ChunkPos{}, result)
+	region.SetOrigin(0, 0)
+	(&ModernFeatures{}).applyStructurePlacement(region, placement)
+
+	lava, _ := world.DefaultBlockRegistry.BlockByRuntimeID(c.Block(8, 64, 8, 0))
+	if name, _ := lava.EncodeBlock(); name != "minecraft:lava" {
+		t.Fatalf("final submerged block = %s, want lava", name)
+	}
+	chestBlock, _ := world.DefaultBlockRegistry.BlockByRuntimeID(c.Block(9, 64, 8, 0))
+	if name, _ := chestBlock.EncodeBlock(); name != "minecraft:chest" {
+		t.Fatalf("final chest block = %s, want chest", name)
+	}
+	if len(result.BlockEntities) != 1 {
+		t.Fatalf("published block entities = %v, want only the surviving chest actor", result.BlockEntities)
+	}
+	actor := result.BlockEntities[0]
+	if actor.Pos != (cube.Pos{9, 64, 8}) || actor.Data["id"] != "Chest" ||
+		actor.Data["LootTable"] != "minecraft:chests/ruined_portal" || actor.Data["LootTableSeed"] != int64(2) {
+		t.Fatalf("published actor = %+v, want the final chest's loot payload", actor)
 	}
 }

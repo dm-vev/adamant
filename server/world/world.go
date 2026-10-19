@@ -143,7 +143,8 @@ type World struct {
 	scheduledFluidTicks *scheduledTickQueue
 	scheduledTickBlocks map[scheduledTickTypeKey]Block
 	redstone            *redstoneEngine
-	neighbourUpdates    []neighbourUpdate
+	neighbourUpdates    neighbourUpdateQueue
+	deferredNeighbours  []neighbourUpdate
 	pois                map[cube.Pos]POI
 	// poiClasses classifies the POI of every block state by runtime ID. It is
 	// built on first use, once the block registry is final.
@@ -1791,7 +1792,7 @@ type neighbourUpdate struct {
 // updateNeighbour ticks the position passed as a result of the neighbour
 // passed being updated.
 func (w *World) updateNeighbour(pos, changedNeighbour cube.Pos) {
-	w.neighbourUpdates = append(w.neighbourUpdates, neighbourUpdate{pos: pos, neighbour: changedNeighbour})
+	w.neighbourUpdates.push(neighbourUpdate{pos: pos, neighbour: changedNeighbour})
 }
 
 // Handle changes the current Handler of the world. As a result, events called

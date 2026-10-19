@@ -51,6 +51,18 @@ func (r *featureRegion) recordTemplateActor(entry javastructure.Block) {
 	if len(entry.NBT) == 0 && entry.NativeBlock == nil {
 		return
 	}
+	pos := cube.Pos{int(entry.Pos[0]), int(entry.Pos[1]), int(entry.Pos[2])}
+	p := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}
+	if p.y < r.MinY() || p.y > r.MaxY() {
+		r.removeBlockEntityPayloads(pos)
+		return
+	}
+	// Structure processors may preserve source NBT when replacing a block,
+	// but only a final block entity block can receive an actor payload.
+	if _, ok := r.Block(p).(world.NBTer); !ok {
+		r.removeBlockEntityPayloads(pos)
+		return
+	}
 	if entry.NBT != nil {
 		data := make(map[string]any, len(entry.NBT))
 		for key, value := range entry.NBT {
@@ -58,7 +70,6 @@ func (r *featureRegion) recordTemplateActor(entry javastructure.Block) {
 		}
 		entry.NBT = data
 	}
-	pos := cube.Pos{int(entry.Pos[0]), int(entry.Pos[1]), int(entry.Pos[2])}
 	r.blockActorRecords[pos] = entry
 	r.refreshTemplateActor(pos)
 }

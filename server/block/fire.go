@@ -228,8 +228,10 @@ func (f Fire) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) 
 	}
 	switch below.(type) {
 	case SoulSand, SoulSoil:
-		f.Type = SoulFire()
-		tx.SetBlock(pos, f, nil)
+		if f.Type != SoulFire() {
+			f.Type = SoulFire()
+			tx.SetBlock(pos, f, nil)
+		}
 	case Water:
 		if changedNeighbour == pos {
 			tx.SetBlock(pos, nil, nil)

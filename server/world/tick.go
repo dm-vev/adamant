@@ -306,22 +306,19 @@ func (t ticker) tickInhabitedTime(w *World, loaders []*Loader) {
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.
 func (t ticker) performNeighbourUpdates(tx *Tx) {
 	w := tx.World()
-	examined, processed, retained := 0, 0, 0
-	// Finish updates produced by this chain before a later tick can change its
-	// source again. Keep the existing budget and deferred-chunk fairness.
-	for examined < len(w.neighbourUpdates) && processed < maxNeighbourUpdatesPerTick {
-		update := w.neighbourUpdates[examined]
-		examined++
+	// Charge deferred entries to the same work budget: a generating chunk must
+	// not turn a bounded batch into a scan of the entire backlog.
+	deferred := w.deferredNeighbours[:0]
+	for examined := 0; examined < maxNeighbourUpdatesPerTick && w.neighbourUpdates.count != 0; examined++ {
+		update := w.neighbourUpdates.pop()
 		pos, changedNeighbour := update.pos, update.neighbour
 		b, ready := tx.BlockLoaded(pos)
 		if !ready {
 			if loaded, ready := tx.ChunkState(chunkPosFromBlockPos(pos)); loaded && !ready {
-				w.neighbourUpdates[retained] = update
-				retained++
+				deferred = append(deferred, update)
 			}
 			continue
 		}
-		processed++
 		if ticker, ok := b.(NeighbourUpdateTicker); ok {
 			ticker.NeighbourUpdateTick(pos, changedNeighbour, tx)
 		}
@@ -331,13 +328,11 @@ func (t ticker) performNeighbourUpdates(tx *Tx) {
 			}
 		}
 	}
-	remaining := len(w.neighbourUpdates) - examined
-	copy(w.neighbourUpdates[retained:], w.neighbourUpdates[examined:])
-	w.neighbourUpdates = w.neighbourUpdates[:retained+remaining]
-	// Move generating entries behind unexamined and newly queued updates without allocating.
-	slices.Reverse(w.neighbourUpdates[:retained])
-	slices.Reverse(w.neighbourUpdates[retained:])
-	slices.Reverse(w.neighbourUpdates)
+	// Leave unexamined and newly produced work ahead of generating entries.
+	for _, update := range deferred {
+		w.neighbourUpdates.push(update)
+	}
+	w.deferredNeighbours = deferred[:0]
 }
 
 // tickBlocksRandomly executes random block ticks in loaded chunks within range of loaders. Synchronous worlds tick
