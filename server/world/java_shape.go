@@ -34,6 +34,22 @@ func (tx *Tx) JavaBlockCanSurvive(pos cube.Pos) (survives, hasSourceState bool) 
 	return context.canSurvive(state, pos), true
 }
 
+// JavaPlacement returns the state a Java block state takes from its
+// neighbours when placed at a position, as Block.updateFromNeighbourShapes,
+// and reports if it survives there, as BlockState.canSurvive. It changes
+// nothing.
+func (tx *Tx) JavaPlacement(state uint32, pos cube.Pos) (uint32, bool) {
+	context := javaShapeContext{tx: tx, pos: pos}
+	state = context.updateFromNeighbourShapes(state)
+	return state, context.canSurvive(state, pos)
+}
+
+// SetJavaBlockState sets a Java block state at a position and updates its
+// neighbours, as Level.setBlockAndUpdate.
+func (tx *Tx) SetJavaBlockState(pos cube.Pos, state uint32) bool {
+	return tx.setJavaBlockState(pos, state, 3)
+}
+
 type javaShapeHandler func(*javaShapeContext, uint32, cube.Face, uint32) uint32
 type javaSurvivalHandler func(*javaShapeContext, uint32, cube.Pos) bool
 

@@ -51,6 +51,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.creeper.primed":                     "random.fuse",
 	"entity.dolphin.eat":                        "mob.dolphin.eat",
 	"entity.dragon_fireball.explode":            "random.explode",
+	"entity.enderman.stare":                     "mob.endermen.stare",
 	"entity.enderman.teleport":                  "mob.endermen.portal",
 	"entity.generic.explode":                    "random.explode",
 	"entity.ghast.shoot":                        "mob.ghast.fireball",

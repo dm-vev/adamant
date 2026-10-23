@@ -53,6 +53,12 @@ type MobAI struct {
 	lastHurtMob     *world.EntityHandle
 	lastHurtMobTime int
 
+	// The damage cooldown of the LivingEntity: the world tick of the last
+	// full hit and its damage.
+	hurtCooldown bool
+	hurtTick     int64
+	lastHurt     float64
+
 	// The movement state of the LivingEntity.
 	xxa, yya, zza, speed float64
 	jumping              bool
@@ -308,13 +314,22 @@ func (m *Mob) Target() world.Entity {
 	return m.asValidTarget(t)
 }
 
+// mobTargetListener is implemented by behaviours that react to the target
+// of the mob changing, as overrides of Mob.setTarget do.
+type mobTargetListener interface {
+	targetSet(m *Mob, target world.Entity)
+}
+
 // SetTarget sets the entity the mob attacks, nil to attack none.
 func (m *Mob) SetTarget(t world.Entity) {
 	if t = m.asValidTarget(t); t == nil {
 		m.AI.target = nil
-		return
+	} else {
+		m.AI.target = t.H()
 	}
-	m.AI.target = t.H()
+	if l, ok := m.Behaviour().(mobTargetListener); ok {
+		l.targetSet(m, t)
+	}
 }
 
 // asValidTarget ports Mob.asValidTarget.
@@ -399,6 +414,23 @@ func (ai *MobAI) SetLastHurtBy(e world.Entity) {
 		return
 	}
 	ai.lastHurtBy, ai.lastHurtByTime = e.H(), ai.tickCount
+}
+
+// DamageCooldown ports the damage cooldown of LivingEntity.hurtServer: for
+// 10 ticks after a hit a mob takes only the damage by which a stronger hit
+// exceeds it. It returns the damage the mob takes, and false if it takes
+// none.
+func (ai *MobAI) DamageCooldown(tx *world.Tx, d float64) (float64, bool) {
+	now := tx.CurrentTick()
+	if ai.hurtCooldown && now-ai.hurtTick < 10 {
+		if d <= ai.lastHurt {
+			return 0, false
+		}
+		d, ai.lastHurt = d-ai.lastHurt, d
+		return d, true
+	}
+	ai.hurtCooldown, ai.hurtTick, ai.lastHurt = true, now, d
+	return d, true
 }
 
 // Hurt records the attacker of damage the mob took, as LivingEntity.hurt

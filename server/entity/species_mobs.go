@@ -14,6 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // Each species has its own registered type, constructor and source state. The common
@@ -52,8 +53,9 @@ type speciesConfig struct {
 	size                                   int
 	fuse, swell, attackCooldown, jumpDelay int
 	charged, ignited, climbing, loaded     bool
-	carried                                map[string]any
-	carriedSet                             bool
+	carried                                world.Block
+	angerTicks                             int
+	angerTarget                            uuid.UUID
 	effects                                []effect.Effect
 	native                                 map[string]any
 }
@@ -66,7 +68,7 @@ type speciesState struct {
 	speed, attack                            float64
 	fuse, swell, cooldown, jumpDelay, size   int
 	charged, ignited, climbing, dead, loaded bool
-	carried                                  map[string]any
+	carried                                  world.Block
 	core                                     *SlimeCore
 	passenger                                *world.EntityHandle
 	navigator                                Navigator
@@ -74,6 +76,13 @@ type speciesState struct {
 	ai                                       MobAI
 	swellDir                                 int
 	friends                                  *silverfishWakeUpFriendsGoal
+
+	// The anger of an enderman as a NeutralMob, and the state it screams
+	// and stares in.
+	angerTicks                       int
+	angerTarget                      uuid.UUID
+	creepy, staredAt                 bool
+	targetChangeTime, lastStareSound int
 }
 type Spider struct{ *speciesMob }
 type CaveSpider struct{ *speciesMob }
@@ -200,10 +209,12 @@ func decodeSpecies(k speciesKind, n map[string]any, d *world.EntityData) {
 		}
 		c.ignited = nbtconv.Bool(j, "Ignited")
 		c.climbing = nbtconv.Bool(j, "Climbing")
-		if b, ok := j["CarriedBlock"].(map[string]any); ok {
-			c.carried = b
-			c.carriedSet = true
-		}
+		c.carried = decodeCarriedBlock(j["CarriedBlock"], "Name", "Properties")
+		c.angerTicks = int(nbtconv.Int32(j, "AngerTime"))
+		c.angerTarget, _ = uuid.Parse(golemUUIDString(j["AngryAt"]))
+	}
+	if b := decodeCarriedBlock(n["carriedBlock"], "name", "states"); b != nil {
+		c.carried = b
 	}
 	if k == slimeSpecies {
 		c.size = int(nbtconv.Int32(n, "Size")) + 1
@@ -252,8 +263,11 @@ func encodeSpecies(k speciesKind, d *world.EntityData) map[string]any {
 	}
 	m["Attributes"] = attrs
 	j := map[string]any{"Fuse": int32(s.fuse), "Swell": int32(s.swell), "AttackCooldown": int32(s.cooldown), "Charged": s.charged, "Ignited": s.ignited, "Climbing": s.climbing}
-	if s.carried != nil {
-		j["CarriedBlock"] = s.carried
+	if k == endermanSpecies {
+		j["AngerTime"] = int32(s.angerTicks)
+		if s.angerTarget != uuid.Nil {
+			j["AngryAt"] = golemUUIDNBT(s.angerTarget.String())
+		}
 	}
 	if k == slimeSpecies {
 		m["Size"] = int32(s.size - 1)
@@ -334,7 +348,7 @@ func (c speciesConfig) Apply(d *world.EntityData) {
 		size = 1
 	}
 	d.NativeNBT = CloneNativeMobNBT(c.native)
-	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, core: newSpeciesSlimeCore(c.kind, size), jumpDelay: 10}
+	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, angerTicks: c.angerTicks, angerTarget: c.angerTarget, lastStareSound: math.MinInt32, core: newSpeciesSlimeCore(c.kind, size), jumpDelay: 10}
 }
 func NewSpider(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(SpiderType, speciesConfig{kind: spiderSpecies, size: 1})
@@ -356,27 +370,6 @@ func NewEndermite(o world.EntitySpawnOpts) *world.EntityHandle {
 }
 func NewSlime(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(SlimeType, speciesConfig{kind: slimeSpecies, size: 2})
-}
-func speciesConfigFromNBT(k speciesKind, n map[string]any) speciesConfig {
-	c := speciesConfig{kind: k, size: 2, fuse: int(nbtconv.Int32(n, "Fuse")), swell: int(nbtconv.Int32(n, "Swell")), charged: nbtconv.Bool(n, "powered"), ignited: nbtconv.Bool(n, "ignited"), loaded: true, native: CloneNativeMobNBT(n)}
-	for _, a := range ReadNativeMobAttributes(n) {
-		if a.Name == "minecraft:health" {
-			c.health = a.Current
-		}
-	}
-	if j := ReadNativeMobJavaState(n); j != nil {
-		c.fuse = int(nbtconv.Int32(j, "Fuse"))
-		c.swell = int(nbtconv.Int32(j, "Swell"))
-		c.attackCooldown = int(nbtconv.Int32(j, "AttackCooldown"))
-		c.charged = nbtconv.Bool(j, "Charged")
-		c.ignited = nbtconv.Bool(j, "Ignited")
-		c.climbing = nbtconv.Bool(j, "Climbing")
-		c.carried, _ = j["CarriedBlock"].(map[string]any)
-	}
-	if k == slimeSpecies {
-		c.size = int(nbtconv.Int32(n, "Size")) + 1
-	}
-	return c
 }
 func (m *speciesMob) s() *speciesState { return m.Behaviour().(*speciesState) }
 
@@ -411,20 +404,6 @@ func (s *speciesState) Tick(e *Ent, tx *world.Tx) *Movement {
 			}
 		} else {
 			s.swell = max(0, s.swell-1)
-		}
-	case endermanSpecies:
-		if target != nil {
-			if speciesEndermanGazed(e, target) {
-				if s.random.NextInt(4) == 0 {
-					m.teleportRandom(tx)
-				}
-			} else {
-				target = nil
-			}
-		}
-		if _, ok := tx.Liquid(cube.PosFromVec3(e.Position())); ok {
-			m.teleportRandom(tx)
-			m.Hurt(1, DrowningDamageSource{})
 		}
 	}
 	if s.cooldown > 0 {
@@ -466,9 +445,6 @@ func nearestSpeciesTarget(e *Ent, tx *world.Tx, k speciesKind) (world.Entity, fl
 		return nil, math.MaxFloat64
 	}
 	r := 16.0
-	if k == endermanSpecies {
-		r = 64
-	}
 	area := cube.Box(-r, -8, -r, r, 8, r).Translate(e.Position())
 	var chosen world.Entity
 	best := r
@@ -477,14 +453,7 @@ func nearestSpeciesTarget(e *Ent, tx *world.Tx, k speciesKind) (world.Entity, fl
 			continue
 		}
 		id := other.H().Type().EncodeEntity()
-		ok := id == "minecraft:player" || id == "minecraft:iron_golem"
-		if k == endermanSpecies && id != "minecraft:player" {
-			ok = false
-		}
-		if (k == endermanSpecies || k == endermiteSpecies) && id == "minecraft:endermite" {
-			ok = false
-		}
-		if !ok {
+		if id != "minecraft:player" && id != "minecraft:iron_golem" {
 			continue
 		}
 		l, ok := other.(Living)
@@ -497,15 +466,6 @@ func nearestSpeciesTarget(e *Ent, tx *world.Tx, k speciesKind) (world.Entity, fl
 		}
 	}
 	return chosen, best
-}
-func speciesEndermanGazed(e *Ent, target world.Entity) bool {
-	d := e.Position().Sub(target.Position())
-	if d.Len() == 0 {
-		return true
-	}
-	yaw := target.Rotation()[0] * math.Pi / 180
-	look := mgl64.Vec3{-math.Sin(yaw), 0, math.Cos(yaw)}
-	return look.Dot(d.Normalize()) > .95 && d.Len() < 64
 }
 func speciesMove(s *speciesState, e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
 	d := p.Sub(e.Position())
@@ -569,25 +529,6 @@ func (m *speciesMob) slimeTick(tx *world.Tx) *Movement {
 	}
 	return speciesMove(s, m.Ent, tx, m.Position())
 }
-func (m *speciesMob) teleportRandom(tx *world.Tx) bool {
-	s := m.s()
-	origin := cube.PosFromVec3(m.Position())
-	for range 16 {
-		p := origin.Add(cube.Pos{int(s.random.NextInt(17)) - 8, int(s.random.NextInt(17)) - 8, int(s.random.NextInt(17)) - 8})
-		if len(tx.Block(p).Model().BBox(p, tx)) != 0 || len(tx.Block(p.Side(cube.FaceUp)).Model().BBox(p.Side(cube.FaceUp), tx)) != 0 {
-			continue
-		}
-		old := m.Position()
-		m.data.Pos = p.Vec3().Add(mgl64.Vec3{.5, 0, .5})
-		if m.data.Pos == old {
-			continue
-		}
-		tx.PlaySound(old, sound.Custom{Name: "entity.enderman.teleport", Volume: 1, Pitch: 1})
-		tx.PlaySound(m.Position(), sound.Custom{Name: "entity.enderman.teleport", Volume: 1, Pitch: 1})
-		return true
-	}
-	return false
-}
 func (m *speciesMob) kill() { s := m.s(); s.dead = true; m.view(DeathAction{}); _ = m.CloseIn(m.tx) }
 
 // CubeSize returns the Java Slime.getSize used by the cube_mob loot predicate.
@@ -612,25 +553,16 @@ func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if m.Dead() || d <= 0 {
 		return 0, false
 	}
-	switch src.(type) {
-	case LightningDamageSource:
-		if s.kind == creeperSpecies {
-			s.charged = true
+	if _, ok := src.(LightningDamageSource); ok && s.kind == creeperSpecies {
+		s.charged = true
+	}
+	if s.kind == endermanSpecies {
+		after, ok := m.endermanHurt(src)
+		if after != nil {
+			defer after()
 		}
-	case ProjectileDamageSource:
-		if s.kind == endermanSpecies {
-			m.teleportRandom(m.tx)
+		if !ok {
 			return 0, false
-		}
-	case SplashPotionDamageSource:
-		// Enderman.hurtServer: a splash of water hurts, then the enderman
-		// teleports away.
-		if s.kind == endermanSpecies {
-			defer func() {
-				if !m.Dead() {
-					m.teleportRandom(m.tx)
-				}
-			}()
 		}
 	}
 	if s.kind == silverfishSpecies && (damageAttacker(src) != nil || silverfishAlwaysTriggered(src)) {
@@ -640,6 +572,10 @@ func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 			s.friends = &silverfishWakeUpFriendsGoal{}
 		}
 		s.friends.notifyHurt()
+	}
+	d, ok := s.ai.DamageCooldown(m.tx, d)
+	if !ok {
+		return 0, false
 	}
 	s.health.AddHealth(-d)
 	s.ai.Hurt(src)

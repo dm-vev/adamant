@@ -1,12 +1,14 @@
 package entity_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -134,6 +136,17 @@ func TestZombieAttacksSurvivalPlayersOnly(t *testing.T) {
 // target while a player is near.
 func TestIdleZombieStrollsNearPlayers(t *testing.T) {
 	w := aiTestWorld(t)
+	// Random positions below a floor in the void are never stable, so the
+	// ground is made deep.
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -16; x <= 16; x++ {
+			for z := -16; z <= 16; z++ {
+				for y := 56; y < 64; y++ {
+					tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+				}
+			}
+		}
+	})
 	addAITestPlayer(w, mgl64.Vec3{-14.5, 65, -14.5}, world.GameModeCreative)
 	zombie := addZombie(w, mgl64.Vec3{.5, 65, .5})
 	start := aiEntityPos(w, zombie)
@@ -375,4 +388,128 @@ func TestIdleSilverfishHidesInStone(t *testing.T) {
 	if !fish.Closed() || infested != 1 {
 		t.Fatalf("silverfish gone %v, infested blocks %d", fish.Closed(), infested)
 	}
+}
+
+// starePitch returns the pitch a player at from looks up at the eyes of an
+// enderman at to with.
+func starePitch(from, to mgl64.Vec3) float64 {
+	d := to.Add(mgl64.Vec3{0, 2.55, 0}).Sub(from.Add(mgl64.Vec3{0, 1.62, 0}))
+	return -mgl64.RadToDeg(math.Atan2(d[1], math.Hypot(d[0], d[2])))
+}
+
+func endermanAngry(w *world.World, h *world.EntityHandle) (angry bool) {
+	<-w.Exec(func(tx *world.Tx) {
+		if e, ok := h.Entity(tx); ok {
+			angry = e.(*entity.Enderman).Angry()
+		}
+	})
+	return angry
+}
+
+// TestEndermanAngersAtPlayersStaringAtIt checks a player looking an enderman
+// in the eyes makes it scream and freeze, and a carved pumpkin hides the
+// stare.
+func TestEndermanAngersAtPlayersStaringAtIt(t *testing.T) {
+	for _, pumpkin := range []bool{false, true} {
+		w := aiTestWorld(t)
+		from, to := mgl64.Vec3{.5, 65, -7.5}, mgl64.Vec3{.5, 65, .5}
+		h := world.EntitySpawnOpts{}.New(player.Type, player.Config{Name: "Starer", Position: from, Rotation: cube.Rotation{0, starePitch(from, to)}, GameMode: world.GameModeSurvival})
+		<-w.Exec(func(tx *world.Tx) {
+			p := tx.AddEntity(h).(*player.Player)
+			if pumpkin {
+				p.Armour().SetHelmet(item.NewStack(block.Pumpkin{Carved: true}, 1))
+			}
+		})
+		enderman := addSpecies(w, entity.NewEnderman(world.EntitySpawnOpts{Position: to}))
+		angry := false
+		for range 60 {
+			stepWorld(t, w, 1)
+			angry = angry || endermanAngry(w, enderman)
+		}
+		if angry == pumpkin {
+			t.Fatalf("enderman angry %v at a player staring with a carved pumpkin %v", angry, pumpkin)
+		}
+		if !pumpkin && aiEntityPos(w, enderman).Sub(to).Len() > 1 {
+			t.Fatalf("enderman stared at moved to %v", aiEntityPos(w, enderman))
+		}
+	}
+}
+
+// TestEndermanDodgesProjectiles checks a projectile hitting an enderman
+// teleports it away unhurt.
+func TestEndermanDodgesProjectiles(t *testing.T) {
+	w := aiTestWorld(t)
+	h := addSpecies(w, entity.NewEnderman(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := h.Entity(tx)
+		if _, hurt := e.(entity.Living).Hurt(5, entity.ProjectileDamageSource{}); hurt {
+			t.Fatal("projectile hurt the enderman")
+		}
+		if e.Position() == (mgl64.Vec3{.5, 65, .5}) {
+			t.Fatal("enderman did not teleport from the projectile")
+		}
+		if l := e.(entity.Living); l.Health() != l.MaxHealth() {
+			t.Fatalf("enderman health %v after a projectile", l.Health())
+		}
+	})
+}
+
+// TestEndermanTakesBlocks checks an enderman picks up a flower next to it
+// in a field of flowers.
+func TestEndermanTakesBlocks(t *testing.T) {
+	w := aiTestWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -16; x <= 16; x++ {
+			for z := -16; z <= 16; z++ {
+				tx.SetBlock(cube.Pos{x, 64, z}, block.Grass{}, nil)
+				if x != 0 || z != 0 {
+					tx.SetBlock(cube.Pos{x, 65, z}, block.Flower{}, nil)
+				}
+			}
+		}
+	})
+	h := addSpecies(w, entity.NewEnderman(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	carried := false
+	for range 1200 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := h.Entity(tx); ok {
+				b, ok := e.(*entity.Enderman).CarriedBlock()
+				_, flower := b.(block.Flower)
+				carried = carried || ok && flower
+			}
+		})
+		if carried {
+			break
+		}
+	}
+	if !carried {
+		t.Fatal("enderman picked up no flower")
+	}
+}
+
+// TestMobDamageCooldown checks a mob hit again within half a second only
+// takes the damage by which the hit exceeds the last.
+func TestMobDamageCooldown(t *testing.T) {
+	w := aiTestWorld(t)
+	h := addZombie(w, mgl64.Vec3{.5, 65, .5})
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := h.Entity(tx)
+		l := e.(entity.Living)
+		l.Hurt(4, entity.VoidDamageSource{})
+		if _, hurt := l.Hurt(4, entity.VoidDamageSource{}); hurt || l.Health() != 16 {
+			t.Fatalf("second hit hurt %v, health %v", hurt, l.Health())
+		}
+		if l.Hurt(6, entity.VoidDamageSource{}); l.Health() != 14 {
+			t.Fatalf("stronger hit left health %v, want 14", l.Health())
+		}
+	})
+	stepWorld(t, w, 10)
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := h.Entity(tx)
+		l := e.(entity.Living)
+		if l.Hurt(1, entity.VoidDamageSource{}); l.Health() != 13 {
+			t.Fatalf("hit after the cooldown left health %v, want 13", l.Health())
+		}
+	})
 }

@@ -20,7 +20,7 @@ func (s *speciesState) mobAI() *MobAI { return &s.ai }
 // speciesUsesAI reports if the mobs of a species are driven by a MobAI.
 func speciesUsesAI(k speciesKind) bool {
 	switch k {
-	case creeperSpecies, spiderSpecies, caveSpiderSpecies, silverfishSpecies, endermiteSpecies:
+	case creeperSpecies, spiderSpecies, caveSpiderSpecies, endermanSpecies, silverfishSpecies, endermiteSpecies:
 		return true
 	}
 	return false
@@ -60,12 +60,23 @@ func (s *speciesState) aiTick(e *Ent, tx *world.Tx) *Movement {
 		ai.EyeHeight = .45
 	case silverfishSpecies, endermiteSpecies:
 		ai.EyeHeight = .13
+	case endermanSpecies:
+		ai.EyeHeight, ai.FollowRange, ai.StepHeight = 2.55, 64, 1
+		if s.creepy {
+			ai.MovementSpeed += endermanSpeedBonus
+		}
 	}
 	self := speciesSelf(e, s.kind)
 	if s.kind == creeperSpecies && s.tickSwell(e, tx) {
 		return nil
 	}
+	if s.kind == endermanSpecies {
+		s.updatePersistentAnger(ai.Mob(e, self))
+	}
 	mov := ai.Tick(e, self, s.registerGoals)
+	if s.kind == endermanSpecies && !s.dead {
+		s.tickEndermanWater(ai.Mob(e, self))
+	}
 	if s.kind == spiderSpecies || s.kind == caveSpiderSpecies {
 		if climbing := ai.collidedHorizontally; climbing != s.climbing {
 			s.climbing = climbing
@@ -150,6 +161,8 @@ func (s *speciesState) registerGoals(m *Mob) {
 		ai.Goals.Add(6, NewRandomLookAroundGoal())
 		ai.Targets.Add(1, NewNearestAttackableTargetGoal(nil, true))
 		ai.Targets.Add(2, NewHurtByTargetGoal())
+	case endermanSpecies:
+		s.registerEndermanGoals(m)
 	case spiderSpecies, caveSpiderSpecies:
 		ai.nav.wallClimber = true
 		ai.Goals.Add(1, NewFloatGoal(m))
@@ -278,6 +291,9 @@ type LeapAtTargetGoal struct {
 }
 
 func (g *LeapAtTargetGoal) CanUse(m *Mob) bool {
+	if isVehicle(m.Self) {
+		return false
+	}
 	target := m.Target()
 	if target == nil {
 		return false

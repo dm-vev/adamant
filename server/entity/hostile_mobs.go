@@ -787,6 +787,10 @@ func (m *HostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b := m.state()
+	d, ok := b.ai.DamageCooldown(m.tx, d)
+	if !ok {
+		return 0, false
+	}
 	if r, ok := b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}

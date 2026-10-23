@@ -198,15 +198,14 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		profession, villagerType := e.VillagerData()
 		writeVillagerMetadata(m, profession, villagerType)
 	case *entity.Enderman:
-		var carried world.Block = block.Air{}
-		if state := e.CarriedBlock(); state != nil {
-			name, _ := state["Name"].(string)
-			properties, _ := state["Properties"].(map[string]any)
-			if b, ok := world.BlockByName(name, properties); ok {
-				carried = b
-			}
+		carried, ok := e.CarriedBlock()
+		if !ok {
+			carried = block.Air{}
 		}
 		m[protocol.EntityDataKeyCarryBlockRuntimeID] = int32(networkBlockID(s.br, carried))
+		if e.Angry() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+		}
 	}
 }
 
