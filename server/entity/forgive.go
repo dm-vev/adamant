@@ -28,11 +28,9 @@ func ForgiveDeadPlayer(tx *world.Tx, player world.Entity) {
 	}
 }
 
-func (z *ZombifiedPiglin) forgive(id string) {
-	if s := z.z(); s.target == id {
-		s.anger, s.target, s.angry = 0, "", false
-	}
-}
+func (z *ZombifiedPiglin) forgive(id string) { s := z.z(); s.forgiveAnger(&s.ai, id) }
+
+func (e *Enderman) forgive(id string) { s := e.s(); s.forgiveAnger(&s.ai, id) }
 
 func (m *IronGolem) forgive(id string) {
 	b := m.b()

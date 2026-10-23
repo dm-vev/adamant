@@ -197,6 +197,10 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 	case *entity.ZombieVillager:
 		profession, villagerType := e.VillagerData()
 		writeVillagerMetadata(m, profession, villagerType)
+	case *entity.ZombifiedPiglin:
+		if e.Angry() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+		}
 	case *entity.Enderman:
 		carried, ok := e.CarriedBlock()
 		if !ok {

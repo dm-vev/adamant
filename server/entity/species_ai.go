@@ -64,7 +64,7 @@ func (s *speciesState) aiTick(e *Ent, tx *world.Tx) *Movement {
 		return nil
 	}
 	if s.kind == endermanSpecies {
-		s.updatePersistentAnger(ai.Mob(e, self))
+		s.updatePersistentAnger(ai.Mob(e, self), true)
 	}
 	mov := ai.Tick(e, self, s.registerGoals)
 	if s.kind == endermanSpecies && !s.dead {

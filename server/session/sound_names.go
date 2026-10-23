@@ -150,6 +150,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.warden.nearby_closest":              "mob.warden.nearby_closest",
 	"entity.warden.sonic_boom":                  "mob.warden.sonic_boom",
 	"entity.witch.celebrate":                    "mob.witch.celebrate",
+	"entity.zombified_piglin.angry":             "mob.zombiepig.zpigangry",
 	"entity.zombie_villager.converted":          "mob.zombie.unfect",
 	"item.armor.equip_nautilus":                 "armor.equip_generic",
 	"item.armor.equip_wolf":                     "armor.equip_wolf",

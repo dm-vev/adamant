@@ -3,38 +3,66 @@ package entity
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 func TestForgiveDeadPlayerClearsAngerWithinRange(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
+	var victim, near, far *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
-		victim := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 0}}))
-		near := tx.AddEntity(NewZombifiedPiglin(world.EntitySpawnOpts{Position: mgl64.Vec3{20, 64, 0}})).(*ZombifiedPiglin)
-		far := tx.AddEntity(NewZombifiedPiglin(world.EntitySpawnOpts{Position: mgl64.Vec3{40, 64, 0}})).(*ZombifiedPiglin)
-		for _, z := range []*ZombifiedPiglin{near, far} {
-			z.Hurt(1, AttackDamageSource{Attacker: victim})
-			if z.z().target != victim.H().UUID().String() {
-				t.Fatalf("zombified piglin did not target its attacker")
+		for x := -4; x <= 44; x++ {
+			for z := -4; z <= 4; z++ {
+				tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
+			}
+		}
+		victim = tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{0, 64, 0}})).H()
+		near = tx.AddEntity(NewZombifiedPiglin(world.EntitySpawnOpts{Position: mgl64.Vec3{20, 64, 0}})).H()
+		far = tx.AddEntity(NewZombifiedPiglin(world.EntitySpawnOpts{Position: mgl64.Vec3{40, 64, 0}})).H()
+		v, _ := victim.Entity(tx)
+		for _, h := range []*world.EntityHandle{near, far} {
+			z, _ := h.Entity(tx)
+			z.(*ZombifiedPiglin).Hurt(1, AttackDamageSource{Attacker: v})
+		}
+	})
+	// The piglins take their attacker as target and grow angry at it on
+	// their next ticks.
+	for range 4 {
+		if err := w.StepTicks(1); err != nil {
+			t.Fatal(err)
+		}
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		v, _ := victim.Entity(tx)
+		state := func(h *world.EntityHandle) *zombifiedPiglinState {
+			e, _ := h.Entity(tx)
+			return e.(*ZombifiedPiglin).z()
+		}
+		for _, h := range []*world.EntityHandle{near, far} {
+			if state(h).angerTarget != v.H().UUID() {
+				t.Fatalf("zombified piglin did not grow angry at its attacker")
 			}
 		}
 		if err := tx.World().SetGameRule("forgive_dead_players", false); err != nil {
 			t.Fatal(err)
 		}
-		ForgiveDeadPlayer(tx, victim)
-		if near.z().anger == 0 {
+		ForgiveDeadPlayer(tx, v)
+		if state(near).angerTicks == 0 {
 			t.Fatal("anger cleared with forgive_dead_players off")
 		}
 		if err := tx.World().SetGameRule("forgive_dead_players", true); err != nil {
 			t.Fatal(err)
 		}
-		ForgiveDeadPlayer(tx, victim)
-		if near.z().anger != 0 || near.z().target != "" {
-			t.Fatalf("nearby piglin still angry: anger=%d target=%q", near.z().anger, near.z().target)
+		ForgiveDeadPlayer(tx, v)
+		if s := state(near); s.angerTicks != 0 || s.angerTarget != uuid.Nil {
+			t.Fatalf("nearby piglin still angry: anger=%d target=%v", s.angerTicks, s.angerTarget)
 		}
-		if far.z().anger == 0 {
+		if state(far).angerTicks == 0 {
 			t.Fatal("piglin beyond 32 blocks was forgiven")
 		}
 	})

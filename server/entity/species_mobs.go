@@ -75,8 +75,7 @@ type speciesState struct {
 
 	// The anger of an enderman as a NeutralMob, and the state it screams
 	// and stares in.
-	angerTicks                       int
-	angerTarget                      uuid.UUID
+	neutralAnger
 	creepy, staredAt                 bool
 	targetChangeTime, lastStareSound int
 }
@@ -344,7 +343,7 @@ func (c speciesConfig) Apply(d *world.EntityData) {
 		size = 1
 	}
 	d.NativeNBT = CloneNativeMobNBT(c.native)
-	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, angerTicks: c.angerTicks, angerTarget: c.angerTarget, lastStareSound: math.MinInt32}
+	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, neutralAnger: neutralAnger{angerTicks: c.angerTicks, angerTarget: c.angerTarget}, lastStareSound: math.MinInt32}
 }
 func NewSpider(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(SpiderType, speciesConfig{kind: spiderSpecies, size: 1})

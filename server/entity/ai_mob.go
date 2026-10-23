@@ -321,20 +321,24 @@ func (m *Mob) Target() world.Entity {
 }
 
 // mobTargetListener is implemented by behaviours that react to the target
-// of the mob changing, as overrides of Mob.setTarget do.
+// of the mob changing, as overrides of Mob.setTarget do. targetSet runs
+// before the target changes.
 type mobTargetListener interface {
 	targetSet(m *Mob, target world.Entity)
 }
 
 // SetTarget sets the entity the mob attacks, nil to attack none.
 func (m *Mob) SetTarget(t world.Entity) {
-	if t = m.asValidTarget(t); t == nil {
+	t = m.asValidTarget(t)
+	// The listener runs before the target changes, so it still sees the
+	// target the mob had.
+	if l, ok := m.Behaviour().(mobTargetListener); ok {
+		l.targetSet(m, t)
+	}
+	if t == nil {
 		m.AI.target = nil
 	} else {
 		m.AI.target = t.H()
-	}
-	if l, ok := m.Behaviour().(mobTargetListener); ok {
-		l.targetSet(m, t)
 	}
 }
 

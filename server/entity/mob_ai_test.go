@@ -926,3 +926,30 @@ func TestPhantomSwoopsAtPlayers(t *testing.T) {
 		}
 	}
 }
+
+// TestZombifiedPiglinsDefendEachOther checks zombified piglins leave a
+// player alone until it hits one, and then that one and those around it
+// attack the player.
+func TestZombifiedPiglinsDefendEachOther(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
+	hit := addSpecies(w, entity.NewZombifiedPiglin(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	other := addSpecies(w, entity.NewZombifiedPiglin(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, 6.5}}))
+	if lowest := lowestHealth(t, w, p, 200, nil); lowest != 20 {
+		t.Fatalf("zombified piglins attacked an innocent player, lowest health %v", lowest)
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		pl, _ := p.Entity(tx)
+		e, _ := hit.Entity(tx)
+		e.(entity.Living).Hurt(1, entity.AttackDamageSource{Attacker: pl})
+	})
+	angry := false
+	lowest := lowestHealth(t, w, p, 200, func(tx *world.Tx) {
+		if e, ok := other.Entity(tx); ok {
+			angry = angry || e.(*entity.ZombifiedPiglin).Angry()
+		}
+	})
+	if lowest == 20 || !angry {
+		t.Fatalf("lowest player health %v, other piglin angry %v", lowest, angry)
+	}
+}

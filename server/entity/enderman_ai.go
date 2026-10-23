@@ -13,7 +13,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/google/uuid"
 )
 
 // This file ports Java's Enderman: its goals, its anger as a NeutralMob, its
@@ -402,6 +401,9 @@ type neutralMob interface {
 type resetUniversalAngerTargetGoal struct {
 	goalFlags
 	lastHurtByPlayer int
+	// alertSameType makes the mobs of the same type around angry at all
+	// players too.
+	alertSameType bool
 }
 
 func (g *resetUniversalAngerTargetGoal) CanUse(m *Mob) bool {
@@ -417,67 +419,19 @@ func (g *resetUniversalAngerTargetGoal) Start(m *Mob) {
 	if n, ok := m.Behaviour().(neutralMob); ok {
 		n.forgetCurrentTargetAndRefreshUniversalAnger(m)
 	}
-}
-
-// angry ports NeutralMob.isAngry.
-func (s *speciesState) angry() bool { return s.angerTicks > 0 }
-
-// startAngerTimer ports Enderman.startPersistentAngerTimer: 20 to 39
-// seconds.
-func (s *speciesState) startAngerTimer(m *Mob) { s.angerTicks = 400 + int(m.Random().NextInt(381)) }
-
-// stopBeingAngry ports NeutralMob.stopBeingAngry.
-func (s *speciesState) stopBeingAngry(m *Mob) {
-	m.AI.SetLastHurtBy(nil)
-	s.angerTarget = uuid.Nil
-	m.SetTarget(nil)
-	s.angerTicks = 0
-}
-
-func (s *speciesState) forgetCurrentTargetAndRefreshUniversalAnger(m *Mob) {
-	s.stopBeingAngry(m)
-	s.startAngerTimer(m)
-}
-
-// angryAt ports NeutralMob.isAngryAt.
-func (s *speciesState) angryAt(m *Mob, e world.Entity) bool {
-	if !m.CanAttack(e) {
-		return false
-	}
-	if validPlayerTarget(m.tx, e) && m.tx.World().GameRuleBool("universal_anger") && s.angry() && s.angerTarget == uuid.Nil {
-		return true
-	}
-	return s.angerTarget != uuid.Nil && s.angerTarget == e.H().UUID()
-}
-
-// updatePersistentAnger ports NeutralMob.updatePersistentAnger for an
-// enderman, which stays angry while it has a target.
-func (s *speciesState) updatePersistentAnger(m *Mob) {
-	if s.angerTicks > 0 {
-		s.angerTicks--
-	}
-	angerTarget := s.angerTarget
-	var previous world.Entity
-	if m.AI.target != nil {
-		previous, _ = m.AI.target.Entity(m.tx)
-	}
-	if previous != nil && !entityAlive(previous) && angerTarget != uuid.Nil && angerTarget == previous.H().UUID() && !isPlayerEntity(previous) {
-		s.stopBeingAngry(m)
+	if !g.alertSameType {
 		return
 	}
-	target := m.Target()
-	if target != nil {
-		s.angerTarget = target.H().UUID()
-		s.startAngerTimer(m)
-	}
-	if angerTarget != uuid.Nil && !s.angry() && (target == nil || !validPlayerTarget(m.tx, target)) {
-		s.stopBeingAngry(m)
-	}
-	if angerTarget == uuid.Nil {
-		return
-	}
-	if p, ok := m.tx.EntityByUUID(angerTarget); ok && isPlayerEntity(p) && (creativeOrSpectator(p) || m.tx.World().Difficulty() == world.DifficultyPeaceful) {
-		s.stopBeingAngry(m)
+	r := m.AI.FollowRange
+	for e := range m.tx.EntitiesWithin(m.BBox().GrowVec3(mgl64.Vec3{r, 10, r})) {
+		if e.H() == m.H() || e.H().Type() != m.H().Type() || spectator(e) {
+			continue
+		}
+		if other, ok := mobOf(e); ok {
+			if n, ok := other.Behaviour().(neutralMob); ok {
+				n.forgetCurrentTargetAndRefreshUniversalAnger(other)
+			}
+		}
 	}
 }
 
