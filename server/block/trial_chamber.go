@@ -3,7 +3,6 @@ package block
 import (
 	"encoding/binary"
 	"math/rand/v2"
-	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
@@ -13,32 +12,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// This file holds what vaults and trial spawners share: how BDS names loot
-// tables, items and players in their block actors, and how Java finds the
-// players near them.
-
-// bedrockLootTable returns the path BDS names a Java loot table by, such as
-// loot_tables/chests/trial_chambers/reward.json for
-// minecraft:chests/trial_chambers/reward. The trial chamber tables are named
-// alike in both editions.
-func bedrockLootTable(key string) string {
-	if key == "" {
-		return ""
-	}
-	return "loot_tables/" + strings.TrimPrefix(key, "minecraft:") + ".json"
-}
-
-// javaLootTable returns the Java key of a loot table named by its BDS path or
-// by its Java key.
-func javaLootTable(name string) string {
-	if path, ok := strings.CutPrefix(name, "loot_tables/"); ok {
-		return "minecraft:" + strings.TrimSuffix(path, ".json")
-	}
-	if name != "" && !strings.Contains(name, ":") {
-		return "minecraft:" + name
-	}
-	return name
-}
+// This file holds what vaults and trial spawners share: how BDS names items
+// and players in their block actors, and how Java finds the players near
+// them.
 
 // actorItemNBT encodes a stack as BDS writes the items of block actors. An
 // empty stack is an item without a name.

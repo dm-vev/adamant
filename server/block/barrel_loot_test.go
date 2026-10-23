@@ -54,7 +54,8 @@ func TestBarrelDeferredLootSurvivesRestartAndIsConsumedOnce(t *testing.T) {
 	transaction(func(tx *world.Tx) {
 		barrel := tx.Block(pos).(block.Barrel)
 		pending := barrel.EncodeNBT()
-		if pending["LootTable"] != table || pending["LootTableSeed"] != seed {
+		// BDS saves the table by its path.
+		if pending["LootTable"] != "loot_tables/barrels/abandoned_camp_barrel.json" || pending["LootTableSeed"] != seed {
 			t.Fatalf("unopened barrel lost pending loot: %v", pending)
 		}
 		inv := barrel.Inventory(tx, pos)

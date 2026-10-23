@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -173,7 +174,7 @@ func (b Barrel) DecodeNBT(data map[string]any) any {
 	// Preserve the block state bits so the decoded block matches the stored runtime ID.
 	b.Open = open
 	b.CustomName = nbtconv.String(data, "CustomName")
-	b.lootTable = nbtconv.String(data, "LootTable")
+	b.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
 	b.lootSeed = nbtconv.Int64(data, "LootTableSeed")
 	nbtconv.InvFromNBT(b.inventory, nbtconv.Slice(data, "Items"), data)
 	return b
@@ -195,7 +196,7 @@ func (b Barrel) EncodeNBT() map[string]any {
 		m["CustomName"] = b.CustomName
 	}
 	if b.lootTable != "" {
-		m["LootTable"], m["LootTableSeed"] = b.lootTable, b.lootSeed
+		m["LootTable"], m["LootTableSeed"] = loot.BedrockTablePath(b.lootTable), b.lootSeed
 	} else {
 		// BDS marks barrels players place as not findable.
 		m["Findable"] = byte(0)

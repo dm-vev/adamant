@@ -6,6 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
@@ -81,20 +82,20 @@ func TestMutableSurfaceBoundsAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 				_ = db.Close()
 				t.Fatal(err)
 			}
-			loot := map[string]int{}
+			tables := map[string]int{}
 			for _, actor := range column.BlockEntities {
 				if table, ok := actor.Data["LootTable"].(string); ok {
-					loot[table]++
+					tables[loot.JavaTableKey(table)]++
 				}
 			}
-			if kind == "desert_pyramid" && loot["minecraft:chests/desert_pyramid"] != 4 {
+			if kind == "desert_pyramid" && tables["minecraft:chests/desert_pyramid"] != 4 {
 				_ = db.Close()
-				t.Fatalf("saved pyramid chest tables=%v", loot)
+				t.Fatalf("saved pyramid chest tables=%v", tables)
 			}
 			if kind == "igloo" {
-				if loot["minecraft:chests/igloo_chest"] != 1 {
+				if tables["minecraft:chests/igloo_chest"] != 1 {
 					_ = db.Close()
-					t.Fatalf("saved igloo marker did not mutate the real chest actor: %v", loot)
+					t.Fatalf("saved igloo marker did not mutate the real chest actor: %v", tables)
 				}
 			}
 			restored, restoredStart, err := newScatteredLifecycleGenerator(kind)

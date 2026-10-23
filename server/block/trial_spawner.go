@@ -133,7 +133,7 @@ func (s TrialSpawner) EncodeNBT() map[string]any {
 		java["spawn_data"] = d.next
 	}
 	if d.ejecting != "" {
-		m["selected_loot_table"] = bedrockLootTable(d.ejecting)
+		m["selected_loot_table"] = loot.BedrockTablePath(d.ejecting)
 	}
 	if d.normal.key != "" && d.ominous.key != "" && d.targetCooldownLength != trialDefaultCooldown {
 		java["target_cooldown_length"] = int32(d.targetCooldownLength)
@@ -194,7 +194,7 @@ func (s TrialSpawner) DecodeNBT(m map[string]any) any {
 	}
 	for _, key := range []string{"selected_loot_table", "ejecting_loot_table"} {
 		if table, _ := m[key].(string); table != "" {
-			d.ejecting = javaLootTable(table)
+			d.ejecting = loot.JavaTableKey(table)
 			break
 		}
 	}
@@ -878,11 +878,11 @@ func decodeTrialConfig(c *trialSpawnerConfig, m map[string]any) {
 				continue
 			}
 			weight, _ := trialInteger(entry["weight"])
-			c.lootTablesToEject = append(c.lootTablesToEject, trialLootChoice{table: javaLootTable(table), weight: max(int(weight), 1)})
+			c.lootTablesToEject = append(c.lootTablesToEject, trialLootChoice{table: loot.JavaTableKey(table), weight: max(int(weight), 1)})
 		}
 	}
 	if table, _ := m["items_to_drop_when_ominous"].(string); table != "" {
-		c.itemsToDropWhenOminous = javaLootTable(table)
+		c.itemsToDropWhenOminous = loot.JavaTableKey(table)
 	}
 }
 
@@ -892,7 +892,7 @@ func decodeTrialConfig(c *trialSpawnerConfig, m map[string]any) {
 func (c trialSpawnerConfig) bedrockNBT(targetCooldownLength int) map[string]any {
 	tables := make([]any, len(c.lootTablesToEject))
 	for i, choice := range c.lootTablesToEject {
-		tables[i] = map[string]any{"data": bedrockLootTable(choice.table), "weight": int32(choice.weight)}
+		tables[i] = map[string]any{"data": loot.BedrockTablePath(choice.table), "weight": int32(choice.weight)}
 	}
 	return map[string]any{
 		"spawn_range":                        int32(c.spawnRange),
@@ -903,7 +903,7 @@ func (c trialSpawnerConfig) bedrockNBT(targetCooldownLength int) map[string]any 
 		"ticks_between_spawn":                int32(c.ticksBetweenSpawn),
 		"target_cooldown_length":             int32(targetCooldownLength),
 		"loot_tables_to_eject":               tables,
-		"items_to_drop_when_ominous":         bedrockLootTable(c.itemsToDropWhenOminous),
+		"items_to_drop_when_ominous":         loot.BedrockTablePath(c.itemsToDropWhenOminous),
 	}
 }
 

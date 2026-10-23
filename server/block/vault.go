@@ -123,8 +123,8 @@ func (v Vault) EncodeNBT() map[string]any {
 			"activation_range":               float32(d.activationRange),
 			"deactivation_range":             float32(d.deactivationRange),
 			"key_item":                       actorItemNBT(d.key),
-			"loot_table":                     bedrockLootTable(d.lootTable),
-			"override_loot_table_to_display": bedrockLootTable(d.displayLootTable),
+			"loot_table":                     loot.BedrockTablePath(d.lootTable),
+			"override_loot_table_to_display": loot.BedrockTablePath(d.displayLootTable),
 		},
 		"data": data,
 	}
@@ -148,10 +148,10 @@ func (v Vault) DecodeNBT(m map[string]any) any {
 	if config, ok := m["config"].(map[string]any); ok {
 		d.key = readActorItem(config["key_item"])
 		if table, _ := config["loot_table"].(string); table != "" {
-			d.lootTable = javaLootTable(table)
+			d.lootTable = loot.JavaTableKey(table)
 		}
 		d.displayLootTable, _ = config["override_loot_table_to_display"].(string)
-		d.displayLootTable = javaLootTable(d.displayLootTable)
+		d.displayLootTable = loot.JavaTableKey(d.displayLootTable)
 		if r, ok := trialNumber(config["activation_range"]); ok {
 			d.activationRange = r
 		}

@@ -174,7 +174,8 @@ func TestMinecartPendingAndConsumedLootSurviveMCDBRestart(t *testing.T) {
 	runMinecartLootTransaction(t, w, func(tx *world.Tx) {
 		cart := find(tx)
 		encoded := ChestMinecartType.EncodeNBT(cart.Ent.data)
-		if encoded["LootTable"] != "minecraft:chests/abandoned_mineshaft" || fmt.Sprint(encoded["LootTableSeed"]) != fixture.Seed {
+		// BDS saves the table by its path.
+		if encoded["LootTable"] != "loot_tables/chests/abandoned_mineshaft.json" || fmt.Sprint(encoded["LootTableSeed"]) != fixture.Seed {
 			t.Fatalf("pending loot lost on restart: %v", encoded)
 		}
 		if got := minecartLootInventorySlots(cart); !reflect.DeepEqual(got, fixture.Slots) {

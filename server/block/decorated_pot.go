@@ -1,10 +1,14 @@
 package block
 
 import (
+	"log/slog"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -30,6 +34,30 @@ type DecoratedPot struct {
 	// Decorations are the four decorations displayed on the sides of the pot. If a decoration is a brick or nil,
 	// the side will appear to be empty.
 	Decorations [4]PotDecoration
+
+	// lootTable is the loot table the pot is filled from when it is first
+	// used or broken, as the pots of trial chambers are.
+	lootTable string
+	lootSeed  int64
+}
+
+// withLoot returns the pot filled from its loot table, which it is once, as
+// Java's RandomizableContainer.unpackLootTable fills it. The pot is set in the
+// world if it is still there.
+func (p DecoratedPot) withLoot(pos cube.Pos, tx *world.Tx) DecoratedPot {
+	if p.lootTable == "" {
+		return p
+	}
+	inv := inventory.New(1, nil)
+	if err := fillContainerLoot(tx, pos, inv, p.lootTable, p.lootSeed, "minecraft:decorated_pot"); err != nil {
+		slog.Error("decorated pot loot table", "table", p.lootTable, "pos", pos, "error", err)
+	}
+	p.Item, _ = inv.Item(0)
+	p.lootTable, p.lootSeed = "", 0
+	if _, ok := tx.Block(pos).(DecoratedPot); ok {
+		tx.SetBlockEntity(pos, p)
+	}
+	return p
 }
 
 func (DecoratedPot) ContainerSize() int { return 1 }
@@ -62,6 +90,7 @@ func (p DecoratedPot) Pick() item.Stack {
 
 // ExtractItem ...
 func (p DecoratedPot) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
+	p = p.withLoot(pos, tx)
 	if p.Item.Empty() {
 		return false
 	}
@@ -75,6 +104,7 @@ func (p DecoratedPot) ExtractItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
 
 // InsertItem ...
 func (p DecoratedPot) InsertItem(h Hopper, pos cube.Pos, tx *world.Tx) bool {
+	p = p.withLoot(pos, tx)
 	for sourceSlot, sourceStack := range h.inventory.Slots() {
 		if !sourceStack.Empty() && sourceStack.Comparable(p.Item) && p.Item.Count() < p.Item.MaxCount() {
 			if p.Item.Empty() {
@@ -108,6 +138,7 @@ func (p DecoratedPot) wobble(pos cube.Pos, tx *world.Tx, success bool) {
 
 // Activate ...
 func (p DecoratedPot) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ctx *item.UseContext) bool {
+	p = p.withLoot(pos, tx)
 	held, _ := u.HeldItems()
 	if held.Empty() || !p.Item.Comparable(held) || p.Item.Count() == p.Item.MaxCount() {
 		p.wobble(pos, tx, false)
@@ -128,7 +159,7 @@ func (p DecoratedPot) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.U
 // BreakInfo ...
 func (p DecoratedPot) BreakInfo() BreakInfo {
 	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(DecoratedPot{Decorations: p.Decorations})).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
-		if !p.Item.Empty() {
+		if p := p.withLoot(pos, tx); !p.Item.Empty() {
 			dropItem(tx, p.Item, pos.Vec3Centre())
 		}
 	})
@@ -183,12 +214,17 @@ func (p DecoratedPot) EncodeNBT() map[string]any {
 	if !p.Item.Empty() {
 		m["item"] = item.WriteNBT(p.Item, true)
 	}
+	if p.lootTable != "" {
+		m["LootTable"], m["LootTableSeed"] = loot.BedrockTablePath(p.lootTable), p.lootSeed
+	}
 	return m
 }
 
 // DecodeNBT ...
 func (p DecoratedPot) DecodeNBT(data map[string]any) any {
 	p.Item = item.MapNBT(data, "item")
+	p.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
+	p.lootSeed, _ = nbtconv.Integer(data, "LootTableSeed")
 	p.Decorations = [4]PotDecoration{}
 	if sherds := nbtconv.Slice(data, "sherds"); sherds != nil {
 		// Ignore invalid or extra entries to avoid crashing on malformed NBT.

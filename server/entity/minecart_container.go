@@ -323,7 +323,7 @@ func (chestMinecartType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf := chestMinecartConf
 	beh := conf.New()
 	readMinecartDisplayNBT(beh.MinecartBehaviour, m)
-	beh.lootTable = nbtconv.String(m, "LootTable")
+	beh.lootTable = loot.JavaTableKey(nbtconv.String(m, "LootTable"))
 	beh.lootSeed = nbtconv.Int64(m, "LootTableSeed")
 	if beh.lootTable == "" {
 		nbtconv.InvFromNBT(beh.inv, nbtconv.Slice(m, "Items"), m)
@@ -337,7 +337,7 @@ func (chestMinecartType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*MinecartContainerBehaviour)
 	m := make(map[string]any)
 	if b.lootTable != "" {
-		m["LootTable"] = b.lootTable
+		m["LootTable"] = loot.BedrockTablePath(b.lootTable)
 		if b.lootSeed != 0 {
 			m["LootTableSeed"] = b.lootSeed
 		}

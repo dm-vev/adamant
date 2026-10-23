@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
@@ -112,7 +113,7 @@ func TestMutableSeaHeightAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 			}
 			actorsBefore := seaLifecycleActors(t, db, chunks)
 			for pos, actor := range actorsBefore {
-				table := actor["LootTable"].(string)
+				table := loot.JavaTableKey(actor["LootTable"].(string))
 				if strings.HasPrefix(kind, "shipwreck") && !strings.HasPrefix(table, "minecraft:chests/shipwreck_") {
 					t.Fatalf("shipwreck actor at%v got %s", pos, table)
 				}

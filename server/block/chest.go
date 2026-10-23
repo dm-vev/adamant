@@ -10,6 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -402,7 +403,7 @@ func (c Chest) DecodeNBT(data map[string]any) any {
 	c = NewChest()
 	c.Facing = facing
 	c.CustomName = nbtconv.String(data, "CustomName")
-	c.lootTable = nbtconv.String(data, "LootTable")
+	c.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
 	c.lootSeed = nbtconv.Int64(data, "LootTableSeed")
 
 	pairX, ok := data["pairx"]
@@ -441,7 +442,7 @@ func (c Chest) EncodeNBT() map[string]any {
 		m["pairz"] = int32(c.pairZ)
 	}
 	if c.lootTable != "" {
-		m["LootTable"] = c.lootTable
+		m["LootTable"] = loot.BedrockTablePath(c.lootTable)
 		m["LootTableSeed"] = c.lootSeed
 	} else {
 		// BDS marks chests players place as not findable.

@@ -2,6 +2,7 @@ package block
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"math/rand/v2"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
+	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -28,6 +30,10 @@ type Dispenser struct {
 	inventory *inventory.Inventory
 	viewerMu  *sync.RWMutex
 	viewers   map[ContainerViewer]struct{}
+	// lootTable is the loot table the dispenser is filled from when it is
+	// first used, such as the arrows of a jungle temple trap.
+	lootTable string
+	lootSeed  int64
 }
 
 // NewDispenser creates an initialised dispenser with a nine-slot inventory.
@@ -47,7 +53,26 @@ func NewDispenser() Dispenser {
 	}
 }
 
-func (d Dispenser) Inventory(*world.Tx, cube.Pos) *inventory.Inventory { return d.inventory }
+func (d Dispenser) Inventory(tx *world.Tx, pos cube.Pos) *inventory.Inventory {
+	return d.generateLoot(tx, pos).inventory
+}
+
+// generateLoot fills the dispenser from its loot table once, as Java's
+// RandomizableContainer.unpackLootTable does when the container is first
+// used.
+func (d Dispenser) generateLoot(tx *world.Tx, pos cube.Pos) Dispenser {
+	if d.lootTable == "" {
+		return d
+	}
+	if err := fillContainerLoot(tx, pos, d.inventory, d.lootTable, d.lootSeed, "minecraft:dispenser"); err != nil {
+		slog.Error("dispenser loot table", "table", d.lootTable, "pos", pos, "error", err)
+	}
+	d.lootTable, d.lootSeed = "", 0
+	if _, ok := tx.Block(pos).(Dispenser); ok {
+		tx.SetBlockEntity(pos, d)
+	}
+	return d
+}
 
 func (d Dispenser) WithName(a ...any) world.Item {
 	d.CustomName = strings.TrimSuffix(fmt.Sprintln(a...), "\n")
@@ -112,6 +137,7 @@ func (d Dispenser) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, _, after 
 func (d Dispenser) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	// Java schedules the tick on the rising edge and does not cancel it when
 	// power falls again before the scheduled tick runs.
+	d = d.generateLoot(tx, pos)
 	slot, count := -1, 0
 	for i := range 9 {
 		stack, _ := d.inventory.Item(i)
@@ -297,13 +323,16 @@ func (d Dispenser) EncodeBlock() (string, map[string]any) {
 
 func (d Dispenser) EncodeNBT() map[string]any {
 	if d.inventory == nil {
-		facing, triggered, customName := d.Facing, d.Triggered, d.CustomName
+		facing, triggered, customName, lootTable, lootSeed := d.Facing, d.Triggered, d.CustomName, d.lootTable, d.lootSeed
 		d = NewDispenser()
-		d.Facing, d.Triggered, d.CustomName = facing, triggered, customName
+		d.Facing, d.Triggered, d.CustomName, d.lootTable, d.lootSeed = facing, triggered, customName, lootTable, lootSeed
 	}
 	m := map[string]any{"id": "Dispenser", "Items": nbtconv.InvToNBT(d.inventory)}
 	if d.CustomName != "" {
 		m["CustomName"] = d.CustomName
+	}
+	if d.lootTable != "" {
+		m["LootTable"], m["LootTableSeed"] = loot.BedrockTablePath(d.lootTable), d.lootSeed
 	}
 	return m
 }
@@ -313,6 +342,8 @@ func (d Dispenser) DecodeNBT(data map[string]any) any {
 	d = NewDispenser()
 	d.Facing, d.Triggered = facing, triggered
 	d.CustomName = nbtconv.String(data, "CustomName")
+	d.lootTable = loot.JavaTableKey(nbtconv.String(data, "LootTable"))
+	d.lootSeed, _ = nbtconv.Integer(data, "LootTableSeed")
 	nbtconv.InvFromNBT(d.inventory, nbtconv.Slice(data, "Items"), data)
 	return d
 }

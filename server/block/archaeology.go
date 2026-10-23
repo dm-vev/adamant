@@ -115,7 +115,7 @@ func encodeBrushableNBT(name, table string, seed int64, stack item.Stack, brushC
 		data["brush_direction"] = uint8(direction)
 	}
 	if table != "" {
-		data["LootTable"] = table
+		data["LootTable"] = loot.BedrockTablePath(table)
 		data["LootTableSeed"] = seed
 	} else if !stack.Empty() {
 		data["item"] = item.WriteNBT(stack, true)
@@ -127,6 +127,7 @@ func encodeBrushableNBT(name, table string, seed int64, stack item.Stack, brushC
 // Item and hit_direction keys, by earlier Adamant versions.
 func decodeBrushableNBT(data map[string]any) (string, int64, item.Stack, cube.Face, bool, uint8) {
 	table, _ := data["LootTable"].(string)
+	table = loot.JavaTableKey(table)
 	seed, _ := nbtconv.Integer(data, "LootTableSeed")
 	var stack item.Stack
 	if table == "" {

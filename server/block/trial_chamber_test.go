@@ -165,3 +165,35 @@ func TestVaultRewardsEachPlayerOnce(t *testing.T) {
 		}
 	})
 }
+
+// TestTrialChamberContainersHoldLoot fills a dispenser and a decorated pot
+// placed from trial chamber templates, which name their loot tables.
+func TestTrialChamberContainersHoldLoot(t *testing.T) {
+	w, h := trialTestWorld(t, mgl64.Vec3{2.5, 65, 0.5})
+	<-w.Exec(func(tx *world.Tx) {
+		dispenserPos, potPos := cube.Pos{0, 65, 0}, cube.Pos{0, 65, 2}
+		dispenser := block.Dispenser{}.DecodeNBT(map[string]any{"id": "Dispenser", "LootTable": "minecraft:dispensers/trial_chambers/corridor", "LootTableSeed": int64(7)}).(block.Dispenser)
+		if saved := dispenser.EncodeNBT(); saved["LootTable"] != "loot_tables/dispensers/trial_chambers/corridor.json" || saved["LootTableSeed"] != int64(7) {
+			t.Fatalf("dispenser saved as %v", saved)
+		}
+		tx.SetBlock(dispenserPos, dispenser, nil)
+		items := 0
+		for _, s := range tx.Block(dispenserPos).(block.Dispenser).Inventory(tx, dispenserPos).Slots() {
+			items += s.Count()
+		}
+		if items == 0 {
+			t.Fatal("trial chamber dispenser holds nothing")
+		}
+		if saved := tx.Block(dispenserPos).(block.Dispenser).EncodeNBT(); saved["LootTable"] != nil {
+			t.Fatalf("opened dispenser keeps its loot table: %v", saved)
+		}
+
+		pot := block.DecoratedPot{}.DecodeNBT(map[string]any{"id": "DecoratedPot", "LootTable": "loot_tables/pots/trial_chambers/corridor.json", "LootTableSeed": int64(9)}).(block.DecoratedPot)
+		tx.SetBlock(potPos, pot, nil)
+		p, _ := h.Entity(tx)
+		pot.Activate(potPos, cube.FaceUp, tx, p.(*player.Player), &item.UseContext{})
+		if tx.Block(potPos).(block.DecoratedPot).Item.Empty() {
+			t.Fatal("trial chamber pot holds nothing")
+		}
+	})
+}
