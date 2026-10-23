@@ -17,15 +17,6 @@ import (
 
 func (s *speciesState) mobAI() *MobAI { return &s.ai }
 
-// speciesUsesAI reports if the mobs of a species are driven by a MobAI.
-func speciesUsesAI(k speciesKind) bool {
-	switch k {
-	case creeperSpecies, spiderSpecies, caveSpiderSpecies, endermanSpecies, silverfishSpecies, endermiteSpecies:
-		return true
-	}
-	return false
-}
-
 // speciesSelf returns the entity of a species mob.
 func speciesSelf(e *Ent, k speciesKind) world.Entity {
 	m := &speciesMob{Ent: e, kind: k}
@@ -65,6 +56,8 @@ func (s *speciesState) aiTick(e *Ent, tx *world.Tx) *Movement {
 		if s.creepy {
 			ai.MovementSpeed += endermanSpeedBonus
 		}
+	case slimeSpecies:
+		ai.EyeHeight = .325 * float64(s.size)
 	}
 	self := speciesSelf(e, s.kind)
 	if s.kind == creeperSpecies && s.tickSwell(e, tx) {
@@ -77,6 +70,9 @@ func (s *speciesState) aiTick(e *Ent, tx *world.Tx) *Movement {
 	if s.kind == endermanSpecies && !s.dead {
 		s.tickEndermanWater(ai.Mob(e, self))
 	}
+	if s.kind == slimeSpecies && !s.dead {
+		tickCube(ai.Mob(e, self), s)
+	}
 	if s.kind == spiderSpecies || s.kind == caveSpiderSpecies {
 		if climbing := ai.collidedHorizontally; climbing != s.climbing {
 			s.climbing = climbing
@@ -85,6 +81,22 @@ func (s *speciesState) aiTick(e *Ent, tx *world.Tx) *Movement {
 	}
 	return mov
 }
+
+func (s *speciesState) cube() *cubeAI   { return &s.cubeAI }
+func (s *speciesState) cubeSize() int   { return s.size }
+func (s *speciesState) cubeMagma() bool { return false }
+
+// jumpFromGround ports Slime.jumpFromGround: a slime jumps as high whatever
+// moves it.
+func (s *speciesState) jumpFromGround(m *Mob) bool {
+	if s.kind != slimeSpecies {
+		return false
+	}
+	m.data.Vel[1] = m.AI.jumpPower(m)
+	return true
+}
+
+func (s *speciesState) jumpInLiquid(*Mob, bool) bool { return false }
 
 // tickSwell ports the swelling of Creeper.tick and reports if the creeper
 // exploded.
@@ -163,6 +175,8 @@ func (s *speciesState) registerGoals(m *Mob) {
 		ai.Targets.Add(2, NewHurtByTargetGoal())
 	case endermanSpecies:
 		s.registerEndermanGoals(m)
+	case slimeSpecies:
+		registerCubeGoals(m, s)
 	case spiderSpecies, caveSpiderSpecies:
 		ai.nav.wallClimber = true
 		ai.Goals.Add(1, NewFloatGoal(m))

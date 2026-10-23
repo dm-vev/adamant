@@ -3,9 +3,7 @@ package entity
 import (
 	"hash/fnv"
 	"math"
-	"time"
 
-	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -69,13 +67,11 @@ type speciesState struct {
 	fuse, swell, cooldown, jumpDelay, size   int
 	charged, ignited, climbing, dead, loaded bool
 	carried                                  world.Block
-	core                                     *SlimeCore
 	passenger                                *world.EntityHandle
-	navigator                                Navigator
-	wander                                   int
 	ai                                       MobAI
 	swellDir                                 int
 	friends                                  *silverfishWakeUpFriendsGoal
+	cubeAI                                   cubeAI
 
 	// The anger of an enderman as a NeutralMob, and the state it screams
 	// and stares in.
@@ -252,7 +248,7 @@ func encodeSpecies(k speciesKind, d *world.EntityData) map[string]any {
 		speed = .25
 		att = 2
 	case slimeSpecies:
-		health = float64(s.size * s.size * 4)
+		health = float64(s.size * s.size)
 		speed = .2 + .1*float64(s.size)
 		att = float64(s.size)
 	}
@@ -334,7 +330,7 @@ func (c speciesConfig) Apply(d *world.EntityData) {
 		if size < 1 {
 			size = 2
 		}
-		health, maxHealth, speed, attack = float64(size*size*4), float64(size*size*4), .2+.1*float64(size), float64(size)
+		health, maxHealth, speed, attack = float64(size*size), float64(size*size), .2+.1*float64(size), float64(size)
 	}
 	if c.health > 0 {
 		health = c.health
@@ -348,7 +344,7 @@ func (c speciesConfig) Apply(d *world.EntityData) {
 		size = 1
 	}
 	d.NativeNBT = CloneNativeMobNBT(c.native)
-	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, angerTicks: c.angerTicks, angerTarget: c.angerTarget, lastStareSound: math.MinInt32, core: newSpeciesSlimeCore(c.kind, size), jumpDelay: 10}
+	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, angerTicks: c.angerTicks, angerTarget: c.angerTarget, lastStareSound: math.MinInt32}
 }
 func NewSpider(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(SpiderType, speciesConfig{kind: spiderSpecies, size: 1})
@@ -371,6 +367,12 @@ func NewEndermite(o world.EntitySpawnOpts) *world.EntityHandle {
 func NewSlime(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(SlimeType, speciesConfig{kind: slimeSpecies, size: 2})
 }
+
+// NewSlimeWithSize returns a slime of a size: 1, 2 or 4 when it spawns
+// naturally.
+func NewSlimeWithSize(o world.EntitySpawnOpts, size int) *world.EntityHandle {
+	return o.New(SlimeType, speciesConfig{kind: slimeSpecies, size: size})
+}
 func (m *speciesMob) s() *speciesState { return m.Behaviour().(*speciesState) }
 
 // Size returns the size of the slime: 1, 2 or 4 when it spawned naturally.
@@ -380,156 +382,8 @@ func (m *speciesMob) Tick(tx *world.Tx, n int64) {
 	m.Ent.Tick(tx, n)
 	m.updateJockey(tx)
 }
-func (s *speciesState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if speciesUsesAI(s.kind) {
-		return s.aiTick(e, tx)
-	}
-	m := &speciesMob{Ent: e, kind: s.kind}
-	target, dist := nearestSpeciesTarget(e, tx, s.kind)
-	switch s.kind {
-	case creeperSpecies:
-		if s.ignited || target != nil && dist < 3 {
-			if s.swell == 0 {
-				tx.PlaySound(e.Position(), sound.Custom{Name: "entity.creeper.primed", Volume: 1, Pitch: 1})
-			}
-			s.swell++
-			if s.swell >= s.fuse {
-				power := 3.0
-				if s.charged {
-					power = 6
-				}
-				(block.ExplosionConfig{SpawnFire: s.charged, NoBlockDamage: mobGriefingDisabled(tx)}).Explode(tx, world.NewEntityExplosionSource(m, power))
-				m.kill()
-				return nil
-			}
-		} else {
-			s.swell = max(0, s.swell-1)
-		}
-	}
-	if s.cooldown > 0 {
-		s.cooldown--
-	}
-	if target != nil {
-		attackRange := 1.6
-		if s.kind == slimeSpecies {
-			attackRange = float64(s.size) + .5
-		}
-		if dist < attackRange {
-			if s.cooldown == 0 {
-				if l, ok := target.(Living); ok {
-					d := s.attack
-					if s.kind == caveSpiderSpecies {
-						difficulty := tx.LocalDifficulty(cube.PosFromVec3(e.Position())).Base
-						if difficulty == world.DifficultyNormal || difficulty == world.DifficultyHard {
-							l.AddEffect(effect.New(effect.Poison, 0, time.Second*7))
-						}
-					}
-					l.Hurt(d, AttackDamageSource{Attacker: m})
-				}
-				s.cooldown = 20
-			}
-			return speciesMove(s, e, tx, e.Position())
-		}
-		return speciesMove(s, e, tx, target.Position())
-	}
-	if s.kind == slimeSpecies {
-		return m.slimeTick(tx)
-	}
-	if s.kind == spiderSpecies || s.kind == caveSpiderSpecies {
-		s.climbing = e.data.Vel[0] != 0 || e.data.Vel[2] != 0
-	}
-	return m.wander()
-}
-func nearestSpeciesTarget(e *Ent, tx *world.Tx, k speciesKind) (world.Entity, float64) {
-	if (k == spiderSpecies || k == caveSpiderSpecies) && tx.SkyLight(cube.PosFromVec3(e.Position())) >= 8 {
-		return nil, math.MaxFloat64
-	}
-	r := 16.0
-	area := cube.Box(-r, -8, -r, r, 8, r).Translate(e.Position())
-	var chosen world.Entity
-	best := r
-	for other := range tx.EntitiesWithin(area) {
-		if other == e {
-			continue
-		}
-		id := other.H().Type().EncodeEntity()
-		if id != "minecraft:player" && id != "minecraft:iron_golem" {
-			continue
-		}
-		l, ok := other.(Living)
-		if !ok || l.Dead() {
-			continue
-		}
-		d := other.Position().Sub(e.Position()).Len()
-		if d < best {
-			chosen, best = other, d
-		}
-	}
-	return chosen, best
-}
-func speciesMove(s *speciesState, e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
-	d := p.Sub(e.Position())
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.Velocity()
-	v[0], v[2] = d[0]*s.speed, d[2]*s.speed
-	r := e.Rotation()
-	if d.Len() > 0 {
-		r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	}
-	if s.kind == spiderSpecies || s.kind == caveSpiderSpecies {
-		if d.Len() > 0 && s.mc.OnGround() {
-			v[1] = .32
-		}
-	}
-	m := s.mc.TickMovement(e, e.Position(), v, e.Rotation(), r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (m *speciesMob) wander() *Movement {
-	s := m.s()
-	if s.wander > 0 {
-		s.wander--
-	}
-	if s.navigator.Index >= len(s.navigator.Path) && s.wander == 0 {
-		s.wander = 40
-		start := cube.PosFromVec3(m.Position())
-		goal := start.Add(cube.Pos{int(s.random.NextInt(11)) - 5, 0, int(s.random.NextInt(11)) - 5})
-		s.navigator.MoveTo(m.tx, start, goal, GroundProfile{MaxVisitedNodes: 80}, navigatorTick(m.Ent))
-	}
-	if p, ok := s.navigator.Tick(m.Position(), navigatorTick(m.Ent), .9); ok {
-		if p.Sub(m.Position()).Len() < .4 {
-			s.navigator.Index++
-		} else {
-			return speciesMove(s, m.Ent, m.tx, p)
-		}
-	}
-	return speciesMove(s, m.Ent, m.tx, m.Position())
-}
-func (m *speciesMob) slimeTick(tx *world.Tx) *Movement {
-	s := m.s()
-	if s.core != nil && s.core.Jump(&s.random, s.mc.OnGround()) {
-		s.jumpDelay = s.core.JumpDelay
-		v := m.Velocity()
-		v[1] = .42 + .08*float64(s.size)
-		m.SetVelocity(v)
-		if s.size > 1 {
-			tx.PlaySound(m.Position(), sound.Custom{Name: "entity.slime.jump", Volume: 1, Pitch: 1})
-		}
-	}
-	for e := range tx.EntitiesWithin(cube.Box(-float64(s.size), 0, -float64(s.size), float64(s.size), 1, float64(s.size)).Translate(m.Position())) {
-		if e == m {
-			continue
-		}
-		if l, ok := e.(Living); ok && !l.Dead() && e.H().Type().EncodeEntity() == "minecraft:player" {
-			l.Hurt(float64(s.size), AttackDamageSource{Attacker: m})
-		}
-	}
-	return speciesMove(s, m.Ent, tx, m.Position())
-}
-func (m *speciesMob) kill() { s := m.s(); s.dead = true; m.view(DeathAction{}); _ = m.CloseIn(m.tx) }
+func (s *speciesState) Tick(e *Ent, tx *world.Tx) *Movement { return s.aiTick(e, tx) }
+func (m *speciesMob) kill()                                 { s := m.s(); s.dead = true; m.view(DeathAction{}); _ = m.CloseIn(m.tx) }
 
 // CubeSize returns the Java Slime.getSize used by the cube_mob loot predicate.
 func (m *speciesMob) CubeSize() int { return m.s().size }
@@ -582,12 +436,8 @@ func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	m.view(HurtAction{})
 	onMobHurt(m.tx, m)
 	if m.Dead() {
-		if s.kind == slimeSpecies && s.size > 1 {
-			for i := range 2 {
-				off := float64(i)*.4 - .2
-				opts := world.EntitySpawnOpts{Position: m.Position().Add(mgl64.Vec3{off, .5, 0})}
-				m.tx.AddEntity(opts.New(SlimeType, speciesConfig{kind: slimeSpecies, size: s.core.ChildSize()}))
-			}
+		if s.kind == slimeSpecies {
+			splitCube(s.ai.Mob(m.Ent, speciesSelf(m.Ent, s.kind)), s.size, NewSlimeWithSize)
 		}
 		m.kill()
 		dropAllDeathLoot(m.tx, m, src)
@@ -655,13 +505,20 @@ func (m *speciesMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 			m.Mount(m.tx, passenger)
 		}
 	}
-	if s.kind == slimeSpecies {
-		sizes := [3]int{1, 2, 4}
-		s.size = sizes[r.NextInt(3)]
-		maximum := float64(s.size * s.size * 4)
+	if s.kind == slimeSpecies && m.tx != nil {
+		// AbstractCubeMob.setSpawnSize: larger slimes are likelier on
+		// harder local difficulties.
+		scale := r.NextInt(3)
+		if scale < 2 && r.NextFloat() < .5*m.tx.LocalDifficulty(cube.PosFromVec3(m.Position())).SpecialMultiplier() {
+			scale++
+		}
+		s.size = 1 << scale
+		maximum := float64(s.size * s.size)
 		s.health.SetMaxHealth(maximum)
 		s.health.AddHealth(maximum)
-		s.core.Size = s.size
+		s.speed = .2 + .1*float64(s.size)
+		s.attack = float64(s.size)
+		m.updateState()
 	}
 }
 func (m *speciesMob) SpeciesType() world.EntityType { return speciesType(m.kind) }

@@ -8,8 +8,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -43,7 +43,6 @@ type netherState struct {
 	effects                                                           *EffectManager
 	mc                                                                *MovementComputer
 	random                                                            vanilla.Random
-	slime                                                             *SlimeCore
 	size, charge, attackStep, attackTime, lastSeen, jumpDelay, wander int
 	heightOffset                                                      float64
 	heightTimer                                                       int
@@ -51,6 +50,8 @@ type netherState struct {
 	charging, dead                                                    bool
 	path                                                              []cube.Pos
 	pathIndex                                                         int
+	ai                                                                MobAI
+	cubeAI                                                            cubeAI
 }
 type Ghast struct{ *Ent }
 type Blaze struct{ *Ent }
@@ -143,7 +144,7 @@ func encodeNether(k netherKind, d *world.EntityData) map[string]any {
 	case magmaKind:
 		n["Size"] = uint8(s.size - 1)
 	}
-	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.charge), "JumpDelay": int32(s.slime.JumpDelay)})
+	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.charge), "JumpDelay": int32(s.cubeAI.move.jumpDelay)})
 }
 func speciesIDNether(k netherKind) string {
 	switch k {
@@ -179,10 +180,8 @@ func (c netherConfig) Apply(d *world.EntityData) {
 	if c.kind == ghastKind {
 		gravity, drag = 0, .01
 	}
-	s := &netherState{kind: c.kind, health: NewHealthManager(hp, maxHP), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: drag, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(c.seed), size: c.size, slime: NewSlimeCore(c.size), charge: c.charge, jumpDelay: c.jump, heightOffset: .5, speed: speed, attack: attack}
-	if c.jump > 0 {
-		s.slime.JumpDelay = c.jump
-	}
+	s := &netherState{kind: c.kind, health: NewHealthManager(hp, maxHP), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: drag, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(c.seed), size: c.size, charge: c.charge, jumpDelay: c.jump, heightOffset: .5, speed: speed, attack: attack}
+	s.cubeAI.move.jumpDelay = c.jump
 	d.Data = s
 }
 func NewGhast(o world.EntitySpawnOpts) *world.EntityHandle {
@@ -194,15 +193,15 @@ func NewBlaze(o world.EntitySpawnOpts) *world.EntityHandle {
 func NewMagmaCube(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(MagmaCubeType, netherConfig{kind: magmaKind, size: 1})
 }
-func (m *Ghast) n() *netherState                { return m.Behaviour().(*netherState) }
-func (m *Blaze) n() *netherState                { return m.Behaviour().(*netherState) }
-func (m *MagmaCube) n() *netherState            { return m.Behaviour().(*netherState) }
-func (m *MagmaCube) Size() int                  { return m.n().size }
-func (m *Ghast) Tick(tx *world.Tx, n int64)     { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
-func (m *Blaze) Tick(tx *world.Tx, n int64)     { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
+func (m *Ghast) n() *netherState            { return m.Behaviour().(*netherState) }
+func (m *Blaze) n() *netherState            { return m.Behaviour().(*netherState) }
+func (m *MagmaCube) n() *netherState        { return m.Behaviour().(*netherState) }
+func (m *MagmaCube) Size() int              { return m.n().size }
+func (m *Ghast) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
+func (m *Blaze) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 
 // IsSensitiveToWater reports that water hurts blazes, as Blaze does.
-func (m *Blaze) IsSensitiveToWater() bool { return true }
+func (m *Blaze) IsSensitiveToWater() bool       { return true }
 func (m *MagmaCube) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (s *netherState) Tick(e *Ent, tx *world.Tx) *Movement {
 	switch s.kind {
@@ -211,8 +210,47 @@ func (s *netherState) Tick(e *Ent, tx *world.Tx) *Movement {
 	case blazeKind:
 		return s.tickBlaze(e, tx)
 	default:
-		return s.tickMagma(e, tx)
+		return s.aiTickMagma(e, tx)
 	}
+}
+
+func (s *netherState) mobAI() *MobAI { return &s.ai }
+
+// aiTickMagma runs the MobAI of a magma cube.
+func (s *netherState) aiTickMagma(e *Ent, tx *world.Tx) *Movement {
+	ai := &s.ai
+	ai.MovementSpeed = s.speed
+	ai.EyeHeight = .325 * float64(s.size)
+	self := &MagmaCube{e}
+	mov := ai.Tick(e, self, func(m *Mob) { registerCubeGoals(m, s) })
+	if !s.dead {
+		tickCube(ai.Mob(e, self), s)
+	}
+	return mov
+}
+
+func (s *netherState) cube() *cubeAI   { return &s.cubeAI }
+func (s *netherState) cubeSize() int   { return s.size }
+func (s *netherState) cubeMagma() bool { return s.kind == magmaKind }
+
+// jumpFromGround ports MagmaCube.jumpFromGround: larger magma cubes jump
+// higher.
+func (s *netherState) jumpFromGround(m *Mob) bool {
+	if s.kind != magmaKind {
+		return false
+	}
+	m.data.Vel[1] = m.AI.jumpPower(m) + float64(s.size)*.1
+	return true
+}
+
+// jumpInLiquid ports MagmaCube.jumpInLiquid: magma cubes bob up through
+// lava.
+func (s *netherState) jumpInLiquid(m *Mob, lava bool) bool {
+	if s.kind != magmaKind || !lava {
+		return false
+	}
+	m.data.Vel[1] = .22 + float64(s.size)*.05
+	return true
 }
 func (s *netherState) tickGhast(e *Ent, tx *world.Tx) *Movement {
 	target, dist := netherTarget(e, tx, 100)
@@ -293,45 +331,6 @@ func (s *netherState) tickBlaze(e *Ent, tx *world.Tx) *Movement {
 	s.charging = false
 	return s.wanderGround(e, tx)
 }
-func (s *netherState) tickMagma(e *Ent, tx *world.Tx) *Movement {
-	fluid, _ := tx.Liquid(cube.PosFromVec3(e.Position()))
-	if fluid != nil && fluid.LiquidType() == "lava" {
-		if s.slime.JumpDelay > 0 {
-			s.slime.JumpDelay--
-		} else {
-			s.slime.JumpDelay = 10 + int(s.random.NextInt(20))
-			v := e.Velocity()
-			v[1] = .22 + .05*float64(s.size)
-			e.SetVelocity(v)
-		}
-	} else if s.slime.Jump(&s.random, s.mc.OnGround()) {
-		v := e.Velocity()
-		v[1] = .42 + .08*float64(s.size)
-		e.SetVelocity(v)
-		if s.size > 1 {
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.slime.jump", Volume: 1, Pitch: 1})
-		}
-	}
-	s.jumpDelay = s.slime.JumpDelay
-	if s.attackTime > 0 {
-		s.attackTime--
-	}
-	target, _ := netherTarget(e, tx, 16)
-	for other := range tx.EntitiesWithin(cube.Box(-float64(s.size), 0, -float64(s.size), float64(s.size), 1, float64(s.size)).Translate(e.Position())) {
-		if other == e {
-			continue
-		}
-		id := other.H().Type().EncodeEntity()
-		if l, ok := other.(Living); ok && !l.Dead() && (id == "minecraft:player" || id == "minecraft:iron_golem") && s.attackTime == 0 {
-			l.Hurt(float64(s.size+2), AttackDamageSource{Attacker: &MagmaCube{e}})
-			s.attackTime = 20
-		}
-	}
-	if target != nil {
-		return s.groundMove(e, tx, target.Position())
-	}
-	return s.wanderGround(e, tx)
-}
 func (s *netherState) fly(e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
 	d := p.Sub(e.Position())
 	if d.Len() > 0 {
@@ -371,9 +370,6 @@ func (s *netherState) groundMove(e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
 	}
 	v := e.Velocity()
 	v[0], v[2] = d[0]*s.speed, d[2]*s.speed
-	if s.kind == magmaKind && s.mc.OnGround() {
-		v[1] = e.Velocity()[1]
-	}
 	r := e.Rotation()
 	if d.Len() > 0 {
 		r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
@@ -442,7 +438,16 @@ func (s *netherState) Hurt(e *Ent, self world.Entity, d float64, src world.Damag
 	if src.Fire() && (s.kind == blazeKind || s.kind == magmaKind) {
 		return 0, false
 	}
+	d, ok := s.ai.DamageCooldown(e.tx, d)
+	if !ok {
+		return 0, false
+	}
+	if s.kind == magmaKind {
+		// MagmaCube.setSize: three points of armour per size.
+		d = damageAfterArmour(d, src, float64(s.size*3), 0)
+	}
 	s.health.AddHealth(-d)
+	s.ai.Hurt(src)
 	viewers := e.tx.Viewers(e.Position())
 	for _, viewer := range viewers {
 		viewer.ViewEntityAction(e, HurtAction{})
@@ -471,34 +476,50 @@ func (m *Ghast) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	return m.n().Hurt(m.Ent, m, d, s)
 }
-func (m *Blaze) Health() float64                                      { return m.n().health.Health() }
-func (m *Blaze) MaxHealth() float64                                   { return m.n().health.MaxHealth() }
-func (m *Blaze) SetMaxHealth(v float64)                               { m.n().health.SetMaxHealth(v) }
-func (m *Blaze) Dead() bool                                           { return m.n().dead || m.Health() <= 0 }
-func (m *Blaze) Hurt(d float64, s world.DamageSource) (float64, bool) { return m.n().Hurt(m.Ent, m, d, s) }
-func (m *MagmaCube) Health() float64                                  { return m.n().health.Health() }
-func (m *MagmaCube) MaxHealth() float64                               { return m.n().health.MaxHealth() }
-func (m *MagmaCube) SetMaxHealth(v float64)                           { m.n().health.SetMaxHealth(v) }
-func (m *MagmaCube) Dead() bool                                       { return m.n().dead || m.Health() <= 0 }
+func (m *Blaze) Health() float64        { return m.n().health.Health() }
+func (m *Blaze) MaxHealth() float64     { return m.n().health.MaxHealth() }
+func (m *Blaze) SetMaxHealth(v float64) { m.n().health.SetMaxHealth(v) }
+func (m *Blaze) Dead() bool             { return m.n().dead || m.Health() <= 0 }
+func (m *Blaze) Hurt(d float64, s world.DamageSource) (float64, bool) {
+	return m.n().Hurt(m.Ent, m, d, s)
+}
+func (m *MagmaCube) Health() float64        { return m.n().health.Health() }
+func (m *MagmaCube) MaxHealth() float64     { return m.n().health.MaxHealth() }
+func (m *MagmaCube) SetMaxHealth(v float64) { m.n().health.SetMaxHealth(v) }
+func (m *MagmaCube) Dead() bool             { return m.n().dead || m.Health() <= 0 }
 func (m *MagmaCube) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b := m.n()
 	actual, ok := b.Hurt(m.Ent, m, d, s)
-	if ok && m.Dead() && b.size > 1 {
-		for i := range 2 + int(b.random.NextInt(3)) {
-			size := b.slime.ChildSize()
-			offset := float64(i)*.5 - float64(b.size)/4
-			pos := m.Position().Add(mgl64.Vec3{offset, 0, offset})
-			m.tx.AddEntity(NewMagmaCubeWithSize(world.EntitySpawnOpts{Position: pos, SpawnReason: "slime_split"}, size))
-		}
+	if ok && m.Dead() {
+		splitCube(b.ai.Mob(m.Ent, m), b.size, NewMagmaCubeWithSize)
 	}
 	return actual, ok
+}
+
+// FinalizeSpawn ports AbstractCubeMob.setSpawnSize: larger magma cubes are
+// likelier on harder local difficulties.
+func (m *MagmaCube) FinalizeSpawn(_ string, r *vanilla.Random) {
+	if r == nil || m.tx == nil {
+		return
+	}
+	b := m.n()
+	scale := r.NextInt(3)
+	if scale < 2 && r.NextFloat() < .5*m.tx.LocalDifficulty(cube.PosFromVec3(m.Position())).SpecialMultiplier() {
+		scale++
+	}
+	b.size = 1 << scale
+	maximum := float64(b.size * b.size)
+	b.health.SetMaxHealth(maximum)
+	b.health.AddHealth(maximum)
+	b.speed, b.attack = .2+.1*float64(b.size), float64(b.size)
+	m.updateState()
 }
 func NewMagmaCubeWithSize(o world.EntitySpawnOpts, size int) *world.EntityHandle {
 	return o.New(MagmaCubeType, netherConfig{kind: magmaKind, size: size})
 }
 
 // CubeSize returns the Java Slime.getSize of the magma cube.
-func (m *MagmaCube) CubeSize() int { return m.n().size }
+func (m *MagmaCube) CubeSize() int                                 { return m.n().size }
 func (m *Ghast) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
 func (m *Blaze) Heal(h float64, _ world.HealingSource) float64     { return healNether(m.n(), h) }
 func (m *MagmaCube) Heal(h float64, _ world.HealingSource) float64 { return healNether(m.n(), h) }

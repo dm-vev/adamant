@@ -31,12 +31,14 @@ type MobAI struct {
 	// NoAI stops the AI of the mob while it still moves.
 	NoAI bool
 
-	move  moveControl
-	look  lookControl
-	jump  jumpControl
-	body  bodyRotationControl
-	nav   PathNavigation
-	sense sensing
+	move moveControl
+	// moveOverride replaces move if set.
+	moveOverride mobMoveControl
+	look         lookControl
+	jump         jumpControl
+	body         bodyRotationControl
+	nav          PathNavigation
+	sense        sensing
 
 	maluses map[PathType]float64
 	random  *vanilla.Random

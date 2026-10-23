@@ -34,6 +34,20 @@ func (e *Ent) HeadYaw() float64 {
 	return e.data.Rot.Yaw()
 }
 
+// mobMoveControl is a move control that replaces the MoveControl of a mob,
+// such as the CubeMobMoveControl of slimes.
+type mobMoveControl interface {
+	tick(m *Mob)
+}
+
+// mobJumper is implemented by behaviours of mobs that override
+// LivingEntity.jumpFromGround or Mob.jumpInLiquid. Each reports false to
+// jump as other mobs do.
+type mobJumper interface {
+	jumpFromGround(m *Mob) bool
+	jumpInLiquid(m *Mob, lava bool) bool
+}
+
 // mobCustomStep is implemented by behaviours with an AI step of their own
 // after their goals, as Mob.customServerAiStep.
 type mobCustomStep interface {
@@ -119,9 +133,9 @@ func (ai *MobAI) aiStep(m *Mob) {
 		threshold := m.FluidJumpThreshold()
 		switch {
 		case inWater && !(ai.onGround && fluidHeight <= threshold):
-			ai.jumpInLiquid(m)
+			ai.jumpInLiquid(m, false)
 		case m.InLava() && !(ai.onGround && ai.lavaHeight <= threshold):
-			ai.jumpInLiquid(m)
+			ai.jumpInLiquid(m, true)
 		case (ai.onGround || inWater && fluidHeight <= threshold) && ai.noJumpDelay == 0:
 			ai.jumpFromGround(m)
 			ai.noJumpDelay = 10
@@ -147,14 +161,21 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 	if c, ok := m.Behaviour().(mobCustomStep); ok {
 		c.customServerAiStep(m)
 	}
-	ai.move.tick(m)
+	if ai.moveOverride != nil {
+		ai.moveOverride.tick(m)
+	} else {
+		ai.move.tick(m)
+	}
 	ai.look.tick(m)
 	ai.jump.tick(m)
 }
 
 // jumpInLiquid ports Mob.jumpInLiquid: mobs that float swim up slowly, the
 // others push off.
-func (ai *MobAI) jumpInLiquid(m *Mob) {
+func (ai *MobAI) jumpInLiquid(m *Mob, lava bool) {
+	if j, ok := m.Behaviour().(mobJumper); ok && j.jumpInLiquid(m, lava) {
+		return
+	}
 	if ai.nav.CanFloat() {
 		m.data.Vel[1] += .04
 	} else {
@@ -164,11 +185,19 @@ func (ai *MobAI) jumpInLiquid(m *Mob) {
 
 // jumpFromGround ports LivingEntity.jumpFromGround.
 func (ai *MobAI) jumpFromGround(m *Mob) {
-	power := ai.JumpStrength*blockJumpFactor(m) + jumpBoostPower(m)
+	if j, ok := m.Behaviour().(mobJumper); ok && j.jumpFromGround(m) {
+		return
+	}
+	power := ai.jumpPower(m)
 	if power <= 1e-5 {
 		return
 	}
 	m.data.Vel[1] = math.Max(power, m.data.Vel[1])
+}
+
+// jumpPower ports LivingEntity.getJumpPower.
+func (ai *MobAI) jumpPower(m *Mob) float64 {
+	return ai.JumpStrength*blockJumpFactor(m) + jumpBoostPower(m)
 }
 
 // jumpBoostPower ports LivingEntity.getJumpBoostPower.

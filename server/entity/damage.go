@@ -152,10 +152,20 @@ type bodyArmour interface {
 // less so the harder the hit unless the armour is tough.
 func damageAfterBodyArmour(d float64, src world.DamageSource, armour item.Stack) float64 {
 	a, ok := armour.Item().(bodyArmour)
-	if armour.Empty() || !ok || !src.ReducedByArmour() {
+	if armour.Empty() || !ok {
 		return d
 	}
-	points, toughness := float32(a.DefencePoints()), float32(2+a.Toughness()/4)
-	real := min(max(points-float32(d)/toughness, points*0.2), 20)
+	return damageAfterArmour(d, src, a.DefencePoints(), a.Toughness())
+}
+
+// damageAfterArmour ports CombatRules.getDamageAfterAbsorb: damage armour
+// reduces is lowered by its defence points, less so the harder the hit
+// unless the armour is tough.
+func damageAfterArmour(d float64, src world.DamageSource, defence, toughness float64) float64 {
+	if defence <= 0 || !src.ReducedByArmour() {
+		return d
+	}
+	points, t := float32(defence), float32(2+toughness/4)
+	real := min(max(points-float32(d)/t, points*0.2), 20)
 	return d * float64(1-real/25)
 }

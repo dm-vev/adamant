@@ -513,3 +513,81 @@ func TestMobDamageCooldown(t *testing.T) {
 		}
 	})
 }
+
+// TestSlimesHopAtPlayersAndSplit checks a slime hops to a player, hurts it
+// by its size, and splits into two to four slimes of half its size when it
+// dies, while the smallest slimes are harmless.
+func TestSlimesHopAtPlayersAndSplit(t *testing.T) {
+	for _, size := range []int{1, 4} {
+		w := aiTestWorld(t)
+		p := addAITestPlayer(w, mgl64.Vec3{6.5, 65, .5}, world.GameModeSurvival)
+		slime := addSpecies(w, entity.NewSlimeWithSize(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}, size))
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := slime.Entity(tx)
+			if l := e.(entity.Living); l.MaxHealth() != float64(size*size) {
+				t.Fatalf("slime of size %d has %v health, want %d", size, l.MaxHealth(), size*size)
+			}
+		})
+		highest := 0.0
+		lowest := lowestHealth(t, w, p, 300, func(tx *world.Tx) {
+			if e, ok := slime.Entity(tx); ok {
+				highest = max(highest, e.Position()[1])
+			}
+		})
+		if highest < 65.3 {
+			t.Fatalf("slime of size %d never hopped", size)
+		}
+		if hurt := lowest < 20; hurt != (size > 1) {
+			t.Fatalf("slime of size %d hurt the player %v (lowest health %v)", size, hurt, lowest)
+		}
+		if size == 1 {
+			continue
+		}
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := slime.Entity(tx)
+			e.(entity.Living).Hurt(100, entity.VoidDamageSource{})
+		})
+		halves := 0
+		<-w.Exec(func(tx *world.Tx) {
+			for e := range tx.Entities() {
+				if s, ok := e.(*entity.Slime); ok && s.Size() == 2 {
+					halves++
+				}
+			}
+		})
+		if halves < 2 || halves > 4 {
+			t.Fatalf("slime split into %d halves", halves)
+		}
+	}
+}
+
+// TestMagmaCubesHopHigherAndShrugOffHits checks a magma cube hops higher
+// than a slime of its size, its armour softens hits, and it splits when it
+// dies.
+func TestMagmaCubesHopHigherAndShrugOffHits(t *testing.T) {
+	w := aiTestWorld(t)
+	magma := addSpecies(w, entity.NewMagmaCubeWithSize(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}, 4))
+	slime := addSpecies(w, entity.NewSlimeWithSize(world.EntitySpawnOpts{Position: mgl64.Vec3{8.5, 65, 8.5}}, 4))
+	magmaTop, slimeTop := 0.0, 0.0
+	for range 400 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := magma.Entity(tx); ok {
+				magmaTop = max(magmaTop, e.Position()[1])
+			}
+			if e, ok := slime.Entity(tx); ok {
+				slimeTop = max(slimeTop, e.Position()[1])
+			}
+		})
+	}
+	if magmaTop <= slimeTop || slimeTop < 65.5 {
+		t.Fatalf("magma cube hopped to %.2f, slime to %.2f", magmaTop, slimeTop)
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := magma.Entity(tx)
+		l := e.(entity.Living)
+		if dealt, _ := l.Hurt(5, entity.AttackDamageSource{}); dealt >= 5 {
+			t.Fatalf("magma cube took %v of 5 damage through its armour", dealt)
+		}
+	})
+}
