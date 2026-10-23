@@ -1,14 +1,10 @@
 package entity
 
 import (
-	"math"
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -29,11 +25,11 @@ type polarBearState struct {
 	age, cooldown  int
 	standing, dead bool
 	speed          float64
-	next           int
-	navigator      Navigator
-	mc             *MovementComputer
-	panic          panicState
-	parent         followParentGoal
+	ai             MobAI
+	panic          *PanicGoal
+	neutralAnger
+	warningSoundTicks int
+	shownStanding     bool
 }
 
 func NewPolarBear(o world.EntitySpawnOpts) *world.EntityHandle {
@@ -62,7 +58,7 @@ func (c PolarBearConfig) New() *polarBearState {
 	if h <= 0 {
 		h = m
 	}
-	return &polarBearState{health: NewHealthManager(h, m), effects: NewEffectManager(), age: c.Age, cooldown: c.AttackCooldown, standing: c.Standing, speed: .25, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &polarBearState{health: NewHealthManager(h, m), effects: NewEffectManager(), age: c.Age, cooldown: c.AttackCooldown, standing: c.Standing, speed: .25}
 }
 func (polarBearType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	s := ReadNativeMobJavaState(n)
@@ -88,139 +84,53 @@ func (s *polarBearState) Tick(e *Ent, tx *world.Tx) *Movement {
 	if s.age < 0 {
 		s.age = min(0, s.age+1)
 	}
-	if s.cooldown > 0 {
-		s.cooldown--
+	ai := &s.ai
+	ai.MovementSpeed, ai.EyeHeight = s.speed, 1.19
+	if s.age < 0 {
+		ai.EyeHeight = .595
 	}
-	// Cubs panic from any danger, adults only from fire and other hazards.
-	s.panic.environmental = s.age >= 0
-	if s.panic.run(e, tx, &s.navigator) {
-		s.standing = false
-		if waypoint, ok := s.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
-			p.moveTowardAt(waypoint, groundSpeed(.25, 2))
-		}
-	} else if target := nearestPolarBearTarget(e, tx); target != nil {
-		dist := target.Position().Sub(e.Position()).Len()
-		cubNearby := false
-		if s.age >= 0 {
-			area := cube.Box(-16, -6, -16, 16, 6, 16).Translate(e.Position())
-			for other := range tx.EntitiesWithin(area) {
-				if bear, ok := other.(*PolarBear); ok && bear.b().age < 0 {
-					cubNearby = true
-					break
-				}
-			}
-		}
-		if dist < 1.8 && s.cooldown == 0 {
-			if l, ok := target.(Living); ok {
-				l.Hurt(6, AttackDamageSource{Attacker: p})
-			}
-			s.cooldown = 20
-			s.standing = false
-			tx.PlaySound(p.Position(), sound.Custom{Name: "entity.polar_bear.warning", Volume: 1, Pitch: 1})
-		} else if dist < 12 && (cubNearby || s.age < 0) {
-			s.standing = true
-			start, goal := cube.PosFromVec3(e.Position()), cube.PosFromVec3(target.Position())
-			s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
-			if waypoint, ok := s.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
-				p.moveToward(waypoint)
-			}
-		}
-	} else if parent, ok := s.parent.next(e, tx, p, parentRange{}.orDefault()); ok {
-		// FollowParentGoal: cubs keep close to adults at 1.25 times their
-		// speed.
-		s.standing = false
-		s.parent.follow(e, tx, &s.navigator, parent)
-		if waypoint, ok := s.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
-			p.moveTowardAt(waypoint, groundSpeed(.25, 1.25))
-		}
-	} else {
-		s.standing = false
-		if s.next > 0 {
-			s.next--
-		}
-		if s.navigator.Index >= len(s.navigator.Path) && s.next == 0 {
-			s.next = 40 + rand.IntN(81)
-			start := cube.PosFromVec3(e.Position())
-			for range 4 {
-				goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-				if s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-					break
-				}
-			}
-		}
-		if waypoint, ok := s.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
-			p.moveToward(waypoint)
-		}
+	mv := ai.Tick(e, p, s.registerGoals)
+	// PolarBear.tick: the growl cools down and the anger runs out.
+	if s.warningSoundTicks > 0 {
+		s.warningSoundTicks--
 	}
-	m := s.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
+	if !s.dead {
+		s.updatePersistentAnger(ai.Mob(e, p), true)
+	}
+	if s.standing != s.shownStanding {
+		s.shownStanding = s.standing
+		p.updateState()
+	}
+	return mv
 }
 
 // ageTicks returns the age of the polar bear, negative for cubs.
 func (p *PolarBear) ageTicks() *int { return &p.b().age }
 
-func (p *PolarBear) moveToward(pos mgl64.Vec3) { p.moveTowardAt(pos, p.b().speed) }
+// Standing reports if the polar bear rears up to swipe.
+func (p *PolarBear) Standing() bool { return p.b().standing }
 
-func (p *PolarBear) moveTowardAt(pos mgl64.Vec3, speed float64) {
-	d := pos.Sub(p.Position())
-	d[1] = 0
-	if d.Len() == 0 {
-		return
-	}
-	d = d.Normalize()
-	v := p.Velocity()
-	v[0], v[2] = d[0]*speed, d[2]*speed
-	p.SetVelocity(v)
-	r := p.Rotation()
-	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	p.data.Rot = r
-}
-func nearestPolarBearTarget(e *Ent, tx *world.Tx) world.Entity {
-	if e.Behaviour().(*polarBearState).age < 0 {
-		return nil
-	}
-	area := cube.Box(-16, -6, -16, 16, 6, 16).Translate(e.Position())
-	cubNearby := false
-	for other := range tx.EntitiesWithin(area) {
-		if bear, ok := other.(*PolarBear); ok && bear.b().age < 0 {
-			cubNearby = true
-			break
-		}
-	}
-	var found world.Entity
-	best := 16.0
-	for other := range tx.EntitiesWithin(area) {
-		id := other.H().Type().EncodeEntity()
-		if id == "minecraft:player" && !cubNearby {
-			continue
-		}
-		if id != "minecraft:player" && id != "minecraft:fox" {
-			continue
-		}
-		if l, ok := other.(Living); !ok || l.Dead() {
-			continue
-		}
-		d := other.Position().Sub(e.Position()).Len()
-		if d < best {
-			found, best = other, d
-		}
-	}
-	return found
-}
 func (p *PolarBear) Health() float64        { return p.b().health.Health() }
 func (p *PolarBear) MaxHealth() float64     { return p.b().health.MaxHealth() }
 func (p *PolarBear) SetMaxHealth(v float64) { p.b().health.SetMaxHealth(v) }
 func (p *PolarBear) Dead() bool             { return p.b().dead || p.Health() <= 0 }
 
 // Panicking reports whether the polar bear runs from danger.
-func (p *PolarBear) Panicking() bool { return p.b().panic.active }
+func (p *PolarBear) Panicking() bool { s := p.b(); return s.panic != nil && s.panic.running }
 func (p *PolarBear) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() || d <= 0 {
 		return 0, false
 	}
-	p.b().health.AddHealth(-d)
-	p.b().panic.hurt(src, p.tx.CurrentTick())
+	s := p.b()
+	d, ok := s.ai.DamageCooldown(p.tx, d)
+	if !ok {
+		return 0, false
+	}
+	if r, ok := s.effects.Effect(effect.Resistance); ok {
+		d *= effect.Resistance.Multiplier(src, r.Level())
+	}
+	s.health.AddHealth(-d)
+	s.ai.Hurt(src)
 	p.view(HurtAction{})
 	onMobHurt(p.tx, p)
 	if p.Dead() {

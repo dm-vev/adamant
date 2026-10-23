@@ -281,6 +281,9 @@ type MeleeAttackGoal struct {
 	// OnTick runs after every tick of the goal, as ZombieAttackGoal raises
 	// the arms of a zombie.
 	OnTick func(m *Mob, g *MeleeAttackGoal)
+	// CheckAttack, if set, replaces checkAndPerformAttack, as goals that
+	// override it do.
+	CheckAttack func(m *Mob, g *MeleeAttackGoal, target world.Entity)
 
 	path                     *mobPath
 	pathedTarget             mgl64.Vec3
@@ -369,11 +372,21 @@ func (g *MeleeAttackGoal) Tick(m *Mob) {
 }
 
 func (g *MeleeAttackGoal) checkAndPerformAttack(m *Mob, target world.Entity) {
-	if g.ticksUntilNextAttack <= 0 && m.WithinMeleeAttackRange(target) && m.HasLineOfSight(target) {
+	if g.CheckAttack != nil {
+		g.CheckAttack(m, g, target)
+		return
+	}
+	if g.CanPerformAttack(m, target) {
 		g.ResetAttackCooldown()
 		m.swing()
 		m.doHurtTarget(target)
 	}
+}
+
+// CanPerformAttack ports MeleeAttackGoal.canPerformAttack: the attack is
+// ready and the target in reach and sight.
+func (g *MeleeAttackGoal) CanPerformAttack(m *Mob, target world.Entity) bool {
+	return g.ticksUntilNextAttack <= 0 && m.WithinMeleeAttackRange(target) && m.HasLineOfSight(target)
 }
 
 // ResetAttackCooldown waits 20 ticks for the next attack.

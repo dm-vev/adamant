@@ -125,8 +125,14 @@ func TestBabiesFollowAdults(t *testing.T) {
 				w.AdvanceTick()
 			}
 			<-w.Exec(func(tx *world.Tx) {
+				// The baby appears seven blocks from where the adult strolled
+				// to, within the eight blocks FollowParentGoal looks.
 				pos := entityPos(tx, adult)
-				baby = spawnAnimal(t, tx, id, pos[0]+7, map[string]any{"Age": int32(-24000)})
+				h, err := entity.NewFromStructureNBT(map[string]any{"id": id, "Age": int32(-24000)}, world.EntitySpawnOpts{Position: mgl64.Vec3{pos[0] + 7, 64, pos[2]}, SpawnFinalized: true})
+				if err != nil {
+					t.Fatal(err)
+				}
+				baby = tx.AddEntity(h).H()
 			})
 			closest := 100.0
 			for range 100 {

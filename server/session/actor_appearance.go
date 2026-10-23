@@ -124,6 +124,10 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		if e.Crouching() {
 			setActorFlag(m, protocol.EntityDataFlagSneaking)
 		}
+	case *entity.PolarBear:
+		if e.Standing() {
+			setActorFlag(m, protocol.EntityDataFlagStanding)
+		}
 	case *entity.Ocelot:
 		if e.Trusting() {
 			setActorFlag(m, protocol.EntityDataFlagTrusting)

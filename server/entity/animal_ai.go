@@ -332,7 +332,10 @@ func NewFollowParentGoal(speedModifier float64) *FollowParentGoal {
 	return &FollowParentGoal{SpeedModifier: speedModifier, MinDist: 3, MaxDist: 16}
 }
 
-func (g *FollowParentGoal) baby(m *Mob) bool { return *m.Self.(breeder).ageTicks() < 0 }
+// ageable is implemented by mobs that grow up, as Java's AgeableMob.
+type ageable interface{ ageTicks() *int }
+
+func (g *FollowParentGoal) baby(m *Mob) bool { return *m.Self.(ageable).ageTicks() < 0 }
 
 func (g *FollowParentGoal) CanUse(m *Mob) bool {
 	if !g.baby(m) {
@@ -346,7 +349,7 @@ func (g *FollowParentGoal) CanUse(m *Mob) bool {
 		search = mgl64.Vec3{g.MaxDist - 1, g.MaxDist - 1, g.MaxDist - 1}
 	}
 	for e := range m.tx.EntitiesWithin(m.BBox().GrowVec3(search)) {
-		p, ok := e.(breeder)
+		p, ok := e.(ageable)
 		if !ok || e.H().Type() != m.H().Type() || *p.ageTicks() < 0 {
 			continue
 		}
