@@ -516,6 +516,12 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 	e.data.Age = time.Duration(readInt16(m, "Age")) * (time.Second / 20)
 	e.data.FireDuration = time.Duration(readInt16(m, "Fire")) * time.Second / 20
 	e.data.Name, _ = m["NameTag"].(string)
+	if name, ok := m["CustomName"].(string); ok && e.data.Name == "" {
+		e.data.Name = name
+		if visible, ok := m["CustomNameVisible"].(uint8); ok {
+			e.data.AlwaysShowNameTag = visible != 0
+		}
+	}
 	if javaData, ok := m["adamant:java"].(map[string]any); ok {
 		e.data.SpawnReason, _ = javaData["SpawnReason"].(string)
 		if words, ok := javaData["UUID"].([]int32); ok && len(words) == 4 {
@@ -539,14 +545,25 @@ func (e *EntityHandle) decodeNBT(m map[string]any) {
 // name tag of an entity.
 func (e *EntityHandle) encodeNBT() map[string]any {
 	data := MergeNativeEntityNBT(e.data.NativeNBT, map[string]any{
-		"Pos":     []float32{float32(e.data.Pos[0]), float32(e.data.Pos[1]), float32(e.data.Pos[2])},
-		"Motion":  []float32{float32(e.data.Vel[0]), float32(e.data.Vel[1]), float32(e.data.Vel[2])},
-		"Yaw":     float32(e.data.Rot[0]),
-		"Pitch":   float32(e.data.Rot[1]),
-		"Fire":    int16(e.data.FireDuration.Seconds() * 20),
-		"Age":     int16(min(e.data.Age/(time.Second/20), math.MaxInt16)),
-		"NameTag": e.data.Name,
+		"Pos":    []float32{float32(e.data.Pos[0]), float32(e.data.Pos[1]), float32(e.data.Pos[2])},
+		"Motion": []float32{float32(e.data.Vel[0]), float32(e.data.Vel[1]), float32(e.data.Vel[2])},
+		// BDS saves the rotation as a list; Yaw and Pitch are kept for
+		// earlier Adamant versions.
+		"Rotation": []float32{float32(e.data.Rot[0]), float32(e.data.Rot[1])},
+		"Yaw":      float32(e.data.Rot[0]),
+		"Pitch":    float32(e.data.Rot[1]),
+		"Fire":     int16(e.data.FireDuration.Seconds() * 20),
+		"Age":      int16(min(e.data.Age/(time.Second/20), math.MaxInt16)),
+		"NameTag":  e.data.Name,
 	})
+	if e.data.Name != "" {
+		// The name as BDS saves it.
+		data["CustomName"] = e.data.Name
+		data["CustomNameVisible"] = uint8(0)
+		if e.data.AlwaysShowNameTag {
+			data["CustomNameVisible"] = uint8(1)
+		}
+	}
 	if e.data.SpawnReason != "" || binary.BigEndian.Uint64(e.id[:8]) != 0 || e.data.Riding != nil || e.pendingVehicle != uuid.Nil || data["adamant:java"] != nil {
 		javaData, _ := data["adamant:java"].(map[string]any)
 		javaData = CloneNativeEntityNBT(javaData)
@@ -890,7 +907,21 @@ func readFloat32(m map[string]any, k string) float32 {
 	return v
 }
 
+// readRotation reads the rotation BDS saves as a list of yaw and pitch, or
+// the Yaw and Pitch earlier Adamant versions saved.
 func readRotation(m map[string]any) cube.Rotation {
+	switch r := m["Rotation"].(type) {
+	case []float32:
+		if len(r) == 2 {
+			return cube.Rotation{float64(r[0]), float64(r[1])}
+		}
+	case []any:
+		if len(r) == 2 {
+			yaw, _ := r[0].(float32)
+			pitch, _ := r[1].(float32)
+			return cube.Rotation{float64(yaw), float64(pitch)}
+		}
+	}
 	return cube.Rotation{float64(readFloat32(m, "Yaw")), float64(readFloat32(m, "Pitch"))}
 }
 

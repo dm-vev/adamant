@@ -20,7 +20,7 @@ func encodeSpeciesNative(k speciesKind, data *world.EntityData) map[string]any {
 			nbt["ignited"] = byte(0)
 		}
 	case slimeSpecies:
-		nbt["Size"] = int32(s.size - 1)
+		nbt["Size"] = uint8(s.size - 1)
 	}
 	return nbt
 }

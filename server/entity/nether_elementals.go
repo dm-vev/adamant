@@ -119,7 +119,8 @@ func decodeNether(k netherKind, n map[string]any, d *world.EntityData) {
 	case ghastKind:
 		c.charge = int(nbtconv.Int32(n, "ExplosionPower"))
 	case magmaKind:
-		c.size = int(nbtconv.Int32(n, "Size")) + 1
+		size, _ := nbtconv.Integer(n, "Size")
+		c.size = int(size) + 1
 	}
 	d.NativeNBT = CloneNativeMobNBT(n)
 	c.Apply(d)
@@ -134,12 +135,13 @@ func encodeNether(k netherKind, d *world.EntityData) map[string]any {
 		maxHP, speed, attack = float64(s.size*s.size), .2+.1*float64(s.size), float64(s.size)
 	}
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: maxHP, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHP, Min: 0, Max: maxHP}, {Name: "minecraft:movement", Base: speed, Current: s.speed, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}, {Name: "minecraft:attack_damage", Base: attack, Current: attack, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048}})
-	n := map[string]any{"identifier": speciesIDNether(k), "Pos": []any{d.Pos[0], d.Pos[1], d.Pos[2]}, "Rotation": []any{d.Rot[0], d.Rot[1]}, "Motion": []any{d.Vel[0], d.Vel[1], d.Vel[2]}, "Attributes": attrs}
+	// BDS saves positions, rotations and motion as floats.
+	n := map[string]any{"identifier": speciesIDNether(k), "Pos": []float32{float32(d.Pos[0]), float32(d.Pos[1]), float32(d.Pos[2])}, "Rotation": []float32{float32(d.Rot[0]), float32(d.Rot[1])}, "Motion": []float32{float32(d.Vel[0]), float32(d.Vel[1]), float32(d.Vel[2])}, "Attributes": attrs}
 	switch k {
 	case ghastKind:
 		n["ExplosionPower"] = int32(s.charge)
 	case magmaKind:
-		n["Size"] = int32(s.size - 1)
+		n["Size"] = uint8(s.size - 1)
 	}
 	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.charge), "JumpDelay": int32(s.slime.JumpDelay)})
 }

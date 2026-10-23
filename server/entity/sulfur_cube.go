@@ -45,7 +45,8 @@ func (sulfurCubeType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-width, 0, -width, width, float64(size)*.49, width)
 }
 func (sulfurCubeType) DecodeNBT(m map[string]any, data *world.EntityData) {
-	c := SulfurCubeBehaviourConfig{Size: int(nbtconv.Int32(m, "Size")) + 1, Age: int(nbtconv.Int32(m, "Age")), PickupTimer: int(nbtconv.Int32(m, "pickup_timer")), Fuse: int(nbtconv.Int32(m, "fuse")), FromBucket: nbtconv.Bool(m, "from_bucket") || nbtconv.Bool(m, "FromBucket")}
+	size, _ := nbtconv.Integer(m, "Size")
+	c := SulfurCubeBehaviourConfig{Size: int(size) + 1, Age: int(nbtconv.Int32(m, "Age")), PickupTimer: int(nbtconv.Int32(m, "pickup_timer")), Fuse: int(nbtconv.Int32(m, "fuse")), FromBucket: nbtconv.Bool(m, "from_bucket") || nbtconv.Bool(m, "FromBucket")}
 	if c.Size < 1 {
 		c.Size = 1
 	}
@@ -63,7 +64,7 @@ func (sulfurCubeType) DecodeNBT(m map[string]any, data *world.EntityData) {
 }
 func (sulfurCubeType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*SulfurCubeBehaviour)
-	m := map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Size": int32(b.size - 1), "Age": int32(b.age), "pickup_timer": int32(b.pickupTimer), "fuse": int32(b.fuse)}
+	m := map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Size": uint8(b.size - 1), "Age": int32(b.age), "pickup_timer": int32(b.pickupTimer), "fuse": int32(b.fuse)}
 	if b.fromBucket {
 		m["from_bucket"] = byte(1)
 	}
