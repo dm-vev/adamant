@@ -35,13 +35,14 @@ type MobAI struct {
 	NoGravity, NoPhysics bool
 
 	move moveControl
-	// moveOverride replaces move if set.
-	moveOverride mobMoveControl
-	look         lookControl
-	jump         jumpControl
-	body         bodyRotationControl
-	nav          PathNavigation
-	sense        sensing
+	// moveOverride, lookOverride and bodyOverride replace move, look and
+	// body if set.
+	moveOverride, lookOverride, bodyOverride mobMoveControl
+	look                                     lookControl
+	jump                                     jumpControl
+	body                                     bodyRotationControl
+	nav                                      PathNavigation
+	sense                                    sensing
 
 	maluses map[PathType]float64
 	random  *vanilla.Random

@@ -909,3 +909,20 @@ func TestWitchDrinksAndResistsMagic(t *testing.T) {
 		t.Fatal("burning witch drank no fire resistance")
 	}
 }
+
+// TestPhantomSwoopsAtPlayers checks a phantom circling above a player
+// swoops down and bites it, unless a cat is near.
+func TestPhantomSwoopsAtPlayers(t *testing.T) {
+	for _, cat := range []bool{false, true} {
+		w := aiTestWorld(t)
+		p := addAITestPlayer(w, mgl64.Vec3{.5, 65, .5}, world.GameModeSurvival)
+		if cat {
+			addSpecies(w, entity.NewCat(world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 65, .5}}))
+		}
+		addSpecies(w, entity.NewPhantom(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 80, .5}, SpawnReason: "natural"}))
+		lowest := lowestHealth(t, w, p, 800, nil)
+		if bitten := lowest < 20; bitten == cat {
+			t.Fatalf("phantom bit the player %v with a cat near %v, lowest health %v", bitten, cat, lowest)
+		}
+	}
+}

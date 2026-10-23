@@ -8,10 +8,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -209,6 +210,12 @@ type Cat struct{ *Ent }
 func NewCat(opts world.EntitySpawnOpts) *world.EntityHandle {
 	return opts.New(CatType, CatBehaviourConfig{})
 }
+
+// Hiss makes the cat hiss, as cats hiss at phantoms that come near.
+func (c *Cat) Hiss(tx *world.Tx) {
+	tx.PlaySound(c.Position(), sound.Custom{Name: "entity.cat.hiss", Volume: 1, Pitch: 1})
+}
+
 func (c *Cat) SpeciesType() world.EntityType { return CatType }
 func (c *Cat) b() *CatBehaviour              { return c.Behaviour().(*CatBehaviour) }
 func (c *Cat) Tick(tx *world.Tx, n int64)    { c.b().effects.Tick(c, tx); c.Ent.Tick(tx, n) }
@@ -357,7 +364,7 @@ func (c *Cat) SetVariant(v int) {
 func (c *Cat) CollarColor() uint8     { return c.b().collarColor }
 func (c *Cat) SetCollarColor(v uint8) { c.b().collarColor = v % 16; c.updateState() }
 func (c *Cat) Sitting() bool          { return c.b().sitting }
-func (c *Cat) moveFlagHeld() bool   { return c.b().sitting }
+func (c *Cat) moveFlagHeld() bool     { return c.b().sitting }
 func (c *Cat) SetSitting(v bool)      { c.b().sitting = v; c.b().navigator.Path = nil; c.updateState() }
 
 // TameWithFish makes the Java one-in-three fish-taming roll and records the owner.

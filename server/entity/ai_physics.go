@@ -99,7 +99,11 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 		return ai.riderMovement(m, prevPos, prevRot, prevHead)
 	}
 	ai.aiStep(m)
-	ai.body.tick(m)
+	if ai.bodyOverride != nil {
+		ai.bodyOverride.tick(m)
+	} else {
+		ai.body.tick(m)
+	}
 	return newMobMovement(m, prevPos, prevVel, prevRot, prevHead)
 }
 
@@ -179,7 +183,11 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 	} else {
 		ai.move.tick(m)
 	}
-	ai.look.tick(m)
+	if ai.lookOverride != nil {
+		ai.lookOverride.tick(m)
+	} else {
+		ai.look.tick(m)
+	}
 	ai.jump.tick(m)
 }
 

@@ -416,12 +416,13 @@ type phantomState struct {
 	random       vanilla.Random
 	size, attack int
 	target       int64
-	orbit        float64
-	cooldown     int
-	sunTicks     int
 	anchor       mgl64.Vec3
 	anchorSet    bool
 	dead         bool
+
+	ai         MobAI
+	phase      phantomPhase
+	moveTarget mgl64.Vec3
 }
 type Phantom struct{ *Ent }
 
@@ -469,90 +470,21 @@ func (p *Phantom) viewAction(a world.EntityAction) {
 }
 func (p *Phantom) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	s := p.state()
-	s.anchor = p.Position().Add(mgl64.Vec3{0, 5, 0})
+	s.anchor = cube.PosFromVec3(p.Position()).Add(cube.Pos{0, 5, 0}).Vec3()
 	s.anchorSet = true
 }
-func (s *phantomState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if s.cooldown > 0 {
-		s.cooldown--
-	}
-	pos := cube.PosFromVec3(e.Position())
-	if tx.World().Time()%24000 < 12000 && tx.SkyLight(pos) >= 12 {
-		s.sunTicks++
-		if s.sunTicks >= 20 {
-			if flammable, ok := any(&Phantom{Ent: e}).(Flammable); ok {
-				flammable.SetOnFire(time.Second * 8)
-			}
-			s.sunTicks = 0
-		}
-	} else {
-		s.sunTicks = 0
-	}
-	var target world.Entity
-	best := math.MaxFloat64
-	for candidate := range tx.EntitiesWithin(cube.Box(-32, -24, -32, 32, 24, 32).Translate(e.Position())) {
-		id := candidate.H().Type().EncodeEntity()
-		if id == "minecraft:cat" {
-			delta := e.Position().Sub(candidate.Position())
-			if delta.LenSqr() < 256 && delta.LenSqr() > 0 {
-				away := delta.Normalize().Mul(16)
-				return s.circle(e, tx, e.Position().Add(away))
-			}
-			continue
-		}
-		if id != "minecraft:player" || math.Abs(candidate.Position()[1]-e.Position()[1]) > 24 {
-			continue
-		}
-		dist := candidate.Position().Sub(e.Position()).LenSqr()
-		if dist < best && dist < 4096 {
-			target, best = candidate, dist
-		}
-	}
-	if target == nil {
-		anchor := e.Position().Add(mgl64.Vec3{0, 3, 0})
-		if s.anchorSet {
-			anchor = s.anchor.Add(mgl64.Vec3{math.Cos(s.orbit) * 5, 0, math.Sin(s.orbit) * 5})
-			s.orbit += .05
-		}
-		return s.circle(e, tx, anchor)
-	}
-	id := target.H().UUID()
-	s.target = int64(binary.LittleEndian.Uint64(id[8:]))
-	d := target.Position().Sub(e.Position())
-	flat := math.Hypot(d[0], d[2])
-	if flat < 4 && math.Abs(d[1]) < 2 && s.cooldown == 0 {
-		s.attack = 10
-		s.cooldown = 40
-		if living, ok := target.(Living); ok {
-			living.Hurt(float64(6+s.size), AttackDamageSource{Attacker: &Phantom{Ent: e}})
-		}
-		tx.PlaySound(e.Position(), sound.Custom{Name: "entity.phantom.bite", Volume: 1, Pitch: 1})
-		return s.circle(e, tx, e.Position().Add(mgl64.Vec3{0, 6, 0}))
-	}
-	if flat < 12 {
-		s.orbit += .09
-		return s.circle(e, tx, target.Position().Add(mgl64.Vec3{math.Cos(s.orbit) * 12, 4, math.Sin(s.orbit) * 12}))
-	}
-	return s.circle(e, tx, target.Position().Add(mgl64.Vec3{0, 5, 0}))
-}
-func (s *phantomState) circle(e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
-	d := p.Sub(e.Position())
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.Velocity().Mul(.8).Add(d.Mul(.1))
-	rot := e.Rotation()
-	rot[0] = math.Atan2(-v[0], v[2]) * 180 / math.Pi
-	m := s.mc.TickMovement(e, e.Position(), v, e.Rotation(), rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
+func (s *phantomState) Tick(e *Ent, tx *world.Tx) *Movement { return s.aiTick(e, tx) }
 func (p *Phantom) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() || d <= 0 {
 		return 0, false
 	}
 	s := p.state()
+	d, ok := s.ai.DamageCooldown(p.tx, d)
+	if !ok {
+		return 0, false
+	}
 	s.health.AddHealth(-d)
+	s.ai.Hurt(src)
 	p.viewAction(HurtAction{})
 	onMobHurt(p.tx, p)
 	if p.Dead() {
