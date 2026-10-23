@@ -549,6 +549,10 @@ func floatEqual(a, b float64) bool { return math.Abs(b-a) < 1e-5 }
 func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
 	box := m.BBox()
 	step := ai.StepHeight
+	if ai.ridden {
+		// LivingEntity.getMaxUpStep: a mob a player steers steps up a block.
+		step = math.Max(step, 1)
+	}
 	colliders := blockBBoxsAround(m.tx, box.Extend(movement).Extend(mgl64.Vec3{0, step}))
 	defer func() {
 		if colliders != nil {

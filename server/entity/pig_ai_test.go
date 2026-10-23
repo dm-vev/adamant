@@ -124,3 +124,27 @@ func TestCarrotsOnSticksBreakIntoFishingRods(t *testing.T) {
 		}
 	})
 }
+
+// TestSteeredPigsStepUpBlocks checks LivingEntity.getMaxUpStep: a pig a
+// player steers walks up a block one high, which it could not on its own.
+func TestSteeredPigsStepUpBlocks(t *testing.T) {
+	w, pig, _ := ridePig(t, item.CarrotOnAStick{}, -90)
+	<-w.Exec(func(tx *world.Tx) {
+		for x := 3; x <= 30; x++ {
+			for z := -3; z <= 3; z++ {
+				tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+			}
+		}
+	})
+	stepped := false
+	for range 100 {
+		stepWorld(t, w, 1)
+		if pos := aiEntityPos(w, pig); pos[0] > 4 && pos[1] > 64.99 {
+			stepped = true
+			break
+		}
+	}
+	if !stepped {
+		t.Fatal("steered pig did not walk up onto a step one block high")
+	}
+}
