@@ -289,6 +289,19 @@ func (ai *MobAI) travel(m *Mob, input mgl64.Vec3) {
 	ai.travelInAir(m, input)
 }
 
+// travelRidden ports the travel of LivingEntity.travelRidden: a mob a
+// player steers moves by the input at the speed passed, and at a tenth of
+// it in the air.
+func (ai *MobAI) travelRidden(m *Mob, input mgl64.Vec3, speed float64) {
+	ai.speed, ai.ridden = speed, true
+	if m.InLiquid() {
+		ai.travelInFluid(m, input)
+	} else {
+		ai.travelInAir(m, input)
+	}
+	ai.ridden = false
+}
+
 // travelFlying ports LivingEntity.travelFlying: the mob moves by input
 // without gravity, slowed down by the medium it flies in.
 func (ai *MobAI) travelFlying(m *Mob, input mgl64.Vec3, waterSpeed, lavaSpeed, airSpeed float64) {
@@ -332,9 +345,14 @@ func (ai *MobAI) travelInAir(m *Mob, input mgl64.Vec3) {
 	m.data.Vel = mgl64.Vec3{v[0] * friction * .91, v[1] * .98, v[2] * friction * .91}
 }
 
-// flyingSpeed ports LivingEntity.getFlyingSpeed for a mob without a player
-// riding it.
-func (ai *MobAI) flyingSpeed() float64 { return .02 }
+// flyingSpeed ports LivingEntity.getFlyingSpeed: a mob a player steers
+// keeps a tenth of its speed in the air.
+func (ai *MobAI) flyingSpeed() float64 {
+	if ai.ridden {
+		return ai.speed * .1
+	}
+	return .02
+}
 
 // effectiveGravity ports LivingEntity.getEffectiveGravity: slow falling
 // eases falls.

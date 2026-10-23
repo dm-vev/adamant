@@ -69,9 +69,10 @@ type MobAI struct {
 	hurtTick     int64
 	lastHurt     float64
 
-	// The movement state of the LivingEntity.
+	// The movement state of the LivingEntity, with ridden set while a
+	// player steers the mob.
 	xxa, yya, zza, speed float64
-	jumping              bool
+	jumping, ridden      bool
 	noJumpDelay          int
 	headYaw, bodyYaw     float64
 	prevPos              mgl64.Vec3

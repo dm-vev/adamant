@@ -33,6 +33,7 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 		{"minecraft:mooshroom", item.Wheat{}},
 		{"minecraft:sheep", item.Wheat{}},
 		{"minecraft:pig", block.Carrot{}},
+		{"minecraft:pig", item.CarrotOnAStick{}},
 		{"minecraft:chicken", block.WheatSeeds{}},
 		{"minecraft:horse", item.GoldenCarrot{}},
 		{"minecraft:llama", block.HayBale{}},

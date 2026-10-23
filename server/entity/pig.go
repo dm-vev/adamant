@@ -97,7 +97,7 @@ func (c PigConfig) New() *PigBehaviour {
 	if sv != "big" && sv != "mini" {
 		sv = "classic"
 	}
-	return &PigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &PigBehaviour{health: c.Health, maxHealth: c.MaxHealth, age: c.Age, saddled: c.Saddled, variant: max(0, min(c.Variant, 2)), soundVariant: sv, speed: .25, effects: NewEffectManager()}
 }
 
 // Pig is a concrete passive pig with growth, saddle and ridden steering state.
@@ -108,12 +108,15 @@ type PigBehaviour struct {
 	age, variant      int
 	soundVariant      string
 	saddled, dead     bool
-	speed, steer      float64
+	speed             float64
 	passenger         *world.EntityHandle
 	lastLightningBolt string
-	mc                *MovementComputer
 	breeding          breeding
-	goals             animalGoals
+	animalAI
+	// The ItemBasedSteering of the pig: boostTime counts up to
+	// boostTimeTotal while boosting.
+	boosting                  bool
+	boostTime, boostTimeTotal int
 }
 
 func (p *PigBehaviour) Variant() int32 { return int32(p.variant) }
@@ -144,19 +147,86 @@ func (p *Pig) Tick(tx *world.Tx, t int64) {
 }
 func (b *PigBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	pig := &Pig{Ent: e}
-	vel, rot := b.goals.tick(e, tx, pig, animalGoalSpec{speed: b.speed, panic: 1.25, breed: 1, tempt: 1.2, tempting: pig.tempting, parent: 1.1, stroll: 1, reach: .9})
-	if b.steer != 0 {
-		rot = e.data.Rot
-		rot[0] += b.steer * 4
-		d := rot.Vec3()
-		vel[0], vel[2] = d[0]*b.speed, d[2]*b.speed
-	}
-	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(.765, b.age < 0)
+	return animalTick(e, tx, pig, &b.animalAI, func(m *Mob) { b.registerGoals(m, pig) })
 }
 
-// tempting ports the two TemptGoals of Pig: a carrot on a stick or pig food.
-func (p *Pig) tempting(stack item.Stack) bool {
-	return itemNamed(stack, "minecraft:carrot_on_a_stick") || p.breedingFood(stack)
+// registerGoals ports Pig.registerGoals: a pig follows players holding a
+// carrot on a stick as it follows those holding its food.
+func (b *PigBehaviour) registerGoals(m *Mob, pig *Pig) {
+	ai := m.AI
+	b.panic = NewPanicGoal(1.25)
+	ai.Goals.Add(0, NewFloatGoal(m))
+	ai.Goals.Add(1, b.panic)
+	ai.Goals.Add(3, NewBreedGoal(1))
+	ai.Goals.Add(4, NewTemptGoal(1.2, func(s item.Stack) bool { return itemNamed(s, "minecraft:carrot_on_a_stick") }, false))
+	ai.Goals.Add(4, NewTemptGoal(1.2, pig.breedingFood, false))
+	ai.Goals.Add(5, NewFollowParentGoal(1.1))
+	ai.Goals.Add(6, NewWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(7, NewLookAtPlayerGoal(6))
+	ai.Goals.Add(8, NewRandomLookAroundGoal())
+}
+
+// travel ports LivingEntity.travelRidden for a pig a player steers with a
+// carrot on a stick: Pig.tickRidden turns the pig the way the player looks,
+// and the pig walks forward at 0.225 times its speed, faster while boosted.
+func (b *PigBehaviour) travel(m *Mob, _ mgl64.Vec3) bool {
+	c := (&Pig{Ent: m.Ent}).controller(m.tx)
+	if c == nil || !m.Alive() {
+		return false
+	}
+	rot := c.Rotation()
+	m.data.Rot = cube.Rotation{rot.Yaw(), rot.Pitch() * .5}
+	m.AI.headYaw, m.AI.bodyYaw = rot.Yaw(), rot.Yaw()
+	if b.boosting {
+		if b.boostTime++; b.boostTime-1 > b.boostTimeTotal {
+			b.boosting = false
+		}
+	}
+	m.AI.travelRidden(m, mgl64.Vec3{0, 0, 1}, b.speed*.225*b.boostFactor())
+	return true
+}
+
+// boostFactor ports ItemBasedSteering.boostFactor.
+func (b *PigBehaviour) boostFactor() float64 {
+	if !b.boosting {
+		return 1
+	}
+	return 1 + 1.15*float64(vanilla.Sin(float64(float32(b.boostTime)/float32(b.boostTimeTotal)*math.Pi)))
+}
+
+// Boost ports Pig.boost: a carrot on a stick used by the player steering
+// the pig boosts it for 7 to 49 seconds, unless it is boosted already.
+func (p *Pig) Boost(_ *world.Tx, rider item.User) bool {
+	b := p.behaviour()
+	if b.boosting || p.controller(p.tx) == nil || p.controller(p.tx).H() != rider.H() {
+		return false
+	}
+	b.boosting, b.boostTime = true, 0
+	b.boostTimeTotal = int(b.ai.Mob(p.Ent, p).Random().NextInt(841)) + 140
+	return true
+}
+
+// controller ports Pig.getControllingPassenger: a player riding a saddled
+// pig steers it while holding a carrot on a stick.
+func (p *Pig) controller(tx *world.Tx) world.Entity {
+	b := p.behaviour()
+	if !b.saddled || b.passenger == nil {
+		return nil
+	}
+	e, ok := b.passenger.Entity(tx)
+	if !ok || !isPlayerEntity(e) {
+		return nil
+	}
+	u, ok := e.(item.User)
+	if !ok {
+		return nil
+	}
+	main, off := u.HeldItems()
+	if !itemNamed(main, "minecraft:carrot_on_a_stick") && !itemNamed(off, "minecraft:carrot_on_a_stick") {
+		return nil
+	}
+	return e
 }
 func (p *Pig) Health() float64    { return p.behaviour().health }
 func (p *Pig) MaxHealth() float64 { return p.behaviour().maxHealth }
@@ -168,7 +238,7 @@ func (p *Pig) SetMaxHealth(v float64) {
 func (p *Pig) Dead() bool { return p.behaviour().dead || p.Health() <= 0 }
 
 // Panicking reports whether the pig runs from danger.
-func (p *Pig) Panicking() bool { return p.behaviour().goals.panic.active }
+func (p *Pig) Panicking() bool { return p.behaviour().panicking() }
 func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	if p.Dead() || v <= 0 {
 		return 0, false
@@ -184,13 +254,16 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 			return 0, true
 		}
 	}
+	b := p.behaviour()
 	var ok bool
-	if v, ok = mobEffectDamage(p.behaviour().effects, v, s); !ok {
+	if v, ok = b.ai.DamageCooldown(p.tx, v); !ok {
 		return 0, false
 	}
-	b := p.behaviour()
+	if v, ok = mobEffectDamage(b.effects, v, s); !ok {
+		return 0, false
+	}
 	b.health -= v
-	b.goals.hurt(s, p.tx.CurrentTick())
+	b.ai.Hurt(s)
 	resetLove(p)
 	p.viewAction(HurtAction{})
 	onMobHurt(p.tx, p)
@@ -244,23 +317,11 @@ func (p *Pig) Saddle() bool {
 	b.saddled = true
 	return true
 }
-func (p *Pig) SetVehicleInput(strafe, forward float64) {
-	b := p.behaviour()
-	if b.saddled {
-		b.steer = math.Max(-1, math.Min(1, forward))
-	}
-}
-func (p *Pig) SetVehicleInputFrom(passenger world.Entity, strafe, forward float64) {
-	if p.ControlsVehicle(passenger) {
-		p.SetVehicleInput(strafe, forward)
-		r := p.Rotation()
-		r[0] = passenger.Rotation()[0]
-		p.data.Rot = r
-	}
-}
+
+// ControlsVehicle reports if the passenger steers the pig.
 func (p *Pig) ControlsVehicle(passenger world.Entity) bool {
-	r, ok := passenger.(Rider)
-	return ok && p.behaviour().saddled && r.Riding() == p.H()
+	c := p.controller(p.tx)
+	return c != nil && passenger != nil && c.H() == passenger.H()
 }
 
 // RiderSeat returns the seat of Bedrock's pig, which seats riders lower
@@ -392,7 +453,6 @@ func farmVariantIndex(climate string, order ...string) int {
 	return 0
 }
 
-var _ VehicleInput = (*Pig)(nil)
 var _ VehicleController = (*Pig)(nil)
 var _ PassengerDismounter = (*Pig)(nil)
 var _ Linker = (*Pig)(nil)
