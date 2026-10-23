@@ -324,6 +324,7 @@ type hostileState struct {
 	ridingLinkPending                                                             bool
 	freezingTime, strayConversionTime                                             int
 	strayConverting                                                               bool
+	ai                                                                            MobAI
 }
 type HostileMob struct{ *Ent }
 type Zombie struct{ *HostileMob }
@@ -515,6 +516,9 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	b.joinRaid(e, tx)
+	if hostileUsesAI(b.kind) {
+		return b.aiTick(e)
+	}
 	var target world.Entity
 	best := math.MaxFloat64
 	box := cube.Box(-24, -8, -24, 24, 8, 24).Translate(e.Position())
@@ -781,6 +785,7 @@ func (m *HostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	b.ai.Hurt(s)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
 	if m.Dead() {

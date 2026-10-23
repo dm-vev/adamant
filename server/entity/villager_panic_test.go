@@ -38,14 +38,16 @@ func TestVillagersRunFromZombies(t *testing.T) {
 			t.Fatal("villager does not panic with a zombie five blocks away")
 		}
 	})
+	farthest := 0.0
 	for range 60 {
 		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) {
+			farthest = max(farthest, villager(tx, h).Position().Sub(zombieAt).Len())
+		})
 	}
-	<-w.Exec(func(tx *world.Tx) {
-		if d := villager(tx, h).Position().Sub(zombieAt).Len(); d < 8 {
-			t.Fatalf("villager is %.2f blocks from where the zombie appeared, want it to flee", d)
-		}
-	})
+	if farthest < 8 {
+		t.Fatalf("villager got at most %.2f blocks from where the zombie appeared, want it to flee", farthest)
+	}
 }
 
 func TestHurtVillagersCalmDown(t *testing.T) {

@@ -163,9 +163,18 @@ func (s *Session) ViewEntity(e world.Entity) {
 		Velocity:         vec64To32(vel),
 		Pitch:            float32(pitch),
 		Yaw:              float32(yaw),
-		HeadYaw:          float32(yaw),
+		HeadYaw:          float32(entityHeadYaw(e, yaw)),
 		BodyYaw:          float32(yaw),
 	})
+}
+
+// entityHeadYaw returns the yaw of the head of an entity, which mobs turn
+// apart from their body.
+func entityHeadYaw(e world.Entity, yaw float64) float64 {
+	if h, ok := e.(interface{ HeadYaw() float64 }); ok {
+		return h.HeadYaw()
+	}
+	return yaw
 }
 
 // mobHealth is a mob whose health clients show, as riders do of their mount.
@@ -323,7 +332,7 @@ func (s *Session) viewEntityAbsoluteMovement(id uint64, e world.Entity, pos mgl6
 	s.writePacket(&packet.MoveActorAbsolute{
 		EntityRuntimeID: id,
 		Position:        vec64To32(entityNetworkPosition(e, pos)),
-		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), rot.Yaw()}),
+		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), entityHeadYaw(e, rot.Yaw())}),
 		Flags:           flags,
 	})
 }
