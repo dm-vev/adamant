@@ -40,7 +40,7 @@ func (s *Session) enqueueBlockUpdate(pos cube.Pos, b world.Block, layer int) {
 		layer:     uint32(layer),
 	}
 	if v, ok := clientBlockActor(b); ok {
-		if nbtData := v.EncodeNBT(); nbtData != nil {
+		if nbtData := v.EncodeNBT(); nbtData["id"] != nil {
 			update.nbt = clientActorNBT(nbtData, pos)
 		}
 	}

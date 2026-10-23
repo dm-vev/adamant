@@ -17,7 +17,7 @@ func TestBlockActorDataNBTBytes(t *testing.T) {
 		NBTData:  block.EnchantingTable{}.EncodeNBT(),
 	}
 	got := marshalPacketBytes(t, pk)
-	want, err := hex.DecodeString("381880010d0a00080269640c456e6368616e745461626c6500")
+	want, err := hex.DecodeString("381880010d0a00080269640c456e6368616e745461626c650504726f74740000000000")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -342,7 +342,11 @@ func (s ShulkerBox) DecodeNBT(data map[string]any) any {
 	s = NewShulkerBox()
 	s.Type = typ
 	nbtconv.InvFromNBT(s.inventory, nbtconv.Slice(data, "Items"), data)
-	s.Facing = cube.Face(nbtconv.Uint8(data, "facing"))
+	// A shulker box without a facing, as /setblock places one, opens upwards.
+	s.Facing = cube.FaceUp
+	if facing, ok := nbtconv.Integer(data, "facing"); ok {
+		s.Facing = cube.Face(facing)
+	}
 	s.CustomName = nbtconv.String(data, "CustomName")
 	return s
 }
@@ -357,9 +361,10 @@ func (s ShulkerBox) EncodeNBT() map[string]any {
 	}
 
 	m := map[string]any{
-		"Items":  nbtconv.InvToNBT(s.inventory),
-		"id":     "ShulkerBox",
-		"facing": uint8(s.Facing),
+		"Items":    nbtconv.InvToNBT(s.inventory),
+		"id":       "ShulkerBox",
+		"facing":   uint8(s.Facing),
+		"Findable": uint8(0),
 	}
 	if s.CustomName != "" {
 		m["CustomName"] = s.CustomName

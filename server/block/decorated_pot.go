@@ -173,9 +173,12 @@ func (p DecoratedPot) EncodeNBT() map[string]any {
 		}
 	}
 
+	// BDS saves the item even when the pot is empty, as an item named "".
 	m := map[string]any{
-		"id":     "DecoratedPot",
-		"sherds": sherds,
+		"id":        "DecoratedPot",
+		"sherds":    sherds,
+		"animation": uint8(0),
+		"item":      map[string]any{"Name": "", "Count": uint8(0), "Damage": int16(0), "WasPickedUp": uint8(0)},
 	}
 	if !p.Item.Empty() {
 		m["item"] = item.WriteNBT(p.Item, true)

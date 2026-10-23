@@ -65,7 +65,12 @@ func (l Lodestone) WithTrackingHandle(handle int32) world.Block {
 
 // EncodeNBT encodes the Bedrock lodestone block actor data.
 func (l Lodestone) EncodeNBT() map[string]any {
-	return map[string]any{"id": "Lodestone", "trackingHandle": l.trackingHandle}
+	// BDS saves the handle only once a compass is bound to the lodestone.
+	m := map[string]any{"id": "Lodestone"}
+	if l.trackingHandle != 0 {
+		m["trackingHandle"] = l.trackingHandle
+	}
+	return m
 }
 
 // DecodeNBT decodes the Bedrock lodestone block actor data.

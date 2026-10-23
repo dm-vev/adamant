@@ -456,7 +456,12 @@ func clientBlockActor(b world.Block) (world.NBTer, bool) {
 }
 
 func encodeBlockEntityNBT(enc *nbt.Encoder, pos cube.Pos, nbtBlock world.NBTer) {
-	_ = enc.Encode(clientActorNBT(nbtBlock.EncodeNBT(), pos))
+	data := nbtBlock.EncodeNBT()
+	if _, actor := data["id"]; !actor {
+		// A placeholder state without block actor data.
+		return
+	}
+	_ = enc.Encode(clientActorNBT(data, pos))
 }
 
 // clientActorNBT returns the block actor compound clients are sent for a

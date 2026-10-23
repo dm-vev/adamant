@@ -246,6 +246,8 @@ func (c Campfire) EncodeNBT() map[string]any {
 	m := map[string]any{"id": "Campfire"}
 	for i, v := range c.Items {
 		id := strconv.Itoa(i + 1)
+		// BDS saves the cooking time of every slot, empty or not.
+		m["ItemTime"+id] = int32(0)
 		if !v.Item.Empty() {
 			m["Item"+id] = item.WriteNBT(v.Item, true)
 			m["ItemTime"+id] = int32(v.Time.Milliseconds() / 50)

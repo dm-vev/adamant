@@ -51,7 +51,10 @@ func (h BeeNest) Hash() (uint64, uint64) {
 func (h Beehive) EncodeNBT() map[string]any { return encodeBeehiveNBT("Beehive", h) }
 func (h BeeNest) EncodeNBT() map[string]any { return encodeBeehiveNBT("Beehive", h.Beehive) }
 func encodeBeehiveNBT(id string, h Beehive) map[string]any {
-	n := map[string]any{"id": id, "BlockEntityVersion": int32(0), "HoneyLevel": int32(h.HoneyLevel)}
+	// The honey level is the honey_level block state, as in Bedrock. Bees are
+	// spawned when the hive is placed or generated, so BDS loading the world
+	// must not spawn more.
+	n := map[string]any{"id": id, "BlockEntityVersion": int32(0), "ShouldSpawnBees": uint8(0)}
 	if len(h.Occupants) != 0 {
 		n["Occupants"] = h.Occupants
 	}
@@ -66,7 +69,11 @@ func (h BeeNest) DecodeNBT(n map[string]any) any {
 	return h
 }
 func decodeBeehiveNBT(h Beehive, n map[string]any) Beehive {
-	h.HoneyLevel = int(nbtconv.Int32(n, "HoneyLevel"))
+	// Earlier versions saved the honey level here too; BDS only keeps the
+	// block state, which the hive already holds.
+	if level, ok := nbtconv.Integer(n, "HoneyLevel"); ok {
+		h.HoneyLevel = int(level)
+	}
 	if h.HoneyLevel < 0 {
 		h.HoneyLevel = 0
 	}

@@ -114,7 +114,8 @@ func (c EnderChest) close(tx *world.Tx, pos cube.Pos) {
 
 // EncodeNBT ...
 func (c EnderChest) EncodeNBT() map[string]interface{} {
-	return map[string]interface{}{"id": "EnderChest"}
+	// The contents belong to each player; BDS still saves an empty item list.
+	return map[string]interface{}{"id": "EnderChest", "Items": []any{}, "Findable": uint8(0)}
 }
 
 // DecodeNBT ...

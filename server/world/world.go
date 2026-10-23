@@ -3250,7 +3250,13 @@ func (w *World) columnTo(col *Column, pos ChunkPos) *chunk.Column {
 		c.Entities = append(c.Entities, chunk.Entity{ID: e.UniqueID(), Data: w.EntityNBT(e)})
 	}
 	for pos, be := range col.BlockEntities {
-		c.BlockEntities = append(c.BlockEntities, chunk.BlockEntity{Pos: pos, Data: BlockActorNBT(be.(NBTer).EncodeNBT(), pos)})
+		data := be.(NBTer).EncodeNBT()
+		if _, actor := data["id"]; !actor {
+			// A placeholder state without block actor data, such as one a
+			// world holds for a state Adamant does not implement.
+			continue
+		}
+		c.BlockEntities = append(c.BlockEntities, chunk.BlockEntity{Pos: pos, Data: BlockActorNBT(data, pos)})
 	}
 	// Scheduled ticks are emitted above in per-queue insertion order. Their
 	// positions, rather than the generated source column, determine ownership.

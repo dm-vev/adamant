@@ -29,16 +29,18 @@ type MobSpawner struct {
 
 // NewMobSpawner creates a new initialised MobSpawner.
 func NewMobSpawner() MobSpawner {
+	// BaseSpawner's defaults, which BDS also saves for a new spawner: it
+	// first spawns after 20 ticks, up to four mobs at a time.
 	m := MobSpawner{
 		minDelay:            200,
 		maxDelay:            800,
-		spawnCount:          1,
+		spawnCount:          4,
 		spawnRange:          4,
 		requiredPlayerRange: 16,
 		maxNearbyEntities:   6,
 		delay:               &atomic.Int32{},
 	}
-	m.resetDelay()
+	m.delay.Store(20)
 	return m
 }
 
@@ -188,15 +190,20 @@ func (m MobSpawner) canSpawnAt(tx *world.Tx, pos mgl64.Vec3) bool {
 
 // EncodeNBT ...
 func (m MobSpawner) EncodeNBT() map[string]any {
+	// BDS saves the counters as shorts and the size the client renders the
+	// spinning mob at.
 	encoded := map[string]any{
 		"id":                  "MobSpawner",
 		"EntityIdentifier":    m.entity,
-		"MinSpawnDelay":       m.minDelay,
-		"MaxSpawnDelay":       m.maxDelay,
-		"SpawnCount":          m.spawnCount,
-		"SpawnRange":          m.spawnRange,
-		"RequiredPlayerRange": m.requiredPlayerRange,
-		"MaxNearbyEntities":   m.maxNearbyEntities,
+		"MinSpawnDelay":       int16(m.minDelay),
+		"MaxSpawnDelay":       int16(m.maxDelay),
+		"SpawnCount":          int16(m.spawnCount),
+		"SpawnRange":          int16(m.spawnRange),
+		"RequiredPlayerRange": int16(m.requiredPlayerRange),
+		"MaxNearbyEntities":   int16(m.maxNearbyEntities),
+		"DisplayEntityWidth":  float32(0.8),
+		"DisplayEntityHeight": float32(1.8),
+		"DisplayEntityScale":  float32(1),
 	}
 	if m.delay != nil {
 		encoded["Delay"] = int16(m.delay.Load())
@@ -210,33 +217,21 @@ func (m MobSpawner) DecodeNBT(data map[string]any) any {
 	if entity := nbtconv.String(data, "EntityIdentifier"); entity != "" {
 		spawner.entity = entity
 	}
-	if delay, ok := data["Delay"]; ok {
-		switch v := delay.(type) {
-		case int16:
-			spawner.delay.Store(int32(v))
-		case int32:
-			spawner.delay.Store(v)
-		case int64:
-			spawner.delay.Store(int32(v))
+	if v, ok := nbtconv.Integer(data, "Delay"); ok {
+		spawner.delay.Store(int32(v))
+	}
+	// BDS writes shorts and earlier Adamant versions ints.
+	for key, field := range map[string]*int32{
+		"MinSpawnDelay":       &spawner.minDelay,
+		"MaxSpawnDelay":       &spawner.maxDelay,
+		"SpawnCount":          &spawner.spawnCount,
+		"SpawnRange":          &spawner.spawnRange,
+		"RequiredPlayerRange": &spawner.requiredPlayerRange,
+		"MaxNearbyEntities":   &spawner.maxNearbyEntities,
+	} {
+		if v, ok := nbtconv.Integer(data, key); ok && v > 0 {
+			*field = int32(v)
 		}
-	}
-	if v := nbtconv.Int32(data, "MinSpawnDelay"); v > 0 {
-		spawner.minDelay = v
-	}
-	if v := nbtconv.Int32(data, "MaxSpawnDelay"); v > 0 {
-		spawner.maxDelay = v
-	}
-	if v := nbtconv.Int32(data, "SpawnCount"); v > 0 {
-		spawner.spawnCount = v
-	}
-	if v := nbtconv.Int32(data, "SpawnRange"); v > 0 {
-		spawner.spawnRange = v
-	}
-	if v := nbtconv.Int32(data, "RequiredPlayerRange"); v > 0 {
-		spawner.requiredPlayerRange = v
-	}
-	if v := nbtconv.Int32(data, "MaxNearbyEntities"); v > 0 {
-		spawner.maxNearbyEntities = v
 	}
 	return spawner
 }

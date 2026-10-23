@@ -50,26 +50,40 @@ func (b Beacon) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _
 // DecodeNBT ...
 func (b Beacon) DecodeNBT(data map[string]any) any {
 	b.level = int(nbtconv.Int32(data, "Levels"))
-	if primary, ok := effect.ByID(int(nbtconv.Int32(data, "Primary"))); ok {
+	if primary, ok := effect.ByID(int(beaconEffectID(data, "primary", "Primary"))); ok {
 		b.Primary = primary.(effect.LastingType)
 	}
-	if secondary, ok := effect.ByID(int(nbtconv.Int32(data, "Secondary"))); ok {
+	if secondary, ok := effect.ByID(int(beaconEffectID(data, "secondary", "Secondary"))); ok {
 		b.Secondary = secondary.(effect.LastingType)
 	}
 	return b
 }
 
+// beaconEffectID reads an effect of a beacon: BDS and clients use the
+// lowercase key, earlier Adamant versions the capitalised one.
+func beaconEffectID(data map[string]any, key, legacy string) int64 {
+	if id, ok := nbtconv.Integer(data, key); ok {
+		return id
+	}
+	id, _ := nbtconv.Integer(data, legacy)
+	return id
+}
+
 // EncodeNBT ...
 func (b Beacon) EncodeNBT() map[string]any {
+	// BDS saves both effects, 0 for none, under lowercase keys, which the
+	// beacon screen of clients reads.
 	m := map[string]any{
-		"id":     "Beacon",
-		"Levels": int32(b.level),
+		"id":        "Beacon",
+		"Levels":    int32(b.level),
+		"primary":   int32(0),
+		"secondary": int32(0),
 	}
 	if primary, ok := effect.ID(b.Primary); ok {
-		m["Primary"] = int32(primary)
+		m["primary"] = int32(primary)
 	}
 	if secondary, ok := effect.ID(b.Secondary); ok {
-		m["Secondary"] = int32(secondary)
+		m["secondary"] = int32(secondary)
 	}
 	return m
 }

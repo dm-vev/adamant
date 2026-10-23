@@ -220,23 +220,27 @@ func (s Sign) DecodeNBT(data map[string]any) any {
 
 // EncodeNBT ...
 func (s Sign) EncodeNBT() map[string]any {
-	m := map[string]any{
-		"id":      "Sign",
-		"IsWaxed": boolByte(s.Waxed),
-		"FrontText": map[string]any{
-			"SignTextColor":  nbtconv.Int32FromRGBA(s.Front.BaseColour),
-			"IgnoreLighting": boolByte(s.Front.Glowing),
-			"Text":           s.Front.Text,
-			"TextOwner":      s.Front.Owner,
-		},
-		"BackText": map[string]any{
-			"SignTextColor":  nbtconv.Int32FromRGBA(s.Back.BaseColour),
-			"IgnoreLighting": boolByte(s.Back.Glowing),
-			"Text":           s.Back.Text,
-			"TextOwner":      s.Back.Owner,
-		},
+	return map[string]any{
+		"id":        "Sign",
+		"IsWaxed":   boolByte(s.Waxed),
+		"FrontText": signTextNBT(s.Front),
+		"BackText":  signTextNBT(s.Back),
 	}
-	return m
+}
+
+// signTextNBT encodes one side of a sign as BDS saves it. Text is never
+// profanity-filtered, so FilteredText stays empty, and formatting codes
+// persist.
+func signTextNBT(t SignText) map[string]any {
+	return map[string]any{
+		"SignTextColor":     nbtconv.Int32FromRGBA(t.BaseColour),
+		"IgnoreLighting":    boolByte(t.Glowing),
+		"HideGlowOutline":   uint8(0),
+		"PersistFormatting": uint8(1),
+		"Text":              t.Text,
+		"FilteredText":      "",
+		"TextOwner":         t.Owner,
+	}
 }
 
 // allSigns ...

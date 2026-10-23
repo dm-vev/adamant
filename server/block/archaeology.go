@@ -89,42 +89,63 @@ func (s SuspiciousGravel) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand
 func (s SuspiciousSand) Tick(_ int64, pos cube.Pos, tx *world.Tx) { s.tick(pos, tx) }
 func (s SuspiciousGravel) Tick(_ int64, pos cube.Pos, tx *world.Tx) { s.tick(pos, tx) }
 
-func (s SuspiciousSand) EncodeNBT() map[string]any { return encodeBrushableNBT(s.LootTable, s.LootTableSeed, s.Item) }
-func (s SuspiciousGravel) EncodeNBT() map[string]any { return encodeBrushableNBT(s.LootTable, s.LootTableSeed, s.Item) }
+func (s SuspiciousSand) EncodeNBT() map[string]any {
+	return encodeBrushableNBT("minecraft:suspicious_sand", s.LootTable, s.LootTableSeed, s.Item, s.brushCount, s.HitDirection, s.HasHitDirection)
+}
+func (s SuspiciousGravel) EncodeNBT() map[string]any {
+	return encodeBrushableNBT("minecraft:suspicious_gravel", s.LootTable, s.LootTableSeed, s.Item, s.brushCount, s.HitDirection, s.HasHitDirection)
+}
 func (s SuspiciousSand) DecodeNBT(data map[string]any) any {
-	s.LootTable, s.LootTableSeed, s.Item, s.HitDirection, s.HasHitDirection = decodeBrushableNBT(data)
+	s.LootTable, s.LootTableSeed, s.Item, s.HitDirection, s.HasHitDirection, s.brushCount = decodeBrushableNBT(data)
 	return s
 }
 func (s SuspiciousGravel) DecodeNBT(data map[string]any) any {
-	s.LootTable, s.LootTableSeed, s.Item, s.HitDirection, s.HasHitDirection = decodeBrushableNBT(data)
+	s.LootTable, s.LootTableSeed, s.Item, s.HitDirection, s.HasHitDirection, s.brushCount = decodeBrushableNBT(data)
 	return s
 }
 
-func encodeBrushableNBT(table string, seed int64, stack item.Stack) map[string]any {
-	data := map[string]any{"id": "BrushableBlock", "BlockEntityVersion": int32(0)}
+// noBrushDirection is the brush_direction BDS saves for a block nobody brushed.
+const noBrushDirection = 6
+
+// encodeBrushableNBT encodes a brushable block actor as BDS saves it. The
+// client shows the item uncovered while brushing from the lowercase item.
+func encodeBrushableNBT(name, table string, seed int64, stack item.Stack, brushCount uint8, direction cube.Face, hasDirection bool) map[string]any {
+	data := map[string]any{"id": "BrushableBlock", "BlockEntityVersion": int32(0), "type": name, "brush_count": int32(brushCount), "brush_direction": uint8(noBrushDirection)}
+	if hasDirection {
+		data["brush_direction"] = uint8(direction)
+	}
 	if table != "" {
 		data["LootTable"] = table
-		if seed != 0 {
-			data["LootTableSeed"] = seed
-		}
+		data["LootTableSeed"] = seed
 	} else if !stack.Empty() {
-		data["Item"] = item.WriteNBT(stack, true)
+		data["item"] = item.WriteNBT(stack, true)
 	}
 	return data
 }
 
-func decodeBrushableNBT(data map[string]any) (string, int64, item.Stack, cube.Face, bool) {
+// decodeBrushableNBT reads a brushable block actor saved by BDS or, with the
+// Item and hit_direction keys, by earlier Adamant versions.
+func decodeBrushableNBT(data map[string]any) (string, int64, item.Stack, cube.Face, bool, uint8) {
 	table, _ := data["LootTable"].(string)
-	seed := nbtconv.Int64(data, "LootTableSeed")
+	seed, _ := nbtconv.Integer(data, "LootTableSeed")
 	var stack item.Stack
 	if table == "" {
-		if raw, ok := data["Item"].(map[string]any); ok {
+		raw, ok := data["item"].(map[string]any)
+		if !ok {
+			raw, ok = data["Item"].(map[string]any)
+		}
+		if ok && len(raw) > 0 {
 			stack = item.ReadNBT(raw, nil, world.BlockRegistryFromNBT(data))
 		}
 	}
-	direction, hasDirection := legacyDirection(nbtconv.Int32(data, "hit_direction"))
-	if _, exists := data["hit_direction"]; !exists { hasDirection = false }
-	return table, seed, stack, direction, hasDirection
+	direction, hasDirection := cube.FaceUp, false
+	if id, ok := nbtconv.Integer(data, "brush_direction"); ok {
+		direction, hasDirection = legacyDirection(int32(id))
+	} else if id, ok := nbtconv.Integer(data, "hit_direction"); ok {
+		direction, hasDirection = legacyDirection(int32(id))
+	}
+	count, _ := nbtconv.Integer(data, "brush_count")
+	return table, seed, stack, direction, hasDirection, uint8(min(max(count, 0), 255))
 }
 
 

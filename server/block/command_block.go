@@ -107,18 +107,23 @@ func (b CommandBlock) DecodeNBT(m map[string]any) any {
 	b.Powered = nbtconv.Bool(m, "powered")
 	b.ConditionMet = nbtconv.Bool(m, "conditionMet")
 	b.TickDelay = max(0, int(nbtconv.Int32(m, "TickDelay")))
-	b.ExecuteOnFirstTick = nbtconv.Bool(m, "ExecuteOnFirstTick")
-	mode := nbtconv.Int32(m, "LPCommandMode")
-	if mode >= 0 && mode <= 2 {
-		b.Mode = CommandBlockMode(mode)
+	// The mode and conditionality are the block and its conditional_bit
+	// state: the LP* fields record the last performed configuration, which
+	// is impulse and unconditional for a new chain or conditional block.
+	// As BDS places them, a new chain block is always active and a new
+	// repeating block runs on its first tick.
+	b.ExecuteOnFirstTick = b.Mode == CommandBlockRepeat
+	if _, ok := m["ExecuteOnFirstTick"]; ok {
+		b.ExecuteOnFirstTick = nbtconv.Bool(m, "ExecuteOnFirstTick")
 	}
-	b.Conditional = nbtconv.Bool(m, "LPCondionalMode")
-	// auto is the live always-active flag; LP* fields record the last
-	// performed configuration.
-	if _, ok := m["auto"]; ok {
+	// auto is the live always-active flag.
+	switch _, auto := m["auto"]; {
+	case auto:
 		b.NeedsRedstone = !nbtconv.Bool(m, "auto")
-	} else {
+	case m["LPRedstoneMode"] != nil:
 		b.NeedsRedstone = !nbtconv.Bool(m, "LPRedstoneMode")
+	default:
+		b.NeedsRedstone = b.Mode != CommandBlockChain
 	}
 	return b
 }

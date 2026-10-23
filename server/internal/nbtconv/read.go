@@ -38,6 +38,23 @@ func Int32(m map[string]any, k string) int32 {
 	return v
 }
 
+// Integer reads an integer of any NBT width from a map at key k. Bedrock and
+// older saves differ in the width of some fields, such as the short spawner
+// delays BDS writes. The bool is false if k holds no integer.
+func Integer(m map[string]any, k string) (int64, bool) {
+	switch v := m[k].(type) {
+	case uint8:
+		return int64(v), true
+	case int16:
+		return int64(v), true
+	case int32:
+		return int64(v), true
+	case int64:
+		return v, true
+	}
+	return 0, false
+}
+
 // Int64 reads an int16 value from a map at key k.
 func Int64(m map[string]any, k string) int64 {
 	v, _ := m[k].(int64)

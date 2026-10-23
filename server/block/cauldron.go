@@ -501,10 +501,12 @@ func (c Cauldron) EncodeNBT() map[string]any {
 // DecodeNBT ...
 func (c Cauldron) DecodeNBT(m map[string]any) any {
 	c.Potion, c.PotionKind, c.DyeColour = potion.Potion{}, CauldronNoPotion, color.RGBA{}
-	if kind := nbtconv.Int16(m, "PotionType"); kind >= 0 && kind <= 2 {
-		if id := nbtconv.Int16(m, "PotionId"); id >= 0 {
-			c.Potion, c.PotionKind = potion.From(int32(id)), CauldronPotionKind(kind+1)
-		}
+	// -1, as BDS saves a cauldron without a potion, and a missing key both
+	// mean no potion.
+	kind, hasKind := nbtconv.Integer(m, "PotionType")
+	id, hasID := nbtconv.Integer(m, "PotionId")
+	if hasKind && hasID && kind >= 0 && kind <= 2 && id >= 0 {
+		c.Potion, c.PotionKind = potion.From(int32(id)), CauldronPotionKind(kind+1)
 	}
 	if _, ok := m["CustomColor"]; ok {
 		c.DyeColour = nbtconv.RGBAFromInt32(nbtconv.Int32(m, "CustomColor"))
