@@ -229,9 +229,9 @@ func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	}
 }
 
-// WithJavaBlockState applies the state-backed properties of a Java bed while
+// WithCanonicalState applies the state-backed properties of a Java bed while
 // retaining the receiver's actor-only state.
-func (b Bed) WithJavaBlockState(name string, properties map[string]any) (world.Block, error) {
+func (b Bed) WithCanonicalState(name string, properties map[string]any) (world.Block, error) {
 	name = strings.TrimPrefix(name, "minecraft:")
 	if !strings.HasSuffix(name, "_bed") {
 		return nil, fmt.Errorf("java bed: incompatible state %q", name)

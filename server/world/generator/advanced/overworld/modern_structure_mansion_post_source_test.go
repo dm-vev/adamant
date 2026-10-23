@@ -10,28 +10,28 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
-func TestMansionPostProcessMatchesJava263(t *testing.T) {
+func TestMansionPostProcessMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_mansion_post_source.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var fixtures []struct {
-		Seed            string                 `json:"seed"`
-		Chunk           [2]int32               `json:"chunk"`
-		PieceIndex      int                    `json:"pieceIndex"`
-		GraphPieceIndex int                    `json:"graphPieceIndex"`
-		Template        string                 `json:"template"`
-		Position        [3]int32               `json:"position"`
-		MarkerPosition  [3]int32               `json:"markerPosition"`
-		Rotation        javastructure.Rotation `json:"rotation"`
-		Mirror          javastructure.Mirror   `json:"mirror"`
-		ClipMode        string                 `json:"clipMode"`
+		Seed            string             `json:"seed"`
+		Chunk           [2]int32           `json:"chunk"`
+		PieceIndex      int                `json:"pieceIndex"`
+		GraphPieceIndex int                `json:"graphPieceIndex"`
+		Template        string             `json:"template"`
+		Position        [3]int32           `json:"position"`
+		MarkerPosition  [3]int32           `json:"markerPosition"`
+		Rotation        structure.Rotation `json:"rotation"`
+		Mirror          structure.Mirror   `json:"mirror"`
+		ClipMode        string             `json:"clipMode"`
 		Calls           []struct {
 			Clip         [6]int32 `json:"clip"`
 			NextPostLong string   `json:"nextPostLong"`
@@ -61,7 +61,7 @@ func TestMansionPostProcessMatchesJava263(t *testing.T) {
 				t.Fatal(err)
 			}
 			random := largeFeatureRandom(seed, fixture.Chunk[0], fixture.Chunk[1])
-			rotation := javastructure.Rotation(random.NextInt(4))
+			rotation := structure.Rotation(random.NextInt(4))
 			plan := newMansionPlan(&random)
 			placer := newMansionPlacer([3]int32{0, 70, 0}, rotation, seed, &random)
 			if err = placer.create(plan); err != nil {
@@ -108,14 +108,14 @@ func TestMansionPostProcessMatchesJava263(t *testing.T) {
 					}
 				}
 			}
-			levelRandom := java26.NewXoroshiroRandom(int64(81000 + fixture.PieceIndex))
-			baseEnv := javastructure.ProcessorEnvironment{
+			levelRandom := vanilla.NewXoroshiroRandom(int64(81000 + fixture.PieceIndex))
+			baseEnv := structure.ProcessorEnvironment{
 				BaseBlock:         func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
 				LevelRandom:       &levelRandom,
 				GenerationContext: world.GenerationContext{},
 				Range:             c.Range(),
-				JavaBlockStateID: func(x, y, z int32) (uint32, error) {
-					return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
+				BlockStateID: func(x, y, z int32) (uint32, error) {
+					return region.BlockStateID(cube.Pos{int(x), int(y), int(z)})
 				},
 				HasChestBlockEntity: func(x, y, z int32) bool {
 					return region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)})
@@ -124,12 +124,12 @@ func TestMansionPostProcessMatchesJava263(t *testing.T) {
 					region.setBlockEntityLootTable(cube.Pos{int(x), int(y), int(z)}, table, lootSeed)
 				},
 			}
-			var entities []javastructure.Entity
+			var entities []structure.Entity
 			for callIndex, call := range fixture.Calls {
-				postRandom := java26.NewLegacyRandom(int64(92000 + fixture.PieceIndex + callIndex))
+				postRandom := vanilla.NewLegacyRandom(int64(92000 + fixture.PieceIndex + callIndex))
 				env := baseEnv
 				env.Random = &postRandom
-				clip := javastructure.Bounds{Min: [3]int32{call.Clip[0], call.Clip[1], call.Clip[2]}, Max: [3]int32{call.Clip[3], call.Clip[4], call.Clip[5]}}
+				clip := structure.Bounds{Min: [3]int32{call.Clip[0], call.Clip[1], call.Clip[2]}, Max: [3]int32{call.Clip[3], call.Clip[4], call.Clip[5]}}
 				placement, err := piece.Place(clip, env)
 				if err != nil {
 					t.Fatal(err)
@@ -138,7 +138,7 @@ func TestMansionPostProcessMatchesJava263(t *testing.T) {
 				placement.TemplateUpdateFlags, placement.TemplateKnownShape = 2, false
 				features.applyStructurePlacement(region, placement)
 				entities = append(entities, placement.Entities...)
-				err = piece.AfterTemplatePlacement(clip, env, func(post javastructure.Placement) {
+				err = piece.AfterTemplatePlacement(clip, env, func(post structure.Placement) {
 					features.applyStructurePlacement(region, post)
 					entities = append(entities, post.PostShapeEntities...)
 				})
@@ -163,7 +163,7 @@ func TestMansionPostProcessMatchesJava263(t *testing.T) {
 				for z := int32(0); z < 16; z++ {
 					for y := int32(-10); y <= 125; y++ {
 						pos := featurePos{(target[0] << 4) + x, y, (target[1] << 4) + z}
-						state, err := world.JavaState(c.BlockRegistry(), region.nativeState(pos))
+						state, err := world.CanonicalState(c.BlockRegistry(), region.nativeState(pos))
 						if err != nil {
 							t.Fatal(err)
 						}

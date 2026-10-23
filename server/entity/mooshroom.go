@@ -5,8 +5,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -231,7 +231,7 @@ func (m *Mooshroom) Shear(tx *world.Tx) item.Stack {
 }
 
 // FinalizeSpawn chooses Java's rare brown mushroom-cow variant.
-func (m *Mooshroom) FinalizeSpawn(_ string, r *java26.Random) {
+func (m *Mooshroom) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil && r.NextInt(1024) == 0 {
 		m.behaviour().variant = 1
 	}

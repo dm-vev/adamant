@@ -1,17 +1,17 @@
 package overworld
 
 import (
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"math"
 )
 
-func placeModernIceberg(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernIceberg(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	stateName, ok := config["state"].(string)
 	if !ok {
-		panic("overworld: malformed Java iceberg state")
+		panic("overworld: malformed iceberg state")
 	}
-	mainRID := featureRequireState(region, "minecraft:"+normalizeJavaResource(stateName))
+	mainRID := featureRequireState(region, "minecraft:"+normalizeResource(stateName))
 	snowBlockRID := featureRequireState(region, "minecraft:snow_block")
 	waterRID := featureRequireState(region, "minecraft:water")
 	airRID := featureRequireState(region, "minecraft:air")
@@ -84,7 +84,7 @@ func placeModernIceberg(region *featureRegion, config map[string]any, origin fea
 	return true
 }
 
-func placeIcebergVoxel(region *featureRegion, origin featurePos, random *java26.Random, height, x, y, z, radius, a int32, ellipse bool, c int32, sin, cos float64, snowOnTop bool, main, snowBlock world.NativeState) {
+func placeIcebergVoxel(region *featureRegion, origin featurePos, random *vanilla.Random, height, x, y, z, radius, a int32, ellipse bool, c int32, sin, cos float64, snowOnTop bool, main, snowBlock world.NativeState) {
 	signed := 0.0
 	if ellipse {
 		signed = icebergEllipseDistance(x, z, 0, 0, a, icebergEllipseC(y, height, c), sin, cos)
@@ -128,7 +128,7 @@ func icebergEllipseDistance(x, z, ox, oz, a, c int32, sin, cos float64) float64 
 	u2, v2 := float64(u*u), float64(v*v)
 	return float64(float64(u2+v2) - 1)
 }
-func icebergRoundRadius(r *java26.Random, y, height, width int32) int32 {
+func icebergRoundRadius(r *vanilla.Random, y, height, width int32) int32 {
 	k := float32(3.5) - r.NextFloat()
 	scale := (1 - float32(math.Pow(float64(y), 2))/(float32(height)*k)) * float32(width)
 	if height > 15+r.NextInt(5) {
@@ -144,7 +144,7 @@ func icebergEllipseRadius(y, height, width int32) int32 {
 	scale := (1 - float32(math.Pow(float64(y), 2))/float32(height)) * float32(width)
 	return int32(math.Ceil(float64(scale / 2)))
 }
-func icebergSteepRadius(r *java26.Random, y, height, width int32) int32 {
+func icebergSteepRadius(r *vanilla.Random, y, height, width int32) int32 {
 	k := float32(1) + r.NextFloat()/2
 	scale := (1 - float32(y)/(float32(height)*k)) * float32(width)
 	return int32(math.Ceil(float64(scale / 2)))
@@ -188,7 +188,7 @@ func icebergSmooth(region *featureRegion, origin featurePos, width, height int32
 func isIcebergBlock(name string) bool {
 	return name == "minecraft:packed_ice" || name == "minecraft:snow_block" || name == "minecraft:blue_ice"
 }
-func icebergCutOut(region *featureRegion, r *java26.Random, width, height int32, origin featurePos, ellipse bool, a int32, angle float64, c int32, water, air world.NativeState) {
+func icebergCutOut(region *featureRegion, r *vanilla.Random, width, height int32, origin featurePos, ellipse bool, a int32, angle float64, c int32, water, air world.NativeState) {
 	sx := int32(1)
 	if r.NextBoolean() {
 		sx = -1
@@ -227,7 +227,7 @@ func icebergCutOut(region *featureRegion, r *java26.Random, width, height int32,
 		icebergCarve(region, radius, y, origin, true, cutSin, cutCos, localX, localZ, a, c, water, air)
 	}
 }
-func icebergCircleDistance(random *java26.Random, x, z, radius int32) float64 {
+func icebergCircleDistance(random *vanilla.Random, x, z, radius int32) float64 {
 	offset := random.NextFloat()
 	if offset < 0.2 {
 		offset = 0.2

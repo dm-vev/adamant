@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func TestTemplatePlacementWaterlogsNativeWaterSources(t *testing.T) {
@@ -46,8 +46,8 @@ func TestTemplatePlacementWaterlogsNativeWaterSources(t *testing.T) {
 			region := templateFluidTestRegion()
 			pos := featurePos{8, 80, 8}
 			region.Set(pos, tc.fluid)
-			entry := javastructure.Block{Pos: [3]int32{pos.x, pos.y, pos.z}, State: world.BlockState{Name: "minecraft:oak_slab", Properties: tc.props}}
-			applyTemplateFluids(region, []javastructure.Block{entry})
+			entry := structure.Block{Pos: [3]int32{pos.x, pos.y, pos.z}, State: world.BlockState{Name: "minecraft:oak_slab", Properties: tc.props}}
+			applyTemplateFluids(region, []structure.Block{entry})
 			assertTemplateSlab(t, region, pos, tc.wantType, tc.wet, waterLayer)
 			ticks := region.result.ScheduledTicks
 			if tc.wantTick {
@@ -72,27 +72,27 @@ func TestTemplateFluidSourcePropagationAndCurrentState(t *testing.T) {
 		t.Fatal("registry has no native source-water layer")
 	}
 	slabState := world.BlockState{Name: "minecraft:oak_slab", Properties: map[string]any{"type": "bottom", "waterlogged": false}}
-	makeSlab := func(pos featurePos, state world.BlockState) javastructure.Block {
-		return javastructure.Block{Pos: [3]int32{pos.x, pos.y, pos.z}, State: state}
+	makeSlab := func(pos featurePos, state world.BlockState) structure.Block {
+		return structure.Block{Pos: [3]int32{pos.x, pos.y, pos.z}, State: state}
 	}
 	t.Run("ambient source fills dry slab", func(t *testing.T) {
 		region := templateFluidTestRegion()
 		pos, source := featurePos{8, 80, 8}, featurePos{9, 80, 8}
 		region.Set(source, water)
-		applyTemplateFluids(region, []javastructure.Block{makeSlab(pos, slabState)})
+		applyTemplateFluids(region, []structure.Block{makeSlab(pos, slabState)})
 		assertTemplateSlab(t, region, pos, "bottom", true, waterLayer)
 	})
 	t.Run("template source is locked", func(t *testing.T) {
 		region := templateFluidTestRegion()
 		pos, source := featurePos{8, 80, 8}, featurePos{9, 80, 8}
-		applyTemplateFluids(region, []javastructure.Block{makeSlab(pos, slabState), makeSlab(source, world.BlockState{Name: "minecraft:water"})})
+		applyTemplateFluids(region, []structure.Block{makeSlab(pos, slabState), makeSlab(source, world.BlockState{Name: "minecraft:water"})})
 		assertTemplateSlab(t, region, pos, "bottom", false, waterLayer)
 	})
 	t.Run("iterative fill propagates on the next pass", func(t *testing.T) {
 		region := templateFluidTestRegion()
 		first, second, ambient := featurePos{8, 80, 8}, featurePos{9, 80, 8}, featurePos{10, 80, 8}
 		region.Set(ambient, water)
-		applyTemplateFluids(region, []javastructure.Block{makeSlab(first, slabState), makeSlab(second, slabState)})
+		applyTemplateFluids(region, []structure.Block{makeSlab(first, slabState), makeSlab(second, slabState)})
 		assertTemplateSlab(t, region, first, "bottom", true, waterLayer)
 		assertTemplateSlab(t, region, second, "bottom", true, waterLayer)
 	})
@@ -104,7 +104,7 @@ func TestTemplateFluidSourcePropagationAndCurrentState(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		applyTemplateFluids(region, []javastructure.Block{makeSlab(pos, slabState), makeSlab(pos, world.BlockState{Name: "minecraft:stone"})})
+		applyTemplateFluids(region, []structure.Block{makeSlab(pos, slabState), makeSlab(pos, world.BlockState{Name: "minecraft:stone"})})
 		if got := region.nativeState(pos); got != stone {
 			t.Fatalf("overwritten position=%+v, want stone %+v", got, stone)
 		}
@@ -113,13 +113,13 @@ func TestTemplateFluidSourcePropagationAndCurrentState(t *testing.T) {
 		region := templateFluidTestRegion()
 		pos, source := featurePos{8, 80, 8}, featurePos{9, 80, 8}
 		region.Set(source, water)
-		applyTemplateFluids(region, []javastructure.Block{makeSlab(pos, world.BlockState{Name: "minecraft:oak_slab"})})
+		applyTemplateFluids(region, []structure.Block{makeSlab(pos, world.BlockState{Name: "minecraft:oak_slab"})})
 		assertTemplateSlab(t, region, pos, "bottom", true, waterLayer)
 	})
 	t.Run("default waterlogged template source is locked", func(t *testing.T) {
 		region := templateFluidTestRegion()
 		pos, source := featurePos{8, 80, 8}, featurePos{9, 80, 8}
-		applyTemplateFluids(region, []javastructure.Block{makeSlab(pos, slabState), makeSlab(source, world.BlockState{Name: "minecraft:sea_pickle"})})
+		applyTemplateFluids(region, []structure.Block{makeSlab(pos, slabState), makeSlab(source, world.BlockState{Name: "minecraft:sea_pickle"})})
 		assertTemplateSlab(t, region, pos, "bottom", false, waterLayer)
 	})
 	t.Run("upper lava precedes eastern water", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestTemplateFluidSourcePropagationAndCurrentState(t *testing.T) {
 		}
 		region.Set(featurePos{8, 81, 8}, lava)
 		region.Set(featurePos{9, 80, 8}, water)
-		applyTemplateFluids(region, []javastructure.Block{makeSlab(pos, slabState)})
+		applyTemplateFluids(region, []structure.Block{makeSlab(pos, slabState)})
 		assertTemplateSlab(t, region, pos, "bottom", false, waterLayer)
 	})
 }
@@ -147,14 +147,14 @@ func templateFluidTestRegion() *featureRegion {
 func assertTemplateSlab(t *testing.T, region *featureRegion, pos featurePos, wantType string, wantWet bool, waterLayer uint32) {
 	t.Helper()
 	got := region.nativeState(pos)
-	java, err := world.JavaState(region.c.BlockRegistry(), got)
+	canonical, err := world.CanonicalState(region.c.BlockRegistry(), got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if java.Properties["type"] != wantType {
-		t.Fatalf("slab type=%v, want %s", java.Properties["type"], wantType)
+	if canonical.Properties["type"] != wantType {
+		t.Fatalf("slab type=%v, want %s", canonical.Properties["type"], wantType)
 	}
-	if gotWet := java.Properties["waterlogged"] == true; gotWet != wantWet {
+	if gotWet := canonical.Properties["waterlogged"] == true; gotWet != wantWet {
 		t.Fatalf("waterlogged=%v, want %v (native=%+v)", gotWet, wantWet, got)
 	}
 	if wantWet && got.Liquid != waterLayer {
@@ -177,9 +177,9 @@ func TestTemplateFluidExtinguishesNativePayload(t *testing.T) {
 		region.Set(source, water)
 		campfire := block.Campfire{Type: block.NormalFire(), Facing: cube.North}
 		campfire.Items[0].Time = 123
-		entry := javastructure.Block{Pos: [3]int32{8, 80, 8}, State: world.BlockState{Name: "minecraft:campfire", Properties: map[string]any{"lit": true}}, NativeBlock: campfire}
-		payload := applyTemplateFluids(region, []javastructure.Block{entry})
-		got, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(pos))
+		entry := structure.Block{Pos: [3]int32{8, 80, 8}, State: world.BlockState{Name: "minecraft:campfire", Properties: map[string]any{"lit": true}}, NativeBlock: campfire}
+		payload := applyTemplateFluids(region, []structure.Block{entry})
+		got, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(pos))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -198,9 +198,9 @@ func TestTemplateFluidExtinguishesNativePayload(t *testing.T) {
 
 func TestTemplateFluidDropsOverwrittenActor(t *testing.T) {
 	region := templateFluidTestRegion()
-	campfire := javastructure.Block{Pos: [3]int32{8, 80, 8}, State: world.BlockState{Name: "minecraft:campfire"}, NativeBlock: block.Campfire{Type: block.NormalFire()}}
-	stone := javastructure.Block{Pos: campfire.Pos, State: world.BlockState{Name: "minecraft:stone"}}
-	if payload := applyTemplateFluids(region, []javastructure.Block{campfire, stone}); len(payload) != 0 {
+	campfire := structure.Block{Pos: [3]int32{8, 80, 8}, State: world.BlockState{Name: "minecraft:campfire"}, NativeBlock: block.Campfire{Type: block.NormalFire()}}
+	stone := structure.Block{Pos: campfire.Pos, State: world.BlockState{Name: "minecraft:stone"}}
+	if payload := applyTemplateFluids(region, []structure.Block{campfire, stone}); len(payload) != 0 {
 		t.Fatalf("overwritten campfire survived in actor payload: %+v", payload)
 	}
 }
@@ -213,7 +213,7 @@ func TestTemplateRefillTicksFollowSuccessfulFillOrder(t *testing.T) {
 	}
 	region.Set(featurePos{10, 80, 8}, water)
 	state := world.BlockState{Name: "minecraft:oak_slab", Properties: map[string]any{"type": "bottom", "waterlogged": false}}
-	applyTemplateFluids(region, []javastructure.Block{
+	applyTemplateFluids(region, []structure.Block{
 		{Pos: [3]int32{8, 80, 8}, State: state},
 		{Pos: [3]int32{9, 80, 8}, State: state},
 	})

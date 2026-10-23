@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -40,7 +40,7 @@ func loadSourceCavePlacement(t *testing.T) sourceCavePlacementFixture {
 	return fixture
 }
 
-func TestEnvironmentScanBuildHeightMatchesJava263(t *testing.T) {
+func TestEnvironmentScanBuildHeightMatchesReference(t *testing.T) {
 	fixture := loadSourceCavePlacement(t)
 	for _, scan := range fixture.Scans {
 		t.Run(fmt.Sprintf("y%d/step%d", scan.OriginY, scan.Step), func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestEnvironmentScanBuildHeightMatchesJava263(t *testing.T) {
 	}
 }
 
-func TestWaterloggedVegetationPatchWaterlogsGroundCellJava263(t *testing.T) {
+func TestWaterloggedVegetationPatchWaterlogsGroundCellReference(t *testing.T) {
 	fixture := loadSourceCavePlacement(t)
 	r := templateFluidTestRegion()
 	for x := int32(7); x <= 9; x++ {
@@ -79,7 +79,7 @@ func TestWaterloggedVegetationPatchWaterlogsGroundCellJava263(t *testing.T) {
 			r.Set(featurePos{x, 64, z}, countLayerNativeState(t, "clay"))
 		}
 	}
-	random := java26.NewLegacyRandom(0)
+	random := vanilla.NewLegacyRandom(0)
 	if placed := r.PlaceValue(fixture.Config, featurePos{8, 65, 8}, &random); placed != fixture.Placed {
 		t.Fatalf("patch placement=%v, source=%v", placed, fixture.Placed)
 	}
@@ -90,7 +90,7 @@ func TestWaterloggedVegetationPatchWaterlogsGroundCellJava263(t *testing.T) {
 		}
 		pos := featurePos{expected.Pos[0], expected.Pos[1], expected.Pos[2]}
 		if got := r.nativeState(pos); got != want {
-			actual, err := world.JavaState(r.c.BlockRegistry(), got)
+			actual, err := world.CanonicalState(r.c.BlockRegistry(), got)
 			if err != nil {
 				t.Fatal(err)
 			}

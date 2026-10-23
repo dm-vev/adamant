@@ -5,8 +5,8 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -23,14 +23,14 @@ var sculkMovementOffsets = [...]featurePos{
 // placeModernSculkPatch ports SculkPatchFeature and the world-generation
 // SculkSpreader. Cursor updates are deliberately sequential: each cursor sees
 // block changes made by earlier cursors in the same attempt.
-func placeModernSculkPatch(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernSculkPatch(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	chargeCount := featureNumber(config["charge_count"])
 	amountPerCharge := featureNumber(config["amount_per_charge"])
 	spreadAttempts := featureNumber(config["spread_attempts"])
 	growthRounds := featureNumber(config["growth_rounds"])
 	spreadRounds := featureNumber(config["spread_rounds"])
 	if chargeCount < 1 || chargeCount > 32 || amountPerCharge < 1 || amountPerCharge > 500 || spreadAttempts < 1 || spreadAttempts > 64 || growthRounds < 0 || growthRounds > 8 || spreadRounds < 0 || spreadRounds > 8 {
-		panic("overworld: invalid Java sculk patch configuration")
+		panic("overworld: invalid sculk patch configuration")
 	}
 	name, props := region.State(origin)
 	if !sculkBehavior(name) {
@@ -80,7 +80,7 @@ type sculkCursor struct {
 
 // The world-generation spreader is configured with isWorldGeneration=true,
 // which deliberately disables cursor merging in SculkSpreader.updateCursors.
-func sculkUpdateCursors(region *featureRegion, origin featurePos, cursors []sculkCursor, random *java26.Random, spreadVeins bool) []sculkCursor {
+func sculkUpdateCursors(region *featureRegion, origin featurePos, cursors []sculkCursor, random *vanilla.Random, spreadVeins bool) []sculkCursor {
 	count := 0
 	for i := range cursors {
 		cursor := &cursors[i]
@@ -95,7 +95,7 @@ func sculkUpdateCursors(region *featureRegion, origin featurePos, cursors []scul
 	return cursors[:count]
 }
 
-func sculkUpdateCursor(region *featureRegion, origin featurePos, c *sculkCursor, random *java26.Random, spreadVeins bool) {
+func sculkUpdateCursor(region *featureRegion, origin featurePos, c *sculkCursor, random *vanilla.Random, spreadVeins bool) {
 	if c.charge <= 0 {
 		return
 	}
@@ -148,7 +148,7 @@ func sculkUpdateCursor(region *featureRegion, origin featurePos, c *sculkCursor,
 	c.updateDelay = 1
 }
 
-func sculkUseSculkCharge(region *featureRegion, c *sculkCursor, origin featurePos, random *java26.Random) int {
+func sculkUseSculkCharge(region *featureRegion, c *sculkCursor, origin featurePos, random *vanilla.Random) int {
 	charge := c.charge
 	if charge == 0 || random.NextInt(5) != 0 {
 		return charge
@@ -191,7 +191,7 @@ func sculkCanPlaceGrowth(region *featureRegion, pos featurePos) bool {
 		for y := int32(0); y <= 2; y++ {
 			for z := int32(-4); z <= 4; z++ {
 				n, _ := region.State(featurePos{pos.x + x, pos.y + y, pos.z + z})
-				if javaBlockTagContains("sculk_growth_inhibitors", normalizeJavaResource(n)) {
+				if blockTagContains("sculk_growth_inhibitors", normalizeResource(n)) {
 					count++
 					if count > 2 {
 						return false
@@ -209,7 +209,7 @@ func sculkDecayPenalty(charge int, pos, origin featurePos) int {
 	return max(1, int(float32(charge)*factor*0.5))
 }
 
-func sculkUseVeinCharge(region *featureRegion, c *sculkCursor, random *java26.Random, spreadVeins bool) int {
+func sculkUseVeinCharge(region *featureRegion, c *sculkCursor, random *vanilla.Random, spreadVeins bool) int {
 	if spreadVeins && sculkAttemptPlaceSculk(region, c.pos, random) {
 		return c.charge - 1
 	}
@@ -317,7 +317,7 @@ func sculkCanPlaceVein(region *featureRegion, source, target featurePos, face st
 		if featureBlockTagContainsID("fire", targetID) {
 			return false
 		}
-	} else if javaBlockTagContains("fire", normalizeJavaResource(name)) {
+	} else if blockTagContains("fire", normalizeResource(name)) {
 		return false
 	}
 	shape := sculkShapeOf(region, targetID, name, properties)
@@ -374,7 +374,7 @@ func sculkWaterFluid(region *featureRegion, pos featurePos, properties map[strin
 	}
 }
 
-func sculkAttemptPlaceSculk(region *featureRegion, pos featurePos, random *java26.Random) bool {
+func sculkAttemptPlaceSculk(region *featureRegion, pos featurePos, random *vanilla.Random) bool {
 	_, props := region.State(pos)
 	directions := sculkDirections
 	for i := len(directions) - 1; i > 0; i-- {
@@ -387,7 +387,7 @@ func sculkAttemptPlaceSculk(region *featureRegion, pos featurePos, random *java2
 		}
 		supportPos := sculkOffset(pos, support)
 		name, _ := region.State(supportPos)
-		if !javaBlockTagContains("sculk_replaceable_world_gen", normalizeJavaResource(name)) {
+		if !blockTagContains("sculk_replaceable_world_gen", normalizeResource(name)) {
 			continue
 		}
 		if !region.Set(supportPos, sculkResolveState(region, "sculk", nil)) {
@@ -410,7 +410,7 @@ func sculkAttemptPlaceSculk(region *featureRegion, pos featurePos, random *java2
 	return false
 }
 
-func sculkOnDischarged(region *featureRegion, pos featurePos, props map[string]any, random *java26.Random) {
+func sculkOnDischarged(region *featureRegion, pos featurePos, props map[string]any, random *vanilla.Random) {
 	_ = random
 	props = maps.Clone(props)
 	for _, d := range sculkDirections {
@@ -439,7 +439,7 @@ func sculkOnDischarged(region *featureRegion, pos featurePos, props map[string]a
 	region.Set(pos, sculkResolveState(region, "sculk_vein", props))
 }
 
-func sculkMovementPos(region *featureRegion, pos, origin featurePos, random *java26.Random) (featurePos, bool) {
+func sculkMovementPos(region *featureRegion, pos, origin featurePos, random *vanilla.Random) (featurePos, bool) {
 	offsets := sculkMovementOffsets
 	for i := len(offsets) - 1; i > 0; i-- {
 		j := int(random.NextInt(int32(i + 1)))
@@ -488,7 +488,7 @@ func sculkHasSubstrate(region *featureRegion, pos featurePos, name string, props
 	for _, d := range sculkDirections {
 		if props[d] == true {
 			n, _ := region.State(sculkOffset(pos, d))
-			if javaBlockTagContains("sculk_replaceable", normalizeJavaResource(n)) {
+			if blockTagContains("sculk_replaceable", normalizeResource(n)) {
 				return true
 			}
 		}
@@ -521,7 +521,7 @@ func sculkCollisionFull(region *featureRegion, pos featurePos) bool {
 
 // sculkShapeAt returns the generation shape of the state at pos, looked up by
 // its state ID where it has one.
-func sculkShapeAt(region *featureRegion, pos featurePos) javadata.GenerationShape {
+func sculkShapeAt(region *featureRegion, pos featurePos) gamedata.GenerationShape {
 	if id := region.StateID(pos); id != 0 {
 		return sculkShapeOf(region, id, "", nil)
 	}
@@ -531,13 +531,13 @@ func sculkShapeAt(region *featureRegion, pos featurePos) javadata.GenerationShap
 
 // sculkShapeOf returns the generation shape of state ID id, or of name and
 // props for a state without an ID.
-func sculkShapeOf(region *featureRegion, id uint32, name string, props map[string]any) javadata.GenerationShape {
-	var shape javadata.GenerationShape
+func sculkShapeOf(region *featureRegion, id uint32, name string, props map[string]any) gamedata.GenerationShape {
+	var shape gamedata.GenerationShape
 	var err error
 	if id != 0 {
-		shape, err = javadata.BlockGenerationShapeID(id)
+		shape, err = gamedata.BlockGenerationShapeID(id)
 	} else {
-		shape, err = javadata.BlockGenerationShape(normalizeJavaResource(name), props)
+		shape, err = gamedata.BlockGenerationShape(normalizeResource(name), props)
 	}
 	if err != nil {
 		panic(err)
@@ -560,7 +560,7 @@ func sculkFaceBit(d string) uint8 {
 			return 1 << i
 		}
 	}
-	panic("overworld: invalid Java sculk direction")
+	panic("overworld: invalid sculk direction")
 }
 func sculkOpposite(d string) string {
 	switch d {
@@ -577,7 +577,7 @@ func sculkOpposite(d string) string {
 	case "east":
 		return "west"
 	}
-	panic("overworld: invalid Java sculk direction")
+	panic("overworld: invalid sculk direction")
 }
 func sculkAxis(d string) int {
 	if d == "down" || d == "up" {
@@ -603,7 +603,7 @@ func sculkOffset(p featurePos, d string) featurePos {
 	case "east":
 		p.x++
 	default:
-		panic("overworld: invalid Java sculk direction")
+		panic("overworld: invalid sculk direction")
 	}
 	return p
 }

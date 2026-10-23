@@ -7,8 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -214,7 +214,7 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		panicking := false
 		if b.panic.shouldPanic(tx.CurrentTick()) {
 			if !b.panic.active || b.panicGoal.Sub(e.Position()).Len() < 1 {
-				random := java26.NewLegacyRandom(rand.Int64())
+				random := vanilla.NewLegacyRandom(rand.Int64())
 				m := randomPosMob{tx: tx, pos: e.Position(), home: noHome, profile: GroundProfile{Width: 1.2, Height: .4}, random: &random}
 				goal, ok := b.panic.target(e, m)
 				b.panic.active, b.panicGoal = ok, goal.Vec3Middle()
@@ -360,7 +360,7 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 }
 func (b *oceanWildlifeBehaviour) chooseSwim(e *Ent, tx *world.Tx) {
 	seed := int64(e.Position()[0]*341873128712+e.Position()[1]*132897987541+e.Position()[2]*42317861) + int64(b.ticks)
-	r := java26.NewXoroshiroRandom(seed)
+	r := vanilla.NewXoroshiroRandom(seed)
 	b.nextWander = 40 + int(r.NextInt(81))
 	b.swim = mgl64.Vec3{r.NextDouble()*2 - 1, r.NextDouble() - .5, r.NextDouble()*2 - 1}
 	if _, ok := tx.Liquid(cube.PosFromVec3(e.Position())); !ok {
@@ -392,7 +392,7 @@ func wildlifeLayEgg(tx *world.Tx, pos cube.Pos) {
 			egg.Eggs++
 		}
 	} else {
-		r := java26.NewXoroshiroRandom(int64(pos.X()*341873128712 + pos.Z()*132897987541))
+		r := vanilla.NewXoroshiroRandom(int64(pos.X()*341873128712 + pos.Z()*132897987541))
 		egg.Eggs = uint8(r.NextInt(4) + 1)
 	}
 	tx.SetBlock(pos, egg, nil)
@@ -525,7 +525,7 @@ func dropTurtleGrowth(e *Ent, tx *world.Tx) {
 		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, stack))
 	}
 }
-func (m *oceanWildlife) FinalizeSpawn(_ string, _ *java26.Random) {
+func (m *oceanWildlife) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	if m.b().id == "minecraft:turtle" {
 		p := cube.PosFromVec3(m.Position())
 		m.b().homeX, m.b().homeY, m.b().homeZ = p.X(), p.Y(), p.Z()

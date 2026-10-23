@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // Fixtures execute Java 26.3 EnchantRandomlyFunction.run with real registries.
@@ -56,7 +56,7 @@ func TestEnchantRandomlyJava263Source(t *testing.T) {
 			if components == nil {
 				components = make(map[string]any)
 			}
-			random := java26.NewLegacyRandom(seed)
+			random := vanilla.NewLegacyRandom(seed)
 			id, count, components, err := applyRandomEnchantment(row.Input.Item, count, components, function, &Context{Random: &random})
 			if err != nil {
 				t.Fatal(err)

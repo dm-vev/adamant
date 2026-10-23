@@ -11,28 +11,28 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // ModernFeatureSource supplies the immutable terrain and biome view used by Java placed features.
 // Feature writes are applied only to the chunk being generated, while source reads may cross its border.
 type ModernFeatureSource interface {
-	JavaBiomeAt(x, y, z int32) string
-	JavaNoiseBiomeAt(quartX, quartY, quartZ int32) string
+	BiomeAt(x, y, z int32) string
+	NoiseBiomeAt(quartX, quartY, quartZ int32) string
 	BaseHeight(x, z int32, oceanFloor bool) int32
 	SeaLevel() int32
 	BaseBlock(x, y, z int32) world.Block
-	JavaFeatureBiomeNames() []string
+	FeatureBiomeNames() []string
 	BaseState(x, y, z int32) world.NativeState
 	UseLegacyRandomSource() bool
-	JavaHasSkyLight() bool
-	JavaGenerationDepth() int32
-	JavaFluidTickDelay(name string) int32
-	PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement))
+	HasSkyLight() bool
+	GenerationDepth() int32
+	FluidTickDelay(name string) int32
+	PlaceStructureStep(pos world.ChunkPos, step int, env structure.ProcessorEnvironment, emit func(structure.Placement))
 }
 
 // baseTopSource is a ModernFeatureSource that knows the top of its base
@@ -87,7 +87,7 @@ type ModernFeatures struct {
 // NewModernFeatures loads the actual embedded Java biome, placed-feature, configured-feature and carver data.
 func NewModernFeatures(seed int64, source ModernFeatureSource) *ModernFeatures {
 	if source == nil {
-		panic("overworld: nil Java feature source")
+		panic("overworld: nil feature source")
 	}
 	f := &ModernFeatures{
 		seed: seed, source: source,
@@ -97,89 +97,89 @@ func NewModernFeatures(seed int64, source ModernFeatureSource) *ModernFeatures {
 		carvers:      make(map[string]modernFeatureConfig),
 		temperatures: make(map[string]float64),
 	}
-	biomeNames := requireJavaResourceNames("biome")
+	biomeNames := requireResourceNames("biome")
 	for _, name := range biomeNames {
-		data := requireJavaJSON("biome", name)
+		data := requireJSON("biome", name)
 		if temperature, ok := data["temperature"].(float64); ok {
 			f.temperatures[name] = temperature
 		}
 		stages, ok := data["features"].([]any)
 		if !ok {
-			panic(fmt.Sprintf("Java biome %q has no feature stages", name))
+			panic(fmt.Sprintf("biome %q has no feature stages", name))
 		}
 		modifier, _ := data["temperature_modifier"].(string)
 		precipitation, _ := data["has_precipitation"].(bool)
 		biome := modernBiomeFeatures{stages: make([][]string, len(stages)), frozenTemperature: modifier == "frozen", hasPrecipitation: precipitation}
 		for stage, entries := range stages {
-			values, err := javaResourceReferences(entries)
+			values, err := resourceReferences(entries)
 			if err != nil {
-				panic(fmt.Sprintf("Java biome %q feature stage %d: %v", name, stage, err))
+				panic(fmt.Sprintf("biome %q feature stage %d: %v", name, stage, err))
 			}
 			biome.stages[stage] = values
 		}
 		if rawCarvers, exists := data["carvers"]; exists {
-			values, err := javaResourceReferences(rawCarvers)
+			values, err := resourceReferences(rawCarvers)
 			if err != nil {
-				panic(fmt.Sprintf("Java biome %q carvers: %v", name, err))
+				panic(fmt.Sprintf("biome %q carvers: %v", name, err))
 			}
 			biome.carvers = values
 		}
 		f.biomes[name] = biome
 	}
 
-	for _, name := range requireJavaResourceNames("placed_feature") {
-		data := requireJavaJSON("placed_feature", name)
+	for _, name := range requireResourceNames("placed_feature") {
+		data := requireJSON("placed_feature", name)
 		feature, ok := data["feature"].(string)
 		if !ok {
-			panic(fmt.Sprintf("Java placed feature %q has no configured feature", name))
+			panic(fmt.Sprintf("placed feature %q has no configured feature", name))
 		}
 		modifiers, ok := data["placement"].([]any)
 		if !ok {
-			panic(fmt.Sprintf("Java placed feature %q has no placement list", name))
+			panic(fmt.Sprintf("placed feature %q has no placement list", name))
 		}
-		p := modernFeaturePlacement{feature: normalizeJavaResource(feature), modifiers: make([]map[string]any, 0, len(modifiers))}
+		p := modernFeaturePlacement{feature: normalizeResource(feature), modifiers: make([]map[string]any, 0, len(modifiers))}
 		for i, value := range modifiers {
 			modifier, ok := value.(map[string]any)
 			if !ok {
-				panic(fmt.Sprintf("Java placed feature %q modifier %d is malformed", name, i))
+				panic(fmt.Sprintf("placed feature %q modifier %d is malformed", name, i))
 			}
 			p.modifiers = append(p.modifiers, modifier)
 		}
 		f.placed[name] = p
 	}
-	for _, name := range requireJavaResourceNames("configured_feature") {
-		data := requireJavaJSON("configured_feature", name)
+	for _, name := range requireResourceNames("configured_feature") {
+		data := requireJSON("configured_feature", name)
 		typeName, ok := data["type"].(string)
 		if !ok {
-			panic(fmt.Sprintf("Java configured feature %q has no type", name))
+			panic(fmt.Sprintf("configured feature %q has no type", name))
 		}
-		normalizedType := normalizeJavaResource(typeName)
+		normalizedType := normalizeResource(typeName)
 		f.configured[name] = modernFeatureConfig{typeName: normalizedType, config: data}
 	}
-	for _, name := range requireJavaResourceNames("configured_carver") {
-		data := requireJavaJSON("configured_carver", name)
+	for _, name := range requireResourceNames("configured_carver") {
+		data := requireJSON("configured_carver", name)
 		typeName, ok := data["type"].(string)
 		if !ok {
-			panic(fmt.Sprintf("Java configured carver %q has no type", name))
+			panic(fmt.Sprintf("configured carver %q has no type", name))
 		}
 		delete(data, "type")
-		f.carvers[name] = modernFeatureConfig{typeName: normalizeJavaResource(typeName), config: data}
+		f.carvers[name] = modernFeatureConfig{typeName: normalizeResource(typeName), config: data}
 	}
 	for biomeName, biome := range f.biomes {
 		for _, stage := range biome.stages {
 			for _, placed := range stage {
 				p, ok := f.placed[placed]
 				if !ok {
-					panic(fmt.Sprintf("Java biome %q references missing placed feature %q", biomeName, placed))
+					panic(fmt.Sprintf("biome %q references missing placed feature %q", biomeName, placed))
 				}
 				if _, ok := f.configured[p.feature]; !ok {
-					panic(fmt.Sprintf("Java placed feature %q references missing configured feature %q", placed, p.feature))
+					panic(fmt.Sprintf("placed feature %q references missing configured feature %q", placed, p.feature))
 				}
 			}
 		}
 		for _, carver := range biome.carvers {
 			if _, ok := f.carvers[carver]; !ok {
-				panic(fmt.Sprintf("Java biome %q references missing configured carver %q", biomeName, carver))
+				panic(fmt.Sprintf("biome %q references missing configured carver %q", biomeName, carver))
 			}
 		}
 	}
@@ -190,10 +190,10 @@ func NewModernFeatures(seed int64, source ModernFeatureSource) *ModernFeatures {
 type featureOrderNode struct{ step, index int }
 
 func (f *ModernFeatures) buildFeatureRanks() {
-	names := f.source.JavaFeatureBiomeNames()
+	names := f.source.FeatureBiomeNames()
 	maxSteps := 0
 	for _, name := range names {
-		biome, ok := f.biomes[normalizeJavaResource(name)]
+		biome, ok := f.biomes[normalizeResource(name)]
 		if !ok {
 			panic("overworld: feature biome list references unknown biome " + name)
 		}
@@ -204,7 +204,7 @@ func (f *ModernFeatures) buildFeatureRanks() {
 	ids := make(map[string]int)
 	edges := make(map[featureOrderNode]map[featureOrderNode]struct{})
 	for _, name := range names {
-		biome := f.biomes[normalizeJavaResource(name)]
+		biome := f.biomes[normalizeResource(name)]
 		sequence := make([]featureOrderNode, 0)
 		for step, features := range biome.stages {
 			for _, feature := range features {
@@ -243,7 +243,7 @@ func (f *ModernFeatures) buildFeatureRanks() {
 			return
 		}
 		if visiting[node] {
-			panic("overworld: cyclic Java biome feature ordering")
+			panic("overworld: cyclic biome feature ordering")
 		}
 		visiting[node] = true
 		children := make([]featureOrderNode, 0, len(edges[node]))
@@ -380,10 +380,10 @@ func (f *ModernFeatures) possibleBiomes(region *featureRegion, origin world.Chun
 		// The quarts span the origin chunk and the chunks around it.
 		for dz := int32(-1); dz <= 1; dz++ {
 			for dx := int32(-1); dx <= 1; dx++ {
-				for _, biome := range source.JavaNoiseBiomesInChunk(world.ChunkPos{origin[0] + dx, origin[1] + dz}, minQuartY, maxQuartY) {
-					name := normalizeJavaResource(biome)
+				for _, biome := range source.NoiseBiomesInChunk(world.ChunkPos{origin[0] + dx, origin[1] + dz}, minQuartY, maxQuartY) {
+					name := normalizeResource(biome)
 					if _, ok := f.biomes[name]; !ok {
-						panic("overworld: Java noise biome source returned unknown biome " + name)
+						panic("overworld: noise biome source returned unknown biome " + name)
 					}
 					possible[name] = struct{}{}
 				}
@@ -394,9 +394,9 @@ func (f *ModernFeatures) possibleBiomes(region *featureRegion, origin world.Chun
 	for qy := minQuartY; qy <= maxQuartY; qy++ {
 		for qz := minQuartZ; qz <= maxQuartZ; qz++ {
 			for qx := minQuartX; qx <= maxQuartX; qx++ {
-				name := normalizeJavaResource(f.source.JavaNoiseBiomeAt(qx, qy, qz))
+				name := normalizeResource(f.source.NoiseBiomeAt(qx, qy, qz))
 				if _, ok := f.biomes[name]; !ok {
-					panic("overworld: Java noise biome source returned unknown biome " + name)
+					panic("overworld: noise biome source returned unknown biome " + name)
 				}
 				possible[name] = struct{}{}
 			}
@@ -409,17 +409,17 @@ func (f *ModernFeatures) possibleBiomes(region *featureRegion, origin world.Chun
 // origin. Transient placements read shared piece state without changing it.
 func (f *ModernFeatures) placeStructures(region *featureRegion, origin world.ChunkPos, step int, context world.GenerationContext, transient bool) {
 	originX, originZ := origin[0]<<4, origin[1]<<4
-	structureRandom := javaFeatureRandom(f.seed, originX, originZ, 0, step)
-	env := javastructure.ProcessorEnvironment{
-		BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
-		JavaBiomeAt: f.source.JavaBiomeAt,
-		BaseHeight:  region.Height,
-		SeaLevel:    f.source.SeaLevel(),
+	structureRandom := featureRandom(f.seed, originX, originZ, 0, step)
+	env := structure.ProcessorEnvironment{
+		BaseBlock:  func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
+		BiomeAt:    f.source.BiomeAt,
+		BaseHeight: region.Height,
+		SeaLevel:   f.source.SeaLevel(),
 		MotionBlockingNoLeavesHeight: func(x, z int32) int32 {
 			return region.placementHeight(x, z, "MOTION_BLOCKING_NO_LEAVES")
 		},
-		JavaBlockStateID: func(x, y, z int32) (uint32, error) {
-			return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
+		BlockStateID: func(x, y, z int32) (uint32, error) {
+			return region.BlockStateID(cube.Pos{int(x), int(y), int(z)})
 		},
 		HasChestBlockEntity: func(x, y, z int32) bool {
 			return region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)})
@@ -434,13 +434,13 @@ func (f *ModernFeatures) placeStructures(region *featureRegion, origin world.Chu
 		TransientStructureState: transient,
 		WorldSeed:               f.seed,
 		Random:                  &structureRandom,
-		LevelRandom:             region.JavaRandom(),
+		LevelRandom:             region.RegionRandom(),
 		GenerationContext:       context,
-		PlaceFeature: func(feature any, pos [3]int32, random *java26.Random) bool {
+		PlaceFeature: func(feature any, pos [3]int32, random *vanilla.Random) bool {
 			return region.PlacePlacedFeature(feature, pos, random)
 		},
 	}
-	f.source.PlaceStructureStep(origin, step, env, func(placement javastructure.Placement) { f.applyStructurePlacement(region, placement) })
+	f.source.PlaceStructureStep(origin, step, env, func(placement structure.Placement) { f.applyStructurePlacement(region, placement) })
 }
 
 // placeFeatures places the features of one decoration step of origin in
@@ -467,22 +467,22 @@ func (f *ModernFeatures) placeFeatures(region *featureRegion, origin world.Chunk
 	}
 	sort.Slice(features, func(i, j int) bool { return ranks[features[i]] < ranks[features[j]] })
 	for _, name := range features {
-		random := javaFeatureRandom(f.seed, originX, originZ, ranks[name], step)
+		random := featureRandom(f.seed, originX, originZ, ranks[name], step)
 		f.placeFeature(region, originX, originZ, name, random)
 	}
 }
 
-func javaFeatureRandom(seed int64, chunkX, chunkZ int32, index, stage int) java26.Random {
-	r := java26.NewWorldgenRandom(seed)
+func featureRandom(seed int64, chunkX, chunkZ int32, index, stage int) vanilla.Random {
+	r := vanilla.NewWorldgenRandom(seed)
 	decorationSeed := r.SetDecorationSeed(seed, chunkX, chunkZ)
 	r.SetFeatureSeed(decorationSeed, int32(index), int32(stage))
 	return r
 }
 
-func (f *ModernFeatures) placeFeature(region *featureRegion, originX, originZ int32, name string, random java26.Random) bool {
+func (f *ModernFeatures) placeFeature(region *featureRegion, originX, originZ int32, name string, random vanilla.Random) bool {
 	placed, ok := f.placed[name]
 	if !ok {
-		panic("overworld: missing Java placed feature " + name)
+		panic("overworld: missing placed feature " + name)
 	}
 	return f.placeWithModifiers(region, placed.feature, placed.modifiers, featurePos{x: originX, z: originZ}, &random, name)
 }
@@ -524,26 +524,26 @@ func featureStateRID(c *chunk.Chunk, state map[string]any) (world.NativeState, b
 	return native, true
 }
 
-func featureStateBlock(value any) (javastructure.Block, bool) {
+func featureStateBlock(value any) (structure.Block, bool) {
 	if name, ok := value.(string); ok {
 		if !strings.Contains(name, ":") {
 			name = "minecraft:" + name
 		}
-		return featureJavaBlock(world.BlockState{Name: name}), true
+		return featureBlock(world.BlockState{Name: name}), true
 	}
 	state, ok := value.(map[string]any)
 	if !ok {
-		return javastructure.Block{}, false
+		return structure.Block{}, false
 	}
 	name, ok := state["id"].(string)
 	if !ok {
-		return javastructure.Block{}, false
+		return structure.Block{}, false
 	}
 	var properties map[string]any
 	if raw, exists := state["properties"]; exists {
 		values, ok := raw.(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java block-state provider")
+			panic("overworld: malformed block-state provider")
 		}
 		properties = make(map[string]any, len(values))
 		for key, value := range values {
@@ -565,38 +565,38 @@ func featureStateBlock(value any) (javastructure.Block, bool) {
 	if !strings.Contains(name, ":") {
 		name = "minecraft:" + name
 	}
-	return featureJavaBlock(world.BlockState{Name: name, Properties: properties}), true
+	return featureBlock(world.BlockState{Name: name, Properties: properties}), true
 }
 
-func featureJavaBlock(state world.BlockState) javastructure.Block {
-	actor, ok, err := javastructure.NativeBlockForJavaState(state)
+func featureBlock(state world.BlockState) structure.Block {
+	actor, ok, err := structure.NativeBlockForState(state)
 	if err != nil {
 		panic(err)
 	}
-	placement := javastructure.Block{State: state}
+	placement := structure.Block{State: state}
 	if ok {
 		placement.NativeBlock = actor
 	}
 	return placement
 }
 
-func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *java26.Random) (javastructure.Block, bool) {
-	provider = resolveJavaStateProvider(provider)
+func sampleBlockState(region *featureRegion, p featurePos, provider any, r *vanilla.Random) (structure.Block, bool) {
+	provider = resolveStateProvider(provider)
 	state, ok := provider.(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java block state provider")
+		panic("overworld: malformed block state provider")
 	}
 	if typeName, ok := state["type"].(string); ok {
-		switch normalizeJavaResource(typeName) {
+		switch normalizeResource(typeName) {
 		case "simple":
 			return featureStateBlock(state["state"])
 		case "copy_properties":
-			block, ok := sampleJavaBlockState(region, p, state["source"], r)
+			block, ok := sampleBlockState(region, p, state["source"], r)
 			if !ok {
-				return javastructure.Block{}, false
+				return structure.Block{}, false
 			}
 			id := featureBlockStateID(block)
-			next, err := javadata.BlockStateWithPropertiesOf(id, region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+			next, err := gamedata.BlockStateWithPropertiesOf(id, region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 			if err != nil {
 				panic(err)
 			}
@@ -609,9 +609,9 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			total := int32(0)
 			for _, raw := range entries {
 				entry := raw.(map[string]any)
-				weight := javaIntProviderValue(entry["weight"])
+				weight := intProviderValue(entry["weight"])
 				if weight < 0 || total > int32(2147483647)-weight {
-					panic("overworld: invalid Java block state weight")
+					panic("overworld: invalid block state weight")
 				}
 				total += weight
 			}
@@ -621,7 +621,7 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			n := r.NextInt(total)
 			for _, raw := range entries {
 				entry := raw.(map[string]any)
-				weight := javaIntProviderValue(entry["weight"])
+				weight := intProviderValue(entry["weight"])
 				if n < weight {
 					return featureStateBlock(entry["data"])
 				}
@@ -629,23 +629,23 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			}
 			panic("overworld: weighted block state selection escaped its total")
 		case "random_block":
-			if block, ok := sampleJavaRandomBlockState(state["blocks"], r); ok {
+			if block, ok := sampleRandomBlockState(state["blocks"], r); ok {
 				return block, true
 			}
 			name, properties := region.State(p)
-			return featureJavaBlock(world.BlockState{Name: name, Properties: maps.Clone(properties)}), true
+			return featureBlock(world.BlockState{Name: name, Properties: maps.Clone(properties)}), true
 		case "rotated":
 			direction, explicit := state["direction"].(string)
 			if !explicit {
 				direction = [...]string{"down", "up", "north", "south", "west", "east"}[r.NextInt(6)]
 			}
-			block, ok := sampleJavaBlockState(region, p, state["state"], r)
+			block, ok := sampleBlockState(region, p, state["state"], r)
 			if !ok {
-				return javastructure.Block{}, false
+				return structure.Block{}, false
 			}
 			id := featureBlockStateID(block)
 			next := id
-			if javadata.BlockStateHasEnumValue(id, "axis", "y") {
+			if gamedata.BlockStateHasEnumValue(id, "axis", "y") {
 				axis := "y"
 				switch direction {
 				case "east", "west":
@@ -654,16 +654,16 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 					axis = "z"
 				}
 				var err error
-				next, err = javadata.BlockStateWithProperty(next, "axis", axis)
+				next, err = gamedata.BlockStateWithProperty(next, "axis", axis)
 				if err != nil {
 					panic(err)
 				}
 			}
-			fullFacing := javadata.BlockStateHasEnumValue(id, "facing", "up")
-			horizontalFacing := direction != "up" && direction != "down" && javadata.BlockStateHasEnumValue(id, "facing", "north") && !javadata.BlockStateHasEnumValue(id, "facing", "down")
+			fullFacing := gamedata.BlockStateHasEnumValue(id, "facing", "up")
+			horizontalFacing := direction != "up" && direction != "down" && gamedata.BlockStateHasEnumValue(id, "facing", "north") && !gamedata.BlockStateHasEnumValue(id, "facing", "down")
 			if fullFacing || horizontalFacing {
 				var err error
-				next, err = javadata.BlockStateWithProperty(next, "facing", direction)
+				next, err = gamedata.BlockStateWithProperty(next, "facing", direction)
 				if err != nil {
 					panic(err)
 				}
@@ -674,60 +674,60 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 			if !ok {
 				panic("overworld: malformed randomized_int provider")
 			}
-			block, ok := sampleJavaBlockState(region, p, state["source"], r)
+			block, ok := sampleBlockState(region, p, state["source"], r)
 			if !ok {
-				return javastructure.Block{}, false
+				return structure.Block{}, false
 			}
 			id := featureBlockStateID(block)
-			if _, integer := javadata.BlockStateInt(id, property); !integer {
+			if _, integer := gamedata.BlockStateInt(id, property); !integer {
 				return block, true
 			}
-			next, err := javadata.BlockStateWithProperty(id, property, sampleJavaInt(state["values"], r))
+			next, err := gamedata.BlockStateWithProperty(id, property, sampleInt(state["values"], r))
 			if err != nil {
 				panic(err)
 			}
 			return featureBlockWithStateID(block, id, next), true
 		case "noise", "noise_threshold", "dual_noise":
-			return sampleJavaNoiseStateProvider(p, state, r)
+			return sampleNoiseStateProvider(p, state, r)
 		case "rule_based":
-			if sampled, ok := sampleJavaRuleState(region, p, state, r); ok {
+			if sampled, ok := sampleRuleState(region, p, state, r); ok {
 				return sampled, true
 			}
 			name, properties := region.State(p)
-			return featureJavaBlock(world.BlockState{Name: name, Properties: maps.Clone(properties)}), true
+			return featureBlock(world.BlockState{Name: name, Properties: maps.Clone(properties)}), true
 		default:
-			panic("overworld: unsupported Java block state provider " + normalizeJavaResource(typeName))
+			panic("overworld: unsupported block state provider " + normalizeResource(typeName))
 		}
 	}
 	return featureStateBlock(state)
 }
 
-func featureBlockStateID(block javastructure.Block) uint32 {
-	id, err := javadata.BlockStateID(block.State.Name, block.State.Properties)
+func featureBlockStateID(block structure.Block) uint32 {
+	id, err := gamedata.BlockStateID(block.State.Name, block.State.Properties)
 	if err != nil {
 		panic(err)
 	}
 	return id
 }
 
-func featureBlockWithStateID(block javastructure.Block, previous, next uint32) javastructure.Block {
+func featureBlockWithStateID(block structure.Block, previous, next uint32) structure.Block {
 	if previous == next {
 		return block
 	}
-	name, properties, ok := javadata.BlockStateFromID(next)
+	name, properties, ok := gamedata.BlockStateFromID(next)
 	if !ok {
-		panic("overworld: invalid sampled Java block state")
+		panic("overworld: invalid sampled block state")
 	}
-	return featureJavaBlock(world.BlockState{Name: name, Properties: properties})
+	return featureBlock(world.BlockState{Name: name, Properties: properties})
 }
 
-func sampleJavaRandomBlockState(value any, r *java26.Random) (javastructure.Block, bool) {
+func sampleRandomBlockState(value any, r *vanilla.Random) (structure.Block, bool) {
 	switch blocks := value.(type) {
 	case string:
 		if strings.HasPrefix(blocks, "#") {
-			names := javaBlockTagNames(normalizeJavaResource(strings.TrimPrefix(blocks, "#")))
+			names := blockTagNames(normalizeResource(strings.TrimPrefix(blocks, "#")))
 			if len(names) == 0 {
-				return javastructure.Block{}, false
+				return structure.Block{}, false
 			}
 			return featureStateBlock(names[r.NextInt(int32(len(names)))])
 		}
@@ -735,7 +735,7 @@ func sampleJavaRandomBlockState(value any, r *java26.Random) (javastructure.Bloc
 		return featureStateBlock(blocks)
 	case []any:
 		if len(blocks) == 0 {
-			return javastructure.Block{}, false
+			return structure.Block{}, false
 		}
 		return featureStateBlock(blocks[r.NextInt(int32(len(blocks)))])
 	default:
@@ -743,19 +743,19 @@ func sampleJavaRandomBlockState(value any, r *java26.Random) (javastructure.Bloc
 	}
 }
 
-func sampleOptionalJavaBlockState(region *featureRegion, p featurePos, provider any, r *java26.Random) (javastructure.Block, bool) {
-	provider = resolveJavaStateProvider(provider)
+func sampleOptionalBlockState(region *featureRegion, p featurePos, provider any, r *vanilla.Random) (structure.Block, bool) {
+	provider = resolveStateProvider(provider)
 	if state, ok := provider.(map[string]any); ok {
-		if kind, _ := state["type"].(string); normalizeJavaResource(kind) == "rule_based" {
-			return sampleJavaRuleState(region, p, state, r)
-		} else if normalizeJavaResource(kind) == "random_block" {
-			return sampleJavaRandomBlockState(state["blocks"], r)
+		if kind, _ := state["type"].(string); normalizeResource(kind) == "rule_based" {
+			return sampleRuleState(region, p, state, r)
+		} else if normalizeResource(kind) == "random_block" {
+			return sampleRandomBlockState(state["blocks"], r)
 		}
 	}
-	return sampleJavaBlockState(region, p, provider, r)
+	return sampleBlockState(region, p, provider, r)
 }
 
-func sampleJavaRuleState(region *featureRegion, p featurePos, state map[string]any, r *java26.Random) (javastructure.Block, bool) {
+func sampleRuleState(region *featureRegion, p featurePos, state map[string]any, r *vanilla.Random) (structure.Block, bool) {
 	rules, ok := state["rules"].([]any)
 	if !ok {
 		panic("overworld: malformed rule_based provider")
@@ -774,15 +774,15 @@ func sampleJavaRuleState(region *featureRegion, p featurePos, state map[string]a
 			if !exists {
 				panic("overworld: rule_based rule has no then provider")
 			}
-			if sampled, ok := sampleOptionalJavaBlockState(region, p, then, r); ok {
+			if sampled, ok := sampleOptionalBlockState(region, p, then, r); ok {
 				return sampled, true
 			}
 		}
 	}
 	if fallback, exists := state["fallback"]; exists {
-		return sampleOptionalJavaBlockState(region, p, fallback, r)
+		return sampleOptionalBlockState(region, p, fallback, r)
 	}
-	return javastructure.Block{}, false
+	return structure.Block{}, false
 }
 
 func cloneFeatureProperties(properties map[string]any) map[string]any {
@@ -793,26 +793,26 @@ func cloneFeatureProperties(properties map[string]any) map[string]any {
 	return clone
 }
 
-func javaBlockTagNames(tag string) []string {
-	names, err := javadata.BlockTagMembers(tag)
+func blockTagNames(tag string) []string {
+	names, err := gamedata.BlockTagMembers(tag)
 	if err != nil {
 		panic(err)
 	}
 	for i := range names {
-		names[i] = normalizeJavaResource(names[i])
+		names[i] = normalizeResource(names[i])
 	}
 	return names
 }
-func requireJavaJSON(kind, name string) map[string]any {
-	data, err := javadata.LoadJSON(kind, name)
+func requireJSON(kind, name string) map[string]any {
+	data, err := gamedata.LoadJSON(kind, name)
 	if err != nil {
 		panic(err)
 	}
 	return data
 }
 
-func requireJavaResourceNames(kind string) []string {
-	names, err := javadata.ResourceNames(kind)
+func requireResourceNames(kind string) []string {
+	names, err := gamedata.ResourceNames(kind)
 	if err != nil {
 		panic(err)
 	}
@@ -820,10 +820,10 @@ func requireJavaResourceNames(kind string) []string {
 }
 
 // Java holder-set codecs accept either one reference or an ordered list.
-func javaResourceReferences(raw any) ([]string, error) {
+func resourceReferences(raw any) ([]string, error) {
 	switch values := raw.(type) {
 	case string:
-		return []string{normalizeJavaResource(values)}, nil
+		return []string{normalizeResource(values)}, nil
 	case []any:
 		names := make([]string, len(values))
 		for i, value := range values {
@@ -831,7 +831,7 @@ func javaResourceReferences(raw any) ([]string, error) {
 			if !ok {
 				return nil, fmt.Errorf("resource reference %d is not a string", i)
 			}
-			names[i] = normalizeJavaResource(name)
+			names[i] = normalizeResource(name)
 		}
 		return names, nil
 	default:
@@ -839,67 +839,67 @@ func javaResourceReferences(raw any) ([]string, error) {
 	}
 }
 
-func normalizeJavaResource(name string) string {
+func normalizeResource(name string) string {
 	return strings.TrimPrefix(name, "minecraft:")
 }
 
 func featureNumber(v any) int {
 	n, ok := v.(float64)
 	if !ok || n > 100000 || n < -100000 {
-		panic(fmt.Sprintf("overworld: invalid Java feature number %v", v))
+		panic(fmt.Sprintf("overworld: invalid feature number %v", v))
 	}
 	return int(n)
 }
 
-var biomeInfoNoise = func() *java26.SimplexNoise {
-	r := java26.NewLegacyRandom(2345)
-	return java26.NewSimplexNoiseWithoutOffset(&r)
+var biomeInfoNoise = func() *vanilla.SimplexNoise {
+	r := vanilla.NewLegacyRandom(2345)
+	return vanilla.NewSimplexNoiseWithoutOffset(&r)
 }()
 
-func sampleJavaHeight(provider map[string]any, r *java26.Random, worldMinY, worldMaxY, seaLevel int32) int32 {
+func sampleHeight(provider map[string]any, r *vanilla.Random, worldMinY, worldMaxY, seaLevel int32) int32 {
 	bound := func(v any) int32 { return int32(featureBound(v, worldMinY, worldMaxY, seaLevel)) }
 	typeName, typed := provider["type"].(string)
 	if !typed {
 		return bound(provider)
 	}
-	typeName = normalizeJavaResource(typeName)
+	typeName = normalizeResource(typeName)
 	switch typeName {
 	case "constant":
 		return bound(provider["value"])
 	case "weighted_list":
 		distribution, ok := provider["distribution"].([]any)
 		if !ok || len(distribution) == 0 {
-			panic("overworld: malformed weighted Java height provider")
+			panic("overworld: malformed weighted height provider")
 		}
 		total := int32(0)
 		for _, raw := range distribution {
 			entry, ok := raw.(map[string]any)
 			if !ok {
-				panic("overworld: malformed weighted Java height entry")
+				panic("overworld: malformed weighted height entry")
 			}
-			weight := javaIntProviderValue(entry["weight"])
+			weight := intProviderValue(entry["weight"])
 			if weight < 0 || total > int32(2147483647)-weight {
-				panic("overworld: invalid Java height weight")
+				panic("overworld: invalid height weight")
 			}
 			total += weight
 		}
 		if total == 0 {
-			panic("overworld: weighted Java height provider has no positive weight")
+			panic("overworld: weighted height provider has no positive weight")
 		}
 		choice := r.NextInt(total)
 		for _, raw := range distribution {
 			entry := raw.(map[string]any)
-			weight := javaIntProviderValue(entry["weight"])
+			weight := intProviderValue(entry["weight"])
 			if choice < weight {
 				child, ok := entry["data"].(map[string]any)
 				if !ok {
-					panic("overworld: weighted Java height entry has no provider")
+					panic("overworld: weighted height entry has no provider")
 				}
-				return sampleJavaHeight(child, r, worldMinY, worldMaxY, seaLevel)
+				return sampleHeight(child, r, worldMinY, worldMaxY, seaLevel)
 			}
 			choice -= weight
 		}
-		panic("overworld: weighted Java height selection escaped its total")
+		panic("overworld: weighted height selection escaped its total")
 	case "uniform", "trapezoid", "biased_to_bottom", "very_biased_to_bottom":
 		minY, maxY := bound(provider["min_inclusive"]), bound(provider["max_inclusive"])
 		switch typeName {
@@ -914,7 +914,7 @@ func sampleJavaHeight(provider map[string]any, r *java26.Random, worldMinY, worl
 			}
 			plateau := int32(0)
 			if value, exists := provider["plateau"]; exists {
-				plateau = javaIntProviderValue(value)
+				plateau = intProviderValue(value)
 			}
 			width := maxY - minY
 			if plateau >= width {
@@ -926,10 +926,10 @@ func sampleJavaHeight(provider map[string]any, r *java26.Random, worldMinY, worl
 		}
 		inner := int32(1)
 		if value, exists := provider["inner"]; exists {
-			inner = javaIntProviderValue(value)
+			inner = intProviderValue(value)
 		}
 		if inner < 1 {
-			panic("overworld: Java height inner must be positive")
+			panic("overworld: height inner must be positive")
 		}
 		extent := maxY - minY - inner + 1
 		if extent <= 0 {
@@ -939,17 +939,17 @@ func sampleJavaHeight(provider map[string]any, r *java26.Random, worldMinY, worl
 			limit := r.NextInt(extent)
 			return minY + r.NextInt(limit+inner)
 		}
-		upper := javaHeightNextInt(r, minY+inner, maxY)
-		biasedUpper := javaHeightNextInt(r, minY, upper-1)
-		return javaHeightNextInt(r, minY, biasedUpper-1+inner)
+		upper := heightNextInt(r, minY+inner, maxY)
+		biasedUpper := heightNextInt(r, minY, upper-1)
+		return heightNextInt(r, minY, biasedUpper-1+inner)
 	default:
-		panic("overworld: unsupported Java height provider " + typeName)
+		panic("overworld: unsupported height provider " + typeName)
 	}
 }
 
-// javaHeightNextInt matches Mth.nextInt, which unlike randomBetweenInclusive
+// heightNextInt matches Mth.nextInt, which unlike randomBetweenInclusive
 // consumes no draw when its endpoints coincide or are inverted.
-func javaHeightNextInt(r *java26.Random, minimum, maximum int32) int32 {
+func heightNextInt(r *vanilla.Random, minimum, maximum int32) int32 {
 	if minimum >= maximum {
 		return minimum
 	}
@@ -990,8 +990,8 @@ func noiseThresholdCount(p featurePos, modifier map[string]any) int {
 	return int(above)
 }
 
-func javaBlockTagContains(tag, blockName string) bool {
-	matches, err := javadata.BlockTagContains(tag, blockName)
+func blockTagContains(tag, blockName string) bool {
+	matches, err := gamedata.BlockTagContains(tag, blockName)
 	if err != nil {
 		panic(err)
 	}
@@ -1001,7 +1001,7 @@ func javaBlockTagContains(tag, blockName string) bool {
 // featureBlockTagContainsID reports whether the block of state ID id is in a
 // block tag. A zero ID, a state without a source block, is in no tag.
 func featureBlockTagContainsID(tag string, id uint32) bool {
-	matches, err := javadata.BlockTagContainsID(tag, id)
+	matches, err := gamedata.BlockTagContainsID(tag, id)
 	if err != nil {
 		panic(err)
 	}
@@ -1033,11 +1033,11 @@ func featureBound(v any, worldMinY, worldMaxY, seaLevel int32) float64 {
 			return float64(seaLevel) + n
 		}
 	}
-	panic(fmt.Sprintf("overworld: malformed Java height bound %v", v))
+	panic(fmt.Sprintf("overworld: malformed height bound %v", v))
 }
 
 // applyStructurePlacement adapts Java descriptors, applies allowed blocks, and publishes target metadata.
-func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placement javastructure.Placement) {
+func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placement structure.Placement) {
 	sourceBlockCount := len(placement.Blocks)
 	// List pool elements share a descriptor slice, but each source template
 	// completes its own fluid pass before the next one replaces any blocks.
@@ -1054,17 +1054,17 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 		}
 		if end == sourceBlockCount {
 			for _, tick := range placement.ScheduledTicks {
-				region.reserveJavaTick(tick)
+				region.reserveTick(tick)
 			}
 		}
 		if placement.TemplateUpdateFlags != 0 && !placement.TemplateKnownShape {
-			world.UpdateJavaTemplateShapes(region, written, placement.TemplateUpdateFlags)
+			world.UpdateTemplateShapes(region, written, placement.TemplateUpdateFlags)
 		}
 		first = end
 	}
 	if sourceBlockCount == 0 {
 		for _, tick := range placement.ScheduledTicks {
-			region.reserveJavaTick(tick)
+			region.reserveTick(tick)
 		}
 	}
 	var err error
@@ -1081,7 +1081,7 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 			region.result.MarkForPostProcessing(pos, region.c.Range())
 		}
 	}
-	entities := make([]javastructure.Entity, 0, len(placement.Entities))
+	entities := make([]structure.Entity, 0, len(placement.Entities))
 	for _, record := range placement.Entities {
 		x, z := int32(math.Floor(record.Pos[0])), int32(math.Floor(record.Pos[2]))
 		if region.inTarget(featurePos{x: x, z: z}) {
@@ -1089,7 +1089,7 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 		}
 	}
 	if len(entities) != 0 {
-		handles, err := (javastructure.Placement{Entities: entities}).NewEntityHandles(entity.NewFromJavaNBT)
+		handles, err := (structure.Placement{Entities: entities}).NewEntityHandles(entity.NewFromStructureNBT)
 		if err != nil {
 			panic(err)
 		}
@@ -1097,7 +1097,7 @@ func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placemen
 	}
 }
 
-func templatePlacementFlags(placement javastructure.Placement) int {
+func templatePlacementFlags(placement structure.Placement) int {
 	if placement.TemplateUpdateFlags != 0 {
 		return placement.TemplateUpdateFlags
 	}

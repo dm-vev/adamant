@@ -3,7 +3,7 @@ package entity
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -24,7 +24,7 @@ func templateSpawnAttribute(nbt map[string]any, id string, base float64) map[str
 
 // prepareTemplateMobBase is Mob.finalizeSpawn. The random-spawn modifier is
 // one-shot, but handedness is sampled on every finalize call.
-func prepareTemplateMobBase(nbt map[string]any, followRange float64, random *java26.Random) {
+func prepareTemplateMobBase(nbt map[string]any, followRange float64, random *vanilla.Random) {
 	follow := templateSpawnAttribute(nbt, "minecraft:follow_range", followRange)
 	modifiers, _ := follow["modifiers"].([]any)
 	found := false
@@ -52,7 +52,7 @@ type TemplateMobSpawnContext struct {
 // PrepareTemplateMobSpawn loads/finalizes a Mob from authored template NBT.
 // A false keep result is Source EntityType.canSpawn rejecting a peaceful mob;
 // that path consumes neither stream and creates no native actor.
-func PrepareTemplateMobSpawn(nbt map[string]any, levelRandom, entityRandom *java26.Random, context TemplateMobSpawnContext) (vehicle map[string]any, keep bool, err error) {
+func PrepareTemplateMobSpawn(nbt map[string]any, levelRandom, entityRandom *vanilla.Random, context TemplateMobSpawnContext) (vehicle map[string]any, keep bool, err error) {
 	id, _ := nbt["id"].(string)
 	allowed, known := templateSpawnRegistry.AllowedInPeaceful[id]
 	if !known {

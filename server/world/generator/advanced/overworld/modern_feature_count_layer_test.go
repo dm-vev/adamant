@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -117,15 +117,15 @@ func TestCountEveryLayerPositionsAcrossStoneAirWaterStack(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name     string
-		random   java26.Random
+		random   vanilla.Random
 		provider any
 		want     []featurePos
 		next     int64
 	}{
-		{"legacy/constant", java26.NewLegacyRandom(123), float64(2), []featurePos{{11, 13, 3}, {15, 13, 4}, {4, 5, 9}, {9, 5, 4}}, -5237980416576129062},
-		{"legacy/uniform", java26.NewLegacyRandom(123), map[string]any{"type": "uniform", "min_inclusive": float64(1), "max_inclusive": float64(3)}, []featurePos{{3, 13, 15}, {4, 13, 9}, {12, 5, 9}, {8, 5, 11}, {1, 5, 10}}, 1642239947753385107},
-		{"xoroshiro/constant", java26.NewXoroshiroRandom(123), float64(2), []featurePos{{6, 13, 12}, {8, 13, 15}, {2, 5, 1}, {14, 5, 9}}, -2644433350256532612},
-		{"xoroshiro/uniform", java26.NewXoroshiroRandom(123), map[string]any{"type": "uniform", "min_inclusive": float64(1), "max_inclusive": float64(3)}, []featurePos{{12, 13, 8}, {2, 13, 1}, {9, 13, 1}, {6, 5, 15}, {6, 5, 14}}, -9004380913855867372},
+		{"legacy/constant", vanilla.NewLegacyRandom(123), float64(2), []featurePos{{11, 13, 3}, {15, 13, 4}, {4, 5, 9}, {9, 5, 4}}, -5237980416576129062},
+		{"legacy/uniform", vanilla.NewLegacyRandom(123), map[string]any{"type": "uniform", "min_inclusive": float64(1), "max_inclusive": float64(3)}, []featurePos{{3, 13, 15}, {4, 13, 9}, {12, 5, 9}, {8, 5, 11}, {1, 5, 10}}, 1642239947753385107},
+		{"xoroshiro/constant", vanilla.NewXoroshiroRandom(123), float64(2), []featurePos{{6, 13, 12}, {8, 13, 15}, {2, 5, 1}, {14, 5, 9}}, -2644433350256532612},
+		{"xoroshiro/uniform", vanilla.NewXoroshiroRandom(123), map[string]any{"type": "uniform", "min_inclusive": float64(1), "max_inclusive": float64(3)}, []featurePos{{12, 13, 8}, {2, 13, 1}, {9, 13, 1}, {6, 5, 15}, {6, 5, 14}}, -9004380913855867372},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := countEveryLayerPositions(r, featurePos{}, tc.provider, &tc.random, nil)

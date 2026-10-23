@@ -6,8 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -193,8 +193,8 @@ func (s PotentSulfur) countDown(now int64, pos cube.Pos, tx *world.Tx) {
 
 // geyserRandom ports PotentSulfurBlockEntity.geyserPositional, which fixes
 // the phase lengths of a geyser by its position.
-func geyserRandom(tx *world.Tx, pos cube.Pos) java26.Random {
-	r := java26.NewXoroshiroRandom(tx.World().Seed() ^ -904011478)
+func geyserRandom(tx *world.Tx, pos cube.Pos) vanilla.Random {
+	r := vanilla.NewXoroshiroRandom(tx.World().Seed() ^ -904011478)
 	return r.ForkPositional().At(int32(pos.X()), int32(pos.Y()), int32(pos.Z()))
 }
 

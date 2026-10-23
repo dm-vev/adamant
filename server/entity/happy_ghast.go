@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -110,7 +110,7 @@ func NewHappyGhast(o world.EntitySpawnOpts) *world.EntityHandle {
 func (*HappyGhast) SpeciesType() world.EntityType { return HappyGhastType }
 
 // FinalizeSpawn initializes the source-created ghastling as a baby before it is exposed to viewers.
-func (h *HappyGhast) FinalizeSpawn(reason string, _ *java26.Random) {
+func (h *HappyGhast) FinalizeSpawn(reason string, _ *vanilla.Random) {
 	if reason == "breeding" {
 		h.SetAge(-24000)
 	}

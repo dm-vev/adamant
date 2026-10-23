@@ -28,7 +28,7 @@ func TestPreparedVillagerBabyMetadataSurvivesReloadAndGrowth(t *testing.T) {
 		"VillagerData":          map[string]any{"type": "minecraft:desert", "profession": "minecraft:none", "level": int32(1)},
 	}
 	pos := mgl64.Vec3{8.5, 65, 8.5}
-	handle, err := entity.NewFromJavaNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
+	handle, err := entity.NewFromStructureNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
 	if err != nil {
 		t.Fatal(err)
 	}

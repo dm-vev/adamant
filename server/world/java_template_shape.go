@@ -4,47 +4,47 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-// JavaGenerationShapeAccess is the WorldGenRegion view used by source shape
+// GenerationShapeAccess is the WorldGenRegion view used by source shape
 // callbacks. It deliberately does not emulate a live World or neighbour updates.
 // Implementations retain canonical states, loaded actors and proto-chunk tick
 // reservations, including those outside the chunk currently being published.
-// JavaRandom is the region stream, not the structure/feature placement stream.
-// SetJavaBlockState observes the source write radius and update flags.
+// RegionRandom is the region stream, not the structure/feature placement stream.
+// SetBlockState observes the source write radius and update flags.
 // Light returns source raw brightness with zero sky darkening.
-// JavaSignal's face points out of the signaling block towards its receiver.
-// JavaHiveHasOccupants reads the currently loaded generation hive actor.
-// JavaFluidTickDelay accepts minecraft:water or minecraft:lava.
+// Signal's face points out of the signaling block towards its receiver.
+// HiveHasOccupants reads the currently loaded generation hive actor.
+// FluidTickDelay accepts minecraft:water or minecraft:lava.
 // Scheduled fluid type names may also be their flowing variants.
-type JavaGenerationShapeAccess interface {
-	JavaBlockStateID(cube.Pos) (uint32, error)
+type GenerationShapeAccess interface {
+	BlockStateID(cube.Pos) (uint32, error)
 	Range() cube.Range
-	JavaRandom() *java26.Random
+	RegionRandom() *vanilla.Random
 	Light(cube.Pos) uint8
-	JavaFluidTickDelay(name string) int32
-	ScheduleJavaTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32)
-	HasJavaBlockTick(pos cube.Pos, name string) bool
-	JavaSignal(pos cube.Pos, face cube.Face) int
-	JavaHiveHasOccupants(pos cube.Pos) bool
-	SetJavaBlockState(pos cube.Pos, state uint32, flags int) bool
+	FluidTickDelay(name string) int32
+	ScheduleTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32)
+	HasBlockTick(pos cube.Pos, name string) bool
+	Signal(pos cube.Pos, face cube.Face) int
+	HiveHasOccupants(pos cube.Pos) bool
+	SetBlockState(pos cube.Pos, state uint32, flags int) bool
 }
 
-// JavaGenerationBlockCanSurvive evaluates a proposed source state against the
+// GenerationBlockCanSurvive evaluates a proposed source state against the
 // current generation view without placing it or running neighbour updates.
-func JavaGenerationBlockCanSurvive(access JavaGenerationShapeAccess, state uint32, pos cube.Pos) bool {
+func GenerationBlockCanSurvive(access GenerationShapeAccess, state uint32, pos cube.Pos) bool {
 	context := javaShapeContext{generation: access, pos: pos}
 	return context.canSurvive(state, pos)
 }
 
-// PlaceJavaGenerationSimpleBlock applies SimpleBlockFeature after its state
+// PlaceGenerationSimpleBlock applies SimpleBlockFeature after its state
 // provider has sampled a state. Mossy carpet consumes the region random stream.
-func PlaceJavaGenerationSimpleBlock(access JavaGenerationShapeAccess, state uint32, pos cube.Pos, scheduleTick bool) bool {
+func PlaceGenerationSimpleBlock(access GenerationShapeAccess, state uint32, pos cube.Pos, scheduleTick bool) bool {
 	context := javaShapeContext{generation: access, pos: pos}
-	owner, err := javadata.BlockCanSurviveOwnerID(state)
+	owner, err := gamedata.BlockCanSurviveOwnerID(state)
 	if err != nil {
 		panic(err)
 	}
@@ -65,26 +65,26 @@ func PlaceJavaGenerationSimpleBlock(access JavaGenerationShapeAccess, state uint
 		}
 		lower := javaWith(state, "half", "lower")
 		upper := javaWith(state, "half", "upper")
-		if _, hasWaterlogged := javadata.BlockStateBool(state, "waterlogged"); hasWaterlogged {
+		if _, hasWaterlogged := gamedata.BlockStateBool(state, "waterlogged"); hasWaterlogged {
 			for _, placement := range [...]struct {
 				pos   cube.Pos
 				state uint32
 			}{{pos, lower}, {abovePos, upper}} {
 				fluid := context.fluid(context.at(placement.pos))
 				placement.state = javaWith(placement.state, "waterlogged", fluid.kind == javaFluidWater)
-				access.SetJavaBlockState(placement.pos, placement.state, 2)
+				access.SetBlockState(placement.pos, placement.state, 2)
 			}
 		} else {
-			access.SetJavaBlockState(pos, lower, 2)
-			access.SetJavaBlockState(abovePos, upper, 2)
+			access.SetBlockState(pos, lower, 2)
+			access.SetBlockState(abovePos, upper, 2)
 		}
 	default:
-		access.SetJavaBlockState(pos, state, 2)
+		access.SetBlockState(pos, state, 2)
 	}
 
 	if scheduleTick {
 		current := context.at(pos)
-		access.ScheduleJavaTick(pos, chunk.BlockTick, "minecraft:"+javaName(current), 1)
+		access.ScheduleTick(pos, chunk.BlockTick, "minecraft:"+javaName(current), 1)
 	}
 	return true
 }
@@ -93,7 +93,7 @@ func placeJavaGenerationMossyCarpet(context *javaShapeContext, pos cube.Pos) {
 	base := javaDefault("pale_moss_carpet")
 	context.pos = pos
 	base = javaPlant06UpdateMossyCarpetSides(context, base, true)
-	context.generation.SetJavaBlockState(pos, base, 2)
+	context.generation.SetBlockState(pos, base, 2)
 
 	abovePos := pos.Side(cube.FaceUp)
 	abovePrevious := context.at(abovePos)
@@ -110,22 +110,22 @@ func placeJavaGenerationMossyCarpet(context *javaShapeContext, pos cube.Pos) {
 	topper := javaWith(javaDefault("pale_moss_carpet"), "bottom", false)
 	topper = javaPlant06UpdateMossyCarpetSides(context, topper, true)
 	for _, property := range [...]string{"north", "east", "south", "west"} {
-		if javaString(topper, property) != "none" && !context.generation.JavaRandom().NextBoolean() {
+		if javaString(topper, property) != "none" && !context.generation.RegionRandom().NextBoolean() {
 			topper = javaWith(topper, property, "none")
 		}
 	}
 	if !javaPlant06MossyCarpetHasFaces(topper) || topper == abovePrevious {
 		return
 	}
-	context.generation.SetJavaBlockState(abovePos, topper, 2)
+	context.generation.SetBlockState(abovePos, topper, 2)
 	context.pos = pos
 	base = javaPlant06UpdateMossyCarpetSides(context, base, true)
-	context.generation.SetJavaBlockState(pos, base, 2)
+	context.generation.SetBlockState(pos, base, 2)
 }
 
-// JavaGenerationFireState applies BaseFireBlock.getState against live
+// GenerationFireState applies BaseFireBlock.getState against live
 // generation states, including Source flammability and sturdy-face metadata.
-func JavaGenerationFireState(access JavaGenerationShapeAccess, pos cube.Pos) uint32 {
+func GenerationFireState(access GenerationShapeAccess, pos cube.Pos) uint32 {
 	context := javaShapeContext{generation: access, pos: pos}
 	below := context.at(pos.Side(cube.FaceDown))
 	if context.tag(below, "minecraft:soul_fire_base_blocks") {
@@ -143,12 +143,12 @@ func JavaGenerationFireState(access JavaGenerationShapeAccess, pos cube.Pos) uin
 	return state
 }
 
-// UpdateJavaTemplateShapes applies StructureTemplate's immediate shape phase.
+// UpdateTemplateShapes applies StructureTemplate's immediate shape phase.
 // Call it for one knownShape=false placement, after successful block writes,
 // liquid refill and actor loading, but before entities or data markers. Positions
 // include accepted unchanged writes and retain placement order and duplicates.
 // Generation's updateNeighborsAt is a no-op; it is not a runtime neighbour wave.
-func UpdateJavaTemplateShapes(access JavaGenerationShapeAccess, positions []cube.Pos, flags int) {
+func UpdateTemplateShapes(access GenerationShapeAccess, positions []cube.Pos, flags int) {
 	if len(positions) == 0 {
 		return
 	}
@@ -163,14 +163,14 @@ func UpdateJavaTemplateShapes(access JavaGenerationShapeAccess, positions []cube
 	updateJavaGenerationShapeAtEdge(access, low, size, positions, flags, true)
 }
 
-// UpdateJavaGenerationShapeAtEdge applies StructureTemplate.updateShapeAtEdge
+// UpdateGenerationShapeAtEdge applies StructureTemplate.updateShapeAtEdge
 // to an explicitly bounded discrete shape. filledPositions are its occupied
 // voxels; size may include empty cells that still constrain the source shape.
-func UpdateJavaGenerationShapeAtEdge(access JavaGenerationShapeAccess, low cube.Pos, size [3]int, filledPositions []cube.Pos, flags int) {
+func UpdateGenerationShapeAtEdge(access GenerationShapeAccess, low cube.Pos, size [3]int, filledPositions []cube.Pos, flags int) {
 	updateJavaGenerationShapeAtEdge(access, low, size, filledPositions, flags, false)
 }
 
-func updateJavaGenerationShapeAtEdge(access JavaGenerationShapeAccess, low cube.Pos, size [3]int, positions []cube.Pos, flags int, updateInterior bool) {
+func updateJavaGenerationShapeAtEdge(access GenerationShapeAccess, low cube.Pos, size [3]int, positions []cube.Pos, flags int, updateInterior bool) {
 	if len(positions) == 0 {
 		return
 	}
@@ -218,7 +218,7 @@ func updateJavaGenerationShapeAtEdge(access JavaGenerationShapeAccess, low cube.
 			state := context.at(pos)
 			updated := context.updateFromNeighbourShapes(state)
 			if updated != state {
-				access.SetJavaBlockState(pos, updated, flags&^1|16)
+				access.SetBlockState(pos, updated, flags&^1|16)
 			}
 		}
 	}
@@ -230,11 +230,11 @@ func javaTemplateShapeEdge(context *javaShapeContext, pos cube.Pos, face cube.Fa
 	context.pos = pos
 	updated := context.updateShape(state, face, neighbor)
 	if state != updated {
-		context.generation.SetJavaBlockState(pos, updated, flags)
+		context.generation.SetBlockState(pos, updated, flags)
 	}
 	context.pos = neighborPos
 	updatedNeighbor := context.updateShape(neighbor, face.Opposite(), updated)
 	if neighbor != updatedNeighbor {
-		context.generation.SetJavaBlockState(neighborPos, updatedNeighbor, flags)
+		context.generation.SetBlockState(neighborPos, updatedNeighbor, flags)
 	}
 }

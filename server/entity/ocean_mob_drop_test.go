@@ -30,7 +30,7 @@ func TestSourceLootingChangesActualDrownedEquipmentDrop(t *testing.T) {
 			t.Cleanup(func() { _ = w.Close() })
 			<-w.Exec(func(tx *world.Tx) {
 				attacker := tx.AddEntity((world.EntitySpawnOpts{}).New(player.Type, player.Config{Position: mgl64.Vec3{.5, 65, .5}, GameMode: world.GameModeCreative})).(*player.Player)
-				weapon, err := item.StackFromJavaNBT(map[string]any{"id": "minecraft:diamond_sword", "count": int32(1), "components": map[string]any{"minecraft:enchantments": map[string]any{"minecraft:looting": c.looting}}})
+				weapon, err := item.StackFromStructureNBT(map[string]any{"id": "minecraft:diamond_sword", "count": int32(1), "components": map[string]any{"minecraft:enchantments": map[string]any{"minecraft:looting": c.looting}}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -39,14 +39,14 @@ func TestSourceLootingChangesActualDrownedEquipmentDrop(t *testing.T) {
 				if c.vanishing {
 					gear["components"] = map[string]any{"minecraft:enchantments": map[string]any{"minecraft:vanishing_curse": int32(1)}}
 				}
-				h, err := entity.NewFromJavaNBT(map[string]any{"id": "minecraft:drowned", "Health": float32(20), "equipment": map[string]any{"mainhand": gear}, "drop_chances": map[string]any{"mainhand": c.chance}}, world.EntitySpawnOpts{Position: mgl64.Vec3{4.5, 65, .5}, SpawnReason: "structure", SpawnFinalized: true})
+				h, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:drowned", "Health": float32(20), "equipment": map[string]any{"mainhand": gear}, "drop_chances": map[string]any{"mainhand": c.chance}}, world.EntitySpawnOpts{Position: mgl64.Vec3{4.5, 65, .5}, SpawnReason: "structure", SpawnFinalized: true})
 				if err != nil {
 					t.Fatal(err)
 				}
 				drowned := tx.AddEntity(h).(*entity.Drowned)
 				// Source's first float is .09789288 (4096), between the
 				// ordinary and Looting III thresholds, or .00616163 (5120).
-				h.JavaRandom().SetSeed(c.seed)
+				h.RegionRandom().SetSeed(c.seed)
 				drowned.Hurt(100, entity.AttackDamageSource{Attacker: attacker})
 				count, damage := 0, 0
 				for e := range tx.Entities() {

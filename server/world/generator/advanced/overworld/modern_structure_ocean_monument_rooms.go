@@ -1,8 +1,8 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 // modernMonumentChild describes a Java child piece before its bounding box is
 // moved by the MonumentBuilding's getWorldPos(9, 0, 22) offset.
@@ -32,7 +32,7 @@ const (
 // transitions. The graph builder already claims the source room and core's
 // eight-room volume. Room children are returned in room-definition order,
 // followed by the left wing, right wing, and penthouse.
-func fitModernMonumentRooms(piece *modernOceanMonumentPiece, random *java26.Random) []modernMonumentChild {
+func fitModernMonumentRooms(piece *modernOceanMonumentPiece, random *vanilla.Random) []modernMonumentChild {
  children := make([]modernMonumentChild, 0, 49)
  children = append(children,
   modernMonumentChild{kind: monumentChildEntry, room: 2},
@@ -126,7 +126,7 @@ func monumentIsWater(name string) bool {
 
 // emitModernMonumentChild emits exact child local geometry. get must observe
 // prior shell/child writes; spawn receives child-local entity coordinates.
-func emitModernMonumentChild(piece *modernOceanMonumentPiece, child modernMonumentChild, random *java26.Random, get func(x, y, z int32) string, fillWater func(x, y, z int32) bool, put modernMonumentRoomBlockSink, spawn func(x, y, z int32)) {
+func emitModernMonumentChild(piece *modernOceanMonumentPiece, child modernMonumentChild, random *vanilla.Random, get func(x, y, z int32) string, fillWater func(x, y, z int32) bool, put modernMonumentRoomBlockSink, spawn func(x, y, z int32)) {
 
  gray, light, black, lamp := "minecraft:prismarine", "minecraft:prismarine_bricks", "minecraft:dark_prismarine", "minecraft:sea_lantern"
  box := func(x0,y0,z0,x1,y1,z1 int32,state string) {
@@ -332,7 +332,7 @@ func modernMonumentChildToBuilding(piece *modernOceanMonumentPiece,child modernM
 	worldY=minY+y
 	switch orientation{case 0:return [3]int32{worldX-piece.west,worldY-39,piece.north+57-worldZ};case 1:return [3]int32{worldZ-piece.north,worldY-39,worldX-piece.west};case 2:return [3]int32{worldX-piece.west,worldY-39,worldZ-piece.north};default:return [3]int32{worldZ-piece.north,worldY-39,piece.west+57-worldX}}
 }
-func modernMonumentChildIntersects(piece *modernOceanMonumentPiece,child modernMonumentChild,clip javastructure.Bounds)bool{
+func modernMonumentChildIntersects(piece *modernOceanMonumentPiece,child modernMonumentChild,clip structure.Bounds)bool{
 	width,height,depth:=modernMonumentChildRoomDimensions(child.kind)
 	widthBlocks,heightBlocks,depthBlocks:=width*8,height*4,depth*8
 	switch child.kind{case monumentChildWing:widthBlocks,heightBlocks,depthBlocks=23,8,21;case monumentChildPenthouse:widthBlocks,heightBlocks,depthBlocks=14,5,14}

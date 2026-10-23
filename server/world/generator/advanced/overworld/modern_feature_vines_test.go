@@ -2,12 +2,12 @@ package overworld
 
 import (
 	"encoding/json"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"os"
 	"testing"
 )
 
-func TestVinesMatchJava263(t *testing.T) {
+func TestVinesMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_vines.json")
 	if err != nil {
 		t.Fatal(err)
@@ -49,7 +49,7 @@ func TestVinesMatchJava263(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			random := java26.NewLegacyRandom(123)
+			random := vanilla.NewLegacyRandom(123)
 			got := region.f.placeConfiguredData(region, "vines", nil, origin, &random)
 			if got != tc.Placed {
 				t.Errorf("placed=%v, Java wants %v", got, tc.Placed)
@@ -76,7 +76,7 @@ func TestLeavesAttachVinesButDoNotSupportPiles(t *testing.T) {
 	if featurePredicate(region, p, map[string]any{"type": "has_sturdy_face", "direction": "up"}) {
 		t.Fatal("Java leaves do not provide a sturdy upper face")
 	}
-	random := java26.NewLegacyRandom(123)
+	random := vanilla.NewLegacyRandom(123)
 	if !placeModernVines(region, featurePos{8, 10, 9}) {
 		t.Fatal("Java vine attaches to leaf collision face")
 	}

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // ParseCompoundArgument parses one compound at a UTF-8 byte offset. Like Java's
@@ -31,7 +31,7 @@ func (p *parser) err(message string) error { return fmt.Errorf("SNBT at byte %d:
 func (p *parser) space() {
 	for p.i < len(p.s) {
 		r, n := utf8.DecodeRuneInString(p.s[p.i:])
-		if !java26.IsWhitespace(r) {
+		if !vanilla.IsWhitespace(r) {
 			return
 		}
 		p.i += n
@@ -317,7 +317,7 @@ func parseUUID(text string) ([]int32, error) {
 			}
 			part, text = text[:end], text[end+1:]
 		}
-		n, err := java26.ParseSignedInteger(part, 16, 64)
+		n, err := vanilla.ParseSignedInteger(part, 16, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid UUID group: %w", err)
 		}

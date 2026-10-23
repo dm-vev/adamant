@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -17,21 +17,21 @@ func init() {
 }
 
 func javaStructural04WaterloggedShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
-	if waterlogged, _ := javadata.BlockStateBool(state, "waterlogged"); waterlogged {
+	if waterlogged, _ := gamedata.BlockStateBool(state, "waterlogged"); waterlogged {
 		c.waterTick(state, c.pos)
 	}
 	return state
 }
 
 func javaStructural04DoorShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
-	half, _ := javadata.BlockStateString(state, "half")
+	half, _ := gamedata.BlockStateString(state, "half")
 	if face.Axis() != cube.Y || (half == "lower") != (face == cube.FaceUp) {
 		if half == "lower" && face == cube.FaceDown && !javaStructural04DoorSurvives(c, state, c.pos) {
 			return javaDefault("air")
 		}
 		return state
 	}
-	neighborHalf, halfOK := javadata.BlockStateString(neighbor, "half")
+	neighborHalf, halfOK := gamedata.BlockStateString(neighbor, "half")
 	if c.tag(neighbor, "minecraft:doors") && halfOK && neighborHalf != half {
 		return javaWith(neighbor, "half", half)
 	}
@@ -40,7 +40,7 @@ func javaStructural04DoorShape(c *javaShapeContext, state uint32, face cube.Face
 
 func javaStructural04DoorSurvives(c *javaShapeContext, state uint32, pos cube.Pos) bool {
 	below := c.at(pos.Side(cube.FaceDown))
-	half, _ := javadata.BlockStateString(state, "half")
+	half, _ := gamedata.BlockStateString(state, "half")
 	if half == "lower" {
 		return c.sturdy(below, cube.FaceUp, javaSupportFull)
 	}
@@ -62,7 +62,7 @@ func javaStructural04FaceAttachedSurvives(c *javaShapeContext, state uint32, pos
 }
 
 func javaStructural04ConnectedDirection(state uint32) cube.Face {
-	face, _ := javadata.BlockStateString(state, "face")
+	face, _ := gamedata.BlockStateString(state, "face")
 	switch face {
 	case "ceiling":
 		return cube.FaceDown
@@ -74,7 +74,7 @@ func javaStructural04ConnectedDirection(state uint32) cube.Face {
 }
 
 func javaStructural04Facing(state uint32) cube.Face {
-	facing, _ := javadata.BlockStateString(state, "facing")
+	facing, _ := gamedata.BlockStateString(state, "facing")
 	switch facing {
 	case "north":
 		return cube.FaceNorth
@@ -90,7 +90,7 @@ func javaStructural04Facing(state uint32) cube.Face {
 }
 
 func javaStructural04FenceShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
-	if waterlogged, _ := javadata.BlockStateBool(state, "waterlogged"); waterlogged {
+	if waterlogged, _ := gamedata.BlockStateBool(state, "waterlogged"); waterlogged {
 		c.waterTick(state, c.pos)
 	}
 	if face.Axis() == cube.Y {
@@ -119,7 +119,7 @@ func javaStructural04FenceConnects(c *javaShapeContext, fenceState, neighbor uin
 		facing := javaStructural04Facing(neighbor)
 		gate = facing.Axis() != towardsFence.Axis()
 	}
-	exception, err := javadata.BlockExceptionForConnectionID(neighbor)
+	exception, err := gamedata.BlockExceptionForConnectionID(neighbor)
 	if err != nil {
 		panic(err)
 	}

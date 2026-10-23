@@ -6,37 +6,37 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/google/uuid"
 )
 
 func init() { registerModernStructureBuilder("ocean_ruin", buildModernOceanRuin) }
 
 type modernOceanRuinPiece struct {
-	template     *javastructure.Template
-	processors   []javastructure.Processor
+	template     *structure.Template
+	processors   []structure.Processor
 	templateName string
 	origin       [3]int32
-	rotation     javastructure.Rotation
+	rotation     structure.Rotation
 	integrity    float32
 	warm, large  bool
 	seed         int64
 }
 
-func (p modernOceanRuinPiece) Bounds() javastructure.Box {
+func (p modernOceanRuinPiece) Bounds() structure.Box {
 	box := modernTemplateBounds(p.template, p.origin, p.rotation)
 	return box
 }
 
-func (p modernOceanRuinPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
-	if env.BaseHeight == nil || env.JavaBlockStateID == nil {
-		return javastructure.Placement{}, fmt.Errorf("ocean ruin requires terrain height and live block-state queries")
+func (p modernOceanRuinPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
+	if env.BaseHeight == nil || env.BlockStateID == nil {
+		return structure.Placement{}, fmt.Errorf("ocean ruin requires terrain height and live block-state queries")
 	}
 	if len(p.template.Palettes) == 0 {
-		return javastructure.Placement{}, nil
+		return structure.Placement{}, nil
 	}
 	origin := p.origin
 	if env.PieceState != nil && env.PieceState.TemplatePositionYSet {
@@ -45,7 +45,7 @@ func (p modernOceanRuinPiece) Place(clip javastructure.Bounds, env javastructure
 	// Source samples the frozen OCEAN_FLOOR_WG at the template position every
 	// postProcess call, even after a prior cave adjustment.
 	height := env.BaseHeight(origin[0], origin[2], true)
-	corner := javastructure.TransformPosition([3]int32{p.template.Size[0] - 1, 0, p.template.Size[2] - 1}, javastructure.NoMirror, p.rotation)
+	corner := structure.TransformPosition([3]int32{p.template.Size[0] - 1, 0, p.template.Size[2] - 1}, structure.NoMirror, p.rotation)
 	corner[0], corner[1], corner[2] = corner[0]+origin[0], origin[1], corner[2]+origin[2]
 	topY := height - 1
 	minY, area := int32(512), 0
@@ -53,18 +53,18 @@ func (p modernOceanRuinPiece) Place(clip javastructure.Bounds, env javastructure
 		for x := min(origin[0], corner[0]); x <= max(origin[0], corner[0]); x++ {
 			floorY := height - 1
 			for floorY > int32(env.Range.Min())+1 {
-				id, err := env.JavaBlockStateID(x, floorY, z)
+				id, err := env.BlockStateID(x, floorY, z)
 				if err != nil {
-					return javastructure.Placement{}, err
+					return structure.Placement{}, err
 				}
-				name, ok := javadata.BlockStateName(id)
+				name, ok := gamedata.BlockStateName(id)
 				if !ok {
-					return javastructure.Placement{}, fmt.Errorf("ocean ruin: unknown Java block state %d", id)
+					return structure.Placement{}, fmt.Errorf("ocean ruin: unknown block state %d", id)
 				}
-				isWater := world.JavaBlockStateHasWaterFluid(id)
-				isIce, tagErr := javadata.BlockTagContains("minecraft:ice", name)
+				isWater := world.BlockStateHasWaterFluid(id)
+				isIce, tagErr := gamedata.BlockTagContains("minecraft:ice", name)
 				if tagErr != nil {
-					return javastructure.Placement{}, tagErr
+					return structure.Placement{}, tagErr
 				}
 				if name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" && !isWater && !isIce {
 					break
@@ -83,9 +83,9 @@ func (p modernOceanRuinPiece) Place(clip javastructure.Bounds, env javastructure
 		newY = minY + 1
 	}
 	origin[1] = newY
-	placed, err := p.template.Place(0, origin, p.rotation, javastructure.NoMirror, clip, p.seed, p.processors...)
+	placed, err := p.template.Place(0, origin, p.rotation, structure.NoMirror, clip, p.seed, p.processors...)
 	if err != nil {
-		return javastructure.Placement{}, err
+		return structure.Placement{}, err
 	}
 	if env.PieceState != nil {
 		env.PieceState.TemplatePositionY, env.PieceState.TemplatePositionYSet = origin[1], true
@@ -95,11 +95,11 @@ func (p modernOceanRuinPiece) Place(clip javastructure.Bounds, env javastructure
 	return placed, nil
 }
 
-func (p modernOceanRuinPiece) AfterTemplatePlacement(clip javastructure.Bounds, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) error {
+func (p modernOceanRuinPiece) AfterTemplatePlacement(clip structure.Bounds, env structure.ProcessorEnvironment, emit func(structure.Placement)) error {
 	if env.Random == nil {
 		return fmt.Errorf("ocean ruin markers require postProcess random")
 	}
-	if env.HasChestBlockEntity == nil || env.SetBlockEntityLootTable == nil || env.JavaBlockStateID == nil {
+	if env.HasChestBlockEntity == nil || env.SetBlockEntityLootTable == nil || env.BlockStateID == nil {
 		return fmt.Errorf("ocean ruin markers require live block-entity and state queries")
 	}
 	origin := p.origin
@@ -114,26 +114,26 @@ func (p modernOceanRuinPiece) AfterTemplatePlacement(clip javastructure.Bounds, 
 		if marker != "chest" && marker != "drowned" {
 			continue
 		}
-		pos := javastructure.TransformPosition(source.Pos, javastructure.NoMirror, p.rotation)
+		pos := structure.TransformPosition(source.Pos, structure.NoMirror, p.rotation)
 		for axis := range 3 {
 			pos[axis] += origin[axis]
 		}
 		if !insideStructureClip(pos, clip) {
 			continue
 		}
-		out := javastructure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
+		out := structure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
 		switch marker {
 		case "chest":
-			fluid, err := env.JavaBlockStateID(pos[0], pos[1], pos[2])
+			fluid, err := env.BlockStateID(pos[0], pos[1], pos[2])
 			if err != nil {
 				return err
 			}
-			_, ok := javadata.BlockStateName(fluid)
+			_, ok := gamedata.BlockStateName(fluid)
 			if !ok {
 				return fmt.Errorf("ocean ruin: unknown block state %d", fluid)
 			}
-			waterlogged := world.JavaBlockStateHasWaterFluid(fluid)
-			out.PostShapeBlocks = append(out.PostShapeBlocks, javastructure.Block{Pos: pos, State: world.BlockState{Name: "minecraft:chest", Properties: map[string]any{"facing": "north", "type": "single", "waterlogged": waterlogged}}, NBT: map[string]any{"id": "minecraft:chest"}})
+			waterlogged := world.BlockStateHasWaterFluid(fluid)
+			out.PostShapeBlocks = append(out.PostShapeBlocks, structure.Block{Pos: pos, State: world.BlockState{Name: "minecraft:chest", Properties: map[string]any{"facing": "north", "type": "single", "waterlogged": waterlogged}}, NBT: map[string]any{"id": "minecraft:chest"}})
 			emit(out)
 			if env.HasChestBlockEntity(pos[0], pos[1], pos[2]) {
 				table := "minecraft:chests/underwater_ruin_small"
@@ -143,47 +143,47 @@ func (p modernOceanRuinPiece) AfterTemplatePlacement(clip javastructure.Bounds, 
 				env.SetBlockEntityLootTable(pos[0], pos[1], pos[2], table, env.Random.NextLong())
 			}
 		case "drowned":
-			if env.LevelRandom == nil || env.JavaBiomeAt == nil {
+			if env.LevelRandom == nil || env.BiomeAt == nil {
 				return fmt.Errorf("ocean ruin drowned requires live region RNG and biome context")
 			}
 			id := uuid.New()
-			ownRandom := java26.NewLegacyRandom(int64(binary.LittleEndian.Uint64(id[8:])))
-			biome := env.JavaBiomeAt(pos[0], pos[1], pos[2])
+			ownRandom := vanilla.NewLegacyRandom(int64(binary.LittleEndian.Uint64(id[8:])))
+			biome := env.BiomeAt(pos[0], pos[1], pos[2])
 			data, vehicle, err := entity.PrepareDrownedStructureSpawn(env.LevelRandom, &ownRandom, env.GenerationContext, biome)
 			if err != nil {
 				return err
 			}
-			spawn := javastructure.Entity{
+			spawn := structure.Entity{
 				ID: id, Pos: [3]float64{float64(pos[0]) + .5, float64(pos[1]), float64(pos[2]) + .5},
 				BlockPos: pos, NBT: data, Seed: p.seed, SpawnReason: "structure",
 				SpawnFinalized: true, EntityRandom: &ownRandom,
 			}
 			if vehicle != nil {
-				spawn = javastructure.Entity{
+				spawn = structure.Entity{
 					ID: uuid.New(), Pos: spawn.Pos, BlockPos: pos, NBT: vehicle,
 					Seed: p.seed, SpawnReason: "structure", SpawnFinalized: true,
-					Passengers: []javastructure.Entity{spawn},
+					Passengers: []structure.Entity{spawn},
 				}
 			}
 			out.PostShapeEntities = append(out.PostShapeEntities, spawn)
 			emit(out)
-			out = javastructure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
+			out = structure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
 			water := "minecraft:water"
 			if pos[1] > env.SeaLevel {
 				water = "minecraft:air"
 			}
-			out.PostShapeBlocks = append(out.PostShapeBlocks, javastructure.Block{Pos: pos, State: world.BlockState{Name: water}})
+			out.PostShapeBlocks = append(out.PostShapeBlocks, structure.Block{Pos: pos, State: world.BlockState{Name: water}})
 			emit(out)
 		}
 	}
 	return nil
 }
-func oceanRuinProcessors(p modernOceanRuinPiece) ([]javastructure.Processor, error) {
+func oceanRuinProcessors(p modernOceanRuinPiece) ([]structure.Processor, error) {
 	candidate, replacement, loot := "minecraft:gravel", "minecraft:suspicious_gravel", "minecraft:archaeology/ocean_ruin_cold"
 	if p.warm {
 		candidate, replacement, loot = "minecraft:sand", "minecraft:suspicious_sand", "minecraft:archaeology/ocean_ruin_warm"
 	}
-	inline := []javastructure.ProcessorSpec{
+	inline := []structure.ProcessorSpec{
 		{Type: "block_rot", Config: map[string]any{"integrity": float64(p.integrity)}},
 		{Type: "block_ignore", Config: map[string]any{"blocks": []any{"minecraft:structure_block", "minecraft:air"}}},
 		{Type: "capped", Config: map[string]any{
@@ -196,10 +196,10 @@ func oceanRuinProcessors(p modernOceanRuinPiece) ([]javastructure.Processor, err
 			}}},
 		}},
 	}
-	return javastructure.LoadProcessors(nil, inline, javastructure.ProcessorEnvironment{WorldSeed: p.seed})
+	return structure.LoadProcessors(nil, inline, structure.ProcessorEnvironment{WorldSeed: p.seed})
 }
 
-func insideStructureClip(pos [3]int32, clip javastructure.Bounds) bool {
+func insideStructureClip(pos [3]int32, clip structure.Bounds) bool {
 	return pos[0] >= clip.Min[0] && pos[0] <= clip.Max[0] && pos[1] >= clip.Min[1] && pos[1] <= clip.Max[1] && pos[2] >= clip.Min[2] && pos[2] <= clip.Max[2]
 }
 
@@ -207,8 +207,8 @@ func buildModernOceanRuin(input modernStructureBuildInput) (modernStructureStart
 	if input.source == nil || input.random == nil {
 		return modernStructureStart{}, false, fmt.Errorf("ocean ruin requires terrain source and generation random")
 	}
-	warm := normalizeJavaResource(stringValue(input.config["biome_temp"])) != "cold"
-	rotation := javastructure.Rotation(input.random.NextInt(4))
+	warm := normalizeResource(stringValue(input.config["biome_temp"])) != "cold"
+	rotation := structure.Rotation(input.random.NextInt(4))
 	large := input.random.NextFloat() <= float32(number(input.config["large_probability"]))
 	baseIntegrity := float32(0.8)
 	if large {
@@ -216,9 +216,9 @@ func buildModernOceanRuin(input modernStructureBuildInput) (modernStructureStart
 	}
 	pieces := make([]modernStructurePiece, 0, 9)
 	parent := [3]int32{input.chunkX * 16, 90, input.chunkZ * 16}
-	appendPiece := func(origin [3]int32, rotation javastructure.Rotation, large bool, integrity float32) error {
+	appendPiece := func(origin [3]int32, rotation structure.Rotation, large bool, integrity float32) error {
 		appendTemplate := func(name string, integrity float32) error {
-			template, err := javastructure.Load("underwater_ruin/" + name)
+			template, err := structure.Load("underwater_ruin/" + name)
 			if err != nil {
 				return err
 			}
@@ -267,7 +267,7 @@ func buildModernOceanRuin(input modernStructureBuildInput) (modernStructureStart
 		return modernStructureStart{}, false, err
 	}
 	if large && input.random.NextFloat() <= float32(number(input.config["cluster_probability"])) {
-		parentCorner := javastructure.TransformPosition([3]int32{15, 0, 15}, javastructure.NoMirror, rotation)
+		parentCorner := structure.TransformPosition([3]int32{15, 0, 15}, structure.NoMirror, rotation)
 		parentCorner[0], parentCorner[2] = parentCorner[0]+parent[0], parentCorner[2]+parent[2]
 		parentBottomLeft := [3]int32{min(parent[0], parentCorner[0]), 90, min(parent[2], parentCorner[2])}
 		positions := make([][3]int32, 0, 8)
@@ -283,14 +283,14 @@ func buildModernOceanRuin(input modernStructureBuildInput) (modernStructureStart
 		addPosition(16+1+input.random.NextInt(7), 1+input.random.NextInt(7))
 		addPosition(16+1+input.random.NextInt(7), -16+4+input.random.NextInt(5))
 		ruins := 4 + input.random.NextInt(5)
-		parentBox := javastructure.Box{Min: parentBottomLeft, Max: [3]int32{max(parent[0], parentCorner[0]), 90, max(parent[2], parentCorner[2])}}
+		parentBox := structure.Box{Min: parentBottomLeft, Max: [3]int32{max(parent[0], parentCorner[0]), 90, max(parent[2], parentCorner[2])}}
 		for range ruins {
 			index := input.random.NextInt(int32(len(positions)))
 			position := positions[index]
 			positions = append(positions[:index], positions[index+1:]...)
-			nextRotation := javastructure.Rotation(input.random.NextInt(4))
-			corner := javastructure.TransformPosition([3]int32{5, 0, 6}, javastructure.NoMirror, nextRotation)
-			box := javastructure.Box{Min: [3]int32{min(position[0], position[0]+corner[0]), 90, min(position[2], position[2]+corner[2])}, Max: [3]int32{max(position[0], position[0]+corner[0]), 90, max(position[2], position[2]+corner[2])}}
+			nextRotation := structure.Rotation(input.random.NextInt(4))
+			corner := structure.TransformPosition([3]int32{5, 0, 6}, structure.NoMirror, nextRotation)
+			box := structure.Box{Min: [3]int32{min(position[0], position[0]+corner[0]), 90, min(position[2], position[2]+corner[2])}, Max: [3]int32{max(position[0], position[0]+corner[0]), 90, max(position[2], position[2]+corner[2])}}
 			if modernBoxesIntersectXZ(parentBox, box) {
 				continue
 			}
@@ -306,12 +306,12 @@ func buildModernOceanRuin(input modernStructureBuildInput) (modernStructureStart
 	return start, true, nil
 }
 
-func modernTemplateBounds(t *javastructure.Template, origin [3]int32, rotation javastructure.Rotation) javastructure.Box {
-	box := javastructure.Box{Min: [3]int32{math.MaxInt32, math.MaxInt32, math.MaxInt32}, Max: [3]int32{math.MinInt32, math.MinInt32, math.MinInt32}}
+func modernTemplateBounds(t *structure.Template, origin [3]int32, rotation structure.Rotation) structure.Box {
+	box := structure.Box{Min: [3]int32{math.MaxInt32, math.MaxInt32, math.MaxInt32}, Max: [3]int32{math.MinInt32, math.MinInt32, math.MinInt32}}
 	for _, x := range [2]int32{0, t.Size[0] - 1} {
 		for _, y := range [2]int32{0, t.Size[1] - 1} {
 			for _, z := range [2]int32{0, t.Size[2] - 1} {
-				pos := javastructure.TransformPosition([3]int32{x, y, z}, javastructure.NoMirror, rotation)
+				pos := structure.TransformPosition([3]int32{x, y, z}, structure.NoMirror, rotation)
 				for axis := range 3 {
 					pos[axis] += origin[axis]
 					box.Min[axis] = min(box.Min[axis], pos[axis])
@@ -323,6 +323,6 @@ func modernTemplateBounds(t *javastructure.Template, origin [3]int32, rotation j
 	return box
 }
 
-func modernBoxesIntersectXZ(a, b javastructure.Box) bool {
+func modernBoxesIntersectXZ(a, b structure.Box) bool {
 	return a.Min[0] <= b.Max[0] && a.Max[0] >= b.Min[0] && a.Min[2] <= b.Max[2] && a.Max[2] >= b.Min[2]
 }

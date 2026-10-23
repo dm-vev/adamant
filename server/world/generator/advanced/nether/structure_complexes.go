@@ -4,19 +4,19 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // netherComplexStart is shared by generation and lookup. Rendering must not
 // mutate either the selected graph or the templates retained by its pieces.
 type netherComplexStart struct {
 	fortress *netherBridgeStart
-	bastion  javastructure.JigsawResult
+	bastion  structure.JigsawResult
 	startPos [3]int32 // First-piece bottom centre, the source placement reference.
 	name     string
-	box      javastructure.Box
+	box      structure.Box
 }
 type netherComplexResult struct {
 	start *netherComplexStart
@@ -28,7 +28,7 @@ type netherComplexFlight struct {
 }
 
 func (g *Nether) complexStart(cx, cz int32) (*netherComplexStart, error) {
-	candidate, err := javastructure.PotentialChunk(g.seed, cx, cz, 30084232, 27, 4, javastructure.Linear)
+	candidate, err := structure.PotentialChunk(g.seed, cx, cz, 30084232, 27, 4, structure.Linear)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (g *Nether) buildComplexStart(cx, cz int32) (start *netherComplexStart, err
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			start = nil
-			err = fmt.Errorf("nether: Java complex build at %d,%d failed: %v", cx, cz, recovered)
+			err = fmt.Errorf("nether: complex build at %d,%d failed: %v", cx, cz, recovered)
 		}
 	}()
 	// nether_complexes orders fortress(weight 2), bastion(weight 3). Selection
@@ -85,7 +85,7 @@ func (g *Nether) buildComplexStart(cx, cz int32) (start *netherComplexStart, err
 	selection := largeFeatureRandom(g.seed, int(cx), int(cz))
 	if selection.NextInt(5) >= 2 {
 		random := largeFeatureRandom(g.seed, int(cx), int(cz))
-		prepared, valid, err := javastructure.PrepareJigsaw(javastructure.JigsawOptions{
+		prepared, valid, err := structure.PrepareJigsaw(structure.JigsawOptions{
 			Pool: "bastion/starts", Origin: [3]int32{cx * 16, 33, cz * 16}, MaxDepth: 6,
 			MaxDistance: 80, MaxVerticalDistance: 80, HeightRange: cube.Range{0, 255}, Seed: g.seed,
 			HeightAt: func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) },
@@ -95,8 +95,8 @@ func (g *Nether) buildComplexStart(cx, cz int32) (start *netherComplexStart, err
 		}
 		if valid {
 			position := prepared.Position()
-			biome := g.featureSource.JavaNoiseBiomeAt(position[0]>>2, position[1]>>2, position[2]>>2)
-			allowed, err := javadata.BiomeTagContains("#minecraft:has_structure/bastion_remnant", biome)
+			biome := g.featureSource.NoiseBiomeAt(position[0]>>2, position[1]>>2, position[2]>>2)
+			allowed, err := gamedata.BiomeTagContains("#minecraft:has_structure/bastion_remnant", biome)
 			if err != nil {
 				return nil, err
 			}
@@ -127,7 +127,7 @@ func (g *Nether) buildComplexStart(cx, cz int32) (start *netherComplexStart, err
 	random := largeFeatureRandom(g.seed, int(cx), int(cz))
 	fortress := newNetherBridgeStart(&random, int(cx), int(cz), g)
 	box := fortress.bb
-	return &netherComplexStart{name: "minecraft:fortress", fortress: fortress, box: javastructure.Box{
+	return &netherComplexStart{name: "minecraft:fortress", fortress: fortress, box: structure.Box{
 		Min: [3]int32{int32(box.minX), int32(box.minY), int32(box.minZ)},
 		Max: [3]int32{int32(box.maxX), int32(box.maxY), int32(box.maxZ)},
 	}}, nil

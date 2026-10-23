@@ -5,7 +5,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 )
 
@@ -16,7 +16,7 @@ type selectedEnchantment struct {
 
 // selectSourceEnchantments follows EnchantmentHelper.selectEnchantment, including
 // the order in which random draws occur and the source holder iteration order.
-func selectSourceEnchantments(random *java26.Random, stack item.Stack, cost int, options []string) []selectedEnchantment {
+func selectSourceEnchantments(random *vanilla.Random, stack item.Stack, cost int, options []string) []selectedEnchantment {
 	if stack.Empty() {
 		return nil
 	}
@@ -83,7 +83,7 @@ func availableSourceEnchantments(stack item.Stack, cost int, options []string) [
 	return available
 }
 
-func weightedSourceEnchantment(random *java26.Random, candidates []selectedEnchantment) selectedEnchantment {
+func weightedSourceEnchantment(random *vanilla.Random, candidates []selectedEnchantment) selectedEnchantment {
 	total := int32(0)
 	for _, candidate := range candidates {
 		total += int32(candidate.definition.Weight)
@@ -121,8 +121,8 @@ func sourceEnchantmentsCompatible(a, b *sourceEnchantmentDefinition) bool {
 }
 
 // enchantWithLevels applies the loot-function form of Java's enchantItem.
-func enchantWithLevels(stack item.Stack, cost int, options []string, random *java26.Random) (item.Stack, error) {
-	data, err := item.StackToJavaNBT(stack)
+func enchantWithLevels(stack item.Stack, cost int, options []string, random *vanilla.Random) (item.Stack, error) {
+	data, err := item.StackToStructureNBT(stack)
 	if err != nil {
 		return item.Stack{}, err
 	}
@@ -158,7 +158,7 @@ func enchantWithLevels(stack item.Stack, cost int, options []string, random *jav
 		components[component] = levels
 	}
 	data["components"] = components
-	result, err := item.StackFromJavaNBT(data)
+	result, err := item.StackFromStructureNBT(data)
 	if err != nil {
 		return item.Stack{}, fmt.Errorf("decode enchanted item: %w", err)
 	}
@@ -167,13 +167,13 @@ func enchantWithLevels(stack item.Stack, cost int, options []string, random *jav
 
 // EnchantMobSpawnEquipment applies the vanilla mob-spawn equipment enchantment
 // provider. The caller owns the per-slot random gate.
-func EnchantMobSpawnEquipment(stack item.Stack, specialMultiplier float32, random *java26.Random) (item.Stack, error) {
+func EnchantMobSpawnEquipment(stack item.Stack, specialMultiplier float32, random *vanilla.Random) (item.Stack, error) {
 	if random == nil {
 		return item.Stack{}, fmt.Errorf("mob-spawn enchantment provider requires a random source")
 	}
 	maxCost := 5 + int(specialMultiplier*17)
 	cost := 5 + int(random.NextInt(int32(maxCost-5+1)))
-	data, err := item.StackToJavaNBT(stack)
+	data, err := item.StackToStructureNBT(stack)
 	if err != nil {
 		return item.Stack{}, err
 	}
@@ -197,7 +197,7 @@ func EnchantMobSpawnEquipment(stack item.Stack, specialMultiplier float32, rando
 		components["minecraft:enchantments"] = levels
 	}
 	data["components"] = components
-	result, err := item.StackFromJavaNBT(data)
+	result, err := item.StackFromStructureNBT(data)
 	if err != nil {
 		return item.Stack{}, fmt.Errorf("decode mob-spawn enchanted item: %w", err)
 	}

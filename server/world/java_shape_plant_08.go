@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -145,7 +145,7 @@ func javaPlant08VineAcceptable(c *javaShapeContext, neighbourPos cube.Pos, suppo
 	if javaGenerationShape(state).Attachment&(1<<uint(supportFace)) != 0 {
 		return true
 	}
-	full, err := javadata.GenerationCollisionFaceCoversRectangleID(state, int(supportFace), 0, 0, 1, 1)
+	full, err := gamedata.GenerationCollisionFaceCoversRectangleID(state, int(supportFace), 0, 0, 1, 1)
 	if err != nil {
 		panic(err)
 	}

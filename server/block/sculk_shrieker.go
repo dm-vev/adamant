@@ -156,7 +156,7 @@ func (s SculkShrieker) trySummonWarden(pos cube.Pos, tx *world.Tx) bool {
 	if spawn == nil {
 		return false
 	}
-	random := tx.JavaRandom()
+	random := tx.RegionRandom()
 	for range 20 {
 		x, z := int(random.NextInt(11))-5, int(random.NextInt(11))-5
 		candidate := pos.Add(cube.Pos{x, 6, z})
@@ -217,7 +217,7 @@ func (s SculkShrieker) playReplySound(pos cube.Pos, tx *world.Tx) {
 	if s.WarningLevel < 1 || s.WarningLevel > 4 {
 		return
 	}
-	random := tx.JavaRandom()
+	random := tx.RegionRandom()
 	offset := func() int { return int(random.NextInt(21)) - 10 }
 	at := pos.Vec3().Add(mgl64.Vec3{float64(offset()), float64(offset()), float64(offset())})
 	tx.PlaySound(at, sound.Custom{Name: sounds[s.WarningLevel], Volume: 5, Pitch: 1})

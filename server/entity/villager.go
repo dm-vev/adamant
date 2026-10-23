@@ -9,7 +9,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
@@ -509,7 +509,7 @@ func (v *Villager) WantsToSpawnGolem(tick int64) bool {
 }
 
 // BreedWith creates a child with Java's 50/25/25 biome/parent variant selection.
-func (v *Villager) BreedWith(tx *world.Tx, partner *Villager, random *java26.Random) *world.EntityHandle {
+func (v *Villager) BreedWith(tx *world.Tx, partner *Villager, random *vanilla.Random) *world.EntityHandle {
 	if partner == nil || partner == v || random == nil || !v.CanBreed() || !partner.CanBreed() {
 		return nil
 	}
@@ -528,7 +528,7 @@ func (v *Villager) BreedWith(tx *world.Tx, partner *Villager, random *java26.Ran
 }
 
 // FinalizeSpawn applies Java's one-time villager variant/profession finalization.
-func (v *Villager) FinalizeSpawn(reason string, _ *java26.Random) {
+func (v *Villager) FinalizeSpawn(reason string, _ *vanilla.Random) {
 	b := v.behaviour()
 	if b.finalized {
 		return

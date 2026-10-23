@@ -146,7 +146,7 @@ func (g *Overworld) scatteredGroundY(kind scatteredKind, rot, startX, startZ int
 		w, l = l, w
 	}
 	if w <= 0 || l <= 0 {
-		return javaSeaLevel
+		return seaLevel
 	}
 
 	const sampleStep = 4
@@ -179,15 +179,15 @@ func (g *Overworld) scatteredGroundY(kind scatteredKind, rot, startX, startZ int
 		}
 	}
 	if count == 0 {
-		return javaSeaLevel
+		return seaLevel
 	}
 	y := sum / count
 
 	switch kind {
 	case scatteredSwampHut:
 		// Swamp huts in Java tend to sit at/above sea level.
-		if y < javaSeaLevel {
-			y = javaSeaLevel
+		if y < seaLevel {
+			y = seaLevel
 		}
 	}
 	return y

@@ -2,18 +2,18 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 // placeModernMultifaceGrowth mirrors MultifaceGrowthFeature's search and face-spreading order.
-func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	blockName, ok := config["block"].(string)
 	if !ok {
-		panic("overworld: malformed Java multiface growth block")
+		panic("overworld: malformed multiface growth block")
 	}
-	blockName = normalizeJavaResource(blockName)
+	blockName = normalizeResource(blockName)
 	_, originName := multifaceSourceStateAt(region, origin)
 	if !multifaceAirOrWater(originName) {
 		return false
@@ -23,7 +23,7 @@ func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, or
 		searchRange = featureNumber(value)
 	}
 	if searchRange < 1 || searchRange > 64 {
-		panic("overworld: invalid Java multiface growth search range")
+		panic("overworld: invalid multiface growth search range")
 	}
 	canFloor, _ := config["can_place_on_floor"].(bool)
 	canCeiling, _ := config["can_place_on_ceiling"].(bool)
@@ -32,13 +32,13 @@ func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, or
 	if value, exists := config["chance_of_spreading"]; exists {
 		raw, valid := value.(float64)
 		if !valid || raw < 0 || raw > 1 {
-			panic("overworld: invalid Java multiface growth spread chance")
+			panic("overworld: invalid multiface growth spread chance")
 		}
 		chance = float32(raw)
 	}
 	support, ok := config["can_be_placed_on"]
 	if !ok {
-		panic("overworld: malformed Java multiface growth support set")
+		panic("overworld: malformed multiface growth support set")
 	}
 	var validDirections [6]string
 	directionCount := 0
@@ -80,7 +80,7 @@ func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, or
 			// Vanilla resets its mutable position to origin on every search iteration.
 			pos := multifaceOffset(origin, searchDirection)
 			_, name := multifaceSourceStateAt(region, pos)
-			if !multifaceAirOrWater(name) && normalizeJavaResource(name) != blockName {
+			if !multifaceAirOrWater(name) && normalizeResource(name) != blockName {
 				break
 			}
 			if multifacePlaceAt(region, blockName, support, pos, random, placementDirections, chance) {
@@ -91,9 +91,9 @@ func placeModernMultifaceGrowth(region *featureRegion, config map[string]any, or
 	return false
 }
 
-func multifacePlaceAt(region *featureRegion, blockName string, support any, pos featurePos, random *java26.Random, directions []string, chance float32) bool {
+func multifacePlaceAt(region *featureRegion, blockName string, support any, pos featurePos, random *vanilla.Random, directions []string, chance float32) bool {
 	oldID, oldName := multifaceSourceStateAt(region, pos)
-	if !multifaceAirOrWater(oldName) && normalizeJavaResource(oldName) != blockName {
+	if !multifaceAirOrWater(oldName) && normalizeResource(oldName) != blockName {
 		return false
 	}
 	for _, direction := range directions {
@@ -117,11 +117,11 @@ func multifacePlaceAt(region *featureRegion, blockName string, support any, pos 
 	return false
 }
 
-func multifaceSpreadFromFace(region *featureRegion, blockName string, pos featurePos, sourceID uint32, startingFace string, random *java26.Random) {
+func multifaceSpreadFromFace(region *featureRegion, blockName string, pos featurePos, sourceID uint32, startingFace string, random *vanilla.Random) {
 	spreadDirections := [...]string{"down", "up", "north", "south", "west", "east"}
 	multifaceShuffle(spreadDirections[:], random)
 	for _, spreadDirection := range spreadDirections {
-		hasSpreadFace, _ := javadata.BlockStateBool(sourceID, spreadDirection)
+		hasSpreadFace, _ := gamedata.BlockStateBool(sourceID, spreadDirection)
 		if multifaceAxis(spreadDirection) == multifaceAxis(startingFace) || hasSpreadFace {
 			continue
 		}
@@ -147,10 +147,10 @@ func multifaceSpreadFromFace(region *featureRegion, blockName string, pos featur
 
 func multifaceCanSpreadInto(region *featureRegion, blockName string, pos featurePos, face string) bool {
 	id, name := multifaceSourceStateAt(region, pos)
-	if normalizeJavaResource(name) == "water" && !multifaceWaterSource(id) {
+	if normalizeResource(name) == "water" && !multifaceWaterSource(id) {
 		return false
 	}
-	if !multifaceAirOrWater(name) && normalizeJavaResource(name) != blockName {
+	if !multifaceAirOrWater(name) && normalizeResource(name) != blockName {
 		return false
 	}
 	_, valid := multifacePlacementState(region, blockName, pos, face, id)
@@ -168,8 +168,8 @@ func multifacePlaceFace(region *featureRegion, blockName string, pos featurePos,
 }
 
 func multifaceCanAttach(region *featureRegion, supportPos featurePos, supportFace string) bool {
-	id := region.nativeState(supportPos).CanonicalJavaID(region.c.BlockRegistry())
-	shape, err := javadata.BlockGenerationShapeID(id)
+	id := region.nativeState(supportPos).CanonicalID(region.c.BlockRegistry())
+	shape, err := gamedata.BlockGenerationShapeID(id)
 	if err != nil {
 		panic(err)
 	}
@@ -191,43 +191,43 @@ func multifaceCubeFace(direction string) cube.Face {
 	case "east":
 		return cube.FaceEast
 	default:
-		panic("overworld: invalid Java multiface direction " + direction)
+		panic("overworld: invalid multiface direction " + direction)
 	}
 }
 
 func multifaceSourceStateAt(region *featureRegion, pos featurePos) (uint32, string) {
-	id := region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry())
-	name, valid := javadata.BlockStateName(id)
+	id := region.nativeState(pos).CanonicalID(region.c.BlockRegistry())
+	name, valid := gamedata.BlockStateName(id)
 	if !valid {
-		panic("overworld: invalid Java multiface state")
+		panic("overworld: invalid multiface state")
 	}
 	return id, name
 }
 
 func multifacePlacementState(region *featureRegion, blockName string, pos featurePos, face string, oldID uint32) (uint32, bool) {
-	oldName, _ := javadata.BlockStateName(oldID)
+	oldName, _ := gamedata.BlockStateName(oldID)
 	id := oldID
-	if normalizeJavaResource(oldName) != blockName {
+	if normalizeResource(oldName) != blockName {
 		var err error
-		id, err = javadata.BlockStateID(blockName, nil)
+		id, err = gamedata.BlockStateID(blockName, nil)
 		if err != nil {
 			panic(err)
 		}
-		if normalizeJavaResource(oldName) == "water" && multifaceWaterSource(oldID) {
-			id, err = javadata.BlockStateWithProperty(id, "waterlogged", true)
+		if normalizeResource(oldName) == "water" && multifaceWaterSource(oldID) {
+			id, err = gamedata.BlockStateWithProperty(id, "waterlogged", true)
 			if err != nil {
 				panic(err)
 			}
 		}
 	}
-	if hasFace, supported := javadata.BlockStateBool(id, face); !supported || hasFace {
+	if hasFace, supported := gamedata.BlockStateBool(id, face); !supported || hasFace {
 		return 0, false
 	}
 	supportPos := multifaceOffset(pos, face)
 	if !multifaceCanAttach(region, supportPos, multifaceOpposite(face)) {
 		return 0, false
 	}
-	id, err := javadata.BlockStateWithProperty(id, face, true)
+	id, err := gamedata.BlockStateWithProperty(id, face, true)
 	if err != nil {
 		panic(err)
 	}
@@ -235,7 +235,7 @@ func multifacePlacementState(region *featureRegion, blockName string, pos featur
 }
 
 func multifaceAirOrWater(name string) bool {
-	switch normalizeJavaResource(name) {
+	switch normalizeResource(name) {
 	case "air", "cave_air", "void_air", "water":
 		return true
 	default:
@@ -244,7 +244,7 @@ func multifaceAirOrWater(name string) bool {
 }
 
 func multifaceWaterSource(id uint32) bool {
-	level, valid := javadata.BlockStateInt(id, "level")
+	level, valid := gamedata.BlockStateInt(id, "level")
 	return valid && level == 0
 }
 
@@ -274,7 +274,7 @@ func multifaceOpposite(direction string) string {
 	case "east":
 		return "west"
 	default:
-		panic("overworld: invalid Java multiface direction " + direction)
+		panic("overworld: invalid multiface direction " + direction)
 	}
 }
 
@@ -293,12 +293,12 @@ func multifaceOffset(pos featurePos, direction string) featurePos {
 	case "east":
 		pos.x++
 	default:
-		panic("overworld: invalid Java multiface direction " + direction)
+		panic("overworld: invalid multiface direction " + direction)
 	}
 	return pos
 }
 
-func multifaceShuffle(in []string, random *java26.Random) {
+func multifaceShuffle(in []string, random *vanilla.Random) {
 	for i := len(in) - 1; i > 0; i-- {
 		j := int(random.NextInt(int32(i + 1)))
 		in[i], in[j] = in[j], in[i]

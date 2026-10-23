@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type featureTickReservation struct {
@@ -43,9 +43,9 @@ type featureRegion struct {
 	baseChunks              map[world.ChunkPos]*chunk.Chunk
 	lastBasePos             world.ChunkPos
 	lastBase                *chunk.Chunk
-	javaRandoms             map[[2]int32]*java26.Random
+	regionRandoms           map[[2]int32]*vanilla.Random
 	scheduledTicks          map[featureTickReservation]struct{}
-	blockActorRecords       map[cube.Pos]javastructure.Block
+	blockActorRecords       map[cube.Pos]structure.Block
 	blockActorData          map[cube.Pos]map[string]any
 	nativeProjections       map[cube.Pos]struct{}
 	treeDecorationPositions *treePositionSet
@@ -53,7 +53,7 @@ type featureRegion struct {
 
 func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, result *world.GenerationResult) *featureRegion {
 	if f == nil || c == nil || result == nil {
-		panic("overworld: invalid Java feature region")
+		panic("overworld: invalid feature region")
 	}
 	var base *modernTerrainSource
 	if source, ok := f.source.(modernTerrainSource); ok && source.generator != nil {
@@ -62,10 +62,10 @@ func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, 
 	return &featureRegion{
 		f: f, c: c, target: target, hasTarget: true, result: result, base: base,
 		scheduledTicks:    make(map[featureTickReservation]struct{}),
-		blockActorRecords: make(map[cube.Pos]javastructure.Block),
+		blockActorRecords: make(map[cube.Pos]structure.Block),
 		blockActorData:    make(map[cube.Pos]map[string]any),
 		nativeProjections: make(map[cube.Pos]struct{}),
-		javaRandoms:       make(map[[2]int32]*java26.Random),
+		regionRandoms:     make(map[[2]int32]*vanilla.Random),
 	}
 }
 
@@ -140,22 +140,22 @@ func absFeatureInt(v int32) uint32 {
 // other read of the same state and must not be modified: copy them first.
 func (r *featureRegion) State(p featurePos) (string, map[string]any) {
 	state := r.nativeState(p)
-	if id := state.CanonicalJavaID(r.c.BlockRegistry()); id != 0 {
-		if name, properties, ok := javadata.BlockStateView(id); ok {
+	if id := state.CanonicalID(r.c.BlockRegistry()); id != 0 {
+		if name, properties, ok := gamedata.BlockStateView(id); ok {
 			return name, properties
 		}
 	}
-	javaState, err := world.JavaState(r.c.BlockRegistry(), state)
+	canonicalState, err := world.CanonicalState(r.c.BlockRegistry(), state)
 	if err != nil {
 		panic(err)
 	}
-	return javaState.Name, javaState.Properties
+	return canonicalState.Name, canonicalState.Properties
 }
 
 // StateID returns the canonical Java state ID at p, or zero for a native
 // state without one.
 func (r *featureRegion) StateID(p featurePos) uint32 {
-	return r.nativeState(p).CanonicalJavaID(r.c.BlockRegistry())
+	return r.nativeState(p).CanonicalID(r.c.BlockRegistry())
 }
 
 // featureColumnKey packs the column x, z for the maps of a region.
@@ -210,11 +210,11 @@ func (r *featureRegion) Block(p featurePos) world.Block {
 	state := r.nativeState(p)
 	registry, ok := r.c.BlockRegistry().(world.BlockRegistry)
 	if !ok {
-		panic("overworld: Java feature region registry cannot resolve native blocks")
+		panic("overworld: feature region registry cannot resolve native blocks")
 	}
 	block, found := registry.BlockByRuntimeID(state.Block)
 	if !found {
-		panic("overworld: Java feature region encountered unknown primary block runtime ID")
+		panic("overworld: feature region encountered unknown primary block runtime ID")
 	}
 	return block
 }
@@ -232,9 +232,9 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 		return false
 	}
 	if count := uint32(r.c.BlockRegistry().BlockCount()); state.Block >= count {
-		panic("overworld: Java feature region cannot set unknown primary block runtime ID")
+		panic("overworld: feature region cannot set unknown primary block runtime ID")
 	} else if state.Liquid >= count {
-		panic("overworld: Java feature region cannot set unknown liquid runtime ID")
+		panic("overworld: feature region cannot set unknown liquid runtime ID")
 	}
 	if !r.withinWriteArea(p) {
 		return false
@@ -245,9 +245,9 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 		r.removeBlockEntityPayloads(pos)
 	}
 	previous := r.nativeState(p)
-	oldID, newID := previous.CanonicalJavaID(r.c.BlockRegistry()), state.CanonicalJavaID(r.c.BlockRegistry())
-	oldName, _ := javadata.BlockStateName(oldID)
-	newName, _ := javadata.BlockStateName(newID)
+	oldID, newID := previous.CanonicalID(r.c.BlockRegistry()), state.CanonicalID(r.c.BlockRegistry())
+	oldName, _ := gamedata.BlockStateName(oldID)
+	newName, _ := gamedata.BlockStateName(newID)
 	changedBlock := oldName != newName
 	if oldName == "" && newName == "" {
 		changedBlock = previous.Block != state.Block
@@ -270,11 +270,11 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 	}
 	if !changedBlock {
 		if _, exists := r.blockActorRecords[cube.Pos{int(p.x), int(p.y), int(p.z)}]; exists {
-			javaState, err := world.JavaState(r.c.BlockRegistry(), state)
+			canonicalState, err := world.CanonicalState(r.c.BlockRegistry(), state)
 			if err != nil {
 				panic(err)
 			}
-			r.refreshTemplateActorState(cube.Pos{int(p.x), int(p.y), int(p.z)}, javaState)
+			r.refreshTemplateActorState(cube.Pos{int(p.x), int(p.y), int(p.z)}, canonicalState)
 		}
 	}
 	return true
@@ -308,7 +308,7 @@ func featureSetNativeBlockFlag2(region *featureRegion, p featurePos, state world
 		return false
 	}
 	if actor != nil {
-		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
+		region.recordTemplateActor(structure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
 	}
 	return true
 }
@@ -318,7 +318,7 @@ func featureSetNativeBlockFlag19(region *featureRegion, p featurePos, state worl
 		return false
 	}
 	if actor != nil {
-		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
+		region.recordTemplateActor(structure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
 	}
 	return true
 }
@@ -328,22 +328,22 @@ func (r *featureRegion) SetNativeBlock(p featurePos, state world.NativeState, ac
 		return false
 	}
 	if actor != nil {
-		r.recordTemplateActor(javastructure.Block{
+		r.recordTemplateActor(structure.Block{
 			Pos:         [3]int32{p.x, p.y, p.z},
 			NativeBlock: actor,
 		})
 	}
 	return true
 }
-func (r *featureRegion) SampleNativeState(provider any, p featurePos, random *java26.Random) (world.NativeState, world.Block, bool) {
-	placement, ok := sampleJavaBlockState(r, p, provider, random)
+func (r *featureRegion) SampleNativeState(provider any, p featurePos, random *vanilla.Random) (world.NativeState, world.Block, bool) {
+	placement, ok := sampleBlockState(r, p, provider, random)
 	if !ok {
 		return world.NativeState{}, nil, false
 	}
 	state, actor := r.resolveFeatureBlock(placement, p)
 	return state, actor, true
 }
-func (r *featureRegion) resolveFeatureBlock(placement javastructure.Block, p featurePos) (world.NativeState, world.Block) {
+func (r *featureRegion) resolveFeatureBlock(placement structure.Block, p featurePos) (world.NativeState, world.Block) {
 	state, err := placement.ResolveNative(r.c.BlockRegistry(), r.nativeState(p))
 	if err != nil {
 		panic(err)
@@ -356,7 +356,7 @@ func featureStateHasFluid(c *chunk.Chunk, state world.NativeState) bool {
 		if !ok {
 			panic("overworld: unknown runtime ID while checking feature fluid state")
 		}
-		name = normalizeJavaResource(name)
+		name = normalizeResource(name)
 		if name == "water" || name == "lava" {
 			return true
 		}
@@ -365,23 +365,23 @@ func featureStateHasFluid(c *chunk.Chunk, state world.NativeState) bool {
 }
 
 func (r *featureRegion) markBlockPostProcessing(p featurePos, state world.NativeState) {
-	id := state.CanonicalJavaID(r.c.BlockRegistry())
+	id := state.CanonicalID(r.c.BlockRegistry())
 	if id == 0 {
 		// Native-only placements, including flowing-fluid palette variants,
 		// have no Java block callback. They retain their native capabilities.
 		return
 	}
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
-		panic("overworld: feature write has an invalid canonical Java identity")
+		panic("overworld: feature write has an invalid canonical identity")
 	}
-	switch normalizeJavaResource(name) {
+	switch normalizeResource(name) {
 	case "brown_mushroom", "red_mushroom":
 		r.markPostProcessing(cube.Pos{int(p.x), int(p.y), int(p.z)})
 	case "soul_sand", "magma_block":
 		above := featurePos{p.x, p.y + 1, p.z}
 		name, _ := r.State(above)
-		if normalizeJavaResource(name) != "air" && normalizeJavaResource(name) != "cave_air" && normalizeJavaResource(name) != "void_air" {
+		if normalizeResource(name) != "air" && normalizeResource(name) != "cave_air" && normalizeResource(name) != "void_air" {
 			r.markPostProcessing(cube.Pos{int(above.x), int(above.y), int(above.z)})
 		}
 	}
@@ -391,7 +391,7 @@ func (r *featureRegion) markAboveForPostProcessing(p featurePos) {
 	for offset := int32(1); offset <= 2; offset++ {
 		marked := featurePos{p.x, p.y + offset, p.z}
 		name, _ := r.State(marked)
-		name = normalizeJavaResource(name)
+		name = normalizeResource(name)
 		if name == "air" || name == "cave_air" || name == "void_air" {
 			return
 		}
@@ -406,53 +406,53 @@ func (r *featureRegion) scheduledBlockID(state world.NativeState) uint32 {
 }
 
 // PlaceValue executes a configured Feature holder, never a PlacedFeature holder.
-func (r *featureRegion) PlaceValue(value any, origin featurePos, random *java26.Random) bool {
+func (r *featureRegion) PlaceValue(value any, origin featurePos, random *vanilla.Random) bool {
 	switch feature := value.(type) {
 	case string:
-		return r.f.placeConfiguredRegion(r, normalizeJavaResource(feature), origin, random)
+		return r.f.placeConfiguredRegion(r, normalizeResource(feature), origin, random)
 	case map[string]any:
 		typeName, ok := feature["type"].(string)
 		if !ok {
-			panic("overworld: inline Java feature has no type")
+			panic("overworld: inline feature has no type")
 		}
-		return r.f.placeConfiguredData(r, normalizeJavaResource(typeName), feature, origin, random)
+		return r.f.placeConfiguredData(r, normalizeResource(typeName), feature, origin, random)
 	default:
-		panic("overworld: malformed Java feature reference")
+		panic("overworld: malformed feature reference")
 	}
 }
 
 // PlacePlacedFeature executes a PlacedFeature holder at an exact structure position.
-func (r *featureRegion) PlacePlacedFeature(value any, origin [3]int32, random *java26.Random) bool {
+func (r *featureRegion) PlacePlacedFeature(value any, origin [3]int32, random *vanilla.Random) bool {
 	if random == nil {
-		panic("overworld: Java structure feature has no random source")
+		panic("overworld: structure feature has no random source")
 	}
 	position := featurePos{x: origin[0], y: origin[1], z: origin[2]}
 	if name, ok := value.(string); ok {
-		placed, exists := r.f.placed[normalizeJavaResource(name)]
+		placed, exists := r.f.placed[normalizeResource(name)]
 		if !exists {
-			panic("overworld: missing Java placed feature " + name)
+			panic("overworld: missing placed feature " + name)
 		}
 		return r.f.placeWithModifiers(r, placed.feature, placed.modifiers, position, random, "")
 	}
 	if definition, ok := value.(map[string]any); ok {
 		feature, exists := definition["feature"]
 		if !exists {
-			panic("overworld: inline Java placed feature has no feature holder")
+			panic("overworld: inline placed feature has no feature holder")
 		}
 		return r.f.placeWithModifiers(r, feature, inlinePlacementModifiers(definition["placement"]), position, random, "")
 	}
-	panic(fmt.Sprintf("overworld: malformed Java placed-feature holder %T", value))
+	panic(fmt.Sprintf("overworld: malformed placed-feature holder %T", value))
 }
 
-func (f *ModernFeatures) placeConfiguredRegion(region *featureRegion, name string, origin featurePos, random *java26.Random) bool {
-	config, ok := f.configured[normalizeJavaResource(name)]
+func (f *ModernFeatures) placeConfiguredRegion(region *featureRegion, name string, origin featurePos, random *vanilla.Random) bool {
+	config, ok := f.configured[normalizeResource(name)]
 	if !ok {
-		panic("overworld: missing Java configured feature " + name)
+		panic("overworld: missing configured feature " + name)
 	}
 	return f.placeConfiguredData(region, config.typeName, config.config, origin, random)
 }
 
-func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName string, data map[string]any, origin featurePos, random *java26.Random) bool {
+func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName string, data map[string]any, origin featurePos, random *vanilla.Random) bool {
 	config := modernFeatureConfig{typeName: typeName, config: data}
 	switch config.typeName {
 	case "no_op":
@@ -483,7 +483,7 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 			return region.PlacePlacedFeature(config.config["features"], [3]int32{origin.x, origin.y, origin.z}, random)
 		}
 		if len(features) == 0 {
-			panic("overworld: malformed Java sequence feature")
+			panic("overworld: malformed sequence feature")
 		}
 		for _, child := range features {
 			if !region.PlacePlacedFeature(child, [3]int32{origin.x, origin.y, origin.z}, random) {
@@ -504,13 +504,13 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 			return region.PlacePlacedFeature(config.config["features"], [3]int32{origin.x, origin.y, origin.z}, random)
 		}
 		if len(features) == 0 {
-			panic("overworld: malformed Java simple random selector")
+			panic("overworld: malformed simple random selector")
 		}
 		return region.PlacePlacedFeature(features[random.NextInt(int32(len(features)))], [3]int32{origin.x, origin.y, origin.z}, random)
 	case "random_selector":
 		features, ok := config.config["features"].([]any)
 		if !ok {
-			panic("overworld: malformed Java random selector")
+			panic("overworld: malformed random selector")
 		}
 		for _, raw := range features {
 			entry := raw.(map[string]any)
@@ -523,13 +523,13 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 	case "weighted_random_selector":
 		features, ok := config.config["features"].([]any)
 		if !ok {
-			panic("overworld: malformed Java weighted random selector")
+			panic("overworld: malformed weighted random selector")
 		}
 		total := int64(0)
 		for _, raw := range features {
-			weight := javaIntProviderValue(raw.(map[string]any)["weight"])
+			weight := intProviderValue(raw.(map[string]any)["weight"])
 			if weight < 0 {
-				panic("overworld: negative Java weighted random selector weight")
+				panic("overworld: negative weighted random selector weight")
 			}
 			total += int64(weight)
 		}
@@ -537,16 +537,16 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 			return false
 		}
 		if total > math.MaxInt32 {
-			panic("overworld: Java weighted random selector weight sum exceeds int32")
+			panic("overworld: weighted random selector weight sum exceeds int32")
 		}
 		choice := random.NextInt(int32(total))
 		for _, raw := range features {
 			entry := raw.(map[string]any)
-			weight := javaIntProviderValue(entry["weight"])
+			weight := intProviderValue(entry["weight"])
 			if choice < weight {
 				value, ok := entry["data"]
 				if !ok {
-					panic("overworld: Java weighted selector entry has no data")
+					panic("overworld: weighted selector entry has no data")
 				}
 				return region.PlacePlacedFeature(value, [3]int32{origin.x, origin.y, origin.z}, random)
 			}
@@ -558,7 +558,7 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 			return region.PlacePlacedFeature(config.config["features"], [3]int32{origin.x, origin.y, origin.z}, random)
 		}
 		if len(features) == 0 {
-			panic("overworld: malformed Java overlay feature")
+			panic("overworld: malformed overlay feature")
 		}
 		placed := false
 		for _, feature := range features {
@@ -566,12 +566,12 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 		}
 		return placed
 	case "simple_block":
-		placement, ok := sampleOptionalJavaBlockState(region, origin, config.config["to_place"], random)
+		placement, ok := sampleOptionalBlockState(region, origin, config.config["to_place"], random)
 		if !ok {
 			return false
 		}
 		sourceState := featureBlockStateID(placement)
-		return world.PlaceJavaGenerationSimpleBlock(region, sourceState,
+		return world.PlaceGenerationSimpleBlock(region, sourceState,
 			cube.Pos{int(origin.x), int(origin.y), int(origin.z)}, config.config["schedule_tick"] == true)
 	case "freeze_top_layer":
 		return region.freezeTopLayerRegion(origin)
@@ -614,9 +614,9 @@ func (f *ModernFeatures) placeConfiguredData(region *featureRegion, typeName str
 	case "block_column":
 		return placeModernBlockColumnRegion(region, config.config, origin, random)
 	default:
-		panic("overworld: unsupported Java configured feature " + config.typeName)
+		panic("overworld: unsupported configured feature " + config.typeName)
 	}
-	panic("overworld: Java feature family failed to claim " + config.typeName)
+	panic("overworld: feature family failed to claim " + config.typeName)
 }
 
 func (r *featureRegion) freezeTopLayerRegion(origin featurePos) bool {
@@ -629,7 +629,7 @@ func (r *featureRegion) freezeTopLayerRegion(origin featurePos) bool {
 	if err != nil {
 		panic(err)
 	}
-	snowID := snow.CanonicalJavaID(registry)
+	snowID := snow.CanonicalID(registry)
 	for dx := int32(0); dx < 16; dx++ {
 		for dz := int32(0); dz < 16; dz++ {
 			x, z := origin.x+dx, origin.z+dz
@@ -637,7 +637,7 @@ func (r *featureRegion) freezeTopLayerRegion(origin featurePos) bool {
 			top, below := featurePos{x, y, z}, featurePos{x, y - 1, z}
 			// Source selects the biome at topPos for both predicates, even
 			// when the block below belongs to a different vertical biome.
-			biome := normalizeJavaResource(r.f.source.JavaBiomeAt(x, y, z))
+			biome := normalizeResource(r.f.source.BiomeAt(x, y, z))
 			if r.biomeShouldFreezeFor(biome, below, false) {
 				r.Set(below, ice)
 			}
@@ -645,32 +645,32 @@ func (r *featureRegion) freezeTopLayerRegion(origin featurePos) bool {
 				y < r.MinY() || y > r.MaxY() || r.blockLight(top) >= 10 {
 				continue
 			}
-			stateID := r.nativeState(top).CanonicalJavaID(registry)
-			name, _ := javadata.BlockStateName(stateID)
+			stateID := r.nativeState(top).CanonicalID(registry)
+			name, _ := gamedata.BlockStateName(stateID)
 			if name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" && name != "minecraft:snow" {
 				continue
 			}
-			if !world.JavaGenerationBlockCanSurvive(r, snowID, cube.Pos{int(x), int(y), int(z)}) {
+			if !world.GenerationBlockCanSurvive(r, snowID, cube.Pos{int(x), int(y), int(z)}) {
 				continue
 			}
 			r.Set(top, snow)
-			belowID := r.nativeState(below).CanonicalJavaID(registry)
-			if _, exists := javadata.BlockStateBool(belowID, "snowy"); exists {
-				snowyID, err := javadata.BlockStateWithProperty(belowID, "snowy", true)
+			belowID := r.nativeState(below).CanonicalID(registry)
+			if _, exists := gamedata.BlockStateBool(belowID, "snowy"); exists {
+				snowyID, err := gamedata.BlockStateWithProperty(belowID, "snowy", true)
 				if err != nil {
 					panic(err)
 				}
-				r.SetJavaBlockState(cube.Pos{int(x), int(y - 1), int(z)}, snowyID, 2)
+				r.SetBlockState(cube.Pos{int(x), int(y - 1), int(z)}, snowyID, 2)
 			}
 		}
 	}
 	return true
 }
-func placeModernOreRegion(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernOreRegion(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	size := int32(featureNumber(config["size"]))
 	targets, ok := config["targets"].([]any)
 	if !ok || size < 0 || size > 64 {
-		panic("overworld: malformed Java ore configuration")
+		panic("overworld: malformed ore configuration")
 	}
 	var targetBuffer [2]modernOreTarget
 	oreTargets := targetBuffer[:0]
@@ -681,12 +681,12 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 		entry := raw.(map[string]any)
 		placement, ok := featureStateBlock(entry["state"])
 		if !ok {
-			panic("overworld: malformed Java ore target state")
+			panic("overworld: malformed ore target state")
 		}
 		state, actor := region.resolveFeatureBlock(placement, origin)
 		predicate, ok := entry["target"].(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java ore target predicate")
+			panic("overworld: malformed ore target predicate")
 		}
 		oreTargets = append(oreTargets, modernOreTarget{rid: state, actor: actor, predicate: predicate})
 	}
@@ -725,7 +725,7 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 		sphere.x = startX + t*(endX-startX)
 		sphere.y = startY + t*(endY-startY)
 		sphere.z = startZ + t*(endZ-startZ)
-		sphere.radius = (float64(java26.Sin(float64(float32(math.Pi)*step))+1)*scale + 1) / 2
+		sphere.radius = (float64(vanilla.Sin(float64(float32(math.Pi)*step))+1)*scale + 1) / 2
 	}
 	for i := int32(0); i < size-1; i++ {
 		if spheres[i].radius <= 0 {
@@ -789,7 +789,7 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 					if !region.withinWriteArea(p) {
 						continue
 					}
-					stateID := region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry())
+					stateID := region.nativeState(p).CanonicalID(region.c.BlockRegistry())
 					for _, target := range oreTargets {
 						if !featureRuleMatches(p, target.predicate, stateID, random) {
 							continue
@@ -798,7 +798,7 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 							exposed := false
 							for _, offset := range [6]featurePos{{y: -1}, {y: 1}, {z: -1}, {z: 1}, {x: -1}, {x: 1}} {
 								neighbour := featurePos{x + offset.x, y + offset.y, z + offset.z}
-								name, _ := javadata.BlockStateName(region.nativeState(neighbour).CanonicalJavaID(region.c.BlockRegistry()))
+								name, _ := gamedata.BlockStateName(region.nativeState(neighbour).CanonicalID(region.c.BlockRegistry()))
 								if treeIsAirName(name) {
 									exposed = true
 									break
@@ -811,7 +811,7 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 						// Java writes through BulkSectionAccess, not WorldGenLevel:
 						// no automatic postprocessing, but native actor payloads remain valid.
 						if region.setWithFlags(p, target.rid, 16) && target.actor != nil {
-							region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: target.actor})
+							region.recordTemplateActor(structure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: target.actor})
 						}
 						placed = true
 						break
@@ -822,12 +822,12 @@ func placeModernOreRegion(region *featureRegion, config map[string]any, origin f
 	}
 	return placed
 }
-func placeModernDiskRegion(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
-	radius := sampleJavaInt(config["radius"], random)
+func placeModernDiskRegion(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
+	radius := sampleInt(config["radius"], random)
 	halfHeight := int32(featureNumber(config["half_height"]))
 	predicate, ok := config["target"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java disk target predicate")
+		panic("overworld: malformed disk target predicate")
 	}
 	placed := false
 	// BlockPos.betweenClosed advances X before Z; each column runs top-down.
@@ -846,7 +846,7 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 					placedAbove = false
 					continue
 				}
-				block, ok := sampleOptionalJavaBlockState(region, p, config["state_provider"], random)
+				block, ok := sampleOptionalBlockState(region, p, config["state_provider"], random)
 				if !ok {
 					continue
 				}
@@ -866,26 +866,26 @@ func placeModernDiskRegion(region *featureRegion, config map[string]any, origin 
 	return placed
 }
 
-func placeModernSpringRegion(region *featureRegion, config map[string]any, p featurePos, _ *java26.Random) bool {
+func placeModernSpringRegion(region *featureRegion, config map[string]any, p featurePos, _ *vanilla.Random) bool {
 	validRaw, ok := config["valid_blocks"]
 	if !ok {
-		panic("overworld: malformed Java spring valid blocks")
+		panic("overworld: malformed spring valid blocks")
 	}
 	valid := func(pos featurePos) bool {
-		name, _ := javadata.BlockStateName(region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry()))
+		name, _ := gamedata.BlockStateName(region.nativeState(pos).CanonicalID(region.c.BlockRegistry()))
 		return featureBlockHolderContains(validRaw, name)
 	}
 	if !valid(featurePos{p.x, p.y + 1, p.z}) || config["requires_block_below"] != false && !valid(featurePos{p.x, p.y - 1, p.z}) {
 		return false
 	}
-	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	name, _ := gamedata.BlockStateName(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 	if !treeIsAirName(name) && !featureBlockHolderContains(validRaw, name) {
 		return false
 	}
 	rock, holes := int32(0), int32(0)
 	for _, d := range [5]featurePos{{x: -1}, {x: 1}, {z: -1}, {z: 1}, {y: -1}} {
 		neighbor := featurePos{p.x + d.x, p.y + d.y, p.z + d.z}
-		name, _ := javadata.BlockStateName(region.nativeState(neighbor).CanonicalJavaID(region.c.BlockRegistry()))
+		name, _ := gamedata.BlockStateName(region.nativeState(neighbor).CanonicalID(region.c.BlockRegistry()))
 		if featureBlockHolderContains(validRaw, name) {
 			rock++
 		}
@@ -905,21 +905,21 @@ func placeModernSpringRegion(region *featureRegion, config map[string]any, p fea
 	}
 	fluid, ok := config["state"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java spring fluid state")
+		panic("overworld: malformed spring fluid state")
 	}
 	fluidType, ok := fluid["id"].(string)
 	if !ok {
-		panic("overworld: malformed Java spring fluid type")
+		panic("overworld: malformed spring fluid type")
 	}
 	var properties map[string]any
 	if value, exists := fluid["properties"]; exists {
 		var valid bool
 		properties, valid = value.(map[string]any)
 		if !valid {
-			panic("overworld: malformed Java spring fluid properties")
+			panic("overworld: malformed spring fluid properties")
 		}
 	}
-	id, err := world.JavaFluidLegacyBlock(fluidType, properties)
+	id, err := world.FluidLegacyBlock(fluidType, properties)
 	if err != nil {
 		panic(err)
 	}
@@ -930,10 +930,10 @@ func placeModernSpringRegion(region *featureRegion, config map[string]any, p fea
 	return true
 }
 
-func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	direction, ok := config["direction"].(string)
 	if !ok {
-		panic("overworld: malformed Java block column direction")
+		panic("overworld: malformed block column direction")
 	}
 	var dx, dy, dz int32
 	switch direction {
@@ -950,11 +950,11 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 	case "east":
 		dx = 1
 	default:
-		panic("overworld: unsupported Java block column direction " + direction)
+		panic("overworld: unsupported block column direction " + direction)
 	}
 	layers, ok := config["layers"].([]any)
 	if !ok {
-		panic("overworld: malformed Java block column layers")
+		panic("overworld: malformed block column layers")
 	}
 	var heights [8]int32
 	layerHeights := heights[:]
@@ -967,11 +967,11 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 	for i, raw := range layers {
 		layer, ok := raw.(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java block column layer")
+			panic("overworld: malformed block column layer")
 		}
-		layerHeights[i] = sampleJavaInt(layer["height"], random)
+		layerHeights[i] = sampleInt(layer["height"], random)
 		if layerHeights[i] < 0 {
-			panic("overworld: negative Java block column layer height")
+			panic("overworld: negative block column layer height")
 		}
 		totalHeight += layerHeights[i]
 	}
@@ -980,7 +980,7 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 	}
 	allowed, ok := config["allowed_placement"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java block column predicate")
+		panic("overworld: malformed block column predicate")
 	}
 	next := featurePos{origin.x + dx, origin.y + dy, origin.z + dz}
 	validHeight := int32(0)
@@ -1015,7 +1015,7 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 		for range layerHeights[i] {
 			state, actor, ok := region.SampleNativeState(layer["provider"], p, random)
 			if !ok {
-				panic("overworld: unresolved Java block column provider")
+				panic("overworld: unresolved block column provider")
 			}
 			featureSetNativeBlockFlag2(region, p, state, actor)
 			p.x += dx
@@ -1029,7 +1029,7 @@ func placeModernBlockColumnRegion(region *featureRegion, config map[string]any, 
 func environmentScanPlacement(region *featureRegion, in []featurePos, modifier map[string]any, minY, maxY int32) []featurePos {
 	direction, ok := modifier["direction_of_search"].(string)
 	if !ok {
-		panic("overworld: malformed Java environment_scan direction")
+		panic("overworld: malformed environment_scan direction")
 	}
 	var step int32
 	switch direction {
@@ -1038,19 +1038,19 @@ func environmentScanPlacement(region *featureRegion, in []featurePos, modifier m
 	case "down":
 		step = -1
 	default:
-		panic("overworld: unsupported Java environment_scan direction " + direction)
+		panic("overworld: unsupported environment_scan direction " + direction)
 	}
 	target, ok := modifier["target_condition"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java environment_scan target condition")
+		panic("overworld: malformed environment_scan target condition")
 	}
 	allowed, hasAllowed := modifier["allowed_search_condition"].(map[string]any)
 	if _, exists := modifier["allowed_search_condition"]; exists && !hasAllowed {
-		panic("overworld: malformed Java environment_scan allowed condition")
+		panic("overworld: malformed environment_scan allowed condition")
 	}
 	maxStepsValue, ok := modifier["max_steps"].(float64)
 	if !ok || maxStepsValue < 1 || maxStepsValue > 32 || maxStepsValue != math.Trunc(maxStepsValue) {
-		panic("overworld: malformed Java environment_scan max_steps")
+		panic("overworld: malformed environment_scan max_steps")
 	}
 	maxSteps := int32(maxStepsValue)
 	out := make([]featurePos, 0, len(in))
@@ -1088,20 +1088,20 @@ func featureFluidName(region *featureRegion, p featurePos, properties map[string
 	if state.Liquid != registry.AirRuntimeID() {
 		name, fluidProperties, ok := runtimeIDStateView(registry, state.Liquid)
 		if !ok {
-			panic("overworld: invalid native liquid runtime ID in Java fluid predicate")
+			panic("overworld: invalid native liquid runtime ID in fluid predicate")
 		}
-		switch normalizeJavaResource(name) {
+		switch normalizeResource(name) {
 		case "water", "flowing_water", "lava", "flowing_lava":
-			return featureLiquidFluidName(normalizeJavaResource(name), fluidProperties)
+			return featureLiquidFluidName(normalizeResource(name), fluidProperties)
 		default:
-			panic("overworld: unsupported native liquid in Java fluid predicate: " + name)
+			panic("overworld: unsupported native liquid in fluid predicate: " + name)
 		}
 	}
 	name, nativeProperties, ok := runtimeIDStateView(registry, state.Block)
 	if !ok {
-		panic("overworld: invalid native block runtime ID in Java fluid predicate")
+		panic("overworld: invalid native block runtime ID in fluid predicate")
 	}
-	name = normalizeJavaResource(name)
+	name = normalizeResource(name)
 	switch name {
 	case "water", "flowing_water", "lava", "flowing_lava":
 		return featureLiquidFluidName(name, nativeProperties)
@@ -1139,7 +1139,7 @@ func featureLiquidFluidName(name string, properties map[string]any) string {
 }
 
 func featureFluidTagContains(tag, fluid string) bool {
-	switch normalizeJavaResource(strings.TrimPrefix(tag, "#")) {
+	switch normalizeResource(strings.TrimPrefix(tag, "#")) {
 	case "water", "supports_sugar_cane_adjacently", "entity_floatable":
 		return fluid == "water" || fluid == "flowing_water"
 	case "lava":
@@ -1148,7 +1148,7 @@ func featureFluidTagContains(tag, fluid string) bool {
 		"axolotl_tries_to_find", "dolphin_tries_to_find", "frog_tries_to_find_land_near":
 		return fluid == "water"
 	default:
-		panic("overworld: unresolved Java fluid tag #" + normalizeJavaResource(tag))
+		panic("overworld: unresolved fluid tag #" + normalizeResource(tag))
 	}
 }
 
@@ -1157,12 +1157,12 @@ func featureFluidHolderContains(raw any, fluid string) bool {
 		if strings.HasPrefix(value, "#") {
 			return featureFluidTagContains(value, fluid)
 		}
-		name := normalizeJavaResource(value)
+		name := normalizeResource(value)
 		switch name {
 		case "empty", "water", "flowing_water", "lava", "flowing_lava":
 			return name == fluid
 		default:
-			panic("overworld: unresolved Java fluid " + value)
+			panic("overworld: unresolved fluid " + value)
 		}
 	}
 	switch values := raw.(type) {
@@ -1172,7 +1172,7 @@ func featureFluidHolderContains(raw any, fluid string) bool {
 		for _, value := range values {
 			name, ok := value.(string)
 			if !ok {
-				panic("overworld: malformed Java fluid holder set")
+				panic("overworld: malformed fluid holder set")
 			}
 			if matches(name) {
 				return true
@@ -1180,16 +1180,16 @@ func featureFluidHolderContains(raw any, fluid string) bool {
 		}
 		return false
 	default:
-		panic("overworld: malformed Java fluid holder set")
+		panic("overworld: malformed fluid holder set")
 	}
 }
 
 func featurePredicate(region *featureRegion, p featurePos, predicate map[string]any) bool {
 	typeName, ok := predicate["type"].(string)
 	if !ok {
-		panic("overworld: Java block predicate without type")
+		panic("overworld: block predicate without type")
 	}
-	kind := normalizeJavaResource(typeName)
+	kind := normalizeResource(typeName)
 	switch kind {
 	case "matching_blocks", "matching_block_tag", "matching_fluids", "has_sturdy_face", "solid", "replaceable", "would_survive", "inside_world_bounds":
 		if raw, exists := predicate["offset"]; exists {
@@ -1231,9 +1231,9 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 		}
 		return !featurePredicate(region, p, child)
 	case "matching_biomes":
-		return featureBiomeHolderContains(predicate["biomes"], region.f.source.JavaBiomeAt(p.x, p.y, p.z))
+		return featureBiomeHolderContains(predicate["biomes"], region.f.source.BiomeAt(p.x, p.y, p.z))
 	case "replaceable":
-		shape, err := javadata.BlockGenerationShapeID(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		shape, err := gamedata.BlockGenerationShapeID(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 		if err != nil {
 			panic(err)
 		}
@@ -1246,11 +1246,11 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 		minimum := featurePredicateVector(predicate["min"])
 		maximum := featurePredicateVector(predicate["max"])
 		if minimum[0] > maximum[0] || minimum[1] > maximum[1] || minimum[2] > maximum[2] {
-			panic("overworld: Java volume_match min bound exceeds max bound")
+			panic("overworld: volume_match min bound exceeds max bound")
 		}
 		match, ok := predicate["match"].(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java volume_match predicate")
+			panic("overworld: malformed volume_match predicate")
 		}
 		for x := minimum[0]; x <= maximum[0]; x++ {
 			for z := minimum[2]; z <= maximum[2]; z++ {
@@ -1264,7 +1264,7 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 		return true
 	}
 	name, properties := region.State(p)
-	name = normalizeJavaResource(name)
+	name = normalizeResource(name)
 	switch kind {
 	case "matching_fluids":
 		fluids, exists := predicate["fluids"]
@@ -1279,7 +1279,7 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 		if !ok {
 			panic("overworld: malformed matching_block_tag predicate")
 		}
-		return javaBlockTagContains(normalizeJavaResource(tag), normalizeJavaResource(name))
+		return blockTagContains(normalizeResource(tag), normalizeResource(name))
 	case "has_sturdy_face":
 		direction, ok := predicate["direction"].(string)
 		if !ok {
@@ -1302,19 +1302,19 @@ func featurePredicate(region *featureRegion, p featurePos, predicate map[string]
 		default:
 			panic("overworld: unsupported has_sturdy_face direction " + direction)
 		}
-		shape, err := javadata.BlockGenerationShape(name, properties)
+		shape, err := gamedata.BlockGenerationShape(name, properties)
 		if err != nil {
 			panic(err)
 		}
 		return shape.Sturdy&(1<<uint(face)) != 0
 	case "solid":
-		return featureJavaSolid(name)
+		return featureSolid(name)
 	default:
-		panic("overworld: unsupported Java block predicate " + normalizeJavaResource(typeName))
+		panic("overworld: unsupported block predicate " + normalizeResource(typeName))
 	}
 }
-func featureJavaSolid(name string) bool {
-	solid, err := javadata.BlockIsSolid(name)
+func featureSolid(name string) bool {
+	solid, err := gamedata.BlockIsSolid(name)
 	if err != nil {
 		panic(err)
 	}
@@ -1322,35 +1322,35 @@ func featureJavaSolid(name string) bool {
 }
 
 func featureBlockHolderContains(holder any, name string) bool {
-	name = normalizeJavaResource(name)
+	name = normalizeResource(name)
 	switch values := holder.(type) {
 	case string:
 		if tag, ok := strings.CutPrefix(values, "#"); ok {
-			return javaBlockTagContains(tag, name)
+			return blockTagContains(tag, name)
 		}
-		return name == normalizeJavaResource(values)
+		return name == normalizeResource(values)
 	case []any:
 		for _, value := range values {
-			if name == normalizeJavaResource(value.(string)) {
+			if name == normalizeResource(value.(string)) {
 				return true
 			}
 		}
 		return false
 	default:
-		panic("overworld: malformed Java block holder set")
+		panic("overworld: malformed block holder set")
 	}
 }
 
 func featurePredicateVector(raw any) [3]int32 {
 	values, ok := raw.([]any)
 	if !ok || len(values) != 3 {
-		panic("overworld: malformed Java block predicate vector")
+		panic("overworld: malformed block predicate vector")
 	}
 	var vector [3]int32
 	for i, value := range values {
 		n, ok := value.(float64)
 		if !ok || n < -16 || n > 16 || n != math.Trunc(n) {
-			panic("overworld: invalid Java block predicate vector")
+			panic("overworld: invalid block predicate vector")
 		}
 		vector[i] = int32(n)
 	}
@@ -1358,25 +1358,25 @@ func featurePredicateVector(raw any) [3]int32 {
 }
 
 func featureBiomeHolderContains(holder any, biome string) bool {
-	biome = normalizeJavaResource(biome)
+	biome = normalizeResource(biome)
 	switch values := holder.(type) {
 	case string:
 		if tag, ok := strings.CutPrefix(values, "#"); ok {
-			match, err := javadata.BiomeTagContains(tag, biome)
+			match, err := gamedata.BiomeTagContains(tag, biome)
 			if err != nil {
 				panic(err)
 			}
 			return match
 		}
-		return biome == normalizeJavaResource(values)
+		return biome == normalizeResource(values)
 	case []any:
 		for _, value := range values {
-			if biome == normalizeJavaResource(value.(string)) {
+			if biome == normalizeResource(value.(string)) {
 				return true
 			}
 		}
 		return false
 	default:
-		panic("overworld: malformed Java biome holder set")
+		panic("overworld: malformed biome holder set")
 	}
 }

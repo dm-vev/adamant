@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func TestFossilPostProcessExpandsChunkClipAndRepeatsExactly(t *testing.T) {
@@ -30,12 +30,12 @@ func TestFossilPostProcessExpandsChunkClipAndRepeatsExactly(t *testing.T) {
 		t.Fatal("air block is not registered")
 	}
 	for _, pos := range []world.ChunkPos{{1026, 39}, {1027, 39}} {
-		render := func() []javastructure.Placement {
-			var placements []javastructure.Placement
-			g.featureSource.placeNetherFossilStep(pos, javastructure.ProcessorEnvironment{
+		render := func() []structure.Placement {
+			var placements []structure.Placement
+			g.featureSource.placeNetherFossilStep(pos, structure.ProcessorEnvironment{
 				BaseBlock: func(int32, int32, int32) world.Block { return air },
 				Random:    g.featureSource.structureStepRandom(pos, 2, 7),
-			}, func(p javastructure.Placement) { placements = append(placements, p) })
+			}, func(p structure.Placement) { placements = append(placements, p) })
 			return placements
 		}
 		first, second := render(), render()
@@ -67,9 +67,9 @@ func TestFossilDriedGhastPlacementAndTerrainBlocking(t *testing.T) {
 	if !ok {
 		t.Fatal("netherrack block is not registered")
 	}
-	render := func(blocked bool) []javastructure.Placement {
-		var placements []javastructure.Placement
-		g.featureSource.placeNetherFossilStep(world.ChunkPos{0, -40}, javastructure.ProcessorEnvironment{
+	render := func(blocked bool) []structure.Placement {
+		var placements []structure.Placement
+		g.featureSource.placeNetherFossilStep(world.ChunkPos{0, -40}, structure.ProcessorEnvironment{
 			BaseBlock: func(x, y, z int32) world.Block {
 				if blocked && [3]int32{x, y, z} == ghastPos {
 					return netherrack
@@ -77,7 +77,7 @@ func TestFossilDriedGhastPlacementAndTerrainBlocking(t *testing.T) {
 				return air
 			},
 			Random: g.featureSource.structureStepRandom(world.ChunkPos{0, -40}, 2, 7),
-		}, func(p javastructure.Placement) { placements = append(placements, p) })
+		}, func(p structure.Placement) { placements = append(placements, p) })
 		return placements
 	}
 	var placed bool

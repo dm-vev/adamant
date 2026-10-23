@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"os"
 	"reflect"
 	"sort"
@@ -39,7 +39,7 @@ type mineshaftGraphPiece struct {
 	Spider    bool     `json:"spider,omitempty"`
 }
 
-func TestMineshaftGraphsMatchJava263(t *testing.T) {
+func TestMineshaftGraphsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_mineshaft_graphs.json")
 	if err != nil {
 		t.Fatal(err)
@@ -164,10 +164,10 @@ func mineshaftFixtureBlockID(encoded string) (uint32, error) {
 			properties[key] = value
 		}
 	}
-	return javadata.BlockStateID(name, properties)
+	return gamedata.BlockStateID(name, properties)
 }
 
-func TestMineshaftPlacementsMatchJava263(t *testing.T) {
+func TestMineshaftPlacementsMatchReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_mineshaft_post.json")
 	if err != nil {
@@ -177,15 +177,15 @@ func TestMineshaftPlacementsMatchJava263(t *testing.T) {
 	if err = json.Unmarshal(data, &fixtures); err != nil {
 		t.Fatal(err)
 	}
-	airID, err := javadata.BlockStateID("minecraft:air", nil)
+	airID, err := gamedata.BlockStateID("minecraft:air", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, fixture := range fixtures {
 		fixture := fixture
 		t.Run(fixture.Name, func(t *testing.T) {
-			box := javastructure.Box{Min: [3]int32{fixture.Box[0], fixture.Box[1], fixture.Box[2]}, Max: [3]int32{fixture.Box[3], fixture.Box[4], fixture.Box[5]}}
-			clip := javastructure.Bounds{Min: [3]int32{fixture.Clip[0], fixture.Clip[1], fixture.Clip[2]}, Max: [3]int32{fixture.Clip[3], fixture.Clip[4], fixture.Clip[5]}}
+			box := structure.Box{Min: [3]int32{fixture.Box[0], fixture.Box[1], fixture.Box[2]}, Max: [3]int32{fixture.Box[3], fixture.Box[4], fixture.Box[5]}}
+			clip := structure.Bounds{Min: [3]int32{fixture.Clip[0], fixture.Clip[1], fixture.Clip[2]}, Max: [3]int32{fixture.Clip[3], fixture.Clip[4], fixture.Clip[5]}}
 			base := make(map[[3]int32]uint32, len(fixture.Baseline))
 			for _, encoded := range fixture.Baseline {
 				parts := strings.SplitN(encoded, "|", 2)
@@ -213,13 +213,13 @@ func TestMineshaftPlacementsMatchJava263(t *testing.T) {
 				}
 				return airID, nil
 			}
-			random := java26.NewLegacyRandom(fixture.Seed)
-			env := javastructure.ProcessorEnvironment{JavaBiomeAt: func(int32, int32, int32) string {
+			random := vanilla.NewLegacyRandom(fixture.Seed)
+			env := structure.ProcessorEnvironment{BiomeAt: func(int32, int32, int32) string {
 				if fixture.Name == "invalid_biome" {
 					return "minecraft:deep_dark"
 				}
 				return "minecraft:plains"
-			}, BaseHeight: func(int32, int32, bool) int32 { return 80 }, JavaBlockStateID: stateID, Range: cube.Range{-64, 319}, Random: &random, PieceState: &javastructure.StructurePieceState{SpawnerPlaced: fixture.PieceStateBefore.HasPlacedSpider}}
+			}, BaseHeight: func(int32, int32, bool) int32 { return 80 }, BlockStateID: stateID, Range: cube.Range{-64, 319}, Random: &random, PieceState: &structure.StructurePieceState{SpawnerPlaced: fixture.PieceStateBefore.HasPlacedSpider}}
 			piece := minePiece{box: box, wood: "normal", depth: 1}
 			switch {
 			case strings.HasPrefix(fixture.Name, "corridor"), strings.HasPrefix(fixture.Name, "spider_"):
@@ -258,7 +258,7 @@ func TestMineshaftPlacementsMatchJava263(t *testing.T) {
 					t.Fatal(e)
 				}
 				got := placement.Blocks[index]
-				gotID, e := javadata.BlockStateID(got.State.Name, got.State.Properties)
+				gotID, e := gamedata.BlockStateID(got.State.Name, got.State.Properties)
 				if e != nil {
 					t.Fatal(e)
 				}
@@ -295,10 +295,10 @@ func TestMineshaftPlacementsMatchJava263(t *testing.T) {
 					}
 				}
 			}
-			javaSpawners, nativeSpawners := 0, 0
+			sourceSpawners, nativeSpawners := 0, 0
 			for _, actor := range fixture.Actors {
 				if actor.NBT["id"] == "minecraft:mob_spawner" {
-					javaSpawners++
+					sourceSpawners++
 				}
 			}
 			for _, block := range placement.Blocks {
@@ -311,8 +311,8 @@ func TestMineshaftPlacementsMatchJava263(t *testing.T) {
 					}
 				}
 			}
-			if nativeSpawners != javaSpawners {
-				t.Errorf("spawner block entities=%d, Java=%d", nativeSpawners, javaSpawners)
+			if nativeSpawners != sourceSpawners {
+				t.Errorf("spawner block entities=%d, Java=%d", nativeSpawners, sourceSpawners)
 			}
 			for _, block := range placement.Blocks {
 				if block.NBT != nil && block.NBT["id"] == "minecraft:mob_spawner" && block.State.Name != "minecraft:spawner" {
@@ -330,7 +330,7 @@ type mineshaftSupportFixture struct {
 	Writes   []string `json:"writes"`
 }
 
-func TestMineshaftSupportColumnsMatchJava263(t *testing.T) {
+func TestMineshaftSupportColumnsMatchReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_mineshaft_support.json")
 	if err != nil {
@@ -340,7 +340,7 @@ func TestMineshaftSupportColumnsMatchJava263(t *testing.T) {
 	if err = json.Unmarshal(data, &fixtures); err != nil {
 		t.Fatal(err)
 	}
-	airID, err := javadata.BlockStateID("minecraft:air", nil)
+	airID, err := gamedata.BlockStateID("minecraft:air", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,10 +374,10 @@ func TestMineshaftSupportColumnsMatchJava263(t *testing.T) {
 				}
 				return airID, nil
 			}
-			env := javastructure.ProcessorEnvironment{JavaBlockStateID: stateID, Range: cube.Range{-64, 319}}
-			piece := minePiece{box: javastructure.Box{Min: [3]int32{fixture.Box[0], fixture.Box[1], fixture.Box[2]}, Max: [3]int32{fixture.Box[3], fixture.Box[4], fixture.Box[5]}}, facing: "north"}
-			clip := javastructure.Bounds{Min: [3]int32{0, -64, 0}, Max: [3]int32{15, 319, 15}}
-			var placement javastructure.Placement
+			env := structure.ProcessorEnvironment{BlockStateID: stateID, Range: cube.Range{-64, 319}}
+			piece := minePiece{box: structure.Box{Min: [3]int32{fixture.Box[0], fixture.Box[1], fixture.Box[2]}, Max: [3]int32{fixture.Box[3], fixture.Box[4], fixture.Box[5]}}, facing: "north"}
+			clip := structure.Bounds{Min: [3]int32{0, -64, 0}, Max: [3]int32{15, 319, 15}}
+			var placement structure.Placement
 			journal := newJournalStructureWorld(env, clip, &placement)
 			mineSupportColumn(piece, env, journal, 0, -1, 2, "oak_log", "oak_fence")
 			if len(placement.Blocks) != len(fixture.Writes) {
@@ -399,7 +399,7 @@ func TestMineshaftSupportColumnsMatchJava263(t *testing.T) {
 					t.Fatal(e)
 				}
 				got := placement.Blocks[index]
-				gotID, e := javadata.BlockStateID(got.State.Name, got.State.Properties)
+				gotID, e := gamedata.BlockStateID(got.State.Name, got.State.Properties)
 				if e != nil {
 					t.Fatal(e)
 				}

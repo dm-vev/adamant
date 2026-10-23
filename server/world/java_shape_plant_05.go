@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -75,7 +75,7 @@ func javaPlant05LeavesShape(c *javaShapeContext, state uint32, face cube.Face, n
 	if javaBool(state, "waterlogged") {
 		c.waterTick(state, c.pos)
 	}
-	distance, hasDistance := javadata.BlockStateInt(neighbor, "distance")
+	distance, hasDistance := gamedata.BlockStateInt(neighbor, "distance")
 	if c.tag(neighbor, "prevents_nearby_leaf_decay") {
 		distance = 0
 	} else if !hasDistance {

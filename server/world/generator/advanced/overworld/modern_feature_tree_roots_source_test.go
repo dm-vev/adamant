@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -37,7 +37,7 @@ type mangroveRootSourceFixture struct {
 	} `json:"cases"`
 }
 
-func TestMangroveRootsMatchJava263Source(t *testing.T) {
+func TestMangroveRootsMatchSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_mangrove_roots_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -104,12 +104,12 @@ func TestMangroveRootsMatchJava263Source(t *testing.T) {
 					"max_root_width":       float64(3), "max_root_length": float64(maxLength), "random_skew_chance": float64(.35),
 				},
 			}
-			var random java26.Random
+			var random vanilla.Random
 			switch test.Algorithm {
 			case "legacy":
-				random = java26.NewLegacyRandom(test.Seed)
+				random = vanilla.NewLegacyRandom(test.Seed)
 			case "xoroshiro":
-				random = java26.NewXoroshiroRandom(test.Seed)
+				random = vanilla.NewXoroshiroRandom(test.Seed)
 			default:
 				t.Fatalf("unknown random algorithm %q", test.Algorithm)
 			}

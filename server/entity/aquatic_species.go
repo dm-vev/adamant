@@ -4,7 +4,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -215,7 +215,7 @@ func frogVariantAt(tx *world.Tx, pos mgl64.Vec3) int {
 	return 0
 }
 // FinalizeSpawn applies the shared AgeableMob group variant selection.
-func (a *Axolotl) FinalizeSpawn(reason string, random *java26.Random) {
+func (a *Axolotl) FinalizeSpawn(reason string, random *vanilla.Random) {
 	if reason=="bucket"||random==nil { return }
 	group:=a.H().SpawnGroup()
 	var data *axolotlSpawnGroupData
@@ -231,12 +231,12 @@ func (a *Axolotl) FinalizeSpawn(reason string, random *java26.Random) {
 	data.size++
 }
 
-func (c *Cod) FinalizeSpawn(_ string, _ *java26.Random) {
+func (c *Cod) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	c.behaviour().finalizeSchoolSpawn(c.AquaticMob)
 }
 
 // FinalizeSpawn chooses Salmon's weighted size variant.
-func (s *Salmon) FinalizeSpawn(_ string, random *java26.Random) {
+func (s *Salmon) FinalizeSpawn(_ string, random *vanilla.Random) {
 	if random==nil { return }
 	roll:=random.NextInt(95)
 	switch {
@@ -248,7 +248,7 @@ func (s *Salmon) FinalizeSpawn(_ string, random *java26.Random) {
 }
 
 // FinalizeSpawn preserves Tropical Fish's spawn-cohort variant and schooling leader.
-func (f *TropicalFish) FinalizeSpawn(reason string, random *java26.Random) {
+func (f *TropicalFish) FinalizeSpawn(reason string, random *vanilla.Random) {
 	if reason=="bucket"||random==nil { return }
 	school:=f.behaviour().finalizeSchoolSpawn(f.AquaticMob)
 	group:=f.H().SpawnGroup()

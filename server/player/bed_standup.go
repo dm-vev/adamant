@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -17,7 +17,7 @@ func bedStandUpPosition(tx *world.Tx, pos cube.Pos, forward cube.Direction, yaw 
 	rightStep := cube.Pos{}.Side(right.Face())
 	radians := float64(float32(yaw) * float32(math.Pi/180))
 	side := right
-	if float32(rightStep[0])*(-java26.Sin(radians))+float32(rightStep[2])*java26.Cos(radians) > 0 {
+	if float32(rightStep[0])*(-vanilla.Sin(radians))+float32(rightStep[2])*vanilla.Cos(radians) > 0 {
 		side = right.Opposite()
 	}
 	f, s := cube.Pos{}.Side(forward.Face()), cube.Pos{}.Side(side.Face())
@@ -52,18 +52,18 @@ func bedStandUpPosition(tx *world.Tx, pos cube.Pos, forward cube.Direction, yaw 
 }
 
 func bedStateName(tx *world.Tx, pos cube.Pos) (uint32, string) {
-	id, err := tx.JavaBlockStateID(pos)
+	id, err := tx.BlockStateID(pos)
 	if err != nil {
 		panic(err)
 	}
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		panic("bed standup has no Source state")
 	}
 	return id, strings.TrimPrefix(name, "minecraft:")
 }
 func bedStateTag(name, tag string) bool {
-	ok, err := javadata.BlockTagContains(tag, name)
+	ok, err := gamedata.BlockTagContains(tag, name)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +71,7 @@ func bedStateTag(name, tag string) bool {
 }
 func bedFloorHeight(tx *world.Tx, pos cube.Pos) float64 {
 	id, name := bedStateName(tx, pos)
-	open, _ := javadata.BlockStateBool(id, "open")
+	open, _ := gamedata.BlockStateBool(id, "open")
 	if bedStateTag(name, "minecraft:climbable") || strings.HasSuffix(name, "_trapdoor") && open {
 		return math.Inf(-1)
 	}
@@ -87,7 +87,7 @@ func bedDangerous(tx *world.Tx, pos cube.Pos) bool {
 	case "wither_rose", "sweet_berry_bush", "cactus", "powder_snow", "lava", "magma_block", "lava_cauldron":
 		return true
 	case "campfire", "soul_campfire":
-		lit, _ := javadata.BlockStateBool(id, "lit")
+		lit, _ := gamedata.BlockStateBool(id, "lit")
 		return lit
 	}
 	return bedStateTag(name, "minecraft:fire")
@@ -148,7 +148,7 @@ func (p *Player) standUpFromBed(tx *world.Tx, pos cube.Pos, facing cube.Directio
 	} else {
 		look = mgl64.Vec3{}
 	}
-	yaw := java26.Atan2(look[2], look[0])*180/float64(float32(math.Pi)) - 90
+	yaw := vanilla.Atan2(look[2], look[0])*180/float64(float32(math.Pi)) - 90
 	yaw = math.Mod(yaw, 360)
 	if yaw >= 180 {
 		yaw -= 360

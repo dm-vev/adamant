@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("jungle_temple", buildModernJungleTemple) }
@@ -17,11 +17,11 @@ const (
 )
 
 type modernJungleTemple struct {
-	box javastructure.Box
+	box structure.Box
 	dir int
 }
 
-func (p modernJungleTemple) Bounds() javastructure.Box { return p.box }
+func (p modernJungleTemple) Bounds() structure.Box { return p.box }
 func (p modernJungleTemple) pos(x, y, z int32) [3]int32 {
 	b := p.box
 	switch p.dir {
@@ -36,12 +36,12 @@ func (p modernJungleTemple) pos(x, y, z int32) [3]int32 {
 	}
 }
 
-func (p modernJungleTemple) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
-	out := javastructure.Placement{}
+func (p modernJungleTemple) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
+	out := structure.Placement{}
 	if env.Random == nil {
-		return out, fmt.Errorf("jungle temple placement requires Java structure random")
+		return out, fmt.Errorf("jungle temple placement requires structure random")
 	}
-	var temporary javastructure.StructurePieceState
+	var temporary structure.StructurePieceState
 	if env.PieceState == nil {
 		env.PieceState = &temporary
 	}
@@ -250,7 +250,7 @@ func buildModernJungleTemple(in modernStructureBuildInput) (modernStructureStart
 	if dir == 1 || dir == 3 {
 		maxX, maxZ = x+14, z+11
 	}
-	box := javastructure.Box{Min: [3]int32{minX, 64, minZ}, Max: [3]int32{maxX, 73, maxZ}}
+	box := structure.Box{Min: [3]int32{minX, 64, minZ}, Max: [3]int32{maxX, 73, maxZ}}
 	piece := modernJungleTemple{box: box, dir: dir}
 	return modernStructureStart{name: in.name, pieces: []modernStructurePiece{piece}, box: box, terrain: terrainAdjustment(stringValue(in.config["terrain_adaptation"]))}, true, nil
 }

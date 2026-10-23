@@ -15,7 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-type java263EndCityPiece struct {
+type endCityPieceFixture struct {
 	Name     string `json:"name"`
 	X        int    `json:"x"`
 	Y        int    `json:"y"`
@@ -29,26 +29,26 @@ type java263EndCityPiece struct {
 	MaxZ     int    `json:"maxZ"`
 }
 
-type java263EndCity struct {
+type endCityFixture struct {
 	Seed    int64                  `json:"seed"`
 	StartX  int                    `json:"startX"`
 	StartZ  int                    `json:"startZ"`
-	Pieces  []java263EndCityPiece  `json:"pieces"`
-	Heights []java263EndCityHeight `json:"heights"`
+	Pieces  []endCityPieceFixture  `json:"pieces"`
+	Heights []endCityHeightFixture `json:"heights"`
 }
 
-type java263EndCityHeight struct {
+type endCityHeightFixture struct {
 	X      int `json:"x"`
 	Z      int `json:"z"`
 	Height int `json:"height"`
 }
 
-func TestEndCityPieceLayoutMatchesJava263Ship(t *testing.T) {
+func TestEndCityPieceLayoutMatchesReferenceShip(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_endcity_ship.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var want java263EndCity
+	var want endCityFixture
 	if err := json.Unmarshal(data, &want); err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestEndCityPieceLayoutMatchesJava263Ship(t *testing.T) {
 	}
 }
 
-type java263RenderedEntity struct {
+type renderedEntityFixture struct {
 	Type         string    `json:"type"`
 	Position     []float64 `json:"position"`
 	Rotation     []float64 `json:"rotation"`
@@ -128,7 +128,7 @@ type java263RenderedEntity struct {
 	AttachFace   string    `json:"attachFace"`
 }
 
-type java263RenderedCity struct {
+type renderedCityFixture struct {
 	Seed    int64 `json:"seed"`
 	ChunkX  int   `json:"chunkX"`
 	ChunkZ  int   `json:"chunkZ"`
@@ -143,15 +143,15 @@ type java263RenderedCity struct {
 		LootTable     string `json:"LootTable"`
 		LootTableSeed string `json:"LootTableSeed"`
 	} `json:"actors"`
-	Entities []java263RenderedEntity `json:"entities"`
+	Entities []renderedEntityFixture `json:"entities"`
 }
 
-func TestEndCityShipChunkRenderingMatchesJava263(t *testing.T) {
+func TestEndCityShipChunkRenderingMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_endcity_ship_render.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var source java263RenderedCity
+	var source renderedCityFixture
 	if err := json.Unmarshal(data, &source); err != nil {
 		t.Fatal(err)
 	}
@@ -161,10 +161,10 @@ func TestEndCityShipChunkRenderingMatchesJava263(t *testing.T) {
 	var scratch endScratch
 	region := newEndFeatureRegion(g, source.ChunkX, source.ChunkZ, target, &scratch)
 	var result world.GenerationResult
-	beforeMismatches := compareJava263CityStates(t, source.Before, source.Palette, source.ChunkX, source.ChunkZ, region)
+	beforeMismatches := compareCityFixtureStates(t, source.Before, source.Palette, source.ChunkX, source.ChunkZ, region)
 	g.applyEndCityStructures(source.ChunkX, source.ChunkZ, region, true, &result)
 	region.publishTarget(source.ChunkX, source.ChunkZ, target)
-	afterMismatches := compareJava263CityStates(t, source.After, source.Palette, source.ChunkX, source.ChunkZ, region)
+	afterMismatches := compareCityFixtureStates(t, source.After, source.Palette, source.ChunkX, source.ChunkZ, region)
 	if beforeMismatches != 0 || afterMismatches != 0 {
 		t.Fatalf("full source city chunk states differ: terrain=%d/65536, decorated=%d/65536", beforeMismatches, afterMismatches)
 	}
@@ -206,7 +206,7 @@ func TestEndCityShipChunkRenderingMatchesJava263(t *testing.T) {
 		sourceEntity := handle.WorldlessEntity(nil)
 		if shulker, ok := sourceEntity.(*entity.Shulker); ok {
 			shulkers++
-			var want *java263RenderedEntity
+			var want *renderedEntityFixture
 			for i := range source.Entities {
 				if source.Entities[i].Type == "minecraft:shulker" {
 					want = &source.Entities[i]
@@ -267,7 +267,7 @@ func TestEndCityShipChunkRenderingMatchesJava263(t *testing.T) {
 	}
 }
 
-func compareJava263CityStates(t *testing.T, source []int, palette map[string]struct {
+func compareCityFixtureStates(t *testing.T, source []int, palette map[string]struct {
 	ID         string            `json:"id"`
 	Properties map[string]string `json:"properties"`
 }, chunkX, chunkZ int, region *endFeatureRegion) int {
@@ -284,7 +284,7 @@ func compareJava263CityStates(t *testing.T, source []int, palette map[string]str
 		if !ok {
 			t.Fatalf("source palette missing state ID %d", sourceID)
 		}
-		state, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(chunkX*16+x, y, chunkZ*16+z))
+		state, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(chunkX*16+x, y, chunkZ*16+z))
 		if err != nil {
 			t.Fatalf("state at (%d,%d,%d): %v", chunkX*16+x, y, chunkZ*16+z, err)
 		}

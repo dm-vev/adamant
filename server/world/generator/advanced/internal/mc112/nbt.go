@@ -9,19 +9,19 @@ import (
 )
 
 const (
-	javaNBTTagEnd       = 0
-	javaNBTTagByte      = 1
-	javaNBTTagShort     = 2
-	javaNBTTagInt       = 3
-	javaNBTTagLong      = 4
-	javaNBTTagFloat     = 5
-	javaNBTTagDouble    = 6
-	javaNBTTagByteArray = 7
-	javaNBTTagString    = 8
-	javaNBTTagList      = 9
-	javaNBTTagCompound  = 10
-	javaNBTTagIntArray  = 11
-	javaNBTTagLongArray = 12
+	nbtTagEnd       = 0
+	nbtTagByte      = 1
+	nbtTagShort     = 2
+	nbtTagInt       = 3
+	nbtTagLong      = 4
+	nbtTagFloat     = 5
+	nbtTagDouble    = 6
+	nbtTagByteArray = 7
+	nbtTagString    = 8
+	nbtTagList      = 9
+	nbtTagCompound  = 10
+	nbtTagIntArray  = 11
+	nbtTagLongArray = 12
 )
 
 type nbtReader struct {
@@ -86,7 +86,7 @@ func (r *nbtReader) readString() (string, error) {
 		return "", err
 	}
 	if n < 0 {
-		return "", fmt.Errorf("java nbt: negative string length %d", n)
+		return "", fmt.Errorf("nbt: negative string length %d", n)
 	}
 	if n == 0 {
 		return "", nil
@@ -104,7 +104,7 @@ func (r *nbtReader) readByteArray() ([]byte, error) {
 		return nil, err
 	}
 	if n < 0 {
-		return nil, fmt.Errorf("java nbt: negative byte array length %d", n)
+		return nil, fmt.Errorf("nbt: negative byte array length %d", n)
 	}
 	b := make([]byte, n)
 	if _, err := io.ReadFull(r.r, b); err != nil {
@@ -119,7 +119,7 @@ func (r *nbtReader) readInt32Array() ([]int32, error) {
 		return nil, err
 	}
 	if n < 0 {
-		return nil, fmt.Errorf("java nbt: negative int array length %d", n)
+		return nil, fmt.Errorf("nbt: negative int array length %d", n)
 	}
 	a := make([]int32, n)
 	for i := int32(0); i < n; i++ {
@@ -138,7 +138,7 @@ func (r *nbtReader) readInt64Array() ([]int64, error) {
 		return nil, err
 	}
 	if n < 0 {
-		return nil, fmt.Errorf("java nbt: negative long array length %d", n)
+		return nil, fmt.Errorf("nbt: negative long array length %d", n)
 	}
 	a := make([]int64, n)
 	for i := int32(0); i < n; i++ {
@@ -157,35 +157,35 @@ func (r *nbtReader) readTagName() (string, error) {
 
 func (r *nbtReader) readPayload(tagType byte, depth int) (any, error) {
 	if depth > 512 {
-		return nil, fmt.Errorf("java nbt: maximum nesting depth exceeded")
+		return nil, fmt.Errorf("nbt: maximum nesting depth exceeded")
 	}
 
 	switch tagType {
-	case javaNBTTagEnd:
+	case nbtTagEnd:
 		return nil, nil
-	case javaNBTTagByte:
+	case nbtTagByte:
 		v, err := r.readByte()
 		return int8(v), err
-	case javaNBTTagShort:
+	case nbtTagShort:
 		v, err := r.readInt16()
 		return v, err
-	case javaNBTTagInt:
+	case nbtTagInt:
 		v, err := r.readInt32()
 		return v, err
-	case javaNBTTagLong:
+	case nbtTagLong:
 		v, err := r.readInt64()
 		return v, err
-	case javaNBTTagFloat:
+	case nbtTagFloat:
 		v, err := r.readFloat32()
 		return v, err
-	case javaNBTTagDouble:
+	case nbtTagDouble:
 		v, err := r.readFloat64()
 		return v, err
-	case javaNBTTagByteArray:
+	case nbtTagByteArray:
 		return r.readByteArray()
-	case javaNBTTagString:
+	case nbtTagString:
 		return r.readString()
-	case javaNBTTagList:
+	case nbtTagList:
 		elemType, err := r.readByte()
 		if err != nil {
 			return nil, err
@@ -195,17 +195,17 @@ func (r *nbtReader) readPayload(tagType byte, depth int) (any, error) {
 			return nil, err
 		}
 		if length < 0 {
-			return nil, fmt.Errorf("java nbt: negative list length %d", length)
+			return nil, fmt.Errorf("nbt: negative list length %d", length)
 		}
 
 		switch elemType {
-		case javaNBTTagEnd:
+		case nbtTagEnd:
 			// An empty list may use TAG_End as its element type.
 			if length != 0 {
-				return nil, fmt.Errorf("java nbt: non-empty list with end element type")
+				return nil, fmt.Errorf("nbt: non-empty list with end element type")
 			}
 			return []any{}, nil
-		case javaNBTTagInt:
+		case nbtTagInt:
 			a := make([]int32, length)
 			for i := int32(0); i < length; i++ {
 				v, err := r.readInt32()
@@ -215,7 +215,7 @@ func (r *nbtReader) readPayload(tagType byte, depth int) (any, error) {
 				a[i] = v
 			}
 			return a, nil
-		case javaNBTTagLong:
+		case nbtTagLong:
 			a := make([]int64, length)
 			for i := int32(0); i < length; i++ {
 				v, err := r.readInt64()
@@ -225,7 +225,7 @@ func (r *nbtReader) readPayload(tagType byte, depth int) (any, error) {
 				a[i] = v
 			}
 			return a, nil
-		case javaNBTTagByte:
+		case nbtTagByte:
 			a := make([]int8, length)
 			for i := int32(0); i < length; i++ {
 				v, err := r.readByte()
@@ -235,7 +235,7 @@ func (r *nbtReader) readPayload(tagType byte, depth int) (any, error) {
 				a[i] = int8(v)
 			}
 			return a, nil
-		case javaNBTTagCompound:
+		case nbtTagCompound:
 			a := make([]map[string]any, length)
 			for i := int32(0); i < length; i++ {
 				v, err := r.readCompound(depth + 1)
@@ -257,14 +257,14 @@ func (r *nbtReader) readPayload(tagType byte, depth int) (any, error) {
 			}
 			return a, nil
 		}
-	case javaNBTTagCompound:
+	case nbtTagCompound:
 		return r.readCompound(depth + 1)
-	case javaNBTTagIntArray:
+	case nbtTagIntArray:
 		return r.readInt32Array()
-	case javaNBTTagLongArray:
+	case nbtTagLongArray:
 		return r.readInt64Array()
 	default:
-		return nil, fmt.Errorf("java nbt: unsupported tag type %d", tagType)
+		return nil, fmt.Errorf("nbt: unsupported tag type %d", tagType)
 	}
 }
 
@@ -275,7 +275,7 @@ func (r *nbtReader) readCompound(depth int) (map[string]any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t == javaNBTTagEnd {
+		if t == nbtTagEnd {
 			return m, nil
 		}
 		name, err := r.readTagName()
@@ -297,8 +297,8 @@ func DecodeNBT(b []byte) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if rootType != javaNBTTagCompound {
-		return nil, fmt.Errorf("java nbt: root tag type %d, expected compound", rootType)
+	if rootType != nbtTagCompound {
+		return nil, fmt.Errorf("nbt: root tag type %d, expected compound", rootType)
 	}
 	// Root name is ignored.
 	if _, err := r.readTagName(); err != nil {

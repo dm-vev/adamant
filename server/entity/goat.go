@@ -5,8 +5,8 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -243,7 +243,7 @@ func (g *Goat) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle 
 
 var _ Interactable = (*Goat)(nil)
 
-func (g *Goat) FinalizeSpawn(_ string, r *java26.Random) {
+func (g *Goat) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}

@@ -1,30 +1,30 @@
 package overworld
 
 import (
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
-var biomeTemperatureNoise = func() *java26.SimplexNoise {
-	r := java26.NewLegacyRandom(1234)
-	return java26.NewSimplexNoiseWithoutOffset(&r)
+var biomeTemperatureNoise = func() *vanilla.SimplexNoise {
+	r := vanilla.NewLegacyRandom(1234)
+	return vanilla.NewSimplexNoiseWithoutOffset(&r)
 }()
 
-var biomeFrozenTemperatureLayers = func() [3]*java26.SimplexNoise {
-	r := java26.NewLegacyRandom(3456)
-	return [3]*java26.SimplexNoise{
-		java26.NewSimplexNoiseWithoutOffset(&r),
-		java26.NewSimplexNoiseWithoutOffset(&r),
-		java26.NewSimplexNoiseWithoutOffset(&r),
+var biomeFrozenTemperatureLayers = func() [3]*vanilla.SimplexNoise {
+	r := vanilla.NewLegacyRandom(3456)
+	return [3]*vanilla.SimplexNoise{
+		vanilla.NewSimplexNoiseWithoutOffset(&r),
+		vanilla.NewSimplexNoiseWithoutOffset(&r),
+		vanilla.NewSimplexNoiseWithoutOffset(&r),
 	}
 }()
 
 func (r *featureRegion) biomeTemperature(p featurePos) float32 {
-	biome := normalizeJavaResource(r.f.source.JavaBiomeAt(p.x, p.y, p.z))
+	biome := normalizeResource(r.f.source.BiomeAt(p.x, p.y, p.z))
 	return r.biomeTemperatureFor(biome, p)
 }
 
 func (r *featureRegion) biomeTemperatureFor(biome string, p featurePos) float32 {
-	biome = normalizeJavaResource(biome)
+	biome = normalizeResource(biome)
 	base := float32(r.f.temperatures[biome])
 	if r.f.biomes[biome].frozenTemperature {
 		large := float32(0)
@@ -50,7 +50,7 @@ func (r *featureRegion) biomeTemperatureFor(biome string, p featurePos) float32 
 }
 
 func (r *featureRegion) biomeShouldFreeze(p featurePos, checkNeighbors bool) bool {
-	biome := normalizeJavaResource(r.f.source.JavaBiomeAt(p.x, p.y, p.z))
+	biome := normalizeResource(r.f.source.BiomeAt(p.x, p.y, p.z))
 	return r.biomeShouldFreezeFor(biome, p, checkNeighbors)
 }
 
@@ -63,7 +63,7 @@ func (r *featureRegion) biomeShouldFreezeFor(biome string, p featurePos, checkNe
 	}
 	state := r.nativeState(p)
 	blockName, _, ok := r.c.BlockRegistry().RuntimeIDToState(state.Block)
-	if !ok || !isJavaLiquidBlock(blockName) || featureFluidName(r, p, nil) != "water" {
+	if !ok || !isLiquidBlock(blockName) || featureFluidName(r, p, nil) != "water" {
 		return false
 	}
 	if !checkNeighbors {
@@ -85,8 +85,8 @@ func (r *featureRegion) blockLight(p featurePos) uint8 {
 	return r.c.SubChunk(int16(p.y)).BlockLight(uint8(p.x&15), uint8(p.y&15), uint8(p.z&15))
 }
 
-func isJavaLiquidBlock(name string) bool {
-	switch normalizeJavaResource(name) {
+func isLiquidBlock(name string) bool {
+	switch normalizeResource(name) {
 	case "water", "flowing_water", "lava", "flowing_lava":
 		return true
 	default:

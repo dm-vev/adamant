@@ -4,7 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func (r *featureRegion) setProjectionWithFlags(pos featurePos, state world.NativeState, flags int) bool {
@@ -36,7 +36,7 @@ func (r *featureRegion) refreshTemplateActorState(pos cube.Pos, state world.Bloc
 		return
 	}
 	entry.State = state
-	native, adapted, err := javastructure.NativeBlockForJavaState(state)
+	native, adapted, err := structure.NativeBlockForState(state)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +47,7 @@ func (r *featureRegion) refreshTemplateActorState(pos cube.Pos, state world.Bloc
 	r.refreshTemplateActor(pos)
 }
 
-func (r *featureRegion) recordTemplateActor(entry javastructure.Block) {
+func (r *featureRegion) recordTemplateActor(entry structure.Block) {
 	if len(entry.NBT) == 0 && entry.NativeBlock == nil {
 		return
 	}
@@ -74,15 +74,15 @@ func (r *featureRegion) recordTemplateActor(entry javastructure.Block) {
 	r.refreshTemplateActor(pos)
 }
 
-func featureRecordJavaBlockEntity(region *featureRegion, p featurePos, data map[string]any) {
+func featureRecordBlockEntity(region *featureRegion, p featurePos, data map[string]any) {
 	if p.y < region.MinY() || p.y > region.MaxY() {
 		return
 	}
-	state, err := world.JavaState(region.c.BlockRegistry(), region.nativeState(p))
+	state, err := world.CanonicalState(region.c.BlockRegistry(), region.nativeState(p))
 	if err != nil {
 		panic(err)
 	}
-	region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, State: state, NBT: data})
+	region.recordTemplateActor(structure.Block{Pos: [3]int32{p.x, p.y, p.z}, State: state, NBT: data})
 }
 
 func (r *featureRegion) refreshTemplateActor(pos cube.Pos) {
@@ -91,7 +91,7 @@ func (r *featureRegion) refreshTemplateActor(pos cube.Pos) {
 		delete(r.blockActorData, pos)
 		return
 	}
-	payloads := (javastructure.Placement{Blocks: []javastructure.Block{entry}}).BlockEntityPayloads()
+	payloads := (structure.Placement{Blocks: []structure.Block{entry}}).BlockEntityPayloads()
 	found := false
 	for _, payload := range payloads {
 		if payload.Pos == pos {

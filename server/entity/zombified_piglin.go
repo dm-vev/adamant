@@ -5,8 +5,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -325,12 +325,12 @@ func (z *ZombifiedPiglin) AddEffect(e effect.Effect) {
 		z.z().effects.Add(e, z)
 	}
 }
-func (z *ZombifiedPiglin) RemoveEffect(t effect.Type)               { z.z().effects.Remove(t, z) }
-func (z *ZombifiedPiglin) Effects() []effect.Effect                 { return z.z().effects.Effects() }
-func (z *ZombifiedPiglin) Speed() float64                           { return z.z().speed }
-func (z *ZombifiedPiglin) SetSpeed(v float64)                       { z.z().speed = v }
-func (z *ZombifiedPiglin) FinalizeSpawn(_ string, _ *java26.Random) {}
-func (z *ZombifiedPiglin) hasEffect(t effect.Type) bool             { _, ok := z.z().effects.Effect(t); return ok }
+func (z *ZombifiedPiglin) RemoveEffect(t effect.Type)                { z.z().effects.Remove(t, z) }
+func (z *ZombifiedPiglin) Effects() []effect.Effect                  { return z.z().effects.Effects() }
+func (z *ZombifiedPiglin) Speed() float64                            { return z.z().speed }
+func (z *ZombifiedPiglin) SetSpeed(v float64)                        { z.z().speed = v }
+func (z *ZombifiedPiglin) FinalizeSpawn(_ string, _ *vanilla.Random) {}
+func (z *ZombifiedPiglin) hasEffect(t effect.Type) bool              { _, ok := z.z().effects.Effect(t); return ok }
 func piglinKnock(e *Ent, p mgl64.Vec3, f, k float64) {
 	d := e.Position().Sub(p)
 	d[1] = 0

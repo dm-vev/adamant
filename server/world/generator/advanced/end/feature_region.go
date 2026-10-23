@@ -2,7 +2,7 @@ package end
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -21,7 +21,7 @@ type endFeatureRegion struct {
 	targetX, targetZ     int
 	minY, maxY           int
 	airRID               uint32
-	shapeRandoms         map[[2]int]*java26.Random
+	shapeRandoms         map[[2]int]*vanilla.Random
 	scheduledTicks       map[chunk.ScheduledTick]struct{}
 	blockActors          map[cube.Pos]endBlockActor
 	logicalStates        map[cube.Pos]world.NativeState
@@ -41,7 +41,7 @@ func newEndFeatureRegion(g *End, targetX, targetZ int, target *chunk.Chunk, scra
 		minY:           target.Range().Min(),
 		maxY:           target.Range().Max(),
 		airRID:         g.airRID,
-		shapeRandoms:   make(map[[2]int]*java26.Random),
+		shapeRandoms:   make(map[[2]int]*vanilla.Random),
 		scheduledTicks: make(map[chunk.ScheduledTick]struct{}),
 		blockActors:    make(map[cube.Pos]endBlockActor),
 		logicalStates:  make(map[cube.Pos]world.NativeState),
@@ -58,7 +58,7 @@ func newEndFeatureRegion(g *End, targetX, targetZ int, target *chunk.Chunk, scra
 			g.generateTerrain(chunkX, chunkZ, c, scratch)
 			// The End's unzoomed source biome is constant within a chunk and
 			// independent of Y; native client palettes still use the End ID.
-			region.sourceBiomes[region.index(chunkX, chunkZ)] = endGenerationBiome(g.javaNoiseBiomeAt(int32(chunkX)*4, 0, int32(chunkZ)*4))
+			region.sourceBiomes[region.index(chunkX, chunkZ)] = endGenerationBiome(g.noiseBiomeAt(int32(chunkX)*4, 0, int32(chunkZ)*4))
 			region.chunks[region.index(chunkX, chunkZ)] = c
 		}
 	}
@@ -73,9 +73,9 @@ func (r *endFeatureRegion) containsChunk(chunkX, chunkZ int) bool {
 	return chunkX >= r.minChunkX && chunkX < r.minChunkX+endFeatureRadius && chunkZ >= r.minChunkZ && chunkZ < r.minChunkZ+endFeatureRadius
 }
 
-func (r *endFeatureRegion) sourceShapeRandom(seed int64, chunkX, chunkZ int) *java26.Random {
+func (r *endFeatureRegion) sourceShapeRandom(seed int64, chunkX, chunkZ int) *vanilla.Random {
 	if r.shapeRandoms == nil {
-		r.shapeRandoms = make(map[[2]int]*java26.Random)
+		r.shapeRandoms = make(map[[2]int]*vanilla.Random)
 	}
 	key := [2]int{chunkX, chunkZ}
 	if random := r.shapeRandoms[key]; random != nil {

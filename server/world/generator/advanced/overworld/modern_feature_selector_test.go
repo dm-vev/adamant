@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 func selectorTestRegion() *featureRegion {
@@ -17,7 +17,7 @@ func selectorTestRegion() *featureRegion {
 	return r
 }
 
-func TestSelectorsMatchJava263(t *testing.T) {
+func TestSelectorsMatchReference(t *testing.T) {
 	// Captured from all four executed Java selector features. Each selected
 	// PlacedFeature offsets its real configured feature before placement.
 	kinds := []string{"random_selector", "random_boolean_selector", "simple_random_selector", "weighted_random_selector"}
@@ -45,9 +45,9 @@ func TestSelectorsMatchJava263(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%s/xoro=%v/seed=%d", kinds[tc.selector], tc.xoroshiro, tc.seed), func(t *testing.T) {
 			r := selectorTestRegion()
-			random := java26.NewLegacyRandom(tc.seed)
+			random := vanilla.NewLegacyRandom(tc.seed)
 			if tc.xoroshiro {
-				random = java26.NewXoroshiroRandom(tc.seed)
+				random = vanilla.NewXoroshiroRandom(tc.seed)
 			}
 			if !r.f.placeConfiguredData(r, kinds[tc.selector], configs[tc.selector], featurePos{4, 5, 4}, &random) {
 				t.Fatal("selected placed feature did not place")
@@ -76,7 +76,7 @@ func TestSequenceStopsOnFailureWhileOverlayContinues(t *testing.T) {
 			first := r.f.placed["first"]
 			first.modifiers = append(first.modifiers, map[string]any{"type": "block_predicate_filter", "predicate": map[string]any{"type": "not", "predicate": map[string]any{"type": "true"}}})
 			r.f.placed["first"] = first
-			random := java26.NewLegacyRandom(123)
+			random := vanilla.NewLegacyRandom(123)
 			got := r.f.placeConfiguredData(r, kind, map[string]any{"features": []any{"first", "second"}}, featurePos{4, 5, 4}, &random)
 			name, _ := r.State(featurePos{6, 5, 4})
 			wantName := "minecraft:air"
@@ -95,8 +95,8 @@ func TestRandomSelectorStopsAfterSelectedChildFails(t *testing.T) {
 	first.modifiers = append(first.modifiers, map[string]any{"type": "block_predicate_filter", "predicate": map[string]any{"type": "not", "predicate": map[string]any{"type": "true"}}})
 	r.f.placed["first"] = first
 
-	random := java26.NewLegacyRandom(123)
-	wantRandom := java26.NewLegacyRandom(123)
+	random := vanilla.NewLegacyRandom(123)
+	wantRandom := vanilla.NewLegacyRandom(123)
 	wantRandom.NextFloat()
 	if r.f.placeConfiguredData(r, "random_selector", map[string]any{
 		"features": []any{
@@ -119,7 +119,7 @@ func TestRandomSelectorStopsAfterSelectedChildFails(t *testing.T) {
 
 func TestZeroWeightFeatureSelectorDoesNotDraw(t *testing.T) {
 	r := selectorTestRegion()
-	random := java26.NewLegacyRandom(123)
+	random := vanilla.NewLegacyRandom(123)
 	config := map[string]any{"features": []any{map[string]any{"data": "first", "weight": float64(0)}}}
 	if r.f.placeConfiguredData(r, "weighted_random_selector", config, featurePos{4, 5, 4}, &random) {
 		t.Fatal("zero-weight list placed a feature")

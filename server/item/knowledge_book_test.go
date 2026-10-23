@@ -10,7 +10,7 @@ import (
 
 func TestKnowledgeBookNativePersistenceRetainsJavaIdentity(t *testing.T) {
 	recipes := []string{"minecraft:oak_planks", "minecraft:crafting_table"}
-	stack, err := StackFromJavaNBT(map[string]any{
+	stack, err := StackFromStructureNBT(map[string]any{
 		"id": "minecraft:knowledge_book", "count": int32(1),
 		"components": map[string]any{"minecraft:recipes": []any{recipes[0], recipes[1]}},
 	})
@@ -27,7 +27,7 @@ func TestKnowledgeBookNativePersistenceRetainsJavaIdentity(t *testing.T) {
 	restored := ReadNBT(decoded, nil)
 	book, ok := restored.Item().(KnowledgeBook)
 	if !ok || !slices.Equal(book.Recipes, recipes) { t.Fatalf("restored item: %#v", restored.Item()) }
-	source, err := StackToJavaNBT(restored)
+	source, err := StackToStructureNBT(restored)
 	if err != nil { t.Fatal(err) }
 	if source["id"] != "minecraft:knowledge_book" { t.Fatalf("Java item identifier: %v", source["id"]) }
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -84,7 +84,7 @@ func (v *Villager) tickPanic(tx *world.Tx, current int64) bool {
 // choosePanicTarget ports SetWalkTargetAwayFrom for the nearest hostile and
 // the attacker within six blocks, and VillageBoundRandomStroll otherwise.
 func (v *Villager) choosePanicTarget(tx *world.Tx, hostile, attacker world.Entity) {
-	random := java26.NewLegacyRandom(rand.Int64())
+	random := vanilla.NewLegacyRandom(rand.Int64())
 	m := randomPosMob{tx: tx, pos: v.Position(), home: noHome, profile: GroundProfile{Width: .6, Height: 1.95}, random: &random}
 	var goal cube.Pos
 	ok := false
@@ -151,7 +151,7 @@ func (v *Villager) spawnGolemIfNeeded(tx *world.Tx, current int64, needed int) {
 // strategy: ten attempts within eight blocks horizontally, searching six
 // blocks up and down for ground to stand on.
 func summonIronGolem(tx *world.Tx, pos cube.Pos) bool {
-	random := tx.JavaRandom()
+	random := tx.RegionRandom()
 	for range 10 {
 		search := pos.Add(cube.Pos{int(random.NextInt(17)) - 8, 6, int(random.NextInt(17)) - 8})
 		if !tx.World().WithinBorder(search) {

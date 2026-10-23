@@ -7,8 +7,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -355,7 +355,7 @@ func (f *Fox) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	}
 	return babyAt(f).New(FoxType, FoxConfig{Age: babyStartAge, Variant: randomParent(f.b().variant, mate.b().variant), Trusted: trusted})
 }
-func (f *Fox) FinalizeSpawn(_ string, r *java26.Random) {
+func (f *Fox) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}

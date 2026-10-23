@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -26,7 +26,7 @@ func (witchType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) 
 	id := h.UUID()
 	hash := fnv.New64a()
 	_, _ = hash.Write(id[:])
-	b.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+	b.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	return &Witch{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (witchType) EncodeEntity() string        { return "minecraft:witch" }
@@ -81,7 +81,7 @@ func (c WitchConfig) Apply(d *world.EntityData) {
 	}
 	d.Data = &WitchBehaviour{
 		health: NewHealthManager(health, 26), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
-		speed: .25, drinking: c.drinking, potionUseTime: c.PotionUseTime, drinkPotion: c.DrinkPotion, random: java26.NewLegacyRandom(0),
+		speed: .25, drinking: c.drinking, potionUseTime: c.PotionUseTime, drinkPotion: c.DrinkPotion, random: vanilla.NewLegacyRandom(0),
 		raidID: c.RaidID, raidWave: c.RaidWave, raidLeader: c.RaidLeader,
 	}
 }
@@ -90,7 +90,7 @@ type WitchBehaviour struct {
 	health                                    *HealthManager
 	effects                                   *EffectManager
 	mc                                        *MovementComputer
-	random                                    java26.Random
+	random                                    vanilla.Random
 	speed                                     float64
 	navigator                                 Navigator
 	nextWander, attackCooldown, potionUseTime int

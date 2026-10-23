@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // originRecordCacheSize bounds the origin records kept for the chunks around
@@ -50,7 +50,7 @@ type recordedWrite struct {
 // recordedActor is a block actor a feature left at a block, recorded with the
 // state of the block it belongs to.
 type recordedActor struct {
-	entry javastructure.Block
+	entry structure.Block
 	state world.NativeState
 }
 
@@ -71,7 +71,7 @@ func (s *originStep) write(p featurePos, before, after world.NativeState) {
 	*i = uint32(len(s.writes))
 }
 
-func (s *originStep) actor(entry javastructure.Block, state world.NativeState) {
+func (s *originStep) actor(entry structure.Block, state world.NativeState) {
 	if s.actors == nil {
 		s.actors = make(map[cube.Pos]recordedActor)
 	}
@@ -112,7 +112,7 @@ func (s *originStep) apply(r *featureRegion) {
 	}
 	for _, tick := range s.ticks {
 		if r.inTarget(featurePos{int32(tick.Pos[0]), int32(tick.Pos[1]), int32(tick.Pos[2])}) {
-			r.reserveJavaTick(tick)
+			r.reserveTick(tick)
 		}
 	}
 	for _, pos := range s.markers {
@@ -158,7 +158,7 @@ func (s *originStep) applyContext(r *featureRegion, origin world.ChunkPos) {
 		}
 	}
 	for _, tick := range s.ticks {
-		r.reserveJavaTick(tick)
+		r.reserveTick(tick)
 	}
 }
 

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type complexSourcePiece struct {
@@ -60,8 +60,8 @@ func compareNetherStartOracle(data []byte) error {
 		return err
 	}
 	generators := map[int64]*Nether{}
-	templates := map[string]*javastructure.Template{}
-	checked := map[*javastructure.Template]string{}
+	templates := map[string]*structure.Template{}
+	checked := map[*structure.Template]string{}
 	for _, row := range input.Graphs {
 		g := generators[row.Seed]
 		if g == nil {
@@ -69,7 +69,7 @@ func compareNetherStartOracle(data []byte) error {
 			generators[row.Seed] = g
 		}
 		random := largeFeatureRandom(row.Seed, int(row.Chunk[0]), int(row.Chunk[1]))
-		prepared, valid, err := javastructure.PrepareJigsaw(javastructure.JigsawOptions{
+		prepared, valid, err := structure.PrepareJigsaw(structure.JigsawOptions{
 			Pool: "bastion/starts", Origin: [3]int32{row.Chunk[0] * 16, 33, row.Chunk[1] * 16},
 			MaxDepth: 6, MaxDistance: 80, HeightRange: cube.Range{0, 255}, Seed: row.Seed,
 			HeightAt: func(x, z int32) int32 { return g.featureSource.BaseHeight(x, z, false) },
@@ -82,8 +82,8 @@ func compareNetherStartOracle(data []byte) error {
 		}
 		if valid {
 			position := prepared.Position()
-			biome := g.featureSource.JavaNoiseBiomeAt(position[0]>>2, position[1]>>2, position[2]>>2)
-			allowed, err := javadata.BiomeTagContains("#minecraft:has_structure/bastion_remnant", biome)
+			biome := g.featureSource.NoiseBiomeAt(position[0]>>2, position[1]>>2, position[2]>>2)
+			allowed, err := gamedata.BiomeTagContains("#minecraft:has_structure/bastion_remnant", biome)
 			if err != nil {
 				return err
 			}
@@ -122,12 +122,12 @@ func compareNetherStartOracle(data []byte) error {
 			piece, want := &start.bastion.Pieces[i], row.Pieces[i]
 			box := [6]int32{piece.Bounds.Min[0], piece.Bounds.Min[1], piece.Bounds.Min[2], piece.Bounds.Max[0], piece.Bounds.Max[1], piece.Bounds.Max[2]}
 			rotation := [...]string{"NONE", "CLOCKWISE_90", "CLOCKWISE_180", "COUNTERCLOCKWISE_90"}[int(piece.Rotation)]
-			if box != want.Box || piece.Origin != [3]int32{want.Tag.X, want.Tag.Y, want.Tag.Z} || rotation != want.Tag.Rotation || piece.GroundLevelDelta != want.Tag.Ground || piece.Projection != javastructure.Rigid || want.Tag.Element.Projection != "rigid" || len(piece.Junctions) != len(want.Tag.Junctions) {
+			if box != want.Box || piece.Origin != [3]int32{want.Tag.X, want.Tag.Y, want.Tag.Z} || rotation != want.Tag.Rotation || piece.GroundLevelDelta != want.Tag.Ground || piece.Projection != structure.Rigid || want.Tag.Element.Projection != "rigid" || len(piece.Junctions) != len(want.Tag.Junctions) {
 				return fmt.Errorf("seed=%d chunk=%v bastion piece=%d box=%v/%v origin=%v rotation=%s/%s", row.Seed, row.Chunk, i, box, want.Box, piece.Origin, rotation, want.Tag.Rotation)
 			}
 			for j, junction := range piece.Junctions {
 				wantJ := want.Tag.Junctions[j]
-				if junction.X != wantJ.X || junction.Y != wantJ.Y || junction.Z != wantJ.Z || junction.DeltaY != wantJ.Delta || junction.DestProjection != javastructure.Rigid || wantJ.Projection != "rigid" {
+				if junction.X != wantJ.X || junction.Y != wantJ.Y || junction.Z != wantJ.Z || junction.DeltaY != wantJ.Delta || junction.DestProjection != structure.Rigid || wantJ.Projection != "rigid" {
 					return fmt.Errorf("seed=%d chunk=%v bastion piece=%d junction=%d differs from source", row.Seed, row.Chunk, i, j)
 				}
 			}
@@ -135,7 +135,7 @@ func compareNetherStartOracle(data []byte) error {
 			if checked[piece.Template] != name {
 				expected := templates[name]
 				if expected == nil {
-					expected, err = javastructure.LoadOrCreate(name)
+					expected, err = structure.LoadOrCreate(name)
 					if err != nil {
 						return err
 					}

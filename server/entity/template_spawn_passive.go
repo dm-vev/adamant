@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -33,7 +33,7 @@ var templateSpawnRegistry = func() templateSpawnRegistryData {
 	return data
 }()
 
-func preparePassiveTemplateSpawn(nbt map[string]any, levelRandom, entityRandom *java26.Random, context world.GenerationContext, biome string, catsSpawnAsBlack bool) error {
+func preparePassiveTemplateSpawn(nbt map[string]any, levelRandom, entityRandom *vanilla.Random, context world.GenerationContext, biome string, catsSpawnAsBlack bool) error {
 	id, _ := nbt["id"].(string)
 	switch id {
 	case "minecraft:villager":
@@ -94,7 +94,7 @@ func templateFarmTemperature(biome string) string {
 	return "temperate"
 }
 
-func templateSheepColour(random *java26.Random, biome string) int {
+func templateSheepColour(random *vanilla.Random, biome string) int {
 	var rare [4]int
 	common := 0
 	switch templateFarmTemperature(biome) {

@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -34,40 +34,40 @@ func DecodeStateProperties(properties map[string]any) map[string]any {
 }
 
 // NativeState stores a Bedrock block and its optional liquid layer.
-// Both native IDs are registry-local. JavaStateID retains source properties
+// Both native IDs are registry-local. StateID retains source properties
 // that cannot be recovered from those layers; zero means the projection is exact.
 type NativeState struct {
-	Block       uint32
-	Liquid      uint32
-	JavaStateID uint32
+	Block   uint32
+	Liquid  uint32
+	StateID uint32
 }
 
-// CanonicalJavaID resolves a retained or exactly projected source identity
+// CanonicalID resolves a retained or exactly projected source identity
 // without materialising its property map. Zero denotes a native-only state.
-func (state NativeState) CanonicalJavaID(registry chunk.BlockRegistry) uint32 {
-	if state.JavaStateID != 0 {
-		return state.JavaStateID
+func (state NativeState) CanonicalID(registry chunk.BlockRegistry) uint32 {
+	if state.StateID != 0 {
+		return state.StateID
 	}
 	return nativeJavaStateID(registry, state)
 }
 
 // NativeStateAt reads both native layers and their retained source identity.
 func NativeStateAt(c *chunk.Chunk, x uint8, y int16, z uint8) NativeState {
-	return NativeState{Block: c.Block(x, y, z, 0), Liquid: c.Block(x, y, z, 1), JavaStateID: c.JavaStateID(x, y, z)}
+	return NativeState{Block: c.Block(x, y, z, 0), Liquid: c.Block(x, y, z, 1), StateID: c.StateID(x, y, z)}
 }
 
 // SetNativeState publishes both layers before attaching their source identity.
 func SetNativeState(c *chunk.Chunk, x uint8, y int16, z uint8, state NativeState) {
 	c.SetBlock(x, y, z, 0, state.Block)
 	c.SetBlock(x, y, z, 1, state.Liquid)
-	c.SetJavaStateID(x, y, z, state.JavaStateID)
+	c.SetJavaStateID(x, y, z, state.StateID)
 }
 
-// JavaBlockStateID reads a canonical source state without materialising its
+// BlockStateID reads a canonical source state without materialising its
 // properties. Like Block, it may load its column. Out-of-height positions are air.
-func (tx *Tx) JavaBlockStateID(pos cube.Pos) (uint32, error) {
+func (tx *Tx) BlockStateID(pos cube.Pos) (uint32, error) {
 	id := tx.javaBlockStateID(pos)
-	if _, ok := javadata.BlockStateName(id); !ok {
+	if _, ok := gamedata.BlockStateName(id); !ok {
 		return 0, fmt.Errorf("Java block state at %v has no canonical source identity", pos)
 	}
 	return id, nil
@@ -82,7 +82,7 @@ func (tx *Tx) javaBlockStateID(pos cube.Pos) uint32 {
 		c := tx.chunk(chunkPosFromBlockPos(pos))
 		state = NativeStateAt(c.Chunk, uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15))
 	}
-	id := state.JavaStateID
+	id := state.StateID
 	if id == 0 {
 		id = nativeJavaStateID(registry, state)
 	}
@@ -97,18 +97,18 @@ func ResolveState(registry chunk.BlockRegistry, state BlockState) (NativeState, 
 	if err != nil {
 		return NativeState{}, err
 	}
-	return native.WithJavaState(registry, state)
+	return native.WithCanonicalState(registry, state)
 }
 
-// JavaState returns the Java block-state view of a native block and liquid
+// CanonicalState returns the Java block-state view of a native block and liquid
 // layer, for Java-side tags and predicates.
-func JavaState(registry chunk.BlockRegistry, state NativeState) (BlockState, error) {
-	id := state.JavaStateID
+func CanonicalState(registry chunk.BlockRegistry, state NativeState) (BlockState, error) {
+	id := state.StateID
 	if id == 0 {
 		id = nativeJavaStateID(registry, state)
 	}
 	if id != 0 {
-		name, properties, ok := javadata.BlockStateFromID(id)
+		name, properties, ok := gamedata.BlockStateFromID(id)
 		if !ok {
 			return BlockState{}, fmt.Errorf("java state codec: invalid retained state ID %d", id)
 		}
@@ -117,24 +117,24 @@ func JavaState(registry chunk.BlockRegistry, state NativeState) (BlockState, err
 	return reverseNativeState(registry, state)
 }
 
-// JavaStateOf returns the Java block state of a registered block without
+// CanonicalStateOf returns the Java block state of a registered block without
 // liquid.
-func JavaStateOf(b Block) (BlockState, error) {
+func CanonicalStateOf(b Block) (BlockState, error) {
 	air := DefaultBlockRegistry.AirRuntimeID()
-	return JavaState(DefaultBlockRegistry, NativeState{Block: BlockRuntimeID(b), Liquid: air})
+	return CanonicalState(DefaultBlockRegistry, NativeState{Block: BlockRuntimeID(b), Liquid: air})
 }
 
-// WithJavaState attaches the known source state to its native projection. It
+// WithCanonicalState attaches the known source state to its native projection. It
 // omits metadata when the native layers already identify the complete source
 // state. Actor-backed projections may supply their source state here as well.
-func (state NativeState) WithJavaState(registry chunk.BlockRegistry, source BlockState) (NativeState, error) {
-	id, err := javadata.BlockStateID(NormaliseBlockName(source.Name), source.Properties)
+func (state NativeState) WithCanonicalState(registry chunk.BlockRegistry, source BlockState) (NativeState, error) {
+	id, err := gamedata.BlockStateID(NormaliseBlockName(source.Name), source.Properties)
 	if err != nil {
 		return NativeState{}, err
 	}
-	state.JavaStateID = 0
+	state.StateID = 0
 	if nativeJavaStateID(registry, state) != id {
-		state.JavaStateID = id
+		state.StateID = id
 	}
 	return state, nil
 }
@@ -158,7 +158,7 @@ func nativeJavaStateID(registry chunk.BlockRegistry, state NativeState) uint32 {
 	}
 	var id uint32
 	if source, err := reverseNativeState(registry, state); err == nil {
-		id, _ = javadata.BlockStateID(source.Name, source.Properties)
+		id, _ = gamedata.BlockStateID(source.Name, source.Properties)
 	}
 	switch {
 	case dry != nil:

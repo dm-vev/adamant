@@ -3,7 +3,7 @@ package overworld
 import (
 	"encoding/json"
 	"fmt"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"os"
 	"testing"
@@ -17,11 +17,11 @@ type pillarAirSource struct {
 func (s pillarAirSource) BaseState(_, _, _ int32) world.NativeState {
 	return world.NativeState{Block: s.air, Liquid: s.air}
 }
-func TestPillarFeaturesMatchJava263(t *testing.T) {
+func TestPillarFeaturesMatchReference(t *testing.T) {
 	checkFeatureOracle(t, "testdata/java263_pillar.json")
 }
 
-func TestMiscFeaturesMatchJava263(t *testing.T) {
+func TestMiscFeaturesMatchReference(t *testing.T) {
 	checkFeatureOracle(t, "testdata/java263_misc_features.json")
 }
 
@@ -82,9 +82,9 @@ func checkFeatureOracle(t *testing.T, path string) {
 				}
 				want.Set(featurePos{p[0], p[1], p[2]}, state)
 			}
-			random := java26.NewLegacyRandom(123)
+			random := vanilla.NewLegacyRandom(123)
 			if tc.Xoroshiro {
-				random = java26.NewXoroshiroRandom(123)
+				random = vanilla.NewXoroshiroRandom(123)
 			}
 			if placed := r.PlaceValue(tc.Config, featurePos{tc.Origin[0], tc.Origin[1], tc.Origin[2]}, &random); placed != tc.Placed {
 				t.Errorf("placed=%v, Java wants %v", placed, tc.Placed)

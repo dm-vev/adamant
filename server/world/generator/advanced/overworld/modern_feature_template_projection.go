@@ -1,10 +1,10 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
-func applyTemplateProjectionBlocks(region *featureRegion, blocks []javastructure.Block, flags int) {
+func applyTemplateProjectionBlocks(region *featureRegion, blocks []structure.Block, flags int) {
 	registry := region.c.BlockRegistry()
 	for _, entry := range blocks {
 		pos := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}

@@ -36,10 +36,10 @@ func (c javaNBTConfig) Apply(data *world.EntityData) {
 	c.typeOf.DecodeNBT(c.data, data)
 }
 
-// NewFromJavaNBT constructs a worldless entity handle from Java entity NBT.
+// NewFromStructureNBT constructs a worldless entity handle from Java entity NBT.
 // opts supplies the absolute, already-transformed position and rotation; all
 // type-specific fields are decoded by the registered entity type.
-func NewFromJavaNBT(data map[string]any, opts world.EntitySpawnOpts) (*world.EntityHandle, error) {
+func NewFromStructureNBT(data map[string]any, opts world.EntitySpawnOpts) (*world.EntityHandle, error) {
 	id, ok := data["id"].(string)
 	if !ok || id == "" {
 		return nil, fmt.Errorf("Java entity NBT has no string id")
@@ -71,7 +71,7 @@ func NewFromBucket(opts world.EntitySpawnOpts, entityID string, data map[string]
 	}
 	nbt["id"] = entityID
 	nbt["FromBucket"] = true
-	handle, err := NewFromJavaNBT(nbt, opts)
+	handle, err := NewFromStructureNBT(nbt, opts)
 	if err != nil {
 		return nil
 	}
@@ -92,7 +92,7 @@ func validateJavaEntityEquipment(id string, data map[string]any) error {
 	if !ok {
 		return nil
 	}
-	stack, err := item.StackFromJavaNBT(body)
+	stack, err := item.StackFromStructureNBT(body)
 	if err != nil {
 		return fmt.Errorf("invalid wolf body armor: %w", err)
 	}

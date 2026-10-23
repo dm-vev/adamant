@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 type integerLiteral struct {
@@ -173,9 +173,9 @@ func (p *parser) floating() (any, bool, error) {
 	}
 	text := p.s[start:end]
 	for _, c := range text {
-		if c == '_' || java26.IsWhitespace(c) {
+		if c == '_' || vanilla.IsWhitespace(c) {
 			text = strings.Map(func(r rune) rune {
-				if r == '_' || java26.IsWhitespace(r) {
+				if r == '_' || vanilla.IsWhitespace(r) {
 					return -1
 				}
 				return r

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // placeModifiedPositions follows FeaturePlacer's depth-first work stack. A
 // modifier finishes emitting before its children run, but sibling positions do
 // not advance together: feature execution consumes the same random stream.
-func (f *ModernFeatures) placeModifiedPositions(region *featureRegion, modifiers []map[string]any, origin featurePos, random *java26.Random, placedName string, place func(featurePos) bool) bool {
+func (f *ModernFeatures) placeModifiedPositions(region *featureRegion, modifiers []map[string]any, origin featurePos, random *vanilla.Random, placedName string, place func(featurePos) bool) bool {
 	if len(modifiers) == 0 {
 		return place(origin)
 	}
@@ -41,7 +41,7 @@ func (f *ModernFeatures) placeModifiedPositions(region *featureRegion, modifiers
 	return placed
 }
 
-func (f *ModernFeatures) placeWithModifiers(region *featureRegion, feature any, modifiers []map[string]any, origin featurePos, random *java26.Random, placedName string) bool {
+func (f *ModernFeatures) placeWithModifiers(region *featureRegion, feature any, modifiers []map[string]any, origin featurePos, random *vanilla.Random, placedName string) bool {
 	return f.placeModifiedPositions(region, modifiers, origin, random, placedName, func(p featurePos) bool { return region.PlaceValue(feature, p, random) })
 }
 
@@ -51,27 +51,27 @@ func inlinePlacementModifiers(value any) []map[string]any {
 	}
 	raw, ok := value.([]any)
 	if !ok {
-		panic("overworld: malformed inline Java placed-feature modifiers")
+		panic("overworld: malformed inline placed-feature modifiers")
 	}
 	modifiers := make([]map[string]any, len(raw))
 	for i, value := range raw {
 		modifier, ok := value.(map[string]any)
 		if !ok {
-			panic("overworld: malformed inline Java placed-feature modifier")
+			panic("overworld: malformed inline placed-feature modifier")
 		}
 		modifiers[i] = modifier
 	}
 	return modifiers
 }
 
-func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, modifier map[string]any, r *java26.Random, placedName string, out []featurePos) []featurePos {
+func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, modifier map[string]any, r *vanilla.Random, placedName string, out []featurePos) []featurePos {
 	typeName, ok := modifier["type"].(string)
 	if !ok {
-		panic("overworld: Java placement modifier without type")
+		panic("overworld: placement modifier without type")
 	}
-	switch normalizeJavaResource(typeName) {
+	switch normalizeResource(typeName) {
 	case "count":
-		for range sampleJavaInt(modifier["count"], r) {
+		for range sampleInt(modifier["count"], r) {
 			out = append(out, p)
 		}
 		return out
@@ -104,14 +104,14 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 		if !ok {
 			panic("overworld: malformed height_range placement")
 		}
-		p.y = sampleJavaHeight(provider, r, region.MinY(), region.MaxY()+1, region.f.source.SeaLevel())
+		p.y = sampleHeight(provider, r, region.MinY(), region.MaxY()+1, region.f.source.SeaLevel())
 	case "environment_scan":
 		input := [1]featurePos{p}
 		return append(out, environmentScanPlacement(region, input[:], modifier, region.MinY(), region.MaxY()+1)...)
 	case "rarity_filter":
 		chance := featureNumber(modifier["chance"])
 		if chance <= 0 {
-			panic("overworld: invalid Java rarity_filter chance")
+			panic("overworld: invalid rarity_filter chance")
 		}
 		if r.NextFloat() >= float32(1)/float32(chance) {
 			return out
@@ -119,7 +119,7 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 	case "random_chance":
 		chance, ok := modifier["chance"].(float64)
 		if !ok || chance < 0 || chance > 1 {
-			panic("overworld: invalid Java random_chance probability")
+			panic("overworld: invalid random_chance probability")
 		}
 		if r.NextFloat() >= float32(chance) {
 			return out
@@ -128,14 +128,14 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 		if placedName == "" {
 			panic("overworld: biome placement requires a top-level placed feature")
 		}
-		biome := normalizeJavaResource(f.source.JavaBiomeAt(p.x, p.y, p.z))
+		biome := normalizeResource(f.source.BiomeAt(p.x, p.y, p.z))
 		if !f.biomeHasFeature(biome, placedName) {
 			return out
 		}
 	case "offset":
-		p.x += sampleJavaInt(modifier["x"], r)
-		p.y += sampleJavaInt(modifier["y"], r)
-		p.z += sampleJavaInt(modifier["z"], r)
+		p.x += sampleInt(modifier["x"], r)
+		p.y += sampleInt(modifier["y"], r)
+		p.z += sampleInt(modifier["z"], r)
 	case "surface_water_depth_filter":
 		floor := region.placementHeight(p.x, p.z, "OCEAN_FLOOR")
 		surface := region.placementHeight(p.x, p.z, "WORLD_SURFACE")
@@ -193,8 +193,8 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 		}
 		return out
 	case "cuboid":
-		height := sampleJavaInt(modifier["y_size"], r)
-		width, length := sampleJavaInt(modifier["xz_size"], r), sampleJavaInt(modifier["xz_size"], r)
+		height := sampleInt(modifier["y_size"], r)
+		width, length := sampleInt(modifier["xz_size"], r), sampleInt(modifier["xz_size"], r)
 		edges, interior := true, true
 		if value, ok := modifier["include_edges"].(bool); ok {
 			edges = value
@@ -214,7 +214,7 @@ func (f *ModernFeatures) modifyPlacement(region *featureRegion, p featurePos, mo
 		}
 		return out
 	default:
-		panic(fmt.Sprintf("overworld: unsupported Java placement modifier %s", strings.TrimPrefix(typeName, "minecraft:")))
+		panic(fmt.Sprintf("overworld: unsupported placement modifier %s", strings.TrimPrefix(typeName, "minecraft:")))
 	}
 	return append(out, p)
 }

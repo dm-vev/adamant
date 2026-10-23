@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 type javaFluidKind uint8
@@ -22,10 +22,10 @@ type javaFluidState struct {
 	falling, source bool
 }
 
-// JavaFluidLegacyBlock decodes a pinned FluidState into its canonical legacy
+// FluidLegacyBlock decodes a pinned FluidState into its canonical legacy
 // block. StateDefinition.any supplies falling=true and flowing level=1 when
 // the corresponding Source CODEC properties are absent.
-func JavaFluidLegacyBlock(name string, properties map[string]any) (uint32, error) {
+func FluidLegacyBlock(name string, properties map[string]any) (uint32, error) {
 	name = NormaliseBlockName(name)
 	fluid := javaFluidState{amount: 8, falling: true, source: true}
 	switch name {
@@ -67,11 +67,11 @@ func JavaFluidLegacyBlock(name string, properties map[string]any) (uint32, error
 }
 
 func javaFluidForState(id uint32) javaFluidState {
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		panic("Java fluid state has no canonical block name")
 	}
-	if water, _ := javadata.BlockStateBool(id, "waterlogged"); water {
+	if water, _ := gamedata.BlockStateBool(id, "waterlogged"); water {
 		return javaFluidState{kind: javaFluidWater, amount: 8, falling: strings.Contains(name, "copper_grate"), source: true}
 	}
 	kind := javaFluidEmpty
@@ -84,7 +84,7 @@ func javaFluidForState(id uint32) javaFluidState {
 	default:
 		return javaFluidState{}
 	}
-	depth, _ := javadata.BlockStateInt(id, "level")
+	depth, _ := gamedata.BlockStateInt(id, "level")
 	if depth == 0 {
 		return javaFluidState{kind: kind, amount: 8, source: true}
 	}
@@ -94,9 +94,9 @@ func javaFluidForState(id uint32) javaFluidState {
 	return javaFluidState{kind: kind, amount: 8 - depth}
 }
 
-// JavaBlockStateHasWaterFluid reports the source state's WATER-tag fluid,
+// BlockStateHasWaterFluid reports the source state's WATER-tag fluid,
 // including waterlogged solids, bubble columns, and aquatic plants.
-func JavaBlockStateHasWaterFluid(id uint32) bool {
+func BlockStateHasWaterFluid(id uint32) bool {
 	return javaFluidForState(id).kind == javaFluidWater
 }
 
@@ -156,7 +156,7 @@ func javaFluidCanHoldAny(c *javaShapeContext, block javaFluidBlock) bool {
 	}
 	id := block.state
 	name := javaName(id)
-	if _, ok := javadata.BlockStateBool(id, "waterlogged"); ok {
+	if _, ok := gamedata.BlockStateBool(id, "waterlogged"); ok {
 		return true
 	}
 	if name == "kelp" || name == "kelp_plant" || name == "tall_seagrass" {
@@ -179,7 +179,7 @@ func javaFluidCanHold(c *javaShapeContext, block javaFluidBlock, fluid javaFluid
 		return false
 	}
 	name := javaName(id)
-	if _, ok := javadata.BlockStateBool(id, "waterlogged"); ok {
+	if _, ok := gamedata.BlockStateBool(id, "waterlogged"); ok {
 		return !javaBool(id, "waterlogged") && fluid.kind == javaFluidWater
 	}
 	if name == "kelp" || name == "kelp_plant" || name == "tall_seagrass" {
@@ -192,18 +192,18 @@ func javaFluidWallPass(c *javaShapeContext, from, to javaFluidBlock, pos cube.Po
 	if from.native != nil || to.native != nil {
 		return javaFluidMixedWallPass(c, from, to, pos, direction)
 	}
-	fromShape, err := javadata.BlockGenerationShapeID(from.state)
+	fromShape, err := gamedata.BlockGenerationShapeID(from.state)
 	if err != nil {
 		panic(err)
 	}
-	toShape, err := javadata.BlockGenerationShapeID(to.state)
+	toShape, err := gamedata.BlockGenerationShapeID(to.state)
 	if err != nil {
 		panic(err)
 	}
 	if fromShape.CollisionFull || toShape.CollisionFull {
 		return false
 	}
-	occludes, err := javadata.GenerationCollisionFacesOccludeIDs(from.state, to.state, direction)
+	occludes, err := gamedata.GenerationCollisionFacesOccludeIDs(from.state, to.state, direction)
 	if err != nil {
 		panic(err)
 	}
@@ -380,7 +380,7 @@ func javaFluidSpreadTo(c *javaShapeContext, source, pos cube.Pos, target javaFlu
 		}
 	}
 	targetID := target.state
-	if _, waterlogged := javadata.BlockStateBool(targetID, "waterlogged"); target.native == nil && waterlogged {
+	if _, waterlogged := gamedata.BlockStateBool(targetID, "waterlogged"); target.native == nil && waterlogged {
 		if !javaBool(targetID, "waterlogged") && fluid.kind == javaFluidWater {
 			c.set(pos, javaWith(targetID, "waterlogged", true), 3)
 			c.fluidTick(pos, fluid, javaFluidTickDelay(c.tx, fluid))

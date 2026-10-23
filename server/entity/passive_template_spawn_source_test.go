@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -54,7 +54,7 @@ func TestPassiveTemplateSpawnMatchesJava263(t *testing.T) {
 				t.Fatal(source.Difficulty)
 			}
 			context := world.GenerationContext{Difficulty: world.LocalDifficulty{Base: base}, GameTime: gameTime, MoonBrightness: [...]float32{1, .75, .5, .25, 0, .25, .5, .75}[source.MoonPhase]}
-			level, own := java26.NewXoroshiroRandom(levelSeed), java26.NewLegacyRandom(ownSeed)
+			level, own := vanilla.NewXoroshiroRandom(levelSeed), vanilla.NewLegacyRandom(ownSeed)
 			input, want := sourceSpawnNBT(t, source.Input), sourceSpawnNBT(t, source.NBT)
 			if err := preparePassiveTemplateSpawn(input, &level, &own, context, source.Biome, source.BlackCats); err != nil {
 				t.Fatal(err)
@@ -72,7 +72,7 @@ func TestPassiveTemplateSpawnMatchesJava263(t *testing.T) {
 			}
 			for _, continuation := range []struct {
 				name   string
-				stream *java26.Random
+				stream *vanilla.Random
 				value  string
 			}{{"region", &level, source.NextLevel}, {"entity", &own, source.NextOwn}} {
 				expected, err := strconv.ParseInt(continuation.value, 10, 64)

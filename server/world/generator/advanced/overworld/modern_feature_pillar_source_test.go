@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -33,7 +33,7 @@ type pillarSourceFixture struct {
 	Cases []pillarSourceCase `json:"cases"`
 }
 
-func TestPillarFeaturesMatchJava263Source(t *testing.T) {
+func TestPillarFeaturesMatchSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_pillar_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -64,9 +64,9 @@ func TestPillarFeaturesMatchJava263Source(t *testing.T) {
 					config[key] = value
 				}
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			var placed bool
 			switch tc.FeatureType {
@@ -82,11 +82,11 @@ func TestPillarFeaturesMatchJava263Source(t *testing.T) {
 			}
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, row := range tc.States {
-				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalJavaID(c.BlockRegistry())
+				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalID(c.BlockRegistry())
 			}
 			for pos, state := range region.overlayByPos() {
-				got := state.CanonicalJavaID(c.BlockRegistry())
-				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
+				got := state.CanonicalID(c.BlockRegistry())
+				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalID(c.BlockRegistry()) {
 					continue
 				}
 				expected, exists := want[pos]
@@ -95,13 +95,13 @@ func TestPillarFeaturesMatchJava263Source(t *testing.T) {
 					continue
 				}
 				if got != expected {
-					name, _ := javadata.BlockStateName(got)
+					name, _ := gamedata.BlockStateName(got)
 					t.Errorf("state at %v=%s Source=%d", pos, name, expected)
 				}
 				delete(want, pos)
 			}
 			for pos, id := range want {
-				name, _ := javadata.BlockStateName(id)
+				name, _ := gamedata.BlockStateName(id)
 				t.Errorf("missing Source state %s at %v", name, pos)
 			}
 			if got := strconv.FormatInt(random.NextLong(), 10); got != tc.NextLong {

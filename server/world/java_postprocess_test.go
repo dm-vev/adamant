@@ -229,11 +229,11 @@ func TestGenerationPostprocessingSourceShapeTransitions(t *testing.T) {
 			})
 			w.AdvanceTick()
 			<-w.Exec(func(tx *world.Tx) {
-				id, err := tx.JavaBlockStateID(p)
+				id, err := tx.BlockStateID(p)
 				if err != nil {
 					t.Fatal(err)
 				}
-				got, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{JavaStateID: id})
+				got, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{StateID: id})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -334,11 +334,11 @@ func TestGenerationPostprocessingCopperChestActor(t *testing.T) {
 					t.Fatalf("paired contents = %d, want 18", count)
 				}
 				for pos, want := range map[cube.Pos]string{p: "left", other: "right"} {
-					id, err := tx.JavaBlockStateID(pos)
+					id, err := tx.BlockStateID(pos)
 					if err != nil {
 						t.Fatal(err)
 					}
-					state, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{JavaStateID: id})
+					state, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{StateID: id})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -548,12 +548,12 @@ func TestGenerationPostprocessingPlantTickIdentity(t *testing.T) {
 	<-w.Exec(func(tx *world.Tx) {
 		for index, name := range names {
 			pos := cube.Pos{2 + index*2, 64, 4}
-			id, err := tx.JavaBlockStateID(pos)
+			id, err := tx.BlockStateID(pos)
 			if err != nil {
 				t.Error(err)
 				continue
 			}
-			state, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{JavaStateID: id})
+			state, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{StateID: id})
 			if err != nil {
 				t.Error(err)
 				continue
@@ -583,12 +583,12 @@ func TestGenerationPostprocessingPlantTickIdentity(t *testing.T) {
 				t.Errorf("unsupported %s survived as %T", name, tx.Block(pos))
 			}
 			supported := cube.Pos{pos[0], 80, pos[2]}
-			id, err := tx.JavaBlockStateID(supported)
+			id, err := tx.BlockStateID(supported)
 			if err != nil {
 				t.Error(err)
 				continue
 			}
-			state, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{JavaStateID: id})
+			state, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{StateID: id})
 			if err != nil {
 				t.Error(err)
 				continue

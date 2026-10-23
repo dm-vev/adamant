@@ -14,7 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func TestNetherBeardMatchesJava263(t *testing.T) {
+func TestNetherBeardMatchesReference(t *testing.T) {
 	// Captured from actual Java fossil starts, adjusted reference bounds and
 	// LongOpenHashSet ordering. Final-density volumes use the source Beardifier
 	// and disabled aquifer, before material rules, carvers or decoration.

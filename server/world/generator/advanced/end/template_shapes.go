@@ -4,58 +4,58 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type endBlockActor struct {
-	record javastructure.Block
+	record structure.Block
 	data   map[string]any
 }
 
-type endJavaShapeAccess struct {
+type endShapeAccess struct {
 	endFeatureOrigin
 	result *world.GenerationResult
-	random *java26.Random
+	random *vanilla.Random
 }
 
-func (a endJavaShapeAccess) JavaBlockStateID(pos cube.Pos) (uint32, error) {
+func (a endShapeAccess) BlockStateID(pos cube.Pos) (uint32, error) {
 	chunkX, chunkZ := floorDiv(pos[0], 16), floorDiv(pos[2], 16)
 	if !a.region.containsChunk(chunkX, chunkZ) {
 		return 0, fmt.Errorf("end generation shape state outside loaded region at %v", pos)
 	}
 	state := a.region.nativeState(pos[0], pos[1], pos[2])
-	id := state.CanonicalJavaID(a.region.chunks[a.region.index(chunkX, chunkZ)].BlockRegistry())
+	id := state.CanonicalID(a.region.chunks[a.region.index(chunkX, chunkZ)].BlockRegistry())
 	if id == 0 {
 		return 0, fmt.Errorf("end generation shape state at %v is native-only", pos)
 	}
 	return id, nil
 }
 
-func (a endJavaShapeAccess) Range() cube.Range {
+func (a endShapeAccess) Range() cube.Range {
 	return a.region.chunks[a.region.index(a.region.targetX, a.region.targetZ)].Range()
 }
 
-func endWorldgenRegionRandom(seed int64, chunkX, chunkZ int) java26.Random {
-	initial := java26.NewLegacyRandom(seed)
+func endWorldgenRegionRandom(seed int64, chunkX, chunkZ int) vanilla.Random {
+	initial := vanilla.NewLegacyRandom(seed)
 	root := initial.ForkPositional()
 	named := root.FromHashOf("minecraft:worldgen_region_random")
 	factory := named.ForkPositional()
 	return factory.At(int32(chunkX<<4), 0, int32(chunkZ<<4))
 }
 
-func (a endJavaShapeAccess) JavaRandom() *java26.Random {
+func (a endShapeAccess) RegionRandom() *vanilla.Random {
 	return a.random
 }
-func (endJavaShapeAccess) Light(cube.Pos) uint8 {
+func (endShapeAccess) Light(cube.Pos) uint8 {
 	// End has skylight. Before light initialization, SkyLightSectionStorage
 	// returns 15 for absent visible sections; block light defaults to zero.
 	return 15
 }
-func (endJavaShapeAccess) JavaFluidTickDelay(name string) int32 {
+func (endShapeAccess) FluidTickDelay(name string) int32 {
 	switch name {
 	case "minecraft:water":
 		return 5
@@ -68,7 +68,7 @@ func (endJavaShapeAccess) JavaFluidTickDelay(name string) int32 {
 }
 
 // ProtoChunkTicks.schedule persists generated callbacks with delay zero.
-func (a endJavaShapeAccess) ScheduleJavaTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, _ int32) {
+func (a endShapeAccess) ScheduleTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, _ int32) {
 	tick := chunk.ScheduledTick{Pos: pos, Kind: kind, Type: name}
 	if _, exists := a.region.scheduledTicks[tick]; exists {
 		return
@@ -79,30 +79,30 @@ func (a endJavaShapeAccess) ScheduleJavaTick(pos cube.Pos, kind chunk.ScheduledT
 	}
 }
 
-func (a endJavaShapeAccess) HasJavaBlockTick(pos cube.Pos, name string) bool {
+func (a endShapeAccess) HasBlockTick(pos cube.Pos, name string) bool {
 	_, exists := a.region.scheduledTicks[chunk.ScheduledTick{Pos: pos, Kind: chunk.BlockTick, Type: name}]
 	return exists
 }
 
-func (a endJavaShapeAccess) JavaSignal(pos cube.Pos, face cube.Face) int {
-	stateID, err := a.JavaBlockStateID(pos)
+func (a endShapeAccess) Signal(pos cube.Pos, face cube.Face) int {
+	stateID, err := a.BlockStateID(pos)
 	if err != nil {
 		panic(err)
 	}
-	name, ok := javadata.BlockStateName(stateID)
+	name, ok := gamedata.BlockStateName(stateID)
 	if !ok {
-		panic(fmt.Sprintf("invalid End Java signal state ID %d at %v", stateID, pos))
+		panic(fmt.Sprintf("invalid End signal state ID %d at %v", stateID, pos))
 	}
 	if name != "minecraft:repeater" && name != "minecraft:comparator" {
 		return 0
 	}
-	facing, ok := javadata.BlockStateString(stateID, "facing")
+	facing, ok := gamedata.BlockStateString(stateID, "facing")
 	if !ok || endFace(facing) != face.Opposite() {
 		return 0
 	}
-	powered, ok := javadata.BlockStateBool(stateID, "powered")
+	powered, ok := gamedata.BlockStateBool(stateID, "powered")
 	if !ok {
-		panic(fmt.Sprintf("Java signal state %d has no powered property", stateID))
+		panic(fmt.Sprintf("signal state %d has no powered property", stateID))
 	}
 	if !powered {
 		return 0
@@ -120,7 +120,7 @@ func (a endJavaShapeAccess) JavaSignal(pos cube.Pos, face cube.Face) int {
 	return 0
 }
 
-func (a endJavaShapeAccess) JavaHiveHasOccupants(pos cube.Pos) bool {
+func (a endShapeAccess) HiveHasOccupants(pos cube.Pos) bool {
 	if actor, exists := a.region.blockActors[pos]; exists {
 		for _, key := range [...]string{"bees", "Occupants"} {
 			switch occupants := actor.data[key].(type) {
@@ -138,23 +138,23 @@ func (a endJavaShapeAccess) JavaHiveHasOccupants(pos cube.Pos) bool {
 	return false
 }
 
-func (a endJavaShapeAccess) SetJavaBlockState(pos cube.Pos, stateID uint32, flags int) bool {
+func (a endShapeAccess) SetBlockState(pos cube.Pos, stateID uint32, flags int) bool {
 	chunkX, chunkZ := floorDiv(pos[0], 16), floorDiv(pos[2], 16)
 	if pos[1] < a.region.minY || pos[1] > a.region.maxY || !a.region.containsChunk(chunkX, chunkZ) ||
 		!a.inWriteRadius(pos[0], pos[2]) {
 		return false
 	}
-	name, ok := javadata.BlockStateName(stateID)
+	name, ok := gamedata.BlockStateName(stateID)
 	if !ok {
-		panic(fmt.Sprintf("end generation shape produced unknown Java state ID %d", stateID))
+		panic(fmt.Sprintf("end generation shape produced unknown state ID %d", stateID))
 	}
-	oldID, err := a.JavaBlockStateID(pos)
+	oldID, err := a.BlockStateID(pos)
 	if err != nil {
 		panic(err)
 	}
-	oldName, ok := javadata.BlockStateName(oldID)
+	oldName, ok := gamedata.BlockStateName(oldID)
 	if !ok {
-		panic(fmt.Sprintf("invalid previous End Java state ID %d at %v", oldID, pos))
+		panic(fmt.Sprintf("invalid previous End state ID %d at %v", oldID, pos))
 	}
 	registry := a.region.chunks[a.region.index(chunkX, chunkZ)].BlockRegistry()
 	native := world.ResolveStateID(registry, stateID)
@@ -166,9 +166,9 @@ func (a endJavaShapeAccess) SetJavaBlockState(pos cube.Pos, stateID uint32, flag
 		return false
 	}
 	if actor, exists := a.region.blockActors[pos]; exists {
-		_, properties, _ := javadata.BlockStateFromID(stateID)
+		_, properties, _ := gamedata.BlockStateFromID(stateID)
 		actor.record.State = world.BlockState{Name: name, Properties: properties}
-		nativeActor, adapted, err := javastructure.NativeBlockForJavaState(actor.record.State)
+		nativeActor, adapted, err := structure.NativeBlockForState(actor.record.State)
 		if err != nil {
 			panic(err)
 		}
@@ -183,11 +183,11 @@ func (a endJavaShapeAccess) SetJavaBlockState(pos cube.Pos, stateID uint32, flag
 	return true
 }
 
-func (a endJavaShapeAccess) recordBlockActor(record javastructure.Block) {
+func (a endShapeAccess) recordBlockActor(record structure.Block) {
 	if len(record.NBT) == 0 && record.NativeBlock == nil {
 		return
 	}
-	for _, payload := range (javastructure.Placement{Blocks: []javastructure.Block{record}}).BlockEntityPayloads() {
+	for _, payload := range (structure.Placement{Blocks: []structure.Block{record}}).BlockEntityPayloads() {
 		a.region.blockActors[payload.Pos] = endBlockActor{record: record, data: payload.Data}
 		if payload.Pos[0]>>4 == a.region.targetX && payload.Pos[2]>>4 == a.region.targetZ {
 			a.removeBlockEntity(payload.Pos)
@@ -196,7 +196,7 @@ func (a endJavaShapeAccess) recordBlockActor(record javastructure.Block) {
 	}
 }
 
-func (a endJavaShapeAccess) removeBlockEntity(pos cube.Pos) {
+func (a endShapeAccess) removeBlockEntity(pos cube.Pos) {
 	retained := a.result.BlockEntities[:0]
 	for _, actor := range a.result.BlockEntities {
 		if actor.Pos != pos {
@@ -206,8 +206,8 @@ func (a endJavaShapeAccess) removeBlockEntity(pos cube.Pos) {
 	a.result.BlockEntities = retained
 }
 
-func (a endJavaShapeAccess) markPostProcessing(pos cube.Pos, stateID uint32) {
-	name, ok := javadata.BlockStateName(stateID)
+func (a endShapeAccess) markPostProcessing(pos cube.Pos, stateID uint32) {
+	name, ok := gamedata.BlockStateName(stateID)
 	if !ok {
 		return
 	}
@@ -216,18 +216,18 @@ func (a endJavaShapeAccess) markPostProcessing(pos cube.Pos, stateID uint32) {
 		a.markOwnedPostProcessing(pos)
 	case "minecraft:soul_sand", "minecraft:magma_block":
 		above := pos.Side(cube.FaceUp)
-		id, err := a.JavaBlockStateID(above)
+		id, err := a.BlockStateID(above)
 		if err != nil {
 			panic(err)
 		}
-		aboveName, _ := javadata.BlockStateName(id)
+		aboveName, _ := gamedata.BlockStateName(id)
 		if aboveName != "minecraft:air" && aboveName != "minecraft:cave_air" && aboveName != "minecraft:void_air" {
 			a.markOwnedPostProcessing(above)
 		}
 	}
 }
 
-func (a endJavaShapeAccess) markOwnedPostProcessing(pos cube.Pos) {
+func (a endShapeAccess) markOwnedPostProcessing(pos cube.Pos) {
 	if pos[0]>>4 == a.region.targetX && pos[2]>>4 == a.region.targetZ {
 		a.result.MarkForPostProcessing(pos, a.Range())
 	}

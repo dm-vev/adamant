@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func TestLocateProjectsJavaRandomSpreadRegions(t *testing.T) {
+func TestLocateProjectsRandomSpreadRegions(t *testing.T) {
 	g := NewOverworld(0)
 	set := configuredStartSet(t, g.modernStructures, "trial_chambers")
 	// Candidates observed from Java 26.3 createStructures at these region inputs.

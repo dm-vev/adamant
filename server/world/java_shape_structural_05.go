@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -75,7 +75,7 @@ func javaStructural05IronBarsInstance(state uint32) bool {
 }
 
 func javaStructural05IronBarsException(c *javaShapeContext, state uint32) bool {
-	exception, err := javadata.BlockExceptionForConnectionID(state)
+	exception, err := gamedata.BlockExceptionForConnectionID(state)
 	if err != nil {
 		panic(err)
 	}

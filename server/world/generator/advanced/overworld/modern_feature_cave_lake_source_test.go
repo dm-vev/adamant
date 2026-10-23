@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -39,8 +39,8 @@ type lakeSourceTerrain struct {
 	stone, air, water, flowingWater, fence world.NativeState
 }
 
-func (s lakeSourceTerrain) JavaBiomeAt(int32, int32, int32) string      { return "plains" }
-func (s lakeSourceTerrain) JavaNoiseBiomeAt(int32, int32, int32) string { return "plains" }
+func (s lakeSourceTerrain) BiomeAt(int32, int32, int32) string      { return "plains" }
+func (s lakeSourceTerrain) NoiseBiomeAt(int32, int32, int32) string { return "plains" }
 func (s lakeSourceTerrain) BaseState(x, y, z int32) world.NativeState {
 	p := featurePos{x, y, z}
 	if s.scene == 1 && p == (featurePos{s.origin.x, s.origin.y, s.origin.z}) {
@@ -74,7 +74,7 @@ func lakeSourceState(t *testing.T, name string) world.NativeState {
 	}
 	return state
 }
-func TestLakeMatchesJava263SourceFixtures(t *testing.T) {
+func TestLakeMatchesSourceFixtures(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_lake_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -114,11 +114,11 @@ func TestLakeMatchesJava263SourceFixtures(t *testing.T) {
 			result := &world.GenerationResult{}
 			region := newFeatureRegion(&ModernFeatures{source: source, temperatures: map[string]float64{"plains": temperature}, biomes: map[string]modernBiomeFeatures{"plains": biome}}, c, target, result)
 			region.SetOrigin(target[0], target[1])
-			var random java26.Random
+			var random vanilla.Random
 			if tc.Algorithm == "legacy" {
-				random = java26.NewLegacyRandom(tc.Seed)
+				random = vanilla.NewLegacyRandom(tc.Seed)
 			} else {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			provider := func(name string) map[string]any { return map[string]any{"id": "minecraft:" + name} }
 			always := map[string]any{"type": "true"}
@@ -151,7 +151,7 @@ func TestLakeMatchesJava263SourceFixtures(t *testing.T) {
 			}
 			states := make([]string, 0, region.overlay.len())
 			for p, state := range region.overlayByPos() {
-				js, err := world.JavaState(world.DefaultBlockRegistry, state)
+				js, err := world.CanonicalState(world.DefaultBlockRegistry, state)
 				if err != nil {
 					t.Fatal(err)
 				}

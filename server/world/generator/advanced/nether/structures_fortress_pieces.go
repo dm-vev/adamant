@@ -2,7 +2,7 @@ package nether
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 func maxInt(a, b int) int {
@@ -55,7 +55,7 @@ func (p *bridgePieceBase) setStairs(c fortressRegion, chunkX, chunkZ int, sbb st
 	p.setBlock(c, chunkX, chunkZ, sbb, x, y, z, g.netherBrickStairsRID[dir])
 }
 
-func (p *bridgePieceBase) generateChest(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, x, y, z int, g *Nether) bool {
+func (p *bridgePieceBase) generateChest(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, x, y, z int, g *Nether) bool {
 	if g.chestRID == 0 {
 		return false
 	}
@@ -100,7 +100,7 @@ func (p *bridgePieceBase) recordBlockEntity(pos cube.Pos, data map[string]any) {
 	panic("nether: fortress block entity has no matching block write")
 }
 
-func randomHorizontalFacing(r *java26.Random) cube.Direction {
+func randomHorizontalFacing(r *vanilla.Random) cube.Direction {
 	switch r.NextInt(4) {
 	case 0:
 		return cube.North
@@ -113,7 +113,7 @@ func randomHorizontalFacing(r *java26.Random) cube.Direction {
 	}
 }
 
-func createBridgePiece(kind bridgePieceKind, pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgePiece(kind bridgePieceKind, pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	switch kind {
 	case bridgeStraight:
 		return createBridgeStraight(pieces, r, x, y, z, facing, depth)
@@ -153,14 +153,14 @@ type netherBridgeCorridor struct {
 	chest bool
 }
 
-func newBridgeCorridor(componentType int, r *java26.Random, bb structureBB, facing cube.Direction) *netherBridgeCorridor {
+func newBridgeCorridor(componentType int, r *vanilla.Random, bb structureBB, facing cube.Direction) *netherBridgeCorridor {
 	return &netherBridgeCorridor{
 		bridgePieceBase: bridgePieceBase{bb: bb, facing: facing, componentType: componentType},
 		chest:           r.NextInt(3) == 0,
 	}
 }
 
-func createBridgeCorridor(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCorridor(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -1, 0, 0, 5, 7, 5, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -168,11 +168,11 @@ func createBridgeCorridor(pieces []bridgePiece, r *java26.Random, x, y, z int, f
 	return newBridgeCorridor(depth, r, bb, facing)
 }
 
-func (p *netherBridgeCorridor) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCorridor) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentX(start, pieces, r, 0, 1, true)
 }
 
-func (p *netherBridgeCorridor) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCorridor) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	nsFence, weFence := p.netherBrickFenceRID(g, 1|2), p.netherBrickFenceRID(g, 4|8)
 	air := g.airRID
@@ -211,14 +211,14 @@ type netherBridgeCorridor2 struct {
 	chest bool
 }
 
-func newBridgeCorridor2(componentType int, r *java26.Random, bb structureBB, facing cube.Direction) *netherBridgeCorridor2 {
+func newBridgeCorridor2(componentType int, r *vanilla.Random, bb structureBB, facing cube.Direction) *netherBridgeCorridor2 {
 	return &netherBridgeCorridor2{
 		bridgePieceBase: bridgePieceBase{bb: bb, facing: facing, componentType: componentType},
 		chest:           r.NextInt(3) == 0,
 	}
 }
 
-func createBridgeCorridor2(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCorridor2(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -1, 0, 0, 5, 7, 5, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -226,11 +226,11 @@ func createBridgeCorridor2(pieces []bridgePiece, r *java26.Random, x, y, z int, 
 	return newBridgeCorridor2(depth, r, bb, facing)
 }
 
-func (p *netherBridgeCorridor2) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCorridor2) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentZ(start, pieces, r, 0, 1, true)
 }
 
-func (p *netherBridgeCorridor2) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCorridor2) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	nsFence, weFence := p.netherBrickFenceRID(g, 1|2), p.netherBrickFenceRID(g, 4|8)
 	air := g.airRID
@@ -274,7 +274,7 @@ func newBridgeCorridor3(componentType int, bb structureBB, facing cube.Direction
 	}
 }
 
-func createBridgeCorridor3(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCorridor3(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -1, -7, 0, 5, 14, 10, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -282,11 +282,11 @@ func createBridgeCorridor3(pieces []bridgePiece, r *java26.Random, x, y, z int, 
 	return newBridgeCorridor3(depth, bb, facing)
 }
 
-func (p *netherBridgeCorridor3) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCorridor3) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 1, 0, true)
 }
 
-func (p *netherBridgeCorridor3) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCorridor3) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	fence := p.netherBrickFenceRID(g, 1|2)
 	air := g.airRID
@@ -330,7 +330,7 @@ func newBridgeCorridor4(componentType int, bb structureBB, facing cube.Direction
 	}
 }
 
-func createBridgeCorridor4(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCorridor4(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -3, 0, 0, 9, 7, 9, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -338,7 +338,7 @@ func createBridgeCorridor4(pieces []bridgePiece, r *java26.Random, x, y, z int, 
 	return newBridgeCorridor4(depth, bb, facing)
 }
 
-func (p *netherBridgeCorridor4) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCorridor4) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	i := 1
 	if p.facing == cube.West || p.facing == cube.North {
 		i = 5
@@ -347,7 +347,7 @@ func (p *netherBridgeCorridor4) buildComponent(start *netherBridgeStart, pieces 
 	p.getNextComponentZ(start, pieces, r, 0, i, r.NextInt(8) > 0)
 }
 
-func (p *netherBridgeCorridor4) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCorridor4) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	weFence, nsFence := p.netherBrickFenceRID(g, 4|8), p.netherBrickFenceRID(g, 1|2)
 	southEastFence, southWestFence := p.netherBrickFenceRID(g, 2|8), p.netherBrickFenceRID(g, 2|4)
@@ -394,7 +394,7 @@ func newBridgeCorridor5(componentType int, bb structureBB, facing cube.Direction
 	}
 }
 
-func createBridgeCorridor5(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCorridor5(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -1, 0, 0, 5, 7, 5, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -402,11 +402,11 @@ func createBridgeCorridor5(pieces []bridgePiece, r *java26.Random, x, y, z int, 
 	return newBridgeCorridor5(depth, bb, facing)
 }
 
-func (p *netherBridgeCorridor5) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCorridor5) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 1, 0, true)
 }
 
-func (p *netherBridgeCorridor5) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCorridor5) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	fence := p.netherBrickFenceRID(g, 1|2)
 	air := g.airRID
@@ -440,7 +440,7 @@ func newBridgeCrossing(componentType int, bb structureBB, facing cube.Direction)
 	}
 }
 
-func createBridgeCrossing(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCrossing(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -2, 0, 0, 7, 9, 7, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -448,13 +448,13 @@ func createBridgeCrossing(pieces []bridgePiece, r *java26.Random, x, y, z int, f
 	return newBridgeCrossing(depth, bb, facing)
 }
 
-func (p *netherBridgeCrossing) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCrossing) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 2, 0, false)
 	p.getNextComponentX(start, pieces, r, 0, 2, false)
 	p.getNextComponentZ(start, pieces, r, 0, 2, false)
 }
 
-func (p *netherBridgeCrossing) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCrossing) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	weFence, nsFence := p.netherBrickFenceRID(g, 4|8), p.netherBrickFenceRID(g, 1|2)
 	air := g.airRID
@@ -497,7 +497,7 @@ func newBridgeCrossing2(componentType int, bb structureBB, facing cube.Direction
 	}
 }
 
-func createBridgeCrossing2(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCrossing2(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -1, 0, 0, 5, 7, 5, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -505,13 +505,13 @@ func createBridgeCrossing2(pieces []bridgePiece, r *java26.Random, x, y, z int, 
 	return newBridgeCrossing2(depth, bb, facing)
 }
 
-func (p *netherBridgeCrossing2) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCrossing2) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 1, 0, true)
 	p.getNextComponentX(start, pieces, r, 0, 1, true)
 	p.getNextComponentZ(start, pieces, r, 0, 1, true)
 }
 
-func (p *netherBridgeCrossing2) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCrossing2) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	air := g.airRID
 
@@ -542,7 +542,7 @@ func newBridgeCrossing3(componentType int, bb structureBB, facing cube.Direction
 	}
 }
 
-func newBridgeCrossing3Start(r *java26.Random, x, z int, _ *Nether) *netherBridgeCrossing3 {
+func newBridgeCrossing3Start(r *vanilla.Random, x, z int, _ *Nether) *netherBridgeCrossing3 {
 	facing := randomHorizontalFacing(r)
 	bb := structureBB{
 		minX: x,
@@ -555,7 +555,7 @@ func newBridgeCrossing3Start(r *java26.Random, x, z int, _ *Nether) *netherBridg
 	return newBridgeCrossing3(0, bb, facing)
 }
 
-func createBridgeCrossing3(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeCrossing3(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -8, -3, 0, 19, 10, 19, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -563,13 +563,13 @@ func createBridgeCrossing3(pieces []bridgePiece, r *java26.Random, x, y, z int, 
 	return newBridgeCrossing3(depth, bb, facing)
 }
 
-func (p *netherBridgeCrossing3) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeCrossing3) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 8, 3, false)
 	p.getNextComponentX(start, pieces, r, 3, 8, false)
 	p.getNextComponentZ(start, pieces, r, 3, 8, false)
 }
 
-func (p *netherBridgeCrossing3) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeCrossing3) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	air := g.airRID
 
@@ -617,14 +617,14 @@ type netherBridgeEnd struct {
 	fillSeed int32
 }
 
-func newBridgeEnd(componentType int, r *java26.Random, bb structureBB, facing cube.Direction) *netherBridgeEnd {
+func newBridgeEnd(componentType int, r *vanilla.Random, bb structureBB, facing cube.Direction) *netherBridgeEnd {
 	return &netherBridgeEnd{
 		bridgePieceBase: bridgePieceBase{bb: bb, facing: facing, componentType: componentType},
 		fillSeed:        r.NextInt32(),
 	}
 }
 
-func createBridgeEnd(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeEnd(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -1, -3, 0, 5, 10, 8, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -632,12 +632,12 @@ func createBridgeEnd(pieces []bridgePiece, r *java26.Random, x, y, z int, facing
 	return newBridgeEnd(depth, r, bb, facing)
 }
 
-func (p *netherBridgeEnd) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeEnd) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 }
 
-func (p *netherBridgeEnd) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeEnd) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
-	rand := java26.NewLegacyRandom(int64(p.fillSeed))
+	rand := vanilla.NewLegacyRandom(int64(p.fillSeed))
 
 	for i := 0; i <= 4; i++ {
 		for j := 3; j <= 4; j++ {
@@ -676,7 +676,7 @@ func newBridgeEntrance(componentType int, bb structureBB, facing cube.Direction)
 	}
 }
 
-func createBridgeEntrance(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeEntrance(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -5, -3, 0, 13, 14, 13, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -684,11 +684,11 @@ func createBridgeEntrance(pieces []bridgePiece, r *java26.Random, x, y, z int, f
 	return newBridgeEntrance(depth, bb, facing)
 }
 
-func (p *netherBridgeEntrance) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeEntrance) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 5, 3, true)
 }
 
-func (p *netherBridgeEntrance) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeEntrance) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	defaultFence := p.netherBrickFenceRID(g, 0)
 	weFence, nsFence := p.netherBrickFenceRID(g, 4|8), p.netherBrickFenceRID(g, 1|2)
@@ -776,7 +776,7 @@ func newBridgeNetherStalkRoom(componentType int, bb structureBB, facing cube.Dir
 	}
 }
 
-func createBridgeNetherStalkRoom(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeNetherStalkRoom(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -5, -3, 0, 13, 14, 13, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -784,12 +784,12 @@ func createBridgeNetherStalkRoom(pieces []bridgePiece, r *java26.Random, x, y, z
 	return newBridgeNetherStalkRoom(depth, bb, facing)
 }
 
-func (p *netherBridgeNetherStalkRoom) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeNetherStalkRoom) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 5, 3, true)
 	p.getNextComponentNormal(start, pieces, r, 5, 11, true)
 }
 
-func (p *netherBridgeNetherStalkRoom) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeNetherStalkRoom) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	weFence, nsFence := p.netherBrickFenceRID(g, 4|8), p.netherBrickFenceRID(g, 1|2)
 	northEastFence, southEastFence := p.netherBrickFenceRID(g, 1|8), p.netherBrickFenceRID(g, 2|8)
@@ -913,7 +913,7 @@ func newBridgeStairs(componentType int, bb structureBB, facing cube.Direction) *
 	}
 }
 
-func createBridgeStairs(pieces []bridgePiece, r *java26.Random, x, y, z int, depth int, facing cube.Direction) bridgePiece {
+func createBridgeStairs(pieces []bridgePiece, r *vanilla.Random, x, y, z int, depth int, facing cube.Direction) bridgePiece {
 	bb := componentBB(x, y, z, -2, 0, 0, 7, 11, 7, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -921,11 +921,11 @@ func createBridgeStairs(pieces []bridgePiece, r *java26.Random, x, y, z int, dep
 	return newBridgeStairs(depth, bb, facing)
 }
 
-func (p *netherBridgeStairs) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeStairs) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentZ(start, pieces, r, 6, 2, false)
 }
 
-func (p *netherBridgeStairs) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeStairs) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	weFence, nsFence := p.netherBrickFenceRID(g, 4|8), p.netherBrickFenceRID(g, 1|2)
 	air := g.airRID
@@ -969,7 +969,7 @@ func newBridgeStraight(componentType int, bb structureBB, facing cube.Direction)
 	}
 }
 
-func createBridgeStraight(pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func createBridgeStraight(pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	bb := componentBB(x, y, z, -1, -3, 0, 5, 10, 19, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -977,11 +977,11 @@ func createBridgeStraight(pieces []bridgePiece, r *java26.Random, x, y, z int, f
 	return newBridgeStraight(depth, bb, facing)
 }
 
-func (p *netherBridgeStraight) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeStraight) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 	p.getNextComponentNormal(start, pieces, r, 1, 3, false)
 }
 
-func (p *netherBridgeStraight) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeStraight) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	nseFence, nswFence := p.netherBrickFenceRID(g, 1|2|8), p.netherBrickFenceRID(g, 1|2|4)
 	air := g.airRID
@@ -1025,7 +1025,7 @@ func newBridgeThrone(componentType int, bb structureBB, facing cube.Direction) *
 	}
 }
 
-func createBridgeThrone(pieces []bridgePiece, r *java26.Random, x, y, z int, depth int, facing cube.Direction) bridgePiece {
+func createBridgeThrone(pieces []bridgePiece, r *vanilla.Random, x, y, z int, depth int, facing cube.Direction) bridgePiece {
 	bb := componentBB(x, y, z, -2, 0, 0, 7, 8, 9, facing)
 	if !isAboveGround(bb) || findIntersecting(pieces, bb) != nil {
 		return nil
@@ -1033,10 +1033,10 @@ func createBridgeThrone(pieces []bridgePiece, r *java26.Random, x, y, z int, dep
 	return newBridgeThrone(depth, bb, facing)
 }
 
-func (p *netherBridgeThrone) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random) {
+func (p *netherBridgeThrone) buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random) {
 }
 
-func (p *netherBridgeThrone) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool {
+func (p *netherBridgeThrone) addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool {
 	brick := g.netherBricksRID
 	westFence, eastFence := p.netherBrickFenceRID(g, 4), p.netherBrickFenceRID(g, 8)
 	northEastFence, northWestFence := p.netherBrickFenceRID(g, 1|8), p.netherBrickFenceRID(g, 1|4)

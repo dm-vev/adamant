@@ -8,10 +8,10 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type templateFeatureSource struct {
@@ -34,9 +34,9 @@ func (s templateFeatureSource) BaseBlock(x, y, z int32) world.Block {
 	b, _ := world.DefaultBlockRegistry.BlockByRuntimeID(rid)
 	return b
 }
-func (s templateFeatureSource) BaseHeight(int32, int32, bool) int32    { return 80 }
-func (s templateFeatureSource) JavaBiomeAt(int32, int32, int32) string { return "desert" }
-func TestTemplateFeatureMatchesJava263(t *testing.T) {
+func (s templateFeatureSource) BaseHeight(int32, int32, bool) int32 { return 80 }
+func (s templateFeatureSource) BiomeAt(int32, int32, int32) string  { return "desert" }
+func TestTemplateFeatureMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_templates.json")
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 		}
 		return s
 	}
-	well := requireJavaJSON("configured_feature", "desert_well")
+	well := requireJSON("configured_feature", "desert_well")
 	processors := well["features"].([]any)[1].(map[string]any)["feature"].(map[string]any)["processors"]
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%s/%s/%d/xor=%v/processed=%v", tc.Template, tc.Terrain, tc.Seed, tc.Xoroshiro, tc.Processed), func(t *testing.T) {
@@ -79,9 +79,9 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 					}
 				}
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Xoroshiro {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			config := map[string]any{"templates": []any{map[string]any{"weight": float64(1), "data": map[string]any{"id": tc.Template}}}}
 			if tc.Processed {
@@ -136,7 +136,7 @@ func TestTemplateRuleObservesPriorFeature(t *testing.T) {
 	source := templateFeatureSource{air: native("air"), stone: native("sandstone"), water: native("water")}
 	c := chunk.New(world.DefaultBlockRegistry, cube.Range{0, 255})
 	region := newFeatureRegion(&ModernFeatures{source: source}, c, world.ChunkPos{}, &world.GenerationResult{})
-	random := java26.NewLegacyRandom(123)
+	random := vanilla.NewLegacyRandom(123)
 	origin := featurePos{8, 80, 8}
 	if !region.PlaceValue(map[string]any{"type": "simple_block", "to_place": map[string]any{"id": "minecraft:stone"}}, origin, &random) {
 		t.Fatal("preceding stone feature failed")
@@ -163,7 +163,7 @@ func TestTemplateRuleObservesPriorFeature(t *testing.T) {
 
 func TestLavaSubmergedStructurePublishesOnlyFinalBlockActors(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
-	lavaProcessor, err := javastructure.LoadProcessors(nil, []javastructure.ProcessorSpec{{Type: "lava_submerged_block"}}, javastructure.ProcessorEnvironment{
+	lavaProcessor, err := structure.LoadProcessors(nil, []structure.ProcessorSpec{{Type: "lava_submerged_block"}}, structure.ProcessorEnvironment{
 		BaseBlock: func(x, _, _ int32) world.Block {
 			if x == 8 {
 				return block.Lava{Depth: 8, Still: true}
@@ -177,9 +177,9 @@ func TestLavaSubmergedStructurePublishesOnlyFinalBlockActors(t *testing.T) {
 	chest := world.BlockState{Name: "minecraft:chest", Properties: map[string]any{
 		"facing": "north", "type": "single", "waterlogged": false,
 	}}
-	template := javastructure.Template{
+	template := structure.Template{
 		Size: [3]int32{2, 1, 1},
-		Palettes: [][]javastructure.Block{{
+		Palettes: [][]structure.Block{{
 			{
 				Pos:   [3]int32{0, 0, 0},
 				State: chest,
@@ -196,8 +196,8 @@ func TestLavaSubmergedStructurePublishesOnlyFinalBlockActors(t *testing.T) {
 			},
 		}},
 	}
-	placement, err := template.Place(0, [3]int32{8, 64, 8}, javastructure.None, javastructure.NoMirror,
-		javastructure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 127, 15}}, 0, lavaProcessor...)
+	placement, err := template.Place(0, [3]int32{8, 64, 8}, structure.None, structure.NoMirror,
+		structure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 127, 15}}, 0, lavaProcessor...)
 	if err != nil {
 		t.Fatal(err)
 	}

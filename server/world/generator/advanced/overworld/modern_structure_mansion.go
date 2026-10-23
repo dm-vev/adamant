@@ -6,40 +6,40 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/entity"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/google/uuid"
 )
 
 func init() { registerModernStructureBuilder("woodland_mansion", buildModernWoodlandMansion) }
 
 type modernMansionPiece struct {
-	template *javastructure.Template
+	template *structure.Template
 	origin   [3]int32
-	rotation javastructure.Rotation
-	mirror   javastructure.Mirror
+	rotation structure.Rotation
+	mirror   structure.Mirror
 	seed     int64
-	box      javastructure.Box
+	box      structure.Box
 }
 
-func (p modernMansionPiece) Bounds() javastructure.Box { return p.box }
+func (p modernMansionPiece) Bounds() structure.Box { return p.box }
 
-func (p modernMansionPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
-	ignoreStructureBlocks := javastructure.Processor{Process: func(_ javastructure.ProcessContext, block javastructure.Block) (javastructure.Block, bool, error) {
+func (p modernMansionPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
+	ignoreStructureBlocks := structure.Processor{Process: func(_ structure.ProcessContext, block structure.Block) (structure.Block, bool, error) {
 		return block, block.State.Name != "minecraft:structure_block", nil
 	}}
 	placed, err := p.template.PlaceBlocks(0, p.origin, p.rotation, p.mirror, clip, p.seed, ignoreStructureBlocks)
 	if err != nil {
-		return javastructure.Placement{}, err
+		return structure.Placement{}, err
 	}
 	for i := range placed.Blocks {
-		javastructure.SeedRandomizableContainerLoot(&placed.Blocks[i], env.Random)
+		structure.SeedRandomizableContainerLoot(&placed.Blocks[i], env.Random)
 	}
 	return placed, nil
 }
 
-func (p modernMansionPiece) AfterTemplatePlacement(clip javastructure.Bounds, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) error {
+func (p modernMansionPiece) AfterTemplatePlacement(clip structure.Bounds, env structure.ProcessorEnvironment, emit func(structure.Placement)) error {
 	if emit == nil {
 		return fmt.Errorf("woodland mansion markers require a placement emitter")
 	}
@@ -49,14 +49,14 @@ func (p modernMansionPiece) AfterTemplatePlacement(clip javastructure.Bounds, en
 			continue
 		}
 		marker, _ := source.NBT["metadata"].(string)
-		pos := javastructure.TransformPosition(source.Pos, p.mirror, p.rotation)
+		pos := structure.TransformPosition(source.Pos, p.mirror, p.rotation)
 		for axis := range 3 {
 			pos[axis] += origin[axis]
 		}
 		if !insideStructureClip(pos, clip) {
 			continue
 		}
-		out := javastructure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
+		out := structure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
 		switch {
 		case strings.HasPrefix(marker, "Chest"):
 			if env.Random == nil || env.BaseBlock == nil || env.HasChestBlockEntity == nil || env.SetBlockEntityLootTable == nil {
@@ -64,7 +64,7 @@ func (p modernMansionPiece) AfterTemplatePlacement(clip javastructure.Bounds, en
 			}
 			if existing := env.BaseBlock(pos[0], pos[1], pos[2]); existing != nil {
 				name, _ := existing.EncodeBlock()
-				if normalizeJavaResource(name) == "chest" {
+				if normalizeResource(name) == "chest" {
 					continue
 				}
 			}
@@ -77,10 +77,10 @@ func (p modernMansionPiece) AfterTemplatePlacement(clip javastructure.Bounds, en
 			case "ChestSouth":
 				facing = "south"
 			}
-			state := world.TransformJavaState(world.BlockState{
+			state := world.TransformState(world.BlockState{
 				Name: "minecraft:chest", Properties: map[string]any{"facing": facing},
-			}, javastructure.NoMirror, p.rotation)
-			out.PostShapeBlocks = append(out.PostShapeBlocks, javastructure.Block{
+			}, structure.NoMirror, p.rotation)
+			out.PostShapeBlocks = append(out.PostShapeBlocks, structure.Block{
 				Pos: pos, State: state, NBT: map[string]any{"id": "minecraft:chest"},
 			})
 			emit(out)
@@ -104,20 +104,20 @@ func (p modernMansionPiece) AfterTemplatePlacement(clip javastructure.Bounds, en
 			}
 			for index := range count {
 				entityID := uuid.New()
-				entityRandom := java26.NewLegacyRandom(int64(binary.LittleEndian.Uint64(entityID[:8]) ^ binary.LittleEndian.Uint64(entityID[8:])))
+				entityRandom := vanilla.NewLegacyRandom(int64(binary.LittleEndian.Uint64(entityID[:8]) ^ binary.LittleEndian.Uint64(entityID[8:])))
 				nbt, err := entity.PrepareStructureMobSpawn(id, env.LevelRandom, &entityRandom, env.GenerationContext)
 				if err != nil {
 					return err
 				}
 				nbt["PersistenceRequired"] = byte(1)
-				out.PostShapeEntities = append(out.PostShapeEntities, javastructure.Entity{
+				out.PostShapeEntities = append(out.PostShapeEntities, structure.Entity{
 					Pos:      [3]float64{float64(pos[0]) + 0.5, float64(pos[1]), float64(pos[2]) + 0.5},
 					BlockPos: pos, Record: int32(index), Seed: p.seed, ID: entityID,
 					SpawnReason: "structure", SpawnFinalized: true, EntityRandom: &entityRandom, NBT: nbt,
 				})
 				emit(out)
-				out = javastructure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
-				out.PostShapeBlocks = append(out.PostShapeBlocks, javastructure.Block{
+				out = structure.Placement{TemplateUpdateFlags: 2, TemplateKnownShape: true}
+				out.PostShapeBlocks = append(out.PostShapeBlocks, structure.Block{
 					Pos: pos, State: world.BlockState{Name: "minecraft:air"},
 				})
 				emit(out)
@@ -215,7 +215,7 @@ func (d mansionDir) delta() (int, int) {
 func (d mansionDir) cw() mansionDir       { return (d + 1) % 4 }
 func (d mansionDir) ccw() mansionDir      { return (d + 3) % 4 }
 func (d mansionDir) opposite() mansionDir { return (d + 2) % 4 }
-func mansionShuffle(a [][2]int, r *java26.Random) {
+func mansionShuffle(a [][2]int, r *vanilla.Random) {
 	for i := len(a) - 1; i > 0; i-- {
 		j := int(r.NextInt(int32(i + 1)))
 		a[i], a[j] = a[j], a[i]
@@ -226,10 +226,10 @@ type mansionPlan struct {
 	base, third *mansionGrid
 	rooms       [3]*mansionGrid
 	sx, sy      int
-	random      *java26.Random
+	random      *vanilla.Random
 }
 
-func newMansionPlan(r *java26.Random) *mansionPlan {
+func newMansionPlan(r *vanilla.Random) *mansionPlan {
 	m := &mansionPlan{base: newMansionGrid(11, 11, 5), sx: 8, sy: 5, random: r}
 	m.base.rect(7, 4, 8, 5, mansionStartRoom)
 	m.base.rect(6, 4, 6, 5, mansionRoom)
@@ -489,15 +489,15 @@ func buildModernWoodlandMansion(in modernStructureBuildInput) (modernStructureSt
 	if in.random == nil || in.source == nil {
 		return modernStructureStart{}, false, fmt.Errorf("woodland mansion requires structure random and world source")
 	}
-	rotation := javastructure.Rotation(in.random.NextInt(4))
+	rotation := structure.Rotation(in.random.NextInt(4))
 	x, z := in.chunkX*16+7, in.chunkZ*16+7
 	dx, dz := int32(5), int32(5)
 	switch rotation {
-	case javastructure.Clockwise90:
+	case structure.Clockwise90:
 		dx = -5
-	case javastructure.Clockwise180:
+	case structure.Clockwise180:
 		dx, dz = -5, -5
-	case javastructure.CounterClockwise90:
+	case structure.CounterClockwise90:
 		dz = -5
 	}
 	low := int32(1 << 30)

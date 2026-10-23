@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -538,7 +538,7 @@ var gameEventTags = sync.OnceValue(func() struct {
 		{"ignore_vibrations_sneaking", vibrationSneakingIgnored},
 		{"shrieker_can_listen", vibrationShriekerListenable},
 	} {
-		names, err := javadata.GameEventTagMembers(tag.name)
+		names, err := gamedata.GameEventTagMembers(tag.name)
 		if err != nil {
 			panic(err)
 		}
@@ -557,7 +557,7 @@ var gameEventTags = sync.OnceValue(func() struct {
 		{"walls", movementHighSupport},
 		{"fence_gates", movementHighSupport},
 	} {
-		names, err := javadata.BlockTagMembers(tag.name)
+		names, err := gamedata.BlockTagMembers(tag.name)
 		if err != nil {
 			panic(err)
 		}
@@ -599,7 +599,7 @@ func (w *World) gameEventBlockFlags(block Block) uint8 {
 		return flags
 	}
 	name, _, _ := w.conf.Blocks.RuntimeIDToState(rid)
-	if state, err := JavaState(w.conf.Blocks, NativeState{Block: rid, Liquid: w.conf.Blocks.AirRuntimeID()}); err == nil {
+	if state, err := CanonicalState(w.conf.Blocks, NativeState{Block: rid, Liquid: w.conf.Blocks.AirRuntimeID()}); err == nil {
 		name = state.Name
 	}
 	flags := gameEventTags().blocks[name]

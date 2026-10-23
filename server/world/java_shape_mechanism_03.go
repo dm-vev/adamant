@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -38,7 +38,7 @@ func javaMechanism03FireShape(c *javaShapeContext, state uint32, _ cube.Face, _ 
 	}
 	result := javaMechanism03FirePlacementState(c, c.pos)
 	if javaName(result) == "fire" {
-		age, _ := javadata.BlockStateInt(state, "age")
+		age, _ := gamedata.BlockStateInt(state, "age")
 		result = javaWith(result, "age", age)
 	}
 	return result
@@ -70,7 +70,7 @@ func javaMechanism03FireSurvives(c *javaShapeContext, _ uint32, pos cube.Pos) bo
 }
 
 func javaMechanism03FireCanBurn(state uint32) bool {
-	canBurn, err := javadata.BlockCanBurnID(state)
+	canBurn, err := gamedata.BlockCanBurnID(state)
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +78,7 @@ func javaMechanism03FireCanBurn(state uint32) bool {
 }
 
 func javaMechanism03PortalShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
-	axis, _ := javadata.BlockStateString(state, "axis")
+	axis, _ := gamedata.BlockStateString(state, "axis")
 	wrongAxis := (axis == "x" && (face == cube.FaceNorth || face == cube.FaceSouth)) || (axis == "z" && (face == cube.FaceWest || face == cube.FaceEast))
 	if !wrongAxis && javaName(neighbor) != "nether_portal" && !javaMechanism03PortalComplete(c, c.pos, axis) {
 		return javaDefault("air")
@@ -179,7 +179,7 @@ func javaMechanism03NoteShape(c *javaShapeContext, state uint32, face cube.Face,
 }
 
 func javaMechanism03BlockInstrument(state uint32) string {
-	instrument, err := javadata.BlockInstrumentID(state)
+	instrument, err := gamedata.BlockInstrumentID(state)
 	if err != nil {
 		panic(err)
 	}
@@ -196,8 +196,8 @@ func javaMechanism03WorksAboveNoteBlock(instrument string) bool {
 }
 
 func javaMechanism03ObserverShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
-	facing, _ := javadata.BlockStateString(state, "facing")
-	powered, _ := javadata.BlockStateBool(state, "powered")
+	facing, _ := gamedata.BlockStateString(state, "facing")
+	powered, _ := gamedata.BlockStateBool(state, "powered")
 	if !powered && javaMechanism03FaceName(face) == facing {
 		c.blockTick(c.pos, state, 2)
 	}

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -59,7 +59,7 @@ func icebergResolveState(t *testing.T, name string) world.NativeState {
 	return state
 }
 
-func TestIcebergMatchesJava263SourceFixtures(t *testing.T) {
+func TestIcebergMatchesSourceFixtures(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_iceberg_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -103,11 +103,11 @@ func TestIcebergMatchesJava263SourceFixtures(t *testing.T) {
 			}
 			region := newFeatureRegion(&ModernFeatures{source: source}, c, target, &world.GenerationResult{})
 			region.SetOrigin(target[0], target[1])
-			var random java26.Random
+			var random vanilla.Random
 			if tc.Algorithm == "legacy" {
-				random = java26.NewLegacyRandom(tc.Seed)
+				random = vanilla.NewLegacyRandom(tc.Seed)
 			} else {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			placed := placeModernIceberg(region, map[string]any{"state": tc.MainState}, featurePos{x: tc.X, y: tc.SeaLevel + 17, z: tc.Z}, &random)
 			if placed != tc.Placed {
@@ -115,11 +115,11 @@ func TestIcebergMatchesJava263SourceFixtures(t *testing.T) {
 			}
 			states := make([]string, 0, region.overlay.len())
 			for pos, state := range region.overlayByPos() {
-				javaState, err := world.JavaState(registry, state)
+				canonicalState, err := world.CanonicalState(registry, state)
 				if err != nil {
 					t.Fatal(err)
 				}
-				states = append(states, fmt.Sprintf("%d,%d,%d=%s", pos.x, pos.y, pos.z, javaState.Name))
+				states = append(states, fmt.Sprintf("%d,%d,%d=%s", pos.x, pos.y, pos.z, canonicalState.Name))
 			}
 			sort.Strings(states)
 			if len(states) != tc.FinalCount {

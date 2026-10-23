@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -15,7 +15,7 @@ type javaChestState interface {
 // restoreJavaBlockActor projects retained source fields once, at actor decode.
 // Native-only saves continue to use their own block-actor metadata.
 func restoreJavaBlockActor(c *chunk.Chunk, pos cube.Pos, b Block) Block {
-	id := c.JavaStateID(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
+	id := c.StateID(uint8(pos[0]), int16(pos[1]), uint8(pos[2]))
 	if id == 0 {
 		return b
 	}
@@ -26,12 +26,12 @@ func restoreJavaBlockActor(c *chunk.Chunk, pos cube.Pos, b Block) Block {
 }
 
 func applyJavaActorState(b Block, id uint32) Block {
-	if actor, ok := b.(JavaStateBlock); ok {
-		name, properties, valid := javadata.BlockStateFromID(id)
+	if actor, ok := b.(CanonicalStateBlock); ok {
+		name, properties, valid := gamedata.BlockStateFromID(id)
 		if !valid {
 			panic(fmt.Sprintf("invalid Java actor state ID %d", id))
 		}
-		updated, err := actor.WithJavaBlockState(name, properties)
+		updated, err := actor.WithCanonicalState(name, properties)
 		if err != nil {
 			panic(err)
 		}
@@ -49,7 +49,7 @@ func ResolveStateID(registry chunk.BlockRegistry, id uint32) NativeState {
 			return state.(NativeState)
 		}
 	}
-	name, properties, ok := javadata.BlockStateFromID(id)
+	name, properties, ok := gamedata.BlockStateFromID(id)
 	if !ok {
 		panic(fmt.Sprintf("invalid Java block state ID %d", id))
 	}

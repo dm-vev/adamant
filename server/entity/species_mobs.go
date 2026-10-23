@@ -8,8 +8,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -62,7 +62,7 @@ type speciesState struct {
 	health                                   *HealthManager
 	effects                                  *EffectManager
 	mc                                       *MovementComputer
-	random                                   java26.Random
+	random                                   vanilla.Random
 	speed, attack                            float64
 	fuse, swell, cooldown, jumpDelay, size   int
 	charged, ignited, climbing, dead, loaded bool
@@ -121,7 +121,7 @@ func openSpecies(tx *world.Tx, h *world.EntityHandle, d *world.EntityData, k spe
 		u := h.UUID()
 		hash := fnv.New64a()
 		_, _ = hash.Write(u[:])
-		s.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	m := &speciesMob{Ent: &Ent{tx: tx, handle: h, data: d}, kind: k}
 	switch k {
@@ -331,7 +331,7 @@ func (c speciesConfig) Apply(d *world.EntityData) {
 		size = 1
 	}
 	d.NativeNBT = CloneNativeMobNBT(c.native)
-	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, core: newSpeciesSlimeCore(c.kind, size), jumpDelay: 10}
+	d.Data = &speciesState{kind: c.kind, health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: speed, attack: attack, fuse: fuse, swell: c.swell, cooldown: c.attackCooldown, size: size, charged: c.charged, ignited: c.ignited, climbing: c.climbing, loaded: c.loaded, carried: c.carried, core: newSpeciesSlimeCore(c.kind, size), jumpDelay: 10}
 }
 func NewSpider(o world.EntitySpawnOpts) *world.EntityHandle {
 	return o.New(SpiderType, speciesConfig{kind: spiderSpecies, size: 1})
@@ -727,7 +727,7 @@ func (m *speciesMob) Interact(_ *world.Tx, user item.User, ctx *item.UseContext)
 	}
 	return false
 }
-func (m *speciesMob) FinalizeSpawn(reason string, r *java26.Random) {
+func (m *speciesMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 	s := m.s()
 	if r == nil || s.loaded {
 		return

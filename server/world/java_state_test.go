@@ -30,7 +30,7 @@ func TestJavaTorchAttachmentDirections(t *testing.T) {
 				if nativeName != "minecraft:"+family.native || nativeProps["torch_facing_direction"] != attachment.native {
 					t.Fatalf("%+v: native attachment = %s %v, want %s", source, nativeName, nativeProps, attachment.native)
 				}
-				back, err := JavaState(registry, state)
+				back, err := CanonicalState(registry, state)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -73,7 +73,7 @@ func TestJavaLeafLitterNativeSegmentCounts(t *testing.T) {
 				t.Fatalf("native leaf litter state missing: growth=%d facing=%s", growth, facing)
 			}
 			native := NativeState{Block: rid, Liquid: registry.AirRuntimeID()}
-			source, err := JavaState(registry, native)
+			source, err := CanonicalState(registry, native)
 			if growth > 3 {
 				if err == nil {
 					t.Fatalf("native %d-segment litter accepted as Java state: %+v", growth+1, source)
@@ -108,7 +108,7 @@ func TestJavaDoorOpenIndependentOfPower(t *testing.T) {
 				if got, _ := boolProperty(native["open_bit"]); got != open {
 					t.Fatalf("%s open=%v powered=%v encoded %v", name, open, powered, native)
 				}
-				back, err := JavaState(registry, state)
+				back, err := CanonicalState(registry, state)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -137,7 +137,7 @@ func TestJavaMovingPistonPaletteAndCanonicalStates(t *testing.T) {
 			if !ok || name != "minecraft:moving_block" || len(properties) != 0 {
 				t.Fatalf("moving piston leaked Java properties into native palette: %s %v", name, properties)
 			}
-			back, err := JavaState(registry, state)
+			back, err := CanonicalState(registry, state)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -160,7 +160,7 @@ func TestJavaCaveVineTipAgeRoundTrip(t *testing.T) {
 		if native["growing_plant_age"] != int32(25) {
 			t.Fatalf("tip age lost: %v", native)
 		}
-		back, err := JavaState(registry, state)
+		back, err := CanonicalState(registry, state)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -188,7 +188,7 @@ func TestJavaFreeFluidSecondaryLayer(t *testing.T) {
 				{Block: fluid, Liquid: registry.AirRuntimeID()},
 				{Block: registry.AirRuntimeID(), Liquid: fluid},
 			} {
-				state, err := JavaState(registry, native)
+				state, err := CanonicalState(registry, native)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -210,7 +210,7 @@ func TestJavaWallHeadIdentityRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			back, err := JavaState(registry, native)
+			back, err := CanonicalState(registry, native)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -244,7 +244,7 @@ func TestJavaBubbleColumnDirectionAndWater(t *testing.T) {
 		if liquid != "minecraft:water" || properties["liquid_depth"] != int32(0) {
 			t.Fatalf("bubble column lost source water: %s %v", liquid, properties)
 		}
-		back, err := JavaState(registry, state)
+		back, err := CanonicalState(registry, state)
 		if err != nil || back.Name != name || back.Properties["drag"] != drag {
 			t.Fatalf("bubble column direction lost: %+v, %v", back, err)
 		}
@@ -259,7 +259,7 @@ func TestJavaWaterloggingUsesSourcePropertyCapability(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		back, err := JavaState(registry, state)
+		back, err := CanonicalState(registry, state)
 		if err != nil || back.Name != name || back.Properties["waterlogged"] != true {
 			t.Errorf("waterlogged %s roundtrip=%+v error=%v", name, back, err)
 		}
@@ -274,7 +274,7 @@ func TestJavaWaterloggingUsesSourcePropertyCapability(t *testing.T) {
 			t.Fatal(err)
 		}
 		state.Liquid = water.Block
-		if converted, err := JavaState(registry, state); err == nil {
+		if converted, err := CanonicalState(registry, state); err == nil {
 			t.Errorf("native water layer on non-waterloggable Java block %s accepted as %+v", name, converted)
 		}
 	}
@@ -303,7 +303,7 @@ func TestJavaSharedNativeBlockNamesKeepMaterialIdentity(t *testing.T) {
 		if name != "minecraft:"+pair.native {
 			t.Fatalf("%s became native %s, want %s", pair.java, name, pair.native)
 		}
-		back, err := JavaState(registry, native)
+		back, err := CanonicalState(registry, native)
 		if err != nil || back.Name != "minecraft:"+pair.java {
 			t.Fatalf("%s material identity lost: %+v, error %v", pair.java, back, err)
 		}
@@ -325,7 +325,7 @@ func TestJavaSeaPickleCountsAndHydration(t *testing.T) {
 			if properties["cluster_count"] != count-1 || !ok || dead == wet {
 				t.Fatalf("pickles=%d wet=%v became native %v", count, wet, properties)
 			}
-			back, err := JavaState(registry, native)
+			back, err := CanonicalState(registry, native)
 			if err != nil || back.Properties["pickles"] != count || back.Properties["waterlogged"] != wet {
 				t.Fatalf("pickle count/hydration lost: %+v, error %v", back, err)
 			}
@@ -349,7 +349,7 @@ func TestJavaCopperDoubleSlabIdentity(t *testing.T) {
 		if name != "minecraft:"+pair.native || native.Liquid == registry.AirRuntimeID() {
 			t.Fatalf("double slab %s lost material or water: %s %+v", pair.java, name, native)
 		}
-		back, err := JavaState(registry, native)
+		back, err := CanonicalState(registry, native)
 		if err != nil || back.Name != state.Name || back.Properties["type"] != "double" || back.Properties["waterlogged"] != true {
 			t.Fatalf("double slab became %+v, error %v", back, err)
 		}
@@ -375,7 +375,7 @@ func TestJavaPortalAndEggStateProperties(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		back, err := JavaState(registry, native)
+		back, err := CanonicalState(registry, native)
 		if err != nil || back.Name != state.Name || back.Properties[row.key] != row.value {
 			t.Fatalf("%s property lost: %+v, error %v", row.name, back, err)
 		}
@@ -397,7 +397,7 @@ func TestJavaRetainedLeafDistance(t *testing.T) {
 		} else if native.Block != nativeID {
 			t.Fatal("source leaf distance changed the native palette state")
 		}
-		back, err := JavaState(registry, native)
+		back, err := CanonicalState(registry, native)
 		if err != nil || back.Properties["distance"] != distance {
 			t.Fatalf("leaf distance %d became %+v: %v", distance, back, err)
 		}
@@ -413,8 +413,8 @@ func TestJavaInverseIncludesUnrepresentedDefaults(t *testing.T) {
 	}
 	// The native palette has no growth stage. Its source view must nevertheless
 	// supply the Java stage used by growth predicates.
-	native.JavaStateID = 0
-	back, err := JavaState(registry, native)
+	native.StateID = 0
+	back, err := CanonicalState(registry, native)
 	if err != nil || back.Properties["stage"] != int32(0) || back.Properties["hanging"] != true {
 		t.Fatalf("incomplete propagule source state: %+v: %v", back, err)
 	}
@@ -460,7 +460,7 @@ func TestJavaHangingSignAttachments(t *testing.T) {
 				t.Fatalf("%+v: native liquid layer = %d", source, state.Liquid)
 			}
 			// Decode the native attachment itself, not retained source metadata.
-			back, err := JavaState(registry, NativeState{Block: state.Block, Liquid: state.Liquid})
+			back, err := CanonicalState(registry, NativeState{Block: state.Block, Liquid: state.Liquid})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -494,7 +494,7 @@ func TestJavaPistonFacingsMatchBDS(t *testing.T) {
 			if nativeProps["facing_direction"] != native {
 				t.Fatalf("%s facing %s: facing_direction = %v, want %d", name, facing, nativeProps["facing_direction"], native)
 			}
-			back, err := JavaState(registry, state)
+			back, err := CanonicalState(registry, state)
 			if err != nil {
 				t.Fatal(err)
 			}

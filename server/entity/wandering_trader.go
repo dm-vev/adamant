@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
@@ -30,7 +30,7 @@ func (wanderingTraderType) Open(tx *world.Tx, h *world.EntityHandle, d *world.En
 		id := h.UUID()
 		hash := fnv.New64a()
 		_, _ = hash.Write(id[:])
-		b.random, b.seeded = java26.NewLegacyRandom(int64(hash.Sum64())), true
+		b.random, b.seeded = vanilla.NewLegacyRandom(int64(hash.Sum64())), true
 	}
 	return &WanderingTrader{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -128,7 +128,7 @@ type wanderingTraderBehaviour struct {
 	health  *HealthManager
 	effects *EffectManager
 	mc      *MovementComputer
-	random  java26.Random
+	random  vanilla.Random
 	seeded  bool
 	dead    bool
 

@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	javaWaterLakeChance = 4
-	javaLavaLakeChance  = 80
+	waterLakeChance = 4
+	lavaLakeChance  = 80
 )
 
 func (g *Overworld) populateLakes(chunkX, chunkZ int, c *chunk.Chunk, villageGenerated bool) {
@@ -31,19 +31,19 @@ func (g *Overworld) populateLakes(chunkX, chunkZ int, c *chunk.Chunk, villageGen
 			flagVillage := villageGenerated && originChunkX == chunkX && originChunkZ == chunkZ
 
 			if mcbiome.ID(biomeID) != mcbiome.Desert && mcbiome.ID(biomeID) != mcbiome.DesertHills &&
-				!flagVillage && r.Intn(javaWaterLakeChance) == 0 {
+				!flagVillage && r.Intn(waterLakeChance) == 0 {
 				i1 := int(r.Intn(16)) + 8
 				j1 := int(r.Intn(256))
 				k1 := int(r.Intn(16)) + 8
 				g.genLake(c, preview, chunkX, chunkZ, chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ, originChunkX*16+i1, j1, originChunkZ*16+k1, g.waterRID, biomeID, r)
 			}
 
-			if !flagVillage && r.Intn(javaLavaLakeChance/10) == 0 {
+			if !flagVillage && r.Intn(lavaLakeChance/10) == 0 {
 				i2 := int(r.Intn(16)) + 8
 				l2 := int(r.Intn(int32(int(r.Intn(248)) + 8)))
 				k3 := int(r.Intn(16)) + 8
 
-				if l2 < javaSeaLevel || r.Intn(javaLavaLakeChance/8) == 0 {
+				if l2 < seaLevel || r.Intn(lavaLakeChance/8) == 0 {
 					g.genLake(c, preview, chunkX, chunkZ, chunkMinX, chunkMinZ, chunkMaxX, chunkMaxZ, originChunkX*16+i2, l2, originChunkZ*16+k3, g.lavaRID, biomeID, r)
 				}
 			}

@@ -14,9 +14,9 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type scatteredSourceCase struct {
@@ -64,9 +64,9 @@ type scatteredFixtureWorld struct {
 }
 
 func newScatteredFixtureWorld(scenario string) *scatteredFixtureWorld {
-	air, _ := javadata.BlockStateID("minecraft:air", nil)
-	stone, _ := javadata.BlockStateID("minecraft:stone", nil)
-	water, _ := javadata.BlockStateID("minecraft:water", nil)
+	air, _ := gamedata.BlockStateID("minecraft:air", nil)
+	stone, _ := gamedata.BlockStateID("minecraft:stone", nil)
+	water, _ := gamedata.BlockStateID("minecraft:water", nil)
 	return &scatteredFixtureWorld{scenario: scenario, states: make(map[[3]int32]uint32), actors: make(map[[3]int32]map[string]any), air: air, stone: stone, water: water}
 }
 func (w *scatteredFixtureWorld) state(x, y, z int32) (uint32, error) {
@@ -95,8 +95,8 @@ func (w *scatteredFixtureWorld) state(x, y, z int32) (uint32, error) {
 func (w *scatteredFixtureWorld) height(x, z int32) int32 {
 	for y := int32(319); y >= -64; y-- {
 		id, _ := w.state(x, y, z)
-		name, _ := javadata.BlockStateName(id)
-		if javaBlockTagContains("blocks_motion_in_heightmap_no_leaves", name) || name == "minecraft:water" || name == "minecraft:lava" {
+		name, _ := gamedata.BlockStateName(id)
+		if blockTagContains("blocks_motion_in_heightmap_no_leaves", name) || name == "minecraft:water" || name == "minecraft:lava" {
 			return y + 1
 		}
 	}
@@ -110,7 +110,7 @@ func (w *scatteredFixtureWorld) canWrite(x, y, z int32) bool {
 	return y >= -64 && y <= 319 && absFeatureInt(x>>4-originX) <= 1 && absFeatureInt(z>>4) <= 1
 }
 func scatteredCanonicalState(id uint32) string {
-	name, props, ok := javadata.BlockStateFromID(id)
+	name, props, ok := gamedata.BlockStateFromID(id)
 	if !ok {
 		panic(fmt.Sprintf("missing state %d", id))
 	}
@@ -125,10 +125,10 @@ func scatteredCanonicalState(id uint32) string {
 	}
 	return name + "[" + strings.Join(fields, ",") + "]"
 }
-func (w *scatteredFixtureWorld) apply(placement javastructure.Placement) []string {
+func (w *scatteredFixtureWorld) apply(placement structure.Placement) []string {
 	writes := make([]string, 0, len(placement.Blocks))
 	for _, b := range placement.Blocks {
-		id, err := javadata.BlockStateID(b.State.Name, b.State.Properties)
+		id, err := gamedata.BlockStateID(b.State.Name, b.State.Properties)
 		if err != nil {
 			panic(err)
 		}
@@ -138,7 +138,7 @@ func (w *scatteredFixtureWorld) apply(placement javastructure.Placement) []strin
 			continue
 		}
 		old, _ := w.state(b.Pos[0], b.Pos[1], b.Pos[2])
-		oldName, _ := javadata.BlockStateName(old)
+		oldName, _ := gamedata.BlockStateName(old)
 		if oldName != b.State.Name {
 			delete(w.actors, b.Pos)
 		}
@@ -208,7 +208,7 @@ func runScatteredNativeCase(f scatteredSourceCase) ([]scatteredNativeCall, error
 	if err != nil {
 		return nil, err
 	}
-	box := javastructure.Box{Min: [3]int32{f.InitialBox[0], f.InitialBox[1], f.InitialBox[2]}, Max: [3]int32{f.InitialBox[3], f.InitialBox[4], f.InitialBox[5]}}
+	box := structure.Box{Min: [3]int32{f.InitialBox[0], f.InitialBox[1], f.InitialBox[2]}, Max: [3]int32{f.InitialBox[3], f.InitialBox[4], f.InitialBox[5]}}
 	var piece modernStructurePiece
 	if f.Piece == "jungle_temple" {
 		dir := 0
@@ -239,13 +239,13 @@ func runScatteredNativeCase(f scatteredSourceCase) ([]scatteredNativeCall, error
 			if local[0] == 9 && local[2] == 3 {
 				name = "minecraft:dispenser"
 			}
-			id, _ := javadata.BlockStateID(name, nil)
+			id, _ := gamedata.BlockStateID(name, nil)
 			w.states[p] = id
 			w.actors[p] = map[string]any{"id": name}
 		}
 	}
-	random := java26.NewLegacyRandom(renderSeed)
-	root := java26.NewXoroshiroRandom(regionSeed)
+	random := vanilla.NewLegacyRandom(renderSeed)
+	root := vanilla.NewXoroshiroRandom(regionSeed)
 	named := root.ForkPositional().FromHashOf("minecraft:worldgen_region_random")
 	level := named.ForkPositional().At(f.RegionOrigin[0], f.RegionOrigin[1], f.RegionOrigin[2])
 	start := modernStructureStart{key: modernStructureStartKey{set: f.Piece}, name: "minecraft:" + f.Piece, pieces: []modernStructurePiece{piece}, mutablePieces: true, box: box}
@@ -263,10 +263,10 @@ func runScatteredNativeCase(f scatteredSourceCase) ([]scatteredNativeCall, error
 			}
 		}
 		ctx := modernStructureContext{pieceStates: &generator.modernStructures.pieceStates}
-		env := javastructure.ProcessorEnvironment{Range: cube.Range{-64, 319}, Random: &random, LevelRandom: &level, JavaBlockStateID: w.state, CanWriteBlock: w.canWrite, MotionBlockingNoLeavesHeight: w.height}
-		clip := javastructure.Bounds{Min: [3]int32{c.Clip[0], c.Clip[1], c.Clip[2]}, Max: [3]int32{c.Clip[3], c.Clip[4], c.Clip[5]}}
+		env := structure.ProcessorEnvironment{Range: cube.Range{-64, 319}, Random: &random, LevelRandom: &level, BlockStateID: w.state, CanWriteBlock: w.canWrite, MotionBlockingNoLeavesHeight: w.height}
+		clip := structure.Bounds{Min: [3]int32{c.Clip[0], c.Clip[1], c.Clip[2]}, Max: [3]int32{c.Clip[3], c.Clip[4], c.Clip[5]}}
 		var writes []string
-		ctx.placeStart(start, clip, env, func(p javastructure.Placement) { writes = w.apply(p) })
+		ctx.placeStart(start, clip, env, func(p structure.Placement) { writes = w.apply(p) })
 		flags := generator.modernStructures.pieceStates.lookup(start.key)
 		flags.mu.Lock()
 		state := flags.pieces[0]
@@ -287,7 +287,7 @@ func runScatteredNativeCase(f scatteredSourceCase) ([]scatteredNativeCall, error
 	}
 	return result, nil
 }
-func TestScatteredPostProcessMatchesJava263(t *testing.T) {
+func TestScatteredPostProcessMatchesReference(t *testing.T) {
 	file, err := os.Open("testdata/java263_scattered_post.json.gz")
 	if err != nil {
 		t.Fatal(err)
@@ -394,7 +394,7 @@ func TestScatteredPostProcessMatchesJava263(t *testing.T) {
 	}
 }
 
-func TestScatteredConstructorsMatchJava263(t *testing.T) {
+func TestScatteredConstructorsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_scattered_constructors.json")
 	if err != nil {
 		t.Fatal(err)
@@ -416,7 +416,7 @@ func TestScatteredConstructorsMatchJava263(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			random := java26.NewLegacyRandom(seed)
+			random := vanilla.NewLegacyRandom(seed)
 			in := modernStructureBuildInput{seed: seed, name: "minecraft:" + fixture.Type, chunkX: fixture.Chunk[0], chunkZ: fixture.Chunk[1], random: &random}
 			var start modernStructureStart
 			var valid bool

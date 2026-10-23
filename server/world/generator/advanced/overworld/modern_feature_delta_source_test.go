@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -69,7 +69,7 @@ func buildDeltaSourceTerrain(t *testing.T, tc deltaSourceCase) deltaSourceTerrai
 	return s
 }
 
-func TestDeltaFeatureMatchesJava263Source(t *testing.T) {
+func TestDeltaFeatureMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_delta_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -90,9 +90,9 @@ func TestDeltaFeatureMatchesJava263Source(t *testing.T) {
 			}
 			region := newFeatureRegion(&ModernFeatures{source: terrain}, c, target, &world.GenerationResult{})
 			region.SetOrigin(target[0], target[1])
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			origin := featurePos{tc.Origin[0], tc.Origin[1], tc.Origin[2]}
 			if got := placeModernDelta(region, tc.Config, origin, &random); got != tc.Placed {
@@ -101,7 +101,7 @@ func TestDeltaFeatureMatchesJava263Source(t *testing.T) {
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, row := range tc.States {
 				state := deltaSourceState(t, row.State)
-				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = state.CanonicalJavaID(c.BlockRegistry())
+				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = state.CanonicalID(c.BlockRegistry())
 			}
 			for p, state := range region.overlayByPos() {
 				expected, ok := want[p]
@@ -109,7 +109,7 @@ func TestDeltaFeatureMatchesJava263Source(t *testing.T) {
 					t.Errorf("unexpected placement at %v", p)
 					continue
 				}
-				if got := state.CanonicalJavaID(c.BlockRegistry()); got != expected {
+				if got := state.CanonicalID(c.BlockRegistry()); got != expected {
 					t.Errorf("state at %v=%d want=%d", p, got, expected)
 				}
 				delete(want, p)

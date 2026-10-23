@@ -193,7 +193,7 @@ func spawnMobFromNBT(id string, opts world.EntitySpawnOpts, nbt map[string]any) 
 		source = make(map[string]any)
 	}
 	source["id"] = id
-	handle, err := NewFromJavaNBT(source, opts)
+	handle, err := NewFromStructureNBT(source, opts)
 	if err != nil {
 		return nil
 	}

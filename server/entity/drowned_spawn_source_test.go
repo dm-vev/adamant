@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -84,7 +84,7 @@ func TestDrownedStructureSpawnMatchesJava263(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			level, own := java26.NewXoroshiroRandom(levelSeed), java26.NewLegacyRandom(ownSeed)
+			level, own := vanilla.NewXoroshiroRandom(levelSeed), vanilla.NewLegacyRandom(ownSeed)
 			context := world.GenerationContext{Difficulty: world.LocalDifficulty{Effective: 2 + 2*source.Multiplier}, Halloween: source.Halloween}
 			prepared, vehicle, err := PrepareDrownedStructureSpawn(&level, &own, context, source.Biome)
 			if err != nil {
@@ -134,7 +134,7 @@ func TestDrownedStructureSpawnMatchesJava263(t *testing.T) {
 					t.Errorf("vehicle attributes=%#v, Source=%#v", vehicle["attributes"], child["attributes"])
 				}
 			}
-			handle, err := NewFromJavaNBT(prepared, world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure", SpawnFinalized: true, EntityRandom: &own})
+			handle, err := NewFromStructureNBT(prepared, world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure", SpawnFinalized: true, EntityRandom: &own})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +149,7 @@ func TestDrownedStructureSpawnMatchesJava263(t *testing.T) {
 					name  string
 					stack item.Stack
 				}{{"mainhand", main}, {"offhand", off}} {
-					got, err := item.StackToJavaNBT(slot.stack)
+					got, err := item.StackToStructureNBT(slot.stack)
 					if err != nil {
 						t.Error(err)
 						continue

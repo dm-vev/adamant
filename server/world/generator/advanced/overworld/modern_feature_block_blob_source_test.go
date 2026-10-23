@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -59,7 +59,7 @@ func blockBlobSourceTerrain(t *testing.T, tc blockBlobSourceCase) replaceBlobSou
 		default:
 			t.Fatalf("invalid Java Source initial block state %v", row.State)
 		}
-		id, err := javadata.BlockStateID(name, properties)
+		id, err := gamedata.BlockStateID(name, properties)
 		if err != nil {
 			t.Fatalf("invalid Java Source initial state %s: %v", name, err)
 		}
@@ -68,7 +68,7 @@ func blockBlobSourceTerrain(t *testing.T, tc blockBlobSourceCase) replaceBlobSou
 	return terrain
 }
 
-func TestBlockBlobFeatureMatchesJava263Source(t *testing.T) {
+func TestBlockBlobFeatureMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_block_blob_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -99,12 +99,12 @@ func TestBlockBlobFeatureMatchesJava263Source(t *testing.T) {
 			if tc.RejectWrites {
 				region.SetOrigin(target[0]+3, target[1]+3)
 			}
-			var random java26.Random
+			var random vanilla.Random
 			switch tc.Algorithm {
 			case "legacy":
-				random = java26.NewLegacyRandom(tc.Seed)
+				random = vanilla.NewLegacyRandom(tc.Seed)
 			case "xoroshiro":
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			default:
 				t.Fatalf("unsupported Java Source RNG algorithm %q", tc.Algorithm)
 			}
@@ -113,28 +113,28 @@ func TestBlockBlobFeatureMatchesJava263Source(t *testing.T) {
 			}
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, row := range tc.States {
-				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalJavaID(c.BlockRegistry())
+				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalID(c.BlockRegistry())
 			}
 			for pos, state := range region.overlayByPos() {
-				gotID := state.CanonicalJavaID(c.BlockRegistry())
-				if gotID == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
+				gotID := state.CanonicalID(c.BlockRegistry())
+				if gotID == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalID(c.BlockRegistry()) {
 					continue
 				}
 				expected, exists := want[pos]
 				if !exists {
-					name, _ := javadata.BlockStateName(gotID)
+					name, _ := gamedata.BlockStateName(gotID)
 					t.Errorf("unexpected Java state %s at %v", name, pos)
 					continue
 				}
 				if gotID != expected {
-					name, _ := javadata.BlockStateName(gotID)
-					wantName, _ := javadata.BlockStateName(expected)
+					name, _ := gamedata.BlockStateName(gotID)
+					wantName, _ := gamedata.BlockStateName(expected)
 					t.Errorf("state at %v=%s, Source=%s", pos, name, wantName)
 				}
 				delete(want, pos)
 			}
 			for pos, id := range want {
-				name, _ := javadata.BlockStateName(id)
+				name, _ := gamedata.BlockStateName(id)
 				t.Errorf("missing Java Source state %s at %v", name, pos)
 			}
 			next, err := strconv.ParseInt(tc.NextLong, 10, 64)

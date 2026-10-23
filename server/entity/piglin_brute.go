@@ -2,7 +2,7 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -56,6 +56,6 @@ func NewPiglinBrute(o world.EntitySpawnOpts) *world.EntityHandle {
 }
 func bruteAxe() item.Stack { return item.NewStack(item.Axe{Tier: item.ToolTierGold}, 1) }
 func (b *PiglinBrute) SpeciesType() world.EntityType { return PiglinBruteType{} }
-func (b *PiglinBrute) FinalizeSpawn(_ string, _ *java26.Random) {}
+func (b *PiglinBrute) FinalizeSpawn(_ string, _ *vanilla.Random) {}
 
 var _ world.EntityType = PiglinBruteType{}

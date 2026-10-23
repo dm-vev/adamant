@@ -33,7 +33,7 @@ func (s seaSourceTerrain) BaseHeight(_, _ int32, oceanFloor bool) int32 {
 	}
 	return s.fixture.SurfaceHeight
 }
-func (s seaSourceTerrain) JavaNoiseBiomeAt(_, y, _ int32) string {
+func (s seaSourceTerrain) NoiseBiomeAt(_, y, _ int32) string {
 	valid := true
 	switch s.fixture.Scenario {
 	case "invalid_column":
@@ -59,7 +59,7 @@ func (s seaSourceTerrain) JavaNoiseBiomeAt(_, y, _ int32) string {
 
 // Fixtures execute the actual Source findValidGenerationPoint and raw builders.
 // Ocean-floor and surface stubs must not sample the first-free height instead.
-func TestSeaStructureGenerationMatchesJavaSource(t *testing.T) {
+func TestSeaStructureGenerationMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_sea_acceptance.json")
 	if err != nil {
 		t.Fatal(err)

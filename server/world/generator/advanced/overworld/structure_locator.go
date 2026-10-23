@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func (g *Overworld) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius int, isReferenced func(world.StructureLocation) bool) (location world.StructureLocation, found bool, err error) {
@@ -19,7 +19,7 @@ func (g *Overworld) FindNearestMapFeature(tag string, origin cube.Pos, searchRad
 	if searchRadius < 0 {
 		return world.StructureLocation{}, false, fmt.Errorf("negative structure search radius %d", searchRadius)
 	}
-	memberNames, err := javastructure.StructureTagMembers(tag)
+	memberNames, err := structure.StructureTagMembers(tag)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
@@ -39,7 +39,7 @@ func (g *Overworld) FindNearestMapFeature(tag string, origin cube.Pos, searchRad
 	var ringBest world.StructureLocation
 	var ringDistance float64 = math.MaxFloat64
 	for _, set := range s.sets {
-		if normalizeJavaResource(stringValue(set.placement["type"])) != "concentric_rings" || !setContainsWanted(set, wanted) {
+		if normalizeResource(stringValue(set.placement["type"])) != "concentric_rings" || !setContainsWanted(set, wanted) {
 			continue
 		}
 		for candidate := range s.rings[set.name] {
@@ -68,7 +68,7 @@ func (g *Overworld) FindNearestMapFeature(tag string, origin cube.Pos, searchRad
 		var best world.StructureLocation
 		for _, set := range s.sets {
 			placement := set.placement
-			if normalizeJavaResource(stringValue(placement["type"])) != "random_spread" || !setContainsWanted(set, wanted) {
+			if normalizeResource(stringValue(placement["type"])) != "random_spread" || !setContainsWanted(set, wanted) {
 				continue
 			}
 			spacing := int32(number(placement["spacing"]))
@@ -117,7 +117,7 @@ func (g *Overworld) FindStructureAt(tag string, position cube.Pos) (location wor
 			err = fmt.Errorf("overworld structure-at lookup failed: %v", recovered)
 		}
 	}()
-	members, err := javastructure.StructureTagMembers(tag)
+	members, err := structure.StructureTagMembers(tag)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
@@ -134,7 +134,7 @@ func (g *Overworld) FindStructureAt(tag string, position cube.Pos) (location wor
 		if !setContainsWanted(set, wanted) {
 			continue
 		}
-		if normalizeJavaResource(stringValue(set.placement["type"])) == "concentric_rings" {
+		if normalizeResource(stringValue(set.placement["type"])) == "concentric_rings" {
 			for candidate := range s.rings[set.name] {
 				start, ok := s.makeStart(set, candidate[0], candidate[1])
 				if ok && wanted[start.name] && structureStartContains(start, position) {
@@ -143,7 +143,7 @@ func (g *Overworld) FindStructureAt(tag string, position cube.Pos) (location wor
 			}
 			continue
 		}
-		if normalizeJavaResource(stringValue(set.placement["type"])) != "random_spread" {
+		if normalizeResource(stringValue(set.placement["type"])) != "random_spread" {
 			continue
 		}
 		for dz := int32(-32); dz <= 32; dz++ {

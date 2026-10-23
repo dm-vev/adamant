@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
@@ -39,7 +39,7 @@ func TestPreparedStructureMobsMatchJava263(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			level, own := java26.NewXoroshiroRandom(levelSeed), java26.NewLegacyRandom(ownSeed)
+			level, own := vanilla.NewXoroshiroRandom(levelSeed), vanilla.NewLegacyRandom(ownSeed)
 			context := world.GenerationContext{Difficulty: world.LocalDifficulty{Effective: 2 + 2*source.Multiplier}}
 			prepared, err := PrepareStructureMobSpawn(source.ID, &level, &own, context)
 			if err != nil {
@@ -56,7 +56,7 @@ func TestPreparedStructureMobsMatchJava263(t *testing.T) {
 			}
 			for _, continuation := range []struct {
 				name     string
-				stream   *java26.Random
+				stream   *vanilla.Random
 				expected string
 			}{{"region", &level, source.NextLevel}, {"entity", &own, source.NextOwn}} {
 				wantNext, err := strconv.ParseInt(continuation.expected, 10, 64)
@@ -94,11 +94,11 @@ func TestSourceVindicatorEquipmentSurvivesNativeMCDB(t *testing.T) {
 	if source == nil {
 		t.Fatal("Source enchanted Vindicator case missing")
 	}
-	expected, err := item.StackFromJavaNBT(source["equipment"].(map[string]any)["mainhand"].(map[string]any))
+	expected, err := item.StackFromStructureNBT(source["equipment"].(map[string]any)["mainhand"].(map[string]any))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := item.StackToJavaNBT(expected)
+	want, err := item.StackToStructureNBT(expected)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestSourceVindicatorEquipmentSurvivesNativeMCDB(t *testing.T) {
 	w := open()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := mgl64.Vec3{.5, 65, .5}
-	handle, err := NewFromJavaNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
+	handle, err := NewFromStructureNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestSourceVindicatorEquipmentSurvivesNativeMCDB(t *testing.T) {
 	}
 	check := func(stack item.Stack) {
 		t.Helper()
-		got, err := item.StackToJavaNBT(stack)
+		got, err := item.StackToStructureNBT(stack)
 		if err != nil {
 			t.Fatal(err)
 		}

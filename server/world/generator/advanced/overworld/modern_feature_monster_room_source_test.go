@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type monsterRoomSourceCase struct {
@@ -105,9 +105,9 @@ func monsterRoomSourceNativeState(t *testing.T, name string) world.NativeState {
 	}
 	return s
 }
-func monsterRoomJavaStateString(t *testing.T, state world.NativeState) string {
+func monsterRoomStateString(t *testing.T, state world.NativeState) string {
 	t.Helper()
-	js, err := world.JavaState(world.DefaultBlockRegistry, state)
+	js, err := world.CanonicalState(world.DefaultBlockRegistry, state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func monsterRoomSourceInt(value any) (int64, bool) {
 	}
 	return 0, false
 }
-func TestMonsterRoomMatchesJava263Source(t *testing.T) {
+func TestMonsterRoomMatchesSource(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	b, err := os.ReadFile("testdata/java263_monster_room_source.json")
 	if err != nil {
@@ -156,9 +156,9 @@ func TestMonsterRoomMatchesJava263Source(t *testing.T) {
 		name := fmt.Sprintf("%s/seed%d/holes%d/scene%d/origin%v", tc.Algorithm, tc.Seed, tc.Holes, tc.Scene, tc.Origin)
 		t.Run(name, func(t *testing.T) {
 			origin := featurePos{tc.Origin[0], tc.Origin[1], tc.Origin[2]}
-			radius := java26.NewLegacyRandom(tc.Seed)
+			radius := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xor" {
-				radius = java26.NewXoroshiroRandom(tc.Seed)
+				radius = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			xr, zr := radius.NextInt(2)+2, radius.NextInt(2)+2
 			source := monsterRoomSourceTerrain{modernTerrainSource: modernTerrainSource{}, origin: origin, xr: xr, zr: zr, holes: tc.Holes, scene: tc.Scene, minY: -64, maxY: 319, states: states}
@@ -188,11 +188,11 @@ func TestMonsterRoomMatchesJava263Source(t *testing.T) {
 				}})
 			}
 			for i, actor := range result.BlockEntities {
-				state, err := world.JavaState(c.BlockRegistry(), world.NativeStateAt(c, uint8(actor.Pos[0]&15), int16(actor.Pos[1]), uint8(actor.Pos[2]&15)))
+				state, err := world.CanonicalState(c.BlockRegistry(), world.NativeStateAt(c, uint8(actor.Pos[0]&15), int16(actor.Pos[1]), uint8(actor.Pos[2]&15)))
 				if err != nil {
 					t.Fatal(err)
 				}
-				data, err := javastructure.JavaBlockEntityPayload(state, [3]int32{int32(actor.Pos[0]), int32(actor.Pos[1]), int32(actor.Pos[2])}, actor.Data)
+				data, err := structure.BlockEntityPayload(state, [3]int32{int32(actor.Pos[0]), int32(actor.Pos[1]), int32(actor.Pos[2])}, actor.Data)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -200,11 +200,11 @@ func TestMonsterRoomMatchesJava263Source(t *testing.T) {
 			}
 			region := newFeatureRegion(&ModernFeatures{source: source}, c, target, result)
 			region.SetOrigin(target[0], target[1])
-			var random java26.Random
+			var random vanilla.Random
 			if tc.Algorithm == "legacy" {
-				random = java26.NewLegacyRandom(tc.Seed)
+				random = vanilla.NewLegacyRandom(tc.Seed)
 			} else {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if got := placeModernMonsterRoom(region, origin, &random); got != tc.Placed {
 				t.Fatalf("placed=%v, Source=%v", got, tc.Placed)
@@ -217,7 +217,7 @@ func TestMonsterRoomMatchesJava263Source(t *testing.T) {
 				if state == source.BaseState(p.x, p.y, p.z) {
 					continue
 				}
-				changes = append(changes, fmt.Sprintf("%d,%d,%d=%s", p.x, p.y, p.z, monsterRoomJavaStateString(t, state)))
+				changes = append(changes, fmt.Sprintf("%d,%d,%d=%s", p.x, p.y, p.z, monsterRoomStateString(t, state)))
 			}
 			sort.Strings(changes)
 			digest := sha256.Sum256([]byte(strings.Join(changes, ";")))

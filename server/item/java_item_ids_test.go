@@ -35,7 +35,7 @@ func TestStackFromJavaNBTResolvesRenamedItems(t *testing.T) {
 		{map[string]any{"id": "minecraft:splash_potion", "components": map[string]any{"minecraft:potion_contents": "minecraft:long_slow_falling"}}, is(item.SplashPotion{Type: potion.LongSlowFalling()})},
 	}
 	for _, c := range cases {
-		got, err := item.StackFromJavaNBT(c.data)
+		got, err := item.StackFromStructureNBT(c.data)
 		if err != nil {
 			t.Fatalf("%v: %v", c.data["id"], err)
 		}

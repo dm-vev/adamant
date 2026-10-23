@@ -12,7 +12,7 @@ import (
 
 func addVillager(t *testing.T, tx *world.Tx, pos mgl64.Vec3) *entity.Villager {
 	t.Helper()
-	h, err := entity.NewFromJavaNBT(map[string]any{"id": "minecraft:villager"}, world.EntitySpawnOpts{Position: pos, SpawnFinalized: true})
+	h, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:villager"}, world.EntitySpawnOpts{Position: pos, SpawnFinalized: true})
 	if err != nil {
 		t.Fatal(err)
 	}

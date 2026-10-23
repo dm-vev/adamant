@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -120,7 +120,7 @@ func multifaceSourceState(name string, properties map[string]any) world.NativeSt
 	return state
 }
 
-func TestMultifaceGrowthMatchesJava263Source(t *testing.T) {
+func TestMultifaceGrowthMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_multiface_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -175,9 +175,9 @@ func TestMultifaceGrowthMatchesJava263Source(t *testing.T) {
 				region.SetOrigin(target[0]+3, target[1]+3)
 			}
 			config := tc.Config
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if got := placeModernMultifaceGrowth(region, config, origin, &random); got != tc.Placed {
 				t.Errorf("placed=%v, Source=%v", got, tc.Placed)

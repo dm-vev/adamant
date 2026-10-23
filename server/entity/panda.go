@@ -6,8 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -375,7 +375,7 @@ func pandaBambooNearby(tx *world.Tx, pos cube.Pos) bool {
 // chance of 1 in 32.
 func (p *Panda) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	a, b := p.b(), partner.(*Panda).b()
-	r := java26.NewLegacyRandom(rand.Int64())
+	r := vanilla.NewLegacyRandom(rand.Int64())
 	oneOf := func(s *pandaState) int {
 		if r.NextBoolean() {
 			return s.gene
@@ -402,7 +402,7 @@ type pandaGroup struct{ size int }
 
 // FinalizeSpawn ports Panda.finalizeSpawn: each panda rolls its genes, and
 // after the first panda of a group each has a 20% chance to be a cub.
-func (p *Panda) FinalizeSpawn(_ string, r *java26.Random) {
+func (p *Panda) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}
@@ -423,7 +423,7 @@ func (p *Panda) FinalizeSpawn(_ string, r *java26.Random) {
 }
 
 // pandaRandomGene ports Panda.Gene.getRandom.
-func pandaRandomGene(r *java26.Random) int {
+func pandaRandomGene(r *vanilla.Random) int {
 	switch n := r.NextInt(16); {
 	case n == 0:
 		return 1

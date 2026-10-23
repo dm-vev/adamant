@@ -5,9 +5,9 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -256,13 +256,13 @@ func (r *Rabbit) breedOffspring(tx *world.Tx, partner breeder) *world.EntityHand
 func rabbitBiomeVariant(tx *world.Tx, pos cube.Pos) int {
 	biome := tx.Biome(pos).String()
 	roll := rand.IntN(100)
-	if white, _ := javadata.BiomeTagContains("spawns_white_rabbits", biome); white {
+	if white, _ := gamedata.BiomeTagContains("spawns_white_rabbits", biome); white {
 		if roll < 80 {
 			return 1
 		}
 		return 3
 	}
-	if gold, _ := javadata.BiomeTagContains("spawns_gold_rabbits", biome); gold {
+	if gold, _ := gamedata.BiomeTagContains("spawns_gold_rabbits", biome); gold {
 		return 4
 	}
 	switch {
@@ -277,7 +277,7 @@ func rabbitBiomeVariant(tx *world.Tx, pos cube.Pos) int {
 var _ Interactable = (*Rabbit)(nil)
 
 // FinalizeSpawn chooses the biome-selected rabbit variant; rare hostile variant has its own goal state.
-func (r *Rabbit) FinalizeSpawn(reason string, j *java26.Random) {
+func (r *Rabbit) FinalizeSpawn(reason string, j *vanilla.Random) {
 	if j == nil {
 		return
 	}

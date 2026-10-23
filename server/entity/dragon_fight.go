@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -17,7 +17,7 @@ import (
 
 type dragonFight struct {
 	data                                world.DragonFightData
-	spikes                              [10]java26.EndSpike
+	spikes                              [10]vanilla.EndSpike
 	players                             map[*world.EntityHandle]uint64
 	playerGeneration                    uint64
 	playerScan, dragonSeen, crystalScan int
@@ -45,14 +45,14 @@ func newDragonFight(seed int64, data world.DragonFightData) world.DragonFightCon
 		for i := range data.Gateways {
 			data.Gateways[i] = int32(i)
 		}
-		random := java26.NewLegacyRandom(seed)
+		random := vanilla.NewLegacyRandom(seed)
 		for n := len(data.Gateways); n > 1; n-- {
 			j := int(random.NextInt(int32(n)))
 			data.Gateways[n-1], data.Gateways[j] = data.Gateways[j], data.Gateways[n-1]
 		}
 	}
 	return &dragonFight{
-		data: data, spikes: java26.EndSpikes(seed), players: make(map[*world.EntityHandle]uint64),
+		data: data, spikes: vanilla.EndSpikes(seed), players: make(map[*world.EntityHandle]uint64),
 		playerScan: 21, visible: !data.DragonKilled,
 		bar: bossbar.New("Ender Dragon").WithID("end-dragon:" + uuid.NewString()).WithColour(bossbar.Pink()),
 	}

@@ -178,7 +178,7 @@ func (g *Overworld) buildMineshaftStart(startChunkX, startChunkZ int, mType mine
 
 func mineshaftMarkAvailableHeight(roomBB structureBB, comps []mineshaftComponent, r *mc112.Rand) (structureBB, []mineshaftComponent) {
 	// StructureStart.markAvailableHeight with sea level 63 and p=10.
-	seaLevel := javaSeaLevel
+	seaLevel := seaLevel
 	i := seaLevel - 10
 	ySize := roomBB.maxY - roomBB.minY + 1
 	j := ySize + 1

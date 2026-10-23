@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/loot"
@@ -186,7 +186,7 @@ func (m *MinecartContainer) generateLoot(tx *world.Tx, user item.User) {
 	delete(m.Ent.data.NativeNBT, "Items")
 }
 
-func fillMinecartInventory(inv *inventory.Inventory, stacks []item.Stack, random *java26.Random) {
+func fillMinecartInventory(inv *inventory.Inventory, stacks []item.Stack, random *vanilla.Random) {
 	free := make([]int, 0, inv.Size())
 	for slot, stack := range inv.Slots() {
 		if stack.Empty() {
@@ -242,7 +242,7 @@ func fillMinecartInventory(inv *inventory.Inventory, stacks []item.Stack, random
 	}
 }
 
-func shuffleMinecartLoot[T any](items []T, random *java26.Random) {
+func shuffleMinecartLoot[T any](items []T, random *vanilla.Random) {
 	for i := len(items) - 1; i > 0; i-- {
 		j := int(random.NextInt(int32(i + 1)))
 		items[i], items[j] = items[j], items[i]

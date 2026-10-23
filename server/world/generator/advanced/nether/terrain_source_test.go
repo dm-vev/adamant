@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func TestNetherRawTerrainJava263(t *testing.T) {
+func TestNetherRawTerrainReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_raw_terrain.json")
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +38,7 @@ func TestNetherRawTerrainJava263(t *testing.T) {
 		terrain := chunk.New(world.DefaultBlockRegistry, world.Nether.Range())
 		g.prepareHeights(int(row.X>>4), int(row.Z>>4), terrain, &scratch, nil)
 		var column [128]uint32
-		g.javaBaseColumn(row.X, row.Z, &column)
+		g.baseColumn(row.X, row.Z, &column)
 		if len(row.Material) != len(column) {
 			t.Fatalf("invalid source column length %d", len(row.Material))
 		}
@@ -62,7 +62,7 @@ func TestNetherRawTerrainJava263(t *testing.T) {
 	}
 }
 
-func TestNetherTerrainPipelineJava263(t *testing.T) {
+func TestNetherTerrainPipelineReference(t *testing.T) {
 	// Actual ChunkGenerator.createReferences and NoiseBasedChunkGenerator.buildTerrain,
 	// including source beard, MaterialSystem, configured carvers and loaded block tags.
 	// Source BlockState.CODEC encoded every palette entry as its default-state name.
@@ -100,7 +100,7 @@ func TestNetherTerrainPipelineJava263(t *testing.T) {
 						state := world.NativeStateAt(terrain, x, y, z)
 						symbol, ok := palette[uint64(state.Block)<<32|uint64(state.Liquid)]
 						if !ok {
-							decoded, err := world.JavaState(world.DefaultBlockRegistry, state)
+							decoded, err := world.CanonicalState(world.DefaultBlockRegistry, state)
 							t.Fatalf("state outside Java palette at %d,%d,%d: native=%+v Java=%+v error=%v", x, y, z, state, decoded, err)
 						}
 						output[index] = symbol

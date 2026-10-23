@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -483,7 +483,7 @@ func offspringAttribute(a, b float64, r [2]float64) float64 {
 
 // randomizeHorse ports finalizeSpawn and randomizeAttributes of the horse
 // species with the random of the spawn.
-func (b *MountBehaviour) randomizeHorse(m *Mount, random *java26.Random) {
+func (b *MountBehaviour) randomizeHorse(m *Mount, random *vanilla.Random) {
 	group := m.H().SpawnGroup()
 	data, grouped := mountSpawnGroup{}, false
 	if group != nil {
@@ -549,12 +549,12 @@ func (b *MountBehaviour) randomizeHorse(m *Mount, random *java26.Random) {
 }
 
 // horseMaxHealth ports AbstractHorse.generateMaxHealth.
-func horseMaxHealth(random *java26.Random) float64 {
+func horseMaxHealth(random *vanilla.Random) float64 {
 	return float64(15 + random.NextInt(8) + random.NextInt(9))
 }
 
 // horseJumpStrength ports AbstractHorse.generateJumpStrength.
-func horseJumpStrength(random *java26.Random) float64 {
+func horseJumpStrength(random *vanilla.Random) float64 {
 	return float64(float32(.4)) + random.NextDouble()*.2 + random.NextDouble()*.2 + random.NextDouble()*.2
 }
 

@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -159,7 +159,7 @@ func javaPlant06FaceFull(state uint32, face cube.Face) bool {
 	if javaGenerationShape(state).Attachment&(1<<uint(face)) != 0 {
 		return true
 	}
-	full, err := javadata.GenerationCollisionFaceCoversRectangleID(state, int(face), 0, 0, 1, 1)
+	full, err := gamedata.GenerationCollisionFaceCoversRectangleID(state, int(face), 0, 0, 1, 1)
 	if err != nil {
 		panic(err)
 	}
@@ -236,7 +236,7 @@ func javaPlant06SeaPickleSurvival(c *javaShapeContext, _ uint32, pos cube.Pos) b
 	if javaGenerationShape(below).Sturdy&(1<<uint(cube.FaceUp)) != 0 {
 		return true
 	}
-	nonEmpty, err := javadata.GenerationCollisionFaceNonEmptyID(below, int(cube.FaceUp))
+	nonEmpty, err := gamedata.GenerationCollisionFaceNonEmptyID(below, int(cube.FaceUp))
 	if err != nil {
 		panic(err)
 	}

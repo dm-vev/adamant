@@ -7,8 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
@@ -29,7 +29,7 @@ func (copperGolemType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entity
 	hash := fnv.New64a()
 	_, _ = hash.Write([]byte(h.UUID().String()))
 	b := golem.b()
-	b.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+	b.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	b.cooldown = 60 + b.randomInt(41)
 	return golem
 }
@@ -129,7 +129,7 @@ type CopperGolemBehaviour struct {
 	effects              *EffectManager
 	mc                   *MovementComputer
 	speed                float64
-	random               java26.Random
+	random               vanilla.Random
 	weather, state       int
 	waxed, dead          bool
 	nextWeatheringTick   int64
@@ -184,7 +184,7 @@ func (*CopperGolem) SpeciesType() world.EntityType { return CopperGolemType }
 func (c *CopperGolem) b() *CopperGolemBehaviour    { return c.Behaviour().(*CopperGolemBehaviour) }
 
 // FinalizeSpawn plays the one-time creation sound.
-func (c *CopperGolem) FinalizeSpawn(_ string, _ *java26.Random) {
+func (c *CopperGolem) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	c.tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem.spawn", Volume: 1, Pitch: 1})
 }
 

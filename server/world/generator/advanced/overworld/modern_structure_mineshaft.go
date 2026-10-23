@@ -3,31 +3,31 @@ package overworld
 import (
 	"fmt"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"strings"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("mineshaft", buildModernMineshaft) }
 
 type minePiece struct {
-	box                javastructure.Box
+	box                structure.Box
 	kind, facing, wood string
 	sections           int
 	rails, spider      bool
 	depth              int
-	entrances          []javastructure.Box
+	entrances          []structure.Box
 }
 
-func (p minePiece) Bounds() javastructure.Box { return p.box }
-func (p minePiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func (p minePiece) Bounds() structure.Box { return p.box }
+func (p minePiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if mineInvalid(p, clip, env) {
-		return javastructure.Placement{}, nil
+		return structure.Placement{}, nil
 	}
-	out := javastructure.Placement{}
+	out := structure.Placement{}
 	journal := newJournalStructureWorld(env, clip, &out)
 	put := func(x, y, z int32, name string, props map[string]any) {
 		if !mineCanBeReplaced(journal, p.wood, x, y, z) {
@@ -216,7 +216,7 @@ func (p minePiece) Place(clip javastructure.Bounds, env javastructure.ProcessorE
 					continue
 				}
 				fx, fy, fz := mineLocal(p, 1, -1, z)
-				shape, err := javadata.BlockGenerationShapeID(journal.getBlockID(fx, fy, fz))
+				shape, err := gamedata.BlockGenerationShapeID(journal.getBlockID(fx, fy, fz))
 				if err != nil {
 					panic(err)
 				}
@@ -359,7 +359,7 @@ func mineTransformState(pieceDirection string, state world.BlockState) world.Blo
 	return state
 }
 func mineJournalName(j *journalStructureWorld, x, y, z int32) string {
-	name, ok := javadata.BlockStateName(j.getBlockID(x, y, z))
+	name, ok := gamedata.BlockStateName(j.getBlockID(x, y, z))
 	if !ok {
 		panic("overworld: unknown mineshaft source block state")
 	}
@@ -373,7 +373,7 @@ func mineJournalAir(j *journalStructureWorld, x, y, z int32) bool {
 	return false
 }
 func mineDirectName(j *journalStructureWorld, x, y, z int32) string {
-	name, ok := javadata.BlockStateName(j.stateID(x, y, z))
+	name, ok := gamedata.BlockStateName(j.stateID(x, y, z))
 	if !ok {
 		panic("overworld: unknown mineshaft source block state")
 	}
@@ -395,24 +395,24 @@ func mineCanBeReplaced(j *journalStructureWorld, wood string, x, y, z int32) boo
 	return name != planks && name != log && name != fence && name != "minecraft:iron_chain"
 }
 func mineLiquidState(id uint32) bool {
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		panic("overworld: unknown mineshaft liquid-query state")
 	}
 	if name == "minecraft:water" || name == "minecraft:lava" {
 		return true
 	}
-	waterlogged, ok := javadata.BlockStateBool(id, "waterlogged")
+	waterlogged, ok := gamedata.BlockStateBool(id, "waterlogged")
 	return ok && waterlogged
 }
-func mineLiquid(env javastructure.ProcessorEnvironment, x, y, z int32) bool {
-	id, err := env.JavaBlockStateID(x, y, z)
+func mineLiquid(env structure.ProcessorEnvironment, x, y, z int32) bool {
+	id, err := env.BlockStateID(x, y, z)
 	if err != nil {
 		panic(err)
 	}
 	return mineLiquidState(id)
 }
-func mineInvalid(p minePiece, clip javastructure.Bounds, env javastructure.ProcessorEnvironment) bool {
+func mineInvalid(p minePiece, clip structure.Bounds, env structure.ProcessorEnvironment) bool {
 	b := p.box
 	x0 := max32(b.Min[0]-1, clip.Min[0])
 	x1 := min32(b.Max[0]+1, clip.Max[0])
@@ -423,8 +423,8 @@ func mineInvalid(p minePiece, clip javastructure.Bounds, env javastructure.Proce
 	if x0 > x1 || y0 > y1 || z0 > z1 {
 		return false
 	}
-	biome := env.JavaBiomeAt((x0+x1)/2, (y0+y1)/2, (z0+z1)/2)
-	blocked, err := javadata.BiomeTagContains("minecraft:mineshaft_blocking", biome)
+	biome := env.BiomeAt((x0+x1)/2, (y0+y1)/2, (z0+z1)/2)
+	blocked, err := gamedata.BiomeTagContains("minecraft:mineshaft_blocking", biome)
 	if err != nil {
 		panic(err)
 	}
@@ -466,7 +466,7 @@ func mineFalling(name string) bool {
 	}
 	return strings.HasSuffix(name, "_concrete_powder")
 }
-func mineSupportColumn(p minePiece, env javastructure.ProcessorEnvironment, journal *journalStructureWorld, x, y, z int32, log, fence string) {
+func mineSupportColumn(p minePiece, env structure.ProcessorEnvironment, journal *journalStructureWorld, x, y, z int32, log, fence string) {
 	wx, wy, wz := mineLocal(p, x, y, z)
 	if !journal.inside(wx, wy, wz) {
 		return
@@ -500,18 +500,18 @@ func mineSupportColumn(p minePiece, env javastructure.ProcessorEnvironment, jour
 	}
 }
 func mineOceanFloorState(id uint32) bool {
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		panic("overworld: unknown mineshaft heightmap block state")
 	}
-	matches, err := javadata.BlockTagContains("minecraft:blocks_motion_in_heightmap", name)
+	matches, err := gamedata.BlockTagContains("minecraft:blocks_motion_in_heightmap", name)
 	if err != nil {
 		panic(err)
 	}
 	return matches
 }
 
-func mineOceanFloorHeight(env javastructure.ProcessorEnvironment, journal *journalStructureWorld, x, z int32) int32 {
+func mineOceanFloorHeight(env structure.ProcessorEnvironment, journal *journalStructureWorld, x, z int32) int32 {
 	baseHeight := env.BaseHeight(x, z, true)
 	height := baseHeight
 	topRemoved, highestAdded := false, height
@@ -541,14 +541,14 @@ func mineOceanFloorHeight(env javastructure.ProcessorEnvironment, journal *journ
 	return height
 }
 
-func mineInterior(p minePiece, clip javastructure.Bounds, env javastructure.ProcessorEnvironment, journal *journalStructureWorld, x, y, z int32) bool {
+func mineInterior(p minePiece, clip structure.Bounds, env structure.ProcessorEnvironment, journal *journalStructureWorld, x, y, z int32) bool {
 	wx, wy, wz := mineLocal(p, x, y+1, z)
 	return journal.inside(wx, wy, wz) && wy < mineOceanFloorHeight(env, journal, wx, wz)
 }
 func mineSturdy(journal *journalStructureWorld, x, y, z int32, face uint8) bool {
 	return journal.shape(x, y, z).Sturdy&(1<<face) != 0
 }
-func mineMaybeCobweb(p minePiece, clip javastructure.Bounds, env javastructure.ProcessorEnvironment, journal *journalStructureWorld, random *java26.Random, probability float32, x, y, z int32) {
+func mineMaybeCobweb(p minePiece, clip structure.Bounds, env structure.ProcessorEnvironment, journal *journalStructureWorld, random *vanilla.Random, probability float32, x, y, z int32) {
 	wx, wy, wz := mineLocal(p, x, y, z)
 	if !mineInterior(p, clip, env, journal, x, y, z) || random.NextFloat() >= probability {
 		return
@@ -570,7 +570,7 @@ func mineMaybeCobweb(p minePiece, clip javastructure.Bounds, env javastructure.P
 		}
 	}
 }
-func mineLootChest(p minePiece, out *javastructure.Placement, journal *journalStructureWorld, random *java26.Random, x, y, z int32, loot string) {
+func mineLootChest(p minePiece, out *structure.Placement, journal *journalStructureWorld, random *vanilla.Random, x, y, z int32, loot string) {
 	wx, wy, wz := mineLocal(p, x, y, z)
 	if !journal.inside(wx, wy, wz) || !mineDirectAir(journal, wx, wy, wz) || mineDirectAir(journal, wx, wy-1, wz) {
 		return
@@ -582,20 +582,20 @@ func mineLootChest(p minePiece, out *javastructure.Placement, journal *journalSt
 	rail := mineTransformState(p.facing, world.BlockState{Name: "minecraft:rail", Properties: map[string]any{"shape": shape, "waterlogged": false}})
 	journal.set(wx, wy, wz, rail)
 	lootSeed := random.NextLong()
-	out.Entities = append(out.Entities, javastructure.Entity{Pos: [3]float64{float64(wx) + 0.5, float64(wy) + 0.5, float64(wz) + 0.5}, BlockPos: [3]int32{wx, wy, wz}, NBT: map[string]any{"id": "minecraft:chest_minecart", "LootTable": loot, "LootTableSeed": lootSeed}, SpawnReason: "CHUNK_GENERATION"})
+	out.Entities = append(out.Entities, structure.Entity{Pos: [3]float64{float64(wx) + 0.5, float64(wy) + 0.5, float64(wz) + 0.5}, BlockPos: [3]int32{wx, wy, wz}, NBT: map[string]any{"id": "minecraft:chest_minecart", "LootTable": loot, "LootTableSeed": lootSeed}, SpawnReason: "CHUNK_GENERATION"})
 }
 
-type mineGraph struct { pieces []minePiece; boxes []javastructure.Box; r *java26.Random; wood string; origin [3]int32 }
+type mineGraph struct { pieces []minePiece; boxes []structure.Box; r *vanilla.Random; wood string; origin [3]int32 }
 
 func (g *mineGraph) add(p minePiece) bool { for _,b:=range g.boxes {if boxesOverlap(b,p.box){return false}};g.pieces=append(g.pieces,p);g.boxes=append(g.boxes,p.box);return true }
-func boxesOverlap(a,b javastructure.Box)bool {for i:=range 3 {if a.Max[i]<b.Min[i]||b.Max[i]<a.Min[i] {return false}};return true}
+func boxesOverlap(a,b structure.Box)bool {for i:=range 3 {if a.Max[i]<b.Min[i]||b.Max[i]<a.Min[i] {return false}};return true}
 func (g *mineGraph) child(x, y, z int32, dir string, depth int) {
 	if depth > 9 || abs32(x-g.origin[0]) > 80 || abs32(z-g.origin[2]) > 80 {
 		return
 	}
 	selection := g.r.NextInt(100)
 	p := minePiece{wood: g.wood, facing: dir, depth: depth}
-	var box javastructure.Box
+	var box structure.Box
 	if selection >= 80 {
 		height := int32(2)
 		if g.r.NextInt(4) == 0 {
@@ -662,7 +662,7 @@ func (g *mineGraph) child(x, y, z int32, dir string, depth int) {
 	}
 	g.branch(p, depth)
 }
-func(g *mineGraph)canAdd(box javastructure.Box)bool{for _,other:=range g.boxes{if boxesOverlap(other,box){return false}};return true}
+func(g *mineGraph)canAdd(box structure.Box)bool{for _,other:=range g.boxes{if boxesOverlap(other,box){return false}};return true}
 func (g *mineGraph) branch(p minePiece, depth int) {
 	b := p.box
 	if p.kind == "room" {
@@ -838,7 +838,7 @@ func (g *mineGraph) branch(p minePiece, depth int) {
 		g.child(x, y, z, p.facing, depth+1)
 	}
 }
-func mbox(x0,y0,z0,x1,y1,z1 int32)javastructure.Box{return javastructure.Box{Min:[3]int32{x0,y0,z0},Max:[3]int32{x1,y1,z1}}}
+func mbox(x0,y0,z0,x1,y1,z1 int32)structure.Box{return structure.Box{Min:[3]int32{x0,y0,z0},Max:[3]int32{x1,y1,z1}}}
 func abs32(v int32)int32{if v<0{return -v};return v}
 func max32(a,b int32)int32{if a>b{return a};return b}
 func min32(a,b int32)int32{if a<b{return a};return b}
@@ -892,11 +892,11 @@ func buildModernMineshaft(in modernStructureBuildInput) (modernStructureStart, b
 	}
 	center = emptyStructureBox()
 	pieces := make([]modernStructurePiece, len(g.pieces))
-	rigid := make([]javastructure.RigidPiece, len(g.pieces))
+	rigid := make([]structure.RigidPiece, len(g.pieces))
 	for i, p := range g.pieces {
 		center = unionStructureBox(center, p.box)
 		pieces[i] = p
-		rigid[i] = javastructure.RigidPiece{Bounds: p.box, Adjustment: javastructure.TerrainNone}
+		rigid[i] = structure.RigidPiece{Bounds: p.box, Adjustment: structure.TerrainNone}
 	}
-	return modernStructureStart{name: in.name, pieces: pieces, rigid: rigid, box: center, terrain: javastructure.TerrainNone}, true, nil
+	return modernStructureStart{name: in.name, pieces: pieces, rigid: rigid, box: center, terrain: structure.TerrainNone}, true, nil
 }

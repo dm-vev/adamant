@@ -20,7 +20,7 @@ func (n *netherColumnNoise) sample(x, z int32, source func(int32, int32) float32
 	return n.value
 }
 
-func (g *Nether) applyJavaNetherMaterial(chunkX, chunkZ int, c *chunk.Chunk) {
+func (g *Nether) applyNetherMaterial(chunkX, chunkZ int, c *chunk.Chunk) {
 	minY, maxY := c.Range().Min(), c.Range().Max()
 	if minY < 0 {
 		minY = 0

@@ -3,16 +3,16 @@ package overworld
 import (
 	"fmt"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("stronghold", buildModernStronghold) }
 
 type strongholdPiece struct {
-	box                                    javastructure.Box
+	box                                    structure.Box
 	kind, dir, door                        string
 	depth                                  int
 	leftLow, leftHigh, rightLow, rightHigh bool
@@ -21,15 +21,15 @@ type strongholdPiece struct {
 	journal                                *journalStructureWorld
 }
 
-func(p strongholdPiece)Bounds()javastructure.Box{return p.box}
-func (p strongholdPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func(p strongholdPiece)Bounds()structure.Box{return p.box}
+func (p strongholdPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if env.Random == nil {
-		return javastructure.Placement{}, fmt.Errorf("stronghold placement requires shared Java random")
+		return structure.Placement{}, fmt.Errorf("stronghold placement requires shared random")
 	}
 	if env.PieceState == nil {
-		return javastructure.Placement{}, fmt.Errorf("stronghold placement requires persisted piece state")
+		return structure.Placement{}, fmt.Errorf("stronghold placement requires persisted piece state")
 	}
-	out := javastructure.Placement{}
+	out := structure.Placement{}
 	journal := newJournalStructureWorld(env, clip, &out)
 	p.journal = journal
 	put := func(x, y, z int32, n string, props map[string]any) {
@@ -50,7 +50,7 @@ func (p strongholdPiece) Place(clip javastructure.Bounds, env javastructure.Proc
 					pos := strongholdLocal(b, p.dir, x, y, z)
 					wx, wy, wz := pos[0], pos[1], pos[2]
 					if p.kind != "portal" {
-						name, ok := javadata.BlockStateName(journal.getBlockID(wx, wy, wz))
+						name, ok := gamedata.BlockStateName(journal.getBlockID(wx, wy, wz))
 						if ok && (name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air") {
 							continue
 						}
@@ -451,7 +451,7 @@ func (p strongholdPiece) Place(clip javastructure.Bounds, env javastructure.Proc
 	return out, nil
 }
 
-func strongholdFixedBox(p strongholdPiece, clip javastructure.Bounds, out *javastructure.Placement, x0, y0, z0, x1, y1, z1 int32, name string, props map[string]any) {
+func strongholdFixedBox(p strongholdPiece, clip structure.Bounds, out *structure.Placement, x0, y0, z0, x1, y1, z1 int32, name string, props map[string]any) {
 	for y := y0; y <= y1; y++ {
 		for x := x0; x <= x1; x++ {
 			for z := z0; z <= z1; z++ {
@@ -461,10 +461,10 @@ func strongholdFixedBox(p strongholdPiece, clip javastructure.Bounds, out *javas
 	}
 }
 
-func strongholdLocal(b javastructure.Box,dir string,x,y,z int32)[3]int32{
+func strongholdLocal(b structure.Box,dir string,x,y,z int32)[3]int32{
 	switch dir{case "north":return [3]int32{b.Min[0]+x,b.Min[1]+y,b.Max[2]-z};case "south":return [3]int32{b.Min[0]+x,b.Min[1]+y,b.Min[2]+z};case "west":return [3]int32{b.Max[0]-z,b.Min[1]+y,b.Min[2]+x};default:return [3]int32{b.Min[0]+z,b.Min[1]+y,b.Min[2]+x}}
 }
-func strongholdOpening(p strongholdPiece, clip javastructure.Bounds, out *javastructure.Placement, x0, y0, z0, x1, y1, z1 int32) {
+func strongholdOpening(p strongholdPiece, clip structure.Bounds, out *structure.Placement, x0, y0, z0, x1, y1, z1 int32) {
 	for y := y0; y <= y1; y++ {
 		for x := x0; x <= x1; x++ {
 			for z := z0; z <= z1; z++ {
@@ -540,7 +540,7 @@ func strongholdRotateDirection(dir, local string) string {
 	}
 	return order[(start+offset)%len(order)]
 }
-func strongholdPutLocal(p strongholdPiece, clip javastructure.Bounds, out *javastructure.Placement, x, y, z int32, name string, props map[string]any) {
+func strongholdPutLocal(p strongholdPiece, clip structure.Bounds, out *structure.Placement, x, y, z int32, name string, props map[string]any) {
 	pos := strongholdLocal(p.box, p.dir, x, y, z)
 	if props == nil && (name == "water" || name == "lava") {
 		props = map[string]any{"level": int32(0)}
@@ -555,7 +555,7 @@ func strongholdPutLocal(p strongholdPiece, clip javastructure.Bounds, out *javas
 	if pos[0] < clip.Min[0] || pos[0] > clip.Max[0] || pos[1] < clip.Min[1] || pos[1] > clip.Max[1] || pos[2] < clip.Min[2] || pos[2] > clip.Max[2] {
 		return
 	}
-	out.Blocks = append(out.Blocks, javastructure.Block{Pos: pos, State: world.BlockState{Name: "minecraft:" + name, Properties: props}})
+	out.Blocks = append(out.Blocks, structure.Block{Pos: pos, State: world.BlockState{Name: "minecraft:" + name, Properties: props}})
 }
 func strongholdShapeCheckBlock(name string) bool {
 	switch name {
@@ -565,16 +565,16 @@ func strongholdShapeCheckBlock(name string) bool {
 		return false
 	}
 }
-func strongholdPutBars(p strongholdPiece, clip javastructure.Bounds, out *javastructure.Placement, x, y, z int32, north, south, east, west bool) {
+func strongholdPutBars(p strongholdPiece, clip structure.Bounds, out *structure.Placement, x, y, z int32, north, south, east, west bool) {
 	strongholdPutLocal(p, clip, out, x, y, z, "iron_bars", map[string]any{"north": north, "south": south, "east": east, "west": west, "waterlogged": false})
 }
-func strongholdPutFenceLocal(p strongholdPiece, clip javastructure.Bounds, out *javastructure.Placement, x, y, z int32, north, south, east, west bool) {
+func strongholdPutFenceLocal(p strongholdPiece, clip structure.Bounds, out *structure.Placement, x, y, z int32, north, south, east, west bool) {
 	strongholdPutLocal(p, clip, out, x, y, z, "oak_fence", map[string]any{"north": north, "south": south, "east": east, "west": west, "waterlogged": false})
 }
-func strongholdSelectedBox(p strongholdPiece,clip javastructure.Bounds,out *javastructure.Placement,random *java26.Random,x0,y0,z0,x1,y1,z1 int32){
+func strongholdSelectedBox(p strongholdPiece,clip structure.Bounds,out *structure.Placement,random *vanilla.Random,x0,y0,z0,x1,y1,z1 int32){
 	for y:=y0;y<=y1;y++{for x:=x0;x<=x1;x++{for z:=z0;z<=z1;z++{edge:=x==x0||x==x1||y==y0||y==y1||z==z0||z==z1;if !edge{strongholdPutLocal(p,clip,out,x,y,z,"cave_air",nil);continue};roll:=random.NextFloat();name:="stone_bricks";if roll<0.2{name="cracked_stone_bricks"}else if roll<0.5{name="mossy_stone_bricks"}else if roll<0.55{name="infested_stone_bricks"};strongholdPutLocal(p,clip,out,x,y,z,name,nil)}}}
 }
-func strongholdDoorPlacement(p strongholdPiece, clip javastructure.Bounds, out *javastructure.Placement) {
+func strongholdDoorPlacement(p strongholdPiece, clip structure.Bounds, out *structure.Placement) {
 	footX := int32(1)
 	footY := int32(1)
 	if p.kind == "crossing" || p.kind == "library" || p.kind == "five" || p.kind == "portal" {

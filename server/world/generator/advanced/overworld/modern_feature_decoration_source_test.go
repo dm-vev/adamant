@@ -17,7 +17,7 @@ import (
 // by all nine applyBiomeDecoration origins in one WorldGenRegion, the
 // composition DecorateInOneRegion runs. Structures are disabled on both
 // sides; noise, surfaces, carvers and every available placed feature remain on.
-func TestOverworldDecorationMatchesJava263(t *testing.T) {
+func TestOverworldDecorationMatchesReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_decoration.json")
 	if err != nil {
@@ -83,7 +83,7 @@ func overworldSourceStateHash(t *testing.T, c *chunk.Chunk) string {
 				native := world.NativeStateAt(c, x, y, z)
 				encoded, ok := cache[native]
 				if !ok {
-					state, err := world.JavaState(c.BlockRegistry(), native)
+					state, err := world.CanonicalState(c.BlockRegistry(), native)
 					if err != nil {
 						t.Fatal(err)
 					}

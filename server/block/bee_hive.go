@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -381,8 +381,8 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 	}
 	front := pos.Side(face)
 	frontBlocked := len(tx.Block(front).Model().BBox(front, tx)) != 0
-	if id, err := tx.JavaBlockStateID(front); err == nil {
-		shape, err := javadata.BlockGenerationShapeID(id)
+	if id, err := tx.BlockStateID(front); err == nil {
+		shape, err := gamedata.BlockGenerationShapeID(id)
 		if err != nil {
 			panic(err)
 		}
@@ -394,7 +394,7 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 	if state := hiveBeeJavaState(data); state != nil {
 		if flower := hiveFlowerPos(tx.Block(pos)); flower != nil {
 			if _, exists := state["flower_pos"]; !exists {
-				if !javaFlowerChance || tx.JavaRandom().NextFloat() < 0.9 {
+				if !javaFlowerChance || tx.RegionRandom().NextFloat() < 0.9 {
 					state["flower_pos"] = flower
 				}
 			}

@@ -10,7 +10,7 @@ import (
 
 func farmer(t *testing.T, tx *world.Tx, xp int32) *entity.Villager {
 	t.Helper()
-	h, err := entity.NewFromJavaNBT(map[string]any{"id": "minecraft:villager", "Xp": xp,
+	h, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:villager", "Xp": xp,
 		"VillagerData": map[string]any{"type": "minecraft:plains", "profession": "minecraft:farmer", "level": int32(1)}},
 		world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}, SpawnFinalized: true})
 	if err != nil {

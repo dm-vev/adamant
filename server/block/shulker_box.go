@@ -283,9 +283,9 @@ func (s ShulkerBox) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:" + s.Type.String(), nil
 }
 
-// WithJavaBlockState applies Java shulker state without discarding stored
+// WithCanonicalState applies Java shulker state without discarding stored
 // inventory, custom name, or actor lifecycle state.
-func (s ShulkerBox) WithJavaBlockState(name string, properties map[string]any) (world.Block, error) {
+func (s ShulkerBox) WithCanonicalState(name string, properties map[string]any) (world.Block, error) {
 	name = strings.TrimPrefix(name, "minecraft:")
 	colourName := strings.TrimSuffix(name, "_shulker_box")
 	if name == "shulker_box" {

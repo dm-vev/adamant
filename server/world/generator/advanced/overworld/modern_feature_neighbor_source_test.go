@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -74,7 +74,7 @@ func buildNeighborSourceTerrain(t *testing.T, tc neighborSourceCase) neighborSou
 	}
 	return s
 }
-func TestRandomNeighborSpreadMatchesJava263Source(t *testing.T) {
+func TestRandomNeighborSpreadMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_neighbor_spread_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -96,16 +96,16 @@ func TestRandomNeighborSpreadMatchesJava263Source(t *testing.T) {
 			result := world.GenerationResult{}
 			region := newFeatureRegion(&ModernFeatures{source: terrain}, c, target, &result)
 			region.SetOrigin(target[0], target[1])
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if got := placeModernRandomNeighborSpread(region, tc.Config, featurePos{tc.Origin[0], tc.Origin[1], tc.Origin[2]}, &random); got != tc.Placed {
 				t.Fatalf("placed=%v Source=%v", got, tc.Placed)
 			}
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, state := range tc.States {
-				id, err := javadata.BlockStateID(state.State, state.Properties)
+				id, err := gamedata.BlockStateID(state.State, state.Properties)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -117,7 +117,7 @@ func TestRandomNeighborSpreadMatchesJava263Source(t *testing.T) {
 					t.Errorf("unexpected Source placement at %v", p)
 					continue
 				}
-				if got := n.CanonicalJavaID(c.BlockRegistry()); got != expected {
+				if got := n.CanonicalID(c.BlockRegistry()); got != expected {
 					t.Errorf("Source state at %v=%d want=%d", p, got, expected)
 				}
 				delete(want, p)

@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -114,7 +114,7 @@ func (d DaylightDetector) daylightSignal(pos cube.Pos, tx *world.Tx) int {
 			offset = float32(math.Pi * 2)
 		}
 		sunAngle += (offset - sunAngle) * 0.2
-		target = int(math.Floor(float64(float32(target)*java26.Cos(float64(sunAngle)) + 0.5)))
+		target = int(math.Floor(float64(float32(target)*vanilla.Cos(float64(sunAngle)) + 0.5)))
 	}
 	return min(max(target, 0), 15)
 }

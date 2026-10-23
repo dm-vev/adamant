@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -40,7 +40,7 @@ type fallenTreeSourceFixture struct {
 	Cases  []fallenTreeSourceCase `json:"cases"`
 }
 
-func TestFallenTreeFeatureMatchesJava263Source(t *testing.T) {
+func TestFallenTreeFeatureMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_fallen_tree_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -66,20 +66,20 @@ func TestFallenTreeFeatureMatchesJava263Source(t *testing.T) {
 			if tc.RejectWrites {
 				region.SetOrigin(target[0]+3, target[1]+3)
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if placed := placeModernFallenTree(region, tc.Config, origin, &random); placed != tc.Placed {
 				t.Errorf("placed=%v Source=%v", placed, tc.Placed)
 			}
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, row := range tc.States {
-				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalJavaID(c.BlockRegistry())
+				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalID(c.BlockRegistry())
 			}
 			for pos, state := range region.overlayByPos() {
-				got := state.CanonicalJavaID(c.BlockRegistry())
-				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
+				got := state.CanonicalID(c.BlockRegistry())
+				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalID(c.BlockRegistry()) {
 					continue
 				}
 				expected, exists := want[pos]
@@ -123,10 +123,10 @@ func TestFallenTreeFeatureMatchesJava263Source(t *testing.T) {
 				for i, raw := range bees {
 					source := raw.(map[string]any)
 					occupant := occupants[i].(map[string]any)
-					java := occupant["adamant:java"].(map[string]any)
+					canonical := occupant["adamant:java"].(map[string]any)
 					for _, key := range [...]string{"ticks_in_hive", "min_ticks_in_hive"} {
-						if java[key] != int32(featureNumber(source[key])) {
-							t.Errorf("bee[%d] %s=%v Source=%v", i, key, java[key], source[key])
+						if canonical[key] != int32(featureNumber(source[key])) {
+							t.Errorf("bee[%d] %s=%v Source=%v", i, key, canonical[key], source[key])
 						}
 					}
 					if occupant["TicksLeftToStay"] != int32(actor.FirstEligibleTicks[i]) {

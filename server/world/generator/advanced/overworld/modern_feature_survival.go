@@ -2,7 +2,7 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -13,9 +13,9 @@ func featureWouldSurvive(region *featureRegion, p featurePos, value any) bool {
 	if !ok {
 		panic("overworld: malformed would_survive state")
 	}
-	id, err := javadata.BlockStateID(state.State.Name, state.State.Properties)
+	id, err := gamedata.BlockStateID(state.State.Name, state.State.Properties)
 	if err != nil {
 		panic(err)
 	}
-	return world.JavaGenerationBlockCanSurvive(region, id, cube.Pos{int(p.x), int(p.y), int(p.z)})
+	return world.GenerationBlockCanSurvive(region, id, cube.Pos{int(p.x), int(p.y), int(p.z)})
 }

@@ -2,11 +2,11 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/world/biome"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // Java climate indices map to the registered Bedrock biome IDs, not Java IDs.
-var modernBiomeIDs = [java26.OverworldBiomeCount]uint32{
+var modernBiomeIDs = [vanilla.OverworldBiomeCount]uint32{
 	uint32(biome.MushroomFields{}.EncodeBiome()), // mushroom_fields
 	uint32(biome.DeepFrozenOcean{}.EncodeBiome()), // deep_frozen_ocean
 	uint32(biome.FrozenOcean{}.EncodeBiome()), // frozen_ocean
@@ -65,9 +65,9 @@ var modernBiomeIDs = [java26.OverworldBiomeCount]uint32{
 	uint32(biome.DeepDark{}.EncodeBiome()), // deep_dark
 }
 
-var modernJavaBiomeNames = func() (names [java26.OverworldBiomeCount]string) {
+var modernBiomeNames = func() (names [vanilla.OverworldBiomeCount]string) {
 	for i := range names {
-		names[i] = java26.OverworldBiomeName(uint8(i))
+		names[i] = vanilla.OverworldBiomeName(uint8(i))
 	}
 	return
 }()

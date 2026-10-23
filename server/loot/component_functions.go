@@ -58,7 +58,7 @@ func lootCopyState(raw map[string]any, components map[string]any, c *Context) er
 	if c.BlockState == nil {
 		return nil
 	}
-	state, err := world.JavaStateOf(c.BlockState)
+	state, err := world.CanonicalStateOf(c.BlockState)
 	if err != nil {
 		return err
 	}

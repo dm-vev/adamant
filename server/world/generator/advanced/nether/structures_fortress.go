@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type structureBB struct {
@@ -121,7 +121,7 @@ type fortressRegion interface {
 
 type journalFortressRegion struct {
 	chunkX, chunkZ int
-	env            javastructure.ProcessorEnvironment
+	env            structure.ProcessorEnvironment
 	registry       world.BlockRegistry
 	writes         map[cube.Pos]uint32
 }
@@ -146,11 +146,11 @@ func (r *journalFortressRegion) SetNativeState(x uint8, y int16, z uint8, state 
 	r.writes[cube.Pos{r.chunkX*16 + int(x), int(y), r.chunkZ*16 + int(z)}] = state.Block
 }
 
-func setBlockWorld(c fortressRegion, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *javastructure.Placement) {
+func setBlockWorld(c fortressRegion, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *structure.Placement) {
 	writeFortressBlockWorld(c, chunkX, chunkZ, worldX, worldY, worldZ, rid, placement, true)
 }
 
-func writeFortressBlockWorld(c fortressRegion, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *javastructure.Placement, blockUpdates bool) {
+func writeFortressBlockWorld(c fortressRegion, chunkX, chunkZ, worldX, worldY, worldZ int, rid uint32, placement *structure.Placement, blockUpdates bool) {
 	if worldX>>4 != chunkX || worldZ>>4 != chunkZ {
 		return
 	}
@@ -164,11 +164,11 @@ func writeFortressBlockWorld(c fortressRegion, chunkX, chunkZ, worldX, worldY, w
 		return
 	}
 	pos := cube.Pos{worldX, worldY, worldZ}
-	state, err := world.JavaState(c.BlockRegistry(), world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
+	state, err := world.CanonicalState(c.BlockRegistry(), world.NativeState{Block: rid, Liquid: c.BlockRegistry().AirRuntimeID()})
 	if err != nil {
 		panic(err)
 	}
-	placement.Blocks = append(placement.Blocks, javastructure.Block{Pos: [3]int32{int32(worldX), int32(worldY), int32(worldZ)}, State: state})
+	placement.Blocks = append(placement.Blocks, structure.Block{Pos: [3]int32{int32(worldX), int32(worldY), int32(worldZ)}, State: state})
 	if !blockUpdates {
 		return
 	}
@@ -215,16 +215,16 @@ func fortressShapeCheckBlock(name string) bool {
 
 type bridgePiece interface {
 	pieceBase() *bridgePieceBase
-	buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random)
-	addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *java26.Random, g *Nether) bool
+	buildComponent(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random)
+	addComponentParts(c fortressRegion, chunkX, chunkZ int, sbb structureBB, r *vanilla.Random, g *Nether) bool
 }
 
 type bridgePieceBase struct {
 	bb            structureBB
 	facing        cube.Direction
 	componentType int
-	placement     *javastructure.Placement
-	state         *javastructure.StructurePieceState
+	placement     *structure.Placement
+	state         *structure.StructurePieceState
 }
 
 func (p *bridgePieceBase) pieceBase() *bridgePieceBase { return p }
@@ -353,7 +353,7 @@ func isAboveGround(bb structureBB) bool {
 
 // --- Fortress structure rendering ---
 
-func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *java26.Random, placement *javastructure.Placement, transient bool) {
+func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *vanilla.Random, placement *structure.Placement, transient bool) {
 	const scanRange = 8
 	chunkMinX, chunkMinZ := chunkX<<4, chunkZ<<4
 	chunkMaxX, chunkMaxZ := chunkMinX+15, chunkMinZ+15
@@ -398,12 +398,12 @@ func (g *Nether) applyNetherBridgeTo(chunkX, chunkZ int, c fortressRegion, r *ja
 				}
 				continue
 			}
-			var scratch javastructure.StructurePieceState
+			var scratch structure.StructurePieceState
 			for i, cached := range s.pieces {
 				if !cached.pieceBase().bb.intersects(chunkBB) {
 					continue
 				}
-				var pieceState *javastructure.StructurePieceState
+				var pieceState *structure.StructurePieceState
 				if state != nil {
 					pieceState = &state.pieces[i]
 					if transient {
@@ -429,14 +429,14 @@ func hasMutableFortressState(pieces []bridgePiece) bool {
 	return false
 }
 
-func (g *Nether) placeFortressStructureStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (g *Nether) placeFortressStructureStep(pos world.ChunkPos, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	if env.Random == nil {
-		panic("nether: Java structure placement has no step random source")
+		panic("nether: structure placement has no step random source")
 	}
 	if env.BaseBlock == nil {
 		panic("nether: fortress placement requires base-block queries")
 	}
-	placement := javastructure.Placement{}
+	placement := structure.Placement{}
 	region := &journalFortressRegion{
 		chunkX:   int(pos[0]),
 		chunkZ:   int(pos[1]),
@@ -452,7 +452,7 @@ func (g *Nether) placeFortressStructureStep(pos world.ChunkPos, env javastructur
 
 // renderFortressPiece leaves cached source geometry untouched. One-time flags
 // are shared per start during normal generation and scratch-only during preview.
-func renderFortressPiece(p bridgePiece, c fortressRegion, chunkX, chunkZ int, bb structureBB, r *java26.Random, g *Nether, placement *javastructure.Placement, state *javastructure.StructurePieceState) {
+func renderFortressPiece(p bridgePiece, c fortressRegion, chunkX, chunkZ int, bb structureBB, r *vanilla.Random, g *Nether, placement *structure.Placement, state *structure.StructurePieceState) {
 	switch piece := p.(type) {
 	case *netherBridgeCorridor:
 		rendered := *piece
@@ -593,7 +593,7 @@ type netherBridgeStart struct {
 	bb                  structureBB
 }
 
-func newNetherBridgeStart(r *java26.Random, chunkX, chunkZ int, g *Nether) *netherBridgeStart {
+func newNetherBridgeStart(r *vanilla.Random, chunkX, chunkZ int, g *Nether) *netherBridgeStart {
 	startPiece := newBridgeCrossing3Start(r, (chunkX<<4)+2, (chunkZ<<4)+2, g)
 	s := &netherBridgeStart{
 		base:             startPiece,
@@ -629,7 +629,7 @@ func (s *netherBridgeStart) updateBoundingBox() {
 	s.bb = bb
 }
 
-func (s *netherBridgeStart) setRandomHeight(r *java26.Random, minY, maxY int) {
+func (s *netherBridgeStart) setRandomHeight(r *vanilla.Random, minY, maxY int) {
 	i := maxY - minY + 1 - s.bb.ySize()
 	var j int
 	if i > 1 {
@@ -659,7 +659,7 @@ func (p *bridgePieceBase) getTotalWeight(weights []bridgePieceWeight) int {
 	return total
 }
 
-func (p *bridgePieceBase) generatePiece(start *netherBridgeStart, weights *[]bridgePieceWeight, pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
+func (p *bridgePieceBase) generatePiece(start *netherBridgeStart, weights *[]bridgePieceWeight, pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int) bridgePiece {
 	total := p.getTotalWeight(*weights)
 	if total <= 0 || depth > 30 {
 		return createBridgePiece(bridgeEnd, pieces, r, x, y, z, facing, depth)
@@ -694,7 +694,7 @@ func (p *bridgePieceBase) generatePiece(start *netherBridgeStart, weights *[]bri
 	return createBridgePiece(bridgeEnd, pieces, r, x, y, z, facing, depth)
 }
 
-func (p *bridgePieceBase) generateAndAddPiece(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random, x, y, z int, facing cube.Direction, depth int, useSecondary bool) bridgePiece {
+func (p *bridgePieceBase) generateAndAddPiece(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random, x, y, z int, facing cube.Direction, depth int, useSecondary bool) bridgePiece {
 	if math.Abs(float64(x-start.bb.minX)) > 112 || math.Abs(float64(z-start.bb.minZ)) > 112 {
 		return createBridgePiece(bridgeEnd, pieces, r, x, y, z, facing, depth)
 	}
@@ -712,7 +712,7 @@ func (p *bridgePieceBase) generateAndAddPiece(start *netherBridgeStart, pieces [
 	return piece
 }
 
-func (p *bridgePieceBase) getNextComponentNormal(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random, xOffset, yOffset int, useSecondary bool) bridgePiece {
+func (p *bridgePieceBase) getNextComponentNormal(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random, xOffset, yOffset int, useSecondary bool) bridgePiece {
 	switch p.facing {
 	case cube.North:
 		return p.generateAndAddPiece(start, pieces, r, p.bb.minX+xOffset, p.bb.minY+yOffset, p.bb.minZ-1, p.facing, p.componentType, useSecondary)
@@ -727,7 +727,7 @@ func (p *bridgePieceBase) getNextComponentNormal(start *netherBridgeStart, piece
 	}
 }
 
-func (p *bridgePieceBase) getNextComponentX(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random, xOffset, yOffset int, useSecondary bool) bridgePiece {
+func (p *bridgePieceBase) getNextComponentX(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random, xOffset, yOffset int, useSecondary bool) bridgePiece {
 	switch p.facing {
 	case cube.North, cube.South:
 		return p.generateAndAddPiece(start, pieces, r, p.bb.minX-1, p.bb.minY+xOffset, p.bb.minZ+yOffset, cube.West, p.componentType, useSecondary)
@@ -738,7 +738,7 @@ func (p *bridgePieceBase) getNextComponentX(start *netherBridgeStart, pieces []b
 	}
 }
 
-func (p *bridgePieceBase) getNextComponentZ(start *netherBridgeStart, pieces []bridgePiece, r *java26.Random, xOffset, yOffset int, useSecondary bool) bridgePiece {
+func (p *bridgePieceBase) getNextComponentZ(start *netherBridgeStart, pieces []bridgePiece, r *vanilla.Random, xOffset, yOffset int, useSecondary bool) bridgePiece {
 	switch p.facing {
 	case cube.North, cube.South:
 		return p.generateAndAddPiece(start, pieces, r, p.bb.maxX+1, p.bb.minY+xOffset, p.bb.minZ+yOffset, cube.East, p.componentType, useSecondary)

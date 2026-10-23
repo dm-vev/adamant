@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -41,7 +41,7 @@ func readSteppedColumnOracle(t *testing.T) steppedColumnOracle {
 	return oracle
 }
 
-func TestSteppedColumnsMatchJava263(t *testing.T) {
+func TestSteppedColumnsMatchReference(t *testing.T) {
 	// Executed Java SteppedColumnClusterFeature, including weighted states,
 	// uneven ground, forbidden supports, continuation and exhausted searches.
 	for _, tc := range readSteppedColumnOracle(t).Clusters {
@@ -87,9 +87,9 @@ func TestSteppedColumnsMatchJava263(t *testing.T) {
 				"cluster_reach":    float64(1), "column_count": float64(2), "column_reach": columnReach,
 				"height": map[string]any{"type": "uniform", "min_inclusive": float64(2), "max_inclusive": float64(4)},
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Xoroshiro {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if placed := r.f.placeConfiguredData(r, "stepped_column_cluster", config, featurePos{8, 5, 8}, &random); placed != tc.Placed {
 				t.Errorf("placed=%v, Java wants %v", placed, tc.Placed)
@@ -112,7 +112,7 @@ func TestSteppedColumnsMatchJava263(t *testing.T) {
 	}
 }
 
-func TestHeightPredicateMatchesJava263(t *testing.T) {
+func TestHeightPredicateMatchesReference(t *testing.T) {
 	r := countLayerTestRegion()
 	r.f.source = modernTerrainSource{}
 	for _, tc := range readSteppedColumnOracle(t).Heights {

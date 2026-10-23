@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type strongholdRenderFixture struct {
@@ -50,7 +50,7 @@ type strongholdRenderActor struct {
 	SpawnEntity   string   `json:"spawn_entity"`
 }
 
-func TestStrongholdRenderingMatchesJava263(t *testing.T) {
+func TestStrongholdRenderingMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_stronghold_render.json")
 	if err != nil {
 		t.Fatal(err)
@@ -83,26 +83,26 @@ func TestStrongholdRenderingMatchesJava263(t *testing.T) {
 			if p.kind == "filler" {
 				p.variant = m.Steps
 			}
-			random := java26.NewLegacyRandom(fixture.Seed)
-			air, err := javadata.BlockStateID("minecraft:air", nil)
+			random := vanilla.NewLegacyRandom(fixture.Seed)
+			air, err := gamedata.BlockStateID("minecraft:air", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			state := javastructure.StructurePieceState{}
-			env := javastructure.ProcessorEnvironment{
-				JavaBlockStateID: func(int32, int32, int32) (uint32, error) { return air, nil },
-				Range:            cube.Range{-64, 320}, Random: &random, PieceState: &state,
+			state := structure.StructurePieceState{}
+			env := structure.ProcessorEnvironment{
+				BlockStateID: func(int32, int32, int32) (uint32, error) { return air, nil },
+				Range:        cube.Range{-64, 320}, Random: &random, PieceState: &state,
 			}
-			full := javastructure.Bounds{Min: p.box.Min, Max: p.box.Max}
-			clips := []javastructure.Bounds{full}
+			full := structure.Bounds{Min: p.box.Min, Max: p.box.Max}
+			clips := []structure.Bounds{full}
 			if fixture.Split {
 				mid := full.Min[0] + (full.Max[0]-full.Min[0])/2
-				clips = []javastructure.Bounds{
+				clips = []structure.Bounds{
 					{Min: full.Min, Max: [3]int32{mid, full.Max[1], full.Max[2]}},
 					{Min: [3]int32{mid + 1, full.Min[1], full.Min[2]}, Max: full.Max},
 				}
 			}
-			var blocks []javastructure.Block
+			var blocks []structure.Block
 			var post [][3]int32
 			for _, clip := range clips {
 				placement, err := p.Place(clip, env)

@@ -4,52 +4,52 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init(){registerModernStructureBuilder("ruined_portal",buildModernRuinedPortal)}
 type modernRuinedPortal struct {
-	template *javastructure.Template
-	box javastructure.Box
+	template *structure.Template
+	box structure.Box
 	origin [3]int32
 	pivot [3]int32
-	rotation javastructure.Rotation
-	mirror javastructure.Mirror
-	processorSpecs []javastructure.ProcessorSpec
+	rotation structure.Rotation
+	mirror structure.Mirror
+	processorSpecs []structure.ProcessorSpec
 	vertical string
 	airPocket, cold, overgrown, vines bool
 	seed int64
 	source ModernFeatureSource
 }
 
-func (p modernRuinedPortal) Bounds() javastructure.Box { return p.box }
+func (p modernRuinedPortal) Bounds() structure.Box { return p.box }
 
-func (p modernRuinedPortal) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func (p modernRuinedPortal) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if env.Random == nil {
-		return javastructure.Placement{}, fmt.Errorf("ruined portal placement requires the shared Java structure random stream")
+		return structure.Placement{}, fmt.Errorf("ruined portal placement requires the shared structure random stream")
 	}
 	if env.BaseBlock == nil || env.BaseHeight == nil {
-		return javastructure.Placement{}, fmt.Errorf("ruined portal placement requires mutable world queries")
+		return structure.Placement{}, fmt.Errorf("ruined portal placement requires mutable world queries")
 	}
-	pivot := javastructure.TransformPosition(p.pivot, p.mirror, p.rotation)
+	pivot := structure.TransformPosition(p.pivot, p.mirror, p.rotation)
 	placeOrigin := [3]int32{
 		p.origin[0] + p.pivot[0] - pivot[0],
 		p.origin[1] + p.pivot[1] - pivot[1],
 		p.origin[2] + p.pivot[2] - pivot[2],
 	}
-	processors, err := javastructure.LoadProcessors(nil, p.processorSpecs, env)
+	processors, err := structure.LoadProcessors(nil, p.processorSpecs, env)
 	if err != nil {
-		return javastructure.Placement{}, err
+		return structure.Placement{}, err
 	}
-	processors = append(processors, javastructure.Processor{Process: func(_ javastructure.ProcessContext, block javastructure.Block) (javastructure.Block, bool, error) {
-		javastructure.SeedRandomizableContainerLoot(&block, env.Random)
+	processors = append(processors, structure.Processor{Process: func(_ structure.ProcessContext, block structure.Block) (structure.Block, bool, error) {
+		structure.SeedRandomizableContainerLoot(&block, env.Random)
 		return block, true, nil
 	}})
 	placement, err := p.template.Place(0, placeOrigin, p.rotation, p.mirror, clip, p.seed, processors...)
 	if err != nil {
-		return javastructure.Placement{}, err
+		return structure.Placement{}, err
 	}
 	random := env.Random
 	overlay := make(map[[3]int32]string, len(placement.Blocks))
@@ -76,14 +76,14 @@ func (p modernRuinedPortal) Place(clip javastructure.Bounds, env javastructure.P
 			}
 			ok, err := p.canSpreadAt(env, overlay, x, y, z)
 			if err != nil {
-				return javastructure.Placement{}, err
+				return structure.Placement{}, err
 			}
 			if !ok {
 				continue
 			}
 			if p.overgrown {
 				if err := p.tryLeaves(env, overlay, &placement, clip, x, y, z, random); err != nil {
-					return javastructure.Placement{}, err
+					return structure.Placement{}, err
 				}
 			}
 		}
@@ -93,11 +93,11 @@ func (p modernRuinedPortal) Place(clip javastructure.Bounds, env javastructure.P
 			pos := [3]int32{x, p.box.Min[1], z}
 			name, err := portalBlockName(env, overlay, pos)
 			if err != nil {
-				return javastructure.Placement{}, err
+				return structure.Placement{}, err
 			}
 			if name == "minecraft:netherrack" {
 				if err := p.drip(env, overlay, &placement, clip, x, p.box.Min[1]-1, z, random); err != nil {
-					return javastructure.Placement{}, err
+					return structure.Placement{}, err
 				}
 			}
 		}
@@ -109,12 +109,12 @@ func (p modernRuinedPortal) Place(clip javastructure.Bounds, env javastructure.P
 					pos := [3]int32{x, y, z}
 					if p.vines {
 						if err := p.tryVine(env, overlay, &placement, clip, pos, random); err != nil {
-							return javastructure.Placement{}, err
+							return structure.Placement{}, err
 						}
 					}
 					if p.overgrown {
 						if err := p.tryLeaves(env, overlay, &placement, clip, x, y, z, random); err != nil {
-							return javastructure.Placement{}, err
+							return structure.Placement{}, err
 						}
 					}
 				}
@@ -124,7 +124,7 @@ func (p modernRuinedPortal) Place(clip javastructure.Bounds, env javastructure.P
 	return placement, nil
 }
 
-func portalBlockName(env javastructure.ProcessorEnvironment, overlay map[[3]int32]string, pos [3]int32) (string, error) {
+func portalBlockName(env structure.ProcessorEnvironment, overlay map[[3]int32]string, pos [3]int32) (string, error) {
 	if name, ok := overlay[pos]; ok {
 		return name, nil
 	}
@@ -132,7 +132,7 @@ func portalBlockName(env javastructure.ProcessorEnvironment, overlay map[[3]int3
 	return name, nil
 }
 
-func (p modernRuinedPortal) replaceable(env javastructure.ProcessorEnvironment, overlay map[[3]int32]string, x, y, z int32) (bool, error) {
+func (p modernRuinedPortal) replaceable(env structure.ProcessorEnvironment, overlay map[[3]int32]string, x, y, z int32) (bool, error) {
 	name, err := portalBlockName(env, overlay, [3]int32{x, y, z})
 	if err != nil {
 		return false, err
@@ -140,22 +140,22 @@ func (p modernRuinedPortal) replaceable(env javastructure.ProcessorEnvironment, 
 	if name == "minecraft:air" || name == "minecraft:obsidian" || name == "minecraft:lava" && p.vertical != "in_nether" {
 		return false, nil
 	}
-	blocked, err := javadata.BlockTagContains("#minecraft:features_cannot_replace", name)
+	blocked, err := gamedata.BlockTagContains("#minecraft:features_cannot_replace", name)
 	return !blocked, err
 }
 
-func (p modernRuinedPortal) canSpreadAt(env javastructure.ProcessorEnvironment, overlay map[[3]int32]string, x, y, z int32) (bool, error) {
+func (p modernRuinedPortal) canSpreadAt(env structure.ProcessorEnvironment, overlay map[[3]int32]string, x, y, z int32) (bool, error) {
 	return p.replaceable(env, overlay, x, y, z)
 }
 
-func (p modernRuinedPortal) spreadMaterial(random *java26.Random) string {
+func (p modernRuinedPortal) spreadMaterial(random *vanilla.Random) string {
 	if !p.cold && random.NextFloat() < 0.07 {
 		return "magma_block"
 	}
 	return "netherrack"
 }
 
-func (p modernRuinedPortal) drip(env javastructure.ProcessorEnvironment, overlay map[[3]int32]string, out *javastructure.Placement, clip javastructure.Bounds, x, y, z int32, random *java26.Random) error {
+func (p modernRuinedPortal) drip(env structure.ProcessorEnvironment, overlay map[[3]int32]string, out *structure.Placement, clip structure.Bounds, x, y, z int32, random *vanilla.Random) error {
 	for i := 0; i < 9; i++ {
 		ok, err := p.canSpreadAt(env, overlay, x, y, z)
 		if err != nil {
@@ -173,7 +173,7 @@ func (p modernRuinedPortal) drip(env javastructure.ProcessorEnvironment, overlay
 	return nil
 }
 
-func (p modernRuinedPortal) tryLeaves(env javastructure.ProcessorEnvironment, overlay map[[3]int32]string, out *javastructure.Placement, clip javastructure.Bounds, x, y, z int32, random *java26.Random) error {
+func (p modernRuinedPortal) tryLeaves(env structure.ProcessorEnvironment, overlay map[[3]int32]string, out *structure.Placement, clip structure.Bounds, x, y, z int32, random *vanilla.Random) error {
 	if random.NextFloat() >= 0.5 {
 		return nil
 	}
@@ -194,7 +194,7 @@ func (p modernRuinedPortal) tryLeaves(env javastructure.ProcessorEnvironment, ov
 	return nil
 }
 
-func (p modernRuinedPortal) tryVine(env javastructure.ProcessorEnvironment, overlay map[[3]int32]string, out *javastructure.Placement, clip javastructure.Bounds, pos [3]int32, random *java26.Random) error {
+func (p modernRuinedPortal) tryVine(env structure.ProcessorEnvironment, overlay map[[3]int32]string, out *structure.Placement, clip structure.Bounds, pos [3]int32, random *vanilla.Random) error {
 	name, err := portalBlockName(env, overlay, pos)
 	if err != nil {
 		return err
@@ -232,13 +232,13 @@ func buildModernRuinedPortal(in modernStructureBuildInput)(modernStructureStart,
  airProbability:=portalFloat32(chosen["air_pocket_probability"]);airPocket:=airProbability==1||(airProbability>0&&in.random.NextFloat()<airProbability)
  giant:=in.random.NextFloat()<.05
  templates:=[]string{"ruined_portal/portal_1","ruined_portal/portal_2","ruined_portal/portal_3","ruined_portal/portal_4","ruined_portal/portal_5","ruined_portal/portal_6","ruined_portal/portal_7","ruined_portal/portal_8","ruined_portal/portal_9","ruined_portal/portal_10"};if giant{templates=[]string{"ruined_portal/giant_portal_1","ruined_portal/giant_portal_2","ruined_portal/giant_portal_3"}}
- t,err:=javastructure.Load(templates[in.random.NextInt(int32(len(templates))) ]);if err!=nil{return modernStructureStart{},false,err};rotation:=javastructure.Rotation(in.random.NextInt(4));mirror:=javastructure.NoMirror;if in.random.NextFloat()<0.5{mirror=javastructure.FrontBack}
- pivot:=[3]int32{t.Size[0]/2,0,t.Size[2]/2};base:=[3]int32{in.chunkX*16,0,in.chunkZ*16};rotPivot:=javastructure.TransformPosition(pivot,mirror,rotation);placeOrigin:=[3]int32{base[0]+pivot[0]-rotPivot[0],0,base[2]+pivot[2]-rotPivot[2]};box:=modernTemplateBounds(t,placeOrigin,rotation);centerX,centerZ:=(box.Min[0]+box.Max[0])/2,(box.Min[2]+box.Max[2])/2
+ t,err:=structure.Load(templates[in.random.NextInt(int32(len(templates))) ]);if err!=nil{return modernStructureStart{},false,err};rotation:=structure.Rotation(in.random.NextInt(4));mirror:=structure.NoMirror;if in.random.NextFloat()<0.5{mirror=structure.FrontBack}
+ pivot:=[3]int32{t.Size[0]/2,0,t.Size[2]/2};base:=[3]int32{in.chunkX*16,0,in.chunkZ*16};rotPivot:=structure.TransformPosition(pivot,mirror,rotation);placeOrigin:=[3]int32{base[0]+pivot[0]-rotPivot[0],0,base[2]+pivot[2]-rotPivot[2]};box:=modernTemplateBounds(t,placeOrigin,rotation);centerX,centerZ:=(box.Min[0]+box.Max[0])/2,(box.Min[2]+box.Max[2])/2
  vertical:=stringValue(chosen["placement"]);height:=in.source.BaseHeight(centerX,centerZ,vertical=="on_ocean_floor")-1;newY:=height;span:=box.Max[1]-box.Min[1]+1;switch vertical{case "in_nether":if airPocket{newY=32+int32(in.random.NextInt(69))}else if in.random.NextFloat()<.5{newY=27+int32(in.random.NextInt(3))}else{newY=29+int32(in.random.NextInt(72))};case "in_mountain":newY=portalRandomInterval(in.random,70,height-span);case "underground":newY=portalRandomInterval(in.random,-49,height-span);case "partly_buried":newY=height-span+2+int32(in.random.NextInt(7))}
 	minY:=int32(-49);for newY>minY{corners:=0;for _,xz:=range [][2]int32{{box.Min[0],box.Min[2]},{box.Max[0],box.Min[2]},{box.Min[0],box.Max[2]},{box.Max[0],box.Max[2]}}{n,_:=in.source.BaseBlock(xz[0],newY,xz[1]).EncodeBlock();if n!="minecraft:air"&&n!="minecraft:water"&&n!="minecraft:lava"{corners++;if corners==3{break}}};if corners>=3{break};newY--}
-	biome:=normalizeJavaResource(in.source.JavaBiomeAt(base[0],base[1],base[2]))
+	biome:=normalizeResource(in.source.BiomeAt(base[0],base[1],base[2]))
 	cold:=false
-	if boolPortal(chosen["can_be_cold"]) { data,e:=javadata.LoadJSON("biome",biome);if e!=nil{return modernStructureStart{},false,e};if attrs,ok:=data["temperature"].(float64);ok{cold=attrs<=0.15} }
+	if boolPortal(chosen["can_be_cold"]) { data,e:=gamedata.LoadJSON("biome",biome);if e!=nil{return modernStructureStart{},false,e};if attrs,ok:=data["temperature"].(float64);ok{cold=attrs<=0.15} }
 	specs := portalProcessorSpecs(chosen, airPocket, cold, vertical)
 	piece := modernRuinedPortal{
 		template: t, box: box, origin: base, pivot: pivot, rotation: rotation, mirror: mirror,
@@ -249,7 +249,7 @@ func buildModernRuinedPortal(in modernStructureBuildInput)(modernStructureStart,
 	return modernStructureStart{name: in.name, pieces: []modernStructurePiece{piece}, box: box, terrain: terrainAdjustment(stringValue(in.config["terrain_adaptation"]))}, true, nil
 }
 
-func chooseRuinedPortalSetup(setups []any, random *java26.Random) (map[string]any, error) {
+func chooseRuinedPortalSetup(setups []any, random *vanilla.Random) (map[string]any, error) {
 	if len(setups) == 1 {
 		setup, ok := setups[0].(map[string]any)
 		if !ok {
@@ -276,14 +276,14 @@ func chooseRuinedPortalSetup(setups []any, random *java26.Random) (map[string]an
 	return nil, fmt.Errorf("ruined portal setup weights do not select an entry")
 }
 
-func portalRandomInterval(random *java26.Random, min, max int32) int32 {
+func portalRandomInterval(random *vanilla.Random, min, max int32) int32 {
 	if min >= max {
 		return max
 	}
 	return min + random.NextInt(max-min+1)
 }
 
-func portalProcessorSpecs(setup map[string]any, air, cold bool, placement string) []javastructure.ProcessorSpec {
+func portalProcessorSpecs(setup map[string]any, air, cold bool, placement string) []structure.ProcessorSpec {
 	ignored := []any{"minecraft:structure_block"}
 	if !air {
 		ignored = append(ignored, "minecraft:air")
@@ -312,7 +312,7 @@ func portalProcessorSpecs(setup map[string]any, air, cold bool, placement string
 			"output_state": lavaOutput,
 		})
 	}
-	specs := []javastructure.ProcessorSpec{
+	specs := []structure.ProcessorSpec{
 		{Type: "block_ignore", Config: map[string]any{"blocks": ignored}},
 		{Type: "rule", Config: map[string]any{"rules": rules}},
 		{Type: "block_age", Config: map[string]any{"mossiness": setup["mossiness"]}},
@@ -320,7 +320,7 @@ func portalProcessorSpecs(setup map[string]any, air, cold bool, placement string
 		{Type: "lava_submerged_block", Config: map[string]any{}},
 	}
 	if boolPortal(setup["replace_with_blackstone"]) {
-		specs = append(specs, javastructure.ProcessorSpec{Type: "blackstone_replace", Config: map[string]any{}})
+		specs = append(specs, structure.ProcessorSpec{Type: "blackstone_replace", Config: map[string]any{}})
 	}
 	return specs
 }
@@ -353,7 +353,7 @@ func boolPortal(value any) bool {
 
 var portalSpreadChance = [...]float64{1, 1, 1, 1, 1, 1, 1, 0.9, 0.9, 0.8, 0.7, 0.6, 0.4, 0.2}
 
-func (p modernRuinedPortal) putIfClip(out *javastructure.Placement, overlay map[[3]int32]string, clip javastructure.Bounds, x, y, z int32, name string) {
+func (p modernRuinedPortal) putIfClip(out *structure.Placement, overlay map[[3]int32]string, clip structure.Bounds, x, y, z int32, name string) {
 	pos := [3]int32{x, y, z}
 	if pos[0] < clip.Min[0] || pos[0] > clip.Max[0] || pos[1] < clip.Min[1] || pos[1] > clip.Max[1] || pos[2] < clip.Min[2] || pos[2] > clip.Max[2] {
 		return
@@ -363,6 +363,6 @@ func (p modernRuinedPortal) putIfClip(out *javastructure.Placement, overlay map[
 		properties = map[string]any{"persistent": true}
 	}
 	state := world.BlockState{Name: "minecraft:" + name, Properties: properties}
-	out.Blocks = append(out.Blocks, javastructure.Block{Pos: pos, State: state})
+	out.Blocks = append(out.Blocks, structure.Block{Pos: pos, State: state})
 	overlay[pos] = state.Name
 }

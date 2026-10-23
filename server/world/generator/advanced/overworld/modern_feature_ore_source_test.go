@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -33,7 +33,7 @@ func (oreExposureSource) BaseHeight(int32, int32, bool) int32 { return 128 }
 // pin its resulting coordinates and post-feature random stream for each
 // discard chance; the single air block adjacent to (6,64,8) exposes the
 // discard behavior while the size-12 vein exercises overlapping spheres.
-func TestModernOreExposureJava263(t *testing.T) {
+func TestModernOreExposureReference(t *testing.T) {
 	registry := world.DefaultBlockRegistry
 	stone, err := world.ResolveState(registry, world.BlockState{Name: "minecraft:stone"})
 	if err != nil {
@@ -79,7 +79,7 @@ func TestModernOreExposureJava263(t *testing.T) {
 					"target": map[string]any{"predicate_type": "minecraft:block_match", "block": "minecraft:stone"},
 				}},
 			}
-			random := java26.NewLegacyRandom(1234)
+			random := vanilla.NewLegacyRandom(1234)
 			placed := placeModernOreRegion(region, config, featurePos{8, 65, 8}, &random)
 			if !placed {
 				t.Fatal("Java OreFeature returned true for this fixture")
@@ -89,7 +89,7 @@ func TestModernOreExposureJava263(t *testing.T) {
 				for x := int32(0); x < 16; x++ {
 					for z := int32(0); z < 16; z++ {
 						state, _ := region.State(featurePos{x, y, z})
-						if normalizeJavaResource(state) == "diamond_ore" {
+						if normalizeResource(state) == "diamond_ore" {
 							positions = append(positions, fmt.Sprintf("%d,%d,%d", x, y, z))
 						}
 					}

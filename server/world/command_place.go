@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 // SetBlockFromCommand places a block at pos as Java's BlockInput.place and
@@ -17,7 +17,7 @@ func (tx *Tx) SetBlockFromCommand(pos cube.Pos, b Block, source BlockState) {
 		return
 	}
 	registry := tx.World().conf.Blocks
-	id, err := javadata.BlockStateID(NormaliseBlockName(source.Name), source.Properties)
+	id, err := gamedata.BlockStateID(NormaliseBlockName(source.Name), source.Properties)
 	if err != nil {
 		tx.setBlock(pos, b, &SetOpts{DisableBlockUpdates: true})
 		tx.updateNeighboursOf(pos)
@@ -25,7 +25,7 @@ func (tx *Tx) SetBlockFromCommand(pos cube.Pos, b Block, source BlockState) {
 	}
 	shaped := tx.javaShapeFromNeighbours(pos, id)
 	for property, value := range source.Properties {
-		if defined, err := javadata.BlockStateWithProperty(shaped, property, value); err == nil {
+		if defined, err := gamedata.BlockStateWithProperty(shaped, property, value); err == nil {
 			shaped = defined
 		}
 	}
@@ -60,7 +60,7 @@ func (tx *Tx) SetBlockKnownShape(pos cube.Pos, b Block) {
 // leave air, or if a neighbour has no Java state to shape it by.
 func (tx *Tx) javaShapeFromNeighbours(pos cube.Pos, state uint32) uint32 {
 	for _, face := range cube.Faces() {
-		if _, ok := javadata.BlockStateName(tx.javaBlockStateID(pos.Side(face))); !ok {
+		if _, ok := gamedata.BlockStateName(tx.javaBlockStateID(pos.Side(face))); !ok {
 			return state
 		}
 	}

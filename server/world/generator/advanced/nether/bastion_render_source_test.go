@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type bastionRenderBlockEntity struct {
@@ -18,7 +18,7 @@ type bastionRenderBlockEntity struct {
 	spawnPotentialWeight int64
 }
 
-func TestBastionRenderedOutputMatchesJava263(t *testing.T) {
+func TestBastionRenderedOutputMatchesReference(t *testing.T) {
 	// Digests cover every block in the target chunk, in y,x,z order, using the
 	// complete Java state name and property values (including default values).
 	// They were captured from Java 26.3 StructureStart.placeInChunk.
@@ -65,18 +65,18 @@ func TestBastionRenderedOutputMatchesJava263(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("seed_%d", tc.seed), func(t *testing.T) {
 			g := NewNether(tc.seed)
-			levelRandom := java26.NewXoroshiroRandom(tc.seed)
-			env := javastructure.ProcessorEnvironment{
+			levelRandom := vanilla.NewXoroshiroRandom(tc.seed)
+			env := structure.ProcessorEnvironment{
 				BaseBlock:   g.featureSource.BaseBlock,
-				JavaBiomeAt: g.featureSource.JavaBiomeAt,
+				BiomeAt: g.featureSource.BiomeAt,
 				BaseHeight:  g.featureSource.BaseHeight,
 				Random:      g.featureSource.structureStepRandom(tc.target, 18, 4),
 				LevelRandom: &levelRandom,
 				SourceDimension: "minecraft:the_nether",
 				GenerationContext: world.GenerationContext{Difficulty: world.LocalDifficulty{Base: world.DifficultyNormal}},
 			}
-			var placements []javastructure.Placement
-			g.featureSource.placeBastionStructureStep(tc.target, env, func(p javastructure.Placement) {
+			var placements []structure.Placement
+			g.featureSource.placeBastionStructureStep(tc.target, env, func(p structure.Placement) {
 				placements = append(placements, p)
 			})
 

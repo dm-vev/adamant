@@ -10,8 +10,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -77,7 +77,7 @@ func (wardenType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 		hash := fnv.New64a()
 		id := h.UUID()
 		_, _ = hash.Write(id[:])
-		s.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	return &Warden{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -116,7 +116,7 @@ func (c wardenConfig) Apply(d *world.EntityData) {
 	if h <= 0 {
 		h = 500
 	}
-	d.Data = &wardenState{health: NewHealthManager(h, 500), effects: NewEffectManager(), speed: wardenBaseMovementSpeed, mc: &MovementComputer{Gravity: .08, Drag: .02}, random: java26.NewLegacyRandom(0), anger: max(0, c.anger), dig: max(0, c.dig), emerging: max(0, c.emerging), sniff: max(0, c.sniff), boom: max(0, c.boom), target: c.target}
+	d.Data = &wardenState{health: NewHealthManager(h, 500), effects: NewEffectManager(), speed: wardenBaseMovementSpeed, mc: &MovementComputer{Gravity: .08, Drag: .02}, random: vanilla.NewLegacyRandom(0), anger: max(0, c.anger), dig: max(0, c.dig), emerging: max(0, c.emerging), sniff: max(0, c.sniff), boom: max(0, c.boom), target: c.target}
 }
 
 type wardenState struct {
@@ -124,7 +124,7 @@ type wardenState struct {
 	effects                           *EffectManager
 	speed                             float64
 	mc                                *MovementComputer
-	random                            java26.Random
+	random                            vanilla.Random
 	anger, dig, emerging, sniff, boom int
 	target                            int64
 	pulse                             int
@@ -359,7 +359,7 @@ func (phantomType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData
 		hash := fnv.New64a()
 		u := h.UUID()
 		_, _ = hash.Write(u[:])
-		s.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	return &Phantom{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -405,7 +405,7 @@ func (c phantomConfig) Apply(d *world.EntityData) {
 	if health <= 0 {
 		health = maxHealth
 	}
-	d.Data = &phantomState{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), speed: phantomBaseMovementSpeed, mc: &MovementComputer{Gravity: 0, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), size: size, attack: c.attack, target: c.target}
+	d.Data = &phantomState{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), speed: phantomBaseMovementSpeed, mc: &MovementComputer{Gravity: 0, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), size: size, attack: c.attack, target: c.target}
 }
 
 type phantomState struct {
@@ -413,7 +413,7 @@ type phantomState struct {
 	effects      *EffectManager
 	speed        float64
 	mc           *MovementComputer
-	random       java26.Random
+	random       vanilla.Random
 	size, attack int
 	target       int64
 	orbit        float64
@@ -467,7 +467,7 @@ func (p *Phantom) viewAction(a world.EntityAction) {
 	}
 	p.tx.ReleaseViewers(v)
 }
-func (p *Phantom) FinalizeSpawn(_ string, _ *java26.Random) {
+func (p *Phantom) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	s := p.state()
 	s.anchor = p.Position().Add(mgl64.Vec3{0, 5, 0})
 	s.anchorSet = true
@@ -581,7 +581,7 @@ func (witherType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData)
 		s.bar = bossbar.New("Wither").WithID(fmt.Sprintf("adamant:wither:%x", id[8:]))
 		hash := fnv.New64a()
 		_, _ = hash.Write(id[:])
-		s.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	return &Wither{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
@@ -616,7 +616,7 @@ func (c witherConfig) Apply(d *world.EntityData) {
 	if h <= 0 {
 		h = 300
 	}
-	d.Data = &witherState{health: NewHealthManager(h, 300), effects: NewEffectManager(), speed: witherBaseMovementSpeed, mc: &MovementComputer{Gravity: 0, Drag: .02}, invulnerable: max(0, c.invulnerable), charge: max(0, c.charge), death: max(0, c.death), targets: make([]int64, 3), bar: bossbar.New("Wither"), random: java26.NewLegacyRandom(0), viewers: make(map[*world.EntityHandle]bool)}
+	d.Data = &witherState{health: NewHealthManager(h, 300), effects: NewEffectManager(), speed: witherBaseMovementSpeed, mc: &MovementComputer{Gravity: 0, Drag: .02}, invulnerable: max(0, c.invulnerable), charge: max(0, c.charge), death: max(0, c.death), targets: make([]int64, 3), bar: bossbar.New("Wither"), random: vanilla.NewLegacyRandom(0), viewers: make(map[*world.EntityHandle]bool)}
 }
 
 type witherState struct {
@@ -624,7 +624,7 @@ type witherState struct {
 	effects                     *EffectManager
 	speed                       float64
 	mc                          *MovementComputer
-	random                      java26.Random
+	random                      vanilla.Random
 	invulnerable, charge, death int
 	targets                     []int64
 	heads                       [3]int

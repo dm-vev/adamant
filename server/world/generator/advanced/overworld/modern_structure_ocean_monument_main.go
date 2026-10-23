@@ -4,24 +4,24 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // modernMonumentMainBlocks reproduces MonumentBuilding.postProcess before its
 // child pieces. Its output order follows Java's write order so overlapping
 // shell, fluid, and pillar writes resolve identically.
-func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) ([]javastructure.Block, error) {
+func (p modernOceanMonumentPiece) modernMonumentMainBlocks(clip structure.Bounds, env structure.ProcessorEnvironment) ([]structure.Block, error) {
 	if env.BaseBlock == nil {
 		return nil, fmt.Errorf("ocean monument requires base-block query")
 	}
-	blocks := make([]javastructure.Block, 0, 18000)
+	blocks := make([]structure.Block, 0, 18000)
 	overrides := make(map[[3]int32]string, 18000)
 	put := func(x, y, z int32, name string) {
 		pos := p.worldPos(x, y, z)
 		if pos[0] < clip.Min[0] || pos[0] > clip.Max[0] || pos[1] < clip.Min[1] || pos[1] > clip.Max[1] || pos[2] < clip.Min[2] || pos[2] > clip.Max[2] {
 			return
 		}
-		blocks = append(blocks, javastructure.Block{Pos: pos, State: world.BlockState{Name: name}})
+		blocks = append(blocks, structure.Block{Pos: pos, State: world.BlockState{Name: name}})
 		overrides[pos] = name
 	}
 	box := func(x0, y0, z0, x1, y1, z1 int32, name string) {

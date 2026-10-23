@@ -8,8 +8,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -38,7 +38,7 @@ func (beeType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) wo
 		u := h.UUID()
 		sum := fnv.New64a()
 		_, _ = sum.Write(u[:])
-		b.state().random = java26.NewLegacyRandom(int64(sum.Sum64()))
+		b.state().random = vanilla.NewLegacyRandom(int64(sum.Sum64()))
 	}
 	return b
 }
@@ -101,14 +101,14 @@ func (c beeConfig) New() *beeBehaviour {
 	if c.health <= 0 {
 		c.health = 10
 	}
-	return &beeBehaviour{health: NewHealthManager(c.health, 10), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .01, Drag: .08, DragBeforeGravity: true}, hasNectar: c.hasNectar, hasStung: c.hasStung, crops: c.crops, noNectar: c.noNectar, stayOut: c.stayOut, stingTicks: c.stingTicks, anger: c.anger, age: c.age, hive: c.hive, flower: c.flower, hasHive: c.hive != (cube.Pos{}), hasFlower: c.flower != (cube.Pos{}), random: java26.NewLegacyRandom(0), speed: .12}
+	return &beeBehaviour{health: NewHealthManager(c.health, 10), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .01, Drag: .08, DragBeforeGravity: true}, hasNectar: c.hasNectar, hasStung: c.hasStung, crops: c.crops, noNectar: c.noNectar, stayOut: c.stayOut, stingTicks: c.stingTicks, anger: c.anger, age: c.age, hive: c.hive, flower: c.flower, hasHive: c.hive != (cube.Pos{}), hasFlower: c.flower != (cube.Pos{}), random: vanilla.NewLegacyRandom(0), speed: .12}
 }
 
 type beeBehaviour struct {
 	health                                                                                 *HealthManager
 	effects                                                                                *EffectManager
 	mc                                                                                     *MovementComputer
-	random                                                                                 java26.Random
+	random                                                                                 vanilla.Random
 	hasNectar, hasStung, dead, hasHive, hasFlower                                          bool
 	hive, flower                                                                           cube.Pos
 	crops, noNectar, stayOut, stingTicks, anger, pollination, locateCooldown, cropCooldown int
@@ -317,7 +317,7 @@ func beeFlower(v world.Block) bool {
 	}
 	return false
 }
-func beeFindFlower(tx *world.Tx, p cube.Pos, r java26.Random) (cube.Pos, bool) {
+func beeFindFlower(tx *world.Tx, p cube.Pos, r vanilla.Random) (cube.Pos, bool) {
 	for range 48 {
 		q := p.Add(cube.Pos{int(r.NextInt(41)) - 20, int(r.NextInt(17)) - 8, int(r.NextInt(41)) - 20})
 		if beeFlower(tx.Block(q)) {
@@ -326,7 +326,7 @@ func beeFindFlower(tx *world.Tx, p cube.Pos, r java26.Random) (cube.Pos, bool) {
 	}
 	return cube.Pos{}, false
 }
-func beeFindHive(tx *world.Tx, p cube.Pos, r java26.Random) (cube.Pos, bool) {
+func beeFindHive(tx *world.Tx, p cube.Pos, r vanilla.Random) (cube.Pos, bool) {
 	for range 64 {
 		q := p.Add(cube.Pos{int(r.NextInt(41)) - 20, int(r.NextInt(17)) - 8, int(r.NextInt(41)) - 20})
 		switch h := tx.Block(q).(type) {

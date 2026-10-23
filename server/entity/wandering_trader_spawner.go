@@ -7,7 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/goleveldb/leveldb"
 )
@@ -32,7 +32,7 @@ var wanderingTraderSpawners sync.Map
 // wanderingTraderSpawnTick ports WanderingTraderSpawner.tick: every minute
 // the saved spawn delay counts down, and once a day passes a trader spawns
 // with the saved chance, which grows by 25 up to 75 after each failure.
-func wanderingTraderSpawnTick(tx *world.Tx, random *java26.Random) {
+func wanderingTraderSpawnTick(tx *world.Tx, random *vanilla.Random) {
 	w := tx.World()
 	if w.Dimension() != world.Overworld || !w.SpawnMobsEnabled() || !w.GameRuleBool("spawn_wandering_traders") {
 		return
@@ -82,7 +82,7 @@ func (s *wanderingTraderSpawner) load(w *world.World) *wanderingTraderData {
 // a trader appears near a random player, or near a bell within 48 blocks of
 // them, with up to two trader llamas on leads. It reports true without
 // players so that the spawn chance resets.
-func spawnWanderingTrader(tx *world.Tx, random *java26.Random) bool {
+func spawnWanderingTrader(tx *world.Tx, random *vanilla.Random) bool {
 	var players []world.Entity
 	for p := range tx.Players() {
 		if l, ok := p.(Living); !ok || !l.Dead() {
@@ -119,7 +119,7 @@ func spawnWanderingTrader(tx *world.Tx, random *java26.Random) bool {
 }
 
 // spawnTraderLlama ports WanderingTraderSpawner.tryToSpawnLlamaFor.
-func spawnTraderLlama(tx *world.Tx, random *java26.Random, trader *WanderingTrader) {
+func spawnTraderLlama(tx *world.Tx, random *vanilla.Random, trader *WanderingTrader) {
 	pos, ok := traderSpawnPosition(tx, random, cube.PosFromVec3(trader.Position()), 4)
 	if !ok {
 		return
@@ -133,7 +133,7 @@ func spawnTraderLlama(tx *world.Tx, random *java26.Random, trader *WanderingTrad
 // traderSpawnPosition ports WanderingTraderSpawner.findSpawnPositionNear: up
 // to ten columns within radius of reference, on top of their
 // MOTION_BLOCKING_NO_LEAVES heightmap, that pass the ON_GROUND placement.
-func traderSpawnPosition(tx *world.Tx, random *java26.Random, reference cube.Pos, radius int) (cube.Pos, bool) {
+func traderSpawnPosition(tx *world.Tx, random *vanilla.Random, reference cube.Pos, radius int) (cube.Pos, bool) {
 	for range 10 {
 		x := reference[0] + int(random.NextInt(int32(radius*2))) - radius
 		z := reference[2] + int(random.NextInt(int32(radius*2))) - radius

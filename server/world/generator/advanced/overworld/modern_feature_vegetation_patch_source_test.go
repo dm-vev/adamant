@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -57,7 +57,7 @@ func (s vegetationPatchSourceTerrain) BaseState(x, y, z int32) world.NativeState
 func (s vegetationPatchSourceTerrain) BaseHeight(x, z int32, _ bool) int32 {
 	for y := s.maxY; y >= s.minY; y-- {
 		state := s.BaseState(x, y, z)
-		name, ok := javadata.BlockStateName(state.CanonicalJavaID(world.DefaultBlockRegistry))
+		name, ok := gamedata.BlockStateName(state.CanonicalID(world.DefaultBlockRegistry))
 		if ok && name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" {
 			return y + 1
 		}
@@ -65,7 +65,7 @@ func (s vegetationPatchSourceTerrain) BaseHeight(x, z int32, _ bool) int32 {
 	return s.minY
 }
 
-func TestVegetationPatchFeaturesMatchJava263Source(t *testing.T) {
+func TestVegetationPatchFeaturesMatchSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_vegetation_patch_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +81,7 @@ func TestVegetationPatchFeaturesMatchJava263Source(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			resolve := func(name string) world.NativeState {
 				t.Helper()
-				id, err := javadata.BlockStateID(name, nil)
+				id, err := gamedata.BlockStateID(name, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -110,9 +110,9 @@ func TestVegetationPatchFeaturesMatchJava263Source(t *testing.T) {
 			}
 			region := newFeatureRegion(&ModernFeatures{source: terrain}, c, target, &world.GenerationResult{})
 			region.SetOrigin(target[0], target[1])
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			} else if tc.Algorithm != "legacy" {
 				t.Fatalf("unsupported Source RNG algorithm %q", tc.Algorithm)
 			}
@@ -125,26 +125,26 @@ func TestVegetationPatchFeaturesMatchJava263Source(t *testing.T) {
 				want[pos] = speleothemSourceStateID(t, row.State)
 			}
 			for pos, state := range region.overlayByPos() {
-				got := state.CanonicalJavaID(c.BlockRegistry())
-				initial := terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry())
+				got := state.CanonicalID(c.BlockRegistry())
+				initial := terrain.BaseState(pos.x, pos.y, pos.z).CanonicalID(c.BlockRegistry())
 				if got == initial {
 					continue
 				}
 				expected, exists := want[pos]
 				if !exists {
-					name, _ := javadata.BlockStateName(got)
+					name, _ := gamedata.BlockStateName(got)
 					t.Errorf("unexpected Java state %s at %v", name, pos)
 					continue
 				}
 				if got != expected {
-					name, _ := javadata.BlockStateName(got)
-					wantName, _ := javadata.BlockStateName(expected)
+					name, _ := gamedata.BlockStateName(got)
+					wantName, _ := gamedata.BlockStateName(expected)
 					t.Errorf("state at %v=%s, Source=%s", pos, name, wantName)
 				}
 				delete(want, pos)
 			}
 			for pos, state := range want {
-				name, _ := javadata.BlockStateName(state)
+				name, _ := gamedata.BlockStateName(state)
 				t.Errorf("missing Source state %s at %v", name, pos)
 			}
 			next, err := strconv.ParseInt(tc.NextLong, 10, 64)

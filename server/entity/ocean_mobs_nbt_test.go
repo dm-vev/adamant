@@ -125,11 +125,11 @@ func TestDrownedJockeyRiderFirstMCDBReloadAndTick(t *testing.T) {
 				data = map[string]any{"id": kind, "Health": float32(4), "IsChickenJockey": byte(1), "EggLayTime": int32(1), "variant": "minecraft:cold"}
 				baby = 1
 			}
-			mount, err := NewFromJavaNBT(data, world.EntitySpawnOpts{Position: mountPos, Rotation: cube.Rotation{90, 0}, SpawnReason: "structure", SpawnFinalized: true})
+			mount, err := NewFromStructureNBT(data, world.EntitySpawnOpts{Position: mountPos, Rotation: cube.Rotation{90, 0}, SpawnReason: "structure", SpawnFinalized: true})
 			if err != nil {
 				t.Fatal(err)
 			}
-			rider, err := NewFromJavaNBT(map[string]any{"id": "minecraft:drowned", "Health": float32(20), "IsBaby": baby}, world.EntitySpawnOpts{Position: riderPos, Riding: mount, SpawnReason: "structure", SpawnFinalized: true})
+			rider, err := NewFromStructureNBT(map[string]any{"id": "minecraft:drowned", "Health": float32(20), "IsBaby": baby}, world.EntitySpawnOpts{Position: riderPos, Riding: mount, SpawnReason: "structure", SpawnFinalized: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -215,7 +215,7 @@ func TestOceanLiveEquipmentMutationSurvivesMCDBAndDrop(t *testing.T) {
 		}},
 		"drop_chances": map[string]any{"mainhand": float32(2)},
 	}
-	handle, err := NewFromJavaNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
+	handle, err := NewFromStructureNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestOceanLiveEquipmentMutationSurvivesMCDBAndDrop(t *testing.T) {
 			if stack.CustomName() != "renamed by consumer" || !reflect.DeepEqual(stack.Lore(), []string{"updated equipment"}) || stack.MaxDurability()-stack.Durability() != 7 || oceanStackEnchantmentLevel(stack, "Looting", "minecraft:looting") != 3 {
 				t.Fatalf("live/source equipment metadata changed: %v", stack)
 			}
-			raw, err := item.StackToJavaNBT(stack)
+			raw, err := item.StackToStructureNBT(stack)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -285,7 +285,7 @@ func TestNativeMapEquipmentAndClearedMetadataSurviveMCDB(t *testing.T) {
 	w := open()
 	t.Cleanup(func() { _ = w.Close() })
 	pos := mgl64.Vec3{.5, 65, .5}
-	handle, err := NewFromJavaNBT(map[string]any{"id": "minecraft:drowned"}, world.EntitySpawnOpts{Position: pos, SpawnFinalized: true})
+	handle, err := NewFromStructureNBT(map[string]any{"id": "minecraft:drowned"}, world.EntitySpawnOpts{Position: pos, SpawnFinalized: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +341,7 @@ func TestChickenJockeyDoesNotLaySourceVariantEgg(t *testing.T) {
 			if mount {
 				pos[0] = 4.5
 			}
-			h, err := NewFromJavaNBT(map[string]any{"id": "minecraft:chicken", "Health": float32(4), "Age": int32(0), "EggLayTime": int32(1), "variant": "minecraft:cold", "IsChickenJockey": boolByte(mount)}, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
+			h, err := NewFromStructureNBT(map[string]any{"id": "minecraft:chicken", "Health": float32(4), "Age": int32(0), "EggLayTime": int32(1), "variant": "minecraft:cold", "IsChickenJockey": boolByte(mount)}, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
 			if err != nil {
 				t.Fatal(err)
 			}

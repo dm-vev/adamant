@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
@@ -124,8 +124,8 @@ type World struct {
 	entityCount atomic.Int64
 
 	r               *rand.Rand
-	lootSequences   map[string]*java26.Random
-	javaRandom      java26.Random
+	lootSequences   map[string]*vanilla.Random
+	javaRandom      vanilla.Random
 	javaRandomReady bool
 	gameEventBlocks map[uint32]uint8
 
@@ -1729,7 +1729,7 @@ func (w *World) resolveScheduledTickBlock(tick chunk.ScheduledTick) (Block, bool
 		return b, true
 	}
 	if tick.Kind == chunk.BlockTick {
-		if _, err := javadata.BlockStateID(tick.Type, nil); err == nil {
+		if _, err := gamedata.BlockStateID(tick.Type, nil); err == nil {
 			native, err := ResolveState(w.conf.Blocks, BlockState{Name: tick.Type})
 			if err == nil {
 				if b, ok := w.conf.Blocks.BlockByRuntimeID(native.Block); ok {
@@ -3254,7 +3254,7 @@ func (w *World) nativeScheduledTickState(col *Column, tick chunk.ScheduledTick) 
 	if withinHeight && tick.Kind == chunk.BlockTick {
 		b := w.blockInChunk(col, tick.Pos)
 		state := NativeStateAt(col.Chunk, uint8(tick.Pos[0]), int16(tick.Pos[1]), uint8(tick.Pos[2]))
-		name, canonical := javadata.BlockStateName(state.CanonicalJavaID(w.conf.Blocks))
+		name, canonical := gamedata.BlockStateName(state.CanonicalID(w.conf.Blocks))
 		if canonical && name == tick.Type || !canonical && scheduledTickType(w.conf.Blocks, b) == tick.Type {
 			return w.conf.Blocks.BlockRuntimeID(b)
 		}

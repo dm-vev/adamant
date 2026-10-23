@@ -27,7 +27,7 @@ func TestJava263EnchantmentComponentsSurviveInventoryNBT(t *testing.T) {
 	}
 	for _, row := range rows {
 		t.Run(row.Name, func(t *testing.T) {
-			stack, err := item.StackFromJavaNBT(row.Stack)
+			stack, err := item.StackFromStructureNBT(row.Stack)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +40,7 @@ func TestJava263EnchantmentComponentsSurviveInventoryNBT(t *testing.T) {
 				t.Fatal(err)
 			}
 			restored := item.ReadNBT(decoded, nil)
-			encoded, err := item.StackToJavaNBT(restored)
+			encoded, err := item.StackToStructureNBT(restored)
 			if err != nil {
 				t.Fatal(err)
 			}

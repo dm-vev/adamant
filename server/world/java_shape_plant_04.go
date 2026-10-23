@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -18,8 +18,8 @@ func init() {
 }
 
 func javaPlant04DoublePlantShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
-	half, _ := javadata.BlockStateString(state, "half")
-	neighborHalf, _ := javadata.BlockStateString(neighbor, "half")
+	half, _ := gamedata.BlockStateString(state, "half")
+	neighborHalf, _ := gamedata.BlockStateString(neighbor, "half")
 	if face != cube.FaceDown && face != cube.FaceUp ||
 		(half == "lower") != (face == cube.FaceUp) ||
 		(javaName(neighbor) == javaName(state) && neighborHalf != half) {
@@ -32,12 +32,12 @@ func javaPlant04DoublePlantShape(c *javaShapeContext, state uint32, face cube.Fa
 }
 
 func javaPlant04DoublePlantSurvival(c *javaShapeContext, state uint32, pos cube.Pos) bool {
-	half, _ := javadata.BlockStateString(state, "half")
+	half, _ := gamedata.BlockStateString(state, "half")
 	if half != "upper" {
 		return c.ownerSurvival("VegetationBlock", state, pos)
 	}
 	below := c.at(pos.Side(cube.FaceDown))
-	belowHalf, _ := javadata.BlockStateString(below, "half")
+	belowHalf, _ := gamedata.BlockStateString(below, "half")
 	return javaName(below) == javaName(state) && belowHalf == "lower"
 }
 
@@ -172,7 +172,7 @@ func javaPlant04BodyConversion(head uint32) uint32 {
 		body = javaDefault("twisting_vines_plant")
 	case "cave_vines":
 		body = javaDefault("cave_vines_plant")
-		berries, _ := javadata.BlockStateBool(head, "berries")
+		berries, _ := gamedata.BlockStateBool(head, "berries")
 		body = javaWith(body, "berries", berries)
 	default:
 		panic("unhandled Java growing plant head " + javaName(head))

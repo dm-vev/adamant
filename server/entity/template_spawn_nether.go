@@ -3,7 +3,7 @@ package entity
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -11,7 +11,7 @@ import (
 
 // prepareNetherTemplateSpawn applies Source STRUCTURE finalizeSpawn behavior
 // after the template entity's authored NBT has been loaded.
-func prepareNetherTemplateSpawn(nbt map[string]any, levelRandom, entityRandom *java26.Random, context world.GenerationContext, pos [3]int32, dimension string) error {
+func prepareNetherTemplateSpawn(nbt map[string]any, levelRandom, entityRandom *vanilla.Random, context world.GenerationContext, pos [3]int32, dimension string) error {
 	if levelRandom == nil || entityRandom == nil {
 		return fmt.Errorf("nether template spawn requires level and entity random streams")
 	}
@@ -31,7 +31,7 @@ func prepareNetherTemplateSpawn(nbt map[string]any, levelRandom, entityRandom *j
 	}
 }
 
-func prepareTemplatePiglin(nbt map[string]any, levelRandom *java26.Random, context world.GenerationContext) error {
+func prepareTemplatePiglin(nbt map[string]any, levelRandom *vanilla.Random, context world.GenerationContext) error {
 	// PiglinAi.initMemories samples a 30–120 second hunt-cooldown TTL first.
 	ttl := int64(600 + levelRandom.NextInt(1801))
 	setTemplateBrainMemory(nbt, "minecraft:hunted_recently", byte(1), ttl)
@@ -80,7 +80,7 @@ func prepareTemplatePiglin(nbt map[string]any, levelRandom *java26.Random, conte
 		if levelRandom.NextFloat() >= chance*context.Difficulty.SpecialMultiplier() {
 			continue
 		}
-		stack, err := item.StackFromJavaNBT(stackNBT)
+		stack, err := item.StackFromStructureNBT(stackNBT)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func prepareTemplatePiglin(nbt map[string]any, levelRandom *java26.Random, conte
 		if err != nil {
 			return err
 		}
-		enchanted, err := item.StackToJavaNBT(stack)
+		enchanted, err := item.StackToStructureNBT(stack)
 		if err != nil {
 			return err
 		}
@@ -101,7 +101,7 @@ func prepareTemplatePiglin(nbt map[string]any, levelRandom *java26.Random, conte
 	return nil
 }
 
-func prepareTemplatePiglinBrute(nbt map[string]any, levelRandom *java26.Random, pos [3]int32, dimension string) error {
+func prepareTemplatePiglinBrute(nbt map[string]any, levelRandom *vanilla.Random, pos [3]int32, dimension string) error {
 	setTemplateBrainMemory(nbt, "minecraft:home", map[string]any{
 		"dimension": dimension, "pos": [3]int32{pos[0], pos[1], pos[2]},
 	}, 0)
@@ -119,7 +119,7 @@ func prepareTemplatePiglinBrute(nbt map[string]any, levelRandom *java26.Random, 
 	return nil
 }
 
-func prepareTemplateHoglin(nbt map[string]any, levelRandom *java26.Random) error {
+func prepareTemplateHoglin(nbt map[string]any, levelRandom *vanilla.Random) error {
 	if levelRandom.NextFloat() < .2 {
 		nbt["Age"] = int32(-24000)
 	}
@@ -197,5 +197,5 @@ func templateSpawnItem(id string) (map[string]any, error) {
 	default:
 		return nil, fmt.Errorf("unsupported nether template item %q", id)
 	}
-	return item.StackToJavaNBT(stack)
+	return item.StackToStructureNBT(stack)
 }

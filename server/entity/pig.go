@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -358,7 +358,7 @@ func (p *Pig) breedingFood(stack item.Stack) bool {
 func (p *Pig) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	return babyAt(p).New(PigType, PigConfig{Age: babyStartAge, Variant: randomParent(p.behaviour().variant, partner.(*Pig).behaviour().variant)})
 }
-func (p *Pig) FinalizeSpawn(_ string, r *java26.Random) {
+func (p *Pig) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil {
 		p.behaviour().age = 0
 	}

@@ -9,14 +9,14 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() {
 	world.DefaultBlockRegistry.Finalize()
 }
 
-func TestComplexStartsMatchJava(t *testing.T) {
+func TestComplexStartsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_complex_starts.json")
 	if err != nil {
 		t.Fatal(err)
@@ -29,12 +29,12 @@ func TestComplexStartsMatchJava(t *testing.T) {
 func TestFortressPlacementRecordsIntentionalAirAndReadsOverlay(t *testing.T) {
 	g := NewNether(1)
 	pos := world.ChunkPos{-14, -54}
-	render := func(base func(int32, int32, int32) world.Block) javastructure.Placement {
-		var placement javastructure.Placement
-		g.placeFortressStructureStep(pos, javastructure.ProcessorEnvironment{
+	render := func(base func(int32, int32, int32) world.Block) structure.Placement {
+		var placement structure.Placement
+		g.placeFortressStructureStep(pos, structure.ProcessorEnvironment{
 			BaseBlock: base,
 			Random:    g.featureSource.structureStepRandom(pos, 1, 7),
-		}, func(p javastructure.Placement) { placement = p })
+		}, func(p structure.Placement) { placement = p })
 		return placement
 	}
 
@@ -89,7 +89,7 @@ func TestFortressFenceStatesFollowPieceOrientation(t *testing.T) {
 	}
 }
 
-func TestFortressRenderedOverlayMatchesJava263(t *testing.T) {
+func TestFortressRenderedOverlayMatchesReference(t *testing.T) {
 	// Executed StructureStart.placeInChunk, seed 1/start (-14,-54), decoration
 	// step 7/index 1 using WorldgenRandom(XoroshiroRandomSource). Source digests
 	// include complete state properties, not just block names.
@@ -121,10 +121,10 @@ func TestFortressRenderedOverlayMatchesJava263(t *testing.T) {
 					}
 				}
 			}
-			var placement javastructure.Placement
-			g.placeFortressStructureStep(pos, javastructure.ProcessorEnvironment{
+			var placement structure.Placement
+			g.placeFortressStructureStep(pos, structure.ProcessorEnvironment{
 				BaseBlock: base, Random: g.featureSource.structureStepRandom(pos, 1, 7),
-			}, func(p javastructure.Placement) { placement = p })
+			}, func(p structure.Placement) { placement = p })
 			for _, entry := range placement.Blocks {
 				state, err := world.ResolveState(c.BlockRegistry(), entry.State)
 				if err != nil {

@@ -77,11 +77,11 @@ func TestMutableSeaHeightAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 					}
 					drowned.Hurt(2, entity.ExplosionDamageSource{})
 					main, off := drowned.HeldItems()
-					mainNBT, err := item.StackToJavaNBT(main)
+					mainNBT, err := item.StackToStructureNBT(main)
 					if err != nil {
 						t.Fatal(err)
 					}
-					offNBT, err := item.StackToJavaNBT(off)
+					offNBT, err := item.StackToStructureNBT(off)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -139,11 +139,11 @@ func TestMutableSeaHeightAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 						continue
 					}
 					main, off := drowned.HeldItems()
-					mainNBT, err := item.StackToJavaNBT(main)
+					mainNBT, err := item.StackToStructureNBT(main)
 					if err != nil {
 						t.Fatal(err)
 					}
-					offNBT, err := item.StackToJavaNBT(off)
+					offNBT, err := item.StackToStructureNBT(off)
 					if err != nil {
 						t.Fatal(err)
 					}

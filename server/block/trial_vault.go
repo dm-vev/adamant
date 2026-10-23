@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -86,7 +86,7 @@ func (v Vault) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, ct
 	if err != nil || len(rewards) == 0 { return true }
 	items := make([]any, 0, len(rewards))
 	for _, reward := range rewards {
-		encoded, err := item.StackToJavaNBT(reward)
+		encoded, err := item.StackToStructureNBT(reward)
 		if err != nil { return true }
 		items = append(items, encoded)
 	}
@@ -136,7 +136,7 @@ func (v Vault) Tick(currentTick int64, pos cube.Pos, tx *world.Tx) {
 			tx.SetBlock(pos, v, nil)
 			return
 		}
-		stack, err := item.StackFromJavaNBT(items[len(items)-1])
+		stack, err := item.StackFromStructureNBT(items[len(items)-1])
 		if err == nil && !stack.Empty() { dropItem(tx, stack, mgl64.Vec3{float64(pos.X())+0.5, float64(pos.Y())+1.2, float64(pos.Z())+0.5}) }
 		(*v.serverData)["items_to_eject"] = compoundListToAny(items[:len(items)-1])
 		(*v.serverData)["state_updating_resumes_at"] = currentTick + 20
@@ -149,16 +149,16 @@ func (v Vault) updateDisplayItem(pos cube.Pos, tx *world.Tx) {
 	if table == "" { table = actorString((*v.config)["loot_table"]) }
 	if table == "" { table = "minecraft:chests/trial_chambers/reward" }
 	seed := vaultLootSeed(tx, pos, "")
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	rewards, err := loot.Generate(table, seed, loot.Context{Random: &random, Origin: pos.Vec3Centre()})
 	if err != nil || len(rewards) == 0 { (*v.sharedData)["display_item"] = map[string]any{}; return }
-	encoded, err := item.StackToJavaNBT(rewards[0])
+	encoded, err := item.StackToStructureNBT(rewards[0])
 	if err == nil { (*v.sharedData)["display_item"] = encoded }
 }
 func (v Vault) nextEjection() map[string]any { items := actorCompoundList((*v.serverData)["items_to_eject"]); if len(items)==0 { return map[string]any{} }; return items[len(items)-1] }
 func vaultLootContext(pos cube.Pos, tx *world.Tx, player item.User, tool world.Item) loot.Context {
 	seed := vaultLootSeed(tx, pos, player.H().UUID().String())
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	luck := 0.0
 	if carrier, ok := player.(interface{ Luck() float64 }); ok { luck = carrier.Luck() }
 	return loot.Context{Random: &random, Tool: tool, Luck: luck, Player: player, Origin: pos.Vec3Centre()}
@@ -365,7 +365,7 @@ func (s TrialSpawner) spawnConfiguredMob(tx *world.Tx, pos cube.Pos, tick int64)
 	spawnMob := tx.World().EntityRegistry().Config().SpawnMobFromNBT
 	if spawnMob == nil { return nil, fmt.Errorf("entity registry has no SpawnMobFromNBT factory") }
 	seed := trialLootSeed(tx, pos, tick)
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	spawnRange := int(actorLong(activeTrialConfig(s)["spawn_range"]))
 	if spawnRange < 1 { spawnRange = 4 }
 	var spawnPos mgl64.Vec3
@@ -556,7 +556,7 @@ func chooseTrialSpawnData(s TrialSpawner, tx *world.Tx, pos cube.Pos) map[string
 		choices = append(choices, choice{data: data, weight: weight}); total += weight
 	}
 	if total == 0 { return nil }
-	random := java26.NewLegacyRandom(trialLootSeed(tx, pos, tx.World().CurrentTick()))
+	random := vanilla.NewLegacyRandom(trialLootSeed(tx, pos, tx.World().CurrentTick()))
 	selection := int(random.NextInt(int32(total)))
 	for _, option := range choices {
 		if selection < option.weight { return cloneActorCompound(option.data) }
@@ -578,7 +578,7 @@ func chooseTrialRewardTable(config map[string]any, seed int64) string {
 		choices = append(choices, choice{name: name, weight: weight}); total += weight
 	}
 	if total == 0 { return "" }
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	selection := int(random.NextInt(int32(total)))
 	for _, option := range choices {
 		if selection < option.weight { return option.name }
@@ -613,7 +613,7 @@ func trialVec3(raw any) (mgl64.Vec3, bool) {
 	return mgl64.Vec3{actorFloat(values[0]), actorFloat(values[1]), actorFloat(values[2])}, true
 }
 func dispenseTrialLoot(table string, tx *world.Tx, pos cube.Pos, seed int64) error {
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	stacks, err := loot.Generate(table, seed, loot.Context{Random: &random})
 	if err != nil { return err }
 	for _, stack := range stacks {
@@ -626,7 +626,7 @@ func (s TrialSpawner) spawnOminousItemSpawner(tick int64, pos cube.Pos, tx *worl
 	table := actorString(activeTrialConfig(s)["items_to_drop_when_ominous"])
 	if table == "" { table = "minecraft:spawners/trial_chamber/items_to_drop_when_ominous" }
 	seed := trialLootSeed(tx, pos, 0)
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	stacks, err := loot.Generate(table, seed, loot.Context{Random: &random})
 	if err != nil || len(stacks) == 0 { return }
 	total := 0

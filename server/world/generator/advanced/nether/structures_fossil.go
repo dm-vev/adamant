@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 const netherFossilSalt int32 = 14357921
 
 type netherFossilStart struct {
-	box      javastructure.Box
+	box      structure.Box
 	origin   [3]int32
-	rotation javastructure.Rotation
+	rotation structure.Rotation
 	name     string
-	template *javastructure.Template
+	template *structure.Template
 }
 type netherFossilResult struct {
 	start *netherFossilStart
@@ -35,7 +35,7 @@ type netherFossilCache struct {
 
 // fossilStart returns the immutable start for an exact random-spread candidate.
 func (g *Nether) fossilStart(cx, cz int32) (*netherFossilStart, error) {
-	candidate, err := javastructure.PotentialChunk(g.seed, cx, cz, netherFossilSalt, 2, 1, javastructure.Linear)
+	candidate, err := structure.PotentialChunk(g.seed, cx, cz, netherFossilSalt, 2, 1, structure.Linear)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (g *Nether) buildNetherFossilStart(cx, cz int32) (start *netherFossilStart,
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			start = nil
-			err = fmt.Errorf("nether: Java Nether fossil start at %d,%d failed: %v", cx, cz, recovered)
+			err = fmt.Errorf("nether: Nether fossil start at %d,%d failed: %v", cx, cz, recovered)
 		}
 	}()
 	random := largeFeatureRandom(g.seed, int(cx), int(cz))
@@ -95,7 +95,7 @@ func (g *Nether) buildNetherFossilStart(cx, cz int32) (start *netherFossilStart,
 	// In the Nether's minY=0,height=128 generation context this is [32,125].
 	y := int32(32 + random.NextInt(94))
 	var column [128]uint32
-	g.javaBaseColumn(x, z, &column)
+	g.baseColumn(x, z, &column)
 	for y > netherSeaLevel {
 		current := column[y]
 		y--
@@ -108,31 +108,31 @@ func (g *Nether) buildNetherFossilStart(cx, cz int32) (start *netherFossilStart,
 	if y <= netherSeaLevel {
 		return nil, nil
 	}
-	biome := g.featureSource.JavaNoiseBiomeAt(x>>2, y>>2, z>>2)
-	allowed, err := javadata.BiomeTagContains("#minecraft:has_structure/nether_fossil", biome)
+	biome := g.featureSource.NoiseBiomeAt(x>>2, y>>2, z>>2)
+	allowed, err := gamedata.BiomeTagContains("#minecraft:has_structure/nether_fossil", biome)
 	if err != nil {
 		return nil, err
 	}
 	if !allowed {
 		return nil, nil
 	}
-	rotation := javastructure.Rotation(random.NextInt(4))
+	rotation := structure.Rotation(random.NextInt(4))
 	templateNumber := random.NextInt(14) + 1
 	name := fmt.Sprintf("nether_fossils/fossil_%d", templateNumber)
 	template := loadNetherTemplate(name)
 	origin := [3]int32{x, y, z}
 	min, max := netherTemplateBounds(template, origin, rotation)
 	return &netherFossilStart{
-		box: javastructure.Box{Min: min, Max: max}, origin: origin, rotation: rotation, name: name, template: template,
+		box: structure.Box{Min: min, Max: max}, origin: origin, rotation: rotation, name: name, template: template,
 	}, nil
 }
 
-func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	if env.Random == nil {
-		panic("nether: Java fossil placement has no step random source")
+		panic("nether: fossil placement has no step random source")
 	}
 	targetX, targetZ := int32(pos[0]), int32(pos[1])
-	chunkClip := javastructure.Bounds{Min: [3]int32{targetX * 16, 0, targetZ * 16}, Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15}}
+	chunkClip := structure.Bounds{Min: [3]int32{targetX * 16, 0, targetZ * 16}, Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15}}
 	s.generator.forFossilReferences(pos, func(start *netherFossilStart) {
 		if !fossilBoxIntersects(start.box, chunkClip) {
 			return
@@ -148,11 +148,11 @@ func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env java
 		// is restricted to the generated Nether height.
 		clip.Min[1] = 0
 		clip.Max[1] = 127
-		placement, err := start.template.Place(0, start.origin, start.rotation, javastructure.NoMirror, clip, s.generator.seed)
+		placement, err := start.template.Place(0, start.origin, start.rotation, structure.NoMirror, clip, s.generator.seed)
 		if err != nil {
-			panic(fmt.Errorf("place Java Nether fossil %s: %w", start.name, err))
+			panic(fmt.Errorf("place Nether fossil %s: %w", start.name, err))
 		}
-		filtered := javastructure.Placement{
+		filtered := structure.Placement{
 			Entities: placement.Entities, PostProcessing: placement.PostProcessing,
 			ScheduledTicks: placement.ScheduledTicks, StructurePieceWrites: placement.StructurePieceWrites,
 		}
@@ -161,17 +161,17 @@ func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env java
 			case "minecraft:air", "minecraft:structure_block", "minecraft:structure_void":
 				continue
 			}
-			javastructure.SeedRandomizableContainerLoot(&pieceBlock, env.Random)
+			structure.SeedRandomizableContainerLoot(&pieceBlock, env.Random)
 			filtered.Blocks = append(filtered.Blocks, pieceBlock)
 		}
 		if len(filtered.Blocks) != 0 || len(filtered.Entities) != 0 {
 			filtered, err = filtered.AdaptItemFrameEntities()
 			if err != nil {
-				panic(fmt.Errorf("adapt Java Nether fossil: %w", err))
+				panic(fmt.Errorf("adapt Nether fossil: %w", err))
 			}
 			emit(filtered)
 		}
-		random := java26.NewLegacyRandom(s.generator.seed)
+		random := vanilla.NewLegacyRandom(s.generator.seed)
 		base := random.ForkPositional().At(start.box.Min[0]+(start.box.Max[0]-start.box.Min[0]+1)/2, start.box.Min[1]+(start.box.Max[1]-start.box.Min[1]+1)/2, start.box.Min[2]+(start.box.Max[2]-start.box.Min[2]+1)/2)
 		if base.NextFloat() >= 0.5 {
 			return
@@ -199,14 +199,14 @@ func (s *netherFeatureSource) placeNetherFossilStep(pos world.ChunkPos, env java
 			return
 		}
 		facing := []string{"north", "east", "south", "west"}[base.NextInt(4)]
-		emit(javastructure.Placement{Blocks: []javastructure.Block{{
+		emit(structure.Placement{Blocks: []structure.Block{{
 			Pos:   ghastPos,
 			State: world.BlockState{Name: "minecraft:dried_ghast", Properties: map[string]any{"facing": facing, "hydration": int32(0), "waterlogged": false}},
 		}}})
 	})
 }
 
-func fossilBoxIntersects(box javastructure.Box, clip javastructure.Bounds) bool {
+func fossilBoxIntersects(box structure.Box, clip structure.Bounds) bool {
 	for axis := range 3 {
 		if box.Max[axis] < clip.Min[axis] || box.Min[axis] > clip.Max[axis] {
 			return false

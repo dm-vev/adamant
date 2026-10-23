@@ -8,11 +8,11 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -28,16 +28,16 @@ const (
 func (r endCityRotation) add(o endCityRotation) endCityRotation {
 	return endCityRotation((uint8(r) + uint8(o)) & 3)
 }
-func (r endCityRotation) java() javastructure.Rotation {
+func (r endCityRotation) canonical() structure.Rotation {
 	switch r {
 	case endCityRotClockwise90:
-		return javastructure.Clockwise90
+		return structure.Clockwise90
 	case endCityRotClockwise180:
-		return javastructure.Clockwise180
+		return structure.Clockwise180
 	case endCityRotCounterClockwise90:
-		return javastructure.CounterClockwise90
+		return structure.CounterClockwise90
 	default:
-		return javastructure.None
+		return structure.None
 	}
 }
 
@@ -546,16 +546,16 @@ func (g *End) applyEndCityStructures(chunkX, chunkZ int, region *endFeatureRegio
 	}
 }
 
-func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p *endCityPiece, random *java26.Random, publish bool, result *world.GenerationResult) {
+func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p *endCityPiece, random *vanilla.Random, publish bool, result *world.GenerationResult) {
 	c := region.chunks[region.index(chunkX, chunkZ)]
 	origin := [3]int32{int32(p.pos.x), int32(p.pos.y), int32(p.pos.z)}
 	seed := g.seed ^ int64(p.pos.x)*341873128712 ^ int64(p.pos.z)*132897987541
-	blockPlacement, err := p.template.Java.PlaceBlocks(
+	blockPlacement, err := p.template.Template.PlaceBlocks(
 		0,
 		origin,
-		p.rot.java(),
-		javastructure.NoMirror,
-		javastructure.Bounds{
+		p.rot.canonical(),
+		structure.NoMirror,
+		structure.Bounds{
 			Min: [3]int32{int32(chunkX << 4), int32(c.Range().Min()), int32(chunkZ << 4)},
 			Max: [3]int32{int32((chunkX << 4) + 15), int32(c.Range().Max()), int32((chunkZ << 4) + 15)},
 		},
@@ -566,7 +566,7 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 	}
 	registry := c.BlockRegistry()
 	positions := make([]cube.Pos, 0, len(blockPlacement.Blocks))
-	access := endJavaShapeAccess{
+	access := endShapeAccess{
 		endFeatureOrigin: endFeatureOrigin{region: region, chunkX: chunkX, chunkZ: chunkZ},
 		result:           result, random: region.sourceShapeRandom(g.seed, chunkX, chunkZ),
 	}
@@ -588,16 +588,16 @@ func (g *End) placeEndCityPiece(chunkX, chunkZ int, region *endFeatureRegion, p 
 				delete(region.blockActors, pos)
 				access.removeBlockEntity(pos)
 			}
-			javastructure.SeedRandomizableContainerLoot(&placed, random)
+			structure.SeedRandomizableContainerLoot(&placed, random)
 			access.recordBlockActor(placed)
-			access.markPostProcessing(pos, state.CanonicalJavaID(registry))
+			access.markPostProcessing(pos, state.CanonicalID(registry))
 		}
 	}
-	world.UpdateJavaTemplateShapes(access, positions, 2)
+	world.UpdateTemplateShapes(access, positions, 2)
 	g.placeEndCityDataMarkers(chunkX, chunkZ, region, blockPlacement.Blocks, p, random, publish, result)
 }
 
-func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegion, blocks []javastructure.Block, p *endCityPiece, random *java26.Random, publish bool, result *world.GenerationResult) {
+func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegion, blocks []structure.Block, p *endCityPiece, random *vanilla.Random, publish bool, result *world.GenerationResult) {
 	c := region.chunks[region.index(chunkX, chunkZ)]
 	for _, marker := range blocks {
 		if marker.State.Name != "minecraft:structure_block" || marker.NBT == nil {
@@ -621,7 +621,7 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			}
 			actor.record.NBT["LootTable"] = "minecraft:chests/end_city_treasure"
 			actor.record.NBT["LootTableSeed"] = random.NextLong()
-			access := endJavaShapeAccess{
+			access := endShapeAccess{
 				endFeatureOrigin: endFeatureOrigin{region: region, chunkX: chunkX, chunkZ: chunkZ},
 				result:           result,
 			}
@@ -643,7 +643,7 @@ func (g *End) placeEndCityDataMarkers(chunkX, chunkZ int, region *endFeatureRegi
 			if !endCityPosInChunk(marker.Pos, chunkX, chunkZ, c) {
 				continue
 			}
-			outward := javastructure.TransformPosition([3]int32{0, 0, 1}, javastructure.NoMirror, p.rot.java())
+			outward := structure.TransformPosition([3]int32{0, 0, 1}, structure.NoMirror, p.rot.canonical())
 			var facing cube.Face
 			switch {
 			case outward[0] > 0:
@@ -770,7 +770,7 @@ func (g *End) endCityStructure(startChunkX, startChunkZ int) (*endCityStructure,
 }
 
 func (g *End) endCityWorldgenRandom(chunkX, chunkZ int) *endRand {
-	random := java26.NewWorldgenRandom(g.seed)
+	random := vanilla.NewWorldgenRandom(g.seed)
 	decorationSeed := random.SetDecorationSeed(g.seed, int32(chunkX<<4), int32(chunkZ<<4))
 	// End City is registry-order index 20 in the Java 26.3 surface_structures step.
 	random.SetFeatureSeed(decorationSeed, 20, 4)

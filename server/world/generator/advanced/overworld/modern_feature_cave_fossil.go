@@ -1,40 +1,40 @@
 package overworld
 
 import (
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
-func placeModernFossil(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernFossil(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	fossilNames, ok := config["fossil_structures"].([]any)
 	if !ok || len(fossilNames) == 0 {
-		panic("overworld: malformed Java fossil structures")
+		panic("overworld: malformed fossil structures")
 	}
 	overlayNames, ok := config["overlay_structures"].([]any)
 	if !ok || len(overlayNames) != len(fossilNames) {
-		panic("overworld: malformed Java fossil overlay structures")
+		panic("overworld: malformed fossil overlay structures")
 	}
-	rotation := javastructure.Rotation(random.NextInt(4))
+	rotation := structure.Rotation(random.NextInt(4))
 	index := int(random.NextInt(int32(len(fossilNames))))
 	fossilName, ok := fossilNames[index].(string)
 	if !ok {
-		panic("overworld: malformed Java fossil structure name")
+		panic("overworld: malformed fossil structure name")
 	}
 	overlayName, ok := overlayNames[index].(string)
 	if !ok {
-		panic("overworld: malformed Java fossil overlay name")
+		panic("overworld: malformed fossil overlay name")
 	}
-	fossil, err := javastructure.Load(normalizeJavaResource(fossilName))
+	fossil, err := structure.Load(normalizeResource(fossilName))
 	if err != nil {
 		panic(err)
 	}
-	overlay, err := javastructure.Load(normalizeJavaResource(overlayName))
+	overlay, err := structure.Load(normalizeResource(overlayName))
 	if err != nil {
 		panic(err)
 	}
 	sizeX, sizeZ := fossil.Size[0], fossil.Size[2]
-	if rotation == javastructure.Clockwise90 || rotation == javastructure.CounterClockwise90 {
+	if rotation == structure.Clockwise90 || rotation == structure.CounterClockwise90 {
 		sizeX, sizeZ = sizeZ, sizeX
 	}
 	lowX, lowZ := origin.x-sizeX/2, origin.z-sizeZ/2
@@ -54,18 +54,18 @@ func placeModernFossil(region *featureRegion, config map[string]any, origin feat
 	sizeX0, sizeZ0 := fossil.Size[0]-1, fossil.Size[2]-1
 	baseX, baseZ := lowX, lowZ
 	switch rotation {
-	case javastructure.Clockwise90:
+	case structure.Clockwise90:
 		baseX += sizeZ0
-	case javastructure.Clockwise180:
+	case structure.Clockwise180:
 		baseX += sizeX0
 		baseZ += sizeZ0
-	case javastructure.CounterClockwise90:
+	case structure.CounterClockwise90:
 		baseZ += sizeX0
 	}
 	templateOrigin := [3]int32{baseX, targetY, baseZ}
 	maxEmpty := featureNumber(config["max_empty_corners_allowed"])
 	rotX, rotZ := fossil.Size[0], fossil.Size[2]
-	if rotation == javastructure.Clockwise90 || rotation == javastructure.CounterClockwise90 {
+	if rotation == structure.Clockwise90 || rotation == structure.CounterClockwise90 {
 		rotX, rotZ = rotZ, rotX
 	}
 	// The zero-position transform compensates the rotation, leaving the
@@ -87,16 +87,16 @@ func placeModernFossil(region *featureRegion, config map[string]any, origin feat
 		return false
 	}
 	chunkX, chunkZ := origin.x>>4, origin.z>>4
-	clip := javastructure.Bounds{Min: [3]int32{chunkX*16 - 16, region.MinY(), chunkZ*16 - 16}, Max: [3]int32{chunkX*16 + 31, region.MaxY(), chunkZ*16 + 31}}
-	place := func(template *javastructure.Template, resource any) {
+	clip := structure.Bounds{Min: [3]int32{chunkX*16 - 16, region.MinY(), chunkZ*16 - 16}, Max: [3]int32{chunkX*16 + 31, region.MaxY(), chunkZ*16 + 31}}
+	place := func(template *structure.Template, resource any) {
 		if len(template.Palettes) == 0 {
 			return
 		}
 		paletteIndex := int(random.NextInt(int32(len(template.Palettes))))
-		name := normalizeJavaResource(resource.(string))
-		processors, err := javastructure.LoadProcessors([]string{name}, nil, javastructure.ProcessorEnvironment{
-			BaseBlock:   func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
-			JavaBiomeAt: region.f.source.JavaBiomeAt,
+		name := normalizeResource(resource.(string))
+		processors, err := structure.LoadProcessors([]string{name}, nil, structure.ProcessorEnvironment{
+			BaseBlock: func(x, y, z int32) world.Block { return region.Block(featurePos{x, y, z}) },
+			BiomeAt:   region.f.source.BiomeAt,
 			BaseHeight: func(x, z int32, oceanFloor bool) int32 {
 				kind := "WORLD_SURFACE_WG"
 				if oceanFloor {
@@ -110,7 +110,7 @@ func placeModernFossil(region *featureRegion, config map[string]any, origin feat
 		if err != nil {
 			panic(err)
 		}
-		placement, err := template.PlaceBlocks(paletteIndex, templateOrigin, rotation, javastructure.NoMirror, clip, 0, processors...)
+		placement, err := template.PlaceBlocks(paletteIndex, templateOrigin, rotation, structure.NoMirror, clip, 0, processors...)
 		if err != nil {
 			panic(err)
 		}

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type monumentGraphFixture struct {
@@ -80,7 +80,7 @@ type monumentFullEntityFixture struct {
 	NBT   string     `json:"nbt"`
 }
 
-func TestOceanMonumentFullPostProcessMatchesJava263(t *testing.T) {
+func TestOceanMonumentFullPostProcessMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_ocean_monument_full_post.json")
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func TestOceanMonumentFullPostProcessMatchesJava263(t *testing.T) {
 	for _, fixture := range fixtures {
 		t.Run(strconv.Itoa(fixture.Direction)+"/"+fixture.Profile, func(t *testing.T) {
 			piece := modernOceanMonumentPiece{west: 19, north: 83, orientation: orientations[fixture.Direction], seed: 123456789}
-			constructorRandom := java26.NewLegacyRandom(123456789)
+			constructorRandom := vanilla.NewLegacyRandom(123456789)
 			if err := buildModernMonumentRoomGraph(&piece, &constructorRandom); err != nil {
 				t.Fatal(err)
 			}
@@ -103,12 +103,12 @@ func TestOceanMonumentFullPostProcessMatchesJava263(t *testing.T) {
 				t.Fatalf("missing base block minecraft:%s", fixture.Profile)
 			}
 			states := make(map[[3]int32]string)
-			postRandom := java26.NewLegacyRandom(2468013579)
-			levelRandom := java26.NewLegacyRandom(1357924680)
+			postRandom := vanilla.NewLegacyRandom(2468013579)
+			levelRandom := vanilla.NewLegacyRandom(1357924680)
 			for _, call := range fixture.Calls {
 				x0, z0 := fixture.ClipOrigin[0], fixture.ClipOrigin[1]
-				clip := javastructure.Bounds{Min: [3]int32{x0, -64, z0}, Max: [3]int32{x0 + 15, 319, z0 + 15}}
-				env := javastructure.ProcessorEnvironment{
+				clip := structure.Bounds{Min: [3]int32{x0, -64, z0}, Max: [3]int32{x0 + 15, 319, z0 + 15}}
+				env := structure.ProcessorEnvironment{
 					BaseBlock: func(x, y, z int32) world.Block {
 						if name, ok := states[[3]int32{x, y, z}]; ok {
 							block, found := monumentFixtureBlock(name)
@@ -161,7 +161,7 @@ func TestOceanMonumentFullPostProcessMatchesJava263(t *testing.T) {
 	}
 }
 
-func TestOceanMonumentPostProcessMatchesJava263(t *testing.T) {
+func TestOceanMonumentPostProcessMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_ocean_monument_post.json")
 	if err != nil {
 		t.Fatal(err)
@@ -174,7 +174,7 @@ func TestOceanMonumentPostProcessMatchesJava263(t *testing.T) {
 	for _, fixture := range fixtures {
 		t.Run(strconv.Itoa(fixture.Direction)+"/"+fixture.Profile, func(t *testing.T) {
 			piece := modernOceanMonumentPiece{west: 19, north: 83, orientation: orientations[fixture.Direction], seed: 123456789}
-			constructorRandom := java26.NewLegacyRandom(123456789)
+			constructorRandom := vanilla.NewLegacyRandom(123456789)
 			if err := buildModernMonumentRoomGraph(&piece, &constructorRandom); err != nil {
 				t.Fatal(err)
 			}
@@ -190,9 +190,9 @@ func TestOceanMonumentPostProcessMatchesJava263(t *testing.T) {
 				if call.Index == 1 {
 					minX, maxX = x0+8, x0+15
 				}
-				clip := javastructure.Bounds{Min: [3]int32{minX, 39, z0}, Max: [3]int32{maxX, 41, z0 + 15}}
-				postRandom := java26.NewLegacyRandom(987654321 + int64(call.Index))
-				env := javastructure.ProcessorEnvironment{
+				clip := structure.Bounds{Min: [3]int32{minX, 39, z0}, Max: [3]int32{maxX, 41, z0 + 15}}
+				postRandom := vanilla.NewLegacyRandom(987654321 + int64(call.Index))
+				env := structure.ProcessorEnvironment{
 					BaseBlock: func(x, y, z int32) world.Block {
 						if name, ok := states[[3]int32{x, y, z}]; ok {
 							block, found := monumentFixtureBlock(name)
@@ -255,7 +255,7 @@ func monumentPostHash(states map[[3]int32]string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func TestOceanMonumentGraphMatchesJava263(t *testing.T) {
+func TestOceanMonumentGraphMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_ocean_monument_graph.json")
 	if err != nil {
 		t.Fatal(err)
@@ -271,7 +271,7 @@ func TestOceanMonumentGraphMatchesJava263(t *testing.T) {
 		}
 		t.Run(fixture.Seed, func(t *testing.T) {
 			var sourcePiece modernOceanMonumentPiece
-			random := java26.NewLegacyRandom(seed)
+			random := vanilla.NewLegacyRandom(seed)
 			if err := buildModernMonumentRoomGraph(&sourcePiece, &random); err != nil {
 				t.Fatal(err)
 			}

@@ -4,7 +4,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // RuntimeFeatures places Java configured and placed features into a live
@@ -12,9 +12,9 @@ import (
 // spreading vegetation do with ConfiguredFeature.place.
 type RuntimeFeatures interface {
 	// PlaceConfigured places the configured feature name at pos.
-	PlaceConfigured(tx *Tx, name string, pos cube.Pos, random *java26.Random) bool
+	PlaceConfigured(tx *Tx, name string, pos cube.Pos, random *vanilla.Random) bool
 	// PlacePlaced places the placed feature name at pos.
-	PlacePlaced(tx *Tx, name string, pos cube.Pos, random *java26.Random) bool
+	PlacePlaced(tx *Tx, name string, pos cube.Pos, random *vanilla.Random) bool
 	// BoneMealFeatures returns the configured features of the biome at pos
 	// that bone meal may spawn on grass, as
 	// BiomeGenerationSettings.getBoneMealFeatures does.
@@ -38,8 +38,8 @@ func (tx *Tx) Features() (RuntimeFeatures, bool) {
 
 // FeatureRandom returns a new random for a feature placed at runtime, as
 // ServerLevel's random, which Java seeds anew for every level.
-func FeatureRandom() *java26.Random {
-	r := java26.NewLegacyRandom(rand.Int64())
+func FeatureRandom() *vanilla.Random {
+	r := vanilla.NewLegacyRandom(rand.Int64())
 	return &r
 }
 

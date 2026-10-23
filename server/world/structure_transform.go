@@ -101,10 +101,10 @@ func transformStructureYaw(yaw float64, mirror StructureMirror, rotation Structu
 	return yaw
 }
 
-// TransformJavaState applies Java's BlockState.mirror and BlockState.rotate to
+// TransformState applies Java's BlockState.mirror and BlockState.rotate to
 // the horizontal properties of a Java block state, without modifying the
 // state passed.
-func TransformJavaState(state BlockState, mirror StructureMirror, rotation StructureRotation) BlockState {
+func TransformState(state BlockState, mirror StructureMirror, rotation StructureRotation) BlockState {
 	out := state
 	if state.Properties == nil {
 		return out
@@ -112,12 +112,12 @@ func TransformJavaState(state BlockState, mirror StructureMirror, rotation Struc
 	props := make(map[string]any, len(state.Properties))
 	for k, v := range state.Properties {
 		if isCardinalDirection(k) {
-			k = TransformJavaDirection(k, mirror, rotation)
+			k = TransformDirection(k, mirror, rotation)
 		}
 		if str, ok := v.(string); ok {
 			switch {
 			case k == "facing":
-				v = TransformJavaDirection(str, mirror, rotation)
+				v = TransformDirection(str, mirror, rotation)
 			case k == "orientation":
 				v = transformJavaOrientation(str, mirror, rotation)
 			case isRailShape(str):
@@ -188,9 +188,9 @@ func isCardinalDirection(d string) bool {
 	return d == "north" || d == "south" || d == "east" || d == "west"
 }
 
-// TransformJavaDirection mirrors and rotates a horizontal Java direction name.
+// TransformDirection mirrors and rotates a horizontal Java direction name.
 // Other values, like up and down, are returned unchanged.
-func TransformJavaDirection(direction string, mirror StructureMirror, rotation StructureRotation) string {
+func TransformDirection(direction string, mirror StructureMirror, rotation StructureRotation) string {
 	var vector cube.Pos
 	switch direction {
 	case "north":
@@ -220,7 +220,7 @@ func TransformJavaDirection(direction string, mirror StructureMirror, rotation S
 func transformJavaOrientation(value string, mirror StructureMirror, rotation StructureRotation) string {
 	parts := strings.Split(value, "_")
 	for i, part := range parts {
-		parts[i] = TransformJavaDirection(part, mirror, rotation)
+		parts[i] = TransformDirection(part, mirror, rotation)
 	}
 	return strings.Join(parts, "_")
 }
@@ -260,10 +260,10 @@ func transformRailShape(s string, m StructureMirror, r StructureRotation) string
 		return s
 	}
 	if strings.HasPrefix(s, "ascending_") {
-		return "ascending_" + TransformJavaDirection(strings.TrimPrefix(s, "ascending_"), m, r)
+		return "ascending_" + TransformDirection(strings.TrimPrefix(s, "ascending_"), m, r)
 	}
 	first, second, _ := strings.Cut(s, "_")
-	first, second = TransformJavaDirection(first, m, r), TransformJavaDirection(second, m, r)
+	first, second = TransformDirection(first, m, r), TransformDirection(second, m, r)
 	// Java's corner names always put the north/south direction first.
 	if first == "east" || first == "west" {
 		first, second = second, first

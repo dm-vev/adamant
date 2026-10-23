@@ -9,8 +9,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
@@ -33,7 +33,7 @@ func (t hostileMobType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entit
 		id := h.UUID()
 		hash := fnv.New64a()
 		_, _ = hash.Write(id[:])
-		d.Data.(*hostileState).random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		d.Data.(*hostileState).random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	switch t.id {
 	case "minecraft:zombie":
@@ -111,10 +111,10 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c.cureTicks = int(nbtconv.Int32(n, "ConversionTime"))
 	if source, ok := n["equipment"].(map[string]any); ok {
 		if hand, ok := source["mainhand"].(map[string]any); ok {
-			c.main, _ = item.StackFromJavaNBT(hand)
+			c.main, _ = item.StackFromStructureNBT(hand)
 		}
 		if head, ok := source["head"].(map[string]any); ok {
-			c.head, _ = item.StackFromJavaNBT(head)
+			c.head, _ = item.StackFromStructureNBT(head)
 		}
 	}
 	equipment := ReadNativeMobEquipment(n)
@@ -131,7 +131,7 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		// Pre-1.21.5 Java ArmorItems lists feet, legs, chest and head.
 		if armor, ok := n["ArmorItems"].([]any); ok && len(armor) == 4 {
 			if raw, ok := armor[3].(map[string]any); ok {
-				if stack, err := item.StackFromJavaNBT(raw); err == nil && !stack.Empty() {
+				if stack, err := item.StackFromStructureNBT(raw); err == nil && !stack.Empty() {
 					c.head = stack
 				}
 			}
@@ -238,7 +238,7 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 		gravity = 0
 	}
 	d.Data = &hostileState{
-		health: NewHealthManager(health, t.health), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0),
+		health: NewHealthManager(health, t.health), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0),
 		speed: speed, attack: t.attack, kind: c.kind, baby: c.baby, canBreakDoors: c.canBreakDoors, canPickupLoot: c.canPickupLoot,
 		conversionTime: c.conversionTime, cureTicks: c.cureTicks, main: c.main, head: c.head, profession: c.profession, villagerType: c.villagerType,
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
@@ -299,7 +299,7 @@ type hostileState struct {
 	health                                                                        *HealthManager
 	effects                                                                       *EffectManager
 	mc                                                                            *MovementComputer
-	random                                                                        java26.Random
+	random                                                                        vanilla.Random
 	speed, attack                                                                 float64
 	cooldown, wander, bowCooldown, spellCooldown, hoverTime, doorTicks, cureTicks int
 	navigator                                                                     Navigator
@@ -977,7 +977,7 @@ type zombieSpawnGroupData struct {
 	triedToSpawnCamelHusk bool
 }
 
-func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *java26.Random, withEquipment bool, group *world.EntitySpawnGroup) (baby, canBreakDoors, canPickupLoot bool, main item.Stack) {
+func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *vanilla.Random, withEquipment bool, group *world.EntitySpawnGroup) (baby, canBreakDoors, canPickupLoot bool, main item.Stack) {
 	if r == nil {
 		return
 	}
@@ -1049,7 +1049,7 @@ func raidDamageAttacker(src world.DamageSource) world.Entity {
 	return nil
 }
 
-func (m *HostileMob) FinalizeSpawn(reason string, r *java26.Random) {
+func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}
@@ -1103,7 +1103,7 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *java26.Random) {
 	}
 }
 
-func (m *HostileMob) finalizeHuskCamel(reason string, r *java26.Random) {
+func (m *HostileMob) finalizeHuskCamel(reason string, r *vanilla.Random) {
 	group := m.H().SpawnGroup()
 	if group == nil {
 		return

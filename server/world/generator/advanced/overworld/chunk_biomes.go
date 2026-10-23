@@ -3,11 +3,11 @@ package overworld
 import (
 	"sync"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// Noise biomes are sampled at quart heights -16 to 79; JavaNoiseBiomeAt
+// Noise biomes are sampled at quart heights -16 to 79; NoiseBiomeAt
 // clamps other heights to them.
 const (
 	chunkBiomeMinQuartY = -16
@@ -66,7 +66,7 @@ func (c *chunkBiomeCache) load(pos world.ChunkPos, compute func() *chunkBiomes) 
 func (g *Overworld) noiseBiomes(pos world.ChunkPos) *chunkBiomes {
 	return g.chunkBiomes.load(pos, func() *chunkBiomes {
 		biomes := &chunkBiomes{}
-		var hint java26.ClimateHint
+		var hint vanilla.ClimateHint
 		for z := range int32(4) {
 			for x := range int32(4) {
 				column := g.noise.SampleBiomeColumn((pos[0]*4+x)*4, (pos[1]*4+z)*4)
@@ -81,7 +81,7 @@ func (g *Overworld) noiseBiomes(pos world.ChunkPos) *chunkBiomes {
 
 // quartBiomes returns the noise biomes of the quarts of the chunk at pos and
 // of the quarts bordering it, read from the biomes of the chunks.
-func (g *Overworld) quartBiomes(pos world.ChunkPos) java26.QuartBiomes {
+func (g *Overworld) quartBiomes(pos world.ChunkPos) vanilla.QuartBiomes {
 	var chunks [3][3]*chunkBiomes
 	for dx := range 3 {
 		for dz := range 3 {
@@ -94,9 +94,9 @@ func (g *Overworld) quartBiomes(pos world.ChunkPos) java26.QuartBiomes {
 	}
 }
 
-// JavaNoiseBiomesInChunk returns the distinct biomes JavaNoiseBiomeAt gives
+// NoiseBiomesInChunk returns the distinct biomes NoiseBiomeAt gives
 // for the quarts of the chunk at pos between minQuartY and maxQuartY.
-func (s modernTerrainSource) JavaNoiseBiomesInChunk(pos world.ChunkPos, minQuartY, maxQuartY int32) []string {
+func (s modernTerrainSource) NoiseBiomesInChunk(pos world.ChunkPos, minQuartY, maxQuartY int32) []string {
 	biomes := s.generator.noiseBiomes(pos)
 	var seen [256]bool
 	var names []string
@@ -106,7 +106,7 @@ func (s modernTerrainSource) JavaNoiseBiomesInChunk(pos world.ChunkPos, minQuart
 				index := biomes.index[x][z][max(-16, min(qy, 79))-chunkBiomeMinQuartY]
 				if !seen[index] {
 					seen[index] = true
-					names = append(names, java26.OverworldBiomeName(index))
+					names = append(names, vanilla.OverworldBiomeName(index))
 				}
 			}
 		}

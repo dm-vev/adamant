@@ -248,7 +248,7 @@ func TestFluidMixedSourceNativeBoundaries(t *testing.T) {
 				if actual, ok := tx.Block(target).(nativeFluidHalfBlock); !ok || actual != custom {
 					t.Error("flow replaced native foreground block")
 				}
-				if _, err := tx.JavaBlockStateID(target); err == nil {
+				if _, err := tx.BlockStateID(target); err == nil {
 					t.Error("native-only block received a fabricated source identity")
 				}
 			})

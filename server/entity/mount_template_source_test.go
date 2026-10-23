@@ -49,7 +49,7 @@ func TestSourceMountTemplateStateSurvivesMCDB(t *testing.T) {
 			}
 			w := open()
 			pos := mgl64.Vec3{.5, 65, .5}
-			handle, err := NewFromJavaNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
+			handle, err := NewFromStructureNBT(source, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
 			if err != nil {
 				t.Fatal(err)
 			}

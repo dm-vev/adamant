@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestOceanRuinGraphMatchesJava263(t *testing.T) {
+func TestOceanRuinGraphMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_ocean_ruin_source.json")
 	if err != nil {
 		t.Fatal(err)

@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type heightProviderOracle struct {
@@ -34,14 +34,14 @@ func heightProviderCases(t *testing.T) []heightProviderOracle {
 	}
 	return cases
 }
-func TestJavaHeightProvidersMatchSource(t *testing.T) {
+func TestHeightProvidersMatchSource(t *testing.T) {
 	for _, row := range heightProviderCases(t) {
-		random := java26.NewLegacyRandom(row.Seed)
+		random := vanilla.NewLegacyRandom(row.Seed)
 		if row.Xoroshiro {
-			random = java26.NewXoroshiroRandom(row.Seed)
+			random = vanilla.NewXoroshiroRandom(row.Seed)
 		}
 		for i, want := range row.Values {
-			got := sampleJavaHeight(row.Provider, &random, row.MinY, row.MinY+row.Height, row.SeaLevel)
+			got := sampleHeight(row.Provider, &random, row.MinY, row.MinY+row.Height, row.SeaLevel)
 			if got != want {
 				t.Fatalf("%s seed=%d xoro=%v minY=%d height=%d sample=%d: got %d want %d", row.Name, row.Seed, row.Xoroshiro, row.MinY, row.Height, i, got, want)
 			}
@@ -63,14 +63,14 @@ func TestJigsawStartSamplesHeightBeforePoolSelection(t *testing.T) {
 		}
 		t.Run(row.Name, func(t *testing.T) {
 			config := map[string]any{}
-			for key, value := range requireJavaJSON("structure", "trial_chambers") {
+			for key, value := range requireJSON("structure", "trial_chambers") {
 				config[key] = value
 			}
 			config["size"] = float64(1)
 			// Isolate height sampling from the trial structure's explicit padding.
 			delete(config, "dimension_padding")
 			config["start_height"] = row.Provider
-			random := java26.NewLegacyRandom(row.Seed)
+			random := vanilla.NewLegacyRandom(row.Seed)
 			source := liquidStructureSource{pillarAirSource{ModernFeatureSource: modernTerrainSource{}, air: world.DefaultBlockRegistry.AirRuntimeID()}}
 			start, ok, err := buildModernJigsawStructure(modernStructureBuildInput{seed: 0, name: "trial_chambers", chunkX: -1, chunkZ: -17, config: config, source: source, random: &random})
 			if err != nil || !ok {
@@ -80,7 +80,7 @@ func TestJigsawStartSamplesHeightBeforePoolSelection(t *testing.T) {
 			if got := piece.Bounds.Min[1] + piece.GroundLevelDelta; got != row.FirstHeight {
 				t.Errorf("root absolute ground height=%d, source sampled %d", got, row.FirstHeight)
 			}
-			if piece.Rotation != javastructure.Rotation(row.RotationAfterFirst) {
+			if piece.Rotation != structure.Rotation(row.RotationAfterFirst) {
 				t.Errorf("root rotation=%v, source following height draw=%d", piece.Rotation, row.RotationAfterFirst)
 			}
 		})

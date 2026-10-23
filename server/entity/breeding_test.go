@@ -36,7 +36,7 @@ func spawnAnimal(t *testing.T, tx *world.Tx, id string, x float64, nbt map[strin
 	for k, v := range nbt {
 		data[k] = v
 	}
-	h, err := entity.NewFromJavaNBT(data, world.EntitySpawnOpts{Position: mgl64.Vec3{x, 64, 0.5}, SpawnFinalized: true})
+	h, err := entity.NewFromStructureNBT(data, world.EntitySpawnOpts{Position: mgl64.Vec3{x, 64, 0.5}, SpawnFinalized: true})
 	if err != nil {
 		t.Fatal(err)
 	}

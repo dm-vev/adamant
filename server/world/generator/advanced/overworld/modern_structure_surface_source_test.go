@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type surfaceSourceCase struct {
@@ -42,7 +42,7 @@ func (s surfaceSourceTerrain) BaseHeight(x, z int32, _ bool) int32 {
 	}
 	return s.fixture.Height
 }
-func (s surfaceSourceTerrain) JavaNoiseBiomeAt(_, y, _ int32) string {
+func (s surfaceSourceTerrain) NoiseBiomeAt(_, y, _ int32) string {
 	valid := true
 	switch s.fixture.Scenario {
 	case "invalid_column":
@@ -64,7 +64,7 @@ func (s surfaceSourceTerrain) JavaNoiseBiomeAt(_, y, _ int32) string {
 
 // The fixtures execute Structure.findValidGenerationPoint and the source's raw
 // builders. The acceptance boundaries are independent of postProcess HPos.
-func TestSurfaceStructureGenerationMatchesJavaSource(t *testing.T) {
+func TestSurfaceStructureGenerationMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_surface_acceptance.json")
 	if err != nil {
 		t.Fatal(err)
@@ -101,6 +101,6 @@ func TestSurfaceStructureGenerationMatchesJavaSource(t *testing.T) {
 	}
 }
 
-func surfaceSourceBox(box javastructure.Box) [6]int32 {
+func surfaceSourceBox(box structure.Box) [6]int32 {
 	return [6]int32{box.Min[0], box.Min[1], box.Min[2], box.Max[0], box.Max[1], box.Max[2]}
 }

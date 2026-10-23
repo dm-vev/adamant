@@ -6,40 +6,40 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // applyTemplateFluids matches StructureTemplate's post-write waterlogging pass.
 // Native secondary layers retain the actual fluid kind and source/flowing state.
-func applyTemplateFluids(region *featureRegion, blocks []javastructure.Block) []javastructure.Block {
+func applyTemplateFluids(region *featureRegion, blocks []structure.Block) []structure.Block {
 	return applyTemplateFluidsForStructure(region, blocks, false)
 }
 
-func applyTemplateFluidsForStructure(region *featureRegion, blocks []javastructure.Block, structurePieceWrites bool) []javastructure.Block {
+func applyTemplateFluidsForStructure(region *featureRegion, blocks []structure.Block, structurePieceWrites bool) []structure.Block {
 	payload, _ := applyTemplateFluidsForStructureWrites(region, blocks, structurePieceWrites, 3)
 	return payload
 }
 
-func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javastructure.Block, structurePieceWrites bool, flags int) ([]javastructure.Block, []cube.Pos) {
+func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []structure.Block, structurePieceWrites bool, flags int) ([]structure.Block, []cube.Pos) {
 	registry, ok := region.c.BlockRegistry().(world.BlockRegistry)
 	if !ok {
-		panic("overworld: Java feature region registry cannot resolve native blocks")
+		panic("overworld: feature region registry cannot resolve native blocks")
 	}
 	var toFill []featurePos
 	var locked []featurePos
-	var payloadBlocks []javastructure.Block
+	var payloadBlocks []structure.Block
 	var written []cube.Pos
-	applyWaterlogging := len(blocks) == 0 || blocks[0].LiquidSettings != javastructure.IgnoreWaterlogging
+	applyWaterlogging := len(blocks) == 0 || blocks[0].LiquidSettings != structure.IgnoreWaterlogging
 	for i := range blocks {
 		entry := &blocks[i]
 		pos := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}
 		if pos.y < region.MinY() || pos.y > region.MaxY() || absFeatureInt(pos.x>>4-region.writeOriginX) > 1 || absFeatureInt(pos.z>>4-region.writeOriginZ) > 1 {
 			continue
 		}
-		entry.State.Properties = javadata.BlockPropertiesWithDefaults(entry.State.Name, entry.State.Properties)
+		entry.State.Properties = gamedata.BlockPropertiesWithDefaults(entry.State.Name, entry.State.Properties)
 		previous := region.nativeState(pos)
 		state, err := entry.ResolveNative(registry, previous)
 		if err != nil {
@@ -67,7 +67,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 				if !strings.Contains(typeName, ":") {
 					typeName = "minecraft:" + typeName
 				}
-				region.reserveJavaTick(chunk.ScheduledTick{
+				region.reserveTick(chunk.ScheduledTick{
 					Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: typeName,
 				})
 				break
@@ -103,7 +103,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 				}
 				*entry = wet
 				if region.recordsAt(pos) {
-					region.reserveJavaTick(chunk.ScheduledTick{
+					region.reserveTick(chunk.ScheduledTick{
 						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
 					})
 				}
@@ -129,11 +129,11 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 			if templateFluidIsSource(registry, current) {
 				continue
 			}
-			currentJava, err := world.JavaState(registry, current)
+			currentCanonical, err := world.CanonicalState(registry, current)
 			if err != nil {
 				panic(err)
 			}
-			if !templateContainerState(currentJava) {
+			if !templateContainerState(currentCanonical) {
 				remaining = append(remaining, pos)
 				continue
 			}
@@ -157,15 +157,15 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 			// Java removes the candidate and continues the pass after calling
 			// placeLiquid, even when a specialized container rejects the source.
 			filled = true
-			if waterSource && templateContainerWaterloggable(currentJava) && !templateDoubleSlab(registry, current) {
-				wet := templateWaterloggedState(currentJava)
+			if waterSource && templateContainerWaterloggable(currentCanonical) && !templateDoubleSlab(registry, current) {
+				wet := templateWaterloggedState(currentCanonical)
 				state, err := world.ResolveState(registry, wet)
 				if err != nil {
 					panic(err)
 				}
 				region.Set(pos, state)
 				if region.recordsAt(pos) {
-					region.reserveJavaTick(chunk.ScheduledTick{
+					region.reserveTick(chunk.ScheduledTick{
 						Pos: cube.Pos{int(pos.x), int(pos.y), int(pos.z)}, Kind: chunk.FluidTick, Type: "minecraft:water",
 					})
 				}
@@ -193,7 +193,7 @@ func applyTemplateFluidsForStructureWrites(region *featureRegion, blocks []javas
 	}
 	return surviving, written
 }
-func applyTemplatePostShapeBlocks(region *featureRegion, blocks []javastructure.Block, flags int) {
+func applyTemplatePostShapeBlocks(region *featureRegion, blocks []structure.Block, flags int) {
 	registry := region.c.BlockRegistry()
 	for _, entry := range blocks {
 		pos := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}
@@ -218,7 +218,7 @@ func structurePieceShapeCheckBlock(state world.NativeState, registry world.Block
 	if !ok {
 		panic("overworld: unknown structure block runtime ID")
 	}
-	switch normalizeJavaResource(name) {
+	switch normalizeResource(name) {
 	case "nether_brick_fence", "torch", "wall_torch", "oak_fence", "spruce_fence", "dark_oak_fence", "pale_oak_fence", "acacia_fence", "birch_fence", "jungle_fence", "ladder", "iron_bars":
 		return true
 	default:
@@ -234,7 +234,7 @@ func templateContainerState(state world.BlockState) bool {
 }
 
 func templateRejectingContainer(name string) bool {
-	switch normalizeJavaResource(name) {
+	switch normalizeResource(name) {
 	case "kelp", "kelp_plant", "seagrass", "tall_seagrass":
 		return true
 	default:
@@ -247,7 +247,7 @@ func templateContainerWaterloggable(state world.BlockState) bool {
 	return ok
 }
 
-func templateWaterloggedBlock(entry javastructure.Block) javastructure.Block {
+func templateWaterloggedBlock(entry structure.Block) structure.Block {
 	entry.State = templateWaterloggedState(entry.State)
 	switch native := entry.NativeBlock.(type) {
 	case block.Campfire:
@@ -258,7 +258,7 @@ func templateWaterloggedBlock(entry javastructure.Block) javastructure.Block {
 		entry.NativeBlock = native
 	}
 	if entry.NativeBlock != nil {
-		native, adapted, err := javastructure.NativeBlockForJavaState(entry.State)
+		native, adapted, err := structure.NativeBlockForState(entry.State)
 		if err != nil {
 			panic(err)
 		}
@@ -272,7 +272,7 @@ func templateWaterloggedBlock(entry javastructure.Block) javastructure.Block {
 func templateWaterloggedState(state world.BlockState) world.BlockState {
 	state.Properties = cloneFeatureProperties(state.Properties)
 	state.Properties["waterlogged"] = true
-	name := normalizeJavaResource(state.Name)
+	name := normalizeResource(state.Name)
 	if name == "campfire" || name == "soul_campfire" || name == "candle" || strings.HasSuffix(name, "_candle") {
 		state.Properties["lit"] = false
 	}
@@ -292,7 +292,7 @@ func templateBlockStateIsSource(state world.BlockState) bool {
 	if waterlogged, ok := state.Properties["waterlogged"]; ok && templateBool(waterlogged) {
 		return true
 	}
-	switch normalizeJavaResource(state.Name) {
+	switch normalizeResource(state.Name) {
 	case "bubble_column", "kelp", "kelp_plant", "seagrass", "tall_seagrass":
 		return true
 	case "water", "lava":

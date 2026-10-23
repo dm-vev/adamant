@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -37,7 +37,7 @@ func TestZombieVillagerTemplateSpawnMatchesJava263(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				level, own := java26.NewXoroshiroRandom(levelSeed), java26.NewLegacyRandom(ownSeed)
+				level, own := vanilla.NewXoroshiroRandom(levelSeed), vanilla.NewLegacyRandom(ownSeed)
 				base, ok := world.DifficultyByID(source.Difficulty)
 				if !ok {
 					t.Fatalf("Source difficulty %d", source.Difficulty)
@@ -95,7 +95,7 @@ func TestZombieVillagerTemplateSpawnMatchesJava263(t *testing.T) {
 				}
 				for _, continuation := range []struct {
 					name     string
-					stream   *java26.Random
+					stream   *vanilla.Random
 					expected string
 				}{{"region", &level, source.NextLevel}, {"entity", &own, source.NextOwn}} {
 					expected, err := strconv.ParseInt(continuation.expected, 10, 64)

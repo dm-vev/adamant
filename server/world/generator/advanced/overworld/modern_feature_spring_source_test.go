@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -29,7 +29,7 @@ type springSourceFixture struct {
 	Cases []springSourceCase `json:"cases"`
 }
 
-func TestSpringFeatureMatchesJava263Source(t *testing.T) {
+func TestSpringFeatureMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_spring_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -55,20 +55,20 @@ func TestSpringFeatureMatchesJava263Source(t *testing.T) {
 			if tc.RejectWrites {
 				region.SetOrigin(target[0]+3, target[1]+3)
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if got := placeModernSpringRegion(region, tc.Config, origin, &random); got != tc.Placed {
 				t.Errorf("placed=%v Source=%v", got, tc.Placed)
 			}
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, row := range tc.States {
-				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalJavaID(c.BlockRegistry())
+				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalID(c.BlockRegistry())
 			}
 			for pos, state := range region.overlayByPos() {
-				got := state.CanonicalJavaID(c.BlockRegistry())
-				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
+				got := state.CanonicalID(c.BlockRegistry())
+				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalID(c.BlockRegistry()) {
 					continue
 				}
 				expected, exists := want[pos]

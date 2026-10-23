@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/mc112"
@@ -14,14 +14,14 @@ import (
 )
 
 const (
-	javaSeaLevel = 63
+	seaLevel = 63
 )
 
 // Overworld generates Java 26.3 terrain and features with Bedrock block states.
 // Immutable terrain previews and worker-local samplers permit concurrent use.
 type Overworld struct {
 	seed             int64
-	noise            *java26.OverworldNoise
+	noise            *vanilla.OverworldNoise
 	zoomSeed         int64
 	modernSurface    *modernSurface
 	modernStructures *modernStructures
@@ -164,8 +164,8 @@ func New(seed int64) *Overworld {
 func NewOverworld(seed int64) *Overworld {
 	g := &Overworld{
 		seed:         seed,
-		noise:        java26.NewOverworldNoise(seed),
-		zoomSeed:     java26.BiomeZoomSeed(seed),
+		noise:        vanilla.NewOverworldNoise(seed),
+		zoomSeed:     vanilla.BiomeZoomSeed(seed),
 		airRID:       world.BlockRuntimeID(block.Air{}),
 		stoneRID:     world.BlockRuntimeID(block.Stone{}),
 		waterRID:     world.BlockRuntimeID(block.Water{Depth: 8, Still: true}),
@@ -201,7 +201,7 @@ func (g *Overworld) TuneGeneration(tuning world.GenerationTuning) {
 
 // DefaultSpawn returns the default overworld spawn position.
 func (*Overworld) DefaultSpawn(world.Dimension) cube.Pos {
-	return cube.Pos{0, javaSeaLevel + 2, 0}
+	return cube.Pos{0, seaLevel + 2, 0}
 }
 
 func (g *Overworld) biomeDataForChunk(chunkX, chunkZ int) *biomeData {
@@ -338,7 +338,7 @@ func (g *Overworld) setBlocksInChunk(chunkX, chunkZ int, c *chunk.Chunk, biomesF
 									sub.initialised = true
 								}
 								sub.storage.SetPaletteIndex(x, uint8(y), z, sub.stoneIndex)
-							} else if int(y) < javaSeaLevel {
+							} else if int(y) < seaLevel {
 								if !sub.initialised {
 									sub.storage, sub.stoneIndex, sub.waterIndex = c.LayerStorageWithTwoRuntimeIDs(y, 0, g.stoneRID, g.waterRID)
 									sub.initialised = true
@@ -556,20 +556,20 @@ func (g *Overworld) generateBiomeTerrainColumn(c *chunk.Chunk, x, z uint8, top, 
 			if thickness <= 0 {
 				topBlock = g.airRID
 				fillerBlock = g.stoneRID
-			} else if int(y) >= javaSeaLevel-4 && int(y) <= javaSeaLevel+1 {
+			} else if int(y) >= seaLevel-4 && int(y) <= seaLevel+1 {
 				topBlock = top
 				fillerBlock = filler
 			}
 
-			if int(y) < javaSeaLevel && topBlock == g.airRID {
+			if int(y) < seaLevel && topBlock == g.airRID {
 				topBlock = g.waterRID
 			}
 
 			layer = thickness
 
-			if int(y) >= javaSeaLevel-1 {
+			if int(y) >= seaLevel-1 {
 				c.SetBlock(x, y, z, 0, topBlock)
-			} else if int(y) < javaSeaLevel-7-int(thickness) {
+			} else if int(y) < seaLevel-7-int(thickness) {
 				c.SetBlock(x, y, z, 0, g.gravelRID)
 			} else {
 				c.SetBlock(x, y, z, 0, fillerBlock)
@@ -583,10 +583,10 @@ func (g *Overworld) generateBiomeTerrainColumn(c *chunk.Chunk, x, z uint8, top, 
 
 			if layer == 0 && thickness > 1 {
 				if fillerBlock == g.sandRID {
-					layer = int32(r.Intn(4) + int32(max(0, int(y)-(javaSeaLevel-1))))
+					layer = int32(r.Intn(4) + int32(max(0, int(y)-(seaLevel-1))))
 					fillerBlock = g.sandstoneRID
 				} else if fillerBlock == g.redSandRID {
-					layer = int32(r.Intn(4) + int32(max(0, int(y)-(javaSeaLevel-1))))
+					layer = int32(r.Intn(4) + int32(max(0, int(y)-(seaLevel-1))))
 					fillerBlock = g.redSandstoneRID
 				}
 			}

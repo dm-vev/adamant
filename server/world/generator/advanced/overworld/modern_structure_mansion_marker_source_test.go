@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
-func TestMansionChestMarkersMatchJava263(t *testing.T) {
+func TestMansionChestMarkersMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_mansion_markers.json")
 	if err != nil {
 		t.Fatal(err)
@@ -22,15 +22,15 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 		Chunk            [2]int32 `json:"chunk"`
 		MarkerRandomSeed string   `json:"markerRandomSeed"`
 		Markers          []struct {
-			Piece     int                    `json:"piece"`
-			Name      string                 `json:"name"`
-			Rotation  javastructure.Rotation `json:"rotation"`
-			Mirror    javastructure.Mirror   `json:"mirror"`
-			Marker    string                 `json:"marker"`
-			Position  [3]int32               `json:"position"`
-			Facing    string                 `json:"facing"`
-			LootTable string                 `json:"lootTable"`
-			LootSeed  string                 `json:"lootSeed"`
+			Piece     int                `json:"piece"`
+			Name      string             `json:"name"`
+			Rotation  structure.Rotation `json:"rotation"`
+			Mirror    structure.Mirror   `json:"mirror"`
+			Marker    string             `json:"marker"`
+			Position  [3]int32           `json:"position"`
+			Facing    string             `json:"facing"`
+			LootTable string             `json:"lootTable"`
+			LootSeed  string             `json:"lootSeed"`
 		} `json:"markers"`
 	}
 	if err = json.Unmarshal(data, &fixtures); err != nil {
@@ -46,7 +46,7 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 			t.Fatal(err)
 		}
 		random := largeFeatureRandom(seed, fixture.Chunk[0], fixture.Chunk[1])
-		rotation := javastructure.Rotation(random.NextInt(4))
+		rotation := structure.Rotation(random.NextInt(4))
 		plan := newMansionPlan(&random)
 		placer := newMansionPlacer([3]int32{-13, 70, 19}, rotation, seed, &random)
 		if err = placer.create(plan); err != nil {
@@ -55,8 +55,8 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 		type markerResult struct {
 			piece         int
 			name, marker  string
-			rotation      javastructure.Rotation
-			mirror        javastructure.Mirror
+			rotation      structure.Rotation
+			mirror        structure.Mirror
 			position      [3]int32
 			facing, table string
 			seed          int64
@@ -65,9 +65,9 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 		}
 		var got []markerResult
 		var current markerResult
-		markerRandom := java26.NewLegacyRandom(markerSeed)
-		levelRandom := java26.NewLegacyRandom(markerSeed ^ 0x263)
-		env := javastructure.ProcessorEnvironment{
+		markerRandom := vanilla.NewLegacyRandom(markerSeed)
+		levelRandom := vanilla.NewLegacyRandom(markerSeed ^ 0x263)
+		env := structure.ProcessorEnvironment{
 			BaseBlock:           func(int32, int32, int32) world.Block { return block.Air{} },
 			Random:              &markerRandom,
 			LevelRandom:         &levelRandom,
@@ -81,7 +81,7 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 				got = append(got, current)
 			},
 		}
-		clip := javastructure.Bounds{Min: [3]int32{-1000, -64, -1000}, Max: [3]int32{1000, 320, 1000}}
+		clip := structure.Bounds{Min: [3]int32{-1000, -64, -1000}, Max: [3]int32{1000, 320, 1000}}
 		for i, piece := range placer.pieces {
 			mansion := piece.(modernMansionPiece)
 			name := ""
@@ -100,7 +100,7 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 				if len(marker) < 5 || marker[:5] != "Chest" {
 					continue
 				}
-				pos := javastructure.TransformPosition(block.Pos, mansion.mirror, mansion.rotation)
+				pos := structure.TransformPosition(block.Pos, mansion.mirror, mansion.rotation)
 				for axis := range 3 {
 					pos[axis] += mansion.origin[axis]
 				}
@@ -109,7 +109,7 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 			if len(markersAt) == 0 {
 				continue
 			}
-			blocks, err := mansion.Place(clip, javastructure.ProcessorEnvironment{})
+			blocks, err := mansion.Place(clip, structure.ProcessorEnvironment{})
 			if err != nil {
 				t.Fatalf("seed %s piece %d place: %v", fixture.Seed, i, err)
 			}
@@ -118,7 +118,7 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 					t.Fatalf("seed %s piece %d left a structure marker in template blocks", fixture.Seed, i)
 				}
 			}
-			if err = mansion.AfterTemplatePlacement(clip, env, func(out javastructure.Placement) {
+			if err = mansion.AfterTemplatePlacement(clip, env, func(out structure.Placement) {
 				for _, block := range out.PostShapeBlocks {
 					if block.State.Name != "minecraft:chest" {
 						continue
@@ -153,15 +153,15 @@ func TestMansionChestMarkersMatchJava263(t *testing.T) {
 		}
 		for _, want := range fixture.Markers {
 			mansion := placer.pieces[want.Piece].(modernMansionPiece)
-			point := javastructure.Bounds{Min: want.Position, Max: want.Position}
+			point := structure.Bounds{Min: want.Position, Max: want.Position}
 			for range 2 {
-				splitRandom := java26.NewLegacyRandom(markerSeed)
-				splitLevelRandom := java26.NewLegacyRandom(markerSeed ^ 0x263)
+				splitRandom := vanilla.NewLegacyRandom(markerSeed)
+				splitLevelRandom := vanilla.NewLegacyRandom(markerSeed ^ 0x263)
 				splitEnv := env
 				splitEnv.Random, splitEnv.LevelRandom = &splitRandom, &splitLevelRandom
 				splitEnv.SetBlockEntityLootTable = func(int32, int32, int32, string, int64) {}
-				var splitBlocks []javastructure.Block
-				if err = mansion.AfterTemplatePlacement(point, splitEnv, func(out javastructure.Placement) {
+				var splitBlocks []structure.Block
+				if err = mansion.AfterTemplatePlacement(point, splitEnv, func(out structure.Placement) {
 					for _, block := range out.PostShapeBlocks {
 						if block.State.Name == "minecraft:chest" {
 							splitBlocks = append(splitBlocks, block)

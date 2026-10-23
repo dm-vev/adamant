@@ -29,7 +29,7 @@ func dropMob(t *testing.T, id string, landing world.Block, mobGriefing bool) (lo
 		if _, farmland := landing.(block.Farmland); farmland {
 			top = 63 + 15.0/16
 		}
-		mob, err := entity.NewFromJavaNBT(map[string]any{"id": id}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, top + 10, 0.5}, SpawnFinalized: true})
+		mob, err := entity.NewFromStructureNBT(map[string]any{"id": id}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, top + 10, 0.5}, SpawnFinalized: true})
 		if err != nil {
 			t.Fatal(err)
 		}

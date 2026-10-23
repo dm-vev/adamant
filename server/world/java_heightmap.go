@@ -1,7 +1,7 @@
 package world
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -35,11 +35,11 @@ func (tx *Tx) JavaMotionBlockingHeight(x, z int, noLeaves bool) int {
 			}
 			matches, known := cache[rid]
 			if !known {
-				state, err := JavaState(registry, NativeState{Block: rid, Liquid: air})
+				state, err := CanonicalState(registry, NativeState{Block: rid, Liquid: air})
 				if err != nil {
 					panic(err)
 				}
-				matches, err = javadata.BlockTagContains(tag, state.Name)
+				matches, err = gamedata.BlockTagContains(tag, state.Name)
 				if err != nil {
 					panic(err)
 				}

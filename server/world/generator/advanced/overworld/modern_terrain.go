@@ -5,16 +5,16 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type modernTerrainScratch struct {
-	lattice java26.OverworldChunk
-	aquifer java26.OverworldAquifer
+	lattice vanilla.OverworldChunk
+	aquifer vanilla.OverworldAquifer
 }
 
 // terrainColumn has two acyclic stages: structure height queries use raw noise;
@@ -34,7 +34,7 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 	work := g.modernPool.Get().(*modernTerrainScratch)
 	defer g.modernPool.Put(work)
 	baseX, baseZ := pos[0]*16, pos[1]*16
-	var biomes java26.QuartBiomes
+	var biomes vanilla.QuartBiomes
 	if !raw {
 		biomes = g.quartBiomes(pos)
 	}
@@ -65,7 +65,7 @@ func (g *Overworld) buildTerrainColumn(pos world.ChunkPos, raw bool) *previewCac
 					continue
 				}
 				c.SetBiome(uint8(x), int16(y), uint8(z), modernBiomeIDs[work.lattice.BiomeIndexAt(worldX, y, worldZ)])
-				if schedule && (material == java26.AquiferWater || material == java26.AquiferLava) {
+				if schedule && (material == vanilla.AquiferWater || material == vanilla.AquiferLava) {
 					terrainResult.MarkForPostProcessing(cube.Pos{int(worldX), int(y), int(worldZ)}, c.Range())
 				}
 			}
@@ -109,11 +109,11 @@ type modernTerrainSource struct {
 
 func (modernTerrainSource) UseLegacyRandomSource() bool { return false }
 
-func (modernTerrainSource) JavaHasSkyLight() bool { return true }
+func (modernTerrainSource) HasSkyLight() bool { return true }
 
-func (modernTerrainSource) JavaGenerationDepth() int32 { return modernMaxY - modernMinY + 1 }
+func (modernTerrainSource) GenerationDepth() int32 { return modernMaxY - modernMinY + 1 }
 
-func (modernTerrainSource) JavaFluidTickDelay(name string) int32 {
+func (modernTerrainSource) FluidTickDelay(name string) int32 {
 	switch name {
 	case "minecraft:water":
 		return 5
@@ -126,24 +126,24 @@ func (modernTerrainSource) JavaFluidTickDelay(name string) int32 {
 
 func (modernTerrainSource) SeaLevel() int32 { return modernSeaLevel }
 
-func (s modernTerrainSource) JavaFeatureBiomeNames() []string {
-	return modernJavaBiomeNames[:]
+func (s modernTerrainSource) FeatureBiomeNames() []string {
+	return modernBiomeNames[:]
 }
 
-// JavaNoiseBiomeAt reads the noise biome from the biomes of its chunk when
+// NoiseBiomeAt reads the noise biome from the biomes of its chunk when
 // the decoration of the chunks around it sampled them, and samples it alone
 // otherwise, as for the scattered positions of structure placement.
-func (s modernTerrainSource) JavaNoiseBiomeAt(quartX, quartY, quartZ int32) string {
+func (s modernTerrainSource) NoiseBiomeAt(quartX, quartY, quartZ int32) string {
 	quartY = max(-16, min(quartY, 79))
 	if biomes, ok := s.generator.chunkBiomes.get(world.ChunkPos{quartX >> 2, quartZ >> 2}); ok {
-		return java26.OverworldBiomeName(biomes.index[quartX&3][quartZ&3][quartY-chunkBiomeMinQuartY])
+		return vanilla.OverworldBiomeName(biomes.index[quartX&3][quartZ&3][quartY-chunkBiomeMinQuartY])
 	}
 	return s.generator.noise.SampleBiomeColumn(quartX*4, quartZ*4).Biome(quartY * 4)
 }
 
-func (s modernTerrainSource) JavaBiomeAt(x, y, z int32) string {
-	qx, qy, qz := java26.FiddledBiomeQuart(s.generator.zoomSeed, x, y, z)
-	return s.JavaNoiseBiomeAt(qx, qy, qz)
+func (s modernTerrainSource) BiomeAt(x, y, z int32) string {
+	qx, qy, qz := vanilla.FiddledBiomeQuart(s.generator.zoomSeed, x, y, z)
+	return s.NoiseBiomeAt(qx, qy, qz)
 }
 
 func (s modernTerrainSource) BaseState(x, y, z int32) world.NativeState {
@@ -184,7 +184,7 @@ func (s modernTerrainSource) BaseHeight(x, z int32, oceanFloor bool) int32 {
 	return modernMinY
 }
 
-func (s modernTerrainSource) PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (s modernTerrainSource) PlaceStructureStep(pos world.ChunkPos, step int, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	entry := s.generator.terrainColumn(pos, false)
 	entry.structures.PlaceStep(pos, entry.c.Range(), step, env, emit)
 }
@@ -199,11 +199,11 @@ func (g *Overworld) blocksMotionInHeightmap(rid uint32) bool {
 	if value, ok := g.motionBlocking.Load(rid); ok {
 		return value.(bool)
 	}
-	state, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{Block: rid, Liquid: g.airRID})
+	state, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{Block: rid, Liquid: g.airRID})
 	if err != nil {
 		panic(err)
 	}
-	matches, err := javadata.BlockTagContains("minecraft:blocks_motion_in_heightmap", state.Name)
+	matches, err := gamedata.BlockTagContains("minecraft:blocks_motion_in_heightmap", state.Name)
 	if err != nil {
 		panic(err)
 	}
@@ -212,9 +212,9 @@ func (g *Overworld) blocksMotionInHeightmap(rid uint32) bool {
 }
 
 type modernCarverFluid struct {
-	aquifer *java26.OverworldAquifer
+	aquifer *vanilla.OverworldAquifer
 	surface *modernSurface
-	lattice *java26.OverworldChunk
+	lattice *vanilla.OverworldChunk
 	chunk   *chunk.Chunk
 	pos     world.ChunkPos
 }
@@ -222,13 +222,13 @@ type modernCarverFluid struct {
 func (a modernCarverFluid) CarveSubstance(x, y, z int32, density float32) (world.Block, bool) {
 	material, schedule := a.aquifer.Substance(x, y, z, float64(density))
 	switch material {
-	case java26.AquiferSolid:
+	case vanilla.AquiferSolid:
 		return nil, false
-	case java26.AquiferAir:
+	case vanilla.AquiferAir:
 		return block.Air{}, false
-	case java26.AquiferWater:
+	case vanilla.AquiferWater:
 		return block.Water{Depth: 8, Still: true}, schedule
-	case java26.AquiferLava:
+	case vanilla.AquiferLava:
 		return block.Lava{Depth: 8, Still: true}, schedule
 	default:
 		panic("overworld: invalid aquifer material")

@@ -6,24 +6,24 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
-func TestMansionGraphsMatchJava263(t *testing.T) {
+func TestMansionGraphsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_mansion_graphs.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var fixtures []struct {
-		Seed     string                 `json:"seed"`
-		Chunk    [2]int32               `json:"chunk"`
-		Rotation javastructure.Rotation `json:"rotation"`
+		Seed     string             `json:"seed"`
+		Chunk    [2]int32           `json:"chunk"`
+		Rotation structure.Rotation `json:"rotation"`
 		Pieces   []struct {
-			Name     string                 `json:"name"`
-			Position [3]int32               `json:"position"`
-			Rotation javastructure.Rotation `json:"rotation"`
-			Mirror   javastructure.Mirror   `json:"mirror"`
-			BBox     [6]int32               `json:"bbox"`
+			Name     string             `json:"name"`
+			Position [3]int32           `json:"position"`
+			Rotation structure.Rotation `json:"rotation"`
+			Mirror   structure.Mirror   `json:"mirror"`
+			BBox     [6]int32           `json:"bbox"`
 		} `json:"pieces"`
 	}
 	if err = json.Unmarshal(data, &fixtures); err != nil {
@@ -35,7 +35,7 @@ func TestMansionGraphsMatchJava263(t *testing.T) {
 			t.Fatal(err)
 		}
 		random := largeFeatureRandom(seed, fixture.Chunk[0], fixture.Chunk[1])
-		rotation := javastructure.Rotation(random.NextInt(4))
+		rotation := structure.Rotation(random.NextInt(4))
 		if rotation != fixture.Rotation {
 			t.Fatalf("seed %s rotation=%d, Source=%d", fixture.Seed, rotation, fixture.Rotation)
 		}

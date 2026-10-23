@@ -6,10 +6,10 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	overworldFeatures "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
 )
 
@@ -33,11 +33,11 @@ func newNetherFeatureSource(g *Nether) *netherFeatureSource {
 
 func (s *netherFeatureSource) UseLegacyRandomSource() bool { return false }
 
-func (*netherFeatureSource) JavaHasSkyLight() bool { return false }
+func (*netherFeatureSource) HasSkyLight() bool { return false }
 
-func (*netherFeatureSource) JavaGenerationDepth() int32 { return 128 }
+func (*netherFeatureSource) GenerationDepth() int32 { return 128 }
 
-func (*netherFeatureSource) JavaFluidTickDelay(name string) int32 {
+func (*netherFeatureSource) FluidTickDelay(name string) int32 {
 	switch name {
 	case "minecraft:water":
 		return 5
@@ -50,17 +50,17 @@ func (*netherFeatureSource) JavaFluidTickDelay(name string) int32 {
 
 func (*netherFeatureSource) SeaLevel() int32 { return netherSeaLevel }
 
-func (s *netherFeatureSource) JavaBiomeAt(x, y, z int32) string {
-	quartX, quartY, quartZ := java26.FiddledBiomeQuart(s.generator.biomeZoomSeed, x, y, z)
-	return s.JavaNoiseBiomeAt(quartX, quartY, quartZ)
+func (s *netherFeatureSource) BiomeAt(x, y, z int32) string {
+	quartX, quartY, quartZ := vanilla.FiddledBiomeQuart(s.generator.biomeZoomSeed, x, y, z)
+	return s.NoiseBiomeAt(quartX, quartY, quartZ)
 }
 
-func (s *netherFeatureSource) JavaNoiseBiomeAt(quartX, quartY, quartZ int32) string {
+func (s *netherFeatureSource) NoiseBiomeAt(quartX, quartY, quartZ int32) string {
 	_ = quartY // Nether biome climate is two-dimensional.
 	return s.generator.biomes.Biome(quartX*4, quartZ*4)
 }
 
-func (*netherFeatureSource) JavaFeatureBiomeNames() []string {
+func (*netherFeatureSource) FeatureBiomeNames() []string {
 	return []string{
 		"minecraft:nether_wastes",
 		"minecraft:soul_sand_valley",
@@ -81,7 +81,7 @@ func (s *netherFeatureSource) BaseBlock(x, y, z int32) world.Block {
 	rid := s.BaseState(x, y, z).Block
 	b, ok := world.BlockByRuntimeID(rid)
 	if !ok {
-		panic("nether: Java feature source encountered unknown block runtime ID")
+		panic("nether: feature source encountered unknown block runtime ID")
 	}
 	return b
 }
@@ -136,7 +136,7 @@ func (s *netherFeatureSource) baseChunk(pos world.ChunkPos) *chunk.Chunk {
 	return s.terrainChunk(pos)
 }
 
-func (s *netherFeatureSource) PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (s *netherFeatureSource) PlaceStructureStep(pos world.ChunkPos, step int, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	env.SourceDimension = "minecraft:the_nether"
 	switch step {
 	case 4:
@@ -152,22 +152,22 @@ func (s *netherFeatureSource) PlaceStructureStep(pos world.ChunkPos, step int, e
 	}
 }
 
-func (s *netherFeatureSource) structureStepRandom(pos world.ChunkPos, index, step int) *java26.Random {
+func (s *netherFeatureSource) structureStepRandom(pos world.ChunkPos, index, step int) *vanilla.Random {
 	originX, originZ := int32(pos[0])*16, int32(pos[1])*16
-	random := java26.NewWorldgenRandom(s.generator.seed)
+	random := vanilla.NewWorldgenRandom(s.generator.seed)
 	decorationSeed := random.SetDecorationSeed(s.generator.seed, originX, originZ)
 	random.SetFeatureSeed(decorationSeed, int32(index), int32(step))
 	return &random
 }
 
-func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	targetX, targetZ := int32(pos[0]), int32(pos[1])
-	clip := javastructure.Bounds{
+	clip := structure.Bounds{
 		Min: [3]int32{targetX * 16, 0, targetZ * 16},
 		Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15},
 	}
 	if env.Random == nil {
-		panic("nether: Java structure placement has no step random source")
+		panic("nether: structure placement has no step random source")
 	}
 	for sourceZ := targetZ - 6; sourceZ <= targetZ+6; sourceZ++ {
 		for sourceX := targetX - 6; sourceX <= targetX+6; sourceX++ {
@@ -191,11 +191,11 @@ func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env 
 				}
 				placement, err := piece.PlaceWithEnvironment(0, clip, s.generator.seed, pieceEnv)
 				if err != nil {
-					panic(fmt.Errorf("place Java bastion at %d,%d: %w", sourceX, sourceZ, err))
+					panic(fmt.Errorf("place bastion at %d,%d: %w", sourceX, sourceZ, err))
 				}
 				placement, err = placement.AdaptItemFrameEntities()
 				if err != nil {
-					panic(fmt.Errorf("adapt Java bastion at %d,%d: %w", sourceX, sourceZ, err))
+					panic(fmt.Errorf("adapt bastion at %d,%d: %w", sourceX, sourceZ, err))
 				}
 				emit(placement)
 			}
@@ -205,19 +205,19 @@ func (s *netherFeatureSource) placeBastionStructureStep(pos world.ChunkPos, env 
 
 var netherTemplateCache sync.Map
 
-func loadNetherTemplate(name string) *javastructure.Template {
+func loadNetherTemplate(name string) *structure.Template {
 	if cached, ok := netherTemplateCache.Load(name); ok {
-		return cached.(*javastructure.Template)
+		return cached.(*structure.Template)
 	}
-	template, err := javastructure.Load(name)
+	template, err := structure.Load(name)
 	if err != nil {
 		panic(err)
 	}
 	actual, _ := netherTemplateCache.LoadOrStore(name, template)
-	return actual.(*javastructure.Template)
+	return actual.(*structure.Template)
 }
 
-func netherTemplateBounds(template *javastructure.Template, origin [3]int32, rotation javastructure.Rotation) ([3]int32, [3]int32) {
+func netherTemplateBounds(template *structure.Template, origin [3]int32, rotation structure.Rotation) ([3]int32, [3]int32) {
 	var min, max [3]int32
 	for axis := range 3 {
 		min[axis], max[axis] = 1<<30, -1<<30
@@ -226,7 +226,7 @@ func netherTemplateBounds(template *javastructure.Template, origin [3]int32, rot
 		for y := int32(0); y < 2; y++ {
 			for z := int32(0); z < 2; z++ {
 				corner := [3]int32{x * (template.Size[0] - 1), y * (template.Size[1] - 1), z * (template.Size[2] - 1)}
-				worldPos := javastructure.TransformPosition(corner, javastructure.NoMirror, rotation)
+				worldPos := structure.TransformPosition(corner, structure.NoMirror, rotation)
 				for axis := range 3 {
 					worldPos[axis] += origin[axis]
 					min[axis] = min32(min[axis], worldPos[axis])

@@ -7,8 +7,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -297,7 +297,7 @@ var _ Interactable = (*Sheep)(nil)
 var _ interface{ Shear(*world.Tx) item.Stack } = (*Sheep)(nil)
 
 // FinalizeSpawn chooses the source fleece color, including rare pink sheep.
-func (s *Sheep) FinalizeSpawn(_ string, r *java26.Random) {
+func (s *Sheep) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 
 	"github.com/df-mc/goleveldb/leveldb"
 )
@@ -12,30 +12,30 @@ import (
 const lootSequenceNamespacePrefix = "loot-random-sequences:"
 
 type lootSequenceData struct {
-	Sequences map[string]java26.State `json:"sequences"`
+	Sequences map[string]vanilla.State `json:"sequences"`
 }
 
 // LootRandomSequence returns the source random stream for a loot-table
 // sequence. A non-zero loot-table seed creates an isolated per-roll stream;
 // zero uses the sequence persisted with the world.
-func (tx *Tx) LootRandomSequence(sequence string, seed int64) *java26.Random {
+func (tx *Tx) LootRandomSequence(sequence string, seed int64) *vanilla.Random {
 	if tx.closed {
 		panic("world.Tx: use of transaction after transaction finishes is not permitted")
 	}
 	if seed != 0 {
-		r := java26.NewLegacyRandom(seed)
+		r := vanilla.NewLegacyRandom(seed)
 		return &r
 	}
 	if sequence == "" {
 		panic("world.Tx.LootRandomSequence: empty sequence ID")
 	}
 	if tx.w.lootSequences == nil {
-		tx.w.lootSequences = make(map[string]*java26.Random)
+		tx.w.lootSequences = make(map[string]*vanilla.Random)
 	}
 	if r := tx.w.lootSequences[sequence]; r != nil {
 		return r
 	}
-	r := java26.NewRandomSequence(tx.w.Seed(), sequence)
+	r := vanilla.NewRandomSequence(tx.w.Seed(), sequence)
 	tx.w.lootSequences[sequence] = &r
 	return &r
 }
@@ -53,7 +53,7 @@ func (w *World) loadLootRandomSequences() {
 	var saved lootSequenceData
 	if err := json.Unmarshal(data, &saved); err != nil { w.conf.Log.Error("decode loot random sequences: " + err.Error()); return }
 	for id, state := range saved.Sequences {
-		r := java26.FromState(state)
+		r := vanilla.FromState(state)
 		w.lootSequences[id] = &r
 	}
 }
@@ -62,7 +62,7 @@ func (w *World) saveLootRandomSequences() {
 	if w.conf.ReadOnly { return }
 	provider, ok := w.conf.Provider.(worldDataProvider)
 	if !ok { return }
-	saved := lootSequenceData{Sequences: make(map[string]java26.State, len(w.lootSequences))}
+	saved := lootSequenceData{Sequences: make(map[string]vanilla.State, len(w.lootSequences))}
 	for id, random := range w.lootSequences { saved.Sequences[id] = random.State() }
 	data, err := json.Marshal(saved)
 	if err != nil { w.conf.Log.Error("encode loot random sequences: " + err.Error()); return }

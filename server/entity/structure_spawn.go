@@ -3,7 +3,7 @@ package entity
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -12,7 +12,7 @@ import (
 // PrepareStructureMobSpawn applies the mansion and monument Mob.finalizeSpawn
 // chains before their marker is replaced. Region and entity streams have separate
 // owners; none of these Source overrides draw from Entity.random.
-func PrepareStructureMobSpawn(id string, levelRandom, entityRandom *java26.Random, context world.GenerationContext) (map[string]any, error) {
+func PrepareStructureMobSpawn(id string, levelRandom, entityRandom *vanilla.Random, context world.GenerationContext) (map[string]any, error) {
 	if levelRandom == nil || entityRandom == nil {
 		return nil, fmt.Errorf("structure mob spawn requires level and entity random streams")
 	}
@@ -47,7 +47,7 @@ func PrepareStructureMobSpawn(id string, levelRandom, entityRandom *java26.Rando
 				return nil, err
 			}
 		}
-		encoded, err := item.StackToJavaNBT(main)
+		encoded, err := item.StackToStructureNBT(main)
 		if err != nil {
 			return nil, err
 		}

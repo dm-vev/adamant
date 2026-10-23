@@ -79,7 +79,7 @@ func TestLeatherArmourPreventsFreezing(t *testing.T) {
 	var zombie *entity.Zombie
 	<-w.Exec(func(tx *world.Tx) {
 		buildPowderSnowPit(tx)
-		h, err := entity.NewFromJavaNBT(map[string]any{"id": "minecraft:zombie", "equipment": map[string]any{"head": map[string]any{"id": "minecraft:leather_helmet", "count": int32(1)}}}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})
+		h, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:zombie", "equipment": map[string]any{"head": map[string]any{"id": "minecraft:leather_helmet", "count": int32(1)}}}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})
 		if err != nil {
 			t.Fatal(err)
 		}

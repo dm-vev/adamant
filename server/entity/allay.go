@@ -53,7 +53,7 @@ func (allayType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if in, ok := source["Inventory"].([]any); ok {
 		for _, raw := range in {
 			if tag, ok := raw.(map[string]any); ok {
-				if s, err := item.StackFromJavaNBT(tag); err == nil && !s.Empty() {
+				if s, err := item.StackFromStructureNBT(tag); err == nil && !s.Empty() {
 					c.Inventory = append(c.Inventory, s)
 				}
 			}
@@ -67,10 +67,10 @@ func (allayType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	}
 	if hand, ok := source["HandItems"].([]any); ok && len(hand) > 0 {
 		if tag, ok := hand[0].(map[string]any); ok {
-			c.Held, _ = item.StackFromJavaNBT(tag)
+			c.Held, _ = item.StackFromStructureNBT(tag)
 		}
 	} else if tag, ok := source["HeldItem"].(map[string]any); ok {
-		c.Held, _ = item.StackFromJavaNBT(tag)
+		c.Held, _ = item.StackFromStructureNBT(tag)
 	} else {
 		equipment := ReadNativeMobEquipment(m)
 		if len(equipment.Mainhand) > 0 {

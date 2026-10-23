@@ -3,13 +3,13 @@ package overworld
 import (
 	"math"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // placeModernLargeDripstone ports LargeDripstoneFeature.place and its nested
 // LargeDripstone/WindOffsetter logic. All accesses go through featureRegion so
 // neighboring chunks remain visible to the feature overlay.
-func placeModernLargeDripstone(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernLargeDripstone(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	if !largeDripstoneEmptyOrWater(region, origin) {
 		return false
 	}
@@ -24,7 +24,7 @@ func placeModernLargeDripstone(region *featureRegion, config map[string]any, ori
 		return false
 	}
 
-	radiusMin, radiusMax := javaIntProviderBounds(config["column_radius"])
+	radiusMin, radiusMax := intProviderBounds(config["column_radius"])
 	maxRadius := int32(float32(columnHeight) * largeDripstoneFloat(config["max_column_radius_to_cave_height_ratio"], .1))
 	if maxRadius < radiusMin { maxRadius = radiusMin }
 	if maxRadius > radiusMax { maxRadius = radiusMax }
@@ -38,7 +38,7 @@ func placeModernLargeDripstone(region *featureRegion, config map[string]any, ori
 	if largeDripstoneSuitableForWind(stalactite, minWindRadius, float64(minWindBluntness)) && largeDripstoneSuitableForWind(stalagmite, minWindRadius, float64(minWindBluntness)) {
 		speed := largeDripstoneSampleFloat(config["wind_speed"], 0, random)
 		direction := largeDripstoneRandomFloat(random, 0, float32(math.Pi))
-		wind = largeDripstoneWind{originY: origin.y, x: float64(java26.Cos(float64(direction)) * speed), z: float64(java26.Sin(float64(direction)) * speed), maxOffset: 16-radius}
+		wind = largeDripstoneWind{originY: origin.y, x: float64(vanilla.Cos(float64(direction)) * speed), z: float64(vanilla.Sin(float64(direction)) * speed), maxOffset: 16-radius}
 	}
 
 	stalactiteEmbedded := largeDripstoneEmbed(region, &stalactite, wind)
@@ -70,7 +70,7 @@ func largeDripstoneScan(region *featureRegion, origin featurePos, reach int32, r
 	return largeDripstoneColumn{floor, ceiling}, hasFloor && hasCeiling
 }
 
-func largeDripstoneMake(root featurePos, pointingUp bool, radius int32, bluntness, scale any, random *java26.Random) largeDripstoneShape {
+func largeDripstoneMake(root featurePos, pointingUp bool, radius int32, bluntness, scale any, random *vanilla.Random) largeDripstoneShape {
 	return largeDripstoneShape{root: root, pointingUp: pointingUp, radius: radius, bluntness: float64(largeDripstoneSampleFloat(bluntness, .1, random)), scale: float64(largeDripstoneSampleFloat(scale, 1, random))}
 }
 
@@ -110,7 +110,7 @@ func largeDripstoneEmbed(region *featureRegion, shape *largeDripstoneShape, wind
 		if tries > 10 { tries = 10 }
 		for i := int32(0); i < tries; i++ {
 			name, _ := region.State(root)
-			if normalizeJavaResource(name) == "lava" { return false }
+			if normalizeResource(name) == "lava" { return false }
 			if largeDripstoneCircleSolid(region, largeDripstoneWindOffset(root, wind), shape.radius) {
 				shape.root = root
 				return true
@@ -126,14 +126,14 @@ func largeDripstoneCircleSolid(region *featureRegion, center featurePos, radius 
 	if largeDripstoneEmptyWaterOrLava(region, center) { return false }
 	step := float32(6) / float32(radius)
 	for angle := float32(0); angle < float32(2*math.Pi); angle += step {
-		dx := int32(java26.Cos(float64(angle)) * float32(radius))
-		dz := int32(java26.Sin(float64(angle)) * float32(radius))
+		dx := int32(vanilla.Cos(float64(angle)) * float32(radius))
+		dz := int32(vanilla.Sin(float64(angle)) * float32(radius))
 		if largeDripstoneEmptyWaterOrLava(region, featurePos{center.x+dx, center.y, center.z+dz}) { return false }
 	}
 	return true
 }
 
-func largeDripstonePlace(region *featureRegion, shape largeDripstoneShape, wind largeDripstoneWind, random *java26.Random) {
+func largeDripstonePlace(region *featureRegion, shape largeDripstoneShape, wind largeDripstoneWind, random *vanilla.Random) {
 	dripstone := featureRequireState(region, "minecraft:dripstone_block")
 	for dx := -shape.radius; dx <= shape.radius; dx++ {
 		for dz := -shape.radius; dz <= shape.radius; dz++ {
@@ -151,7 +151,7 @@ func largeDripstonePlace(region *featureRegion, shape largeDripstoneShape, wind 
 				if largeDripstoneEmptyWaterOrLava(region, adjusted) {
 					hasBeenOutOfStone = true
 					region.setWithFlags(adjusted, dripstone, 2)
-				} else if hasBeenOutOfStone && javaBlockTagContains("base_stone_overworld", largeDripstoneName(region, adjusted)) {
+				} else if hasBeenOutOfStone && blockTagContains("base_stone_overworld", largeDripstoneName(region, adjusted)) {
 					break
 				}
 				if shape.pointingUp { pos.y++ } else { pos.y-- }
@@ -160,7 +160,7 @@ func largeDripstonePlace(region *featureRegion, shape largeDripstoneShape, wind 
 	}
 }
 
-func largeDripstoneName(region *featureRegion, p featurePos) string { name, _ := region.State(p); return normalizeJavaResource(name) }
+func largeDripstoneName(region *featureRegion, p featurePos) string { name, _ := region.State(p); return normalizeResource(name) }
 
 func largeDripstoneEmptyOrWater(region *featureRegion, p featurePos) bool { return largeDripstoneEmptyOrWaterName(largeDripstoneName(region, p)) }
 func largeDripstoneEmptyWaterOrLava(region *featureRegion, p featurePos) bool {
@@ -168,11 +168,11 @@ func largeDripstoneEmptyWaterOrLava(region *featureRegion, p featurePos) bool {
 	return largeDripstoneEmptyOrWaterName(name) || name == "lava"
 }
 func largeDripstoneEmptyOrWaterName(name string) bool {
-	switch normalizeJavaResource(name) { case "air", "cave_air", "void_air", "water": return true }
+	switch normalizeResource(name) { case "air", "cave_air", "void_air", "water": return true }
 	return false
 }
 func largeDripstoneBaseOrLava(name string, replaceable any) bool {
-	name = normalizeJavaResource(name)
+	name = normalizeResource(name)
 	return name == "dripstone_block" || name == "lava" || featureBlockHolderContains(replaceable, name)
 }
 
@@ -181,10 +181,10 @@ func largeDripstoneSuitableForWind(shape largeDripstoneShape, minRadius int32, m
 }
 func largeDripstoneInt(v any, fallback int) int { if n, ok := v.(float64); ok { return int(n) }; return fallback }
 func largeDripstoneFloat(v any, fallback float32) float32 { if n, ok := v.(float64); ok { return float32(n) }; return fallback }
-func largeDripstoneSampleFloat(v any, fallback float32, random *java26.Random) float32 {
+func largeDripstoneSampleFloat(v any, fallback float32, random *vanilla.Random) float32 {
 	if n, ok := v.(float64); ok { return float32(n) }
 	provider, ok := v.(map[string]any); if !ok { return fallback }
-	switch normalizeJavaResource(largeDripstoneString(provider["type"], "")) {
+	switch normalizeResource(largeDripstoneString(provider["type"], "")) {
 	case "constant": return largeDripstoneFloat(provider["value"], fallback)
 	case "uniform": return largeDripstoneRandomFloat(random, largeDripstoneFloat(provider["min_inclusive"], fallback), largeDripstoneFloat(provider["max_exclusive"], fallback))
 	case "clamped_normal":
@@ -195,7 +195,7 @@ func largeDripstoneSampleFloat(v any, fallback float32, random *java26.Random) f
 	default: panic("overworld: unsupported large dripstone float provider")
 	}
 }
-func largeDripstoneRandomFloat(random *java26.Random, min, max float32) float32 { return min + (max-min)*random.NextFloat() }
+func largeDripstoneRandomFloat(random *vanilla.Random, min, max float32) float32 { return min + (max-min)*random.NextFloat() }
 func largeDripstoneString(value any, fallback string) string {
 	if text, ok := value.(string); ok { return text }
 	return fallback

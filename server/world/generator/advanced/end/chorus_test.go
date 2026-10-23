@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func TestChorusPlantMatchesJava263(t *testing.T) {
+func TestChorusPlantMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_chorus.json")
 	if err != nil {
 		t.Fatal(err)
@@ -61,9 +61,9 @@ func TestChorusPlantMatchesJava263(t *testing.T) {
 			}
 			random := newEndRand(tc.Seed)
 			if tc.Xoroshiro {
-				random = newEndRandWithRandom(java26.NewXoroshiroRandom(tc.Seed))
+				random = newEndRandWithRandom(vanilla.NewXoroshiroRandom(tc.Seed))
 			}
-			world.GenerateJavaChorusPlant(endJavaShapeAccess{endFeatureOrigin: endFeatureOrigin{region: region}, result: &world.GenerationResult{}},
+			world.GenerateChorusPlant(endShapeAccess{endFeatureOrigin: endFeatureOrigin{region: region}, result: &world.GenerationResult{}},
 				cube.Pos{8, tc.Y, 8}, &random.random, 8)
 			if next := random.Long(); next != tc.NextLong {
 				t.Errorf("following RNG=%d source=%d", next, tc.NextLong)
@@ -102,11 +102,11 @@ func TestChorusPlantMatchesJava263(t *testing.T) {
 				p := b.Position
 				c := region.chunks[region.index(p[0]>>4, p[2]>>4)]
 				gotNative := world.NativeStateAt(c, uint8(p[0]&15), int16(p[1]), uint8(p[2]&15))
-				got, err := world.JavaState(world.DefaultBlockRegistry, gotNative)
+				got, err := world.CanonicalState(world.DefaultBlockRegistry, gotNative)
 				if err != nil {
 					t.Fatal(err)
 				}
-				expected, err := world.JavaState(world.DefaultBlockRegistry, want)
+				expected, err := world.CanonicalState(world.DefaultBlockRegistry, want)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -42,7 +42,7 @@ type netherState struct {
 	health                                                            *HealthManager
 	effects                                                           *EffectManager
 	mc                                                                *MovementComputer
-	random                                                            java26.Random
+	random                                                            vanilla.Random
 	slime                                                             *SlimeCore
 	size, charge, attackStep, attackTime, lastSeen, jumpDelay, wander int
 	heightOffset                                                      float64
@@ -91,7 +91,7 @@ func openNether(tx *world.Tx, h *world.EntityHandle, d *world.EntityData, k neth
 		u := h.UUID()
 		r := fnv.New64a()
 		_, _ = r.Write(u[:])
-		s.random = java26.NewLegacyRandom(int64(r.Sum64()))
+		s.random = vanilla.NewLegacyRandom(int64(r.Sum64()))
 	}
 	e := &Ent{tx: tx, handle: h, data: d}
 	switch k {
@@ -177,7 +177,7 @@ func (c netherConfig) Apply(d *world.EntityData) {
 	if c.kind == ghastKind {
 		gravity, drag = 0, .01
 	}
-	s := &netherState{kind: c.kind, health: NewHealthManager(hp, maxHP), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: drag, DragBeforeGravity: true}, random: java26.NewLegacyRandom(c.seed), size: c.size, slime: NewSlimeCore(c.size), charge: c.charge, jumpDelay: c.jump, heightOffset: .5, speed: speed, attack: attack}
+	s := &netherState{kind: c.kind, health: NewHealthManager(hp, maxHP), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: drag, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(c.seed), size: c.size, slime: NewSlimeCore(c.size), charge: c.charge, jumpDelay: c.jump, heightOffset: .5, speed: speed, attack: attack}
 	if c.jump > 0 {
 		s.slime.JumpDelay = c.jump
 	}
@@ -533,12 +533,12 @@ func (m *MagmaCube) Speed() float64             { return m.n().speed }
 func (m *Ghast) SetSpeed(v float64)             { m.n().speed = v }
 func (m *Blaze) SetSpeed(v float64)             { m.n().speed = v }
 func (m *MagmaCube) SetSpeed(v float64)         { m.n().speed = v }
-func (m *Ghast) FinalizeSpawn(_ string, r *java26.Random) {
+func (m *Ghast) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil {
 		m.n().charge = 0
 	}
 }
-func (m *Blaze) FinalizeSpawn(_ string, r *java26.Random) {
+func (m *Blaze) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil {
 		m.n().charge = 0
 	}

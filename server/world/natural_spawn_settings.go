@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 // NaturalSpawnEntry is one source-defined weighted spawn row from a biome.
@@ -45,14 +45,14 @@ func JavaBiomeNaturalSpawns(biome string) ([]NaturalSpawnEntry, error) {
 }
 
 func loadJavaBiomeSpawnSettings() {
-	files, err := fs.Glob(javadata.Assets(), "assets/data/minecraft/worldgen/biome/*.json")
+	files, err := fs.Glob(gamedata.Assets(), "assets/data/minecraft/worldgen/biome/*.json")
 	if err != nil {
 		javaSpawnSettingsErr = err
 		return
 	}
 	javaSpawnSettings = make(map[string][]NaturalSpawnEntry, len(files))
 	for _, name := range files {
-		data, err := javadata.Assets().ReadFile(name)
+		data, err := gamedata.Assets().ReadFile(name)
 		if err != nil {
 			javaSpawnSettingsErr = err
 			return

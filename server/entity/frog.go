@@ -6,8 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -27,7 +27,7 @@ func (frogType) Open(tx *world.Tx, h *world.EntityHandle, data *world.EntityData
 	if h != nil {
 		hash := fnv.New64a()
 		_, _ = hash.Write([]byte(h.UUID().String()))
-		data.Data.(*frogBehaviour).random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		data.Data.(*frogBehaviour).random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	return &Frog{Ent: &Ent{tx: tx, handle: h, data: data}}
 }
@@ -69,7 +69,7 @@ func (c frogConfig) Apply(data *world.EntityData) {
 	if !c.healthSet {
 		h = 10
 	}
-	data.Data = &frogBehaviour{health: NewHealthManager(h, 10), effects: NewEffectManager(), variant: c.variant, age: c.age, pregnant: c.pregnant, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, random: java26.NewLegacyRandom(int64(c.variant)), speed: 1, nextWander: 1,
+	data.Data = &frogBehaviour{health: NewHealthManager(h, 10), effects: NewEffectManager(), variant: c.variant, age: c.age, pregnant: c.pregnant, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(int64(c.variant)), speed: 1, nextWander: 1,
 		panic: panicState{brain: true}}
 }
 
@@ -77,7 +77,7 @@ type frogBehaviour struct {
 	health              *HealthManager
 	effects             *EffectManager
 	movement            *MovementComputer
-	random              java26.Random
+	random              vanilla.Random
 	variant, nextWander int
 	speed               float64
 	dead                bool

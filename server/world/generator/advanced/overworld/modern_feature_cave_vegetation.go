@@ -2,36 +2,36 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func placeModernVegetationPatch(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random, waterlogged bool) bool {
+func placeModernVegetationPatch(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random, waterlogged bool) bool {
 	replaceable, ok := config["replaceable"]
 	if !ok {
-		panic("overworld: malformed Java vegetation patch replaceable set")
+		panic("overworld: malformed vegetation patch replaceable set")
 	}
 	groundState, ok := config["ground_state"]
 	if !ok {
-		panic("overworld: malformed Java vegetation patch ground state provider")
+		panic("overworld: malformed vegetation patch ground state provider")
 	}
 	vegetation, ok := config["vegetation_feature"]
 	if !ok {
-		panic("overworld: malformed Java vegetation patch vegetation feature")
+		panic("overworld: malformed vegetation patch vegetation feature")
 	}
 	surfaceName, ok := config["surface"].(string)
 	if !ok {
-		panic("overworld: malformed Java vegetation patch surface")
+		panic("overworld: malformed vegetation patch surface")
 	}
 	var inward, outward featurePos
-	switch normalizeJavaResource(surfaceName) {
+	switch normalizeResource(surfaceName) {
 	case "floor":
 		inward, outward = featurePos{y: -1}, featurePos{y: 1}
 	case "ceiling":
 		inward, outward = featurePos{y: 1}, featurePos{y: -1}
 	default:
-		panic("overworld: unsupported Java vegetation patch surface " + normalizeJavaResource(surfaceName))
+		panic("overworld: unsupported vegetation patch surface " + normalizeResource(surfaceName))
 	}
 	depth, depthOK := config["depth"]
 	verticalRange, verticalOK := config["vertical_range"]
@@ -40,11 +40,11 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 	extraBottom, bottomOK := config["extra_bottom_block_chance"].(float64)
 	extraEdge, edgeOK := config["extra_edge_column_chance"].(float64)
 	if !depthOK || !verticalOK || !chanceOK || !radiusOK || !bottomOK || !edgeOK {
-		panic("overworld: malformed Java vegetation patch configuration")
+		panic("overworld: malformed vegetation patch configuration")
 	}
 	vr := int32(featureNumber(verticalRange))
-	xRadius := sampleJavaInt(xzRadius, random) + 1
-	zRadius := sampleJavaInt(xzRadius, random) + 1
+	xRadius := sampleInt(xzRadius, random) + 1
+	zRadius := sampleInt(xzRadius, random) + 1
 	surface := make([]featurePos, 0, (2*xRadius+1)*(2*zRadius+1)-4)
 	for dx := -xRadius; dx <= xRadius; dx++ {
 		isXEdge := dx == -xRadius || dx == xRadius
@@ -71,7 +71,7 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 			if !featureRegionAir(region, pos) || !vegetationPatchSturdy(region, below, outward) {
 				continue
 			}
-			patchDepth := sampleJavaInt(depth, random)
+			patchDepth := sampleInt(depth, random)
 			if extraBottom > 0 && random.NextFloat() < float32(extraBottom) {
 				patchDepth++
 			}
@@ -84,15 +84,15 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 					break
 				}
 				registry := region.c.BlockRegistry()
-				sampledName, ok := javadata.BlockStateName(groundNative.CanonicalJavaID(registry))
+				sampledName, ok := gamedata.BlockStateName(groundNative.CanonicalID(registry))
 				if !ok {
-					panic("overworld: Java vegetation patch sampled unknown block state")
+					panic("overworld: vegetation patch sampled unknown block state")
 				}
-				groundName, ok := javadata.BlockStateName(region.nativeState(below).CanonicalJavaID(registry))
+				groundName, ok := gamedata.BlockStateName(region.nativeState(below).CanonicalID(registry))
 				if !ok {
-					panic("overworld: Java vegetation patch encountered unknown ground block state")
+					panic("overworld: vegetation patch encountered unknown ground block state")
 				}
-				if normalizeJavaResource(sampledName) != normalizeJavaResource(groundName) {
+				if normalizeResource(sampledName) != normalizeResource(groundName) {
 					if !featureBlockHolderContains(replaceable, groundName) {
 						groundPlaced = i != 0
 						break
@@ -132,15 +132,15 @@ func placeModernVegetationPatch(region *featureRegion, config map[string]any, or
 			}
 			vegetationPlaced := region.PlacePlacedFeature(vegetation, [3]int32{placement.x, placement.y, placement.z}, random)
 			if waterlogged && vegetationPlaced {
-				id := region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry())
-				waterloggedValue, hasWaterloggedProperty := javadata.BlockStateBool(id, "waterlogged")
+				id := region.nativeState(pos).CanonicalID(region.c.BlockRegistry())
+				waterloggedValue, hasWaterloggedProperty := gamedata.BlockStateBool(id, "waterlogged")
 				if hasWaterloggedProperty && !waterloggedValue {
-					name, ok := javadata.BlockStateName(id)
+					name, ok := gamedata.BlockStateName(id)
 					if !ok {
-						panic("overworld: Java vegetation patch encountered unknown placed state")
+						panic("overworld: vegetation patch encountered unknown placed state")
 					}
-					if normalizeJavaResource(name) != "water" {
-						updated, err := javadata.BlockStateWithProperty(id, "waterlogged", true)
+					if normalizeResource(name) != "water" {
+						updated, err := gamedata.BlockStateWithProperty(id, "waterlogged", true)
 						if err != nil {
 							panic(err)
 						}
@@ -204,8 +204,8 @@ func vegetationPatchSturdy(region *featureRegion, pos, faceDirection featurePos)
 	case faceDirection.z > 0:
 		face = cube.FaceSouth
 	}
-	id := region.nativeState(pos).CanonicalJavaID(region.c.BlockRegistry())
-	shape, err := javadata.BlockGenerationShapeID(id)
+	id := region.nativeState(pos).CanonicalID(region.c.BlockRegistry())
+	shape, err := gamedata.BlockGenerationShapeID(id)
 	if err != nil {
 		panic(err)
 	}

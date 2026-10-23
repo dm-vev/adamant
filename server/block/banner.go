@@ -88,9 +88,9 @@ func (b Banner) EncodeBlock() (name string, properties map[string]any) {
 	return "minecraft:standing_banner", map[string]any{"ground_sign_direction": int32(b.Attach.o)}
 }
 
-// WithJavaBlockState applies the state-backed properties of a Java banner while
+// WithCanonicalState applies the state-backed properties of a Java banner while
 // retaining its patterns and other actor-only state.
-func (b Banner) WithJavaBlockState(name string, properties map[string]any) (world.Block, error) {
+func (b Banner) WithCanonicalState(name string, properties map[string]any) (world.Block, error) {
 	name = strings.TrimPrefix(name, "minecraft:")
 	wall := strings.HasSuffix(name, "_wall_banner")
 	colourName := strings.TrimSuffix(name, "_banner")

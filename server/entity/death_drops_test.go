@@ -63,7 +63,7 @@ func TestMobExperienceRequiresPlayerKillAndFollowsJavaRewards(t *testing.T) {
 				if c.byPlayer {
 					src = entity.AttackDamageSource{Attacker: addDeathTestPlayer(tx)}
 				}
-				h, err := entity.NewFromJavaNBT(c.nbt, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})
+				h, err := entity.NewFromStructureNBT(c.nbt, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -142,7 +142,7 @@ func TestCatalystOutOfRangeLeavesExperience(t *testing.T) {
 func TestMountDeathDropsEquipmentAndChest(t *testing.T) {
 	w := newDeathTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
-		h, err := entity.NewFromJavaNBT(map[string]any{"id": "minecraft:donkey", "Tame": byte(1)}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})
+		h, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:donkey", "Tame": byte(1)}, world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}, SpawnFinalized: true})
 		if err != nil {
 			t.Fatal(err)
 		}

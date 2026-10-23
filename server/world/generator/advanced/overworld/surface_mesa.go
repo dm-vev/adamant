@@ -129,7 +129,7 @@ func (g *Overworld) generateMesaTerrainColumn(c *chunk.Chunk, id mcbiome.ID, x, 
 			if layer < 0 {
 				layer = 0
 			}
-			if int(y) >= javaSeaLevel-1 {
+			if int(y) >= seaLevel-1 {
 				c.SetBlock(x, y, z, 0, top)
 			} else {
 				c.SetBlock(x, y, z, 0, g.mesaBandRID(worldX, worldZ, y))
@@ -140,7 +140,7 @@ func (g *Overworld) generateMesaTerrainColumn(c *chunk.Chunk, id mcbiome.ID, x, 
 		if layer > 0 {
 			layer--
 			// A short section of "surface filler" directly under the top (orange terracotta or dirt).
-			if int(y) >= javaSeaLevel-1 && thickness > 0 && (thickness-layer) <= 3 {
+			if int(y) >= seaLevel-1 && thickness > 0 && (thickness-layer) <= 3 {
 				c.SetBlock(x, y, z, 0, fillerTop)
 				continue
 			}

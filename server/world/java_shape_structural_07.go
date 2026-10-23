@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -163,7 +163,7 @@ func javaStructural07WallSideValue(connect bool, top uint32, face cube.Face) str
 	case cube.FaceEast:
 		minU, maxU, minV, maxV = 7.0/16, 1, 7.0/16, 9.0/16
 	}
-	covered, err := javadata.GenerationCollisionFaceCoversRectangleID(top, int(cube.FaceDown), minU, minV, maxU, maxV)
+	covered, err := gamedata.GenerationCollisionFaceCoversRectangleID(top, int(cube.FaceDown), minU, minV, maxU, maxV)
 	if err != nil {
 		panic(err)
 	}
@@ -174,7 +174,7 @@ func javaStructural07WallSideValue(connect bool, top uint32, face cube.Face) str
 }
 
 func javaStructural07WallAboveCovers(top uint32) bool {
-	covered, err := javadata.GenerationCollisionFaceCoversRectangleID(top, int(cube.FaceDown), 7.0/16, 7.0/16, 9.0/16, 9.0/16)
+	covered, err := gamedata.GenerationCollisionFaceCoversRectangleID(top, int(cube.FaceDown), 7.0/16, 7.0/16, 9.0/16, 9.0/16)
 	if err != nil {
 		panic(err)
 	}

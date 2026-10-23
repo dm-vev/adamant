@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -34,8 +34,8 @@ type smallFeatureSourceCase struct {
 
 type smallFeatureSourceTerrain struct{ replaceBlobSourceTerrain }
 
-func (smallFeatureSourceTerrain) JavaFeatureBiomeNames() []string { return []string{"plains"} }
-func TestSmallFeaturesMatchJava263Source(t *testing.T) {
+func (smallFeatureSourceTerrain) FeatureBiomeNames() []string { return []string{"plains"} }
+func TestSmallFeaturesMatchSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_small_feature_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -70,11 +70,11 @@ func TestSmallFeaturesMatchJava263Source(t *testing.T) {
 			if tc.RejectWrites {
 				region.SetOrigin(target[0]+3, target[1]+3)
 			}
-			regionRandom := java26.NewLegacyRandom(tc.RegionSeed)
-			region.javaRandoms[[2]int32{region.writeOriginX, region.writeOriginZ}] = &regionRandom
-			random := java26.NewLegacyRandom(tc.Seed)
+			regionRandom := vanilla.NewLegacyRandom(tc.RegionSeed)
+			region.regionRandoms[[2]int32{region.writeOriginX, region.writeOriginZ}] = &regionRandom
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			feature := make(map[string]any, len(tc.EncodedConfig)+1)
 			for key, value := range tc.EncodedConfig {
@@ -86,11 +86,11 @@ func TestSmallFeaturesMatchJava263Source(t *testing.T) {
 			}
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, row := range tc.States {
-				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalJavaID(c.BlockRegistry())
+				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = replaceBlobSourceNative(t, row).CanonicalID(c.BlockRegistry())
 			}
 			for pos, state := range region.overlayByPos() {
-				got := state.CanonicalJavaID(c.BlockRegistry())
-				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
+				got := state.CanonicalID(c.BlockRegistry())
+				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalID(c.BlockRegistry()) {
 					continue
 				}
 				expected, exists := want[pos]

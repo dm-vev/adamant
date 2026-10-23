@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -19,7 +19,7 @@ type piglinState struct {
 	health                                                             *HealthManager
 	effects                                                            *EffectManager
 	mc                                                                 *MovementComputer
-	random                                                             java26.Random
+	random                                                             vanilla.Random
 	randomInitialized                                                  bool
 	baby, admire, dancing, charging, cannotHunt, dead                  bool
 	conversion, attackCooldown, admireTicks, barterTicks, retreatTicks int
@@ -60,7 +60,7 @@ func openPiglin(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) *Pigli
 	s := d.Data.(*piglinState)
 	if h != nil && !s.randomInitialized {
 		u := h.UUID()
-		s.random = java26.NewLegacyRandom(int64(fnv64(u[:])))
+		s.random = vanilla.NewLegacyRandom(int64(fnv64(u[:])))
 		s.randomInitialized = true
 	}
 	return &Piglin{&Ent{tx: tx, handle: h, data: d}}
@@ -152,7 +152,7 @@ func encodePiglinNBT(d *world.EntityData) map[string]any {
 			delete(sourceEquipment, slot)
 			return
 		}
-		if encoded, err := item.StackToJavaNBT(stack); err == nil {
+		if encoded, err := item.StackToStructureNBT(stack); err == nil {
 			sourceEquipment[slot] = encoded
 		}
 	}
@@ -410,7 +410,7 @@ func (p *Piglin) RemoveEffect(t effect.Type) { p.p().effects.Remove(t, p) }
 func (p *Piglin) Effects() []effect.Effect   { return p.p().effects.Effects() }
 func (p *Piglin) Speed() float64             { return p.p().speed }
 func (p *Piglin) SetSpeed(v float64)         { p.p().speed = v }
-func (p *Piglin) FinalizeSpawn(reason string, r *java26.Random) {
+func (p *Piglin) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if r == nil || reason == "conversion" {
 		return
 	}

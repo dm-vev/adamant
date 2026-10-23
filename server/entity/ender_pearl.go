@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -48,7 +48,7 @@ func teleport(e *Ent, tx *world.Tx, target trace.Result) {
 	uuid := e.H().UUID()
 	hash := fnv.New64a()
 	_, _ = hash.Write(uuid[:])
-	random := java26.NewLegacyRandom(int64(hash.Sum64()))
+	random := vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	if random.NextFloat() < .05 {
 		tx.AddEntity(NewEndermite(world.EntitySpawnOpts{Position: target.Position(), SpawnReason: "ender_pearl"}))
 	}

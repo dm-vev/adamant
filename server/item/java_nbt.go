@@ -9,9 +9,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
-// StackFromJavaNBT decodes a Java 1.20.5+ item stack compound into a Dragonfly
+// StackFromStructureNBT decodes a Java 1.20.5+ item stack compound into a Dragonfly
 // stack. Unknown item identifiers are rejected rather than silently discarded.
-func StackFromJavaNBT(data map[string]any) (Stack, error) {
+func StackFromStructureNBT(data map[string]any) (Stack, error) {
 	id, ok := data["id"].(string)
 	if !ok || id == "" {
 		return Stack{}, fmt.Errorf("Java item stack has no string id")
@@ -153,9 +153,9 @@ func StackFromJavaNBT(data map[string]any) (Stack, error) {
 	return s, nil
 }
 
-// StackToJavaNBT encodes a Dragonfly stack as a Java ItemStack.CODEC compound.
-// Raw Java components retained by StackFromJavaNBT are preserved where possible.
-func StackToJavaNBT(stack Stack) (map[string]any, error) {
+// StackToStructureNBT encodes a Dragonfly stack as a Java ItemStack.CODEC compound.
+// Raw Java components retained by StackFromStructureNBT are preserved where possible.
+func StackToStructureNBT(stack Stack) (map[string]any, error) {
 	if stack.Empty() {
 		return nil, nil
 	}

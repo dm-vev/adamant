@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -39,7 +39,7 @@ type coralGrowthFixture struct {
 	} `json:"cases"`
 }
 
-func TestCoralGrowthMatchesJava263Source(t *testing.T) {
+func TestCoralGrowthMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_coral_growth_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -99,9 +99,9 @@ func TestCoralGrowthMatchesJava263Source(t *testing.T) {
 					"type": "matching_blocks", "blocks": "minecraft:water",
 				}}},
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			placed := region.PlaceValue(map[string]any{"type": "coral_" + tc.Kind, "feature": feature}, origin, &random)
 			if placed != tc.Placed {

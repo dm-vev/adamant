@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // netherPortalStart contains only immutable Java generation metadata. Placement is
 // deliberately performed later with the decoration-step random source.
 type netherPortalStart struct {
-	box          javastructure.Box
-	template     *javastructure.Template
+	box          structure.Box
+	template     *structure.Template
 	templateName string
 	origin       [3]int32
 	pivot        [3]int32
-	rotation     javastructure.Rotation
-	mirror       javastructure.Mirror
+	rotation     structure.Rotation
+	mirror       structure.Mirror
 	airPocket    bool
 	mossiness    float32
 	overgrown    bool
@@ -45,7 +45,7 @@ type netherPortalCache struct {
 }
 
 func (g *Nether) portalStart(cx, cz int32) (*netherPortalStart, error) {
-	candidate, err := javastructure.PotentialChunk(g.seed, cx, cz, 34222645, 40, 15, javastructure.Linear)
+	candidate, err := structure.PotentialChunk(g.seed, cx, cz, 34222645, 40, 15, structure.Linear)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (g *Nether) portalStart(cx, cz int32) (*netherPortalStart, error) {
 func (g *Nether) buildNetherPortalStart(cx, cz int32) (start *netherPortalStart, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			start, err = nil, fmt.Errorf("build Java Nether ruined portal start at %d,%d: %v", cx, cz, recovered)
+			start, err = nil, fmt.Errorf("build Nether ruined portal start at %d,%d: %v", cx, cz, recovered)
 		}
 	}()
 	random := largeFeatureRandom(g.seed, int(cx), int(cz))
@@ -107,10 +107,10 @@ func (g *Nether) buildNetherPortalStart(cx, cz int32) (start *netherPortalStart,
 		templateName = fmt.Sprintf("ruined_portal/portal_%d", random.NextInt(10)+1)
 	}
 	template := loadNetherTemplate(templateName)
-	rotation := javastructure.Rotation(random.NextInt(4))
-	mirror := javastructure.NoMirror
+	rotation := structure.Rotation(random.NextInt(4))
+	mirror := structure.NoMirror
 	if random.NextFloat() >= 0.5 {
-		mirror = javastructure.FrontBack
+		mirror = structure.FrontBack
 	}
 	pivot := [3]int32{template.Size[0] / 2, 0, template.Size[2] / 2}
 	base := [3]int32{cx * 16, 0, cz * 16}
@@ -120,22 +120,22 @@ func (g *Nether) buildNetherPortalStart(cx, cz int32) (start *netherPortalStart,
 	base[1] = y
 	min, max = portalTemplateBounds(template, portalTemplateOrigin(base, pivot, rotation), mirror, rotation)
 	return &netherPortalStart{
-		box: javastructure.Box{Min: min, Max: max}, template: template, templateName: templateName,
+		box: structure.Box{Min: min, Max: max}, template: template, templateName: templateName,
 		origin: base, pivot: pivot, rotation: rotation, mirror: mirror, airPocket: airPocket,
 		mossiness: 0, overgrown: false, vines: false, cold: false, blackstone: true,
 	}, nil
 }
 
-func (s *netherFeatureSource) placeRuinedPortalStep(pos world.ChunkPos, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (s *netherFeatureSource) placeRuinedPortalStep(pos world.ChunkPos, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	if env.Random == nil {
-		panic("nether: Java ruined portal placement has no step random source")
+		panic("nether: ruined portal placement has no step random source")
 	}
 	const salt, spacing, separation = int32(34222645), int32(40), int32(15)
 	targetX, targetZ := int32(pos[0]), int32(pos[1])
-	clip := javastructure.Bounds{Min: [3]int32{targetX * 16, 0, targetZ * 16}, Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15}}
+	clip := structure.Bounds{Min: [3]int32{targetX * 16, 0, targetZ * 16}, Max: [3]int32{targetX*16 + 15, 127, targetZ*16 + 15}}
 	for sourceZ := targetZ - 2; sourceZ <= targetZ+2; sourceZ++ {
 		for sourceX := targetX - 2; sourceX <= targetX+2; sourceX++ {
-			candidate, err := javastructure.PotentialChunk(s.generator.seed, sourceX, sourceZ, salt, spacing, separation, javastructure.Linear)
+			candidate, err := structure.PotentialChunk(s.generator.seed, sourceX, sourceZ, salt, spacing, separation, structure.Linear)
 			if err != nil {
 				panic(err)
 			}
@@ -151,7 +151,7 @@ func (s *netherFeatureSource) placeRuinedPortalStep(pos world.ChunkPos, env java
 			}
 			placement, ok, err := start.place(clip, env, s.generator.seed)
 			if err != nil {
-				panic(fmt.Errorf("place Java Nether ruined portal %s: %w", start.templateName, err))
+				panic(fmt.Errorf("place Nether ruined portal %s: %w", start.templateName, err))
 			}
 			if ok {
 				emit(placement)
@@ -160,39 +160,39 @@ func (s *netherFeatureSource) placeRuinedPortalStep(pos world.ChunkPos, env java
 	}
 }
 
-func (p *netherPortalStart) place(chunkClip javastructure.Bounds, env javastructure.ProcessorEnvironment, seed int64) (javastructure.Placement, bool, error) {
+func (p *netherPortalStart) place(chunkClip structure.Bounds, env structure.ProcessorEnvironment, seed int64) (structure.Placement, bool, error) {
 	center := portalBoxCenter(p.box)
 	if center[0]>>4 != chunkClip.Min[0]>>4 || center[2]>>4 != chunkClip.Min[2]>>4 {
-		return javastructure.Placement{}, false, nil
+		return structure.Placement{}, false, nil
 	}
 	if env.Random == nil {
-		return javastructure.Placement{}, false, fmt.Errorf("Nether portal placement requires decoration random")
+		return structure.Placement{}, false, fmt.Errorf("Nether portal placement requires decoration random")
 	}
 	// Native writes are clipped to Nether's 0..127 build range, while this box
 	// remains the complete Java geometry and center-owner clipping region.
-	clip := javastructure.Bounds{Min: p.box.Min, Max: p.box.Max}
+	clip := structure.Bounds{Min: p.box.Min, Max: p.box.Max}
 	if clip.Min[1] < 0 {
 		clip.Min[1] = 0
 	}
 	if clip.Max[1] > 127 {
 		clip.Max[1] = 127
 	}
-	processors, err := javastructure.LoadProcessors(nil, netherPortalProcessorSpecs(p), env)
+	processors, err := structure.LoadProcessors(nil, netherPortalProcessorSpecs(p), env)
 	if err != nil {
-		return javastructure.Placement{}, false, err
+		return structure.Placement{}, false, err
 	}
-	processors = append(processors, javastructure.Processor{Process: func(_ javastructure.ProcessContext, b javastructure.Block) (javastructure.Block, bool, error) {
-		javastructure.SeedRandomizableContainerLoot(&b, env.Random)
+	processors = append(processors, structure.Processor{Process: func(_ structure.ProcessContext, b structure.Block) (structure.Block, bool, error) {
+		structure.SeedRandomizableContainerLoot(&b, env.Random)
 		return b, true, nil
 	}})
 	origin := portalTemplateOrigin(p.origin, p.pivot, p.rotation)
 	out, err := p.template.Place(0, origin, p.rotation, p.mirror, clip, seed, processors...)
 	if err != nil {
-		return javastructure.Placement{}, false, err
+		return structure.Placement{}, false, err
 	}
 	out.TemplateUpdateFlags = 2
 	out.TemplateKnownShape = false
-	overlay := make(map[[3]int32]javastructure.Block, len(out.Blocks)+256)
+	overlay := make(map[[3]int32]structure.Block, len(out.Blocks)+256)
 	for _, b := range out.Blocks {
 		overlay[b.Pos] = b
 	}
@@ -207,7 +207,7 @@ func (p *netherPortalStart) place(chunkClip javastructure.Bounds, env javastruct
 		if pos[1] < 0 || pos[1] > 127 {
 			return
 		}
-		b := javastructure.Block{Pos: pos, State: world.BlockState{Name: name}}
+		b := structure.Block{Pos: pos, State: world.BlockState{Name: name}}
 		out.Blocks = append(out.Blocks, b)
 		overlay[pos] = b
 	}
@@ -216,9 +216,9 @@ func (p *netherPortalStart) place(chunkClip javastructure.Bounds, env javastruct
 		if name == "minecraft:air" || name == "minecraft:obsidian" {
 			return false
 		}
-		protected, err := javadata.BlockTagContains("#minecraft:features_cannot_replace", name)
+		protected, err := gamedata.BlockTagContains("#minecraft:features_cannot_replace", name)
 		if err != nil {
-			panic(fmt.Errorf("resolve Java portal protected-block tag: %w", err))
+			panic(fmt.Errorf("resolve portal protected-block tag: %w", err))
 		}
 		return !protected
 	}
@@ -271,7 +271,7 @@ func (p *netherPortalStart) place(chunkClip javastructure.Bounds, env javastruct
 	return adapted, err == nil, err
 }
 
-func portalBoxCenter(box javastructure.Box) [3]int32 {
+func portalBoxCenter(box structure.Box) [3]int32 {
 	return [3]int32{
 		box.Min[0] + (box.Max[0]-box.Min[0]+1)/2,
 		box.Min[1] + (box.Max[1]-box.Min[1]+1)/2,
@@ -281,7 +281,7 @@ func portalBoxCenter(box javastructure.Box) [3]int32 {
 
 var portalSpreadChance = [...]float32{1, 1, 1, 1, 1, 1, 1, .9, .9, .8, .7, .6, .4, .2}
 
-func sPortalSurface(env javastructure.ProcessorEnvironment, overlay map[[3]int32]javastructure.Block, x, z int32) int32 {
+func sPortalSurface(env structure.ProcessorEnvironment, overlay map[[3]int32]structure.Block, x, z int32) int32 {
 	for y := int32(127); y >= 0; y-- {
 		if block, ok := overlay[[3]int32{x, y, z}]; ok {
 			if block.State.Name != "minecraft:air" {
@@ -297,12 +297,12 @@ func sPortalSurface(env javastructure.ProcessorEnvironment, overlay map[[3]int32
 	return -1
 }
 
-func portalTemplateOrigin(base, pivot [3]int32, rotation javastructure.Rotation) [3]int32 {
-	transformedPivot := javastructure.TransformPosition(pivot, javastructure.NoMirror, rotation)
+func portalTemplateOrigin(base, pivot [3]int32, rotation structure.Rotation) [3]int32 {
+	transformedPivot := structure.TransformPosition(pivot, structure.NoMirror, rotation)
 	return [3]int32{base[0] + pivot[0] - transformedPivot[0], base[1] + pivot[1] - transformedPivot[1], base[2] + pivot[2] - transformedPivot[2]}
 }
 
-func portalTemplateBounds(template *javastructure.Template, origin [3]int32, mirror javastructure.Mirror, rotation javastructure.Rotation) ([3]int32, [3]int32) {
+func portalTemplateBounds(template *structure.Template, origin [3]int32, mirror structure.Mirror, rotation structure.Rotation) ([3]int32, [3]int32) {
 	var min, max [3]int32
 	for axis := range 3 {
 		min[axis], max[axis] = 1<<30, -1<<30
@@ -311,7 +311,7 @@ func portalTemplateBounds(template *javastructure.Template, origin [3]int32, mir
 		for y := int32(0); y < 2; y++ {
 			for z := int32(0); z < 2; z++ {
 				corner := [3]int32{x * (template.Size[0] - 1), y * (template.Size[1] - 1), z * (template.Size[2] - 1)}
-				worldPos := javastructure.TransformPosition(corner, mirror, rotation)
+				worldPos := structure.TransformPosition(corner, mirror, rotation)
 				for axis := range 3 {
 					worldPos[axis] += origin[axis]
 					min[axis] = min32(min[axis], worldPos[axis])
@@ -323,7 +323,7 @@ func portalTemplateBounds(template *javastructure.Template, origin [3]int32, mir
 	return min, max
 }
 
-func portalSuitableY(random *java26.Random, generator *Nether, min, max [3]int32, airPocket bool) int32 {
+func portalSuitableY(random *vanilla.Random, generator *Nether, min, max [3]int32, airPocket bool) int32 {
 	newY := int32(0)
 	if airPocket {
 		newY = 32 + int32(random.NextInt(69))
@@ -335,7 +335,7 @@ func portalSuitableY(random *java26.Random, generator *Nether, min, max [3]int32
 	corners := [4][2]int32{{min[0], min[2]}, {max[0], min[2]}, {min[0], max[2]}, {max[0], max[2]}}
 	var columns [4][128]uint32
 	for i, corner := range corners {
-		generator.javaBaseColumn(corner[0], corner[1], &columns[i])
+		generator.baseColumn(corner[0], corner[1], &columns[i])
 	}
 	for y := newY; y > 15; y-- {
 		opaque := 0
@@ -351,7 +351,7 @@ func portalSuitableY(random *java26.Random, generator *Nether, min, max [3]int32
 	return 15
 }
 
-func netherPortalProcessorSpecs(p *netherPortalStart) []javastructure.ProcessorSpec {
+func netherPortalProcessorSpecs(p *netherPortalStart) []structure.ProcessorSpec {
 	always := map[string]any{"predicate_type": "minecraft:always_true"}
 	rule := func(block string, probability float32, output string) any {
 		return map[string]any{
@@ -375,7 +375,7 @@ func netherPortalProcessorSpecs(p *netherPortalStart) []javastructure.ProcessorS
 	if !p.airPocket {
 		ignored = append(ignored, "minecraft:air")
 	}
-	specs := []javastructure.ProcessorSpec{
+	specs := []structure.ProcessorSpec{
 		{Type: "block_ignore", Config: map[string]any{"blocks": ignored}},
 		{Type: "rule", Config: map[string]any{"rules": rules}},
 		{Type: "block_age", Config: map[string]any{"mossiness": float64(p.mossiness)}},
@@ -383,7 +383,7 @@ func netherPortalProcessorSpecs(p *netherPortalStart) []javastructure.ProcessorS
 		{Type: "lava_submerged_block", Config: map[string]any{}},
 	}
 	if p.blackstone {
-		specs = append(specs, javastructure.ProcessorSpec{Type: "blackstone_replace", Config: map[string]any{}})
+		specs = append(specs, structure.ProcessorSpec{Type: "blackstone_replace", Config: map[string]any{}})
 	}
 	return specs
 }

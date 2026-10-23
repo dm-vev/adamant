@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
@@ -19,13 +19,13 @@ func TestJavaStateMetadataDiskRoundTripAndCompaction(t *testing.T) {
 		t.Fatal("stone runtime ID missing")
 	}
 	states := []map[string]any{
-		javadata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}),
-		javadata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "z"}),
+		gamedata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}),
+		gamedata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "z"}),
 	}
 	ids := make([]uint32, len(states))
 	for i, properties := range states {
 		var err error
-		ids[i], err = javadata.BlockStateID("minecraft:oak_log", properties)
+		ids[i], err = gamedata.BlockStateID("minecraft:oak_log", properties)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,8 +43,8 @@ func TestJavaStateMetadataDiskRoundTripAndCompaction(t *testing.T) {
 	if decoded.Block(1, 2, 3, 0) != stone || decoded.Block(2, 2, 3, 0) != stone {
 		t.Fatal("disk round trip changed native runtime IDs")
 	}
-	if decoded.JavaStateID(1, 2, 3) != ids[0] || decoded.JavaStateID(2, 2, 3) != ids[1] {
-		t.Fatalf("disk round trip lost distinct source states: %d, %d", decoded.JavaStateID(1, 2, 3), decoded.JavaStateID(2, 2, 3))
+	if decoded.StateID(1, 2, 3) != ids[0] || decoded.StateID(2, 2, 3) != ids[1] {
+		t.Fatalf("disk round trip lost distinct source states: %d, %d", decoded.StateID(1, 2, 3), decoded.StateID(2, 2, 3))
 	}
 	clone := decoded.Clone()
 	if !clone.Equals(decoded) {
@@ -54,7 +54,7 @@ func TestJavaStateMetadataDiskRoundTripAndCompaction(t *testing.T) {
 	if clone.Equals(decoded) {
 		t.Fatal("chunk equality ignored different source Java metadata")
 	}
-	if decoded.JavaStateID(1, 2, 3) != ids[0] {
+	if decoded.StateID(1, 2, 3) != ids[0] {
 		t.Fatal("changing cloned source metadata changed the original chunk")
 	}
 }
@@ -66,7 +66,7 @@ func TestNativeWritesClearOnlyAffectedJavaMetadata(t *testing.T) {
 	if !ok {
 		t.Fatal("stone runtime ID missing")
 	}
-	id, err := javadata.BlockStateID("minecraft:oak_log", javadata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}))
+	id, err := gamedata.BlockStateID("minecraft:oak_log", gamedata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,14 +76,14 @@ func TestNativeWritesClearOnlyAffectedJavaMetadata(t *testing.T) {
 	c.SetJavaStateID(2, 2, 3, id)
 
 	c.SetBlock(1, 2, 3, 0, stone)
-	if c.JavaStateID(1, 2, 3) != 0 || c.JavaStateID(2, 2, 3) != id {
+	if c.StateID(1, 2, 3) != 0 || c.StateID(2, 2, 3) != id {
 		t.Fatal("native primary write did not clear only the affected cell metadata")
 	}
 	c.SetJavaStateID(1, 2, 3, id)
 	// Clearing an absent liquid layer must invalidate metadata even though the
 	// native write otherwise takes the existing-air fast path.
 	c.SetBlock(1, 2, 3, 1, world.DefaultBlockRegistry.AirRuntimeID())
-	if c.JavaStateID(1, 2, 3) != 0 {
+	if c.StateID(1, 2, 3) != 0 {
 		t.Fatal("liquid-layer native write retained primary source metadata")
 	}
 }
@@ -95,7 +95,7 @@ func TestMissingNativePropertyCanonicalizationPreservesJavaMetadata(t *testing.T
 	if !ok {
 		t.Fatal("oak log runtime ID missing")
 	}
-	id, err := javadata.BlockStateID("minecraft:oak_log", javadata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}))
+	id, err := gamedata.BlockStateID("minecraft:oak_log", gamedata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestMissingNativePropertyCanonicalizationPreservesJavaMetadata(t *testing.T
 	if !c.CanonicalizeMissingBlockState(cube.Pos{4, 2, 5}, 0) {
 		t.Fatal("failed to canonicalize missing native property")
 	}
-	if c.JavaStateID(4, 2, 5) != id {
+	if c.StateID(4, 2, 5) != id {
 		t.Fatal("canonicalization discarded source Java metadata")
 	}
 }
@@ -133,7 +133,7 @@ func TestNetworkRoundTripOmitsJavaMetadata(t *testing.T) {
 	if !ok {
 		t.Fatal("stone runtime ID missing")
 	}
-	id, err := javadata.BlockStateID("minecraft:oak_log", javadata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}))
+	id, err := gamedata.BlockStateID("minecraft:oak_log", gamedata.BlockPropertiesWithDefaults("minecraft:oak_log", map[string]any{"axis": "x"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestNetworkRoundTripOmitsJavaMetadata(t *testing.T) {
 	if decoded.Block(1, 2, 3, 0) != stone {
 		t.Fatal("network round trip changed native runtime ID")
 	}
-	if decoded.JavaStateID(1, 2, 3) != 0 {
+	if decoded.StateID(1, 2, 3) != 0 {
 		t.Fatal("network decoding produced source Java metadata")
 	}
 }

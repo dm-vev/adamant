@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -41,7 +41,7 @@ func (t aquaticMobType) Open(tx *world.Tx, h *world.EntityHandle, data *world.En
 		hash := fnv.New64a()
 		_, _ = hash.Write([]byte(h.UUID().String()))
 		behaviour := data.Data.(*AquaticMobBehaviour)
-		behaviour.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		behaviour.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 		behaviour.nextSchoolTick = 200 + int(behaviour.random.NextInt(200)%20)
 	}
 	base := &AquaticMob{Ent: &Ent{tx: tx, handle: h, data: data}}
@@ -177,7 +177,7 @@ func (c AquaticMobConfig) New() *AquaticMobBehaviour {
 	if c.ID == "minecraft:axolotl" {
 		speed = 1
 	}
-	return &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, speed: speed, schoolGroup: &aquaticSchoolGroupData{size: 1}, random: java26.NewLegacyRandom(int64(c.Variant))}
+	return &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, speed: speed, schoolGroup: &aquaticSchoolGroupData{size: 1}, random: vanilla.NewLegacyRandom(int64(c.Variant))}
 }
 
 type AquaticMobBehaviour struct {
@@ -194,7 +194,7 @@ type AquaticMobBehaviour struct {
 	schoolGroup                                                                                                                                                                  *aquaticSchoolGroupData
 	movement                                                                                                                                                                     *MovementComputer
 	speed                                                                                                                                                                        float64
-	random                                                                                                                                                                       java26.Random
+	random                                                                                                                                                                       vanilla.Random
 	navPath                                                                                                                                                                      []cube.Pos
 	navIndex, navTicks                                                                                                                                                           int
 	navGoal                                                                                                                                                                      cube.Pos

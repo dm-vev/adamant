@@ -3,7 +3,7 @@ package entity
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -11,7 +11,7 @@ import (
 
 // prepareZombieVillagerTemplateSpawn follows ZombieVillager -> Zombie -> Mob
 // for STRUCTURE and a null group, after the authored template NBT is loaded.
-func prepareZombieVillagerTemplateSpawn(nbt map[string]any, levelRandom, entityRandom *java26.Random, context world.GenerationContext, biome string) (vehicle map[string]any, err error) {
+func prepareZombieVillagerTemplateSpawn(nbt map[string]any, levelRandom, entityRandom *vanilla.Random, context world.GenerationContext, biome string) (vehicle map[string]any, err error) {
 	finalizeTemplateVillagerType(nbt, biome)
 	prepareTemplateMobBase(nbt, 35, levelRandom)
 	difficulty := context.Difficulty.SpecialMultiplier()
@@ -86,7 +86,7 @@ func prepareZombieVillagerTemplateSpawn(nbt map[string]any, levelRandom, entityR
 		if levelRandom.NextFloat() >= chance*difficulty {
 			continue
 		}
-		stack, decodeErr := item.StackFromJavaNBT(current)
+		stack, decodeErr := item.StackFromStructureNBT(current)
 		if decodeErr != nil {
 			return nil, decodeErr
 		}
@@ -94,7 +94,7 @@ func prepareZombieVillagerTemplateSpawn(nbt map[string]any, levelRandom, entityR
 		if err != nil {
 			return nil, err
 		}
-		encoded, encodeErr := item.StackToJavaNBT(stack)
+		encoded, encodeErr := item.StackToStructureNBT(stack)
 		if encodeErr != nil {
 			return nil, encodeErr
 		}

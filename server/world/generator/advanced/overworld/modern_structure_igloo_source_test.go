@@ -10,11 +10,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type iglooGraphFixture struct {
@@ -36,7 +36,7 @@ type iglooGraphFixturePiece struct {
 	Rotation         int      `json:"rotation"`
 }
 
-func TestIglooGraphsMatchJava263(t *testing.T) {
+func TestIglooGraphsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_igloo_graphs.json")
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestIglooGraphsMatchJava263(t *testing.T) {
 	for _, fixture := range fixtures {
 		fixture := fixture
 		t.Run(fmt.Sprintf("seed_%d", fixture.Seed), func(t *testing.T) {
-			random := java26.NewLegacyRandom(fixture.Seed)
+			random := vanilla.NewLegacyRandom(fixture.Seed)
 			start, valid, err := buildModernIgloo(modernStructureBuildInput{seed: fixture.Seed, name: "igloo", chunkX: 2, chunkZ: -3, random: &random})
 			if err != nil {
 				t.Fatal(err)
@@ -58,7 +58,7 @@ func TestIglooGraphsMatchJava263(t *testing.T) {
 			if !valid || !start.mutablePieces {
 				t.Fatalf("igloo start valid=%v mutable=%v", valid, start.mutablePieces)
 			}
-			wantStartBox := javastructure.Box{Min: [3]int32{fixture.BBox[0], fixture.BBox[1], fixture.BBox[2]}, Max: [3]int32{fixture.BBox[3], fixture.BBox[4], fixture.BBox[5]}}
+			wantStartBox := structure.Box{Min: [3]int32{fixture.BBox[0], fixture.BBox[1], fixture.BBox[2]}, Max: [3]int32{fixture.BBox[3], fixture.BBox[4], fixture.BBox[5]}}
 			if start.box != wantStartBox {
 				t.Fatalf("start box=%v, Java=%v", start.box, wantStartBox)
 			}
@@ -68,7 +68,7 @@ func TestIglooGraphsMatchJava263(t *testing.T) {
 			for i, raw := range start.pieces {
 				piece := raw.(modernIglooPiece)
 				want := fixture.Pieces[i]
-				wantBox := javastructure.Box{Min: [3]int32{want.BBox[0], want.BBox[1], want.BBox[2]}, Max: [3]int32{want.BBox[3], want.BBox[4], want.BBox[5]}}
+				wantBox := structure.Box{Min: [3]int32{want.BBox[0], want.BBox[1], want.BBox[2]}, Max: [3]int32{want.BBox[3], want.BBox[4], want.BBox[5]}}
 				if piece.name != strings.TrimPrefix(want.Name, "minecraft:") || piece.origin != want.TemplatePosition || piece.pivot != want.Pivot || int(piece.rotation) != want.Rotation || piece.box != wantBox {
 					t.Errorf("piece %d = {%s pos=%v pivot=%v rotation=%d box=%v}, Java {%s pos=%v pivot=%v rotation=%d box=%v}", i, piece.name, piece.origin, piece.pivot, piece.rotation, piece.box, want.Name, want.TemplatePosition, want.Pivot, want.Rotation, wantBox)
 				}
@@ -173,7 +173,7 @@ func (s iglooFixtureTerrain) BaseBlock(x, y, z int32) world.Block {
 	return b
 }
 
-func TestIglooPostProcessMatchesJava263(t *testing.T) {
+func TestIglooPostProcessMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_igloo_post.json")
 	if err != nil {
 		t.Fatal(err)
@@ -259,15 +259,15 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 			if fixture.Piece == "bottom" {
 				name, offset, depth, pivot = "igloo/bottom", [3]int32{0, -3, -2}, 12, [3]int32{3, 6, 7}
 			}
-			piece, err := makeModernIglooPiece(name, [3]int32{0, 90, 0}, javastructure.Rotation(fixture.Rotation), depth, pivot, offset, seed)
+			piece, err := makeModernIglooPiece(name, [3]int32{0, 90, 0}, structure.Rotation(fixture.Rotation), depth, pivot, offset, seed)
 			if err != nil {
 				t.Fatal(err)
 			}
-			random := java26.NewLegacyRandom(seed)
-			state := &javastructure.StructurePieceState{}
-			env := javastructure.ProcessorEnvironment{
+			random := vanilla.NewLegacyRandom(seed)
+			state := &structure.StructurePieceState{}
+			env := structure.ProcessorEnvironment{
 				BaseHeight: terrain.BaseHeight, Random: &random, PieceState: state, Range: c.Range(),
-				JavaBlockStateID: func(x, y, z int32) (uint32, error) { return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)}) },
+				BlockStateID: func(x, y, z int32) (uint32, error) { return region.BlockStateID(cube.Pos{int(x), int(y), int(z)}) },
 				HasChestBlockEntity: func(x, y, z int32) bool {
 					return fixture.ChestActor && region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)})
 				},
@@ -276,16 +276,16 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 				},
 			}
 			expected := make(map[[3]int32]string)
-			var placedEntities []javastructure.Entity
+			var placedEntities []structure.Entity
 			for _, call := range fixture.Calls {
-				clip := javastructure.Bounds{Min: [3]int32{call.Clip[0], call.Clip[1], call.Clip[2]}, Max: [3]int32{call.Clip[3], call.Clip[4], call.Clip[5]}}
+				clip := structure.Bounds{Min: [3]int32{call.Clip[0], call.Clip[1], call.Clip[2]}, Max: [3]int32{call.Clip[3], call.Clip[4], call.Clip[5]}}
 				placement, err := piece.Place(clip, env)
 				if err != nil {
 					t.Fatal(err)
 				}
 				features.applyStructurePlacement(region, placement)
 				placedEntities = append(placedEntities, placement.Entities...)
-				err = piece.AfterTemplatePlacement(clip, env, func(post javastructure.Placement) {
+				err = piece.AfterTemplatePlacement(clip, env, func(post structure.Placement) {
 					features.applyStructurePlacement(region, post)
 				})
 				if err != nil {
@@ -321,7 +321,7 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 					t.Errorf("entity %d Rotation=%v, Source=%v", i, rotation, want.Rotation)
 				}
 			}
-			handles, err := (javastructure.Placement{Entities: placedEntities}).NewEntityHandles(entity.NewFromJavaNBT)
+			handles, err := (structure.Placement{Entities: placedEntities}).NewEntityHandles(entity.NewFromStructureNBT)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -365,7 +365,7 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 				}
 			}
 			for pos, want := range expected {
-				got := scatteredCanonicalState(region.nativeState(featurePos{pos[0], pos[1], pos[2]}).CanonicalJavaID(c.BlockRegistry()))
+				got := scatteredCanonicalState(region.nativeState(featurePos{pos[0], pos[1], pos[2]}).CanonicalID(c.BlockRegistry()))
 				if got != want {
 					t.Errorf("final state at %v=%s, Source=%s", pos, got, want)
 				}
@@ -378,18 +378,18 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 			}
 			if fixture.TrapdoorState != "" {
 				pos := featurePos{fixture.TrapdoorPos[0], fixture.TrapdoorPos[1], fixture.TrapdoorPos[2]}
-				got := scatteredCanonicalState(region.nativeState(pos).CanonicalJavaID(c.BlockRegistry()))
+				got := scatteredCanonicalState(region.nativeState(pos).CanonicalID(c.BlockRegistry()))
 				if got != fixture.TrapdoorState {
 					t.Errorf("trapdoor=%s, Source=%s", got, fixture.TrapdoorState)
 				}
 				supportPos := featurePos{pos.x, pos.y - 1, pos.z}
-				gotSupport := scatteredCanonicalState(region.nativeState(supportPos).CanonicalJavaID(c.BlockRegistry()))
+				gotSupport := scatteredCanonicalState(region.nativeState(supportPos).CanonicalID(c.BlockRegistry()))
 				if gotSupport != fixture.SupportState {
 					t.Errorf("trapdoor support=%s, Source=%s", gotSupport, fixture.SupportState)
 				}
 			}
 			if fixture.InputFluidFinal != "" {
-				got := scatteredCanonicalState(region.nativeState(featurePos{fixture.InputFluidPos[0], fixture.InputFluidPos[1], fixture.InputFluidPos[2]}).CanonicalJavaID(c.BlockRegistry()))
+				got := scatteredCanonicalState(region.nativeState(featurePos{fixture.InputFluidPos[0], fixture.InputFluidPos[1], fixture.InputFluidPos[2]}).CanonicalID(c.BlockRegistry()))
 				if got != fixture.InputFluidFinal {
 					t.Errorf("waterlogging input final=%s, Source=%s", got, fixture.InputFluidFinal)
 				}
@@ -459,14 +459,14 @@ func TestIglooPostProcessMatchesJava263(t *testing.T) {
 						t.Fatalf("Source brewing stand item=%T", items[0])
 					}
 					stack := item.ReadNBT(data, nil, world.DefaultBlockRegistry)
-					javaItem, err := item.StackToJavaNBT(stack)
+					sourceItem, err := item.StackToStructureNBT(stack)
 					if err != nil {
 						t.Fatal(err)
 					}
-					components, _ := javaItem["components"].(map[string]any)
+					components, _ := sourceItem["components"].(map[string]any)
 					potion, _ := components["minecraft:potion_contents"].(map[string]any)
-					if potion["potion"] != sourcePotion || javaItem["id"] != "minecraft:splash_potion" || stack.Count() != 1 || data["Slot"] != byte(1) {
-						t.Errorf("Source brewing stand slot1 potion=%v slot=%v, Source=%s", javaItem, data["Slot"], sourcePotion)
+					if potion["potion"] != sourcePotion || sourceItem["id"] != "minecraft:splash_potion" || stack.Count() != 1 || data["Slot"] != byte(1) {
+						t.Errorf("Source brewing stand slot1 potion=%v slot=%v, Source=%s", sourceItem, data["Slot"], sourcePotion)
 					}
 				}
 			}

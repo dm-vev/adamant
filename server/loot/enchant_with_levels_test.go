@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 )
 
@@ -87,17 +87,17 @@ func TestEnchantWithLevelsJava263Source(t *testing.T) {
 					baseData["components"] = inputComponents
 				}
 				var err error
-				base, err = item.StackFromJavaNBT(baseData)
+				base, err = item.StackFromStructureNBT(baseData)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
-			random := java26.NewLegacyRandom(seed)
+			random := vanilla.NewLegacyRandom(seed)
 			got, err := enchantWithLevels(base, fixture.Cost, options, &random)
 			if err != nil {
 				t.Fatal(err)
 			}
-			encoded, err := item.StackToJavaNBT(got)
+			encoded, err := item.StackToStructureNBT(got)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -139,16 +139,16 @@ func TestEnchantWithLevelsJava263Source(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			base, err := item.StackFromJavaNBT(map[string]any{"id": fixture.Item, "count": int32(1)})
+			base, err := item.StackFromStructureNBT(map[string]any{"id": fixture.Item, "count": int32(1)})
 			if err != nil {
 				t.Fatal(err)
 			}
-			random := java26.NewLegacyRandom(seed)
+			random := vanilla.NewLegacyRandom(seed)
 			got, err := EnchantMobSpawnEquipment(base, fixture.Special, &random)
 			if err != nil {
 				t.Fatal(err)
 			}
-			encoded, err := item.StackToJavaNBT(got)
+			encoded, err := item.StackToStructureNBT(got)
 			if err != nil {
 				t.Fatal(err)
 			}

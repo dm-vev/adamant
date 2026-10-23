@@ -7,8 +7,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
@@ -1196,7 +1196,7 @@ type mountSpawnGroup struct {
 }
 
 // FinalizeSpawn ports finalizeSpawn of the horse species.
-func (m *Mount) FinalizeSpawn(_ string, random *java26.Random) {
+func (m *Mount) FinalizeSpawn(_ string, random *vanilla.Random) {
 	if random == nil {
 		return
 	}

@@ -5,12 +5,12 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { world.RegisterRuntimeFeatures(&runtimeFeatures{}) }
@@ -38,14 +38,14 @@ func (r *runtimeFeatures) base() *ModernFeatures {
 }
 
 // PlaceConfigured ...
-func (r *runtimeFeatures) PlaceConfigured(tx *world.Tx, name string, pos cube.Pos, random *java26.Random) bool {
+func (r *runtimeFeatures) PlaceConfigured(tx *world.Tx, name string, pos cube.Pos, random *vanilla.Random) bool {
 	return r.place(tx, pos, func(f *ModernFeatures, region *featureRegion, origin featurePos) bool {
 		return f.placeConfiguredRegion(region, name, origin, random)
 	})
 }
 
 // PlacePlaced ...
-func (r *runtimeFeatures) PlacePlaced(tx *world.Tx, name string, pos cube.Pos, random *java26.Random) bool {
+func (r *runtimeFeatures) PlacePlaced(tx *world.Tx, name string, pos cube.Pos, random *vanilla.Random) bool {
 	return r.place(tx, pos, func(_ *ModernFeatures, region *featureRegion, origin featurePos) bool {
 		return region.PlacePlacedFeature(name, [3]int32{origin.x, origin.y, origin.z}, random)
 	})
@@ -53,7 +53,7 @@ func (r *runtimeFeatures) PlacePlaced(tx *world.Tx, name string, pos cube.Pos, r
 
 // FeatureConfig ...
 func (r *runtimeFeatures) FeatureConfig(name string) (string, map[string]any, bool) {
-	config, ok := r.base().configured[normalizeJavaResource(name)]
+	config, ok := r.base().configured[normalizeResource(name)]
 	return config.typeName, config.config, ok
 }
 
@@ -62,14 +62,14 @@ func (r *runtimeFeatures) FeatureConfig(name string) (string, map[string]any, bo
 // features reference and #minecraft:can_spawn_from_bone_meal holds.
 func (r *runtimeFeatures) BoneMealFeatures(tx *world.Tx, pos cube.Pos) []string {
 	f := r.base()
-	b, ok := f.biomes[normalizeJavaResource(liveFeatureSource{tx: tx}.JavaBiomeAt(int32(pos[0]), int32(pos[1]), int32(pos[2])))]
+	b, ok := f.biomes[normalizeResource(liveFeatureSource{tx: tx}.BiomeAt(int32(pos[0]), int32(pos[1]), int32(pos[2])))]
 	if !ok {
 		return nil
 	}
 	var out []string
 	var collect func(name string)
 	collect = func(name string) {
-		name = normalizeJavaResource(name)
+		name = normalizeResource(name)
 		if boneMealFeatureTag[name] {
 			out = append(out, "minecraft:"+name)
 		}
@@ -78,7 +78,7 @@ func (r *runtimeFeatures) BoneMealFeatures(tx *world.Tx, pos cube.Pos) []string 
 			return
 		}
 		for _, nested := range nestedPlacedFeatures(config.config) {
-			if placed, ok := f.placed[normalizeJavaResource(nested)]; ok {
+			if placed, ok := f.placed[normalizeResource(nested)]; ok {
 				collect(placed.feature)
 			}
 		}
@@ -143,7 +143,7 @@ func applyRuntimeStep(tx *world.Tx, step *originStep) {
 	actors := make(map[cube.Pos]world.Block, len(step.ordered))
 	for _, a := range step.ordered {
 		pos := cube.Pos{int(a.entry.Pos[0]), int(a.entry.Pos[1]), int(a.entry.Pos[2])}
-		for _, payload := range (javastructure.Placement{Blocks: []javastructure.Block{a.entry}}).BlockEntityPayloads() {
+		for _, payload := range (structure.Placement{Blocks: []structure.Block{a.entry}}).BlockEntityPayloads() {
 			if payload.Pos != pos {
 				continue
 			}
@@ -178,12 +178,12 @@ func applyRuntimeStep(tx *world.Tx, step *originStep) {
 // heights and biomes of the world tx holds.
 type liveFeatureSource struct{ tx *world.Tx }
 
-// nativeJavaBiomes names the Java biome of each native biome ID.
-var nativeJavaBiomes = sync.OnceValue(func() map[uint32]string {
+// nativeBiomes names the Java biome of each native biome ID.
+var nativeBiomes = sync.OnceValue(func() map[uint32]string {
 	m := make(map[uint32]string, len(modernBiomeIDs)+6)
 	for i, id := range modernBiomeIDs {
 		if _, ok := m[id]; !ok {
-			m[id] = java26.OverworldBiomeName(uint8(i))
+			m[id] = vanilla.OverworldBiomeName(uint8(i))
 		}
 	}
 	for b, name := range map[world.Biome]string{
@@ -195,18 +195,18 @@ var nativeJavaBiomes = sync.OnceValue(func() map[uint32]string {
 	return m
 })
 
-func (s liveFeatureSource) JavaBiomeAt(x, y, z int32) string {
+func (s liveFeatureSource) BiomeAt(x, y, z int32) string {
 	if s.tx == nil {
 		return "minecraft:plains"
 	}
-	if name, ok := nativeJavaBiomes()[uint32(s.tx.Biome(cube.Pos{int(x), int(y), int(z)}).EncodeBiome())]; ok {
+	if name, ok := nativeBiomes()[uint32(s.tx.Biome(cube.Pos{int(x), int(y), int(z)}).EncodeBiome())]; ok {
 		return name
 	}
 	return "minecraft:plains"
 }
 
-func (s liveFeatureSource) JavaNoiseBiomeAt(quartX, quartY, quartZ int32) string {
-	return s.JavaBiomeAt(quartX<<2, quartY<<2, quartZ<<2)
+func (s liveFeatureSource) NoiseBiomeAt(quartX, quartY, quartZ int32) string {
+	return s.BiomeAt(quartX<<2, quartY<<2, quartZ<<2)
 }
 
 func (s liveFeatureSource) BaseHeight(x, z int32, oceanFloor bool) int32 {
@@ -226,11 +226,11 @@ func (s liveFeatureSource) BaseHeight(x, z int32, oceanFloor bool) int32 {
 // blocksMotionOnOceanFloor reports whether a block counts for the
 // OCEAN_FLOOR heightmap: it blocks motion and is not a fluid.
 func blocksMotionOnOceanFloor(state world.NativeState) bool {
-	javaState, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{Block: state.Block, Liquid: world.DefaultBlockRegistry.AirRuntimeID()})
-	if err != nil || javaState.Name == "minecraft:water" || javaState.Name == "minecraft:lava" {
+	canonicalState, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{Block: state.Block, Liquid: world.DefaultBlockRegistry.AirRuntimeID()})
+	if err != nil || canonicalState.Name == "minecraft:water" || canonicalState.Name == "minecraft:lava" {
 		return false
 	}
-	matches, _ := javadata.BlockTagContains("minecraft:blocks_motion_in_heightmap", javaState.Name)
+	matches, _ := gamedata.BlockTagContains("minecraft:blocks_motion_in_heightmap", canonicalState.Name)
 	return matches
 }
 
@@ -248,8 +248,8 @@ func (s liveFeatureSource) BaseBlock(x, y, z int32) world.Block {
 	return s.tx.Block(cube.Pos{int(x), int(y), int(z)})
 }
 
-func (liveFeatureSource) JavaFeatureBiomeNames() []string {
-	return slices.Clone(modernJavaBiomeNames[:])
+func (liveFeatureSource) FeatureBiomeNames() []string {
+	return slices.Clone(modernBiomeNames[:])
 }
 
 func (s liveFeatureSource) BaseState(x, y, z int32) world.NativeState {
@@ -258,16 +258,16 @@ func (s liveFeatureSource) BaseState(x, y, z int32) world.NativeState {
 
 func (liveFeatureSource) UseLegacyRandomSource() bool { return false }
 
-func (s liveFeatureSource) JavaHasSkyLight() bool {
+func (s liveFeatureSource) HasSkyLight() bool {
 	return s.tx.World().Dimension() == world.Overworld
 }
 
-func (s liveFeatureSource) JavaGenerationDepth() int32 {
+func (s liveFeatureSource) GenerationDepth() int32 {
 	r := s.tx.Range()
 	return int32(r[1] - r[0] + 1)
 }
 
-func (s liveFeatureSource) JavaFluidTickDelay(name string) int32 {
+func (s liveFeatureSource) FluidTickDelay(name string) int32 {
 	if name == "minecraft:lava" {
 		if s.tx.World().Dimension() == world.Nether {
 			return 10
@@ -277,5 +277,5 @@ func (s liveFeatureSource) JavaFluidTickDelay(name string) int32 {
 	return 5
 }
 
-func (liveFeatureSource) PlaceStructureStep(world.ChunkPos, int, javastructure.ProcessorEnvironment, func(javastructure.Placement)) {
+func (liveFeatureSource) PlaceStructureStep(world.ChunkPos, int, structure.ProcessorEnvironment, func(structure.Placement)) {
 }

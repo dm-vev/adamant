@@ -30,7 +30,7 @@ func lootMaxDamage(id string, components map[string]any) (int32, error) {
 	if n, ok := components["minecraft:max_damage"].(int32); ok {
 		return n, nil
 	}
-	stack, err := item.StackFromJavaNBT(map[string]any{"id": id, "count": int32(1), "components": components})
+	stack, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": int32(1), "components": components})
 	if err != nil {
 		return 0, err
 	}

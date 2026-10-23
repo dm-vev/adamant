@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // Positions and material sequences were captured from Java 26.3 DiskFeature.
 // The centre column has air at y=9, so a rejected target must not sample a state.
-var diskJavaPositions = [...]featurePos{
+var diskPositions = [...]featurePos{
 	{8, 11, 7}, {8, 10, 7}, {8, 9, 7},
 	{7, 11, 8}, {7, 10, 8}, {7, 9, 8},
 	{8, 11, 8}, {8, 10, 8},
@@ -21,7 +21,7 @@ func diskTestRegion(t *testing.T) *featureRegion {
 	t.Helper()
 	r := countLayerTestRegion()
 	stone := countLayerNativeState(t, "stone")
-	for _, p := range diskJavaPositions {
+	for _, p := range diskPositions {
 		if !r.Set(p, stone) {
 			t.Fatalf("failed to initialise disk target %v", p)
 		}
@@ -40,7 +40,7 @@ func diskTestWeightedProvider() map[string]any {
 func checkDiskMaterials(t *testing.T, r *featureRegion, want string) {
 	t.Helper()
 	materials := map[byte]string{'G': "minecraft:gold_block", 'D': "minecraft:diamond_block", 'C': "minecraft:clay", 'S': "minecraft:stone"}
-	for i, p := range diskJavaPositions {
+	for i, p := range diskPositions {
 		if name, _ := r.State(p); name != materials[want[i]] {
 			t.Errorf("disk position %v: got %s, Java wants %s", p, name, materials[want[i]])
 		}
@@ -52,7 +52,7 @@ func checkDiskMaterials(t *testing.T, r *featureRegion, want string) {
 	}
 }
 
-func TestDiskWeightedPlacementMatchesJava263(t *testing.T) {
+func TestDiskWeightedPlacementMatchesReference(t *testing.T) {
 	for _, tc := range []struct {
 		xoroshiro bool
 		seed      int64
@@ -66,9 +66,9 @@ func TestDiskWeightedPlacementMatchesJava263(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("xoro=%v/seed=%d", tc.xoroshiro, tc.seed), func(t *testing.T) {
 			r := diskTestRegion(t)
-			random := java26.NewLegacyRandom(tc.seed)
+			random := vanilla.NewLegacyRandom(tc.seed)
 			if tc.xoroshiro {
-				random = java26.NewXoroshiroRandom(tc.seed)
+				random = vanilla.NewXoroshiroRandom(tc.seed)
 			}
 			config := map[string]any{
 				"radius": float64(1), "half_height": float64(1), "state_provider": diskTestWeightedProvider(),
@@ -102,7 +102,7 @@ func TestDiskContextualOptionalStates(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := diskTestRegion(t)
-			random := java26.NewLegacyRandom(123)
+			random := vanilla.NewLegacyRandom(123)
 			config := map[string]any{
 				"radius": float64(1), "half_height": float64(1), "state_provider": tc.provider,
 				"target": map[string]any{"type": "matching_blocks", "blocks": tc.target},

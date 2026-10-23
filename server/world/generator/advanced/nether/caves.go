@@ -3,15 +3,15 @@ package nether
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
 const netherCaveMaskWords = 128 * 16 * 16 / 64
 
 var netherCaveUncarvableBlocks = func() map[string]struct{} {
-	members, err := javadata.BlockTagMembers("minecraft:uncarvable")
+	members, err := gamedata.BlockTagMembers("minecraft:uncarvable")
 	if err != nil {
 		panic(err)
 	}
@@ -52,13 +52,13 @@ func (c *netherCaves) generate(chunkX, chunkZ int, target *chunk.Chunk) {
 	}
 }
 
-func largeFeatureRandom(seed int64, chunkX, chunkZ int) java26.Random {
-	random := java26.NewLegacyRandom(seed)
+func largeFeatureRandom(seed int64, chunkX, chunkZ int) vanilla.Random {
+	random := vanilla.NewLegacyRandom(seed)
 	xScale, zScale := random.NextLong(), random.NextLong()
-	return java26.NewLegacyRandom(int64(chunkX)*xScale ^ int64(chunkZ)*zScale ^ seed)
+	return vanilla.NewLegacyRandom(int64(chunkX)*xScale ^ int64(chunkZ)*zScale ^ seed)
 }
 
-func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target *chunk.Chunk, random *java26.Random, mask *[netherCaveMaskWords]uint64) {
+func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target *chunk.Chunk, random *vanilla.Random, mask *[netherCaveMaskWords]uint64) {
 	// VeryBiasedToBottomInt.of(0, 9): three nested inclusive draws.
 	count := random.NextInt(random.NextInt(random.NextInt(10)+1) + 1)
 	for range count {
@@ -73,7 +73,7 @@ func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target
 		if random.NextInt(4) == 0 {
 			roomVerticalMultiplier := float64(0.5)
 			thickness := float32(1) + random.NextFloat()*float32(6)
-			horizontalRadius := 1.5 + float64(java26.Sin(float64(float32(math.Pi/2)))*thickness)
+			horizontalRadius := 1.5 + float64(vanilla.Sin(float64(float32(math.Pi/2)))*thickness)
 			c.carveEllipsoid(targetX, targetZ, target, x+1, y, z, horizontalRadius, horizontalRadius*roomVerticalMultiplier, floorLevel, mask)
 			tunnels += int(random.NextInt(4))
 		}
@@ -89,7 +89,7 @@ func (c *netherCaves) carveSource(targetX, targetZ, sourceX, sourceZ int, target
 }
 
 // TrapezoidFloat.of(0, 6, 2), with Java float staging.
-func sampleNetherCaveThickness(random *java26.Random) float32 {
+func sampleNetherCaveThickness(random *vanilla.Random) float32 {
 	a, b := random.NextFloat(), random.NextFloat()
 	rangeSize := float32(6)
 	plateauStart := (rangeSize - float32(2)) / float32(2)
@@ -98,18 +98,18 @@ func sampleNetherCaveThickness(random *java26.Random) float32 {
 }
 
 func (c *netherCaves) carveTunnelSeed(targetX, targetZ int, target *chunk.Chunk, tunnelSeed int64, x, y, z float64, thickness, horizontal, vertical float32, step, distance int, startVerticalMultiplier, horizontalMultiplier, verticalMultiplier, floorLevel float64, mask *[netherCaveMaskWords]uint64) {
-	random := java26.NewLegacyRandom(tunnelSeed)
+	random := vanilla.NewLegacyRandom(tunnelSeed)
 	split := int(random.NextInt(int32(distance/2))) + distance/4
 	steep := random.NextInt(6) == 0
 	var yRotation, xRotation float32
 	for current := step; current < distance; current++ {
 		sinAngle := float32(math.Pi) * float32(current) / float32(distance)
-		horizontalRadius := 1.5 + float64(java26.Sin(float64(sinAngle))*thickness)
+		horizontalRadius := 1.5 + float64(vanilla.Sin(float64(sinAngle))*thickness)
 		verticalRadius := horizontalRadius * startVerticalMultiplier
-		cosVertical := java26.Cos(float64(vertical))
-		x += float64(java26.Cos(float64(horizontal)) * cosVertical)
-		y += float64(java26.Sin(float64(vertical)))
-		z += float64(java26.Sin(float64(horizontal)) * cosVertical)
+		cosVertical := vanilla.Cos(float64(vertical))
+		x += float64(vanilla.Cos(float64(horizontal)) * cosVertical)
+		y += float64(vanilla.Sin(float64(vertical)))
+		z += float64(vanilla.Sin(float64(horizontal)) * cosVertical)
 		if steep {
 			vertical *= float32(0.92)
 		} else {
@@ -177,7 +177,7 @@ func (c *netherCaves) carveEllipsoid(chunkX, chunkZ int, target *chunk.Chunk, x,
 				rid := target.Block(uint8(localX), int16(worldY), uint8(localZ), 0)
 				name, _, ok := target.BlockRegistry().RuntimeIDToState(rid)
 				if !ok {
-					panic("nether: Java cave carver encountered unknown block runtime ID")
+					panic("nether: cave carver encountered unknown block runtime ID")
 				}
 				if _, uncarvable := netherCaveUncarvableBlocks[name]; uncarvable {
 					continue

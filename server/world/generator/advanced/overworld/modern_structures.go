@@ -12,9 +12,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // modernStructures plans immutable graphs from Java structure-set assets.
@@ -47,18 +47,18 @@ type modernStructureEntry struct {
 }
 
 type modernStructurePiece interface {
-	Bounds() javastructure.Box
-	Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error)
+	Bounds() structure.Box
+	Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error)
 }
 
 type modernJigsawPiece struct {
-	piece   javastructure.JigsawPiece
+	piece   structure.JigsawPiece
 	palette int
 	seed    int64
 }
 
-func (p modernJigsawPiece) Bounds() javastructure.Box { return p.piece.Bounds }
-func (p modernJigsawPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func (p modernJigsawPiece) Bounds() structure.Box { return p.piece.Bounds }
+func (p modernJigsawPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	return p.piece.PlaceWithEnvironment(p.palette, clip, p.seed, env)
 }
 
@@ -68,10 +68,10 @@ type modernStructureStart struct {
 	name          string
 	step          int
 	pieces        []modernStructurePiece
-	rigid         []javastructure.RigidPiece
-	junctions     []javastructure.Junction
-	box           javastructure.Box
-	terrain       javastructure.TerrainAdjustment
+	rigid         []structure.RigidPiece
+	junctions     []structure.Junction
+	box           structure.Box
+	terrain       structure.TerrainAdjustment
 }
 
 type modernStructureBuildInput struct {
@@ -80,7 +80,7 @@ type modernStructureBuildInput struct {
 	chunkX, chunkZ int32
 	config         map[string]any
 	source         ModernFeatureSource
-	random         *java26.Random
+	random         *vanilla.Random
 }
 
 type modernStructureBuilder func(modernStructureBuildInput) (modernStructureStart, bool, error)
@@ -89,7 +89,7 @@ var modernStructureBuilders = map[string]modernStructureBuilder{
 	"jigsaw": buildModernJigsawStructure,
 }
 
-var javaStructureRegistryOrder = []string{
+var structureRegistryOrder = []string{
 	"abandoned_camp_dappled_forest", "mineshaft", "igloo", "abandoned_camp_old_growth_birch_forest",
 	"abandoned_camp_meadow", "ruined_portal_desert", "abandoned_camp_forest", "ancient_city",
 	"abandoned_camp_pale_garden", "swamp_hut", "fortress", "stronghold", "ruined_portal_ocean",
@@ -106,7 +106,7 @@ var javaStructureRegistryOrder = []string{
 	"abandoned_camp_old_growth_pine_taiga",
 }
 
-var javaDecorationStepOrdinals = map[string]int{
+var decorationStepOrdinals = map[string]int{
 	"raw_generation": 0, "lakes": 1, "local_modifications": 2, "underground_structures": 3,
 	"surface_structures": 4, "strongholds": 5, "underground_ores": 6,
 	"underground_decoration": 7, "fluid_springs": 8, "vegetal_decoration": 9,
@@ -117,13 +117,13 @@ type modernStructureContext struct {
 	seed           int64
 	starts         []modernStructureStart
 	structureSteps map[int][]modernStructureStepEntry
-	beardifier     *javastructure.Beardifier
+	beardifier     *structure.Beardifier
 	pieceStates    *modernStructureStateStore
 }
 
 func newModernStructures(seed int64, source ModernFeatureSource) *modernStructures {
 	if source == nil {
-		panic("overworld: nil Java structure source")
+		panic("overworld: nil structure source")
 	}
 	s := &modernStructures{
 		seed:           seed,
@@ -133,32 +133,32 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 		startCache:     make(map[modernStructureStartKey]modernStructureStartResult),
 		startFlights:   make(map[modernStructureStartKey]*modernStructureStartFlight),
 	}
-	names, err := javadata.ResourceNames("structure_set")
+	names, err := gamedata.ResourceNames("structure_set")
 	if err != nil {
 		panic(err)
 	}
 	for _, name := range names {
-		data, err := javadata.LoadJSON("structure_set", name)
+		data, err := gamedata.LoadJSON("structure_set", name)
 		if err != nil {
 			panic(err)
 		}
 		placement, ok := data["placement"].(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java structure set placement " + name)
+			panic("overworld: malformed structure set placement " + name)
 		}
 		entries, ok := data["structures"].([]any)
 		if !ok {
-			panic("overworld: malformed Java structure set structures " + name)
+			panic("overworld: malformed structure set structures " + name)
 		}
 		set := modernStructureSet{name: name, placement: placement}
 		for _, raw := range entries {
 			entry, ok := raw.(map[string]any)
 			if !ok {
-				panic("overworld: malformed Java structure entry " + name)
+				panic("overworld: malformed structure entry " + name)
 			}
 			structure, ok := entry["structure"].(string)
 			if !ok {
-				panic("overworld: missing Java structure id " + name)
+				panic("overworld: missing structure id " + name)
 			}
 			if !strings.Contains(structure, ":") {
 				structure = "minecraft:" + structure
@@ -173,7 +173,7 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 			})
 		}
 		s.sets = append(s.sets, set)
-		if normalizeJavaResource(stringValue(placement["type"])) == "concentric_rings" {
+		if normalizeResource(stringValue(placement["type"])) == "concentric_rings" {
 			s.rings[name] = s.concentricRingChunks(placement)
 		}
 	}
@@ -182,7 +182,7 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 }
 
 func (s *modernStructures) loadStructureSteps() {
-	names, err := javadata.ResourceNames("structure")
+	names, err := gamedata.ResourceNames("structure")
 	if err != nil {
 		panic(err)
 	}
@@ -190,19 +190,19 @@ func (s *modernStructures) loadStructureSteps() {
 	for _, name := range names {
 		available[name] = struct{}{}
 	}
-	for _, name := range javaStructureRegistryOrder {
+	for _, name := range structureRegistryOrder {
 		if _, ok := available[name]; !ok {
-			panic("overworld: missing Java structure registry entry " + name)
+			panic("overworld: missing structure registry entry " + name)
 		}
 		delete(available, name)
-		config, err := javadata.LoadJSON("structure", name)
+		config, err := gamedata.LoadJSON("structure", name)
 		if err != nil {
 			panic(err)
 		}
-		stepName := normalizeJavaResource(stringValue(config["step"]))
-		step, ok := javaDecorationStepOrdinals[stepName]
+		stepName := normalizeResource(stringValue(config["step"]))
+		step, ok := decorationStepOrdinals[stepName]
 		if !ok {
-			panic("overworld: unknown Java structure decoration step " + stepName)
+			panic("overworld: unknown structure decoration step " + stepName)
 		}
 		index := int32(len(s.structureSteps[step]))
 		s.structureSteps[step] = append(s.structureSteps[step], modernStructureStepEntry{name: "minecraft:" + name, index: index})
@@ -213,7 +213,7 @@ func (s *modernStructures) loadStructureSteps() {
 			missing = append(missing, name)
 		}
 		sort.Strings(missing)
-		panic(fmt.Sprintf("overworld: Java structure registry order omitted entries %v", missing))
+		panic(fmt.Sprintf("overworld: structure registry order omitted entries %v", missing))
 	}
 }
 
@@ -225,15 +225,15 @@ func (s *modernStructures) concentricRingChunks(placement map[string]any) map[[2
 	if count <= 0 {
 		return out
 	}
-	random := java26.NewLegacyRandom(s.seed)
+	random := vanilla.NewLegacyRandom(s.seed)
 	angle := random.NextDouble() * 2 * math.Pi
 	positionInCircle, circle := 0, 0
 	preferredBiomes := stringValue(placement["preferred_biomes"])
 	for index := range count {
 		dist := float64(4*distance+distance*circle*6) + (random.NextDouble()-0.5)*float64(distance)*2.5
-		x := javaRound(math.Cos(angle) * dist)
-		z := javaRound(math.Sin(angle) * dist)
-		biomeRandom := java26.NewLegacyRandom(random.NextLong())
+		x := round(math.Cos(angle) * dist)
+		z := round(math.Sin(angle) * dist)
+		biomeRandom := vanilla.NewLegacyRandom(random.NextLong())
 		if preferredBiomes != "" {
 			if located, ok := s.locatePreferredBiome(x, z, preferredBiomes, &biomeRandom); ok {
 				x, z = located[0], located[1]
@@ -254,7 +254,7 @@ func (s *modernStructures) concentricRingChunks(placement map[string]any) map[[2
 	}
 	return out
 }
-func (s *modernStructures) locatePreferredBiome(chunkX, chunkZ int32, preferredBiomes string, random *java26.Random) ([2]int32, bool) {
+func (s *modernStructures) locatePreferredBiome(chunkX, chunkZ int32, preferredBiomes string, random *vanilla.Random) ([2]int32, bool) {
 	centerX, centerZ := chunkX*16+8, chunkZ*16+8
 	quartX, quartZ := centerX>>2, centerZ>>2
 	const radius int32 = 28
@@ -263,14 +263,14 @@ func (s *modernStructures) locatePreferredBiome(chunkX, chunkZ int32, preferredB
 	matches := make(map[string]bool)
 	for dz := -radius; dz <= radius; dz++ {
 		for dx := -radius; dx <= radius; dx++ {
-			biome := normalizeJavaResource(s.source.JavaNoiseBiomeAt(quartX+dx, 0, quartZ+dz))
+			biome := normalizeResource(s.source.NoiseBiomeAt(quartX+dx, 0, quartZ+dz))
 			if !strings.Contains(biome, ":") {
 				biome = "minecraft:" + biome
 			}
 			allowed, known := matches[biome]
 			if !known {
 				var err error
-				allowed, err = javadata.BiomeTagContains(preferredBiomes, biome)
+				allowed, err = gamedata.BiomeTagContains(preferredBiomes, biome)
 				if err != nil {
 					panic(err)
 				}
@@ -308,19 +308,19 @@ func (s *modernStructures) Prepare(pos world.ChunkPos) *modernStructureContext {
 			}
 		}
 	}
-	pieces := make([]javastructure.RigidPiece, 0)
-	junctions := make([]javastructure.Junction, 0)
+	pieces := make([]structure.RigidPiece, 0)
+	junctions := make([]structure.Junction, 0)
 	for _, start := range ctx.starts {
 		pieces = append(pieces, start.rigid...)
 		junctions = append(junctions, start.junctions...)
 	}
-	ctx.beardifier = javastructure.NewChunkBeardifier(pos[0], pos[1], pieces, junctions)
+	ctx.beardifier = structure.NewChunkBeardifier(pos[0], pos[1], pieces, junctions)
 	return ctx
 }
 
 func (s *modernStructures) candidate(set modernStructureSet, x, z int32) ([2]int32, bool) {
 	placement := set.placement
-	kind := normalizeJavaResource(stringValue(placement["type"]))
+	kind := normalizeResource(stringValue(placement["type"]))
 	if kind == "concentric_rings" {
 		_, ok := s.rings[set.name][[2]int32{x, z}]
 		return [2]int32{x, z}, ok
@@ -342,11 +342,11 @@ func (s *modernStructures) randomSpreadChunk(set modernStructureSet, x, z int32)
 	spacing := int32(number(placement["spacing"]))
 	separation := int32(number(placement["separation"]))
 	salt := int32(number(placement["salt"]))
-	distribution := javastructure.Linear
-	if normalizeJavaResource(stringValue(placement["spread_type"])) == "triangular" {
-		distribution = javastructure.Triangular
+	distribution := structure.Linear
+	if normalizeResource(stringValue(placement["spread_type"])) == "triangular" {
+		distribution = structure.Triangular
 	}
-	candidate, err := javastructure.PotentialChunk(s.seed, x, z, salt, spacing, separation, distribution)
+	candidate, err := structure.PotentialChunk(s.seed, x, z, salt, spacing, separation, distribution)
 	if err != nil {
 		panic(fmt.Sprintf("overworld: structure set %s: %v", set.name, err))
 	}
@@ -358,7 +358,7 @@ func (s *modernStructures) frequencyAllows(set modernStructureSet, x, z int32) b
 	probability := float32(number(placement["frequency"]))
 	method := frequencyMethod(stringValue(placement["frequency_reduction_method"]))
 	salt := int32(number(placement["salt"]))
-	return probability == 0 || javastructure.FrequencyApplies(s.seed, salt, x, z, probability, method)
+	return probability == 0 || structure.FrequencyApplies(s.seed, salt, x, z, probability, method)
 }
 
 func registerModernStructureBuilder(kind string, builder modernStructureBuilder) {
@@ -438,7 +438,7 @@ func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (sta
 		if recovered := recover(); recovered != nil {
 			start = modernStructureStart{}
 			valid = false
-			err = fmt.Errorf("overworld: Java structure build at %d,%d failed: %v", cx, cz, recovered)
+			err = fmt.Errorf("overworld: structure build at %d,%d failed: %v", cx, cz, recovered)
 		}
 	}()
 	if len(set.structures) == 1 {
@@ -483,25 +483,25 @@ func (s *modernStructures) buildStart(set modernStructureSet, cx, cz int32) (sta
 }
 
 func (s *modernStructures) buildStructure(name string, cx, cz int32) (start modernStructureStart, valid bool, err error) {
-	config, err := javadata.LoadJSON("structure", strings.TrimPrefix(name, "minecraft:"))
+	config, err := gamedata.LoadJSON("structure", strings.TrimPrefix(name, "minecraft:"))
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
-	kind := normalizeJavaResource(stringValue(config["type"]))
+	kind := normalizeResource(stringValue(config["type"]))
 	builder, ok := modernStructureBuilders[kind]
 	if !ok {
-		biome := normalizeJavaResource(s.source.JavaNoiseBiomeAt(cx*4+2, 0, cz*4+2))
+		biome := normalizeResource(s.source.NoiseBiomeAt(cx*4+2, 0, cz*4+2))
 		if !strings.Contains(biome, ":") {
 			biome = "minecraft:" + biome
 		}
-		allowed, err := javadata.BiomeTagContains(stringValue(config["biomes"]), biome)
+		allowed, err := gamedata.BiomeTagContains(stringValue(config["biomes"]), biome)
 		if err != nil {
 			return modernStructureStart{}, false, err
 		}
 		if !allowed {
 			return modernStructureStart{}, false, nil
 		}
-		return modernStructureStart{}, false, fmt.Errorf("overworld: Java structure %q has unsupported type %q", name, kind)
+		return modernStructureStart{}, false, fmt.Errorf("overworld: structure %q has unsupported type %q", name, kind)
 	}
 	if allowed, err := sourceHeightmapStructureAllowed(s.source, kind, config, cx, cz); err != nil {
 		return modernStructureStart{}, false, err
@@ -514,13 +514,13 @@ func (s *modernStructures) buildStructure(name string, cx, cz int32) (start mode
 		config: config, source: s.source, random: &random,
 	})
 	if err != nil {
-		return modernStructureStart{}, false, fmt.Errorf("overworld: build Java structure %s at %d,%d: %w", name, cx, cz, err)
+		return modernStructureStart{}, false, fmt.Errorf("overworld: build structure %s at %d,%d: %w", name, cx, cz, err)
 	}
 	if valid {
-		stepName := normalizeJavaResource(stringValue(config["step"]))
-		step, ok := javaDecorationStepOrdinals[stepName]
+		stepName := normalizeResource(stringValue(config["step"]))
+		step, ok := decorationStepOrdinals[stepName]
 		if !ok {
-			return modernStructureStart{}, false, fmt.Errorf("overworld: unknown Java structure decoration step %q", stepName)
+			return modernStructureStart{}, false, fmt.Errorf("overworld: unknown structure decoration step %q", stepName)
 		}
 		start.name, start.step = name, step
 	}
@@ -528,12 +528,12 @@ func (s *modernStructures) buildStructure(name string, cx, cz int32) (start mode
 }
 
 // PlaceStep emits the starts belonging to one Java decoration step in registry order.
-func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range, step int, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	if emit == nil {
-		panic("overworld: nil Java structure placement emitter")
+		panic("overworld: nil structure placement emitter")
 	}
 	minX, minZ := int32(pos[0])*16, int32(pos[1])*16
-	clip := javastructure.Bounds{
+	clip := structure.Bounds{
 		Min: [3]int32{minX, int32(bounds[0]), minZ},
 		Max: [3]int32{minX + 15, int32(bounds[1]), minZ + 15},
 	}
@@ -542,7 +542,7 @@ func (c *modernStructureContext) PlaceStep(pos world.ChunkPos, bounds cube.Range
 	env.SourceDimension = "minecraft:overworld"
 	env.CatsSpawnAsBlackAt = c.catsSpawnAsBlackAt
 	for _, entry := range c.structureSteps[step] {
-		random := java26.NewWorldgenRandom(c.seed)
+		random := vanilla.NewWorldgenRandom(c.seed)
 		decorationSeed := random.SetDecorationSeed(c.seed, minX, minZ)
 		random.SetFeatureSeed(decorationSeed, entry.index, int32(step))
 		env.Random = &random
@@ -565,7 +565,7 @@ func (c *modernStructureContext) catsSpawnAsBlackAt(x, y, z int32) bool {
 		}
 		found := false
 		for index, piece := range start.pieces {
-			var flags *javastructure.StructurePieceState
+			var flags *structure.StructurePieceState
 			if state != nil { flags = &state.pieces[index] }
 			box := mutableStructurePieceBounds(piece, flags)
 			if x >= box.Min[0] && x <= box.Max[0] && y >= box.Min[1] && y <= box.Max[1] && z >= box.Min[2] && z <= box.Max[2] { found = true; break }
@@ -576,7 +576,7 @@ func (c *modernStructureContext) catsSpawnAsBlackAt(x, y, z int32) bool {
 	return false
 }
 
-func (c *modernStructureContext) placeStart(start modernStructureStart, clip javastructure.Bounds, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (c *modernStructureContext) placeStart(start modernStructureStart, clip structure.Bounds, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	if len(start.pieces) == 0 {
 		return
 	}
@@ -595,7 +595,7 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 			}
 		}
 	}
-	var referenceFlags *javastructure.StructurePieceState
+	var referenceFlags *structure.StructurePieceState
 	if state != nil {
 		referenceFlags = &state.pieces[0]
 	}
@@ -605,9 +605,9 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 		reference.Min[1],
 		reference.Min[2] + (reference.Max[2]-reference.Min[2]+1)/2,
 	}
-	var unusedState javastructure.StructurePieceState
+	var unusedState structure.StructurePieceState
 	for index, piece := range start.pieces {
-		unusedState = javastructure.StructurePieceState{}
+		unusedState = structure.StructurePieceState{}
 		env.PieceState = &unusedState
 		if state != nil {
 			if env.TransientStructureState {
@@ -634,9 +634,9 @@ func (c *modernStructureContext) placeStart(start modernStructureStart, clip jav
 		}
 		emit(placement)
 		if template, ok := piece.(interface {
-			AfterTemplatePlacement(javastructure.Bounds, javastructure.ProcessorEnvironment, func(javastructure.Placement)) error
+			AfterTemplatePlacement(structure.Bounds, structure.ProcessorEnvironment, func(structure.Placement)) error
 		}); ok {
-			if err := template.AfterTemplatePlacement(clip, env, func(after javastructure.Placement) {
+			if err := template.AfterTemplatePlacement(clip, env, func(after structure.Placement) {
 				after.StructurePieceWrites = true
 				emit(after)
 			}); err != nil {
@@ -684,17 +684,17 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		return modernStructureStart{}, false, fmt.Errorf("jigsaw structure has malformed start_height")
 	}
 	heightRange := world.Overworld.Range()
-	originY := sampleJavaHeight(startHeight, input.random, int32(heightRange.Min()), int32(heightRange.Max())+1, input.source.SeaLevel())
+	originY := sampleHeight(startHeight, input.random, int32(heightRange.Min()), int32(heightRange.Max())+1, input.source.SeaLevel())
 	terrain := terrainAdjustment(stringValue(config["terrain_adaptation"]))
-	liquidSettings, err := javastructure.ParseLiquidSettings(config["liquid_settings"])
+	liquidSettings, err := structure.ParseLiquidSettings(config["liquid_settings"])
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
-	horizontal, vertical, err := javastructure.ParseJigsawDistance(config["max_distance_from_center"])
+	horizontal, vertical, err := structure.ParseJigsawDistance(config["max_distance_from_center"])
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
-	options := javastructure.JigsawOptions{
+	options := structure.JigsawOptions{
 		Pool:                    pool,
 		StartJigsaw:             strings.TrimPrefix(stringValue(config["start_jigsaw_name"]), "minecraft:"),
 		Origin:                  [3]int32{originX, originY, originZ},
@@ -710,20 +710,20 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		LiquidSettings:          liquidSettings,
 	}
 	if padding, exists := config["dimension_padding"]; exists {
-		options.PaddingBottom, options.PaddingTop, err = javastructure.ParseDimensionPadding(padding)
+		options.PaddingBottom, options.PaddingTop, err = structure.ParseDimensionPadding(padding)
 		if err != nil {
 			return modernStructureStart{}, false, err
 		}
 		options.CheckBounds = true
 	}
 	if rawAliases, exists := config["pool_aliases"]; exists {
-		aliases, err := javastructure.ResolvePoolAliases(rawAliases, [3]int32{originX, originY, originZ}, input.seed)
+		aliases, err := structure.ResolvePoolAliases(rawAliases, [3]int32{originX, originY, originZ}, input.seed)
 		if err != nil {
 			return modernStructureStart{}, false, err
 		}
 		options.PoolAliases = aliases
 	}
-	startStub, hasStub, err := javastructure.PrepareJigsaw(options, input.random)
+	startStub, hasStub, err := structure.PrepareJigsaw(options, input.random)
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
@@ -731,11 +731,11 @@ func buildModernJigsawStructure(input modernStructureBuildInput) (modernStructur
 		return modernStructureStart{}, false, nil
 	}
 	position := startStub.Position()
-	biome := normalizeJavaResource(input.source.JavaNoiseBiomeAt(position[0]>>2, position[1]>>2, position[2]>>2))
+	biome := normalizeResource(input.source.NoiseBiomeAt(position[0]>>2, position[1]>>2, position[2]>>2))
 	if !strings.Contains(biome, ":") {
 		biome = "minecraft:" + biome
 	}
-	allowed, err := javadata.BiomeTagContains(stringValue(config["biomes"]), biome)
+	allowed, err := gamedata.BiomeTagContains(stringValue(config["biomes"]), biome)
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
@@ -770,7 +770,7 @@ func (c *modernStructureContext) AdjustDensity(x, y, z int32) float32 {
 
 type modernStructurePayloads struct {
 	blockEntities []chunk.BlockEntity
-	entities      []javastructure.Entity
+	entities      []structure.Entity
 }
 
 func (p *modernStructurePayloads) GenerationData() world.GenerationResult {
@@ -786,12 +786,12 @@ func (p *modernStructurePayloads) GenerationData() world.GenerationResult {
 			Data: cloneStructureNBT(payload.Data),
 		}
 	}
-	entities := make([]javastructure.Entity, len(p.entities))
+	entities := make([]structure.Entity, len(p.entities))
 	for index, raw := range p.entities {
 		entities[index] = raw
 		entities[index].NBT = cloneStructureNBT(raw.NBT)
 	}
-	handles, err := (javastructure.Placement{Entities: entities}).NewEntityHandles(entity.NewFromJavaNBT)
+	handles, err := (structure.Placement{Entities: entities}).NewEntityHandles(entity.NewFromStructureNBT)
 	if err != nil {
 		panic(err)
 	}
@@ -841,20 +841,20 @@ func cloneStructureNBTValue(value any) any {
 	}
 }
 
-func intersectsChunk(box javastructure.Box, pos world.ChunkPos) bool {
+func intersectsChunk(box structure.Box, pos world.ChunkPos) bool {
 	minX, minZ := int32(pos[0])*16, int32(pos[1])*16
 	maxX, maxZ := minX+15, minZ+15
 	return box.Max[0] >= minX && box.Min[0] <= maxX && box.Max[2] >= minZ && box.Min[2] <= maxZ
 }
 
-func emptyStructureBox() javastructure.Box {
-	return javastructure.Box{
+func emptyStructureBox() structure.Box {
+	return structure.Box{
 		Min: [3]int32{math.MaxInt32, math.MaxInt32, math.MaxInt32},
 		Max: [3]int32{math.MinInt32, math.MinInt32, math.MinInt32},
 	}
 }
 
-func unionStructureBox(a, b javastructure.Box) javastructure.Box {
+func unionStructureBox(a, b structure.Box) structure.Box {
 	for axis := range 3 {
 		if b.Min[axis] < a.Min[axis] {
 			a.Min[axis] = b.Min[axis]
@@ -866,31 +866,31 @@ func unionStructureBox(a, b javastructure.Box) javastructure.Box {
 	return a
 }
 
-func frequencyMethod(name string) javastructure.FrequencyReduction {
-	switch normalizeJavaResource(name) {
+func frequencyMethod(name string) structure.FrequencyReduction {
+	switch normalizeResource(name) {
 	case "legacy_type_1":
-		return javastructure.FrequencyLegacyType1
+		return structure.FrequencyLegacyType1
 	case "legacy_type_2":
-		return javastructure.FrequencyLegacyType2
+		return structure.FrequencyLegacyType2
 	case "legacy_type_3":
-		return javastructure.FrequencyLegacyType3
+		return structure.FrequencyLegacyType3
 	default:
-		return javastructure.FrequencyDefault
+		return structure.FrequencyDefault
 	}
 }
 
-func terrainAdjustment(name string) javastructure.TerrainAdjustment {
-	switch normalizeJavaResource(name) {
+func terrainAdjustment(name string) structure.TerrainAdjustment {
+	switch normalizeResource(name) {
 	case "bury":
-		return javastructure.TerrainBury
+		return structure.TerrainBury
 	case "beard_thin":
-		return javastructure.TerrainBeardThin
+		return structure.TerrainBeardThin
 	case "beard_box":
-		return javastructure.TerrainBeardBox
+		return structure.TerrainBeardBox
 	case "encapsulate":
-		return javastructure.TerrainEncapsulate
+		return structure.TerrainEncapsulate
 	default:
-		return javastructure.TerrainNone
+		return structure.TerrainNone
 	}
 }
 
@@ -913,6 +913,6 @@ func number(value any) float64 {
 		return 0
 	}
 }
-func javaRound(value float64) int32 {
+func round(value float64) int32 {
 	return int32(math.Floor(value + 0.5))
 }

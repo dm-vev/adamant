@@ -6,11 +6,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 )
 
@@ -20,10 +20,10 @@ type scatteredLifecycleTerrain struct {
 	stone, air world.NativeState
 }
 
-func (s scatteredLifecycleTerrain) JavaNoiseBiomeAt(int32, int32, int32) string {
+func (s scatteredLifecycleTerrain) NoiseBiomeAt(int32, int32, int32) string {
 	return "minecraft:plains"
 }
-func (s scatteredLifecycleTerrain) JavaBiomeAt(int32, int32, int32) string { return "minecraft:plains" }
+func (s scatteredLifecycleTerrain) BiomeAt(int32, int32, int32) string { return "minecraft:plains" }
 func (s scatteredLifecycleTerrain) BaseHeight(x, z int32, _ bool) int32 {
 	return 63 + ((3*x+5*z)%7+7)%7
 }
@@ -37,16 +37,16 @@ func (s scatteredLifecycleTerrain) BaseBlock(x, y, z int32) world.Block {
 	b, _ := world.DefaultBlockRegistry.BlockByRuntimeID(s.BaseState(x, y, z).Block)
 	return b
 }
-func (s scatteredLifecycleTerrain) PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (s scatteredLifecycleTerrain) PlaceStructureStep(pos world.ChunkPos, step int, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	// Production looks up each origin's own structure references.
 	if !intersectsChunk(s.context.starts[0].box, pos) {
 		return
 	}
 	s.context.PlaceStep(pos, world.Overworld.Range(), step, env, emit)
 }
-func (scatteredLifecycleTerrain) UseLegacyRandomSource() bool     { return false }
-func (scatteredLifecycleTerrain) JavaHasSkyLight() bool           { return true }
-func (scatteredLifecycleTerrain) JavaFluidTickDelay(string) int32 { return 5 }
+func (scatteredLifecycleTerrain) UseLegacyRandomSource() bool { return false }
+func (scatteredLifecycleTerrain) HasSkyLight() bool           { return true }
+func (scatteredLifecycleTerrain) FluidTickDelay(string) int32 { return 5 }
 
 type scatteredLifecycleGenerator struct {
 	owner    *Overworld
@@ -74,7 +74,7 @@ func (g *scatteredLifecycleGenerator) SaveGenerationState() ([]byte, error) {
 }
 func newScatteredLifecycleGenerator(kind string) (*scatteredLifecycleGenerator, modernStructureStart, error) {
 	owner := &Overworld{seed: 4096, modernStructures: new(modernStructures)}
-	random := java26.NewLegacyRandom(4096)
+	random := vanilla.NewLegacyRandom(4096)
 	in := modernStructureBuildInput{seed: 4096, name: "minecraft:" + kind, source: scatteredLifecycleTerrain{}, random: &random}
 	var start modernStructureStart
 	var err error
@@ -84,10 +84,10 @@ func newScatteredLifecycleGenerator(kind string) (*scatteredLifecycleGenerator, 
 	case "desert_pyramid":
 		start, _, err = buildModernDesertPyramid(in)
 	case "igloo":
-		random = java26.NewLegacyRandom(13) // Source fixture: rotation 2, basement depth 4.
+		random = vanilla.NewLegacyRandom(13) // Source fixture: rotation 2, basement depth 4.
 		start, _, err = buildModernIgloo(in)
 	case "shipwreck", "shipwreck_beached", "ocean_ruin_warm", "ocean_ruin_cold":
-		in.config, err = javadata.LoadJSON("structure", kind)
+		in.config, err = gamedata.LoadJSON("structure", kind)
 		if err != nil {
 			return nil, start, err
 		}
@@ -286,7 +286,7 @@ func TestScatteredNeighborPreviewDoesNotConsumeHPosLootOrMobs(t *testing.T) {
 				flags.mu.Lock()
 				before := flags.pieces[0]
 				flags.mu.Unlock()
-				if before != (javastructure.StructurePieceState{}) {
+				if before != (structure.StructurePieceState{}) {
 					t.Fatalf("neighbor preview consumed real state: %+v", before)
 				}
 			}

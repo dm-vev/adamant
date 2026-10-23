@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 )
@@ -18,7 +18,7 @@ func Loot(luckLevel, _ int) (item.Stack, error) {
 // LootJava evaluates the builtin fishing table using a Java random stream and
 // the source hook's open-water predicate.
 func LootJava(luckLevel int, openWater bool, seed int64) (item.Stack, error) {
-	random := java26.NewXoroshiroRandom(seed)
+	random := vanilla.NewXoroshiroRandom(seed)
 	stacks, err := loot.Generate("minecraft:gameplay/fishing", seed, loot.Context{
 		Random: &random,
 		Luck: float64(luckLevel),
@@ -33,7 +33,7 @@ func LootJava(luckLevel int, openWater bool, seed int64) (item.Stack, error) {
 
 // LootWithRandom evaluates the source table using the sequence stream owned by
 // the world that contains the fishing hook.
-func LootWithRandom(luckLevel int, openWater bool, random *java26.Random) (item.Stack, error) {
+func LootWithRandom(luckLevel int, openWater bool, random *vanilla.Random) (item.Stack, error) {
 	stacks, err := loot.Generate("minecraft:gameplay/fishing", 0, loot.Context{
 		Random: random,
 		Luck: float64(luckLevel),

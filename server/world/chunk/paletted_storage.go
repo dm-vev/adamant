@@ -101,8 +101,8 @@ func (storage *PalettedStorage) Set(x, y, z byte, v uint32) {
 	storage.setPaletteIndex(x, y, z, uint16(index))
 }
 
-// JavaStateID returns the source Java state ID at a position, or zero when absent.
-func (storage *PalettedStorage) JavaStateID(x, y, z byte) uint32 {
+// StateID returns the source Java state ID at a position, or zero when absent.
+func (storage *PalettedStorage) StateID(x, y, z byte) uint32 {
 	return storage.javaStateIDs[storage.paletteIndex(x&15, y&15, z&15)]
 }
 

@@ -5,11 +5,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	overworldFeatures "github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
 )
 
@@ -44,9 +44,9 @@ type Nether struct {
 
 	biomeIDs      [5]uint32
 	biomeZoomSeed int64
-	biomes        *java26.NetherBiomes
-	density       *java26.NetherDensity
-	material      *java26.NetherMaterialNoise
+	biomes        *vanilla.NetherBiomes
+	density       *vanilla.NetherDensity
+	material      *vanilla.NetherMaterialNoise
 
 	caves         *netherCaves
 	features      *overworldFeatures.ModernFeatures
@@ -98,10 +98,10 @@ func NewNether(seed int64) *Nether {
 			uint32(dfbiome.WarpedForest{}.EncodeBiome()),
 			uint32(dfbiome.BasaltDeltas{}.EncodeBiome()),
 		},
-		biomeZoomSeed: java26.BiomeZoomSeed(seed),
-		biomes:        java26.NewNetherBiomes(seed),
-		density:       java26.NewNetherDensity(seed),
-		material:      java26.NewNetherMaterialNoise(seed),
+		biomeZoomSeed: vanilla.BiomeZoomSeed(seed),
+		biomes:        vanilla.NewNetherBiomes(seed),
+		density:       vanilla.NewNetherDensity(seed),
+		material:      vanilla.NewNetherMaterialNoise(seed),
 	}
 	for mask := range g.netherBrickFenceRIDs {
 		g.netherBrickFenceRIDs[mask] = world.BlockRuntimeID(block.NetherBrickFence{
@@ -158,7 +158,7 @@ func (g *Nether) prepareTerrain(pos world.ChunkPos, c *chunk.Chunk) {
 	scratch := g.pool.Get().(*netherScratch)
 	g.prepareHeights(chunkX, chunkZ, c, scratch, beard)
 	g.pool.Put(scratch)
-	g.applyJavaNetherMaterial(chunkX, chunkZ, c)
+	g.applyNetherMaterial(chunkX, chunkZ, c)
 	g.carveCaves(chunkX, chunkZ, c)
 }
 
@@ -182,7 +182,7 @@ func (g *Nether) fillBiomes(chunkX, chunkZ int, c *chunk.Chunk) {
 }
 
 func (g *Nether) biomeIndexAt(x, y, z int32) int {
-	quartX, _, quartZ := java26.FiddledBiomeQuart(g.biomeZoomSeed, x, y, z)
+	quartX, _, quartZ := vanilla.FiddledBiomeQuart(g.biomeZoomSeed, x, y, z)
 	return netherBiomeIndex(g.biomes.Biome(quartX*4, quartZ*4))
 }
 
@@ -227,11 +227,11 @@ func (b *netherChunkBiomes) indexAtQuart(quartX, quartZ int32) int {
 }
 
 func (b *netherChunkBiomes) index(x, y, z int32) int {
-	quartX, _, quartZ := java26.FiddledBiomeQuart(b.g.biomeZoomSeed, x, y, z)
+	quartX, _, quartZ := vanilla.FiddledBiomeQuart(b.g.biomeZoomSeed, x, y, z)
 	return b.indexAtQuart(quartX, quartZ)
 }
 
-func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScratch, beard *javastructure.Beardifier) {
+func (g *Nether) prepareHeights(chunkX, chunkZ int, c *chunk.Chunk, s *netherScratch, beard *structure.Beardifier) {
 	g.density.Fill(int32(chunkX), int32(chunkZ), &s.vertices)
 	minY, maxY := c.Range().Min(), c.Range().Max()
 	for cellX := range 4 {

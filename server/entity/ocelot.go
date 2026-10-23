@@ -5,8 +5,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -83,14 +83,14 @@ func (c ocelotBehaviourConfig) New() *ocelotBehaviour {
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &ocelotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), trusting: c.Trusting, age: c.Age, nextWander: 1}
+	return &ocelotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), trusting: c.Trusting, age: c.Age, nextWander: 1}
 }
 
 type ocelotBehaviour struct {
 	health     *HealthManager
 	effects    *EffectManager
 	mc         *MovementComputer
-	random     java26.Random
+	random     vanilla.Random
 	trusting   bool
 	dead       bool
 	age        int

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -260,7 +260,7 @@ func (h CreakingHeart) Tick(_ int64, pos cube.Pos, tx *world.Tx) {
 		tx.SetBlockEntity(pos, h)
 		return
 	}
-	d.ticker = 20 + tx.JavaRandom().NextInt(5)
+	d.ticker = 20 + tx.RegionRandom().NextInt(5)
 	updated := CreakingHeartDormant
 	if !h.hasRequiredLogs(pos, tx) && !d.hasProtector {
 		updated = CreakingHeartUprooted
@@ -315,7 +315,7 @@ func (h CreakingHeart) spawnProtector(pos cube.Pos, tx *world.Tx) creakingProtec
 	if !ok || registry.Config().SpawnMobFromNBT == nil {
 		panic("creaking heart requires registered minecraft:creaking factory")
 	}
-	random := tx.JavaRandom()
+	random := tx.RegionRandom()
 	for range 5 {
 		candidate := pos.Add(cube.Pos{int(random.NextInt(33)) - 16, 8, int(random.NextInt(33)) - 16})
 		above := tx.Block(candidate)
@@ -388,7 +388,7 @@ func (h CreakingHeart) CreakingHurt(pos cube.Pos, tx *world.Tx) {
 	}
 	h.emitParticles(pos, tx, 20, false)
 	if h.State == CreakingHeartAwake {
-		clumps := 2 + tx.JavaRandom().NextInt(2)
+		clumps := 2 + tx.RegionRandom().NextInt(2)
 		for range clumps {
 			if placed, ok := h.spreadResin(pos, tx); ok {
 				tx.PlaySound(placed.Vec3Centre(), sound.BlockPlace{Block: tx.Block(placed)})
@@ -400,7 +400,7 @@ func (h CreakingHeart) CreakingHurt(pos cube.Pos, tx *world.Tx) {
 	h.data.emitterTarget = heartProtectorCentre(protector)
 	tx.SetBlockEntity(pos, h)
 }
-func shuffledHeartFaces(random *java26.Random) [6]cube.Face {
+func shuffledHeartFaces(random *vanilla.Random) [6]cube.Face {
 	faces := [6]cube.Face{cube.FaceDown, cube.FaceUp, cube.FaceNorth, cube.FaceSouth, cube.FaceWest, cube.FaceEast}
 	for i := len(faces); i > 1; i-- {
 		j := int(random.NextInt(int32(i)))
@@ -417,7 +417,7 @@ func (h CreakingHeart) spreadResin(origin cube.Pos, tx *world.Tx) (cube.Pos, boo
 	var seen [64]cube.Pos
 	queue[0] = visit{pos: origin}
 	head, end, visited := 0, 1, 0
-	random := tx.JavaRandom()
+	random := tx.RegionRandom()
 	for head < end && visited < len(seen) {
 		node := queue[head]
 		head++
@@ -474,7 +474,7 @@ func (h CreakingHeart) emitParticles(pos cube.Pos, tx *world.Tx, count int, towa
 	// Bedrock's native trail event samples particle positions client-side. Java
 	// samples six doubles and a duration per particle on Level.random; retaining
 	// those draws is essential because resin placement uses that same stream.
-	random := tx.JavaRandom()
+	random := tx.RegionRandom()
 	for range count {
 		for range 6 {
 			random.NextDouble()
@@ -507,7 +507,7 @@ func (h CreakingHeart) SourceExperience(tx *world.Tx) int {
 	if !h.Natural {
 		return 0
 	}
-	return 20 + int(tx.JavaRandom().NextInt(5))
+	return 20 + int(tx.RegionRandom().NextInt(5))
 }
 func (h CreakingHeart) BreakInfo() BreakInfo {
 	return newBreakInfo(10, alwaysHarvestable, axeEffective, func(_ item.Tool, enchantments []item.Enchantment) []item.Stack {

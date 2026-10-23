@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/google/uuid"
 )
 
@@ -43,8 +43,8 @@ type modernOceanMonumentPiece struct {
 	seed        int64
 }
 
-func (p modernOceanMonumentPiece) Bounds() javastructure.Box {
-	return javastructure.Box{Min: [3]int32{p.west, 39, p.north}, Max: [3]int32{p.west + 57, 61, p.north + 57}}
+func (p modernOceanMonumentPiece) Bounds() structure.Box {
+	return structure.Box{Min: [3]int32{p.west, 39, p.north}, Max: [3]int32{p.west + 57, 61, p.north + 57}}
 }
 
 func (p modernOceanMonumentPiece) worldPos(x, y, z int32) [3]int32 {
@@ -62,15 +62,15 @@ func (p modernOceanMonumentPiece) worldPos(x, y, z int32) [3]int32 {
 	return [3]int32{wx, 39 + y, wz}
 }
 
-func (p modernOceanMonumentPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func (p modernOceanMonumentPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if env.BaseBlock == nil || env.Random == nil {
-		return javastructure.Placement{}, fmt.Errorf("ocean monument requires base-block and placement random queries")
+		return structure.Placement{}, fmt.Errorf("ocean monument requires base-block and placement random queries")
 	}
 	blocks, err := p.modernMonumentMainBlocks(clip, env)
 	if err != nil {
-		return javastructure.Placement{}, err
+		return structure.Placement{}, err
 	}
-	out := javastructure.Placement{Blocks: blocks, Entities: make([]javastructure.Entity, 0, 3)}
+	out := structure.Placement{Blocks: blocks, Entities: make([]structure.Entity, 0, 3)}
 	overlay := make(map[[3]int32]string, len(blocks))
 	for _, block := range blocks {
 		overlay[block.Pos] = block.State.Name
@@ -109,7 +109,7 @@ func (p modernOceanMonumentPiece) Place(clip javastructure.Bounds, env javastruc
 	putBuilding := func(x, y, z int32, name string) {
 		pos := p.worldPos(x, y, z)
 		if inside(pos) {
-			out.Blocks = append(out.Blocks, javastructure.Block{Pos: pos, State: world.BlockState{Name: name}})
+			out.Blocks = append(out.Blocks, structure.Block{Pos: pos, State: world.BlockState{Name: name}})
 			overlay[pos] = name
 		}
 	}
@@ -125,14 +125,14 @@ func (p modernOceanMonumentPiece) Place(clip javastructure.Bounds, env javastruc
 		}
 		id := uuid.New()
 		entitySeed := binary.LittleEndian.Uint64(id[:8]) ^ binary.LittleEndian.Uint64(id[8:])
-		entityRandom := java26.NewLegacyRandom(int64(entitySeed))
+		entityRandom := vanilla.NewLegacyRandom(int64(entitySeed))
 		nbt, err := entity.PrepareStructureMobSpawn("minecraft:elder_guardian", env.LevelRandom, &entityRandom, env.GenerationContext)
 		if err != nil {
 			spawnErr = err
 			return
 		}
 		nbt["PersistenceRequired"] = byte(1)
-		out.Entities = append(out.Entities, javastructure.Entity{
+		out.Entities = append(out.Entities, structure.Entity{
 			ID: id, Pos: [3]float64{float64(pos[0]) + 0.5, float64(pos[1]), float64(pos[2]) + 0.5},
 			BlockPos: pos, NBT: nbt, Seed: p.seed, SpawnReason: "structure",
 			SpawnFinalized: true, EntityRandom: &entityRandom, Record: int32(len(out.Entities)),
@@ -160,7 +160,7 @@ func (p modernOceanMonumentPiece) Place(clip javastructure.Bounds, env javastruc
 		}
 		emitModernMonumentChild(&p, child, env.Random, get, fillWater, put, spawn)
 		if spawnErr != nil {
-			return javastructure.Placement{}, spawnErr
+			return structure.Placement{}, spawnErr
 		}
 	}
 	return out, nil
@@ -183,7 +183,7 @@ func buildModernOceanMonument(input modernStructureBuildInput) (modernStructureS
 		return modernStructureStart{}, false, err
 	}
 	piece.children = fitModernMonumentRooms(&piece, input.random)
-	return modernStructureStart{name: input.name, pieces: []modernStructurePiece{piece}, box: piece.Bounds(), terrain: javastructure.TerrainNone}, true, nil
+	return modernStructureStart{name: input.name, pieces: []modernStructurePiece{piece}, box: piece.Bounds(), terrain: structure.TerrainNone}, true, nil
 }
 func modernOceanMonumentBiomesAllowed(input modernStructureBuildInput) (bool, error) {
 	centerX, centerZ := input.chunkX*16+9, input.chunkZ*16+9
@@ -191,11 +191,11 @@ func modernOceanMonumentBiomesAllowed(input modernStructureBuildInput) (bool, er
 		for xIndex := range 15 {
 			qx, qz := (centerX>>2)+int32(xIndex-7), (centerZ>>2)+int32(zIndex-7)
 			for qy := int32((63 - 29) >> 2); qy <= int32((63+29)>>2); qy++ {
-				biome := normalizeJavaResource(input.source.JavaNoiseBiomeAt(qx, qy, qz))
+				biome := normalizeResource(input.source.NoiseBiomeAt(qx, qy, qz))
 				if !strings.Contains(biome, ":") {
 					biome = "minecraft:" + biome
 				}
-				allowed, err := javadata.BiomeTagContains("#minecraft:required_ocean_monument_surrounding", biome)
+				allowed, err := gamedata.BiomeTagContains("#minecraft:required_ocean_monument_surrounding", biome)
 				if err != nil {
 					return false, err
 				}
@@ -208,7 +208,7 @@ func modernOceanMonumentBiomesAllowed(input modernStructureBuildInput) (bool, er
 	return true, nil
 }
 
-func buildModernMonumentRoomGraph(piece *modernOceanMonumentPiece, random *java26.Random) error {
+func buildModernMonumentRoomGraph(piece *modernOceanMonumentPiece, random *vanilla.Random) error {
 	for i := range piece.rooms {
 		piece.rooms[i] = newModernMonumentRoom(i)
 		piece.rooms[i].index = -1

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -77,7 +77,7 @@ func oreFullRawState(t *testing.T, raw any) world.NativeState {
 		name = state["id"].(string)
 		props, _ = state["properties"].(map[string]any)
 	}
-	id, err := javadata.BlockStateID(name, props)
+	id, err := gamedata.BlockStateID(name, props)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func buildOreFullSourceTerrain(t *testing.T, tc oreFullSourceCase) oreFullSource
 	}
 	return s
 }
-func TestOreFeaturesMatchFullJava263Source(t *testing.T) {
+func TestOreFeaturesMatchFullSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_ore_full_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -118,9 +118,9 @@ func TestOreFeaturesMatchFullJava263Source(t *testing.T) {
 			if tc.RejectWrites {
 				region.SetOrigin(target[0]+3, target[1]+3)
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			place := placeModernOreRegion
 			if tc.Feature == "scattered" {
@@ -131,15 +131,15 @@ func TestOreFeaturesMatchFullJava263Source(t *testing.T) {
 			}
 			want := map[featurePos]uint32{}
 			for _, row := range tc.States {
-				id, err := javadata.BlockStateID(row.State, row.Properties)
+				id, err := gamedata.BlockStateID(row.State, row.Properties)
 				if err != nil {
 					t.Fatal(err)
 				}
 				want[featurePos{row.Pos[0], row.Pos[1], row.Pos[2]}] = id
 			}
 			for pos, state := range region.overlayByPos() {
-				got := state.CanonicalJavaID(c.BlockRegistry())
-				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalJavaID(c.BlockRegistry()) {
+				got := state.CanonicalID(c.BlockRegistry())
+				if got == terrain.BaseState(pos.x, pos.y, pos.z).CanonicalID(c.BlockRegistry()) {
 					continue
 				}
 				expected, exists := want[pos]

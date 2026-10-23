@@ -2,22 +2,22 @@ package nether
 
 import (
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // Only nether_fossil enables terrain adaptation in the pinned Nether registry.
 // Keep reference discovery independent of material/carving to avoid a terrain
 // query recursively requesting its own structure context.
-func (g *Nether) fossilBeard(pos world.ChunkPos) *javastructure.Beardifier {
-	var storage [16]javastructure.RigidPiece
+func (g *Nether) fossilBeard(pos world.ChunkPos) *structure.Beardifier {
+	var storage [16]structure.RigidPiece
 	pieces := storage[:0]
 	g.forFossilReferences(pos, func(start *netherFossilStart) {
-		pieces = append(pieces, javastructure.RigidPiece{Bounds: start.box, Adjustment: javastructure.TerrainBeardThin})
+		pieces = append(pieces, structure.RigidPiece{Bounds: start.box, Adjustment: structure.TerrainBeardThin})
 	})
 	if len(pieces) == 0 {
 		return nil
 	}
-	return javastructure.NewBeardifier(pieces, nil)
+	return structure.NewBeardifier(pieces, nil)
 }
 
 type fossilReference struct {

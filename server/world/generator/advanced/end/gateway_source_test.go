@@ -39,7 +39,7 @@ func assertEndSourceGateways(t *testing.T, result world.GenerationResult, expect
 	}
 }
 
-func TestEndGatewayWorldHeightMatchesJava263(t *testing.T) {
+func TestEndGatewayWorldHeightMatchesReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_gateway_bounds.json")
 	if err != nil {

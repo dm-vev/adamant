@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
@@ -22,7 +22,7 @@ func applyTrialEquipment(opts world.EntitySpawnOpts, data *world.EntityData, id 
 	if table == "" { return nil }
 	seed := opts.SpawnSeed
 	if seed == 0 { seed = 1 }
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	stacks, err := loot.Generate(table, seed, loot.Context{Random: &random, Origin: opts.Position, Entity: id})
 	if err != nil { return fmt.Errorf("generate trial equipment from %q: %w", table, err) }
 	native := CloneNativeMobNBT(data.NativeNBT)

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/google/uuid"
 )
@@ -89,7 +89,7 @@ func TestCreakingResinPreservesSourceWater(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	defer w.Close()
 	<-w.Exec(func(tx *world.Tx) {
-		*tx.JavaRandom() = java26.NewLegacyRandom(1729)
+		*tx.RegionRandom() = vanilla.NewLegacyRandom(1729)
 		origin := cube.Pos{0, 64, 0}
 		log := origin.Side(cube.FaceEast)
 		water := log.Side(cube.FaceUp)

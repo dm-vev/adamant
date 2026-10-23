@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
@@ -112,7 +112,7 @@ func appendTradeSetOffers(ctx tradeContext, setName string, tier int, offers []M
 	if _,ok:=assets.TradeTags[tagName];!ok{return offers, nil}
 	choices := villagerTagValues(assets.TradeTags,tagName,make(map[string]bool))
 	if len(choices)==0{return offers, nil}
-	random := java26.NewXoroshiroRandom(villagerTradeSeed(ctx, set.RandomSequence))
+	random := vanilla.NewXoroshiroRandom(villagerTradeSeed(ctx, set.RandomSequence))
 	for made := 0; made < set.Amount && len(choices) != 0; {
 		index := int(random.NextInt(int32(len(choices))))
 		tradeName := choices[index]
@@ -155,7 +155,7 @@ func villagerTradeSeed(ctx tradeContext, sequence string) int64 {
 	return int64(seed)
 }
 
-func makeMerchantOffer(ctx tradeContext, def villagerTrade, tier int, assets *villagerTradeAssets, random *java26.Random) (MerchantOffer, bool, error) {
+func makeMerchantOffer(ctx tradeContext, def villagerTrade, tier int, assets *villagerTradeAssets, random *vanilla.Random) (MerchantOffer, bool, error) {
 	if !villagerTradePredicate(def.MerchantPredicate, ctx.variant) { return MerchantOffer{}, false, nil }
 	output, err := villagerTradeOutputStack(def.Gives)
 	if err != nil || output.Empty() { return MerchantOffer{}, false, nil }
@@ -201,7 +201,7 @@ func villagerTradeCostStack(cost villagerTradeCost, addition int) (item.Stack, b
 	if count == 0 { return item.Stack{}, false }
 	data := map[string]any{"id": cost.ID, "count": count}
 	if cost.Components != nil { data["components"] = cost.Components }
-	stack, err := item.StackFromJavaNBT(data)
+	stack, err := item.StackFromStructureNBT(data)
 	return stack, err == nil && !stack.Empty()
 }
 
@@ -211,7 +211,7 @@ func villagerTradeOutputStack(data map[string]any) (item.Stack,error) {
 		count:=number(data["count"]);if count<1{count=1}
 		return item.NewStack(item.Arrow{Tip:potion.Water()},count),nil
 	}
-	return item.StackFromJavaNBT(data)
+	return item.StackFromStructureNBT(data)
 }
 func worldItemForVillagerTrade(id string) (world.Item, bool) {
 	return world.ItemByName(id, 0)
@@ -232,7 +232,7 @@ func villagerTradePredicate(predicate map[string]any, variant string) bool {
 	return false
 }
 
-func applyVillagerItemModifier(ctx tradeContext, stack item.Stack, additionalCost int, modifier map[string]any, assets *villagerTradeAssets, random *java26.Random) (item.Stack, int, bool, error) {
+func applyVillagerItemModifier(ctx tradeContext, stack item.Stack, additionalCost int, modifier map[string]any, assets *villagerTradeAssets, random *vanilla.Random) (item.Stack, int, bool, error) {
 	kind, _ := modifier["type"].(string)
 	switch kind {
 	case "minecraft:enchant_randomly":
@@ -321,7 +321,7 @@ func villagerItemFilter(stack item.Stack, raw any) bool {
 	return true
 }
 
-func villagerSetRandomDyes(stack item.Stack, random *java26.Random) item.Stack {
+func villagerSetRandomDyes(stack item.Stack, random *vanilla.Random) item.Stack {
 	colors := item.Colours()
 	count := 1
 	for range 2 { if random.NextFloat() < .75 { count++ } }
@@ -366,7 +366,7 @@ func villagerStackHasDye(stack item.Stack) bool {
 	}
 }
 
-func villagerSetStewEffect(effects any, random *java26.Random) item.Stack {
+func villagerSetStewEffect(effects any, random *vanilla.Random) item.Stack {
 	name := ""
 	var duration time.Duration
 	if list, ok := effects.([]any); ok && len(list) > 0 {
@@ -394,7 +394,7 @@ func villagerSetPotion(stack item.Stack, id string) item.Stack {
 	}
 }
 
-func enchantVillagerEquipment(stack item.Stack, level int, tag string, assets *villagerTradeAssets, random *java26.Random) (item.Stack, bool) {
+func enchantVillagerEquipment(stack item.Stack, level int, tag string, assets *villagerTradeAssets, random *vanilla.Random) (item.Stack, bool) {
 	value, ok := stack.Item().(item.Enchantable)
 	if !ok || value.EnchantmentValue() <= 0 { return stack, false }
 	level += 1 + int(random.NextInt(int32(value.EnchantmentValue()/4+1))) + int(random.NextInt(int32(value.EnchantmentValue()/4+1)))

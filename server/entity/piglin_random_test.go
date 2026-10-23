@@ -10,7 +10,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
@@ -78,7 +78,7 @@ func testPiglinRandomStreamsSurviveSpawnTickAndReopen(t *testing.T) {
 			{name: "piglin", handle: piglinHandle, id: piglinID},
 			{name: "piglin brute", handle: bruteHandle, id: bruteID},
 		} {
-			want := java26.NewLegacyRandom(int64(fnv64(actor.id[:])))
+			want := vanilla.NewLegacyRandom(int64(fnv64(actor.id[:])))
 			want.NextInt(11)
 			want.NextInt(11)
 			wantState := want.State()

@@ -17,7 +17,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
@@ -78,7 +78,7 @@ func fortressStatefulPiece(piece bridgePiece) bool {
 	}
 }
 
-func fortressJavaPieceName(piece bridgePiece) string {
+func fortressPieceName(piece bridgePiece) string {
 	switch piece.(type) {
 	case *netherBridgeThrone:
 		return "MonsterThrone"
@@ -91,7 +91,7 @@ func fortressJavaPieceName(piece bridgePiece) string {
 	}
 }
 
-func fortressSourceFlags(pieces []bridgePiece, flags []javastructure.StructurePieceState) map[string]string {
+func fortressSourceFlags(pieces []bridgePiece, flags []structure.StructurePieceState) map[string]string {
 	out := make(map[string]string)
 	for i, piece := range pieces {
 		switch p := piece.(type) {
@@ -106,7 +106,7 @@ func fortressSourceFlags(pieces []bridgePiece, flags []javastructure.StructurePi
 	return out
 }
 
-func fortressWriteString(write javastructure.Block) string {
+func fortressWriteString(write structure.Block) string {
 	keys := make([]string, 0, len(write.State.Properties))
 	for key := range write.State.Properties {
 		keys = append(keys, key)
@@ -141,7 +141,7 @@ func fortressPlacementActorKeys(actors map[string]map[string]any) []string {
 	return keys
 }
 
-func TestFortressStatefulPostProcessMatchesJava263(t *testing.T) {
+func TestFortressStatefulPostProcessMatchesReference(t *testing.T) {
 	fixture := readFortressStateSourceFixture(t)
 	g := NewNether(fixture.Seed)
 	start, err := g.complexStart(fixture.Start[0], fixture.Start[1])
@@ -162,8 +162,8 @@ func TestFortressStatefulPostProcessMatchesJava263(t *testing.T) {
 		piece := pieces[want.Index]
 		base := piece.pieceBase()
 		gotBox := [6]int32{int32(base.bb.minX), int32(base.bb.minY), int32(base.bb.minZ), int32(base.bb.maxX), int32(base.bb.maxY), int32(base.bb.maxZ)}
-		if gotBox != want.Box || fortressJavaPieceName(piece) != want.Type {
-			t.Fatalf("piece %d geometry/type=%v/%s, Java=%v/%s", want.Index, gotBox, fortressJavaPieceName(piece), want.Box, want.Type)
+		if gotBox != want.Box || fortressPieceName(piece) != want.Type {
+			t.Fatalf("piece %d geometry/type=%v/%s, Java=%v/%s", want.Index, gotBox, fortressPieceName(piece), want.Box, want.Type)
 		}
 		var gotInitial bool
 		switch p := piece.(type) {
@@ -200,7 +200,7 @@ func TestFortressStatefulPostProcessMatchesJava263(t *testing.T) {
 		}
 		pos := world.ChunkPos{int32(chunkX), int32(chunkZ)}
 		random := g.featureSource.structureStepRandom(pos, 1, 7)
-		env := javastructure.ProcessorEnvironment{
+		env := structure.ProcessorEnvironment{
 			BaseBlock: func(x, y, z int32) world.Block {
 				if b := baseBlocks[cube.Pos{int(x), int(y), int(z)}]; b != nil {
 					return b
@@ -214,7 +214,7 @@ func TestFortressStatefulPostProcessMatchesJava263(t *testing.T) {
 			registry: world.DefaultBlockRegistry, writes: make(map[cube.Pos]uint32),
 		}
 		clip := structureBB{minX: chunkX << 4, minY: 0, minZ: chunkZ << 4, maxX: (chunkX << 4) + 15, maxY: 127, maxZ: (chunkZ << 4) + 15}
-		placement := javastructure.Placement{}
+		placement := structure.Placement{}
 		for i, piece := range pieces {
 			if !fortressStatefulPiece(piece) || !piece.pieceBase().bb.intersects(clip) {
 				continue
@@ -317,22 +317,22 @@ func fortressSliceAt(values []string, index int) []string {
 	return values[index:end]
 }
 
-func fortressPlacementAt(placement javastructure.Placement, pos cube.Pos) (javastructure.Block, bool) {
+func fortressPlacementAt(placement structure.Placement, pos cube.Pos) (structure.Block, bool) {
 	for i := len(placement.Blocks) - 1; i >= 0; i-- {
 		write := placement.Blocks[i]
 		if write.Pos == [3]int32{int32(pos[0]), int32(pos[1]), int32(pos[2])} {
 			return write, true
 		}
 	}
-	return javastructure.Block{}, false
+	return structure.Block{}, false
 }
 
-func fortressRenderCall(g *Nether, pos world.ChunkPos, transient bool, base func(int32, int32, int32) world.Block) javastructure.Placement {
-	var placement javastructure.Placement
-	g.placeFortressStructureStep(pos, javastructure.ProcessorEnvironment{
+func fortressRenderCall(g *Nether, pos world.ChunkPos, transient bool, base func(int32, int32, int32) world.Block) structure.Placement {
+	var placement structure.Placement
+	g.placeFortressStructureStep(pos, structure.ProcessorEnvironment{
 		BaseBlock: base, Random: g.featureSource.structureStepRandom(pos, 1, 7),
 		Range: cube.Range{0, 127}, TransientStructureState: transient,
-	}, func(p javastructure.Placement) { placement = p })
+	}, func(p structure.Placement) { placement = p })
 	return placement
 }
 
@@ -473,7 +473,7 @@ func TestFortressStateRejectsInvalidDataWithoutReplacingLoadedState(t *testing.T
 		t.Fatal(err)
 	}
 	start := savedFortressStartState{X: -14, Z: -54, Pieces: []savedFortressPieceState{{Index: 27, Chest: 1}}}
-	base := savedFortressState{FormatVersion: fortressStateFormatVersion, DataVersion: fortressStateJavaDataVersion, Seed: 1, Starts: []savedFortressStartState{start}}
+	base := savedFortressState{FormatVersion: fortressStateFormatVersion, DataVersion: fortressStateDataVersion, Seed: 1, Starts: []savedFortressStartState{start}}
 	cases := map[string]savedFortressState{
 		"format-version": func() savedFortressState { v := base; v.FormatVersion++; return v }(),
 		"data-version":   func() savedFortressState { v := base; v.DataVersion++; return v }(),
@@ -519,7 +519,7 @@ func TestFortressStateRejectsInvalidDataWithoutReplacingLoadedState(t *testing.T
 func TestFortressStateValidatesLoadedIndexAgainstRebuiltGraph(t *testing.T) {
 	g := NewNether(1)
 	invalid := savedFortressState{
-		FormatVersion: fortressStateFormatVersion, DataVersion: fortressStateJavaDataVersion, Seed: 1,
+		FormatVersion: fortressStateFormatVersion, DataVersion: fortressStateDataVersion, Seed: 1,
 		Starts: []savedFortressStartState{{X: -14, Z: -54, Pieces: []savedFortressPieceState{{Index: 1 << 30, Chest: 1}}}},
 	}
 	if err := g.LoadGenerationState(encodeFortressState(t, invalid)); err != nil {

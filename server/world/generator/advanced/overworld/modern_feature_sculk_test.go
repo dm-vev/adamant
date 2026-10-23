@@ -3,7 +3,7 @@ package overworld
 import (
 	"encoding/json"
 	"fmt"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"os"
 	"testing"
@@ -50,7 +50,7 @@ func (s sculkFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	}
 	return s.states[name]
 }
-func TestSculkPatchMatchesJava263(t *testing.T) {
+func TestSculkPatchMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_sculk.json")
 	if err != nil {
 		t.Fatal(err)
@@ -100,9 +100,9 @@ func TestSculkPatchMatchesJava263(t *testing.T) {
 				}
 			}
 			config := map[string]any{"charge_count": float64(tc.Charges), "amount_per_charge": float64(tc.Amount), "spread_attempts": float64(tc.Attempts), "growth_rounds": float64(tc.GrowthRounds), "spread_rounds": float64(tc.SpreadRounds)}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Xoroshiro {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if got := region.f.placeConfiguredData(region, "sculk_patch", config, featurePos{8, 8, 8}, &random); got != tc.Placed {
 				t.Errorf("placed=%v source=%v", got, tc.Placed)

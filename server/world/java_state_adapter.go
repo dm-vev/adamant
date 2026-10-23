@@ -5,14 +5,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-// JavaStateBlock applies source palette properties to a native actor while
+// CanonicalStateBlock applies source palette properties to a native actor while
 // retaining actor-only metadata on the receiver.
-type JavaStateBlock interface {
-	WithJavaBlockState(name string, properties map[string]any) (Block, error)
+type CanonicalStateBlock interface {
+	WithCanonicalState(name string, properties map[string]any) (Block, error)
 }
 
 var waterSourceProperties = map[string]any{"liquid_depth": int32(0)}
@@ -188,9 +188,9 @@ var nativeDoublePlantJavaTypes = map[string]string{
 	"grass": "minecraft:tall_grass", "fern": "minecraft:large_fern",
 }
 
-// JavaActorBlockName identifies the source families whose palette properties
+// ActorBlockName identifies the source families whose palette properties
 // require a native block actor. Only dye-coloured beds use the generic bed palette.
-func JavaActorBlockName(name string) string {
+func ActorBlockName(name string) string {
 	if name == "minecraft:shulker_box" {
 		return "minecraft:undyed_shulker_box"
 	}
@@ -218,7 +218,7 @@ func JavaActorBlockName(name string) string {
 }
 
 func javaActorPaletteState(name string, properties map[string]any) (string, map[string]any) {
-	native := JavaActorBlockName(name)
+	native := ActorBlockName(name)
 	if native == "" {
 		return name, properties
 	}
@@ -244,7 +244,7 @@ func resolveJavaState(registry chunk.BlockRegistry, state BlockState) (NativeSta
 		return NativeState{}, fmt.Errorf("java state codec: empty block name")
 
 	}
-	properties := javadata.BlockPropertiesWithDefaults(javaName, state.Properties)
+	properties := gamedata.BlockPropertiesWithDefaults(javaName, state.Properties)
 	paletteName, paletteProperties := javaActorPaletteState(javaName, properties)
 	name, props, err := nativeBlockState(registry, paletteName, paletteProperties)
 	if err != nil {
@@ -710,7 +710,7 @@ func mapJavaProperty(javaName, nativeName, key string, value any, javaProps, sch
 		return "", nil, true, nil
 	}
 	if strings.HasSuffix(javaName, "copper_golem_statue") && key == "copper_golem_pose" {
-		// NativeBlockForJavaState carries pose in the block actor, not the palette.
+		// NativeBlockForState carries pose in the block actor, not the palette.
 		switch value {
 		case "standing", "sitting", "running", "star":
 			return "", nil, true, nil
@@ -890,7 +890,7 @@ func mapJavaProperty(javaName, nativeName, key string, value any, javaProps, sch
 	if key == "distance" && isLeafBlock(javaName) {
 		// Java leaf distance is derived from nearby logs. The Bedrock palette stores only
 		// persistent_bit/update_bit; recomputing distance requires the neighborhood, so it
-		// is intentionally reconstructed as the conservative distance 7 by JavaState.
+		// is intentionally reconstructed as the conservative distance 7 by CanonicalState.
 		return "", nil, true, nil
 	}
 	if key == "type" && strings.HasSuffix(javaName, "_slab") {
@@ -2794,7 +2794,7 @@ func needsWaterLayer(name string, props map[string]any) bool {
 }
 
 func hasJavaWaterloggedProperty(name string) bool {
-	return javadata.BlockHasProperty(name, "waterlogged")
+	return gamedata.BlockHasProperty(name, "waterlogged")
 }
 
 func isLeafBlock(name string) bool {

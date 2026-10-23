@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -98,7 +98,7 @@ func gatewayShapeCovers(minimum, maximum mgl64.Vec3, boxes []cube.BBox) bool {
 
 func gatewayIsland(tx *world.Tx, origin cube.Pos) {
 	packed := (uint64(int64(origin[0]))&0x3ffffff)<<38 | (uint64(int64(origin[2]))&0x3ffffff)<<12 | uint64(origin[1])&0xfff
-	random := java26.NewLegacyRandom(int64(packed))
+	random := vanilla.NewLegacyRandom(int64(packed))
 	size := float32(random.NextInt(3))+4
 	opts := &world.SetOpts{DisableBlockUpdates:true,DisableRedstoneUpdates:true}
 	for y := 0; size > .5; y-- {

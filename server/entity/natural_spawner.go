@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -30,7 +30,7 @@ const (
 func NaturalSpawnTick(tx *world.Tx) {
 	w := tx.World()
 	// WanderingTraderSpawner owns its own random and ticks without players.
-	traderRandom := java26.NewLegacyRandom(w.Seed() ^ int64(uint64(tx.CurrentTick())*0x632be59bd9b4e019))
+	traderRandom := vanilla.NewLegacyRandom(w.Seed() ^ int64(uint64(tx.CurrentTick())*0x632be59bd9b4e019))
 	wanderingTraderSpawnTick(tx, &traderRandom)
 	players := make([]world.Entity, 0, 4)
 	for p := range tx.Players() {
@@ -46,7 +46,7 @@ func NaturalSpawnTick(tx *world.Tx) {
 		return
 	}
 	seed := w.Seed() ^ int64(uint64(tx.CurrentTick())*0x9e3779b97f4a7c15)
-	random := java26.NewLegacyRandom(seed)
+	random := vanilla.NewLegacyRandom(seed)
 	patrolSpawnTick(tx, &random)
 	counts := [8]int{}
 	for e := range tx.Entities() {
@@ -146,7 +146,7 @@ func NaturalSpawnTick(tx *world.Tx) {
 	naturalDespawn(tx)
 }
 
-func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *java26.Random) {
+func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *vanilla.Random) {
 	w := tx.World()
 	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || !w.MonsterSpawningEnabled() || !w.GameRuleBool("spawn_phantoms") || w.Time()%24000 < 13000 || w.Time()%24000 > 23000 {
 		return
@@ -202,7 +202,7 @@ func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *java26.Rando
 	}
 }
 
-func chooseNaturalEntry(random *java26.Random, rows []world.NaturalSpawnEntry, count, caps []int) *world.NaturalSpawnEntry {
+func chooseNaturalEntry(random *vanilla.Random, rows []world.NaturalSpawnEntry, count, caps []int) *world.NaturalSpawnEntry {
 	total := 0
 	for i := range rows {
 		entry := &rows[i]
@@ -337,7 +337,7 @@ func naturalDespawn(tx *world.Tx) {
 			players = append(players, p)
 		}
 	}
-	random := java26.NewLegacyRandom(tx.World().Seed() ^ int64(uint64(tx.CurrentTick())*0xd1b54a32d192ed03))
+	random := vanilla.NewLegacyRandom(tx.World().Seed() ^ int64(uint64(tx.CurrentTick())*0xd1b54a32d192ed03))
 	for entity := range tx.Entities() {
 		if entity.H().SpawnReason() != "natural" {
 			continue

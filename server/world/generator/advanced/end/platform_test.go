@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func TestNaturalEndPlatformMatchesJava263(t *testing.T) {
+func TestNaturalEndPlatformMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_platform.json")
 	if err != nil {
 		t.Fatal(err)

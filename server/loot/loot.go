@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	_ "github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
@@ -358,7 +358,7 @@ func init() {
 // Context supplies the source properties used by loot predicates and functions.
 // Zero-valued fields are valid, and Random may be supplied by a gameplay caller.
 type Context struct {
-	Random           *java26.Random
+	Random           *vanilla.Random
 	Tool             world.Item
 	ToolStack        item.Stack
 	Luck             float64
@@ -386,7 +386,7 @@ type Context struct {
 	Tx               *world.Tx
 	BlockState       world.Block
 	Damage           world.DamageSource
-	RandomSequence   func(sequence string, seed int64) *java26.Random
+	RandomSequence   func(sequence string, seed int64) *vanilla.Random
 	Biome            string
 }
 
@@ -400,7 +400,7 @@ func Generate(id string, seed int64, ctx Context) ([]item.Stack, error) {
 	if ctx.Random == nil {
 		switch {
 		case seed != 0:
-			r := java26.NewLegacyRandom(seed)
+			r := vanilla.NewLegacyRandom(seed)
 			ctx.Random = &r
 		case ctx.RandomSequence != nil && t.RandomSequence != "":
 			ctx.Random = ctx.RandomSequence(t.RandomSequence, seed)
@@ -740,7 +740,7 @@ func testMatchBlock(raw map[string]any, c *Context) (bool, error) {
 	name := c.Block
 	properties := map[string]any{}
 	if c.BlockState != nil {
-		state, err := world.JavaStateOf(c.BlockState)
+		state, err := world.CanonicalStateOf(c.BlockState)
 		if err != nil {
 			return false, err
 		}
@@ -795,7 +795,7 @@ func blockInSet(set any, name string) (bool, error) {
 	switch s := set.(type) {
 	case string:
 		if tag, ok := strings.CutPrefix(s, "#"); ok {
-			return javadata.BlockTagContains(tag, name)
+			return gamedata.BlockTagContains(tag, name)
 		}
 		return normalize(s) == normalize(name), nil
 	case []any:
@@ -1362,7 +1362,7 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 			if err != nil {
 				return item.Stack{}, err
 			}
-			base, err := item.StackFromJavaNBT(map[string]any{"id": id, "count": int32(count), "components": components})
+			base, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": int32(count), "components": components})
 			if err != nil {
 				return item.Stack{}, err
 			}
@@ -1370,7 +1370,7 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 			if err != nil {
 				return item.Stack{}, err
 			}
-			result, err := item.StackToJavaNBT(enchanted)
+			result, err := item.StackToStructureNBT(enchanted)
 			if err != nil {
 				return item.Stack{}, err
 			}
@@ -1386,7 +1386,7 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 		case "minecraft:furnace_smelt":
 			// SmeltItemFunction: the item becomes its furnace product, keeping
 			// the count; unsmeltable items are left unchanged.
-			base, err := item.StackFromJavaNBT(map[string]any{"id": id, "count": int32(max(count, 1)), "components": components})
+			base, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": int32(max(count, 1)), "components": components})
 			if err != nil {
 				return item.Stack{}, err
 			}
@@ -1394,7 +1394,7 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 			if !ok || smeltable.SmeltInfo().Product.Empty() {
 				break
 			}
-			result, err := item.StackToJavaNBT(item.NewStack(smeltable.SmeltInfo().Product.Item(), max(count, 1)))
+			result, err := item.StackToStructureNBT(item.NewStack(smeltable.SmeltInfo().Product.Item(), max(count, 1)))
 			if err != nil {
 				return item.Stack{}, err
 			}
@@ -1439,7 +1439,7 @@ func applyModifiers(id string, count int, components map[string]any, mods []modi
 	if count <= 0 {
 		return item.Stack{}, nil
 	}
-	native, err := item.StackFromJavaNBT(map[string]any{"id": id, "count": int32(count), "components": components})
+	native, err := item.StackFromStructureNBT(map[string]any{"id": id, "count": int32(count), "components": components})
 	if err != nil {
 		return item.Stack{}, fmt.Errorf("decode loot item %q: %w", id, err)
 	}

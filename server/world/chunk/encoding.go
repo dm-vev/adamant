@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/worldupgrader/blockupgrader"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -99,7 +99,7 @@ func (bpe blockPaletteMigrationEncoding) encode(buf *bytes.Buffer, v uint32) {
 		"name": entry.state.Name, "states": entry.state.State, "version": entry.state.Version,
 	}
 	if id := bpe.javaIDs[index]; id != 0 {
-		if name, properties, found := javadata.BlockStateFromID(id); found {
+		if name, properties, found := gamedata.BlockStateFromID(id); found {
 			native["adamant:java"] = map[string]any{"name": name, "properties": properties}
 		}
 	}
@@ -129,7 +129,7 @@ func (bpe blockPaletteMigrationEncoding) decode(buf *bytes.Buffer) (uint32, erro
 				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: missing properties compound", index)
 			}
 			var err error
-			javaID, err = javadata.BlockStateID(name, properties)
+			javaID, err = gamedata.BlockStateID(name, properties)
 			if err != nil {
 				return 0, fmt.Errorf("invalid adamant:java metadata in block palette entry %d: %w", index, err)
 			}

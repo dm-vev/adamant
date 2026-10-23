@@ -2,7 +2,7 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -13,7 +13,7 @@ var monsterRoomMobs = [...]string{
 	"minecraft:spider",
 }
 
-func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *java26.Random) bool {
+func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *vanilla.Random) bool {
 	xr := random.NextInt(2) + 2
 	zr := random.NextInt(2) + 2
 	minX, maxX := -xr-1, xr+1
@@ -52,14 +52,14 @@ func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *ja
 				if dx == minX || dy == -1 || dz == minZ || dx == maxX || dy == 4 || dz == maxZ {
 					if p.y >= region.MinY() && !featureRegionSolid(region, featurePos{p.x, p.y - 1, p.z}) {
 						region.setWithFlags(p, air, 2)
-					} else if featureRegionSolid(region, p) && normalizeJavaResource(name) != "chest" {
+					} else if featureRegionSolid(region, p) && normalizeResource(name) != "chest" {
 						wallRID := cobblestone
 						if dy == -1 && random.NextInt(4) != 0 {
 							wallRID = mossyCobblestone
 						}
 						monsterRoomSafeSet(region, p, wallRID)
 					}
-				} else if normalizeJavaResource(name) != "chest" && normalizeJavaResource(name) != "spawner" {
+				} else if normalizeResource(name) != "chest" && normalizeResource(name) != "spawner" {
 					monsterRoomSafeSet(region, p, air)
 				}
 			}
@@ -88,13 +88,13 @@ func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *ja
 			facing := monsterRoomChestFacing(region, p)
 			chestRID, ok := featureStateRID(region.c, map[string]any{"id": "minecraft:chest", "properties": map[string]any{"facing": facing, "type": "single", "waterlogged": false}})
 			if !ok {
-				panic("overworld: unresolved Java monster room chest block state")
+				panic("overworld: unresolved monster room chest block state")
 			}
 			monsterRoomSafeSet(region, p, chestRID)
 			// Source calls setBlockEntityLootTable after the safe write regardless of
 			// whether that write succeeded. The block-entity lookup decides whether
 			// the seed is consumed.
-			if name, _ := region.State(p); normalizeJavaResource(name) == "chest" {
+			if name, _ := region.State(p); normalizeResource(name) == "chest" {
 				monsterRoomSetChestLoot(region, p, random)
 			}
 			break
@@ -103,7 +103,7 @@ func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *ja
 
 	spawnerRID := featureRequireState(region, "minecraft:spawner")
 	monsterRoomSafeSet(region, origin, spawnerRID)
-	if name, _ := region.State(origin); normalizeJavaResource(name) == "spawner" {
+	if name, _ := region.State(origin); normalizeResource(name) == "spawner" {
 		mob := monsterRoomMobs[random.NextInt(int32(len(monsterRoomMobs)))]
 		monsterRoomSetSpawnerMob(region, origin, mob)
 	}
@@ -112,12 +112,12 @@ func placeModernMonsterRoom(region *featureRegion, origin featurePos, random *ja
 
 func monsterRoomEmpty(region *featureRegion, p featurePos) bool {
 	name, _ := region.State(p)
-	return normalizeJavaResource(name) == "air" || normalizeJavaResource(name) == "cave_air" || normalizeJavaResource(name) == "void_air"
+	return normalizeResource(name) == "air" || normalizeResource(name) == "cave_air" || normalizeResource(name) == "void_air"
 }
 
 func monsterRoomSafeSet(region *featureRegion, p featurePos, state world.NativeState) bool {
 	name, _ := region.State(p)
-	if javaBlockTagContains("features_cannot_replace", normalizeJavaResource(name)) {
+	if blockTagContains("features_cannot_replace", normalizeResource(name)) {
 		return false
 	}
 	return region.setWithFlags(p, state, 2)
@@ -130,7 +130,7 @@ func monsterRoomChestFacing(region *featureRegion, p featurePos) string {
 	for _, direction := range [...]string{"north", "east", "south", "west"} {
 		neighbor := monsterRoomNeighbor(p, direction)
 		name, _ := region.State(neighbor)
-		if normalizeJavaResource(name) == "chest" {
+		if normalizeResource(name) == "chest" {
 			return locked
 		}
 		if treeSolidRender(region, neighbor) {
@@ -197,14 +197,14 @@ func monsterRoomClockwise(direction string) string {
 func monsterRoomSolidRenderAtDirection(region *featureRegion, p featurePos, direction string) bool {
 	return treeSolidRender(region, monsterRoomNeighbor(p, direction))
 }
-func monsterRoomSetChestLoot(region *featureRegion, p featurePos, random *java26.Random) {
+func monsterRoomSetChestLoot(region *featureRegion, p featurePos, random *vanilla.Random) {
 	pos := cube.Pos{int(p.x), int(p.y), int(p.z)}
 	seed := random.NextLong()
 	if data := region.templateActorData(pos); data != nil {
 		region.setBlockEntityLootTable(pos, "minecraft:chests/simple_dungeon", seed)
 		return
 	}
-	featureRecordJavaBlockEntity(region, p, map[string]any{
+	featureRecordBlockEntity(region, p, map[string]any{
 		"id": "minecraft:chest", "LootTable": "minecraft:chests/simple_dungeon", "LootTableSeed": seed,
 	})
 }
@@ -230,7 +230,7 @@ func monsterRoomSetSpawnerMob(region *featureRegion, p featurePos, mob string) {
 		data["EntityIdentifier"] = mob
 		return
 	}
-	featureRecordJavaBlockEntity(region, p, map[string]any{
+	featureRecordBlockEntity(region, p, map[string]any{
 		"id":    "minecraft:mob_spawner",
 		"Delay": int16(20), "MinSpawnDelay": int16(200), "MaxSpawnDelay": int16(800),
 		"SpawnCount": int16(4), "MaxNearbyEntities": int16(6), "RequiredPlayerRange": int16(16), "SpawnRange": int16(4),

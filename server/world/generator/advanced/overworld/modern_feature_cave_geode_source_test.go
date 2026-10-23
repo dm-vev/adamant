@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -60,7 +60,7 @@ func (s geodeSourceTerrain) BaseState(x, y, z int32) world.NativeState {
 	return s.state
 }
 
-func TestGeodeMatchesJava263SourceFixtures(t *testing.T) {
+func TestGeodeMatchesSourceFixtures(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_geode_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -116,11 +116,11 @@ func TestGeodeMatchesJava263SourceFixtures(t *testing.T) {
 			result := &world.GenerationResult{}
 			region := newFeatureRegion(&ModernFeatures{seed: tc.WorldSeed, source: source}, c, target, result)
 			region.SetOrigin(target[0], target[1])
-			var random java26.Random
+			var random vanilla.Random
 			if tc.Algorithm == "legacy" {
-				random = java26.NewLegacyRandom(tc.Seed)
+				random = vanilla.NewLegacyRandom(tc.Seed)
 			} else {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			config := geodeScenarioConfig(fixture.Config, tc.Scenario)
 			if tc.Config != nil {
@@ -132,11 +132,11 @@ func TestGeodeMatchesJava263SourceFixtures(t *testing.T) {
 			}
 			states := make([]string, 0, region.overlay.len())
 			for pos, state := range region.overlayByPos() {
-				javaState, err := world.JavaState(registry, state)
+				canonicalState, err := world.CanonicalState(registry, state)
 				if err != nil {
 					t.Fatal(err)
 				}
-				states = append(states, fmt.Sprintf("%d,%d,%d=%s%s", pos.x, pos.y, pos.z, javaState.Name, geodeProperties(javaState.Properties)))
+				states = append(states, fmt.Sprintf("%d,%d,%d=%s%s", pos.x, pos.y, pos.z, canonicalState.Name, geodeProperties(canonicalState.Properties)))
 			}
 			sort.Strings(states)
 			want := append([]string(nil), tc.States...)

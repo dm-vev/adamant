@@ -60,7 +60,7 @@ func TestPreparedPassiveSourceStateSurvivesMCDB(t *testing.T) {
 		for _, nbt := range selected {
 			pos := mgl64.Vec3{float64(index*4) + .5, 65, .5}
 			index++
-			handle, err := NewFromJavaNBT(nbt, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
+			handle, err := NewFromStructureNBT(nbt, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
 			if err != nil {
 				t.Error(err)
 				continue

@@ -5,8 +5,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -305,7 +305,7 @@ func (c *Cow) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 }
 
 // FinalizeSpawn assigns the randomized cow sound set used for newly spawned mobs.
-func (c *Cow) FinalizeSpawn(_ string, random *java26.Random) {
+func (c *Cow) FinalizeSpawn(_ string, random *vanilla.Random) {
 	if random == nil {
 		return
 	}

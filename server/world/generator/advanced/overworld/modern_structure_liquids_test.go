@@ -4,34 +4,34 @@ import (
 	"strings"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type liquidStructureSource struct{ pillarAirSource }
 
-func (liquidStructureSource) JavaNoiseBiomeAt(int32, int32, int32) string { return "minecraft:plains" }
+func (liquidStructureSource) NoiseBiomeAt(int32, int32, int32) string { return "minecraft:plains" }
 
 func TestTrialChamberLiquidPolicyReplacesAmbientWater(t *testing.T) {
 	for _, policy := range []string{"ignore_waterlogging", "apply_waterlogging"} {
 		t.Run(policy, func(t *testing.T) {
 			config := map[string]any{}
-			for key, value := range requireJavaJSON("structure", "trial_chambers") {
+			for key, value := range requireJSON("structure", "trial_chambers") {
 				config[key] = value
 			}
 			config["liquid_settings"] = policy
 			config["size"] = float64(1)
 			config["start_height"] = map[string]any{"absolute": float64(80)}
-			random := java26.NewLegacyRandom(0)
+			random := vanilla.NewLegacyRandom(0)
 			source := liquidStructureSource{pillarAirSource{ModernFeatureSource: modernTerrainSource{}, air: world.DefaultBlockRegistry.AirRuntimeID()}}
 			start, ok, err := buildModernJigsawStructure(modernStructureBuildInput{seed: 0, name: "trial_chambers", config: config, source: source, random: &random})
 			if err != nil || !ok {
 				t.Fatalf("trial start: found=%v err=%v", ok, err)
 			}
 			piece := start.pieces[0].(modernJigsawPiece).piece
-			clip := javastructure.Bounds{Min: piece.Bounds.Min, Max: piece.Bounds.Max}
-			placed, err := piece.PlaceWithEnvironment(0, clip, 0, javastructure.ProcessorEnvironment{Random: &random, SkipEntities: true})
+			clip := structure.Bounds{Min: piece.Bounds.Min, Max: piece.Bounds.Max}
+			placed, err := piece.PlaceWithEnvironment(0, clip, 0, structure.ProcessorEnvironment{Random: &random, SkipEntities: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +40,7 @@ func TestTrialChamberLiquidPolicyReplacesAmbientWater(t *testing.T) {
 					continue
 				}
 				pos := featurePos{entry.Pos[0], entry.Pos[1], entry.Pos[2]}
-				selected, err := piece.PlaceWithEnvironment(0, javastructure.Bounds{Min: entry.Pos, Max: entry.Pos}, 0, javastructure.ProcessorEnvironment{Random: &random, SkipEntities: true})
+				selected, err := piece.PlaceWithEnvironment(0, structure.Bounds{Min: entry.Pos, Max: entry.Pos}, 0, structure.ProcessorEnvironment{Random: &random, SkipEntities: true})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -57,7 +57,7 @@ func TestTrialChamberLiquidPolicyReplacesAmbientWater(t *testing.T) {
 				region.Set(pos, water)
 				selected.TemplateUpdateFlags, selected.TemplateKnownShape = 18, true
 				region.f.applyStructurePlacement(region, selected)
-				state, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(pos))
+				state, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(pos))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -87,7 +87,7 @@ func TestListTemplateLiquidPassesCompleteBeforeNextTemplate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			region := templateFluidTestRegion()
 			slab := world.BlockState{Name: "minecraft:oak_slab", Properties: map[string]any{"type": "bottom", "waterlogged": false}}
-			first := javastructure.Block{State: slab}
+			first := structure.Block{State: slab}
 			if tc.firstWater {
 				first.Pos = [3]int32{1, 0, 0}
 				first.State = world.BlockState{Name: "minecraft:water"}
@@ -98,24 +98,24 @@ func TestListTemplateLiquidPassesCompleteBeforeNextTemplate(t *testing.T) {
 				}
 				region.Set(featurePos{9, 80, 8}, water)
 			}
-			combined := javastructure.Placement{TemplateUpdateFlags: 18, TemplateKnownShape: true}
-			for i, entry := range []javastructure.Block{first, {State: slab}} {
-				settings := javastructure.ApplyWaterlogging
+			combined := structure.Placement{TemplateUpdateFlags: 18, TemplateKnownShape: true}
+			for i, entry := range []structure.Block{first, {State: slab}} {
+				settings := structure.ApplyWaterlogging
 				if i == 1 && tc.ignoreSecond {
-					settings = javastructure.IgnoreWaterlogging
+					settings = structure.IgnoreWaterlogging
 				}
-				piece := javastructure.JigsawPiece{
-					Template: &javastructure.Template{Size: [3]int32{2, 1, 1}, Palettes: [][]javastructure.Block{{entry}}},
+				piece := structure.JigsawPiece{
+					Template: &structure.Template{Size: [3]int32{2, 1, 1}, Palettes: [][]structure.Block{{entry}}},
 					Origin:   [3]int32{8, 80, 8}, LiquidSettings: settings,
 				}
-				placed, err := piece.Place(0, javastructure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 0)
+				placed, err := piece.Place(0, structure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 0)
 				if err != nil {
 					t.Fatal(err)
 				}
 				combined.Blocks = append(combined.Blocks, placed.Blocks...)
 			}
 			region.f.applyStructurePlacement(region, combined)
-			state, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(featurePos{8, 80, 8}))
+			state, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(featurePos{8, 80, 8}))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,16 +131,16 @@ func TestListTemplateLiquidPassesCompleteBeforeNextTemplate(t *testing.T) {
 
 func TestListTemplateReplacementRemovesEarlierActor(t *testing.T) {
 	region := templateFluidTestRegion()
-	combined := javastructure.Placement{TemplateUpdateFlags: 18, TemplateKnownShape: true}
-	for _, entry := range []javastructure.Block{
+	combined := structure.Placement{TemplateUpdateFlags: 18, TemplateKnownShape: true}
+	for _, entry := range []structure.Block{
 		{State: world.BlockState{Name: "minecraft:chest"}, NBT: map[string]any{"id": "minecraft:chest", "LootTable": "minecraft:chests/simple_dungeon"}},
 		{State: world.BlockState{Name: "minecraft:stone"}},
 	} {
-		piece := javastructure.JigsawPiece{
-			Template: &javastructure.Template{Size: [3]int32{1, 1, 1}, Palettes: [][]javastructure.Block{{entry}}},
+		piece := structure.JigsawPiece{
+			Template: &structure.Template{Size: [3]int32{1, 1, 1}, Palettes: [][]structure.Block{{entry}}},
 			Origin:   [3]int32{8, 80, 8},
 		}
-		placed, err := piece.Place(0, javastructure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 0)
+		placed, err := piece.Place(0, structure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

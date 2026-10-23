@@ -7,12 +7,12 @@ import (
 	"os"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func TestNamedStateProvidersMatchJava263(t *testing.T) {
+func TestNamedStateProvidersMatchReference(t *testing.T) {
 	// Captured from the six source providers that do not need world queries,
 	// decoded from the pinned client resources by Java's actual provider codec.
 	var cases []struct {
@@ -34,17 +34,17 @@ func TestNamedStateProvidersMatchJava263(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("%s/xoro=%v", tc.Provider, tc.Xoroshiro), func(t *testing.T) {
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Xoroshiro {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			for _, sample := range tc.Samples {
 				p := featurePos{sample.Position[0], sample.Position[1], sample.Position[2]}
-				state, ok := sampleJavaBlockState(nil, p, "minecraft:"+tc.Provider, &random)
+				state, ok := sampleBlockState(nil, p, "minecraft:"+tc.Provider, &random)
 				if !ok {
 					t.Fatalf("provider returned no state at %v", p)
 				}
-				properties := javadata.BlockPropertiesWithDefaults(state.State.Name, state.State.Properties)
+				properties := gamedata.BlockPropertiesWithDefaults(state.State.Name, state.State.Properties)
 				want := world.DecodeStateProperties(sample.Properties)
 				if state.State.Name != sample.Name || !maps.Equal(properties, want) {
 					t.Errorf("at %v: got %s %v, Java wants %s %v", p, state.State.Name, properties, sample.Name, want)
@@ -74,8 +74,8 @@ func TestNamedOptionalTreeProviders(t *testing.T) {
 		{"soil_beneath_tree", dirt, ""},
 		{"soil_beneath_tree", stone, "minecraft:dirt"},
 	} {
-		random := java26.NewLegacyRandom(123)
-		state, ok := sampleOptionalJavaBlockState(r, tc.pos, tc.provider, &random)
+		random := vanilla.NewLegacyRandom(123)
+		state, ok := sampleOptionalBlockState(r, tc.pos, tc.provider, &random)
 		if ok != (tc.want != "") || ok && state.State.Name != tc.want {
 			t.Errorf("%s at %v: state=%+v present=%v, want %q", tc.provider, tc.pos, state, ok, tc.want)
 		}
@@ -86,12 +86,12 @@ func TestNamedOptionalTreeProviders(t *testing.T) {
 }
 
 func TestRandomizedProviderMissingIntegerPropertyDoesNotDraw(t *testing.T) {
-	random := java26.NewLegacyRandom(123)
+	random := vanilla.NewLegacyRandom(123)
 	provider := map[string]any{
 		"type": "randomized_int", "source": map[string]any{"id": "minecraft:stone"}, "property": "age",
 		"values": map[string]any{"type": "uniform", "min_inclusive": float64(1), "max_inclusive": float64(3)},
 	}
-	state, ok := sampleJavaBlockState(nil, featurePos{}, provider, &random)
+	state, ok := sampleBlockState(nil, featurePos{}, provider, &random)
 	if !ok || state.State.Name != "minecraft:stone" || state.State.Properties["age"] != nil {
 		t.Fatalf("absent property changed state: %+v", state)
 	}

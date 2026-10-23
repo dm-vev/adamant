@@ -8,7 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/player"
@@ -346,7 +346,7 @@ func TestTraderLlamasSpitAtTheirTradersAttacker(t *testing.T) {
 }
 
 //go:linkname spawnWanderingTrader github.com/df-mc/dragonfly/server/entity.spawnWanderingTrader
-func spawnWanderingTrader(tx *world.Tx, random *java26.Random) bool
+func spawnWanderingTrader(tx *world.Tx, random *vanilla.Random) bool
 
 func TestWanderingTradersSpawnAtTheVillageBellWithLlamas(t *testing.T) {
 	w := newDeathTestWorld(t)
@@ -362,7 +362,7 @@ func TestWanderingTradersSpawnAtTheVillageBellWithLlamas(t *testing.T) {
 	})
 	<-w.Exec(func(tx *world.Tx) {
 		for seed := int64(0); seed < 1000; seed++ {
-			random := java26.NewLegacyRandom(seed)
+			random := vanilla.NewLegacyRandom(seed)
 			if !spawnWanderingTrader(tx, &random) {
 				continue
 			}

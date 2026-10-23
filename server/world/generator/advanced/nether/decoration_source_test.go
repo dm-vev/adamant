@@ -11,7 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/df-mc/dragonfly/server/world/generator/advanced/overworld"
 )
 
@@ -19,10 +19,10 @@ import (
 // Source structure references and beard adaptation remain part of real terrain.
 type decorationSourceWithoutStructures struct{ *netherFeatureSource }
 
-func (*decorationSourceWithoutStructures) PlaceStructureStep(world.ChunkPos, int, javastructure.ProcessorEnvironment, func(javastructure.Placement)) {
+func (*decorationSourceWithoutStructures) PlaceStructureStep(world.ChunkPos, int, structure.ProcessorEnvironment, func(structure.Placement)) {
 }
 
-func TestNetherPlacedFeaturesMatchJava263(t *testing.T) {
+func TestNetherPlacedFeaturesMatchReference(t *testing.T) {
 	// Captured by executing mapped Java createReferences/createBiomes/buildTerrain
 	// and applyBiomeDecoration for the target's 3x3 origins, z-major. Digests cover
 	// all 32768 states including their full properties, in y,x,z order. Tick lists
@@ -71,7 +71,7 @@ func netherSourceStateHash(t *testing.T, c *chunk.Chunk) string {
 				native := world.NativeStateAt(c, x, y, z)
 				text, found := states[native]
 				if !found {
-					state, err := world.JavaState(c.BlockRegistry(), native)
+					state, err := world.CanonicalState(c.BlockRegistry(), native)
 					if err != nil {
 						t.Fatal(err)
 					}

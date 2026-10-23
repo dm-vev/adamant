@@ -4,12 +4,12 @@ import (
 	"math"
 	"strings"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func placeModernIceFamily(region *featureRegion, typeName string, config map[string]any, origin featurePos, random *java26.Random) (bool, bool) {
+func placeModernIceFamily(region *featureRegion, typeName string, config map[string]any, origin featurePos, random *vanilla.Random) (bool, bool) {
 	switch typeName {
 	case "blue_ice":
 		return true, placeModernBlueIce(region, origin, random)
@@ -33,26 +33,26 @@ func placeModernIceFamily(region *featureRegion, typeName string, config map[str
 }
 
 func featureRegionAir(region *featureRegion, p featurePos) bool {
-	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	name, _ := gamedata.BlockStateName(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 	return treeIsAirName(name)
 }
 
-func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	floorSearchRange, ok := config["floor_search_range"].(float64)
 	if !ok || floorSearchRange < 0 || floorSearchRange > 512 || floorSearchRange != math.Trunc(floorSearchRange) {
-		panic("overworld: malformed Java underwater magma floor_search_range")
+		panic("overworld: malformed underwater magma floor_search_range")
 	}
 	radius, ok := config["placement_radius_around_floor"].(float64)
 	if !ok || radius < 0 || radius > 64 || radius != math.Trunc(radius) {
-		panic("overworld: malformed Java underwater magma placement_radius_around_floor")
+		panic("overworld: malformed underwater magma placement_radius_around_floor")
 	}
 	probability, ok := config["placement_probability_per_valid_position"].(float64)
 	if !ok || probability < 0 || probability > 1 {
-		panic("overworld: malformed Java underwater magma placement probability")
+		panic("overworld: malformed underwater magma placement probability")
 	}
 
 	isWater := func(p featurePos) bool {
-		name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		name, _ := gamedata.BlockStateName(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 		return name == "minecraft:water"
 	}
 	if !isWater(origin) {
@@ -70,7 +70,7 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 	r := int32(radius)
 	magma := featureRequireState(region, "minecraft:magma_block")
 	visibleFromOutside := func(p featurePos, direction int) bool {
-		shape, err := javadata.BlockGenerationShapeID(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		shape, err := gamedata.BlockGenerationShapeID(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 		if err != nil {
 			panic(err)
 		}
@@ -84,7 +84,7 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 				if random.NextFloat() >= float32(probability) {
 					continue
 				}
-				name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+				name, _ := gamedata.BlockStateName(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 				switch name {
 				case "minecraft:water", "minecraft:air", "minecraft:cave_air", "minecraft:void_air":
 					continue
@@ -117,14 +117,14 @@ func placeModernUnderwaterMagma(region *featureRegion, config map[string]any, or
 	return placed
 }
 
-func placeModernSpike(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernSpike(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	canPlace, ok := config["can_place_on"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java spike placement predicate")
+		panic("overworld: malformed spike placement predicate")
 	}
 	canReplace, ok := config["can_replace"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java spike replace predicate")
+		panic("overworld: malformed spike replace predicate")
 	}
 	for featureRegionAir(region, origin) && origin.y > region.MinY()+2 {
 		origin.y--
@@ -134,14 +134,14 @@ func placeModernSpike(region *featureRegion, config map[string]any, origin featu
 	}
 	placement, ok := featureStateBlock(config["state"])
 	if !ok {
-		panic("overworld: malformed Java spike state")
+		panic("overworld: malformed spike state")
 	}
 	// A literal Source BlockState is independent of the fluid it overwrites.
 	state, err := placement.ResolveNative(region.c.BlockRegistry())
 	if err != nil {
 		panic(err)
 	}
-	sourceStateID := state.CanonicalJavaID(region.c.BlockRegistry())
+	sourceStateID := state.CanonicalID(region.c.BlockRegistry())
 	origin.y += random.NextInt(4)
 	height := random.NextInt(4) + 7
 	width := height/4 + random.NextInt(2)
@@ -186,8 +186,8 @@ func placeModernSpike(region *featureRegion, config map[string]any, origin featu
 				runLength = random.NextInt(5)
 			}
 			for cursor.y > 50 {
-				id := region.nativeState(cursor).CanonicalJavaID(region.c.BlockRegistry())
-				name, _ := javadata.BlockStateName(id)
+				id := region.nativeState(cursor).CanonicalID(region.c.BlockRegistry())
+				name, _ := gamedata.BlockStateName(id)
 				if !treeIsAirName(name) && !featurePredicate(region, cursor, canReplace) && id != sourceStateID {
 					break
 				}
@@ -204,12 +204,12 @@ func placeModernSpike(region *featureRegion, config map[string]any, origin featu
 	return true
 }
 
-func placeModernBlueIce(region *featureRegion, origin featurePos, random *java26.Random) bool {
+func placeModernBlueIce(region *featureRegion, origin featurePos, random *vanilla.Random) bool {
 	if origin.y > region.f.source.SeaLevel()-1 {
 		return false
 	}
 	nameAt := func(p featurePos) string {
-		name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		name, _ := gamedata.BlockStateName(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 		return name
 	}
 	if nameAt(origin) != "minecraft:water" && nameAt(featurePos{origin.x, origin.y - 1, origin.z}) != "minecraft:water" {
@@ -250,11 +250,11 @@ func placeModernBlueIce(region *featureRegion, origin featurePos, random *java26
 	}
 	return true
 }
-func placeModernScatteredOre(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernScatteredOre(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	size := int32(featureNumber(config["size"]))
 	targets, ok := config["targets"].([]any)
 	if !ok || size < 0 || size > 64 {
-		panic("overworld: malformed Java scattered ore configuration")
+		panic("overworld: malformed scattered ore configuration")
 	}
 	var targetBuffer [2]modernOreTarget
 	replacements := targetBuffer[:0]
@@ -265,11 +265,11 @@ func placeModernScatteredOre(region *featureRegion, config map[string]any, origi
 		entry := raw.(map[string]any)
 		placement, ok := featureStateBlock(entry["state"])
 		if !ok {
-			panic("overworld: malformed Java scattered ore target state")
+			panic("overworld: malformed scattered ore target state")
 		}
 		predicate, ok := entry["target"].(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java scattered ore target predicate")
+			panic("overworld: malformed scattered ore target predicate")
 		}
 		state, actor := region.resolveFeatureBlock(placement, origin)
 		replacements = append(replacements, modernOreTarget{rid: state, actor: actor, predicate: predicate})
@@ -283,7 +283,7 @@ func placeModernScatteredOre(region *featureRegion, config map[string]any, origi
 			return int32(math.Floor(float64(difference*float32(distance)) + .5))
 		}
 		p := featurePos{origin.x + axis(), origin.y + axis(), origin.z + axis()}
-		stateID := region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry())
+		stateID := region.nativeState(p).CanonicalID(region.c.BlockRegistry())
 		for _, target := range replacements {
 			if !featureRuleMatches(p, target.predicate, stateID, random) {
 				continue
@@ -292,7 +292,7 @@ func placeModernScatteredOre(region *featureRegion, config map[string]any, origi
 				exposed := false
 				for _, d := range [6]featurePos{{y: -1}, {y: 1}, {z: -1}, {z: 1}, {x: -1}, {x: 1}} {
 					neighbour := featurePos{p.x + d.x, p.y + d.y, p.z + d.z}
-					name, _ := javadata.BlockStateName(region.nativeState(neighbour).CanonicalJavaID(region.c.BlockRegistry()))
+					name, _ := gamedata.BlockStateName(region.nativeState(neighbour).CanonicalID(region.c.BlockRegistry()))
 					if treeIsAirName(name) {
 						exposed = true
 						break
@@ -309,17 +309,17 @@ func placeModernScatteredOre(region *featureRegion, config map[string]any, origi
 	return true
 }
 
-func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	targetPlacement, ok := featureStateBlock(config["target"])
 	if !ok {
-		panic("overworld: malformed Java replace-blob target")
+		panic("overworld: malformed replace-blob target")
 	}
 	replacePlacement, ok := featureStateBlock(config["state"])
 	if !ok {
-		panic("overworld: malformed Java replace-blob state")
+		panic("overworld: malformed replace-blob state")
 	}
 	targetState, _ := region.resolveFeatureBlock(targetPlacement, origin)
-	targetBlock, _ := javadata.BlockStateName(targetState.CanonicalJavaID(region.c.BlockRegistry()))
+	targetBlock, _ := gamedata.BlockStateName(targetState.CanonicalID(region.c.BlockRegistry()))
 	center := origin
 	if center.y > region.MaxY() {
 		center.y = region.MaxY()
@@ -329,7 +329,7 @@ func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin
 	}
 	found := false
 	for center.y > region.MinY()+1 {
-		name, _ := javadata.BlockStateName(region.nativeState(center).CanonicalJavaID(region.c.BlockRegistry()))
+		name, _ := gamedata.BlockStateName(region.nativeState(center).CanonicalID(region.c.BlockRegistry()))
 		if name == targetBlock {
 			found = true
 			break
@@ -340,9 +340,9 @@ func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin
 		return false
 	}
 	radius := config["radius"]
-	rx := sampleJavaIntOrUniform(radius, 0, 0, random)
-	ry := sampleJavaIntOrUniform(radius, 0, 0, random)
-	rz := sampleJavaIntOrUniform(radius, 0, 0, random)
+	rx := sampleIntOrUniform(radius, 0, 0, random)
+	ry := sampleIntOrUniform(radius, 0, 0, random)
+	rz := sampleIntOrUniform(radius, 0, 0, random)
 	maxRadius := max(rx, ry, rz)
 	replaceState, actor := region.resolveFeatureBlock(replacePlacement, origin)
 	replacedAny := false
@@ -350,7 +350,7 @@ func placeModernReplaceBlob(region *featureRegion, config map[string]any, origin
 		if depth > maxRadius {
 			return false
 		}
-		name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+		name, _ := gamedata.BlockStateName(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 		if name == targetBlock {
 			featureSetNativeBlockFlag2(region, p, replaceState, actor)
 			replacedAny = true
@@ -367,24 +367,24 @@ func featureRequireState(region *featureRegion, id string) world.NativeState {
 	return state
 }
 func absI32(x int32) int32 { if x<0 { return -x }; return x }
-func placeModernDelta(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernDelta(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	contents, ok := featureStateBlock(config["contents"])
 	if !ok {
-		panic("overworld: malformed Java delta contents")
+		panic("overworld: malformed delta contents")
 	}
 	rim, ok := featureStateBlock(config["rim"])
 	if !ok {
-		panic("overworld: malformed Java delta rim")
+		panic("overworld: malformed delta rim")
 	}
 	spawnRim := random.NextDouble() < 0.9
 	rimX, rimZ := int32(0), int32(0)
 	if spawnRim {
-		rimX = sampleJavaIntOrUniform(config["rim_size"], 0, 0, random)
-		rimZ = sampleJavaIntOrUniform(config["rim_size"], 0, 0, random)
+		rimX = sampleIntOrUniform(config["rim_size"], 0, 0, random)
+		rimZ = sampleIntOrUniform(config["rim_size"], 0, 0, random)
 	}
 	hasRim := spawnRim && rimX != 0 && rimZ != 0
-	radiusX := sampleJavaIntOrUniform(config["size"], 0, 0, random)
-	radiusZ := sampleJavaIntOrUniform(config["size"], 0, 0, random)
+	radiusX := sampleIntOrUniform(config["size"], 0, 0, random)
+	radiusZ := sampleIntOrUniform(config["size"], 0, 0, random)
 	radiusLimit := radiusX
 	if radiusZ > radiusLimit {
 		radiusLimit = radiusZ
@@ -416,7 +416,7 @@ func placeModernDelta(region *featureRegion, config map[string]any, origin featu
 	return placed
 }
 func caveDeltaClear(region *featureRegion, p featurePos, contents string) bool {
-	name, _ := javadata.BlockStateName(region.nativeState(p).CanonicalJavaID(region.c.BlockRegistry()))
+	name, _ := gamedata.BlockStateName(region.nativeState(p).CanonicalID(region.c.BlockRegistry()))
 	if name == contents {
 		return false
 	}
@@ -464,21 +464,21 @@ func manhattanPositions(origin featurePos,reachX,reachY,reachZ int32,visit func(
 		}
 	}
 }
-func placeModernRandomNeighborSpread(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernRandomNeighborSpread(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	blockProvider := config["block"]
 	state, actor, ok := region.SampleNativeState(blockProvider, origin, random)
 	if !ok {
-		panic("overworld: unresolved Java random-neighbor block provider")
+		panic("overworld: unresolved random-neighbor block provider")
 	}
 	featureSetNativeBlockFlag2(region, origin, state, actor)
-	attempts := sampleJavaInt(config["attempts"], random)
+	attempts := sampleInt(config["attempts"], random)
 	canReplace, ok := config["can_replace"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java random-neighbor replace predicate")
+		panic("overworld: malformed random-neighbor replace predicate")
 	}
 	accepted := config["accepted_neighbors"]
 	for range attempts {
-		p := featurePos{origin.x + sampleJavaInt(config["xz_offset"], random), origin.y + sampleJavaInt(config["y_offset"], random), origin.z + sampleJavaInt(config["xz_offset"], random)}
+		p := featurePos{origin.x + sampleInt(config["xz_offset"], random), origin.y + sampleInt(config["y_offset"], random), origin.z + sampleInt(config["xz_offset"], random)}
 		if !featurePredicate(region, p, canReplace) {
 			continue
 		}
@@ -495,7 +495,7 @@ func placeModernRandomNeighborSpread(region *featureRegion, config map[string]an
 		if neighbors == 1 {
 			state, actor, ok = region.SampleNativeState(blockProvider, p, random)
 			if !ok {
-				panic("overworld: unresolved Java random-neighbor block provider")
+				panic("overworld: unresolved random-neighbor block provider")
 			}
 			featureSetNativeBlockFlag2(region, p, state, actor)
 		}

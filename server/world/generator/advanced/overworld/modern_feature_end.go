@@ -5,8 +5,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -19,7 +19,7 @@ type endFeatureStateIDs struct {
 
 var modernEndFeatureIDs = func() endFeatureStateIDs {
 	literal := func(name string, properties map[string]any) uint32 {
-		id, err := javadata.BlockStateID("minecraft:"+name, properties)
+		id, err := gamedata.BlockStateID("minecraft:"+name, properties)
 		if err != nil {
 			panic(err)
 		}
@@ -43,18 +43,18 @@ var modernEndFeatureIDs = func() endFeatureStateIDs {
 }()
 
 func endFeatureBlockName(region *featureRegion, pos cube.Pos) string {
-	id, err := region.JavaBlockStateID(pos)
+	id, err := region.BlockStateID(pos)
 	if err != nil {
 		panic(err)
 	}
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
-		panic("overworld: invalid Java End feature state")
+		panic("overworld: invalid End feature state")
 	}
 	return name
 }
 
-func placeModernEndIsland(region *featureRegion, origin featurePos, random *java26.Random) bool {
+func placeModernEndIsland(region *featureRegion, origin featurePos, random *vanilla.Random) bool {
 	centre := cube.Pos{int(origin.x), int(origin.y), int(origin.z)}
 	size := float32(random.NextInt(3)) + 4
 	for y := 0; size > 0.5; y-- {
@@ -63,7 +63,7 @@ func placeModernEndIsland(region *featureRegion, origin featurePos, random *java
 		for x := low; x <= high; x++ {
 			for z := low; z <= high; z++ {
 				if float32(x*x+z*z) <= radiusSquared {
-					region.SetJavaBlockState(centre.Add(cube.Pos{x, y, z}), modernEndFeatureIDs.endStone, 3)
+					region.SetBlockState(centre.Add(cube.Pos{x, y, z}), modernEndFeatureIDs.endStone, 3)
 				}
 			}
 		}
@@ -83,7 +83,7 @@ func placeModernEndPlatform(region *featureRegion, origin featurePos) bool {
 					state, name = modernEndFeatureIDs.obsidian, "minecraft:obsidian"
 				}
 				if endFeatureBlockName(region, pos) != name {
-					region.SetJavaBlockState(pos, state, 3)
+					region.SetBlockState(pos, state, 3)
 				}
 			}
 		}
@@ -96,17 +96,17 @@ func placeModernEndPodium(region *featureRegion, config map[string]any, origin f
 	active := config["active"] == true
 	set := func(pos cube.Pos, state uint32) {
 		if active {
-			name, _ := javadata.BlockStateName(state)
+			name, _ := gamedata.BlockStateName(state)
 			previous := endFeatureBlockName(region, pos)
 			if previous == name {
 				return
 			}
 			// WorldGenRegion.destroyBlock does not produce survival drops.
 			if previous != "minecraft:air" && previous != "minecraft:cave_air" && previous != "minecraft:void_air" {
-				region.SetJavaBlockState(pos, modernEndFeatureIDs.air, 3)
+				region.SetBlockState(pos, modernEndFeatureIDs.air, 3)
 			}
 		}
-		region.SetJavaBlockState(pos, state, 3)
+		region.SetBlockState(pos, state, 3)
 	}
 	for z := -4; z <= 4; z++ {
 		for y := -1; y <= 32; y++ {
@@ -154,19 +154,19 @@ func placeModernEndGateway(region *featureRegion, config map[string]any, origin 
 					state = modernEndFeatureIDs.bedrock
 				}
 				pos := centre.Add(cube.Pos{x, y, z})
-				region.SetJavaBlockState(pos, state, 3)
+				region.SetBlockState(pos, state, 3)
 				if state == modernEndFeatureIDs.gateway {
 					if raw, hasExit := config["exit"]; hasExit && endFeatureBlockName(region, pos) == "minecraft:end_gateway" {
 						exit := raw.([]any)
 						data := map[string]any{
 							"id": "minecraft:end_gateway", "Age": int64(0),
-							"exit_portal":   []int32{javaIntProviderValue(exit[0]), javaIntProviderValue(exit[1]), javaIntProviderValue(exit[2])},
+							"exit_portal":   []int32{intProviderValue(exit[0]), intProviderValue(exit[1]), intProviderValue(exit[2])},
 							"ExactTeleport": config["exact"].(bool),
 						}
 						if existing := region.templateActorData(pos); existing != nil {
 							data["Age"] = existing["Age"]
 						}
-						featureRecordJavaBlockEntity(region, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, data)
+						featureRecordBlockEntity(region, featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}, data)
 					}
 				}
 			}
@@ -175,29 +175,29 @@ func placeModernEndGateway(region *featureRegion, config map[string]any, origin 
 	return true
 }
 
-func placeModernChorusPlant(region *featureRegion, origin featurePos, random *java26.Random) bool {
+func placeModernChorusPlant(region *featureRegion, origin featurePos, random *vanilla.Random) bool {
 	pos := cube.Pos{int(origin.x), int(origin.y), int(origin.z)}
 	name := endFeatureBlockName(region, pos)
 	if (name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air") ||
-		!javaBlockTagContains("minecraft:supports_chorus_plant", endFeatureBlockName(region, pos.Side(cube.FaceDown))) {
+		!blockTagContains("minecraft:supports_chorus_plant", endFeatureBlockName(region, pos.Side(cube.FaceDown))) {
 		return false
 	}
-	world.GenerateJavaChorusPlant(region, pos, random, 8)
+	world.GenerateChorusPlant(region, pos, random, 8)
 	return true
 }
 
-func placeModernEndSpike(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernEndSpike(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	rawSpikes := config["spikes"].([]any)
 	if len(rawSpikes) == 0 {
-		for _, spike := range java26.EndSpikes(region.f.seed) {
+		for _, spike := range vanilla.EndSpikes(region.f.seed) {
 			placeModernEndSpikeColumn(region, config, origin, spike, random)
 		}
 	} else {
 		for _, raw := range rawSpikes {
 			data := raw.(map[string]any)
-			spike := java26.EndSpike{
-				X: javaEndSpikeCoordinate(data, "centerX"), Z: javaEndSpikeCoordinate(data, "centerZ"),
-				Radius: javaEndSpikeCoordinate(data, "radius"), Height: javaEndSpikeCoordinate(data, "height"),
+			spike := vanilla.EndSpike{
+				X: endSpikeCoordinate(data, "centerX"), Z: endSpikeCoordinate(data, "centerZ"),
+				Radius: endSpikeCoordinate(data, "radius"), Height: endSpikeCoordinate(data, "height"),
 				Guarded: data["guarded"] == true,
 			}
 			placeModernEndSpikeColumn(region, config, origin, spike, random)
@@ -206,14 +206,14 @@ func placeModernEndSpike(region *featureRegion, config map[string]any, origin fe
 	return true
 }
 
-func javaEndSpikeCoordinate(data map[string]any, name string) int {
+func endSpikeCoordinate(data map[string]any, name string) int {
 	if raw, exists := data[name]; exists {
-		return int(javaIntProviderValue(raw))
+		return int(intProviderValue(raw))
 	}
 	return 0
 }
 
-func placeModernEndSpikeColumn(region *featureRegion, config map[string]any, origin featurePos, spike java26.EndSpike, random *java26.Random) {
+func placeModernEndSpikeColumn(region *featureRegion, config map[string]any, origin featurePos, spike vanilla.EndSpike, random *vanilla.Random) {
 	if spike.X>>4 != int(origin.x>>4) || spike.Z>>4 != int(origin.z>>4) {
 		return
 	}
@@ -240,9 +240,9 @@ func placeModernEndSpikeColumn(region *featureRegion, config map[string]any, ori
 		dx, dz := float64(x)-float64(spike.X), float64(z)-float64(spike.Z)
 		pos := cube.Pos{int(x), int(y), int(z)}
 		if dx*dx+dz*dz <= float64(radiusSquared) && y < int32(spike.Height) {
-			region.SetJavaBlockState(pos, modernEndFeatureIDs.obsidian, 3)
+			region.SetBlockState(pos, modernEndFeatureIDs.obsidian, 3)
 		} else if y > 65 {
-			region.SetJavaBlockState(pos, modernEndFeatureIDs.air, 3)
+			region.SetBlockState(pos, modernEndFeatureIDs.air, 3)
 		}
 	}
 	if spike.Guarded {
@@ -267,7 +267,7 @@ func placeModernEndSpikeColumn(region *featureRegion, config map[string]any, ori
 					if zEdge && x != -2 {
 						mask |= 8
 					}
-					region.SetJavaBlockState(cube.Pos{int(int32(spike.X) + int32(x)), int(int32(spike.Height) + int32(y)), int(int32(spike.Z) + int32(z))}, modernEndFeatureIDs.ironBars[mask], 3)
+					region.SetBlockState(cube.Pos{int(int32(spike.X) + int32(x)), int(int32(spike.Height) + int32(y)), int(int32(spike.Z) + int32(z))}, modernEndFeatureIDs.ironBars[mask], 3)
 				}
 			}
 		}
@@ -278,7 +278,7 @@ func placeModernEndSpikeColumn(region *featureRegion, config map[string]any, ori
 		crystal := entity.EndCrystalBehaviourConfig{ShowBase: true, PermanentlyInvulnerable: config["crystal_invulnerable"] == true}
 		if raw, exists := config["crystal_beam_target"]; exists {
 			target := raw.([]any)
-			beam := mgl64.Vec3{float64(javaIntProviderValue(target[0])), float64(javaIntProviderValue(target[1])), float64(javaIntProviderValue(target[2]))}
+			beam := mgl64.Vec3{float64(intProviderValue(target[0])), float64(intProviderValue(target[1])), float64(intProviderValue(target[2]))}
 			crystal.BeamTarget = &beam
 		}
 		opts := world.EntitySpawnOpts{
@@ -287,6 +287,6 @@ func placeModernEndSpikeColumn(region *featureRegion, config map[string]any, ori
 		}
 		region.addEntity(pos, func() *world.EntityHandle { return entity.NewEndCrystal(opts, crystal) })
 	}
-	region.SetJavaBlockState(cube.Pos{spike.X, spike.Height, spike.Z}, modernEndFeatureIDs.bedrock, 3)
-	region.SetJavaBlockState(pos, world.JavaGenerationFireState(region, pos), 3)
+	region.SetBlockState(cube.Pos{spike.X, spike.Height, spike.Z}, modernEndFeatureIDs.bedrock, 3)
+	region.SetBlockState(pos, world.GenerationFireState(region, pos), 3)
 }

@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -67,7 +67,7 @@ func (c ArmadilloConfig) New() *ArmadilloBehaviour {
 	return &ArmadilloBehaviour{health: c.Health, maxHealth: c.MaxHealth, effects: NewEffectManager(), age: c.Age, scuteTicks: c.ScuteTicks, rollTicks: c.RollTicks, threatCooldown: c.ThreatCooldown, rolling: c.Rolling, next: 40 + rand.IntN(81), speed: .15, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
 		panic: panicState{brain: true, environmental: true}}
 }
-func (a *Armadillo) FinalizeSpawn(_ string, r *java26.Random) {
+func (a *Armadillo) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil {
 		a.behaviour().scuteTicks = 6000 + int(r.NextInt(6001))
 	}

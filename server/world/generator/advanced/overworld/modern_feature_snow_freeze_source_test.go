@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -53,17 +53,17 @@ func (s snowFreezeSourceTerrain) BaseState(x, y, z int32) world.NativeState {
 	}
 	return s.air
 }
-func (s snowFreezeSourceTerrain) JavaBiomeAt(_, y, _ int32) string {
+func (s snowFreezeSourceTerrain) BiomeAt(_, y, _ int32) string {
 	if s.verticalBoundary && y <= s.ground {
 		return "snow_source_lower"
 	}
 	return "snow_source"
 }
-func (s snowFreezeSourceTerrain) JavaNoiseBiomeAt(x, y, z int32) string {
-	return s.JavaBiomeAt(x*4, y*4, z*4)
+func (s snowFreezeSourceTerrain) NoiseBiomeAt(x, y, z int32) string {
+	return s.BiomeAt(x*4, y*4, z*4)
 }
-func (s snowFreezeSourceTerrain) SeaLevel() int32       { return s.seaLevel }
-func (s snowFreezeSourceTerrain) JavaHasSkyLight() bool { return true }
+func (s snowFreezeSourceTerrain) SeaLevel() int32   { return s.seaLevel }
+func (s snowFreezeSourceTerrain) HasSkyLight() bool { return true }
 
 func snowFreezeSourceState(t *testing.T, name string, captured map[string]string) world.NativeState {
 	t.Helper()
@@ -100,7 +100,7 @@ func snowFreezeSourceStateKey(p featurePos, name string, properties map[string]s
 	return value + "}"
 }
 
-func TestSnowAndFreezeMatchesJava263Source(t *testing.T) {
+func TestSnowAndFreezeMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_snow_freeze_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -151,11 +151,11 @@ func TestSnowAndFreezeMatchesJava263Source(t *testing.T) {
 			features := &ModernFeatures{source: source, temperatures: map[string]float64{"snow_source": tc.Temperature, "snow_source_lower": .8}, biomes: map[string]modernBiomeFeatures{"snow_source": {frozenTemperature: tc.Frozen, hasPrecipitation: tc.Precipitation}, "snow_source_lower": {hasPrecipitation: true}}}
 			region := newFeatureRegion(features, c, target, &world.GenerationResult{})
 			region.SetOrigin(target[0], target[1])
-			var random java26.Random
+			var random vanilla.Random
 			if tc.Algorithm == "legacy" {
-				random = java26.NewLegacyRandom(123)
+				random = vanilla.NewLegacyRandom(123)
 			} else {
-				random = java26.NewXoroshiroRandom(123)
+				random = vanilla.NewXoroshiroRandom(123)
 			}
 			if got := features.placeConfiguredData(region, "freeze_top_layer", nil, origin, &random); got != tc.Placed {
 				t.Errorf("placed=%v, Source=%v", got, tc.Placed)
@@ -165,15 +165,15 @@ func TestSnowAndFreezeMatchesJava263Source(t *testing.T) {
 			}
 			got := make([]string, 0, region.overlay.len())
 			for p, state := range region.overlayByPos() {
-				javaState, err := world.JavaState(world.DefaultBlockRegistry, state)
+				canonicalState, err := world.CanonicalState(world.DefaultBlockRegistry, state)
 				if err != nil {
 					t.Fatal(err)
 				}
-				properties := make(map[string]string, len(javaState.Properties))
-				for key, value := range javaState.Properties {
+				properties := make(map[string]string, len(canonicalState.Properties))
+				for key, value := range canonicalState.Properties {
 					properties[key] = fmt.Sprint(value)
 				}
-				got = append(got, snowFreezeSourceStateKey(p, javaState.Name, properties))
+				got = append(got, snowFreezeSourceStateKey(p, canonicalState.Name, properties))
 			}
 			want := make([]string, 0, len(tc.Blocks))
 			for _, entry := range tc.Blocks {

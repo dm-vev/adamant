@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type endCityTemplate struct {
-	Size [3]int
-	Java *javastructure.Template
+	Size     [3]int
+	Template *structure.Template
 }
 
 var (
@@ -27,7 +27,7 @@ func getEndCityTemplate(name string) (*endCityTemplate, error) {
 	}
 	t, ok := endCityTemplates[name]
 	if !ok {
-		return nil, fmt.Errorf("java structure: missing End City template %q", name)
+		return nil, fmt.Errorf("structure: missing End City template %q", name)
 	}
 	return t, nil
 }
@@ -40,16 +40,16 @@ func loadEndCityTemplates() (map[string]*endCityTemplate, error) {
 	}
 	out := make(map[string]*endCityTemplate, len(names))
 	for _, name := range names {
-		javaTemplate, err := javastructure.Load("end_city/" + name)
+		loaded, err := structure.Load("end_city/" + name)
 		if err != nil {
 			return nil, err
 		}
-		if len(javaTemplate.Palettes) == 0 {
-			return nil, fmt.Errorf("java structure end_city/%s has no palette", name)
+		if len(loaded.Palettes) == 0 {
+			return nil, fmt.Errorf("structure end_city/%s has no palette", name)
 		}
 		out[name] = &endCityTemplate{
-			Size: [3]int{int(javaTemplate.Size[0]), int(javaTemplate.Size[1]), int(javaTemplate.Size[2])},
-			Java: javaTemplate,
+			Size:     [3]int{int(loaded.Size[0]), int(loaded.Size[1]), int(loaded.Size[2])},
+			Template: loaded,
 		}
 	}
 	return out, nil

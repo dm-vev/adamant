@@ -14,7 +14,7 @@ import (
 func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 	position := mgl64.Vec3{12.5, 70, -9.25}
 	rotation := cube.Rotation{135, -10}
-	handle, err := NewFromJavaNBT(map[string]any{
+	handle, err := NewFromStructureNBT(map[string]any{
 		"id":         "minecraft:shulker",
 		"AttachFace": "east",
 		"Peek":       int8(73),
@@ -51,13 +51,13 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 }
 
 func TestNewFromJavaNBTRejectsUnknownEntity(t *testing.T) {
-	if _, err := NewFromJavaNBT(map[string]any{"id": "minecraft:unknown_template_mob"}, world.EntitySpawnOpts{}); err == nil {
+	if _, err := NewFromStructureNBT(map[string]any{"id": "minecraft:unknown_template_mob"}, world.EntitySpawnOpts{}); err == nil {
 		t.Fatal("expected an unknown Java entity id to fail rather than create a placeholder")
 	}
 }
 
 func TestShulkerSurvivesMCDBRestart(t *testing.T) {
-	coloured, err := NewFromJavaNBT(map[string]any{
+	coloured, err := NewFromStructureNBT(map[string]any{
 		"id": "minecraft:shulker", "AttachFace": "east",
 		"Peek": int8(73), "Color": int8(5), "Health": float32(18),
 		"FutureSourceData": map[string]any{

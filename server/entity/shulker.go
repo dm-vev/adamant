@@ -9,8 +9,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -445,6 +445,6 @@ func (shulkerBulletType) DecodeNBT(_ map[string]any, data *world.EntityData) {
 func (shulkerBulletType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
 // FinalizeSpawn applies the shulker's zero-yaw spawn pose.
-func (s *Shulker) FinalizeSpawn(_ string, _ *java26.Random) {
+func (s *Shulker) FinalizeSpawn(_ string, _ *vanilla.Random) {
 	s.data.Rot = cube.Rotation{}
 }

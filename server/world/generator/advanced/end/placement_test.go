@@ -6,10 +6,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
-func TestEndPlacementMatchesJava263(t *testing.T) {
+func TestEndPlacementMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_placement.json")
 	if err != nil {
 		t.Fatal(err)
@@ -27,7 +27,7 @@ func TestEndPlacementMatchesJava263(t *testing.T) {
 		t.Run(fmt.Sprintf("%s/seed=%d/xor=%v", tc.Kind, tc.Seed, tc.Xoroshiro), func(t *testing.T) {
 			random := newEndRand(tc.Seed)
 			if tc.Xoroshiro {
-				random = newEndRandWithRandom(java26.NewXoroshiroRandom(tc.Seed))
+				random = newEndRandWithRandom(vanilla.NewXoroshiroRandom(tc.Seed))
 			}
 			var count int
 			switch tc.Kind {

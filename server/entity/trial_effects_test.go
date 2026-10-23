@@ -16,7 +16,7 @@ import (
 // addMob adds a freshly spawned mob of the Java type passed at pos.
 func addMob(t *testing.T, tx *world.Tx, id string, pos mgl64.Vec3) entity.Living {
 	t.Helper()
-	h, err := entity.NewFromJavaNBT(map[string]any{"id": id}, world.EntitySpawnOpts{Position: pos, SpawnFinalized: true})
+	h, err := entity.NewFromStructureNBT(map[string]any{"id": id}, world.EntitySpawnOpts{Position: pos, SpawnFinalized: true})
 	if err != nil {
 		t.Fatal(err)
 	}

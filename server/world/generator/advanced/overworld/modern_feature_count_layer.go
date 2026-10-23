@@ -1,7 +1,7 @@
 package overworld
 
 import (
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -152,7 +152,7 @@ func heightmapOf(heightmap string) (kind, mask uint8, frozen bool) {
 	case "MOTION_BLOCKING_NO_LEAVES":
 		return 5, heightmapMotionNoLeaves | heightmapFluid, false
 	}
-	panic("overworld: unsupported Java heightmap " + heightmap)
+	panic("overworld: unsupported heightmap " + heightmap)
 }
 
 // heightmapFlags returns the heightmap predicates the native state meets. Its
@@ -162,19 +162,19 @@ func (f *ModernFeatures) heightmapFlags(c *chunk.Chunk, state world.NativeState)
 	if flags, ok := f.heightmaps.Load(state); ok {
 		return flags.(uint8)
 	}
-	javaState, err := world.JavaState(c.BlockRegistry(), state)
+	canonicalState, err := world.CanonicalState(c.BlockRegistry(), state)
 	if err != nil {
 		panic(err)
 	}
-	name := normalizeJavaResource(javaState.Name)
+	name := normalizeResource(canonicalState.Name)
 	var flags uint8
 	if name != "air" && name != "cave_air" && name != "void_air" {
 		flags |= heightmapWorldSurface
 	}
-	if javaBlockTagContains("minecraft:blocks_motion_in_heightmap", name) {
+	if blockTagContains("minecraft:blocks_motion_in_heightmap", name) {
 		flags |= heightmapMotion
 	}
-	if javaBlockTagContains("minecraft:blocks_motion_in_heightmap_no_leaves", name) {
+	if blockTagContains("minecraft:blocks_motion_in_heightmap_no_leaves", name) {
 		flags |= heightmapMotionNoLeaves
 	}
 	if featureStateHasFluid(c, state) {
@@ -187,11 +187,11 @@ func (f *ModernFeatures) heightmapFlags(c *chunk.Chunk, state world.NativeState)
 // countEveryLayerPositions mirrors CountOnEveryLayerPlacement.modify and its
 // ground-layer scan. The provider is sampled once per iteration of Java's
 // for-loop condition, not once for the whole placement.
-func countEveryLayerPositions(region *featureRegion, base featurePos, provider any, random *java26.Random, out []featurePos) []featurePos {
+func countEveryLayerPositions(region *featureRegion, base featurePos, provider any, random *vanilla.Random, out []featurePos) []featurePos {
 	layer := int32(0)
 	for {
 		foundAny := false
-		for i := int32(0); i < sampleJavaInt(provider, random); i++ {
+		for i := int32(0); i < sampleInt(provider, random); i++ {
 			x := random.NextInt(16) + base.x
 			z := random.NextInt(16) + base.z
 			startY := region.placementHeight(x, z, "MOTION_BLOCKING")
@@ -217,7 +217,7 @@ func findEveryLayerGroundY(region *featureRegion, xStart, yStart, zStart, layerT
 		below := featurePos{xStart, y - 1, zStart}
 		belowName, _ := region.State(below)
 		belowEmpty := everyLayerEmpty(belowName)
-		if !belowEmpty && currentEmpty && normalizeJavaResource(belowName) != "bedrock" {
+		if !belowEmpty && currentEmpty && normalizeResource(belowName) != "bedrock" {
 			if currentLayer == layerToPlaceOn {
 				return y
 			}
@@ -229,7 +229,7 @@ func findEveryLayerGroundY(region *featureRegion, xStart, yStart, zStart, layerT
 }
 
 func everyLayerEmpty(name string) bool {
-	switch normalizeJavaResource(name) {
+	switch normalizeResource(name) {
 	case "air", "cave_air", "void_air", "water", "lava":
 		return true
 	default:

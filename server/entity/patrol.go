@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -117,7 +117,7 @@ func patrolCompanions(e *Ent, tx *world.Tx) []*hostileState {
 var patrolSpawners sync.Map
 
 // patrolSpawnTick ports PatrolSpawner.tick for the overworld.
-func patrolSpawnTick(tx *world.Tx, random *java26.Random) {
+func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 	w := tx.World()
 	if w.Dimension() != world.Overworld || w.Difficulty() == world.DifficultyPeaceful || !w.MonsterSpawningEnabled() || !w.GameRuleBool("spawn_patrols") {
 		return

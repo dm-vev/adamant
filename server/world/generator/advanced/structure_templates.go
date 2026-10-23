@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // VanillaStructureTemplate returns a structure template of the vanilla data
@@ -20,15 +20,15 @@ func VanillaStructureTemplate(w *world.World, name string) (*world.StructureTemp
 	if strings.Contains(path, ":") || path == "" {
 		return nil, false, nil
 	}
-	source, err := javastructure.Load(path)
+	source, err := structure.Load(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	everywhere := javastructure.Bounds{Min: [3]int32{math.MinInt32, math.MinInt32, math.MinInt32}, Max: [3]int32{math.MaxInt32, math.MaxInt32, math.MaxInt32}}
-	placement, err := source.Place(0, [3]int32{}, javastructure.None, javastructure.NoMirror, everywhere, 0)
+	everywhere := structure.Bounds{Min: [3]int32{math.MinInt32, math.MinInt32, math.MinInt32}, Max: [3]int32{math.MaxInt32, math.MaxInt32, math.MaxInt32}}
+	placement, err := source.Place(0, [3]int32{}, structure.None, structure.NoMirror, everywhere, 0)
 	if err != nil {
 		return nil, false, err
 	}
@@ -51,7 +51,7 @@ func VanillaStructureTemplate(w *world.World, name string) (*world.StructureTemp
 		liquid, _ := reg.BlockByRuntimeIDOrAir(native.Liquid).(world.Liquid)
 		t.SetBlock(pos, block, liquid, actors[pos])
 	}
-	handles, err := placement.NewEntityHandles(entity.NewFromJavaNBT)
+	handles, err := placement.NewEntityHandles(entity.NewFromStructureNBT)
 	if err != nil {
 		return nil, false, err
 	}

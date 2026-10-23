@@ -1,10 +1,10 @@
 package overworld
 
 import (
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
-func placeModernGrowthMisc(region *featureRegion, kind string, config map[string]any, origin featurePos, random *java26.Random) (bool, bool) {
+func placeModernGrowthMisc(region *featureRegion, kind string, config map[string]any, origin featurePos, random *vanilla.Random) (bool, bool) {
 	switch kind {
 	case "coral_tree":
 		pos := origin

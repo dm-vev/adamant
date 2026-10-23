@@ -5,14 +5,14 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/javanbt"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
-// ParseJavaBlockState parses the block-state prefix accepted by Java's
+// ParseBlockState parses the block-state prefix accepted by Java's
 // BlockStateParser.parseForBlock, completing omitted properties from Java defaults.
-func ParseJavaBlockState(input string) (BlockState, error) {
+func ParseBlockState(input string) (BlockState, error) {
 	p := javaStateReader{s: input}
 	name, err := p.identifier()
 	if err != nil {
@@ -23,10 +23,10 @@ func ParseJavaBlockState(input string) (BlockState, error) {
 	} else if !strings.Contains(name, ":") {
 		name = "minecraft:" + name
 	}
-	if !javadata.HasJavaBlock(name) {
+	if !gamedata.HasBlock(name) {
 		return BlockState{}, fmt.Errorf("unknown Java block %q", name)
 	}
-	props := javadata.BlockPropertiesWithDefaults(name, nil)
+	props := gamedata.BlockPropertiesWithDefaults(name, nil)
 	if p.peek('[') {
 		p.i++
 		afterComma := false
@@ -52,7 +52,7 @@ func ParseJavaBlockState(input string) (BlockState, error) {
 			if e != nil {
 				return BlockState{}, e
 			}
-			if !javadata.BlockHasProperty(name, key) {
+			if !gamedata.BlockHasProperty(name, key) {
 				return BlockState{}, fmt.Errorf("unknown property %q for %s", key, name)
 			}
 			for _, previous := range seen {
@@ -71,7 +71,7 @@ func ParseJavaBlockState(input string) (BlockState, error) {
 			if e != nil {
 				return BlockState{}, e
 			}
-			v, e := javadata.ParseBlockPropertyValue(name, key, value)
+			v, e := gamedata.ParseBlockPropertyValue(name, key, value)
 			if e != nil {
 				return BlockState{}, e
 			}
@@ -105,7 +105,7 @@ func (p *javaStateReader) peek(b byte) bool { return p.i < len(p.s) && p.s[p.i] 
 func (p *javaStateReader) space() {
 	for p.i < len(p.s) {
 		r, n := utf8.DecodeRuneInString(p.s[p.i:])
-		if !java26.IsWhitespace(r) {
+		if !vanilla.IsWhitespace(r) {
 			break
 		}
 		p.i += n

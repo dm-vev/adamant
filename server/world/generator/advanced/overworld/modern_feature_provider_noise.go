@@ -5,23 +5,23 @@ import (
 	"math"
 	"sync"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // Registry holder strings name providers, not blocks. Literal states use the
 // separate BlockState codec (including the strings inside weighted entries).
-var javaStateProviderRegistry = sync.OnceValue(func() map[string]any {
+var stateProviderRegistry = sync.OnceValue(func() map[string]any {
 	providers := make(map[string]any)
-	for _, name := range requireJavaResourceNames("block_state_provider") {
-		provider := requireJavaJSON("block_state_provider", name)
+	for _, name := range requireResourceNames("block_state_provider") {
+		provider := requireJSON("block_state_provider", name)
 		kind, _ := provider["type"].(string)
-		switch normalizeJavaResource(kind) {
+		switch normalizeResource(kind) {
 		case "noise", "noise_threshold", "dual_noise":
 			seed := int64(provider["seed"].(float64))
-			provider["noise"] = javaStateProviderNoise(seed, provider["noise"])
-			if normalizeJavaResource(kind) == "dual_noise" {
-				provider["slow_noise"] = javaStateProviderNoise(seed, provider["slow_noise"])
+			provider["noise"] = stateProviderNoise(seed, provider["noise"])
+			if normalizeResource(kind) == "dual_noise" {
+				provider["slow_noise"] = stateProviderNoise(seed, provider["slow_noise"])
 			}
 		}
 		providers[name] = provider
@@ -29,14 +29,14 @@ var javaStateProviderRegistry = sync.OnceValue(func() map[string]any {
 	return providers
 })
 
-func resolveJavaStateProvider(value any) any {
+func resolveStateProvider(value any) any {
 	name, reference := value.(string)
 	if !reference {
 		return value
 	}
-	provider, ok := javaStateProviderRegistry()[normalizeJavaResource(name)]
+	provider, ok := stateProviderRegistry()[normalizeResource(name)]
 	if !ok {
-		panic(fmt.Sprintf("overworld: unknown Java block state provider %q", name))
+		panic(fmt.Sprintf("overworld: unknown block state provider %q", name))
 	}
 	return provider
 }
@@ -47,14 +47,14 @@ type stateProviderNoiseKey struct {
 	seed                                   int64
 	baseOctave, octaveCount, modifierCount int
 	baseAmplitude                          float64
-	normalization                          java26.NoiseNormalization
+	normalization                          vanilla.NoiseNormalization
 	modifiers                              [32]float64
 }
 
-var stateProviderNoises sync.Map // stateProviderNoiseKey -> func() *java26.NormalNoise
+var stateProviderNoises sync.Map // stateProviderNoiseKey -> func() *vanilla.NormalNoise
 
-func javaStateProviderNoise(seed int64, raw any) *java26.NormalNoise {
-	if noise, ok := raw.(*java26.NormalNoise); ok {
+func stateProviderNoise(seed int64, raw any) *vanilla.NormalNoise {
+	if noise, ok := raw.(*vanilla.NormalNoise); ok {
 		return noise
 	}
 	data, ok := raw.(map[string]any)
@@ -72,9 +72,9 @@ func javaStateProviderNoise(seed int64, raw any) *java26.NormalNoise {
 	switch value := data["normalize"]; value {
 	case nil, true:
 	case false:
-		key.normalization = java26.NoiseUnnormalized
+		key.normalization = vanilla.NoiseUnnormalized
 	case "legacy":
-		key.normalization = java26.NoiseLegacyNormalization
+		key.normalization = vanilla.NoiseLegacyNormalization
 	default:
 		panic("overworld: invalid state provider noise normalization")
 	}
@@ -96,18 +96,18 @@ func javaStateProviderNoise(seed int64, raw any) *java26.NormalNoise {
 		}
 	}
 	if cached, ok := stateProviderNoises.Load(key); ok {
-		return cached.(func() *java26.NormalNoise)()
+		return cached.(func() *vanilla.NormalNoise)()
 	}
-	create := sync.OnceValue(func() *java26.NormalNoise {
-		parameters := java26.NoiseParameters{
+	create := sync.OnceValue(func() *vanilla.NormalNoise {
+		parameters := vanilla.NoiseParameters{
 			BaseOctave: key.baseOctave, BaseAmplitude: key.baseAmplitude, OctaveCount: key.octaveCount,
 			Normalization: key.normalization, AmplitudeModifiers: key.modifiers[:key.modifierCount],
 		}
-		random := java26.NewLegacyRandom(key.seed)
-		return java26.NewNormalNoiseParameters(&random, parameters)
+		random := vanilla.NewLegacyRandom(key.seed)
+		return vanilla.NewNormalNoiseParameters(&random, parameters)
 	})
 	cached, _ := stateProviderNoises.LoadOrStore(key, create)
-	return cached.(func() *java26.NormalNoise)()
+	return cached.(func() *vanilla.NormalNoise)()
 }
 
 func stateProviderNoiseIndex(value float32, count int) int {
@@ -116,12 +116,12 @@ func stateProviderNoiseIndex(value float32, count int) int {
 	return int(placement * float32(count))
 }
 
-func sampleJavaNoiseStateProvider(p featurePos, provider map[string]any, random *java26.Random) (javastructure.Block, bool) {
+func sampleNoiseStateProvider(p featurePos, provider map[string]any, random *vanilla.Random) (structure.Block, bool) {
 	seed := int64(provider["seed"].(float64))
-	noise := javaStateProviderNoise(seed, provider["noise"])
+	noise := stateProviderNoise(seed, provider["noise"])
 	scale := float64(float32(provider["scale"].(float64)))
 	value := noise.Sample(float64(p.x)*scale, float64(p.y)*scale, float64(p.z)*scale)
-	kind := normalizeJavaResource(provider["type"].(string))
+	kind := normalizeResource(provider["type"].(string))
 	if kind == "noise_threshold" {
 		var states []any
 		if value < float32(provider["threshold"].(float64)) {
@@ -135,7 +135,7 @@ func sampleJavaNoiseStateProvider(p featurePos, provider map[string]any, random 
 	}
 	states := provider["states"].([]any)
 	if kind == "dual_noise" {
-		slow := javaStateProviderNoise(seed, provider["slow_noise"])
+		slow := stateProviderNoise(seed, provider["slow_noise"])
 		slowScale := float32(provider["slow_scale"].(float64))
 		slowAt := func(p featurePos) float32 {
 			// Unlike the base provider, Java multiplies these coordinates as floats.

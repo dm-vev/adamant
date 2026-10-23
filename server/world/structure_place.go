@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // StructureAnimation spreads placing a structure over time, as the animation
@@ -120,8 +120,8 @@ func (tx *Tx) PlaceStructure(t *StructureTemplate, pos cube.Pos, p StructurePlac
 		// time.
 		seed = time.Now().UnixMilli()
 	}
-	integrity := java26.NewLegacyRandom(seed)
-	loot := java26.NewLegacyRandom(seed)
+	integrity := vanilla.NewLegacyRandom(seed)
+	loot := vanilla.NewLegacyRandom(seed)
 	var placements []structurePlacement
 	if !p.IgnoreBlocks {
 		r := tx.Range()
@@ -241,11 +241,11 @@ func (tx *Tx) placeStructureEntities(t *StructureTemplate, pos cube.Pos, mirror 
 // transformStructureBlock mirrors and rotates the state of a block through
 // its Java block state, which Java's BlockState.mirror and rotate act on.
 func transformStructureBlock(reg BlockRegistry, b Block, mirror StructureMirror, rotation StructureRotation) Block {
-	state, err := JavaState(reg, NativeState{Block: reg.BlockRuntimeID(b), Liquid: reg.AirRuntimeID()})
+	state, err := CanonicalState(reg, NativeState{Block: reg.BlockRuntimeID(b), Liquid: reg.AirRuntimeID()})
 	if err != nil {
 		return b
 	}
-	native, err := ResolveState(reg, TransformJavaState(state, mirror, rotation))
+	native, err := ResolveState(reg, TransformState(state, mirror, rotation))
 	if err != nil {
 		return b
 	}

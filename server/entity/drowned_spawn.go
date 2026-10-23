@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -16,7 +16,7 @@ import (
 // the marker is replaced. Level and Entity random sources have separate owners.
 // The returned vehicle, if any, must enter the world before its drowned rider.
 // No World transactions or native entity implementations run on the worker.
-func PrepareDrownedStructureSpawn(levelRandom, entityRandom *java26.Random, context world.GenerationContext, biome string) (drowned, vehicle map[string]any, err error) {
+func PrepareDrownedStructureSpawn(levelRandom, entityRandom *vanilla.Random, context world.GenerationContext, biome string) (drowned, vehicle map[string]any, err error) {
 	if levelRandom == nil || entityRandom == nil {
 		return nil, nil, fmt.Errorf("drowned structure spawn requires level and entity random streams")
 	}
@@ -52,7 +52,7 @@ func PrepareDrownedStructureSpawn(levelRandom, entityRandom *java26.Random, cont
 				return nil, nil, err
 			}
 		}
-		equipment["mainhand"], err = item.StackToJavaNBT(main)
+		equipment["mainhand"], err = item.StackToStructureNBT(main)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -99,7 +99,7 @@ func PrepareDrownedStructureSpawn(levelRandom, entityRandom *java26.Random, cont
 		drowned["drop_chances"] = dropChances
 	}
 	if main, ok := equipment["mainhand"].(map[string]any); ok && main["id"] == "minecraft:trident" && levelRandom.NextFloat() < .5 && !baby {
-		frequent, tagErr := javadata.BiomeTagContains("minecraft:more_frequent_drowned_spawns", biome)
+		frequent, tagErr := gamedata.BiomeTagContains("minecraft:more_frequent_drowned_spawns", biome)
 		if tagErr != nil {
 			return nil, nil, tagErr
 		}
@@ -120,14 +120,14 @@ func spawnModifier(attribute map[string]any, id string, amount float64, operatio
 	modifiers, _ := attribute["modifiers"].([]any)
 	attribute["modifiers"] = append(modifiers, map[string]any{"id": id, "amount": amount, "operation": operation})
 }
-func spawnFollowRange(random *java26.Random, base float64) map[string]any {
+func spawnFollowRange(random *vanilla.Random, base float64) map[string]any {
 	attribute := spawnAttribute("minecraft:follow_range", base)
 	spawnModifier(attribute, "minecraft:random_spawn_bonus", .11485000000000001*(random.NextDouble()-random.NextDouble()), "add_multiplied_base")
 	return attribute
 }
 
-func prepareStructureZombieNautilus(random *java26.Random, biome string) (map[string]any, error) {
-	warm, err := javadata.BiomeTagContains("minecraft:spawns_coral_variant_zombie_nautilus", biome)
+func prepareStructureZombieNautilus(random *vanilla.Random, biome string) (map[string]any, error) {
+	warm, err := gamedata.BiomeTagContains("minecraft:spawns_coral_variant_zombie_nautilus", biome)
 	if err != nil {
 		return nil, err
 	}
@@ -147,10 +147,10 @@ func prepareStructureZombieNautilus(random *java26.Random, biome string) (map[st
 	}, nil
 }
 
-func prepareStructureChicken(random *java26.Random, biome string) (map[string]any, error) {
+func prepareStructureChicken(random *vanilla.Random, biome string) (map[string]any, error) {
 	variant := "minecraft:temperate"
 	for _, candidate := range []struct{ tag, variant string }{{"minecraft:spawns_cold_variant_farm_animals", "minecraft:cold"}, {"minecraft:spawns_warm_variant_farm_animals", "minecraft:warm"}} {
-		matches, err := javadata.BiomeTagContains(candidate.tag, biome)
+		matches, err := gamedata.BiomeTagContains(candidate.tag, biome)
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +166,7 @@ func prepareStructureChicken(random *java26.Random, biome string) (map[string]an
 	// Chicken's egg timer belongs to its newly created independent RNG. It
 	// must not draw from either its rider's stream or the WorldGenRegion.
 	id := uuid.New()
-	childRandom := java26.NewLegacyRandom(int64(binary.LittleEndian.Uint64(id[:8]) ^ binary.LittleEndian.Uint64(id[8:])))
+	childRandom := vanilla.NewLegacyRandom(int64(binary.LittleEndian.Uint64(id[:8]) ^ binary.LittleEndian.Uint64(id[8:])))
 	return map[string]any{
 		"id": "minecraft:chicken", "Health": float32(4), "IsChickenJockey": byte(1), "Age": int32(0),
 		"variant": variant, "sound_variant": sound, "EggLayTime": int32(6000) + childRandom.NextInt(6000),

@@ -11,11 +11,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type seaPostCase struct {
@@ -111,7 +111,7 @@ func (s seaPostTerrain) BaseBlock(x, y, z int32) world.Block {
 	return b
 }
 
-func TestSeaPostProcessingMatchesJava263(t *testing.T) {
+func TestSeaPostProcessingMatchesReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_sea_post.json")
 	if err != nil {
@@ -129,7 +129,7 @@ func TestSeaPostProcessingMatchesJava263(t *testing.T) {
 	}
 	sourceIDs := make(map[uint32]uint32, len(fixture.Palette))
 	for sourceID, state := range fixture.Palette {
-		id, err := javadata.BlockStateID(state.Name, state.Properties)
+		id, err := gamedata.BlockStateID(state.Name, state.Properties)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +145,7 @@ func TestSeaPostProcessingMatchesJava263(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			template, err := javastructure.Load(source.Template)
+			template, err := structure.Load(source.Template)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -170,11 +170,11 @@ func TestSeaPostProcessingMatchesJava263(t *testing.T) {
 			result := new(world.GenerationResult)
 			region := newFeatureRegion(features, c, target, result)
 			region.SetOrigin(source.Origin[0]>>4, source.Origin[2]>>4)
-			flags := javastructure.StructurePieceState{}
-			env := javastructure.ProcessorEnvironment{
+			flags := structure.StructurePieceState{}
+			env := structure.ProcessorEnvironment{
 				BaseHeight: terrain.BaseHeight, Range: c.Range(), WorldSeed: worldSeed, SeaLevel: 63, PieceState: &flags,
-				LevelRandom: region.JavaRandom(), JavaBiomeAt: terrain.JavaBiomeAt,
-				JavaBlockStateID:    func(x, y, z int32) (uint32, error) { return region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)}) },
+				LevelRandom: region.RegionRandom(), BiomeAt: terrain.BiomeAt,
+				BlockStateID:        func(x, y, z int32) (uint32, error) { return region.BlockStateID(cube.Pos{int(x), int(y), int(z)}) },
 				HasChestBlockEntity: func(x, y, z int32) bool { return region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)}) },
 				SetBlockEntityLootTable: func(x, y, z int32, table string, seed int64) {
 					region.setBlockEntityLootTable(cube.Pos{int(x), int(y), int(z)}, table, seed)
@@ -182,23 +182,23 @@ func TestSeaPostProcessingMatchesJava263(t *testing.T) {
 			}
 			var piece modernStructurePiece
 			if strings.HasPrefix(source.Family, "shipwreck") {
-				piece = &modernShipwreckPiece{template: template, templateName: source.Template, origin: source.Origin, rotation: javastructure.Rotation(source.Rotation), beached: source.Family == "shipwreck_beached", seed: worldSeed, box: javastructure.Box{Min: [3]int32{source.RawBox[0], source.RawBox[1], source.RawBox[2]}, Max: [3]int32{source.RawBox[3], source.RawBox[4], source.RawBox[5]}}}
+				piece = &modernShipwreckPiece{template: template, templateName: source.Template, origin: source.Origin, rotation: structure.Rotation(source.Rotation), beached: source.Family == "shipwreck_beached", seed: worldSeed, box: structure.Box{Min: [3]int32{source.RawBox[0], source.RawBox[1], source.RawBox[2]}, Max: [3]int32{source.RawBox[3], source.RawBox[4], source.RawBox[5]}}}
 			} else {
-				ruin := modernOceanRuinPiece{template: template, templateName: source.Template, origin: source.Origin, rotation: javastructure.Rotation(source.Rotation), integrity: .8, warm: source.Warm, large: source.Large, seed: worldSeed}
+				ruin := modernOceanRuinPiece{template: template, templateName: source.Template, origin: source.Origin, rotation: structure.Rotation(source.Rotation), integrity: .8, warm: source.Warm, large: source.Large, seed: worldSeed}
 				ruin.processors, err = oceanRuinProcessors(ruin)
 				if err != nil {
 					t.Fatal(err)
 				}
 				piece = ruin
 			}
-			emit := func(placed javastructure.Placement) {
+			emit := func(placed structure.Placement) {
 				placed.StructurePieceWrites = true
 				features.applyStructurePlacement(region, placed)
 			}
 			for i, call := range source.Calls {
-				random := java26.NewLegacyRandom(postSeed + int64(i))
+				random := vanilla.NewLegacyRandom(postSeed + int64(i))
 				env.Random = &random
-				clip := javastructure.Bounds{Min: [3]int32{call.Clip[0], call.Clip[1], call.Clip[2]}, Max: [3]int32{call.Clip[3], call.Clip[4], call.Clip[5]}}
+				clip := structure.Bounds{Min: [3]int32{call.Clip[0], call.Clip[1], call.Clip[2]}, Max: [3]int32{call.Clip[3], call.Clip[4], call.Clip[5]}}
 				placed, err := piece.Place(clip, env)
 				if err != nil {
 					t.Fatal(err)
@@ -207,7 +207,7 @@ func TestSeaPostProcessingMatchesJava263(t *testing.T) {
 				emit(placed)
 				firstEntity := len(result.Entities)
 				if err = piece.(interface {
-					AfterTemplatePlacement(javastructure.Bounds, javastructure.ProcessorEnvironment, func(javastructure.Placement)) error
+					AfterTemplatePlacement(structure.Bounds, structure.ProcessorEnvironment, func(structure.Placement)) error
 				}).AfterTemplatePlacement(clip, env, emit); err != nil {
 					t.Fatal(err)
 				}
@@ -230,11 +230,11 @@ func TestSeaPostProcessingMatchesJava263(t *testing.T) {
 					for x := source.Volume[0]; x <= source.Volume[3]; x++ {
 						for z := source.Volume[2]; z <= source.Volume[5]; z++ {
 							pos := [3]int32{x, y, z}
-							got, err := region.JavaBlockStateID(cube.Pos{int(x), int(y), int(z)})
+							got, err := region.BlockStateID(cube.Pos{int(x), int(y), int(z)})
 							if err != nil {
 								t.Fatal(err)
 							}
-							if got != terrain.BaseState(x, y, z).CanonicalJavaID(world.DefaultBlockRegistry) {
+							if got != terrain.BaseState(x, y, z).CanonicalID(world.DefaultBlockRegistry) {
 								gotStates[pos] = got
 							}
 						}

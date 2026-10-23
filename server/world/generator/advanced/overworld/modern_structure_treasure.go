@@ -5,16 +5,16 @@ import (
 	"strings"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("buried_treasure", buildModernBuriedTreasure) }
 
 type modernBuriedTreasurePiece struct { pos [3]int32 }
-func (p modernBuriedTreasurePiece) Bounds() javastructure.Box { return javastructure.Box{Min:p.pos, Max:p.pos} }
-func (p modernBuriedTreasurePiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement,error) {
-	if env.BaseBlock==nil || env.BaseHeight==nil || env.Random==nil { return javastructure.Placement{}, fmt.Errorf("buried treasure requires base block, ocean-floor height, and placement random queries") }
+func (p modernBuriedTreasurePiece) Bounds() structure.Box { return structure.Box{Min:p.pos, Max:p.pos} }
+func (p modernBuriedTreasurePiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement,error) {
+	if env.BaseBlock==nil || env.BaseHeight==nil || env.Random==nil { return structure.Placement{}, fmt.Errorf("buried treasure requires base block, ocean-floor height, and placement random queries") }
 	x,z:=p.pos[0],p.pos[2]
 	y:=env.BaseHeight(x,z,true)
 	for ; y>clip.Min[1]; y-- {
@@ -24,8 +24,8 @@ func (p modernBuriedTreasurePiece) Place(clip javastructure.Bounds, env javastru
 		name,_:=current.EncodeBlock()
 		soft:=world.BlockState{Name:"minecraft:sand"}
 		if name!="minecraft:air" && name!="minecraft:water" && name!="minecraft:lava" { blockName,properties:=current.EncodeBlock(); soft=world.BlockState{Name:blockName,Properties:properties} }
-		out:=javastructure.Placement{}
-		put:=func(px,py,pz int32,state world.BlockState,nbt map[string]any) { if px>=clip.Min[0]&&px<=clip.Max[0]&&py>=clip.Min[1]&&py<=clip.Max[1]&&pz>=clip.Min[2]&&pz<=clip.Max[2] { out.Blocks=append(out.Blocks,javastructure.Block{Pos:[3]int32{px,py,pz},State:state,NBT:nbt}) } }
+		out:=structure.Placement{}
+		put:=func(px,py,pz int32,state world.BlockState,nbt map[string]any) { if px>=clip.Min[0]&&px<=clip.Max[0]&&py>=clip.Min[1]&&py<=clip.Max[1]&&pz>=clip.Min[2]&&pz<=clip.Max[2] { out.Blocks=append(out.Blocks,structure.Block{Pos:[3]int32{px,py,pz},State:state,NBT:nbt}) } }
 		if x>=clip.Min[0]&&x<=clip.Max[0]&&y>=clip.Min[1]&&y<=clip.Max[1]&&z>=clip.Min[2]&&z<=clip.Max[2]&&name!="minecraft:chest" {
 			facing:=modernStructureChestFacing(x,y,z,env.BaseBlock)
 			seed:=env.Random.NextLong()
@@ -40,7 +40,7 @@ func (p modernBuriedTreasurePiece) Place(clip javastructure.Bounds, env javastru
 		}
 		return out,nil
 	}
-	return javastructure.Placement{},nil
+	return structure.Placement{},nil
 }
 
 func buildModernBuriedTreasure(input modernStructureBuildInput) (modernStructureStart,bool,error) {
@@ -48,14 +48,14 @@ func buildModernBuriedTreasure(input modernStructureBuildInput) (modernStructure
 	ok,err:=modernStructureBiomeAllowed(input,stringValue(input.config["biomes"]),true);if err!=nil{return modernStructureStart{},false,err};if !ok{return modernStructureStart{},false,nil}
 	pos:=[3]int32{input.chunkX*16+9,90,input.chunkZ*16+9}
 	piece:=modernBuriedTreasurePiece{pos:pos}
-	return modernStructureStart{name:input.name,pieces:[]modernStructurePiece{piece},box:piece.Bounds(),terrain:javastructure.TerrainNone},true,nil
+	return modernStructureStart{name:input.name,pieces:[]modernStructurePiece{piece},box:piece.Bounds(),terrain:structure.TerrainNone},true,nil
 }
 
 func modernStructureBiomeAllowed(input modernStructureBuildInput,tag string,oceanFloor bool)(bool,error){
 	x,z:=input.chunkX*16+8,input.chunkZ*16+8
 	y:=input.source.BaseHeight(x,z,oceanFloor)
-	biome:=normalizeJavaResource(input.source.JavaNoiseBiomeAt(x>>2,y>>2,z>>2));if !strings.Contains(biome,":"){biome="minecraft:"+biome}
-	return javadata.BiomeTagContains(tag,biome)
+	biome:=normalizeResource(input.source.NoiseBiomeAt(x>>2,y>>2,z>>2));if !strings.Contains(biome,":"){biome="minecraft:"+biome}
+	return gamedata.BiomeTagContains(tag,biome)
 }
 type modernStructureBlockSource func(cube.Pos) world.Block
 

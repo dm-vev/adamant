@@ -11,8 +11,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -39,7 +39,7 @@ func (creakingType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.E
 		hash := fnv.New64a()
 		uuid := handle.UUID()
 		_, _ = hash.Write(uuid[:])
-		state.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		state.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 		state.randomInitialized = true
 		state.sensorDelay = int(state.random.NextInt(20))
 	}
@@ -208,7 +208,7 @@ type creakingState struct {
 	health                                                                      *HealthManager
 	effects                                                                     *EffectManager
 	mc                                                                          *MovementComputer
-	random                                                                      java26.Random
+	random                                                                      vanilla.Random
 	randomInitialized                                                           bool
 	speed                                                                       float64
 	home                                                                        cube.Pos

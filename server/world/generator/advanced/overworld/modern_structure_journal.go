@@ -1,23 +1,23 @@
 package overworld
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // journalStructureWorld lets source piece reads observe their own deferred writes.
 // Direct level reads are not clipped; StructurePiece.getBlock reads are clipped.
 type journalStructureWorld struct {
-	env       javastructure.ProcessorEnvironment
-	clip      javastructure.Bounds
+	env       structure.ProcessorEnvironment
+	clip      structure.Bounds
 	writes    map[[3]int32]uint32
-	placement *javastructure.Placement
+	placement *structure.Placement
 }
 
-func newJournalStructureWorld(env javastructure.ProcessorEnvironment, clip javastructure.Bounds, placement *javastructure.Placement) *journalStructureWorld {
-	if env.JavaBlockStateID == nil {
-		panic("overworld: structure piece requires canonical Java state queries")
+func newJournalStructureWorld(env structure.ProcessorEnvironment, clip structure.Bounds, placement *structure.Placement) *journalStructureWorld {
+	if env.BlockStateID == nil {
+		panic("overworld: structure piece requires canonical state queries")
 	}
 	placement.StructurePieceWrites = true
 	return &journalStructureWorld{env: env, clip: clip, placement: placement}
@@ -31,7 +31,7 @@ func (w *journalStructureWorld) stateID(x, y, z int32) uint32 {
 	if id, ok := w.writes[[3]int32{x, y, z}]; ok {
 		return id
 	}
-	id, err := w.env.JavaBlockStateID(x, y, z)
+	id, err := w.env.BlockStateID(x, y, z)
 	if err != nil {
 		panic(err)
 	}
@@ -45,8 +45,8 @@ func (w *journalStructureWorld) getBlockID(x, y, z int32) uint32 {
 	return w.stateID(x, y, z)
 }
 
-func (w *journalStructureWorld) shape(x, y, z int32) javadata.GenerationShape {
-	shape, err := javadata.BlockGenerationShapeID(w.stateID(x, y, z))
+func (w *journalStructureWorld) shape(x, y, z int32) gamedata.GenerationShape {
+	shape, err := gamedata.BlockGenerationShapeID(w.stateID(x, y, z))
 	if err != nil {
 		panic(err)
 	}
@@ -61,12 +61,12 @@ func (w *journalStructureWorld) set(x, y, z int32, state world.BlockState) bool 
 }
 
 func (w *journalStructureWorld) setUnclipped(pos [3]int32, state world.BlockState) bool {
-	id, err := javadata.BlockStateID(state.Name, state.Properties)
+	id, err := gamedata.BlockStateID(state.Name, state.Properties)
 	if err != nil {
 		panic(err)
 	}
 	x, y, z := pos[0], pos[1], pos[2]
-	w.placement.Blocks = append(w.placement.Blocks, javastructure.Block{Pos: pos, State: state})
+	w.placement.Blocks = append(w.placement.Blocks, structure.Block{Pos: pos, State: state})
 	if y < int32(w.env.Range.Min()) || y > int32(w.env.Range.Max()) ||
 		(w.env.CanWriteBlock != nil && !w.env.CanWriteBlock(x, y, z)) {
 		return false
@@ -79,7 +79,7 @@ func (w *journalStructureWorld) setUnclipped(pos [3]int32, state world.BlockStat
 }
 
 var structureJournalAirID = func() uint32 {
-	id, err := javadata.BlockStateID("minecraft:air", nil)
+	id, err := gamedata.BlockStateID("minecraft:air", nil)
 	if err != nil {
 		panic(err)
 	}

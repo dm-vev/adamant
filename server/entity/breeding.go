@@ -4,7 +4,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/recipe"
@@ -442,10 +442,10 @@ func blockItemInTag(stack item.Stack, tag string) bool {
 
 // blockInTag reports whether the block is in the vanilla block tag.
 func blockInTag(b world.Block, tag string) bool {
-	state, err := world.JavaStateOf(b)
+	state, err := world.CanonicalStateOf(b)
 	if err != nil {
 		return false
 	}
-	in, _ := javadata.BlockTagContains(tag, state.Name)
+	in, _ := gamedata.BlockTagContains(tag, state.Name)
 	return in
 }

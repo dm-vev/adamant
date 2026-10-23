@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -18,24 +18,24 @@ const (
 
 type modernSurfaceSource interface {
 	PreliminarySurfaceHeight(x, z int32) int32
-	JavaBiomeAt(x, y, z int32) string
+	BiomeAt(x, y, z int32) string
 	OreVein(x, y, z int32) (copperDensity, ironDensity, richness, gap float32)
 }
 
 type modernSurface struct {
-	random, oreRandom                                           java26.PositionalFactory
-	surface, surfaceSecondary, clayBandsOffset                  *java26.NormalNoise
-	badlandsPillar, badlandsPillarRoof, badlandsSurface          *java26.NormalNoise
-	icebergPillar, icebergPillarRoof, icebergSurface             *java26.NormalNoise
-	sulfurGradient, swamp, calcite, gravel, smallPatch            *java26.NormalNoise
-	powderSnow, packedIce, ice                                   *java26.NormalNoise
-	biomeInfo                                                    *java26.SimplexNoise
-	frozenTemperatureLayers                                      [3]*java26.SimplexNoise
+	random, oreRandom                                           vanilla.PositionalFactory
+	surface, surfaceSecondary, clayBandsOffset                  *vanilla.NormalNoise
+	badlandsPillar, badlandsPillarRoof, badlandsSurface          *vanilla.NormalNoise
+	icebergPillar, icebergPillarRoof, icebergSurface             *vanilla.NormalNoise
+	sulfurGradient, swamp, calcite, gravel, smallPatch            *vanilla.NormalNoise
+	powderSnow, packedIce, ice                                   *vanilla.NormalNoise
+	biomeInfo                                                    *vanilla.SimplexNoise
+	frozenTemperatureLayers                                      [3]*vanilla.SimplexNoise
 	clayBands                                                    [192]string
 }
 
 func newModernSurface(seed int64) *modernSurface {
-	n := java26.NewOverworldMaterialNoises(seed)
+	n := vanilla.NewOverworldMaterialNoises(seed)
 	oreRandom := n.Random.FromHashOf("minecraft:ore")
 	s := &modernSurface{
 		random: n.Random,
@@ -86,7 +86,7 @@ func (s *modernSurface) Apply(pos world.ChunkPos, c *chunk.Chunk, source modernS
 		for z := range 16 {
 			worldX, worldZ := chunkX+x, chunkZ+z
 			height := heights[x+1][z+1]
-			surfaceBiome := biomeName(source.JavaBiomeAt(int32(worldX), int32(height), int32(worldZ)))
+			surfaceBiome := biomeName(source.BiomeAt(int32(worldX), int32(height), int32(worldZ)))
 			if surfaceBiome == "eroded_badlands" {
 				s.erodedBadlands(c, uint8(x), uint8(z), int32(worldX), int32(worldZ), height, minY, maxY, blocks, air)
 				height = surfaceHeight(c, x, z, minY, maxY, air)
@@ -126,7 +126,7 @@ func (s *modernSurface) Apply(pos world.ChunkPos, c *chunk.Chunk, source modernS
 				}
 				stoneAbove++
 				stoneBelow := y - nextCeiling + 1
-				biome := biomeName(source.JavaBiomeAt(int32(worldX), int32(y), int32(worldZ)))
+				biome := biomeName(source.BiomeAt(int32(worldX), int32(y), int32(worldZ)))
 				if s.verticalGradient("bedrock_floor", int32(worldX), int32(y), int32(worldZ), minY, minY+5) {
 					c.SetBlock(uint8(x), y16, uint8(z), 0, blocks.id("bedrock"))
 					continue
@@ -200,7 +200,7 @@ func (s *modernSurface) TopMaterial(pos world.ChunkPos, c *chunk.Chunk, source m
 		waterHeight = int(y) + 1
 	}
 	stoneAbove, stoneBelow := 1, 1
-	biome := biomeName(source.JavaBiomeAt(x, y, z))
+	biome := biomeName(source.BiomeAt(x, y, z))
 	if s.verticalGradient("bedrock_floor", x, y, z, minY, minY+5) {
 		return resolveSurfaceBlockID(registry, "bedrock"), true
 	}
@@ -644,7 +644,7 @@ func (s *modernSurface) makeClayBands() {
 	}
 }
 
-func (s *modernSurface) makeBands(r *java26.Random, width int, name string) {
+func (s *modernSurface) makeBands(r *vanilla.Random, width int, name string) {
 	count := int(r.NextInt(10)) + 6
 	for range count {
 		bandWidth := width + int(r.NextInt(3))

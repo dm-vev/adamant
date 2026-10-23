@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -17,7 +17,7 @@ func init() {
 }
 
 func javaMechanism05ScaffoldingShape(c *javaShapeContext, state uint32, _ cube.Face, _ uint32) uint32 {
-	if wet, _ := javadata.BlockStateBool(state, "waterlogged"); wet {
+	if wet, _ := gamedata.BlockStateBool(state, "waterlogged"); wet {
 		c.waterTick(state, c.pos)
 	}
 	c.blockTick(c.pos, state, 1)
@@ -33,14 +33,14 @@ func javaMechanism05ScaffoldingDistance(c *javaShapeContext, pos cube.Pos) int32
 	below := c.at(belowPos)
 	distance := int32(7)
 	if javaName(below) == "scaffolding" {
-		distance, _ = javadata.BlockStateInt(below, "distance")
+		distance, _ = gamedata.BlockStateInt(below, "distance")
 	} else if c.sturdy(below, cube.FaceUp, javaSupportFull) {
 		return 0
 	}
 	for _, face := range [...]cube.Face{cube.FaceNorth, cube.FaceSouth, cube.FaceWest, cube.FaceEast} {
 		relative := c.at(pos.Side(face))
 		if javaName(relative) == "scaffolding" {
-			neighborDistance, _ := javadata.BlockStateInt(relative, "distance")
+			neighborDistance, _ := gamedata.BlockStateInt(relative, "distance")
 			if neighborDistance+1 < distance {
 				distance = neighborDistance + 1
 			}
@@ -53,7 +53,7 @@ func javaMechanism05ScaffoldingDistance(c *javaShapeContext, pos cube.Pos) int32
 }
 
 func javaMechanism05WaterloggedShape(c *javaShapeContext, state uint32, face cube.Face, neighbor uint32) uint32 {
-	if wet, _ := javadata.BlockStateBool(state, "waterlogged"); wet {
+	if wet, _ := gamedata.BlockStateBool(state, "waterlogged"); wet {
 		c.waterTick(state, c.pos)
 	}
 	return c.ownerShape("BlockBehaviour", state, face, neighbor)

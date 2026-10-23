@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func (g *Nether) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius int, isReferenced func(world.StructureLocation) bool) (location world.StructureLocation, found bool, err error) {
@@ -19,7 +19,7 @@ func (g *Nether) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius
 	if searchRadius < 0 {
 		return world.StructureLocation{}, false, fmt.Errorf("negative structure search radius %d", searchRadius)
 	}
-	members, err := javastructure.StructureTagMembers(tag)
+	members, err := structure.StructureTagMembers(tag)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
@@ -66,9 +66,9 @@ func (g *Nether) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius
 	return world.StructureLocation{}, false, nil
 }
 
-func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32) (world.StructureLocation, bool, error) {
+func (g *Nether) netherLocateCandidate(id string, sectorX, sectorZ int32) (world.StructureLocation, bool, error) {
 	var salt, spacing, separation int32
-	switch structure {
+	switch id {
 	case "minecraft:fortress", "minecraft:bastion_remnant":
 		salt, spacing, separation = 30084232, 27, 4
 	case "minecraft:ruined_portal_nether":
@@ -76,21 +76,21 @@ func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32)
 	case "minecraft:nether_fossil":
 		salt, spacing, separation = 14357921, 2, 1
 	default:
-		return world.StructureLocation{}, false, fmt.Errorf("unsupported Nether structure %q", structure)
+		return world.StructureLocation{}, false, fmt.Errorf("unsupported Nether structure %q", id)
 	}
-	candidate, err := javastructure.PotentialChunk(g.seed, sectorX, sectorZ, salt, spacing, separation, javastructure.Linear)
+	candidate, err := structure.PotentialChunk(g.seed, sectorX, sectorZ, salt, spacing, separation, structure.Linear)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
 	sectorX, sectorZ = candidate[0], candidate[1]
 	var valid bool
-	switch structure {
+	switch id {
 	case "minecraft:fortress", "minecraft:bastion_remnant":
 		start, err := g.cachedComplexStart(sectorX, sectorZ)
 		if err != nil {
 			return world.StructureLocation{}, false, err
 		}
-		valid = start != nil && start.name == structure
+		valid = start != nil && start.name == id
 	case "minecraft:ruined_portal_nether":
 		start, err := g.portalStart(sectorX, sectorZ)
 		if err != nil {
@@ -104,7 +104,7 @@ func (g *Nether) netherLocateCandidate(structure string, sectorX, sectorZ int32)
 		}
 		valid = start != nil
 	}
-	return world.StructureLocation{ID: structure, StartChunk: world.ChunkPos{sectorX, sectorZ}, Position: cube.Pos{int(sectorX * 16), 0, int(sectorZ * 16)}}, valid, nil
+	return world.StructureLocation{ID: id, StartChunk: world.ChunkPos{sectorX, sectorZ}, Position: cube.Pos{int(sectorX * 16), 0, int(sectorZ * 16)}}, valid, nil
 }
 
 func netherLocateSpacing(structure string) int32 {
@@ -121,7 +121,7 @@ func netherLocateSpacing(structure string) int32 {
 }
 
 func (g *Nether) FindStructureAt(tag string, position cube.Pos) (world.StructureLocation, bool, error) {
-	members, err := javastructure.StructureTagMembers(tag)
+	members, err := structure.StructureTagMembers(tag)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
@@ -182,7 +182,7 @@ func netherLocateContains(g *Nether, structure string, start world.ChunkPos, pos
 	return false
 }
 
-func boxContains(box javastructure.Box, position cube.Pos) bool {
+func boxContains(box structure.Box, position cube.Pos) bool {
 	x, y, z := int32(position[0]), int32(position[1]), int32(position[2])
 	return x >= box.Min[0] && x <= box.Max[0] && y >= box.Min[1] && y <= box.Max[1] && z >= box.Min[2] && z <= box.Max[2]
 }

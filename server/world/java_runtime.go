@@ -1,17 +1,17 @@
 package world
 
 import (
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/google/uuid"
 )
 
-// JavaRandom returns the world-owned Java LegacyRandomSource stream. The caller
+// RegionRandom returns the world-owned Java LegacyRandomSource stream. The caller
 // must not retain or use it outside this transaction. Like Level.random, it is
 // runtime state rather than a generation-seed stream or persisted world data.
-func (tx *Tx) JavaRandom() *java26.Random {
+func (tx *Tx) RegionRandom() *vanilla.Random {
 	w := tx.World()
 	if !w.javaRandomReady {
-		w.javaRandom = java26.NewLegacyRandom(w.r.Int64())
+		w.javaRandom = vanilla.NewLegacyRandom(w.r.Int64())
 		w.javaRandomReady = true
 	}
 	return &w.javaRandom

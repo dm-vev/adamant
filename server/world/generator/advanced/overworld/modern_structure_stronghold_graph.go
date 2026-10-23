@@ -3,8 +3,8 @@ package overworld
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type strongholdDoor struct {
@@ -12,7 +12,7 @@ type strongholdDoor struct {
 	dir     string
 }
 type strongholdGraph struct {
-	r        *java26.Random
+	r        *vanilla.Random
 	pieces   []strongholdPiece
 	pending  []strongholdPiece
 	weights  [11]int
@@ -53,7 +53,7 @@ func (g *strongholdGraph) make(kind, dir string, x, y, z int32, depth int) (stro
 	case "filler":
 		w, h, l = 5, 5, 4
 	}
-	boxFor := func(height int32) javastructure.Box {
+	boxFor := func(height int32) structure.Box {
 		switch dir {
 		case "north":
 			return mbox(x+offsetX, y+offsetY, z-l+1, x+offsetX+w-1, y+offsetY+height-1, z)
@@ -75,7 +75,7 @@ func (g *strongholdGraph) make(kind, dir string, x, y, z int32, depth int) (stro
 		b = boxFor(h)
 	}
 	if kind == "filler" {
-		collision, found := javastructure.Box{}, false
+		collision, found := structure.Box{}, false
 		for _, other := range g.pieces {
 			if boxesOverlap(other.box, b) {
 				collision, found = other.box, true
@@ -123,7 +123,7 @@ func (g *strongholdGraph) make(kind, dir string, x, y, z int32, depth int) (stro
 	}
 	return p, true
 }
-func (g *strongholdGraph) collides(box javastructure.Box) bool {
+func (g *strongholdGraph) collides(box structure.Box) bool {
 	for _, other := range g.pieces {
 		if boxesOverlap(other.box, box) {
 			return true
@@ -316,14 +316,14 @@ func buildModernStronghold(in modernStructureBuildInput) (modernStructureStart, 
 		}
 		shift := target - box.Max[1]
 		pieces := make([]modernStructurePiece, len(g.pieces))
-		rigid := make([]javastructure.RigidPiece, len(g.pieces))
+		rigid := make([]structure.RigidPiece, len(g.pieces))
 		box = emptyStructureBox()
 		for i, p := range g.pieces {
 			p.box.Min[1] += shift
 			p.box.Max[1] += shift
 			box = unionStructureBox(box, p.box)
 			pieces[i] = p
-			rigid[i] = javastructure.RigidPiece{Bounds: p.box, Adjustment: javastructure.TerrainNone}
+			rigid[i] = structure.RigidPiece{Bounds: p.box, Adjustment: structure.TerrainNone}
 		}
 		return modernStructureStart{name: in.name, pieces: pieces, rigid: rigid, box: box}, true, nil
 	}

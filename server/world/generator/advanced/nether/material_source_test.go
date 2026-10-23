@@ -13,7 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func TestNetherMaterialJava263(t *testing.T) {
+func TestNetherMaterialReference(t *testing.T) {
 	rawData, err := os.ReadFile("testdata/java263_raw_terrain.json")
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func TestNetherMaterialJava263(t *testing.T) {
 				t.Fatalf("biome mismatch at seed=%d (%d,%d,%d): got=%d source=%d", seed64, x, y, z, got, biome)
 			}
 		}
-		g.applyJavaNetherMaterial(int(x>>4), int(z>>4), c)
+		g.applyNetherMaterial(int(x>>4), int(z>>4), c)
 		for y, symbol := range []byte(expected) {
 			if got := materialSymbol(c.Block(uint8(x&15), int16(y), uint8(z&15), 0), g); got != symbol {
 				t.Fatalf("material mismatch at seed=%d (%d,%d,%d): got=%c source=%c", seed64, x, y, z, got, symbol)
@@ -89,7 +89,7 @@ func TestNetherMaterialJava263(t *testing.T) {
 	}
 }
 
-func TestNetherMaterialJava263Chunks(t *testing.T) {
+func TestNetherMaterialReferenceChunks(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/java263_nether_material_chunks.txt")
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestNetherMaterialJava263Chunks(t *testing.T) {
 		if rawHash != fields[3] {
 			t.Fatalf("raw chunk hash mismatch seed=%d chunk=(%d,%d): got=%s source=%s", seed, chunkX, chunkZ, rawHash, fields[3])
 		}
-		g.applyJavaNetherMaterial(chunkX, chunkZ, c)
+		g.applyNetherMaterial(chunkX, chunkZ, c)
 		materialHash := hashMaterialChunk(c, g)
 		if materialHash != fields[4] {
 			t.Fatalf("material chunk hash mismatch seed=%d chunk=(%d,%d): got=%s source=%s", seed, chunkX, chunkZ, materialHash, fields[4])

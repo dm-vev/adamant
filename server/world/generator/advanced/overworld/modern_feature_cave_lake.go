@@ -2,13 +2,13 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func placeModernLake(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernLake(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	if origin.y <= region.MinY()+4 {
 		return false
 	}
@@ -37,7 +37,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 	}
 	fluidState, fluidActor, ok := region.SampleNativeState(config["fluid"], origin, random)
 	if !ok {
-		panic("overworld: unresolved Java lake fluid provider")
+		panic("overworld: unresolved lake fluid provider")
 	}
 	airState := featureRequireState(region, "minecraft:air")
 	caveAirState := featureRequireState(region, "minecraft:cave_air")
@@ -47,20 +47,20 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 	}
 	fluidName, _, found := region.c.BlockRegistry().RuntimeIDToState(fluidRID)
 	if !found {
-		panic("overworld: invalid Java lake fluid runtime ID")
+		panic("overworld: invalid lake fluid runtime ID")
 	}
-	fluidIsWater := featureFluidTagContains("minecraft:water", normalizeJavaResource(fluidName))
+	fluidIsWater := featureFluidTagContains("minecraft:water", normalizeResource(fluidName))
 	canPlace, ok := config["can_place_feature"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java lake placement predicate")
+		panic("overworld: malformed lake placement predicate")
 	}
 	canAirFluid, ok := config["can_replace_with_air_or_fluid"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java lake air/fluid predicate")
+		panic("overworld: malformed lake air/fluid predicate")
 	}
 	canBarrier, ok := config["can_replace_with_barrier"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java lake barrier predicate")
+		panic("overworld: malformed lake barrier predicate")
 	}
 	for x := range 16 {
 		for z := range 16 {
@@ -71,7 +71,7 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 				p := featurePos{origin.x + int32(x), origin.y + int32(y), origin.z + int32(z)}
 				stateNative := region.nativeState(p)
 				blockName, _, stateExists := region.c.BlockRegistry().RuntimeIDToState(stateNative.Block)
-				if y >= 4 && stateExists && isJavaLiquidBlock(blockName) {
+				if y >= 4 && stateExists && isLiquidBlock(blockName) {
 					return false
 				}
 				if y < 4 && !featureRegionSolid(region, p) && stateNative != fluidState {
@@ -107,17 +107,17 @@ func placeModernLake(region *featureRegion, config map[string]any, origin featur
 	}
 	barrierProvider, ok := config["barrier"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java lake barrier provider")
+		panic("overworld: malformed lake barrier provider")
 	}
 	barrierState, barrierActor, ok := region.SampleNativeState(barrierProvider, origin, random)
 	if !ok {
-		panic("overworld: unresolved Java lake barrier provider")
+		panic("overworld: unresolved lake barrier provider")
 	}
-	barrierJava, err := world.JavaState(region.c.BlockRegistry(), barrierState)
+	barrierCanonical, err := world.CanonicalState(region.c.BlockRegistry(), barrierState)
 	if err != nil {
 		panic(err)
 	}
-	if normalizeJavaResource(barrierJava.Name) != "air" && normalizeJavaResource(barrierJava.Name) != "cave_air" && normalizeJavaResource(barrierJava.Name) != "void_air" {
+	if normalizeResource(barrierCanonical.Name) != "air" && normalizeResource(barrierCanonical.Name) != "cave_air" && normalizeResource(barrierCanonical.Name) != "void_air" {
 		for x := range 16 {
 			for z := range 16 {
 				for y := range 8 {
@@ -161,6 +161,6 @@ func (s featureRegionBlockSource) Block(pos cube.Pos) world.Block {
 }
 func featureRegionSolid(region *featureRegion, p featurePos) bool {
 	state := region.nativeState(p)
-	solid, ok := javadata.BlockStateIsSolid(state.CanonicalJavaID(region.c.BlockRegistry()))
+	solid, ok := gamedata.BlockStateIsSolid(state.CanonicalID(region.c.BlockRegistry()))
 	return ok && solid
 }

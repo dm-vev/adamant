@@ -3,7 +3,7 @@ package overworld
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("shipwreck", buildModernShipwreck) }
@@ -11,25 +11,25 @@ func init() { registerModernStructureBuilder("shipwreck", buildModernShipwreck) 
 var shipwreckPivot = [3]int32{4, 0, 15}
 
 type modernShipwreckPiece struct {
-	template       *javastructure.Template
+	template       *structure.Template
 	templateName   string
-	box            javastructure.Box // immutable constructor bounding box
+	box            structure.Box // immutable constructor bounding box
 	origin         [3]int32
-	rotation       javastructure.Rotation
+	rotation       structure.Rotation
 	beached        bool
 	oversized      bool
 	heightAdjusted bool
 	seed           int64
 }
 
-func (p modernShipwreckPiece) Bounds() javastructure.Box { return p.box }
+func (p modernShipwreckPiece) Bounds() structure.Box { return p.box }
 
-func (p modernShipwreckPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func (p modernShipwreckPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if env.BaseHeight == nil {
-		return javastructure.Placement{}, fmt.Errorf("shipwreck postProcess requires frozen heightmap query")
+		return structure.Placement{}, fmt.Errorf("shipwreck postProcess requires frozen heightmap query")
 	}
 	state := env.PieceState
-	var scratch javastructure.StructurePieceState
+	var scratch structure.StructurePieceState
 	if state == nil {
 		state = &scratch
 	}
@@ -63,19 +63,19 @@ func (p modernShipwreckPiece) Place(clip javastructure.Bounds, env javastructure
 		position[1] = int32(total / count)
 		if p.beached {
 			if env.Random == nil {
-				return javastructure.Placement{}, fmt.Errorf("beached shipwreck height adjustment requires postProcess random")
+				return structure.Placement{}, fmt.Errorf("beached shipwreck height adjustment requires postProcess random")
 			}
 			position[1] = minY - p.template.Size[1]/2 - env.Random.NextInt(3)
 		}
 		heightAdjusted = true
 	}
 	placeOrigin := templatePivotOrigin(position, shipwreckPivot, p.rotation)
-	ignore := javastructure.Processor{Process: func(_ javastructure.ProcessContext, b javastructure.Block) (javastructure.Block, bool, error) {
+	ignore := structure.Processor{Process: func(_ structure.ProcessContext, b structure.Block) (structure.Block, bool, error) {
 		return b, b.State.Name != "minecraft:air" && b.State.Name != "minecraft:structure_block", nil
 	}}
-	placed, err := p.template.Place(0, placeOrigin, p.rotation, javastructure.NoMirror, clip, p.seed, ignore)
+	placed, err := p.template.Place(0, placeOrigin, p.rotation, structure.NoMirror, clip, p.seed, ignore)
 	if err != nil {
-		return javastructure.Placement{}, err
+		return structure.Placement{}, err
 	}
 	state.TemplatePositionY = position[1]
 	state.TemplatePositionYSet = true
@@ -86,9 +86,9 @@ func (p modernShipwreckPiece) Place(clip javastructure.Bounds, env javastructure
 	return placed, nil
 }
 
-func (p modernShipwreckPiece) AfterTemplatePlacement(clip javastructure.Bounds, env javastructure.ProcessorEnvironment, _ func(javastructure.Placement)) error {
+func (p modernShipwreckPiece) AfterTemplatePlacement(clip structure.Bounds, env structure.ProcessorEnvironment, _ func(structure.Placement)) error {
 	if env.Random == nil {
-		return fmt.Errorf("shipwreck postProcess requires Java structure random")
+		return fmt.Errorf("shipwreck postProcess requires structure random")
 	}
 	if env.PieceState == nil {
 		return fmt.Errorf("shipwreck marker handling requires persisted piece state")
@@ -109,7 +109,7 @@ func (p modernShipwreckPiece) AfterTemplatePlacement(clip javastructure.Bounds, 
 		if block.State.Name != "minecraft:chest" {
 			continue
 		}
-		pos := javastructure.TransformPosition(block.Pos, javastructure.NoMirror, p.rotation)
+		pos := structure.TransformPosition(block.Pos, structure.NoMirror, p.rotation)
 		for axis := range 3 {
 			pos[axis] += placeOrigin[axis]
 		}
@@ -136,7 +136,7 @@ func (p modernShipwreckPiece) AfterTemplatePlacement(clip javastructure.Bounds, 
 		default:
 			continue
 		}
-		markerPos := javastructure.TransformPosition(source.Pos, javastructure.NoMirror, p.rotation)
+		markerPos := structure.TransformPosition(source.Pos, structure.NoMirror, p.rotation)
 		for axis := range 3 {
 			markerPos[axis] += placeOrigin[axis]
 		}
@@ -164,9 +164,9 @@ func buildModernShipwreck(input modernStructureBuildInput) (modernStructureStart
 	} else {
 		names = []string{"with_mast", "upsidedown_full", "upsidedown_fronthalf", "upsidedown_backhalf", "sideways_full", "sideways_fronthalf", "sideways_backhalf", "rightsideup_full", "rightsideup_fronthalf", "rightsideup_backhalf", "with_mast_degraded", "upsidedown_full_degraded", "upsidedown_fronthalf_degraded", "upsidedown_backhalf_degraded", "sideways_full_degraded", "sideways_fronthalf_degraded", "sideways_backhalf_degraded", "rightsideup_full_degraded", "rightsideup_fronthalf_degraded", "rightsideup_backhalf_degraded"}
 	}
-	rotation := javastructure.Rotation(input.random.NextInt(4))
+	rotation := structure.Rotation(input.random.NextInt(4))
 	templateName := "shipwreck/" + names[input.random.NextInt(int32(len(names)))]
-	template, err := javastructure.Load(templateName)
+	template, err := structure.Load(templateName)
 	if err != nil {
 		return modernStructureStart{}, false, err
 	}
@@ -200,5 +200,5 @@ func buildModernShipwreck(input modernStructureBuildInput) (modernStructureStart
 		}
 		piece.heightAdjusted = true
 	}
-	return modernStructureStart{name: input.name, pieces: []modernStructurePiece{piece}, box: box, mutablePieces: true, terrain: javastructure.TerrainNone}, true, nil
+	return modernStructureStart{name: input.name, pieces: []modernStructurePiece{piece}, box: box, mutablePieces: true, terrain: structure.TerrainNone}, true, nil
 }

@@ -3,34 +3,34 @@ package overworld
 import (
 	"fmt"
 
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("igloo", buildModernIgloo) }
 
 type modernIglooPiece struct {
-	template *javastructure.Template
-	box      javastructure.Box
+	template *structure.Template
+	box      structure.Box
 	origin   [3]int32 // TemplateStructurePiece.templatePosition, before postProcess height adjustment.
-	rotation javastructure.Rotation
+	rotation structure.Rotation
 	pivot    [3]int32
 	seed     int64
 	name     string
 }
 
-func (p modernIglooPiece) Bounds() javastructure.Box { return p.box }
+func (p modernIglooPiece) Bounds() structure.Box { return p.box }
 
-func (p modernIglooPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
+func (p modernIglooPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if env.BaseHeight == nil {
-		return javastructure.Placement{}, fmt.Errorf("igloo postProcess requires WORLD_SURFACE_WG")
+		return structure.Placement{}, fmt.Errorf("igloo postProcess requires WORLD_SURFACE_WG")
 	}
 	if env.Random == nil {
-		return javastructure.Placement{}, fmt.Errorf("igloo postProcess requires Java structure random")
+		return structure.Placement{}, fmt.Errorf("igloo postProcess requires structure random")
 	}
 	if len(p.template.Palettes) == 0 {
-		return javastructure.Placement{}, nil
+		return structure.Placement{}, nil
 	}
 	offset := [3]int32{}
 	if p.name == "igloo/middle" {
@@ -46,15 +46,15 @@ func (p modernIglooPiece) Place(clip javastructure.Bounds, env javastructure.Pro
 	origin := p.origin
 	origin[1] += height - 91
 	placeOrigin := templatePivotOrigin(origin, p.pivot, p.rotation)
-	ignoreStructureBlocks := javastructure.Processor{Process: func(_ javastructure.ProcessContext, block javastructure.Block) (javastructure.Block, bool, error) {
+	ignoreStructureBlocks := structure.Processor{Process: func(_ structure.ProcessContext, block structure.Block) (structure.Block, bool, error) {
 		return block, block.State.Name != "minecraft:structure_block", nil
 	}}
-	placed, err := p.template.Place(0, placeOrigin, p.rotation, javastructure.NoMirror, clip, p.seed, ignoreStructureBlocks)
+	placed, err := p.template.Place(0, placeOrigin, p.rotation, structure.NoMirror, clip, p.seed, ignoreStructureBlocks)
 	if err != nil {
-		return javastructure.Placement{}, err
+		return structure.Placement{}, err
 	}
 	for i := range placed.Blocks {
-		placed.Blocks[i].LiquidSettings = javastructure.IgnoreWaterlogging
+		placed.Blocks[i].LiquidSettings = structure.IgnoreWaterlogging
 	}
 	if env.PieceState != nil {
 		box := modernTemplateBounds(p.template, placeOrigin, p.rotation)
@@ -64,7 +64,7 @@ func (p modernIglooPiece) Place(clip javastructure.Bounds, env javastructure.Pro
 	return placed, nil
 }
 
-func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) error {
+func (p modernIglooPiece) AfterTemplatePlacement(clip structure.Bounds, env structure.ProcessorEnvironment, emit func(structure.Placement)) error {
 	if env.BaseHeight == nil {
 		return fmt.Errorf("igloo postProcess requires WORLD_SURFACE_WG")
 	}
@@ -88,7 +88,7 @@ func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env 
 		if block.State.Name != "minecraft:chest" || len(block.NBT) == 0 {
 			continue
 		}
-		pos := javastructure.TransformPosition(block.Pos, javastructure.NoMirror, p.rotation)
+		pos := structure.TransformPosition(block.Pos, structure.NoMirror, p.rotation)
 		for axis := range 3 {
 			pos[axis] += placeOrigin[axis]
 		}
@@ -106,14 +106,14 @@ func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env 
 		if marker.State.Name != "minecraft:structure_block" || marker.NBT == nil || marker.NBT["mode"] != "DATA" || marker.NBT["metadata"] != "chest" {
 			continue
 		}
-		markerPos := javastructure.TransformPosition(marker.Pos, javastructure.NoMirror, p.rotation)
+		markerPos := structure.TransformPosition(marker.Pos, structure.NoMirror, p.rotation)
 		for axis := range 3 {
 			markerPos[axis] += placeOrigin[axis]
 		}
 		if !inside(markerPos) {
 			continue
 		}
-		emit(javastructure.Placement{PostShapeBlocks: []javastructure.Block{{Pos: markerPos, State: world.BlockState{Name: "minecraft:air"}}}})
+		emit(structure.Placement{PostShapeBlocks: []structure.Block{{Pos: markerPos, State: world.BlockState{Name: "minecraft:air"}}}})
 		chestPos := [3]int32{markerPos[0], markerPos[1] - 1, markerPos[2]}
 		if env.HasChestBlockEntity == nil || env.SetBlockEntityLootTable == nil {
 			return fmt.Errorf("igloo chest marker requires live chest block-entity callbacks")
@@ -128,32 +128,32 @@ func (p modernIglooPiece) AfterTemplatePlacement(clip javastructure.Bounds, env 
 	if p.name == "igloo/top" {
 		trapdoor := transformedTemplatePos(origin, [3]int32{3, 0, 5}, p.pivot, p.rotation)
 		below := [3]int32{trapdoor[0], trapdoor[1] - 1, trapdoor[2]}
-		if env.JavaBlockStateID == nil {
-			return fmt.Errorf("igloo top requires live Java block-state query")
+		if env.BlockStateID == nil {
+			return fmt.Errorf("igloo top requires live block-state query")
 		}
-		id, queryErr := env.JavaBlockStateID(below[0], below[1], below[2])
+		id, queryErr := env.BlockStateID(below[0], below[1], below[2])
 		if queryErr != nil {
 			return queryErr
 		}
-		belowName, ok := javadata.BlockStateName(id)
+		belowName, ok := gamedata.BlockStateName(id)
 		if !ok {
-			return fmt.Errorf("igloo top queried unknown Java block state %d", id)
+			return fmt.Errorf("igloo top queried unknown block state %d", id)
 		}
 		if belowName != "minecraft:air" && belowName != "minecraft:cave_air" && belowName != "minecraft:void_air" && belowName != "minecraft:ladder" {
-			emit(javastructure.Placement{PostShapeBlocks: []javastructure.Block{{Pos: trapdoor, State: world.BlockState{Name: "minecraft:snow_block"}}}})
+			emit(structure.Placement{PostShapeBlocks: []structure.Block{{Pos: trapdoor, State: world.BlockState{Name: "minecraft:snow_block"}}}})
 		}
 	}
 	return nil
 }
 
-func templatePivotOrigin(position, pivot [3]int32, rotation javastructure.Rotation) [3]int32 {
-	rotated := javastructure.TransformPosition(pivot, javastructure.NoMirror, rotation)
+func templatePivotOrigin(position, pivot [3]int32, rotation structure.Rotation) [3]int32 {
+	rotated := structure.TransformPosition(pivot, structure.NoMirror, rotation)
 	return [3]int32{position[0] + pivot[0] - rotated[0], position[1] + pivot[1] - rotated[1], position[2] + pivot[2] - rotated[2]}
 }
 
-func transformedTemplatePos(position, relative, pivot [3]int32, rotation javastructure.Rotation) [3]int32 {
+func transformedTemplatePos(position, relative, pivot [3]int32, rotation structure.Rotation) [3]int32 {
 	origin := templatePivotOrigin(position, pivot, rotation)
-	transformed := javastructure.TransformPosition(relative, javastructure.NoMirror, rotation)
+	transformed := structure.TransformPosition(relative, structure.NoMirror, rotation)
 	return [3]int32{origin[0] + transformed[0], origin[1] + transformed[1], origin[2] + transformed[2]}
 }
 
@@ -161,7 +161,7 @@ func buildModernIgloo(in modernStructureBuildInput) (modernStructureStart, bool,
 	if in.random == nil {
 		return modernStructureStart{}, false, fmt.Errorf("igloo requires structure random")
 	}
-	rotation := javastructure.Rotation(in.random.NextInt(4))
+	rotation := structure.Rotation(in.random.NextInt(4))
 	base := [3]int32{in.chunkX * 16, 90, in.chunkZ * 16}
 	pieces := make([]modernStructurePiece, 0, 12)
 	if in.random.NextDouble() < 0.5 {
@@ -191,8 +191,8 @@ func buildModernIgloo(in modernStructureBuildInput) (modernStructureStart, bool,
 	return modernStructureStart{name: in.name, pieces: pieces, box: box, mutablePieces: true, terrain: terrainAdjustment(stringValue(in.config["terrain_adaptation"]))}, true, nil
 }
 
-func makeModernIglooPiece(name string, base [3]int32, rotation javastructure.Rotation, depth int32, pivot, offset [3]int32, seed int64) (modernIglooPiece, error) {
-	t, err := javastructure.Load(name)
+func makeModernIglooPiece(name string, base [3]int32, rotation structure.Rotation, depth int32, pivot, offset [3]int32, seed int64) (modernIglooPiece, error) {
+	t, err := structure.Load(name)
 	if err != nil {
 		return modernIglooPiece{}, err
 	}

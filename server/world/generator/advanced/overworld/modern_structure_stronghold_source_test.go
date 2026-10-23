@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 type strongholdGraphFixture struct {
@@ -32,7 +32,7 @@ type strongholdGraphPiece struct {
 	Variant   int      `json:"variant"`
 }
 
-func TestStrongholdPieceGraphsMatchJava263(t *testing.T) {
+func TestStrongholdPieceGraphsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_stronghold_graphs.json")
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +44,7 @@ func TestStrongholdPieceGraphsMatchJava263(t *testing.T) {
 	for _, fixture := range fixtures {
 		fixture := fixture
 		t.Run(fmt.Sprintf("seed_%d_chunk_%d_%d", fixture.Seed, fixture.Chunk[0], fixture.Chunk[1]), func(t *testing.T) {
-			random := java26.NewLegacyRandom(fixture.Seed)
+			random := vanilla.NewLegacyRandom(fixture.Seed)
 			start, valid, err := buildModernStronghold(modernStructureBuildInput{seed: fixture.Seed, name: "stronghold", chunkX: fixture.Chunk[0], chunkZ: fixture.Chunk[1], random: &random})
 			if err != nil {
 				t.Fatal(err)

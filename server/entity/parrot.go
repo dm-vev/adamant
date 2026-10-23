@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -68,14 +68,14 @@ func (c parrotConfig) New() *parrotBehaviour {
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &parrotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .04, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), variant: ((c.Variant % 5) + 5) % 5, tame: c.Tame, sitting: c.Sitting, owner: c.Owner, speed: .2, nextMove: 1, cooldown: c.Cooldown}
+	return &parrotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .04, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), variant: ((c.Variant % 5) + 5) % 5, tame: c.Tame, sitting: c.Sitting, owner: c.Owner, speed: .2, nextMove: 1, cooldown: c.Cooldown}
 }
 
 type parrotBehaviour struct {
 	health                     *HealthManager
 	effects                    *EffectManager
 	mc                         *MovementComputer
-	random                     java26.Random
+	random                     vanilla.Random
 	variant                    int
 	tame, sitting, dead, party bool
 	owner                      string
@@ -92,7 +92,7 @@ type Parrot struct{ *Ent }
 func NewParrot(opts world.EntitySpawnOpts) *world.EntityHandle {
 	return opts.New(ParrotType, parrotConfig{})
 }
-func (p *Parrot) FinalizeSpawn(_ string, r *java26.Random) {
+func (p *Parrot) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil {
 		p.b().variant = int(r.NextInt(5))
 	}

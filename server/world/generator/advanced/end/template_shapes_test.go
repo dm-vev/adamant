@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func TestEndCityTemplateUpdatesBoundaryShapes(t *testing.T) {
@@ -21,22 +21,22 @@ func TestEndCityTemplateUpdatesBoundaryShapes(t *testing.T) {
 		t.Fatal("could not seed existing block across the chunk edge")
 	}
 
-	template := &javastructure.Template{
+	template := &structure.Template{
 		Size: [3]int32{1, 1, 1},
-		Palettes: [][]javastructure.Block{{{
+		Palettes: [][]structure.Block{{{
 			Pos:   [3]int32{0, 0, 0},
 			State: world.BlockState{Name: "minecraft:iron_bars"},
 		}}},
 	}
 	piece := &endCityPiece{
 		pos:      endCityPos{x: 15, y: 70, z: 8},
-		template: &endCityTemplate{Java: template},
+		template: &endCityTemplate{Template: template},
 	}
-	random := java26.NewLegacyRandom(0)
+	random := vanilla.NewLegacyRandom(0)
 	var result world.GenerationResult
 	g.placeEndCityPiece(0, 0, region, piece, &random, true, &result)
 
-	bars, err := world.JavaState(registry, region.nativeState(15, 70, 8))
+	bars, err := world.CanonicalState(registry, region.nativeState(15, 70, 8))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func newEndTemplateShapeFixture() (*End, *endFeatureRegion) {
 	region := &endFeatureRegion{
 		minChunkX: -2, minChunkZ: -2, targetX: 0, targetZ: 0,
 		minY: 0, maxY: 127, airRID: g.airRID,
-		shapeRandoms:   make(map[[2]int]*java26.Random),
+		shapeRandoms:   make(map[[2]int]*vanilla.Random),
 		scheduledTicks: make(map[chunk.ScheduledTick]struct{}),
 		blockActors:    make(map[cube.Pos]endBlockActor),
 		logicalStates:  make(map[cube.Pos]world.NativeState),
@@ -69,9 +69,9 @@ func newEndTemplateShapeFixture() (*End, *endFeatureRegion) {
 
 func TestEndCityChestMarkerPreservesShapedActor(t *testing.T) {
 	g, region := newEndTemplateShapeFixture()
-	template := &javastructure.Template{
+	template := &structure.Template{
 		Size: [3]int32{1, 2, 1},
-		Palettes: [][]javastructure.Block{{
+		Palettes: [][]structure.Block{{
 			{
 				Pos:   [3]int32{0, 0, 0},
 				State: world.BlockState{Name: "minecraft:chest", Properties: map[string]any{"facing": "east", "type": "left"}},
@@ -84,11 +84,11 @@ func TestEndCityChestMarkerPreservesShapedActor(t *testing.T) {
 			},
 		}},
 	}
-	piece := &endCityPiece{pos: endCityPos{x: 8, y: 70, z: 8}, template: &endCityTemplate{Java: template}}
-	random := java26.NewLegacyRandom(0)
+	piece := &endCityPiece{pos: endCityPos{x: 8, y: 70, z: 8}, template: &endCityTemplate{Template: template}}
+	random := vanilla.NewLegacyRandom(0)
 	var result world.GenerationResult
 	g.placeEndCityPiece(0, 0, region, piece, &random, true, &result)
-	state, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(8, 70, 8))
+	state, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(8, 70, 8))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,15 +117,15 @@ func TestEndTemplateShapesUseSourceWriteRadius(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result world.GenerationResult
-	access := endJavaShapeAccess{
+	access := endShapeAccess{
 		endFeatureOrigin: endFeatureOrigin{region: region, chunkX: 1, chunkZ: 0},
 		result:           &result,
 	}
-	id := stone.CanonicalJavaID(world.DefaultBlockRegistry)
-	if !access.SetJavaBlockState(cube.Pos{32, 70, 8}, id, 18) {
+	id := stone.CanonicalID(world.DefaultBlockRegistry)
+	if !access.SetBlockState(cube.Pos{32, 70, 8}, id, 18) {
 		t.Fatal("source-adjacent write incorrectly clipped to target radius")
 	}
-	if access.SetJavaBlockState(cube.Pos{-16, 70, 8}, id, 18) {
+	if access.SetBlockState(cube.Pos{-16, 70, 8}, id, 18) {
 		t.Fatal("target-adjacent write escaped source radius")
 	}
 	if got := region.block(-16, 70, 8); got != region.airRID {

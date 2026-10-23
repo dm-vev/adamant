@@ -2,13 +2,13 @@ package overworld
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // placeModernTerrainMisc implements vanilla's small position-oriented terrain features.
-func placeModernTerrainMisc(region *featureRegion, kind string, config map[string]any, origin featurePos, random *java26.Random) (handled, placed bool) {
+func placeModernTerrainMisc(region *featureRegion, kind string, config map[string]any, origin featurePos, random *vanilla.Random) (handled, placed bool) {
 	switch kind {
 	case "block_blob":
 		return true, placeModernBlockBlob(region, config, origin, random)
@@ -23,14 +23,14 @@ func placeModernTerrainMisc(region *featureRegion, kind string, config map[strin
 	}
 }
 
-func featureRuleMatches(p featurePos, rule map[string]any, stateID uint32, random *java26.Random) bool {
-	kind := normalizeJavaResource(rule["predicate_type"].(string))
+func featureRuleMatches(p featurePos, rule map[string]any, stateID uint32, random *vanilla.Random) bool {
+	kind := normalizeResource(rule["predicate_type"].(string))
 	switch kind {
 	case "always_true":
 		return true
 	case "block_match":
-		name, _ := javadata.BlockStateName(stateID)
-		return normalizeJavaResource(rule["block"].(string)) == normalizeJavaResource(name)
+		name, _ := gamedata.BlockStateName(stateID)
+		return normalizeResource(rule["block"].(string)) == normalizeResource(name)
 	case "tag_match":
 		return featureBlockTagContainsID(rule["tag"].(string), stateID)
 	case "height_match":
@@ -43,7 +43,7 @@ func featureRuleMatches(p featurePos, rule map[string]any, stateID uint32, rando
 			name = state["id"].(string)
 			properties, _ = state["properties"].(map[string]any)
 		}
-		expected, err := javadata.BlockStateID(name, properties)
+		expected, err := gamedata.BlockStateID(name, properties)
 		if err != nil {
 			panic(err)
 		}
@@ -52,8 +52,8 @@ func featureRuleMatches(p featurePos, rule map[string]any, stateID uint32, rando
 		}
 		return kind != "random_blockstate_match" || random.NextFloat() < float32(rule["probability"].(float64))
 	case "random_block_match":
-		name, _ := javadata.BlockStateName(stateID)
-		if normalizeJavaResource(rule["block"].(string)) != normalizeJavaResource(name) {
+		name, _ := gamedata.BlockStateName(stateID)
+		if normalizeResource(rule["block"].(string)) != normalizeResource(name) {
 			return false
 		}
 		return random.NextFloat() < float32(rule["probability"].(float64))
@@ -74,14 +74,14 @@ func featureRuleMatches(p featurePos, rule map[string]any, stateID uint32, rando
 	case "not":
 		return !featureRuleMatches(p, rule["rule"].(map[string]any), stateID, random)
 	default:
-		panic("overworld: unsupported Java block rule test " + kind)
+		panic("overworld: unsupported block rule test " + kind)
 	}
 }
 
-func placeModernBlockBlob(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernBlockBlob(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	predicate, ok := config["can_place_on"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java block blob predicate")
+		panic("overworld: malformed block blob predicate")
 	}
 	for origin.y > region.MinY()+3 && !featurePredicate(region, featurePos{origin.x, origin.y - 1, origin.z}, predicate) {
 		origin.y--
@@ -91,7 +91,7 @@ func placeModernBlockBlob(region *featureRegion, config map[string]any, origin f
 	}
 	placement, ok := featureStateBlock(config["state"])
 	if !ok {
-		panic("overworld: malformed Java block blob state")
+		panic("overworld: malformed block blob state")
 	}
 	for range 3 {
 		rx, ry, rz := int32(random.NextInt(2)), int32(random.NextInt(2)), int32(random.NextInt(2))
@@ -118,7 +118,7 @@ func placeModernBlockBlob(region *featureRegion, config map[string]any, origin f
 	return true
 }
 
-func placeModernBlockPile(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernBlockPile(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	if origin.y < region.MinY()+5 {
 		return false
 	}
@@ -139,22 +139,22 @@ func placeModernBlockPile(region *featureRegion, config map[string]any, origin f
 	return true
 }
 
-func blockPileTryPlace(region *featureRegion, p featurePos, provider any, random *java26.Random) {
+func blockPileTryPlace(region *featureRegion, p featurePos, provider any, random *vanilla.Random) {
 	if !featureRegionAir(region, p) {
 		return
 	}
 	below := featurePos{p.x, p.y - 1, p.z}
-	belowID := region.nativeState(below).CanonicalJavaID(region.c.BlockRegistry())
-	belowName, ok := javadata.BlockStateName(belowID)
+	belowID := region.nativeState(below).CanonicalID(region.c.BlockRegistry())
+	belowName, ok := gamedata.BlockStateName(belowID)
 	if !ok {
-		panic("overworld: block pile encountered an invalid Java support state ID")
+		panic("overworld: block pile encountered an invalid support state ID")
 	}
-	if normalizeJavaResource(belowName) == "dirt_path" {
+	if normalizeResource(belowName) == "dirt_path" {
 		if !random.NextBoolean() {
 			return
 		}
 	} else {
-		shape, err := javadata.BlockGenerationShapeID(belowID)
+		shape, err := gamedata.BlockGenerationShapeID(belowID)
 		if err != nil {
 			panic(err)
 		}
@@ -164,7 +164,7 @@ func blockPileTryPlace(region *featureRegion, p featurePos, provider any, random
 	}
 	state, actor, ok := region.SampleNativeState(provider, p, random)
 	if ok && region.setWithFlags(p, state, 260) && actor != nil {
-		region.recordTemplateActor(javastructure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
+		region.recordTemplateActor(structure.Block{Pos: [3]int32{p.x, p.y, p.z}, NativeBlock: actor})
 	}
 }
 
@@ -172,7 +172,7 @@ func placeModernFillLayer(region *featureRegion, config map[string]any, origin f
 	height := int32(featureNumber(config["height"]))
 	placement, ok := featureStateBlock(config["state"])
 	if !ok {
-		panic("overworld: malformed Java fill-layer state")
+		panic("overworld: malformed fill-layer state")
 	}
 	state, err := placement.ResolveNative(region.c.BlockRegistry())
 	if err != nil {
@@ -189,25 +189,25 @@ func placeModernFillLayer(region *featureRegion, config map[string]any, origin f
 	return true
 }
 
-func placeModernReplaceSingleBlock(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernReplaceSingleBlock(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	targets, ok := config["targets"].([]any)
 	if !ok {
-		panic("overworld: malformed Java replace-single-block targets")
+		panic("overworld: malformed replace-single-block targets")
 	}
 	for _, raw := range targets {
 		replacement, ok := raw.(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java block replacement")
+			panic("overworld: malformed block replacement")
 		}
 		predicate, ok := replacement["target"].(map[string]any)
 		if !ok {
-			panic("overworld: malformed Java block replacement target")
+			panic("overworld: malformed block replacement target")
 		}
-		stateID := region.nativeState(origin).CanonicalJavaID(region.c.BlockRegistry())
+		stateID := region.nativeState(origin).CanonicalID(region.c.BlockRegistry())
 		if featureRuleMatches(origin, predicate, stateID, random) {
 			placement, ok := featureStateBlock(replacement["state"])
 			if !ok {
-				panic("overworld: malformed Java replacement state")
+				panic("overworld: malformed replacement state")
 			}
 			state, err := placement.ResolveNative(region.c.BlockRegistry(), region.nativeState(origin))
 			if err != nil {

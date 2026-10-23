@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 func TestSurvivesExplosionAtRadiusOne(t *testing.T) {
-	r := java26.NewXoroshiroRandom(1)
+	r := vanilla.NewXoroshiroRandom(1)
 	ctx := Context{Random: &r, ExplosionRadius: 1}
 	ok, err := testCondition(condition{Type: "minecraft:survives_explosion"}, &ctx)
 	if err != nil || !ok {
@@ -67,7 +67,7 @@ func TestLootEntryDefaultWeightAndFloorLuck(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"type":"minecraft:item","name":"minecraft:stone"}`), &e); err != nil {
 		t.Fatal(err)
 	}
-	r := java26.NewXoroshiroRandom(3)
+	r := vanilla.NewXoroshiroRandom(3)
 	ctx := Context{Random: &r}
 	selected, err := choose([]entry{e}, &ctx)
 	if err != nil || len(selected) != 1 || selected[0].Name != "minecraft:stone" {
@@ -102,7 +102,7 @@ func TestInlineLootTableValueExpandsItsPools(t *testing.T) {
 	if err := json.Unmarshal(data, &e); err != nil {
 		t.Fatal(err)
 	}
-	r := java26.NewXoroshiroRandom(7)
+	r := vanilla.NewXoroshiroRandom(7)
 	expanded, err := expand(e, &Context{Random: &r})
 	if err != nil || len(expanded) != 1 || expanded[0].Name != "minecraft:stone" {
 		t.Fatalf("inline loot-table expansion = %#v, %v; want one stone entry", expanded, err)
@@ -151,7 +151,7 @@ func TestDiamondOreFortuneMatchesJavaBonusBoundaries(t *testing.T) {
 		seed  int64
 		count int
 	}{{6, 1}, {1, 2}, {3, 4}} {
-		random := java26.NewXoroshiroRandom(test.seed)
+		random := vanilla.NewXoroshiroRandom(test.seed)
 		drops, err := Generate("minecraft:blocks/diamond_ore", test.seed, Context{ToolStack: tool, Random: &random})
 		if err != nil {
 			t.Fatal(err)

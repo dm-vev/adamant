@@ -7,7 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	dfbiome "github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -22,8 +22,8 @@ type End struct {
 	biomeZoomSeed  int64
 	motionBlocking sync.Map // native runtime ID -> Java heightmap tag membership
 
-	baseNoise   *java26.BlendedNoise
-	islandNoise *java26.SimplexNoise
+	baseNoise   *vanilla.BlendedNoise
+	islandNoise *vanilla.SimplexNoise
 
 	endStoneRID uint32
 	airRID      uint32
@@ -37,7 +37,7 @@ type End struct {
 
 	chorusMaxDistance int
 
-	spikes       [10]java26.EndSpike
+	spikes       [10]vanilla.EndSpike
 	endCityCache sync.Map // world.ChunkPos -> *endCityStructure (nil when absent)
 
 	pool sync.Pool
@@ -54,16 +54,16 @@ func New(seed int64) *End {
 
 // NewEnd creates an End generator using the seed provided.
 func NewEnd(seed int64) *End {
-	terrainRandom := java26.NewLegacyRandom(seed)
-	islandRandom := java26.NewLegacyRandom(seed)
+	terrainRandom := vanilla.NewLegacyRandom(seed)
+	islandRandom := vanilla.NewLegacyRandom(seed)
 	islandRandom.Consume(17292)
 
 	g := &End{
 		seed:              seed,
-		biomeZoomSeed:     java26.BiomeZoomSeed(seed),
-		spikes:            java26.EndSpikes(seed),
-		baseNoise:         java26.NewBlendedNoise(&terrainRandom, 0.25, 0.25, 80, 160, 4),
-		islandNoise:       java26.NewSimplexNoiseWithoutOffset(&islandRandom),
+		biomeZoomSeed:     vanilla.BiomeZoomSeed(seed),
+		spikes:            vanilla.EndSpikes(seed),
+		baseNoise:         vanilla.NewBlendedNoise(&terrainRandom, 0.25, 0.25, 80, 160, 4),
+		islandNoise:       vanilla.NewSimplexNoiseWithoutOffset(&islandRandom),
 		endStoneRID:       world.BlockRuntimeID(block.EndStone{}),
 		airRID:            world.BlockRuntimeID(block.Air{}),
 		biomeID:           uint32(dfbiome.End{}.EncodeBiome()),
@@ -169,7 +169,7 @@ func (g *End) generateObsidianSpikes(origin endFeatureOrigin, targetX, targetZ i
 	}
 }
 
-func (g *End) generateSpike(origin endFeatureOrigin, targetX, targetZ int, spike *java26.EndSpike, result *world.GenerationResult, random *endRand) {
+func (g *End) generateSpike(origin endFeatureOrigin, targetX, targetZ int, spike *vanilla.EndSpike, result *world.GenerationResult, random *endRand) {
 	if spike.X>>4 != origin.chunkX || spike.Z>>4 != origin.chunkZ {
 		return
 	}
@@ -189,11 +189,11 @@ func (g *End) generateSpike(origin endFeatureOrigin, targetX, targetZ int, spike
 		for wz := wzMin; wz <= wzMax; wz++ {
 			for wy := minY; wy <= yMax; wy++ {
 				material, connections := spike.BlockAt(wx, wy, wz, minY)
-				if material == java26.EndSpikeUnchanged {
+				if material == vanilla.EndSpikeUnchanged {
 					continue
 				}
 				rid := g.ironBarsRIDs[connections]
-				if material != java26.EndSpikeIronBars {
+				if material != vanilla.EndSpikeIronBars {
 					rid = materials[material]
 				}
 				origin.setBlock(wx, wy, wz, rid)
@@ -322,10 +322,10 @@ func abs64(value int64) int64 {
 	return value
 }
 
-// javaNoiseBiomeAt resolves TheEndBiomeSource at unzoomed Java quart
+// noiseBiomeAt resolves TheEndBiomeSource at unzoomed Java quart
 // coordinates. It intentionally returns Java's source biome key rather than
 // the native Bedrock biome ID, whose palette may contain only minecraft:the_end.
-func (g *End) javaNoiseBiomeAt(quartX, quartY, quartZ int32) string {
+func (g *End) noiseBiomeAt(quartX, quartY, quartZ int32) string {
 	blockX, blockZ := quartX*4, quartZ*4
 	chunkX, chunkZ := blockX>>4, blockZ>>4
 	if int64(chunkX)*int64(chunkX)+int64(chunkZ)*int64(chunkZ) <= 4096 {

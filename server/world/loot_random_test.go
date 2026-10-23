@@ -3,7 +3,7 @@ package world
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 func TestLootRandomSequenceContinuesPerDimension(t *testing.T) {
@@ -19,7 +19,7 @@ func TestLootRandomSequenceContinuesPerDimension(t *testing.T) {
 				random.NextLong()
 			}
 			state := random.State()
-			restored := java26.FromState(state)
+			restored := vanilla.FromState(state)
 			want[i] = restored.NextLong()
 		})
 	}

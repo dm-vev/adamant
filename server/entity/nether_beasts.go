@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -663,7 +663,7 @@ func beastKnock(e *Ent, p mgl64.Vec3, f, k float64) {
 	d[1] = k
 	e.SetVelocity(d)
 }
-func (h *Hoglin) FinalizeSpawn(reason string, r *java26.Random) {
+func (h *Hoglin) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if r == nil {
 		return
 	}
@@ -675,8 +675,8 @@ func (h *Hoglin) FinalizeSpawn(reason string, r *java26.Random) {
 	}
 	h.beast().immune = false
 }
-func (z *Zoglin) FinalizeSpawn(_ string, _ *java26.Random) {}
-func (s *Strider) FinalizeSpawn(reason string, r *java26.Random) {
+func (z *Zoglin) FinalizeSpawn(_ string, _ *vanilla.Random) {}
+func (s *Strider) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if reason == "jockey" || r == nil {
 		return
 	}

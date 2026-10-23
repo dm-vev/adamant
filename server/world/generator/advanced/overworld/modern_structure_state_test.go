@@ -5,11 +5,11 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 )
 
@@ -55,7 +55,7 @@ func TestMineshaftSpawnerDoesNotDuplicateAcrossChunkClipsAfterMCDBRestart(t *tes
 	if !found {
 		t.Fatal("Java source graph has no cross-chunk spider corridor")
 	}
-	stone, err := javadata.BlockStateID("minecraft:stone", nil)
+	stone, err := gamedata.BlockStateID("minecraft:stone", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,12 +63,12 @@ func TestMineshaftSpawnerDoesNotDuplicateAcrossChunkClipsAfterMCDBRestart(t *tes
 		t.Helper()
 		b := chosen.box
 		minX, minZ := point[0]>>4<<4, point[2]>>4<<4
-		clip := javastructure.Bounds{Min: [3]int32{max(b.Min[0], minX), b.Min[1], max(b.Min[2], minZ)}, Max: [3]int32{min(b.Max[0], minX+15), b.Max[1], min(b.Max[2], minZ+15)}}
-		random := java26.NewLegacyRandom(0)
-		env := javastructure.ProcessorEnvironment{JavaBlockStateID: func(int32, int32, int32) (uint32, error) { return stone, nil }, JavaBiomeAt: func(int32, int32, int32) string { return "minecraft:plains" }, BaseHeight: func(int32, int32, bool) int32 { return 320 }, Range: cube.Range{-64, 319}, Random: &random}
+		clip := structure.Bounds{Min: [3]int32{max(b.Min[0], minX), b.Min[1], max(b.Min[2], minZ)}, Max: [3]int32{min(b.Max[0], minX+15), b.Max[1], min(b.Max[2], minZ+15)}}
+		random := vanilla.NewLegacyRandom(0)
+		env := structure.ProcessorEnvironment{BlockStateID: func(int32, int32, int32) (uint32, error) { return stone, nil }, BiomeAt: func(int32, int32, int32) string { return "minecraft:plains" }, BaseHeight: func(int32, int32, bool) int32 { return 320 }, Range: cube.Range{-64, 319}, Random: &random}
 		ctx := modernStructureContext{pieceStates: &generator.modernStructures.pieceStates}
 		count := 0
-		ctx.placeStart(start, clip, env, func(placement javastructure.Placement) {
+		ctx.placeStart(start, clip, env, func(placement structure.Placement) {
 			for _, write := range placement.Blocks {
 				if write.State.Name == "minecraft:spawner" && write.Pos[0] >= b.Min[0] && write.Pos[0] <= b.Max[0] && write.Pos[2] >= b.Min[2] && write.Pos[2] <= b.Max[2] {
 					count++
@@ -134,13 +134,13 @@ func (s structureStateDecorationSource) BaseState(int32, int32, int32) world.Nat
 	return s.stone
 }
 func (s structureStateDecorationSource) BaseHeight(int32, int32, bool) int32 { return 80 }
-func (s structureStateDecorationSource) JavaNoiseBiomeAt(int32, int32, int32) string {
+func (s structureStateDecorationSource) NoiseBiomeAt(int32, int32, int32) string {
 	return "minecraft:plains"
 }
-func (s structureStateDecorationSource) JavaBiomeAt(int32, int32, int32) string {
+func (s structureStateDecorationSource) BiomeAt(int32, int32, int32) string {
 	return "minecraft:plains"
 }
-func (s structureStateDecorationSource) PlaceStructureStep(pos world.ChunkPos, step int, env javastructure.ProcessorEnvironment, emit func(javastructure.Placement)) {
+func (s structureStateDecorationSource) PlaceStructureStep(pos world.ChunkPos, step int, env structure.ProcessorEnvironment, emit func(structure.Placement)) {
 	s.context.PlaceStep(pos, world.Overworld.Range(), step, env, emit)
 }
 

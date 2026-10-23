@@ -5,15 +5,15 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // mutableStructurePieceBounds reconstructs the source's moved piece without making
 // the cached constructor graph mutable. StructureStart's cached bounds stay put.
-func mutableStructurePieceBounds(piece modernStructurePiece, flags *javastructure.StructurePieceState) javastructure.Box {
+func mutableStructurePieceBounds(piece modernStructurePiece, flags *structure.StructurePieceState) structure.Box {
 	box := piece.Bounds()
 	if flags == nil {
 		return box
@@ -36,7 +36,7 @@ func mutableStructurePieceBounds(piece modernStructurePiece, flags *javastructur
 
 // ScatteredFeaturePiece.updateAverageGroundHeight samples (x,64,z) only in
 // the first intersecting clip. Negative HPos is not a cache hit in Java.
-func updateScatteredGroundHeight(box *javastructure.Box, clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (bool, error) {
+func updateScatteredGroundHeight(box *structure.Box, clip structure.Bounds, env structure.ProcessorEnvironment) (bool, error) {
 	flags := env.PieceState
 	if flags != nil && flags.GroundHeightSet {
 		box.Max[1] += flags.GroundHeight - box.Min[1]
@@ -75,16 +75,16 @@ func sourcePieceState(state world.BlockState, direction string) world.BlockState
 	if direction == "north" || state.Properties == nil {
 		return state
 	}
-	mirror, rotation := javastructure.NoMirror, javastructure.None
+	mirror, rotation := structure.NoMirror, structure.None
 	if direction == "south" || direction == "west" {
-		mirror = javastructure.LeftRight
+		mirror = structure.LeftRight
 	}
 	if direction == "east" || direction == "west" {
-		rotation = javastructure.Clockwise90
+		rotation = structure.Clockwise90
 	}
-	transformed := world.TransformJavaState(state, mirror, rotation)
+	transformed := world.TransformState(state, mirror, rotation)
 	// StairBlock.mirror only exchanges left/right shapes on the mirrored axis.
-	if mirror != javastructure.NoMirror && strings.HasSuffix(state.Name, "_stairs") {
+	if mirror != structure.NoMirror && strings.HasSuffix(state.Name, "_stairs") {
 		if facing, _ := state.Properties["facing"].(string); facing == "east" || facing == "west" {
 			if shape, ok := state.Properties["shape"]; ok {
 				transformed.Properties["shape"] = shape
@@ -119,7 +119,7 @@ func sourcePieceShapeCheckBlock(name string) bool {
 
 // Source createChest returns true after attempting a write, not after receiving
 // a block entity. An occupied chest returns false and consumes no loot RNG.
-func (w *journalStructureWorld) createSourceChest(pos [3]int32, table string, random *java26.Random) bool {
+func (w *journalStructureWorld) createSourceChest(pos [3]int32, table string, random *vanilla.Random) bool {
 	if !w.inside(pos[0], pos[1], pos[2]) || w.blockName(pos) == "minecraft:chest" {
 		return false
 	}
@@ -130,7 +130,7 @@ func (w *journalStructureWorld) createSourceChest(pos [3]int32, table string, ra
 	return true
 }
 
-func (w *journalStructureWorld) createSourceDispenser(pos [3]int32, facing, direction, table string, random *java26.Random) bool {
+func (w *journalStructureWorld) createSourceDispenser(pos [3]int32, facing, direction, table string, random *vanilla.Random) bool {
 	if !w.inside(pos[0], pos[1], pos[2]) || w.blockName(pos) == "minecraft:dispenser" {
 		return false
 	}
@@ -142,7 +142,7 @@ func (w *journalStructureWorld) createSourceDispenser(pos [3]int32, facing, dire
 }
 
 func (w *journalStructureWorld) blockName(pos [3]int32) string {
-	name, _ := javadata.BlockStateName(w.stateID(pos[0], pos[1], pos[2]))
+	name, _ := gamedata.BlockStateName(w.stateID(pos[0], pos[1], pos[2]))
 	return name
 }
 
@@ -186,7 +186,7 @@ func (w *journalStructureWorld) sourceChestFacing(pos [3]int32) string {
 
 // Mob.finalizeSpawn applies its bonus before choosing handedness. Keeping the
 // modifier, rather than only advancing RNG, preserves the source actor state.
-func scatteredMobSpawnNBT(id string, health float32, random *java26.Random) map[string]any {
+func scatteredMobSpawnNBT(id string, health float32, random *vanilla.Random) map[string]any {
 	bonus := (random.NextDouble() - random.NextDouble()) * 0.11485000000000001
 	leftHanded := byte(0)
 	if random.NextFloat() < 0.05 {
@@ -223,7 +223,7 @@ func sourceHeightmapStructureAllowed(source ModernFeatureSource, kind string, co
 	bounds := world.Overworld.Range()
 	columnAllowed := false
 	for quartY := int32(bounds[0]-1) >> 2; quartY <= int32(bounds[1])>>2; quartY++ {
-		allowed, err := javadata.BiomeTagContains(biomeTag, source.JavaNoiseBiomeAt(x>>2, quartY, z>>2))
+		allowed, err := gamedata.BiomeTagContains(biomeTag, source.NoiseBiomeAt(x>>2, quartY, z>>2))
 		if err != nil {
 			return false, err
 		}
@@ -245,5 +245,5 @@ func sourceHeightmapStructureAllowed(source ModernFeatureSource, kind string, co
 	}
 	oceanFloor := kind == "ocean_ruin" || kind == "shipwreck" && config["is_beached"] != true
 	height := source.BaseHeight(x, z, oceanFloor) - 1
-	return javadata.BiomeTagContains(biomeTag, source.JavaNoiseBiomeAt(x>>2, height>>2, z>>2))
+	return gamedata.BiomeTagContains(biomeTag, source.NoiseBiomeAt(x>>2, height>>2, z>>2))
 }

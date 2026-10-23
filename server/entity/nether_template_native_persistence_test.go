@@ -57,7 +57,7 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	pos := mgl64.Vec3{.5, 65, .5}
 	spawn := func(nbt map[string]any) *world.EntityHandle {
 		t.Helper()
-		h, err := NewFromJavaNBT(nbt, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
+		h, err := NewFromStructureNBT(nbt, world.EntitySpawnOpts{Position: pos, SpawnReason: "structure", SpawnFinalized: true})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,15 +90,15 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	}
 	checkSourceStack := func(label string, actual item.Stack, raw any) {
 		t.Helper()
-		want, err := item.StackFromJavaNBT(raw.(map[string]any))
+		want, err := item.StackFromStructureNBT(raw.(map[string]any))
 		if err != nil {
 			t.Fatal(err)
 		}
-		gotNBT, err := item.StackToJavaNBT(actual)
+		gotNBT, err := item.StackToStructureNBT(actual)
 		if err != nil {
 			t.Fatal(err)
 		}
-		wantNBT, err := item.StackToJavaNBT(want)
+		wantNBT, err := item.StackToStructureNBT(want)
 		if err != nil {
 			t.Fatal(err)
 		}

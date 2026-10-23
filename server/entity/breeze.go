@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -27,7 +27,7 @@ func (breezeType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Ent
 		uuid := handle.UUID()
 		hash := fnv.New64a()
 		_, _ = hash.Write(uuid[:])
-		state.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+		state.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	return &Breeze{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
@@ -100,7 +100,7 @@ func (c breezeConfig) New() *breezeState {
 	return &breezeState{
 		health: NewHealthManager(health, 30), effects: NewEffectManager(),
 		mc:     &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
-		random: java26.NewLegacyRandom(0), speed: speed,
+		random: vanilla.NewLegacyRandom(0), speed: speed,
 		shootCooldown: max(0, c.shootCooldown), chargeTicks: max(0, c.chargeTicks),
 		jumpCooldown: max(0, c.jumpCooldown), jumpCharge: max(0, c.jumpCharge), jumping: c.jumping,
 	}
@@ -110,7 +110,7 @@ type breezeState struct {
 	health                                                          *HealthManager
 	effects                                                         *EffectManager
 	mc                                                              *MovementComputer
-	random                                                          java26.Random
+	random                                                          vanilla.Random
 	speed                                                           float64
 	shootCooldown, chargeTicks, jumpCooldown, jumpCharge, soundTick int
 	wander                                                          int

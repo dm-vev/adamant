@@ -5,7 +5,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -26,16 +26,16 @@ func (b *EnderDragonBehaviour) ensureDragonNodes(tx *world.Tx) {
 		switch {
 		case i < 12:
 			angle := float32(2) * (float32(-math.Pi) + float32(math.Pi/12)*float32(multiplier))
-			x, z = int(math.Floor(float64(float32(60)*java26.Cos(float64(angle))))), int(math.Floor(float64(float32(60)*java26.Sin(float64(angle)))))
+			x, z = int(math.Floor(float64(float32(60)*vanilla.Cos(float64(angle))))), int(math.Floor(float64(float32(60)*vanilla.Sin(float64(angle)))))
 		case i < 20:
 			multiplier -= 12
 			angle := float32(2) * (float32(-math.Pi) + float32(math.Pi/8)*float32(multiplier))
-			x, z = int(math.Floor(float64(float32(40)*java26.Cos(float64(angle))))), int(math.Floor(float64(float32(40)*java26.Sin(float64(angle)))))
+			x, z = int(math.Floor(float64(float32(40)*vanilla.Cos(float64(angle))))), int(math.Floor(float64(float32(40)*vanilla.Sin(float64(angle)))))
 			yAdjustment += 10
 		default:
 			multiplier -= 20
 			angle := float32(2) * (float32(-math.Pi) + float32(math.Pi/4)*float32(multiplier))
-			x, z = int(math.Floor(float64(float32(20)*java26.Cos(float64(angle))))), int(math.Floor(float64(float32(20)*java26.Sin(float64(angle)))))
+			x, z = int(math.Floor(float64(float32(20)*vanilla.Cos(float64(angle))))), int(math.Floor(float64(float32(20)*vanilla.Sin(float64(angle)))))
 		}
 		y := max(73, tx.HighestBlock(x, z)+1+yAdjustment)
 		b.nodes[i] = cube.Pos{x, y, z}

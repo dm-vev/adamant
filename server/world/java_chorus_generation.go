@@ -2,15 +2,15 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
-// JavaChorusGenerationAccess is ChorusFlowerBlock's live LevelAccessor view.
+// ChorusGenerationAccess is ChorusFlowerBlock's live LevelAccessor view.
 // Generation setters retain Source flags and may reject a write independently
 // of the recursive plant's bookkeeping and random consumption.
-type JavaChorusGenerationAccess interface {
-	JavaBlockStateID(cube.Pos) (uint32, error)
-	SetJavaBlockState(cube.Pos, uint32, int) bool
+type ChorusGenerationAccess interface {
+	BlockStateID(cube.Pos) (uint32, error)
+	SetBlockState(cube.Pos, uint32, int) bool
 }
 
 var javaChorusGenerationStates = func() [65]uint32 {
@@ -27,23 +27,23 @@ var javaChorusGenerationStates = func() [65]uint32 {
 	return states
 }()
 
-// GenerateJavaChorusPlant runs the Source helper, not its feature's acceptance
+// GenerateChorusPlant runs the Source helper, not its feature's acceptance
 // predicate. ChorusPlantFeature passes maxHorizontalSpread=8. Generic access
 // keeps native End's small view on the stack instead of boxing it per plant.
-func GenerateJavaChorusPlant[A JavaChorusGenerationAccess](access A, origin cube.Pos, random *java26.Random, maxHorizontalSpread int) {
+func GenerateChorusPlant[A ChorusGenerationAccess](access A, origin cube.Pos, random *vanilla.Random, maxHorizontalSpread int) {
 	setJavaChorusPlant(access, origin)
 	growJavaChorusPlant(access, origin, origin, random, maxHorizontalSpread, 0)
 }
 
-func javaChorusStateAt[A JavaChorusGenerationAccess](access A, pos cube.Pos) uint32 {
-	id, err := access.JavaBlockStateID(pos)
+func javaChorusStateAt[A ChorusGenerationAccess](access A, pos cube.Pos) uint32 {
+	id, err := access.BlockStateID(pos)
 	if err != nil {
 		panic(err)
 	}
 	return id
 }
 
-func setJavaChorusPlant[A JavaChorusGenerationAccess](access A, pos cube.Pos) {
+func setJavaChorusPlant[A ChorusGenerationAccess](access A, pos cube.Pos) {
 	mask := 0
 	for side, offset := range [...]cube.Pos{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}} {
 		id := javaChorusStateAt(access, pos.Add(offset))
@@ -57,10 +57,10 @@ func setJavaChorusPlant[A JavaChorusGenerationAccess](access A, pos cube.Pos) {
 			mask |= 1 << side
 		}
 	}
-	access.SetJavaBlockState(pos, javaChorusGenerationStates[mask], 2)
+	access.SetBlockState(pos, javaChorusGenerationStates[mask], 2)
 }
 
-func javaChorusNeighboursEmpty[A JavaChorusGenerationAccess](access A, pos cube.Pos, excluded int) bool {
+func javaChorusNeighboursEmpty[A ChorusGenerationAccess](access A, pos cube.Pos, excluded int) bool {
 	for side, offset := range [...]cube.Pos{{0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}} {
 		if side != excluded && !javaIsAir(javaChorusStateAt(access, pos.Add(offset))) {
 			return false
@@ -69,7 +69,7 @@ func javaChorusNeighboursEmpty[A JavaChorusGenerationAccess](access A, pos cube.
 	return true
 }
 
-func growJavaChorusPlant[A JavaChorusGenerationAccess](access A, current, origin cube.Pos, random *java26.Random, maxHorizontalSpread, depth int) {
+func growJavaChorusPlant[A ChorusGenerationAccess](access A, current, origin cube.Pos, random *vanilla.Random, maxHorizontalSpread, depth int) {
 	height := int(random.NextInt(4)) + 1
 	if depth == 0 {
 		height++
@@ -111,6 +111,6 @@ func growJavaChorusPlant[A JavaChorusGenerationAccess](access A, current, origin
 		}
 	}
 	if !branched {
-		access.SetJavaBlockState(current.Add(cube.Pos{0, height, 0}), javaChorusGenerationStates[64], 2)
+		access.SetBlockState(current.Add(cube.Pos{0, height, 0}), javaChorusGenerationStates[64], 2)
 	}
 }

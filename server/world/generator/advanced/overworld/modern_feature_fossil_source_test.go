@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type fossilSourceFixture struct {
@@ -66,8 +66,8 @@ type fossilSourceTerrain struct {
 	initial map[featurePos]world.NativeState
 }
 
-func (s fossilSourceTerrain) JavaBiomeAt(int32, int32, int32) string      { return "plains" }
-func (s fossilSourceTerrain) JavaNoiseBiomeAt(int32, int32, int32) string { return "plains" }
+func (s fossilSourceTerrain) BiomeAt(int32, int32, int32) string      { return "plains" }
+func (s fossilSourceTerrain) NoiseBiomeAt(int32, int32, int32) string { return "plains" }
 func (s fossilSourceTerrain) BaseHeight(x, _ int32, oceanFloor bool) int32 {
 	if oceanFloor && (x%5+5)%5 == 0 {
 		return s.floor + 3
@@ -90,7 +90,7 @@ func (s fossilSourceTerrain) BaseBlock(x, y, z int32) world.Block {
 	}
 	return b
 }
-func (fossilSourceTerrain) PlaceStructureStep(world.ChunkPos, int, javastructure.ProcessorEnvironment, func(javastructure.Placement)) {
+func (fossilSourceTerrain) PlaceStructureStep(world.ChunkPos, int, structure.ProcessorEnvironment, func(structure.Placement)) {
 }
 
 func fossilSourceNativeState(t *testing.T, raw string) world.NativeState {
@@ -113,7 +113,7 @@ func fossilSourceNativeState(t *testing.T, raw string) world.NativeState {
 	return state
 }
 
-func TestFossilMatchesJava263SourceFixtures(t *testing.T) {
+func TestFossilMatchesSourceFixtures(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_fossil_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -147,11 +147,11 @@ func TestFossilMatchesJava263SourceFixtures(t *testing.T) {
 			}
 			region := newFeatureRegion(&ModernFeatures{seed: tc.WorldSeed, source: source}, c, target, &world.GenerationResult{})
 			region.SetOrigin(target[0], target[1])
-			var random java26.Random
+			var random vanilla.Random
 			if tc.Algorithm == "legacy" {
-				random = java26.NewLegacyRandom(tc.Seed)
+				random = vanilla.NewLegacyRandom(tc.Seed)
 			} else {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			overlayProcessors := fixture.Config.Coal
 			if tc.Scenario == "diamonds" {
@@ -177,7 +177,7 @@ func TestFossilMatchesJava263SourceFixtures(t *testing.T) {
 			}
 			gotStates := make([]string, 0, region.overlay.len())
 			for p, state := range region.overlayByPos() {
-				js, err := world.JavaState(world.DefaultBlockRegistry, state)
+				js, err := world.CanonicalState(world.DefaultBlockRegistry, state)
 				if err != nil {
 					t.Fatal(err)
 				}

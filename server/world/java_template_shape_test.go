@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -18,9 +18,9 @@ func TestTemplateShapeGrowthUsesBoundaryOrder(t *testing.T) {
 			positions[0]: javaDefault("kelp_plant"),
 			positions[1]: javaDefault("kelp_plant"),
 		},
-		random: java26.NewLegacyRandom(0),
+		random: vanilla.NewLegacyRandom(0),
 	}
-	UpdateJavaTemplateShapes(&region, positions, 2)
+	UpdateTemplateShapes(&region, positions, 2)
 	for i, age := range []int32{23, 10} {
 		state := region.states[positions[i]]
 		if javaName(state) != "kelp" || javaInt(state, "age") != age {
@@ -47,7 +47,7 @@ func TestTemplateShapeGrowthUsesBoundaryOrder(t *testing.T) {
 
 type templateShapeFixture struct {
 	states     map[cube.Pos]uint32
-	random     java26.Random
+	random     vanilla.Random
 	ticks      GenerationResult
 	scheduled  []fixtureScheduledTick
 	writes     []shapeWrite
@@ -67,31 +67,31 @@ type shapeWrite struct {
 	flags int
 }
 
-func (r *templateShapeFixture) JavaBlockStateID(pos cube.Pos) (uint32, error) {
+func (r *templateShapeFixture) BlockStateID(pos cube.Pos) (uint32, error) {
 	if state, ok := r.states[pos]; ok {
 		return state, nil
 	}
 	return javaDefault("air"), nil
 }
-func (*templateShapeFixture) Range() cube.Range            { return cube.Range{0, 255} }
-func (r *templateShapeFixture) JavaRandom() *java26.Random { return &r.random }
-func (*templateShapeFixture) Light(cube.Pos) uint8         { panic("unexpected light query") }
-func (*templateShapeFixture) JavaFluidTickDelay(name string) int32 {
+func (*templateShapeFixture) Range() cube.Range               { return cube.Range{0, 255} }
+func (r *templateShapeFixture) RegionRandom() *vanilla.Random { return &r.random }
+func (*templateShapeFixture) Light(cube.Pos) uint8            { panic("unexpected light query") }
+func (*templateShapeFixture) FluidTickDelay(name string) int32 {
 	if name != "minecraft:water" {
 		panic("unexpected fluid " + name)
 	}
 	return 5
 }
-func (r *templateShapeFixture) ScheduleJavaTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32) {
+func (r *templateShapeFixture) ScheduleTick(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32) {
 	r.scheduled = append(r.scheduled, fixtureScheduledTick{pos: pos, kind: kind, name: name, delay: delay})
 	r.ticks.ScheduleTick(chunk.ScheduledTick{Pos: pos, Kind: kind, Type: name})
 }
-func (r *templateShapeFixture) HasJavaBlockTick(pos cube.Pos, name string) bool {
+func (r *templateShapeFixture) HasBlockTick(pos cube.Pos, name string) bool {
 	return r.ticks.HasScheduledTick(pos, chunk.BlockTick, name)
 }
-func (*templateShapeFixture) JavaSignal(cube.Pos, cube.Face) int { panic("unexpected signal query") }
-func (*templateShapeFixture) JavaHiveHasOccupants(cube.Pos) bool { panic("unexpected hive query") }
-func (r *templateShapeFixture) SetJavaBlockState(pos cube.Pos, state uint32, flags int) bool {
+func (*templateShapeFixture) Signal(cube.Pos, cube.Face) int { panic("unexpected signal query") }
+func (*templateShapeFixture) HiveHasOccupants(cube.Pos) bool { panic("unexpected hive query") }
+func (r *templateShapeFixture) SetBlockState(pos cube.Pos, state uint32, flags int) bool {
 	r.writes = append(r.writes, shapeWrite{pos: pos, state: state, flags: flags})
 	if r.rejections[pos] {
 		return false
@@ -103,7 +103,7 @@ func (r *templateShapeFixture) SetJavaBlockState(pos cube.Pos, state uint32, fla
 func TestSimpleBlockPlacementDoublePlantOccupancyAndWaterlogging(t *testing.T) {
 	pos := cube.Pos{8, 64, 8}
 	stone := javaDefault("clay")
-	plant, err := javadata.BlockStateID("minecraft:small_dripleaf", map[string]any{
+	plant, err := gamedata.BlockStateID("minecraft:small_dripleaf", map[string]any{
 		"half": "lower", "waterlogged": true, "facing": "north",
 	})
 	if err != nil {
@@ -115,9 +115,9 @@ func TestSimpleBlockPlacementDoublePlantOccupancyAndWaterlogging(t *testing.T) {
 			pos.Side(cube.FaceDown): stone,
 			pos.Side(cube.FaceUp):   water,
 		},
-		random: java26.NewLegacyRandom(0),
+		random: vanilla.NewLegacyRandom(0),
 	}
-	if !PlaceJavaGenerationSimpleBlock(&region, plant, pos, false) {
+	if !PlaceGenerationSimpleBlock(&region, plant, pos, false) {
 		t.Fatal("matching water fluid did not permit double-plant placement")
 	}
 	if got := region.states[pos]; javaName(got) != "small_dripleaf" || javaString(got, "half") != "lower" || javaBool(got, "waterlogged") {
@@ -136,7 +136,7 @@ func TestSimpleBlockPlacementDoublePlantOccupancyAndWaterlogging(t *testing.T) {
 		pos:                     javaDefault("air"),
 		pos.Side(cube.FaceUp):   javaDefault("lava"),
 	}}
-	if PlaceJavaGenerationSimpleBlock(&region, plant, pos, false) || len(region.writes) != 0 {
+	if PlaceGenerationSimpleBlock(&region, plant, pos, false) || len(region.writes) != 0 {
 		t.Fatal("mismatched upper fluid was accepted or wrote blocks")
 	}
 }
@@ -147,7 +147,7 @@ func TestSimpleBlockPlacementRejectsBlockedDoublePlantTop(t *testing.T) {
 		pos.Side(cube.FaceDown): javaDefault("dirt"),
 		pos.Side(cube.FaceUp):   javaDefault("stone"),
 	}}
-	if PlaceJavaGenerationSimpleBlock(&region, javaDefault("sunflower"), pos, false) {
+	if PlaceGenerationSimpleBlock(&region, javaDefault("sunflower"), pos, false) {
 		t.Fatal("double plant placed through non-replaceable top block")
 	}
 	if len(region.writes) != 0 {
@@ -162,9 +162,9 @@ func TestSimpleBlockMossCarpetDoesNotTopAnExistingBase(t *testing.T) {
 			pos.Side(cube.FaceDown): javaDefault("stone"),
 			pos.Side(cube.FaceUp):   javaDefault("pale_moss_carpet"),
 		},
-		random: java26.NewLegacyRandom(0),
+		random: vanilla.NewLegacyRandom(0),
 	}
-	if !PlaceJavaGenerationSimpleBlock(&region, javaDefault("pale_moss_carpet"), pos, false) {
+	if !PlaceGenerationSimpleBlock(&region, javaDefault("pale_moss_carpet"), pos, false) {
 		t.Fatal("supported moss carpet placement failed")
 	}
 	if len(region.writes) != 1 || region.writes[0].pos != pos {
@@ -183,9 +183,9 @@ func TestSimpleBlockPlacementUsesRegionRandomAndSchedulesCurrentBlock(t *testing
 			pos.Side(cube.FaceEast):                   javaDefault("stone"),
 			pos.Side(cube.FaceEast).Side(cube.FaceUp): javaDefault("stone"),
 		},
-		random: java26.NewLegacyRandom(0),
+		random: vanilla.NewLegacyRandom(0),
 	}
-	if !PlaceJavaGenerationSimpleBlock(&region, javaDefault("pale_moss_carpet"), pos, true) {
+	if !PlaceGenerationSimpleBlock(&region, javaDefault("pale_moss_carpet"), pos, true) {
 		t.Fatal("supported moss carpet placement failed")
 	}
 	if len(region.writes) < 2 || region.writes[0].pos != pos || region.writes[0].flags != 2 || region.writes[1].pos != pos.Side(cube.FaceUp) || region.writes[1].flags != 2 {
@@ -213,12 +213,12 @@ func TestSimpleBlockPlacementReturnsTrueWhenSetIsRejected(t *testing.T) {
 	region := templateShapeFixture{
 		states:     map[cube.Pos]uint32{},
 		rejections: map[cube.Pos]bool{pos: true},
-		random:     java26.NewLegacyRandom(0),
+		random:     vanilla.NewLegacyRandom(0),
 	}
-	if !PlaceJavaGenerationSimpleBlock(&region, javaDefault("stone"), pos, true) {
+	if !PlaceGenerationSimpleBlock(&region, javaDefault("stone"), pos, true) {
 		t.Fatal("valid feature returned false after setBlock rejection")
 	}
-	current, _ := region.JavaBlockStateID(pos)
+	current, _ := region.BlockStateID(pos)
 	if current != javaDefault("air") {
 		t.Fatalf("rejected block write changed origin to %s", javaName(current))
 	}

@@ -9,8 +9,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -93,7 +93,7 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 			body, ok = equipment["minecraft:body"].(map[string]any)
 		}
 		if ok {
-			stack, err := item.StackFromJavaNBT(body)
+			stack, err := item.StackFromStructureNBT(body)
 			if err == nil {
 				if armor, ok := stack.Item().(item.WolfArmor); ok {
 					c.BodyArmor, c.bodyArmorStack = armor, stack
@@ -176,7 +176,7 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 		delete(javaState, "Owner")
 	}
 	if !b.bodyArmor.Empty() {
-		if armor, err := item.StackToJavaNBT(b.bodyArmor); err == nil {
+		if armor, err := item.StackToStructureNBT(b.bodyArmor); err == nil {
 			javaState["equipment"] = map[string]any{"body": armor}
 		}
 	} else {
@@ -673,7 +673,7 @@ func (w *Wolf) die(src world.DamageSource) {
 }
 
 // FinalizeSpawn selects a shared sound variant for members of the same pack.
-func (w *Wolf) FinalizeSpawn(_ string, random *java26.Random) {
+func (w *Wolf) FinalizeSpawn(_ string, random *vanilla.Random) {
 	if random == nil {
 		return
 	}

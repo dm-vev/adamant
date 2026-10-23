@@ -7,8 +7,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -226,7 +226,7 @@ func decodeOceanStack(equipment map[string]any, slot string) item.Stack {
 	if !ok {
 		return item.Stack{}
 	}
-	stack, _ := item.StackFromJavaNBT(raw)
+	stack, _ := item.StackFromStructureNBT(raw)
 	return stack
 }
 func oceanNumber(value any) float64 { v, _ := oceanFloat(value); return v }
@@ -670,7 +670,7 @@ func (b *oceanBehaviour) wander(e *Ent, tx *world.Tx, accel float64) {
 	}
 	if b.nextWander == 0 {
 		seed := int64(e.Position()[0]*341873128712+e.Position()[1]*132897987541+e.Position()[2]*42317861) + int64(b.age)
-		r := java26.NewXoroshiroRandom(seed)
+		r := vanilla.NewXoroshiroRandom(seed)
 		b.nextWander = 40 + int(r.NextInt(81))
 		b.swim = mgl64.Vec3{float64(r.NextDouble())*2 - 1, float64(r.NextDouble()) - .5, float64(r.NextDouble())*2 - 1}
 		if _, inWater := tx.Liquid(cube.PosFromVec3(e.Position())); !inWater {
@@ -735,7 +735,7 @@ func (b *oceanBehaviour) pathToward(e *Ent, tx *world.Tx, target mgl64.Vec3) boo
 	b.navigator.Path = nil
 	return false
 }
-func (m *oceanMob) FinalizeSpawn(reason string, random *java26.Random) {
+func (m *oceanMob) FinalizeSpawn(reason string, random *vanilla.Random) {
 	b := m.b()
 	if b.kind == oceanZombieNautilus {
 		biome := m.tx.Biome(cube.PosFromVec3(m.Position()))
@@ -903,7 +903,7 @@ func dropMobEquipment(tx *world.Tx, e world.Entity, stack item.Stack, chance flo
 	if oceanStackEnchantmentLevel(stack, "Curse of Vanishing", "minecraft:vanishing_curse") > 0 {
 		return
 	}
-	random := e.H().JavaRandom()
+	random := e.H().RegionRandom()
 	if random.NextFloat() >= oceanEquipmentDropChance(chance, looting) {
 		return
 	}
@@ -1103,7 +1103,7 @@ func (m *oceanMob) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) 
 		case item.Cod:
 			if !b.tamed && !it.Cooked {
 				ctx.SubtractFromCount(1)
-				r := java26.NewXoroshiroRandom(int64(m.Position()[0]*341873128712+m.Position()[2]*132897987541) + int64(b.age))
+				r := vanilla.NewXoroshiroRandom(int64(m.Position()[0]*341873128712+m.Position()[2]*132897987541) + int64(b.age))
 				if r.NextInt(3) == 0 {
 					b.tamed = true
 					b.health.SetMaxHealth(30)
@@ -1114,7 +1114,7 @@ func (m *oceanMob) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) 
 		case item.Salmon:
 			if !b.tamed && !it.Cooked {
 				ctx.SubtractFromCount(1)
-				r := java26.NewXoroshiroRandom(int64(m.Position()[0]*341873128712+m.Position()[2]*132897987541) + int64(b.age))
+				r := vanilla.NewXoroshiroRandom(int64(m.Position()[0]*341873128712+m.Position()[2]*132897987541) + int64(b.age))
 				if r.NextInt(3) == 0 {
 					b.tamed = true
 					b.health.SetMaxHealth(30)
@@ -1125,7 +1125,7 @@ func (m *oceanMob) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) 
 		case item.Pufferfish:
 			if !b.tamed {
 				ctx.SubtractFromCount(1)
-				r := java26.NewXoroshiroRandom(int64(m.Position()[0]*341873128712+m.Position()[2]*132897987541) + int64(b.age))
+				r := vanilla.NewXoroshiroRandom(int64(m.Position()[0]*341873128712+m.Position()[2]*132897987541) + int64(b.age))
 				if r.NextInt(3) == 0 {
 					b.tamed = true
 					b.health.SetMaxHealth(30)

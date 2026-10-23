@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/javanbt"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/scoreboard"
@@ -419,7 +419,7 @@ func parseSelector(text string, src Source, tx *world.Tx) (*entitySelector, erro
 					return false
 				}
 				if isTag {
-					in, err := javadata.EntityTypeTagContains(id, loot.JavaEntityID(e))
+					in, err := gamedata.EntityTypeTagContains(id, loot.JavaEntityID(e))
 					return err == nil && in
 				}
 				return e.H().Type().EncodeEntity() == id || loot.JavaEntityID(e) == id

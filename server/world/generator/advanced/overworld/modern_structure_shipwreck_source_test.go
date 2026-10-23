@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type shipwreckConstructorFixture struct {
@@ -26,7 +26,7 @@ type shipwreckConstructorFixture struct {
 	NextLong         string   `json:"next_long"`
 }
 
-func TestShipwreckConstructorMatchesJava263(t *testing.T) {
+func TestShipwreckConstructorMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_shipwreck_constructor.json")
 	if err != nil {
 		t.Fatal(err)
@@ -38,20 +38,20 @@ func TestShipwreckConstructorMatchesJava263(t *testing.T) {
 	for _, fixture := range fixtures {
 		fixture := fixture
 		t.Run(fixture.Template+"/"+strconv.FormatInt(fixture.Seed, 10), func(t *testing.T) {
-			structure := "shipwreck"
+			structureName := "shipwreck"
 			biome := "ocean"
 			if fixture.Beached {
-				structure, biome = "shipwreck_beached", "beach"
+				structureName, biome = "shipwreck_beached", "beach"
 			}
-			config, err := javadata.LoadJSON("structure", structure)
+			config, err := gamedata.LoadJSON("structure", structureName)
 			if err != nil {
 				t.Fatal(err)
 			}
-			random := java26.NewLegacyRandom(fixture.Seed)
+			random := vanilla.NewLegacyRandom(fixture.Seed)
 			start, valid, err := buildModernShipwreck(modernStructureBuildInput{
-				seed: fixture.Seed, name: "minecraft:" + structure, chunkX: -3, chunkZ: 5,
+				seed: fixture.Seed, name: "minecraft:" + structureName, chunkX: -3, chunkZ: 5,
 				config: config, random: &random,
-				source: surfaceSourceTerrain{fixture: surfaceSourceCase{Structure: structure, Biome: biome, Scenario: "valid", Height: 67, Chunk: [2]int32{-3, 5}}},
+				source: surfaceSourceTerrain{fixture: surfaceSourceCase{Structure: structureName, Biome: biome, Scenario: "valid", Height: 67, Chunk: [2]int32{-3, 5}}},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -60,8 +60,8 @@ func TestShipwreckConstructorMatchesJava263(t *testing.T) {
 				t.Fatalf("start valid=%v pieces=%d", valid, len(start.pieces))
 			}
 			piece := start.pieces[0].(*modernShipwreckPiece)
-			wantBox := javastructure.Box{Min: [3]int32{fixture.RawBox[0], fixture.RawBox[1], fixture.RawBox[2]}, Max: [3]int32{fixture.RawBox[3], fixture.RawBox[4], fixture.RawBox[5]}}
-			if piece.templateName != strings.TrimPrefix(fixture.Template, "minecraft:") || piece.template.Size != fixture.Size || piece.origin != fixture.TemplatePosition || piece.rotation != javastructure.Rotation(fixture.Rotation) || piece.Bounds() != wantBox || start.box != wantBox {
+			wantBox := structure.Box{Min: [3]int32{fixture.RawBox[0], fixture.RawBox[1], fixture.RawBox[2]}, Max: [3]int32{fixture.RawBox[3], fixture.RawBox[4], fixture.RawBox[5]}}
+			if piece.templateName != strings.TrimPrefix(fixture.Template, "minecraft:") || piece.template.Size != fixture.Size || piece.origin != fixture.TemplatePosition || piece.rotation != structure.Rotation(fixture.Rotation) || piece.Bounds() != wantBox || start.box != wantBox {
 				t.Fatalf("constructed template size=%v TP=%v rotation=%d pieceBox=%v startBox=%v; Java size=%v TP=%v rotation=%d box=%v", piece.template.Size, piece.origin, piece.rotation, piece.Bounds(), start.box, fixture.Size, fixture.TemplatePosition, fixture.Rotation, wantBox)
 			}
 			if piece.heightAdjusted || piece.oversized {
@@ -125,25 +125,25 @@ func TestShipwreckMarkerLootUsesAppliedNativeActor(t *testing.T) {
 	features := &ModernFeatures{source: terrain}
 	region := newFeatureRegion(features, c, world.ChunkPos{-3, 5}, result)
 	region.SetOrigin(-3, 5)
-	template, err := javastructure.Load("shipwreck/with_mast")
+	template, err := structure.Load("shipwreck/with_mast")
 	if err != nil {
 		t.Fatal(err)
 	}
 	piece := modernShipwreckPiece{
 		template: template, templateName: "shipwreck/with_mast", origin: [3]int32{-48, 90, 80},
-		box:      javastructure.Box{Min: [3]int32{-48, 90, 80}, Max: [3]int32{-40, 110, 107}},
-		rotation: javastructure.Rotation(0),
+		box:      structure.Box{Min: [3]int32{-48, 90, 80}, Max: [3]int32{-40, 110, 107}},
+		rotation: structure.Rotation(0),
 	}
-	state := &javastructure.StructurePieceState{}
-	random := java26.NewLegacyRandom(123456789)
-	env := javastructure.ProcessorEnvironment{
+	state := &structure.StructurePieceState{}
+	random := vanilla.NewLegacyRandom(123456789)
+	env := structure.ProcessorEnvironment{
 		BaseHeight: terrain.BaseHeight, Range: c.Range(), Random: &random, PieceState: state,
 		HasChestBlockEntity: func(x, y, z int32) bool { return region.hasChestBlockEntity(cube.Pos{int(x), int(y), int(z)}) },
 		SetBlockEntityLootTable: func(x, y, z int32, table string, seed int64) {
 			region.setBlockEntityLootTable(cube.Pos{int(x), int(y), int(z)}, table, seed)
 		},
 	}
-	clips := [...]javastructure.Bounds{
+	clips := [...]structure.Bounds{
 		{Min: [3]int32{-48, 56, 80}, Max: [3]int32{-44, 56, 107}},
 		{Min: [3]int32{-48, -64, 80}, Max: [3]int32{-44, 55, 107}},
 		{Min: [3]int32{-48, 56, 80}, Max: [3]int32{-44, 56, 107}},
@@ -154,7 +154,7 @@ func TestShipwreckMarkerLootUsesAppliedNativeActor(t *testing.T) {
 			t.Fatal(err)
 		}
 		features.applyStructurePlacement(region, placement)
-		if err := piece.AfterTemplatePlacement(clip, env, func(post javastructure.Placement) { features.applyStructurePlacement(region, post) }); err != nil {
+		if err := piece.AfterTemplatePlacement(clip, env, func(post structure.Placement) { features.applyStructurePlacement(region, post) }); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -67,7 +67,7 @@ func endSourceBlockHash(t *testing.T, c *chunk.Chunk) string {
 				}
 				encoded, ok := cache[state]
 				if !ok {
-					source, err := world.JavaState(registry, state)
+					source, err := world.CanonicalState(registry, state)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -99,7 +99,7 @@ func endSourceBlockHash(t *testing.T, c *chunk.Chunk) string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-func TestEndDecorationMatchesJava263(t *testing.T) {
+func TestEndDecorationMatchesReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_decoration.json")
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func TestEndRawTerrainMatchesJava263(t *testing.T) {
+func TestEndRawTerrainMatchesReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_raw_terrain.json")
 	if err != nil {
@@ -93,7 +93,7 @@ func TestEndRawTerrainMatchesJava263(t *testing.T) {
 			g = NewEnd(row.Seed)
 			generators[row.Seed] = g
 		}
-		if got := g.javaNoiseBiomeAt(row.QuartX, row.QuartY, row.QuartZ); got != row.Biome {
+		if got := g.noiseBiomeAt(row.QuartX, row.QuartY, row.QuartZ); got != row.Biome {
 			t.Fatalf("seed=%d quart=(%d,%d,%d): biome=%s want=%s", row.Seed, row.QuartX, row.QuartY, row.QuartZ, got, row.Biome)
 		}
 	}

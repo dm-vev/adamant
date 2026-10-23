@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -55,7 +55,7 @@ type randomPosMob struct {
 	pos     mgl64.Vec3
 	home    mobHome
 	profile GroundProfile
-	random  *java26.Random
+	random  *vanilla.Random
 	// weight is the mob's getWalkTargetValue. Without one every position
 	// weighs the same, as for PathfinderMob.
 	weight func(cube.Pos) float64
@@ -65,7 +65,7 @@ type randomPosMob struct {
 // source and, for animals, Animal's preference for grass and light.
 func newRandomPosMob(e *Ent, tx *world.Tx) randomPosMob {
 	box := e.H().Type().BBox(e)
-	random := java26.NewLegacyRandom(rand.Int64())
+	random := vanilla.NewLegacyRandom(rand.Int64())
 	m := randomPosMob{tx: tx, pos: e.data.Pos, home: noHome, profile: GroundProfile{Width: box.Width(), Height: box.Height()}, random: &random}
 	if full, ok := e.H().Entity(tx); ok {
 		if _, animal := full.(breeder); animal {

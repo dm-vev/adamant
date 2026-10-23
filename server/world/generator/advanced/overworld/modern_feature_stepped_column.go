@@ -1,6 +1,6 @@
 package overworld
 
-import java26 "github.com/df-mc/dragonfly/server/internal/java26"
+import vanilla "github.com/df-mc/dragonfly/server/internal/vanilla"
 
 type steppedColumnCluster struct {
 	region                      *featureRegion
@@ -8,7 +8,7 @@ type steppedColumnCluster struct {
 	canReplace, continueThrough map[string]any
 }
 
-func placeModernSteppedColumnCluster(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernSteppedColumnCluster(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	cluster := steppedColumnCluster{
 		region: region, block: config["block"], cannotPlaceOn: config["cannot_place_on"],
 		canReplace: config["can_replace"].(map[string]any), continueThrough: config["continue_through"].(map[string]any),
@@ -16,9 +16,9 @@ func placeModernSteppedColumnCluster(region *featureRegion, config map[string]an
 	if !cluster.canPlaceAt(origin) {
 		return false
 	}
-	height := sampleJavaInt(config["height"], random)
-	reach := min(height, sampleJavaInt(config["cluster_reach"], random))
-	count := sampleJavaInt(config["column_count"], random)
+	height := sampleInt(config["height"], random)
+	reach := min(height, sampleInt(config["cluster_reach"], random))
+	count := sampleInt(config["column_count"], random)
 	placed := false
 	for range count {
 		// randomBetweenClosed draws X, Y and Z, including the constant Y draw.
@@ -27,7 +27,7 @@ func placeModernSteppedColumnCluster(region *featureRegion, config map[string]an
 		if columnHeight < 0 {
 			continue
 		}
-		columnReach := sampleJavaInt(config["column_reach"], random)
+		columnReach := sampleInt(config["column_reach"], random)
 		placed = cluster.placeColumn(p, columnHeight, columnReach, random) || placed
 	}
 	return placed
@@ -42,7 +42,7 @@ func (c *steppedColumnCluster) canPlaceAt(p featurePos) bool {
 	return !treeIsAirName(name) && !featureBlockHolderContains(c.cannotPlaceOn, name)
 }
 
-func (c *steppedColumnCluster) placeColumn(origin featurePos, height, reach int32, random *java26.Random) bool {
+func (c *steppedColumnCluster) placeColumn(origin featurePos, height, reach int32, random *vanilla.Random) bool {
 	placed := false
 	for dz := -reach; dz <= reach; dz++ {
 		for dx := -reach; dx <= reach; dx++ {

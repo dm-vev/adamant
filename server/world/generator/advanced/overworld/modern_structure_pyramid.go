@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"sort"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("desert_pyramid", buildModernDesertPyramid) }
 
 type modernDesertPyramid struct {
-	box javastructure.Box
+	box structure.Box
 	dir int
 }
 
-func (p modernDesertPyramid) Bounds() javastructure.Box { return p.box }
+func (p modernDesertPyramid) Bounds() structure.Box { return p.box }
 
 func (p modernDesertPyramid) pos(x, y, z int32) [3]int32 {
 	b := p.box
@@ -32,12 +32,12 @@ func (p modernDesertPyramid) pos(x, y, z int32) [3]int32 {
 	}
 }
 
-func (p modernDesertPyramid) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
-	out := javastructure.Placement{Blocks: make([]javastructure.Block, 0, 12000)}
+func (p modernDesertPyramid) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
+	out := structure.Placement{Blocks: make([]structure.Block, 0, 12000)}
 	if env.Random == nil || env.LevelRandom == nil || env.MotionBlockingNoLeavesHeight == nil {
 		return out, fmt.Errorf("desert pyramid requires source placement, level random, and live heightmap")
 	}
-	var detached javastructure.StructurePieceState
+	var detached structure.StructurePieceState
 	if env.PieceState == nil {
 		env.PieceState = &detached
 	}
@@ -341,7 +341,7 @@ func (p modernDesertPyramid) Place(clip javastructure.Bounds, env javastructure.
 		}
 	}
 	roofOrigin := p.pos(14, 0, 11)
-	roofSeed := java26.NewLegacyRandom(env.WorldSeed)
+	roofSeed := vanilla.NewLegacyRandom(env.WorldSeed)
 	roofRandom := roofSeed.ForkPositional().At(roofOrigin[0], roofOrigin[1], roofOrigin[2])
 	roofX, roofZ := int32(14)+roofRandom.NextInt(5), int32(11)+roofRandom.NextInt(5)
 	flags.Pyramid.RoofPosition = p.pos(roofX, 0, roofZ)
@@ -376,27 +376,27 @@ func (p modernDesertPyramid) Place(clip javastructure.Bounds, env javastructure.
 	place(16, -2, 9, "chiseled_sandstone", nil)
 	return out, nil
 }
-func clonePyramidRuntime(state *javastructure.PyramidPieceRuntimeState) *javastructure.PyramidPieceRuntimeState {
+func clonePyramidRuntime(state *structure.PyramidPieceRuntimeState) *structure.PyramidPieceRuntimeState {
 	if state == nil {
-		return &javastructure.PyramidPieceRuntimeState{SandPositions: make([][3]int32, 0, 83)}
+		return &structure.PyramidPieceRuntimeState{SandPositions: make([][3]int32, 0, 83)}
 	}
 	positions := make([][3]int32, len(state.SandPositions), len(state.SandPositions)+83)
 	copy(positions, state.SandPositions)
-	return &javastructure.PyramidPieceRuntimeState{
+	return &structure.PyramidPieceRuntimeState{
 		SandPositions: positions,
 		RoofPosition:  state.RoofPosition,
 	}
 }
 
-func (p modernDesertPyramid) AfterPlace(clip javastructure.Bounds, env javastructure.ProcessorEnvironment, piecesBox javastructure.Box) (javastructure.Placement, error) {
-	out := javastructure.Placement{}
-	var empty javastructure.PyramidPieceRuntimeState
+func (p modernDesertPyramid) AfterPlace(clip structure.Bounds, env structure.ProcessorEnvironment, piecesBox structure.Box) (structure.Placement, error) {
+	out := structure.Placement{}
+	var empty structure.PyramidPieceRuntimeState
 	runtime := &empty
 	if env.PieceState != nil && env.PieceState.Pyramid != nil {
 		runtime = env.PieceState.Pyramid
 	}
 	journal := newJournalStructureWorld(env, clip, &out)
-	positionalSeed := java26.NewLegacyRandom(env.WorldSeed)
+	positionalSeed := vanilla.NewLegacyRandom(env.WorldSeed)
 	positional := positionalSeed.ForkPositional().At(
 		(piecesBox.Min[0]+piecesBox.Max[0])/2,
 		(piecesBox.Min[1]+piecesBox.Max[1])/2,
@@ -462,7 +462,7 @@ func buildModernDesertPyramid(in modernStructureBuildInput) (modernStructureStar
 	}
 	x, z := in.chunkX*16, in.chunkZ*16
 	direction := int(in.random.NextInt(4))
-	box := javastructure.Box{Min: [3]int32{x, 64, z}, Max: [3]int32{x + 20, 78, z + 20}}
+	box := structure.Box{Min: [3]int32{x, 64, z}, Max: [3]int32{x + 20, 78, z + 20}}
 	piece := modernDesertPyramid{box: box, dir: direction}
 	return modernStructureStart{name: in.name, pieces: []modernStructurePiece{piece}, box: box, terrain: terrainAdjustment(stringValue(in.config["terrain_adaptation"]))}, true, nil
 }

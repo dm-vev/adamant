@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func init() { registerModernStructureBuilder("swamp_hut", buildModernSwampHut) }
@@ -15,15 +15,15 @@ const (
 )
 
 type modernSwampHutPiece struct {
-	box       javastructure.Box
+	box       structure.Box
 	direction string
 	seed      int64
 }
 
-func (p modernSwampHutPiece) Bounds() javastructure.Box { return p.box }
-func (p modernSwampHutPiece) Place(clip javastructure.Bounds, env javastructure.ProcessorEnvironment) (javastructure.Placement, error) {
-	out := javastructure.Placement{}
-	var temporary javastructure.StructurePieceState
+func (p modernSwampHutPiece) Bounds() structure.Box { return p.box }
+func (p modernSwampHutPiece) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
+	out := structure.Placement{}
+	var temporary structure.StructurePieceState
 	if env.PieceState == nil {
 		env.PieceState = &temporary
 	}
@@ -100,7 +100,7 @@ func (p modernSwampHutPiece) Place(clip javastructure.Bounds, env javastructure.
 		}
 		if flags.EntitiesSpawned&swampHutWitch == 0 {
 			flags.EntitiesSpawned |= swampHutWitch
-			out.Entities = append(out.Entities, javastructure.Entity{
+			out.Entities = append(out.Entities, structure.Entity{
 				Pos: [3]float64{float64(pos[0]) + 0.5, float64(pos[1]), float64(pos[2]) + 0.5}, BlockPos: pos, Seed: p.seed,
 				NBT: scatteredMobSpawnNBT("minecraft:witch", 26, env.LevelRandom),
 			})
@@ -113,7 +113,7 @@ func (p modernSwampHutPiece) Place(clip javastructure.Bounds, env javastructure.
 			env.LevelRandom.NextInt(1)
 			sound := [2]string{"minecraft:classic", "minecraft:royal"}[env.LevelRandom.NextInt(2)]
 			data["variant"], data["sound_variant"], data["CollarColor"] = "minecraft:all_black", sound, int32(14)
-			out.Entities = append(out.Entities, javastructure.Entity{
+			out.Entities = append(out.Entities, structure.Entity{
 				Pos: [3]float64{float64(pos[0]) + 0.5, float64(pos[1]), float64(pos[2]) + 0.5}, BlockPos: pos, Seed: p.seed,
 				NBT: data,
 			})
@@ -154,7 +154,7 @@ func buildModernSwampHut(in modernStructureBuildInput) (modernStructureStart, bo
 	if direction == "east" || direction == "west" {
 		width, depth = depth, width
 	}
-	box := javastructure.Box{Min: [3]int32{minX, 64, minZ}, Max: [3]int32{minX + width - 1, 70, minZ + depth - 1}}
+	box := structure.Box{Min: [3]int32{minX, 64, minZ}, Max: [3]int32{minX + width - 1, 70, minZ + depth - 1}}
 	piece := modernSwampHutPiece{box: box, direction: direction, seed: in.seed}
 	return modernStructureStart{name: in.name, pieces: []modernStructurePiece{piece}, box: box, terrain: terrainAdjustment(stringValue(in.config["terrain_adaptation"]))}, true, nil
 }

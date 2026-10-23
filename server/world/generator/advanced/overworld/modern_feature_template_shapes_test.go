@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func TestTemplatePlacementUpdatesBoundaryShape(t *testing.T) {
@@ -31,15 +31,15 @@ func TestTemplatePlacementUpdatesBoundaryShape(t *testing.T) {
 				t.Fatal(err)
 			}
 			region.Set(east, state)
-			template := javastructure.Template{Size: [3]int32{1, 1, 1}, Palettes: [][]javastructure.Block{{{State: world.BlockState{Name: placed}}}}}
-			placement, err := template.Place(0, [3]int32{pos.x, pos.y, pos.z}, javastructure.None, javastructure.NoMirror, javastructure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 17)
+			template := structure.Template{Size: [3]int32{1, 1, 1}, Palettes: [][]structure.Block{{{State: world.BlockState{Name: placed}}}}}
+			placement, err := template.Place(0, [3]int32{pos.x, pos.y, pos.z}, structure.None, structure.NoMirror, structure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 17)
 			if err != nil {
 				t.Fatal(err)
 			}
 			placement.TemplateUpdateFlags = 3
 			placement.TemplateKnownShape = false
 			region.f.applyStructurePlacement(region, placement)
-			got, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(check))
+			got, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(check))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,18 +67,18 @@ func TestTemplateKnownShapeIsIndependentOfUpdateFlags(t *testing.T) {
 				t.Fatal(err)
 			}
 			region.Set(east, state)
-			template := javastructure.Template{
+			template := structure.Template{
 				Size:     [3]int32{1, 1, 1},
-				Palettes: [][]javastructure.Block{{{State: world.BlockState{Name: "minecraft:iron_bars"}}}},
+				Palettes: [][]structure.Block{{{State: world.BlockState{Name: "minecraft:iron_bars"}}}},
 			}
-			placement, err := template.Place(0, [3]int32{pos.x, pos.y, pos.z}, javastructure.None, javastructure.NoMirror, javastructure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 17)
+			placement, err := template.Place(0, [3]int32{pos.x, pos.y, pos.z}, structure.None, structure.NoMirror, structure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 17)
 			if err != nil {
 				t.Fatal(err)
 			}
 			placement.TemplateUpdateFlags = tc.flags
 			placement.TemplateKnownShape = tc.knownShape
 			region.f.applyStructurePlacement(region, placement)
-			got, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(pos))
+			got, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(pos))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -91,9 +91,9 @@ func TestTemplateKnownShapeIsIndependentOfUpdateFlags(t *testing.T) {
 func TestTemplateChestShapeRefreshesInventoryPayload(t *testing.T) {
 	region := templateFluidTestRegion()
 	pos := [3]int32{8, 64, 8}
-	template := javastructure.Template{
+	template := structure.Template{
 		Size: [3]int32{1, 1, 1},
-		Palettes: [][]javastructure.Block{{
+		Palettes: [][]structure.Block{{
 			{
 				State: world.BlockState{Name: "minecraft:chest", Properties: map[string]any{
 					"facing": "north", "type": "left", "waterlogged": false,
@@ -106,8 +106,8 @@ func TestTemplateChestShapeRefreshesInventoryPayload(t *testing.T) {
 			},
 		}},
 	}
-	placement, err := template.Place(0, pos, javastructure.None, javastructure.NoMirror,
-		javastructure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 17)
+	placement, err := template.Place(0, pos, structure.None, structure.NoMirror,
+		structure.Bounds{Min: [3]int32{0, 0, 0}, Max: [3]int32{15, 255, 15}}, 17)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestTemplateChestShapeRefreshesInventoryPayload(t *testing.T) {
 	placement.TemplateKnownShape = false
 	region.f.applyStructurePlacement(region, placement)
 
-	state, err := world.JavaState(world.DefaultBlockRegistry, region.nativeState(featurePos{pos[0], pos[1], pos[2]}))
+	state, err := world.CanonicalState(world.DefaultBlockRegistry, region.nativeState(featurePos{pos[0], pos[1], pos[2]}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestTreeLeafDistancePreservesSourceStaleBucketWrites(t *testing.T) {
 	}
 	updateModernLeafDistance(region, logs, []featurePos{near, stale}, nil, nil)
 	for pos, want := range map[featurePos]int32{near: 1, stale: 2} {
-		state, err := world.JavaState(region.c.BlockRegistry(), region.nativeState(pos))
+		state, err := world.CanonicalState(region.c.BlockRegistry(), region.nativeState(pos))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -173,7 +173,7 @@ func TestTreeLeafDistancePreservesSourceStaleBucketWrites(t *testing.T) {
 	}
 }
 
-func TestBlobFoliageCornerRowsMatchJava263(t *testing.T) {
+func TestBlobFoliageCornerRowsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_blob_corner_rows.json")
 	if err != nil {
 		t.Fatal(err)
@@ -190,9 +190,9 @@ func TestBlobFoliageCornerRowsMatchJava263(t *testing.T) {
 	for _, tc := range cases {
 		region := templateFluidTestRegion()
 		center := featurePos{8, 64, 8}
-		random := java26.NewLegacyRandom(tc.Seed)
+		random := vanilla.NewLegacyRandom(tc.Seed)
 		if tc.Xoroshiro {
-			random = java26.NewXoroshiroRandom(tc.Seed)
+			random = vanilla.NewXoroshiroRandom(tc.Seed)
 		}
 		provider := map[string]any{"id": "minecraft:oak_leaves"}
 		placed := make(map[featurePos]bool)
@@ -206,7 +206,7 @@ func TestBlobFoliageCornerRowsMatchJava263(t *testing.T) {
 			for dx := int32(-1); dx <= 1; dx++ {
 				for dz := int32(-1); dz <= 1; dz++ {
 					pos := treePos(center, dx, y, dz)
-					state, err := world.JavaState(region.c.BlockRegistry(), region.nativeState(pos))
+					state, err := world.CanonicalState(region.c.BlockRegistry(), region.nativeState(pos))
 					if err != nil {
 						t.Fatal(err)
 					}

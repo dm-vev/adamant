@@ -9,10 +9,10 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
-func TestNetherTemplateStartsJava263(t *testing.T) {
+func TestNetherTemplateStartsReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_template_starts.json")
 	if err != nil {
 		t.Fatal(err)
@@ -49,10 +49,10 @@ func TestNetherTemplateStartsJava263(t *testing.T) {
 				g = NewNether(row.Seed)
 				generators[row.Seed] = g
 			}
-			var box javastructure.Box
+			var box structure.Box
 			var origin [3]int32
-			var rotation javastructure.Rotation
-			var mirror javastructure.Mirror
+			var rotation structure.Rotation
+			var mirror structure.Mirror
 			var name string
 			valid := false
 			if row.Structure == "minecraft:nether_fossil" {

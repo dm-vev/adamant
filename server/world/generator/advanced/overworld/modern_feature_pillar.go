@@ -1,8 +1,8 @@
 package overworld
 
-import java26 "github.com/df-mc/dragonfly/server/internal/java26"
+import vanilla "github.com/df-mc/dragonfly/server/internal/vanilla"
 
-func placeModernSingleBlockPillar(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernSingleBlockPillar(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	direction := int32(1)
 	if config["direction"] == "down" {
 		direction = -1
@@ -31,8 +31,8 @@ func placeModernSingleBlockPillar(region *featureRegion, config map[string]any, 
 	return true
 }
 
-func placeModernProjectedPatchySquare(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
-	size := sampleJavaInt(config["size"], random)
+func placeModernProjectedPatchySquare(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
+	size := sampleInt(config["size"], random)
 	bound := size*size + 1
 	through := config["project_through"].(map[string]any)
 	for dx := -size; dx <= size; dx++ {
@@ -49,7 +49,7 @@ func placeModernProjectedPatchySquare(region *featureRegion, config map[string]a
 					break
 				}
 			}
-			if block, ok := sampleOptionalJavaBlockState(region, p, config["block"], random); ok {
+			if block, ok := sampleOptionalBlockState(region, p, config["block"], random); ok {
 				state, err := block.ResolveNative(region.c.BlockRegistry(), region.nativeState(p))
 				if err != nil {
 					panic(err)

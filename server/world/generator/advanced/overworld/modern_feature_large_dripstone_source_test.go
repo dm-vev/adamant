@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -58,7 +58,7 @@ func largeDripstoneBuildSourceTerrain(region *featureRegion, origin featurePos, 
 	}
 }
 
-func TestLargeDripstoneMatchesJava263Source(t *testing.T) {
+func TestLargeDripstoneMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_large_dripstone_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -122,12 +122,12 @@ func TestLargeDripstoneMatchesJava263Source(t *testing.T) {
 			for p, native := range region.overlayByPos() {
 				before[p] = native
 			}
-			var random java26.Random
+			var random vanilla.Random
 			switch test.Algorithm {
 			case "legacy":
-				random = java26.NewLegacyRandom(test.Seed)
+				random = vanilla.NewLegacyRandom(test.Seed)
 			case "xoroshiro":
-				random = java26.NewXoroshiroRandom(test.Seed)
+				random = vanilla.NewXoroshiroRandom(test.Seed)
 			default:
 				t.Fatalf("unknown RNG algorithm %q", test.Algorithm)
 			}

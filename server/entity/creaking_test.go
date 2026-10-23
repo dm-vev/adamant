@@ -6,7 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -77,11 +77,11 @@ func TestCreakingDamageRemembersResponsiblePlayer(t *testing.T) {
 func TestCreakingTeardownDoesNotAdvanceGameplayRandom(t *testing.T) {
 	w, mob, _ := creakingTestWorld(t)
 	<-w.Exec(func(tx *world.Tx) {
-		*tx.JavaRandom() = java26.NewLegacyRandom(17)
-		expected := *tx.JavaRandom()
+		*tx.RegionRandom() = vanilla.NewLegacyRandom(17)
+		expected := *tx.RegionRandom()
 		e, _ := mob.Entity(tx)
 		e.(*entity.Creaking).RemoveProtector(nil)
-		if got, want := tx.JavaRandom().NextLong(), expected.NextLong(); got != want {
+		if got, want := tx.RegionRandom().NextLong(), expected.NextLong(); got != want {
 			t.Fatalf("client-side particle sampling consumed gameplay RNG: got %d want %d", got, want)
 		}
 		if _, present := tx.EntityByUUID(mob.UUID()); present {

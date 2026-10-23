@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
@@ -90,8 +90,8 @@ func (s SculkSensor) WithPower(power int) SculkSensor {
 	return s
 }
 
-// JavaPower returns the Java signal carried by the sensor actor.
-func (s SculkSensor) JavaPower() int {
+// OutputPower returns the Java signal carried by the sensor actor.
+func (s SculkSensor) OutputPower() int {
 	if s.data == nil {
 		return 0
 	}
@@ -194,7 +194,7 @@ func (s SculkSensor) tryResonate(pos cube.Pos, tx *world.Tx, info world.Vibratio
 		target := pos.Side(face)
 		block := tx.Block(target)
 		name, _ := block.EncodeBlock()
-		resonator, err := javadata.BlockTagContains("minecraft:vibration_resonators", name)
+		resonator, err := gamedata.BlockTagContains("minecraft:vibration_resonators", name)
 		if err != nil {
 			panic(err)
 		}
@@ -238,7 +238,7 @@ func (s SculkSensor) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 		}
 	}
 }
-func (s SculkSensor) RedstonePower(_ cube.Pos, _ *world.Tx, _ cube.Face) int { return s.JavaPower() }
+func (s SculkSensor) RedstonePower(_ cube.Pos, _ *world.Tx, _ cube.Face) int { return s.OutputPower() }
 // RedstoneStrongPower ports SculkSensorBlock.getDirectSignal: the sensor
 // strongly powers the block below it.
 func (s SculkSensor) RedstoneStrongPower(_ cube.Pos, tx *world.Tx, face cube.Face) int {
@@ -426,7 +426,7 @@ func sensorWaterlogged(tx *world.Tx, pos cube.Pos) bool {
 	return ok && !water.Falling && water.Depth == 8
 }
 func sensorClickPitch(tx *world.Tx) float64 {
-	return float64(tx.JavaRandom().NextFloat()*0.2 + 0.8)
+	return float64(tx.RegionRandom().NextFloat()*0.2 + 0.8)
 }
 func clampSensorPower(power int) int         { return max(0, min(15, power)) }
 func clampSensorFrequency(frequency int) int { return max(0, min(15, frequency)) }

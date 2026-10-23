@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -174,7 +174,7 @@ func javaMechanism04ShouldConnect(c *javaShapeContext, state uint32, direction c
 		if !hasDirection {
 			return false
 		}
-		signalSource, err := javadata.BlockSignalSourceID(state)
+		signalSource, err := gamedata.BlockSignalSourceID(state)
 		if err != nil {
 			panic(err)
 		}
@@ -182,7 +182,7 @@ func javaMechanism04ShouldConnect(c *javaShapeContext, state uint32, direction c
 	}
 }
 func javaMechanism04IsRedstoneConductor(state uint32) bool {
-	conductor, err := javadata.BlockRedstoneConductorID(state)
+	conductor, err := gamedata.BlockRedstoneConductorID(state)
 	if err != nil {
 		panic(err)
 	}
@@ -217,7 +217,7 @@ func javaMechanism04RepeaterLocked(c *javaShapeContext, facing cube.Face) bool {
 			continue
 		}
 		if c.generation != nil {
-			if c.generation.JavaSignal(pos, javaMechanism04Opposite(side)) > 0 {
+			if c.generation.Signal(pos, javaMechanism04Opposite(side)) > 0 {
 				return true
 			}
 			continue

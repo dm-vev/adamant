@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/google/uuid"
 )
 
@@ -227,7 +227,7 @@ func (conf Config) New() *World {
 		entities:            make(map[*EntityHandle]*entityState),
 		entitiesByUUID:      make(map[uuid.UUID]*EntityHandle),
 		entitiesByUniqueID:  make(map[int64]*EntityHandle),
-		lootSequences:       make(map[string]*java26.Random),
+		lootSequences:       make(map[string]*vanilla.Random),
 		pois:                make(map[cube.Pos]POI),
 		raids:               make(map[int64]*Raid),
 		raidByRaider:        make(map[uuid.UUID]int64),

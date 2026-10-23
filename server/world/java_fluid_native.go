@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 // javaFluidBlock keeps canonical source states and native-only blocks distinct.
@@ -72,7 +72,7 @@ func javaFluidSet(c *javaShapeContext, pos cube.Pos, block javaFluidBlock, fluid
 // javaFluidBoundary exposes a canonical boundary or a native model's boundary
 // without copying either into a temporary rectangle slice.
 type javaFluidBoundary struct {
-	source     javadata.GenerationCollisionBoundary
+	source     gamedata.GenerationCollisionBoundary
 	boxes      []cube.BBox
 	axis, u, v int
 	positive   bool
@@ -80,7 +80,7 @@ type javaFluidBoundary struct {
 
 func javaFluidBlockBoundary(c *javaShapeContext, state javaFluidBlock, pos cube.Pos, direction int) javaFluidBoundary {
 	if state.native == nil {
-		boundary, err := javadata.GenerationCollisionBoundaryID(state.state, direction)
+		boundary, err := gamedata.GenerationCollisionBoundaryID(state.state, direction)
 		if err != nil {
 			panic(err)
 		}

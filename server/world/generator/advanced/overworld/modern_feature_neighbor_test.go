@@ -3,7 +3,7 @@ package overworld
 import (
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 func TestRandomNeighborSpreadCountsHolderSetMembers(t *testing.T) {
@@ -26,12 +26,12 @@ func TestRandomNeighborSpreadCountsHolderSetMembers(t *testing.T) {
 				"y_offset":           map[string]any{"type": "minecraft:uniform", "min_inclusive": float64(1), "max_inclusive": float64(1)},
 				"can_replace":        map[string]any{"type": "minecraft:matching_blocks", "blocks": "minecraft:air"},
 			}
-			random := java26.NewLegacyRandom(42)
+			random := vanilla.NewLegacyRandom(42)
 			placeModernRandomNeighborSpread(region, config, origin, &random)
-			if actual, _ := region.State(target); normalizeJavaResource(actual) != tc.want {
+			if actual, _ := region.State(target); normalizeResource(actual) != tc.want {
 				t.Fatalf("target=%s want=%s", actual, tc.want)
 			}
-			if actual, _ := region.State(origin); normalizeJavaResource(actual) != "nether_wart_block" {
+			if actual, _ := region.State(origin); normalizeResource(actual) != "nether_wart_block" {
 				t.Fatalf("origin=%s want=nether_wart_block", actual)
 			}
 		})

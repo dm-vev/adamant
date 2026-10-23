@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type configuredStartSource struct {
@@ -17,8 +17,8 @@ type configuredStartSource struct {
 	height int32
 }
 
-func (s configuredStartSource) JavaBiomeAt(x, y, z int32) string             { return s.biome }
-func (s configuredStartSource) JavaNoiseBiomeAt(x, y, z int32) string        { return s.biome }
+func (s configuredStartSource) BiomeAt(x, y, z int32) string                 { return s.biome }
+func (s configuredStartSource) NoiseBiomeAt(x, y, z int32) string            { return s.biome }
 func (s configuredStartSource) BaseHeight(x, z int32, oceanFloor bool) int32 { return s.height }
 
 func configuredStartSet(t *testing.T, planner *modernStructures, name string) modernStructureSet {
@@ -32,7 +32,7 @@ func configuredStartSet(t *testing.T, planner *modernStructures, name string) mo
 	return modernStructureSet{}
 }
 
-func TestConfiguredStructureStartsMatchJava(t *testing.T) {
+func TestConfiguredStructureStartsMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_structure_starts.json")
 	if err != nil {
 		t.Fatal(err)
@@ -58,8 +58,8 @@ func TestConfiguredStructureStartsMatchJava(t *testing.T) {
 	if err = json.Unmarshal(data, &input); err != nil {
 		t.Fatal(err)
 	}
-	expectedTemplates := map[string]*javastructure.Template{}
-	checked := map[*javastructure.Template]string{}
+	expectedTemplates := map[string]*structure.Template{}
+	checked := map[*structure.Template]string{}
 	for _, row := range input.Graphs {
 		t.Run(fmt.Sprintf("%s/%s/%d/%v", row.Set, row.Biome, row.Seed, row.Chunk), func(t *testing.T) {
 			// Java ChunkGenerator.createStructures, using its real flat generator,
@@ -78,7 +78,7 @@ func TestConfiguredStructureStartsMatchJava(t *testing.T) {
 				want := row.Pieces[i]
 				box := [6]int32{piece.Bounds.Min[0], piece.Bounds.Min[1], piece.Bounds.Min[2], piece.Bounds.Max[0], piece.Bounds.Max[1], piece.Bounds.Max[2]}
 				projection := "rigid"
-				if piece.Projection == javastructure.TerrainMatching {
+				if piece.Projection == structure.TerrainMatching {
 					projection = "terrain_matching"
 				}
 				if box != want.Box || piece.Origin != want.Origin || int(piece.Rotation) != want.Rotation || piece.GroundLevelDelta != want.Ground || projection != want.Projection {
@@ -89,7 +89,7 @@ func TestConfiguredStructureStartsMatchJava(t *testing.T) {
 					if checked[piece.Template] != name {
 						expected := expectedTemplates[name]
 						if expected == nil {
-							expected, err = javastructure.LoadOrCreate(name)
+							expected, err = structure.LoadOrCreate(name)
 							if err != nil {
 								t.Fatal(err)
 							}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -27,7 +27,7 @@ func TestRuntimeFeaturesGrowTreesInLiveWorld(t *testing.T) {
 				tx.SetBlock(cube.Pos{x, 63, z}, block.Dirt{}, nil)
 			}
 		}
-		random := java26.NewLegacyRandom(1)
+		random := vanilla.NewLegacyRandom(1)
 		if !features.PlaceConfigured(tx, "minecraft:oak", origin, &random) {
 			t.Fatal("oak was not placed")
 		}
@@ -51,7 +51,7 @@ func TestRuntimeFeaturesGrowTreesInLiveWorld(t *testing.T) {
 		blocked := cube.Pos{20, 64, 0}
 		tx.SetBlock(blocked.Side(cube.FaceDown), block.Dirt{}, nil)
 		tx.SetBlock(blocked.Add(cube.Pos{0, 2, 0}), block.Stone{}, nil)
-		random = java26.NewLegacyRandom(1)
+		random = vanilla.NewLegacyRandom(1)
 		if features.PlaceConfigured(tx, "minecraft:oak", blocked, &random) {
 			t.Fatal("oak grew through stone above its origin")
 		}

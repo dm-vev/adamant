@@ -19,7 +19,7 @@ func TestJavaEnchantmentsSurviveConversion(t *testing.T) {
 		if got, ok := item.EnchantmentByID(enchantmentNumericID(t, e)); !ok || got != e {
 			t.Fatalf("%s is not registered under its Bedrock ID", id)
 		}
-		stack, err := item.StackFromJavaNBT(map[string]any{
+		stack, err := item.StackFromStructureNBT(map[string]any{
 			"id": "minecraft:enchanted_book", "count": int32(1),
 			"components": map[string]any{"minecraft:stored_enchantments": map[string]any{id: int32(1)}},
 		})
@@ -29,7 +29,7 @@ func TestJavaEnchantmentsSurviveConversion(t *testing.T) {
 		if _, ok := stack.Enchantment(e); !ok {
 			t.Fatalf("book with %s lost the enchantment: %v", id, stack.Enchantments())
 		}
-		data, err := item.StackToJavaNBT(stack)
+		data, err := item.StackToStructureNBT(stack)
 		if err != nil {
 			t.Fatal(err)
 		}

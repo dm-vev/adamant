@@ -2,61 +2,61 @@ package overworld
 
 import (
 	"fmt"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type mansionPlacementData struct {
 	pos      [3]int32
-	rotation javastructure.Rotation
+	rotation structure.Rotation
 	wall     string
 }
 type mansionPlacer struct {
 	origin    [3]int32
-	rotation  javastructure.Rotation
+	rotation  structure.Rotation
 	seed      int64
-	random    *java26.Random
-	templates map[string]*javastructure.Template
+	random    *vanilla.Random
+	templates map[string]*structure.Template
 	pieces    []modernStructurePiece
 }
 
-func newMansionPlacer(origin [3]int32, rotation javastructure.Rotation, seed int64, random *java26.Random) *mansionPlacer {
-	return &mansionPlacer{origin: origin, rotation: rotation, seed: seed, random: random, templates: make(map[string]*javastructure.Template), pieces: make([]modernStructurePiece, 0, 256)}
+func newMansionPlacer(origin [3]int32, rotation structure.Rotation, seed int64, random *vanilla.Random) *mansionPlacer {
+	return &mansionPlacer{origin: origin, rotation: rotation, seed: seed, random: random, templates: make(map[string]*structure.Template), pieces: make([]modernStructurePiece, 0, 256)}
 }
-func mansionRot(a, b javastructure.Rotation) javastructure.Rotation {
-	return javastructure.Rotation((int(a) + int(b)) % 4)
+func mansionRot(a, b structure.Rotation) structure.Rotation {
+	return structure.Rotation((int(a) + int(b)) % 4)
 }
-func mansionDirection(d mansionDir, r javastructure.Rotation) mansionDir {
+func mansionDirection(d mansionDir, r structure.Rotation) mansionDir {
 	return mansionDir((int(d) + int(r)) % 4)
 }
-func mansionMove(pos [3]int32, d mansionDir, r javastructure.Rotation, n int32) [3]int32 {
+func mansionMove(pos [3]int32, d mansionDir, r structure.Rotation, n int32) [3]int32 {
 	dx, dz := mansionDirection(d, r).delta()
 	pos[0] += int32(dx) * n
 	pos[2] += int32(dz) * n
 	return pos
 }
 func mansionAbove(pos [3]int32, y int32) [3]int32 { pos[1] += y; return pos }
-func mansionPieceBounds(t *javastructure.Template, origin [3]int32, r javastructure.Rotation, m javastructure.Mirror) javastructure.Box {
+func mansionPieceBounds(t *structure.Template, origin [3]int32, r structure.Rotation, m structure.Mirror) structure.Box {
 	b := emptyStructureBox()
 	for _, x := range [2]int32{0, t.Size[0] - 1} {
 		for _, y := range [2]int32{0, t.Size[1] - 1} {
 			for _, z := range [2]int32{0, t.Size[2] - 1} {
-				v := javastructure.TransformPosition([3]int32{x, y, z}, m, r)
+				v := structure.TransformPosition([3]int32{x, y, z}, m, r)
 				v[0] += origin[0]
 				v[1] += origin[1]
 				v[2] += origin[2]
-				q := javastructure.Box{Min: v, Max: v}
+				q := structure.Box{Min: v, Max: v}
 				b = unionStructureBox(b, q)
 			}
 		}
 	}
 	return b
 }
-func (m *mansionPlacer) add(name string, pos [3]int32, rotation javastructure.Rotation, mirror javastructure.Mirror) error {
+func (m *mansionPlacer) add(name string, pos [3]int32, rotation structure.Rotation, mirror structure.Mirror) error {
 	t := m.templates[name]
 	if t == nil {
 		var err error
-		t, err = javastructure.Load("woodland_mansion/" + name)
+		t, err = structure.Load("woodland_mansion/" + name)
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ func (m *mansionPlacer) add(name string, pos [3]int32, rotation javastructure.Ro
 }
 func (m *mansionPlacer) entrance(data *mansionPlacementData) error {
 	pos := mansionMove(data.pos, mansionWest, data.rotation, 9)
-	if err := m.add("entrance", pos, data.rotation, javastructure.NoMirror); err != nil {
+	if err := m.add("entrance", pos, data.rotation, structure.NoMirror); err != nil {
 		return err
 	}
 	data.pos = mansionMove(data.pos, mansionSouth, data.rotation, 16)
@@ -75,7 +75,7 @@ func (m *mansionPlacer) entrance(data *mansionPlacementData) error {
 }
 func (m *mansionPlacer) wallPiece(data *mansionPlacementData) error {
 	pos := mansionMove(data.pos, mansionEast, data.rotation, 7)
-	if err := m.add(data.wall, pos, data.rotation, javastructure.NoMirror); err != nil {
+	if err := m.add(data.wall, pos, data.rotation, structure.NoMirror); err != nil {
 		return err
 	}
 	data.pos = mansionMove(data.pos, mansionSouth, data.rotation, 8)
@@ -83,18 +83,18 @@ func (m *mansionPlacer) wallPiece(data *mansionPlacementData) error {
 }
 func (m *mansionPlacer) turn(data *mansionPlacementData) error {
 	data.pos = mansionMove(data.pos, mansionSouth, data.rotation, -1)
-	if err := m.add("wall_corner", data.pos, data.rotation, javastructure.NoMirror); err != nil {
+	if err := m.add("wall_corner", data.pos, data.rotation, structure.NoMirror); err != nil {
 		return err
 	}
 	data.pos = mansionMove(data.pos, mansionSouth, data.rotation, -7)
 	data.pos = mansionMove(data.pos, mansionWest, data.rotation, -6)
-	data.rotation = mansionRot(data.rotation, javastructure.Clockwise90)
+	data.rotation = mansionRot(data.rotation, structure.Clockwise90)
 	return nil
 }
 func (m *mansionPlacer) innerTurn(data *mansionPlacementData) {
 	data.pos = mansionMove(data.pos, mansionSouth, data.rotation, 6)
 	data.pos = mansionMove(data.pos, mansionEast, data.rotation, 8)
-	data.rotation = mansionRot(data.rotation, javastructure.CounterClockwise90)
+	data.rotation = mansionRot(data.rotation, structure.CounterClockwise90)
 }
 func (m *mansionPlacer) outerWalls(data *mansionPlacementData, g *mansionGrid, dir mansionDir, sx, sy, ex, ey int) error {
 	gx, gy := sx, sy
@@ -134,36 +134,36 @@ func (m *mansionPlacer) outerWalls(data *mansionPlacementData, g *mansionGrid, d
 		}
 	}
 }
-func (m *mansionPlacer) roof(origin [3]int32, r javastructure.Rotation, g, above *mansionGrid, startX, startY int) error {
+func (m *mansionPlacer) roof(origin [3]int32, r structure.Rotation, g, above *mansionGrid, startX, startY int) error {
 	for y := 0; y < g.h; y++ {
 		for x := 0; x < g.w; x++ {
 			pos := mansionMove(origin, mansionSouth, r, int32(8+(y-startY)*8))
 			pos = mansionMove(pos, mansionEast, r, int32((x-startX)*8))
 			isAbove := above != nil && mansionHouse(above, x, y)
 			if mansionHouse(g, x, y) && !isAbove {
-				if err := m.add("roof", mansionAbove(pos, 3), r, javastructure.NoMirror); err != nil {
+				if err := m.add("roof", mansionAbove(pos, 3), r, structure.NoMirror); err != nil {
 					return err
 				}
 				if !mansionHouse(g, x+1, y) {
-					if err := m.add("roof_front", mansionMove(pos, mansionEast, r, 6), r, javastructure.NoMirror); err != nil {
+					if err := m.add("roof_front", mansionMove(pos, mansionEast, r, 6), r, structure.NoMirror); err != nil {
 						return err
 					}
 				}
 				if !mansionHouse(g, x-1, y) {
 					p := mansionMove(mansionMove(pos, mansionEast, r, 0), mansionSouth, r, 7)
-					if err := m.add("roof_front", p, mansionRot(r, javastructure.Clockwise180), javastructure.NoMirror); err != nil {
+					if err := m.add("roof_front", p, mansionRot(r, structure.Clockwise180), structure.NoMirror); err != nil {
 						return err
 					}
 				}
 				if !mansionHouse(g, x, y-1) {
 					p := mansionMove(pos, mansionWest, r, 1)
-					if err := m.add("roof_front", p, mansionRot(r, javastructure.CounterClockwise90), javastructure.NoMirror); err != nil {
+					if err := m.add("roof_front", p, mansionRot(r, structure.CounterClockwise90), structure.NoMirror); err != nil {
 						return err
 					}
 				}
 				if !mansionHouse(g, x, y+1) {
 					p := mansionMove(mansionMove(pos, mansionEast, r, 6), mansionSouth, r, 6)
-					if err := m.add("roof_front", p, mansionRot(r, javastructure.Clockwise90), javastructure.NoMirror); err != nil {
+					if err := m.add("roof_front", p, mansionRot(r, structure.Clockwise90), structure.NoMirror); err != nil {
 						return err
 					}
 				}
@@ -177,38 +177,38 @@ func (m *mansionPlacer) roof(origin [3]int32, r javastructure.Rotation, g, above
 				pos = mansionMove(pos, mansionEast, r, int32((x-startX)*8))
 				if mansionHouse(g, x, y) && mansionHouse(above, x, y) {
 					if !mansionHouse(g, x+1, y) {
-						if err := m.add("small_wall", mansionMove(pos, mansionEast, r, 7), r, javastructure.NoMirror); err != nil {
+						if err := m.add("small_wall", mansionMove(pos, mansionEast, r, 7), r, structure.NoMirror); err != nil {
 							return err
 						}
 					}
 					if !mansionHouse(g, x-1, y) {
 						p := mansionMove(mansionMove(pos, mansionWest, r, 1), mansionSouth, r, 6)
-						if err := m.add("small_wall", p, mansionRot(r, javastructure.Clockwise180), javastructure.NoMirror); err != nil {
+						if err := m.add("small_wall", p, mansionRot(r, structure.Clockwise180), structure.NoMirror); err != nil {
 							return err
 						}
 					}
 					if !mansionHouse(g, x, y-1) {
 						p := mansionMove(mansionMove(pos, mansionWest, r, 0), mansionNorth, r, 1)
-						if err := m.add("small_wall", p, mansionRot(r, javastructure.CounterClockwise90), javastructure.NoMirror); err != nil {
+						if err := m.add("small_wall", p, mansionRot(r, structure.CounterClockwise90), structure.NoMirror); err != nil {
 							return err
 						}
 					}
 					if !mansionHouse(g, x, y+1) {
 						p := mansionMove(mansionMove(pos, mansionEast, r, 6), mansionSouth, r, 7)
-						if err := m.add("small_wall", p, mansionRot(r, javastructure.Clockwise90), javastructure.NoMirror); err != nil {
+						if err := m.add("small_wall", p, mansionRot(r, structure.Clockwise90), structure.NoMirror); err != nil {
 							return err
 						}
 					}
 					if !mansionHouse(g, x+1, y) {
 						if !mansionHouse(g, x, y-1) {
 							p := mansionMove(mansionMove(pos, mansionEast, r, 7), mansionNorth, r, 2)
-							if err := m.add("small_wall_corner", p, r, javastructure.NoMirror); err != nil {
+							if err := m.add("small_wall_corner", p, r, structure.NoMirror); err != nil {
 								return err
 							}
 						}
 						if !mansionHouse(g, x, y+1) {
 							p := mansionMove(mansionMove(pos, mansionEast, r, 8), mansionSouth, r, 7)
-							if err := m.add("small_wall_corner", p, mansionRot(r, javastructure.Clockwise90), javastructure.NoMirror); err != nil {
+							if err := m.add("small_wall_corner", p, mansionRot(r, structure.Clockwise90), structure.NoMirror); err != nil {
 								return err
 							}
 						}
@@ -216,13 +216,13 @@ func (m *mansionPlacer) roof(origin [3]int32, r javastructure.Rotation, g, above
 					if !mansionHouse(g, x-1, y) {
 						if !mansionHouse(g, x, y-1) {
 							p := mansionMove(mansionMove(pos, mansionWest, r, 2), mansionNorth, r, 1)
-							if err := m.add("small_wall_corner", p, mansionRot(r, javastructure.CounterClockwise90), javastructure.NoMirror); err != nil {
+							if err := m.add("small_wall_corner", p, mansionRot(r, structure.CounterClockwise90), structure.NoMirror); err != nil {
 								return err
 							}
 						}
 						if !mansionHouse(g, x, y+1) {
 							p := mansionMove(mansionMove(pos, mansionWest, r, 1), mansionSouth, r, 8)
-							if err := m.add("small_wall_corner", p, mansionRot(r, javastructure.Clockwise180), javastructure.NoMirror); err != nil {
+							if err := m.add("small_wall_corner", p, mansionRot(r, structure.Clockwise180), structure.NoMirror); err != nil {
 								return err
 							}
 						}
@@ -240,22 +240,22 @@ func (m *mansionPlacer) roof(origin [3]int32, r javastructure.Rotation, g, above
 					p := mansionMove(pos, mansionEast, r, 6)
 					if !mansionHouse(g, x, y+1) {
 						p = mansionMove(p, mansionSouth, r, 6)
-						if err := m.add("roof_corner", p, r, javastructure.NoMirror); err != nil {
+						if err := m.add("roof_corner", p, r, structure.NoMirror); err != nil {
 							return err
 						}
 					} else if mansionHouse(g, x+1, y+1) {
 						p = mansionMove(p, mansionSouth, r, 5)
-						if err := m.add("roof_inner_corner", p, r, javastructure.NoMirror); err != nil {
+						if err := m.add("roof_inner_corner", p, r, structure.NoMirror); err != nil {
 							return err
 						}
 					}
 					if !mansionHouse(g, x, y-1) {
-						if err := m.add("roof_corner", mansionMove(pos, mansionEast, r, 6), mansionRot(r, javastructure.CounterClockwise90), javastructure.NoMirror); err != nil {
+						if err := m.add("roof_corner", mansionMove(pos, mansionEast, r, 6), mansionRot(r, structure.CounterClockwise90), structure.NoMirror); err != nil {
 							return err
 						}
 					} else if mansionHouse(g, x+1, y-1) {
 						p := mansionMove(mansionMove(pos, mansionEast, r, 9), mansionNorth, r, 2)
-						if err := m.add("roof_inner_corner", p, mansionRot(r, javastructure.Clockwise90), javastructure.NoMirror); err != nil {
+						if err := m.add("roof_inner_corner", p, mansionRot(r, structure.Clockwise90), structure.NoMirror); err != nil {
 							return err
 						}
 					}
@@ -263,21 +263,21 @@ func (m *mansionPlacer) roof(origin [3]int32, r javastructure.Rotation, g, above
 				if !mansionHouse(g, x-1, y) {
 					p := mansionMove(mansionMove(pos, mansionEast, r, 0), mansionSouth, r, 0)
 					if !mansionHouse(g, x, y+1) {
-						if err := m.add("roof_corner", mansionMove(p, mansionSouth, r, 6), mansionRot(r, javastructure.Clockwise90), javastructure.NoMirror); err != nil {
+						if err := m.add("roof_corner", mansionMove(p, mansionSouth, r, 6), mansionRot(r, structure.Clockwise90), structure.NoMirror); err != nil {
 							return err
 						}
 					} else if mansionHouse(g, x-1, y+1) {
 						inner := mansionMove(mansionMove(p, mansionSouth, r, 8), mansionWest, r, 3)
-						if err := m.add("roof_inner_corner", inner, mansionRot(r, javastructure.CounterClockwise90), javastructure.NoMirror); err != nil {
+						if err := m.add("roof_inner_corner", inner, mansionRot(r, structure.CounterClockwise90), structure.NoMirror); err != nil {
 							return err
 						}
 					}
 					if !mansionHouse(g, x, y-1) {
-						if err := m.add("roof_corner", p, mansionRot(r, javastructure.Clockwise180), javastructure.NoMirror); err != nil {
+						if err := m.add("roof_corner", p, mansionRot(r, structure.Clockwise180), structure.NoMirror); err != nil {
 							return err
 						}
 					} else if mansionHouse(g, x-1, y-1) {
-						if err := m.add("roof_inner_corner", mansionMove(p, mansionSouth, r, 1), mansionRot(r, javastructure.Clockwise180), javastructure.NoMirror); err != nil {
+						if err := m.add("roof_inner_corner", mansionMove(p, mansionSouth, r, 1), mansionRot(r, structure.Clockwise180), structure.NoMirror); err != nil {
 							return err
 						}
 					}
@@ -353,29 +353,29 @@ func (m *mansionPlacer) rooms(plan *mansionPlan) error {
 				}
 				pos := mansionMove(floorOrigin, mansionSouth, m.rotation, int32(8+(y-plan.sy)*8))
 				pos = mansionMove(pos, mansionEast, m.rotation, int32((x-plan.sx)*8))
-				if err := m.add("corridor_floor", pos, m.rotation, javastructure.NoMirror); err != nil {
+				if err := m.add("corridor_floor", pos, m.rotation, structure.NoMirror); err != nil {
 					return err
 				}
 				if g.get(x, y-1) == mansionCorridor || rooms.get(x, y-1)&mansionCorridorFlag != 0 {
-					if err := m.add("carpet_north", mansionAbove(mansionMove(pos, mansionEast, m.rotation, 1), 1), m.rotation, javastructure.NoMirror); err != nil {
+					if err := m.add("carpet_north", mansionAbove(mansionMove(pos, mansionEast, m.rotation, 1), 1), m.rotation, structure.NoMirror); err != nil {
 						return err
 					}
 				}
 				if g.get(x+1, y) == mansionCorridor || rooms.get(x+1, y)&mansionCorridorFlag != 0 {
 					p := mansionMove(mansionMove(pos, mansionSouth, m.rotation, 1), mansionEast, m.rotation, 5)
-					if err := m.add("carpet_east", mansionAbove(p, 1), m.rotation, javastructure.NoMirror); err != nil {
+					if err := m.add("carpet_east", mansionAbove(p, 1), m.rotation, structure.NoMirror); err != nil {
 						return err
 					}
 				}
 				if g.get(x, y+1) == mansionCorridor || rooms.get(x, y+1)&mansionCorridorFlag != 0 {
 					p := mansionMove(mansionMove(pos, mansionSouth, m.rotation, 5), mansionWest, m.rotation, 1)
-					if err := m.add(southCarpet, p, m.rotation, javastructure.NoMirror); err != nil {
+					if err := m.add(southCarpet, p, m.rotation, structure.NoMirror); err != nil {
 						return err
 					}
 				}
 				if g.get(x-1, y) == mansionCorridor || rooms.get(x-1, y)&mansionCorridorFlag != 0 {
 					p := mansionMove(mansionMove(pos, mansionWest, m.rotation, 1), mansionNorth, m.rotation, 1)
-					if err := m.add(westCarpet, p, m.rotation, javastructure.NoMirror); err != nil {
+					if err := m.add(westCarpet, p, m.rotation, structure.NoMirror); err != nil {
 						return err
 					}
 				}
@@ -419,7 +419,7 @@ func (m *mansionPlacer) rooms(plan *mansionPlan) error {
 					if hasDoor && doorDir == mansionWest {
 						n = door
 					}
-					if err := m.add(n, roomPos, m.rotation, javastructure.NoMirror); err != nil {
+					if err := m.add(n, roomPos, m.rotation, structure.NoMirror); err != nil {
 						return err
 					}
 				}
@@ -428,7 +428,7 @@ func (m *mansionPlacer) rooms(plan *mansionPlan) error {
 					if hasDoor && doorDir == mansionEast {
 						n = door
 					}
-					if err := m.add(n, mansionMove(roomPos, mansionEast, m.rotation, 8), m.rotation, javastructure.NoMirror); err != nil {
+					if err := m.add(n, mansionMove(roomPos, mansionEast, m.rotation, 8), m.rotation, structure.NoMirror); err != nil {
 						return err
 					}
 				}
@@ -438,7 +438,7 @@ func (m *mansionPlacer) rooms(plan *mansionPlan) error {
 						n = door
 					}
 					p := mansionMove(mansionMove(roomPos, mansionSouth, m.rotation, 7), mansionEast, m.rotation, 7)
-					if err := m.add(n, p, mansionRot(m.rotation, javastructure.Clockwise90), javastructure.NoMirror); err != nil {
+					if err := m.add(n, p, mansionRot(m.rotation, structure.Clockwise90), structure.NoMirror); err != nil {
 						return err
 					}
 				}
@@ -448,7 +448,7 @@ func (m *mansionPlacer) rooms(plan *mansionPlan) error {
 						n = door
 					}
 					p := mansionMove(mansionMove(roomPos, mansionNorth, m.rotation, 1), mansionEast, m.rotation, 7)
-					if err := m.add(n, p, mansionRot(m.rotation, javastructure.Clockwise90), javastructure.NoMirror); err != nil {
+					if err := m.add(n, p, mansionRot(m.rotation, structure.Clockwise90), structure.NoMirror); err != nil {
 						return err
 					}
 				}
@@ -519,34 +519,34 @@ func (m *mansionPlacer) roomName(floor int, kind string) string {
 	return ""
 }
 func (m *mansionPlacer) room1x1(roomPos [3]int32, door mansionDir, hasDoor bool, floor int) error {
-	rot := javastructure.None
+	rot := structure.None
 	name := m.roomName(floor, "1x1")
 	if !hasDoor || door == mansionUp || door == mansionNoDoor {
 		name = m.roomName(floor, "1x1_secret")
 	} else if door != mansionEast {
 		switch door {
 		case mansionNorth:
-			rot = javastructure.CounterClockwise90
+			rot = structure.CounterClockwise90
 		case mansionWest:
-			rot = javastructure.Clockwise180
+			rot = structure.Clockwise180
 		case mansionSouth:
-			rot = javastructure.Clockwise90
+			rot = structure.Clockwise90
 		}
 	}
 	zero := [3]int32{1, 0, 0}
 	switch rot {
-	case javastructure.CounterClockwise90:
+	case structure.CounterClockwise90:
 		zero = [3]int32{1, 0, 6}
-	case javastructure.Clockwise90:
+	case structure.Clockwise90:
 		zero = [3]int32{7, 0, 0}
-	case javastructure.Clockwise180:
+	case structure.Clockwise180:
 		zero = [3]int32{7, 0, 6}
 	}
-	v := javastructure.TransformPosition(zero, javastructure.NoMirror, m.rotation)
+	v := structure.TransformPosition(zero, structure.NoMirror, m.rotation)
 	pos := roomPos
 	pos[0] += v[0]
 	pos[2] += v[2]
-	return m.add(name, pos, mansionRot(m.rotation, rot), javastructure.NoMirror)
+	return m.add(name, pos, mansionRot(m.rotation, rot), structure.NoMirror)
 }
 func (m *mansionPlacer) room1x2(roomPos [3]int32, roomDir, doorDir mansionDir, stairs bool, floor int) error {
 	r := m.rotation
@@ -565,7 +565,7 @@ func (m *mansionPlacer) room1x2(roomPos [3]int32, roomDir, doorDir mansionDir, s
 	pos := roomPos
 	name := ""
 	rot := r
-	mirror := javastructure.NoMirror
+	mirror := structure.NoMirror
 	switch {
 	case doorDir == mansionEast && roomDir == mansionSouth:
 		pos = mansionMove(pos, mansionEast, r, 1)
@@ -573,52 +573,52 @@ func (m *mansionPlacer) room1x2(roomPos [3]int32, roomDir, doorDir mansionDir, s
 	case doorDir == mansionEast && roomDir == mansionNorth:
 		pos = mansionMove(mansionMove(pos, mansionEast, r, 1), mansionSouth, r, 6)
 		name = sideName()
-		mirror = javastructure.LeftRight
+		mirror = structure.LeftRight
 	case doorDir == mansionWest && roomDir == mansionNorth:
 		pos = mansionMove(mansionMove(pos, mansionEast, r, 7), mansionSouth, r, 6)
 		name = sideName()
-		rot = mansionRot(r, javastructure.Clockwise180)
+		rot = mansionRot(r, structure.Clockwise180)
 	case doorDir == mansionWest && roomDir == mansionSouth:
 		pos = mansionMove(pos, mansionEast, r, 7)
 		name = sideName()
-		mirror = javastructure.FrontBack
+		mirror = structure.FrontBack
 	case doorDir == mansionSouth && roomDir == mansionEast:
 		pos = mansionMove(pos, mansionEast, r, 1)
 		name = sideName()
-		rot = mansionRot(r, javastructure.Clockwise90)
-		mirror = javastructure.LeftRight
+		rot = mansionRot(r, structure.Clockwise90)
+		mirror = structure.LeftRight
 	case doorDir == mansionSouth && roomDir == mansionWest:
 		pos = mansionMove(pos, mansionEast, r, 7)
 		name = sideName()
-		rot = mansionRot(r, javastructure.Clockwise90)
+		rot = mansionRot(r, structure.Clockwise90)
 	case doorDir == mansionNorth && roomDir == mansionWest:
 		pos = mansionMove(mansionMove(pos, mansionEast, r, 7), mansionSouth, r, 6)
 		name = sideName()
-		rot = mansionRot(r, javastructure.Clockwise90)
-		mirror = javastructure.FrontBack
+		rot = mansionRot(r, structure.Clockwise90)
+		mirror = structure.FrontBack
 	case doorDir == mansionNorth && roomDir == mansionEast:
 		pos = mansionMove(mansionMove(pos, mansionEast, r, 1), mansionSouth, r, 6)
 		name = sideName()
-		rot = mansionRot(r, javastructure.CounterClockwise90)
+		rot = mansionRot(r, structure.CounterClockwise90)
 	case doorDir == mansionSouth && roomDir == mansionNorth:
 		pos = mansionMove(mansionMove(pos, mansionEast, r, 1), mansionNorth, r, 8)
 		name = frontName()
 	case doorDir == mansionNorth && roomDir == mansionSouth:
 		pos = mansionMove(mansionMove(pos, mansionEast, r, 7), mansionSouth, r, 14)
 		name = frontName()
-		rot = mansionRot(r, javastructure.Clockwise180)
+		rot = mansionRot(r, structure.Clockwise180)
 	case doorDir == mansionWest && roomDir == mansionEast:
 		pos = mansionMove(pos, mansionEast, r, 15)
 		name = frontName()
-		rot = mansionRot(r, javastructure.Clockwise90)
+		rot = mansionRot(r, structure.Clockwise90)
 	case doorDir == mansionEast && roomDir == mansionWest:
 		pos = mansionMove(mansionMove(pos, mansionWest, r, 7), mansionSouth, r, 6)
 		name = frontName()
-		rot = mansionRot(r, javastructure.CounterClockwise90)
+		rot = mansionRot(r, structure.CounterClockwise90)
 	case doorDir == mansionUp && roomDir == mansionEast:
 		pos = mansionMove(pos, mansionEast, r, 15)
 		name = m.roomName(floor, "1x2_secret")
-		rot = mansionRot(r, javastructure.Clockwise90)
+		rot = mansionRot(r, structure.Clockwise90)
 	case doorDir == mansionUp && roomDir == mansionSouth:
 		pos = mansionMove(mansionMove(pos, mansionEast, r, 1), mansionNorth, r, 0)
 		name = m.roomName(floor, "1x2_secret")
@@ -631,44 +631,44 @@ func (m *mansionPlacer) room1x2(roomPos [3]int32, roomDir, doorDir mansionDir, s
 func (m *mansionPlacer) room2x2(roomPos [3]int32, roomDir, doorDir mansionDir, floor int) error {
 	east, south := int32(0), int32(0)
 	rot := m.rotation
-	mirror := javastructure.NoMirror
+	mirror := structure.NoMirror
 	switch {
 	case doorDir == mansionEast && roomDir == mansionSouth:
 		east = -7
 	case doorDir == mansionEast && roomDir == mansionNorth:
 		east = -7
 		south = 6
-		mirror = javastructure.LeftRight
+		mirror = structure.LeftRight
 	case doorDir == mansionNorth && roomDir == mansionEast:
 		east = 1
 		south = 14
-		rot = mansionRot(m.rotation, javastructure.CounterClockwise90)
+		rot = mansionRot(m.rotation, structure.CounterClockwise90)
 	case doorDir == mansionNorth && roomDir == mansionWest:
 		east = 7
 		south = 14
-		rot = mansionRot(m.rotation, javastructure.CounterClockwise90)
-		mirror = javastructure.LeftRight
+		rot = mansionRot(m.rotation, structure.CounterClockwise90)
+		mirror = structure.LeftRight
 	case doorDir == mansionSouth && roomDir == mansionWest:
 		east = 7
 		south = -8
-		rot = mansionRot(m.rotation, javastructure.Clockwise90)
+		rot = mansionRot(m.rotation, structure.Clockwise90)
 	case doorDir == mansionSouth && roomDir == mansionEast:
 		east = 1
 		south = -8
-		rot = mansionRot(m.rotation, javastructure.Clockwise90)
-		mirror = javastructure.LeftRight
+		rot = mansionRot(m.rotation, structure.Clockwise90)
+		mirror = structure.LeftRight
 	case doorDir == mansionWest && roomDir == mansionNorth:
 		east = 15
 		south = 6
-		rot = mansionRot(m.rotation, javastructure.Clockwise180)
+		rot = mansionRot(m.rotation, structure.Clockwise180)
 	case doorDir == mansionWest && roomDir == mansionSouth:
 		east = 15
-		mirror = javastructure.FrontBack
+		mirror = structure.FrontBack
 	}
 	pos := mansionMove(mansionMove(roomPos, mansionEast, m.rotation, east), mansionSouth, m.rotation, south)
 	return m.add(m.roomName(floor, "2x2"), pos, rot, mirror)
 }
 func (m *mansionPlacer) room2x2Secret(roomPos [3]int32, floor int) error {
 	pos := mansionMove(roomPos, mansionEast, m.rotation, 1)
-	return m.add(m.roomName(floor, "2x2_secret"), pos, m.rotation, javastructure.NoMirror)
+	return m.add(m.roomName(floor, "2x2_secret"), pos, m.rotation, structure.NoMirror)
 }

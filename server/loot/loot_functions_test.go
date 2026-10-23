@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -14,7 +14,7 @@ import (
 
 func generate(t *testing.T, table string, seed int64, ctx loot.Context) []item.Stack {
 	t.Helper()
-	random := java26.NewXoroshiroRandom(seed)
+	random := vanilla.NewXoroshiroRandom(seed)
 	ctx.Random = &random
 	stacks, err := loot.Generate(table, seed, ctx)
 	if err != nil {

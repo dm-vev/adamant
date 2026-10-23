@@ -8,11 +8,11 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/df-mc/dragonfly/server/world/mcdb"
 )
 
-func surfaceLifecycleState(t *testing.T, g *scatteredLifecycleGenerator, start modernStructureStart) []javastructure.StructurePieceState {
+func surfaceLifecycleState(t *testing.T, g *scatteredLifecycleGenerator, start modernStructureStart) []structure.StructurePieceState {
 	t.Helper()
 	state := g.owner.modernStructures.pieceStates.lookup(start.key)
 	if state == nil {
@@ -23,7 +23,7 @@ func surfaceLifecycleState(t *testing.T, g *scatteredLifecycleGenerator, start m
 	if err := state.prepare(start); err != nil {
 		t.Fatal(err)
 	}
-	copy := append([]javastructure.StructurePieceState(nil), state.pieces...)
+	copy := append([]structure.StructurePieceState(nil), state.pieces...)
 	for i := range copy {
 		if runtime := copy[i].Pyramid; runtime != nil {
 			clone := *runtime

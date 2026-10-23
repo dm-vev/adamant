@@ -5,7 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
@@ -124,17 +124,17 @@ func setEndPodiumBlock(tx *world.Tx, pos cube.Pos, replacement world.Block, drop
 	tx.SetBlock(pos,replacement,endFeatureSetOpts)
 }
 
-func placeFightSpike(tx *world.Tx, spike *java26.EndSpike, beam cube.Pos) {
+func placeFightSpike(tx *world.Tx, spike *vanilla.EndSpike, beam cube.Pos) {
 	for z := spike.Z-spike.Radius; z <= spike.Z+spike.Radius; z++ {
 		for y := tx.Range().Min(); y <= spike.Height+10; y++ {
 			for x := spike.X-spike.Radius; x <= spike.X+spike.Radius; x++ {
 				material, mask := spike.BlockAt(x,y,z,tx.Range().Min())
 				var value world.Block
 				switch material {
-				case java26.EndSpikeUnchanged, java26.EndSpikeBedrock, java26.EndSpikeFire: continue
-				case java26.EndSpikeAir: value = block.Air{}
-				case java26.EndSpikeObsidian: value = block.Obsidian{}
-				case java26.EndSpikeIronBars:
+				case vanilla.EndSpikeUnchanged, vanilla.EndSpikeBedrock, vanilla.EndSpikeFire: continue
+				case vanilla.EndSpikeAir: value = block.Air{}
+				case vanilla.EndSpikeObsidian: value = block.Obsidian{}
+				case vanilla.EndSpikeIronBars:
 					value = block.IronBars{NorthConnection:mask&1!=0,EastConnection:mask&2!=0,SouthConnection:mask&4!=0,WestConnection:mask&8!=0}
 				}
 				tx.SetBlock(cube.Pos{x,y,z},value,endFeatureSetOpts)

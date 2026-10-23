@@ -5,7 +5,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -525,15 +525,15 @@ func pushEntitiesUp(tx *world.Tx, pos cube.Pos, old world.Block) {
 // javaBlockTag reports whether the Java state of the block at pos is in the
 // vanilla block tag. Native-only blocks without a Java state are in no tag.
 func javaBlockTag(tx *world.Tx, pos cube.Pos, tag string) bool {
-	id, err := tx.JavaBlockStateID(pos)
+	id, err := tx.BlockStateID(pos)
 	if err != nil {
 		return false
 	}
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		return false
 	}
-	contains, err := javadata.BlockTagContains(tag, name)
+	contains, err := gamedata.BlockTagContains(tag, name)
 	if err != nil {
 		panic(err)
 	}

@@ -1,8 +1,8 @@
 package overworld
 
 import (
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -12,7 +12,7 @@ type speleothemColumn struct {
 }
 
 // placeModernSpeleothemExact ports SpeleothemFeature.place.
-func placeModernSpeleothemExact(r *featureRegion, c map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernSpeleothemExact(r *featureRegion, c map[string]any, origin featurePos, random *vanilla.Random) bool {
 	base := speleothemBlockName(c["base_block"], "")
 	point := speleothemBlockName(c["pointed_block"], "")
 	replaceable := c["replaceable_blocks"]
@@ -63,7 +63,7 @@ func placeModernSpeleothemExact(r *featureRegion, c map[string]any, origin featu
 
 func speleothemIsBase(r *featureRegion, base string, replaceable any, p featurePos) bool {
 	name := speleothemStateName(r, p)
-	return normalizeJavaResource(name) == base || featureBlockHolderContains(replaceable, name)
+	return normalizeResource(name) == base || featureBlockHolderContains(replaceable, name)
 }
 func speleothemPlaceBase(r *featureRegion, p featurePos, base string, replaceable any) {
 	name := speleothemStateName(r, p)
@@ -71,7 +71,7 @@ func speleothemPlaceBase(r *featureRegion, p featurePos, base string, replaceabl
 		r.setWithFlags(p, speleothemDefaultState(r, base), 2)
 	}
 }
-func speleothemRandomNeighbor(p featurePos, random *java26.Random) featurePos {
+func speleothemRandomNeighbor(p featurePos, random *vanilla.Random) featurePos {
 	switch random.NextInt(6) {
 	case 0:
 		p.y--
@@ -93,14 +93,14 @@ func speleothemChanceConfig(c map[string]any, key string, fallback float32) floa
 }
 
 // placeModernSpeleothemClusterExact ports SpeleothemClusterFeature.place.
-func placeModernSpeleothemClusterExact(r *featureRegion, c map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernSpeleothemClusterExact(r *featureRegion, c map[string]any, origin featurePos, random *vanilla.Random) bool {
 	if !speleothemEmptyOrWater(r, origin) {
 		return false
 	}
-	height := sampleJavaInt(c["height"], random)
-	wetness := sampleJavaFloatValue(c["wetness"], random)
-	density := sampleJavaFloatValue(c["density"], random)
-	xr, zr := sampleJavaInt(c["radius"], random), sampleJavaInt(c["radius"], random)
+	height := sampleInt(c["height"], random)
+	wetness := sampleFloatValue(c["wetness"], random)
+	density := sampleFloatValue(c["density"], random)
+	xr, zr := sampleInt(c["radius"], random), sampleInt(c["radius"], random)
 	for dx := -xr; dx <= xr; dx++ {
 		for dz := -zr; dz <= zr; dz++ {
 			speleothemColumnPlace(r, c, random, featurePos{origin.x + dx, origin.y, origin.z + dz}, dx, dz, wetness, speleothemChance(c, xr, zr, dx, dz), height, density)
@@ -109,7 +109,7 @@ func placeModernSpeleothemClusterExact(r *featureRegion, c map[string]any, origi
 	return true
 }
 
-func speleothemColumnPlace(r *featureRegion, c map[string]any, random *java26.Random, p featurePos, dx, dz int32, wetness float32, chance float64, height int32, density float32) {
+func speleothemColumnPlace(r *featureRegion, c map[string]any, random *vanilla.Random, p featurePos, dx, dz int32, wetness float32, chance float64, height int32, density float32) {
 	column, ok := speleothemScan(r, p, int32(featureNumber(c["floor_to_ceiling_search_range"])))
 	if !ok || !column.hasCeiling && !column.hasFloor {
 		return
@@ -123,7 +123,7 @@ func speleothemColumnPlace(r *featureRegion, c map[string]any, random *java26.Ra
 	stalactite := int32(0)
 	wantStalactite := random.NextDouble() < chance
 	if hasCeiling && wantStalactite && !speleothemNameIs(r, featurePos{p.x, ceiling, p.z}, "minecraft:lava") {
-		speleothemReplaceBase(r, c, featurePos{p.x, ceiling, p.z}, sampleJavaInt(c["speleothem_block_layer_thickness"], random), 1)
+		speleothemReplaceBase(r, c, featurePos{p.x, ceiling, p.z}, sampleInt(c["speleothem_block_layer_thickness"], random), 1)
 		maxHeight := height
 		if hasFloor && ceiling-floor < maxHeight {
 			maxHeight = ceiling - floor
@@ -133,7 +133,7 @@ func speleothemColumnPlace(r *featureRegion, c map[string]any, random *java26.Ra
 	stalagmite := int32(0)
 	wantStalagmite := random.NextDouble() < chance
 	if hasFloor && wantStalagmite && !speleothemNameIs(r, featurePos{p.x, floor, p.z}, "minecraft:lava") {
-		speleothemReplaceBase(r, c, featurePos{p.x, floor, p.z}, sampleJavaInt(c["speleothem_block_layer_thickness"], random), -1)
+		speleothemReplaceBase(r, c, featurePos{p.x, floor, p.z}, sampleInt(c["speleothem_block_layer_thickness"], random), -1)
 		if hasCeiling {
 			diff := int32(featureNumber(c["max_stalagmite_stalactite_height_diff"]))
 			stalagmite = stalactite + random.NextInt(2*diff+1) - diff
@@ -193,7 +193,7 @@ func speleothemEmptyOrWater(r *featureRegion, p featurePos) bool {
 	return speleothemEmptyWaterName(name)
 }
 func speleothemEmptyWaterName(name string) bool {
-	switch normalizeJavaResource(name) {
+	switch normalizeResource(name) {
 	case "air", "cave_air", "void_air", "water":
 		return true
 	}
@@ -201,20 +201,20 @@ func speleothemEmptyWaterName(name string) bool {
 }
 func speleothemNameIs(r *featureRegion, p featurePos, name string) bool {
 	got := speleothemStateName(r, p)
-	return normalizeJavaResource(got) == normalizeJavaResource(name)
+	return normalizeResource(got) == normalizeResource(name)
 }
 func speleothemBlockName(v any, fallback string) string {
 	if name, ok := v.(string); ok {
-		return normalizeJavaResource(name)
+		return normalizeResource(name)
 	}
 	if state, ok := v.(map[string]any); ok {
 		for _, key := range [...]string{"id", "Name", "name"} {
 			if name, ok := state[key].(string); ok {
-				return normalizeJavaResource(name)
+				return normalizeResource(name)
 			}
 		}
 	}
-	return normalizeJavaResource(fallback)
+	return normalizeResource(fallback)
 }
 func speleothemFloat(v any, fallback float64) float64 {
 	if value, ok := v.(float64); ok {
@@ -234,7 +234,7 @@ func speleothemChance(c map[string]any, xr, zr, dx, dz int32) float64 {
 	chance := float32(speleothemFloat(c["chance_of_speleothem_at_max_distance_from_center"], .1))
 	return float64(chance + (1-chance)*t)
 }
-func speleothemHeight(random *java26.Random, c map[string]any, dx, dz int32, density float32, maxHeight int32) int32 {
+func speleothemHeight(random *vanilla.Random, c map[string]any, dx, dz int32, density float32, maxHeight int32) int32 {
 	if random.NextFloat() > density {
 		return 0
 	}
@@ -253,7 +253,7 @@ func speleothemHeight(random *java26.Random, c map[string]any, dx, dz int32, den
 	return int32(value)
 }
 func speleothemCanPool(r *featureRegion, c map[string]any, p featurePos) bool {
-	name := normalizeJavaResource(speleothemStateName(r, p))
+	name := normalizeResource(speleothemStateName(r, p))
 	if name == "water" || name == speleothemBlockName(c["base_block"], "minecraft:dripstone_block") || name == speleothemBlockName(c["pointed_block"], "minecraft:pointed_dripstone") || speleothemWater(r, featurePos{p.x, p.y + 1, p.z}) {
 		return false
 	}
@@ -268,11 +268,11 @@ func speleothemWater(r *featureRegion, p featurePos) bool {
 	if p.y < r.MinY() || p.y > r.MaxY() {
 		return false
 	}
-	return world.JavaBlockStateHasWaterFluid(r.nativeState(p).CanonicalJavaID(r.c.BlockRegistry()))
+	return world.BlockStateHasWaterFluid(r.nativeState(p).CanonicalID(r.c.BlockRegistry()))
 }
 func speleothemAdjacent(r *featureRegion, p featurePos) bool {
 	name := speleothemStateName(r, p)
-	return javaBlockTagContains("base_stone_overworld", normalizeJavaResource(name)) || speleothemWater(r, p)
+	return blockTagContains("base_stone_overworld", normalizeResource(name)) || speleothemWater(r, p)
 }
 func speleothemReplaceBase(r *featureRegion, c map[string]any, p featurePos, count, dy int32) {
 	base := speleothemDefaultState(r, speleothemBlockName(c["base_block"], "minecraft:dripstone_block"))
@@ -288,13 +288,13 @@ func speleothemReplaceBase(r *featureRegion, c map[string]any, p featurePos, cou
 func speleothemGrow(r *featureRegion, c map[string]any, start featurePos, dir, height int32, merge bool, base, point string) {
 	support := featurePos{start.x, start.y - dir, start.z}
 	name := speleothemStateName(r, support)
-	if !featureBlockHolderContains(c["replaceable_blocks"], name) && normalizeJavaResource(name) != normalizeJavaResource(base) {
+	if !featureBlockHolderContains(c["replaceable_blocks"], name) && normalizeResource(name) != normalizeResource(base) {
 		return
 	}
 	if height <= 0 {
 		return
 	}
-	pointID, err := javadata.BlockStateID(normalizeJavaResource(point), nil)
+	pointID, err := gamedata.BlockStateID(normalizeResource(point), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -302,7 +302,7 @@ func speleothemGrow(r *featureRegion, c map[string]any, start featurePos, dir, h
 	if dir > 0 {
 		direction = "up"
 	}
-	pointID, err = javadata.BlockStateWithProperty(pointID, "vertical_direction", direction)
+	pointID, err = gamedata.BlockStateWithProperty(pointID, "vertical_direction", direction)
 	if err != nil {
 		panic(err)
 	}
@@ -321,11 +321,11 @@ func speleothemGrow(r *featureRegion, c map[string]any, start featurePos, dir, h
 		} else if i == height-2 && height >= 2 {
 			thickness = "frustum"
 		}
-		id, e := javadata.BlockStateWithProperty(pointID, "thickness", thickness)
+		id, e := gamedata.BlockStateWithProperty(pointID, "thickness", thickness)
 		if e != nil {
 			panic(e)
 		}
-		id, e = javadata.BlockStateWithProperty(id, "waterlogged", speleothemWater(r, start))
+		id, e = gamedata.BlockStateWithProperty(id, "waterlogged", speleothemWater(r, start))
 		if e != nil {
 			panic(e)
 		}
@@ -343,16 +343,16 @@ func speleothemSetNamed(r *featureRegion, p featurePos, name string) {
 	r.setWithFlags(p, speleothemDefaultState(r, name), 2)
 }
 func speleothemDefaultState(r *featureRegion, name string) world.NativeState {
-	id, err := javadata.BlockStateID(name, nil)
+	id, err := gamedata.BlockStateID(name, nil)
 	if err != nil {
 		panic(err)
 	}
 	return world.ResolveStateID(r.c.BlockRegistry(), id)
 }
 func speleothemStateName(r *featureRegion, p featurePos) string {
-	name, ok := javadata.BlockStateName(r.nativeState(p).CanonicalJavaID(r.c.BlockRegistry()))
+	name, ok := gamedata.BlockStateName(r.nativeState(p).CanonicalID(r.c.BlockRegistry()))
 	if !ok {
-		panic("overworld: invalid Java speleothem state")
+		panic("overworld: invalid speleothem state")
 	}
 	return name
 }

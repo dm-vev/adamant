@@ -6,7 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 func (g *End) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius int, isReferenced func(world.StructureLocation) bool) (location world.StructureLocation, found bool, err error) {
@@ -19,7 +19,7 @@ func (g *End) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius in
 	if searchRadius < 0 {
 		return world.StructureLocation{}, false, fmt.Errorf("negative structure search radius %d", searchRadius)
 	}
-	members, err := javastructure.StructureTagMembers(tag)
+	members, err := structure.StructureTagMembers(tag)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}
@@ -77,7 +77,7 @@ func (g *End) FindNearestMapFeature(tag string, origin cube.Pos, searchRadius in
 }
 
 func (g *End) FindStructureAt(tag string, position cube.Pos) (world.StructureLocation, bool, error) {
-	members, err := javastructure.StructureTagMembers(tag)
+	members, err := structure.StructureTagMembers(tag)
 	if err != nil {
 		return world.StructureLocation{}, false, err
 	}

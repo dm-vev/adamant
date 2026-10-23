@@ -7,26 +7,26 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
-func TestMansionEntranceBoundaryMatchesJava263(t *testing.T) {
+func TestMansionEntranceBoundaryMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_mansion_boundary.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var fixtures []struct {
-		Seed     string                 `json:"seed"`
-		Rotation javastructure.Rotation `json:"rotation"`
-		BaseGrid [11][11]int            `json:"baseGrid"`
+		Seed     string             `json:"seed"`
+		Rotation structure.Rotation `json:"rotation"`
+		BaseGrid [11][11]int        `json:"baseGrid"`
 		Pieces   []struct {
-			Name     string                 `json:"name"`
-			Position [3]int32               `json:"position"`
-			Rotation javastructure.Rotation `json:"rotation"`
-			BBox     [6]int32               `json:"bbox"`
+			Name     string             `json:"name"`
+			Position [3]int32           `json:"position"`
+			Rotation structure.Rotation `json:"rotation"`
+			BBox     [6]int32           `json:"bbox"`
 		} `json:"pieces"`
-		FinalPosition [3]int32               `json:"finalPosition"`
-		FinalRotation javastructure.Rotation `json:"finalRotation"`
+		FinalPosition [3]int32           `json:"finalPosition"`
+		FinalRotation structure.Rotation `json:"finalRotation"`
 	}
 	if err = json.Unmarshal(data, &fixtures); err != nil {
 		t.Fatal(err)

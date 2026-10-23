@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 // placeModernGeode ports GeodeFeature.place. Candidate points and voxel traversal
@@ -17,20 +17,20 @@ import (
 var geodeDirections = [...][3]int32{{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}}
 var geodeDirectionNames = [...]string{"down", "up", "north", "south", "west", "east"}
 
-func placeModernGeode(region *featureRegion, config map[string]any, origin featurePos, random *java26.Random) bool {
+func placeModernGeode(region *featureRegion, config map[string]any, origin featurePos, random *vanilla.Random) bool {
 	blocks, ok := config["blocks"].(map[string]any)
 	if !ok {
-		panic("overworld: malformed Java geode blocks")
+		panic("overworld: malformed geode blocks")
 	}
 	layers, _ := config["layers"].(map[string]any)
 	crack, _ := config["crack"].(map[string]any)
-	noiseRandom := java26.NewLegacyRandom(region.f.seed)
-	noise := java26.NewNormalNoise(&noiseRandom, -4, 1)
+	noiseRandom := vanilla.NewLegacyRandom(region.f.seed)
+	noise := vanilla.NewNormalNoise(&noiseRandom, -4, 1)
 	outerMax := int32(5)
 	if provider := config["outer_wall_distance"]; provider != nil {
-		_, outerMax = javaIntProviderBounds(provider)
+		_, outerMax = intProviderBounds(provider)
 	}
-	numPoints := sampleJavaIntOrUniform(config["distribution_points"], 3, 4, random)
+	numPoints := sampleIntOrUniform(config["distribution_points"], 3, 4, random)
 	pointOffset := config["point_offset"]
 	minOffset, maxOffset := geodeIntDefault(config["min_gen_offset"], -16), geodeIntDefault(config["max_gen_offset"], 16)
 	crackAdjustment := float64(numPoints) / float64(outerMax)
@@ -63,7 +63,7 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 	invalid := 0
 	invalidBlocks := geodeBlockSet(blocks["invalid_blocks"])
 	for range numPoints {
-		x, y, z := sampleJavaIntOrUniform(config["outer_wall_distance"], 4, 5, random), sampleJavaIntOrUniform(config["outer_wall_distance"], 4, 5, random), sampleJavaIntOrUniform(config["outer_wall_distance"], 4, 5, random)
+		x, y, z := sampleIntOrUniform(config["outer_wall_distance"], 4, 5, random), sampleIntOrUniform(config["outer_wall_distance"], 4, 5, random), sampleIntOrUniform(config["outer_wall_distance"], 4, 5, random)
 		p := featurePos{origin.x + x, origin.y + y, origin.z + z}
 		name := geodeBlockName(region, p)
 		if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" || invalidBlocks.contains(name) {
@@ -72,7 +72,7 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 				return false
 			}
 		}
-		points = append(points, geodePoint{p, sampleJavaIntOrUniform(pointOffset, 1, 2, random)})
+		points = append(points, geodePoint{p, sampleIntOrUniform(pointOffset, 1, 2, random)})
 	}
 	type point3 struct{ x, y, z int32 }
 	crackPoints := make([]point3, 0, 3)
@@ -95,7 +95,7 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 	potential := make([]featurePos, 0)
 	airState, ok := featureStateRID(region.c, map[string]any{"id": "minecraft:air"})
 	if !ok {
-		panic("overworld: unregistered Java geode air state")
+		panic("overworld: unregistered geode air state")
 	}
 	for z := origin.z + int32(minOffset); z <= origin.z+int32(maxOffset); z++ {
 		for y := origin.y + int32(minOffset); y <= origin.y+int32(maxOffset); y++ {
@@ -135,7 +135,7 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 						var sampleOK bool
 						sampledState, sampledActor, sampleOK = region.SampleNativeState(stateProvider, p, random)
 						if !sampleOK {
-							panic("overworld: unresolved Java geode block provider")
+							panic("overworld: unresolved geode block provider")
 						}
 						sampled = true
 						if (!requireAlternate || alternate) && float64(random.NextFloat()) < placementChance {
@@ -168,7 +168,7 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 						var sampleOK bool
 						sampledState, sampledActor, sampleOK = region.SampleNativeState(stateProvider, p, random)
 						if !sampleOK {
-							panic("overworld: unresolved Java geode block provider")
+							panic("overworld: unresolved geode block provider")
 						}
 					}
 					if canReplace {
@@ -180,7 +180,7 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 	}
 	placements, ok := blocks["inner_placements"].([]any)
 	if !ok {
-		panic("overworld: malformed Java geode inner placements")
+		panic("overworld: malformed geode inner placements")
 	}
 	if len(potential) == 0 {
 		return true
@@ -199,21 +199,21 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 	for i, raw := range placements {
 		placement, ok := featureStateBlock(raw)
 		if !ok {
-			panic("overworld: malformed Java geode inner placement")
+			panic("overworld: malformed geode inner placement")
 		}
-		id, err := javadata.BlockStateID(placement.State.Name, placement.State.Properties)
+		id, err := gamedata.BlockStateID(placement.State.Name, placement.State.Properties)
 		if err != nil {
 			panic(err)
 		}
-		_, waterlogged := javadata.BlockStateBool(id, "waterlogged")
+		_, waterlogged := gamedata.BlockStateBool(id, "waterlogged")
 		resolved[i] = innerPlacement{
-			id: id, facing: javadata.BlockStateHasEnumValue(id, "facing", "up"),
+			id: id, facing: gamedata.BlockStateHasEnumValue(id, "facing", "up"),
 			waterlogged: waterlogged, actor: placement.NativeBlock != nil,
 		}
 	}
 	for _, p := range potential {
 		if len(resolved) == 0 {
-			panic("overworld: empty Java geode inner placements")
+			panic("overworld: empty geode inner placements")
 		}
 		placement := resolved[random.NextInt(int32(len(resolved)))]
 		for i, d := range geodeDirections {
@@ -227,13 +227,13 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 				id := placement.id
 				var err error
 				if placement.facing {
-					id, err = javadata.BlockStateWithProperty(id, "facing", geodeDirectionNames[i])
+					id, err = gamedata.BlockStateWithProperty(id, "facing", geodeDirectionNames[i])
 					if err != nil {
 						panic(err)
 					}
 				}
 				if placement.waterlogged {
-					id, err = javadata.BlockStateWithProperty(id, "waterlogged", fluid == "water" || fluid == "lava")
+					id, err = gamedata.BlockStateWithProperty(id, "waterlogged", fluid == "water" || fluid == "lava")
 					if err != nil {
 						panic(err)
 					}
@@ -241,8 +241,8 @@ func placeModernGeode(region *featureRegion, config map[string]any, origin featu
 				state := world.ResolveStateID(region.c.BlockRegistry(), id)
 				var actor world.Block
 				if placement.actor {
-					name, properties, _ := javadata.BlockStateFromID(id)
-					block := featureJavaBlock(world.BlockState{Name: name, Properties: properties})
+					name, properties, _ := gamedata.BlockStateFromID(id)
+					block := featureBlock(world.BlockState{Name: name, Properties: properties})
 					state, err = block.ResolveNative(region.c.BlockRegistry())
 					if err != nil {
 						panic(err)
@@ -261,13 +261,13 @@ func geodeSetNativeBlock(region *featureRegion, pos featurePos, state world.Nati
 		return false
 	}
 	if actor != nil {
-		region.recordTemplateActor(javastructure.Block{
+		region.recordTemplateActor(structure.Block{
 			Pos:         [3]int32{pos.x, pos.y, pos.z},
 			NativeBlock: actor,
 		})
 	}
-	id := state.CanonicalJavaID(region.c.BlockRegistry())
-	name, ok := javadata.BlockStateName(id)
+	id := state.CanonicalID(region.c.BlockRegistry())
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		name, _, ok = region.c.BlockRegistry().RuntimeIDToState(state.Block)
 		if !ok {
@@ -275,7 +275,7 @@ func geodeSetNativeBlock(region *featureRegion, pos featurePos, state world.Nati
 		}
 	}
 	marker := pos
-	switch normalizeJavaResource(name) {
+	switch normalizeResource(name) {
 	case "brown_mushroom", "red_mushroom":
 	case "soul_sand", "magma_block":
 		marker.y++
@@ -297,52 +297,52 @@ func geodeBlockSet(raw any) geodeHolderSet {
 	switch value := raw.(type) {
 	case string:
 		if strings.HasPrefix(value, "#") {
-			set.tag = normalizeJavaResource(strings.TrimPrefix(value, "#"))
+			set.tag = normalizeResource(strings.TrimPrefix(value, "#"))
 		} else {
-			set.blocks = map[string]struct{}{normalizeJavaResource(value): {}}
+			set.blocks = map[string]struct{}{normalizeResource(value): {}}
 		}
 	case []any:
 		for _, entry := range value {
 			name, ok := entry.(string)
 			if !ok {
-				panic("overworld: malformed Java geode block holder set")
+				panic("overworld: malformed geode block holder set")
 			}
 			if strings.HasPrefix(name, "#") {
-				set.tags = append(set.tags, normalizeJavaResource(strings.TrimPrefix(name, "#")))
+				set.tags = append(set.tags, normalizeResource(strings.TrimPrefix(name, "#")))
 				continue
 			}
 			if set.blocks == nil {
 				set.blocks = make(map[string]struct{}, len(value))
 			}
-			set.blocks[normalizeJavaResource(name)] = struct{}{}
+			set.blocks[normalizeResource(name)] = struct{}{}
 		}
 	case []string:
 		for _, name := range value {
 			if strings.HasPrefix(name, "#") {
-				set.tags = append(set.tags, normalizeJavaResource(strings.TrimPrefix(name, "#")))
+				set.tags = append(set.tags, normalizeResource(strings.TrimPrefix(name, "#")))
 				continue
 			}
 			if set.blocks == nil {
 				set.blocks = make(map[string]struct{}, len(value))
 			}
-			set.blocks[normalizeJavaResource(name)] = struct{}{}
+			set.blocks[normalizeResource(name)] = struct{}{}
 		}
 	default:
-		panic("overworld: malformed Java geode block holder set")
+		panic("overworld: malformed geode block holder set")
 	}
 	return set
 }
 
 func (s geodeHolderSet) contains(name string) bool {
-	name = normalizeJavaResource(name)
+	name = normalizeResource(name)
 	if _, ok := s.blocks[name]; ok {
 		return true
 	}
-	if s.tag != "" && javaBlockTagContains(s.tag, name) {
+	if s.tag != "" && blockTagContains(s.tag, name) {
 		return true
 	}
 	for _, tag := range s.tags {
-		if javaBlockTagContains(tag, name) {
+		if blockTagContains(tag, name) {
 			return true
 		}
 	}
@@ -354,7 +354,7 @@ func geodeBlockName(region *featureRegion, pos featurePos) string {
 		return "minecraft:void_air"
 	}
 	state := region.nativeState(pos)
-	if name, ok := javadata.BlockStateName(state.CanonicalJavaID(region.c.BlockRegistry())); ok {
+	if name, ok := gamedata.BlockStateName(state.CanonicalID(region.c.BlockRegistry())); ok {
 		return name
 	}
 	name, _, ok := region.c.BlockRegistry().RuntimeIDToState(state.Block)
@@ -383,7 +383,7 @@ func geodeIntDefault(v any, d int) int {
 	return d
 }
 
-func placeModernCaveFamily(region *featureRegion, typeName string, config map[string]any, origin featurePos, random *java26.Random) (handled, placed bool) {
+func placeModernCaveFamily(region *featureRegion, typeName string, config map[string]any, origin featurePos, random *vanilla.Random) (handled, placed bool) {
 	switch typeName {
 	case "underwater_magma":
 		return true, placeModernUnderwaterMagma(region, config, origin, random)

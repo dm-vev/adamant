@@ -60,7 +60,7 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	}
 }
 func TestNewFromJavaNBTRejectsUnknownWolfEquipment(t *testing.T) {
-	_, err := NewFromJavaNBT(map[string]any{
+	_, err := NewFromStructureNBT(map[string]any{
 		"id": "minecraft:wolf",
 		"equipment": map[string]any{"body": map[string]any{"id": "minecraft:not_an_item", "count": int32(1)}},
 	}, world.EntitySpawnOpts{})

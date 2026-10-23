@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -43,11 +43,11 @@ func TestMerchantOfferTiersSurviveSaving(t *testing.T) {
 }
 
 // roll returns a random whose first roll out of 100 satisfies ok.
-func roll(ok func(int32) bool) java26.Random {
+func roll(ok func(int32) bool) vanilla.Random {
 	for seed := int64(0); ; seed++ {
-		r := java26.NewLegacyRandom(seed)
+		r := vanilla.NewLegacyRandom(seed)
 		if ok(r.NextInt(100)) {
-			return java26.NewLegacyRandom(seed)
+			return vanilla.NewLegacyRandom(seed)
 		}
 	}
 }
@@ -57,7 +57,7 @@ func TestWanderingTraderChanceGrowsUntilATraderSpawns(t *testing.T) {
 	t.Cleanup(func() { _ = w.Close() })
 	s := &wanderingTraderSpawner{tickDelay: 1, data: &wanderingTraderData{SpawnDelay: 1200, SpawnChance: 25}}
 	wanderingTraderSpawners.Store(w, s)
-	day := func(random java26.Random) {
+	day := func(random vanilla.Random) {
 		s.tickDelay, s.data.SpawnDelay = 1, 1200
 		<-w.Exec(func(tx *world.Tx) { wanderingTraderSpawnTick(tx, &random) })
 	}
@@ -77,7 +77,7 @@ func TestWanderingTraderChanceGrowsUntilATraderSpawns(t *testing.T) {
 	if err := w.SetGameRule("spawn_wandering_traders", false); err != nil {
 		t.Fatal(err)
 	}
-	random := java26.NewLegacyRandom(0)
+	random := vanilla.NewLegacyRandom(0)
 	<-w.Exec(func(tx *world.Tx) { wanderingTraderSpawnTick(tx, &random) })
 	if s.data.SpawnDelay != 1200 {
 		t.Fatal("spawner counted down with spawn_wandering_traders off")

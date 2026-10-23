@@ -81,7 +81,7 @@ func (chunk *Chunk) CanonicalizeMissingBlockState(pos cube.Pos, layer uint8) boo
 	storage := sub.storages[layer]
 	x, y, z := byte(int(pos[0])&15), byte(pos[1]), byte(int(pos[2])&15)
 	paletteIndex := storage.paletteIndex(x, y, z)
-	javaStateID := storage.JavaStateID(x, y, z)
+	javaStateID := storage.StateID(x, y, z)
 	if _, partial := storage.missingStateEntries[paletteIndex]; !partial {
 		chunk.clearMissingBlockState(pos, layer)
 		return true
@@ -204,13 +204,13 @@ func (chunk *Chunk) Block(x uint8, y int16, z uint8, layer uint8) uint32 {
 	return sub.storages[layer].At(x, uint8(y), z)
 }
 
-// JavaStateID returns the source Java state ID for the primary block cell, or zero when absent.
-func (chunk *Chunk) JavaStateID(x uint8, y int16, z uint8) uint32 {
+// StateID returns the source Java state ID for the primary block cell, or zero when absent.
+func (chunk *Chunk) StateID(x uint8, y int16, z uint8) uint32 {
 	sub := chunk.sub[chunk.SubIndex(y)]
 	if len(sub.storages) == 0 {
 		return 0
 	}
-	return sub.storages[0].JavaStateID(x, uint8(y), z)
+	return sub.storages[0].StateID(x, uint8(y), z)
 }
 
 // SetJavaStateID attaches source Java metadata to the primary block cell without changing its native state.

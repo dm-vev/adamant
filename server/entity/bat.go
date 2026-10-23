@@ -3,8 +3,8 @@ package entity
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -74,7 +74,7 @@ func (c batBehaviourConfig) New() *batBehaviour {
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &batBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .06, DragBeforeGravity: true}, resting: c.Resting, variant: c.Variant, speed: .6, random: java26.NewLegacyRandom(0), nextMove: 1}
+	return &batBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .06, DragBeforeGravity: true}, resting: c.Resting, variant: c.Variant, speed: .6, random: vanilla.NewLegacyRandom(0), nextMove: 1}
 }
 
 type batBehaviour struct {
@@ -84,7 +84,7 @@ type batBehaviour struct {
 	resting, dead     bool
 	variant, nextMove int
 	speed             float64
-	random            java26.Random
+	random            vanilla.Random
 	target            mgl64.Vec3
 	hasTarget         bool
 }

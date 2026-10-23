@@ -42,7 +42,7 @@ func javaMechanism01BeehiveShape(c *javaShapeContext, state uint32, face cube.Fa
 		if c.generation != nil {
 			// ProtoChunk block entities have no Level. Source releaseOccupant
 			// dereferences it only when the hive actually contains a bee.
-			if c.generation.JavaHiveHasOccupants(c.pos) {
+			if c.generation.HiveHasOccupants(c.pos) {
 				panic("Java generation cannot release occupants from a hive without a Level")
 			}
 			return state

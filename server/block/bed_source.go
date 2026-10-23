@@ -4,17 +4,17 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
 // Source Player.freeAt checks suffocation, not whether a collision shape exists.
 func bedBlockSuffocates(pos cube.Pos, tx *world.Tx) bool {
-	id, err := tx.JavaBlockStateID(pos)
+	id, err := tx.BlockStateID(pos)
 	if err != nil {
 		panic(err)
 	}
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		panic("bed obstruction has no Source state")
 	}
@@ -25,7 +25,7 @@ func bedBlockSuffocates(pos cube.Pos, tx *world.Tx) bool {
 	case "glass", "tinted_glass", "moving_piston", "mangrove_roots":
 		return false
 	case "piston", "sticky_piston":
-		extended, ok := javadata.BlockStateBool(id, "extended")
+		extended, ok := gamedata.BlockStateBool(id, "extended")
 		if !ok {
 			panic("piston has no Source extended property")
 		}
@@ -38,14 +38,14 @@ func bedBlockSuffocates(pos cube.Pos, tx *world.Tx) bool {
 		box, ok := tx.Block(pos).(ShulkerBox)
 		return !ok || box.animationStatus == nil || box.animationStatus.Load() == StateClosed
 	}
-	causes, err := javadata.BlockTagContains("minecraft:causes_suffocation", name)
+	causes, err := gamedata.BlockTagContains("minecraft:causes_suffocation", name)
 	if err != nil {
 		panic(err)
 	}
 	if !causes {
 		return false
 	}
-	shape, err := javadata.BlockGenerationShapeID(id)
+	shape, err := gamedata.BlockGenerationShapeID(id)
 	if err != nil {
 		panic(err)
 	}

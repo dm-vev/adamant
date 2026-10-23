@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"os"
@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestVoidPlatformMatchesJava263(t *testing.T) {
+func TestVoidPlatformMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_void_platform.json")
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +34,7 @@ func TestVoidPlatformMatchesJava263(t *testing.T) {
 			target := world.ChunkPos{origin.x >> 4, origin.z >> 4}
 			region := newFeatureRegion(&ModernFeatures{}, chunk.New(world.DefaultBlockRegistry, world.Overworld.Range()), target, &world.GenerationResult{})
 			region.SetOrigin(target[0], target[1])
-			random := java26.NewLegacyRandom(123)
+			random := vanilla.NewLegacyRandom(123)
 			if got := region.f.placeConfiguredData(region, "void_start_platform", nil, origin, &random); got != tc.Placed {
 				t.Errorf("placed=%v, Java wants %v", got, tc.Placed)
 			}
@@ -65,8 +65,8 @@ func TestVoidPlatformMatchesJava263(t *testing.T) {
 
 func TestNoOpFeaturePreservesWorldAndRandom(t *testing.T) {
 	region := countLayerTestRegion()
-	random := java26.NewLegacyRandom(123)
-	wantRandom := java26.NewLegacyRandom(123)
+	random := vanilla.NewLegacyRandom(123)
+	wantRandom := vanilla.NewLegacyRandom(123)
 	if !region.f.placeConfiguredData(region, "no_op", nil, featurePos{8, 10, 8}, &random) {
 		t.Fatal("source no_op must succeed")
 	}

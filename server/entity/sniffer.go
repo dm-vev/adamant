@@ -6,8 +6,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
@@ -306,7 +306,7 @@ func (s *Sniffer) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 
 var _ Interactable = (*Sniffer)(nil)
 
-func (s *Sniffer) FinalizeSpawn(_ string, r *java26.Random) {
+func (s *Sniffer) FinalizeSpawn(_ string, r *vanilla.Random) {
 	if r != nil {
 		s.behaviour().next = int(r.NextInt(200))
 	}

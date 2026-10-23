@@ -8,8 +8,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -151,17 +151,17 @@ func (d *EnderDragon) PartBoxes() [8]DragonPartBox {
 	b := d.behaviour()
 	pos := d.Position()
 	yaw := float32(d.Rotation().Yaw()) * float32(math.Pi/180)
-	rotationSin, rotationCos := java26.Sin(float64(yaw)), java26.Cos(float64(yaw))
+	rotationSin, rotationCos := vanilla.Sin(float64(yaw)), vanilla.Cos(float64(yaw))
 	y5, yaw5 := b.flightSample(5, d.Ent)
 	y10, _ := b.flightSample(10, d.Ent)
 	tilt := float32(y5-y10) * 10 * float32(math.Pi/180)
-	tiltSin, tiltCos := java26.Sin(float64(tilt)), java26.Cos(float64(tilt))
+	tiltSin, tiltCos := vanilla.Sin(float64(tilt)), vanilla.Cos(float64(tilt))
 	yOffset := float64(float32(y5 - pos[1]))
 	if b.phase == DragonSittingFlaming || b.phase == DragonSittingScanning || b.phase == DragonSittingAttacking {
 		yOffset = -1
 	}
 	headYaw := yaw - float32(b.yRotA)*.01
-	headSin, headCos := java26.Sin(float64(headYaw)), java26.Cos(float64(headYaw))
+	headSin, headCos := vanilla.Sin(float64(headYaw)), vanilla.Cos(float64(headYaw))
 	head := pos.Add(mgl64.Vec3{float64(headSin * 6.5 * tiltCos), yOffset + float64(tiltSin*6.5), float64(-headCos * 6.5 * tiltCos)})
 	neck := pos.Add(mgl64.Vec3{float64(headSin * 5.5 * tiltCos), yOffset + float64(tiltSin*5.5), float64(-headCos * 5.5 * tiltCos)})
 	body := pos.Add(mgl64.Vec3{float64(rotationSin * .5), 0, float64(-rotationCos * .5)})
@@ -174,7 +174,7 @@ func (d *EnderDragon) PartBoxes() [8]DragonPartBox {
 		deltaYaw := wrapDragonDegrees(yaw0 - yaw5)
 		rot := yaw + float32(deltaYaw)*float32(math.Pi/180)
 		distance := float32((i + 1) * 2)
-		rotSin, rotCos := java26.Sin(float64(rot)), java26.Cos(float64(rot))
+		rotSin, rotCos := vanilla.Sin(float64(rot)), vanilla.Cos(float64(rot))
 		center := pos.Add(mgl64.Vec3{
 			float64(-(rotationSin*1.5 + rotSin*distance) * tiltCos),
 			y0 - y5 - float64((distance+1.5)*tiltSin) + 1.5,
@@ -541,7 +541,7 @@ func (b *EnderDragonBehaviour) tickStrafe(e *Ent, tx *world.Tx) {
 			aim = aim.Normalize()
 		}
 		yaw := float32(e.Rotation().Yaw()) * float32(math.Pi/180)
-		direction := mgl64.Vec3{float64(java26.Sin(float64(yaw))), 0, -float64(java26.Cos(float64(yaw)))}
+		direction := mgl64.Vec3{float64(vanilla.Sin(float64(yaw))), 0, -float64(vanilla.Cos(float64(yaw)))}
 		dot := max(-1.0, min(1.0, direction.Dot(aim)))
 		angle := math.Acos(dot)*180/math.Pi + .5
 		if b.fireballCharge >= 5 && angle < 10 {
@@ -629,7 +629,7 @@ func (b *EnderDragonBehaviour) tickTakeoff(e *Ent, tx *world.Tx) {
 	b.firstTakeoffTick = false
 	current := b.closestDragonNode(tx, e.Position()[0], e.Position()[1], e.Position()[2])
 	yaw := float32(e.Rotation().Yaw()) * float32(math.Pi/180)
-	look := mgl64.Vec3{float64(java26.Sin(float64(yaw))), 0, -float64(java26.Cos(float64(yaw)))}
+	look := mgl64.Vec3{float64(vanilla.Sin(float64(yaw))), 0, -float64(vanilla.Cos(float64(yaw)))}
 	target := b.closestDragonNode(tx, -look[0]*40, 105, -look[2]*40)
 	if b.fight != nil && b.fight.AliveCrystals() > 0 {
 		target %= 12
@@ -670,7 +670,7 @@ func (b *EnderDragonBehaviour) tickSittingScan(e *Ent, tx *world.Tx) {
 			toPlayer = toPlayer.Normalize()
 		}
 		yaw := float32(e.Rotation().Yaw()) * float32(math.Pi/180)
-		forward := mgl64.Vec3{float64(java26.Sin(float64(yaw))), 0, -float64(java26.Cos(float64(yaw)))}
+		forward := mgl64.Vec3{float64(vanilla.Sin(float64(yaw))), 0, -float64(vanilla.Cos(float64(yaw)))}
 		angle := math.Acos(max(-1.0, min(1.0, forward.Dot(toPlayer))))*180/math.Pi + .5
 		if angle < 0 || angle > 10 {
 			head := (&EnderDragon{Ent: e}).PartBoxes()[0].Box.Min().Add((&EnderDragon{Ent: e}).PartBoxes()[0].Box.Max()).Mul(.5)
@@ -733,7 +733,7 @@ func (b *EnderDragonBehaviour) moveTowardTarget(e *Ent) {
 	rotation := e.data.Rot
 	yaw := float32(rotation.Yaw()) * float32(math.Pi/180)
 	aim := delta.Normalize()
-	yawSin, yawCos := java26.Sin(float64(yaw)), java26.Cos(float64(yaw))
+	yawSin, yawCos := vanilla.Sin(float64(yaw)), vanilla.Cos(float64(yaw))
 	direction := mgl64.Vec3{float64(yawSin), velocity[1], -float64(yawCos)}
 	if direction.Len() > 0 {
 		direction = direction.Normalize()
@@ -751,7 +751,7 @@ func (b *EnderDragonBehaviour) moveTowardTarget(e *Ent) {
 	b.yRotA = b.yRotA*.8 + yawDelta*rotationSpeed
 	rotation[0] = wrapDragonDegrees(rotation[0] + b.yRotA*.1)
 	directionYaw := float32(rotation[0]) * float32(math.Pi/180)
-	direction = mgl64.Vec3{float64(java26.Sin(float64(directionYaw))), velocity[1], -float64(java26.Cos(float64(directionYaw)))}
+	direction = mgl64.Vec3{float64(vanilla.Sin(float64(directionYaw))), velocity[1], -float64(vanilla.Cos(float64(directionYaw)))}
 	if direction.Len() > 0 {
 		direction = direction.Normalize()
 	}

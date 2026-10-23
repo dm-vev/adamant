@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -72,7 +72,7 @@ type EntityHandle struct {
 	spawnReason    string
 	spawnSeed      int64
 	spawnGroup     *EntitySpawnGroup
-	javaRandom     *java26.Random
+	javaRandom     *vanilla.Random
 	pendingVehicle uuid.UUID
 
 	// TODO Handler? Handle world change here?
@@ -100,7 +100,7 @@ type EntitySpawnOpts struct {
 	SpawnFinalized bool
 	// EntityRandom carries the independent Entity.random continuation from
 	// preparation. New copies it because entity state has a different owner.
-	EntityRandom *java26.Random
+	EntityRandom *vanilla.Random
 	// Riding attaches a newly prepared passenger to its worldless vehicle.
 	// The vehicle must be installed before the passenger.
 	Riding *EntityHandle
@@ -168,9 +168,9 @@ func (e *EntityHandle) finalizeSpawn(entity Entity) {
 	e.spawnReason, e.spawnSeed = "", 0
 	defer func() { e.spawnGroup = nil }()
 	if finalizer, ok := entity.(interface {
-		FinalizeSpawn(string, *java26.Random)
+		FinalizeSpawn(string, *vanilla.Random)
 	}); ok {
-		random := java26.NewXoroshiroRandom(seed)
+		random := vanilla.NewXoroshiroRandom(seed)
 		finalizer.FinalizeSpawn(reason, &random)
 	}
 }

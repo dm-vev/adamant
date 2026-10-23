@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
@@ -19,7 +19,7 @@ const (
 
 type javaShapeContext struct {
 	tx         *Tx
-	generation JavaGenerationShapeAccess
+	generation GenerationShapeAccess
 	pos        cube.Pos
 }
 
@@ -55,7 +55,7 @@ func registerJavaSurvival(owner string, handler javaSurvivalHandler) {
 }
 
 func javaName(id uint32) string {
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		panic(fmt.Sprintf("invalid Java block state ID %d", id))
 	}
@@ -72,7 +72,7 @@ func javaIsAir(id uint32) bool {
 }
 
 func javaBool(id uint32, property string) bool {
-	value, ok := javadata.BlockStateBool(id, property)
+	value, ok := gamedata.BlockStateBool(id, property)
 	if !ok {
 		panic(fmt.Sprintf("Java state %d has no boolean property %s", id, property))
 	}
@@ -80,7 +80,7 @@ func javaBool(id uint32, property string) bool {
 }
 
 func javaInt(id uint32, property string) int32 {
-	value, ok := javadata.BlockStateInt(id, property)
+	value, ok := gamedata.BlockStateInt(id, property)
 	if !ok {
 		panic(fmt.Sprintf("Java state %d has no integer property %s", id, property))
 	}
@@ -88,7 +88,7 @@ func javaInt(id uint32, property string) int32 {
 }
 
 func javaString(id uint32, property string) string {
-	value, ok := javadata.BlockStateString(id, property)
+	value, ok := gamedata.BlockStateString(id, property)
 	if !ok {
 		panic(fmt.Sprintf("Java state %d has no enum property %s", id, property))
 	}
@@ -96,7 +96,7 @@ func javaString(id uint32, property string) string {
 }
 
 func javaWith(id uint32, property string, value any) uint32 {
-	changed, err := javadata.BlockStateWithProperty(id, property, value)
+	changed, err := gamedata.BlockStateWithProperty(id, property, value)
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +104,7 @@ func javaWith(id uint32, property string, value any) uint32 {
 }
 
 func javaDefault(name string) uint32 {
-	id, err := javadata.BlockStateID(name, nil)
+	id, err := gamedata.BlockStateID(name, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -115,9 +115,9 @@ func (c *javaShapeContext) at(pos cube.Pos) uint32 {
 	var id uint32
 	var err error
 	if c.generation != nil {
-		id, err = c.generation.JavaBlockStateID(pos)
+		id, err = c.generation.BlockStateID(pos)
 	} else {
-		id, err = c.tx.JavaBlockStateID(pos)
+		id, err = c.tx.BlockStateID(pos)
 	}
 	if err != nil {
 		panic(err)
@@ -126,11 +126,11 @@ func (c *javaShapeContext) at(pos cube.Pos) uint32 {
 }
 
 func (c *javaShapeContext) tag(id uint32, tag string) bool {
-	name, ok := javadata.BlockStateName(id)
+	name, ok := gamedata.BlockStateName(id)
 	if !ok {
 		panic(fmt.Sprintf("invalid Java block state ID %d", id))
 	}
-	contains, err := javadata.BlockTagContains(tag, name)
+	contains, err := gamedata.BlockTagContains(tag, name)
 	if err != nil {
 		panic(err)
 	}
@@ -138,15 +138,15 @@ func (c *javaShapeContext) tag(id uint32, tag string) bool {
 }
 
 func (c *javaShapeContext) solid(id uint32) bool {
-	solid, ok := javadata.BlockStateIsSolid(id)
+	solid, ok := gamedata.BlockStateIsSolid(id)
 	if !ok {
 		panic(fmt.Sprintf("invalid Java block state ID %d", id))
 	}
 	return solid
 }
 
-func javaGenerationShape(id uint32) javadata.GenerationShape {
-	shape, err := javadata.BlockGenerationShapeID(id)
+func javaGenerationShape(id uint32) gamedata.GenerationShape {
+	shape, err := gamedata.BlockGenerationShapeID(id)
 	if err != nil {
 		panic(err)
 	}
@@ -187,7 +187,7 @@ func (c *javaShapeContext) canSupportCenter(pos cube.Pos, face cube.Face) bool {
 }
 
 func (c *javaShapeContext) canSurvive(state uint32, pos cube.Pos) bool {
-	owner, err := javadata.BlockCanSurviveOwnerID(state)
+	owner, err := gamedata.BlockCanSurviveOwnerID(state)
 	if err != nil {
 		panic(err)
 	}
@@ -212,13 +212,13 @@ func (c *javaShapeContext) fluid(state uint32) javaFluidState {
 }
 
 func (c *javaShapeContext) waterTick(state uint32, pos cube.Pos) {
-	if wet, _ := javadata.BlockStateBool(state, "waterlogged"); wet {
+	if wet, _ := gamedata.BlockStateBool(state, "waterlogged"); wet {
 		c.fluidTick(pos, javaFluidState{kind: javaFluidWater, amount: 8, source: true}, 5)
 	}
 }
 
 func (c *javaShapeContext) blockTick(pos cube.Pos, state uint32, delay int32) {
-	name, ok := javadata.BlockStateName(state)
+	name, ok := gamedata.BlockStateName(state)
 	if !ok {
 		panic(fmt.Sprintf("invalid Java block state ID %d", state))
 	}
@@ -226,12 +226,12 @@ func (c *javaShapeContext) blockTick(pos cube.Pos, state uint32, delay int32) {
 }
 
 func (c *javaShapeContext) hasBlockTick(pos cube.Pos, state uint32) bool {
-	name, ok := javadata.BlockStateName(state)
+	name, ok := gamedata.BlockStateName(state)
 	if !ok {
 		panic(fmt.Sprintf("invalid Java block state ID %d", state))
 	}
 	if c.generation != nil {
-		return c.generation.HasJavaBlockTick(pos, name)
+		return c.generation.HasBlockTick(pos, name)
 	}
 	_, scheduled := c.tx.World().scheduledBlockTicks.scheduledTicks[scheduledTickIndex{pos: pos, typeName: name}]
 	return scheduled
@@ -258,7 +258,7 @@ func (c *javaShapeContext) fluidTick(pos cube.Pos, fluid javaFluidState, delay i
 
 func (c *javaShapeContext) schedule(pos cube.Pos, kind chunk.ScheduledTickKind, name string, delay int32) {
 	if c.generation != nil {
-		c.generation.ScheduleJavaTick(pos, kind, name, delay)
+		c.generation.ScheduleTick(pos, kind, name, delay)
 		return
 	}
 	w := c.tx.World()
@@ -280,16 +280,16 @@ func (c *javaShapeContext) schedule(pos cube.Pos, kind chunk.ScheduledTickKind, 
 
 func (c *javaShapeContext) randomInt(n int32) int32 {
 	if c.generation != nil {
-		return c.generation.JavaRandom().NextInt(n)
+		return c.generation.RegionRandom().NextInt(n)
 	}
-	return c.tx.JavaRandom().NextInt(n)
+	return c.tx.RegionRandom().NextInt(n)
 }
 
 func (c *javaShapeContext) randomFloat() float32 {
 	if c.generation != nil {
-		return c.generation.JavaRandom().NextFloat()
+		return c.generation.RegionRandom().NextFloat()
 	}
-	return c.tx.JavaRandom().NextFloat()
+	return c.tx.RegionRandom().NextFloat()
 }
 
 func (c *javaShapeContext) light(pos cube.Pos) int {
@@ -312,9 +312,9 @@ func (c *javaShapeContext) fluidDelay(fluid javaFluidState) int32 {
 	}
 	switch fluid.kind {
 	case javaFluidWater:
-		return c.generation.JavaFluidTickDelay("minecraft:water")
+		return c.generation.FluidTickDelay("minecraft:water")
 	case javaFluidLava:
-		return c.generation.JavaFluidTickDelay("minecraft:lava")
+		return c.generation.FluidTickDelay("minecraft:lava")
 	default:
 		panic("cannot obtain tick delay for empty Java fluid")
 	}
@@ -339,7 +339,7 @@ func (c *javaShapeContext) set(pos cube.Pos, state uint32, flags int) {
 }
 
 func (c *javaShapeContext) updateShape(state uint32, face cube.Face, neighbor uint32) uint32 {
-	owner, err := javadata.BlockUpdateShapeOwnerID(state)
+	owner, err := gamedata.BlockUpdateShapeOwnerID(state)
 	if err != nil {
 		panic(err)
 	}

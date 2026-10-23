@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -44,7 +44,7 @@ func (s bonusFeatureSource) BaseState(x, y, z int32) world.NativeState {
 	}
 	return s.states[name]
 }
-func TestBonusChestMatchesJava263(t *testing.T) {
+func TestBonusChestMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_bonus_chest.json")
 	if err != nil {
 		t.Fatal(err)
@@ -92,9 +92,9 @@ func TestBonusChestMatchesJava263(t *testing.T) {
 					}
 				}
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Xoroshiro {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if got := region.f.placeConfiguredData(region, "bonus_chest", nil, origin, &random); got != tc.Placed {
 				t.Errorf("placed=%v, Java wants %v", got, tc.Placed)

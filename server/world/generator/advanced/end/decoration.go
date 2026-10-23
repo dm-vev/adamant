@@ -2,8 +2,8 @@ package end
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -30,13 +30,13 @@ func endGenerationBiome(name string) endGenerationBiomes {
 	case "minecraft:end_barrens":
 		return endBarrensBiome
 	default:
-		panic("end: unknown Java generation biome " + name)
+		panic("end: unknown generation biome " + name)
 	}
 }
 
-func (g *End) javaBiomeAt(x, y, z int) string {
-	qx, qy, qz := java26.FiddledBiomeQuart(g.biomeZoomSeed, int32(x), int32(y), int32(z))
-	return g.javaNoiseBiomeAt(qx, qy, qz)
+func (g *End) biomeAt(x, y, z int) string {
+	qx, qy, qz := vanilla.FiddledBiomeQuart(g.biomeZoomSeed, int32(x), int32(y), int32(z))
+	return g.noiseBiomeAt(qx, qy, qz)
 }
 
 func (r *endFeatureRegion) featureBiomes(origin endFeatureOrigin) endGenerationBiomes {
@@ -61,7 +61,7 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 			x := chunkX*16 + int(random.Intn(16))
 			z := chunkZ*16 + int(random.Intn(16))
 			y := 55 + int(random.Intn(16))
-			if g.javaBiomeAt(x, y, z) == "minecraft:small_end_islands" {
+			if g.biomeAt(x, y, z) == "minecraft:small_end_islands" {
 				g.generateEndIsland(origin, x, y, z, random)
 			}
 		}
@@ -76,13 +76,13 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 			height := g.motionBlockingHeight(origin.region, x, z)
 			if height > origin.region.minY {
 				y := height + 3 + int(random.Intn(7))
-				if g.javaBiomeAt(x, y, z) == "minecraft:end_highlands" {
+				if g.biomeAt(x, y, z) == "minecraft:end_highlands" {
 					g.generateEndGatewayStructure(origin, x, y, z, result, targetX, targetZ)
 				}
 			}
 		}
 	}
-	if biomes&endCentralBiome != 0 && g.javaBiomeAt(chunkX*16, origin.region.minY, chunkZ*16) == "minecraft:the_end" {
+	if biomes&endCentralBiome != 0 && g.biomeAt(chunkX*16, origin.region.minY, chunkZ*16) == "minecraft:the_end" {
 		g.generateCentralStructures(origin, targetX, targetZ, result, g.endFeatureRandom(chunkX, chunkZ, 1, 4))
 	}
 	if biomes&endHighlandsBiome != 0 {
@@ -91,25 +91,25 @@ func (g *End) populateOrigin(targetX, targetZ int, origin endFeatureOrigin, resu
 			x := chunkX*16 + int(random.Intn(16))
 			z := chunkZ*16 + int(random.Intn(16))
 			y := g.motionBlockingHeight(origin.region, x, z)
-			if y <= origin.region.minY || g.javaBiomeAt(x, y, z) != "minecraft:end_highlands" || origin.block(x, y, z) != g.airRID {
+			if y <= origin.region.minY || g.biomeAt(x, y, z) != "minecraft:end_highlands" || origin.block(x, y, z) != g.airRID {
 				continue
 			}
 			state := origin.region.nativeState(x, y-1, z)
-			name, ok := javadata.BlockStateName(state.CanonicalJavaID(world.DefaultBlockRegistry))
+			name, ok := gamedata.BlockStateName(state.CanonicalID(world.DefaultBlockRegistry))
 			if !ok {
-				panic("end: chorus support has no Java state")
+				panic("end: chorus support has no state")
 			}
-			supports, err := javadata.BlockTagContains("minecraft:supports_chorus_plant", name)
+			supports, err := gamedata.BlockTagContains("minecraft:supports_chorus_plant", name)
 			if err != nil {
 				panic(err)
 			}
 			if supports {
-				world.GenerateJavaChorusPlant(endJavaShapeAccess{endFeatureOrigin: origin, result: result},
+				world.GenerateChorusPlant(endShapeAccess{endFeatureOrigin: origin, result: result},
 					cube.Pos{x, y, z}, &random.random, g.chorusMaxDistance)
 			}
 		}
 	}
-	if biomes&endCentralBiome != 0 && g.javaBiomeAt(100, 49, 0) == "minecraft:the_end" {
+	if biomes&endCentralBiome != 0 && g.biomeAt(100, 49, 0) == "minecraft:the_end" {
 		g.generateEndPlatform(origin)
 	}
 }
@@ -134,11 +134,11 @@ func (g *End) blocksMotionInHeightmap(rid uint32) bool {
 	if value, ok := g.motionBlocking.Load(rid); ok {
 		return value.(bool)
 	}
-	state, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{Block: rid, Liquid: g.airRID})
+	state, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{Block: rid, Liquid: g.airRID})
 	if err != nil {
 		panic(err)
 	}
-	matches, err := javadata.BlockTagContains("minecraft:blocks_motion_in_heightmap", state.Name)
+	matches, err := gamedata.BlockTagContains("minecraft:blocks_motion_in_heightmap", state.Name)
 	if err != nil {
 		panic(err)
 	}

@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type rootSystemSourceFixture struct {
@@ -48,8 +48,8 @@ type rootSystemSourceTerrain struct {
 	void   world.NativeState
 }
 
-func (s rootSystemSourceTerrain) JavaBiomeAt(int32, int32, int32) string { return "minecraft:plains" }
-func (s rootSystemSourceTerrain) JavaNoiseBiomeAt(int32, int32, int32) string {
+func (s rootSystemSourceTerrain) BiomeAt(int32, int32, int32) string { return "minecraft:plains" }
+func (s rootSystemSourceTerrain) NoiseBiomeAt(int32, int32, int32) string {
 	return "minecraft:plains"
 }
 func (s rootSystemSourceTerrain) BaseHeight(x, z int32, _ bool) int32 {
@@ -70,7 +70,7 @@ func (s rootSystemSourceTerrain) BaseBlock(x, y, z int32) world.Block {
 	}
 	return block
 }
-func (rootSystemSourceTerrain) JavaFeatureBiomeNames() []string { return []string{"minecraft:plains"} }
+func (rootSystemSourceTerrain) FeatureBiomeNames() []string { return []string{"minecraft:plains"} }
 func (s rootSystemSourceTerrain) BaseState(x, y, z int32) world.NativeState {
 	if y < -64 || y > 319 {
 		return s.void
@@ -80,11 +80,11 @@ func (s rootSystemSourceTerrain) BaseState(x, y, z int32) world.NativeState {
 	}
 	return s.air
 }
-func (rootSystemSourceTerrain) UseLegacyRandomSource() bool     { return false }
-func (rootSystemSourceTerrain) JavaHasSkyLight() bool           { return true }
-func (rootSystemSourceTerrain) JavaGenerationDepth() int32      { return 384 }
-func (rootSystemSourceTerrain) JavaFluidTickDelay(string) int32 { return 0 }
-func (rootSystemSourceTerrain) PlaceStructureStep(world.ChunkPos, int, javastructure.ProcessorEnvironment, func(javastructure.Placement)) {
+func (rootSystemSourceTerrain) UseLegacyRandomSource() bool { return false }
+func (rootSystemSourceTerrain) HasSkyLight() bool           { return true }
+func (rootSystemSourceTerrain) GenerationDepth() int32      { return 384 }
+func (rootSystemSourceTerrain) FluidTickDelay(string) int32 { return 0 }
+func (rootSystemSourceTerrain) PlaceStructureStep(world.ChunkPos, int, structure.ProcessorEnvironment, func(structure.Placement)) {
 }
 
 func rootSystemFixtureState(t *testing.T, name string, properties map[string]string) world.NativeState {
@@ -111,7 +111,7 @@ func rootSystemFixtureState(t *testing.T, name string, properties map[string]str
 	return state
 }
 
-func TestRootSystemMatchesJava263Source(t *testing.T) {
+func TestRootSystemMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_root_system_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -142,12 +142,12 @@ func TestRootSystemMatchesJava263Source(t *testing.T) {
 			for p, state := range initial {
 				before[p] = state
 			}
-			var random java26.Random
+			var random vanilla.Random
 			switch test.Algorithm {
 			case "legacy":
-				random = java26.NewLegacyRandom(test.Seed)
+				random = vanilla.NewLegacyRandom(test.Seed)
 			case "xoroshiro":
-				random = java26.NewXoroshiroRandom(test.Seed)
+				random = vanilla.NewXoroshiroRandom(test.Seed)
 			default:
 				t.Fatalf("unknown Java RNG %q", test.Algorithm)
 			}

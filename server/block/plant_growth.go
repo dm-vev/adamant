@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -18,7 +18,7 @@ type weightedFeature struct {
 
 // pickFeature ports WeightedList.getRandom: no feature of an empty list,
 // otherwise one drawn by weight with a single nextInt.
-func pickFeature(list []weightedFeature, random *java26.Random) string {
+func pickFeature(list []weightedFeature, random *vanilla.Random) string {
 	var total int32
 	for _, f := range list {
 		total += f.weight
@@ -75,7 +75,7 @@ var treeGrowers = map[string]treeGrower{
 // growTree ports TreeGrower.growTree: a two-by-two tree where four of the
 // same saplings stand, otherwise a tree, one grown near flowers if there are
 // some. The saplings make way for the tree and come back if it does not fit.
-func (g treeGrower) growTree(tx *world.Tx, pos cube.Pos, same func(world.Block) bool, random *java26.Random) bool {
+func (g treeGrower) growTree(tx *world.Tx, pos cube.Pos, same func(world.Block) bool, random *vanilla.Random) bool {
 	features, ok := tx.Features()
 	if !ok {
 		return false
@@ -237,7 +237,7 @@ func (s TreeSapling) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 // advanceTree ports SaplingBlock.advanceTree: a sapling first grows to its
 // second stage, then into a tree. Bedrock's propagule has no stage for this,
 // so a propagule grows into a tree at once.
-func (s TreeSapling) advanceTree(pos cube.Pos, tx *world.Tx, random *java26.Random) {
+func (s TreeSapling) advanceTree(pos cube.Pos, tx *world.Tx, random *vanilla.Random) {
 	if s.Type != "mangrove_propagule" && s.Stage == 0 {
 		s.Stage = 1
 		tx.SetBlock(pos, s, &world.SetOpts{DisableBlockUpdates: true})
@@ -300,7 +300,7 @@ func (a FloweringAzalea) BoneMeal(pos cube.Pos, tx *world.Tx) item.BoneMealResul
 
 // growFeaturePlant ports MushroomBlock.growMushroom: the plant makes way for
 // the feature and comes back if it does not fit.
-func growFeaturePlant(tx *world.Tx, pos cube.Pos, feature string, random *java26.Random) bool {
+func growFeaturePlant(tx *world.Tx, pos cube.Pos, feature string, random *vanilla.Random) bool {
 	features, ok := tx.Features()
 	if !ok {
 		return false

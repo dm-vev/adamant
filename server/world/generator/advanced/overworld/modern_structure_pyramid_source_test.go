@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 )
 
 type desertPyramidConstructorFixture struct {
@@ -25,7 +25,7 @@ type desertPyramidConstructorFixture struct {
 	AfterInt  int32    `json:"after_int"`
 }
 
-func TestDesertPyramidRawConstructorMatchesJava263(t *testing.T) {
+func TestDesertPyramidRawConstructorMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_desert_pyramid_constructor.json")
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestDesertPyramidRawConstructorMatchesJava263(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Run(fixture.Seed, func(t *testing.T) {
-			random := java26.NewLegacyRandom(seed)
+			random := vanilla.NewLegacyRandom(seed)
 			start, valid, err := buildModernDesertPyramid(modernStructureBuildInput{seed: seed, name: "minecraft:desert_pyramid", chunkX: -1, chunkZ: 2, random: &random})
 			if err != nil || !valid {
 				t.Fatalf("constructor valid=%v err=%v", valid, err)
@@ -60,7 +60,7 @@ func TestDesertPyramidRawConstructorMatchesJava263(t *testing.T) {
 			if got := random.NextInt(1_000_000); got != fixture.AfterInt {
 				t.Errorf("constructor following random = %d, want %d", got, fixture.AfterInt)
 			}
-			if piece.Bounds() != (javastructure.Box{Min: [3]int32{-16, 64, 32}, Max: [3]int32{4, 78, 52}}) {
+			if piece.Bounds() != (structure.Box{Min: [3]int32{-16, 64, 32}, Max: [3]int32{4, 78, 52}}) {
 				t.Errorf("constructor eagerly terrain-adjusted bounds: %+v", piece.Bounds())
 			}
 		})
@@ -95,7 +95,7 @@ type desertPyramidSourceFixture struct {
 	Markers          [][3]int32                  `json:"markers"`
 }
 
-func TestDesertPyramidPostProcessAndAfterPlaceMatchJava263(t *testing.T) {
+func TestDesertPyramidPostProcessAndAfterPlaceMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_desert_pyramid_full.json")
 	if err != nil {
 		t.Fatal(err)
@@ -112,16 +112,16 @@ func TestDesertPyramidPostProcessAndAfterPlaceMatchJava263(t *testing.T) {
 		}
 		t.Run(fixture.Direction, func(t *testing.T) {
 			dir := map[string]int{"north": 0, "east": 1, "south": 2, "west": 3}[fixture.Direction]
-			piece := modernDesertPyramid{box: javastructure.Box{Min: [3]int32{-8, 64, -8}, Max: [3]int32{12, 78, 12}}, dir: dir}
-			state := javastructure.StructurePieceState{}
-			random := java26.NewLegacyRandom(seed ^ 0x7137)
-			levelRandom := java26.NewLegacyRandom(87654321)
+			piece := modernDesertPyramid{box: structure.Box{Min: [3]int32{-8, 64, -8}, Max: [3]int32{12, 78, 12}}, dir: dir}
+			state := structure.StructurePieceState{}
+			random := vanilla.NewLegacyRandom(seed ^ 0x7137)
+			levelRandom := vanilla.NewLegacyRandom(87654321)
 			stateIDs := map[string]uint32{}
 			stateID := func(name string) uint32 {
 				if id, ok := stateIDs[name]; ok {
 					return id
 				}
-				id, err := javadata.BlockStateID(name, nil)
+				id, err := gamedata.BlockStateID(name, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -129,11 +129,11 @@ func TestDesertPyramidPostProcessAndAfterPlaceMatchJava263(t *testing.T) {
 				return id
 			}
 			height := func(x, z int32) int32 { return 70 + int32(((int64(x)*3+int64(z)*5)%7+7)%7) }
-			clip := javastructure.Bounds{Min: [3]int32{-16, -64, -16}, Max: [3]int32{31, 319, 31}}
-			env := javastructure.ProcessorEnvironment{
+			clip := structure.Bounds{Min: [3]int32{-16, -64, -16}, Max: [3]int32{31, 319, 31}}
+			env := structure.ProcessorEnvironment{
 				WorldSeed: 123456789, Random: &random, LevelRandom: &levelRandom, PieceState: &state, Range: cube.Range{-64, 319},
 				MotionBlockingNoLeavesHeight: height,
-				JavaBlockStateID: func(x, y, z int32) (uint32, error) {
+				BlockStateID: func(x, y, z int32) (uint32, error) {
 					name := "minecraft:air"
 					if y >= 0 && y < height(x, z) {
 						name = "minecraft:stone"
@@ -184,7 +184,7 @@ func TestDesertPyramidPostProcessAndAfterPlaceMatchJava263(t *testing.T) {
 			if state.LootPlaced != 0x0f || candidateCount != fixture.CandidateCount || roof != fixture.Roof {
 				t.Errorf("mutable source state chest=%#x candidates=%d roof=%v", state.LootPlaced, candidateCount, roof)
 			}
-			gotActors := make(map[[3]int32]javastructure.Block)
+			gotActors := make(map[[3]int32]structure.Block)
 			for _, b := range blocks {
 				if b.NBT != nil {
 					gotActors[b.Pos] = b
@@ -239,11 +239,11 @@ func desertFixtureLootSeed(t *testing.T, nbt string) int64 {
 }
 func desertPyramidState(state world.BlockState) string {
 	// Compare resolved Java states, not whether the port spells out default properties.
-	id, err := javadata.BlockStateID(state.Name, state.Properties)
+	id, err := gamedata.BlockStateID(state.Name, state.Properties)
 	if err != nil {
 		panic(err)
 	}
-	state.Name, state.Properties, _ = javadata.BlockStateFromID(id)
+	state.Name, state.Properties, _ = gamedata.BlockStateFromID(id)
 	keys := make([]string, 0, len(state.Properties))
 	for key := range state.Properties {
 		keys = append(keys, key)
@@ -272,7 +272,7 @@ type desertPyramidSequenceFixture struct {
 	NextLevelInt   int32    `json:"next_level_int"`
 }
 
-func TestDesertPyramidRepeatedChunksAndSaveReloadMatchJava263(t *testing.T) {
+func TestDesertPyramidRepeatedChunksAndSaveReloadMatchReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_desert_pyramid_sequence.json")
 	if err != nil {
 		t.Fatal(err)
@@ -282,23 +282,23 @@ func TestDesertPyramidRepeatedChunksAndSaveReloadMatchJava263(t *testing.T) {
 		t.Fatal(err)
 	}
 	const seed int64 = 1000016
-	piece := modernDesertPyramid{box: javastructure.Box{Min: [3]int32{-8, 64, -8}, Max: [3]int32{12, 78, 12}}, dir: 0}
+	piece := modernDesertPyramid{box: structure.Box{Min: [3]int32{-8, 64, -8}, Max: [3]int32{12, 78, 12}}, dir: 0}
 	start := modernStructureStart{key: modernStructureStartKey{set: "pyramid_sequence"}, pieces: []modernStructurePiece{piece}, mutablePieces: true}
 	generator := &Overworld{seed: 123456789, modernStructures: new(modernStructures)}
 	flags := generator.modernStructures.pieceStates.forStart(start)
 	state := &flags.pieces[0]
-	random := java26.NewLegacyRandom(seed ^ 0x7137)
-	levelRandom := java26.NewLegacyRandom(87654321)
+	random := vanilla.NewLegacyRandom(seed ^ 0x7137)
+	levelRandom := vanilla.NewLegacyRandom(87654321)
 	overlay := make(map[[3]int32]uint32)
 	rangeY := cube.Range{-64, 319}
 	height := func(x, z int32) int32 { return 70 + int32(((int64(x)*3+int64(z)*5)%7+7)%7) }
 	canWrite := func(x, y, z int32) bool {
 		return y >= int32(rangeY.Min()) && y <= int32(rangeY.Max()) && (x>>4) >= -2 && (x>>4) <= 0 && (z>>4) >= -2 && (z>>4) <= 0
 	}
-	env := javastructure.ProcessorEnvironment{
+	env := structure.ProcessorEnvironment{
 		WorldSeed: 123456789, Random: &random, LevelRandom: &levelRandom, PieceState: state, Range: rangeY,
 		MotionBlockingNoLeavesHeight: height,
-		JavaBlockStateID: func(x, y, z int32) (uint32, error) {
+		BlockStateID: func(x, y, z int32) (uint32, error) {
 			if id, ok := overlay[[3]int32{x, y, z}]; ok {
 				return id, nil
 			}
@@ -306,7 +306,7 @@ func TestDesertPyramidRepeatedChunksAndSaveReloadMatchJava263(t *testing.T) {
 			if y >= 0 && y < height(x, z) {
 				name = "minecraft:stone"
 			}
-			return javadata.BlockStateID(name, nil)
+			return gamedata.BlockStateID(name, nil)
 		},
 		CanWriteBlock: canWrite,
 	}
@@ -333,7 +333,7 @@ func TestDesertPyramidRepeatedChunksAndSaveReloadMatchJava263(t *testing.T) {
 			}
 			env.PieceState = state
 		}
-		clip := javastructure.Bounds{Min: [3]int32{fixture.Clip[0], fixture.Clip[1], fixture.Clip[2]}, Max: [3]int32{fixture.Clip[3], fixture.Clip[4], fixture.Clip[5]}}
+		clip := structure.Bounds{Min: [3]int32{fixture.Clip[0], fixture.Clip[1], fixture.Clip[2]}, Max: [3]int32{fixture.Clip[3], fixture.Clip[4], fixture.Clip[5]}}
 		post, err := piece.Place(clip, env)
 		if err != nil {
 			t.Fatal(err)
@@ -383,7 +383,7 @@ func TestDesertPyramidRepeatedChunksAndSaveReloadMatchJava263(t *testing.T) {
 	}
 }
 
-func desertPyramidTrace(t *testing.T, blocks []javastructure.Block, canWrite func(int32, int32, int32) bool, r cube.Range) []string {
+func desertPyramidTrace(t *testing.T, blocks []structure.Block, canWrite func(int32, int32, int32) bool, r cube.Range) []string {
 	t.Helper()
 	trace := make([]string, len(blocks))
 	for i, b := range blocks {
@@ -394,14 +394,14 @@ func desertPyramidTrace(t *testing.T, blocks []javastructure.Block, canWrite fun
 	return trace
 }
 
-func desertPyramidCommit(t *testing.T, overlay map[[3]int32]uint32, blocks []javastructure.Block, canWrite func(int32, int32, int32) bool, r cube.Range) {
+func desertPyramidCommit(t *testing.T, overlay map[[3]int32]uint32, blocks []structure.Block, canWrite func(int32, int32, int32) bool, r cube.Range) {
 	t.Helper()
 	for _, b := range blocks {
 		x, y, z := b.Pos[0], b.Pos[1], b.Pos[2]
 		if y < int32(r.Min()) || y > int32(r.Max()) || !canWrite(x, y, z) {
 			continue
 		}
-		id, err := javadata.BlockStateID(b.State.Name, b.State.Properties)
+		id, err := gamedata.BlockStateID(b.State.Name, b.State.Properties)
 		if err != nil {
 			t.Fatal(err)
 		}

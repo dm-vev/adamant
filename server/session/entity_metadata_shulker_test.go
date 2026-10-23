@@ -63,7 +63,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 		for i, tc := range cases {
 			pos := cube.Pos{2 + 2*i, 70, 8}
 			tx.SetBlock(pos.Side(tc.face), block.Stone{}, nil)
-			handle, err := entity.NewFromJavaNBT(map[string]any{
+			handle, err := entity.NewFromStructureNBT(map[string]any{
 				"id": "minecraft:shulker", "AttachFace": byte(tc.face), "Color": tc.colour, "Peek": tc.peek,
 			}, world.EntitySpawnOpts{Position: mgl64.Vec3{float64(pos[0]) + .5, 70, 8.5}})
 			if err != nil {

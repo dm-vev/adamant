@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
 
-func TestBuiltinSurvivalMatchesJava263(t *testing.T) {
+func TestBuiltinSurvivalMatchesReference(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_survival.json")
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestMultifaceRejectsOccupiedFace(t *testing.T) {
 	region.Set(p, lichen)
 	region.Set(multifaceOffset(p, "east"), countLayerNativeState(t, "stone"))
 	region.Set(multifaceOffset(p, "west"), countLayerNativeState(t, "stone"))
-	random := java26.NewLegacyRandom(0)
+	random := vanilla.NewLegacyRandom(0)
 	if multifacePlaceAt(region, "glow_lichen", "minecraft:stone", p, &random, []string{"east", "west"}, 0) {
 		t.Fatal("occupied first matching face must reject placement, not add the next face")
 	}
@@ -122,11 +122,11 @@ func TestMultifaceSpreadReceivesGenerationPostprocessing(t *testing.T) {
 	defer w.Close()
 	p := cube.Pos{8, 10, 8}
 	check := func(tx *world.Tx, want string) {
-		id, err := tx.JavaBlockStateID(p)
+		id, err := tx.BlockStateID(p)
 		if err != nil {
 			t.Fatal(err)
 		}
-		state, err := world.JavaState(world.DefaultBlockRegistry, world.NativeState{JavaStateID: id})
+		state, err := world.CanonicalState(world.DefaultBlockRegistry, world.NativeState{StateID: id})
 		if err != nil {
 			t.Fatal(err)
 		}

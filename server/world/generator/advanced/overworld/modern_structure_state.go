@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/javastructure"
+	"github.com/df-mc/dragonfly/server/world/generator/advanced/internal/structure"
 	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
@@ -18,7 +18,7 @@ type modernStructureStateStore struct {
 
 type modernStructureStartState struct {
 	mu      sync.Mutex
-	pieces  []javastructure.StructurePieceState
+	pieces  []structure.StructurePieceState
 	pending []savedStructurePieceState
 }
 
@@ -38,7 +38,7 @@ func (s *modernStructureStateStore) forStart(start modernStructureStart) *modern
 	if s.starts == nil {
 		s.starts = make(map[modernStructureStartKey]*modernStructureStartState)
 	}
-	state := &modernStructureStartState{pieces: make([]javastructure.StructurePieceState, len(start.pieces))}
+	state := &modernStructureStartState{pieces: make([]structure.StructurePieceState, len(start.pieces))}
 	s.starts[start.key] = state
 	return state
 }
@@ -47,16 +47,16 @@ func (s *modernStructureStateStore) forStart(start modernStructureStart) *modern
 // The caller holds the start lock.
 func (s *modernStructureStartState) prepare(start modernStructureStart) error {
 	if len(s.pieces) == 0 {
-		s.pieces = make([]javastructure.StructurePieceState, len(start.pieces))
+		s.pieces = make([]structure.StructurePieceState, len(start.pieces))
 	}
 	if len(s.pieces) != len(start.pieces) {
-		return fmt.Errorf("Java structure state piece count at %s %d,%d differs from source graph", start.key.set, start.key.x, start.key.z)
+		return fmt.Errorf("structure state piece count at %s %d,%d differs from source graph", start.key.set, start.key.x, start.key.z)
 	}
 	for _, piece := range s.pending {
 		if int(piece.Index) >= len(s.pieces) {
-			return fmt.Errorf("Java structure state piece %d at %s %d,%d is outside source graph", piece.Index, start.key.set, start.key.x, start.key.z)
+			return fmt.Errorf("structure state piece %d at %s %d,%d is outside source graph", piece.Index, start.key.set, start.key.x, start.key.z)
 		}
-		s.pieces[piece.Index] = javastructure.StructurePieceState{
+		s.pieces[piece.Index] = structure.StructurePieceState{
 			ChestPlaced: piece.Chest != 0, SpawnerPlaced: piece.Spawner != 0,
 			GroundHeightSet: piece.GroundHeightSet != 0, GroundHeight: piece.GroundHeight,
 			BoundingBoxYSet: piece.BoundingBoxYSet != 0, BoundingBoxMinY: piece.BoundingBoxMinY,
@@ -88,7 +88,7 @@ func hasMutableStructurePieceState(pieces []modernStructurePiece) bool {
 }
 
 const structureStateFormatVersion int32 = 1
-const structureStateJavaDataVersion int32 = 5023
+const structureStateDataVersion int32 = 5023
 
 type savedStructurePieceState struct {
 	Index                int32 `nbt:"index"`
@@ -126,23 +126,23 @@ func (g *Overworld) LoadGenerationState(data []byte) error {
 	if len(data) != 0 {
 		var saved savedStructureState
 		if err := nbt.UnmarshalEncoding(data, &saved, nbt.LittleEndian); err != nil {
-			return fmt.Errorf("decode Java structure state: %w", err)
+			return fmt.Errorf("decode structure state: %w", err)
 		}
-		if saved.FormatVersion != structureStateFormatVersion || saved.DataVersion != structureStateJavaDataVersion {
-			return fmt.Errorf("unsupported Java structure state version %d/%d", saved.FormatVersion, saved.DataVersion)
+		if saved.FormatVersion != structureStateFormatVersion || saved.DataVersion != structureStateDataVersion {
+			return fmt.Errorf("unsupported structure state version %d/%d", saved.FormatVersion, saved.DataVersion)
 		}
 		if saved.Seed != g.seed {
-			return fmt.Errorf("Java structure state seed %d differs from world seed %d", saved.Seed, g.seed)
+			return fmt.Errorf("structure state seed %d differs from world seed %d", saved.Seed, g.seed)
 		}
 		states = make(map[modernStructureStartKey]*modernStructureStartState, len(saved.Starts))
 		for _, start := range saved.Starts {
 			key := modernStructureStartKey{set: start.Set, x: start.X, z: start.Z}
 			if _, exists := states[key]; exists {
-				return fmt.Errorf("duplicate Java structure state at %s %d,%d", key.set, key.x, key.z)
+				return fmt.Errorf("duplicate structure state at %s %d,%d", key.set, key.x, key.z)
 			}
 			for _, piece := range start.Pieces {
 				if piece.Index < 0 || piece.Chest > 1 || piece.Spawner > 1 || piece.GroundHeightSet > 1 || piece.BoundingBoxYSet > 1 || piece.TemplatePositionYSet > 1 || piece.HeightAdjusted > 1 || piece.LootPlaced > 15 || piece.EntitiesSpawned > 3 {
-					return fmt.Errorf("invalid Java structure piece state at %s %d,%d: %+v", key.set, key.x, key.z, piece)
+					return fmt.Errorf("invalid structure piece state at %s %d,%d: %+v", key.set, key.x, key.z, piece)
 				}
 			}
 			state := &modernStructureStartState{pending: start.Pieces}
@@ -159,7 +159,7 @@ func (g *Overworld) LoadGenerationState(data []byte) error {
 // SaveGenerationState snapshots one-time Java placement flags independently of
 // the bounded immutable start cache. It is safe while generation is running.
 func (g *Overworld) SaveGenerationState() ([]byte, error) {
-	saved := savedStructureState{FormatVersion: structureStateFormatVersion, DataVersion: structureStateJavaDataVersion, Seed: g.seed}
+	saved := savedStructureState{FormatVersion: structureStateFormatVersion, DataVersion: structureStateDataVersion, Seed: g.seed}
 	s := &g.modernStructures.pieceStates
 	s.mu.Lock()
 	for key, state := range s.starts {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -28,7 +28,7 @@ func (catType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) wo
 	b := d.Data.(*CatBehaviour)
 	hash := fnv.New64a()
 	_, _ = hash.Write([]byte(h.UUID().String()))
-	b.random = java26.NewLegacyRandom(int64(hash.Sum64()))
+	b.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	return &Cat{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (catType) EncodeEntity() string        { return "minecraft:cat" }
@@ -172,14 +172,14 @@ func (c CatBehaviourConfig) New() *CatBehaviour {
 	if soundVariant != "royal" {
 		soundVariant = "classic"
 	}
-	return &CatBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: java26.NewLegacyRandom(0), speed: .3, tamed: c.Tamed, sitting: c.Sitting, ownerUUID: c.OwnerUUID, variant: c.Variant, collarColor: c.CollarColor, ageTicks: c.AgeTicks, soundVariant: soundVariant, nextWander: 1}
+	return &CatBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: .3, tamed: c.Tamed, sitting: c.Sitting, ownerUUID: c.OwnerUUID, variant: c.Variant, collarColor: c.CollarColor, ageTicks: c.AgeTicks, soundVariant: soundVariant, nextWander: 1}
 }
 
 type CatBehaviour struct {
 	health               *HealthManager
 	effects              *EffectManager
 	mc                   *MovementComputer
-	random               java26.Random
+	random               vanilla.Random
 	speed                float64
 	tamed, sitting, dead bool
 	ownerUUID            string

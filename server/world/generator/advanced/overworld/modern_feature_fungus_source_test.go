@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/java26"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"math"
@@ -17,8 +17,8 @@ type fungusSourceFixture struct {
 }
 
 func (s fungusSourceFixture) BaseState(int32, int32, int32) world.NativeState { return s.air }
-func (fungusSourceFixture) JavaGenerationDepth() int32                        { return 128 }
-func TestHugeFungusPreservesNonReplaceableLeavesJava263(t *testing.T) {
+func (fungusSourceFixture) GenerationDepth() int32                            { return 128 }
+func TestHugeFungusPreservesNonReplaceableLeavesReference(t *testing.T) {
 	// Executed HugeFungusFeature.place, LegacyRandomSource(1234), origin (8,65,8).
 	// Oak leaves obstruct both the stem and hat; the explicit replacement predicate
 	// permits shroomlight only in the stem. The source preserves every leaf.
@@ -51,7 +51,7 @@ func TestHugeFungusPreservesNonReplaceableLeavesJava263(t *testing.T) {
 	}
 	region.Set(featurePos{8, 67, 8}, resolve("minecraft:shroomlight"))
 	config := map[string]any{"valid_base_block": "minecraft:warped_nylium", "stem_state": "minecraft:warped_stem", "hat_state": "minecraft:warped_wart_block", "decor_state": "minecraft:shroomlight", "replaceable_blocks": map[string]any{"type": "minecraft:matching_blocks", "blocks": []any{"minecraft:shroomlight"}}, "planted": false}
-	random := java26.NewLegacyRandom(1234)
+	random := vanilla.NewLegacyRandom(1234)
 	if !placeModernHugeFungus(region, config, featurePos{8, 65, 8}, &random) {
 		t.Fatal("source placed the fungus")
 	}

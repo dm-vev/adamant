@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 )
 
 func init() {
@@ -92,7 +92,7 @@ func javaPlant07SnowLayerSurvival(c *javaShapeContext, _ uint32, pos cube.Pos) b
 	if c.tag(below, "support_override_snow_layer") {
 		return true
 	}
-	covered, err := javadata.GenerationCollisionFaceCoversRectangleID(below, int(cube.FaceUp), 0, 0, 1, 1)
+	covered, err := gamedata.GenerationCollisionFaceCoversRectangleID(below, int(cube.FaceUp), 0, 0, 1, 1)
 	if err != nil {
 		panic(err)
 	}

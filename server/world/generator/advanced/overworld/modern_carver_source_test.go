@@ -28,7 +28,7 @@ func (sourceGeometryAquifer) CarveTopMaterial(_, _, _ int32, _ bool) (world.Bloc
 	panic("unexpected surface replacement in flat-stone geometry")
 }
 
-func TestCarvingGeometryMatchesJava263(t *testing.T) {
+func TestCarvingGeometryMatchesReference(t *testing.T) {
 	world.DefaultBlockRegistry.Finalize()
 	data, err := os.ReadFile("testdata/java263_carving_geometry.json")
 	if err != nil {
@@ -58,7 +58,7 @@ func TestCarvingGeometryMatchesJava263(t *testing.T) {
 				}
 			}
 			if row.Kind == "source" {
-				biome := f.biomes[normalizeJavaResource(f.source.JavaNoiseBiomeAt(row.SourceX<<2, 0, row.SourceZ<<2))]
+				biome := f.biomes[normalizeResource(f.source.NoiseBiomeAt(row.SourceX<<2, 0, row.SourceZ<<2))]
 				cfg := f.carvers[biome.carvers[0]]
 				random := largeFeatureRandom(row.Seed, row.SourceX, row.SourceZ)
 				starts := 0

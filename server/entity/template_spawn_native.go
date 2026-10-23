@@ -65,7 +65,7 @@ func projectTemplateMobNBT(source map[string]any) (map[string]any, error) {
 			if templateSpawnItemEmpty(raw) {
 				return nativeMobItemFromStack(item.Stack{}), nil
 			}
-			stack, err := item.StackFromJavaNBT(raw)
+			stack, err := item.StackFromStructureNBT(raw)
 			if err != nil {
 				return NativeMobItem{}, fmt.Errorf("Source %s %s: %w", id, slot, err)
 			}

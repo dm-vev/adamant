@@ -1,6 +1,6 @@
 package entity
 
-import "github.com/df-mc/dragonfly/server/internal/java26"
+import "github.com/df-mc/dragonfly/server/internal/vanilla"
 
 // SlimeCore contains source-shared size, jump cadence and split-child rules for
 // the Slime and MagmaCube families. Attack and damage transitions stay in each species.
@@ -21,7 +21,7 @@ func newSpeciesSlimeCore(kind speciesKind, size int) *SlimeCore {
 }
 
 // Jump advances the source jump timer and reports when a grounded jump begins.
-func (s *SlimeCore) Jump(random *java26.Random, onGround bool) bool {
+func (s *SlimeCore) Jump(random *vanilla.Random, onGround bool) bool {
 	if s.JumpDelay > 0 { s.JumpDelay-- }
 	if !onGround || s.JumpDelay > 0 || random == nil { return false }
 	s.JumpDelay = 10 + int(random.NextInt(20))

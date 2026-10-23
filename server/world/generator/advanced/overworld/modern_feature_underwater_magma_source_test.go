@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	java26 "github.com/df-mc/dragonfly/server/internal/java26"
-	"github.com/df-mc/dragonfly/server/internal/javadata"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -74,7 +74,7 @@ func buildMagmaSourceTerrain(t *testing.T, tc magmaSourceCase) magmaSourceTerrai
 	}
 	return s
 }
-func TestUnderwaterMagmaMatchesJava263Source(t *testing.T) {
+func TestUnderwaterMagmaMatchesSource(t *testing.T) {
 	data, err := os.ReadFile("testdata/java263_underwater_magma_source.json")
 	if err != nil {
 		t.Fatal(err)
@@ -100,16 +100,16 @@ func TestUnderwaterMagmaMatchesJava263Source(t *testing.T) {
 			if tc.RejectWrites {
 				region.SetOrigin(target[0]+3, target[1]+3)
 			}
-			random := java26.NewLegacyRandom(tc.Seed)
+			random := vanilla.NewLegacyRandom(tc.Seed)
 			if tc.Algorithm == "xoroshiro" {
-				random = java26.NewXoroshiroRandom(tc.Seed)
+				random = vanilla.NewXoroshiroRandom(tc.Seed)
 			}
 			if got := placeModernUnderwaterMagma(region, tc.Config, featurePos{tc.Origin[0], tc.Origin[1], tc.Origin[2]}, &random); got != tc.Placed {
 				t.Errorf("placed=%v Source=%v", got, tc.Placed)
 			}
 			want := make(map[featurePos]uint32, len(tc.States))
 			for _, state := range tc.States {
-				id, err := javadata.BlockStateID(state.State, state.Properties)
+				id, err := gamedata.BlockStateID(state.State, state.Properties)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -121,7 +121,7 @@ func TestUnderwaterMagmaMatchesJava263Source(t *testing.T) {
 					t.Errorf("unexpected Source placement at %v", p)
 					continue
 				}
-				if got := n.CanonicalJavaID(c.BlockRegistry()); got != expected {
+				if got := n.CanonicalID(c.BlockRegistry()); got != expected {
 					t.Errorf("Source state at %v=%d want=%d", p, got, expected)
 				}
 				delete(want, p)

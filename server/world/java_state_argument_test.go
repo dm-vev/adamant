@@ -22,7 +22,7 @@ func TestParseJavaBlockStateMatchesJava263(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
-			got, err := ParseJavaBlockState(tc.Input)
+			got, err := ParseBlockState(tc.Input)
 			if !tc.OK {
 				if err == nil {
 					t.Fatalf("source rejects %q; got %+v", tc.Input, got)

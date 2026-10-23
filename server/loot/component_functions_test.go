@@ -67,7 +67,7 @@ func TestCopyStateCopiesBlockProperties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := item.StackToJavaNBT(stack)
+	data, err := item.StackToStructureNBT(stack)
 	if err != nil {
 		t.Fatal(err)
 	}

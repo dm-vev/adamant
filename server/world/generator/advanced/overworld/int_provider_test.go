@@ -3,12 +3,12 @@ package overworld
 import (
  "encoding/json"
  "testing"
- "github.com/df-mc/dragonfly/server/internal/java26"
+ "github.com/df-mc/dragonfly/server/internal/vanilla"
 )
 
 // Sequences and following nextLong values were produced by the pinned Java 26.3
 // IntProvider implementations at seed 123, independently of this sampler.
-func TestJavaIntProviderSequences(t *testing.T) {
+func TestIntProviderSequences(t *testing.T) {
  tests := []struct { name, provider string; xoroshiro bool; want [16]int32; next int64 }{
   {name: "legacy/constant", provider: `7`, xoroshiro: false, want: [16]int32{7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}, next: -5106534569952410475},
   {name: "legacy/uniform", provider: `{"type":"minecraft:uniform","min_inclusive":-4,"max_inclusive":9}`, xoroshiro: false, want: [16]int32{-4, 2, 2, 3, 7, 7, 6, -3, 5, -3, 5, 4, 8, 1, -3, 5}, next: -3758321679654915806},
@@ -37,10 +37,10 @@ func TestJavaIntProviderSequences(t *testing.T) {
   t.Run(test.name, func(t *testing.T) {
    var provider any
    if err := json.Unmarshal([]byte(test.provider), &provider); err != nil { t.Fatal(err) }
-   random := java26.NewLegacyRandom(123)
-   if test.xoroshiro { random = java26.NewXoroshiroRandom(123) }
+   random := vanilla.NewLegacyRandom(123)
+   if test.xoroshiro { random = vanilla.NewXoroshiroRandom(123) }
    for i, want := range test.want {
-    if got := sampleJavaInt(provider, &random); got != want { t.Fatalf("sample %d = %d, want Java %d", i, got, want) }
+    if got := sampleInt(provider, &random); got != want { t.Fatalf("sample %d = %d, want Java %d", i, got, want) }
    }
    if next := random.NextLong(); next != test.next { t.Fatalf("following nextLong = %d, want Java %d", next, test.next) }
   })
