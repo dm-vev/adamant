@@ -364,6 +364,8 @@ func (lt *ProjectileBehaviour) hitEntity(l Living, e *Ent, vel mgl64.Vec3, part 
 		_, vulnerable = l.Hurt(dmg, src)
 	}
 	if vulnerable {
+		// AbstractArrow.onHitEntity: the shooter last hurt what it hit.
+		recordLastHurtMob(owner, l)
 		l.KnockBack(l.Position().Sub(vel), 0.45+lt.conf.KnockBackForceAddend, 0.3608+lt.conf.KnockBackHeightAddend)
 
 		for _, eff := range lt.conf.Potion.Effects() {

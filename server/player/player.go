@@ -117,6 +117,13 @@ type playerData struct {
 
 	lastDamage  float64
 	immuneUntil time.Time
+	// The combat memory of the LivingEntity: the living entity that last
+	// hurt the player, the damage it last took and the living entity it
+	// last hurt, with the game ticks they happened at.
+	lastHurtBy, lastHurtMob         *world.EntityHandle
+	lastHurtByTick, lastHurtMobTick int64
+	lastDamageSource                world.DamageSource
+	lastDamageTick                  int64
 
 	deathPos       *mgl64.Vec3
 	deathDimension world.Dimension
@@ -796,6 +803,10 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	}
 	p.ReleaseShoulderParrots()
 	p.setAttackImmunity(immunity, totalDamage)
+	p.lastDamageSource, p.lastDamageTick = src, p.tx.CurrentTick()
+	if attacker, ok := entity.DamageAttacker(src).(entity.Living); ok {
+		p.lastHurtBy, p.lastHurtByTick = attacker.H(), p.tx.CurrentTick()
+	}
 
 	if a := p.Absorption(); a > 0 {
 		remaining := a - damageLeft
@@ -860,6 +871,51 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 		p.kill(src)
 	}
 	return totalDamage, true
+}
+
+// LastHurtByMob returns the living entity that hurt the player in the last
+// 100 ticks and the game tick it last did, as LivingEntity.getLastHurtByMob
+// and getLastHurtByMobTimestamp.
+func (p *Player) LastHurtByMob() (world.Entity, int64) {
+	if p.lastHurtBy == nil || p.tx.CurrentTick()-p.lastHurtByTick > 100 {
+		return nil, p.lastHurtByTick
+	}
+	e, ok := p.lastHurtBy.Entity(p.tx)
+	if !ok {
+		return nil, p.lastHurtByTick
+	}
+	return e, p.lastHurtByTick
+}
+
+// LastHurtMob returns the living entity the player last hurt and the game
+// tick it did, as LivingEntity.getLastHurtMob and getLastHurtMobTimestamp.
+func (p *Player) LastHurtMob() (world.Entity, int64) {
+	if p.lastHurtMob == nil {
+		return nil, p.lastHurtMobTick
+	}
+	e, ok := p.lastHurtMob.Entity(p.tx)
+	if !ok {
+		return nil, p.lastHurtMobTick
+	}
+	return e, p.lastHurtMobTick
+}
+
+// SetLastHurtMob records the entity the player hurt, as
+// LivingEntity.setLastHurtMob.
+func (p *Player) SetLastHurtMob(e world.Entity) {
+	p.lastHurtMob, p.lastHurtMobTick = nil, p.tx.CurrentTick()
+	if _, ok := e.(entity.Living); ok {
+		p.lastHurtMob = e.H()
+	}
+}
+
+// LastDamageSource returns the damage the player took last if it took it
+// within the ticks passed, as LivingEntity.getLastDamageSource.
+func (p *Player) LastDamageSource(timeout int64) world.DamageSource {
+	if p.tx.CurrentTick()-p.lastDamageTick > timeout {
+		return nil
+	}
+	return p.lastDamageSource
 }
 
 // applyTotemEffects is an unexported function that is used to handle totem effects.
@@ -2662,6 +2718,9 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		}
 	}
 	n, vulnerable := living.Hurt(dmg, src)
+	if vulnerable {
+		p.SetLastHurtMob(e)
+	}
 	i, left = p.HeldItems()
 
 	if durable, ok := i.Item().(item.Durable); ok {

@@ -13,6 +13,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -125,10 +126,10 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	native := map[string]any{
 		"Attributes": attributes,
 		"IsTamed":    boolByte(b.tamed),
-		"Sitting":    boolByte(b.sitting),
+		"Sitting":    boolByte(b.orderedToSit),
 	}
 	native = SetNativeMobVariant(native, bedrockWolfVariants[b.variant])
-	native = SetNativeMobAngry(native, b.angry)
+	native = SetNativeMobAngry(native, b.angry())
 	ownerID, ok := NativeMobOwnerID(data.NativeNBT)
 	if !ok {
 		ownerID = -1
@@ -161,8 +162,8 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 	native = MergeNativeMobNBT(native, EncodeNativeMobEquipment(equipment))
 
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), b.breeding.encodeNBT(map[string]any{
-		"Tame": boolByte(b.tamed), "Sitting": boolByte(b.sitting), "Age": int32(b.ageTicks),
-		"CollarColor": b.collarColor, "Angry": boolByte(b.angry),
+		"Tame": boolByte(b.tamed), "Sitting": boolByte(b.orderedToSit), "Age": int32(b.ageTicks),
+		"CollarColor": b.collarColor, "Angry": boolByte(b.angry()),
 		"variant":       "minecraft:" + wolfVariantNames[b.variant],
 		"sound_variant": "minecraft:" + b.soundVariant,
 	}))
@@ -330,32 +331,38 @@ func (c WolfBehaviourConfig) New() *WolfBehaviour {
 	default:
 		soundVariant = "classic"
 	}
-	return &WolfBehaviour{
+	b := &WolfBehaviour{
 		health: NewHealthManager(health, maxHealth), effects: NewEffectManager(),
-		mc:    &MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
-		speed: 0.3, tamed: c.Tamed, angry: c.Angry, sitting: c.Sitting, ownerUUID: c.OwnerUUID,
-		collarColor: collar, variant: uint8(max(0, min(c.Variant, len(wolfVariantNames)-1))), ageTicks: c.AgeTicks, nextWander: 1,
+		speed:       0.3,
+		tamable:     tamable{tamed: c.Tamed, ownerUUID: c.OwnerUUID, orderedToSit: c.Sitting, inSittingPose: c.Sitting},
+		collarColor: collar, variant: uint8(max(0, min(c.Variant, len(wolfVariantNames)-1))), ageTicks: c.AgeTicks,
 		soundVariant: soundVariant, bodyArmor: armor,
-		// Wolves only panic from fire, lava, freezing, cactus and lightning.
-		panic: panicState{environmental: true},
 	}
+	if c.Angry {
+		// Bedrock saves only whether a wolf is angry.
+		b.angerTicks = 400
+	}
+	return b
 }
 
 type WolfBehaviour struct {
-	health                               *HealthManager
-	effects                              *EffectManager
-	mc                                   *MovementComputer
-	speed                                float64
-	tamed, angry, sitting, dead          bool
-	owner                                *world.EntityHandle
-	ownerUUID                            string
-	collarColor, variant                 uint8
-	soundVariant                         string
-	ageTicks, nextWander, followCooldown int
-	navigator                            Navigator
-	bodyArmor                            item.Stack
-	breeding                             breeding
-	panic                                panicState
+	health               *HealthManager
+	effects              *EffectManager
+	speed                float64
+	dead                 bool
+	collarColor, variant uint8
+	soundVariant         string
+	ageTicks             int
+	bodyArmor            item.Stack
+	breeding             breeding
+	animalAI
+	tamable
+	neutralAnger
+	shown wolfShownState
+	// interested is set while BegGoal runs, wet and shaking while the wolf
+	// is wet and shakes itself dry for shakeAnim / 0.05 ticks.
+	interested, wet, shaking bool
+	shakeAnim                float64
 }
 
 // Wolf is a tameable passive wolf with owner and body armour state.
@@ -367,71 +374,22 @@ func (w *Wolf) Tick(tx *world.Tx, current int64) {
 	w.Ent.Tick(tx, current)
 }
 func (b *WolfBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.tamed && b.owner == nil && b.ownerUUID != "" {
-		for candidate := range tx.Entities() {
-			if candidate.H().UUID().String() == b.ownerUUID {
-				b.owner = candidate.H()
-				break
-			}
-		}
+	w := &Wolf{Ent: e}
+	ai := &b.ai
+	ai.MovementSpeed, ai.EyeHeight, ai.MaxHeadPitch = b.speed, .68, 40
+	if b.ageTicks < 0 {
+		ai.EyeHeight = .34375
 	}
-	panicking := b.panic.run(e, tx, &b.navigator)
-	partner, inLove := tickBreeding(&Wolf{Ent: e}, tx)
-	if b.sitting {
-		b.navigator.Path, b.navigator.Index = nil, 0
-		e.data.Vel = mgl64.Vec3{}
-		return nil
+	if b.inSittingPose {
+		// Wolf.getMaxHeadXRot: a sitting wolf barely looks up or down.
+		ai.MaxHeadPitch = 20
 	}
-	if b.followCooldown > 0 {
-		b.followCooldown--
+	mv := animalTick(e, tx, w, &b.animalAI, b.registerGoals)
+	if !w.Dead() {
+		b.tickWetness(ai.Mob(e, w))
+		b.updateShownState(w)
 	}
-	if b.tamed && b.owner != nil && b.followCooldown == 0 && !panicking {
-		if owner, ok := b.owner.Entity(tx); ok && e.Position().Sub(owner.Position()).LenSqr() > 100 {
-			start, goal := cube.PosFromVec3(e.Position()), cube.PosFromVec3(owner.Position())
-			b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 256}, navigatorTick(e))
-			b.followCooldown = 20
-		}
-	}
-	if b.nextWander > 0 {
-		b.nextWander--
-	}
-	speed := b.speed
-	if panicking {
-		// TamableAnimalPanicGoal at 1.5 times the movement speed.
-		speed = groundSpeed(.3, 1.5)
-	} else if inLove {
-		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 && !(b.tamed && b.owner != nil) {
-		b.chooseWanderPath(e, tx)
-	}
-	velocity, rot := e.data.Vel, e.data.Rot
-	if target, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
-		delta := target.Sub(e.data.Pos)
-		delta[1] = 0
-		if delta.Len() < .3 {
-			b.navigator.Index++
-		} else {
-			dir := delta.Normalize()
-			velocity[0], velocity[2] = dir[0]*speed, dir[2]*speed
-			rot[0] = math.Atan2(-dir[0], dir[2]) * 180 / math.Pi
-		}
-	} else {
-		velocity[0], velocity[2] = 0, 0
-	}
-	m := b.mc.TickMovement(e, e.data.Pos, velocity, e.data.Rot, rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (b *WolfBehaviour) chooseWanderPath(e *Ent, tx *world.Tx) {
-	b.nextWander = 40 + rand.IntN(81)
-	start := cube.PosFromVec3(e.Position())
-	for range 4 {
-		goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-			return
-		}
-	}
-	b.navigator.Path, b.navigator.Index = nil, 0
+	return mv
 }
 func (w *Wolf) Health() float64        { return w.behaviour().health.Health() }
 func (w *Wolf) MaxHealth() float64     { return w.behaviour().health.MaxHealth() }
@@ -439,21 +397,29 @@ func (w *Wolf) SetMaxHealth(v float64) { w.behaviour().health.SetMaxHealth(v) }
 func (w *Wolf) Dead() bool             { return w.behaviour().dead || w.Health() <= 0 }
 
 // Panicking reports whether the wolf runs from fire or other hazards.
-func (w *Wolf) Panicking() bool { return w.behaviour().panic.active }
+func (w *Wolf) Panicking() bool { return w.behaviour().panicking() }
 func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	b := w.behaviour()
 	if w.Dead() || damage <= 0 || (src.Fire() && w.hasEffect(effect.FireResistance)) {
 		return 0, false
 	}
+	damage, ok := b.ai.DamageCooldown(w.tx, damage)
+	if !ok {
+		return 0, false
+	}
+	// Wolf.hurtServer: a hurt wolf stands up.
+	b.orderedToSit = false
 	if res, ok := b.effects.Effect(effect.Resistance); ok {
 		damage *= effect.Resistance.Multiplier(src, res.Level())
 	}
-	if !b.bodyArmor.Empty() {
-		b.bodyArmor = b.bodyArmor.Damage(max(1, int(math.Ceil(damage))))
-		damage = wolfArmourDamage(damage)
+	if !b.bodyArmor.Empty() && !bypassesWolfArmour(src) {
+		// Wolf.actuallyHurt: wolf armour takes the damage in place of the
+		// wolf.
+		b.bodyArmor = b.bodyArmor.Damage(int(math.Ceil(damage)))
+		damage = 0
 	}
 	b.health.AddHealth(-damage)
-	b.panic.hurt(src, w.tx.CurrentTick())
+	b.ai.Hurt(src)
 	resetLove(w)
 	w.viewAction(HurtAction{})
 	onMobHurt(w.tx, w)
@@ -462,9 +428,17 @@ func (w *Wolf) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	}
 	return damage, true
 }
-func wolfArmourDamage(d float64) float64 {
-	reduction := min(20.0, max(11.0/5, 11-d/2))
-	return d * (1 - reduction/25)
+
+// bypassesWolfArmour reports if src is in Java's #bypasses_wolf_armor
+// damage type tag.
+func bypassesWolfArmour(src world.DamageSource) bool {
+	switch src.(type) {
+	case VoidDamageSource, StarvationDamageSource, DrowningDamageSource, SuffocationDamageSource, FreezeDamageSource,
+		IndirectMagicDamageSource, effect.InstantDamageSource, effect.PoisonDamageSource, effect.WitherDamageSource,
+		enchantment.ThornsDamageSource:
+		return true
+	}
+	return false
 }
 func (w *Wolf) Heal(h float64, _ world.HealingSource) float64 {
 	if w.Dead() || h <= 0 {
@@ -491,13 +465,17 @@ func (w *Wolf) SetSpeed(v float64)           { w.behaviour().speed = v }
 func (w *Wolf) hasEffect(t effect.Type) bool { _, ok := w.behaviour().effects.Effect(t); return ok }
 func (w *Wolf) Tamed() bool                  { return w.behaviour().tamed }
 func (w *Wolf) Owner() *world.EntityHandle   { return w.behaviour().owner }
-func (w *Wolf) Angry() bool                  { return w.behaviour().angry }
-func (w *Wolf) SetSitting(sit bool)          { w.behaviour().sitting = sit }
-func (w *Wolf) Variant() uint8               { return w.behaviour().variant }
-func (w *Wolf) BedrockVariant() int32        { return bedrockWolfVariants[w.behaviour().variant] }
-func (w *Wolf) SoundVariant() string         { return w.behaviour().soundVariant }
-func (w *Wolf) CollarColor() uint8           { return w.behaviour().collarColor }
-func (w *Wolf) BodyArmor() item.Stack        { return w.behaviour().bodyArmor }
+func (w *Wolf) Angry() bool                  { return w.behaviour().angry() }
+func (w *Wolf) SetSitting(sit bool)          { w.behaviour().orderedToSit = sit }
+
+// Interested reports if the wolf tilts its head at a player holding a bone
+// or its food.
+func (w *Wolf) Interested() bool      { return w.behaviour().interested }
+func (w *Wolf) Variant() uint8        { return w.behaviour().variant }
+func (w *Wolf) BedrockVariant() int32 { return bedrockWolfVariants[w.behaviour().variant] }
+func (w *Wolf) SoundVariant() string  { return w.behaviour().soundVariant }
+func (w *Wolf) CollarColor() uint8    { return w.behaviour().collarColor }
+func (w *Wolf) BodyArmor() item.Stack { return w.behaviour().bodyArmor }
 func (w *Wolf) CanShearBodyArmor(user world.Entity) bool {
 	b := w.behaviour()
 	return user != nil && user.H() != nil && b.tamed && b.ownerUUID != "" &&
@@ -536,18 +514,17 @@ func (w *Wolf) Interact(tx *world.Tx, user item.User, ctx *item.UseContext) bool
 	if !isOwner {
 		return false
 	}
-	b.sitting = !b.sitting
-	b.navigator.Path, b.navigator.Index = nil, 0
-	if b.sitting {
-		w.SetVelocity(mgl64.Vec3{})
-	}
+	// Wolf.mobInteract: the owner orders the wolf to sit or stand up.
+	b.orderedToSit = !b.orderedToSit
+	m := b.ai.Mob(w.Ent, w)
+	b.ai.jumping = false
+	b.ai.nav.Stop()
+	m.SetTarget(nil)
 	return true
 }
 
 // Sitting reports whether the wolf sits as its owner ordered.
-func (w *Wolf) Sitting() bool { return w.behaviour().sitting }
-
-func (w *Wolf) moveFlagHeld() bool { return w.behaviour().sitting }
+func (w *Wolf) Sitting() bool { return w.behaviour().inSittingPose }
 
 // InLove reports whether the wolf is in love.
 func (w *Wolf) InLove() bool { return w.behaviour().breeding.InLove() }
@@ -565,7 +542,7 @@ func (w *Wolf) breedingFood(stack item.Stack) bool {
 // sitting partner.
 func (w *Wolf) canMateWith(partner breeder) bool {
 	p := partner.(*Wolf).behaviour()
-	return w.behaviour().tamed && p.tamed && !p.sitting
+	return w.behaviour().tamed && p.tamed && !p.inSittingPose
 }
 
 // breedOffspring ports Wolf.getBreedOffspring: the pup takes the variant of
@@ -632,17 +609,20 @@ func wolfFoodNutrition(food any) (int, bool) {
 }
 func (w *Wolf) TameWithBone(tx *world.Tx, user world.Entity) bool {
 	b := w.behaviour()
-	if b.tamed {
+	if b.tamed || b.angry() {
 		return false
 	}
 	if rand.IntN(3) == 0 {
-		b.tamed = true
+		// Wolf.tryToTame: a tamed wolf sits down and forgets its target.
+		b.tamed, b.orderedToSit = true, true
 		b.owner = user.H()
 		b.ownerUUID = user.H().UUID().String()
 		b.health.SetMaxHealth(40)
 		b.health.AddHealth(40)
-		b.angry = false
+		b.ai.nav.Stop()
+		b.ai.Mob(w.Ent, w).SetTarget(nil)
 		w.viewAction(TameAction{Succeeded: true})
+		w.updateState()
 	} else {
 		w.viewAction(TameAction{})
 	}

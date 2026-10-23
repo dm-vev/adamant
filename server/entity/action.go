@@ -103,3 +103,6 @@ type EatGrassAction struct{ action }
 type action struct{}
 
 func (action) EntityAction() {}
+
+// WolfShakeAction makes a wet wolf shake itself dry.
+type WolfShakeAction struct{ action }

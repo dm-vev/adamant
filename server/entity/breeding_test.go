@@ -1,6 +1,7 @@
 package entity_test
 
 import (
+	"encoding/binary"
 	"math/rand/v2"
 	"sync"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // breedingTestWorld returns a world with a grass floor around the origin.
@@ -269,12 +271,22 @@ func TestOnlyTamedPetsBreedTamedYoung(t *testing.T) {
 		{"minecraft:wolf", item.Beef{}, true},
 		{"minecraft:wolf", item.Beef{}, false},
 	}
+	var ownerID uuid.UUID
+	for i, v := range owner {
+		binary.BigEndian.PutUint32(ownerID[i*4:], uint32(v))
+	}
 	for _, c := range cases {
 		nbt := map[string]any{}
+		w := breedingTestWorld(t)
 		if c.tamed {
 			nbt["Tame"], nbt["Owner"] = byte(1), owner
+			// SitWhenOrderedToGoal sits down a pet whose owner is away, so
+			// the owner stands by.
+			<-w.Exec(func(tx *world.Tx) {
+				tx.AddEntity(world.EntitySpawnOpts{ID: ownerID}.New(player.Type, player.Config{Position: mgl64.Vec3{1.5, 64, 5.5}, GameMode: world.GameModeCreative}))
+			})
 		}
-		w := breedPair(t, c.id, c.food, nbt)
+		breedPairIn(t, w, c.id, c.food, nbt)
 		<-w.Exec(func(tx *world.Tx) {
 			var babies []world.Entity
 			for e := range tx.Entities() {

@@ -124,6 +124,9 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		if e.Angry() {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
 		}
+		if e.Interested() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagInterested)
+		}
 	case *entity.Rabbit:
 		// Bedrock has no killer bunny.
 		if v := e.Variant(); v <= 5 {

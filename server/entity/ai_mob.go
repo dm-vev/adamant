@@ -460,6 +460,25 @@ func (ai *MobAI) Hurt(src world.DamageSource) {
 	}
 }
 
+// DamageAttacker returns the entity responsible for damage, if any: the
+// attacker or the owner of a projectile, as DamageSource.getEntity.
+func DamageAttacker(src world.DamageSource) world.Entity { return damageAttacker(src) }
+
+// recordLastHurtMob records that attacker hurt target, as
+// LivingEntity.setLastHurtMob.
+func recordLastHurtMob(attacker, target world.Entity) {
+	if attacker == nil {
+		return
+	}
+	if r, ok := attacker.(interface{ SetLastHurtMob(world.Entity) }); ok {
+		r.SetLastHurtMob(target)
+		return
+	}
+	if m, ok := mobOf(attacker); ok {
+		m.AI.setLastHurtMob(target)
+	}
+}
+
 // damageAttacker returns the entity responsible for damage, if any.
 func damageAttacker(src world.DamageSource) world.Entity {
 	if attacker := raidDamageAttacker(src); attacker != nil {

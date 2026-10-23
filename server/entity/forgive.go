@@ -32,6 +32,8 @@ func (z *ZombifiedPiglin) forgive(id string) { s := z.z(); s.forgiveAnger(&s.ai,
 
 func (e *Enderman) forgive(id string) { s := e.s(); s.forgiveAnger(&s.ai, id) }
 
+func (w *Wolf) forgive(id string) { b := w.behaviour(); b.forgiveAnger(&b.ai, id) }
+
 func (m *IronGolem) forgive(id string) {
 	b := m.b()
 	if b.angerTarget != id {
