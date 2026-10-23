@@ -101,10 +101,6 @@ func actorIsBaby(e world.Entity) bool {
 	return false
 }
 
-// bedrockAxolotls maps the Java axolotl variants Adamant keeps to the variants
-// Bedrock clients colour axolotls by.
-var bedrockAxolotls = [...]int32{0, 3, 2, 1, 4}
-
 var bedrockProfessions = map[string]int32{
 	"none": 0, "farmer": 1, "fisherman": 2, "shepherd": 3, "fletcher": 4, "librarian": 5, "cartographer": 6, "cleric": 7,
 	"armorer": 8, "weaponsmith": 9, "toolsmith": 10, "butcher": 11, "leatherworker": 12, "mason": 13, "nitwit": 14,
@@ -149,14 +145,11 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 	case *entity.Panda:
 		m[protocol.EntityDataKeyVariant] = int32(e.Variant())
 	case *entity.Axolotl:
-		m[protocol.EntityDataKeyVariant] = bedrockAxolotls[min(max(e.Variant(), 0), int32(len(bedrockAxolotls)-1))]
+		m[protocol.EntityDataKeyVariant], _, _, _ = e.BedrockVariant()
 	case *entity.TropicalFish:
-		// Java packs the size, pattern and both colours in one variant.
-		v := e.Variant()
-		m[protocol.EntityDataKeyVariant] = v & 0xff
-		m[protocol.EntityDataKeyMarkVariant] = v >> 8 & 0xff
-		m[protocol.EntityDataKeyColorIndex] = byte(v >> 16)
-		m[protocol.EntityDataKeyColorTwoIndex] = byte(v >> 24)
+		variant, mark, color, color2 := e.BedrockVariant()
+		m[protocol.EntityDataKeyVariant], m[protocol.EntityDataKeyMarkVariant] = variant, mark
+		m[protocol.EntityDataKeyColorIndex], m[protocol.EntityDataKeyColorTwoIndex] = color, color2
 	case *entity.Salmon:
 		// The scale sets the size of a salmon.
 		m[protocol.EntityDataKeyVariant] = int32(0)

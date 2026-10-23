@@ -29,16 +29,17 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 		}
 		return world.Config{Provider: db, Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
 	}
+	// Java numbers the dye colours from white, Bedrock variants from black.
 	cases := []struct {
-		face         cube.Face
-		colour, peek byte
+		face                     cube.Face
+		javaColour, colour, peek byte
 	}{
-		{cube.FaceDown, 16, 0},
-		{cube.FaceUp, 0, 0},
-		{cube.FaceNorth, 15, 73},
-		{cube.FaceSouth, 5, 30},
-		{cube.FaceWest, 11, 100},
-		{cube.FaceEast, 4, 73},
+		{cube.FaceDown, 16, 16, 0},
+		{cube.FaceUp, 15, 0, 0},
+		{cube.FaceNorth, 0, 15, 73},
+		{cube.FaceSouth, 10, 5, 30},
+		{cube.FaceWest, 4, 11, 100},
+		{cube.FaceEast, 11, 4, 73},
 	}
 	viewer := testSession("shulker-metadata")
 	assertMetadata := func(m protocol.EntityMetadata, pos cube.Pos, face cube.Face, colour, peek byte) {
@@ -64,7 +65,7 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 			pos := cube.Pos{2 + 2*i, 70, 8}
 			tx.SetBlock(pos.Side(tc.face), block.Stone{}, nil)
 			handle, err := entity.NewFromStructureNBT(map[string]any{
-				"id": "minecraft:shulker", "AttachFace": byte(tc.face), "Color": tc.colour, "Peek": tc.peek,
+				"id": "minecraft:shulker", "AttachFace": byte(tc.face), "Color": tc.javaColour, "Peek": tc.peek,
 			}, world.EntitySpawnOpts{Position: mgl64.Vec3{float64(pos[0]) + .5, 70, 8.5}})
 			if err != nil {
 				t.Fatal(err)

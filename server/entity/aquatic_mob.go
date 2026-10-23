@@ -2,6 +2,7 @@ package entity
 
 import (
 	"hash/fnv"
+	"maps"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -120,17 +121,21 @@ func (t aquaticMobType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 		c.Health = float64(nbtconv.Float32(nbt, "Health"))
 		c.healthSet = true
 	}
-	if _, ok := nbt["Variant"]; ok {
-		c.Variant = int(nbtconv.Int32(nbt, "Variant"))
-	}
-	if _, ok := nbt["BucketVariantTag"]; ok {
-		c.BucketVariant = int(nbtconv.Int32(nbt, "BucketVariantTag"))
+	if java, ok := aquaticJavaState(nbt); ok {
+		if _, ok := java["Variant"]; ok {
+			c.Variant = int(nbtconv.Int32(java, "Variant"))
+		}
+		if _, ok := java["BucketVariantTag"]; ok {
+			c.BucketVariant = int(nbtconv.Int32(java, "BucketVariantTag"))
+		}
+		if _, ok := java["PuffState"]; ok {
+			c.PuffState = int(nbtconv.Int32(java, "PuffState"))
+		}
+	} else {
+		c.Variant, c.PuffState = javaAquaticVariant(t.id, nbt, c.Variant)
 	}
 	if _, ok := nbt["Age"]; ok {
 		c.Age = int(nbtconv.Int32(nbt, "Age"))
-	}
-	if _, ok := nbt["PuffState"]; ok {
-		c.PuffState = int(nbtconv.Int32(nbt, "PuffState"))
 	}
 	if _, ok := nbt["AgeLocked"]; ok {
 		c.AgeLocked = nbtconv.Bool(nbt, "AgeLocked")
@@ -145,7 +150,9 @@ func (t aquaticMobType) DecodeNBT(nbt map[string]any, data *world.EntityData) {
 }
 func (aquaticMobType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*AquaticMobBehaviour)
-	m := map[string]any{"Health": float32(b.health.Health()), "Variant": int32(b.variant), "BucketVariantTag": int32(b.bucketVariant), "Age": int32(b.age), "PuffState": int32(b.puffState), "FromBucket": boolByte(b.id == "minecraft:tadpole" || b.fromBucket)}
+	m := map[string]any{"Health": float32(b.health.Health()), "Age": int32(b.age), "FromBucket": boolByte(b.id == "minecraft:tadpole" || b.fromBucket)}
+	maps.Copy(m, b.bedrockVariantNBT())
+	m["adamant:java"] = map[string]any{"Variant": int32(b.variant), "BucketVariantTag": int32(b.bucketVariant), "PuffState": int32(b.puffState)}
 	switch b.id {
 	case "minecraft:axolotl":
 		b.breeding.encodeNBT(m)
@@ -153,6 +160,80 @@ func (aquaticMobType) EncodeNBT(data *world.EntityData) map[string]any {
 		m["AgeLocked"] = boolByte(b.breeding.ageLocked)
 	}
 	return m
+}
+
+// bedrockAxolotlVariants holds the Bedrock variant of each Java axolotl
+// variant. The mapping is its own inverse.
+var bedrockAxolotlVariants = [...]int32{0, 3, 2, 1, 4}
+
+// bedrockVariantNBT returns the variant fields BDS saves for the mob,
+// converted from the Java variant kept.
+func (b *AquaticMobBehaviour) bedrockVariantNBT() map[string]any {
+	m := map[string]any{"Variant": int32(0), "MarkVariant": int32(0), "Color": byte(0), "Color2": byte(0)}
+	switch b.id {
+	case "minecraft:axolotl":
+		m["Variant"] = bedrockAxolotlVariants[max(0, min(b.variant, len(bedrockAxolotlVariants)-1))]
+	case "minecraft:tropical_fish":
+		// Java packs the size, pattern and both colours in one variant.
+		m["Variant"], m["MarkVariant"] = int32(b.variant&0xff), int32(b.variant>>8&0xff)
+		m["Color"], m["Color2"] = byte(b.variant>>16), byte(b.variant>>24)
+	case "minecraft:pufferfish":
+		m["Variant"] = int32(b.puffState)
+	}
+	return m
+}
+
+// BedrockVariant returns the variant, mark variant and colours that Bedrock
+// draws the mob by.
+func (a *AquaticMob) BedrockVariant() (variant, mark int32, color, color2 byte) {
+	m := a.behaviour().bedrockVariantNBT()
+	return m["Variant"].(int32), m["MarkVariant"].(int32), m["Color"].(byte), m["Color2"].(byte)
+}
+
+// aquaticJavaState returns the map that holds the Java variant fields: the
+// Java compound of a native save, or the top level of Java NBT and of saves
+// from before Adamant wrote the Bedrock fields, which alone have PuffState
+// at the top level.
+func aquaticJavaState(nbt map[string]any) (map[string]any, bool) {
+	if java := ReadNativeMobJavaState(nbt); java != nil {
+		if _, ok := java["Variant"]; ok {
+			return java, true
+		}
+	}
+	_, javaNBT := nbt["id"].(string)
+	_, legacy := nbt["PuffState"]
+	return nbt, javaNBT || legacy
+}
+
+// javaAquaticVariant converts the variant fields BDS saves to the Java
+// variant and puff state, keeping def for mobs BDS saves no variant of.
+func javaAquaticVariant(id string, nbt map[string]any, def int) (variant, puffState int) {
+	v, _ := NativeMobVariant(nbt)
+	switch id {
+	case "minecraft:axolotl":
+		if v >= 0 && int(v) < len(bedrockAxolotlVariants) {
+			return int(bedrockAxolotlVariants[v]), 0
+		}
+	case "minecraft:tropical_fish":
+		mark, _ := nbtconv.Integer(nbt, "MarkVariant")
+		color, _ := nbtconv.Integer(nbt, "Color")
+		color2, _ := nbtconv.Integer(nbt, "Color2")
+		return int(v&0xff) | int(mark&0xff)<<8 | int(color&0xff)<<16 | int(color2&0xff)<<24, 0
+	case "minecraft:pufferfish":
+		return def, int(max(0, min(v, 2)))
+	case "minecraft:salmon":
+		// BDS sizes salmon by component group.
+		definitions, _ := nbt["definitions"].([]any)
+		for _, d := range definitions {
+			switch d {
+			case "+scale_small":
+				return 0, 0
+			case "+scale_large":
+				return 2, 0
+			}
+		}
+	}
+	return def, 0
 }
 
 // AquaticMobConfig configures a fish-like mob decoded from Java entity NBT.

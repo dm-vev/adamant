@@ -100,7 +100,7 @@ func (shulkerType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	if variant, ok := NativeMobVariant(m); ok && variant >= 0 && variant <= 16 {
 		conf.Color, conf.colorSet = uint8(variant), true
 	} else if value, ok := source["Color"]; ok {
-		conf.Color, conf.colorSet = nativeNBTByte(value), true
+		conf.Color, conf.colorSet = shulkerColourSwap(nativeNBTByte(value)), true
 	}
 	if _, ok := source["Health"]; ok {
 		conf.Health = float64(nbtconv.Float32(source, "Health"))
@@ -123,7 +123,7 @@ func (shulkerType) EncodeNBT(data *world.EntityData) map[string]any {
 	}})
 	native := map[string]any{"Attributes": attributes, "Variant": int32(b.color)}
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), map[string]any{
-		"AttachFace": b.attachFace.String(), "Peek": b.peek, "Color": b.color,
+		"AttachFace": b.attachFace.String(), "Peek": b.peek, "Color": shulkerColourSwap(b.color),
 	})
 	return MergeNativeMobJavaState(native, javaState)
 }
@@ -137,6 +137,16 @@ type ShulkerBehaviourConfig struct {
 }
 
 func (conf ShulkerBehaviourConfig) Apply(data *world.EntityData) { data.Data = conf.New() }
+// shulkerColourSwap converts between the Java dye colour of a shulker and
+// its Bedrock variant, which number the colours in reverse. Both use 16 for
+// an undyed shulker.
+func shulkerColourSwap(c uint8) uint8 {
+	if c > 15 {
+		return 16
+	}
+	return 15 - c
+}
+
 func (conf ShulkerBehaviourConfig) New() *ShulkerBehaviour {
 	if conf.MaxHealth <= 0 {
 		conf.MaxHealth = 30

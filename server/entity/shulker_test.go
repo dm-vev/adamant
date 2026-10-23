@@ -35,7 +35,8 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 		if shulker.Position() != position || shulker.Rotation() != rotation {
 			t.Fatalf("spawn transform = %v/%v, want %v/%v", shulker.Position(), shulker.Rotation(), position, rotation)
 		}
-		if shulker.Health() != 18 || shulker.AttachFace() != cube.FaceEast || shulker.Peek() != 73 || shulker.Color() != 5 {
+		// Java lime (5) is Bedrock variant 10.
+		if shulker.Health() != 18 || shulker.AttachFace() != cube.FaceEast || shulker.Peek() != 73 || shulker.Color() != 10 {
 			t.Fatalf("decoded shulker state = health %v, face %v, peek %v, color %v", shulker.Health(), shulker.AttachFace(), shulker.Peek(), shulker.Color())
 		}
 		nbt = ShulkerType.EncodeNBT(shulker.data)
@@ -45,8 +46,11 @@ func TestNewFromJavaNBTBuildsWorldlessShulkerAndPreservesState(t *testing.T) {
 		t.Fatalf("native shulker health attribute = %#v, want current 18/base 30", health)
 	}
 	variant, ok := NativeMobVariant(nbt)
-	if !ok || variant != 5 {
-		t.Fatalf("native shulker variant = %d, want 5", variant)
+	if !ok || variant != 10 {
+		t.Fatalf("native shulker variant = %d, want 10", variant)
+	}
+	if java := ReadNativeMobJavaState(nbt); java["Color"] != byte(5) {
+		t.Fatalf("Java shulker colour = %v, want 5", java["Color"])
 	}
 }
 
@@ -76,7 +80,7 @@ func TestShulkerSurvivesMCDBRestart(t *testing.T) {
 		health       float64
 	}{
 		{natural, cube.FaceDown, 0, 16, 30},
-		{coloured, cube.FaceEast, 73, 5, 18},
+		{coloured, cube.FaceEast, 73, 10, 18},
 	}
 	path := t.TempDir()
 	open := func() *world.World {
