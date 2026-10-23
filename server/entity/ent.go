@@ -296,6 +296,14 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	}
 
 	m := e.Behaviour().Tick(e, tx)
+	if e.handle.Closed() {
+		// The behaviour removed the entity, as an item merging into another
+		// does: its viewers no longer know it.
+		if m != nil {
+			m.releaseViewers()
+		}
+		return
+	}
 	if m != nil {
 		e.data.OnGround = m.onGround
 		e.tickFall(tx, m)
@@ -315,6 +323,11 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		return
 	}
 	if m != nil {
+		if e.handle.Closed() {
+			// Fire, lava or a cactus destroyed the entity while it moved.
+			m.releaseViewers()
+			return
+		}
 		m.Send()
 	}
 	e.stopPortalContact()

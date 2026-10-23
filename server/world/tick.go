@@ -542,16 +542,13 @@ func (t ticker) tickEntityColumn(tx *Tx, tick int64, pos ChunkPos, col *Column, 
 
 func (t ticker) tickEntityHandle(tx *Tx, tick int64, handle *EntityHandle, ref entityChunkRef, active bool) {
 	w := tx.World()
-	state := handle.state
+	state := w.entities[handle]
 	if state == nil {
-		state = w.entities[handle]
-		if state != nil {
-			handle.state = state
-		}
-	}
-	if state == nil {
+		// The entity left the world earlier this tick, as an item merged
+		// into another one does, while its column was being ticked.
 		return
 	}
+	handle.state = state
 	if state.lastProcessedTick == tick {
 		return
 	}
