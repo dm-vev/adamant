@@ -415,6 +415,11 @@ type moveToBlock struct {
 	// verticalStart is MoveToBlockGoal.verticalSearchStart, and startDelay
 	// the fixed delay goals overriding nextStartTick wait between searches.
 	verticalStart, startDelay int
+	// acceptedDistance is how close the mob gets, a block if zero, and
+	// recalcInterval the ticks between paths, 40 if zero, as goals
+	// overriding acceptedDistance and shouldRecalculatePath change them.
+	acceptedDistance float64
+	recalcInterval   int
 }
 
 // canUse ports MoveToBlockGoal.canUse with the search ranges of the goal.
@@ -444,10 +449,17 @@ func (g *moveToBlock) start(m *Mob, speed float64) {
 
 func (g *moveToBlock) tick(m *Mob, speed float64) {
 	target := g.pos.Side(cube.FaceUp)
-	if target.Vec3Centre().Sub(m.data.Pos).LenSqr() >= 1 {
+	accepted, interval := g.acceptedDistance, g.recalcInterval
+	if accepted == 0 {
+		accepted = 1
+	}
+	if interval == 0 {
+		interval = 40
+	}
+	if target.Vec3Centre().Sub(m.data.Pos).LenSqr() >= accepted*accepted {
 		g.reached = false
 		g.tryTicks++
-		if g.tryTicks%40 == 0 {
+		if g.tryTicks%interval == 0 {
 			m.AI.nav.MoveToPos(m, float64(target[0])+.5, float64(target[1]), float64(target[2])+.5, speed)
 		}
 		return

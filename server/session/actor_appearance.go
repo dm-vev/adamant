@@ -159,6 +159,12 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		if e.Sleeping() {
 			setActorFlag(m, protocol.EntityDataFlagSleeping)
 		}
+		if e.Crouching() {
+			setActorFlag(m, protocol.EntityDataFlagStalking)
+		}
+		if e.Interested() {
+			setActorFlag(m, protocol.EntityDataFlagInterested)
+		}
 	case *entity.Mooshroom:
 		m[protocol.EntityDataKeyVariant] = int32(e.Variant())
 		m[protocol.EntityDataKeyMarkVariant] = int32(-1)

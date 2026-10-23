@@ -2,8 +2,8 @@ package entity
 
 import (
 	"math"
-	"math/rand/v2"
 	"strings"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -11,6 +11,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -34,12 +35,20 @@ type foxState struct {
 	trusted                            []string
 	held                               item.Stack
 	speed                              float64
-	next                               int
-	navigator                          Navigator
-	mc                                 *MovementComputer
-	panic                              panicState
-	parent                             followParentGoal
 	breeding                           breeding
+	animalAI
+	// The other flags of Fox, its ticksSinceEaten and its crouchAmount,
+	// which reaches 5 a second after it crouched.
+	interested, pouncing, faceplanted, defending bool
+	ticksSinceEaten                              int
+	crouchAmount                                 float64
+	shown                                        foxShownState
+}
+
+// foxShownState are the flags of a fox viewers were last shown.
+type foxShownState struct {
+	sleeping, crouching, sitting, interested bool
+	held                                     bool
 }
 
 func NewFox(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(FoxType, FoxConfig{}) }
@@ -66,7 +75,7 @@ func (c FoxConfig) New() *foxState {
 	if health <= 0 {
 		health = maxHealth
 	}
-	return &foxState{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), age: c.Age, variant: max(0, min(c.Variant, 1)), sleeping: c.Sleeping, crouching: c.Crouching, sitting: c.Sitting, trusted: append([]string(nil), c.Trusted...), speed: .3, next: 40 + rand.IntN(81), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}}
+	return &foxState{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), age: c.Age, variant: max(0, min(c.Variant, 1)), sleeping: c.Sleeping, crouching: c.Crouching, sitting: c.Sitting, trusted: append([]string(nil), c.Trusted...), speed: .3}
 }
 func (foxType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	s := ReadNativeMobJavaState(n)
@@ -108,180 +117,118 @@ func (f *Fox) ageTicks() *int { return &f.b().age }
 func (f *Fox) Tick(tx *world.Tx, n int64) {
 	f.b().effects.Tick(f, tx)
 	f.Ent.Tick(tx, n)
-	s := f.b()
-	threat := nearestFoxThreat(f.Ent, tx, 12)
-	pos := cube.PosFromVec3(f.Position())
-	if s.sleeping && (threat != nil || tx.SkyLight(pos) < 8) {
-		s.sleeping = false
-	} else if !s.sleeping && threat == nil && tx.SkyLight(pos) > 8 && rand.IntN(200) == 0 {
-		s.sleeping = true
-		s.sitting = false
-		s.crouching = false
-		f.SetVelocity(mgl64.Vec3{})
-	}
 }
+
 func (s *foxState) Tick(e *Ent, tx *world.Tx) *Movement {
 	f := &Fox{e}
-	partner, inLove := tickBreeding(f, tx)
-	if s.sleeping && nearestFoxThreat(e, tx, 12) != nil {
-		s.sleeping = false
+	ai := &s.ai
+	ai.MovementSpeed, ai.EyeHeight = s.speed, .4
+	if s.age < 0 {
+		ai.EyeHeight = .34375
 	}
-	if s.panic.run(e, tx, &s.navigator) {
-		// FoxPanicGoal interrupts sleeping, sitting and stalking.
-		s.sleeping, s.sitting, s.crouching = false, false, false
-		if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
-			f.moveToward(target, groundSpeed(.3, 2.2))
+	m := ai.Mob(e, f)
+	if ai.started && !f.Dead() {
+		s.beforeAiStep(m)
+	}
+	mv := animalTick(e, tx, f, &s.animalAI, s.registerGoals)
+	if !f.Dead() {
+		s.afterTick(m)
+	}
+	return mv
+}
+
+// beforeAiStep ports what Fox.aiStep does before the AI: a fox eats the
+// food in its mouth half a minute after it took it, forgets crouching and
+// interest without a target, and lies still while it sleeps.
+func (s *foxState) beforeAiStep(m *Mob) {
+	s.ticksSinceEaten++
+	if foxFood(s.held) && m.Target() == nil && m.OnGround() && !s.sleeping {
+		if s.ticksSinceEaten > 600 {
+			s.held = s.held.Grow(-1)
+			s.ticksSinceEaten = 0
+			m.updateState()
+		} else if s.ticksSinceEaten > 560 && m.Random().NextFloat() < .1 {
+			m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.fox.eat", Volume: 1, Pitch: 1})
+			(&Fox{m.Ent}).view(EatAction{})
 		}
-	} else if inLove {
-		// FoxBreedGoal clears the sleeping, sitting and stalking states of
-		// the fox when it starts.
-		s.sleeping, s.sitting, s.crouching = false, false, false
-		navigateToPartner(&s.navigator, e, tx, partner)
-		if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
-			f.moveToward(target, s.speed)
-		}
-	} else if s.sleeping || s.sitting {
-		v := e.Velocity()
-		v[0], v[2] = 0, 0
-		e.data.Vel = v
-	} else {
-		target := nearestFoxPrey(e, tx, 12)
-		if target == nil {
-			if parent, ok := s.parent.next(e, tx, f, parentRange{}.orDefault()); ok {
-				// FoxFollowParentGoal: kits keep close to adults at 1.25
-				// times their speed.
-				s.parent.follow(e, tx, &s.navigator, parent)
-				if waypoint, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
-					f.moveToward(waypoint, groundSpeed(.3, 1.25))
-				}
-				m := s.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
-				e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-				return m
-			}
-		}
-		if target != nil {
-			delta := target.Position().Sub(e.Position())
-			if delta.Len() < 1.2 {
-				if living, ok := target.(Living); ok {
-					living.Hurt(4, AttackDamageSource{Attacker: f})
-				}
-				s.sitting = false
-				s.crouching = false
-			} else {
-				s.crouching = true
-				s.sitting = false
-				f.moveToward(target.Position(), s.speed)
-				if delta.Len() < 4 && e.data.Vel[1] <= 0 {
-					v := e.Velocity()
-					v[1] = .42
-					e.data.Vel = v
-				}
-			}
-		}
-		if s.next > 0 {
-			s.next--
-		}
-		if s.navigator.Index >= len(s.navigator.Path) && s.next == 0 {
-			s.next = 40 + rand.IntN(81)
-			start := cube.PosFromVec3(e.Position())
-			for range 4 {
-				goal := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-				if s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-					break
-				}
-			}
-		}
-		if !s.crouching {
-			if target, ok := s.navigator.Tick(e.data.Pos, navigatorTick(e), .8); ok {
-				f.moveToward(target, s.speed)
-			}
-		}
+	}
+	if target := m.Target(); target == nil || !entityAlive(target) {
+		s.crouching, s.interested = false, false
 	}
 	if s.sleeping {
-		e.data.Vel[0], e.data.Vel[2] = 0, 0
+		m.AI.jumping, m.AI.xxa, m.AI.zza = false, 0, 0
 	}
-	m := s.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
 }
-func nearestFoxThreat(e *Ent, tx *world.Tx, r float64) world.Entity {
-	trusted := e.Behaviour().(*foxState).trusted
-	area := cube.Box(-r, -6, -r, r, 6, r).Translate(e.Position())
-	for other := range tx.EntitiesWithin(area) {
-		id := other.H().Type().EncodeEntity()
-		threat := id == "minecraft:polar_bear" || id == "minecraft:wolf"
-		if id == "minecraft:player" {
-			threat = true
-			for _, uuid := range trusted {
-				if uuid == other.H().UUID().String() {
-					threat = false
-					break
-				}
+
+// afterTick ports what Fox.tick does after the AI: a fox in water, with a
+// target or in a thunderstorm wakes up, and its crouch deepens over a
+// second.
+func (s *foxState) afterTick(m *Mob) {
+	inWater := m.InWater()
+	if inWater || m.Target() != nil || m.tx.ThunderingAt(m.BlockPos()) {
+		s.sleeping = false
+	}
+	if inWater || s.sleeping {
+		s.sitting = false
+	}
+	if s.crouching {
+		s.crouchAmount = math.Min(s.crouchAmount+.2, 5)
+	} else {
+		s.crouchAmount = 0
+	}
+	shown := foxShownState{s.sleeping, s.crouching, s.sitting, s.interested, !s.held.Empty()}
+	if shown != s.shown {
+		if shown.held != s.shown.held || !s.held.Empty() {
+			viewers := m.tx.Viewers(m.data.Pos)
+			for _, v := range viewers {
+				v.ViewEntityItems(m.Self)
 			}
+			m.tx.ReleaseViewers(viewers)
 		}
-		if threat && other.Position().Sub(e.Position()).Len() < r {
-			return other
-		}
+		s.shown = shown
+		m.updateState()
 	}
-	return nil
 }
-func nearestFoxPrey(e *Ent, tx *world.Tx, r float64) world.Entity {
-	area := cube.Box(-r, -6, -r, r, 6, r).Translate(e.Position())
-	var nearest world.Entity
-	best := r
-	for other := range tx.EntitiesWithin(area) {
-		id := other.H().Type().EncodeEntity()
-		prey := id == "minecraft:chicken" || id == "minecraft:rabbit" || id == "minecraft:cod" || id == "minecraft:salmon" || id == "minecraft:tropical_fish" || id == "minecraft:pufferfish"
-		if id == "minecraft:turtle" {
-			if turtle, ok := other.(interface{ Age() int }); ok {
-				prey = turtle.Age() < 0
-			}
-		}
-		if !prey {
-			continue
-		}
-		if living, ok := other.(Living); ok && living.Dead() {
-			continue
-		}
-		distance := other.Position().Sub(e.Position()).Len()
-		if distance < best {
-			nearest, best = other, distance
-		}
+
+// foxFood reports if a stack is food a fox eats, which has a food and a
+// consumable component.
+func foxFood(s item.Stack) bool {
+	if s.Empty() {
+		return false
 	}
-	return nearest
-}
-func (f *Fox) moveToward(p mgl64.Vec3, speed float64) {
-	d := p.Sub(f.Position())
-	d[1] = 0
-	if d.Len() == 0 {
-		return
+	switch s.Item().(type) {
+	case item.Potion, item.Bucket, item.OminousBottle:
+		return false
 	}
-	d = d.Normalize()
-	v := f.Velocity()
-	v[0], v[2] = d[0]*speed, d[2]*speed
-	f.SetVelocity(v)
-	r := f.Rotation()
-	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	f.data.Rot = r
+	_, ok := s.Item().(item.Consumable)
+	return ok
 }
+
 func (f *Fox) Health() float64        { return f.b().health.Health() }
 func (f *Fox) MaxHealth() float64     { return f.b().health.MaxHealth() }
 func (f *Fox) SetMaxHealth(v float64) { f.b().health.SetMaxHealth(v) }
 func (f *Fox) Dead() bool             { return f.b().dead || f.Health() <= 0 }
 
 // Panicking reports whether the fox runs from danger.
-func (f *Fox) Panicking() bool { return f.b().panic.active }
+func (f *Fox) Panicking() bool { return f.b().panicking() }
 func (f *Fox) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if f.Dead() || d <= 0 {
 		return 0, false
 	}
-	f.b().health.AddHealth(-d)
-	f.b().panic.hurt(src, f.tx.CurrentTick())
+	s := f.b()
+	d, ok := s.ai.DamageCooldown(f.tx, d)
+	if !ok {
+		return 0, false
+	}
+	if r, ok := s.effects.Effect(effect.Resistance); ok {
+		d *= effect.Resistance.Multiplier(src, r.Level())
+	}
+	s.health.AddHealth(-d)
+	s.ai.Hurt(src)
 	resetLove(f)
 	f.view(HurtAction{})
 	onMobHurt(f.tx, f)
 	if f.Dead() {
-		s := f.b()
 		s.dead = true
 		f.view(DeathAction{})
 		if !s.held.Empty() {
@@ -385,14 +332,33 @@ func (f *Fox) FinalizeSpawn(_ string, r *vanilla.Random) {
 
 type foxSpawnCohort struct{ variant, count int }
 
+// Collect ports Fox.pickUpItem: a fox takes one item of a stack in its
+// mouth, spitting out what it held, when it holds nothing or swaps
+// something for food a while after it ate.
 func (f *Fox) Collect(stack item.Stack) (int, bool) {
 	s := f.b()
-	if f.Dead() || stack.Empty() || !s.held.Empty() {
+	if f.Dead() || stack.Empty() || mobGriefingDisabled(f.tx) {
 		return 0, false
 	}
-	s.held = item.NewStack(stack.Item(), stack.Count())
-	return stack.Count(), true
+	if !s.held.Empty() && !(s.ticksSinceEaten > 0 && foxFood(stack) && !foxFood(s.held)) {
+		return 0, false
+	}
+	if !s.held.Empty() {
+		// Fox.spitOutItem.
+		look := f.Rotation().Vec3()
+		pos := f.Position().Add(mgl64.Vec3{look[0], 1, look[2]})
+		f.tx.AddEntity(NewItemPickupDelay(world.EntitySpawnOpts{Position: pos}, s.held, 2*time.Second))
+	}
+	s.held = stack.Grow(1 - stack.Count())
+	s.ticksSinceEaten = 0
+	return 1, true
 }
+
+// HeldItems returns the item the fox holds in its mouth.
+func (f *Fox) HeldItems() (item.Stack, item.Stack) { return f.b().held, item.Stack{} }
+
+// Interested reports if the fox tilts its head at its prey.
+func (f *Fox) Interested() bool { return f.b().interested }
 
 var _ Living = (*Fox)(nil)
 var _ Interactable = (*Fox)(nil)

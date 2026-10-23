@@ -67,12 +67,13 @@ func TestPolarBearsHuntFoxes(t *testing.T) {
 	w := wolfTestWorld(t)
 	var fox *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
-		pen(tx, 6)
-		tx.AddEntity(entity.NewPolarBear(world.EntitySpawnOpts{Position: mgl64.Vec3{-3.5, 64, .5}}))
-		fox = spawnAnimal(t, tx, "minecraft:fox", 3.5, nil)
+		// The fox flees faster than the bear runs, so it is penned in.
+		pen(tx, 4)
+		tx.AddEntity(entity.NewPolarBear(world.EntitySpawnOpts{Position: mgl64.Vec3{-2.5, 64, .5}}))
+		fox = spawnAnimal(t, tx, "minecraft:fox", 2.5, nil)
 	})
 	hurt := false
-	for range 600 {
+	for range 1200 {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) { hurt = livingHealth(tx, fox) < 10 })
 		if hurt {
@@ -80,6 +81,6 @@ func TestPolarBearsHuntFoxes(t *testing.T) {
 		}
 	}
 	if !hurt {
-		t.Fatal("polar bear did not attack a fox in 30 seconds")
+		t.Fatal("polar bear did not attack a fox in a minute")
 	}
 }

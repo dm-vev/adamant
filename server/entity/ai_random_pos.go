@@ -79,13 +79,19 @@ func moveUpOutOfSolid(pos cube.Pos, maxY int, solid func(cube.Pos) bool) cube.Po
 // generateRandomPos ports RandomPos.generateRandomPos: the position the mob
 // likes best of ten candidates, at the bottom centre of its block.
 func generateRandomPos(m *Mob, candidate func() (cube.Pos, bool)) (mgl64.Vec3, bool) {
+	return generateWeightedRandomPos(candidate, m.walkTargetValue)
+}
+
+// generateWeightedRandomPos ports RandomPos.generateRandomPos with the
+// position weight passed: the best of ten candidates.
+func generateWeightedRandomPos(candidate func() (cube.Pos, bool), positionWeight func(cube.Pos) float64) (mgl64.Vec3, bool) {
 	best, bestWeight, found := cube.Pos{}, math.Inf(-1), false
 	for range 10 {
 		pos, ok := candidate()
 		if !ok {
 			continue
 		}
-		if weight := m.walkTargetValue(pos); weight > bestWeight {
+		if weight := positionWeight(pos); weight > bestWeight {
 			best, bestWeight, found = pos, weight, true
 		}
 	}
@@ -186,6 +192,19 @@ func LandRandomPos(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
 		}
 		return landPosUpOutOfSolid(m, pos)
 	})
+}
+
+// LandRandomPosWeighted ports LandRandomPos.getPos with the position weight
+// passed in place of the walk target value of the mob.
+func LandRandomPosWeighted(m *Mob, horizontal, vertical int, positionWeight func(cube.Pos) float64) (mgl64.Vec3, bool) {
+	restrict := mobRestricted(m, float64(horizontal))
+	return generateWeightedRandomPos(func() (cube.Pos, bool) {
+		pos := randomPosTowardDirection(m, float64(horizontal), randomDirection(m, horizontal, vertical))
+		if !acceptableRandomPos(m, pos, restrict) {
+			return cube.Pos{}, false
+		}
+		return landPosUpOutOfSolid(m, pos)
+	}, positionWeight)
 }
 
 // LandRandomPosAway ports LandRandomPos.getPosAway.

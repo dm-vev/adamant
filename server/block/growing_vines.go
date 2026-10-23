@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
 // WeepingVines is a Nether vine that grows downwards.
@@ -69,6 +70,28 @@ const (
 	caveVinesHeadWithBerries
 	caveVinesBodyWithBerries
 )
+
+// HasBerries reports if the cave vines carry a glow berry.
+func (v CaveVines) HasBerries() bool { return v.Variant != caveVinesBase }
+
+// PickBerries ports CaveVines.use: vines carrying a glow berry drop it and
+// grow on without one. It reports if they carried one.
+func (v CaveVines) PickBerries(pos cube.Pos, tx *world.Tx) bool {
+	if !v.HasBerries() {
+		return false
+	}
+	dropItem(tx, item.NewStack(item.GlowBerries{}, 1), pos.Vec3Centre())
+	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "block.cave_vines.pick_berries", Volume: 1, Pitch: .8 + rand.Float64()*.4})
+	v.Variant = caveVinesBase
+	tx.SetBlock(pos, v, nil)
+	return true
+}
+
+// Activate picks the glow berry of the vines, as CaveVinesBlock and
+// CaveVinesPlantBlock.useWithoutItem do.
+func (v CaveVines) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
+	return v.PickBerries(pos, tx)
+}
 
 // CaveVines are the head and body blocks of cave vines.
 type CaveVines struct {
