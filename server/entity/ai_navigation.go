@@ -39,6 +39,12 @@ type PathNavigation struct {
 	// CanPathToTargetsBelowSurface keeps targets inside blocks where they
 	// are instead of moving them up to the surface.
 	CanPathToTargetsBelowSurface bool
+	// StableDestination, if set, replaces IsStableDestination, as the
+	// navigation of a bee overrides isStableDestination.
+	StableDestination func(tx *world.Tx, pos cube.Pos) bool
+	// Paused, if set, stops the navigation from ticking while it reports
+	// true, as a bee pollinating does.
+	Paused func() bool
 
 	// wallClimber selects the navigation of Java's WallClimberNavigation:
 	// without a path, the mob walks straight at the position it wanted to
@@ -89,6 +95,14 @@ func (n *PathNavigation) SetCanPassDoors(v bool) { n.eval.canPassDoors = v }
 
 // SetCanWalkOverFences sets whether paths jump over fences.
 func (n *PathNavigation) SetCanWalkOverFences(v bool) { n.eval.canWalkOverFences = v }
+
+// SetMaxVisitedNodesMultiplier scales the nodes a path finder visits at
+// most, as PathNavigation.setMaxVisitedNodesMultiplier.
+func (n *PathNavigation) SetMaxVisitedNodesMultiplier(v float64) { n.maxVisitedNodesMultiplier = v }
+
+// ResetMaxVisitedNodesMultiplier ports
+// PathNavigation.resetMaxVisitedNodesMultiplier.
+func (n *PathNavigation) ResetMaxVisitedNodesMultiplier() { n.maxVisitedNodesMultiplier = 1 }
 
 // SetSpeedModifier sets the modifier of the speed the path is followed with.
 func (n *PathNavigation) SetSpeedModifier(v float64) { n.speedModifier = v }
@@ -262,6 +276,9 @@ func (n *PathNavigation) MoveToEntityReach(m *Mob, e world.Entity, reachRange in
 
 // tickNavigation ports PathNavigation.tick.
 func (n *PathNavigation) tickNavigation(m *Mob) {
+	if n.Paused != nil && n.Paused() {
+		return
+	}
 	if n.wallClimber && n.IsDone() {
 		n.tickWallClimber(m)
 		return
@@ -510,6 +527,9 @@ func (n *PathNavigation) surfaceY(m *Mob) int {
 // IsStableDestination reports if a mob may stand at a position: on a full,
 // solid block, as PathNavigation.isStableDestination.
 func (n *PathNavigation) IsStableDestination(tx *world.Tx, pos cube.Pos) bool {
+	if n.StableDestination != nil {
+		return n.StableDestination(tx, pos)
+	}
 	if n.eval.fly {
 		// FlyingPathNavigation: a block with a full top to land on.
 		return pathBlockAt(tx, pos).Model().FaceSolid(pos, cube.FaceUp, tx)

@@ -64,12 +64,16 @@ func (s Shears) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 				}
 			}
 			tx.SetBlock(pos, res, nil)
+			if h, ok := c.(honeyHarvester); ok {
+				h.HoneyHarvested(pos, tx, user)
+			}
 			ctx.DamageItem(1)
 			return true
 		}
 	}
 	return false
 }
+
 // UseOnEntity shears a harness from a compatible rideable mob.
 func (s Shears) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx *UseContext) bool {
 	if mob, ok := target.(interface {

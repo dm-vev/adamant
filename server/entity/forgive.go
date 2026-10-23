@@ -36,9 +36,4 @@ func (w *Wolf) forgive(id string) { b := w.behaviour(); b.forgiveAnger(&b.ai, id
 
 func (m *IronGolem) forgive(id string) { b := m.b(); b.forgiveAnger(&b.ai, id) }
 
-func (b *Bee) forgive(id string) {
-	s := b.state()
-	if s.target != nil && s.target.H().UUID().String() == id {
-		s.anger, s.target = 0, nil
-	}
-}
+func (b *Bee) forgive(id string) { s := b.state(); s.forgiveAnger(&s.ai, id) }

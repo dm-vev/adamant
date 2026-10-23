@@ -74,6 +74,16 @@ const (
 // HasBerries reports if the cave vines carry a glow berry.
 func (v CaveVines) HasBerries() bool { return v.Variant != caveVinesBase }
 
+// WithBerries returns the cave vines carrying a glow berry, as bone meal
+// grows one: at the tip of the vines if nothing hangs below them.
+func (v CaveVines) WithBerries(pos cube.Pos, tx *world.Tx) CaveVines {
+	v.Variant = caveVinesHeadWithBerries
+	if _, body := tx.Block(pos.Side(cube.FaceDown)).(CaveVines); body {
+		v.Variant = caveVinesBodyWithBerries
+	}
+	return v
+}
+
 // PickBerries ports CaveVines.use: vines carrying a glow berry drop it and
 // grow on without one. It reports if they carried one.
 func (v CaveVines) PickBerries(pos cube.Pos, tx *world.Tx) bool {

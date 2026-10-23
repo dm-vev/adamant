@@ -569,6 +569,9 @@ type HurtByTargetGoal struct {
 	// AlertIgnore selects.
 	AlertOthers bool
 	AlertIgnore func(world.Entity) bool
+	// AlertOther, if set, alerts a mob of the attacker in place of setting
+	// its target, as HurtByTargetGoal.alertOther is overridden.
+	AlertOther func(m, other *Mob, attacker world.Entity)
 
 	timestamp int
 }
@@ -629,6 +632,10 @@ func (g *HurtByTargetGoal) alertOthers(m *Mob, attacker world.Entity) {
 		}
 		other, ok := mobOf(e)
 		if !ok || other.Target() != nil || alliedTo(other, attacker) {
+			continue
+		}
+		if g.AlertOther != nil {
+			g.AlertOther(m, other, attacker)
 			continue
 		}
 		other.SetTarget(attacker)

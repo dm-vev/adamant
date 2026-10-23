@@ -317,3 +317,14 @@ func airAndWaterPos(m *Mob, horizontal, vertical, flyingHeight int, xDir, zDir, 
 	pos = moveUpOutOfSolid(pos, m.tx.Range().Max(), func(p cube.Pos) bool { return solidAt(m, p) })
 	return pos, !hasMalus(m, pos)
 }
+
+// AirRandomPosTowards ports AirRandomPos.getPosTowards: a position in the air
+// in a direction within maxRadians of the one to towards.
+func AirRandomPosTowards(m *Mob, horizontal, vertical, flyingHeight int, towards mgl64.Vec3, maxRadians float64) (mgl64.Vec3, bool) {
+	dir := towards.Sub(m.data.Pos)
+	restrict := mobRestricted(m, float64(horizontal))
+	return generateRandomPos(m, func() (cube.Pos, bool) {
+		pos, ok := airAndWaterPos(m, horizontal, vertical, flyingHeight, dir[0], dir[2], maxRadians, restrict)
+		return pos, ok && !pathWater(m.tx, pos)
+	})
+}

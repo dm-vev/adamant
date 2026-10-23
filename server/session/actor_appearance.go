@@ -227,6 +227,10 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		if e.Angry() {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
 		}
+	case *entity.Bee:
+		if e.Angry() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+		}
 	case *entity.Enderman:
 		carried, ok := e.CarriedBlock()
 		if !ok {

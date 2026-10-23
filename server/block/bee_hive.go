@@ -96,11 +96,24 @@ func allBeehives() []world.Block {
 	return blocks
 }
 func (h Beehive) BreakInfo() BreakInfo {
-	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, oneOf(h)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) { releaseHiveOccupants(pos, h.Occupants, tx, true) })
+	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, oneOf(h)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) { breakBeehive(pos, h.Occupants, tx, u) })
+}
+
+// breakBeehive ports BeehiveBlock.playerDestroy: the bees of a hive broken
+// without silk touch burst out at the player, and the bees around attack.
+func breakBeehive(pos cube.Pos, occupants []any, tx *world.Tx, u item.User) {
+	if u != nil {
+		if held, _ := u.HeldItems(); hasSilkTouch(held.Enchantments()) {
+			releaseHiveOccupants(pos, occupants, tx, true)
+			return
+		}
+	}
+	releaseHiveOccupantsAt(pos, occupants, tx, u, true)
+	angerNearbyBees(pos, tx)
 }
 func (h BeeNest) BreakInfo() BreakInfo {
-	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, oneOf(h)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) {
-		releaseHiveOccupants(pos, h.Occupants, tx, true)
+	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, oneOf(h)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
+		breakBeehive(pos, h.Occupants, tx, u)
 	})
 }
 func (h Beehive) AddBeeOccupant(n map[string]any) (world.Block, bool) {
@@ -135,66 +148,121 @@ func (h Beehive) ShearDrops() item.Stack {
 	return item.NewStack(item.Honeycomb{}, 3)
 }
 func (h BeeNest) ShearDrops() item.Stack { return h.Beehive.ShearDrops() }
-func (h Beehive) ShearDropsAt(pos cube.Pos, tx *world.Tx, _ item.User) item.Stack {
-	drops := h.ShearDrops()
-	if !drops.Empty() && !h.hasNearbySmoke(pos, tx) {
-		h = h.angerOccupants(pos, tx)
+
+// HoneyHarvested ports what BeehiveBlock.useItemOn does once shears or a
+// glass bottle took the honey of a hive: unless smoke from a campfire below
+// calms them, the bees around attack and those inside burst out at the
+// player.
+func (h Beehive) HoneyHarvested(pos cube.Pos, tx *world.Tx, user item.User) {
+	if campfireSmokes(pos, tx) {
+		return
 	}
-	return drops
-}
-func (h BeeNest) ShearDropsAt(pos cube.Pos, tx *world.Tx, user item.User) item.Stack {
-	return h.Beehive.ShearDropsAt(pos, tx, user)
-}
-func (h Beehive) FillBottleAt(pos cube.Pos, tx *world.Tx, _ item.User) (world.Block, item.Stack, bool) {
-	next, stack, ok := h.FillBottle()
-	if !ok {
-		return h, stack, false
+	current := tx.Block(pos)
+	occupants := hiveOccupants(current)
+	if len(occupants) > 0 {
+		angerNearbyBees(pos, tx)
 	}
-	if !h.hasNearbySmoke(pos, tx) {
-		h = h.angerOccupants(pos, tx)
-	}
-	return currentWithBeehive(tx.Block(pos), mergeBeehiveHoney(next, h)), stack, true
-}
-func (h BeeNest) FillBottleAt(pos cube.Pos, tx *world.Tx, user item.User) (world.Block, item.Stack, bool) {
-	next, stack, ok := h.Beehive.FillBottleAt(pos, tx, user)
-	if !ok {
-		return h, stack, false
-	}
-	return BeeNest{Beehive: next.(Beehive)}, stack, true
-}
-func mergeBeehiveHoney(next, other world.Block) Beehive {
-	h := next.(Beehive)
-	switch current := other.(type) {
+	releaseHiveOccupantsAt(pos, occupants, tx, user, true)
+	switch c := current.(type) {
 	case Beehive:
-		h.Occupants = current.Occupants
-		h.FlowerPos = current.FlowerPos
+		c.Occupants = nil
+		tx.SetBlock(pos, c, nil)
 	case BeeNest:
-		h.Occupants = current.Occupants
-		h.FlowerPos = current.FlowerPos
+		c.Occupants = nil
+		tx.SetBlock(pos, c, nil)
 	}
-	return h
 }
-func (h Beehive) angerOccupants(pos cube.Pos, tx *world.Tx) Beehive {
-	for _, raw := range h.Occupants {
-		occupant, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-		data, _ := occupant["SaveData"].(map[string]any)
-		if state := hiveBeeJavaState(data); state != nil {
-			state["AngerTime"] = int32(400 + rand.IntN(380))
-		}
-	}
-	if len(h.Occupants) > 0 {
-		tx.ScheduleBlockUpdate(pos, currentWithBeehive(tx.Block(pos), h), time.Second/20)
-	}
-	return h
+
+// HoneyHarvested ...
+func (h BeeNest) HoneyHarvested(pos cube.Pos, tx *world.Tx, user item.User) {
+	h.Beehive.HoneyHarvested(pos, tx, user)
 }
+
+// hiveOccupants returns the bees inside a hive block.
+func hiveOccupants(b world.Block) []any {
+	switch h := b.(type) {
+	case Beehive:
+		return h.Occupants
+	case BeeNest:
+		return h.Occupants
+	}
+	return nil
+}
+
+// BeesStayInHive ports the bees_stay_in_hive environment attribute: bees stay
+// in their hives at night in the Overworld and while it rains.
+func BeesStayInHive(tx *world.Tx) bool {
+	if tx.Raining() {
+		return true
+	}
+	t := tx.World().Time() % 24000
+	return tx.World().Dimension() == world.Overworld && t >= 12542 && t < 23460
+}
+
+// hiveBee is a bee a hive releases or angers.
+type hiveBee interface {
+	world.Entity
+	Target() world.Entity
+	SetTarget(target world.Entity)
+	SetStayOutOfHive(ticks int)
+}
+
+// angerNearbyBees ports BeehiveBlock.angerNearbyBees: every bee near the
+// hive without a target attacks a random player near it.
+func angerNearbyBees(pos cube.Pos, tx *world.Tx) {
+	box := cube.Box(float64(pos[0])-8, float64(pos[1])-6, float64(pos[2])-8, float64(pos[0])+9, float64(pos[1])+7, float64(pos[2])+9)
+	var bees []hiveBee
+	var players []world.Entity
+	for e := range tx.EntitiesWithin(box) {
+		switch e.H().Type().EncodeEntity() {
+		case "minecraft:bee":
+			if b, ok := e.(hiveBee); ok {
+				bees = append(bees, b)
+			}
+		case "minecraft:player":
+			players = append(players, e)
+		}
+	}
+	if len(bees) == 0 || len(players) == 0 {
+		return
+	}
+	for _, b := range bees {
+		if b.Target() == nil {
+			b.SetTarget(players[tx.RegionRandom().NextInt(int32(len(players)))])
+		}
+	}
+}
+
+// campfireSmokes ports CampfireBlock.isSmokeyPos: a lit campfire up to five
+// blocks below, with nothing in the way of its smoke.
+func campfireSmokes(pos cube.Pos, tx *world.Tx) bool {
+	lit := func(p cube.Pos) bool {
+		c, ok := tx.Block(p).(Campfire)
+		return ok && !c.Extinguished
+	}
+	post := cube.Box(6.0/16, 0, 6.0/16, 10.0/16, 1, 10.0/16)
+	for i := 1; i <= 5; i++ {
+		check := pos.Sub(cube.Pos{0, i, 0})
+		if lit(check) {
+			return true
+		}
+		// Java tests the shape of the block below in the context of the
+		// hive itself.
+		for _, box := range tx.Block(check).Model().BBox(pos, tx) {
+			if box.IntersectsWith(post) {
+				return lit(check.Side(cube.FaceDown))
+			}
+		}
+	}
+	return false
+}
+
 func (h Beehive) FillBottle() (world.Block, item.Stack, bool) {
 	if h.HoneyLevel < 5 {
 		return h, item.Stack{}, false
 	}
-	h.HoneyLevel -= 1
+	// BeehiveBlock.resetHoneyLevel.
+	h.HoneyLevel = 0
 	return h, item.NewStack(item.HoneyBottle{}, 1), true
 }
 func (h BeeNest) FillBottle() (world.Block, item.Stack, bool) {
@@ -260,7 +328,7 @@ func tickBeehive(pos cube.Pos, h Beehive, tx *world.Tx, r *rand.Rand) {
 		}
 		if ready {
 			hadNectar := hiveBeeHasNectarFromOccupant(o)
-			if releaseHiveOccupant(pos, o, tx, false, false) {
+			if releaseHiveOccupant(pos, o, tx, false, false) != nil {
 				if hadNectar && h.HoneyLevel < 5 {
 					increase := 1
 					if r.IntN(100) == 0 {
@@ -299,7 +367,7 @@ func (h Beehive) JavaEmergencyRelease(pos cube.Pos, tx *world.Tx) {
 	remaining := h.Occupants[:0]
 	for _, raw := range h.Occupants {
 		occupant, ok := raw.(map[string]any)
-		if !ok || !releaseHiveOccupant(pos, occupant, tx, true, true) {
+		if !ok || releaseHiveOccupant(pos, occupant, tx, true, true) == nil {
 			remaining = append(remaining, raw)
 		}
 	}
@@ -319,19 +387,6 @@ func (h Beehive) hasNearbyFire(pos cube.Pos, tx *world.Tx) bool {
 			for z := -1; z <= 1; z++ {
 				name, _ := tx.Block(pos.Add(cube.Pos{x, y, z})).EncodeBlock()
 				if name == "minecraft:fire" || name == "minecraft:soul_fire" {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-func (h Beehive) hasNearbySmoke(pos cube.Pos, tx *world.Tx) bool {
-	for x := -2; x <= 2; x++ {
-		for y := -2; y <= 2; y++ {
-			for z := -2; z <= 2; z++ {
-				fire, ok := tx.Block(pos.Add(cube.Pos{x, y, z})).(Campfire)
-				if ok && !fire.Extinguished {
 					return true
 				}
 			}
@@ -366,14 +421,37 @@ func hiveBeeHasNectarFromOccupant(occupant map[string]any) bool {
 	return hiveBeeHasNectar(data)
 }
 func releaseHiveOccupants(pos cube.Pos, occupants []any, tx *world.Tx, emergency bool) {
+	releaseHiveOccupantsAt(pos, occupants, tx, nil, emergency)
+}
+
+// releaseHiveOccupantsAt ports BeehiveBlockEntity.emptyAllLivingFromHive:
+// the released bees within four blocks of the player attack it, or stay out
+// of the hive for 20 seconds while smoke calms them.
+func releaseHiveOccupantsAt(pos cube.Pos, occupants []any, tx *world.Tx, player world.Entity, emergency bool) {
+	sedated := player != nil && campfireSmokes(pos, tx)
 	for _, raw := range occupants {
 		o, ok := raw.(map[string]any)
-		if ok {
-			releaseHiveOccupant(pos, o, tx, emergency, false)
+		if !ok {
+			continue
+		}
+		released := releaseHiveOccupant(pos, o, tx, emergency, false)
+		if released == nil || player == nil {
+			continue
+		}
+		bee, ok := released.Entity(tx)
+		if !ok || bee.Position().Sub(player.Position()).LenSqr() > 16 {
+			continue
+		}
+		if b, ok := bee.(hiveBee); ok {
+			if sedated {
+				b.SetStayOutOfHive(400)
+			} else {
+				b.SetTarget(player)
+			}
 		}
 	}
 }
-func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, emergency, javaFlowerChance bool) bool {
+func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, emergency, javaFlowerChance bool) *world.EntityHandle {
 	data, _ := occupant["SaveData"].(map[string]any)
 	id, _ := occupant["ActorIdentifier"].(string)
 	if id == "" {
@@ -395,10 +473,17 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 		}
 		frontBlocked = !shape.CollisionEmpty
 	}
-	if !emergency && frontBlocked {
-		return false
+	if !emergency && (frontBlocked || BeesStayInHive(tx)) {
+		return nil
 	}
 	if state := hiveBeeJavaState(data); state != nil {
+		// BeehiveBlockEntity.Occupant.createEntity: the bee forgets its
+		// counters, hovers and knows this hive as its home.
+		for _, key := range [...]string{"CannotEnterHiveTicks", "TicksSincePollination", "CropsGrownSincePollination"} {
+			delete(state, key)
+		}
+		state["hive_pos"] = map[string]any{"X": int32(pos[0]), "Y": int32(pos[1]), "Z": int32(pos[2])}
+		state["NoGravity"] = byte(1)
 		if flower := hiveFlowerPos(tx.Block(pos)); flower != nil {
 			if _, exists := state["flower_pos"]; !exists {
 				if !javaFlowerChance || tx.RegionRandom().NextFloat() < 0.9 {
@@ -413,7 +498,7 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 	opts := world.EntitySpawnOpts{Position: pos.Vec3Centre(), SpawnReason: "bee_hive"}
 	handle := tx.World().EntityRegistry().Config().SpawnMobFromNBT(id, opts, data)
 	if handle == nil {
-		return false
+		return nil
 	}
 	spawned := handle.WorldlessEntity(tx)
 	if id == "minecraft:bee" {
@@ -428,7 +513,10 @@ func releaseHiveOccupant(pos cube.Pos, occupant map[string]any, tx *world.Tx, em
 	}
 	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: "block.beehive.exit", ExtraData: -1})
 	tx.EmitGameEvent(world.GameEventBlockChange, pos.Vec3Centre(), world.GameEventContext{Source: spawned, AffectedState: tx.Block(pos)})
-	return tx.AddEntity(handle) != nil
+	if tx.AddEntity(handle) == nil {
+		return nil
+	}
+	return handle
 }
 
 var _ world.Block = Beehive{}

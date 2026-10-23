@@ -66,6 +66,9 @@ type (
 	// StarvationDamageSource is the damage of an empty food bar, which a vex
 	// also takes once its life runs out.
 	StarvationDamageSource struct{}
+	// GenericDamageSource is damage without a cause of its own, as Java's
+	// generic damage type, which a bee that lost its stinger dies of.
+	GenericDamageSource struct{}
 	// IndirectMagicDamageSource is magic damage dealt through something,
 	// such as the beam of a guardian.
 	IndirectMagicDamageSource struct {
@@ -82,9 +85,13 @@ type (
 	}
 )
 
-func (FallDamageSource) ReducedByArmour() bool     { return false }
-func (FallDamageSource) ReducedByResistance() bool { return true }
-func (FallDamageSource) Fire() bool                { return false }
+func (GenericDamageSource) ReducedByArmour() bool     { return false }
+func (GenericDamageSource) ReducedByResistance() bool { return true }
+func (GenericDamageSource) Fire() bool                { return false }
+func (GenericDamageSource) IgnoreTotem() bool         { return false }
+func (FallDamageSource) ReducedByArmour() bool        { return false }
+func (FallDamageSource) ReducedByResistance() bool    { return true }
+func (FallDamageSource) Fire() bool                   { return false }
 func (FallDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool {
 	return e == enchantment.FeatherFalling
 }

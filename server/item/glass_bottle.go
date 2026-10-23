@@ -18,16 +18,27 @@ type bottleFiller interface {
 	FillBottle() (world.Block, Stack, bool)
 }
 
+// honeyHarvester is implemented by blocks that react to shears or a glass
+// bottle taking their honey, as beehives anger their bees.
+type honeyHarvester interface {
+	HoneyHarvested(pos cube.Pos, tx *world.Tx, user User)
+}
+
 // UseOnBlock ...
-func (g GlassBottle) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, _ User, ctx *UseContext) bool {
+func (g GlassBottle) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *world.Tx, user User, ctx *UseContext) bool {
 	bl := tx.Block(pos)
 	if b, ok := bl.(bottleFiller); ok {
 		var res world.Block
 		if res, ctx.NewItem, ok = b.FillBottle(); ok {
 			ctx.SubtractFromCount(1)
-			if res != bl {
-				// Some blocks (think a cauldron) change when using a bottle on it.
+			// Some blocks (think a cauldron) change when using a bottle on
+			// it. Blocks holding slices, like beehives, are not comparable,
+			// so their states are compared.
+			if world.BlockRuntimeID(res) != world.BlockRuntimeID(bl) {
 				tx.SetBlock(pos, res, nil)
+			}
+			if h, ok := bl.(honeyHarvester); ok {
+				h.HoneyHarvested(pos, tx, user)
 			}
 			return true
 		}
