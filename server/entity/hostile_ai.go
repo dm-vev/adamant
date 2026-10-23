@@ -1,15 +1,18 @@
 package entity
 
 import (
+	"math"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // This file holds the goals of the hostile mobs driven by a MobAI, ported
@@ -21,6 +24,15 @@ func (b *hostileState) mobAI() *MobAI { return &b.ai }
 func hostileUsesAI(kind string) bool {
 	switch kind {
 	case "minecraft:zombie", "minecraft:husk", "minecraft:zombie_villager":
+		return true
+	}
+	return hostileSkeleton(kind)
+}
+
+// hostileSkeleton reports if a kind is a skeleton, Java's AbstractSkeleton.
+func hostileSkeleton(kind string) bool {
+	switch kind {
+	case "minecraft:skeleton", "minecraft:stray", "minecraft:bogged", "minecraft:parched", "minecraft:wither_skeleton":
 		return true
 	}
 	return false
@@ -36,6 +48,16 @@ func hostileSelf(e *Ent, kind string) world.Entity {
 		return &ZombieVillager{m}
 	case "minecraft:husk":
 		return &Husk{m}
+	case "minecraft:skeleton":
+		return &Skeleton{m}
+	case "minecraft:stray":
+		return &Stray{m}
+	case "minecraft:bogged":
+		return &Bogged{m}
+	case "minecraft:parched":
+		return &Parched{m}
+	case "minecraft:wither_skeleton":
+		return &WitherSkeleton{m}
 	}
 	return m
 }
@@ -44,12 +66,26 @@ func hostileSelf(e *Ent, kind string) world.Entity {
 func (b *hostileState) aiTick(e *Ent) *Movement {
 	ai := &b.ai
 	ai.MovementSpeed = b.speed
-	ai.FollowRange = 35
+	ai.FollowRange = 16
 	ai.EyeHeight = 1.74
-	if b.baby {
-		ai.EyeHeight = .93
+	switch {
+	case b.kind == "minecraft:wither_skeleton":
+		ai.EyeHeight = 2.1
+	case hostileSkeleton(b.kind):
+	default:
+		ai.FollowRange = 35
+		if b.baby {
+			ai.EyeHeight = .93
+		}
 	}
-	return ai.Tick(e, hostileSelf(e, b.kind), b.registerGoals)
+	self := hostileSelf(e, b.kind)
+	if b.drawingBow {
+		b.useTicks++
+	}
+	if hostileSkeleton(b.kind) && ai.started && (!b.weaponSet || b.weaponBow != b.holdingBow()) {
+		b.reassessWeaponGoal(ai.Mob(e, self))
+	}
+	return ai.Tick(e, self, b.registerGoals)
 }
 
 // registerGoals adds the goals of the mob, as the registerGoals of its Java
@@ -58,7 +94,118 @@ func (b *hostileState) registerGoals(m *Mob) {
 	switch b.kind {
 	case "minecraft:zombie", "minecraft:husk", "minecraft:zombie_villager":
 		registerZombieGoals(m, b)
+	default:
+		if hostileSkeleton(b.kind) {
+			registerSkeletonGoals(m, b)
+		}
 	}
+}
+
+// registerSkeletonGoals ports AbstractSkeleton.registerGoals and the
+// override of WitherSkeleton, which also targets piglins.
+func registerSkeletonGoals(m *Mob, b *hostileState) {
+	ai := m.AI
+	ai.Goals.Add(2, &RestrictSunGoal{})
+	ai.Goals.Add(3, NewFleeSunGoal(1))
+	ai.Goals.Add(3, NewAvoidEntityGoal(entityIs("minecraft:wolf"), 6, 1, 1.2))
+	ai.Goals.Add(5, NewWaterAvoidingRandomStrollGoal(1))
+	ai.Goals.Add(6, NewLookAtPlayerGoal(8))
+	ai.Goals.Add(6, NewRandomLookAroundGoal())
+	if b.kind == "minecraft:wither_skeleton" {
+		ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:piglin", "minecraft:piglin_brute"), true))
+	}
+	ai.Targets.Add(1, NewHurtByTargetGoal())
+	ai.Targets.Add(2, NewNearestAttackableTargetGoal(nil, true))
+	ai.Targets.Add(3, NewNearestAttackableTargetGoal(entityIs("minecraft:iron_golem"), true))
+	turtles := NewNearestAttackableTargetGoal(entityIs("minecraft:turtle"), true)
+	turtles.Selector = func(m *Mob, target world.Entity) bool {
+		baby, ok := target.(interface{ Baby() bool })
+		return ok && baby.Baby() && !pathWater(m.tx, cube.PosFromVec3(target.Position()))
+	}
+	ai.Targets.Add(3, turtles)
+	b.reassessWeaponGoal(m)
+}
+
+// reassessWeaponGoal ports AbstractSkeleton.reassessWeaponGoal: a skeleton
+// with a bow shoots, one without fights in melee.
+func (b *hostileState) reassessWeaponGoal(m *Mob) {
+	ai := m.AI
+	if b.weaponGoal != nil {
+		old := b.weaponGoal
+		ai.Goals.Remove(m, func(g Goal) bool { return g == old })
+	}
+	b.weaponSet, b.weaponBow = true, b.holdingBow()
+	if b.weaponBow {
+		hard, normal := 20, 40
+		if b.kind == "minecraft:bogged" || b.kind == "minecraft:parched" {
+			hard, normal = 50, 70
+		}
+		interval := normal
+		if m.tx.World().Difficulty() == world.DifficultyHard {
+			interval = hard
+		}
+		b.weaponGoal = NewRangedBowAttackGoal(1, interval, 15)
+	} else {
+		b.weaponGoal = NewMeleeAttackGoal(1.2, false)
+	}
+	ai.Goals.Add(4, b.weaponGoal)
+}
+
+func (b *hostileState) holdingBow() bool {
+	_, ok := b.main.Item().(item.Bow)
+	return ok && !b.main.Empty()
+}
+
+func (b *hostileState) usingItem() bool { return b.drawingBow }
+
+func (b *hostileState) ticksUsingItem() int { return b.useTicks }
+
+func (b *hostileState) startUsingItem(m *Mob) {
+	if !b.drawingBow {
+		b.drawingBow, b.useTicks = true, 0
+		m.updateState()
+	}
+}
+
+func (b *hostileState) stopUsingItem(m *Mob) {
+	if b.drawingBow {
+		b.drawingBow, b.useTicks = false, 0
+		m.updateState()
+	}
+}
+
+func (b *hostileState) headEmpty() bool { return b.head.Empty() }
+
+// performRangedAttack ports AbstractSkeleton.performRangedAttack with the
+// arrows of its kinds: strays slow, bogged poison and parched weaken.
+func (b *hostileState) performRangedAttack(m *Mob, target world.Entity, power float64) {
+	pos := mgl64.Vec3{m.data.Pos[0], m.EyeY() - .1, m.data.Pos[2]}
+	targetY := target.Position()[1] + target.H().Type().BBox(target).Height()/3
+	d := mgl64.Vec3{target.Position()[0] - pos[0], targetY - pos[1], target.Position()[2] - pos[2]}
+	d[1] += math.Hypot(d[0], d[2]) * .2
+	vel := shootDirection(m, d, 1.6, rangedAttackUncertainty(m))
+	id, _ := world.DifficultyID(m.tx.World().Difficulty())
+	r := m.Random()
+	damage := power*2 + float64(id)*.11 + .57425*(r.NextDouble()-r.NextDouble())
+	opts := world.EntitySpawnOpts{Position: pos, Velocity: vel}
+	var arrow *world.EntityHandle
+	switch b.kind {
+	case "minecraft:stray":
+		arrow = NewTippedArrowWithDamage(opts, damage, m.Self, potion.Slowness())
+	case "minecraft:bogged":
+		arrow = NewTippedArrowWithDamage(opts, damage, m.Self, potion.Poison())
+	case "minecraft:parched":
+		arrow = NewTippedArrowWithDamage(opts, damage, m.Self, potion.LongWeakness())
+	default:
+		arrow = NewArrowWithDamage(opts, damage, m.Self)
+	}
+	e := m.tx.AddEntity(arrow)
+	if b.kind == "minecraft:wither_skeleton" {
+		if f, ok := e.(interface{ SetOnFire(time.Duration) }); ok {
+			f.SetOnFire(100 * time.Second)
+		}
+	}
+	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.skeleton.shoot", Volume: 1, Pitch: 1 / (float64(r.NextFloat())*.4 + .8)})
 }
 
 // registerZombieGoals ports Zombie.registerGoals and addBehaviourGoals.
@@ -146,6 +293,8 @@ func (b *hostileState) doHurtTarget(m *Mob, target world.Entity) bool {
 			ticks := 140 * int(difficulty)
 			l.AddEffect(effect.New(effect.Hunger, 1, time.Duration(ticks)*time.Second/20))
 		}
+	case "minecraft:wither_skeleton":
+		l.AddEffect(effect.New(effect.Wither, 1, 10*time.Second))
 	}
 	return true
 }

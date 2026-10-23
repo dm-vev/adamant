@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
+	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -143,5 +144,83 @@ func TestIdleZombieStrollsNearPlayers(t *testing.T) {
 	}
 	if pos := aiEntityPos(w, zombie); moved < 1 {
 		t.Fatalf("idle zombie stayed at %v", pos)
+	}
+}
+
+func addHostile(w *world.World, id string, pos mgl64.Vec3) *world.EntityHandle {
+	var h *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		t, _ := entity.DefaultRegistry.Lookup(id)
+		conf := tx.World().EntityRegistry().Config()
+		h = conf.SpawnMob(t.EncodeEntity(), world.EntitySpawnOpts{Position: pos, SpawnReason: "natural", SpawnSeed: 3})
+		tx.AddEntity(h)
+	})
+	return h
+}
+
+// TestSkeletonShootsPlayersInRange checks the skeleton draws its bow and
+// shoots a player it sees within 15 blocks.
+func TestSkeletonShootsPlayersInRange(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{10.5, 65, .5}, world.GameModeSurvival)
+	skeleton := addHostile(w, "minecraft:skeleton", mgl64.Vec3{.5, 65, .5})
+	lowest, drew, arrows := 20.0, false, 0
+	for range 200 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := p.Entity(tx)
+			lowest = min(lowest, e.(*player.Player).Health())
+			s, _ := skeleton.Entity(tx)
+			drew = drew || s.(interface{ UsingItem() bool }).UsingItem()
+			for other := range tx.Entities() {
+				if other.H().Type().EncodeEntity() == "minecraft:arrow" {
+					arrows++
+				}
+			}
+		})
+	}
+	if !drew || arrows == 0 || lowest == 20 {
+		t.Fatalf("skeleton drew its bow %v, arrows seen %d, lowest player health %v", drew, arrows, lowest)
+	}
+}
+
+// TestWitherSkeletonWithersInMelee checks the wither skeleton fights with
+// its sword and withers what it hits.
+func TestWitherSkeletonWithersInMelee(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{4.5, 65, .5}, world.GameModeSurvival)
+	addHostile(w, "minecraft:wither_skeleton", mgl64.Vec3{.5, 65, .5})
+	withered := false
+	for range 200 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := p.Entity(tx)
+			for _, eff := range e.(*player.Player).Effects() {
+				withered = withered || eff.Type() == effect.Wither
+			}
+		})
+	}
+	if !withered {
+		t.Fatal("wither skeleton did not wither the player")
+	}
+}
+
+// TestSkeletonAvoidsWolves checks the skeleton walks away from a wolf near
+// it.
+func TestSkeletonAvoidsWolves(t *testing.T) {
+	w := aiTestWorld(t)
+	addAITestPlayer(w, mgl64.Vec3{-14.5, 65, -14.5}, world.GameModeCreative)
+	skeleton := addHostile(w, "minecraft:skeleton", mgl64.Vec3{.5, 65, .5})
+	wolfAt := mgl64.Vec3{3.5, 65, .5}
+	<-w.Exec(func(tx *world.Tx) {
+		tx.AddEntity(entity.NewWolf(world.EntitySpawnOpts{Position: wolfAt}, entity.WolfBehaviourConfig{}))
+	})
+	farthest := 0.0
+	for range 200 {
+		stepWorld(t, w, 1)
+		farthest = max(farthest, aiEntityPos(w, skeleton).Sub(wolfAt).Len())
+	}
+	if farthest < 6 {
+		t.Fatalf("skeleton got at most %.2f blocks from the wolf", farthest)
 	}
 }

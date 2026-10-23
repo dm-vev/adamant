@@ -109,6 +109,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.puffer_fish.flop":                   "mob.fish.flop",
 	"entity.puffer_fish.sting":                  "",
 	"entity.salmon.flop":                        "mob.fish.flop",
+	"entity.skeleton.shoot":                    "random.bow",
 	"entity.sheep.shear":                        "mob.sheep.shear",
 	"entity.slime.jump":                         "mob.slime.jump",
 	"entity.small_sulfur_cube.eat":              "mob.sulfur_cube.absorb",

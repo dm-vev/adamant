@@ -325,6 +325,9 @@ type hostileState struct {
 	freezingTime, strayConversionTime                                             int
 	strayConverting                                                               bool
 	ai                                                                            MobAI
+	weaponGoal                                                                    Goal
+	weaponSet, weaponBow, drawingBow                                              bool
+	useTicks                                                                      int
 }
 type HostileMob struct{ *Ent }
 type Zombie struct{ *HostileMob }
@@ -407,7 +410,10 @@ func NewHostileWithNBT(opts world.EntitySpawnOpts, id string, spawnData map[stri
 	return opts.New(hostileTypeFor(id), conf)
 }
 
-func (m *HostileMob) state() *hostileState          { return m.Behaviour().(*hostileState) }
+func (m *HostileMob) state() *hostileState { return m.Behaviour().(*hostileState) }
+
+// UsingItem reports if the mob draws its bow.
+func (m *HostileMob) UsingItem() bool               { return m.state().drawingBow }
 func (m *HostileMob) SpeciesType() world.EntityType { return hostileTypeFor(m.state().kind) }
 
 func (m *HostileMob) RaidID() int64      { return m.state().raidID }
