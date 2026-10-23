@@ -87,6 +87,10 @@ type chestBlock interface {
 	canPairChest(world.Block) bool
 }
 
+// Opened reports if a viewer has the chest open, as
+// ChestBlockEntity.getOpenCount is above zero.
+func (c Chest) Opened() bool { return len(c.viewers) > 0 }
+
 func (c Chest) chestData() Chest                    { return c }
 func (c Chest) withChestData(data Chest) chestBlock { return data }
 func (Chest) canPairChest(other world.Block) bool   { _, ok := other.(Chest); return ok }

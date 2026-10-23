@@ -14,6 +14,11 @@ var javaActorColourIDs = map[string]uint8{
 	"light_gray": 8, "cyan": 9, "purple": 10, "blue": 11, "brown": 12, "green": 13, "red": 14, "black": 15,
 }
 
+// javaColourNames are the Java names of the colours in the order of
+// item.Colours.
+var javaColourNames = [...]string{"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+	"light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"}
+
 func javaActorColour(name string) (item.Colour, bool) {
 	id, ok := javaActorColourIDs[name]
 	if !ok {

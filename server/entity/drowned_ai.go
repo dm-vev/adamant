@@ -412,6 +412,9 @@ type moveToBlock struct {
 	nextStartTick, tryTicks, maxStayTicks int
 	pos                                   cube.Pos
 	reached                               bool
+	// verticalStart is MoveToBlockGoal.verticalSearchStart, and startDelay
+	// the fixed delay goals overriding nextStartTick wait between searches.
+	verticalStart, startDelay int
 }
 
 // canUse ports MoveToBlockGoal.canUse with the search ranges of the goal.
@@ -420,7 +423,11 @@ func (g *moveToBlock) canUse(m *Mob, searchRange, verticalRange int, valid func(
 		g.nextStartTick--
 		return false
 	}
-	g.nextStartTick = reducedTickDelay(200 + int(m.Random().NextInt(200)))
+	if g.startDelay > 0 {
+		g.nextStartTick = g.startDelay
+	} else {
+		g.nextStartTick = reducedTickDelay(200 + int(m.Random().NextInt(200)))
+	}
 	return g.findNearestBlock(m, searchRange, verticalRange, valid)
 }
 
@@ -459,7 +466,7 @@ func (g *moveToBlock) findNearestBlock(m *Mob, searchRange, verticalRange int, v
 		}
 		return 1 - v
 	}
-	for y := 0; y <= verticalRange; y = next(y) {
+	for y := g.verticalStart; y <= verticalRange; y = next(y) {
 		for r := 0; r < searchRange; r++ {
 			for x := 0; x <= r; x = next(x) {
 				z := 0

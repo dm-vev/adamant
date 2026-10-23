@@ -210,8 +210,10 @@ type TemptGoal struct {
 	SpeedModifier float64
 	Items         func(item.Stack) bool
 	// CanScare makes the mob stop following a player that moves while
-	// close, as cats and ocelots do.
+	// close, as cats and ocelots do. Scares, if set, decides it in its
+	// place, as goals overriding TemptGoal.canScare do.
 	CanScare bool
+	Scares   func(m *Mob) bool
 	// StopDistance is how close the mob gets, 2.5 blocks by default.
 	StopDistance float64
 
@@ -257,8 +259,15 @@ func (g *TemptGoal) CanUse(m *Mob) bool {
 	return true
 }
 
+func (g *TemptGoal) canScare(m *Mob) bool {
+	if g.Scares != nil {
+		return g.Scares(m)
+	}
+	return g.CanScare
+}
+
 func (g *TemptGoal) CanContinueToUse(m *Mob) bool {
-	if g.CanScare && g.player != nil {
+	if g.canScare(m) && g.player != nil {
 		if p, ok := g.player.Entity(m.tx); ok {
 			pos, rot := p.Position(), p.Rotation()
 			if m.DistanceToSqr(p) < 36 {

@@ -229,6 +229,18 @@ func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	}
 }
 
+// JavaCanonicalState returns the Java state of the bed, whose colour Java
+// keeps in its block ID and Bedrock in its block actor.
+func (b Bed) JavaCanonicalState() world.BlockState {
+	part := "foot"
+	if b.Head {
+		part = "head"
+	}
+	return world.BlockState{Name: "minecraft:" + javaColourNames[b.Colour.Uint8()%16] + "_bed", Properties: map[string]any{
+		"facing": b.Facing.String(), "occupied": b.Occupied, "part": part,
+	}}
+}
+
 // WithCanonicalState applies the state-backed properties of a Java bed while
 // retaining the receiver's actor-only state.
 func (b Bed) WithCanonicalState(name string, properties map[string]any) (world.Block, error) {

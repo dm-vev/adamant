@@ -917,7 +917,9 @@ func TestPhantomSwoopsAtPlayers(t *testing.T) {
 		w := aiTestWorld(t)
 		p := addAITestPlayer(w, mgl64.Vec3{.5, 65, .5}, world.GameModeSurvival)
 		if cat {
-			addSpecies(w, entity.NewCat(world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 65, .5}}))
+			// A stray cat would flee from the player, so the cat sits as
+			// its owner ordered.
+			addSpecies(w, world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 65, .5}}.New(entity.CatType, entity.CatBehaviourConfig{Tamed: true, Sitting: true}))
 		}
 		addSpecies(w, entity.NewPhantom(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 80, .5}, SpawnReason: "natural"}))
 		lowest := lowestHealth(t, w, p, 800, nil)

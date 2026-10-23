@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -42,4 +43,25 @@ func TestBedOccupancyFollowsPairedHalf(t *testing.T) {
 			t.Fatal("unrelated neighbour overwrote occupied head from stale foot")
 		}
 	})
+}
+
+// TestBedCanonicalStateKeepsItsColour checks the Java state of a bed names
+// its colour, which Bedrock keeps in the block actor, so the bed is in the
+// #beds tag.
+func TestBedCanonicalStateKeepsItsColour(t *testing.T) {
+	bed := Bed{Facing: cube.East, Colour: item.ColourLightBlue(), Head: true}
+	state, err := world.CanonicalStateOf(bed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Name != "minecraft:light_blue_bed" || state.Properties["facing"] != "east" || state.Properties["part"] != "head" {
+		t.Fatalf("bed has Java state %v, want a light blue head facing east", state)
+	}
+	if in, err := gamedata.BlockTagContains("minecraft:beds", state.Name); err != nil || !in {
+		t.Fatalf("%s is not in #beds: %v", state.Name, err)
+	}
+	back, err := bed.WithCanonicalState(state.Name, state.Properties)
+	if err != nil || back.(Bed).Colour != bed.Colour || back.(Bed).Facing != bed.Facing || !back.(Bed).Head {
+		t.Fatalf("bed state %v did not round trip: %v, %v", state, back, err)
+	}
 }

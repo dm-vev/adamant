@@ -1,12 +1,9 @@
 package entity
 
 import (
-	"math"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -83,20 +80,22 @@ func (c ocelotBehaviourConfig) New() *ocelotBehaviour {
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &ocelotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), trusting: c.Trusting, age: c.Age, nextWander: 1}
+	return &ocelotBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), trusting: c.Trusting, age: c.Age}
 }
 
 type ocelotBehaviour struct {
-	health     *HealthManager
-	effects    *EffectManager
-	mc         *MovementComputer
-	random     vanilla.Random
-	trusting   bool
-	dead       bool
-	age        int
-	nextWander int
-	navigator  Navigator
-	breeding   breeding
+	health   *HealthManager
+	effects  *EffectManager
+	trusting bool
+	dead     bool
+	age      int
+	breeding breeding
+	animalAI
+	tempt *TemptGoal
+	// crouching and sprinting are the pose the speed of the ocelot gives
+	// it.
+	crouching, sprinting bool
+	shown                [2]bool
 }
 type Ocelot struct{ *Ent }
 
@@ -107,65 +106,17 @@ func (*Ocelot) SpeciesType() world.EntityType { return OcelotType }
 func (o *Ocelot) b() *ocelotBehaviour         { return o.Behaviour().(*ocelotBehaviour) }
 func (o *Ocelot) Tick(tx *world.Tx, n int64)  { o.b().effects.Tick(o, tx); o.Ent.Tick(tx, n) }
 func (b *ocelotBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	partner, inLove := tickBreeding(&Ocelot{Ent: e}, tx)
-	var nearest world.Entity
-	distance := 8.0
-	for p := range tx.Players() {
-		d := p.Position().Sub(e.Position()).Len()
-		if d < distance {
-			nearest, distance = p, d
-		}
+	o := &Ocelot{Ent: e}
+	b.ai.MovementSpeed, b.ai.EyeHeight = .3, .595
+	if b.age < 0 {
+		b.ai.EyeHeight = .34375
 	}
-	trusted := b.trusting
-	tempting := false
-	if nearest != nil && !trusted {
-		if u, ok := nearest.(item.User); ok {
-			main, off := u.HeldItems()
-			tempting = ocelotFish(main.Item()) || ocelotFish(off.Item())
-		}
+	mv := animalTick(e, tx, o, &b.animalAI, b.registerGoals)
+	if shown := [2]bool{b.crouching, b.sprinting}; shown != b.shown {
+		b.shown = shown
+		o.updateState()
 	}
-	start := cube.PosFromVec3(e.Position())
-	if nearest != nil && !trusted && distance < 8 && !tempting {
-		away := e.Position().Sub(nearest.Position())
-		away[1] = 0
-		if away.Len() == 0 {
-			away = mgl64.Vec3{1, 0, 0}
-		}
-		goal := cube.PosFromVec3(e.Position().Add(away.Normalize().Mul(7)))
-		b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
-	} else if inLove {
-		navigateToPartner(&b.navigator, e, tx, partner)
-	} else if nearest != nil && !trusted && tempting && distance < 10 {
-		b.navigator.MoveTo(tx, start, cube.PosFromVec3(nearest.Position()), GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
-	} else if b.navigator.Index >= len(b.navigator.Path) {
-		if b.nextWander > 0 {
-			b.nextWander--
-		}
-		if b.nextWander == 0 {
-			b.nextWander = 40 + int(b.random.NextInt(61))
-			goal := start.Add(cube.Pos{int(b.random.NextInt(11)) - 5, 0, int(b.random.NextInt(11)) - 5})
-			b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
-		}
-	}
-	v, r := e.data.Vel, e.data.Rot
-	if p, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .6); ok {
-		d := p.Sub(e.data.Pos)
-		d[1] = 0
-		if d.Len() < .25 {
-			b.navigator.Index++
-		} else {
-			d = d.Normalize()
-			speed := .23
-			if nearest != nil && !trusted {
-				speed = .31
-			}
-			v[0], v[2] = d[0]*speed, d[2]*speed
-			r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-		}
-	} else {
-		v[0], v[2] = 0, 0
-	}
-	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx).apply(e)
+	return mv
 }
 func ocelotFish(i world.Item) bool {
 	switch v := i.(type) {
@@ -199,10 +150,15 @@ func (o *Ocelot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if o.Dead() || d <= 0 || (s.Fire() && o.hasEffect(effect.FireResistance)) {
 		return 0, false
 	}
+	d, ok := b.ai.DamageCooldown(o.tx, d)
+	if !ok {
+		return 0, false
+	}
 	if r, ok := b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
+	b.ai.Hurt(s)
 	resetLove(o)
 	o.viewAction(HurtAction{})
 	onMobHurt(o.tx, o)
@@ -223,10 +179,13 @@ func (o *Ocelot) KnockBack(s mgl64.Vec3, f, h float64) {
 	d[1] = h
 	o.SetVelocity(d)
 }
-func (o *Ocelot) AddEffect(e effect.Effect)    { o.b().effects.Add(e, o) }
-func (o *Ocelot) RemoveEffect(t effect.Type)   { o.b().effects.Remove(t, o) }
-func (o *Ocelot) Effects() []effect.Effect     { return o.b().effects.Effects() }
-func (o *Ocelot) Speed() float64               { return .23 }
+func (o *Ocelot) AddEffect(e effect.Effect)  { o.b().effects.Add(e, o) }
+func (o *Ocelot) RemoveEffect(t effect.Type) { o.b().effects.Remove(t, o) }
+func (o *Ocelot) Effects() []effect.Effect   { return o.b().effects.Effects() }
+func (o *Ocelot) Speed() float64             { return .3 }
+
+// Crouching reports if the ocelot creeps, as it does while tempted.
+func (o *Ocelot) Crouching() bool              { return o.b().crouching }
 func (o *Ocelot) SetSpeed(float64)             {}
 func (o *Ocelot) hasEffect(t effect.Type) bool { _, ok := o.b().effects.Effect(t); return ok }
 
@@ -240,10 +199,12 @@ func (o *Ocelot) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool 
 	}
 	main, _ := u.HeldItems()
 	b := o.b()
-	if !b.trusting && !main.Empty() && ocelotFish(main.Item()) && u.Position().Sub(o.Position()).LenSqr() < 9 {
+	// Ocelot.mobInteract: only while its TemptGoal runs.
+	if (b.tempt == nil || b.tempt.Running()) && !b.trusting && !main.Empty() && ocelotFish(main.Item()) && u.Position().Sub(o.Position()).LenSqr() < 9 {
 		ctx.SubtractFromCount(1)
-		if b.random.NextInt(3) == 0 {
+		if b.ai.Mob(o.Ent, o).Random().NextInt(3) == 0 {
 			b.trusting = true
+			o.updateState()
 			o.viewAction(TameAction{Succeeded: true})
 		} else {
 			o.viewAction(TameAction{})

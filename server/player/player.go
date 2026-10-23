@@ -124,6 +124,7 @@ type playerData struct {
 	lastHurtByTick, lastHurtMobTick int64
 	lastDamageSource                world.DamageSource
 	lastDamageTick                  int64
+	sleepTimer                      int
 
 	deathPos       *mgl64.Vec3
 	deathDimension world.Dimension
@@ -1629,6 +1630,7 @@ func (p *Player) sleepInTx(tx *world.Tx, pos cube.Pos) {
 	tx.SetBlock(pos, b, nil)
 	p.sleeping = true
 	p.timeSinceRest = 0
+	p.sleepTimer = 0
 	p.sleepPos = pos
 	p.SetVelocity(mgl64.Vec3{})
 	p.data.Vel = mgl64.Vec3{}
@@ -1701,6 +1703,10 @@ func (p *Player) Sleeping() (cube.Pos, bool) {
 	}
 	return p.sleepPos, true
 }
+
+// SleepTimer returns the ticks the player slept in its last sleep, up to
+// 100, as Player.getSleepTimer.
+func (p *Player) SleepTimer() int { return p.sleepTimer }
 
 // TimeSinceRest returns awake ticks since the player last started sleeping.
 func (p *Player) TimeSinceRest() int32 {
@@ -3622,6 +3628,8 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	}
 	if p.sleeping {
 		p.timeSinceRest = 0
+		// Player.tick counts the ticks slept up to 100.
+		p.sleepTimer = min(p.sleepTimer+1, 100)
 	} else if p.timeSinceRest < int32(^uint32(0)>>1) {
 		p.timeSinceRest++
 	}

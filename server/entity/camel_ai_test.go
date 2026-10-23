@@ -72,7 +72,8 @@ func TestCamelsFollowCactus(t *testing.T) {
 // TestHurtCamelsStandUpAndPanic checks CamelAi.CamelPanic: a sitting camel
 // that is hurt stands up at once and runs off at four times its speed.
 func TestHurtCamelsStandUpAndPanic(t *testing.T) {
-	w := traderTestWorld(t)
+	// A camel eating grass stands still, panicking or not.
+	w := wolfTestWorld(t)
 	// A camel standing up at once still takes 52 ticks of a new world.
 	for range 53 {
 		w.AdvanceTick()
@@ -96,16 +97,19 @@ func TestHurtCamelsStandUpAndPanic(t *testing.T) {
 	if !startsPanicking(w, h) {
 		t.Fatal("hurt camel does not panic")
 	}
-	var start mgl64.Vec3
-	<-w.Exec(func(tx *world.Tx) { start = entityPos(tx, h) })
+	var last mgl64.Vec3
+	<-w.Exec(func(tx *world.Tx) { last = entityPos(tx, h) })
+	run := 0.0
 	for range 40 {
 		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) {
+			pos := entityPos(tx, h)
+			run, last = run+horizontalDistance(pos, last), pos
+		})
 	}
-	<-w.Exec(func(tx *world.Tx) {
-		if d := horizontalDistance(entityPos(tx, h), start); d < 2 {
-			t.Fatalf("panicking camel ran %.2f blocks in two seconds", d)
-		}
-	})
+	if run < 3 {
+		t.Fatalf("panicking camel ran %.2f blocks in two seconds", run)
+	}
 }
 
 // TestCamelsIgnoreTheTimeOfDay checks Camel.getPoseTime counts game ticks:

@@ -117,9 +117,19 @@ func CanonicalState(registry chunk.BlockRegistry, state NativeState) (BlockState
 	return reverseNativeState(registry, state)
 }
 
+// javaCanonicalStater is implemented by blocks whose Java state their
+// native runtime ID does not identify, as Bedrock keeps part of it in their
+// block actor, such as the colour of a bed.
+type javaCanonicalStater interface {
+	JavaCanonicalState() BlockState
+}
+
 // CanonicalStateOf returns the Java block state of a registered block without
 // liquid.
 func CanonicalStateOf(b Block) (BlockState, error) {
+	if s, ok := b.(javaCanonicalStater); ok {
+		return s.JavaCanonicalState(), nil
+	}
 	air := DefaultBlockRegistry.AirRuntimeID()
 	return CanonicalState(DefaultBlockRegistry, NativeState{Block: BlockRuntimeID(b), Liquid: air})
 }

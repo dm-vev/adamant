@@ -2,14 +2,11 @@ package entity
 
 import (
 	"encoding/binary"
-	"hash/fnv"
-	"math"
 	"strings"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -26,10 +23,6 @@ func (catType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) wo
 	if d.Data == nil {
 		CatBehaviourConfig{}.Apply(d)
 	}
-	b := d.Data.(*CatBehaviour)
-	hash := fnv.New64a()
-	_, _ = hash.Write([]byte(h.UUID().String()))
-	b.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	return &Cat{Ent: &Ent{tx: tx, handle: h, data: d}}
 }
 func (catType) EncodeEntity() string        { return "minecraft:cat" }
@@ -88,7 +81,7 @@ func (catType) EncodeNBT(d *world.EntityData) map[string]any {
 	health := b.health
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
 	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": bedrockCatVariants[b.variant]})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": b.collarColor}))
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.orderedToSit)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": b.collarColor}))
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
 		javaState["Owner"] = owner
 	} else {
@@ -178,26 +171,32 @@ func (c CatBehaviourConfig) New() *CatBehaviour {
 	if soundVariant != "royal" {
 		soundVariant = "classic"
 	}
-	return &CatBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0), speed: .3, tamed: c.Tamed, sitting: c.Sitting, ownerUUID: c.OwnerUUID, variant: c.Variant, collarColor: c.CollarColor, ageTicks: c.AgeTicks, soundVariant: soundVariant, nextWander: 1}
+	return &CatBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .3,
+		tamable: tamable{tamed: c.Tamed, ownerUUID: c.OwnerUUID, orderedToSit: c.Sitting, inSittingPose: c.Sitting},
+		variant: c.Variant, collarColor: c.CollarColor, ageTicks: c.AgeTicks, soundVariant: soundVariant}
 }
 
 type CatBehaviour struct {
-	health               *HealthManager
-	effects              *EffectManager
-	mc                   *MovementComputer
-	random               vanilla.Random
-	speed                float64
-	tamed, sitting, dead bool
-	ownerUUID            string
-	ageTicks             int
-	soundVariant         string
-	variant              int
-	collarColor          uint8
-	nextWander           int
-	navigator            Navigator
-	breeding             breeding
-	panic                panicState
+	health       *HealthManager
+	effects      *EffectManager
+	speed        float64
+	dead         bool
+	ageTicks     int
+	soundVariant string
+	variant      int
+	collarColor  uint8
+	breeding     breeding
+	animalAI
+	tamable
+	tempt *catTemptGoal
+	// lying and relaxStateOne are the IS_LYING and RELAX_STATE_ONE of Cat,
+	// crouching and sprinting the pose its speed gives it.
+	lying, relaxStateOne, crouching, sprinting bool
+	shown                                      catShownState
 }
+
+// catShownState are the flags of a cat viewers were last shown.
+type catShownState struct{ sitting, lying, crouching, sprinting bool }
 
 func (c *CatBehaviour) Variant() int32 { return int32(c.variant) }
 func (c *CatBehaviour) Baby() bool     { return c.ageTicks < 0 }
@@ -220,90 +219,17 @@ func (c *Cat) SpeciesType() world.EntityType { return CatType }
 func (c *Cat) b() *CatBehaviour              { return c.Behaviour().(*CatBehaviour) }
 func (c *Cat) Tick(tx *world.Tx, n int64)    { c.b().effects.Tick(c, tx); c.Ent.Tick(tx, n) }
 func (b *CatBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	panicking := b.panic.run(e, tx, &b.navigator)
-	if partner, ok := tickBreeding(&Cat{Ent: e}, tx); panicking {
-		b.nextWander = 20
-	} else if ok {
-		navigateToPartner(&b.navigator, e, tx, partner)
-		b.nextWander = 20
-	} else if b.tamed && !b.sitting {
-		var owner world.Entity
-		for p := range tx.Players() {
-			if p.H().UUID().String() == b.ownerUUID {
-				owner = p
-				break
-			}
-		}
-		if owner != nil && owner.Position().Sub(e.Position()).Len() > 5 {
-			b.navigator.MoveTo(tx, cube.PosFromVec3(e.Position()), cube.PosFromVec3(owner.Position()), GroundProfile{MaxVisitedNodes: 256}, navigatorTick(e))
-			b.nextWander = 20
-		}
-	} else if !b.tamed {
-		var nearest world.Entity
-		distance := 256.0
-		tempting := false
-		for p := range tx.Players() {
-			d := p.Position().Sub(e.Position()).Len()
-			if d < distance {
-				nearest, distance = p, d
-				held, ok := p.(item.User)
-				if ok {
-					main, off := held.HeldItems()
-					tempting = catFish(main.Item()) || catFish(off.Item())
-				}
-			}
-		}
-		if nearest != nil && tempting && distance < 10 {
-			b.navigator.MoveTo(tx, cube.PosFromVec3(e.Position()), cube.PosFromVec3(nearest.Position()), GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
-			b.nextWander = 20
-		} else if nearest != nil && distance < 16 {
-			away := e.Position().Sub(nearest.Position())
-			away[1] = 0
-			if away.Len() > 0 {
-				goal := cube.PosFromVec3(e.Position().Add(away.Normalize().Mul(8)))
-				b.navigator.MoveTo(tx, cube.PosFromVec3(e.Position()), goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e))
-				b.nextWander = 20
-			}
-		}
+	c := &Cat{Ent: e}
+	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, .35
+	if b.ageTicks < 0 {
+		b.ai.EyeHeight = .2125
 	}
-	if b.sitting {
-		b.navigator.Path, b.navigator.Index = nil, 0
-	} else {
-		if b.nextWander > 0 {
-			b.nextWander--
-		}
-		if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
-			b.nextWander = 40 + int(b.random.NextInt(81))
-			start := cube.PosFromVec3(e.Position())
-			for range 4 {
-				goal := start.Add(cube.Pos{int(b.random.NextInt(13)) - 6, 0, int(b.random.NextInt(13)) - 6})
-				if b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}, navigatorTick(e)) {
-					break
-				}
-			}
-		}
+	mv := animalTick(e, tx, c, &b.animalAI, b.registerGoals)
+	if shown := (catShownState{b.inSittingPose, b.lying, b.crouching, b.sprinting}); shown != b.shown {
+		b.shown = shown
+		c.updateState()
 	}
-	v := e.data.Vel
-	r := e.data.Rot
-	speed := b.speed
-	if panicking {
-		// TamableAnimalPanicGoal at 1.5 times the movement speed.
-		speed = groundSpeed(.3, 1.5)
-	}
-	if p, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .6); ok {
-		d := p.Sub(e.data.Pos)
-		d[1] = 0
-		if d.Len() < .25 {
-			b.navigator.Index++
-		} else {
-			d = d.Normalize()
-			v[0], v[2] = d[0]*speed, d[2]*speed
-			r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-		}
-	} else {
-		v[0], v[2] = 0, 0
-	}
-	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx).apply(e)
+	return mv
 }
 func (c *Cat) Health() float64        { return c.b().health.Health() }
 func (c *Cat) MaxHealth() float64     { return c.b().health.MaxHealth() }
@@ -311,17 +237,21 @@ func (c *Cat) SetMaxHealth(v float64) { c.b().health.SetMaxHealth(v) }
 func (c *Cat) Dead() bool             { return c.b().dead || c.Health() <= 0 }
 
 // Panicking reports whether the cat runs from danger.
-func (c *Cat) Panicking() bool { return c.b().panic.active }
+func (c *Cat) Panicking() bool { return c.b().panicking() }
 func (c *Cat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b := c.b()
 	if c.Dead() || d <= 0 || (s.Fire() && c.hasEffect(effect.FireResistance)) {
+		return 0, false
+	}
+	d, ok := b.ai.DamageCooldown(c.tx, d)
+	if !ok {
 		return 0, false
 	}
 	if r, ok := b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	b.health.AddHealth(-d)
-	b.panic.hurt(s, c.tx.CurrentTick())
+	b.ai.Hurt(s)
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)
@@ -363,9 +293,15 @@ func (c *Cat) SetVariant(v int) {
 }
 func (c *Cat) CollarColor() uint8     { return c.b().collarColor }
 func (c *Cat) SetCollarColor(v uint8) { c.b().collarColor = v % 16; c.updateState() }
-func (c *Cat) Sitting() bool          { return c.b().sitting }
-func (c *Cat) moveFlagHeld() bool     { return c.b().sitting }
-func (c *Cat) SetSitting(v bool)      { c.b().sitting = v; c.b().navigator.Path = nil; c.updateState() }
+func (c *Cat) Sitting() bool          { return c.b().inSittingPose }
+func (c *Cat) SetSitting(v bool)      { c.b().orderedToSit = v }
+
+// Lying reports if the cat lies down on a bed, a furnace or its sleeping
+// owner's bed.
+func (c *Cat) Lying() bool { return c.b().lying }
+
+// Crouching reports if the cat creeps, as it does while tempted.
+func (c *Cat) Crouching() bool { return c.b().crouching }
 
 // TameWithFish makes the Java one-in-three fish-taming roll and records the owner.
 func (c *Cat) TameWithFish(tx *world.Tx, user world.Entity) bool {
@@ -373,10 +309,10 @@ func (c *Cat) TameWithFish(tx *world.Tx, user world.Entity) bool {
 	if b.tamed {
 		return false
 	}
-	if b.random.NextInt(3) == 0 {
-		b.tamed = true
-		b.ownerUUID = user.H().UUID().String()
-		b.sitting = true
+	if b.ai.Mob(c.Ent, c).Random().NextInt(3) == 0 {
+		// Cat.tryToTame: a tamed cat sits down.
+		b.tamed, b.orderedToSit = true, true
+		b.owner, b.ownerUUID = user.H(), user.H().UUID().String()
 		c.updateState()
 		c.viewAction(TameAction{Succeeded: true})
 	} else {
@@ -411,7 +347,7 @@ func (c *Cat) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) 
 		if feedBreeder(c, u, ctx) {
 			return true
 		}
-		c.SetSitting(!b.sitting)
+		c.SetSitting(!b.orderedToSit)
 		return true
 	}
 	if fish && !b.tamed {

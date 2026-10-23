@@ -118,6 +118,19 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 	case *entity.Cat:
 		m[protocol.EntityDataKeyVariant] = e.BedrockVariant()
 		writeTameMetadata(m, e.Tamed(), e.Sitting(), e.CollarColor())
+		if e.Lying() {
+			setActorFlag(m, protocol.EntityDataFlagLayingDown)
+		}
+		if e.Crouching() {
+			setActorFlag(m, protocol.EntityDataFlagSneaking)
+		}
+	case *entity.Ocelot:
+		if e.Trusting() {
+			setActorFlag(m, protocol.EntityDataFlagTrusting)
+		}
+		if e.Crouching() {
+			setActorFlag(m, protocol.EntityDataFlagSneaking)
+		}
 	case *entity.Wolf:
 		m[protocol.EntityDataKeyVariant] = e.BedrockVariant()
 		writeTameMetadata(m, e.Tamed(), e.Sitting(), e.CollarColor())
