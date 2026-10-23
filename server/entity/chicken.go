@@ -101,21 +101,20 @@ func (c ChickenBehaviourConfig) New() *ChickenBehaviour {
 	if !c.eggTimerSet {
 		c.EggLayTime = 6000 + rand.IntN(6000)
 	}
-	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, variant: c.Variant, soundVariant: soundVariant, jockey: c.Jockey}
+	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, variant: c.Variant, soundVariant: soundVariant, jockey: c.Jockey}
 }
 
 type Chicken struct{ *Ent }
 type ChickenBehaviour struct {
 	health             *HealthManager
 	effects            *EffectManager
-	mc                 *MovementComputer
 	speed              float64
 	ageTicks, eggTimer int
 	variant            int
 	soundVariant       string
 	dead, jockey       bool
 	breeding           breeding
-	goals              animalGoals
+	animalAI
 }
 
 func (c *Chicken) behaviour() *ChickenBehaviour { return c.Behaviour().(*ChickenBehaviour) }
@@ -125,7 +124,14 @@ func (c *Chicken) Tick(tx *world.Tx, current int64) {
 }
 func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	chicken := &Chicken{Ent: e}
-	vel, rot := b.goals.tick(e, tx, chicken, animalGoalSpec{speed: b.speed, panic: 1.4, breed: 1, tempt: 1, tempting: chicken.breedingFood, parent: 1.1, stroll: 1, reach: .4})
+	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(.644, b.ageTicks < 0)
+	mv := animalTick(e, tx, chicken, &b.animalAI, func(m *Mob) {
+		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 1.4, breed: 1, tempt: 1, tempting: chicken.breedingFood, parent: 1.1, stroll: 1}, nil)
+	})
+	// Chicken.aiStep: a chicken flaps its wings and falls slowly.
+	if !e.OnGround() && e.data.Vel[1] < 0 {
+		e.data.Vel[1] *= .6
+	}
 	if b.ageTicks >= 0 && !b.jockey {
 		if b.eggTimer--; b.eggTimer <= 0 {
 			b.eggTimer = 6000 + rand.IntN(6000)
@@ -141,7 +147,7 @@ func (b *ChickenBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			tx.EmitGameEvent(world.GameEventEntityPlace, e.Position(), world.GameEventContext{Source: chicken})
 		}
 	}
-	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+	return mv
 }
 func (c *Chicken) Health() float64        { return c.behaviour().health.Health() }
 func (c *Chicken) MaxHealth() float64     { return c.behaviour().health.MaxHealth() }
@@ -149,16 +155,21 @@ func (c *Chicken) SetMaxHealth(v float64) { c.behaviour().health.SetMaxHealth(v)
 func (c *Chicken) Dead() bool             { return c.behaviour().dead || c.Health() <= 0 }
 
 // Panicking reports whether the chicken runs from danger.
-func (c *Chicken) Panicking() bool { return c.behaviour().goals.panic.active }
+func (c *Chicken) Panicking() bool { return c.behaviour().panicking() }
 func (c *Chicken) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if c.Dead() || damage <= 0 || (src.Fire() && c.hasEffect(effect.FireResistance)) {
 		return 0, false
 	}
-	if res, ok := c.behaviour().effects.Effect(effect.Resistance); ok {
+	b := c.behaviour()
+	damage, ok := b.ai.DamageCooldown(c.tx, damage)
+	if !ok {
+		return 0, false
+	}
+	if res, ok := b.effects.Effect(effect.Resistance); ok {
 		damage *= effect.Resistance.Multiplier(src, res.Level())
 	}
-	c.behaviour().health.AddHealth(-damage)
-	c.behaviour().goals.hurt(src, c.tx.CurrentTick())
+	b.health.AddHealth(-damage)
+	b.ai.Hurt(src)
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)

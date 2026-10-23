@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"math"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -86,10 +87,14 @@ func TestNavigatorCachesAndReplansFarTargets(t *testing.T) {
 		}
 	})
 }
+
+// TestCowFollowsNavigatorThroughWindingCorridor checks a cow walks a path
+// with two turns through a corridor one block wide. The path stays within
+// the 16 blocks a cow walks at most, its follow range.
 func TestCowFollowsNavigatorThroughWindingCorridor(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
 	defer w.Close()
-	start, goal := cube.Pos{1, 1, 1}, cube.Pos{7, 1, 7}
+	start, goal := cube.Pos{1, 1, 7}, cube.Pos{7, 1, 3}
 	reached := false
 	w.Do(func(tx *world.Tx) {
 		for x := 0; x <= 8; x++ {
@@ -117,14 +122,20 @@ func TestCowFollowsNavigatorThroughWindingCorridor(t *testing.T) {
 			t.Fatal("cow did not spawn")
 		}
 		cow := ent.(*Cow)
-		goals := &cow.behaviour().goals
-		goals.running = goalStroll
-		if !goals.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 1024}, 1) {
+		for tick := int64(1); tick <= 5; tick++ {
+			cow.Tick(tx, tick)
+		}
+		ai := &cow.behaviour().ai
+		m := ai.Mob(cow.Ent, cow)
+		ai.Goals.Remove(m, func(Goal) bool { return true })
+		g := goal.Vec3()
+		if !ai.nav.MoveToPos(m, g[0], g[1], g[2], 1) {
 			t.Fatal("cow route through winding corridor was not found")
 		}
-		for tick := int64(1); tick <= 2000; tick++ {
+		for tick := int64(6); tick <= 2000; tick++ {
 			cow.Tick(tx, tick)
-			if cow.Position().Sub(goal.Vec3Centre()).Len() < 1 {
+			// The path ends within a block of the target, its reach range.
+			if d := cow.Position().Sub(goal.Vec3Centre()); math.Hypot(d[0], d[2]) < 1.5 {
 				reached = true
 				break
 			}

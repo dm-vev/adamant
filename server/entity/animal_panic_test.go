@@ -11,7 +11,8 @@ import (
 )
 
 // panicDistance is how far a Java mob with the movement speed attribute
-// and PanicGoal speed modifier passed runs in 20 ticks on normal ground.
+// and PanicGoal speed modifier passed runs in 20 ticks on normal ground
+// without stopping.
 func panicDistance(attribute, modifier float64) float64 {
 	s := attribute * modifier
 	return 20 * .98 * s * s / (1 - .6*.91)
@@ -22,10 +23,12 @@ func panicking(tx *world.Tx, h *world.EntityHandle) bool {
 	return e.(interface{ Panicking() bool }).Panicking()
 }
 
-// startsPanicking reports whether the mob panics within a few ticks. Like
-// Java's PanicGoal it may not find a spot to run to on its first try.
+// startsPanicking reports whether the mob panics within a second. Like
+// Java's PanicGoal it may not find a spot to run to on its first tries:
+// DefaultRandomPos picks spots up to four blocks above and below the mob,
+// and on flat ground only those at its feet stand on a block.
 func startsPanicking(w *world.World, h *world.EntityHandle) bool {
-	for range 5 {
+	for range 20 {
 		w.AdvanceTick()
 		started := false
 		<-w.Exec(func(tx *world.Tx) { started = panicking(tx, h) })
@@ -100,18 +103,26 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 			}
 			var last mgl64.Vec3
 			<-w.Exec(func(tx *world.Tx) { e, _ := h.Entity(tx); last = e.Position() })
-			run := 0.0
-			for range 20 {
+			run, fastest := 0.0, 0.0
+			for range 40 {
 				w.AdvanceTick()
 				<-w.Exec(func(tx *world.Tx) {
 					e, _ := h.Entity(tx)
 					pos := e.Position()
 					pos[1], last[1] = 0, 0
-					run, last = run+pos.Sub(last).Len(), pos
+					step := pos.Sub(last).Len()
+					run, last, fastest = run+step, pos, max(fastest, step)
 				})
 			}
-			if want := .75 * panicDistance(c.attribute, c.modifier); run < want {
-				t.Fatalf("panicking %s ran %.2f blocks in a second, want at least %.2f", c.id, run, want)
+			// PanicGoal stops where its path ends and, on flat ground, often
+			// finds no spot to run to, so the mob runs at full speed only
+			// now and then during the two seconds it panics.
+			want := panicDistance(c.attribute, c.modifier)
+			if fastest < .9*want/20 {
+				t.Fatalf("panicking %s ran at most %.3f blocks a tick, want at least %.3f", c.id, fastest, .9*want/20)
+			}
+			if run < .5*want {
+				t.Fatalf("panicking %s ran %.2f blocks in two seconds, want at least %.2f", c.id, run, .5*want)
 			}
 		})
 	}

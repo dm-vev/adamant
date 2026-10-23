@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand/v2"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
@@ -77,7 +78,7 @@ func (c MooshroomConfig) New() *MooshroomBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &MooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &MooshroomBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 1)), age: c.Age, lastLightningBolt: c.LastLightningBolt, speed: .2, effects: NewEffectManager()}
 }
 
 // Mooshroom is a separately modeled mushroom-field bovine with red/brown type and bowl milking.
@@ -89,9 +90,8 @@ type MooshroomBehaviour struct {
 	dead              bool
 	lastLightningBolt string
 	speed             float64
-	mc                *MovementComputer
 	breeding          breeding
-	goals             animalGoals
+	animalAI
 }
 
 func (m *Mooshroom) behaviour() *MooshroomBehaviour { return m.Behaviour().(*MooshroomBehaviour) }
@@ -101,8 +101,10 @@ func (m *Mooshroom) Tick(tx *world.Tx, t int64) {
 }
 func (b *MooshroomBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	m := &Mooshroom{Ent: e}
-	vel, rot := b.goals.tick(e, tx, m, animalGoalSpec{speed: b.speed, panic: 2, breed: 1, tempt: 1.25, tempting: m.breedingFood, parent: 1.25, stroll: 1, reach: .9})
-	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(1.3, b.age < 0)
+	return animalTick(e, tx, m, &b.animalAI, func(mob *Mob) {
+		registerAnimalGoals(mob, &b.animalAI, animalSpec{panic: 2, breed: 1, tempt: 1.25, tempting: m.breedingFood, parent: 1.25, stroll: 1}, nil)
+	})
 }
 func (m *Mooshroom) Health() float64    { return m.behaviour().health }
 func (m *Mooshroom) MaxHealth() float64 { return m.behaviour().maxHealth }
@@ -113,8 +115,17 @@ func (m *Mooshroom) SetMaxHealth(v float64) {
 }
 func (m *Mooshroom) Dead() bool { return m.behaviour().dead || m.Health() <= 0 }
 
+// walkTargetValue ports MushroomCow.getWalkTargetValue: mooshrooms stroll to
+// mycelium rather than grass.
+func (b *MooshroomBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+	if _, ok := m.tx.Block(pos.Side(cube.FaceDown)).(block.Mycelium); ok {
+		return 10
+	}
+	return pathfindingLightCost(m.tx, pos)
+}
+
 // Panicking reports whether the mooshroom runs from danger.
-func (m *Mooshroom) Panicking() bool { return m.behaviour().goals.panic.active }
+func (m *Mooshroom) Panicking() bool { return m.behaviour().panicking() }
 func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if m.Dead() || v <= 0 {
 		return 0, false
@@ -127,13 +138,16 @@ func (m *Mooshroom) Hurt(v float64, src world.DamageSource) (float64, bool) {
 			return 0, true
 		}
 	}
+	b := m.behaviour()
 	var ok bool
-	if v, ok = mobEffectDamage(m.behaviour().effects, v, src); !ok {
+	if v, ok = b.ai.DamageCooldown(m.tx, v); !ok {
 		return 0, false
 	}
-	b := m.behaviour()
+	if v, ok = mobEffectDamage(b.effects, v, src); !ok {
+		return 0, false
+	}
 	b.health -= v
-	b.goals.hurt(src, m.tx.CurrentTick())
+	b.ai.Hurt(src)
 	resetLove(m)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)

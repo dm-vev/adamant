@@ -148,6 +148,19 @@ func setAge(a breeder, v int) {
 // Animal.aiStep and BreedGoal. It returns the partner to walk to while the
 // breeder is looking to mate.
 func tickBreeding(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
+	tickAgeing(a, tx)
+	if panicking(a) {
+		// PanicGoal outranks BreedGoal, which stops and forgets its partner.
+		b := a.breedingState()
+		b.partner, b.loveTime = nil, 0
+		return mgl64.Vec3{}, false
+	}
+	return breedGoal(a, tx)
+}
+
+// tickAgeing ports the ageing of AgeableMob.aiStep and the love countdown of
+// Animal.aiStep.
+func tickAgeing(a breeder, tx *world.Tx) {
 	b, age := a.breedingState(), a.ageTicks()
 	if b.forcedAgeTimer > 0 {
 		if b.forcedAgeTimer%4 == 0 {
@@ -176,12 +189,6 @@ func tickBreeding(a breeder, tx *world.Tx) (mgl64.Vec3, bool) {
 			viewBreederState(a)
 		}
 	}
-	if panicking(a) {
-		// PanicGoal outranks BreedGoal, which stops and forgets its partner.
-		b.partner, b.loveTime = nil, 0
-		return mgl64.Vec3{}, false
-	}
-	return breedGoal(a, tx)
 }
 
 // resetLove ends the love mode of an animal, as being hurt does.

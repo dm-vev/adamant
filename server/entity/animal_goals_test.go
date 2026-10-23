@@ -5,6 +5,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -63,6 +64,53 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 	}
 }
 
+// TestAnimalsPathAroundWallsToTheirFood checks animals find a path around a
+// wall to a player holding their food rather than walking into the wall.
+func TestAnimalsPathAroundWallsToTheirFood(t *testing.T) {
+	foods := map[string]world.Item{"minecraft:cow": item.Wheat{}, "minecraft:sheep": item.Wheat{}, "minecraft:chicken": block.WheatSeeds{}}
+	for id, food := range foods {
+		t.Run(id, func(t *testing.T) {
+			w := traderTestWorld(t)
+			var h *world.EntityHandle
+			playerPos := mgl64.Vec3{8.5, 64, .5}
+			<-w.Exec(func(tx *world.Tx) {
+				for z := -3; z <= 3; z++ {
+					tx.SetBlock(cube.Pos{4, 64, z}, block.Stone{}, nil)
+					tx.SetBlock(cube.Pos{4, 65, z}, block.Stone{}, nil)
+				}
+				h = spawnAnimal(t, tx, id, .5, nil)
+				addSurvivalPlayer(tx, playerPos).SetHeldItems(item.NewStack(food, 1), item.Stack{})
+			})
+			closest := 100.0
+			for range 300 {
+				w.AdvanceTick()
+				<-w.Exec(func(tx *world.Tx) { closest = min(closest, horizontalDistance(entityPos(tx, h), playerPos)) })
+			}
+			if closest > 3.5 {
+				t.Fatalf("%s came no closer than %.2f blocks to a player holding its food behind a wall", id, closest)
+			}
+		})
+	}
+}
+
+// TestChickensFallSlowly checks Chicken.aiStep: a falling chicken flaps its
+// wings, which slows its fall to about a block a second.
+func TestChickensFallSlowly(t *testing.T) {
+	w := traderTestWorld(t)
+	var h *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		h = tx.AddEntity(entity.NewChicken(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 74, .5}}, entity.ChickenBehaviourConfig{})).H()
+	})
+	for range 10 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if fell := 74 - entityPos(tx, h)[1]; fell < .5 || fell > 1.5 {
+			t.Fatalf("chicken fell %.2f blocks in half a second, want about one", fell)
+		}
+	})
+}
+
 // TestBabiesFollowAdults checks FollowParentGoal: a baby more than three
 // blocks from the nearest grown animal of its kind walks up to it.
 func TestBabiesFollowAdults(t *testing.T) {
@@ -82,7 +130,9 @@ func TestBabiesFollowAdults(t *testing.T) {
 			closest := 100.0
 			for range 100 {
 				w.AdvanceTick()
-				<-w.Exec(func(tx *world.Tx) { closest = min(closest, horizontalDistance(entityPos(tx, baby), entityPos(tx, adult))) })
+				<-w.Exec(func(tx *world.Tx) {
+					closest = min(closest, horizontalDistance(entityPos(tx, baby), entityPos(tx, adult)))
+				})
 			}
 			if closest > 3.5 {
 				t.Fatalf("baby came no closer than %.2f blocks to the only adult, want it to follow to within 3 blocks", closest)

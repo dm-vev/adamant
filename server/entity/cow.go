@@ -132,7 +132,6 @@ func (conf CowConfig) New() *CowBehaviour {
 		BaseBehaviour: NewBaseBehaviour(),
 		health:        NewHealthManager(conf.Health, conf.MaxHealth),
 		effects:       NewEffectManager(),
-		mc:            &MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
 		variant:       max(0, min(conf.Variant, 2)),
 		ageTicks:      conf.AgeTicks,
 		soundVariant:  soundVariant,
@@ -147,13 +146,12 @@ type CowBehaviour struct {
 	BaseBehaviour
 	health            *HealthManager
 	effects           *EffectManager
-	mc                *MovementComputer
 	variant, ageTicks int
 	soundVariant      string
 	speed             float64
 	breeding          breeding
-	goals             animalGoals
-	dead              bool
+	animalAI
+	dead bool
 }
 
 func (c *CowBehaviour) Variant() int32 { return int32(c.variant) }
@@ -177,8 +175,10 @@ func (c *Cow) Tick(tx *world.Tx, current int64) {
 
 func (b *CowBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	cow := &Cow{Ent: e}
-	vel, rot := b.goals.tick(e, tx, cow, animalGoalSpec{speed: b.speed, panic: 2, breed: 1, tempt: 1.25, tempting: cow.breedingFood, parent: 1.25, stroll: 1, reach: .9})
-	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(1.3, b.ageTicks < 0)
+	return animalTick(e, tx, cow, &b.animalAI, func(m *Mob) {
+		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 2, breed: 1, tempt: 1.25, tempting: cow.breedingFood, parent: 1.25, stroll: 1}, nil)
+	})
 }
 
 // Health returns the cow's current health.
@@ -194,18 +194,23 @@ func (c *Cow) SetMaxHealth(v float64) { c.behaviour().health.SetMaxHealth(v) }
 func (c *Cow) Dead() bool { return c.behaviour().dead || c.Health() <= 0 }
 
 // Panicking reports whether the cow runs from danger.
-func (c *Cow) Panicking() bool { return c.behaviour().goals.panic.active }
+func (c *Cow) Panicking() bool { return c.behaviour().panicking() }
 
 // Hurt damages the cow and kills it if its health is exhausted.
 func (c *Cow) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if c.Dead() || damage <= 0 || (src.Fire() && c.hasEffect(effect.FireResistance)) {
 		return 0, false
 	}
-	if resistance, ok := c.behaviour().effects.Effect(effect.Resistance); ok {
+	b := c.behaviour()
+	damage, ok := b.ai.DamageCooldown(c.tx, damage)
+	if !ok {
+		return 0, false
+	}
+	if resistance, ok := b.effects.Effect(effect.Resistance); ok {
 		damage *= effect.Resistance.Multiplier(src, resistance.Level())
 	}
-	c.behaviour().health.AddHealth(-damage)
-	c.behaviour().goals.hurt(src, c.tx.CurrentTick())
+	b.health.AddHealth(-damage)
+	b.ai.Hurt(src)
 	resetLove(c)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)

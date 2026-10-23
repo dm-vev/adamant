@@ -12,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -79,7 +78,7 @@ func (c SheepConfig) New() *SheepBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &SheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, speed: .23, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &SheepBehaviour{health: c.Health, maxHealth: c.MaxHealth, ageTicks: c.AgeTicks, color: max(0, min(c.WoolColor, 15)), sheared: c.Sheared, speed: .23, effects: NewEffectManager()}
 }
 
 // Sheep is a concrete Java sheep, including wool and grazing state.
@@ -90,12 +89,8 @@ type SheepBehaviour struct {
 	ageTicks, color   int
 	sheared, dead     bool
 	speed             float64
-	mc                *MovementComputer
 	breeding          breeding
-	goals             animalGoals
-	// eatTicks is the eatAnimationTick of the running EatBlockGoal.
-	eatTicks int
-	sheep    *Sheep
+	animalAI
 }
 
 func (s *SheepBehaviour) Baby() bool        { return s.ageTicks < 0 }
@@ -105,64 +100,24 @@ func (s *Sheep) Tick(tx *world.Tx, current int64) {
 	s.Ent.Tick(tx, current)
 }
 func (b *SheepBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	b.sheep = &Sheep{Ent: e}
-	vel, rot := b.goals.tick(e, tx, b.sheep, animalGoalSpec{speed: b.speed, panic: 1.25, breed: 1, tempt: 1.1, tempting: b.sheep.breedingFood, parent: 1.1, species: b, stroll: 1, reach: .9})
-	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+	sheep := &Sheep{Ent: e}
+	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, animalEyeHeight(1.235, b.ageTicks < 0)
+	return animalTick(e, tx, sheep, &b.animalAI, func(m *Mob) {
+		registerAnimalGoals(m, &b.animalAI, animalSpec{panic: 1.25, breed: 1, tempt: 1.1, tempting: sheep.breedingFood, parent: 1.1, stroll: 1}, NewEatBlockGoal(b.ate))
+	})
 }
 
-// run ports EatBlockGoal: now and then a sheep, far more often a lamb,
-// lowers its head for 40 ticks and eats the grass it stands in or the grass
-// block it stands on, which regrows its wool and lets a lamb grow up faster.
-func (b *SheepBehaviour) run(e *Ent, tx *world.Tx) bool {
-	if b.eatTicks == 0 {
-		chance := 1000
-		if b.ageTicks < 0 {
-			chance = 50
-		}
-		pos := cube.PosFromVec3(e.Position())
-		if rand.IntN(chance) != 0 || !blockInTag(tx.Block(pos), "edible_for_sheep") && !sheepGrass(tx, pos.Side(cube.FaceDown)) {
-			return false
-		}
-		b.eatTicks = 40
-		b.sheep.viewAction(EatGrassAction{})
-		return true
-	}
-	if b.eatTicks--; b.eatTicks == 4 {
-		b.eat(e, tx)
-	}
-	return b.eatTicks > 0
-}
-
-// stop ends EatBlockGoal when a goal of higher priority runs.
-func (b *SheepBehaviour) stop() { b.eatTicks = 0 }
-
-// eat ports the bite of EatBlockGoal.tick and Sheep.ate.
-func (b *SheepBehaviour) eat(e *Ent, tx *world.Tx) {
-	pos := cube.PosFromVec3(e.Position())
-	griefing := tx.World().GameRuleBool("mob_griefing")
-	switch {
-	case blockInTag(tx.Block(pos), "edible_for_sheep"):
-		if griefing {
-			eaten := tx.Block(pos)
-			tx.SetBlock(pos, nil, nil)
-			tx.AddParticle(pos.Vec3Centre(), particle.BlockBreak{Block: eaten})
-		}
-	case sheepGrass(tx, pos.Side(cube.FaceDown)):
-		if griefing {
-			below := pos.Side(cube.FaceDown)
-			tx.AddParticle(below.Vec3Centre(), particle.BlockBreak{Block: tx.Block(below)})
-			tx.SetBlock(below, block.Dirt{}, nil)
-		}
-	default:
-		return
-	}
-	tx.EmitGameEvent(world.GameEventEat, e.Position(), world.GameEventContext{Source: b.sheep})
+// ate ports Sheep.ate: grazing regrows the wool of a sheep and lets a lamb
+// grow up faster.
+func (b *SheepBehaviour) ate(m *Mob) {
+	sheep := m.Self.(*Sheep)
+	m.tx.EmitGameEvent(world.GameEventEat, m.data.Pos, world.GameEventContext{Source: sheep})
 	if b.sheared {
 		b.sheared = false
-		viewBreederState(b.sheep)
+		viewBreederState(sheep)
 	}
 	if b.ageTicks < 0 && !b.breeding.ageLocked {
-		ageUp(b.sheep, 60, false)
+		ageUp(sheep, 60, false)
 	}
 }
 
@@ -181,18 +136,21 @@ func (s *Sheep) SetMaxHealth(v float64) {
 func (s *Sheep) Dead() bool { return s.behaviour().dead || s.Health() <= 0 }
 
 // Panicking reports whether the sheep runs from danger.
-func (s *Sheep) Panicking() bool { return s.behaviour().goals.panic.active }
+func (s *Sheep) Panicking() bool { return s.behaviour().panicking() }
 func (s *Sheep) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if s.Dead() || v <= 0 {
 		return 0, false
 	}
+	b := s.behaviour()
 	var ok bool
-	if v, ok = mobEffectDamage(s.behaviour().effects, v, src); !ok {
+	if v, ok = b.ai.DamageCooldown(s.tx, v); !ok {
 		return 0, false
 	}
-	b := s.behaviour()
+	if v, ok = mobEffectDamage(b.effects, v, src); !ok {
+		return 0, false
+	}
 	b.health -= v
-	b.goals.hurt(src, s.tx.CurrentTick())
+	b.ai.Hurt(src)
 	resetLove(s)
 	s.viewAction(HurtAction{})
 	onMobHurt(s.tx, s)

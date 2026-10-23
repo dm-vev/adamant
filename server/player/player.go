@@ -3661,7 +3661,9 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	}
 	p.prevWorld = tx.World()
 
-	if p.session() == session.Nop && !p.Immobile() {
+	// A player spectating an entity stays with it, as ServerPlayer.tick moves
+	// it to its camera, and does not fall.
+	if p.session() == session.Nop && !p.Immobile() && p.spectating == nil {
 		m := p.mc.TickMovement(p, p.Position(), p.Velocity(), p.Rotation(), p.Rotation(), p.tx)
 		m.Send()
 

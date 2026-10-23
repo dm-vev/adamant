@@ -58,6 +58,10 @@ type MobAI struct {
 	lastHurtByTime  int
 	lastHurtMob     *world.EntityHandle
 	lastHurtMobTime int
+	// lastDamage is LivingEntity.lastDamageSource and lastDamageTime when
+	// it was dealt, forgotten 40 ticks later.
+	lastDamage     world.DamageSource
+	lastDamageTime int
 
 	// The damage cooldown of the LivingEntity: the world tick of the last
 	// full hit and its damage.
@@ -447,6 +451,7 @@ func (ai *MobAI) DamageCooldown(tx *world.Tx, d float64) (float64, bool) {
 // does for the goals that react to it.
 func (ai *MobAI) Hurt(src world.DamageSource) {
 	ai.noActionTime = 0
+	ai.lastDamage, ai.lastDamageTime = src, ai.tickCount
 	if attacker := damageAttacker(src); attacker != nil {
 		if _, ok := attacker.(Living); ok {
 			ai.SetLastHurtBy(attacker)
@@ -463,6 +468,15 @@ func damageAttacker(src world.DamageSource) world.Entity {
 		return a.Attacker()
 	}
 	return nil
+}
+
+// LastDamage returns the damage the mob last took within the last 40 ticks,
+// as LivingEntity.getLastDamageSource.
+func (m *Mob) LastDamage() world.DamageSource {
+	if m.AI.lastDamage == nil || m.AI.tickCount-m.AI.lastDamageTime > 40 {
+		return nil
+	}
+	return m.AI.lastDamage
 }
 
 // LastHurtMob returns the entity the mob last hurt.
