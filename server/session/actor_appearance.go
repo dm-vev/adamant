@@ -177,6 +177,15 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		m[protocol.EntityDataKeyMarkVariant] = int32(-1)
 	case *entity.Panda:
 		m[protocol.EntityDataKeyVariant] = int32(e.Variant())
+		for flag, set := range map[uint8]bool{
+			protocol.EntityDataFlagSitting: e.Sitting(), protocol.EntityDataFlagRolling: e.Rolling(),
+			protocol.EntityDataFlagLayingDown: e.LyingOnBack(), protocol.EntityDataFlagSneezing: e.Sneezing(),
+			protocol.EntityDataFlagEating: e.Eating(), protocol.EntityDataFlagScared: e.Scared(),
+		} {
+			if set {
+				setActorFlag(m, flag)
+			}
+		}
 	case *entity.Axolotl:
 		m[protocol.EntityDataKeyVariant], _, _, _ = e.BedrockVariant()
 	case *entity.TropicalFish:
