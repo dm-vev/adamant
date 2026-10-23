@@ -67,7 +67,7 @@ func networkID(t world.EntityType) string {
 	if v, ok := t.(NetworkEncodeableEntity); ok {
 		return v.NetworkEncodeEntity()
 	}
-	return t.EncodeEntity()
+	return world.BedrockEntityIdentifier(t.EncodeEntity())
 }
 
 // addAmbientSoundMetadata writes the ambient sound and fall damage

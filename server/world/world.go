@@ -3264,7 +3264,7 @@ func (w *World) EntityNBT(e *EntityHandle) map[string]any {
 	if encode := w.conf.Entities.Config().EncodeSharedNBT; encode != nil {
 		maps.Copy(data, encode(&e.data))
 	}
-	data["identifier"] = e.t.EncodeEntity()
+	data["identifier"] = BedrockEntityIdentifier(e.t.EncodeEntity())
 	return data
 }
 

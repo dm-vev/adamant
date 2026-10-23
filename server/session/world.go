@@ -144,9 +144,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			metadata[protocol.EntityDataKeyVariant] = int32(networkBlockID(s.br, v.Behaviour().(*entity.FallingBlockBehaviour).Block()))
 		}
 	}
-	if v, ok := e.H().Type().(NetworkEncodeableEntity); ok {
-		id = v.NetworkEncodeEntity()
-	}
+	id = networkID(e.H().Type())
 
 	var vel mgl64.Vec3
 	if v, ok := e.(interface{ Velocity() mgl64.Vec3 }); ok {

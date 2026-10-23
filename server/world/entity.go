@@ -818,11 +818,46 @@ func (reg EntityRegistry) Config() EntityRegistryConfig {
 	return reg.conf
 }
 
-// Lookup looks up an EntityType by its name. If found, the EntityType is
-// returned and the bool is true. The bool is false otherwise.
+// Lookup looks up an EntityType by its name, or by the Bedrock identifier of
+// a type whose name differs from it, as worlds saved by BDS hold. If found,
+// the EntityType is returned and the bool is true. The bool is false otherwise.
 func (reg EntityRegistry) Lookup(name string) (EntityType, bool) {
 	t, ok := reg.ent[name]
+	if !ok {
+		if registered, alias := registeredEntityNames[name]; alias {
+			t, ok = reg.ent[registered]
+		}
+	}
 	return t, ok
+}
+
+// bedrockEntityIdentifiers maps the names entity types are registered and
+// compared by to the Bedrock identifiers BDS saves and clients spawn, for the
+// types whose names differ: clients show nothing for minecraft:evoker or
+// minecraft:tropical_fish and the legacy, pre-1.14 mob for minecraft:villager.
+var bedrockEntityIdentifiers = map[string]string{
+	"minecraft:villager":        "minecraft:villager_v2",
+	"minecraft:zombie_villager": "minecraft:zombie_villager_v2",
+	"minecraft:evoker":          "minecraft:evocation_illager",
+	"minecraft:tropical_fish":   "minecraft:tropicalfish",
+}
+
+// registeredEntityNames is the inverse of bedrockEntityIdentifiers.
+var registeredEntityNames = func() map[string]string {
+	m := make(map[string]string, len(bedrockEntityIdentifiers))
+	for name, id := range bedrockEntityIdentifiers {
+		m[id] = name
+	}
+	return m
+}()
+
+// BedrockEntityIdentifier returns the Bedrock identifier of the entity type
+// registered as name, which saves and clients use.
+func BedrockEntityIdentifier(name string) string {
+	if id, ok := bedrockEntityIdentifiers[name]; ok {
+		return id
+	}
+	return name
 }
 
 // Types returns all EntityTypes passed upon construction of the EntityRegistry.
