@@ -310,6 +310,9 @@ func (g *TemptGoal) Tick(m *Mob) {
 type FollowParentGoal struct {
 	goalFlags
 	SpeedModifier float64
+	// MinDist and MaxDist are the distances to the adult between which the
+	// baby follows it, 3 and 16 blocks as in FollowParentGoal by default.
+	MinDist, MaxDist float64
 
 	parent           *world.EntityHandle
 	timeToRecalcPath int
@@ -317,7 +320,7 @@ type FollowParentGoal struct {
 
 // NewFollowParentGoal returns a FollowParentGoal.
 func NewFollowParentGoal(speedModifier float64) *FollowParentGoal {
-	return &FollowParentGoal{SpeedModifier: speedModifier}
+	return &FollowParentGoal{SpeedModifier: speedModifier, MinDist: 3, MaxDist: 16}
 }
 
 func (g *FollowParentGoal) baby(m *Mob) bool { return *m.Self.(breeder).ageTicks() < 0 }
@@ -328,7 +331,12 @@ func (g *FollowParentGoal) CanUse(m *Mob) bool {
 	}
 	var closest world.Entity
 	closestDist := math.MaxFloat64
-	for e := range m.tx.EntitiesWithin(m.BBox().GrowVec3(mgl64.Vec3{8, 4, 8})) {
+	search := mgl64.Vec3{8, 4, 8}
+	if g.MaxDist > 16 {
+		// BabyFollowAdult follows the nearest adult its sensor sees.
+		search = mgl64.Vec3{g.MaxDist - 1, g.MaxDist - 1, g.MaxDist - 1}
+	}
+	for e := range m.tx.EntitiesWithin(m.BBox().GrowVec3(search)) {
 		p, ok := e.(breeder)
 		if !ok || e.H().Type() != m.H().Type() || *p.ageTicks() < 0 {
 			continue
@@ -337,7 +345,7 @@ func (g *FollowParentGoal) CanUse(m *Mob) bool {
 			closest, closestDist = e, d
 		}
 	}
-	if closest == nil || closestDist < 9 {
+	if closest == nil || closestDist < g.MinDist*g.MinDist {
 		return false
 	}
 	g.parent = closest.H()
@@ -353,7 +361,7 @@ func (g *FollowParentGoal) CanContinueToUse(m *Mob) bool {
 		return false
 	}
 	d := m.DistanceToSqr(p)
-	return d >= 9 && d <= 256
+	return d >= g.MinDist*g.MinDist && d <= g.MaxDist*g.MaxDist
 }
 
 func (g *FollowParentGoal) Start(*Mob) { g.timeToRecalcPath = 0 }

@@ -400,15 +400,26 @@ func (m *Mob) swing() {
 type targetGoal struct {
 	goalFlags
 	mustSee, mustReach bool
-	reachCache         int
-	reachCacheTime     int
-	unseenTicks        int
-	targetMob          *world.EntityHandle
-	unseenMemoryTicks  int
+	// followScale scales the follow range the goal looks for and keeps
+	// targets within, as goals overriding getFollowDistance do.
+	followScale       float64
+	reachCache        int
+	reachCacheTime    int
+	unseenTicks       int
+	targetMob         *world.EntityHandle
+	unseenMemoryTicks int
 }
 
 func newTargetGoal(mustSee, mustReach bool) targetGoal {
 	return targetGoal{goalFlags: goalFlags{GoalTarget}, mustSee: mustSee, mustReach: mustReach, unseenMemoryTicks: 60}
+}
+
+// followDistance ports TargetGoal.getFollowDistance.
+func (g *targetGoal) followDistance(m *Mob) float64 {
+	if g.followScale > 0 {
+		return m.AI.FollowRange * g.followScale
+	}
+	return m.AI.FollowRange
 }
 
 // canContinue ports TargetGoal.canContinueToUse.
@@ -420,7 +431,7 @@ func (g *targetGoal) canContinue(m *Mob) bool {
 	if target == nil || !m.CanAttack(target) {
 		return false
 	}
-	within := m.AI.FollowRange
+	within := g.followDistance(m)
 	if m.DistanceToSqr(target) > within*within {
 		return false
 	}
@@ -498,7 +509,7 @@ func NewNearestAttackableTargetGoal(isType func(world.Entity) bool, mustSee bool
 
 func (g *NearestAttackableTargetGoal) conditions(m *Mob) targeting {
 	c := forCombat()
-	c.rangeLimit = m.AI.FollowRange
+	c.rangeLimit = g.followDistance(m)
 	c.selector = g.Selector
 	return c
 }
@@ -512,7 +523,7 @@ func (g *NearestAttackableTargetGoal) CanUse(m *Mob) bool {
 	if g.IsType == nil {
 		found = nearestPlayer(m, g.conditions(m))
 	} else {
-		r := m.AI.FollowRange
+		r := g.followDistance(m)
 		found = nearestOfTypes(m, g.conditions(m), m.BBox().GrowVec3(mgl64.Vec3{r, r, r}), g.IsType)
 	}
 	if found == nil {

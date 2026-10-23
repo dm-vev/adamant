@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"math"
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -80,15 +79,11 @@ func (c MountConfig) New() *MountBehaviour {
 		c.JumpStrength = jump
 	}
 	b := &MountBehaviour{kind: kind, tamed: c.Tamed || kind == mountCamel || kind == mountCamelHusk, saddled: c.Saddled, chested: c.Chested, trap: c.SkeletonTrap, strength: max(1, min(c.Strength, 5)), variant: c.Variant, ageTicks: c.AgeTicks,
-		jumpStrength: c.JumpStrength, movementSpeed: c.Speed, health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), nextStand: -400,
-		mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, llamaState: llamaState{caravanSpeed: 2.1, attackTime: -1}}
-	// CamelAi panics with AnimalPanic, which lasts five seconds.
-	b.goals.panic.brain = b.camel()
+		jumpStrength: c.JumpStrength, movementSpeed: c.Speed, health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager()}
 	return b
 }
 
 type MountBehaviour struct {
-	mc                               *MovementComputer
 	kind                             mountKind
 	tamed, saddled, chested, sitting bool
 	strength, variant, ageTicks      int
@@ -109,20 +104,18 @@ type MountBehaviour struct {
 	traderDespawn                    int
 	lastPoseTick                     int64
 	llamaState                       llamaState
-	camelState                       camelState
 	breeding                         breeding
-	goals                            animalGoals
+	animalAI
+	// camelPanic is the CamelPanic of camels.
+	camelPanic *camelPanicGoal
 	// temper, owner and bred are AbstractHorse's Temper, Owner and Bred.
 	temper int
 	owner  string
 	bred   bool
 	// eating and standCounter are the eating and standing flags of
-	// AbstractHorse, nextStand the countdown of RandomStandGoal.
-	eating                                 bool
-	eatingCounter, standCounter, nextStand int
-	// crazy is set while RunAroundLikeCrazyGoal runs on crazyNavigator.
-	crazy          bool
-	crazyNavigator Navigator
+	// AbstractHorse.
+	eating                      bool
+	eatingCounter, standCounter int
 }
 
 func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -133,9 +126,11 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dashCooldown > 0 {
 		b.dashCooldown--
 	}
-	if b.camel() && b.sitting && b.forward > 0 && !b.inPoseTransition(tx) {
-		// Camel.tickRidden: riding forward makes a sitting camel stand up.
-		b.standUp(m)
+	if b.camel() && b.sitting {
+		if _, inWater := tx.Liquid(cube.PosFromVec3(e.Position())); inWater {
+			// Camel.tick: a camel in water stands up at once.
+			b.standUpInstantly(m)
+		}
 	}
 	b.effects.Tick(m, tx)
 	if b.kind == mountSkeletonHorse && b.trap {
@@ -151,11 +146,15 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.kind == mountTraderLlama && b.traderLlamaDespawn(e, tx) {
 		return nil
 	}
-	vel, rot := b.tickHorse(m, tx)
-	if b.controlled() {
-		vel, rot = b.travelRidden(m, tx)
+	ai := &b.ai
+	ai.MovementSpeed, ai.JumpStrength, ai.StepHeight = b.movementSpeed, b.jumpStrength, 1
+	if b.camel() {
+		ai.StepHeight = 1.5
 	}
-	mv := b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+	// The eyes of every species sit at 0.95 times its height.
+	ai.EyeHeight = .95 * e.H().Type().BBox(m).Height()
+	mv := animalTick(e, tx, m, &b.animalAI, b.registerGoals)
+	b.tickHorse(m, tx)
 	b.updatePassengers(e, tx)
 	return mv
 }
@@ -321,19 +320,16 @@ func (m *Mount) JumpStrength() float64 { return m.b().jumpStrength }
 // moves forward.
 func (m *Mount) Jump() bool {
 	b := m.b()
-	if !b.saddled || b.dashCooldown > 0 || b.sitting || !b.mc.OnGround() {
+	if !b.saddled || b.dashCooldown > 0 || b.sitting || !b.ai.onGround {
 		return false
 	}
+	mob := b.ai.Mob(m.Ent, m)
 	v := m.Velocity()
-	v[1] = b.jumpStrength
+	v[1] = mountJumpPower(mob, b.jumpStrength, 1)
 	if b.forward > 0 {
-		direction := b.direction
-		if direction.LenSqr() == 0 {
-			direction = m.Rotation().Vec3()
-		}
-		yaw := math.Atan2(-direction[0], direction[2])
-		v[0] -= .4 * math.Sin(yaw) / .98
-		v[2] += .4 * math.Cos(yaw) / .98
+		sin, cos := yawSinCos(m.Rotation().Yaw())
+		v[0] += -.4 * sin
+		v[2] += .4 * cos
 	}
 	m.SetVelocity(v)
 	return true
@@ -344,19 +340,21 @@ func (m *Mount) RideJump() bool {
 	}
 	return m.Jump()
 }
+
+// Dash ports Camel.executeRidersJump at full charge: a saddled camel on the
+// ground leaps forwards the way it looks and cannot dash again for 55 ticks.
 func (m *Mount) Dash(_ *world.Tx, passenger world.Entity) bool {
 	b := m.b()
-	if passenger == nil || !m.ControlsVehicle(passenger) || !b.camel() || b.dashCooldown > 0 || b.sitting {
+	if passenger == nil || !m.ControlsVehicle(passenger) || !b.camel() || b.dashCooldown > 0 || b.refuseToMove(m.tx) || !b.ai.onGround {
 		return false
 	}
-	v := m.Velocity()
-	direction := b.direction
-	if direction.LenSqr() == 0 {
-		direction = passenger.Rotation().Vec3()
+	mob := b.ai.Mob(m.Ent, m)
+	look := m.Rotation().Vec3()
+	look[1] = 0
+	if look.Len() > 0 {
+		look = look.Normalize()
 	}
-	v[0] += direction[0] * .8
-	v[2] += direction[2] * .8
-	m.SetVelocity(v)
+	m.SetVelocity(m.Velocity().Add(look.Mul(22.2222 * b.movementSpeed * blockSpeedFactor(mob))).Add(mgl64.Vec3{0, 1.4285 * mountJumpPower(mob, b.jumpStrength, 1)}))
 	b.dashCooldown = 55
 	return true
 }
@@ -631,7 +629,12 @@ func (m *Mount) InLove() bool             { return m.b().breeding.InLove() }
 func (m *Mount) currentTx() *world.Tx     { return m.tx }
 func (m *Mount) breedingState() *breeding { return &m.b().breeding }
 func (m *Mount) ageTicks() *int           { return &m.b().ageTicks }
-func (m *Mount) Panicking() bool          { return m.b().goals.panic.active }
+func (m *Mount) Panicking() bool {
+	if b := m.b(); b.camelPanic != nil {
+		return b.camelPanic.running
+	}
+	return m.b().panicking()
+}
 func mountTypeFor(kind mountKind) world.EntityType {
 	switch kind {
 	case mountHorse:
@@ -1086,8 +1089,11 @@ func (m *Mount) Hurt(v float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b := m.b()
-	v = damageAfterBodyArmour(v, src, b.armor)
 	var ok bool
+	if v, ok = b.ai.DamageCooldown(m.tx, v); !ok {
+		return 0, false
+	}
+	v = damageAfterBodyArmour(v, src, b.armor)
 	if v, ok = mobEffectDamage(b.effects, v, src); !ok {
 		return 0, false
 	}
@@ -1097,10 +1103,7 @@ func (m *Mount) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	}
 	old := b.health.Health()
 	b.health.AddHealth(-v)
-	b.goals.hurt(src, m.tx.CurrentTick())
-	if b.llama() {
-		b.llamaHurt(src, m.tx.CurrentTick())
-	}
+	b.ai.Hurt(src)
 	resetLove(m)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
@@ -1204,7 +1207,7 @@ func (m *Mount) FinalizeSpawn(_ string, random *vanilla.Random) {
 	b.randomizeHorse(m, random)
 	if b.camel() {
 		// Camel.resetLastPoseChangeTickToFullStand.
-		b.lastPoseTick = max(0, int64(m.tx.World().Time())-52-1)
+		b.lastPoseTick = max(0, m.tx.CurrentTick()-52-1)
 	}
 }
 

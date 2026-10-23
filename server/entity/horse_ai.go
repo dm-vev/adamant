@@ -10,7 +10,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
 
@@ -53,130 +52,42 @@ func (b *MountBehaviour) controlled() bool {
 	return b.saddled && b.riddenByPlayer()
 }
 
-// horseGoals returns the goals of the species, in the order of their
-// priorities.
-func (b *MountBehaviour) horseGoals(m *Mount) animalGoalSpec {
-	s := animalGoalSpec{speed: b.movementSpeed, breed: 1, parent: 1, stroll: .7, reach: 1}
-	switch b.kind {
-	case mountHorse, mountDonkey, mountMule:
-		// AbstractHorse.addBehaviourGoals: MountPanicGoal and TemptGoal.
-		s.panic, s.tempt = 1.2, 1.25
-		s.tempting = func(stack item.Stack) bool {
-			return itemNamed(stack, "minecraft:golden_carrot", "minecraft:golden_apple", "minecraft:enchanted_golden_apple")
-		}
-	case mountZombieHorse:
-		s.tempt, s.tempting = 1.25, m.breedingFood
-	case mountLlama:
-		s.panic, s.tempt = 1.2, 1.25
-		s.tempting = func(stack item.Stack) bool { return itemNamed(stack, "minecraft:hay_block") }
-	case mountTraderLlama:
-		// TraderLlama adds a PanicGoal at twice the speed above Llama's own.
-		s.panic, s.tempt = 2, 1.25
-		s.tempting = func(stack item.Stack) bool { return itemNamed(stack, "minecraft:hay_block") }
-	}
-	if b.mobControlled() {
-		s.panic = 0
-	}
-	if b.horseRearing() {
-		s.species = b
-	}
-	return s
-}
-
-// run ports the parts of AbstractHorse.aiStep that keep the horse still: now
-// and then a horse on a grass block lowers its head to eat for 50 ticks, and
-// RandomStandGoal rears it up from time to time.
-func (b *MountBehaviour) run(e *Ent, tx *world.Tx) bool {
-	return b.eating || b.standCounter > 0
-}
-
-// stop is part of speciesGoal: eating and rearing are not goals in Java and
-// run alongside the others.
-func (b *MountBehaviour) stop() {}
-
-// tickHorse ports AbstractHorse.tick and aiStep and returns the velocity
-// and rotation the horse's own AI gives it.
-func (b *MountBehaviour) tickHorse(m *Mount, tx *world.Tx) (mgl64.Vec3, cube.Rotation) {
-	e := m.Ent
+// tickHorse ports what AbstractHorse.tick and aiStep do besides the AI: the
+// rearing of a horse ends after a second, and a mount heals now and then
+// and, unless it is a llama, lowers its head now and then to eat the grass
+// block it stands on for 50 ticks.
+func (b *MountBehaviour) tickHorse(m *Mount, tx *world.Tx) {
 	if b.standCounter > 0 {
 		if b.standCounter--; b.standCounter == 0 {
 			m.updateState()
 		}
 	}
-	if rand.IntN(900) == 0 {
+	if m.Dead() {
+		return
+	}
+	r := b.ai.Mob(m.Ent, m).Random()
+	if r.NextInt(900) == 0 {
 		m.Heal(1, nil)
 	}
-	if !b.llama() {
-		below := cube.PosFromVec3(e.Position()).Side(cube.FaceDown)
-		if !b.eating && !b.vehicle() && rand.IntN(300) == 0 {
-			if _, grass := tx.Block(below).(block.Grass); grass {
-				b.eating = true
-				m.updateState()
-			}
-		}
-		if b.eating {
-			if b.eatingCounter++; b.eatingCounter > 50 {
-				b.eatingCounter, b.eating = 0, false
-				m.updateState()
-			}
+	if b.llama() {
+		return
+	}
+	if !b.eating && !b.vehicle() && r.NextInt(300) == 0 {
+		if _, grass := tx.Block(cube.PosFromVec3(m.Position()).Side(cube.FaceDown)).(block.Grass); grass {
+			b.eating = true
+			m.updateState()
 		}
 	}
-	if b.horseRearing() {
-		b.randomStand(m)
+	if b.eating {
+		if b.eatingCounter++; b.eatingCounter > 50 {
+			b.eatingCounter, b.eating = 0, false
+			m.updateState()
+		}
 	}
-	var vel mgl64.Vec3
-	var rot cube.Rotation
-	if b.camel() {
-		vel, rot = b.tickCamel(m, tx)
-	} else {
-		vel, rot = b.tickHorseGoals(m, tx)
-	}
-	if b.eating || b.standCounter > 0 {
-		// AbstractHorse.isImmobile: the horse does not move while it eats
-		// or rears.
-		vel, rot = e.data.Vel, e.data.Rot
-	}
-	return vel, rot
-}
-
-// tickHorseGoals runs the goal selector of the horse species.
-func (b *MountBehaviour) tickHorseGoals(m *Mount, tx *world.Tx) (mgl64.Vec3, cube.Rotation) {
-	e := m.Ent
-	spec := b.horseGoals(m)
-	crazy := b.runAroundLikeCrazy(m, tx)
-	var llamaVel mgl64.Vec3
-	var llamaRot cube.Rotation
-	llama := false
-	if !crazy && b.llama() {
-		// LlamaFollowCaravanGoal and RangedAttackGoal outrank its panic.
-		llamaVel, llamaRot, llama = b.tickLlamaGoals(m, tx)
-	}
-	if crazy || llama {
-		spec = animalGoalSpec{speed: b.movementSpeed}
-	}
-	vel, rot := b.goals.tick(e, tx, m, spec)
-	switch {
-	case crazy:
-		vel, rot, _ = steer(e, &b.crazyNavigator, groundSpeed(b.movementSpeed, 1.2), 1)
-	case llama:
-		vel, rot = llamaVel, llamaRot
-	}
-	return vel, rot
 }
 
 // vehicle reports whether anything rides the mount.
 func (b *MountBehaviour) vehicle() bool { return b.passengers[0] != nil || b.passengers[1] != nil }
-
-// randomStand ports RandomStandGoal: every 20 seconds and more often the
-// longer it waited, a horse rears up one time in ten.
-func (b *MountBehaviour) randomStand(m *Mount) {
-	if b.nextStand++; b.nextStand > 0 && rand.IntN(1000) < b.nextStand {
-		b.nextStand = -400
-		if !b.eating && b.standCounter == 0 && rand.IntN(10) == 0 {
-			b.standIfPossible(m)
-		}
-	}
-}
 
 // standIfPossible ports AbstractHorse.standIfPossible: the horse rears up for
 // a second, stopping eating.
@@ -197,57 +108,9 @@ func (b *MountBehaviour) makeMad(m *Mount) {
 	m.tx.PlaySound(m.Position(), sound.NativeEvent{SoundType: "mad", EntityType: m.H().Type().EncodeEntity(), ExtraData: -1})
 }
 
-// runAroundLikeCrazy ports RunAroundLikeCrazyGoal: an untamed horse carrying
-// a player runs around and, every two and a half seconds on average, either
-// accepts them with a chance growing with its temper, or bucks them off and
-// grows more tempered.
-func (b *MountBehaviour) runAroundLikeCrazy(m *Mount, tx *world.Tx) bool {
-	if b.tamed || b.mobControlled() || !b.vehicle() {
-		b.crazy = false
-		return false
-	}
-	if !b.crazy || b.crazyNavigator.Index >= len(b.crazyNavigator.Path) {
-		mob := newRandomPosMob(m.Ent, tx)
-		goal, ok := mob.randomPos(5, 4)
-		if !ok {
-			b.crazy = false
-			return false
-		}
-		b.crazyNavigator = Navigator{}
-		if !b.crazyNavigator.MoveTo(tx, cube.PosFromVec3(m.Position()), goal, mob.profile, navigatorTick(m.Ent)) {
-			b.crazy = false
-			return false
-		}
-		b.crazy = true
-	}
-	if rand.IntN(50) == 0 {
-		b.tryTaming(m, tx)
-	}
-	return b.crazy
-}
-
-// tryTaming is the taming attempt of RunAroundLikeCrazyGoal.tick.
-func (b *MountBehaviour) tryTaming(m *Mount, tx *world.Tx) {
-	rider, ok := b.passengers[0].Entity(tx)
-	if !ok {
-		return
-	}
-	if p, player := rider.(interface{ UUID() uuid.UUID }); player && rider.H().Type().EncodeEntity() == "minecraft:player" {
-		if b.maxTemper() > 0 && rand.IntN(b.maxTemper()) < b.temper {
-			b.tameWithName(m, p.UUID())
-			return
-		}
-		b.modifyTemper(5)
-	}
-	b.DismountAll(m.Ent, tx)
-	b.crazy = false
-	b.makeMad(m)
-	m.viewAction(TameAction{Succeeded: false})
-}
-
 // tameWithName ports AbstractHorse.tameWithName.
 func (b *MountBehaviour) tameWithName(m *Mount, owner uuid.UUID) {
-	b.owner, b.tamed, b.crazy = owner.String(), true, false
+	b.owner, b.tamed = owner.String(), true
 	m.viewAction(TameAction{Succeeded: true})
 	m.updateState()
 }
@@ -556,57 +419,6 @@ func horseMaxHealth(random *vanilla.Random) float64 {
 // horseJumpStrength ports AbstractHorse.generateJumpStrength.
 func horseJumpStrength(random *vanilla.Random) float64 {
 	return float64(float32(.4)) + random.NextDouble()*.2 + random.NextDouble()*.2 + random.NextDouble()*.2
-}
-
-// travelRidden ports LivingEntity.travelRidden for horses: the rider's input,
-// half as strong sideways and a quarter backwards, accelerates the horse by
-// its movement speed on the ground and a tenth of it in the air, and the
-// horse keeps Java's friction of the block below times 0.91, or 0.91 in the
-// air. A rearing horse and a camel that sits or changes its pose stay put.
-func (b *MountBehaviour) travelRidden(m *Mount, tx *world.Tx) (mgl64.Vec3, cube.Rotation) {
-	e := m.Ent
-	direction := b.direction
-	if direction.LenSqr() == 0 {
-		direction = e.Rotation().Vec3()
-	}
-	yaw := math.Atan2(-direction[0], direction[2])
-	pitch := -math.Atan2(direction[1], math.Hypot(direction[0], direction[2])) * 180 / math.Pi
-	rot := cube.Rotation{yaw * 180 / math.Pi, pitch * .5}
-	onGround := b.mc.OnGround()
-	strafe, forward := b.strafe*.5, b.forward
-	if forward <= 0 {
-		forward *= .25
-	}
-	if b.refuseToMove(tx) || onGround && b.standCounter > 0 {
-		strafe, forward = 0, 0
-	}
-	blockFriction := .6
-	if f, ok := tx.Block(cube.PosFromVec3(e.Position()).Side(cube.FaceDown)).(interface{ Friction() float64 }); ok {
-		blockFriction = f.Friction()
-	}
-	speed := b.movementSpeed
-	if b.camel() {
-		if s, ok := b.rider(tx).(interface{ Sprinting() bool }); ok && s.Sprinting() && b.dashCooldown == 0 {
-			// Camel.getRiddenSpeed: sprinting riders go faster.
-			speed += .1
-		}
-	}
-	accel, keep, mcKeep := speed*.216/(blockFriction*blockFriction*blockFriction), blockFriction*.91, .98*blockFriction
-	if !onGround {
-		accel, keep, mcKeep = speed*.1, .91, .98
-	}
-	input := mgl64.Vec2{strafe, forward}
-	if l := input.Len(); l > 1 {
-		input = input.Mul(1 / l)
-	}
-	input = input.Mul(accel)
-	sin, cos := math.Sin(yaw), math.Cos(yaw)
-	// The movement computer slows the velocity by its own friction before
-	// moving, so it is set to move the horse as far as Java does.
-	vel := e.data.Vel
-	vel[0] = (vel[0]*keep + input[0]*cos - input[1]*sin) / mcKeep
-	vel[2] = (vel[2]*keep + input[1]*cos + input[0]*sin) / mcKeep
-	return vel, rot
 }
 
 // rider returns the first passenger of the mount.

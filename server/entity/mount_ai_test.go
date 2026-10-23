@@ -3,8 +3,11 @@ package entity_test
 import (
 	"testing"
 
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -218,4 +221,67 @@ func TestRiddenHorsesRunAtJavaSpeed(t *testing.T) {
 			t.Fatalf("ridden horse covered %.2f blocks in a second, want %.2f", d, want)
 		}
 	})
+}
+
+// TestRiddenHorsesStepUpBlocks checks LivingEntity.getMaxUpStep and the
+// step height of horses: a horse its rider steers into a block one high
+// walks up onto it without jumping.
+func TestRiddenHorsesStepUpBlocks(t *testing.T) {
+	w := traderTestWorld(t)
+	var h *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		for x := 4; x <= 12; x++ {
+			for z := -3; z <= 3; z++ {
+				tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+			}
+		}
+		h = spawnAnimal(t, tx, "minecraft:horse", .5, map[string]any{"Tame": byte(1), "Saddled": byte(1)})
+	})
+	rider := rideHorse(t, w, h)
+	<-w.Exec(func(tx *world.Tx) {
+		p, _ := rider.Entity(tx)
+		// A yaw of -90 looks towards positive x.
+		p.(*player.Player).Move(mgl64.Vec3{}, -90-p.Rotation().Yaw(), -p.Rotation().Pitch())
+	})
+	stepped := false
+	for range 60 {
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := h.Entity(tx)
+			p, _ := rider.Entity(tx)
+			e.(entity.VehicleInputWithRider).SetVehicleInputFrom(p, 0, 1)
+			if pos := entityPos(tx, h); pos[0] > 6 && pos[0] < 11 && pos[1] > 64.99 {
+				stepped = true
+			}
+		})
+		w.AdvanceTick()
+	}
+	if !stepped {
+		t.Fatal("ridden horse did not walk up onto a step one block high")
+	}
+}
+
+// TestHorsesPathAroundWallsToGoldenCarrots checks the TemptGoal of horses
+// runs on their pathfinding: a horse walks around a wall to a player holding
+// a golden carrot.
+func TestHorsesPathAroundWallsToGoldenCarrots(t *testing.T) {
+	w := traderTestWorld(t)
+	var h *world.EntityHandle
+	playerPos := mgl64.Vec3{8.5, 64, .5}
+	<-w.Exec(func(tx *world.Tx) {
+		for z := -3; z <= 3; z++ {
+			for y := 64; y <= 66; y++ {
+				tx.SetBlock(cube.Pos{4, y, z}, block.Stone{}, nil)
+			}
+		}
+		h = spawnAnimal(t, tx, "minecraft:horse", .5, nil)
+		addSurvivalPlayer(tx, playerPos).SetHeldItems(item.NewStack(item.GoldenCarrot{}, 1), item.Stack{})
+	})
+	closest := 100.0
+	for range 400 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) { closest = min(closest, horizontalDistance(entityPos(tx, h), playerPos)) })
+	}
+	if closest > 3.5 {
+		t.Fatalf("horse came no closer than %.2f blocks to a player holding a golden carrot behind a wall", closest)
+	}
 }

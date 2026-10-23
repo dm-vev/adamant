@@ -83,8 +83,10 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 		t.Run(c.id, func(t *testing.T) {
 			w := traderTestWorld(t)
 			// A camel that never changed its pose is still standing up
-			// during the first 52 ticks of a world.
-			w.SetTime(6000)
+			// during the first 52 game ticks of a world.
+			for range 53 {
+				w.AdvanceTick()
+			}
 			var h *world.EntityHandle
 			<-w.Exec(func(tx *world.Tx) {
 				// Camels on grass may stop to eat it even while panicking.

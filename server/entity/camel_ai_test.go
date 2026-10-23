@@ -68,3 +68,68 @@ func TestCamelsFollowCactus(t *testing.T) {
 		t.Fatalf("camel came within %.2f blocks of a player holding cactus, want it to stop about 3.5 blocks away", closest)
 	}
 }
+
+// TestHurtCamelsStandUpAndPanic checks CamelAi.CamelPanic: a sitting camel
+// that is hurt stands up at once and runs off at four times its speed.
+func TestHurtCamelsStandUpAndPanic(t *testing.T) {
+	w := traderTestWorld(t)
+	// A camel standing up at once still takes 52 ticks of a new world.
+	for range 53 {
+		w.AdvanceTick()
+	}
+	var h *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		h = spawnAnimal(t, tx, "minecraft:camel", .5, map[string]any{"Sitting": byte(1), "LastPoseTick": int64(-1)})
+	})
+	w.AdvanceTick()
+	<-w.Exec(func(tx *world.Tx) {
+		if !camelSitting(tx, h) {
+			t.Fatal("camel loaded sitting does not sit")
+		}
+	})
+	hurt(w, h, playerAttack)
+	<-w.Exec(func(tx *world.Tx) {
+		if camelSitting(tx, h) {
+			t.Fatal("hurt camel kept sitting")
+		}
+	})
+	if !startsPanicking(w, h) {
+		t.Fatal("hurt camel does not panic")
+	}
+	var start mgl64.Vec3
+	<-w.Exec(func(tx *world.Tx) { start = entityPos(tx, h) })
+	for range 40 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if d := horizontalDistance(entityPos(tx, h), start); d < 2 {
+			t.Fatalf("panicking camel ran %.2f blocks in two seconds", d)
+		}
+	})
+}
+
+// TestCamelsIgnoreTheTimeOfDay checks Camel.getPoseTime counts game ticks:
+// setting the time of day back does not freeze a camel in a pose change.
+func TestCamelsIgnoreTheTimeOfDay(t *testing.T) {
+	w := traderTestWorld(t)
+	for range 53 {
+		w.AdvanceTick()
+	}
+	w.SetTime(1000000)
+	var h *world.EntityHandle
+	playerPos := mgl64.Vec3{9.5, 64, .5}
+	<-w.Exec(func(tx *world.Tx) { h = spawnAnimal(t, tx, "minecraft:camel", .5, nil) })
+	w.AdvanceTick()
+	w.SetTime(0)
+	<-w.Exec(func(tx *world.Tx) {
+		addSurvivalPlayer(tx, playerPos).SetHeldItems(item.NewStack(block.Cactus{}, 1), item.Stack{})
+	})
+	closest := 100.0
+	for range 300 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) { closest = min(closest, horizontalDistance(entityPos(tx, h), playerPos)) })
+	}
+	if closest > 4.5 {
+		t.Fatalf("camel came no closer than %.2f blocks to a player holding cactus after the time of day was set back", closest)
+	}
+}
