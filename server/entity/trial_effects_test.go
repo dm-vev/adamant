@@ -143,16 +143,28 @@ func TestWindChargedDeathBlowsNearbyMobsAway(t *testing.T) {
 }
 
 func TestInfestedReleasesSilverfishWhenHurt(t *testing.T) {
-	w := newDeathTestWorld(t)
+	// Silverfish would hide in a stone floor.
+	w := traderTestWorld(t)
+	var pig *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
-		golem := addMob(t, tx, "minecraft:iron_golem", mgl64.Vec3{0.5, 64, 0.5})
-		golem.AddEffect(effect.New(effect.Infested, 1, time.Minute))
-		// Each hurt has a 10% chance: 200 hurts all failing is ~1e-9 likely.
-		for range 200 {
-			golem.Hurt(0.01, entity.VoidDamageSource{})
+		p := addMob(t, tx, "minecraft:pig", mgl64.Vec3{0.5, 64, 0.5})
+		p.AddEffect(effect.New(effect.Infested, 1, 10*time.Minute))
+		pig = p.H()
+	})
+	// Each hurt has a 10% chance: 150 hurts all failing is ~1e-7 likely. A
+	// mob takes another hurt only after its damage cooldown of 10 ticks.
+	for range 150 {
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := pig.Entity(tx)
+			e.(entity.Living).Hurt(0.01, entity.VoidDamageSource{})
+		})
+		for range 11 {
+			w.AdvanceTick()
 		}
-		if n := countEntities(tx, "minecraft:silverfish"); n < 2 || n > 120 {
-			t.Fatalf("200 hurts released %d silverfish", n)
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		if n := countEntities(tx, "minecraft:silverfish"); n < 2 || n > 300 {
+			t.Fatalf("150 hurts released %d silverfish", n)
 		}
 	})
 }

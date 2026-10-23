@@ -100,6 +100,23 @@ func (tx *Tx) POIsInSquare(centre cube.Pos, radius int, typ string) iter.Seq2[cu
 	}
 }
 
+// POIsInRange yields the registered POIs of any type within radius blocks
+// of centre, as Java's PoiManager.getInRange.
+func (tx *Tx) POIsInRange(centre cube.Pos, radius int) iter.Seq2[cube.Pos, POI] {
+	limit := radius * radius
+	return func(yield func(cube.Pos, POI) bool) {
+		for pos, poi := range tx.World().pois {
+			dx, dy, dz := pos[0]-centre[0], pos[1]-centre[1], pos[2]-centre[2]
+			if dx*dx+dy*dy+dz*dz > limit {
+				continue
+			}
+			if !yield(pos, poi) {
+				return
+			}
+		}
+	}
+}
+
 // NearestPOI finds the closest matching registered POI within a spherical radius.
 // Ties are resolved lexicographically by block position.
 func (tx *Tx) NearestPOI(pos cube.Pos, kind POIKind, radius int, predicate func(POI) bool) (cube.Pos, POI, bool) {

@@ -2,8 +2,6 @@ package entity
 
 import (
 	"encoding/binary"
-	"math"
-	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -33,15 +31,12 @@ type golemState struct {
 	kind                         golemKind
 	health                       *HealthManager
 	effects                      *EffectManager
-	mc                           *MovementComputer
 	speed                        float64
 	dead, playerCreated, pumpkin bool
-	target                       *world.EntityHandle
-	cooldown, wander, flower     int
-	angerTarget                  string
-	angerTicks                   int
-	offerTarget                  string
-	navigator                    Navigator
+	ai                           MobAI
+	neutralAnger
+	// offerFlowerTick counts down while an iron golem holds out a poppy.
+	offerFlowerTick int
 }
 type golemConfig struct {
 	kind                              golemKind
@@ -62,7 +57,11 @@ func (c golemConfig) Apply(d *world.EntityData) {
 	if !c.healthSet {
 		h = maxH
 	}
-	d.Data = &golemState{kind: c.kind, health: NewHealthManager(h, maxH), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: speed, playerCreated: c.playerCreated, pumpkin: c.pumpkin, angerTarget: c.angerTarget, angerTicks: c.angerTicks}
+	b := &golemState{kind: c.kind, health: NewHealthManager(h, maxH), effects: NewEffectManager(), speed: speed, playerCreated: c.playerCreated, pumpkin: c.pumpkin}
+	if target, err := uuid.Parse(c.angerTarget); err == nil && c.angerTicks > 0 {
+		b.angerTarget, b.angerTicks = target, c.angerTicks
+	}
+	d.Data = b
 }
 
 func NewIronGolem(opts world.EntitySpawnOpts) *world.EntityHandle {
@@ -138,7 +137,10 @@ func (ironGolemType) EncodeNBT(d *world.EntityData) map[string]any {
 	})
 	javaState := map[string]any{"Health": float32(h.Health()), "PlayerCreated": byte(boolByte(b.playerCreated)),
 		"AngerTime": int32(b.angerTicks)}
-	target := golemUUIDNBT(b.angerTarget)
+	var target []int32
+	if b.angerTarget != uuid.Nil {
+		target = golemUUIDNBT(b.angerTarget.String())
+	}
 	if target != nil && b.angerTicks > 0 {
 		javaState["AngryAt"] = target
 	}
@@ -200,364 +202,26 @@ func (m *SnowGolem) b() *golemState             { return m.Behaviour().(*golemSt
 func (m *IronGolem) Tick(tx *world.Tx, n int64) { m.b().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (m *SnowGolem) Tick(tx *world.Tx, n int64) { m.b().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (b *golemState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.cooldown > 0 {
-		b.cooldown--
-	}
-	if b.angerTicks > 0 {
-		b.angerTicks--
-	}
-	if b.flower > 0 {
-		b.flower--
-		if b.flower == 0 {
-			b.finishFlowerOffer(tx, e)
-		}
-		return b.stop(e, tx)
-	}
-	if b.kind == snowKind {
-		if tx.Temperature(cube.PosFromVec3(e.Position())) > 1.0 {
-			hurtGolem(e, b, 1, golemFireDamage{})
-		}
-		if _, wet := tx.Liquid(cube.PosFromVec3(e.Position())); wet {
-			hurtGolem(e, b, 1, golemWaterDamage{})
-		}
-	}
-	target := golemTarget(tx, e, b)
-	if target == nil {
-		if b.kind == ironKind && b.offerFlowerToVillager(tx, e) {
-			return b.stop(e, tx)
-		}
-		movement := b.wanderTick(e, tx)
-		if b.kind == snowKind {
-			b.snowTrail(e, tx)
-		}
-		return movement
-	}
-
-	d := target.Position().Sub(e.Position())
-	dist := d.Len()
-	var movement *Movement
+	ai := &b.ai
+	ai.MovementSpeed = b.speed
+	var self world.Entity
 	if b.kind == ironKind {
-		if dist < 2.8 && b.cooldown == 0 {
-			if l, ok := target.(Living); ok {
-				dmg := 7.5 + float64(rand.IntN(15))
-				l.Hurt(dmg, AttackDamageSource{Attacker: e})
-				l.KnockBack(e.Position(), .4, .4)
-			}
-			b.cooldown = 20
-			movement = b.stop(e, tx)
-		} else if dist > 1.8 {
-			movement = b.move(e, tx, target.Position())
-		} else {
-			movement = b.stop(e, tx)
-		}
+		self = &IronGolem{Ent: e}
+		ai.EyeHeight, ai.StepHeight = 2.295, 1
 	} else {
-		if dist < 12 && b.cooldown == 0 {
-			b.snowball(e, tx, target)
-			b.cooldown = 20
-		}
-		if dist < 5 {
-			away := e.Position().Sub(target.Position())
-			away[1] = 0
-			if away.Len() > 0 {
-				movement = b.move(e, tx, e.Position().Add(away.Normalize().Mul(5)))
-			} else {
-				movement = b.stop(e, tx)
-			}
-		} else {
-			movement = b.move(e, tx, target.Position())
-		}
+		self = &SnowGolem{Ent: e}
+		ai.EyeHeight = 1.7
 	}
-	if b.kind == snowKind {
-		b.snowTrail(e, tx)
+	mv := ai.Tick(e, self, b.registerGoals)
+	if !b.dead && !e.handle.Closed() {
+		b.afterAiStep(ai.Mob(e, self))
 	}
-	return movement
-}
-func golemTarget(tx *world.Tx, e *Ent, b *golemState) world.Entity {
-	if b.kind == ironKind {
-		if target := golemVillageThreat(tx, e); target != nil {
-			return target
-		}
-	}
-	var best world.Entity
-	dist := math.MaxFloat64
-	for other := range tx.Entities() {
-		if other == e {
-			continue
-		}
-		living, ok := other.(Living)
-		if !ok || living.Dead() {
-			continue
-		}
-		id := other.H().Type().EncodeEntity()
-		limit := 10.0
-		if b.kind == ironKind && hostileGolemTarget(other) {
-			limit = 5
-		}
-		if other.Position().Sub(e.Position()).Len() > limit {
-			continue
-		}
-		if b.kind == ironKind {
-			if id == "minecraft:creeper" {
-				continue
-			}
-			if _, isUser := other.(item.User); isUser {
-				if b.playerCreated || b.angerTicks <= 0 || id != "minecraft:player" || other.H().UUID().String() != b.angerTarget {
-					continue
-				}
-			} else if !hostileGolemTarget(other) {
-				continue
-			}
-		} else if !hostileGolemTarget(other) {
-			continue
-		}
-		d := other.Position().Sub(e.Position()).LenSqr()
-		if d < dist {
-			best, dist = other, d
-		}
-	}
-	return best
-}
-func golemVillageThreat(tx *world.Tx, e *Ent) world.Entity {
-	var best world.Entity
-	distance := 64.0 * 64
-	for villagerEntity := range tx.Entities() {
-		villager, ok := villagerEntity.(*Villager)
-		if !ok {
-			continue
-		}
-		d := villager.Position().Sub(e.Position())
-		if math.Abs(d[0]) > 10 || math.Abs(d[1]) > 8 || math.Abs(d[2]) > 10 {
-			continue
-		}
-		for candidate := range tx.Entities() {
-			gameMode, hasGameMode := candidate.(interface{ GameMode() world.GameMode })
-			if candidate.H().Type().EncodeEntity() != "minecraft:player" || !hasGameMode || !gameMode.GameMode().AllowsTakingDamage() || villager.Reputation(candidate) > -100 {
-				continue
-			}
-			distanceSquared := candidate.Position().Sub(e.Position()).LenSqr()
-			if distanceSquared < distance {
-				best, distance = candidate, distanceSquared
-			}
-		}
-	}
-	return best
-}
-func hostileGolemTarget(e world.Entity) bool {
-	switch e.H().Type().EncodeEntity() {
-	case "minecraft:zombie", "minecraft:zombie_villager", "minecraft:skeleton", "minecraft:wither_skeleton", "minecraft:spider", "minecraft:witch", "minecraft:evoker", "minecraft:vindicator", "minecraft:pillager", "minecraft:vex", "minecraft:ravager", "minecraft:phantom", "minecraft:drowned", "minecraft:husk", "minecraft:stray", "minecraft:bogged", "minecraft:creeper", "minecraft:guardian", "minecraft:elder_guardian", "minecraft:blaze":
-		return true
-	}
-	return false
-}
-func (b *golemState) move(e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
-	d := p.Sub(e.Position())
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.Velocity()
-	v[0], v[2] = d[0]*b.speed, d[2]*b.speed
-	r := e.Rotation()
-	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	m := b.mc.TickMovement(e, e.Position(), v, e.Rotation(), r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (b *golemState) offerFlowerToVillager(tx *world.Tx, e *Ent) bool {
-	if b.flower > 0 || rand.IntN(8000) != 0 {
-		return false
-	}
-	dayTime := int(tx.World().Time()) % 24000
-	if dayTime >= 12000 || tx.SkyLight(cube.PosFromVec3(e.Position())) < 12 {
-		return false
-	}
-	var candidate world.Entity
-	distance := 36.0
-	for other := range tx.Entities() {
-		eligible := false
-		if villager, ok := other.(*Villager); ok {
-			eligible = villager.Baby()
-		}
-		if copper, ok := other.(*CopperGolem); ok {
-			eligible = copper.Antenna().Empty()
-		}
-		d := other.Position().Sub(e.Position()).LenSqr()
-		if eligible && d < distance {
-			candidate, distance = other, d
-		}
-	}
-	if candidate == nil {
-		return false
-	}
-	b.offerTarget = candidate.H().UUID().String()
-	b.flower = 400
-	tx.PlayEntityAnimation(e, world.NewEntityAnimation("animation.iron_golem.offer_flower"))
-	return true
-}
-
-func (b *golemState) finishFlowerOffer(tx *world.Tx, e *Ent) {
-	defer func() { b.offerTarget = "" }()
-	for other := range tx.Entities() {
-		if other.H().UUID().String() != b.offerTarget || other.Position().Sub(e.Position()).LenSqr() > 64 {
-			continue
-		}
-		if copper, ok := other.(*CopperGolem); ok && copper.Antenna().Empty() {
-			copper.SetAntenna(item.NewStack(block.Flower{Type: block.Poppy()}, 1))
-		}
-		return
-	}
+	return mv
 }
 
 // OfferFlower reports whether the golem is currently offering a flower.
-func (m *IronGolem) OfferFlower() bool { return m.b().flower > 0 }
-func (b *golemState) stop(e *Ent, tx *world.Tx) *Movement {
-	v := e.Velocity()
-	v[0], v[2] = 0, 0
-	m := b.mc.TickMovement(e, e.Position(), v, e.Rotation(), e.Rotation(), tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (b *golemState) wanderTick(e *Ent, tx *world.Tx) *Movement {
-	if b.wander > 0 {
-		b.wander--
-	}
-	start := cube.PosFromVec3(e.Position())
-	if b.kind == ironKind {
-		inVillage := tx.IsVillage(start)
-		if !inVillage && (len(b.navigator.Path) == 0 || b.navigator.Index >= len(b.navigator.Path)) {
-			if b.wander == 0 {
-				if target, ok := golemVillagePOI(tx, start, true); ok {
-					b.navigator.MoveTo(tx, start, target, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
-					b.wander = 10
-				}
-			}
-		} else if inVillage && b.navigator.Index >= len(b.navigator.Path) && b.wander == 0 {
-			var target cube.Pos
-			found := false
-			if rand.Float64() < .3 {
-				target = start.Add(cube.Pos{rand.IntN(21) - 10, rand.IntN(15) - 7, rand.IntN(21) - 10})
-				found = true
-			} else {
-				villagerFirst := rand.Float64() < .7
-				if villagerFirst {
-					target, found = golemVillagerTarget(tx, start)
-				} else {
-					target, found = golemVillagePOI(tx, start, false)
-				}
-				if !found {
-					if villagerFirst {
-						target, found = golemVillagePOI(tx, start, false)
-					} else {
-						target, found = golemVillagerTarget(tx, start)
-					}
-				}
-			}
-			if found {
-				b.navigator.MoveTo(tx, start, target, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
-				b.wander = 240
-			}
-		}
-	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.wander == 0 {
-		b.wander = 60
-		g := start.Add(cube.Pos{rand.IntN(13) - 6, 0, rand.IntN(13) - 6})
-		b.navigator.MoveTo(tx, start, g, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
-	}
-	if p, ok := b.navigator.Tick(e.Position(), navigatorTick(e), 1.4); ok {
-		if p.Sub(e.Position()).Len() < .4 {
-			b.navigator.Index++
-		} else {
-			return b.move(e, tx, p)
-		}
-	}
-	return b.stop(e, tx)
-}
-func golemVillagePOI(tx *world.Tx, start cube.Pos, returning bool) (cube.Pos, bool) {
-	sections := tx.VillageSections(start, 2)
-	if len(sections) == 0 {
-		return cube.Pos{}, false
-	}
-	if returning {
-		best := cube.Pos{}
-		bestDistance := math.MaxFloat64
-		for _, section := range sections {
-			center := section.Add(cube.Pos{8, 8, 8})
-			d := center.Vec3Middle().Sub(start.Vec3Middle()).LenSqr()
-			if d < bestDistance {
-				best, bestDistance = center, d
-			}
-		}
-		return best.Add(cube.Pos{rand.IntN(21) - 10, rand.IntN(15) - 7, rand.IntN(21) - 10}), true
-	}
-	section := sections[rand.IntN(len(sections))]
-	center := section.Add(cube.Pos{8, 8, 8})
-	home, _, hasHome := tx.NearestPOI(center, world.Home, 8, nil)
-	meeting, _, hasMeeting := tx.NearestPOI(center, world.Meeting, 8, nil)
-	workstation, _, hasWorkstation := tx.NearestPOI(center, world.Workstation, 8, nil)
-	count := 0
-	if hasHome {
-		count++
-	}
-	if hasMeeting {
-		count++
-	}
-	if hasWorkstation {
-		count++
-	}
-	if count == 0 {
-		return cube.Pos{}, false
-	}
-	selected := rand.IntN(count)
-	var target cube.Pos
-	if hasHome {
-		if selected == 0 {
-			target = home
-		}
-		selected--
-	}
-	if selected >= 0 && hasMeeting {
-		if selected == 0 {
-			target = meeting
-		}
-		selected--
-	}
-	if selected >= 0 && hasWorkstation && selected == 0 {
-		target = workstation
-	}
-	return target.Add(cube.Pos{rand.IntN(21) - 10, rand.IntN(15) - 7, rand.IntN(21) - 10}), true
-}
-func golemVillagerTarget(tx *world.Tx, start cube.Pos) (cube.Pos, bool) {
-	var chosen world.Entity
-	count := 0
-	tick := int64(tx.World().Time())
-	for candidate := range tx.Entities() {
-		villager, ok := candidate.(*Villager)
-		if !ok || !villager.WantsToSpawnGolem(tick) {
-			continue
-		}
-		d := villager.Position().Sub(start.Vec3Middle())
-		if math.Abs(d[0]) > 32 || math.Abs(d[1]) > 32 || math.Abs(d[2]) > 32 {
-			continue
-		}
-		count++
-		if rand.IntN(count) == 0 {
-			chosen = candidate
-		}
-	}
-	if chosen == nil {
-		return cube.Pos{}, false
-	}
-	return cube.PosFromVec3(chosen.Position()).Add(cube.Pos{rand.IntN(21) - 10, rand.IntN(15) - 7, rand.IntN(21) - 10}), true
-}
-func (b *golemState) snowball(e *Ent, tx *world.Tx, target world.Entity) {
-	d := target.Position().Add(mgl64.Vec3{0, .8, 0}).Sub(e.Position().Add(mgl64.Vec3{0, 1.5, 0}))
-	if d.Len() == 0 {
-		return
-	}
-	d = d.Normalize().Mul(1.6)
-	tx.AddEntity(newGolemSnowball(world.EntitySpawnOpts{Position: e.Position().Add(mgl64.Vec3{0, 1.5, 0}), Velocity: d}, e))
-	tx.PlaySound(e.Position(), sound.Custom{Name: "entity.snow_golem.shoot", Volume: 1, Pitch: 1})
-}
+func (m *IronGolem) OfferFlower() bool { return m.b().offerFlowerTick > 0 }
+
 func newGolemSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle {
 	conf := snowballConf
 	conf.Owner = owner.H()
@@ -573,28 +237,17 @@ func newGolemSnowball(opts world.EntitySpawnOpts, owner world.Entity) *world.Ent
 	}
 	return opts.New(SnowballType, conf)
 }
-func (b *golemState) snowTrail(e *Ent, tx *world.Tx) {
-	p := cube.PosFromVec3(e.Position())
-	if _, ok := tx.Block(p).(block.Air); ok {
-		tx.SetBlock(p, block.SnowLayer{Layers: 1}, nil)
-	}
-}
 func hurtGolem(e *Ent, b *golemState, d float64, src world.DamageSource) {
 	m := golemLiving{Ent: e, b: b}
 	m.Hurt(d, src)
 }
 
-type golemWaterDamage struct{}
 type golemFireDamage struct{}
 
-func (golemFireDamage) ReducedByArmour() bool      { return false }
-func (golemFireDamage) ReducedByResistance() bool  { return true }
-func (golemFireDamage) Fire() bool                 { return true }
-func (golemFireDamage) IgnoreTotem() bool          { return false }
-func (golemWaterDamage) ReducedByArmour() bool     { return false }
-func (golemWaterDamage) ReducedByResistance() bool { return false }
-func (golemWaterDamage) Fire() bool                { return false }
-func (golemWaterDamage) IgnoreTotem() bool         { return false }
+func (golemFireDamage) ReducedByArmour() bool     { return false }
+func (golemFireDamage) ReducedByResistance() bool { return true }
+func (golemFireDamage) Fire() bool                { return true }
+func (golemFireDamage) IgnoreTotem() bool         { return false }
 
 type golemLiving struct {
 	*Ent
@@ -609,10 +262,15 @@ func (m golemLiving) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if m.Dead() || d <= 0 {
 		return 0, false
 	}
+	d, ok := m.b.ai.DamageCooldown(m.tx, d)
+	if !ok {
+		return 0, false
+	}
 	if r, ok := m.b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	m.b.health.AddHealth(-d)
+	m.b.ai.Hurt(s)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
 	if m.Dead() {
@@ -661,21 +319,7 @@ func (m *SnowGolem) SetMaxHealth(h float64) { m.b().health.SetMaxHealth(h) }
 func (m *IronGolem) Dead() bool             { return m.b().dead || m.Health() <= 0 }
 func (m *SnowGolem) Dead() bool             { return m.b().dead || m.Health() <= 0 }
 func (m *IronGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
-	n, ok := golemLiving{m.Ent, m.b()}.Hurt(d, s)
-	if ok {
-		var attacker world.Entity
-		switch source := s.(type) {
-		case AttackDamageSource:
-			attacker = source.Attacker
-		case ProjectileDamageSource:
-			attacker = source.Owner
-		}
-		if attacker != nil {
-			m.b().angerTarget = attacker.H().UUID().String()
-			m.b().angerTicks = 400 + rand.IntN(20)*20
-		}
-	}
-	return n, ok
+	return golemLiving{m.Ent, m.b()}.Hurt(d, s)
 }
 func (m *SnowGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	return golemLiving{m.Ent, m.b()}.Hurt(d, s)
@@ -686,9 +330,9 @@ func (m *IronGolem) Heal(h float64, s world.HealingSource) float64 {
 func (m *SnowGolem) Heal(h float64, s world.HealingSource) float64 {
 	return golemLiving{m.Ent, m.b()}.Heal(h, s)
 }
-func (m *IronGolem) KnockBack(p mgl64.Vec3, f, h float64) {
-	golemLiving{m.Ent, m.b()}.KnockBack(p, f, h)
-}
+
+// KnockBack does nothing: iron golems resist all knockback.
+func (m *IronGolem) KnockBack(mgl64.Vec3, float64, float64) {}
 func (m *SnowGolem) KnockBack(p mgl64.Vec3, f, h float64) {
 	golemLiving{m.Ent, m.b()}.KnockBack(p, f, h)
 }
