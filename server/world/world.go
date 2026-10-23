@@ -2465,6 +2465,40 @@ func (w *World) loadChunkAsync(tx *Tx, pos ChunkPos, callback chunkCallback) boo
 	return true
 }
 
+// LoadArea loads the chunks overlapping the horizontal block area from min to
+// max, generating those that do not exist yet ahead of the chunks nothing
+// waits for. It does not wait for them: the returned channel is closed once
+// every chunk is ready, so a caller off the world goroutine can wait for an
+// area without holding up the ticks of the world.
+func (tx *Tx) LoadArea(min, max cube.Pos) <-chan struct{} {
+	w := tx.World()
+	done := make(chan struct{})
+	minX, minZ, maxX, maxZ := int32(min[0]>>4), int32(min[2]>>4), int32(max[0]>>4), int32(max[2]>>4)
+	pending := int((maxX - minX + 1) * (maxZ - minZ + 1))
+	if pending <= 0 {
+		close(done)
+		return done
+	}
+	ready := func(*Tx, *Column) {
+		if pending--; pending == 0 {
+			close(done)
+		}
+	}
+	for x := minX; x <= maxX; x++ {
+		for z := minZ; z <= maxZ; z++ {
+			pos := ChunkPos{x, z}
+			if !w.loadChunkAsync(tx, pos, ready) {
+				ready(tx, nil)
+				continue
+			}
+			if w.generatorQueue != nil {
+				w.generatorQueue.prioritize(pos)
+			}
+		}
+	}
+	return done
+}
+
 // finishChunkRequest publishes a ready chunk to all loaders waiting for it.
 // It must run on the world owner.
 func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {

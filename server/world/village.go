@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"sort"
 	"strings"
 
@@ -80,6 +81,23 @@ func poiType(b Block) (POI, bool) {
 func (tx *Tx) POI(pos cube.Pos) (POI, bool) {
 	p, ok := tx.World().pois[pos]
 	return p, ok
+}
+
+// POIsInSquare yields the registered POIs of the namespaced type within
+// radius blocks of centre on both horizontal axes, at any height. Like Java's
+// PoiManager.getInSquare it reads the POI index only, which covers every chunk
+// indexed since it was loaded: no chunk is loaded or generated.
+func (tx *Tx) POIsInSquare(centre cube.Pos, radius int, typ string) iter.Seq2[cube.Pos, POI] {
+	return func(yield func(cube.Pos, POI) bool) {
+		for pos, poi := range tx.World().pois {
+			if poi.Type != typ || absInt(pos[0]-centre[0]) > radius || absInt(pos[2]-centre[2]) > radius {
+				continue
+			}
+			if !yield(pos, poi) {
+				return
+			}
+		}
+	}
 }
 
 // NearestPOI finds the closest matching registered POI within a spherical radius.

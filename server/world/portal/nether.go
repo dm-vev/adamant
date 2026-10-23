@@ -1,8 +1,10 @@
 package portal
 
 import (
+	"cmp"
 	"math"
 	"math/rand"
+	"slices"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
@@ -115,36 +117,51 @@ type frameBlock interface {
 	Frame(dimension world.Dimension) bool
 }
 
-// FindNetherPortal searches a provided radius for a Nether portal.
+// FindNetherPortal searches a provided radius for a Nether portal. Like Java's
+// PortalForcer it takes the candidates from the POI index, nearest first, so
+// only the chunk of the portal it finds is read: chunks that were never
+// generated hold no portal and are not generated for the search.
 func FindNetherPortal(tx *world.Tx, pos cube.Pos, radius int) (Nether, bool) {
 	if tx.World().Dimension() == world.End {
 		// Don't waste our time - we can't make a portal in the end.
 		return Nether{}, false
 	}
-
-	closestPos, closestDist, found := cube.Pos{}, math.MaxFloat64, false
-	for x := pos.X() - radius; x <= pos.X()+radius; x++ {
-		for z := pos.Z() - radius; z <= pos.Z()+radius; z++ {
-			r := tx.World().Dimension().Range()
-			for y := r.Max(); y >= r.Min(); y-- {
-				selectedPos := cube.Pos{x, y, z}
-				if p, ok := tx.Block(selectedPos).(portalBlock); ok && p.Portal() == world.Nether {
-					belowPos := selectedPos.Side(cube.FaceDown)
-					if f, ok := tx.Block(belowPos).(frameBlock); ok && f.Frame(world.Nether) {
-						dist := selectedPos.Vec3().Sub(pos.Vec3()).Len()
-						if dist < closestDist {
-							closestDist, closestPos, found = dist, selectedPos, true
-						}
-					}
-				}
-			}
+	for _, candidate := range netherPortalCandidates(tx, pos, radius) {
+		if p, ok := tx.Block(candidate).(portalBlock); !ok || p.Portal() != world.Nether {
+			continue
 		}
+		if f, ok := tx.Block(candidate.Side(cube.FaceDown)).(frameBlock); !ok || !f.Frame(world.Nether) {
+			continue
+		}
+		return NetherPortalFromPos(tx, candidate)
 	}
-	if !found {
-		// Don't waste our time if the search didn't work out.
-		return Nether{}, false
+	return Nether{}, false
+}
+
+// NearestNetherPortal returns the nearest Nether portal block the POI index
+// holds within radius of pos, without reading any chunk.
+func NearestNetherPortal(tx *world.Tx, pos cube.Pos, radius int) (cube.Pos, bool) {
+	if candidates := netherPortalCandidates(tx, pos, radius); len(candidates) > 0 {
+		return candidates[0], true
 	}
-	return NetherPortalFromPos(tx, closestPos)
+	return cube.Pos{}, false
+}
+
+// netherPortalCandidates returns the Nether portal blocks the POI index holds
+// within radius of pos on both horizontal axes, nearest first, then lowest.
+func netherPortalCandidates(tx *world.Tx, pos cube.Pos, radius int) []cube.Pos {
+	var candidates []cube.Pos
+	for candidate := range tx.POIsInSquare(pos, radius, "minecraft:nether_portal") {
+		candidates = append(candidates, candidate)
+	}
+	distance := func(p cube.Pos) int {
+		dx, dy, dz := p[0]-pos[0], p[1]-pos[1], p[2]-pos[2]
+		return dx*dx + dy*dy + dz*dz
+	}
+	slices.SortFunc(candidates, func(a, b cube.Pos) int {
+		return cmp.Or(cmp.Compare(distance(a), distance(b)), cmp.Compare(a[1], b[1]), cmp.Compare(a[0], b[0]), cmp.Compare(a[2], b[2]))
+	})
+	return candidates
 }
 
 // CreateNetherPortal creates a Nether portal at the given position.

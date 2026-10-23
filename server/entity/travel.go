@@ -234,7 +234,33 @@ func (t *PortalTravelComputer) resetFailedTravel() {
 	t.mu.Unlock()
 }
 
+// portalPreloadTimeout bounds how long a traveller waits for the chunks of
+// its destination portal to load before the destination reads them itself.
+const portalPreloadTimeout = 30 * time.Second
+
+// portalFrameReach is how far a portal found in the POI index may extend from
+// the portal block found: the widest portal and its frame.
+const portalFrameReach = maximumNetherPortalSize + 1
+
+// maximumNetherPortalSize is the largest width or height of a Nether portal.
+const maximumNetherPortalSize = 21
+
+// portalCreationReach is how far a new portal and its frame may extend from
+// the position it is created for: CreateNetherPortal searches 16 blocks
+// around it and builds a frame up to four blocks beyond.
+const portalCreationReach = 16 + 4
+
 func (t *PortalTravelComputer) transfer(handle *world.EntityHandle, source, destination *world.World, origin portalTravelOrigin, pos cube.Pos, sourceDim, destinationDim world.Dimension) {
+	// The chunks the destination reads are loaded, or generated, before it
+	// places the traveller, so that it does not wait for them on its tick.
+	if ready, err := safeWorldCall(destination, func(tx *world.Tx) (<-chan struct{}, error) {
+		return t.loadDestinationArea(tx, sourceDim, pos), nil
+	}); err == nil && ready != nil {
+		select {
+		case <-ready:
+		case <-time.After(portalPreloadTimeout):
+		}
+	}
 	travelled, err := safeWorldCall(destination, func(tx *world.Tx) (bool, error) {
 		spawn, ok := t.destinationSpawn(tx, sourceDim, pos)
 		if !ok {
@@ -328,10 +354,7 @@ func (t *PortalTravelComputer) destinationSpawn(tx *world.Tx, sourceDim world.Di
 		}
 		return tx.World().Spawn().Vec3Middle(), true
 	}
-	radius := 128
-	if tx.World().Dimension() == world.Nether {
-		radius = 16
-	}
+	radius := portalSearchRadius(tx.World().Dimension())
 	if !t.CreatePortal {
 		n, ok := portal.FindNetherPortal(tx, pos, radius)
 		if !ok {
@@ -343,6 +366,31 @@ func (t *PortalTravelComputer) destinationSpawn(tx *world.Tx, sourceDim world.Di
 		return n.Spawn().Vec3Middle(), true
 	}
 	return mgl64.Vec3{}, false
+}
+
+// loadDestinationArea starts loading the chunks destinationSpawn reads in the
+// destination of tx: those around the nearest linked portal, or those a new
+// portal may be built in. It returns nil if there are none to load.
+func (t *PortalTravelComputer) loadDestinationArea(tx *world.Tx, sourceDim world.Dimension, pos cube.Pos) <-chan struct{} {
+	if tx.World().Dimension() == world.End || sourceDim == world.End {
+		return nil
+	}
+	centre, reach := pos, portalCreationReach
+	if found, ok := portal.NearestNetherPortal(tx, pos, portalSearchRadius(tx.World().Dimension())); ok {
+		centre, reach = found, portalFrameReach
+	} else if !t.CreatePortal {
+		return nil
+	}
+	return tx.LoadArea(centre.Sub(cube.Pos{reach, 0, reach}), centre.Add(cube.Pos{reach, 0, reach}))
+}
+
+// portalSearchRadius is how far from the translated position a linked portal
+// is searched for in a destination dimension.
+func portalSearchRadius(dim world.Dimension) int {
+	if dim == world.Nether {
+		return 16
+	}
+	return 128
 }
 
 func (t *PortalTravelComputer) portalDestination(tx *world.Tx, target world.Dimension) *world.World {
