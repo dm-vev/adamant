@@ -63,6 +63,9 @@ type (
 	}
 	// WindChargeDamageSource is used for damage caused by a wind charge burst.
 	WindChargeDamageSource struct{}
+	// StarvationDamageSource is the damage of an empty food bar, which a vex
+	// also takes once its life runs out.
+	StarvationDamageSource struct{}
 	// SplashPotionDamageSource is the indirect magic damage a splash of water
 	// deals to entities that water hurts.
 	SplashPotionDamageSource struct {
@@ -125,6 +128,11 @@ func (WindChargeDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool
 	return e == enchantment.BlastProtection
 }
 func (WindChargeDamageSource) IgnoreTotem() bool { return false }
+
+func (StarvationDamageSource) ReducedByArmour() bool     { return false }
+func (StarvationDamageSource) ReducedByResistance() bool { return false }
+func (StarvationDamageSource) Fire() bool                { return false }
+func (StarvationDamageSource) IgnoreTotem() bool         { return false }
 
 func (SplashPotionDamageSource) ReducedByResistance() bool { return true }
 func (SplashPotionDamageSource) ReducedByArmour() bool     { return false }

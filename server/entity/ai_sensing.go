@@ -22,6 +22,10 @@ func (s *sensing) tick() {
 // HasLineOfSight reports if the mob sees an entity, as
 // Sensing.hasLineOfSight: once per entity per tick.
 func (m *Mob) HasLineOfSight(e world.Entity) bool {
+	// A stunned or roaring ravager sees nothing.
+	if b, ok := m.Behaviour().(interface{ blind() bool }); ok && b.blind() {
+		return false
+	}
 	s := &m.AI.sense
 	h := e.H()
 	if _, ok := s.seen[h]; ok {

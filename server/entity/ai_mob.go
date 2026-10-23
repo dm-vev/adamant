@@ -30,6 +30,9 @@ type MobAI struct {
 	MaxHeadYaw, HeadRotSpeed, MaxHeadPitch float64
 	// NoAI stops the AI of the mob while it still moves.
 	NoAI bool
+	// NoGravity keeps the mob from falling, and NoPhysics moves it through
+	// blocks, as Entity.isNoGravity and noPhysics.
+	NoGravity, NoPhysics bool
 
 	move moveControl
 	// moveOverride replaces move if set.

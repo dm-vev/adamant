@@ -203,6 +203,31 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if c, ok := e.(interface{ Charging() bool }); ok && c.Charging() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCharging)
 	}
+	if c, ok := e.(interface{ CrossbowCharged() bool }); ok && c.CrossbowCharged() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCharged)
+	}
+	if c, ok := e.(interface{ Celebrating() bool }); ok && c.Celebrating() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCelebrating)
+	}
+	if c, ok := e.(interface {
+		Casting() bool
+		SpellColour() [3]float64
+	}); ok && c.Casting() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCasting)
+		colour := c.SpellColour()
+		m[protocol.EntityDataKeyDataSpellCastingColor] = int32(-1<<24 | int32(colour[0]*255)<<16 | int32(colour[1]*255)<<8 | int32(colour[2]*255))
+	}
+	if r, ok := e.(interface {
+		Stunned() bool
+		Roaring() bool
+	}); ok {
+		if r.Stunned() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagStunned)
+		}
+		if r.Roaring() {
+			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRoaring)
+		}
+	}
 	if d, ok := e.(displayTile); ok {
 		var display int32
 		if b, ok := d.DisplayBlock(); ok {

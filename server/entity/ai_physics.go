@@ -34,6 +34,13 @@ func (e *Ent) HeadYaw() float64 {
 	return e.data.Rot.Yaw()
 }
 
+// mobImmobile reports if a mob may not act, as LivingEntity.isImmobile: a
+// stunned or roaring ravager for one.
+func mobImmobile(m *Mob) bool {
+	i, ok := m.Behaviour().(interface{ immobile() bool })
+	return ok && i.immobile()
+}
+
 // mobMoveControl is a move control that replaces the MoveControl of a mob,
 // such as the CubeMobMoveControl of slimes.
 type mobMoveControl interface {
@@ -125,7 +132,7 @@ func (ai *MobAI) aiStep(m *Mob) {
 	ai.xxa *= .98
 	ai.zza *= .98
 	switch {
-	case !m.Alive():
+	case !m.Alive() || mobImmobile(m):
 		ai.jumping, ai.xxa, ai.zza = false, 0, 0
 	case !ai.NoAI:
 		ai.serverAiStep(m)
@@ -324,6 +331,9 @@ func (ai *MobAI) flyingSpeed() float64 { return .02 }
 // effectiveGravity ports LivingEntity.getEffectiveGravity: slow falling
 // eases falls.
 func (ai *MobAI) effectiveGravity(m *Mob) float64 {
+	if ai.NoGravity {
+		return 0
+	}
 	if m.data.Vel[1] <= 0 {
 		if _, ok := mobEffect(m, effect.SlowFalling); ok {
 			return math.Min(ai.Gravity, .01)
@@ -460,6 +470,11 @@ func onClimbable(m *Mob) bool {
 // steps up onto blocks as high as its step height and is slowed by the
 // block it walks on.
 func (ai *MobAI) moveSelf(m *Mob, delta mgl64.Vec3) {
+	if ai.NoPhysics {
+		m.data.Pos = m.data.Pos.Add(delta)
+		ai.collidedHorizontally, ai.collidedVertically, ai.onGround = false, false, false
+		return
+	}
 	movement := ai.collide(m, delta)
 	if movement.LenSqr() > 1e-7 || delta.LenSqr()-movement.LenSqr() < 1e-7 {
 		m.data.Pos = m.data.Pos.Add(movement)

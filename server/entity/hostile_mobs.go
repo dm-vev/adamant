@@ -12,7 +12,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -100,6 +99,15 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 			if n := nbtconv.Int32(java, "StrayConversionTime"); n != -1 {
 				c.strayConversionTime, c.strayConverting = int(n), true
 			}
+		}
+		c.johnny = nbtconv.Bool(java, "Johnny")
+		c.spellTicks = int(nbtconv.Int32(java, "SpellTicks"))
+		c.ravagerAttack, c.ravagerStun, c.ravagerRoar = int(nbtconv.Int32(java, "AttackTick")), int(nbtconv.Int32(java, "StunTick")), int(nbtconv.Int32(java, "RoarTick"))
+		if _, ok := java["life_ticks"]; ok {
+			c.vexLimitedLife, c.vexLifeTicks = true, int(nbtconv.Int32(java, "life_ticks"))
+		}
+		if bound, ok := java["bound_pos"].([]int32); ok && len(bound) == 3 {
+			c.vexBound, c.vexHasBound = cube.Pos{int(bound[0]), int(bound[1]), int(bound[2])}, true
 		}
 		if target, ok := java["patrol_target"].([]int32); ok && len(target) == 3 {
 			c.patrolTarget, c.hasPatrolTarget = cube.Pos{int(target[0]), int(target[1]), int(target[2])}, true
@@ -194,6 +202,23 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 	if b.spawnData != nil {
 		javaState["SpawnData"] = CloneNativeMobNBT(b.spawnData)
 	}
+	switch b.kind {
+	case "minecraft:vindicator":
+		if b.johnny {
+			javaState["Johnny"] = true
+		}
+	case "minecraft:evoker":
+		javaState["SpellTicks"] = int32(b.spellTicks)
+	case "minecraft:ravager":
+		javaState["AttackTick"], javaState["StunTick"], javaState["RoarTick"] = int32(b.ravagerAttack), int32(b.ravagerStun), int32(b.ravagerRoar)
+	case "minecraft:vex":
+		if b.vexLimitedLife {
+			javaState["life_ticks"] = int32(b.vexLifeTicks)
+		}
+		if b.vexHasBound {
+			javaState["bound_pos"] = []int32{int32(b.vexBound[0]), int32(b.vexBound[1]), int32(b.vexBound[2])}
+		}
+	}
 	native = MergeNativeMobJavaState(native, javaState)
 	if b.kind == "minecraft:zombie_villager" {
 		native["ConversionTime"] = int32(b.cureTicks)
@@ -218,6 +243,10 @@ type hostileConfig struct {
 	spawnData                                               map[string]any
 	freezingTime, strayConversionTime                       int
 	strayConverting                                         bool
+	johnny, vexLimitedLife, vexHasBound                     bool
+	spellTicks, vexLifeTicks                                int
+	ravagerAttack, ravagerStun, ravagerRoar                 int
+	vexBound                                                cube.Pos
 }
 
 func (c hostileConfig) Apply(d *world.EntityData) {
@@ -244,6 +273,8 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
 		patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget,
 		freezingTime: c.freezingTime, strayConversionTime: c.strayConversionTime, strayConverting: c.strayConverting,
+		johnny: c.johnny, spellTicks: c.spellTicks, vexLimitedLife: c.vexLimitedLife, vexLifeTicks: c.vexLifeTicks, vexBound: c.vexBound, vexHasBound: c.vexHasBound,
+		ravagerAttack: c.ravagerAttack, ravagerStun: c.ravagerStun, ravagerRoar: c.ravagerRoar,
 	}
 }
 
@@ -256,9 +287,9 @@ var (
 	StrayType          = hostileMobType{id: "minecraft:stray", width: .6, height: 1.99, health: 20, speed: .25, attack: 2, ranged: true}
 	ParchedType        = hostileMobType{id: "minecraft:parched", width: .6, height: 1.99, health: 16, speed: .25, attack: 2, ranged: true}
 	BoggedType         = hostileMobType{id: "minecraft:bogged", width: .6, height: 1.99, health: 16, speed: .25, attack: 2, ranged: true}
-	EvokerType         = hostileMobType{id: "minecraft:evoker", width: .6, height: 1.95, health: 24, speed: .25, attack: 3}
-	VindicatorType     = hostileMobType{id: "minecraft:vindicator", width: .6, height: 1.95, health: 24, speed: .25, attack: 5}
-	PillagerType       = hostileMobType{id: "minecraft:pillager", width: .6, height: 1.95, health: 24, speed: .25, attack: 2, ranged: true}
+	EvokerType         = hostileMobType{id: "minecraft:evoker", width: .6, height: 1.95, health: 24, speed: .5, attack: 3}
+	VindicatorType     = hostileMobType{id: "minecraft:vindicator", width: .6, height: 1.95, health: 24, speed: .35, attack: 5}
+	PillagerType       = hostileMobType{id: "minecraft:pillager", width: .6, height: 1.95, health: 24, speed: .35, attack: 5, ranged: true}
 	VexType            = hostileMobType{id: "minecraft:vex", width: .4, height: .8, health: 14, speed: .35, attack: 4}
 	RavagerType        = hostileMobType{id: "minecraft:ravager", width: 1.95, height: 2.2, health: 100, speed: .3, attack: 12}
 )
@@ -296,38 +327,49 @@ func hostileTypeFor(id string) hostileMobType {
 }
 
 type hostileState struct {
-	health                                                                        *HealthManager
-	effects                                                                       *EffectManager
-	mc                                                                            *MovementComputer
-	random                                                                        vanilla.Random
-	speed, attack                                                                 float64
-	cooldown, wander, bowCooldown, spellCooldown, hoverTime, doorTicks, cureTicks int
-	navigator                                                                     Navigator
-	doorPos                                                                       cube.Pos
-	dead                                                                          bool
-	kind                                                                          string
-	baby, canBreakDoors, canPickupLoot                                            bool
-	conversionTime                                                                int
-	main, head                                                                    item.Stack
-	profession, villagerType                                                      string
-	villagerLevel, villagerXP, villagerAge                                        int
-	offers                                                                        []MerchantOffer
-	anchor                                                                        mgl64.Vec3
-	anchorSet                                                                     bool
-	raidID                                                                        int64
-	raidWave                                                                      int
-	raidLeader, headDropGuaranteed                                                bool
-	patrolLeader, patrolling, hasPatrolTarget                                     bool
-	patrolTarget                                                                  cube.Pos
-	patrolCooldown                                                                int
-	spawnData                                                                     map[string]any
-	ridingLinkPending                                                             bool
-	freezingTime, strayConversionTime                                             int
-	strayConverting                                                               bool
-	ai                                                                            MobAI
-	weaponGoal                                                                    Goal
-	weaponSet, weaponBow, drawingBow                                              bool
-	useTicks                                                                      int
+	health                                    *HealthManager
+	effects                                   *EffectManager
+	mc                                        *MovementComputer
+	random                                    vanilla.Random
+	speed, attack                             float64
+	cooldown, wander, cureTicks               int
+	navigator                                 Navigator
+	dead                                      bool
+	kind                                      string
+	baby, canBreakDoors, canPickupLoot        bool
+	conversionTime                            int
+	main, head                                item.Stack
+	profession, villagerType                  string
+	villagerLevel, villagerXP, villagerAge    int
+	offers                                    []MerchantOffer
+	raidID                                    int64
+	raidWave                                  int
+	raidLeader, headDropGuaranteed            bool
+	patrolLeader, patrolling, hasPatrolTarget bool
+	patrolTarget                              cube.Pos
+	spawnData                                 map[string]any
+	ridingLinkPending                         bool
+	freezingTime, strayConversionTime         int
+	strayConverting                           bool
+	ai                                        MobAI
+	weaponGoal                                Goal
+	weaponSet, weaponBow, drawingBow          bool
+	useTicks                                  int
+
+	// The state of the Raider kinds: celebrating a won raid, the crossbow
+	// of a pillager, the spells of an evoker, the owner and life of a vex
+	// and the attacks of a ravager.
+	celebrating, johnny                      bool
+	chargingCrossbow, crossbowCharged        bool
+	spellTicks                               int
+	spell                                    illagerSpell
+	wololoTarget                             *world.EntityHandle
+	vexOwner                                 *world.EntityHandle
+	vexBound                                 cube.Pos
+	vexHasBound, vexLimitedLife, vexCharging bool
+	vexLifeTicks                             int
+	vexMove                                  vexMoveControl
+	ravagerAttack, ravagerStun, ravagerRoar  int
 }
 type HostileMob struct{ *Ent }
 type Zombie struct{ *HostileMob }
@@ -490,12 +532,6 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.cooldown > 0 {
 		b.cooldown--
 	}
-	if b.bowCooldown > 0 {
-		b.bowCooldown--
-	}
-	if b.spellCooldown > 0 {
-		b.spellCooldown--
-	}
 	if b.kind == "minecraft:zombie" || b.kind == "minecraft:zombie_villager" || b.kind == "minecraft:skeleton" || b.kind == "minecraft:stray" || b.kind == "minecraft:bogged" || b.kind == "minecraft:parched" {
 		b.burnUndead(e, tx)
 	}
@@ -551,68 +587,8 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	if target == nil {
-		if b.kind == "minecraft:vex" {
-			if !b.anchorSet {
-				b.anchor = e.Position()
-				b.anchorSet = true
-			}
-			b.hoverTime++
-			p := b.anchor.Add(mgl64.Vec3{math.Sin(float64(b.hoverTime) / 40), .4 + math.Sin(float64(b.hoverTime)/20)*.25, math.Cos(float64(b.hoverTime) / 40)})
-			b.move(e, tx, p)
-			return nil
-		}
-		if b.patrolTick(e, tx) {
-			return nil
-		}
 		b.wanderTick(e, tx)
 		return nil
-	}
-	if (b.kind == "minecraft:zombie" || b.kind == "minecraft:husk") && b.canBreakDoors && tx.LocalDifficulty(cube.PosFromVec3(e.Position())).Base == world.DifficultyHard {
-		if b.breakDoor(e, tx, target) {
-			return nil
-		}
-	} else {
-		b.doorTicks = 0
-	}
-	if b.kind == "minecraft:evoker" && best <= 12 && b.spellCooldown == 0 {
-		if best > 6 {
-			for range 3 {
-				offset := mgl64.Vec3{float64(b.random.NextFloat())*2 - 1, 0, float64(b.random.NextFloat())*2 - 1}
-				tx.AddEntity(NewVex(world.EntitySpawnOpts{Position: e.Position().Add(offset)}))
-			}
-			b.spellCooldown = 120
-		} else {
-			spawnEvokerFangs(e, tx, target.Position())
-			b.spellCooldown = 60
-		}
-	}
-	ranged := b.kind == "minecraft:skeleton" || b.kind == "minecraft:stray" || b.kind == "minecraft:bogged" || b.kind == "minecraft:parched" || b.kind == "minecraft:pillager"
-	if ranged && best > 4 && best < 16 && b.bowCooldown == 0 {
-		b.shoot(e, tx, target)
-		interval := 40
-		difficulty := tx.LocalDifficulty(cube.PosFromVec3(e.Position())).Base
-		if difficulty == world.DifficultyHard {
-			interval = 20
-		}
-		if b.kind == "minecraft:bogged" || b.kind == "minecraft:parched" {
-			interval = 70
-			if difficulty == world.DifficultyHard {
-				interval = 50
-			}
-		}
-		b.bowCooldown = interval
-	}
-	if ranged && best > 1.6 && best < 8 {
-		d := e.Position().Sub(target.Position())
-		d[1] = 0
-		if d.Len() > 0 {
-			d = d.Normalize().Mul(b.speed)
-		}
-		v := e.data.Vel
-		v[0], v[2] = d[0], d[2]
-		m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, e.data.Rot, tx)
-		e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-		return m
 	}
 	if best < 1.6 && b.cooldown == 0 {
 		damage := b.attack
@@ -628,11 +604,7 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 				ticks := 140 * int(tx.LocalDifficulty(cube.PosFromVec3(e.Position())).Effective)
 				l.AddEffect(effect.New(effect.Hunger, 0, time.Duration(ticks)*time.Second/20))
 			}
-			force, height := .4, .2
-			if b.kind == "minecraft:ravager" {
-				force, height = 1.2, .6
-			}
-			l.KnockBack(e.Position(), force, height)
+			l.KnockBack(e.Position(), .4, .2)
 		}
 		b.cooldown = 20
 	}
@@ -655,6 +627,11 @@ func hostileRaidMob(kind string) bool {
 func (b *hostileState) joinRaid(e *Ent, tx *world.Tx) {
 	raid := tx.RaidForRaider(e)
 	if raid != nil {
+		// Raiders stay with a raid they won to celebrate it.
+		if raid.Status() == world.RaidDefeat {
+			b.raidID = raid.ID()
+			return
+		}
 		if !raid.Active() {
 			tx.RaiderDied(e)
 			b.raidID, b.raidWave, b.raidLeader = 0, 0, false
@@ -675,24 +652,6 @@ func (b *hostileState) joinRaid(e *Ent, tx *world.Tx) {
 		return
 	}
 	b.raidID, b.raidWave, b.raidLeader = 0, 0, false
-}
-func (b *hostileState) shoot(e *Ent, tx *world.Tx, target world.Entity) {
-	d := target.Position().Add(mgl64.Vec3{0, .9, 0}).Sub(e.Position().Add(mgl64.Vec3{0, 1.4, 0}))
-	if d.Len() == 0 {
-		return
-	}
-	d = d.Normalize().Mul(1.6)
-	opts := world.EntitySpawnOpts{Position: e.Position().Add(mgl64.Vec3{0, 1.4, 0}), Velocity: d}
-	switch b.kind {
-	case "minecraft:stray":
-		tx.AddEntity(NewTippedArrow(opts, e, potion.Slowness()))
-	case "minecraft:bogged":
-		tx.AddEntity(NewTippedArrow(opts, e, potion.Poison()))
-	case "minecraft:parched":
-		tx.AddEntity(NewTippedArrow(opts, e, potion.LongWeakness()))
-	default:
-		tx.AddEntity(NewArrow(opts, e))
-	}
 }
 func (b *hostileState) move(e *Ent, tx *world.Tx, p mgl64.Vec3) {
 	d := p.Sub(e.data.Pos)
@@ -717,46 +676,6 @@ func (b *hostileState) stop(e *Ent, tx *world.Tx) {
 	v[0], v[2] = 0, 0
 	m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, e.data.Rot, tx)
 	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-}
-func (b *hostileState) breakDoor(e *Ent, tx *world.Tx, target world.Entity) bool {
-	d := target.Position().Sub(e.Position())
-	dx, dz := 0, 0
-	if d[0] > .2 {
-		dx = 1
-	} else if d[0] < -.2 {
-		dx = -1
-	}
-	if d[2] > .2 {
-		dz = 1
-	} else if d[2] < -.2 {
-		dz = -1
-	}
-	p := cube.PosFromVec3(e.Position()).Add(cube.Pos{dx, 0, dz})
-	for _, check := range []cube.Pos{p, p.Side(cube.FaceUp)} {
-		door, ok := tx.Block(check).(block.WoodDoor)
-		if !ok || door.Open {
-			continue
-		}
-		lower := check
-		if door.Top {
-			lower = check.Side(cube.FaceDown)
-		}
-		if lower != b.doorPos {
-			b.doorPos = lower
-			b.doorTicks = 0
-		}
-		b.doorTicks++
-		if b.doorTicks >= 240 {
-			tx.SetBlock(lower, nil, nil)
-			tx.SetBlock(lower.Side(cube.FaceUp), nil, nil)
-			b.doorTicks = 0
-			return true
-		}
-		b.stop(e, tx)
-		return true
-	}
-	b.doorTicks = 0
-	return false
 }
 func (b *hostileState) wanderTick(e *Ent, tx *world.Tx) {
 	if b.wander > 0 {
@@ -816,6 +735,10 @@ func (m *HostileMob) Heal(h float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *HostileMob) KnockBack(src mgl64.Vec3, f, h float64) {
+	if m.state().kind == "minecraft:ravager" {
+		// KNOCKBACK_RESISTANCE of 0.75.
+		f, h = f*.25, h*.25
+	}
 	d := m.Position().Sub(src)
 	d[1] = 0
 	if d.Len() > 0 {
@@ -1109,6 +1032,8 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 		b.main = item.NewStack(item.Sword{Tier: item.ToolTierStone}, 1)
 	case "minecraft:vindicator":
 		b.main = item.NewStack(item.Axe{Tier: item.ToolTierIron}, 1)
+	case "minecraft:vex":
+		b.main = item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1)
 	}
 	// PatrollingMonster.finalizeSpawn: outside patrols, events and
 	// structures, 6% of raiders that can lead become patrol leaders; patrol

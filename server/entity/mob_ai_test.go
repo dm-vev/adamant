@@ -613,25 +613,115 @@ func TestBlazeChargesAndShootsFireballs(t *testing.T) {
 	}
 }
 
-// TestGhastFloatsAndShootsAtPlayers checks a ghast floats around and shoots
-// a fireball at a player level with it.
+// TestGhastFloatsAndShootsAtPlayers checks ghasts float around and shoot a
+// fireball at a player level with them. A ghast that drifts more than four
+// blocks above or below the player ignores it, so there are three.
 func TestGhastFloatsAndShootsAtPlayers(t *testing.T) {
 	w := aiTestWorld(t)
 	addAITestPlayer(w, mgl64.Vec3{14.5, 65, .5}, world.GameModeSurvival)
-	start := mgl64.Vec3{-6, 66, .5}
-	ghast := addSpecies(w, entity.NewGhast(world.EntitySpawnOpts{Position: start}))
+	var ghasts []*world.EntityHandle
+	for _, z := range []float64{-8, .5, 8} {
+		ghasts = append(ghasts, addSpecies(w, entity.NewGhast(world.EntitySpawnOpts{Position: mgl64.Vec3{-6, 66, z}})))
+	}
 	moved, charged, fireballs := 0.0, false, 0
 	for range 400 {
 		stepWorld(t, w, 1)
 		<-w.Exec(func(tx *world.Tx) {
-			if e, ok := ghast.Entity(tx); ok {
-				moved = max(moved, e.Position().Sub(start).Len())
-				charged = charged || e.(*entity.Ghast).Charging()
+			for i, h := range ghasts {
+				if e, ok := h.Entity(tx); ok {
+					moved = max(moved, e.Position().Sub(mgl64.Vec3{-6, 66, []float64{-8, .5, 8}[i]}).Len())
+					charged = charged || e.(*entity.Ghast).Charging()
+				}
 			}
+			fireballs = max(fireballs, countEntities(tx, "minecraft:fireball"))
 		})
-		<-w.Exec(func(tx *world.Tx) { fireballs = max(fireballs, countEntities(tx, "minecraft:fireball")) })
 	}
 	if moved < 1 || !charged || fireballs == 0 {
-		t.Fatalf("ghast moved %.2f, charged %v, fireballs %d", moved, charged, fireballs)
+		t.Fatalf("ghasts moved %.2f, charged %v, fireballs %d", moved, charged, fireballs)
+	}
+}
+
+// TestPillagerLoadsAndShootsItsCrossbow checks a pillager loads its crossbow
+// in sight of a player and shoots arrows at it.
+func TestPillagerLoadsAndShootsItsCrossbow(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{7.5, 65, .5}, world.GameModeSurvival)
+	pillager := addSpecies(w, entity.NewPillager(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure"}))
+	charging := false
+	lowest := lowestHealth(t, w, p, 300, func(tx *world.Tx) {
+		if e, ok := pillager.Entity(tx); ok {
+			charging = charging || e.(interface{ Charging() bool }).Charging()
+		}
+	})
+	if !charging || lowest == 20 {
+		t.Fatalf("pillager loaded its crossbow %v, lowest player health %v", charging, lowest)
+	}
+}
+
+// TestVindicatorsHuntPlayersAndJohnnyEverything checks a vindicator attacks
+// players, and one named Johnny attacks a cow too.
+func TestVindicatorsHuntPlayersAndJohnnyEverything(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{5.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewVindicator(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure"}))
+	if lowest := lowestHealth(t, w, p, 200, nil); lowest == 20 {
+		t.Fatal("vindicator did not hurt the player")
+	}
+
+	w = aiTestWorld(t)
+	cow := addSpecies(w, entity.NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{4.5, 65, .5}}))
+	addSpecies(w, entity.NewVindicator(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, NameTag: "Johnny", SpawnReason: "structure"}))
+	hurt := false
+	for range 300 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := cow.Entity(tx); ok {
+				l := e.(entity.Living)
+				hurt = hurt || l.Health() < l.MaxHealth()
+			} else {
+				hurt = true
+			}
+		})
+	}
+	if !hurt {
+		t.Fatal("Johnny left the cow alone")
+	}
+}
+
+// TestEvokerSummonsVexesAndTurnsSheepRed checks an evoker summons vexes at
+// a player in sight, and an idle one turns a blue sheep red.
+func TestEvokerSummonsVexesAndTurnsSheepRed(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{10.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewEvoker(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure"}))
+	vexes, fangs := 0, 0
+	lowestHealth(t, w, p, 300, func(tx *world.Tx) {
+		vexes = max(vexes, countEntities(tx, "minecraft:vex"))
+		fangs = max(fangs, countEntities(tx, "minecraft:evoker_fangs"))
+	})
+	if vexes == 0 && fangs == 0 {
+		t.Fatal("evoker cast no spell at the player")
+	}
+
+	w = aiTestWorld(t)
+	sheep := addSpecies(w, world.EntitySpawnOpts{Position: mgl64.Vec3{4.5, 65, .5}}.New(entity.SheepType, entity.SheepConfig{WoolColor: 11}))
+	addSpecies(w, entity.NewEvoker(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnReason: "structure"}))
+	stepWorld(t, w, 400)
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := sheep.Entity(tx)
+		if c := e.(*entity.Sheep).WoolColor(); c != 14 {
+			t.Fatalf("sheep wool colour %d, want red", c)
+		}
+	})
+}
+
+// TestRavagerBitesAndKnocksBack checks a ravager bites a player hard
+// enough to knock it back.
+func TestRavagerBitesAndKnocksBack(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{5.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewRavager(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	if lowest := lowestHealth(t, w, p, 200, nil); lowest > 20-12+2 {
+		t.Fatalf("ravager bit the player down to %v only", lowest)
 	}
 }

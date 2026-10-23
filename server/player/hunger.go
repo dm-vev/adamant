@@ -2,6 +2,8 @@ package player
 
 import (
 	"sync"
+
+	"github.com/df-mc/dragonfly/server/entity"
 )
 
 // hungerManager handles the changes in hunger, exhaustion and saturation of a player.
@@ -189,9 +191,4 @@ func (m *hungerManager) starving() bool {
 
 // StarvationDamageSource is the world.DamageSource passed when a player is
 // dealt damage from an empty food bar.
-type StarvationDamageSource struct{}
-
-func (StarvationDamageSource) ReducedByArmour() bool     { return false }
-func (StarvationDamageSource) ReducedByResistance() bool { return false }
-func (StarvationDamageSource) Fire() bool                { return false }
-func (StarvationDamageSource) IgnoreTotem() bool         { return false }
+type StarvationDamageSource = entity.StarvationDamageSource

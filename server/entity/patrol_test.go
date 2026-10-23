@@ -32,6 +32,7 @@ func droppedItems(tx *world.Tx) map[string]int {
 func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
 	w := world.Config{Synchronous: true, RandomTickSpeed: -1, Entities: DefaultRegistry}.New()
 	defer w.Close()
+	var leaderH, memberH *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
 		patrolGround(tx)
 		if !spawnPatrolMember(tx, cube.Pos{0, 64, 0}, true) || !spawnPatrolMember(tx, cube.Pos{2, 64, 0}, false) {
@@ -56,14 +57,35 @@ func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
 		if !leader.state().patrolling || !leader.state().hasPatrolTarget || !member.state().patrolling {
 			t.Fatal("patrol spawns must be patrolling with a leader target")
 		}
-		// The leader walks a leg toward its target and hands it to the member.
-		for i := int64(1); i <= 5; i++ {
-			leader.Tick(tx, i)
+		leaderH, memberH = leader.H(), member.H()
+	})
+	// The leader walks a leg toward its target and hands it to the member.
+	// Mobs fresh from spawning are not on the ground yet, so their first path
+	// fails and the patrol waits ten seconds, as in Java.
+	shared := false
+	for range 300 {
+		if err := w.StepTicks(1); err != nil {
+			t.Fatal(err)
 		}
-		if member.state().patrolTarget == (cube.Pos{}) || !member.state().hasPatrolTarget {
-			t.Fatal("leader did not share its patrol leg with the member")
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := memberH.Entity(tx); ok {
+				shared = shared || e.(*Pillager).state().patrolTarget != (cube.Pos{})
+			}
+		})
+	}
+	if !shared {
+		t.Fatal("leader did not share its patrol leg with the member")
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		leaderE, _ := leaderH.Entity(tx)
+		memberE, _ := memberH.Entity(tx)
+		leader, member := leaderE.(*Pillager), memberE.(*Pillager)
+		for e := range tx.Entities() {
+			if e.H().Type() == ItemType {
+				_ = e.(*Ent).CloseIn(tx)
+			}
 		}
-
 		cow := tx.AddEntity(NewCow(world.EntitySpawnOpts{Position: mgl64.Vec3{5, 64, 5}}))
 		member.Hurt(1000, AttackDamageSource{Attacker: cow})
 		if got := droppedItems(tx)["minecraft:ominous_bottle"]; got != 0 {
