@@ -504,3 +504,71 @@ func TestJavaPistonFacingsMatchBDS(t *testing.T) {
 		}
 	}
 }
+
+// TestHugeMushroomVariantsAreEnumerated checks Java mushroom faces against
+// Bedrock's huge_mushroom_bits, an enumeration that was read as a bitmask:
+// red caps then showed pores on their outer sides.
+func TestHugeMushroomVariantsAreEnumerated(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	faces := func(up, down, north, east, south, west bool) map[string]any {
+		return map[string]any{"up": up, "down": down, "north": north, "east": east, "south": south, "west": west}
+	}
+	cases := []struct {
+		name  string
+		faces map[string]any
+		want  int32
+	}{
+		{"minecraft:red_mushroom_block", faces(false, false, false, false, false, false), 0},
+		{"minecraft:red_mushroom_block", faces(true, false, true, false, false, true), 1},
+		{"minecraft:red_mushroom_block", faces(true, false, true, false, false, false), 2},
+		{"minecraft:red_mushroom_block", faces(true, false, true, true, false, false), 3},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, false, true), 4},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, false, false), 5},
+		{"minecraft:red_mushroom_block", faces(true, false, false, true, false, false), 6},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, true, true), 7},
+		{"minecraft:red_mushroom_block", faces(true, false, false, false, true, false), 8},
+		{"minecraft:red_mushroom_block", faces(true, false, false, true, true, false), 9},
+		{"minecraft:red_mushroom_block", faces(false, false, false, true, true, false), 9},
+		{"minecraft:brown_mushroom_block", faces(true, true, true, true, true, true), 14},
+		{"minecraft:mushroom_stem", faces(false, false, true, true, true, true), 10},
+		{"minecraft:mushroom_stem", faces(true, true, true, true, true, true), 15},
+	}
+	for _, tc := range cases {
+		native, err := ResolveState(registry, BlockState{Name: tc.name, Properties: tc.faces})
+		if err != nil {
+			t.Fatalf("%s %v: %v", tc.name, tc.faces, err)
+		}
+		_, properties, _ := registry.RuntimeIDToState(native.Block)
+		if got := properties["huge_mushroom_bits"]; got != tc.want {
+			t.Fatalf("%s %v: huge_mushroom_bits=%v, want %d", tc.name, tc.faces, got, tc.want)
+		}
+		source, err := CanonicalState(registry, native)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for face, want := range tc.faces {
+			if source.Properties[face] != want {
+				t.Fatalf("%s %v: round trip %s=%v", tc.name, tc.faces, face, source.Properties[face])
+			}
+		}
+	}
+	// A variant without a retained Java state decodes to the faces it shows.
+	for variant := range int32(10) {
+		rid, ok := registry.StateToRuntimeID("minecraft:red_mushroom_block", map[string]any{"huge_mushroom_bits": variant})
+		if !ok {
+			t.Fatalf("native red mushroom block %d missing", variant)
+		}
+		source, err := CanonicalState(registry, NativeState{Block: rid, Liquid: registry.AirRuntimeID()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		row, column := (variant-1)/3, (variant-1)%3
+		want := faces(variant != 0, false, variant != 0 && row == 0, variant != 0 && column == 2, variant != 0 && row == 2, variant != 0 && column == 0)
+		for face, value := range want {
+			if source.Properties[face] != value {
+				t.Fatalf("variant %d decoded %s=%v, want %v", variant, face, source.Properties[face], value)
+			}
+		}
+	}
+}

@@ -755,11 +755,11 @@ func mapJavaProperty(javaName, nativeName, key string, value any, javaProps, sch
 		return "toggle_bit", nativeBool(!enabled, schema["toggle_bit"]), false, nil
 	}
 	if isMushroomBlock(javaName) && (key == "north" || key == "south" || key == "east" || key == "west") {
-		variant, err := mushroomVariant(javaProps)
+		variant, err := mushroomVariant(javaName, javaProps)
 		return "huge_mushroom_bits", int32(variant), false, err
 	}
 	if isMushroomBlock(javaName) && (key == "up" || key == "down") {
-		// Bedrock's legacy mushroom variant only stores the four side textures.
+		// The side keys already encoded the variant, which reads all six faces.
 		return "", nil, true, nil
 	}
 	if javaName == "minecraft:chiseled_bookshelf" && strings.HasPrefix(key, "slot_") {
@@ -1857,10 +1857,9 @@ func javaProperties(nativeName, javaName string, nativeProps map[string]any) (ma
 				if variant < 0 || variant > 15 {
 					return nil, fmt.Errorf("java state codec: invalid native mushroom variant %v", value)
 				}
-				for bit, side := range [...]string{"north", "east", "south", "west"} {
-					out[side] = variant&(1<<bit) != 0
+				for side, outside := range mushroomVariantFaces(int(variant)) {
+					out[side] = outside
 				}
-				out["up"], out["down"] = false, false
 			}
 		case key == "vine_direction_bits":
 			variant := intPropertyValue(value)
@@ -2843,22 +2842,74 @@ func javaMultiFaceBits(properties map[string]any) (int, error) {
 	return bits, nil
 }
 
-func mushroomVariant(properties map[string]any) (int, error) {
-	variant := 0
-	for bit, key := range [...]string{"north", "east", "south", "west"} {
-		value, exists := properties[key]
-		if !exists {
-			continue
-		}
-		side, ok := boolProperty(value)
-		if !ok {
-			return 0, fmt.Errorf("java state codec: invalid mushroom side %s=%v", key, value)
-		}
-		if side {
-			variant |= 1 << bit
+// mushroomVariant returns the Bedrock huge_mushroom_bits of the Java faces of
+// a huge mushroom block. The variants are an enumeration, not a bitmask: 1-9
+// put the cap texture on the top and on at most one north/south and one
+// west/east side, 10 is a stem with pored ends and 14 and 15 cover all six
+// faces with cap or stem. Faces no variant shows keep their Java state through
+// the retained state ID. A face missing from properties has its default, the
+// outside texture.
+func mushroomVariant(name string, properties map[string]any) (int, error) {
+	var faces [6]bool
+	for i, key := range mushroomFaceNames {
+		faces[i] = true
+		if value, exists := properties[key]; exists {
+			outside, ok := boolProperty(value)
+			if !ok {
+				return 0, fmt.Errorf("java state codec: invalid mushroom side %s=%v", key, value)
+			}
+			faces[i] = outside
 		}
 	}
-	return variant, nil
+	up, down, north, east, south, west := faces[0], faces[1], faces[2], faces[3], faces[4], faces[5]
+	switch {
+	case !up && !down && !north && !east && !south && !west:
+		return 0, nil
+	case name == "minecraft:mushroom_stem" && up && down && north && east && south && west:
+		return 15, nil
+	case name == "minecraft:mushroom_stem":
+		return 10, nil
+	case up && down && north && east && south && west:
+		return 14, nil
+	}
+	row, column := 1, 1
+	if north && !south {
+		row = 0
+	} else if south && !north {
+		row = 2
+	}
+	if west && !east {
+		column = 0
+	} else if east && !west {
+		column = 2
+	}
+	return 1 + row*3 + column, nil
+}
+
+// mushroomFaceNames are the Java faces of a huge mushroom block.
+var mushroomFaceNames = [...]string{"up", "down", "north", "east", "south", "west"}
+
+// mushroomVariantFaces returns the Java faces Bedrock huge_mushroom_bits
+// variant shows with the outside texture. Unused variants show pores only.
+func mushroomVariantFaces(variant int) map[string]bool {
+	faces := make(map[string]bool, len(mushroomFaceNames))
+	for _, key := range mushroomFaceNames {
+		faces[key] = false
+	}
+	switch {
+	case variant >= 1 && variant <= 9:
+		row, column := (variant-1)/3, (variant-1)%3
+		faces["up"] = true
+		faces["north"], faces["south"] = row == 0, row == 2
+		faces["west"], faces["east"] = column == 0, column == 2
+	case variant == 10:
+		faces["north"], faces["east"], faces["south"], faces["west"] = true, true, true, true
+	case variant == 14 || variant == 15:
+		for _, key := range mushroomFaceNames {
+			faces[key] = true
+		}
+	}
+	return faces
 }
 
 func occupiedSlotIndex(key string) (int, bool) {
