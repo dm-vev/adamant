@@ -1478,6 +1478,11 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventDeath,
 		})
+	case entity.SilverfishMergeAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventSilverfishMergeAnimation,
+		})
 	case entity.PickedUpAction:
 		s.writePacket(&packet.TakeItemActor{
 			ItemEntityRuntimeID:  s.entityRuntimeID(e),

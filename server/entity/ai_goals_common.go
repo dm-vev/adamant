@@ -551,7 +551,9 @@ type HurtByTargetGoal struct {
 
 // NewHurtByTargetGoal returns a HurtByTargetGoal.
 func NewHurtByTargetGoal() *HurtByTargetGoal {
-	return &HurtByTargetGoal{targetGoal: newTargetGoal(true, false)}
+	// Java starts the timestamp at 0, which misses damage taken before the
+	// first tick of the mob.
+	return &HurtByTargetGoal{targetGoal: newTargetGoal(true, false), timestamp: -1}
 }
 
 func (g *HurtByTargetGoal) CanUse(m *Mob) bool {

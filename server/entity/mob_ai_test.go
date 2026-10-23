@@ -224,3 +224,155 @@ func TestSkeletonAvoidsWolves(t *testing.T) {
 		t.Fatalf("skeleton got at most %.2f blocks from the wolf", farthest)
 	}
 }
+
+func addSpecies(w *world.World, h *world.EntityHandle) *world.EntityHandle {
+	<-w.Exec(func(tx *world.Tx) { tx.AddEntity(h) })
+	return h
+}
+
+func lowestHealth(t *testing.T, w *world.World, p *world.EntityHandle, ticks int, each func(tx *world.Tx)) float64 {
+	t.Helper()
+	lowest := 20.0
+	for range ticks {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := p.Entity(tx); ok {
+				lowest = min(lowest, e.(*player.Player).Health())
+			}
+			if each != nil {
+				each(tx)
+			}
+		})
+	}
+	return lowest
+}
+
+// TestCreeperSwellsAndExplodesNearPlayers checks the creeper walks up to a
+// player, swells with its fuse lit and explodes.
+func TestCreeperSwellsAndExplodesNearPlayers(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{6.5, 65, .5}, world.GameModeSurvival)
+	creeper := addSpecies(w, entity.NewCreeper(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	lit := false
+	lowest := lowestHealth(t, w, p, 300, func(tx *world.Tx) {
+		if e, ok := creeper.Entity(tx); ok {
+			lit = lit || e.(interface{ Ignited() bool }).Ignited()
+		}
+	})
+	if !lit || lowest == 20 || !creeper.Closed() {
+		t.Fatalf("creeper lit its fuse %v, lowest player health %v, creeper gone %v", lit, lowest, creeper.Closed())
+	}
+}
+
+// TestSpiderClimbsWallsAtNight checks the spider climbs a wall two blocks
+// high to a player on top of it, too high to jump.
+func TestSpiderClimbsWallsAtNight(t *testing.T) {
+	w := aiTestWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		for x := 2; x <= 16; x++ {
+			for z := -16; z <= 16; z++ {
+				tx.SetBlock(cube.Pos{x, 65, z}, block.Stone{}, nil)
+				tx.SetBlock(cube.Pos{x, 66, z}, block.Stone{}, nil)
+			}
+		}
+	})
+	p := addAITestPlayer(w, mgl64.Vec3{8.5, 67, .5}, world.GameModeSurvival)
+	spider := addSpecies(w, entity.NewSpider(world.EntitySpawnOpts{Position: mgl64.Vec3{-6.5, 65, .5}}))
+	highest := 0.0
+	lowest := lowestHealth(t, w, p, 400, func(tx *world.Tx) {
+		if e, ok := spider.Entity(tx); ok {
+			highest = max(highest, e.Position()[1])
+		}
+	})
+	if highest < 67 || lowest == 20 {
+		t.Fatalf("spider climbed to y %.2f, lowest player health %v", highest, lowest)
+	}
+}
+
+// TestSpidersLeavePlayersAloneInDaylight checks a spider in the light picks
+// no target.
+func TestSpidersLeavePlayersAloneInDaylight(t *testing.T) {
+	w := aiTestWorld(t)
+	w.SetTime(6000)
+	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewSpider(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	if lowest := lowestHealth(t, w, p, 200, nil); lowest != 20 {
+		t.Fatalf("spider attacked in daylight, lowest player health %v", lowest)
+	}
+}
+
+// TestCaveSpiderPoisons checks the cave spider poisons what it bites on
+// normal difficulty.
+func TestCaveSpiderPoisons(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewCaveSpider(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	poisoned := false
+	lowestHealth(t, w, p, 200, func(tx *world.Tx) {
+		e, _ := p.Entity(tx)
+		for _, eff := range e.(*player.Player).Effects() {
+			poisoned = poisoned || eff.Type() == effect.Poison
+		}
+	})
+	if !poisoned {
+		t.Fatal("cave spider did not poison the player")
+	}
+}
+
+// TestHurtSilverfishWakesInfestedBlocks checks a silverfish hurt by a player
+// breaks the infested blocks around it, releasing more silverfish.
+func TestHurtSilverfishWakesInfestedBlocks(t *testing.T) {
+	w := aiTestWorld(t)
+	// Planks around the infested blocks keep released silverfish from
+	// hiding again straight away.
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -4; x <= 4; x++ {
+			for z := 3; z <= 5; z++ {
+				tx.SetBlock(cube.Pos{x, 64, z}, block.Planks{}, nil)
+			}
+		}
+		for x := -3; x <= 3; x++ {
+			tx.SetBlock(cube.Pos{x, 64, 4}, block.InfestedStone{}, nil)
+		}
+	})
+	p := addAITestPlayer(w, mgl64.Vec3{.5, 65, -3.5}, world.GameModeSurvival)
+	fish := addSpecies(w, entity.NewSilverfish(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	<-w.Exec(func(tx *world.Tx) {
+		pl, _ := p.Entity(tx)
+		e, _ := fish.Entity(tx)
+		e.(entity.Living).Hurt(1, entity.AttackDamageSource{Attacker: pl.(*player.Player)})
+	})
+	stepWorld(t, w, 40)
+	count := 0
+	<-w.Exec(func(tx *world.Tx) {
+		for e := range tx.Entities() {
+			if e.H().Type() == entity.SilverfishType {
+				count++
+			}
+		}
+	})
+	if count < 2 {
+		t.Fatalf("hurt silverfish woke no friends, %d silverfish", count)
+	}
+}
+
+// TestIdleSilverfishHidesInStone checks a silverfish with nothing to attack
+// hides in the stone next to it.
+func TestIdleSilverfishHidesInStone(t *testing.T) {
+	w := aiTestWorld(t)
+	fish := addSpecies(w, entity.NewSilverfish(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	stepWorld(t, w, 600)
+	infested := 0
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -16; x <= 16; x++ {
+			for z := -16; z <= 16; z++ {
+				if _, ok := tx.Block(cube.Pos{x, 64, z}).(block.InfestedStone); ok {
+					infested++
+				}
+			}
+		}
+	})
+	if !fish.Closed() || infested != 1 {
+		t.Fatalf("silverfish gone %v, infested blocks %d", fish.Closed(), infested)
+	}
+}

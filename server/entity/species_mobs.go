@@ -71,6 +71,9 @@ type speciesState struct {
 	passenger                                *world.EntityHandle
 	navigator                                Navigator
 	wander                                   int
+	ai                                       MobAI
+	swellDir                                 int
+	friends                                  *silverfishWakeUpFriendsGoal
 }
 type Spider struct{ *speciesMob }
 type CaveSpider struct{ *speciesMob }
@@ -216,7 +219,7 @@ func encodeSpecies(k speciesKind, d *world.EntityData) map[string]any {
 	case spiderSpecies:
 		health = 16
 		speed = .3
-		att = 3
+		att = 2
 	case caveSpiderSpecies:
 		health = 12
 		speed = .3
@@ -224,7 +227,7 @@ func encodeSpecies(k speciesKind, d *world.EntityData) map[string]any {
 	case creeperSpecies:
 		health = 20
 		speed = .25
-		att = 0
+		att = 2
 	case endermanSpecies:
 		health = 40
 		speed = .3
@@ -301,11 +304,11 @@ func (c speciesConfig) Apply(d *world.EntityData) {
 	health, maxHealth, speed, attack := 20.0, 20.0, .25, 3.0
 	switch c.kind {
 	case spiderSpecies:
-		health, maxHealth, speed, attack = 16, 16, .3, 3
+		health, maxHealth, speed, attack = 16, 16, .3, 2
 	case caveSpiderSpecies:
 		health, maxHealth, speed, attack = 12, 12, .3, 2
 	case creeperSpecies:
-		health, maxHealth, speed, attack = 20, 20, .25, 0
+		health, maxHealth, speed, attack = 20, 20, .25, 2
 	case endermanSpecies:
 		health, maxHealth, speed, attack = 40, 40, .3, 7
 	case silverfishSpecies:
@@ -385,6 +388,9 @@ func (m *speciesMob) Tick(tx *world.Tx, n int64) {
 	m.updateJockey(tx)
 }
 func (s *speciesState) Tick(e *Ent, tx *world.Tx) *Movement {
+	if speciesUsesAI(s.kind) {
+		return s.aiTick(e, tx)
+	}
 	m := &speciesMob{Ent: e, kind: s.kind}
 	target, dist := nearestSpeciesTarget(e, tx, s.kind)
 	switch s.kind {
@@ -524,9 +530,6 @@ func speciesMove(s *speciesState, e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement 
 }
 func (m *speciesMob) wander() *Movement {
 	s := m.s()
-	if s.kind == silverfishSpecies && s.random.NextInt(100) == 0 && m.burrowInfested() {
-		return nil
-	}
 	if s.wander > 0 {
 		s.wander--
 	}
@@ -544,29 +547,6 @@ func (m *speciesMob) wander() *Movement {
 		}
 	}
 	return speciesMove(s, m.Ent, m.tx, m.Position())
-}
-func (m *speciesMob) burrowInfested() bool {
-	origin := cube.PosFromVec3(m.Position())
-	for _, offset := range []cube.Pos{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}} {
-		pos := origin.Add(offset)
-		var infested world.Block
-		switch b := m.tx.Block(pos).(type) {
-		case block.Stone:
-			infested = block.InfestedStone{}
-		case block.Cobblestone:
-			infested = block.InfestedCobblestone{}
-		case block.StoneBricks:
-			infested = block.InfestedStoneBricks{Type: b.Type}
-		case block.Deepslate:
-			infested = block.InfestedDeepslate{Axis: b.Axis}
-		}
-		if infested != nil {
-			m.tx.SetBlock(pos, infested, nil)
-			m.kill()
-			return true
-		}
-	}
-	return false
 }
 func (m *speciesMob) slimeTick(tx *world.Tx) *Movement {
 	s := m.s()
@@ -607,18 +587,6 @@ func (m *speciesMob) teleportRandom(tx *world.Tx) bool {
 		return true
 	}
 	return false
-}
-func (m *speciesMob) wakeInfested(tx *world.Tx) {
-	p := cube.PosFromVec3(m.Position())
-	for _, d := range []cube.Pos{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}} {
-		q := p.Add(d)
-		switch tx.Block(q).(type) {
-		case block.InfestedStone, block.InfestedCobblestone, block.InfestedStoneBricks, block.InfestedDeepslate:
-			tx.SetBlock(q, nil, nil)
-			o := world.EntitySpawnOpts{Position: q.Vec3().Add(mgl64.Vec3{.5, 0, .5})}
-			tx.AddEntity(NewSilverfish(o))
-		}
-	}
 }
 func (m *speciesMob) kill() { s := m.s(); s.dead = true; m.view(DeathAction{}); _ = m.CloseIn(m.tx) }
 
@@ -665,10 +633,16 @@ func (m *speciesMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 			}()
 		}
 	}
-	if s.kind == silverfishSpecies {
-		m.wakeInfested(m.tx)
+	if s.kind == silverfishSpecies && (damageAttacker(src) != nil || silverfishAlwaysTriggered(src)) {
+		// Java registers the goal when the silverfish is made, so it
+		// hears of damage taken before its first tick.
+		if s.friends == nil {
+			s.friends = &silverfishWakeUpFriendsGoal{}
+		}
+		s.friends.notifyHurt()
 	}
 	s.health.AddHealth(-d)
+	s.ai.Hurt(src)
 	m.view(HurtAction{})
 	onMobHurt(m.tx, m)
 	if m.Dead() {

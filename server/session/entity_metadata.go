@@ -190,6 +190,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		m[protocol.EntityDataKeyFuseTime] = int32(i.FuseTicks())
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagIgnited)
 	}
+	if p, ok := e.(interface{ Powered() bool }); ok && p.Powered() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagPowered)
+	}
+	if c, ok := e.(interface{ WallClimbing() bool }); ok && c.WallClimbing() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagWallClimbing)
+	}
 	if d, ok := e.(displayTile); ok {
 		var display int32
 		if b, ok := d.DisplayBlock(); ok {

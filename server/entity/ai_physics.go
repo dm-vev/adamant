@@ -384,8 +384,12 @@ func (ai *MobAI) handleOnClimbable(m *Mob, v mgl64.Vec3) mgl64.Vec3 {
 }
 
 // onClimbable ports LivingEntity.onClimbable for mobs: they climb blocks in
-// the climbable tag and open trapdoors above ladders.
+// the climbable tag and open trapdoors above ladders, and spiders the walls
+// they walk into.
 func onClimbable(m *Mob) bool {
+	if c, ok := m.Behaviour().(interface{ climbingWall() bool }); ok && c.climbingWall() {
+		return true
+	}
 	pos := m.BlockPos()
 	b := m.tx.Block(pos)
 	if blockInTag(b, "minecraft:climbable") {

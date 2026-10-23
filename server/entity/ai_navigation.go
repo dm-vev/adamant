@@ -38,6 +38,12 @@ type PathNavigation struct {
 	// CanPathToTargetsBelowSurface keeps targets inside blocks where they
 	// are instead of moving them up to the surface.
 	CanPathToTargetsBelowSurface bool
+
+	// wallClimber selects the navigation of Java's WallClimberNavigation:
+	// without a path, the mob walks straight at the position it wanted to
+	// reach and climbs what is in the way.
+	wallClimber    bool
+	pathToPosition *cube.Pos
 }
 
 func (n *PathNavigation) init(m *Mob) {
@@ -117,6 +123,10 @@ func (n *PathNavigation) RecomputePath(m *Mob) {
 // CreatePath finds a path to a position, ported from
 // GroundPathNavigation.createPath(BlockPos, int).
 func (n *PathNavigation) CreatePath(m *Mob, pos cube.Pos, reachRange int) *mobPath {
+	if n.wallClimber {
+		target := pos
+		n.pathToPosition = &target
+	}
 	if _, ok := m.tx.BlockLoaded(pos); !ok && !pos.OutOfBounds(m.tx.Range()) {
 		return nil
 	}
@@ -200,6 +210,14 @@ func (n *PathNavigation) MoveToPosReach(m *Mob, x, y, z float64, reachRange int,
 
 // MoveToEntity finds and follows a path to an entity.
 func (n *PathNavigation) MoveToEntity(m *Mob, e world.Entity, speedModifier float64) bool {
+	if n.wallClimber {
+		if path := n.CreatePathToEntity(m, e, 0); path != nil {
+			return n.MoveTo(m, path, speedModifier)
+		}
+		target := cube.PosFromVec3(e.Position())
+		n.pathToPosition, n.speedModifier = &target, speedModifier
+		return true
+	}
 	return n.MoveToEntityReach(m, e, 1, speedModifier)
 }
 
@@ -212,6 +230,10 @@ func (n *PathNavigation) MoveToEntityReach(m *Mob, e world.Entity, reachRange in
 
 // tickNavigation ports PathNavigation.tick.
 func (n *PathNavigation) tickNavigation(m *Mob) {
+	if n.wallClimber && n.IsDone() {
+		n.tickWallClimber(m)
+		return
+	}
 	n.tick++
 	if n.hasDelayedRecomputation {
 		n.RecomputePath(m)
@@ -232,6 +254,22 @@ func (n *PathNavigation) tickNavigation(m *Mob) {
 		target := n.path.entityPosAtNode(m.Width(), n.path.next)
 		m.AI.move.SetWantedPosition(target[0], n.groundY(m, target), target[2], n.speedModifier)
 	}
+}
+
+// tickWallClimber ports the tick of WallClimberNavigation without a path.
+func (n *PathNavigation) tickWallClimber(m *Mob) {
+	if n.pathToPosition == nil {
+		return
+	}
+	p := *n.pathToPosition
+	width := m.Width()
+	near := func(pos cube.Pos) bool { return pos.Vec3Centre().Sub(m.data.Pos).LenSqr() < width*width }
+	column := cube.PosFromVec3(mgl64.Vec3{float64(p.X()), m.data.Pos[1], float64(p.Z())})
+	if !near(p) && (m.data.Pos[1] <= float64(p.Y()) || !near(column)) {
+		m.AI.move.SetWantedPosition(float64(p.X()), float64(p.Y()), float64(p.Z()), n.speedModifier)
+		return
+	}
+	n.pathToPosition = nil
 }
 
 func (n *PathNavigation) groundY(m *Mob, target mgl64.Vec3) float64 {
