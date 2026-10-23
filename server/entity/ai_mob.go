@@ -463,6 +463,12 @@ func (ai *MobAI) Hurt(src world.DamageSource) {
 	}
 }
 
+// HurtRecently reports if the mob was hurt in the last half second, as
+// LivingEntity.wasHurtRecently.
+func (m *Mob) HurtRecently() bool {
+	return m.AI.lastDamage != nil && m.AI.tickCount-m.AI.lastDamageTime < 10
+}
+
 // DamageAttacker returns the entity responsible for damage, if any: the
 // attacker or the owner of a projectile, as DamageSource.getEntity.
 func DamageAttacker(src world.DamageSource) world.Entity { return damageAttacker(src) }

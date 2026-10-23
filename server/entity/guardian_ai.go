@@ -69,7 +69,7 @@ func (b *oceanBehaviour) registerGuardianGoals(m *Mob) {
 	}
 	b.stroll = stroll
 	ai.Goals.Add(4, &guardianAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}})
-	ai.Goals.Add(5, &moveTowardsRestrictionGoal{goalFlags: goalFlags{GoalMove | GoalLook}, speedModifier: 1})
+	ai.Goals.Add(5, &moveTowardsRestrictionGoal{goalFlags: goalFlags{GoalMove}, speedModifier: 1})
 	ai.Goals.Add(7, stroll)
 	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
 	lookGuardian := NewLookAtPlayerGoal(12)

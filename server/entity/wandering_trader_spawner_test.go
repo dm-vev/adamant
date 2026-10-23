@@ -21,7 +21,7 @@ func TestWanderingTraderStateSurvivesSaving(t *testing.T) {
 	decoded := &world.EntityData{}
 	WanderingTraderType.DecodeNBT(WanderingTraderType.EncodeNBT(data), decoded)
 	a, b := data.Data.(*wanderingTraderBehaviour), decoded.Data.(*wanderingTraderBehaviour)
-	if b.health.Health() != 13 || b.despawnDelay != 4321 || b.wanderTarget != a.wanderTarget || !b.hasWanderTarget || b.home != a.home {
+	if b.health.Health() != 13 || b.despawnDelay != 4321 || b.wanderTarget != a.wanderTarget || !b.hasWanderTarget || b.ai.home != a.ai.home {
 		t.Fatalf("restored trader %+v, want %+v", b, a)
 	}
 	if !b.offersGenerated || len(b.offers) != 1 || b.offers[0].Uses != 2 || !b.offers[0].Output.Equal(a.offers[0].Output) {
@@ -30,7 +30,7 @@ func TestWanderingTraderStateSurvivesSaving(t *testing.T) {
 
 	fresh := &world.EntityData{}
 	WanderingTraderType.DecodeNBT(WanderingTraderType.EncodeNBT(&world.EntityData{Data: wanderingTraderConfig{}.New()}), fresh)
-	if f := fresh.Data.(*wanderingTraderBehaviour); f.offersGenerated || f.hasWanderTarget || f.home.set() {
+	if f := fresh.Data.(*wanderingTraderBehaviour); f.offersGenerated || f.hasWanderTarget || f.ai.home.set() {
 		t.Fatalf("a fresh trader restored with %+v", f)
 	}
 }

@@ -154,7 +154,9 @@ func TestWanderingTraderDrinksInvisibilityAtNightAndMilkAtDay(t *testing.T) {
 			t.Fatalf("trader holds %v at night, want to drink invisibility", held)
 		}
 	})
-	for range 32 {
+	// The trader drinks for 32 ticks, and UseItemGoal empties its hand the
+	// next tick the goal selector checks its running goals.
+	for range 34 {
 		w.AdvanceTick()
 	}
 	<-w.Exec(func(tx *world.Tx) {
@@ -197,19 +199,20 @@ func TestWanderingTraderPanicsWhenHurt(t *testing.T) {
 		trader(tx, h).Hurt(1, entity.AttackDamageSource{Attacker: p})
 	})
 	// Panicking traders run to random spots nearby at panic speed, so measure
-	// the distance run rather than how far it ended up.
-	run, last := 0.0, start
-	for range 20 {
+	// how fast they run rather than how far they ended up.
+	fastest, last := 0.0, start
+	for range 40 {
 		w.AdvanceTick()
 		<-w.Exec(func(tx *world.Tx) {
 			pos := trader(tx, h).Position()
 			pos[1], last[1] = 0, 0
-			run, last = run+pos.Sub(last).Len(), pos
+			fastest, last = max(fastest, pos.Sub(last).Len()), pos
 		})
 	}
-	// A strolling trader covers at most 2.6 blocks in 20 ticks.
-	if run < 3.5 {
-		t.Fatalf("hurt trader ran %.2f blocks in a second, want it to panic", run)
+	// PanicGoal runs at half the movement speed of 0.7, which settles at
+	// 0.26 blocks a tick; a strolling trader walks at most 0.13.
+	if fastest < .2 {
+		t.Fatalf("hurt trader ran at most %.3f blocks a tick, want it to panic", fastest)
 	}
 }
 
@@ -402,5 +405,43 @@ func TestWanderingTradersSpawnAtTheVillageBellWithLlamas(t *testing.T) {
 			return
 		}
 		t.Fatal("no trader spawned in a thousand attempts")
+	})
+}
+
+// TestWanderingTraderStandsStillWhileTrading checks TradeWithPlayerGoal: a
+// trader holds still while a player trades with it, and a hurt trader ends
+// the trade and walks on.
+func TestWanderingTraderStandsStillWhileTrading(t *testing.T) {
+	w := traderTestWorld(t)
+	var h, customer *world.EntityHandle
+	start := mgl64.Vec3{.5, 64, .5}
+	<-w.Exec(func(tx *world.Tx) {
+		tr := addTrader(tx, start)
+		tr.SetWanderTarget(cube.Pos{14, 64, 0})
+		h = tr.H()
+		customer = addSurvivalPlayer(tx, mgl64.Vec3{2.5, 64, .5}).H()
+		if !tr.StartTrading(customer) {
+			t.Fatal("trader refused a customer")
+		}
+	})
+	for range 100 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		tr := trader(tx, h)
+		if d := horizontalDistance(tr.Position(), start); d > .5 {
+			t.Fatalf("trader walked %.2f blocks while trading", d)
+		}
+		p, _ := customer.Entity(tx)
+		tr.Hurt(1, entity.AttackDamageSource{Attacker: p})
+	})
+	for range 5 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		other := addSurvivalPlayer(tx, mgl64.Vec3{.5, 64, 2.5})
+		if !trader(tx, h).StartTrading(other.H()) {
+			t.Fatal("hurt trader kept trading with its customer")
+		}
 	})
 }
