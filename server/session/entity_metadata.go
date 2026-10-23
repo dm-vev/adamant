@@ -31,6 +31,7 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 
 	m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagHasGravity)
 	m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagClimb)
+	writeActorShape(e, networkID(e.H().Type()), m)
 	if g, ok := e.H().Type().(glint); ok && g.Glint() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagEnchanted)
 	}
@@ -47,38 +48,8 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 	if beh, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		s.addSpecificMetadata(beh.Behaviour(), m)
 	}
+	s.writeActorAppearance(e, m)
 	return m
-}
-
-type creakingState interface {
-	CreakingState() (state int32, swayTicks int32)
-}
-
-func entityProperties(e world.Entity) protocol.EntityProperties {
-	state, swayTicks, ok := creakingProperties(e)
-	if !ok {
-		if beh, hasBehaviour := e.(interface{ Behaviour() entity.Behaviour }); hasBehaviour {
-			state, swayTicks, ok = creakingProperties(beh.Behaviour())
-		}
-	}
-	if !ok {
-		return protocol.EntityProperties{}
-	}
-	return protocol.EntityProperties{
-		IntegerProperties: []protocol.IntegerEntityProperty{
-			{Index: 0, Value: state},
-			{Index: 1, Value: swayTicks},
-		},
-	}
-}
-
-func creakingProperties(e any) (state, swayTicks int32, ok bool) {
-	c, ok := e.(creakingState)
-	if !ok {
-		return 0, 0, false
-	}
-	state, swayTicks = c.CreakingState()
-	return state, swayTicks, true
 }
 
 func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {

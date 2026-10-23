@@ -779,26 +779,5 @@ func (s *Session) sendAvailableEntities(w *world.World) {
 		return
 	}
 	s.writePacket(&packet.AvailableActorIdentifiers{SerialisedEntityIdentifiers: serialisedEntityData})
-
-	for _, t := range w.EntityRegistry().Types() {
-		if t.EncodeEntity() == "minecraft:creaking" {
-			s.writePacket(&packet.SyncActorProperty{PropertyData: map[string]any{
-				"type": "minecraft:creaking",
-				"properties": []any{
-					map[string]any{
-						"name": "minecraft:creaking_state",
-						"type": int32(3),
-						"enum": []any{"neutral", "hostile_observed", "hostile_unobserved", "twitching", "crumbling"},
-					},
-					map[string]any{
-						"name": "minecraft:creaking_swaying_ticks",
-						"type": int32(0),
-						"min":  int32(0),
-						"max":  int32(6),
-					},
-				},
-			}})
-			break
-		}
-	}
+	s.sendActorProperties(w)
 }
