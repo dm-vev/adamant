@@ -59,6 +59,11 @@ func NewFromStructureNBT(data map[string]any, opts world.EntitySpawnOpts) (*worl
 	}
 	native, err := projectTemplateMobNBT(data)
 	if err != nil { return nil, err }
+	if native != nil {
+		if err := applyTrialEquipment(opts, native, id); err != nil {
+			return nil, err
+		}
+	}
 	return opts.New(t, javaNBTConfig{typeOf: t, data: data, native: native}), nil
 }
 

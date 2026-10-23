@@ -464,6 +464,23 @@ func encodeBlockEntityNBT(enc *nbt.Encoder, pos cube.Pos, nbtBlock world.NBTer) 
 	_ = enc.Encode(clientActorNBT(data, pos))
 }
 
+// clientUpdateNBT returns the block actor update data passed as the client of
+// the session knows it. The players a vault connects to are listed by actor
+// unique ID, and the client knows its own player by the ID of the session.
+func (s *Session) clientUpdateNBT(data map[string]any) map[string]any {
+	if players, ok := data["connected_players"].([]int64); ok && s.ent != nil {
+		own := s.ent.UniqueID()
+		ids := make([]int64, len(players))
+		for i, id := range players {
+			if ids[i] = id; id == own {
+				ids[i] = int64(selfEntityRuntimeID)
+			}
+		}
+		data["connected_players"] = ids
+	}
+	return data
+}
+
 // clientActorNBT returns the block actor compound clients are sent for a
 // block at pos with the NBT data passed: Bedrock's actor without the
 // adamant: keys holding state only the server uses.

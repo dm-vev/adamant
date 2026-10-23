@@ -208,6 +208,16 @@ type ServerOnlyNBTer interface {
 	ServerOnlyNBT()
 }
 
+// UpdateNBTer is implemented by block actors that BDS updates on clients with
+// a compound other than the one it saves, such as the item a vault displays.
+// UpdateNBT returns that compound, which is sent as it is when the block is
+// set, or nil to send none. Chunks still carry the compound returned by
+// EncodeNBT.
+type UpdateNBTer interface {
+	NBTer
+	UpdateNBT() map[string]any
+}
+
 // BlockActorNBT returns the block actor compound of a block at pos with the
 // NBT data passed, as Bedrock writes it: the data with the block's position,
 // and a BlockEntityVersion of 0 unless the data sets one. data is not

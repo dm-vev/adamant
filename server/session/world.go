@@ -764,6 +764,24 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			EventType: packet.LevelEventParticleLegacyEvent | kind,
 			Position:  vec64To32(pos),
 		})
+	case particle.TrialSpawnerDetection:
+		event := int32(packet.LevelEventParticlesTrialSpawnerDetection)
+		if pa.Ominous {
+			event = packet.LevelEventParticlesTrialSpawnerDetectionCharged
+		}
+		s.writePacket(&packet.LevelEvent{EventType: event, Position: vec64To32(pos), EventData: int32(pa.Players)})
+	case particle.TrialSpawnerSpawning:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesTrialSpawnerSpawning, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+	case particle.TrialSpawnerEjecting:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesTrialSpawnerEjecting, Position: vec64To32(pos)})
+	case particle.TrialSpawnerBecomeOminous:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticlesTrialSpawnerBecomeCharged, Position: vec64To32(pos)})
+	case particle.VaultActivate:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventAnimationVaultActivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+	case particle.VaultDeactivate:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventAnimationVaultDeactivate, Position: vec64To32(pos), EventData: int32(boolByte(pa.Ominous))})
+	case particle.VaultEjectItem:
+		s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventAnimationVaultEjectItem, Position: vec64To32(pos)})
 	}
 }
 

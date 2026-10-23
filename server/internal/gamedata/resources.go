@@ -85,6 +85,8 @@ func resourcePath(kind string) (string, string, error) {
 		return "assets/data/minecraft/tags/game_event", ".json", nil
 	case "entity_type_tag":
 		return "assets/data/minecraft/tags/entity_type", ".json", nil
+	case "trial_spawner":
+		return "assets/data/minecraft/trial_spawner", ".json", nil
 	default:
 		return "", "", fmt.Errorf("data: unsupported resource kind %q", kind)
 	}

@@ -32,7 +32,7 @@ func (s SpawnEgg) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *wor
 
 func isMobSpawner(b world.Block) bool {
 	name, _ := b.EncodeBlock()
-	return name == "minecraft:mob_spawner"
+	return name == "minecraft:mob_spawner" || name == "minecraft:trial_spawner"
 }
 
 // UseOnEntity spawns an entity at the target entity's position.

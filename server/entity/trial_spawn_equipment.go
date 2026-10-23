@@ -11,9 +11,10 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// applyTrialEquipment applies the EquipmentTable carried separately from a
-// trial SpawnData entity compound before the mob is inserted into its world.
-func applyTrialEquipment(opts world.EntitySpawnOpts, data *world.EntityData, id string) error {
+// applyTrialEquipment equips the native NBT of a mob with the EquipmentTable
+// its trial SpawnData carries beside the entity compound, before the mob
+// decodes it, as TrialSpawner.spawnMob equips the mob.
+func applyTrialEquipment(opts world.EntitySpawnOpts, native map[string]any, id string) error {
 	spawnData := opts.SpawnData
 	if spawnData == nil { return nil }
 	equipment, _ := spawnData["equipment"].(map[string]any)
@@ -25,8 +26,6 @@ func applyTrialEquipment(opts world.EntitySpawnOpts, data *world.EntityData, id 
 	random := vanilla.NewLegacyRandom(seed)
 	stacks, err := loot.Generate(table, seed, loot.Context{Random: &random, Origin: opts.Position, Entity: id})
 	if err != nil { return fmt.Errorf("generate trial equipment from %q: %w", table, err) }
-	native := CloneNativeMobNBT(data.NativeNBT)
-	if native == nil { native = make(map[string]any) }
 	gear := ReadNativeMobEquipment(native)
 	if gear.Armor == nil { gear.Armor = make([]NativeMobItem, 4) }
 	used := map[int]bool{}
@@ -47,7 +46,6 @@ func applyTrialEquipment(opts world.EntitySpawnOpts, data *world.EntityData, id 
 		}
 	}
 	for key, value := range EncodeNativeMobEquipment(gear) { native[key] = value }
-	data.NativeNBT = native
 	return nil
 }
 

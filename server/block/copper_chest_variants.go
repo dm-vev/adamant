@@ -43,9 +43,9 @@ func allVaults() []world.Block {
 	for state := VaultInactive; state <= VaultEjecting; state++ {
 		for _, ominous := range []bool{false, true} {
 			for _, facing := range []cube.Direction{cube.North, cube.East, cube.South, cube.West} {
-				vault := NewVault()
-				vault.State, vault.Ominous, vault.Facing = state, ominous, facing
-				blocks = append(blocks, vault)
+				// Registered states hold no block actor: each placed vault
+				// gets its own.
+				blocks = append(blocks, Vault{State: state, Ominous: ominous, Facing: facing})
 			}
 		}
 	}
@@ -56,9 +56,7 @@ func allTrialSpawners() []world.Block {
 	blocks := make([]world.Block, 0, 12)
 	for state := TrialSpawnerInactive; state <= TrialSpawnerCooldown; state++ {
 		for _, ominous := range []bool{false, true} {
-			spawner := NewTrialSpawner()
-			spawner.State, spawner.Ominous = state, ominous
-			blocks = append(blocks, spawner)
+			blocks = append(blocks, TrialSpawner{State: state, Ominous: ominous})
 		}
 	}
 	return blocks
