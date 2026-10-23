@@ -20,15 +20,6 @@ import (
 
 func (b *hostileState) mobAI() *MobAI { return &b.ai }
 
-// hostileUsesAI reports if the mobs of a kind are driven by a MobAI.
-func hostileUsesAI(kind string) bool {
-	switch kind {
-	case "minecraft:zombie", "minecraft:husk", "minecraft:zombie_villager", "minecraft:vex":
-		return true
-	}
-	return hostileSkeleton(kind) || hostileRaidMob(kind)
-}
-
 // hostileSkeleton reports if a kind is a skeleton, Java's AbstractSkeleton.
 func hostileSkeleton(kind string) bool {
 	switch kind {

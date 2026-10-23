@@ -725,3 +725,64 @@ func TestRavagerBitesAndKnocksBack(t *testing.T) {
 		t.Fatalf("ravager bit the player down to %v only", lowest)
 	}
 }
+
+// buildPool fills a walled pool of still water five blocks deep around the
+// origin on the floor of an AI test world.
+func buildPool(w *world.World) {
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -7; x <= 7; x++ {
+			for z := -7; z <= 7; z++ {
+				for y := 65; y <= 70; y++ {
+					if x == -7 || x == 7 || z == -7 || z == 7 {
+						tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+					} else if y <= 69 {
+						tx.SetBlock(cube.Pos{x, y, z}, block.Water{Still: true, Depth: 8}, nil)
+					}
+				}
+			}
+		}
+	})
+}
+
+// TestDrownedSwimsToPlayersInWater checks a drowned hunts a player in the
+// water by day and swims to it.
+func TestDrownedSwimsToPlayersInWater(t *testing.T) {
+	w := aiTestWorld(t)
+	w.SetTime(6000)
+	buildPool(w)
+	p := addAITestPlayer(w, mgl64.Vec3{4.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewDrowned(world.EntitySpawnOpts{Position: mgl64.Vec3{-4.5, 67, .5}}))
+	if lowest := lowestHealth(t, w, p, 400, nil); lowest == 20 {
+		t.Fatal("drowned did not reach the player in the water")
+	}
+}
+
+// TestDrownedLeavesPlayersOnLandByDay checks a drowned ignores a player on
+// land by day.
+func TestDrownedLeavesPlayersOnLandByDay(t *testing.T) {
+	w := aiTestWorld(t)
+	w.SetTime(6000)
+	p := addAITestPlayer(w, mgl64.Vec3{3.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewDrowned(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	if lowest := lowestHealth(t, w, p, 200, nil); lowest != 20 {
+		t.Fatalf("drowned hurt a player on land by day, lowest health %v", lowest)
+	}
+}
+
+// TestDrownedThrowsTridents checks a drowned holding a trident throws it.
+func TestDrownedThrowsTridents(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{8.5, 65, .5}, world.GameModeSurvival)
+	drowned, err := entity.NewFromStructureNBT(map[string]any{"id": "minecraft:drowned",
+		"equipment": map[string]any{"mainhand": map[string]any{"id": "minecraft:trident", "count": int32(1)}},
+	}, world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}, SpawnFinalized: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	addSpecies(w, drowned)
+	tridents := 0
+	lowestHealth(t, w, p, 200, func(tx *world.Tx) { tridents = max(tridents, countEntities(tx, "minecraft:thrown_trident")) })
+	if tridents == 0 {
+		t.Fatal("drowned threw no trident")
+	}
+}

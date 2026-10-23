@@ -44,6 +44,9 @@ type PathNavigation struct {
 	// reach and climbs what is in the way.
 	wallClimber    bool
 	pathToPosition *cube.Pos
+	// amphibious selects the navigation of Java's AmphibiousPathNavigation:
+	// the mob walks, and swims through water in every direction.
+	amphibious bool
 }
 
 func (n *PathNavigation) init(m *Mob) {
@@ -53,6 +56,10 @@ func (n *PathNavigation) init(m *Mob) {
 	n.maxDistanceToWaypoint = .5
 	n.maxVisitedNodes = int(math.Floor(m.AI.FollowRange * 16))
 }
+
+// SetAmphibious makes the mob walk and swim as Java's
+// AmphibiousPathNavigation moves it.
+func (n *PathNavigation) SetAmphibious(v bool) { n.amphibious, n.eval.amphibious = v, v }
 
 // SetCanFloat sets whether paths go through water the mob swims across.
 func (n *PathNavigation) SetCanFloat(v bool) { n.eval.canFloat = v }
@@ -273,6 +280,9 @@ func (n *PathNavigation) tickWallClimber(m *Mob) {
 }
 
 func (n *PathNavigation) groundY(m *Mob, target mgl64.Vec3) float64 {
+	if n.amphibious {
+		return target[1]
+	}
 	pos := cube.PosFromVec3(target)
 	if isAir(pathBlockAt(m.tx, pos.Side(cube.FaceDown))) {
 		return target[1]
@@ -313,6 +323,9 @@ func (n *PathNavigation) shouldTargetNextNode(m *Mob, pos mgl64.Vec3) bool {
 	current[1] = float64(n.path.nextNodePos().Y())
 	if pos.Sub(current).Len() >= 2 {
 		return false
+	}
+	if n.canMoveDirectly(m, pos, n.path.entityPosAtNode(m.Width(), n.path.next)) {
+		return true
 	}
 	nextPos := n.path.nodePos(n.path.next + 1)
 	next := mgl64.Vec3{float64(nextPos.X()) + .5, float64(nextPos.Y()), float64(nextPos.Z()) + .5}
@@ -406,11 +419,24 @@ func canSeeSky(tx *world.Tx, pos cube.Pos) bool {
 // canUpdatePath reports if the mob may find a new path: when it stands,
 // swims or rides.
 func (n *PathNavigation) canUpdatePath(m *Mob) bool {
-	return m.OnGround() || m.InLiquid() || m.Riding() != nil
+	return n.amphibious || m.OnGround() || m.InLiquid() || m.Riding() != nil
 }
 
-// tempMobPos ports GroundPathNavigation.getTempMobPos.
+// canMoveDirectly ports PathNavigation.canMoveDirectly: a swimming
+// amphibious mob heads straight for the next node it sees.
+func (n *PathNavigation) canMoveDirectly(m *Mob, from, to mgl64.Vec3) bool {
+	if !n.amphibious || !m.InLiquid() {
+		return false
+	}
+	return clipMiss(m.tx, from, mgl64.Vec3{to[0], to[1] + m.Height()*.5, to[2]})
+}
+
+// tempMobPos ports GroundPathNavigation.getTempMobPos, and that of
+// AmphibiousPathNavigation: the middle of the mob.
 func (n *PathNavigation) tempMobPos(m *Mob) mgl64.Vec3 {
+	if n.amphibious {
+		return mgl64.Vec3{m.data.Pos[0], m.data.Pos[1] + m.Height()*.5, m.data.Pos[2]}
+	}
 	return mgl64.Vec3{m.data.Pos[0], float64(n.surfaceY(m)), m.data.Pos[2]}
 }
 
@@ -434,6 +460,9 @@ func (n *PathNavigation) surfaceY(m *Mob) int {
 func (n *PathNavigation) IsStableDestination(tx *world.Tx, pos cube.Pos) bool {
 	below := pos.Side(cube.FaceDown)
 	b := pathBlockAt(tx, below)
+	if n.amphibious {
+		return !isAir(b)
+	}
 	return fullCollisionCube(tx, below, b) && b.Model().FaceSolid(below, cube.FaceUp, tx)
 }
 

@@ -486,9 +486,12 @@ type oceanBehaviour struct {
 	dropChances                                                                     map[string]float64
 	beamTarget                                                                      *world.EntityHandle
 	vehicleStrafe, vehicleForward                                                   float64
-	navigator                                                                       Navigator
 	attackCooldown, thornsCooldown                                                  int
 	swim                                                                            mgl64.Vec3
+
+	// The MobAI of a drowned and its state.
+	ai                                  MobAI
+	searchingForLand, swimming, drawing bool
 }
 
 func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -511,43 +514,12 @@ func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		b.dashCooldown--
 	}
 	if b.kind == oceanDrowned {
-		return b.tickDrowned(e, tx)
+		return b.aiTickDrowned(e, tx)
 	}
 	if b.kind == oceanGuardian || b.kind == oceanElderGuardian {
 		return b.tickGuardian(e, tx)
 	}
 	return b.tickNautilus(e, tx)
-}
-func (b *oceanBehaviour) tickDrowned(e *Ent, tx *world.Tx) *Movement {
-	target := oceanNearestTarget(tx, e.Position(), b.followRange)
-	if target == nil {
-		b.navigator.Path, b.navigator.Index = nil, 0
-		b.wander(e, tx, .03)
-		return b.move(e, tx)
-	}
-	delta := target.Position().Sub(e.Position())
-	if _, inWater := tx.Liquid(cube.PosFromVec3(e.Position())); !inWater && b.pathToward(e, tx, target.Position()) {
-		return b.move(e, tx)
-	}
-	if _, ok := b.mainHand.Item().(item.Trident); ok && delta.Len() <= 10 && b.attackCooldown == 0 {
-		aim := delta
-		magnitude := math.Hypot(delta[0], delta[2])
-		aim[1] += .2 * magnitude
-		if aim.Len() != 0 {
-			velocity := aim.Normalize().Mul(1.6)
-			tx.AddEntity(NewTrident(world.EntitySpawnOpts{Position: e.Position(), Velocity: velocity}, e, b.mainHand, 0, 0, false))
-		}
-		b.attackCooldown = 40
-	} else if delta.Len() < 1.4 && b.attackCooldown == 0 {
-		if l, ok := target.(Living); ok {
-			l.Hurt(3, AttackDamageSource{Attacker: e})
-			l.KnockBack(e.Position(), .3, .1)
-		}
-		b.attackCooldown = 20
-	} else {
-		b.swimToward(e, target.Position(), .09)
-	}
-	return b.move(e, tx)
 }
 func (b *oceanBehaviour) tickGuardian(e *Ent, tx *world.Tx) *Movement {
 	if b.kind == oceanElderGuardian && b.ticks%1200 == 0 {
@@ -715,25 +687,6 @@ func oceanNearestTarget(tx *world.Tx, p mgl64.Vec3, r float64) world.Entity {
 		}
 	}
 	return best
-}
-func (b *oceanBehaviour) pathToward(e *Ent, tx *world.Tx, target mgl64.Vec3) bool {
-	start := cube.PosFromVec3(e.Position())
-	goal := cube.PosFromVec3(target)
-	b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 128, AllowWater: true}, navigatorTick(e))
-	if waypoint, ok := b.navigator.Tick(e.Position(), navigatorTick(e), .6); ok {
-		delta := waypoint.Sub(e.Position())
-		delta[1] = 0
-		if delta.Len() < .35 {
-			b.navigator.Index++
-			return true
-		}
-		direction := delta.Normalize()
-		e.data.Vel[0], e.data.Vel[2] = direction[0]*b.speed, direction[2]*b.speed
-		e.data.Rot[0] = math.Atan2(-direction[0], direction[2]) * 180 / math.Pi
-		return true
-	}
-	b.navigator.Path = nil
-	return false
 }
 func (m *oceanMob) FinalizeSpawn(reason string, random *vanilla.Random) {
 	b := m.b()

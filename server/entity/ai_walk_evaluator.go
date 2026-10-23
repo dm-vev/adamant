@@ -19,6 +19,9 @@ type walkNodeEvaluator struct {
 	// amphibious selects the evaluation of AmphibiousNodeEvaluator.
 	amphibious bool
 
+	// The maluses an amphibious evaluator changes while it finds a path.
+	oldMaluses map[PathType]float64
+
 	m                                      *Mob
 	nodes                                  map[int64]*pathNodeData
 	types                                  map[int64]PathType
@@ -36,6 +39,19 @@ func direction2D(i int) int { return [4]int{2, 3, 0, 1}[i] }
 
 func (w *walkNodeEvaluator) prepare(m *Mob) {
 	w.m = m
+	if w.amphibious {
+		// AmphibiousNodeEvaluator.prepare: swimming costs nothing, walking
+		// costs and the water's edge too.
+		w.oldMaluses = make(map[PathType]float64, 2)
+		for _, t := range [...]PathType{PathWalkable, PathWaterBorder} {
+			if malus, ok := m.AI.maluses[t]; ok {
+				w.oldMaluses[t] = malus
+			}
+		}
+		m.AI.SetPathfindingMalus(PathWater, 0)
+		m.AI.SetPathfindingMalus(PathWalkable, 6)
+		m.AI.SetPathfindingMalus(PathWaterBorder, 4)
+	}
 	w.nodes = make(map[int64]*pathNodeData, 128)
 	w.types = make(map[int64]PathType, 256)
 	w.collisions = make(map[cube.BBox]bool, 16)
@@ -45,6 +61,15 @@ func (w *walkNodeEvaluator) prepare(m *Mob) {
 }
 
 func (w *walkNodeEvaluator) done() {
+	if w.amphibious && w.m != nil {
+		for _, t := range [...]PathType{PathWalkable, PathWaterBorder} {
+			if malus, ok := w.oldMaluses[t]; ok {
+				w.m.AI.maluses[t] = malus
+			} else {
+				delete(w.m.AI.maluses, t)
+			}
+		}
+	}
 	w.m, w.nodes, w.types, w.collisions = nil, nil, nil, nil
 }
 
@@ -75,9 +100,14 @@ func pathBlockAt(tx *world.Tx, pos cube.Pos) world.Block {
 	return b
 }
 
-// start ports WalkNodeEvaluator.getStart.
+// start ports WalkNodeEvaluator.getStart, and that of
+// AmphibiousNodeEvaluator for a mob in water.
 func (w *walkNodeEvaluator) start() *pathNodeData {
 	m := w.m
+	if w.amphibious && m.InWater() {
+		bb := m.BBox()
+		return w.startNode(int(math.Floor(bb.Min()[0])), int(math.Floor(bb.Min()[1]+.5)), int(math.Floor(bb.Min()[2])))
+	}
 	pos := m.data.Pos
 	x, z := int(math.Floor(pos[0])), int(math.Floor(pos[2]))
 	startY := int(math.Floor(pos[1]))
@@ -153,7 +183,40 @@ func (w *walkNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) i
 			p++
 		}
 	}
+	if w.amphibious {
+		// AmphibiousNodeEvaluator.getNeighbors: a swimmer also moves up and
+		// down through water.
+		valid := func(n *pathNodeData) bool {
+			return n != nil && !n.closed && (n.costMalus >= 0 || pos.costMalus < 0) && n.typ == PathWater
+		}
+		up := w.findAcceptedNode(pos.x, pos.y+1, pos.z, max(0, jumpSize-1), height, directionUp, current)
+		down := w.findAcceptedNode(pos.x, pos.y-1, pos.z, jumpSize, height, directionDown, current)
+		if valid(up) {
+			out[p] = up
+			p++
+		}
+		if valid(down) && current != PathTrapdoor {
+			out[p] = down
+			p++
+		}
+	}
 	return p
+}
+
+// directionUp and directionDown follow the horizontal directions for the
+// vertical neighbours of amphibious paths.
+const (
+	directionUp = iota + 4
+	directionDown
+)
+
+// directionStep returns the horizontal step of a direction, none for up and
+// down.
+func directionStep(dir int) cube.Pos {
+	if dir < len(horizontalDirections) {
+		return horizontalDirections[dir]
+	}
+	return cube.Pos{}
 }
 
 // diagonalValid ports WalkNodeEvaluator.isDiagonalValid(Node, Node, Node).
@@ -286,7 +349,7 @@ func (w *walkNodeEvaluator) tryJumpOn(x, y, z, jumpSize int, nodeHeight float64,
 	if width >= 1 || above.typ != PathOpen && above.typ != PathWalkable {
 		return above
 	}
-	d := horizontalDirections[dir]
+	d := directionStep(dir)
 	cx, cz := float64(x-d[0])+.5, float64(z-d[2])+.5
 	half := width / 2
 	floorFrom := w.floorLevel(cube.PosFromVec3(mgl64.Vec3{cx, float64(y + 1), cz}))
@@ -376,7 +439,7 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 	for dx := range w.entityWidth {
 		for dy := range w.entityHeight {
 			for dz := range w.entityDepth {
-				t := pathTypeStatic(w.m.tx, cube.Pos{x + dx, y + dy, z + dz})
+				t := w.blockType(cube.Pos{x + dx, y + dy, z + dz})
 				if t == PathDoorWoodClosed && w.canOpenDoors && w.canPassDoors {
 					t = PathWalkableDoor
 				}
@@ -416,7 +479,7 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 			highest, highestMalus = t, malus
 		}
 	}
-	current := pathTypeStatic(w.m.tx, cube.Pos{x, y, z})
+	current := w.blockType(cube.Pos{x, y, z})
 	if w.entityWidth > 1 {
 		cheaper := w.m.PathfindingMalus(current) < highestMalus
 		if cheaper && w.m.PathfindingMalus(PathBigMobsCloseToDanger) < highestMalus {
@@ -428,6 +491,21 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 		return PathOpen
 	}
 	return highest
+}
+
+// blockType returns the path type of a block, as WalkNodeEvaluator.getPathType
+// and that of AmphibiousNodeEvaluator, to which water next to a solid block
+// is its border.
+func (w *walkNodeEvaluator) blockType(pos cube.Pos) PathType {
+	if !w.amphibious || pathTypeFromState(w.m.tx, pos) != PathWater {
+		return pathTypeStatic(w.m.tx, pos)
+	}
+	for _, f := range cube.Faces() {
+		if pathTypeFromState(w.m.tx, pos.Side(f)) == PathBlocked {
+			return PathWaterBorder
+		}
+	}
+	return PathWater
 }
 
 // pathType returns the path type of a single block for the mob, as

@@ -2,7 +2,6 @@ package entity
 
 import (
 	"hash/fnv"
-	"math"
 	"math/rand/v2"
 	"time"
 
@@ -332,8 +331,7 @@ type hostileState struct {
 	mc                                        *MovementComputer
 	random                                    vanilla.Random
 	speed, attack                             float64
-	cooldown, wander, cureTicks               int
-	navigator                                 Navigator
+	cureTicks                                 int
 	dead                                      bool
 	kind                                      string
 	baby, canBreakDoors, canPickupLoot        bool
@@ -529,9 +527,6 @@ func (m *HostileMob) Tick(tx *world.Tx, n int64) {
 	}
 }
 func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.cooldown > 0 {
-		b.cooldown--
-	}
 	if b.kind == "minecraft:zombie" || b.kind == "minecraft:zombie_villager" || b.kind == "minecraft:skeleton" || b.kind == "minecraft:stray" || b.kind == "minecraft:bogged" || b.kind == "minecraft:parched" {
 		b.burnUndead(e, tx)
 	}
@@ -558,62 +553,7 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	b.joinRaid(e, tx)
-	if hostileUsesAI(b.kind) {
-		return b.aiTick(e)
-	}
-	var target world.Entity
-	best := math.MaxFloat64
-	box := cube.Box(-24, -8, -24, 24, 8, 24).Translate(e.Position())
-	for candidate := range tx.EntitiesWithin(box) {
-		if candidate == e {
-			continue
-		}
-		id := candidate.H().Type().EncodeEntity()
-		hostileTarget := id == "minecraft:player"
-		if id == "minecraft:villager" || id == "minecraft:wandering_trader" || id == "minecraft:iron_golem" {
-			hostileTarget = true
-		}
-		if !hostileTarget {
-			continue
-		}
-		l, ok := candidate.(Living)
-		if !ok || l.Dead() {
-			continue
-		}
-		d := candidate.Position().Sub(e.Position()).Len()
-		if d < best && d < 24 {
-			target = candidate
-			best = d
-		}
-	}
-	if target == nil {
-		b.wanderTick(e, tx)
-		return nil
-	}
-	if best < 1.6 && b.cooldown == 0 {
-		damage := b.attack
-		if w, ok := b.main.Item().(item.Weapon); ok {
-			damage += w.AttackDamage()
-		}
-		if l, ok := target.(Living); ok {
-			dealt, vulnerable := l.Hurt(damage, AttackDamageSource{Attacker: e})
-			if l.Dead() && (b.kind == "minecraft:zombie" || b.kind == "minecraft:zombie_villager" || b.kind == "minecraft:husk") {
-				(&HostileMob{Ent: e}).convertVillager(tx, target)
-			}
-			if b.kind == "minecraft:husk" && b.main.Empty() && vulnerable && dealt > 0 {
-				ticks := 140 * int(tx.LocalDifficulty(cube.PosFromVec3(e.Position())).Effective)
-				l.AddEffect(effect.New(effect.Hunger, 0, time.Duration(ticks)*time.Second/20))
-			}
-			l.KnockBack(e.Position(), .4, .2)
-		}
-		b.cooldown = 20
-	}
-	if best > 1.4 {
-		b.move(e, tx, target.Position())
-	} else {
-		b.stop(e, tx)
-	}
-	return nil
+	return b.aiTick(e)
 }
 
 func hostileRaidMob(kind string) bool {
@@ -652,50 +592,6 @@ func (b *hostileState) joinRaid(e *Ent, tx *world.Tx) {
 		return
 	}
 	b.raidID, b.raidWave, b.raidLeader = 0, 0, false
-}
-func (b *hostileState) move(e *Ent, tx *world.Tx, p mgl64.Vec3) {
-	d := p.Sub(e.data.Pos)
-	if b.kind != "minecraft:vex" {
-		d[1] = 0
-	}
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.data.Vel
-	v[0], v[2] = d[0]*b.speed, d[2]*b.speed
-	if b.kind == "minecraft:vex" {
-		v[1] = d[1] * b.speed
-	}
-	r := e.data.Rot
-	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-}
-func (b *hostileState) stop(e *Ent, tx *world.Tx) {
-	v := e.data.Vel
-	v[0], v[2] = 0, 0
-	m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-}
-func (b *hostileState) wanderTick(e *Ent, tx *world.Tx) {
-	if b.wander > 0 {
-		b.wander--
-	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.wander == 0 {
-		b.wander = 50
-		start := cube.PosFromVec3(e.Position())
-		goal := start.Add(cube.Pos{int(b.random.NextInt(11)) - 5, 0, int(b.random.NextInt(11)) - 5})
-		b.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
-	}
-	if p, ok := b.navigator.Tick(e.Position(), navigatorTick(e), .6); ok {
-		if p.Sub(e.Position()).Len() < .3 {
-			b.navigator.Index++
-		} else {
-			b.move(e, tx, p)
-		}
-	} else {
-		b.stop(e, tx)
-	}
 }
 func (m *HostileMob) Health() float64        { return m.state().health.Health() }
 func (m *HostileMob) MaxHealth() float64     { return m.state().health.MaxHealth() }
