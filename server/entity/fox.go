@@ -361,7 +361,7 @@ func (f *Fox) FinalizeSpawn(_ string, r *vanilla.Random) {
 	}
 	s := f.b()
 	variant := 0
-	biome := f.tx.Biome(cube.PosFromVec3(f.Position())).String()
+	biome := world.JavaBiomeName(f.tx.Biome(cube.PosFromVec3(f.Position())))
 	if strings.Contains(biome, "snowy_taiga") || strings.Contains(biome, "grove") {
 		variant = 1
 	}

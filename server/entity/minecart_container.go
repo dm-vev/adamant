@@ -168,7 +168,7 @@ func (m *MinecartContainer) generateLoot(tx *world.Tx, user item.User) {
 		panic(err)
 	}
 	random := tx.LootRandomSequence(sequence, b.lootSeed)
-	ctx := loot.Context{Random: random, RandomSequence: tx.LootRandomSequence, Origin: m.Position(), Biome: tx.Biome(cube.PosFromVec3(m.Position())).String()}
+	ctx := loot.Context{Random: random, RandomSequence: tx.LootRandomSequence, Origin: m.Position(), Biome: world.JavaBiomeName(tx.Biome(cube.PosFromVec3(m.Position())))}
 	if entity, ok := user.(world.Entity); ok {
 		ctx.ThisEntity, ctx.Player = entity, entity
 		if luck, ok := user.(interface{ Luck() float64 }); ok {

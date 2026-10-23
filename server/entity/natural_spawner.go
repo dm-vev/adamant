@@ -77,7 +77,7 @@ func NaturalSpawnTick(tx *world.Tx) {
 			continue
 		}
 		pos[1] = tx.Range()[0] + int(random.NextInt(int32(colY-tx.Range()[0])))
-		rows, err := world.JavaBiomeNaturalSpawns(tx.Biome(pos).String())
+		rows, err := world.JavaBiomeNaturalSpawns(world.JavaBiomeName(tx.Biome(pos)))
 		if err != nil {
 			if !errors.Is(err, world.ErrJavaBiomeNaturalSpawnsUnavailable) {
 				panic(err)

@@ -172,7 +172,7 @@ func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 // patrolBiomeAllowed reports Java's CAN_PILLAGER_PATROL_SPAWN biome
 // attribute, which is off only in mushroom fields.
 func patrolBiomeAllowed(tx *world.Tx, pos cube.Pos) bool {
-	return tx.Biome(pos).String() != "mushroom_island"
+	return world.JavaBiomeName(tx.Biome(pos)) != "mushroom_fields"
 }
 
 // spawnPatrolMember ports PatrolSpawner.spawnPatrolMember with

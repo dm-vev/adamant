@@ -515,7 +515,7 @@ func (v *Villager) BreedWith(tx *world.Tx, partner *Villager, random *vanilla.Ra
 	}
 	v.behaviour().age = 6000
 	partner.behaviour().age = 6000
-	variant := villagerTypeForBiome(tx.Biome(cube.PosFromVec3(v.Position())).String())
+	variant := villagerTypeForBiome(world.JavaBiomeName(tx.Biome(cube.PosFromVec3(v.Position()))))
 	roll := random.NextDouble()
 	if roll >= .5 {
 		variant = v.Variant()
@@ -539,7 +539,7 @@ func (v *Villager) FinalizeSpawn(reason string, _ *vanilla.Random) {
 		b.xp = 0
 		b.offers = nil
 	}
-	b.villagerType = villagerTypeForBiome(v.tx.Biome(cube.PosFromVec3(v.Position())).String())
+	b.villagerType = villagerTypeForBiome(world.JavaBiomeName(v.tx.Biome(cube.PosFromVec3(v.Position()))))
 	b.finalized = true
 }
 func villagerTypeForBiome(name string) string {

@@ -565,7 +565,7 @@ func executeCondition(words []string, src cmd.Source, ctx cmd.ExecutionContext, 
 			return 0, 0, err
 		}
 		want := strings.TrimPrefix(words[4], "minecraft:")
-		return boolCount(strings.TrimPrefix(tx.Biome(pos).String(), "minecraft:") == want), 5, nil
+		return boolCount(world.JavaBiomeName(tx.Biome(pos)) == want), 5, nil
 	case "blocks":
 		if len(words) < 11 {
 			return 0, 0, errExecuteSyntax
