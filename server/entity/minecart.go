@@ -316,11 +316,12 @@ func (b *MinecartBehaviour) DismountAll(e *Ent, tx *world.Tx) {
 func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, rail world.Block, pos, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
 	b.mc.onGround = true
 	vector, vectorOk := b.nextRailPos(tx, pos)
-	if vectorOk {
-		pos[1] = vector[1]
-	} else {
-		pos[1] = float64(railPos[1]) + 0.5
-	}
+	// As in Java's moveAlongTrack, the minecart moves at the height of the
+	// rail block, one higher on a slope, and takes its height on the track
+	// once it moved. Moving at its height on the slope instead ran it into the
+	// block under the next rail uphill and left it inside the ground at the
+	// foot of a slope, which it then fell through.
+	pos[1] = float64(railPos[1])
 
 	poweredRail := false
 	powered := false
@@ -340,6 +341,9 @@ func (b *MinecartBehaviour) moveOnRails(e *Ent, tx *world.Tx, railPos cube.Pos, 
 		vel[0] -= 0.0078125
 	case block.RailAscendingWest:
 		vel[0] += 0.0078125
+	}
+	if dir.Ascending() {
+		pos[1]++
 	}
 
 	facing := minecartMatrix[int(dir)]
@@ -548,10 +552,19 @@ func (b *MinecartBehaviour) nextRailPos(tx *world.Tx, pos mgl64.Vec3) (mgl64.Vec
 	return pos, true
 }
 
+// moveWithCollision moves the minecart by delta, which on rails is its
+// velocity scaled for a passenger and clamped to the maximum speed. Like
+// Java's Entity.move, the velocity keeps its value but along an axis the
+// movement collided on: taking the movement as the new velocity scaled it down
+// again every tick, so a ridden minecart never passed 3.6 m/s on powered rails.
 func (b *MinecartBehaviour) moveWithCollision(e *Ent, tx *world.Tx, pos, delta, vel mgl64.Vec3) (mgl64.Vec3, mgl64.Vec3) {
-	dPos, newVel := b.mc.checkCollision(tx, e, pos, delta)
+	dPos, moved := b.mc.checkCollision(tx, e, pos, delta)
 	pos = pos.Add(dPos)
-	vel[0], vel[1], vel[2] = newVel[0], newVel[1], newVel[2]
+	for axis := range 3 {
+		if moved[axis] != delta[axis] {
+			vel[axis] = 0
+		}
+	}
 	return pos, vel
 }
 

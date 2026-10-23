@@ -506,7 +506,9 @@ func (r Rail) BreakInfo() BreakInfo {
 
 // Model ...
 func (Rail) Model() world.BlockModel {
-	return model.SnowLayer{Layers: 1}
+	// Rails have no collision box: entities pass through them and stand on
+	// the block below, and minecarts move at the height of the rail block.
+	return model.Empty{}
 }
 
 // SideClosed ...
@@ -565,7 +567,9 @@ func (r PoweredRail) BreakInfo() BreakInfo {
 
 // Model ...
 func (PoweredRail) Model() world.BlockModel {
-	return model.SnowLayer{Layers: 1}
+	// Rails have no collision box: entities pass through them and stand on
+	// the block below, and minecarts move at the height of the rail block.
+	return model.Empty{}
 }
 
 // SideClosed ...
@@ -650,7 +654,9 @@ func (r DetectorRail) BreakInfo() BreakInfo {
 
 // Model ...
 func (DetectorRail) Model() world.BlockModel {
-	return model.SnowLayer{Layers: 1}
+	// Rails have no collision box: entities pass through them and stand on
+	// the block below, and minecarts move at the height of the rail block.
+	return model.Empty{}
 }
 
 // SideClosed ...
@@ -741,7 +747,9 @@ func (r ActivatorRail) BreakInfo() BreakInfo {
 
 // Model ...
 func (ActivatorRail) Model() world.BlockModel {
-	return model.SnowLayer{Layers: 1}
+	// Rails have no collision box: entities pass through them and stand on
+	// the block below, and minecarts move at the height of the rail block.
+	return model.Empty{}
 }
 
 // SideClosed ...
