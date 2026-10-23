@@ -76,6 +76,9 @@ func (t oceanWildlifeType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if t.id == "minecraft:turtle" {
 		d.Data.(*oceanWildlifeBehaviour).breeding.decodeNBT(m)
 	}
+	if equipment := ReadNativeMobEquipment(m); t.id == "minecraft:dolphin" && len(equipment.Mainhand) > 0 {
+		d.Data.(*oceanWildlifeBehaviour).held = item.ReadNBT(equipment.Mainhand[0].Raw, nil)
+	}
 }
 
 // turtleHomePos reads the home_pos tag of a turtle, an int array as Java's
@@ -99,6 +102,11 @@ func (t oceanWildlifeType) EncodeNBT(d *world.EntityData) map[string]any {
 	}
 	if b.id == "minecraft:dolphin" {
 		m = MergeNativeMobNBT(m, map[string]any{"GotFish": boolByte(b.gotFish), "HasTreasure": boolByte(b.hasTreasure), "TreasurePosX": int32(b.treasureX), "TreasurePosY": int32(b.treasureY), "TreasurePosZ": int32(b.treasureZ), "Moistness": int32(b.moistness)})
+		if !b.held.Empty() {
+			name, damage := b.held.Item().EncodeItem()
+			equipment := NativeMobEquipment{Mainhand: []NativeMobItem{{Name: name, Count: byte(b.held.Count()), Damage: int32(damage), WasPickedUp: 1, Raw: item.WriteNBT(b.held, true)}}}
+			m = MergeNativeMobNBT(m, EncodeNativeMobEquipment(equipment))
+		}
 	}
 	if b.id == "minecraft:glow_squid" {
 		m = MergeNativeMobNBT(m, map[string]any{"DarkTicksRemaining": int32(b.darkTicks)})
@@ -131,7 +139,7 @@ func (c oceanWildlifeConfig) New() *oceanWildlifeBehaviour {
 	if c.id == "minecraft:dolphin" && moistness == 0 {
 		moistness = 2400
 	}
-	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true}, speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ, nextWander: 1,
+	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true}, speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ,
 		panic: panicState{water: 7}}
 }
 
@@ -141,21 +149,22 @@ type Turtle struct{ *oceanWildlife }
 type Dolphin struct{ *oceanWildlife }
 type oceanWildlife struct{ *Ent }
 type oceanWildlifeBehaviour struct {
-	id                                                                                                                string
-	health                                                                                                            *HealthManager
-	effects                                                                                                           *EffectManager
-	movement                                                                                                          *MovementComputer
-	speed                                                                                                             float64
-	age, air, moistness, ticks, nextWander, darkTicks, layTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
-	swim                                                                                                              mgl64.Vec3
-	breeding                                                                                                          breeding
-	hasEgg, gotFish, hasTreasure, homeSet, dead                                                                       bool
-	panic                                                                                                             panicState
-	panicGoal                                                                                                         mgl64.Vec3
-	tempt                                                                                                             temptGoal
-	// ai is the MobAI squids run on.
+	id                                                                                                    string
+	health                                                                                                *HealthManager
+	effects                                                                                               *EffectManager
+	movement                                                                                              *MovementComputer
+	speed                                                                                                 float64
+	age, air, moistness, ticks, darkTicks, layTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
+	breeding                                                                                              breeding
+	hasEgg, gotFish, hasTreasure, homeSet, dead                                                           bool
+	panic                                                                                                 panicState
+	panicGoal                                                                                             mgl64.Vec3
+	tempt                                                                                                 temptGoal
+	// ai is the MobAI squids and dolphins run on.
 	ai    MobAI
 	squid squidState
+	// held is the item a dolphin plays with.
+	held item.Stack
 }
 
 func (m *oceanWildlife) b() *oceanWildlifeBehaviour { return m.Behaviour().(*oceanWildlifeBehaviour) }
@@ -170,6 +179,9 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	}
 	if b.squidKind() {
 		return b.tickSquid(e, tx)
+	}
+	if b.id == "minecraft:dolphin" {
+		return b.tickDolphin(e, tx)
 	}
 	b.ticks++
 	_, inWater := tx.Liquid(cube.PosFromVec3(e.Position()))
@@ -259,80 +271,6 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 			vel[0] *= .8
 			vel[2] *= .8
 		}
-	case "minecraft:dolphin":
-		if b.nextWander > 0 {
-			b.nextWander--
-		}
-		if b.gotFish && !b.hasTreasure {
-			if target, found, _ := tx.World().FindNearestMapFeature("#minecraft:dolphin_located", cube.PosFromVec3(e.Position()), 50, false); found {
-				b.treasureX, b.treasureY, b.treasureZ = target.Position.X(), target.Position.Y(), target.Position.Z()
-				b.hasTreasure = true
-			} else {
-				b.gotFish = false
-			}
-		}
-		if inWater {
-			b.air = 300
-			var playItem *Ent
-			if !b.hasTreasure {
-				for handle := range tx.Entities() {
-					ent, ok := handle.(*Ent)
-					if !ok || ent.Position().Sub(e.Position()).LenSqr() >= 64 {
-						continue
-					}
-					if _, ok := tx.Liquid(cube.PosFromVec3(ent.Position())); !ok {
-						continue
-					}
-					ib, ok := ent.Behaviour().(*ItemBehaviour)
-					if !ok || ib.i.Empty() || ib.pickupDelay > 0 {
-						continue
-					}
-					playItem = ent
-					break
-				}
-			}
-			if playItem != nil {
-				vel = wildlifeSteer(e, vel, playItem.Position(), .07*(b.speed/.25), .32*(b.speed/.25))
-				if playItem.Position().Sub(e.Position()).LenSqr() < 1 {
-					d := playItem.Position().Sub(e.Position())
-					if d.Len() > 0 {
-						playItem.SetVelocity(d.Normalize().Mul(.3))
-					}
-				}
-			} else if b.hasTreasure {
-				goal := mgl64.Vec3{float64(b.treasureX) + .5, float64(b.treasureY), float64(b.treasureZ) + .5}
-				if goal.Sub(e.Position()).LenSqr() < 16 {
-					b.hasTreasure = false
-					b.gotFish = false
-				}
-				vel = wildlifeSteer(e, vel, goal, .045*(b.speed/.25), .32*(b.speed/.25))
-			} else {
-				var player world.Entity
-				best := 100.0
-				for candidate := range tx.Players() {
-					swimmer, ok := candidate.(interface{ Swimming() bool })
-					if !ok || !swimmer.Swimming() {
-						continue
-					}
-					distance := candidate.Position().Sub(e.Position()).LenSqr()
-					if distance < best {
-						player, best = candidate, distance
-					}
-				}
-				if player != nil {
-					vel = wildlifeSteer(e, vel, player.Position(), .025*(b.speed/.25), .3*(b.speed/.25))
-				} else if b.nextWander <= 0 {
-					b.chooseSwim(e, tx)
-					b.nextWander = 80
-				}
-			}
-		} else {
-			b.moistness--
-			if b.moistness <= 0 && b.ticks%20 == 0 {
-				(&oceanWildlife{Ent: e}).Hurt(1, DrowningDamageSource{})
-			}
-		}
-		b.air = 4800
 	}
 	e.data.Vel = vel
 	rot := e.data.Rot
@@ -340,18 +278,6 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		rot[0] = math.Atan2(-vel[0], vel[2]) * 180 / math.Pi
 	}
 	return b.movement.TickMovement(e, e.Position(), vel, rot, rot, tx).apply(e)
-}
-func (b *oceanWildlifeBehaviour) chooseSwim(e *Ent, tx *world.Tx) {
-	seed := int64(e.Position()[0]*341873128712+e.Position()[1]*132897987541+e.Position()[2]*42317861) + int64(b.ticks)
-	r := vanilla.NewXoroshiroRandom(seed)
-	b.nextWander = 40 + int(r.NextInt(81))
-	b.swim = mgl64.Vec3{r.NextDouble()*2 - 1, r.NextDouble() - .5, r.NextDouble()*2 - 1}
-	if _, ok := tx.Liquid(cube.PosFromVec3(e.Position())); !ok {
-		b.swim[1] = 0
-	}
-	if b.swim.Len() > 0 {
-		b.swim = b.swim.Normalize()
-	}
 }
 func wildlifeSteer(e *Ent, vel, target mgl64.Vec3, accel, limit float64) mgl64.Vec3 {
 	d := target.Sub(e.Position())
@@ -390,7 +316,7 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	if m.Dead() || d <= 0 {
 		return 0, false
 	}
-	if b.squidKind() {
+	if b.squidKind() || b.id == "minecraft:dolphin" {
 		var ok bool
 		if d, ok = b.ai.DamageCooldown(m.tx, d); !ok {
 			return 0, false
@@ -421,6 +347,11 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	if m.Dead() {
 		b.dead = true
 		m.viewAction(DeathAction{})
+		if !b.held.Empty() {
+			// Dolphin.pickUpItem guarantees the drop of what it picked up.
+			m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, b.held))
+			b.held = item.Stack{}
+		}
 		dropAllDeathLoot(m.tx, m, src)
 		_ = m.CloseIn(m.tx)
 	}
@@ -470,40 +401,36 @@ func (m *oceanWildlife) Interact(tx *world.Tx, user item.User, ctx *item.UseCont
 	case "minecraft:turtle":
 		return feedBreeder(&Turtle{m}, user, ctx)
 	case "minecraft:dolphin":
-		if held.Empty() {
+		// Dolphin.mobInteract: a fish makes a baby dolphin grow up faster
+		// and leads an adult to treasure.
+		if !dolphinFood(held) {
 			return false
 		}
-		food := false
-		switch fish := held.Item().(type) {
-		case item.Cod:
-			food = !fish.Cooked
-		case item.Salmon:
-			food = !fish.Cooked
-		case item.TropicalFish, item.Pufferfish:
-			food = true
-		}
-		if !food {
-			return false
-		}
-		ctx.SubtractFromCount(1)
 		tx.PlaySound(m.Position(), sound.Custom{Name: "entity.dolphin.eat", Volume: 1, Pitch: 1})
+		ctx.SubtractFromCount(1)
 		if b.age < 0 {
-			b.age += max(1, -b.age/10)
-			if b.age > 0 {
-				b.age = 0
-			}
+			// AgeableMob.ageUp with getSpeedUpSecondsWhenFeeding.
+			b.age = min(0, b.age+int(float32(-b.age/20)*.1)*20)
 		} else {
 			b.gotFish = true
-			b.hasTreasure = false
-			if target, found, _ := tx.World().FindNearestMapFeature("#minecraft:dolphin_located", cube.PosFromVec3(m.Position()), 50, false); found {
-				b.treasureX, b.treasureY, b.treasureZ = target.Position.X(), target.Position.Y(), target.Position.Z()
-				b.hasTreasure = true
-			}
 		}
 		return true
 	}
 	return false
 }
+
+// dolphinFood reports if a stack is in #fishes.
+func dolphinFood(s item.Stack) bool {
+	if s.Empty() {
+		return false
+	}
+	switch s.Item().(type) {
+	case item.Cod, item.Salmon, item.TropicalFish, item.Pufferfish:
+		return true
+	}
+	return false
+}
+
 func dropTurtleGrowth(e *Ent, tx *world.Tx) {
 	const id = "minecraft:gameplay/turtle_grow"
 	sequence, err := loot.RandomSequence(id)

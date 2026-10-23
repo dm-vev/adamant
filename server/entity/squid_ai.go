@@ -26,10 +26,10 @@ func (b *oceanWildlifeBehaviour) squidKind() bool {
 	return b.id == "minecraft:squid" || b.id == "minecraft:glow_squid"
 }
 
-// mobAI returns the MobAI of a squid, or nil for the turtles and dolphins
+// mobAI returns the MobAI of a squid or dolphin, or nil for the turtles
 // that do not run on one.
 func (b *oceanWildlifeBehaviour) mobAI() *MobAI {
-	if !b.squidKind() {
+	if b.id == "minecraft:turtle" {
 		return nil
 	}
 	return &b.ai
@@ -93,9 +93,9 @@ func (b *oceanWildlifeBehaviour) registerSquidGoals(m *Mob) {
 
 // travel ports Squid.travel: a squid moves only by the push its tentacles
 // give it.
-func (b *oceanWildlifeBehaviour) travel(m *Mob, _ mgl64.Vec3) bool {
-	if !b.squidKind() {
-		return false
+func (b *oceanWildlifeBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
+	if b.id == "minecraft:dolphin" {
+		return b.travelDolphin(m, input)
 	}
 	m.AI.moveSelf(m, m.data.Vel)
 	return true

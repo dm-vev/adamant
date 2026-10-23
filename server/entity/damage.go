@@ -69,6 +69,8 @@ type (
 	// GenericDamageSource is damage without a cause of its own, as Java's
 	// generic damage type, which a bee that lost its stinger dies of.
 	GenericDamageSource struct{}
+	// DryOutDamageSource is the damage a dolphin takes drying out on land.
+	DryOutDamageSource struct{}
 	// IndirectMagicDamageSource is magic damage dealt through something,
 	// such as the beam of a guardian.
 	IndirectMagicDamageSource struct {
@@ -85,6 +87,10 @@ type (
 	}
 )
 
+func (DryOutDamageSource) ReducedByArmour() bool      { return false }
+func (DryOutDamageSource) ReducedByResistance() bool  { return true }
+func (DryOutDamageSource) Fire() bool                 { return false }
+func (DryOutDamageSource) IgnoreTotem() bool          { return false }
 func (GenericDamageSource) ReducedByArmour() bool     { return false }
 func (GenericDamageSource) ReducedByResistance() bool { return true }
 func (GenericDamageSource) Fire() bool                { return false }
