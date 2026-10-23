@@ -28,18 +28,22 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 	cases := []struct {
 		id   string
 		food world.Item
+		// ticks the animal has to come close, ten seconds if zero.
+		ticks int
 	}{
-		{"minecraft:cow", item.Wheat{}},
-		{"minecraft:mooshroom", item.Wheat{}},
-		{"minecraft:sheep", item.Wheat{}},
-		{"minecraft:pig", block.Carrot{}},
-		{"minecraft:pig", item.CarrotOnAStick{}},
-		{"minecraft:chicken", block.WheatSeeds{}},
-		{"minecraft:horse", item.GoldenCarrot{}},
-		{"minecraft:llama", block.HayBale{}},
-		{"minecraft:rabbit", block.Carrot{}},
-		{"minecraft:turtle", block.SeaGrass{}},
-		{"minecraft:panda", block.Bamboo{}},
+		{id: "minecraft:cow", food: item.Wheat{}},
+		{id: "minecraft:mooshroom", food: item.Wheat{}},
+		{id: "minecraft:sheep", food: item.Wheat{}},
+		{id: "minecraft:pig", food: block.Carrot{}},
+		{id: "minecraft:pig", food: item.CarrotOnAStick{}},
+		{id: "minecraft:chicken", food: block.WheatSeeds{}},
+		{id: "minecraft:horse", food: item.GoldenCarrot{}},
+		{id: "minecraft:llama", food: block.HayBale{}},
+		{id: "minecraft:rabbit", food: block.Carrot{}},
+		// TurtleMoveControl keeps a turtle on land crawling at under a
+		// fiftieth of a block a tick.
+		{id: "minecraft:turtle", food: block.SeaGrass{}, ticks: 800},
+		{id: "minecraft:panda", food: block.Bamboo{}},
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
@@ -50,8 +54,11 @@ func TestAnimalsFollowPlayersHoldingTheirFood(t *testing.T) {
 				h = spawnAnimal(t, tx, c.id, .5, nil)
 				addSurvivalPlayer(tx, playerPos).SetHeldItems(item.NewStack(c.food, 1), item.Stack{})
 			})
-			closest := 100.0
-			for range 200 {
+			closest, ticks := 100.0, c.ticks
+			if ticks == 0 {
+				ticks = 200
+			}
+			for range ticks {
 				w.AdvanceTick()
 				<-w.Exec(func(tx *world.Tx) { closest = min(closest, horizontalDistance(entityPos(tx, h), playerPos)) })
 			}

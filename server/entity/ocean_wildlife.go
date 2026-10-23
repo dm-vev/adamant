@@ -1,10 +1,8 @@
 package entity
 
 import (
-	"math"
 	"math/rand/v2"
 
-	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
@@ -139,8 +137,7 @@ func (c oceanWildlifeConfig) New() *oceanWildlifeBehaviour {
 	if c.id == "minecraft:dolphin" && moistness == 0 {
 		moistness = 2400
 	}
-	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .02, Drag: .04, DragBeforeGravity: true}, speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ,
-		panic: panicState{water: 7}}
+	return &oceanWildlifeBehaviour{id: c.id, health: NewHealthManager(h, c.maxHealth), effects: NewEffectManager(), speed: .25, age: c.age, air: air, moistness: moistness, darkTicks: c.darkTicks, homeX: c.homeX, homeY: c.homeY, homeZ: c.homeZ, homeSet: c.homeSet, hasEgg: c.hasEgg, gotFish: c.gotFish, hasTreasure: c.hasTreasure, treasureX: c.treasureX, treasureY: c.treasureY, treasureZ: c.treasureZ}
 }
 
 type Squid struct{ *oceanWildlife }
@@ -149,22 +146,23 @@ type Turtle struct{ *oceanWildlife }
 type Dolphin struct{ *oceanWildlife }
 type oceanWildlife struct{ *Ent }
 type oceanWildlifeBehaviour struct {
-	id                                                                                                    string
-	health                                                                                                *HealthManager
-	effects                                                                                               *EffectManager
-	movement                                                                                              *MovementComputer
-	speed                                                                                                 float64
-	age, air, moistness, ticks, darkTicks, layTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
-	breeding                                                                                              breeding
-	hasEgg, gotFish, hasTreasure, homeSet, dead                                                           bool
-	panic                                                                                                 panicState
-	panicGoal                                                                                             mgl64.Vec3
-	tempt                                                                                                 temptGoal
+	id                                                                                   string
+	health                                                                               *HealthManager
+	effects                                                                              *EffectManager
+	speed                                                                                float64
+	age, air, moistness, darkTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
+	breeding                                                                             breeding
+	hasEgg, gotFish, hasTreasure, homeSet, dead                                          bool
 	// ai is the MobAI squids and dolphins run on.
 	ai    MobAI
 	squid squidState
 	// held is the item a dolphin plays with.
 	held item.Stack
+	// turtle, turtleShown and turtlePanic are the state of a turtle, the
+	// flags its viewers were last shown and its panic goal.
+	turtle      turtleState
+	turtleShown turtleShownState
+	turtlePanic *PanicGoal
 }
 
 func (m *oceanWildlife) b() *oceanWildlifeBehaviour { return m.Behaviour().(*oceanWildlifeBehaviour) }
@@ -183,128 +181,7 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.id == "minecraft:dolphin" {
 		return b.tickDolphin(e, tx)
 	}
-	b.ticks++
-	_, inWater := tx.Liquid(cube.PosFromVec3(e.Position()))
-	vel := e.data.Vel
-	var partner mgl64.Vec3
-	var inLove bool
-	if b.id == "minecraft:turtle" {
-		if b.age == -1 {
-			dropTurtleGrowth(e, tx)
-		}
-		partner, inLove = tickBreeding(&Turtle{&oceanWildlife{Ent: e}}, tx)
-	}
-	switch b.id {
-	case "minecraft:turtle":
-		if !b.homeSet {
-			p := cube.PosFromVec3(e.Position())
-			b.homeX, b.homeY, b.homeZ = p.X(), p.Y(), p.Z()
-			b.homeSet = true
-		}
-		home := cube.Pos{b.homeX, b.homeY, b.homeZ}
-		target := home.Vec3().Add(mgl64.Vec3{.5, 0, .5})
-		if inLove {
-			// TurtleBreedGoal: the turtle heads for its partner.
-			target = partner
-		}
-		// TurtlePanicGoal: a hurt turtle heads for water within seven blocks,
-		// or a random spot nearby, at 1.2 times its speed.
-		panicking := false
-		if b.panic.shouldPanic(tx.CurrentTick()) {
-			if !b.panic.active || b.panicGoal.Sub(e.Position()).Len() < 1 {
-				random := vanilla.NewLegacyRandom(rand.Int64())
-				m := randomPosMob{tx: tx, pos: e.Position(), home: noHome, profile: GroundProfile{Width: 1.2, Height: .4}, random: &random}
-				goal, ok := b.panic.target(e, m)
-				b.panic.active, b.panicGoal = ok, goal.Vec3Middle()
-			}
-			panicking = b.panic.active
-		} else {
-			b.panic.active = false
-		}
-		if panicking {
-			target = b.panicGoal
-		}
-		// TemptGoal: a turtle follows a player holding seagrass at 1.1 times
-		// its speed until it is 2.5 blocks away.
-		tempted := false
-		if !panicking && !inLove && !b.hasEgg {
-			if p, ok := b.tempt.next(e, tx, func(s item.Stack) bool { return itemNamed(s, "minecraft:seagrass") }, false); ok {
-				tempted, target = true, p.Position()
-			}
-		} else {
-			b.tempt.stop()
-		}
-		if tempted && e.Position().Sub(target).LenSqr() < 2.5*2.5 {
-			vel[0], vel[2] = 0, 0
-		} else if inWater {
-			vel = wildlifeSteer(e, vel, target, .025*(b.speed/.25), .12*(b.speed/.25))
-		} else if panicking || tempted || inLove {
-			// TurtleMoveControl halves the speed of turtles on land.
-			modifier := 1.0
-			if panicking {
-				modifier = 1.2
-			} else if tempted {
-				modifier = 1.1
-			}
-			if d := target.Sub(e.Position()); math.Hypot(d[0], d[2]) > 0 {
-				d[1] = 0
-				d = d.Normalize().Mul(groundSpeed(max(.25*modifier/2, .06), 1))
-				vel[0], vel[2] = d[0], d[2]
-			}
-		} else if b.hasEgg {
-			if home.Vec3().Sub(cube.PosFromVec3(e.Position()).Vec3()).Len() <= 1 {
-				if _, ok := tx.Block(home.Side(cube.FaceDown)).(block.Sand); ok {
-					b.layTicks++
-					if b.layTicks >= 200 {
-						wildlifeLayEgg(tx, home)
-						b.hasEgg = false
-						b.layTicks = 0
-						// TurtleLayEggGoal: the turtle may fall in love
-						// again right away.
-						b.breeding.inLove = 600
-					}
-				}
-			} else {
-				vel = wildlifeSteer(e, vel, target, .02*(b.speed/.25), .1*(b.speed/.25))
-			}
-		} else {
-			vel[0] *= .8
-			vel[2] *= .8
-		}
-	}
-	e.data.Vel = vel
-	rot := e.data.Rot
-	if vel[0]*vel[0]+vel[2]*vel[2] > .0001 {
-		rot[0] = math.Atan2(-vel[0], vel[2]) * 180 / math.Pi
-	}
-	return b.movement.TickMovement(e, e.Position(), vel, rot, rot, tx).apply(e)
-}
-func wildlifeSteer(e *Ent, vel, target mgl64.Vec3, accel, limit float64) mgl64.Vec3 {
-	d := target.Sub(e.Position())
-	if d.Len() == 0 {
-		return vel
-	}
-	vel = vel.Add(d.Normalize().Mul(accel))
-	if vel.Len() > limit {
-		vel = vel.Normalize().Mul(limit)
-	}
-	return vel
-}
-func wildlifeLayEgg(tx *world.Tx, pos cube.Pos) {
-	if _, ok := tx.Block(pos.Side(cube.FaceDown)).(block.Sand); !ok {
-		return
-	}
-	egg := block.TurtleEgg{Eggs: 1}
-	if current, ok := tx.Block(pos).(block.TurtleEgg); ok {
-		egg = current
-		if egg.Eggs < 4 {
-			egg.Eggs++
-		}
-	} else {
-		r := vanilla.NewXoroshiroRandom(int64(pos.X()*341873128712 + pos.Z()*132897987541))
-		egg.Eggs = uint8(r.NextInt(4) + 1)
-	}
-	tx.SetBlock(pos, egg, nil)
+	return b.tickTurtle(e, tx)
 }
 
 func (m *oceanWildlife) Health() float64        { return m.b().health.Health() }
@@ -316,16 +193,13 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	if m.Dead() || d <= 0 {
 		return 0, false
 	}
-	if b.squidKind() || b.id == "minecraft:dolphin" {
-		var ok bool
-		if d, ok = b.ai.DamageCooldown(m.tx, d); !ok {
-			return 0, false
-		}
-		b.ai.Hurt(src)
+	var ok bool
+	if d, ok = b.ai.DamageCooldown(m.tx, d); !ok {
+		return 0, false
 	}
+	b.ai.Hurt(src)
 	b.health.AddHealth(-d)
 	if b.id == "minecraft:turtle" {
-		b.panic.hurt(src, m.tx.CurrentTick())
 		resetLove(&Turtle{m})
 	}
 	m.viewAction(HurtAction{})
@@ -492,7 +366,7 @@ func (t *Turtle) SetHomePos(pos cube.Pos) {
 func (t *Turtle) HomePos() cube.Pos { b := t.b(); return cube.Pos{b.homeX, b.homeY, b.homeZ} }
 
 // Panicking reports whether the turtle runs from danger.
-func (t *Turtle) Panicking() bool { return t.b().panic.active }
+func (t *Turtle) Panicking() bool { p := t.b().turtlePanic; return p != nil && p.running }
 
 // InLove reports whether the turtle is in love.
 func (t *Turtle) InLove() bool { return t.b().breeding.InLove() }

@@ -128,6 +128,13 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		if e.Standing() {
 			setActorFlag(m, protocol.EntityDataFlagStanding)
 		}
+	case *entity.Turtle:
+		if e.HasEgg() {
+			setActorFlag(m, protocol.EntityDataFlagPregnant)
+		}
+		if e.LayingEgg() {
+			setActorFlag(m, protocol.EntityDataFlagLayingEgg)
+		}
 	case *entity.Ocelot:
 		if e.Trusting() {
 			setActorFlag(m, protocol.EntityDataFlagTrusting)

@@ -69,8 +69,10 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 		{id: "minecraft:cat", attribute: .3, modifier: 1.5},
 		{id: "minecraft:fox", attribute: .3, modifier: 2.2},
 		{id: "minecraft:polar_bear", nbt: map[string]any{"Age": int32(-24000)}, attribute: .25, modifier: 2},
-		// TurtleMoveControl halves the speed of turtles on land.
-		{id: "minecraft:turtle", attribute: .15, modifier: 1},
+		// TurtleMoveControl halves the speed of a turtle on land, to no less
+		// than 0.06, before easing it an eighth of the way to its target
+		// of 0.3 every tick, which settles at 0.09.
+		{id: "minecraft:turtle", attribute: .09, modifier: 1},
 		{id: "minecraft:strider", attribute: .175, modifier: 1.65},
 		{id: "minecraft:goat", attribute: .2, modifier: 2},
 		{id: "minecraft:sniffer", attribute: .1, modifier: 2},
