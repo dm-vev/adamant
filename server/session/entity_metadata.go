@@ -208,7 +208,8 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if h, ok := e.(minecartDamage); ok {
 		m[protocol.EntityDataKeyHurt] = int32(h.RollingAmplitude())
 		m[protocol.EntityDataKeyHurtDirection] = int32(h.RollingDirection())
-		m[protocol.EntityDataKeyStructuralIntegrity] = float32(h.Damage())
+		// BDS sends the damage of a vehicle as an int.
+		m[protocol.EntityDataKeyStructuralIntegrity] = int32(h.Damage())
 	}
 	if r, ok := e.(rowTime); ok {
 		m[protocol.EntityDataKeyRowTimeLeft] = r.RowTimeLeft()
@@ -221,7 +222,7 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		}
 	}
 	if c, ok := e.(controllingSeat); ok {
-		m[protocol.EntityDataKeyControllingSeatIndex] = c.ControllingSeatIndex()
+		m[protocol.EntityDataKeyControllingSeatIndex] = byte(c.ControllingSeatIndex())
 	}
 	if t, ok := e.(interactText); ok {
 		if text := t.InteractText(); text != "" {
@@ -316,7 +317,7 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		addMountMetadata(mount.MountState(), m)
 	}
 	if iv, ok := e.(hurtDuration); ok {
-		m[protocol.EntityDataKeyHurt] = uint8(iv.HurtDuration().Milliseconds() / 50)
+		m[protocol.EntityDataKeyHurt] = int32(iv.HurtDuration().Milliseconds() / 50)
 	}
 	if pi, ok := e.(armourStand); ok {
 		m[protocol.EntityDataKeyPoseIndex] = int32(pi.PoseIndex())

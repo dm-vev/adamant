@@ -737,7 +737,7 @@ type EntityRegistryConfig struct {
 	// share beside each type's own codec, such as the status effects of mobs.
 	EncodeSharedNBT func(data *EntityData) map[string]any
 	DecodeSharedNBT func(data *EntityData, m map[string]any)
-	Item             func(opts EntitySpawnOpts, it any) *EntityHandle
+	Item            func(opts EntitySpawnOpts, it any) *EntityHandle
 	// Painting creates a painting occupying pos and facing away from its wall,
 	// choosing a canvas that fits. It returns nil if none fits.
 	Painting func(tx *Tx, pos cube.Pos, facing cube.Direction) *EntityHandle
@@ -853,10 +853,12 @@ func (reg EntityRegistry) Lookup(name string) (EntityType, bool) {
 // types whose names differ: clients show nothing for minecraft:evoker or
 // minecraft:tropical_fish and the legacy, pre-1.14 mob for minecraft:villager.
 var bedrockEntityIdentifiers = map[string]string{
-	"minecraft:villager":        "minecraft:villager_v2",
-	"minecraft:zombie_villager": "minecraft:zombie_villager_v2",
-	"minecraft:evoker":          "minecraft:evocation_illager",
-	"minecraft:tropical_fish":   "minecraft:tropicalfish",
+	"minecraft:villager":           "minecraft:villager_v2",
+	"minecraft:zombie_villager":    "minecraft:zombie_villager_v2",
+	"minecraft:evoker":             "minecraft:evocation_illager",
+	"minecraft:tropical_fish":      "minecraft:tropicalfish",
+	"minecraft:evoker_fangs":       "minecraft:evocation_fang",
+	"minecraft:breeze_wind_charge": "minecraft:breeze_wind_charge_projectile",
 }
 
 // registeredEntityNames is the inverse of bedrockEntityIdentifiers.

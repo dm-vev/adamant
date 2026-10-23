@@ -12,10 +12,12 @@ import (
 // holding either name load them.
 func TestBedrockEntityIdentifiers(t *testing.T) {
 	for name, bedrock := range map[string]string{
-		"minecraft:villager":        "minecraft:villager_v2",
-		"minecraft:zombie_villager": "minecraft:zombie_villager_v2",
-		"minecraft:evoker":          "minecraft:evocation_illager",
-		"minecraft:tropical_fish":   "minecraft:tropicalfish",
+		"minecraft:villager":           "minecraft:villager_v2",
+		"minecraft:zombie_villager":    "minecraft:zombie_villager_v2",
+		"minecraft:evoker":             "minecraft:evocation_illager",
+		"minecraft:tropical_fish":      "minecraft:tropicalfish",
+		"minecraft:evoker_fangs":       "minecraft:evocation_fang",
+		"minecraft:breeze_wind_charge": "minecraft:breeze_wind_charge_projectile",
 	} {
 		if got := world.BedrockEntityIdentifier(name); got != bedrock {
 			t.Errorf("BedrockEntityIdentifier(%s) = %s, want %s", name, got, bedrock)

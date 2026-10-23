@@ -318,6 +318,10 @@ var bedrockActorShapes = map[string]bedrockShapes{
 	"minecraft:zombie_nautilus":    {{0.875, 0.95, 1}},
 	"minecraft:zombie_pigman":      {{0.6, 1.9, 1}, {0.98, 1.96, 0.5}},
 	"minecraft:zombie_villager_v2": {{0.6, 1.9, 1}, {0.98, 1.96, 0.5}},
+	// Actors other than mobs whose shape differs from their Java box.
+	"minecraft:fireworks_rocket":       {{0.25, 0.25, 1}},
+	"minecraft:lightning_bolt":         {{0.6, 1.8, 1}},
+	"minecraft:wind_charge_projectile": {{0.3125, 0.3125, 1}},
 }
 
 var bedrockActorFlags = map[string][]uint8{
@@ -412,4 +416,18 @@ var bedrockActorFlags = map[string][]uint8{
 	"minecraft:zombie_nautilus":    {protocol.EntityDataFlagSwim, protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity, protocol.EntityDataFlagHiddenWhenInvisible},
 	"minecraft:zombie_pigman":      {protocol.EntityDataFlagClimb, protocol.EntityDataFlagWalk, protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity, protocol.EntityDataFlagFireImmune, protocol.EntityDataFlagHiddenWhenInvisible},
 	"minecraft:zombie_villager_v2": {protocol.EntityDataFlagClimb, protocol.EntityDataFlagWalk, protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity, protocol.EntityDataFlagHiddenWhenInvisible},
+	// Actors other than mobs.
+	"minecraft:armor_stand":            {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity, protocol.EntityDataFlagHiddenWhenInvisible},
+	"minecraft:arrow":                  {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity},
+	"minecraft:egg":                    {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity},
+	"minecraft:ender_crystal":          {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity, protocol.EntityDataFlagFireImmune, protocol.EntityDataFlagUsesLegacyFriction},
+	"minecraft:evocation_fang":         {},
+	"minecraft:falling_block":          {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity},
+	"minecraft:fireworks_rocket":       {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity},
+	"minecraft:lightning_bolt":         {protocol.EntityDataFlagUsesLegacyFriction},
+	"minecraft:snowball":               {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity},
+	"minecraft:splash_potion":          {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity},
+	"minecraft:tnt":                    {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity, protocol.EntityDataFlagUsesLegacyFriction},
+	"minecraft:wind_charge_projectile": {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity},
+	"minecraft:xp_orb":                 {protocol.EntityDataFlagHasCollision, protocol.EntityDataFlagHasGravity, protocol.EntityDataFlagUsesLegacyFriction},
 }
