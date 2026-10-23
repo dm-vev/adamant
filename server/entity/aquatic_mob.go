@@ -7,8 +7,8 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -43,7 +43,6 @@ func (t aquaticMobType) Open(tx *world.Tx, h *world.EntityHandle, data *world.En
 		_, _ = hash.Write([]byte(h.UUID().String()))
 		behaviour := data.Data.(*AquaticMobBehaviour)
 		behaviour.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
-		behaviour.nextSchoolTick = 200 + int(behaviour.random.NextInt(200)%20)
 	}
 	base := &AquaticMob{Ent: &Ent{tx: tx, handle: h, data: data}}
 	switch t.id {
@@ -254,34 +253,43 @@ func (c AquaticMobConfig) New() *AquaticMobBehaviour {
 	if !c.healthSet && health <= 0 {
 		health = maxHealth
 	}
-	speed := .1
-	if c.ID == "minecraft:axolotl" {
+	// Fish keep the movement speed of 0.7 every Mob has, tadpoles 1.
+	speed := .7
+	if c.ID == "minecraft:axolotl" || c.ID == "minecraft:tadpole" {
 		speed = 1
 	}
-	return &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, speed: speed, schoolGroup: &aquaticSchoolGroupData{size: 1}, random: vanilla.NewLegacyRandom(int64(c.Variant))}
+	return &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, speed: speed, schoolSize: 1, random: vanilla.NewLegacyRandom(int64(c.Variant))}
 }
 
 type AquaticMobBehaviour struct {
-	health                                                                                                                                                                       *HealthManager
-	effects                                                                                                                                                                      *EffectManager
-	id                                                                                                                                                                           string
-	variant, bucketVariant, age, puffState, airTicks, inflateCounter, deflateTimer, playDeadTicks, attackCooldown, huntingCooldown, ticks, nextSchoolTick, panicTicks int
-	fromBucket, dead, panicFromSet                                                                                                                                    bool
+	health                                                *HealthManager
+	effects                                               *EffectManager
+	id                                                    string
+	variant, bucketVariant, age, puffState, airTicks      int
+	inflateCounter, deflateTimer                          int
+	playDeadTicks, attackCooldown, huntingCooldown, ticks int
+	fromBucket, dead                                      bool
 	// breeding is the love and growth state of axolotls; tadpoles only use
 	// its age lock.
 	breeding breeding
-	panicFrom                                                                                                                                                                    mgl64.Vec3
-	target, schoolLeader                                                                                                                                                         *world.EntityHandle
-	schoolGroup                                                                                                                                                                  *aquaticSchoolGroupData
-	movement                                                                                                                                                                     *MovementComputer
-	speed                                                                                                                                                                        float64
-	random                                                                                                                                                                       vanilla.Random
-	navPath                                                                                                                                                                      []cube.Pos
-	navIndex, navTicks                                                                                                                                                           int
-	navGoal                                                                                                                                                                      cube.Pos
-	navGoalSet                                                                                                                                                                   bool
-	swimGoal                                                                                                                                                                     mgl64.Vec3
-	swimGoalSet                                                                                                                                                                  bool
+	target   *world.EntityHandle
+	// ai is the MobAI fish swim with. Axolotls move by movement.
+	ai       MobAI
+	panic    *PanicGoal
+	movement *MovementComputer
+	speed    float64
+	random   vanilla.Random
+	// leader, leaderState and schoolSize are those of Java's
+	// AbstractSchoolingFish: the fish followed and the size of the school a
+	// leader leads.
+	leader      *world.EntityHandle
+	leaderState *AquaticMobBehaviour
+	schoolSize  int
+	// The path an axolotl swims along.
+	navPath            []cube.Pos
+	navIndex, navTicks int
+	navGoal            cube.Pos
+	navGoalSet         bool
 }
 type AquaticMob struct{ *Ent }
 type Axolotl struct{ *AquaticMob }
@@ -292,6 +300,7 @@ func (a *Axolotl) Rehydrate() {
 	b := a.behaviour()
 	b.airTicks = max(b.airTicks-1800, 0)
 }
+
 type Cod struct{ *AquaticMob }
 type Pufferfish struct{ *AquaticMob }
 type Salmon struct{ *AquaticMob }
@@ -307,133 +316,35 @@ func (b *AquaticMobBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dead {
 		return nil
 	}
+	if b.id != "minecraft:axolotl" {
+		return b.tickFish(e, tx)
+	}
 	pos := cube.PosFromVec3(e.Position())
 	_, inWater := tx.Liquid(pos)
-	airLimit := 300
-	if b.id == "minecraft:axolotl" {
-		airLimit = 6000
-	}
 	if inWater {
 		b.airTicks = 0
 	} else {
 		b.airTicks++
-		if b.airTicks > airLimit && b.airTicks%20 == 0 {
+		if b.airTicks > 6000 && b.airTicks%20 == 0 {
 			(&AquaticMob{Ent: e}).Hurt(2, DrowningDamageSource{})
 			if b.dead {
 				return nil
 			}
 		}
 	}
-	schoolLeader := b.schoolingLeader(e, tx)
-	fleeTarget, fleeSpeed, fleeing := aquaticFleeTarget(b, e, tx)
-	if inWater && !fleeing && b.id != "minecraft:axolotl" && schoolLeader == nil && !b.swimGoalSet && b.random.NextInt(40) == 0 {
-		if goal, ok := randomAquaticGoal(b, e, tx); ok {
-			b.swimGoal, b.swimGoalSet = goal, true
-		}
-	}
-	vel := e.data.Vel
-	if b.id == "minecraft:axolotl" {
-		partner, inLove := tickBreeding(&Axolotl{&AquaticMob{Ent: e}}, tx)
-		vel = b.tickAxolotl(e, tx, vel, partner, inLove)
-	}
+	partner, inLove := tickBreeding(&Axolotl{&AquaticMob{Ent: e}}, tx)
+	vel := b.tickAxolotl(e, tx, e.data.Vel, partner, inLove)
 	if inWater {
 		b.movement.Gravity = 0
 		vel = vel.Mul(.9)
-		if fleeing {
-			vel = vel.Add(aquaticSteer(b, e, tx, fleeTarget, b.speed*fleeSpeed))
-		} else if schoolLeader != nil {
-			vel = vel.Add(aquaticSteer(b, e, tx, schoolLeader.Position(), b.speed))
-		} else if b.swimGoalSet {
-			if e.Position().Sub(b.swimGoal).LenSqr() < .5 {
-				b.swimGoalSet = false
-			} else {
-				vel = vel.Add(aquaticSteer(b, e, tx, b.swimGoal, b.speed))
-			}
-		}
 	} else {
 		b.movement.Gravity = .08
-		b.swimGoalSet = false
-		if b.id != "minecraft:axolotl" && b.movement.OnGround() && b.movement.CollidedVertically() {
-			vel = vel.Add(mgl64.Vec3{float64(b.random.NextFloat())*.1 - .05, .4, float64(b.random.NextFloat())*.1 - .05})
-			tx.PlaySound(e.Position(), sound.Custom{Name: aquaticFlopSound(b.id), Volume: 1, Pitch: 1})
-		}
 	}
-	if b.id == "minecraft:pufferfish" {
-		b.tickPuffer(e, tx)
-	}
-	if b.id == "minecraft:axolotl" && b.playDeadTicks > 0 {
+	if b.playDeadTicks > 0 {
 		b.playDeadTicks--
 	}
 	b.ticks++
-	if b.id == "minecraft:tadpole" && !b.breeding.ageLocked {
-		b.age++
-	}
-	if b.id == "minecraft:tadpole" && b.age >= 24000 {
-		opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot, Velocity: e.data.Vel}
-		tx.AddEntity(opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}))
-		_ = e.CloseIn(tx)
-		return nil
-	}
 	return b.movement.TickMovement(e, e.Position(), vel, e.data.Rot, e.data.Rot, tx).apply(e)
-}
-func (b *AquaticMobBehaviour) tickPuffer(e *Ent, tx *world.Tx) {
-	box := e.H().Type().BBox(aquaticWorldEntity(e)).Translate(e.Position()).Grow(2)
-	threat := false
-	for target := range tx.EntitiesWithin(box) {
-		if target.H() != e.handle && pufferTargetAllowed(target) {
-			if living, ok := target.(Living); ok && !living.Dead() {
-				threat = true
-				break
-			}
-		}
-	}
-	if threat {
-		b.deflateTimer = 0
-		if b.inflateCounter == 0 {
-			b.inflateCounter = 1
-		}
-	} else if b.inflateCounter > 0 {
-		b.inflateCounter, b.deflateTimer = 0, 0
-	} else if b.puffState > 0 {
-		b.deflateTimer++
-	}
-	if b.inflateCounter > 0 {
-		if b.puffState == 0 {
-			b.puffState = 1
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.puffer_fish.blow_up", Volume: 1, Pitch: 1})
-			b.viewPuffState(e)
-		} else if b.inflateCounter > 40 && b.puffState == 1 {
-			b.puffState = 2
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.puffer_fish.blow_up", Volume: 1, Pitch: 1})
-			b.viewPuffState(e)
-		}
-		b.inflateCounter++
-	} else if b.puffState == 2 && b.deflateTimer > 60 {
-		b.puffState = 1
-		tx.PlaySound(e.Position(), sound.Custom{Name: "entity.puffer_fish.blow_out", Volume: 1, Pitch: 1})
-		b.viewPuffState(e)
-	} else if b.puffState == 1 && b.deflateTimer > 100 {
-		b.puffState = 0
-		tx.PlaySound(e.Position(), sound.Custom{Name: "entity.puffer_fish.blow_out", Volume: 1, Pitch: 1})
-		b.viewPuffState(e)
-	}
-	if b.puffState == 0 {
-		return
-	}
-	touchBox := e.H().Type().BBox(aquaticWorldEntity(e)).Translate(e.Position()).Grow(.3)
-	for target := range tx.EntitiesWithin(touchBox) {
-		if target.H() == e.handle {
-			continue
-		}
-		living, ok := target.(Living)
-		if !ok || living.Dead() {
-			continue
-		}
-		if _, vulnerable := living.Hurt(float64(1+b.puffState), AttackDamageSource{Attacker: &AquaticMob{Ent: e}}); vulnerable {
-			living.AddEffect(effect.New(effect.Poison, 1, time.Duration(60*b.puffState)*time.Second/20))
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.puffer_fish.sting", Volume: 1, Pitch: 1})
-		}
-	}
 }
 
 func (b *AquaticMobBehaviour) viewPuffState(e *Ent) {
@@ -452,15 +363,14 @@ func (a *AquaticMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b := a.behaviour()
-	old := a.Health()
 	if b.id != "minecraft:axolotl" {
-		b.panicTicks = 100
-		if attacker := aquaticDamageAttacker(src); attacker != nil {
-			b.panicFrom, b.panicFromSet = attacker.Position(), true
-		} else {
-			b.panicFromSet = false
+		var ok bool
+		if d, ok = b.ai.DamageCooldown(a.tx, d); !ok {
+			return 0, false
 		}
+		b.ai.Hurt(src)
 	}
+	old := a.Health()
 	if b.id == "minecraft:axolotl" && b.playDeadTicks == 0 {
 		_, inWater := a.tx.Liquid(cube.PosFromVec3(a.Position()))
 		if inWater && b.random.NextInt(3) == 0 && (float64(b.random.NextInt(3)) < d || old/a.MaxHealth() < .5) && d < old && aquaticDamageHasAttacker(src) {
