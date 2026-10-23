@@ -786,3 +786,76 @@ func TestDrownedThrowsTridents(t *testing.T) {
 		t.Fatal("drowned threw no trident")
 	}
 }
+
+// TestGuardianBeamsPlayersInWater checks a guardian aims its beam at a
+// player in the water and hurts it once the beam charged.
+func TestGuardianBeamsPlayersInWater(t *testing.T) {
+	w := aiTestWorld(t)
+	buildPool(w)
+	p := addAITestPlayer(w, mgl64.Vec3{5.5, 65, .5}, world.GameModeSurvival)
+	guardian := addSpecies(w, entity.NewGuardian(world.EntitySpawnOpts{Position: mgl64.Vec3{-4.5, 66, .5}}))
+	beamed := false
+	lowest := lowestHealth(t, w, p, 300, func(tx *world.Tx) {
+		if e, ok := guardian.Entity(tx); ok {
+			beamed = beamed || e.(interface{ BeamTargetHandle() *world.EntityHandle }).BeamTargetHandle() != nil
+		}
+	})
+	// The magic of the beam hurts by 1, and the hit that follows only by
+	// the 5 by which its 6 exceed that.
+	if !beamed || lowest > 20-6 {
+		t.Fatalf("guardian aimed its beam %v, lowest player health %v", beamed, lowest)
+	}
+}
+
+// TestGuardianPricksAndFlops checks a guardian standing still pricks what
+// hits it, and one on land flops about.
+func TestGuardianPricksAndFlops(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{2.5, 65, .5}, world.GameModeSurvival)
+	guardian := addSpecies(w, entity.NewGuardian(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	highest := 0.0
+	for range 40 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := guardian.Entity(tx); ok {
+				highest = max(highest, e.Position()[1])
+			}
+		})
+	}
+	if highest < 65.5 {
+		t.Fatalf("guardian on land only reached y %.2f", highest)
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		pl, _ := p.Entity(tx)
+		e, _ := guardian.Entity(tx)
+		e.(entity.Living).Hurt(1, entity.AttackDamageSource{Attacker: pl})
+		if h := pl.(*player.Player).Health(); h != 18 {
+			t.Fatalf("player health %v after hitting a still guardian, want 18", h)
+		}
+	})
+}
+
+// TestElderGuardianCursesPlayers checks an elder guardian gives a player
+// nearby mining fatigue within a minute.
+func TestElderGuardianCursesPlayers(t *testing.T) {
+	w := aiTestWorld(t)
+	buildPool(w)
+	p := addAITestPlayer(w, mgl64.Vec3{12.5, 72, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewElderGuardian(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 66, .5}}))
+	cursed := false
+	for range 1210 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := p.Entity(tx)
+			for _, eff := range e.(*player.Player).Effects() {
+				cursed = cursed || eff.Type() == effect.MiningFatigue && eff.Level() == 3
+			}
+		})
+		if cursed {
+			break
+		}
+	}
+	if !cursed {
+		t.Fatal("elder guardian gave no mining fatigue")
+	}
+}

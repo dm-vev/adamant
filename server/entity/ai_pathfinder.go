@@ -274,7 +274,15 @@ func (t *pathTarget) updateBest(h float32, n *pathNodeData) {
 
 // findPath finds a path from the mob to one of the targets with the A*
 // search of Java's PathFinder.findPath.
-func findPath(m *Mob, eval *walkNodeEvaluator, targets []cube.Pos, maxPathLength float32, reachRange int, maxVisitedNodes int) *mobPath {
+// nodeEvaluator finds the nodes a mob may move to, as Java's NodeEvaluator.
+type nodeEvaluator interface {
+	prepare(m *Mob)
+	done()
+	start() *pathNodeData
+	neighbours(out []*pathNodeData, pos *pathNodeData) int
+}
+
+func findPath(m *Mob, eval nodeEvaluator, targets []cube.Pos, maxPathLength float32, reachRange int, maxVisitedNodes int) *mobPath {
 	eval.prepare(m)
 	defer eval.done()
 	from := eval.start()

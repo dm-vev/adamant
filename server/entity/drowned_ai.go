@@ -45,14 +45,21 @@ func (b *oceanBehaviour) aiTickDrowned(e *Ent, tx *world.Tx) *Movement {
 	return mov
 }
 
-// doHurtTarget ports Zombie.doHurtTarget for a drowned: the hit of its
-// weapon, and a burning drowned without one sets its target alight.
+// doHurtTarget ports Mob.doHurtTarget for the ocean mobs, and
+// Zombie.doHurtTarget for a drowned: the hit of its weapon, and a burning
+// drowned without one sets its target alight.
 func (b *oceanBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 	l, ok := target.(Living)
 	if !ok {
 		return false
 	}
 	damage := 3.0
+	switch b.kind {
+	case oceanGuardian:
+		damage = 6
+	case oceanElderGuardian:
+		damage = 8
+	}
 	if w, ok := b.mainHand.Item().(item.Weapon); ok {
 		damage += w.AttackDamage() - 1
 	}
@@ -60,6 +67,9 @@ func (b *oceanBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
 		return false
 	}
 	l.KnockBack(m.data.Pos, .4, .4)
+	if b.kind != oceanDrowned {
+		return true
+	}
 	difficulty := float64(m.tx.LocalDifficulty(m.BlockPos()).Effective)
 	if b.mainHand.Empty() && m.OnFireDuration() > 0 && float64(m.Random().NextFloat()) < difficulty*.3 {
 		if f, ok := target.(interface{ SetOnFire(time.Duration) }); ok {
@@ -164,6 +174,9 @@ func (m *Drowned) UsingItem() bool { return m.b().drawing }
 // travel ports Drowned.travelInWater: a drowned swimming under water
 // moves slower and keeps its speed better.
 func (b *oceanBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
+	if b.kind == oceanGuardian || b.kind == oceanElderGuardian {
+		return b.guardianTravel(m, input)
+	}
 	if b.kind != oceanDrowned || !m.InWater() || !drownedUnderWater(m) || !b.drownedWantsToSwim(m) {
 		return false
 	}

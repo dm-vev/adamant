@@ -3,7 +3,6 @@ package entity
 import (
 	"encoding/json"
 	"math"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -486,12 +485,14 @@ type oceanBehaviour struct {
 	dropChances                                                                     map[string]float64
 	beamTarget                                                                      *world.EntityHandle
 	vehicleStrafe, vehicleForward                                                   float64
-	attackCooldown, thornsCooldown                                                  int
+	attackCooldown                                                                  int
 	swim                                                                            mgl64.Vec3
 
-	// The MobAI of a drowned and its state.
+	// The MobAI of a drowned or guardian and its state.
 	ai                                  MobAI
 	searchingForLand, swimming, drawing bool
+	moving                              bool
+	stroll                              *RandomStrollGoal
 }
 
 func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
@@ -507,9 +508,6 @@ func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.attackCooldown > 0 {
 		b.attackCooldown--
 	}
-	if b.thornsCooldown > 0 {
-		b.thornsCooldown--
-	}
 	if b.dashCooldown > 0 {
 		b.dashCooldown--
 	}
@@ -517,49 +515,9 @@ func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return b.aiTickDrowned(e, tx)
 	}
 	if b.kind == oceanGuardian || b.kind == oceanElderGuardian {
-		return b.tickGuardian(e, tx)
+		return b.aiTickGuardian(e, tx)
 	}
 	return b.tickNautilus(e, tx)
-}
-func (b *oceanBehaviour) tickGuardian(e *Ent, tx *world.Tx) *Movement {
-	if b.kind == oceanElderGuardian && b.ticks%1200 == 0 {
-		for p := range tx.Players() {
-			if l, ok := p.(Living); ok && p.Position().Sub(e.Position()).LenSqr() <= 2500 {
-				l.AddEffect(effect.New(effect.MiningFatigue, 2, 300*time.Second))
-			}
-		}
-	}
-	target := oceanNearestTarget(tx, e.Position(), 10)
-	if target != nil {
-		b.beamTarget = target.H()
-		if b.beamTicks == 0 {
-			b.beamTicks = 1
-		} else if b.beamTicks < 80 {
-			b.beamTicks++
-		} else if b.attackCooldown == 0 {
-			if l, ok := target.(Living); ok {
-				damage := 6.0
-				if b.kind == oceanElderGuardian {
-					damage = 8
-				}
-				l.Hurt(damage, AttackDamageSource{Attacker: e})
-			}
-			b.attackCooldown = 60
-			b.beamTicks = 1
-		}
-		b.swimToward(e, target.Position(), .04)
-		if delta := target.Position().Sub(e.Position()); delta.Len() < 2 && b.thornsCooldown == 0 {
-			if l, ok := target.(Living); ok {
-				l.Hurt(2, AttackDamageSource{Attacker: e})
-			}
-			b.thornsCooldown = 20
-		}
-	} else {
-		b.beamTarget = nil
-		b.beamTicks = 0
-		b.wander(e, tx, .015)
-	}
-	return b.move(e, tx)
 }
 func (b *oceanBehaviour) tickNautilus(e *Ent, tx *world.Tx) *Movement {
 	_, inWater := tx.Liquid(cube.PosFromVec3(e.Position()))
@@ -733,21 +691,21 @@ func (m *oceanMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if m.Dead() || d <= 0 || (src.Fire() && m.hasEffect(effect.FireResistance)) {
 		return 0, false
 	}
+	if b.kind == oceanGuardian || b.kind == oceanElderGuardian {
+		b.guardianThorns(m, src)
+	}
+	d, ok := b.ai.DamageCooldown(m.tx, d)
+	if !ok {
+		return 0, false
+	}
 	d = damageAfterBodyArmour(d, src, m.BodyArmor())
 	if res, ok := b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(src, res.Level())
 	}
 	b.health.AddHealth(-d)
+	b.ai.Hurt(src)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
-	if (b.kind == oceanGuardian || b.kind == oceanElderGuardian) && b.thornsCooldown == 0 {
-		if s, ok := src.(AttackDamageSource); ok {
-			if l, ok := s.Attacker.(Living); ok {
-				l.Hurt(2, AttackDamageSource{Attacker: m})
-				b.thornsCooldown = 20
-			}
-		}
-	}
 	if m.Dead() {
 		m.die(src)
 	}

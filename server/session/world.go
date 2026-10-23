@@ -258,6 +258,12 @@ func (s *Session) handleUniqueID(h *world.EntityHandle) int64 {
 	return h.UniqueID()
 }
 
+// ViewElderGuardianCurse shows the ghost of an elder guardian, as BDS does
+// for the mining fatigue it gives.
+func (s *Session) ViewElderGuardianCurse(pos mgl64.Vec3) {
+	s.writePacket(&packet.LevelEvent{EventType: packet.LevelEventParticleSoundGuardianGhost, Position: vec64To32(pos)})
+}
+
 // ViewSpectatedEntity attaches the camera of the client to an entity, as BDS
 // does for /camera attach_to_entity, or detaches it again if e is nil.
 func (s *Session) ViewSpectatedEntity(e world.Entity) {

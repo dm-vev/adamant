@@ -217,6 +217,11 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		colour := c.SpellColour()
 		m[protocol.EntityDataKeyDataSpellCastingColor] = int32(-1<<24 | int32(colour[0]*255)<<16 | int32(colour[1]*255)<<8 | int32(colour[2]*255))
 	}
+	if g, ok := e.(interface{ BeamTargetHandle() *world.EntityHandle }); ok {
+		if h := g.BeamTargetHandle(); h != nil {
+			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
+		}
+	}
 	if r, ok := e.(interface {
 		Stunned() bool
 		Roaring() bool

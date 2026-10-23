@@ -1771,6 +1771,12 @@ func (p *Player) SetFrozenTicks(ticks int) {
 func (p *Player) FreezingStrength() float32 { return entity.FreezingStrength(p.data) }
 
 // WearingCreakingDisguise reports whether the player's helmet is a carved pumpkin.
+// ShowElderGuardianCurse shows the player the ghost of an elder guardian,
+// as an elder guardian that gives it mining fatigue does.
+func (p *Player) ShowElderGuardianCurse() {
+	p.session().ViewElderGuardianCurse(p.Position())
+}
+
 func (p *Player) WearingCreakingDisguise() bool {
 	helmet := p.Armour().Helmet()
 	if helmet.Empty() {

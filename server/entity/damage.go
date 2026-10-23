@@ -66,6 +66,13 @@ type (
 	// StarvationDamageSource is the damage of an empty food bar, which a vex
 	// also takes once its life runs out.
 	StarvationDamageSource struct{}
+	// IndirectMagicDamageSource is magic damage dealt through something,
+	// such as the beam of a guardian.
+	IndirectMagicDamageSource struct {
+		// Projectile is what dealt the damage and Owner the entity
+		// responsible for it.
+		Projectile, Owner world.Entity
+	}
 	// SplashPotionDamageSource is the indirect magic damage a splash of water
 	// deals to entities that water hurts.
 	SplashPotionDamageSource struct {
@@ -128,6 +135,14 @@ func (WindChargeDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool
 	return e == enchantment.BlastProtection
 }
 func (WindChargeDamageSource) IgnoreTotem() bool { return false }
+
+func (IndirectMagicDamageSource) ReducedByArmour() bool     { return false }
+func (IndirectMagicDamageSource) ReducedByResistance() bool { return true }
+func (IndirectMagicDamageSource) Fire() bool                { return false }
+func (IndirectMagicDamageSource) IgnoreTotem() bool         { return false }
+
+// Attacker returns the entity responsible for the magic.
+func (s IndirectMagicDamageSource) Attacker() world.Entity { return s.Owner }
 
 func (StarvationDamageSource) ReducedByArmour() bool     { return false }
 func (StarvationDamageSource) ReducedByResistance() bool { return false }
