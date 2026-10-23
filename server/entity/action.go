@@ -106,3 +106,6 @@ func (action) EntityAction() {}
 
 // WolfShakeAction makes a wet wolf shake itself dry.
 type WolfShakeAction struct{ action }
+
+// SquidInkAction makes a hurt squid squirt a cloud of ink.
+type SquidInkAction struct{ action }

@@ -1501,6 +1501,8 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		})
 	case entity.WolfShakeAction:
 		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventShakeWetness})
+	case entity.SquidInkAction:
+		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventSquidFleeing})
 	case entity.ArrowShakeAction:
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),

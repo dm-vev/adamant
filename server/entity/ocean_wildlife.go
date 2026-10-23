@@ -26,9 +26,13 @@ type oceanWildlifeType struct {
 func (t oceanWildlifeType) EncodeEntity() string { return t.id }
 func (t oceanWildlifeType) BBox(e world.Entity) cube.BBox {
 	w, h := t.width, t.height
-	if t.id == "minecraft:turtle" {
-		if ageable, ok := e.(interface{ Age() int }); ok && ageable.Age() < 0 {
+	if ageable, ok := e.(interface{ Age() int }); ok && ageable.Age() < 0 {
+		switch t.id {
+		case "minecraft:turtle":
 			w, h = w*.3, h*.3
+		case "minecraft:squid", "minecraft:glow_squid":
+			// Squid.BABY_DIMENSIONS.
+			w, h = .5, .5
 		}
 	}
 	return cube.Box(-w/2, 0, -w/2, w/2, h, w/2)
@@ -137,18 +141,21 @@ type Turtle struct{ *oceanWildlife }
 type Dolphin struct{ *oceanWildlife }
 type oceanWildlife struct{ *Ent }
 type oceanWildlifeBehaviour struct {
-	id                                                                                                                             string
-	health                                                                                                                         *HealthManager
-	effects                                                                                                                        *EffectManager
-	movement                                                                                                                       *MovementComputer
-	speed                                                                                                                          float64
-	age, air, moistness, ticks, nextWander, inkCooldown, darkTicks, layTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
-	swim                                                                                                                           mgl64.Vec3
-	breeding                                                                                                                       breeding
-	hasEgg, gotFish, hasTreasure, homeSet, dead                                                                                    bool
-	panic                                                                                                                          panicState
-	panicGoal                                                                                                                      mgl64.Vec3
-	tempt                                                                                                                          temptGoal
+	id                                                                                                                string
+	health                                                                                                            *HealthManager
+	effects                                                                                                           *EffectManager
+	movement                                                                                                          *MovementComputer
+	speed                                                                                                             float64
+	age, air, moistness, ticks, nextWander, darkTicks, layTicks, homeX, homeY, homeZ, treasureX, treasureY, treasureZ int
+	swim                                                                                                              mgl64.Vec3
+	breeding                                                                                                          breeding
+	hasEgg, gotFish, hasTreasure, homeSet, dead                                                                       bool
+	panic                                                                                                             panicState
+	panicGoal                                                                                                         mgl64.Vec3
+	tempt                                                                                                             temptGoal
+	// ai is the MobAI squids run on.
+	ai    MobAI
+	squid squidState
 }
 
 func (m *oceanWildlife) b() *oceanWildlifeBehaviour { return m.Behaviour().(*oceanWildlifeBehaviour) }
@@ -160,6 +167,9 @@ func (m *oceanWildlife) Tick(tx *world.Tx, current int64) {
 func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dead {
 		return nil
+	}
+	if b.squidKind() {
+		return b.tickSquid(e, tx)
 	}
 	b.ticks++
 	_, inWater := tx.Liquid(cube.PosFromVec3(e.Position()))
@@ -173,30 +183,6 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		partner, inLove = tickBreeding(&Turtle{&oceanWildlife{Ent: e}}, tx)
 	}
 	switch b.id {
-	case "minecraft:squid", "minecraft:glow_squid":
-		if inWater {
-			if b.nextWander <= 0 {
-				b.chooseSwim(e, tx)
-			}
-			if b.nextWander > 0 {
-				b.nextWander--
-			}
-			if b.swim.Len() > 0 {
-				vel = vel.Add(b.swim.Mul(.02))
-			}
-			if vel.Len() > .2 {
-				vel = vel.Normalize().Mul(.2)
-			}
-		} else {
-			vel[0] *= .9
-			vel[2] *= .9
-			if vel[1] > 0 {
-				vel[1] -= .08
-			}
-		}
-		if b.inkCooldown > 0 {
-			b.inkCooldown--
-		}
 	case "minecraft:turtle":
 		if !b.homeSet {
 			p := cube.PosFromVec3(e.Position())
@@ -348,9 +334,6 @@ func (b *oceanWildlifeBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 		b.air = 4800
 	}
-	if b.id == "minecraft:glow_squid" && b.darkTicks > 0 {
-		b.darkTicks--
-	}
 	e.data.Vel = vel
 	rot := e.data.Rot
 	if vel[0]*vel[0]+vel[2]*vel[2] > .0001 {
@@ -407,6 +390,13 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	if m.Dead() || d <= 0 {
 		return 0, false
 	}
+	if b.squidKind() {
+		var ok bool
+		if d, ok = b.ai.DamageCooldown(m.tx, d); !ok {
+			return 0, false
+		}
+		b.ai.Hurt(src)
+	}
 	b.health.AddHealth(-d)
 	if b.id == "minecraft:turtle" {
 		b.panic.hurt(src, m.tx.CurrentTick())
@@ -414,16 +404,19 @@ func (m *oceanWildlife) Hurt(d float64, src world.DamageSource) (float64, bool) 
 	}
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
-	if b.id == "minecraft:glow_squid" {
-		b.darkTicks = 100
-	}
-	if b.id == "minecraft:squid" && b.inkCooldown == 0 {
-		b.inkCooldown = 100
-		v := m.Velocity()
-		if v.Len() > 0 {
-			m.SetVelocity(v.Add(v.Normalize().Mul(-.4)))
+	if b.squidKind() {
+		// Squid.hurtServer: a squid hurt by a mob squirts ink.
+		if attacker, _ := b.ai.Mob(m.Ent, m.living()).LastHurtBy(); attacker != nil {
+			name := "entity.squid.squirt"
+			if b.id == "minecraft:glow_squid" {
+				name = "entity.glow_squid.squirt"
+			}
+			m.tx.PlaySound(m.Position(), sound.Custom{Name: name, Volume: .4, Pitch: 1})
+			m.viewAction(SquidInkAction{})
 		}
-		m.tx.PlaySound(m.Position(), sound.Custom{Name: "entity.squid.squirt", Volume: .4, Pitch: 1})
+		if b.id == "minecraft:glow_squid" {
+			b.darkTicks = 100
+		}
 	}
 	if m.Dead() {
 		b.dead = true
