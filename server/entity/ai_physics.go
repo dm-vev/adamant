@@ -48,6 +48,12 @@ type mobJumper interface {
 	jumpInLiquid(m *Mob, lava bool) bool
 }
 
+// mobTraveller is implemented by behaviours of mobs that override
+// LivingEntity.travel. It reports false to travel as other mobs do.
+type mobTraveller interface {
+	travel(m *Mob, input mgl64.Vec3) bool
+}
+
 // mobCustomStep is implemented by behaviours with an AI step of their own
 // after their goals, as Mob.customServerAiStep.
 type mobCustomStep interface {
@@ -258,11 +264,29 @@ func blockSpeedFactor(m *Mob) float64 {
 
 // travel ports LivingEntity.travel.
 func (ai *MobAI) travel(m *Mob, input mgl64.Vec3) {
+	if t, ok := m.Behaviour().(mobTraveller); ok && t.travel(m, input) {
+		return
+	}
 	if m.InLiquid() {
 		ai.travelInFluid(m, input)
 		return
 	}
 	ai.travelInAir(m, input)
+}
+
+// travelFlying ports LivingEntity.travelFlying: the mob moves by input
+// without gravity, slowed down by the medium it flies in.
+func (ai *MobAI) travelFlying(m *Mob, input mgl64.Vec3, waterSpeed, lavaSpeed, airSpeed float64) {
+	speed, slowDown := airSpeed, .91
+	switch {
+	case m.InWater():
+		speed, slowDown = waterSpeed, .8
+	case m.InLava():
+		speed, slowDown = lavaSpeed, .5
+	}
+	ai.moveRelative(m, speed, input)
+	ai.moveSelf(m, m.data.Vel)
+	m.data.Vel = m.data.Vel.Mul(slowDown)
 }
 
 // travelInAir ports LivingEntity.travelInAir.

@@ -591,3 +591,47 @@ func TestMagmaCubesHopHigherAndShrugOffHits(t *testing.T) {
 		}
 	})
 }
+
+// TestBlazeChargesAndShootsFireballs checks a blaze that sees a player
+// burns while it charges and shoots fireballs at it.
+func TestBlazeChargesAndShootsFireballs(t *testing.T) {
+	w := aiTestWorld(t)
+	addAITestPlayer(w, mgl64.Vec3{10.5, 65, .5}, world.GameModeSurvival)
+	blaze := addSpecies(w, entity.NewBlaze(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	burned, fireballs := false, 0
+	for range 200 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := blaze.Entity(tx); ok {
+				burned = burned || e.(*entity.Blaze).Burning()
+			}
+		})
+		<-w.Exec(func(tx *world.Tx) { fireballs = max(fireballs, countEntities(tx, "minecraft:small_fireball")) })
+	}
+	if !burned || fireballs == 0 {
+		t.Fatalf("blaze burned %v, fireballs %d", burned, fireballs)
+	}
+}
+
+// TestGhastFloatsAndShootsAtPlayers checks a ghast floats around and shoots
+// a fireball at a player level with it.
+func TestGhastFloatsAndShootsAtPlayers(t *testing.T) {
+	w := aiTestWorld(t)
+	addAITestPlayer(w, mgl64.Vec3{14.5, 65, .5}, world.GameModeSurvival)
+	start := mgl64.Vec3{-6, 66, .5}
+	ghast := addSpecies(w, entity.NewGhast(world.EntitySpawnOpts{Position: start}))
+	moved, charged, fireballs := 0.0, false, 0
+	for range 400 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			if e, ok := ghast.Entity(tx); ok {
+				moved = max(moved, e.Position().Sub(start).Len())
+				charged = charged || e.(*entity.Ghast).Charging()
+			}
+		})
+		<-w.Exec(func(tx *world.Tx) { fireballs = max(fireballs, countEntities(tx, "minecraft:fireball")) })
+	}
+	if moved < 1 || !charged || fireballs == 0 {
+		t.Fatalf("ghast moved %.2f, charged %v, fireballs %d", moved, charged, fireballs)
+	}
+}

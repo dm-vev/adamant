@@ -85,18 +85,6 @@ func (s *speciesState) customServerAiStep(m *Mob) {
 	}
 }
 
-// tickEndermanWater ports the damage water deals to an enderman in
-// LivingEntity.aiStep, for isSensitiveToWater, while it stands in water or
-// rain.
-func (s *speciesState) tickEndermanWater(m *Mob) {
-	top := mgl64.Vec3{m.data.Pos[0], m.BBox().Max()[1], m.data.Pos[2]}
-	if m.InWater() || m.tx.RainingAt(m.BlockPos()) || m.tx.RainingAt(cube.PosFromVec3(top)) {
-		if l, ok := m.Self.(Living); ok {
-			l.Hurt(1, DrowningDamageSource{})
-		}
-	}
-}
-
 // endermanHurt ports the start of Enderman.hurtServer. It returns false if
 // the enderman dodges the damage, and a function to run once the damage was
 // dealt.

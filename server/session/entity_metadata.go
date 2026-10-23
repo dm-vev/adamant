@@ -196,6 +196,13 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if c, ok := e.(interface{ WallClimbing() bool }); ok && c.WallClimbing() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagWallClimbing)
 	}
+	// A blaze charging its fireballs burns, as Blaze.isOnFire shows it.
+	if b, ok := e.(interface{ Burning() bool }); ok && b.Burning() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagOnFire)
+	}
+	if c, ok := e.(interface{ Charging() bool }); ok && c.Charging() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCharging)
+	}
 	if d, ok := e.(displayTile); ok {
 		var display int32
 		if b, ok := d.DisplayBlock(); ok {

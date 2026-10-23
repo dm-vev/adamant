@@ -68,7 +68,7 @@ func (s *speciesState) aiTick(e *Ent, tx *world.Tx) *Movement {
 	}
 	mov := ai.Tick(e, self, s.registerGoals)
 	if s.kind == endermanSpecies && !s.dead {
-		s.tickEndermanWater(ai.Mob(e, self))
+		tickWaterSensitive(ai.Mob(e, self))
 	}
 	if s.kind == slimeSpecies && !s.dead {
 		tickCube(ai.Mob(e, self), s)

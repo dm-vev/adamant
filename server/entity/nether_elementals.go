@@ -2,7 +2,6 @@ package entity
 
 import (
 	"hash/fnv"
-	"math"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -32,26 +31,31 @@ const (
 )
 
 type netherConfig struct {
-	kind               netherKind
-	health             float64
-	size, charge, jump int
-	seed               int64
+	kind                       netherKind
+	health                     float64
+	size, explosionPower, jump int
+	seed                       int64
 }
 type netherState struct {
-	kind                                                              netherKind
-	health                                                            *HealthManager
-	effects                                                           *EffectManager
-	mc                                                                *MovementComputer
-	random                                                            vanilla.Random
-	size, charge, attackStep, attackTime, lastSeen, jumpDelay, wander int
-	heightOffset                                                      float64
-	heightTimer                                                       int
-	speed, attack                                                     float64
-	charging, dead                                                    bool
-	path                                                              []cube.Pos
-	pathIndex                                                         int
-	ai                                                                MobAI
-	cubeAI                                                            cubeAI
+	kind            netherKind
+	health          *HealthManager
+	effects         *EffectManager
+	mc              *MovementComputer
+	random          vanilla.Random
+	size, jumpDelay int
+	// explosionPower is the power of the fireballs of a ghast.
+	explosionPower int
+	// heightOffset and heightTimer are how far a blaze rises above its
+	// target and when that changes.
+	heightOffset float64
+	heightTimer  int
+	speed        float64
+	attack       float64
+	// charging is a blaze burning to shoot or a ghast opening its mouth.
+	charging, dead bool
+	ai             MobAI
+	cubeAI         cubeAI
+	ghastMove      ghastMoveControl
 }
 type Ghast struct{ *Ent }
 type Blaze struct{ *Ent }
@@ -113,12 +117,12 @@ func decodeNether(k netherKind, n map[string]any, d *world.EntityData) {
 	}
 	if j := ReadNativeMobJavaState(n); j != nil {
 		c.size = int(nbtconv.Int32(j, "Size"))
-		c.charge = int(nbtconv.Int32(j, "Charge"))
+		c.explosionPower = int(nbtconv.Int32(j, "Charge"))
 		c.jump = int(nbtconv.Int32(j, "JumpDelay"))
 	}
 	switch k {
 	case ghastKind:
-		c.charge = int(nbtconv.Int32(n, "ExplosionPower"))
+		c.explosionPower = int(nbtconv.Int32(n, "ExplosionPower"))
 	case magmaKind:
 		size, _ := nbtconv.Integer(n, "Size")
 		c.size = int(size) + 1
@@ -140,11 +144,11 @@ func encodeNether(k netherKind, d *world.EntityData) map[string]any {
 	n := map[string]any{"identifier": speciesIDNether(k), "Pos": []float32{float32(d.Pos[0]), float32(d.Pos[1]), float32(d.Pos[2])}, "Rotation": []float32{float32(d.Rot[0]), float32(d.Rot[1])}, "Motion": []float32{float32(d.Vel[0]), float32(d.Vel[1]), float32(d.Vel[2])}, "Attributes": attrs}
 	switch k {
 	case ghastKind:
-		n["ExplosionPower"] = int32(s.charge)
+		n["ExplosionPower"] = int32(s.explosionPower)
 	case magmaKind:
 		n["Size"] = uint8(s.size - 1)
 	}
-	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.charge), "JumpDelay": int32(s.cubeAI.move.jumpDelay)})
+	return MergeNativeMobJavaState(MergeNativeMobNBT(d.NativeNBT, n), map[string]any{"Size": int32(s.size), "Charge": int32(s.explosionPower), "JumpDelay": int32(s.cubeAI.move.jumpDelay)})
 }
 func speciesIDNether(k netherKind) string {
 	switch k {
@@ -176,11 +180,14 @@ func (c netherConfig) Apply(d *world.EntityData) {
 	if c.health > 0 {
 		hp = c.health
 	}
+	if c.kind == ghastKind && c.explosionPower <= 0 {
+		c.explosionPower = 1
+	}
 	gravity, drag := .08, .02
 	if c.kind == ghastKind {
 		gravity, drag = 0, .01
 	}
-	s := &netherState{kind: c.kind, health: NewHealthManager(hp, maxHP), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: drag, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(c.seed), size: c.size, charge: c.charge, jumpDelay: c.jump, heightOffset: .5, speed: speed, attack: attack}
+	s := &netherState{kind: c.kind, health: NewHealthManager(hp, maxHP), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: drag, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(c.seed), size: c.size, explosionPower: c.explosionPower, jumpDelay: c.jump, heightOffset: .5, speed: speed, attack: attack}
 	s.cubeAI.move.jumpDelay = c.jump
 	d.Data = s
 }
@@ -206,15 +213,13 @@ func (m *MagmaCube) Tick(tx *world.Tx, n int64) { m.n().effects.Tick(m, tx); m.E
 func (s *netherState) Tick(e *Ent, tx *world.Tx) *Movement {
 	switch s.kind {
 	case ghastKind:
-		return s.tickGhast(e, tx)
+		return s.aiTickGhast(e, tx)
 	case blazeKind:
-		return s.tickBlaze(e, tx)
+		return s.aiTickBlaze(e, tx)
 	default:
 		return s.aiTickMagma(e, tx)
 	}
 }
-
-func (s *netherState) mobAI() *MobAI { return &s.ai }
 
 // aiTickMagma runs the MobAI of a magma cube.
 func (s *netherState) aiTickMagma(e *Ent, tx *world.Tx) *Movement {
@@ -252,165 +257,6 @@ func (s *netherState) jumpInLiquid(m *Mob, lava bool) bool {
 	m.data.Vel[1] = .22 + float64(s.size)*.05
 	return true
 }
-func (s *netherState) tickGhast(e *Ent, tx *world.Tx) *Movement {
-	target, dist := netherTarget(e, tx, 100)
-	if target != nil && dist < 64 && lineVisible(e, tx, target) {
-		s.charge++
-		if s.charge == 10 {
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.ghast.warn", Volume: 5, Pitch: 1})
-		}
-		if s.charge == 20 {
-			d := target.Position().Add(mgl64.Vec3{0, .5, 0}).Sub(e.Position().Add(mgl64.Vec3{0, .5, 0}))
-			if d.Len() > 0 {
-				pos := e.Position().Add(mgl64.Vec3{0, .5, 0}).Add(e.Rotation().Vec3().Mul(4))
-				tx.AddEntity(NewGhastFireball(world.EntitySpawnOpts{Position: pos, Velocity: d.Normalize().Mul(.5)}, &Ghast{e}))
-				tx.PlaySound(e.Position(), sound.Custom{Name: "entity.ghast.shoot", Volume: 5, Pitch: 1})
-			}
-			s.charge = -40
-		}
-	} else if s.charge > 0 {
-		s.charge--
-	}
-	s.charging = s.charge > 10
-	return s.wanderFly(e, tx)
-}
-func (s *netherState) tickBlaze(e *Ent, tx *world.Tx) *Movement {
-	if fluid, ok := tx.Liquid(cube.PosFromVec3(e.Position())); ok && fluid.LiquidType() == "water" {
-		(&Blaze{e}).Hurt(1, DrowningDamageSource{})
-	}
-	if s.attackTime > 0 {
-		s.attackTime--
-	}
-	if s.heightTimer > 0 {
-		s.heightTimer--
-	}
-	if s.heightTimer == 0 {
-		s.heightTimer = 100
-		s.heightOffset = float64((s.random.NextFloat() - .5) * 2)
-	}
-	target, dist := netherTarget(e, tx, 48)
-	if target != nil {
-		if target.Position()[1] > e.Position()[1]+s.heightOffset {
-			v := e.Velocity()
-			v[1] += (.3 - v[1]) * .3
-			e.SetVelocity(v)
-		}
-		if dist < 2 {
-			if lineVisible(e, tx, target) && s.attackTime <= 0 {
-				s.attackTime = 20
-				hurtMob(target, s.attack, e)
-			}
-			return s.groundMove(e, tx, target.Position())
-		}
-		if dist < 48 && lineVisible(e, tx, target) {
-			if s.attackTime <= 0 {
-				s.attackStep++
-				switch {
-				case s.attackStep == 1:
-					s.attackTime, s.charging = 60, true
-				case s.attackStep <= 4:
-					s.attackTime = 6
-				default:
-					s.attackTime, s.attackStep, s.charging = 100, 0, false
-				}
-				if s.attackStep > 1 {
-					d := target.Position().Add(mgl64.Vec3{0, .5, 0}).Sub(e.Position().Add(mgl64.Vec3{0, .5, 0}))
-					spread := math.Sqrt(math.Sqrt(dist)) * .5
-					d[0] += float64(s.random.NextFloat()-.5) * 4.594 * spread
-					d[2] += float64(s.random.NextFloat()-.5) * 4.594 * spread
-					if d.Len() > 0 {
-						opts := world.EntitySpawnOpts{Position: e.Position().Add(mgl64.Vec3{0, 1, 0}), Velocity: d.Normalize().Mul(.5)}
-						tx.AddEntity(tx.World().EntityRegistry().Config().SmallFireball(opts, e))
-					}
-					tx.PlaySound(e.Position(), sound.Custom{Name: "entity.blaze.shoot", Volume: 1, Pitch: 1})
-				}
-			}
-			return s.groundMove(e, tx, target.Position())
-		}
-	}
-	s.charging = false
-	return s.wanderGround(e, tx)
-}
-func (s *netherState) fly(e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
-	d := p.Sub(e.Position())
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.Velocity().Add(d.Mul(.02))
-	pos := e.Position().Add(v)
-	if len(tx.Block(cube.PosFromVec3(pos)).Model().BBox(cube.PosFromVec3(pos), tx)) != 0 {
-		v = v.Mul(0)
-	}
-	r := e.Rotation()
-	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	m := s.mc.TickMovement(e, e.Position(), v, e.Rotation(), r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (s *netherState) wanderFly(e *Ent, tx *world.Tx) *Movement {
-	if s.wander > 0 {
-		s.wander--
-	}
-	if s.pathIndex >= len(s.path) && s.wander == 0 {
-		s.wander = 40
-		p := e.Position().Add(mgl64.Vec3{float64(s.random.NextFloat()*2-1) * 16, float64(s.random.NextFloat()*2-1) * 16, float64(s.random.NextFloat()*2-1) * 16})
-		s.path = []cube.Pos{cube.PosFromVec3(p)}
-		s.pathIndex = 0
-	}
-	if len(s.path) > 0 {
-		return s.fly(e, tx, s.path[len(s.path)-1].Vec3())
-	}
-	return s.fly(e, tx, e.Position())
-}
-func (s *netherState) groundMove(e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
-	d := p.Sub(e.Position())
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.Velocity()
-	v[0], v[2] = d[0]*s.speed, d[2]*s.speed
-	r := e.Rotation()
-	if d.Len() > 0 {
-		r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	}
-	m := s.mc.TickMovement(e, e.Position(), v, e.Rotation(), r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (s *netherState) wanderGround(e *Ent, tx *world.Tx) *Movement {
-	if s.wander > 0 {
-		s.wander--
-	}
-	if s.wander == 0 {
-		s.wander = 40
-		s.path = []cube.Pos{cube.PosFromVec3(e.Position().Add(mgl64.Vec3{float64(s.random.NextInt(11)) - 5, 0, float64(s.random.NextInt(11)) - 5}))}
-	}
-	return s.groundMove(e, tx, s.path[len(s.path)-1].Vec3())
-}
-func netherTarget(e *Ent, tx *world.Tx, r float64) (world.Entity, float64) {
-	area := cube.Box(-r, -4, -r, r, 4, r).Translate(e.Position())
-	var best world.Entity
-	dist := r
-	for x := range tx.EntitiesWithin(area) {
-		if x == e {
-			continue
-		}
-		id := x.H().Type().EncodeEntity()
-		if id != "minecraft:player" && !(e.H().Type().EncodeEntity() == "minecraft:magma_cube" && id == "minecraft:iron_golem") {
-			continue
-		}
-		l, ok := x.(Living)
-		if !ok || l.Dead() {
-			continue
-		}
-		d := x.Position().Sub(e.Position()).Len()
-		if d < dist {
-			best, dist = x, d
-		}
-	}
-	return best, dist
-}
 func lineVisible(e *Ent, tx *world.Tx, t world.Entity) bool {
 	d := t.Position().Sub(e.Position())
 	length := d.Len()
@@ -425,11 +271,6 @@ func lineVisible(e *Ent, tx *world.Tx, t world.Entity) bool {
 		}
 	}
 	return true
-}
-func hurtMob(e world.Entity, d float64, source world.Entity) {
-	if l, ok := e.(Living); ok {
-		l.Hurt(d, AttackDamageSource{Attacker: source})
-	}
 }
 func (s *netherState) Hurt(e *Ent, self world.Entity, d float64, src world.DamageSource) (float64, bool) {
 	if s.dead || d <= 0 {
@@ -557,16 +398,13 @@ func (m *MagmaCube) Speed() float64             { return m.n().speed }
 func (m *Ghast) SetSpeed(v float64)             { m.n().speed = v }
 func (m *Blaze) SetSpeed(v float64)             { m.n().speed = v }
 func (m *MagmaCube) SetSpeed(v float64)         { m.n().speed = v }
-func (m *Ghast) FinalizeSpawn(_ string, r *vanilla.Random) {
-	if r != nil {
-		m.n().charge = 0
-	}
-}
-func (m *Blaze) FinalizeSpawn(_ string, r *vanilla.Random) {
-	if r != nil {
-		m.n().charge = 0
-	}
-}
+
+// Burning reports if the blaze burns, which it does while it charges its
+// fireballs.
+func (m *Blaze) Burning() bool { return m.n().charging }
+
+// Charging reports if the ghast opens its mouth to shoot a fireball.
+func (m *Ghast) Charging() bool { return m.n().charging }
 
 type ghastFireballBehaviour struct{ *ProjectileBehaviour }
 type ghastFireballType struct{}
