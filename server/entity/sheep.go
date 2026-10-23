@@ -296,28 +296,11 @@ func (s *Sheep) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle
 var _ Interactable = (*Sheep)(nil)
 var _ interface{ Shear(*world.Tx) item.Stack } = (*Sheep)(nil)
 
-// FinalizeSpawn chooses the source fleece color, including rare pink sheep.
+// FinalizeSpawn ports Sheep.finalizeSpawn: the climate of the biome selects
+// the common and rare fleece colours.
 func (s *Sheep) FinalizeSpawn(_ string, r *vanilla.Random) {
-	if r == nil {
-		return
-	}
-	b := s.behaviour()
-	roll := r.NextInt(100)
-	switch {
-	case roll < 5:
-		b.color = 15
-	case roll < 10:
-		b.color = 7
-	case roll < 15:
-		b.color = 8
-	case roll < 18:
-		b.color = 12
-	default:
-		if r.NextInt(500) == 0 {
-			b.color = 6
-		} else {
-			b.color = 0
-		}
+	if r != nil {
+		s.behaviour().color = templateSheepColour(r, spawnBiome(s.Ent))
 	}
 }
 func sheepColor(s string) int {

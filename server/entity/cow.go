@@ -159,6 +159,14 @@ type CowBehaviour struct {
 func (c *CowBehaviour) Variant() int32 { return int32(c.variant) }
 func (c *CowBehaviour) Baby() bool     { return c.ageTicks < 0 }
 
+// SoundVariant returns the name of the sounds the cow makes.
+func (c *CowBehaviour) SoundVariant() string { return c.soundVariant }
+
+// ClimateVariant returns the name of the climate the cow is coloured for.
+func (c *CowBehaviour) ClimateVariant() string {
+	return [...]string{"temperate", "warm", "cold"}[min(c.variant, 2)]
+}
+
 func (c *Cow) behaviour() *CowBehaviour { return c.Behaviour().(*CowBehaviour) }
 
 // Tick applies the cow's passive wandering goal and movement physics.
@@ -304,11 +312,13 @@ func (c *Cow) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	return babyAt(c).New(CowType, CowConfig{AgeTicks: babyStartAge, Variant: randomParent(c.behaviour().variant, partner.(*Cow).behaviour().variant)})
 }
 
-// FinalizeSpawn assigns the randomized cow sound set used for newly spawned mobs.
+// FinalizeSpawn ports Cow.finalizeSpawn: the biome selects the variant and
+// the sound variant is random.
 func (c *Cow) FinalizeSpawn(_ string, random *vanilla.Random) {
 	if random == nil {
 		return
 	}
+	c.behaviour().variant = farmVariantIndex(templateFarmTemperature(spawnBiome(c.Ent)), "temperate", "warm", "cold")
 	if random.NextInt(2) == 0 {
 		c.behaviour().soundVariant = "classic"
 	} else {

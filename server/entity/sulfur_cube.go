@@ -269,6 +269,7 @@ func (s *SulfurCube) AddEffect(e effect.Effect)    { s.b().effects.Add(e, s) }
 func (s *SulfurCube) RemoveEffect(t effect.Type)   { s.b().effects.Remove(t, s) }
 func (s *SulfurCube) Effects() []effect.Effect     { return s.b().effects.Effects() }
 func (s *SulfurCube) Speed() float64               { return s.b().speed }
+func (s *SulfurCube) Size() int                    { return s.b().size }
 func (s *SulfurCube) SetSpeed(v float64)           { s.b().speed = v }
 func (s *SulfurCube) hasEffect(t effect.Type) bool { _, ok := s.b().effects.Effect(t); return ok }
 func (s *SulfurCube) viewAction(a world.EntityAction) {

@@ -21,15 +21,16 @@ func TestWolfNBTPreservesTamableAndArmorState(t *testing.T) {
 	}, data)
 	nbt := WolfType.EncodeNBT(data)
 	javaState := ReadNativeMobJavaState(nbt)
-	if javaState["Tame"] != byte(1) || javaUUIDString(javaState["Owner"]) != ownerUUID || javaState["variant"] != "minecraft:rusty" || javaState["sound_variant"] != "minecraft:puglin" || javaState["CollarColor"] != int32(14) || javaState["Sitting"] != byte(1) || javaState["Age"] != int32(-1200) {
+	if javaState["Tame"] != byte(1) || javaUUIDString(javaState["Owner"]) != ownerUUID || javaState["variant"] != "minecraft:rusty" || javaState["sound_variant"] != "minecraft:puglin" || javaState["CollarColor"] != byte(14) || javaState["Sitting"] != byte(1) || javaState["Age"] != int32(-1200) {
 		t.Fatalf("wolf Java state did not persist: %#v", javaState)
 	}
 	if nbt["IsTamed"] != byte(1) || nbt["Sitting"] != byte(1) {
 		t.Fatalf("native wolf state did not persist: %#v", nbt)
 	}
+	// Bedrock numbers rusty wolves 4.
 	variant, ok := NativeMobVariant(nbt)
-	if !ok || variant != 8 {
-		t.Fatalf("native wolf variant = %d, want 8", variant)
+	if !ok || variant != 4 {
+		t.Fatalf("native wolf variant = %d, want 4", variant)
 	}
 	armorList, ok := nbt["Armor"].([]any)
 	if !ok || len(armorList) != 5 {

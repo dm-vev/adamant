@@ -376,6 +376,9 @@ func speciesConfigFromNBT(k speciesKind, n map[string]any) speciesConfig {
 	return c
 }
 func (m *speciesMob) s() *speciesState { return m.Behaviour().(*speciesState) }
+
+// Size returns the size of the slime: 1, 2 or 4 when it spawned naturally.
+func (m *Slime) Size() int { return m.s().size }
 func (m *speciesMob) Tick(tx *world.Tx, n int64) {
 	m.s().effects.Tick(m, tx)
 	m.Ent.Tick(tx, n)

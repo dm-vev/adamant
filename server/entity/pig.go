@@ -116,8 +116,17 @@ type PigBehaviour struct {
 	goals             animalGoals
 }
 
-func (p *PigBehaviour) Variant() int32  { return int32(p.variant) }
-func (p *PigBehaviour) Baby() bool      { return p.age < 0 }
+func (p *PigBehaviour) Variant() int32 { return int32(p.variant) }
+func (p *PigBehaviour) Baby() bool     { return p.age < 0 }
+
+// SoundVariant returns the name of the sounds the pig makes.
+func (p *PigBehaviour) SoundVariant() string { return p.soundVariant }
+
+// ClimateVariant returns the name of the climate the pig is coloured for.
+func (p *PigBehaviour) ClimateVariant() string {
+	return [...]string{"temperate", "warm", "cold"}[min(p.variant, 2)]
+}
+
 func (p *Pig) behaviour() *PigBehaviour { return p.Behaviour().(*PigBehaviour) }
 func (p *Pig) Tick(tx *world.Tx, t int64) {
 	p.behaviour().effects.Tick(p, tx)
@@ -358,10 +367,29 @@ func (p *Pig) breedingFood(stack item.Stack) bool {
 func (p *Pig) breedOffspring(_ *world.Tx, partner breeder) *world.EntityHandle {
 	return babyAt(p).New(PigType, PigConfig{Age: babyStartAge, Variant: randomParent(p.behaviour().variant, partner.(*Pig).behaviour().variant)})
 }
+
+// FinalizeSpawn ports Pig.finalizeSpawn: the biome selects the variant and
+// the sound variant is random.
 func (p *Pig) FinalizeSpawn(_ string, r *vanilla.Random) {
-	if r != nil {
-		p.behaviour().age = 0
+	if r == nil {
+		return
 	}
+	b := p.behaviour()
+	b.age = 0
+	b.variant = farmVariantIndex(templateFarmTemperature(spawnBiome(p.Ent)), "temperate", "warm", "cold")
+	sounds := templateSpawnRegistry.PigSounds
+	b.soundVariant = strings.TrimPrefix(sounds[r.NextInt(int32(len(sounds)))], "minecraft:")
+}
+
+// farmVariantIndex returns the index of a climate in the order a farm animal
+// keeps its variants.
+func farmVariantIndex(climate string, order ...string) int {
+	for i, c := range order {
+		if c == climate {
+			return i
+		}
+	}
+	return 0
 }
 
 var _ VehicleInput = (*Pig)(nil)

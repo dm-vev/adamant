@@ -99,6 +99,16 @@ type Frog struct{ *Ent }
 
 func (f *Frog) behaviour() *frogBehaviour { return f.Behaviour().(*frogBehaviour) }
 
+// FinalizeSpawn ports Frog.finalizeSpawn: the biome selects the variant.
+func (f *Frog) FinalizeSpawn(_ string, r *vanilla.Random) {
+	if r != nil {
+		f.behaviour().variant = frogVariantAt(f.tx, f.Position())
+	}
+}
+
+// Variant returns the Bedrock variant of the frog: 0 temperate, 1 cold, 2 warm.
+func (f *Frog) Variant() int32 { return int32(f.behaviour().variant) }
+
 // LootComponents exposes the frog variant (Bedrock 0 temperate, 1 cold, 2 warm)
 // to loot predicates such as the magma cube froglight drop.
 func (f *Frog) LootComponents() map[string]any {

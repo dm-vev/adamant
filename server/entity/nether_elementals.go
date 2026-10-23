@@ -197,6 +197,7 @@ func NewMagmaCube(o world.EntitySpawnOpts) *world.EntityHandle {
 func (m *Ghast) n() *netherState                { return m.Behaviour().(*netherState) }
 func (m *Blaze) n() *netherState                { return m.Behaviour().(*netherState) }
 func (m *MagmaCube) n() *netherState            { return m.Behaviour().(*netherState) }
+func (m *MagmaCube) Size() int                  { return m.n().size }
 func (m *Ghast) Tick(tx *world.Tx, n int64)     { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 func (m *Blaze) Tick(tx *world.Tx, n int64)     { m.n().effects.Tick(m, tx); m.Ent.Tick(tx, n) }
 

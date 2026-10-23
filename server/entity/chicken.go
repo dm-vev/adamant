@@ -8,6 +8,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -63,6 +64,9 @@ func (chickenType) DecodeNBT(m map[string]any, data *world.EntityData) {
 			conf.Variant = 2
 		}
 	}
+	if v, ok := m["sound_variant"].(string); ok {
+		conf.SoundVariant = v
+	}
 	conf.Jockey = nbtconv.Bool(m, "IsChickenJockey")
 	data.Data = conf.New()
 	data.Data.(*ChickenBehaviour).breeding.decodeNBT(m)
@@ -70,12 +74,13 @@ func (chickenType) DecodeNBT(m map[string]any, data *world.EntityData) {
 func (chickenType) EncodeNBT(data *world.EntityData) map[string]any {
 	b := data.Data.(*ChickenBehaviour)
 	variant := []string{"temperate", "cold", "warm"}[min(b.variant, 2)]
-	return b.breeding.encodeNBT(map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Age": int32(b.ageTicks), "EggLayTime": int32(b.eggTimer), "variant": "minecraft:" + variant, "IsChickenJockey": boolByte(b.jockey)})
+	return b.breeding.encodeNBT(map[string]any{"Health": float32(b.health.Health()), "MaxHealth": float32(b.health.MaxHealth()), "Age": int32(b.ageTicks), "EggLayTime": int32(b.eggTimer), "variant": "minecraft:" + variant, "sound_variant": "minecraft:" + b.soundVariant, "IsChickenJockey": boolByte(b.jockey)})
 }
 
 type ChickenBehaviourConfig struct {
 	Health, MaxHealth             float64
 	AgeTicks, Variant, EggLayTime int
+	SoundVariant                  string
 	Jockey                        bool
 	healthSet, eggTimerSet        bool
 }
@@ -89,10 +94,14 @@ func (c ChickenBehaviourConfig) New() *ChickenBehaviour {
 		c.Health = c.MaxHealth
 	}
 	c.Variant = max(0, min(c.Variant, 2))
+	soundVariant := strings.TrimPrefix(c.SoundVariant, "minecraft:")
+	if soundVariant != "picky" {
+		soundVariant = "classic"
+	}
 	if !c.eggTimerSet {
 		c.EggLayTime = 6000 + rand.IntN(6000)
 	}
-	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, variant: c.Variant, jockey: c.Jockey}
+	return &ChickenBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .25, ageTicks: c.AgeTicks, eggTimer: c.EggLayTime, variant: c.Variant, soundVariant: soundVariant, jockey: c.Jockey}
 }
 
 type Chicken struct{ *Ent }
@@ -103,6 +112,7 @@ type ChickenBehaviour struct {
 	speed              float64
 	ageTicks, eggTimer int
 	variant            int
+	soundVariant       string
 	dead, jockey       bool
 	breeding           breeding
 	goals              animalGoals
@@ -209,6 +219,25 @@ func (c *Chicken) die(src world.DamageSource) {
 
 // Baby reports whether the chicken is a chick.
 func (c *Chicken) Baby() bool { return c.behaviour().ageTicks < 0 }
+
+// SoundVariant returns the name of the sounds the chicken makes.
+func (c *Chicken) SoundVariant() string { return c.behaviour().soundVariant }
+
+// FinalizeSpawn ports Chicken.finalizeSpawn: the biome selects the variant and
+// the sound variant is random.
+func (c *Chicken) FinalizeSpawn(_ string, r *vanilla.Random) {
+	if r == nil {
+		return
+	}
+	b := c.behaviour()
+	b.variant = farmVariantIndex(templateFarmTemperature(spawnBiome(c.Ent)), "temperate", "cold", "warm")
+	b.soundVariant = [...]string{"classic", "picky"}[r.NextInt(2)]
+}
+
+// ClimateVariant returns the name of the climate the chicken is coloured for.
+func (c *Chicken) ClimateVariant() string {
+	return []string{"temperate", "cold", "warm"}[min(c.behaviour().variant, 2)]
+}
 
 // LootComponents exposes the chicken variant to loot predicates.
 func (c *Chicken) LootComponents() map[string]any {

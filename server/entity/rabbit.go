@@ -254,8 +254,12 @@ func (r *Rabbit) breedOffspring(tx *world.Tx, partner breeder) *world.EntityHand
 // splotched rabbits in #spawns_white_rabbits, gold ones in
 // #spawns_gold_rabbits, and brown, salt and pepper or black ones elsewhere.
 func rabbitBiomeVariant(tx *world.Tx, pos cube.Pos) int {
-	biome := tx.Biome(pos).String()
-	roll := rand.IntN(100)
+	return rabbitVariantIn(world.JavaBiomeName(tx.Biome(pos)), rand.IntN(100))
+}
+
+// rabbitVariantIn returns the variant of a rabbit spawning in a biome for a
+// roll of nextInt(100).
+func rabbitVariantIn(biome string, roll int) int {
 	if white, _ := gamedata.BiomeTagContains("spawns_white_rabbits", biome); white {
 		if roll < 80 {
 			return 1
@@ -294,15 +298,7 @@ func (r *Rabbit) FinalizeSpawn(reason string, j *vanilla.Random) {
 		b.variant = 99
 		b.killer = true
 	} else {
-		roll := j.NextInt(100)
-		switch {
-		case roll < 50:
-			b.variant = 0
-		case roll < 90:
-			b.variant = 5
-		default:
-			b.variant = 2
-		}
+		b.variant = rabbitVariantIn(spawnBiome(r.Ent), int(j.NextInt(100)))
 	}
 	if group != nil {
 		group.Data = b.variant

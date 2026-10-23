@@ -872,6 +872,13 @@ func (m *HostileMob) experienceEquipment() int {
 	return n
 }
 
+// VillagerData returns the profession and biome type a zombie villager keeps
+// from the villager it was.
+func (m *HostileMob) VillagerData() (profession, villagerType string) {
+	b := m.state()
+	return b.profession, b.villagerType
+}
+
 // IsCaptain ports Raider.isCaptain: a raid or patrol leader wearing the
 // ominous banner.
 func (m *HostileMob) IsCaptain() bool {

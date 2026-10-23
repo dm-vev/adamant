@@ -33,6 +33,11 @@ func (c eggBehaviourConfig) Apply(data *world.EntityData) {
 type eggBehaviour struct { projectile *ProjectileBehaviour; variant int }
 func (b *eggBehaviour) Tick(e *Ent,tx *world.Tx)*Movement{return b.projectile.Tick(e,tx)}
 
+// ClimateVariant returns the name of the climate of the chicken that laid the egg.
+func (b *eggBehaviour) ClimateVariant() string {
+	return []string{"temperate", "cold", "warm"}[min(b.variant, 2)]
+}
+
 // EggType is the world.EntityType for thrown eggs.
 var EggType eggType
 type eggType struct{}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -92,6 +93,11 @@ func templateFarmTemperature(biome string) string {
 		return "cold"
 	}
 	return "temperate"
+}
+
+// spawnBiome returns the namespaced name of the biome an entity spawns in.
+func spawnBiome(e *Ent) string {
+	return "minecraft:" + world.JavaBiomeName(e.tx.Biome(cube.PosFromVec3(e.Position())))
 }
 
 func templateSheepColour(random *vanilla.Random, biome string) int {

@@ -60,16 +60,17 @@ func (catType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if v, ok := source["variant"].(string); ok {
 		c.Variant = catVariantFromName(v)
 		c.variantSet = true
-	} else if v, ok := NativeMobVariant(m); ok {
-		c.Variant = int(v)
+	} else if v, ok := NativeMobVariant(m); ok && v >= 0 && int(v) < len(bedrockCatVariants) {
+		c.Variant = int(bedrockCatVariants[v])
 		c.variantSet = true
 	}
 	if _, ok := source["CatType"]; ok {
 		c.Variant = int(nbtconv.Int32(source, "CatType"))
 		c.variantSet = true
 	}
-	if _, ok := source["CollarColor"]; ok {
-		c.CollarColor = uint8(nbtconv.Int32(source, "CollarColor"))
+	// Java saves a byte; earlier Adamant versions an int.
+	if collar, ok := nbtconv.Integer(source, "CollarColor"); ok {
+		c.CollarColor = uint8(collar)
 		c.collarSet = true
 	}
 	if value, ok := source["Age"]; ok {
@@ -85,8 +86,8 @@ func (catType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*CatBehaviour)
 	health := b.health
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: health.MaxHealth(), Current: health.Health(), DefaultMin: 0, DefaultMax: health.MaxHealth(), Min: 0, Max: health.MaxHealth()}, {Name: "minecraft:movement", Base: .3, Current: .3, DefaultMin: 0, DefaultMax: .3, Min: 0, Max: .3}, {Name: "minecraft:attack_damage", Base: 3, Current: 3, DefaultMin: 0, DefaultMax: 3, Min: 0, Max: 3}})
-	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": int32(b.collarColor)}))
+	native := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": bedrockCatVariants[b.variant]})
+	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.ageTicks), "Health": float32(health.Health()), "MaxHealth": float32(health.MaxHealth()), "Tame": byte(catBool(b.tamed)), "Sitting": byte(catBool(b.sitting)), "variant": "minecraft:" + catVariantNames[b.variant], "sound_variant": "minecraft:" + b.soundVariant, "CollarColor": b.collarColor}))
 	if owner := catOwnerNBT(b.ownerUUID); owner != nil {
 		javaState["Owner"] = owner
 	} else {
@@ -126,6 +127,10 @@ func catReadOwner(raw any) string {
 }
 
 var catVariantNames = []string{"tabby", "black", "red", "siamese", "british_shorthair", "calico", "persian", "ragdoll", "white", "jellie", "all_black"}
+
+// bedrockCatVariants holds the Bedrock variant of each Java cat variant. The
+// mapping is its own inverse.
+var bedrockCatVariants = [...]int32{8, 1, 2, 3, 4, 5, 6, 7, 0, 10, 9}
 
 func catVariantFromName(s string) int {
 	s = strings.TrimPrefix(s, "minecraft:")
@@ -195,6 +200,9 @@ type CatBehaviour struct {
 
 func (c *CatBehaviour) Variant() int32 { return int32(c.variant) }
 func (c *CatBehaviour) Baby() bool     { return c.ageTicks < 0 }
+
+// SoundVariant returns the name of the sounds the cat makes.
+func (c *CatBehaviour) SoundVariant() string { return c.soundVariant }
 
 type Cat struct{ *Ent }
 
@@ -341,6 +349,7 @@ func (c *Cat) hasEffect(t effect.Type) bool { _, ok := c.b().effects.Effect(t); 
 func (c *Cat) Tamed() bool                  { return c.b().tamed }
 func (c *Cat) OwnerUUID() string            { return c.b().ownerUUID }
 func (c *Cat) Variant() int                 { return c.b().variant }
+func (c *Cat) BedrockVariant() int32        { return bedrockCatVariants[c.b().variant] }
 func (c *Cat) SetVariant(v int) {
 	c.b().variant = max(0, min(v, len(catVariantNames)-1))
 	c.updateState()

@@ -469,6 +469,9 @@ func (b *Bee) Interact(_ *world.Tx, u item.User, ctx *item.UseContext) bool {
 // Baby reports whether the bee is a baby.
 func (b *Bee) Baby() bool { return b.state().age < 0 }
 
+// HasNectar reports whether the bee carries pollen back to its hive.
+func (b *Bee) HasNectar() bool { return b.state().hasNectar }
+
 // InLove reports whether the bee is in love.
 func (b *Bee) InLove() bool { return b.state().breeding.InLove() }
 

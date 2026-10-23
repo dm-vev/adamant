@@ -207,10 +207,13 @@ func axolotlCanAttack(target world.Entity, huntAllowed bool, tx *world.Tx) bool 
 	return inWater
 }
 
+// frogVariantAt returns the Bedrock variant of a frog in the biome at pos:
+// warm (2) and cold (1) frogs come from their biome tags, temperate (0) ones
+// from elsewhere.
 func frogVariantAt(tx *world.Tx, pos mgl64.Vec3) int {
 	for _, tag := range tx.Biome(cube.PosFromVec3(pos)).Tags() {
-		if tag == "spawns_warm_variant_frogs" { return 1 }
-		if tag == "spawns_cold_variant_frogs" { return 2 }
+		if tag == "spawns_warm_variant_frogs" { return 2 }
+		if tag == "spawns_cold_variant_frogs" { return 1 }
 	}
 	return 0
 }

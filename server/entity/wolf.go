@@ -9,6 +9,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
@@ -65,14 +66,15 @@ func (wolfType) DecodeNBT(m map[string]any, data *world.EntityData) {
 			c.OwnerUUID, c.Tamed = javaUUIDFromHalves(most, least), true
 		}
 	}
-	if _, ok := source["CollarColor"]; ok {
-		c.CollarColor = uint8(nbtconv.Int32(source, "CollarColor"))
+	// Java saves a byte; earlier Adamant versions an int.
+	if collar, ok := nbtconv.Integer(source, "CollarColor"); ok {
+		c.CollarColor = uint8(collar)
 		c.collarSet = true
 	}
 	if variant, ok := source["variant"].(string); ok {
 		c.Variant = wolfVariant(variant)
-	} else if variant, ok := NativeMobVariant(m); ok && variant >= 0 && variant < 8 {
-		c.Variant = int(variant)
+	} else if variant, ok := NativeMobVariant(m); ok {
+		c.Variant, _ = wolfVariantFromBedrock(variant)
 	}
 	if variant, ok := source["sound_variant"].(string); ok {
 		c.SoundVariant = strings.TrimPrefix(variant, "minecraft:")
@@ -125,11 +127,7 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 		"IsTamed":    boolByte(b.tamed),
 		"Sitting":    boolByte(b.sitting),
 	}
-	variant := int32(8)
-	if old, ok := NativeMobVariant(data.NativeNBT); ok {
-		variant = old
-	}
-	native = SetNativeMobVariant(native, variant)
+	native = SetNativeMobVariant(native, bedrockWolfVariants[b.variant])
 	native = SetNativeMobAngry(native, b.angry)
 	ownerID, ok := NativeMobOwnerID(data.NativeNBT)
 	if !ok {
@@ -164,8 +162,8 @@ func (wolfType) EncodeNBT(data *world.EntityData) map[string]any {
 
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), b.breeding.encodeNBT(map[string]any{
 		"Tame": boolByte(b.tamed), "Sitting": boolByte(b.sitting), "Age": int32(b.ageTicks),
-		"CollarColor": int32(b.collarColor), "Angry": boolByte(b.angry),
-		"variant":       "minecraft:" + []string{"pale", "spotted", "snowy", "black", "ash", "rusty", "woods", "chestnut"}[min(b.variant, 7)],
+		"CollarColor": b.collarColor, "Angry": boolByte(b.angry),
+		"variant":       "minecraft:" + wolfVariantNames[b.variant],
 		"sound_variant": "minecraft:" + b.soundVariant,
 	}))
 	if b.ownerUUID != "" {
@@ -205,24 +203,36 @@ func nativeWolfArmorStack(armor NativeMobItem) (item.Stack, bool) {
 	}
 	return stack, true
 }
+
+// wolfVariantNames lists the Java wolf variants by the index Adamant keeps;
+// bedrockWolfVariants holds the Bedrock variant of each.
+var (
+	wolfVariantNames    = [...]string{"pale", "spotted", "snowy", "black", "ashen", "rusty", "woods", "chestnut", "striped"}
+	bedrockWolfVariants = [...]int32{0, 6, 5, 2, 1, 4, 8, 3, 7}
+)
+
 func wolfVariant(s string) int {
-	switch strings.TrimPrefix(s, "minecraft:") {
-	case "spotted":
-		return 1
-	case "snowy":
-		return 2
-	case "black":
-		return 3
-	case "ash":
-		return 4
-	case "rusty":
-		return 5
-	case "woods":
-		return 6
-	case "chestnut":
-		return 7
+	name := strings.TrimPrefix(s, "minecraft:")
+	if name == "ash" {
+		// Earlier Adamant versions saved ashen wolves as ash.
+		name = "ashen"
+	}
+	for i, n := range wolfVariantNames {
+		if n == name {
+			return i
+		}
 	}
 	return 0
+}
+
+// wolfVariantFromBedrock returns the variant index of a Bedrock wolf variant.
+func wolfVariantFromBedrock(v int32) (int, bool) {
+	for i, bedrock := range bedrockWolfVariants {
+		if bedrock == v {
+			return i, true
+		}
+	}
+	return 0, false
 }
 func javaUUIDString(value any) string {
 	var parts []int32
@@ -324,7 +334,7 @@ func (c WolfBehaviourConfig) New() *WolfBehaviour {
 		health: NewHealthManager(health, maxHealth), effects: NewEffectManager(),
 		mc:    &MovementComputer{Gravity: 0.08, Drag: 0.02, DragBeforeGravity: true},
 		speed: 0.3, tamed: c.Tamed, angry: c.Angry, sitting: c.Sitting, ownerUUID: c.OwnerUUID,
-		collarColor: collar, variant: uint8(max(0, min(c.Variant, 7))), ageTicks: c.AgeTicks, nextWander: 1,
+		collarColor: collar, variant: uint8(max(0, min(c.Variant, len(wolfVariantNames)-1))), ageTicks: c.AgeTicks, nextWander: 1,
 		soundVariant: soundVariant, bodyArmor: armor,
 		// Wolves only panic from fire, lava, freezing, cactus and lightning.
 		panic: panicState{environmental: true},
@@ -484,6 +494,8 @@ func (w *Wolf) Owner() *world.EntityHandle   { return w.behaviour().owner }
 func (w *Wolf) Angry() bool                  { return w.behaviour().angry }
 func (w *Wolf) SetSitting(sit bool)          { w.behaviour().sitting = sit }
 func (w *Wolf) Variant() uint8               { return w.behaviour().variant }
+func (w *Wolf) BedrockVariant() int32        { return bedrockWolfVariants[w.behaviour().variant] }
+func (w *Wolf) SoundVariant() string         { return w.behaviour().soundVariant }
 func (w *Wolf) CollarColor() uint8           { return w.behaviour().collarColor }
 func (w *Wolf) BodyArmor() item.Stack        { return w.behaviour().bodyArmor }
 func (w *Wolf) CanShearBodyArmor(user world.Entity) bool {
@@ -672,24 +684,51 @@ func (w *Wolf) die(src world.DamageSource) {
 	_ = w.CloseIn(w.tx)
 }
 
-// FinalizeSpawn selects a shared sound variant for members of the same pack.
+// FinalizeSpawn ports Wolf.finalizeSpawn: a pack shares the variant its biome
+// selects, and every wolf gets a random sound variant.
 func (w *Wolf) FinalizeSpawn(_ string, random *vanilla.Random) {
 	if random == nil {
 		return
 	}
+	b := w.behaviour()
 	group := w.H().SpawnGroup()
-	variants := [...]string{"classic", "puglin", "sad", "angry", "grumpy", "big", "cute"}
+	var shared any
 	if group != nil {
-		if shared, ok := group.Data.(wolfPackSpawnGroup); ok {
-			w.behaviour().soundVariant = shared.soundVariant
-			return
+		shared = group.Data
+	}
+	if pack, ok := shared.(wolfPackSpawnGroup); ok {
+		b.variant = pack.variant
+	} else {
+		b.variant = wolfVariantIn(spawnBiome(w.Ent))
+		if group != nil {
+			group.Data = wolfPackSpawnGroup{variant: b.variant}
 		}
 	}
-	variant := variants[random.NextInt(int32(len(variants)))]
-	w.behaviour().soundVariant = variant
-	if group != nil {
-		group.Data = wolfPackSpawnGroup{soundVariant: variant}
-	}
+	variants := [...]string{"classic", "puglin", "sad", "angry", "grumpy", "big", "cute"}
+	b.soundVariant = variants[random.NextInt(int32(len(variants)))]
 }
 
-type wolfPackSpawnGroup struct{ soundVariant string }
+// wolfVariantIn ports the spawn conditions of the wolf variants: each but pale
+// belongs to a biome or biome tag, and pale wolves spawn everywhere else.
+func wolfVariantIn(biome string) uint8 {
+	for _, c := range [...]struct {
+		biome, tag string
+		variant    uint8
+	}{
+		{tag: "is_savanna", variant: 1}, {biome: "minecraft:grove", variant: 2}, {biome: "minecraft:old_growth_pine_taiga", variant: 3},
+		{biome: "minecraft:snowy_taiga", variant: 4}, {tag: "is_jungle", variant: 5}, {biome: "minecraft:forest", variant: 6},
+		{biome: "minecraft:old_growth_spruce_taiga", variant: 7}, {tag: "is_badlands", variant: 8},
+	} {
+		if c.biome == biome {
+			return c.variant
+		}
+		if c.tag != "" {
+			if ok, _ := gamedata.BiomeTagContains(c.tag, biome); ok {
+				return c.variant
+			}
+		}
+	}
+	return 0
+}
+
+type wolfPackSpawnGroup struct{ variant uint8 }
