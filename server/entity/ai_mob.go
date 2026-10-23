@@ -22,6 +22,9 @@ type MobAI struct {
 	// the attributes of the mob its movement reads. Tick fills in Java's
 	// defaults for those left zero.
 	MovementSpeed, FollowRange, StepHeight, JumpStrength, Gravity float64
+	// FlyingSpeed is the flying speed attribute a FlyingMoveControl flies
+	// the mob with.
+	FlyingSpeed float64
 	// EyeHeight is the height of the eyes of the mob, 0.85 of its height if
 	// zero.
 	EyeHeight float64

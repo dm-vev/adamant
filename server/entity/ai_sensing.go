@@ -70,6 +70,29 @@ func clipMiss(tx *world.Tx, from, to mgl64.Vec3) bool {
 	return miss
 }
 
+// clipMissFluids reports if a line from one position to another passes no
+// collision box of a block and no liquid, as a Level.clip with
+// ClipContext.Fluid.ANY misses.
+func clipMissFluids(tx *world.Tx, from, to mgl64.Vec3) bool {
+	miss := true
+	trace.TraverseBlocks(from, to, func(pos cube.Pos) bool {
+		b := pathBlockAt(tx, pos)
+		if _, hit := trace.BlockIntercept(pos, tx, b, from, to, trace.CollisionShape); hit {
+			miss = false
+			return false
+		}
+		if l, ok := tx.Liquid(pos); ok {
+			box := cube.Box(0, 0, 0, 1, liquidHeight(tx, pos, l), 1).Translate(pos.Vec3())
+			if _, hit := trace.BBoxIntercept(box, from, to); hit {
+				miss = false
+				return false
+			}
+		}
+		return true
+	})
+	return miss
+}
+
 // targeting are the conditions an entity must meet for a mob to target it,
 // ported from Java's TargetingConditions.
 type targeting struct {

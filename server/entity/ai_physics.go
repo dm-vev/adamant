@@ -79,6 +79,18 @@ type mobWaterSlowDown interface {
 	waterSlowDown() float64
 }
 
+// mobAirMover is implemented by behaviours of mobs that slow down in the air
+// as much up and down as sideways, as Entity.omnidirectionalAirMover.
+type mobAirMover interface {
+	omnidirectionalAirMover() bool
+}
+
+// mobAfterAiStep is implemented by behaviours of mobs whose aiStep does more
+// after that of LivingEntity, such as Parrot.calculateFlapping.
+type mobAfterAiStep interface {
+	afterAiStep(m *Mob)
+}
+
 // Tick runs a tick of the mob: its AI and the movement of a LivingEntity,
 // ported from LivingEntity.aiStep and Mob.serverAiStep. register adds the
 // goals of the mob the first time it ticks. The movement of the tick is
@@ -105,6 +117,9 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 		return ai.riderMovement(m, prevPos, prevRot, prevHead)
 	}
 	ai.aiStep(m)
+	if a, ok := m.Behaviour().(mobAfterAiStep); ok {
+		a.afterAiStep(m)
+	}
 	if ai.bodyOverride != nil {
 		ai.bodyOverride.tick(m)
 	} else {
@@ -352,7 +367,11 @@ func (ai *MobAI) travelInAir(m *Mob, input mgl64.Vec3) {
 	} else {
 		v[1] -= ai.effectiveGravity(m)
 	}
-	m.data.Vel = mgl64.Vec3{v[0] * friction * .91, v[1] * .98, v[2] * friction * .91}
+	verticalFriction := .98
+	if a, ok := m.Behaviour().(mobAirMover); ok && a.omnidirectionalAirMover() {
+		verticalFriction = .91
+	}
+	m.data.Vel = mgl64.Vec3{v[0] * friction * .91, v[1] * verticalFriction, v[2] * friction * .91}
 }
 
 // flyingSpeed ports LivingEntity.getFlyingSpeed: a mob a player steers

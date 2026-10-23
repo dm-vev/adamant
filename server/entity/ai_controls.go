@@ -106,6 +106,53 @@ func (c *moveControl) tick(m *Mob) {
 	}
 }
 
+// flyingMoveControl flies a mob towards the position it wants to reach
+// without gravity, ported from Java's FlyingMoveControl. A mob that does not
+// hover in place falls again once it got there.
+type flyingMoveControl struct {
+	maxTurn       float64
+	hoversInPlace bool
+}
+
+func (c flyingMoveControl) tick(m *Mob) {
+	mc := &m.AI.move
+	if mc.operation != moveTo {
+		if !c.hoversInPlace {
+			m.AI.NoGravity = false
+		}
+		m.SetYya(0)
+		m.SetZza(0)
+		return
+	}
+	mc.operation = moveWait
+	m.AI.NoGravity = true
+	pos := m.data.Pos
+	xd, yd, zd := mc.wanted[0]-pos[0], mc.wanted[1]-pos[1], mc.wanted[2]-pos[2]
+	if xd*xd+yd*yd+zd*zd < 2.5000003e-7 {
+		m.SetYya(0)
+		m.SetZza(0)
+		return
+	}
+	m.SetYaw(moveRotlerp(m.Yaw(), math.Atan2(zd, xd)*180/math.Pi-90, 90))
+	speed := mc.speedModifier * m.AI.FlyingSpeed
+	if m.OnGround() {
+		speed = mc.speedModifier * m.AI.MovementSpeed
+	}
+	m.SetSpeed(speed)
+	sd := math.Sqrt(xd*xd + zd*zd)
+	if math.Abs(yd) > 1e-5 || math.Abs(sd) > 1e-5 {
+		// Entity.setXRot keeps the pitch MoveControl.rotlerp wraps to
+		// [0, 360] within [-90, 90].
+		pitch := moveRotlerp(m.Pitch(), -(math.Atan2(yd, sd) * 180 / math.Pi), c.maxTurn)
+		m.SetPitch(math.Max(-90, math.Min(90, math.Mod(pitch, 360))))
+		if yd > 0 {
+			m.SetYya(speed)
+		} else {
+			m.SetYya(-speed)
+		}
+	}
+}
+
 // blockedByShape reports if the mob stands in a block it should jump onto:
 // one with a collision shape above its feet that is no door or fence.
 func (c *moveControl) blockedByShape(m *Mob) bool {

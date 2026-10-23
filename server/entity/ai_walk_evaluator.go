@@ -18,6 +18,8 @@ type walkNodeEvaluator struct {
 	canPassDoors, canOpenDoors, canFloat, canWalkOverFences bool
 	// amphibious selects the evaluation of AmphibiousNodeEvaluator.
 	amphibious bool
+	// fly gives blocks the path types of FlyNodeEvaluator.
+	fly bool
 
 	// The maluses an amphibious evaluator changes while it finds a path.
 	oldMaluses map[PathType]float64
@@ -494,9 +496,12 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 }
 
 // blockType returns the path type of a block, as WalkNodeEvaluator.getPathType
-// and that of AmphibiousNodeEvaluator, to which water next to a solid block
-// is its border.
+// and those of AmphibiousNodeEvaluator, to which water next to a solid block
+// is its border, and FlyNodeEvaluator.
 func (w *walkNodeEvaluator) blockType(pos cube.Pos) PathType {
+	if w.fly {
+		return flyPathType(w.m, pos)
+	}
 	if !w.amphibious || pathTypeFromState(w.m.tx, pos) != PathWater {
 		return pathTypeStatic(w.m.tx, pos)
 	}
@@ -511,6 +516,9 @@ func (w *walkNodeEvaluator) blockType(pos cube.Pos) PathType {
 // pathType returns the path type of a single block for the mob, as
 // NodeEvaluator.getPathType.
 func (w *walkNodeEvaluator) pathType(m *Mob, pos cube.Pos) PathType {
+	if w.fly {
+		return flyPathType(m, pos)
+	}
 	return pathTypeStatic(m.tx, pos)
 }
 

@@ -27,6 +27,13 @@ type tamableBehaviour interface {
 	wantsToAttack(m *Mob, target, owner world.Entity) bool
 }
 
+// tamableFlyer is implemented by behaviours of tamed animals that fly to
+// their owner, as TamableAnimal.canFlyToOwner, which may teleport onto
+// leaves.
+type tamableFlyer interface {
+	canFlyToOwner() bool
+}
+
 func tamableOf(m *Mob) *tamable { return m.Behaviour().(tamableBehaviour).tamableState() }
 
 // ownerEntity returns the owner of the animal if it is in the world.
@@ -71,7 +78,9 @@ func (t *tamable) shouldTryTeleportToOwner(m *Mob) bool {
 
 // tryToTeleportToOwner ports TamableAnimal.tryToTeleportToOwner: the animal
 // moves to one of the walkable spots two or three blocks around its owner.
-func (t *tamable) tryToTeleportToOwner(m *Mob, canFly bool) {
+func (t *tamable) tryToTeleportToOwner(m *Mob) {
+	f, ok := m.Behaviour().(tamableFlyer)
+	canFly := ok && f.canFlyToOwner()
 	owner := t.ownerEntity(m.tx)
 	if owner == nil {
 		return
@@ -131,7 +140,7 @@ type tamableAnimalPanicGoal struct{ *PanicGoal }
 func (g tamableAnimalPanicGoal) Tick(m *Mob) {
 	t := tamableOf(m)
 	if !t.unableToMoveToOwner(m) && t.shouldTryTeleportToOwner(m) {
-		t.tryToTeleportToOwner(m, false)
+		t.tryToTeleportToOwner(m)
 	}
 }
 
@@ -176,8 +185,6 @@ func (g *sitWhenOrderedToGoal) Stop(m *Mob) { tamableOf(m).inSittingPose = false
 type followOwnerGoal struct {
 	goalFlags
 	speed, startDistance, stopDistance float64
-	// canFly lets the pet teleport onto leaves, as parrots may.
-	canFly bool
 
 	owner            *world.EntityHandle
 	timeToRecalcPath int
@@ -233,7 +240,7 @@ func (g *followOwnerGoal) Tick(m *Mob) {
 	}
 	g.timeToRecalcPath = adjustedTickDelay(g, 10)
 	if far {
-		t.tryToTeleportToOwner(m, g.canFly)
+		t.tryToTeleportToOwner(m)
 	} else {
 		m.AI.nav.MoveToEntity(m, owner, g.speed)
 	}

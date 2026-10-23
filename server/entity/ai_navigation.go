@@ -9,7 +9,8 @@ import (
 )
 
 // PathNavigation finds and follows the paths of a walking mob, ported from
-// Java's PathNavigation and GroundPathNavigation.
+// Java's PathNavigation and GroundPathNavigation, or of a swimming or flying
+// one.
 type PathNavigation struct {
 	eval walkNodeEvaluator
 
@@ -69,6 +70,10 @@ func (n *PathNavigation) SetAmphibious(v bool) { n.amphibious, n.eval.amphibious
 func (n *PathNavigation) SetWaterBound(breaching bool) {
 	n.swim = &swimNodeEvaluator{allowBreaching: breaching}
 }
+
+// SetFlying makes the mob fly through the air, as Java's FlyingPathNavigation
+// moves it.
+func (n *PathNavigation) SetFlying() { n.eval.fly = true }
 
 // SetCanFloat sets whether paths go through water the mob swims across.
 func (n *PathNavigation) SetCanFloat(v bool) { n.eval.canFloat = v }
@@ -143,6 +148,10 @@ func (n *PathNavigation) CreatePath(m *Mob, pos cube.Pos, reachRange int) *mobPa
 		target := pos
 		n.pathToPosition = &target
 	}
+	if n.eval.fly {
+		// FlyingPathNavigation flies to the very block passed.
+		return n.createPath(m, []cube.Pos{pos}, reachRange, n.maxPathLength(m))
+	}
 	if _, ok := m.tx.BlockLoaded(pos); !ok && !pos.OutOfBounds(m.tx.Range()) {
 		return nil
 	}
@@ -181,8 +190,11 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 	}
 	visited := int(float64(n.maxVisitedNodes) * n.maxVisitedNodesMultiplier)
 	var eval nodeEvaluator = &n.eval
-	if n.swim != nil {
+	switch {
+	case n.swim != nil:
 		eval = n.swim
+	case n.eval.fly:
+		eval = flyNodeEvaluator{&n.eval}
 	}
 	path := findPath(m, eval, targets, float32(maxPathLength), reachRange, visited)
 	if path != nil {
@@ -263,6 +275,13 @@ func (n *PathNavigation) tickNavigation(m *Mob) {
 	}
 	if n.canUpdatePath(m) {
 		n.followThePath(m)
+	} else if n.eval.fly && n.path != nil && !n.path.Done() {
+		// FlyingPathNavigation.tick: a mob that may not follow its path
+		// passes the nodes it flies through.
+		next := n.path.entityPosAtNode(m.Width(), n.path.next)
+		if m.BlockPos() == cube.PosFromVec3(next) {
+			n.path.Advance()
+		}
 	} else if n.path != nil && !n.path.Done() {
 		pos := n.tempMobPos(m)
 		next := n.path.entityPosAtNode(m.Width(), n.path.next)
@@ -293,7 +312,7 @@ func (n *PathNavigation) tickWallClimber(m *Mob) {
 }
 
 func (n *PathNavigation) groundY(m *Mob, target mgl64.Vec3) float64 {
-	if n.amphibious || n.swim != nil {
+	if n.amphibious || n.swim != nil || n.eval.fly {
 		return target[1]
 	}
 	pos := cube.PosFromVec3(target)
@@ -441,21 +460,32 @@ func (n *PathNavigation) canUpdatePath(m *Mob) bool {
 	if n.swim != nil {
 		return n.swim.allowBreaching || m.InLiquid()
 	}
+	if n.eval.fly {
+		return n.eval.canFloat && m.InLiquid() || m.Riding() == nil
+	}
 	return n.amphibious || m.OnGround() || m.InLiquid() || m.Riding() != nil
 }
 
 // canMoveDirectly ports PathNavigation.canMoveDirectly: a swimming
-// amphibious mob heads straight for the next node it sees.
+// amphibious mob heads straight for the next node it sees, and a flying mob
+// for one it sees past blocks and liquids.
 func (n *PathNavigation) canMoveDirectly(m *Mob, from, to mgl64.Vec3) bool {
+	if n.eval.fly {
+		return clipMissFluids(m.tx, from, mgl64.Vec3{to[0], to[1] + m.Height()*.5, to[2]})
+	}
 	if n.swim == nil && (!n.amphibious || !m.InLiquid()) {
 		return false
 	}
 	return clipMiss(m.tx, from, mgl64.Vec3{to[0], to[1] + m.Height()*.5, to[2]})
 }
 
-// tempMobPos ports GroundPathNavigation.getTempMobPos, and that of
-// AmphibiousPathNavigation: the middle of the mob.
+// tempMobPos ports GroundPathNavigation.getTempMobPos, that of
+// AmphibiousPathNavigation, the middle of the mob, and that of
+// FlyingPathNavigation, its feet.
 func (n *PathNavigation) tempMobPos(m *Mob) mgl64.Vec3 {
+	if n.eval.fly {
+		return m.data.Pos
+	}
 	if n.amphibious || n.swim != nil {
 		return mgl64.Vec3{m.data.Pos[0], m.data.Pos[1] + m.Height()*.5, m.data.Pos[2]}
 	}
@@ -480,6 +510,10 @@ func (n *PathNavigation) surfaceY(m *Mob) int {
 // IsStableDestination reports if a mob may stand at a position: on a full,
 // solid block, as PathNavigation.isStableDestination.
 func (n *PathNavigation) IsStableDestination(tx *world.Tx, pos cube.Pos) bool {
+	if n.eval.fly {
+		// FlyingPathNavigation: a block with a full top to land on.
+		return pathBlockAt(tx, pos).Model().FaceSolid(pos, cube.FaceUp, tx)
+	}
 	if n.swim != nil {
 		b := pathBlockAt(tx, pos)
 		return !fullCollisionCube(tx, pos, b)

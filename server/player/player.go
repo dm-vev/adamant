@@ -49,8 +49,11 @@ type playerData struct {
 	unlockedRecipes             map[string]struct{}
 	raidOmenPosition            *cube.Pos
 	shoulderLeft, shoulderRight map[string]any
-	javaState                   map[string]any
-	wardenSpawnTracker          *world.WardenSpawnTracker
+	// shoulderSatTick is ServerPlayer.timeEntitySatOnShoulder, the tick an
+	// entity last sat on a shoulder.
+	shoulderSatTick    int64
+	javaState          map[string]any
+	wardenSpawnTracker *world.WardenSpawnTracker
 	// sidebar is the last scoreboard sidebar sent to the client.
 	sidebar           string
 	xuid              string
@@ -3740,35 +3743,42 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 		p.data.Vel = mgl64.Vec3{}
 	}
 
-	p.tryLandParrotOnShoulder()
 	p.portalTravel.StopPortalContact()
 }
-func (p *Player) tryLandParrotOnShoulder() {
-	if (p.shoulderLeft != nil && p.shoulderRight != nil) || !p.OnGround() || p.Flying() || p.Gliding() || p.sleeping || p.insideOfWater() {
-		return
+
+// SetEntityOnShoulder ports ServerPlayer.setEntityOnShoulder: a player on
+// the ground, out of water and powder snow and riding nothing seats the
+// entity saved as data on its left shoulder, or else its right one.
+func (p *Player) SetEntityOnShoulder(data map[string]any) bool {
+	if p.Riding() != nil || !p.OnGround() || p.touchingWater() || p.data.InPowderSnow {
+		return false
 	}
-	for e := range p.tx.Entities() {
-		if e.Position().Sub(p.Position()).Len() > 1.5 {
-			continue
-		}
-		parrot, ok := e.(interface {
-			SetOnShoulder(world.Entity) map[string]any
-		})
-		if !ok {
-			continue
-		}
-		data := parrot.SetOnShoulder(p)
-		if data == nil {
-			continue
-		}
-		if p.shoulderLeft == nil {
-			p.shoulderLeft = data
-		} else {
-			p.shoulderRight = data
-		}
-		p.tx.RemoveEntity(e)
-		return
+	switch {
+	case p.shoulderLeft == nil:
+		p.shoulderLeft = data
+	case p.shoulderRight == nil:
+		p.shoulderRight = data
+	default:
+		return false
 	}
+	p.shoulderSatTick = p.tx.CurrentTick()
+	return true
+}
+
+// touchingWater reports if water touches the box of the player, as
+// Entity.isInWater.
+func (p *Player) touchingWater() bool {
+	box := p.H().Type().BBox(p).Translate(p.Position()).Grow(-.001)
+	for x := int(math.Floor(box.Min()[0])); x <= int(math.Floor(box.Max()[0])); x++ {
+		for y := int(math.Floor(box.Min()[1])); y <= int(math.Floor(box.Max()[1])); y++ {
+			for z := int(math.Floor(box.Min()[2])); z <= int(math.Floor(box.Max()[2])); z++ {
+				if l, ok := p.tx.Liquid(cube.Pos{x, y, z}); ok && l.LiquidType() == "water" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // ShoulderEntities returns the saved native entity compounds currently riding
@@ -3777,17 +3787,19 @@ func (p *Player) ShoulderEntities() (left, right map[string]any) {
 	return p.shoulderLeft, p.shoulderRight
 }
 
-// ReleaseShoulderParrots reintroduces saved shoulder entities into the world.
-// It is also called automatically for source dismount conditions.
+// ReleaseShoulderParrots reintroduces saved shoulder entities into the world
+// above the player, as ServerPlayer.removeEntitiesOnShoulder, at least a
+// second after one last sat down. It is also called automatically for source
+// dismount conditions.
 func (p *Player) ReleaseShoulderParrots() {
-	if p.tx == nil {
+	if p.tx == nil || p.shoulderLeft == nil && p.shoulderRight == nil || p.shoulderSatTick+20 >= p.tx.CurrentTick() {
 		return
 	}
 	spawn := p.tx.World().EntityRegistry().Config().SpawnMobFromNBT
 	if spawn == nil {
 		return
 	}
-	release := func(data map[string]any, side float64) map[string]any {
+	release := func(data map[string]any) map[string]any {
 		if data == nil {
 			return nil
 		}
@@ -3795,18 +3807,15 @@ func (p *Player) ReleaseShoulderParrots() {
 		if id == "" {
 			return data
 		}
-		yaw := p.Rotation().Yaw() * math.Pi / 180
-		pos := p.Position().Add(mgl64.Vec3{side * math.Cos(yaw) * .3, 1.0, side * math.Sin(yaw) * .3})
-		velocity := mgl64.Vec3{-math.Sin(yaw) * .2, .5, math.Cos(yaw) * .2}
-		opts := world.EntitySpawnOpts{Position: pos, Rotation: p.Rotation(), Velocity: velocity}
+		opts := world.EntitySpawnOpts{Position: p.Position().Add(mgl64.Vec3{0, .7}), Rotation: p.Rotation()}
 		if h := spawn(id, opts, world.CloneNativeEntityNBT(data)); h != nil {
 			p.tx.AddEntity(h)
 			return nil
 		}
 		return data
 	}
-	p.shoulderLeft = release(p.shoulderLeft, -1)
-	p.shoulderRight = release(p.shoulderRight, 1)
+	p.shoulderLeft = release(p.shoulderLeft)
+	p.shoulderRight = release(p.shoulderRight)
 }
 
 func (p *Player) tickCarriedMaps(current int64) {

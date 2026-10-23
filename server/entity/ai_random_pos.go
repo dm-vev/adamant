@@ -8,8 +8,9 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// This file ports RandomPos, DefaultRandomPos, LandRandomPos and GoalUtils,
-// which pick random positions for mobs to walk to.
+// This file ports RandomPos, DefaultRandomPos, LandRandomPos, HoverRandomPos,
+// AirAndWaterRandomPos and GoalUtils, which pick random positions for mobs to
+// walk or fly to.
 
 // mobWalkTarget is implemented by behaviours of mobs that prefer some
 // positions to walk to, as PathfinderMob.getWalkTargetValue.
@@ -72,6 +73,28 @@ func moveUpOutOfSolid(pos cube.Pos, maxY int, solid func(cube.Pos) bool) cube.Po
 	pos = pos.Side(cube.FaceUp)
 	for pos.Y() <= maxY && solid(pos) {
 		pos = pos.Side(cube.FaceUp)
+	}
+	return pos
+}
+
+// moveUpToAboveSolid ports RandomPos.moveUpToAboveSolid: a position inside
+// solid blocks rises out of them and up to aboveSolid blocks further, short
+// of a ceiling.
+func moveUpToAboveSolid(pos cube.Pos, aboveSolid, maxY int, solid func(cube.Pos) bool) cube.Pos {
+	if !solid(pos) {
+		return pos
+	}
+	pos = pos.Side(cube.FaceUp)
+	for pos.Y() <= maxY && solid(pos) {
+		pos = pos.Side(cube.FaceUp)
+	}
+	firstNonSolid := pos.Y()
+	for pos.Y() <= maxY && pos.Y()-firstNonSolid < aboveSolid {
+		pos = pos.Side(cube.FaceUp)
+		if solid(pos) {
+			pos = pos.Side(cube.FaceDown)
+			break
+		}
 	}
 	return pos
 }
@@ -246,4 +269,51 @@ func landPosUpOutOfSolid(m *Mob, pos cube.Pos) (cube.Pos, bool) {
 		return cube.Pos{}, false
 	}
 	return pos, true
+}
+
+// solidAt ports GoalUtils.isSolid.
+func solidAt(m *Mob, pos cube.Pos) bool { return legacySolid(m.tx, pathBlockAt(m.tx, pos), pos) }
+
+// HoverRandomPos ports HoverRandomPos.getPos: a position in a direction
+// within maxRadians of the one passed, hoverMin to hoverMax blocks above the
+// ground there and out of water.
+func HoverRandomPos(m *Mob, horizontal, vertical int, xDir, zDir, maxRadians float64, hoverMax, hoverMin int) (mgl64.Vec3, bool) {
+	restrict := mobRestricted(m, float64(horizontal))
+	return generateRandomPos(m, func() (cube.Pos, bool) {
+		direction, ok := randomDirectionWithinRadians(m, 0, float64(horizontal), vertical, 0, xDir, zDir, maxRadians)
+		if !ok {
+			return cube.Pos{}, false
+		}
+		pos := randomPosTowardDirection(m, float64(horizontal), direction)
+		if !acceptableRandomPos(m, pos, restrict) {
+			return cube.Pos{}, false
+		}
+		above := int(m.Random().NextInt(int32(hoverMax-hoverMin+1))) + hoverMin
+		pos = moveUpToAboveSolid(pos, above, m.tx.Range().Max(), func(p cube.Pos) bool { return solidAt(m, p) })
+		return pos, !pathWater(m.tx, pos) && !hasMalus(m, pos)
+	})
+}
+
+// AirAndWaterRandomPos ports AirAndWaterRandomPos.getPos: a position in a
+// direction within maxRadians of the one passed, flyingHeight blocks up on
+// average, in the air or in water.
+func AirAndWaterRandomPos(m *Mob, horizontal, vertical, flyingHeight int, xDir, zDir, maxRadians float64) (mgl64.Vec3, bool) {
+	restrict := mobRestricted(m, float64(horizontal))
+	return generateRandomPos(m, func() (cube.Pos, bool) {
+		return airAndWaterPos(m, horizontal, vertical, flyingHeight, xDir, zDir, maxRadians, restrict)
+	})
+}
+
+// airAndWaterPos ports AirAndWaterRandomPos.generateRandomPos.
+func airAndWaterPos(m *Mob, horizontal, vertical, flyingHeight int, xDir, zDir, maxRadians float64, restrict bool) (cube.Pos, bool) {
+	direction, ok := randomDirectionWithinRadians(m, 0, float64(horizontal), vertical, flyingHeight, xDir, zDir, maxRadians)
+	if !ok {
+		return cube.Pos{}, false
+	}
+	pos := randomPosTowardDirection(m, float64(horizontal), direction)
+	if pos.OutOfBounds(m.tx.Range()) || restrict && !m.WithinHome(pos) {
+		return cube.Pos{}, false
+	}
+	pos = moveUpOutOfSolid(pos, m.tx.Range().Max(), func(p cube.Pos) bool { return solidAt(m, p) })
+	return pos, !hasMalus(m, pos)
 }
