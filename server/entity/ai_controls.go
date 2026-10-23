@@ -25,6 +25,10 @@ type moveControl struct {
 	speedModifier               float64
 	strafeForwards, strafeRight float64
 	operation                   moveOperation
+	// adjustWanted, if set, returns the speed modifier to walk to a wanted
+	// position with, as subclasses of MoveControl override
+	// setWantedPosition.
+	adjustWanted func(speedModifier float64) float64
 }
 
 // HasWanted reports if the control walks towards a position.
@@ -39,6 +43,9 @@ func (c *moveControl) Wanted() [3]float64 { return c.wanted }
 // SetWantedPosition walks the mob towards a position with its speed scaled
 // by speedModifier.
 func (c *moveControl) SetWantedPosition(x, y, z, speedModifier float64) {
+	if c.adjustWanted != nil {
+		speedModifier = c.adjustWanted(speedModifier)
+	}
 	c.wanted = [3]float64{x, y, z}
 	c.speedModifier = speedModifier
 	if c.operation != moveJumping {

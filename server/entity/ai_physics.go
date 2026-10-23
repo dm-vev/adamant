@@ -61,6 +61,12 @@ type mobTraveller interface {
 	travel(m *Mob, input mgl64.Vec3) bool
 }
 
+// mobJumpControl is implemented by behaviours of mobs with a JumpControl of
+// their own, which runs in place of the default one.
+type mobJumpControl interface {
+	tickJumpControl(m *Mob)
+}
+
 // mobCustomStep is implemented by behaviours with an AI step of their own
 // after their goals, as Mob.customServerAiStep.
 type mobCustomStep interface {
@@ -188,7 +194,11 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 	} else {
 		ai.look.tick(m)
 	}
-	ai.jump.tick(m)
+	if j, ok := m.Behaviour().(mobJumpControl); ok {
+		j.tickJumpControl(m)
+	} else {
+		ai.jump.tick(m)
+	}
 }
 
 // jumpInLiquid ports Mob.jumpInLiquid: mobs that float swim up slowly, the

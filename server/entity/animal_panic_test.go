@@ -55,13 +55,17 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 		id                  string
 		nbt                 map[string]any
 		attribute, modifier float64
+		// hop is the distance a mob that hops covers in its fastest tick.
+		hop float64
 	}{
 		{id: "minecraft:cow", attribute: .2, modifier: 2},
 		{id: "minecraft:mooshroom", attribute: .2, modifier: 2},
 		{id: "minecraft:pig", attribute: .25, modifier: 1.25},
 		{id: "minecraft:sheep", attribute: .23, modifier: 1.25},
 		{id: "minecraft:chicken", attribute: .25, modifier: 1.4},
-		{id: "minecraft:rabbit", attribute: .3, modifier: 2.2},
+		// RabbitMoveControl moves a rabbit only while it hops: it pushes
+		// off the ground at its speed for a tick and glides in the air.
+		{id: "minecraft:rabbit", attribute: .3, modifier: 2.2, hop: .3 * 2.2 * .98 * .3 * 2.2},
 		{id: "minecraft:cat", attribute: .3, modifier: 1.5},
 		{id: "minecraft:fox", attribute: .3, modifier: 2.2},
 		{id: "minecraft:polar_bear", nbt: map[string]any{"Age": int32(-24000)}, attribute: .25, modifier: 2},
@@ -117,9 +121,13 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 			// PanicGoal stops where its path ends and, on flat ground, often
 			// finds no spot to run to, so the mob runs at full speed only
 			// now and then during the two seconds it panics.
-			want := panicDistance(c.attribute, c.modifier)
-			if fastest < .9*want/20 {
-				t.Fatalf("panicking %s ran at most %.3f blocks a tick, want at least %.3f", c.id, fastest, .9*want/20)
+			want, peak := panicDistance(c.attribute, c.modifier), panicDistance(c.attribute, c.modifier)/20
+			if c.hop > 0 {
+				peak = c.hop
+				want = 20 * c.hop
+			}
+			if fastest < .9*peak {
+				t.Fatalf("panicking %s ran at most %.3f blocks a tick, want at least %.3f", c.id, fastest, .9*peak)
 			}
 			if run < .5*want {
 				t.Fatalf("panicking %s ran %.2f blocks in two seconds, want at least %.2f", c.id, run, .5*want)

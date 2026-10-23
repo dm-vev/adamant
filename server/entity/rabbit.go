@@ -39,7 +39,7 @@ func (rabbitType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if s == nil {
 		s = m
 	}
-	c := RabbitConfig{Variant: int(nbtconv.Int32(s, "RabbitType")), Age: int(nbtconv.Int32(s, "Age"))}
+	c := RabbitConfig{Variant: int(nbtconv.Int32(s, "RabbitType")), Age: int(nbtconv.Int32(s, "Age")), MoreCarrotTicks: int(nbtconv.Int32(s, "MoreCarrotTicks"))}
 	if a, ok := nativeMobAttribute(m, "minecraft:health"); ok {
 		c.Health, c.MaxHealth = a.Current, a.Base
 	}
@@ -49,13 +49,13 @@ func (rabbitType) DecodeNBT(m map[string]any, d *world.EntityData) {
 func (rabbitType) EncodeNBT(d *world.EntityData) map[string]any {
 	b := d.Data.(*RabbitBehaviour)
 	a := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: b.maxHealth, Current: b.health, DefaultMin: 0, DefaultMax: b.maxHealth, Min: 0, Max: b.maxHealth}})
-	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant)})))
+	return MergeNativeMobJavaState(map[string]any{"Attributes": a}, MergeNativeMobNBT(ReadNativeMobJavaState(d.NativeNBT), b.breeding.encodeNBT(map[string]any{"Age": int32(b.age), "RabbitType": int32(b.variant), "MoreCarrotTicks": int32(b.moreCarrotTicks)})))
 }
 
 // RabbitConfig controls variant and age.
 type RabbitConfig struct {
-	Health, MaxHealth float64
-	Variant, Age      int
+	Health, MaxHealth             float64
+	Variant, Age, MoreCarrotTicks int
 }
 
 func (c RabbitConfig) Apply(d *world.EntityData) { d.Data = c.New() }
@@ -66,20 +66,28 @@ func (c RabbitConfig) New() *RabbitBehaviour {
 	if c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &RabbitBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 99)), age: c.Age, killer: c.Variant == 99, speed: .3, mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, effects: NewEffectManager()}
+	return &RabbitBehaviour{health: c.Health, maxHealth: c.MaxHealth, variant: max(0, min(c.Variant, 99)), age: c.Age, killer: c.Variant == 99, moreCarrotTicks: c.MoreCarrotTicks, speed: .3, effects: NewEffectManager()}
 }
 
 // Rabbit is a small prey animal with source variant, crop-raiding and killer-bunny state.
 type Rabbit struct{ *Ent }
 type RabbitBehaviour struct {
-	effects                      *EffectManager
-	health, maxHealth            float64
-	variant, age, attackCooldown int
-	dead, killer                 bool
-	speed                        float64
-	mc                           *MovementComputer
-	breeding                     breeding
-	goals                        animalGoals
+	effects           *EffectManager
+	health, maxHealth float64
+	variant, age      int
+	dead, killer      bool
+	speed             float64
+	breeding          breeding
+	animalAI
+	// The hops of the rabbit: jumpTicks counts up to jumpDuration during a
+	// hop and jumpDelayTicks down after landing.
+	jumpTicks, jumpDuration, jumpDelayTicks int
+	wasOnGround                             bool
+	// nextJumpSpeed is the speed modifier RabbitMoveControl hops at.
+	nextJumpSpeed float64
+	// moreCarrotTicks counts down until the rabbit wants to eat carrots
+	// again.
+	moreCarrotTicks int
 }
 
 func (r *Rabbit) behaviour() *RabbitBehaviour { return r.Behaviour().(*RabbitBehaviour) }
@@ -89,44 +97,38 @@ func (r *Rabbit) Tick(tx *world.Tx, t int64) {
 }
 func (b *RabbitBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	rabbit := &Rabbit{Ent: e}
-	spec := animalGoalSpec{speed: b.speed, panic: 2.2, breed: .8, tempt: 1, tempting: rabbitFood, stroll: .6, lookDistance: 10, reach: .5}
-	if !b.killer {
-		spec.avoid = rabbitAvoid
+	b.ai.MovementSpeed, b.ai.EyeHeight = b.speed, .59
+	if b.age < 0 {
+		b.ai.EyeHeight = .39
 	}
-	vel, rot := b.goals.tick(e, tx, rabbit, spec)
-	if b.attackCooldown > 0 {
-		b.attackCooldown--
+	mv := animalTick(e, tx, rabbit, &b.animalAI, b.registerGoals)
+	// Rabbit.aiStep: a hop ends after its 15 ticks.
+	if b.jumpTicks != b.jumpDuration {
+		b.jumpTicks++
+	} else if b.jumpDuration != 0 {
+		b.jumpTicks, b.jumpDuration = 0, 0
+		b.ai.jumping = false
 	}
-	if b.killer && !b.goals.panic.active {
-		if target := rabbitKillerTarget(e, tx); target != nil {
-			// The killer bunny's MeleeAttackGoal runs at 1.4 times its speed.
-			navigateTo(&b.goals.navigator, e, tx, target.Position())
-			b.goals.running = goalSpecies
-			if v, r, moving := steer(e, &b.goals.navigator, groundSpeed(b.speed, 1.4), .5); moving {
-				vel, rot = v, r
-			}
-			if target.Position().Sub(e.Position()).Len() < 1.5 && b.attackCooldown == 0 {
-				if l, ok := target.(Living); ok {
-					l.Hurt(8, AttackDamageSource{Attacker: rabbit})
-				}
-				b.attackCooldown = 20
-			}
-		}
+	return mv
+}
+
+// doHurtTarget ports Mob.doHurtTarget for the killer bunny, which bites for
+// 8 damage.
+func (b *RabbitBehaviour) doHurtTarget(m *Mob, target world.Entity) bool {
+	l, ok := target.(Living)
+	if !ok {
+		return false
 	}
-	return b.mc.TickMovement(e, e.data.Pos, vel, rot, e.data.Rot, tx).apply(e)
+	if _, hurt := l.Hurt(8, AttackDamageSource{Attacker: m.Self}); !hurt {
+		return false
+	}
+	l.KnockBack(m.data.Pos, .4, .4)
+	return true
 }
 
 // rabbitFood is the rabbit food tag the rabbit's TemptGoal follows.
 func rabbitFood(stack item.Stack) bool {
 	return itemNamed(stack, "minecraft:carrot", "minecraft:golden_carrot", "minecraft:dandelion")
-}
-
-// rabbitAvoid are the RabbitAvoidEntityGoals: rabbits flee from players
-// within eight blocks, wolves within ten and monsters within four.
-var rabbitAvoid = []avoidSpec{
-	{match: func(e world.Entity) bool { return e.H().Type().EncodeEntity() == "minecraft:player" }, distance: 8, walk: 2.2, sprint: 2.2},
-	{match: func(e world.Entity) bool { return e.H().Type().EncodeEntity() == "minecraft:wolf" }, distance: 10, walk: 2.2, sprint: 2.2},
-	{match: func(e world.Entity) bool { return monsterClass[e.H().Type().EncodeEntity()] }, distance: 4, walk: 2.2, sprint: 2.2},
 }
 
 // monsterClass holds the mobs that extend Java's Monster.
@@ -140,29 +142,6 @@ var monsterClass = map[string]bool{
 	"minecraft:zoglin": true, "minecraft:zombie": true, "minecraft:zombie_villager": true, "minecraft:zombified_piglin": true,
 }
 
-func rabbitKillerTarget(e *Ent, tx *world.Tx) world.Entity {
-	area := cube.Box(-16, -8, -16, 16, 8, 16).Translate(e.Position())
-	var target world.Entity
-	best := 16.0
-	for other := range tx.EntitiesWithin(area) {
-		if other == e {
-			continue
-		}
-		id := other.H().Type().EncodeEntity()
-		if id != "minecraft:player" && id != "minecraft:wolf" && id != "minecraft:fox" {
-			continue
-		}
-		living, ok := other.(Living)
-		if !ok || living.Dead() {
-			continue
-		}
-		distance := other.Position().Sub(e.Position()).Len()
-		if distance < best {
-			target, best = other, distance
-		}
-	}
-	return target
-}
 func (r *Rabbit) Health() float64    { return r.behaviour().health }
 func (r *Rabbit) MaxHealth() float64 { return r.behaviour().maxHealth }
 func (r *Rabbit) SetMaxHealth(v float64) {
@@ -173,18 +152,25 @@ func (r *Rabbit) SetMaxHealth(v float64) {
 func (r *Rabbit) Dead() bool { return r.behaviour().dead || r.Health() <= 0 }
 
 // Panicking reports whether the rabbit runs from danger.
-func (r *Rabbit) Panicking() bool { return r.behaviour().goals.panic.active }
+func (r *Rabbit) Panicking() bool { return r.behaviour().panicking() }
 func (r *Rabbit) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	if r.Dead() || v <= 0 {
 		return 0, false
 	}
+	b := r.behaviour()
 	var ok bool
-	if v, ok = mobEffectDamage(r.behaviour().effects, v, src); !ok {
+	if v, ok = b.ai.DamageCooldown(r.tx, v); !ok {
 		return 0, false
 	}
-	b := r.behaviour()
+	if b.killer {
+		// Rabbit.setVariant: the killer bunny wears 8 armour.
+		v = damageAfterArmour(v, src, 8, 0)
+	}
+	if v, ok = mobEffectDamage(b.effects, v, src); !ok {
+		return 0, false
+	}
 	b.health -= v
-	b.goals.hurt(src, r.tx.CurrentTick())
+	b.ai.Hurt(src)
 	resetLove(r)
 	r.viewAction(HurtAction{})
 	onMobHurt(r.tx, r)
