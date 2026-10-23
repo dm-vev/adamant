@@ -53,12 +53,16 @@ type Config struct {
 	// the World. If set to nil, the Generator used will be NopGenerator, which
 	// generates completely empty chunks.
 	Generator Generator
+	// GeneratorProfile selects how chunk generation uses the CPUs of the host:
+	// the default worker count and, for generators that support it, their
+	// cache sizes and parallelism. The zero value picks a profile from the
+	// number of logical CPUs.
+	GeneratorProfile GeneratorProfile
 	// GeneratorWorkers specifies the number of background workers used to run
-	// chunk generation. If set to 0 or lower, one worker fewer than the
-	// logical CPUs is used, as Java sizes its background executor, leaving a
-	// CPU to the world tick and the network. Large terrain preloads may benefit from a
-	// higher worker count, but profiling is recommended when the generator is
-	// constrained by external I/O (for example LevelDB access).
+	// chunk generation. If set to 0 or lower, GeneratorProfile selects it.
+	// Large terrain preloads may benefit from a higher worker count, but
+	// profiling is recommended when the generator is constrained by external
+	// I/O (for example LevelDB access).
 	GeneratorWorkers int
 	// GeneratorQueueSize specifies how many chunk generation tasks may wait for
 	// a worker before a backlog warning is logged. Further tasks still queue:
@@ -135,11 +139,12 @@ func (conf Config) New() *World {
 	if conf.Generator == nil {
 		conf.Generator = NopGenerator{}
 	}
+	conf.GeneratorProfile = conf.GeneratorProfile.resolve(runtime.NumCPU())
 	if conf.GeneratorWorkers <= 0 {
-		conf.GeneratorWorkers = runtime.NumCPU() - 1
+		conf.GeneratorWorkers = conf.GeneratorProfile.workers(runtime.NumCPU())
 	}
-	if conf.GeneratorWorkers <= 0 {
-		conf.GeneratorWorkers = 1
+	if tunable, ok := conf.Generator.(TunableGenerator); ok {
+		tunable.TuneGeneration(GenerationTuning{Workers: conf.GeneratorWorkers, Parallel: conf.GeneratorProfile == GeneratorProfileManyCores})
 	}
 	if conf.GeneratorQueueSize <= 0 {
 		conf.GeneratorQueueSize = conf.GeneratorWorkers * 4

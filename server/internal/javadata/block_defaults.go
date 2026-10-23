@@ -6,6 +6,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync/atomic"
 )
 
 type javaPropertyDomain struct {
@@ -146,7 +147,22 @@ func init() {
 		javaBlockStateCodecs[blockIndex] = codec
 		javaBlockStateCount += codec.count
 	}
+	javaStateBlocks = make([]uint16, javaBlockStateCount)
+	for blockIndex := range javaBlockStateCodecs {
+		codec := &javaBlockStateCodecs[blockIndex]
+		for value := codec.offset; value < codec.offset+codec.count; value++ {
+			javaStateBlocks[value] = uint16(blockIndex)
+		}
+	}
+	javaStateViews = make([]atomic.Pointer[map[string]any], javaBlockStateCount+1)
 }
+
+// javaStateBlocks maps a state ID minus one to its block index, so decoding a
+// state does not search the codecs.
+var javaStateBlocks []uint16
+
+// javaStateViews holds the shared property maps of BlockStateView by state ID.
+var javaStateViews []atomic.Pointer[map[string]any]
 
 // BlockStateID returns a canonical, process-local ID for a Java block state.
 // ID zero is reserved for states without Java metadata.
@@ -213,6 +229,22 @@ func BlockStateFromID(id uint32) (name string, properties map[string]any, ok boo
 		}
 	}
 	return javaBlockQualifiedNames[block], properties, true
+}
+
+// BlockStateView decodes a canonical state like BlockStateFromID, but returns
+// a property map shared by every caller of the same ID. Callers must not
+// modify it; generation workers read states millions of times per chunk.
+func BlockStateView(id uint32) (name string, properties map[string]any, ok bool) {
+	block, ok := blockStateIndex(id)
+	if !ok {
+		return "", nil, false
+	}
+	if cached := javaStateViews[id].Load(); cached != nil {
+		return javaBlockQualifiedNames[block], *cached, true
+	}
+	_, decoded, _ := BlockStateFromID(id)
+	javaStateViews[id].CompareAndSwap(nil, &decoded)
+	return javaBlockQualifiedNames[block], *javaStateViews[id].Load(), true
 }
 
 // BlockStateName returns the qualified name without materialising properties.
@@ -321,12 +353,7 @@ func blockStateIndex(id uint32) (int, bool) {
 	if id == 0 || id > javaBlockStateCount {
 		return 0, false
 	}
-	value := id - 1
-	block := sort.Search(len(javaBlockStateCodecs), func(i int) bool {
-		codec := &javaBlockStateCodecs[i]
-		return codec.offset+codec.count > value
-	})
-	return block, true
+	return int(javaStateBlocks[id-1]), true
 }
 
 func blockStateProperty(id uint32, property string) (*javaPropertyDomain, uint32, uint32, bool) {

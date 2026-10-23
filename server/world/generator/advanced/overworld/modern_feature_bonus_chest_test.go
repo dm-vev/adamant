@@ -102,8 +102,8 @@ func TestBonusChestMatchesJava263(t *testing.T) {
 			if next := random.NextLong(); next != tc.Next {
 				t.Errorf("following stream=%d, Java wants %d", next, tc.Next)
 			}
-			if len(region.overlay) != len(tc.Blocks) {
-				t.Errorf("writes=%d, Java wants %d", len(region.overlay), len(tc.Blocks))
+			if region.overlay.len() != len(tc.Blocks) {
+				t.Errorf("writes=%d, Java wants %d", region.overlay.len(), len(tc.Blocks))
 			}
 			for _, input := range tc.Blocks {
 				p := featurePos{input.Position[0], input.Position[1], input.Position[2]}
@@ -115,7 +115,7 @@ func TestBonusChestMatchesJava263(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got, ok := region.overlay[featureKey(p)]; !ok || got != want {
+				if got, ok := region.overlay.get(p); !ok || got != want {
 					t.Errorf("at %v: got %+v present=%v, source projection %+v", p, got, ok, want)
 				}
 			}

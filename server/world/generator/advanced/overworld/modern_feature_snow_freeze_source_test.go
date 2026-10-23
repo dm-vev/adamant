@@ -163,7 +163,7 @@ func TestSnowAndFreezeMatchesJava263Source(t *testing.T) {
 			if got := random.NextLong(); got != tc.NextLong {
 				t.Errorf("nextLong=%d, Source=%d", got, tc.NextLong)
 			}
-			got := make([]string, 0, len(region.overlay))
+			got := make([]string, 0, region.overlay.len())
 			for p, state := range region.overlayByPos() {
 				javaState, err := world.JavaState(world.DefaultBlockRegistry, state)
 				if err != nil {

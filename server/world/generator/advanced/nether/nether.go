@@ -126,6 +126,13 @@ func NewNether(seed int64) *Nether {
 	return g
 }
 
+// TuneGeneration sizes the caches of the generator for the workers of the
+// World and sets whether a chunk computes its neighbourhood in parallel.
+func (g *Nether) TuneGeneration(tuning world.GenerationTuning) {
+	g.featureSource.terrain = newNetherTerrainCache(max(2048, 128*tuning.Workers))
+	g.features.Tune(tuning.Workers, tuning.Parallel)
+}
+
 // GenerateChunk generates a single Nether chunk at the position passed.
 func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world.GenerationContext) world.GenerationResult {
 	chunkX, chunkZ := int(pos[0]), int(pos[1])

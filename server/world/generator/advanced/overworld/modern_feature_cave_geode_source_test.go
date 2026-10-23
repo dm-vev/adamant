@@ -130,7 +130,7 @@ func TestGeodeMatchesJava263SourceFixtures(t *testing.T) {
 			if got != tc.Placed {
 				t.Fatalf("placed=%v, Source=%v", got, tc.Placed)
 			}
-			states := make([]string, 0, len(region.overlay))
+			states := make([]string, 0, region.overlay.len())
 			for pos, state := range region.overlayByPos() {
 				javaState, err := world.JavaState(registry, state)
 				if err != nil {

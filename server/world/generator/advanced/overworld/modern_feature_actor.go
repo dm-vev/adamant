@@ -20,7 +20,7 @@ func (r *featureRegion) setProjectionWithFlags(pos featurePos, state world.Nativ
 	previous := r.nativeState(pos)
 	// Keep the logical source state visible to later Java pieces and shape
 	// callbacks while publishing the native-only entity projection in the chunk.
-	r.overlay[featureKey(pos)] = previous
+	r.overlay.set(pos, previous)
 	r.noteOverlay(pos)
 	r.nativeProjections[cube.Pos{int(pos.x), int(pos.y), int(pos.z)}] = struct{}{}
 	world.SetNativeState(r.c, uint8(pos.x&15), int16(pos.y), uint8(pos.z&15), state)

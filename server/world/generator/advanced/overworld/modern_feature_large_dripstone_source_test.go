@@ -118,7 +118,7 @@ func TestLargeDripstoneMatchesJava263Source(t *testing.T) {
 			default:
 				t.Fatalf("unknown scenario %q", test.Scenario)
 			}
-			before := make(map[featurePos]world.NativeState, len(region.overlay))
+			before := make(map[featurePos]world.NativeState, region.overlay.len())
 			for p, native := range region.overlayByPos() {
 				before[p] = native
 			}

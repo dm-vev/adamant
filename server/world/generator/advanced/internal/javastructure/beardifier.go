@@ -25,7 +25,13 @@ type RigidPiece struct { Bounds Box; Adjustment TerrainAdjustment; GroundLevelDe
 type Junction struct { X, Y, Z, DeltaY int32; DestProjection Projection }
 
 // Beardifier is the Java 26 structure terrain-adaptation sampler.
-type Beardifier struct { pieces []RigidPiece; junctions []Junction }
+type Beardifier struct {
+	pieces    []RigidPiece
+	junctions []Junction
+	// minY and maxY bound the heights any piece or junction adds to: every
+	// contribution vanishes 12 blocks above and below its reference height.
+	minY, maxY int32
+}
 
 var beardKernel [24*24*24]float32
 
@@ -38,7 +44,32 @@ func init() {
 
 // NewBeardifier snapshots rigid pieces and jigsaw junctions for one deterministic structure context.
 func NewBeardifier(pieces []RigidPiece, junctions []Junction) *Beardifier {
-	return &Beardifier{pieces: append([]RigidPiece(nil), pieces...), junctions: append([]Junction(nil), junctions...)}
+	b := &Beardifier{pieces: append([]RigidPiece(nil), pieces...), junctions: append([]Junction(nil), junctions...)}
+	b.bound()
+	return b
+}
+
+// bound computes the heights the pieces and junctions of b add to.
+func (b *Beardifier) bound() {
+	b.minY, b.maxY = math.MaxInt32, math.MinInt32
+	include := func(low, high int32) {
+		b.minY, b.maxY = min(b.minY, low-12), max(b.maxY, high+12)
+	}
+	for _, piece := range b.pieces {
+		box := piece.Bounds
+		groundY := box.Min[1] + piece.GroundLevelDelta
+		switch piece.Adjustment {
+		case TerrainBury, TerrainBeardThin:
+			include(groundY, groundY)
+		case TerrainBeardBox:
+			include(groundY, box.Max[1])
+		case TerrainEncapsulate:
+			include(box.Min[1], box.Max[1])
+		}
+	}
+	for _, junction := range b.junctions {
+		include(junction.Y, junction.Y)
+	}
 }
 
 // NewChunkBeardifier returns the Beardifier of the chunk at chunkX, chunkZ. As
@@ -60,12 +91,13 @@ func NewChunkBeardifier(chunkX, chunkZ int32, pieces []RigidPiece, junctions []J
 			b.junctions = append(b.junctions, junction)
 		}
 	}
+	b.bound()
 	return b
 }
 
 // AdjustDensity returns the Java Beardifier density contribution at the block coordinate.
 func (b *Beardifier) AdjustDensity(x,y,z int32) float32 {
-	if b == nil { return 0 }
+	if b == nil || y < b.minY || y > b.maxY { return 0 }
 	var value float32
 	for _, piece := range b.pieces {
 		box := piece.Bounds

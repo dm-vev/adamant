@@ -3,6 +3,7 @@ package world
 import (
 	"fmt"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/javadata"
@@ -143,8 +144,15 @@ func (state NativeState) WithJavaState(registry chunk.BlockRegistry, source Bloc
 func nativeJavaStateID(registry chunk.BlockRegistry, state NativeState) uint32 {
 	key := uint64(state.Block)<<32 | uint64(state.Liquid)
 	basic, cache := registry.(*BasicBlockRegistry)
+	var dry *atomic.Uint32
 	if cache {
-		if id, ok := basic.javaStateIDs.Load(key); ok {
+		if state.Liquid == basic.AirRuntimeID() {
+			if dry = basic.dryJavaStateID(state.Block); dry != nil {
+				if id := dry.Load(); id != 0 {
+					return id - 1
+				}
+			}
+		} else if id, ok := basic.javaStateIDs.Load(key); ok {
 			return id.(uint32)
 		}
 	}
@@ -152,10 +160,28 @@ func nativeJavaStateID(registry chunk.BlockRegistry, state NativeState) uint32 {
 	if source, err := reverseNativeState(registry, state); err == nil {
 		id, _ = javadata.BlockStateID(source.Name, source.Properties)
 	}
-	if cache {
+	switch {
+	case dry != nil:
+		dry.Store(id + 1)
+	case cache:
 		basic.javaStateIDs.Store(key, id)
 	}
 	return id
+}
+
+// dryJavaStateID returns the cache slot of a primary runtime ID without a
+// liquid layer, or nil for an ID outside the registry.
+func (br *BasicBlockRegistry) dryJavaStateID(rid uint32) *atomic.Uint32 {
+	ids := br.dryJavaStateIDs.Load()
+	if ids == nil {
+		fresh := make([]atomic.Uint32, br.BlockCount())
+		br.dryJavaStateIDs.CompareAndSwap(nil, &fresh)
+		ids = br.dryJavaStateIDs.Load()
+	}
+	if rid >= uint32(len(*ids)) {
+		return nil
+	}
+	return &(*ids)[rid]
 }
 
 // ResolveBlock resolves a Dragonfly block's own native encoder without applying

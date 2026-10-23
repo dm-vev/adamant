@@ -101,9 +101,12 @@ type Config struct {
 	// seed. Existing provider metadata takes precedence over OverworldSeed.
 	// If nil, the built-in generators are used for all three dimensions.
 	Generator func(dim world.Dimension, seed int64) world.Generator
+	// GeneratorProfile selects how chunk generation uses the CPUs of the host.
+	// The zero value picks a profile from the number of logical CPUs.
+	GeneratorProfile world.GeneratorProfile
 	// GeneratorWorkers controls the number of asynchronous workers dedicated
-	// to generating chunks. If set to 0 or lower, the worker count will be
-	// derived from the host's available CPUs. Consider raising this when
+	// to generating chunks. If set to 0 or lower, GeneratorProfile selects the
+	// worker count from the host's available CPUs. Consider raising this when
 	// pre-generating terrain heavily, but profile if the generator is limited
 	// by I/O (for example LevelDB operations).
 	GeneratorWorkers int
@@ -400,9 +403,14 @@ type UserConfig struct {
 		// Seed selects the generation seed for a new world in all dimensions.
 		// Existing level.dat metadata takes precedence, including seed zero.
 		Seed int64
+		// GeneratorProfile tunes chunk generation for the CPU of the host:
+		// "fast-cores" for a few fast cores (desktop CPUs), "many-cores" for
+		// many slower cores (multi-socket servers), or "auto" to pick one from
+		// the number of logical CPUs.
+		GeneratorProfile string
 		// GeneratorWorkers is the number of background workers that should be
-		// dedicated to generating chunks. Set to 0 to automatically select a
-		// reasonable default based on the host's CPU count.
+		// dedicated to generating chunks. Set to 0 to let GeneratorProfile
+		// select it from the host's CPU count.
 		GeneratorWorkers int
 		// GeneratorQueueSize is how many chunk generation jobs may wait for a
 		// worker before a backlog warning is logged. Set to 0 to use an
@@ -494,6 +502,11 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		}
 	}
 
+	generatorProfile, err := world.ParseGeneratorProfile(uc.World.GeneratorProfile)
+	if err != nil {
+		return Config{}, err
+	}
+
 	conf := Config{
 		Log:                     log,
 		Name:                    uc.Server.Name,
@@ -505,6 +518,7 @@ func (uc UserConfig) Config(log *slog.Logger) (Config, error) {
 		MaxChunkRadius:          uc.Players.MaximumChunkRadius,
 		DisableResourceBuilding: !uc.Resources.AutoBuildPack,
 		OverworldSeed:           uc.World.Seed,
+		GeneratorProfile:        generatorProfile,
 		GeneratorWorkers:        uc.World.GeneratorWorkers,
 		GeneratorQueueSize:      uc.World.GeneratorQueueSize,
 		DisableOverworld:        uc.World.DisableOverworld,
@@ -610,6 +624,7 @@ func DefaultConfig() UserConfig {
 	c.World.SaveData = true
 	c.World.Folder = "world"
 	c.World.Seed = 0
+	c.World.GeneratorProfile = "auto"
 	c.Server.ReconnectPolicy = "kick-existing"
 	c.World.DisableOverworld = false
 	c.World.DisableNether = false

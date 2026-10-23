@@ -149,7 +149,7 @@ func TestLakeMatchesJava263SourceFixtures(t *testing.T) {
 			if got := random.NextLong(); got != wantNext {
 				t.Errorf("nextLong=%d, Source=%d", got, wantNext)
 			}
-			states := make([]string, 0, len(region.overlay))
+			states := make([]string, 0, region.overlay.len())
 			for p, state := range region.overlayByPos() {
 				js, err := world.JavaState(world.DefaultBlockRegistry, state)
 				if err != nil {

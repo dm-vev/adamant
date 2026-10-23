@@ -142,6 +142,13 @@ func (c *OverworldChunk) BiomeIndexAt(x, y, z int32) uint8 {
 	}
 	ax, ay, az := localX-2, y-2, localZ-2
 	px, py, pz := (ax>>2)+1, (ay>>2)+17, (az>>2)+1
+	// Most cells lie inside one biome: the nearest fiddled corner then does
+	// not matter.
+	first := c.biomes[px][pz][py].index
+	if c.biomes[px][pz][py+1].index == first && c.biomes[px][pz+1][py].index == first && c.biomes[px][pz+1][py+1].index == first &&
+		c.biomes[px+1][pz][py].index == first && c.biomes[px+1][pz][py+1].index == first && c.biomes[px+1][pz+1][py].index == first && c.biomes[px+1][pz+1][py+1].index == first {
+		return first
+	}
 	fx, fy, fz := float64(ax&3)*0.25, float64(ay&3)*0.25, float64(az&3)*0.25
 	best, distance := uint8(0), math.Inf(1)
 	for corner := range 8 {

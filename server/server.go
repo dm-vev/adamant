@@ -764,6 +764,7 @@ func (srv *Server) createWorld(dim world.Dimension) *world.World {
 		Provider:            srv.conf.WorldProvider,
 		Seed:                srv.conf.OverworldSeed,
 		Generator:           gen,
+		GeneratorProfile:    srv.conf.GeneratorProfile,
 		GeneratorWorkers:    srv.conf.GeneratorWorkers,
 		GeneratorQueueSize:  srv.conf.GeneratorQueueSize,
 		RandomTickSpeed:     srv.conf.RandomTickSpeed,

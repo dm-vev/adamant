@@ -113,7 +113,7 @@ func TestIcebergMatchesJava263SourceFixtures(t *testing.T) {
 			if placed != tc.Placed {
 				t.Fatalf("placed=%v, Java Source=%v", placed, tc.Placed)
 			}
-			states := make([]string, 0, len(region.overlay))
+			states := make([]string, 0, region.overlay.len())
 			for pos, state := range region.overlayByPos() {
 				javaState, err := world.JavaState(registry, state)
 				if err != nil {

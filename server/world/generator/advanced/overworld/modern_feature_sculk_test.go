@@ -110,8 +110,8 @@ func TestSculkPatchMatchesJava263(t *testing.T) {
 			if next := random.NextLong(); next != tc.NextLong {
 				t.Errorf("following stream=%d, source=%d", next, tc.NextLong)
 			}
-			if len(region.overlay) != len(tc.Writes) {
-				t.Errorf("written positions=%d, source=%d", len(region.overlay), len(tc.Writes))
+			if region.overlay.len() != len(tc.Writes) {
+				t.Errorf("written positions=%d, source=%d", region.overlay.len(), len(tc.Writes))
 			}
 			mismatches := 0
 			for _, input := range tc.Writes {
@@ -124,7 +124,7 @@ func TestSculkPatchMatchesJava263(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got, ok := region.overlay[featureKey(p)]; !ok || got != want {
+				if got, ok := region.overlay.get(p); !ok || got != want {
 					mismatches++
 					if mismatches <= 5 {
 						t.Errorf("at %v: got=%+v present=%v source projection=%+v", p, got, ok, want)

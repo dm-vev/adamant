@@ -2,6 +2,7 @@ package overworld
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"sort"
 	"strconv"
@@ -73,6 +74,12 @@ type ModernFeatures struct {
 	// origins caches what the features of each origin chunk write, shared by
 	// the chunks around it that are decorated with them.
 	origins originRecordCache
+	// contexts caches what the structures and features of each origin chunk
+	// write against the base terrain alone, shared by the origins it
+	// precedes as the context their records are computed against.
+	contexts originRecordCache
+	// parallel is true if the records a chunk owns are computed at once.
+	parallel bool
 	// heightmaps caches the heightmap predicates of each native state.
 	heightmaps sync.Map
 }
@@ -290,8 +297,7 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context wo
 		records[i] = f.originRecord(origin, c.BlockRegistry(), c.Range(), context)
 	}
 	for i, origin := range origins {
-		<-records[i].done
-		record := records[i].record
+		record := records[i].wait()
 		region.SetOrigin(origin[0], origin[1])
 		for step := range record.steps {
 			if origin == pos {
@@ -299,8 +305,9 @@ func (f *ModernFeatures) Decorate(pos world.ChunkPos, c *chunk.Chunk, context wo
 			}
 			record.steps[step].apply(region)
 		}
-		f.origins.release(origin)
+		f.origins.release(origin, len(origins))
 	}
+	region.release()
 	return result
 }
 
@@ -316,6 +323,15 @@ func (f *ModernFeatures) DecorateInOneRegion(pos world.ChunkPos, c *chunk.Chunk,
 		f.decorateOrigin(region, origin, context, origin != pos, nil)
 	}
 	return result
+}
+
+// Tune sizes the record caches for workers generating chunks at once and
+// sets whether the records a chunk owns are computed in parallel. It must be
+// called before any chunk is decorated.
+func (f *ModernFeatures) Tune(workers int, parallel bool) {
+	f.parallel = parallel
+	capacity := max(originRecordCacheSize, 64*workers)
+	f.origins.capacity, f.contexts.capacity = capacity, capacity
 }
 
 // generationSteps returns the number of decoration steps of an origin.
@@ -337,6 +353,19 @@ func (f *ModernFeatures) decorateOrigin(region *featureRegion, origin world.Chun
 		f.placeFeatures(region, origin, step, possible)
 		region.recording = nil
 	}
+}
+
+// decorateContext runs every decoration step of origin in region, recording
+// the writes of its structures and features alike into one step.
+func (f *ModernFeatures) decorateContext(region *featureRegion, origin world.ChunkPos, context world.GenerationContext, record *originStep) {
+	region.SetOrigin(origin[0], origin[1])
+	possible := f.possibleBiomes(region, origin)
+	region.recording = record
+	for step := range f.generationSteps() {
+		f.placeStructures(region, origin, step, context, true)
+		f.placeFeatures(region, origin, step, possible)
+	}
+	region.recording = nil
 }
 
 // possibleBiomes returns the noise biomes Java's decoration of origin
@@ -604,7 +633,7 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 				return block, true
 			}
 			name, properties := region.State(p)
-			return featureJavaBlock(world.BlockState{Name: name, Properties: properties}), true
+			return featureJavaBlock(world.BlockState{Name: name, Properties: maps.Clone(properties)}), true
 		case "rotated":
 			direction, explicit := state["direction"].(string)
 			if !explicit {
@@ -665,7 +694,7 @@ func sampleJavaBlockState(region *featureRegion, p featurePos, provider any, r *
 				return sampled, true
 			}
 			name, properties := region.State(p)
-			return featureJavaBlock(world.BlockState{Name: name, Properties: properties}), true
+			return featureJavaBlock(world.BlockState{Name: name, Properties: maps.Clone(properties)}), true
 		default:
 			panic("overworld: unsupported Java block state provider " + normalizeJavaResource(typeName))
 		}
@@ -963,6 +992,16 @@ func noiseThresholdCount(p featurePos, modifier map[string]any) int {
 
 func javaBlockTagContains(tag, blockName string) bool {
 	matches, err := javadata.BlockTagContains(tag, blockName)
+	if err != nil {
+		panic(err)
+	}
+	return matches
+}
+
+// featureBlockTagContainsID reports whether the block of state ID id is in a
+// block tag. A zero ID, a state without a source block, is in no tag.
+func featureBlockTagContainsID(tag string, id uint32) bool {
+	matches, err := javadata.BlockTagContainsID(tag, id)
 	if err != nil {
 		panic(err)
 	}

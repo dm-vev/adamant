@@ -41,7 +41,7 @@ func TestVoidPlatformMatchesJava263(t *testing.T) {
 			if next := random.NextLong(); next != tc.Next {
 				t.Errorf("following stream=%d, Java wants %d", next, tc.Next)
 			}
-			positions := make([]featurePos, 0, len(region.overlay))
+			positions := make([]featurePos, 0, region.overlay.len())
 			for p := range region.overlayByPos() {
 				positions = append(positions, p)
 			}
@@ -70,7 +70,7 @@ func TestNoOpFeaturePreservesWorldAndRandom(t *testing.T) {
 	if !region.f.placeConfiguredData(region, "no_op", nil, featurePos{8, 10, 8}, &random) {
 		t.Fatal("source no_op must succeed")
 	}
-	if len(region.overlay) != 0 {
+	if region.overlay.len() != 0 {
 		t.Fatal("no_op changed blocks")
 	}
 	if got, want := random.NextLong(), wantRandom.NextLong(); got != want {

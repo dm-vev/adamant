@@ -32,8 +32,8 @@ type featureRegion struct {
 	// runs while it is set.
 	recording *originStep
 	result    *world.GenerationResult
-	// overlay holds the states written to the region, by featureKey.
-	overlay map[uint64]world.NativeState
+	// overlay holds the states written to the region.
+	overlay featureOverlay
 	// columns holds the overlay tops and heightmap heights of the columns,
 	// by featureColumnKey.
 	columns map[uint64]featureColumn
@@ -61,13 +61,18 @@ func newFeatureRegion(f *ModernFeatures, c *chunk.Chunk, target world.ChunkPos, 
 	}
 	return &featureRegion{
 		f: f, c: c, target: target, hasTarget: true, result: result, base: base,
-		overlay:           make(map[uint64]world.NativeState),
 		scheduledTicks:    make(map[featureTickReservation]struct{}),
 		blockActorRecords: make(map[cube.Pos]javastructure.Block),
 		blockActorData:    make(map[cube.Pos]map[string]any),
 		nativeProjections: make(map[cube.Pos]struct{}),
 		javaRandoms:       make(map[[2]int32]*java26.Random),
 	}
+}
+
+// release returns the pooled memory of the region. The region must not be
+// used afterwards.
+func (r *featureRegion) release() {
+	r.overlay.release()
 }
 
 // newRecordingRegion returns a region without a target chunk, which records
@@ -131,8 +136,15 @@ func absFeatureInt(v int32) uint32 {
 	return uint32(v)
 }
 
+// State returns the Java state at p. The properties are shared with every
+// other read of the same state and must not be modified: copy them first.
 func (r *featureRegion) State(p featurePos) (string, map[string]any) {
 	state := r.nativeState(p)
+	if id := state.CanonicalJavaID(r.c.BlockRegistry()); id != 0 {
+		if name, properties, ok := javadata.BlockStateView(id); ok {
+			return name, properties
+		}
+	}
 	javaState, err := world.JavaState(r.c.BlockRegistry(), state)
 	if err != nil {
 		panic(err)
@@ -140,11 +152,10 @@ func (r *featureRegion) State(p featurePos) (string, map[string]any) {
 	return javaState.Name, javaState.Properties
 }
 
-// featureKey packs p for the maps of a region. The low 26 bits of x and z
-// and 12 bits of y tell apart all positions of a region, which spans a few
-// chunks and the build height.
-func featureKey(p featurePos) uint64 {
-	return uint64(uint32(p.x)&0x3ffffff) | uint64(uint32(p.z)&0x3ffffff)<<26 | uint64(uint32(p.y)&0xfff)<<52
+// StateID returns the canonical Java state ID at p, or zero for a native
+// state without one.
+func (r *featureRegion) StateID(p featurePos) uint32 {
+	return r.nativeState(p).CanonicalJavaID(r.c.BlockRegistry())
 }
 
 // featureColumnKey packs the column x, z for the maps of a region.
@@ -156,7 +167,7 @@ func (r *featureRegion) nativeState(p featurePos) world.NativeState {
 	if p.y < r.MinY() || p.y > r.MaxY() {
 		return r.f.source.BaseState(p.x, p.y, p.z)
 	}
-	if state, ok := r.overlay[featureKey(p)]; ok {
+	if state, ok := r.overlay.get(p); ok {
 		return state
 	}
 	if r.inTarget(p) {
@@ -220,10 +231,9 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 	if p.y < r.MinY() || p.y > r.MaxY() {
 		return false
 	}
-	if _, _, ok := r.c.BlockRegistry().RuntimeIDToState(state.Block); !ok {
+	if count := uint32(r.c.BlockRegistry().BlockCount()); state.Block >= count {
 		panic("overworld: Java feature region cannot set unknown primary block runtime ID")
-	}
-	if _, _, ok := r.c.BlockRegistry().RuntimeIDToState(state.Liquid); !ok {
+	} else if state.Liquid >= count {
 		panic("overworld: Java feature region cannot set unknown liquid runtime ID")
 	}
 	if !r.withinWriteArea(p) {
@@ -245,7 +255,7 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 	if changedBlock {
 		r.removeBlockEntityPayloads(cube.Pos{int(p.x), int(p.y), int(p.z)})
 	}
-	r.overlay[featureKey(p)] = state
+	r.overlay.set(p, state)
 	r.noteOverlay(p)
 	r.invalidatePlacementHeight(p)
 	if r.inTarget(p) {
@@ -1076,7 +1086,7 @@ func featureFluidName(region *featureRegion, p featurePos, properties map[string
 	state := region.nativeState(p)
 	registry := region.c.BlockRegistry()
 	if state.Liquid != registry.AirRuntimeID() {
-		name, fluidProperties, ok := registry.RuntimeIDToState(state.Liquid)
+		name, fluidProperties, ok := runtimeIDStateView(registry, state.Liquid)
 		if !ok {
 			panic("overworld: invalid native liquid runtime ID in Java fluid predicate")
 		}
@@ -1087,7 +1097,7 @@ func featureFluidName(region *featureRegion, p featurePos, properties map[string
 			panic("overworld: unsupported native liquid in Java fluid predicate: " + name)
 		}
 	}
-	name, nativeProperties, ok := registry.RuntimeIDToState(state.Block)
+	name, nativeProperties, ok := runtimeIDStateView(registry, state.Block)
 	if !ok {
 		panic("overworld: invalid native block runtime ID in Java fluid predicate")
 	}
@@ -1102,6 +1112,15 @@ func featureFluidName(region *featureRegion, p featurePos, properties map[string
 		return "water"
 	}
 	return "empty"
+}
+
+// runtimeIDStateView resolves a native runtime ID like RuntimeIDToState. The
+// properties may be shared with the registry and must not be modified.
+func runtimeIDStateView(registry chunk.BlockRegistry, rid uint32) (string, map[string]any, bool) {
+	if basic, ok := registry.(*world.BasicBlockRegistry); ok {
+		return basic.RuntimeIDToStateView(rid)
+	}
+	return registry.RuntimeIDToState(rid)
 }
 
 func featureLiquidFluidName(name string, properties map[string]any) string {

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	"github.com/brentp/intintmap"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -116,6 +117,12 @@ type BasicBlockRegistry struct {
 	mu               sync.Mutex
 	javaStateIDs     sync.Map // Native layer pair -> canonical Java state ID.
 	javaNativeStates sync.Map // Canonical Java state ID -> native layer pair.
+	// dryJavaStateIDs holds, by primary runtime ID, the canonical Java state ID
+	// plus one of the layer pair with an air liquid layer; zero is unresolved.
+	dryJavaStateIDs atomic.Pointer[[]atomic.Uint32]
+	// states holds the encoded state of every runtime ID once finalized, for
+	// RuntimeIDToStateView.
+	states []encodedState
 
 	finalized         bool
 	bitSize           int
@@ -249,6 +256,7 @@ func (br *BasicBlockRegistry) clone(mutable bool) *BasicBlockRegistry {
 
 	if br2.finalized {
 		br2.blockInfos = slices.Clone(br.blockInfos)
+		br2.states = br.states
 		br2.hashes = intintmap.New(len(br.blocks), 0.999)
 		for rid, b := range br2.blocks {
 			if _, hash := b.Hash(); hash == math.MaxUint64 {
@@ -357,6 +365,7 @@ func (br *BasicBlockRegistry) Finalize() {
 	})
 
 	br.blockInfos = make([]blockInfo, len(br.blocks))
+	br.states = make([]encodedState, len(br.blocks))
 	br.hashes = intintmap.New(len(br.blocks), 0.999)
 	br.networkhashToRids = make(map[uint32]uint32, len(br.blocks))
 	br.ridsToNetworkhash = make([]uint32, len(br.blocks))
@@ -367,6 +376,7 @@ func (br *BasicBlockRegistry) Finalize() {
 	for idx, b := range br.blocks {
 		rid := uint32(idx)
 		name, properties := b.EncodeBlock()
+		br.states[rid] = encodedState{name: name, properties: properties}
 		h := stateHash{name: name, properties: hashProperties(properties)}
 		if name == "minecraft:air" {
 			br.airRID = rid
@@ -464,6 +474,25 @@ func (br *BasicBlockRegistry) RuntimeIDToState(runtimeID uint32) (name string, p
 	}
 	name, properties = br.blocks[runtimeID].EncodeBlock()
 	return name, properties, true
+}
+
+// encodedState is the name and properties a block encodes to.
+type encodedState struct {
+	name       string
+	properties map[string]any
+}
+
+// RuntimeIDToStateView returns the same state as RuntimeIDToState, but the
+// properties are shared by every caller and must not be modified.
+func (br *BasicBlockRegistry) RuntimeIDToStateView(runtimeID uint32) (name string, properties map[string]any, found bool) {
+	if !br.finalized {
+		panic("BlockRegistry.RuntimeIDToStateView called on non finalized BlockRegistry")
+	}
+	if runtimeID >= uint32(len(br.states)) {
+		return "", nil, false
+	}
+	state := br.states[runtimeID]
+	return state.name, state.properties, true
 }
 
 // StateToRuntimeID returns the runtime ID of a block by its name and state properties.

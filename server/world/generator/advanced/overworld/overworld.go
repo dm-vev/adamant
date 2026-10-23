@@ -192,6 +192,13 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context wo
 	return result
 }
 
+// TuneGeneration sizes the caches of the generator for the workers of the
+// World and sets whether a chunk computes its neighbourhood in parallel.
+func (g *Overworld) TuneGeneration(tuning world.GenerationTuning) {
+	g.previewCache = newPreviewCache(max(previewCacheSize, 128*tuning.Workers))
+	g.modernFeatures.Tune(tuning.Workers, tuning.Parallel)
+}
+
 // DefaultSpawn returns the default overworld spawn position.
 func (*Overworld) DefaultSpawn(world.Dimension) cube.Pos {
 	return cube.Pos{0, javaSeaLevel + 2, 0}

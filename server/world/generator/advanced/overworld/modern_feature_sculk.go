@@ -1,6 +1,7 @@
 package overworld
 
 import (
+	"maps"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -303,9 +304,7 @@ func sculkCanPlaceVein(region *featureRegion, source, target featurePos, face st
 		return false
 	}
 	if absFeatureInt(source.x-target.x)+absFeatureInt(source.y-target.y)+absFeatureInt(source.z-target.z) == 2 {
-		sturdyPos := sculkOffset(source, sculkOpposite(face))
-		sturdyName, sturdyProperties := region.State(sturdyPos)
-		if sculkShape(region, sturdyName, sturdyProperties).Sturdy&sculkFaceBit(face) != 0 {
+		if sculkShapeAt(region, sculkOffset(source, sculkOpposite(face))).Sturdy&sculkFaceBit(face) != 0 {
 			return false
 		}
 	}
@@ -313,10 +312,15 @@ func sculkCanPlaceVein(region *featureRegion, source, target featurePos, face st
 	if fluid != "empty" && fluid != "water" {
 		return false
 	}
-	if javaBlockTagContains("fire", normalizeJavaResource(name)) {
+	targetID := region.StateID(target)
+	if targetID != 0 {
+		if featureBlockTagContainsID("fire", targetID) {
+			return false
+		}
+	} else if javaBlockTagContains("fire", normalizeJavaResource(name)) {
 		return false
 	}
-	shape := sculkShape(region, name, properties)
+	shape := sculkShapeOf(region, targetID, name, properties)
 	replaceable := shape.Replaceable
 	if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" || name == "minecraft:sculk_vein" || (name == "minecraft:water" && fluid == "water") {
 		replaceable = true
@@ -330,6 +334,7 @@ func sculkCanPlaceVein(region *featureRegion, source, target featurePos, face st
 func sculkPlaceVein(region *featureRegion, pos featurePos, face string) bool {
 	name, props := region.State(pos)
 	if name == "minecraft:sculk_vein" {
+		props = maps.Clone(props)
 		props[face] = true
 	} else {
 		props = map[string]any{face: true}
@@ -407,6 +412,7 @@ func sculkAttemptPlaceSculk(region *featureRegion, pos featurePos, random *java2
 
 func sculkOnDischarged(region *featureRegion, pos featurePos, props map[string]any, random *java26.Random) {
 	_ = random
+	props = maps.Clone(props)
 	for _, d := range sculkDirections {
 		if props[d] == true {
 			n, _ := region.State(sculkOffset(pos, d))
@@ -464,10 +470,7 @@ func sculkMovementUnobstructed(region *featureRegion, from, to featurePos) bool 
 		return true
 	}
 	check := func(dir string) bool {
-		p := sculkOffset(from, dir)
-		n, props := region.State(p)
-		shape := sculkShape(region, n, props)
-		return shape.Sturdy&sculkFaceBit(sculkOpposite(dir)) == 0
+		return sculkShapeAt(region, sculkOffset(from, dir)).Sturdy&sculkFaceBit(sculkOpposite(dir)) == 0
 	}
 	if dx == 0 {
 		return check(sculkDirection(dy, "up", "down")) || check(sculkDirection(dz, "south", "north"))
@@ -510,16 +513,32 @@ func sculkFaceSet(region *featureRegion, pos featurePos, d string) bool {
 	return n == "minecraft:sculk_vein" && p[d] == true
 }
 func sculkCanAttach(region *featureRegion, pos featurePos, face string) bool {
-	n, p := region.State(sculkOffset(pos, face))
-	shape := sculkShape(region, n, p)
-	return shape.Attachment&sculkFaceBit(sculkOpposite(face)) != 0
+	return sculkShapeAt(region, sculkOffset(pos, face)).Attachment&sculkFaceBit(sculkOpposite(face)) != 0
 }
 func sculkCollisionFull(region *featureRegion, pos featurePos) bool {
-	n, p := region.State(pos)
-	return sculkShape(region, n, p).CollisionFull
+	return sculkShapeAt(region, pos).CollisionFull
 }
-func sculkShape(region *featureRegion, name string, props map[string]any) javadata.GenerationShape {
-	shape, err := javadata.BlockGenerationShape(normalizeJavaResource(name), props)
+
+// sculkShapeAt returns the generation shape of the state at pos, looked up by
+// its state ID where it has one.
+func sculkShapeAt(region *featureRegion, pos featurePos) javadata.GenerationShape {
+	if id := region.StateID(pos); id != 0 {
+		return sculkShapeOf(region, id, "", nil)
+	}
+	name, props := region.State(pos)
+	return sculkShapeOf(region, 0, name, props)
+}
+
+// sculkShapeOf returns the generation shape of state ID id, or of name and
+// props for a state without an ID.
+func sculkShapeOf(region *featureRegion, id uint32, name string, props map[string]any) javadata.GenerationShape {
+	var shape javadata.GenerationShape
+	var err error
+	if id != 0 {
+		shape, err = javadata.BlockGenerationShapeID(id)
+	} else {
+		shape, err = javadata.BlockGenerationShape(normalizeJavaResource(name), props)
+	}
 	if err != nil {
 		panic(err)
 	}

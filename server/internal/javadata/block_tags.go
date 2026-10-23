@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 type compiledTag struct {
@@ -12,7 +13,10 @@ type compiledTag struct {
 	// namespace are looked up without building the full name.
 	short   map[string]struct{}
 	ordered []string
-	err     error
+	// blocks is the bitset of member block indices of a block tag, for
+	// lookups by state ID.
+	blocks []uint64
+	err    error
 }
 
 type tagKey struct {
@@ -91,8 +95,64 @@ func compileTag(key tagKey) (compiledTag, error) {
 	return compiled, compiled.err
 }
 
+// tagLookups holds the compiled tags by kind and raw, unnormalised name. It
+// is replaced on every miss, so the lookups generation workers make for every
+// block they test neither take a lock nor hash an interface key.
+var tagLookups atomic.Pointer[map[tagKey]*compiledTag]
+
+func lookupTag(kind, rawTag string) (*compiledTag, error) {
+	key := tagKey{kind: kind, name: rawTag}
+	if cache := tagLookups.Load(); cache != nil {
+		if tag, ok := (*cache)[key]; ok {
+			return tag, tag.err
+		}
+	}
+	compiled, err := compileTag(key)
+	compiled.err = err
+	if kind == "block_tag" && err == nil {
+		compiled.blocks = make([]uint64, (len(javaSolidBlockNames)+63)/64)
+		for member := range compiled.members {
+			if block, ok := javaBlockIndex(member); ok {
+				compiled.blocks[block>>6] |= 1 << (block & 63)
+			}
+		}
+	}
+	tag := &compiled
+	for {
+		old := tagLookups.Load()
+		next := make(map[tagKey]*compiledTag, 1)
+		if old != nil {
+			if existing, ok := (*old)[key]; ok {
+				return existing, existing.err
+			}
+			next = make(map[tagKey]*compiledTag, len(*old)+1)
+			for k, v := range *old {
+				next[k] = v
+			}
+		}
+		next[key] = tag
+		if tagLookups.CompareAndSwap(old, &next) {
+			return tag, err
+		}
+	}
+}
+
+// BlockTagContainsID reports whether the block of a canonical state ID is a
+// member of a vanilla block tag, without decoding the state.
+func BlockTagContainsID(tag string, id uint32) (bool, error) {
+	compiled, err := lookupTag("block_tag", tag)
+	if err != nil {
+		return false, err
+	}
+	block, ok := blockStateIndex(id)
+	if !ok {
+		return false, nil
+	}
+	return compiled.blocks[block>>6]&(1<<(block&63)) != 0, nil
+}
+
 func tagContains(kind, rawTag, value string) (bool, error) {
-	compiled, err := compileTag(tagKey{kind: kind, name: rawTag})
+	compiled, err := lookupTag(kind, rawTag)
 	if err != nil {
 		return false, err
 	}

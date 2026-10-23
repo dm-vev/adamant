@@ -82,7 +82,7 @@ func TestCoralGrowthMatchesJava263Source(t *testing.T) {
 					}
 				}
 			}
-			initial := make(map[featurePos]world.NativeState, len(region.overlay))
+			initial := make(map[featurePos]world.NativeState, region.overlay.len())
 			for pos, state := range region.overlayByPos() {
 				initial[pos] = state
 			}

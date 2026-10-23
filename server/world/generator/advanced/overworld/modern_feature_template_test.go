@@ -93,8 +93,8 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 			if next := random.NextLong(); next != tc.NextLong {
 				t.Errorf("following RNG=%d source=%d", next, tc.NextLong)
 			}
-			if len(region.overlay) != len(tc.Writes) {
-				t.Errorf("written positions=%d source=%d", len(region.overlay), len(tc.Writes))
+			if region.overlay.len() != len(tc.Writes) {
+				t.Errorf("written positions=%d source=%d", region.overlay.len(), len(tc.Writes))
 			}
 			for _, v := range tc.Writes {
 				b, ok := featureStateBlock(v.State)
@@ -106,7 +106,7 @@ func TestTemplateFeatureMatchesJava263(t *testing.T) {
 					t.Fatal(err)
 				}
 				p := featurePos{v.Position[0], v.Position[1], v.Position[2]}
-				if got, ok := region.overlay[featureKey(p)]; !ok || got != want {
+				if got, ok := region.overlay.get(p); !ok || got != want {
 					t.Errorf("at %v got=%v present=%v source=%v", p, got, ok, want)
 				}
 			}

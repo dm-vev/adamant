@@ -97,6 +97,7 @@ func (s *modernSurface) Apply(pos world.ChunkPos, c *chunk.Chunk, source modernS
 			preliminary := int(source.PreliminarySurfaceHeight(int32(worldX), int32(worldZ)))
 			columnRandom := s.random.At(int32(worldX), 0, int32(worldZ))
 			surfaceDepth := int(s.surface.Sample64(float64(worldX), 0, float64(worldZ))*2.75 + 3 + columnRandom.NextDouble()*0.25)
+			secondaryDepth, deepSecondaryDepth := surfaceSecondaryDepth(s, worldX, worldZ, 6), surfaceSecondaryDepth(s, worldX, worldZ, 30)
 			waterHeight := math.MinInt
 			stoneAbove, nextCeiling := 0, math.MaxInt
 			for y := min(height, maxY); y >= minY; y-- {
@@ -151,8 +152,8 @@ func (s *modernSurface) Apply(pos world.ChunkPos, c *chunk.Chunk, source modernS
 				notUnderDeepWater := waterHeight == math.MinInt || y+stoneAbove >= waterHeight-6-surfaceDepth
 				onFloor := stoneAbove <= 1
 				underFloor := stoneAbove <= 1+surfaceDepth
-				deepUnderFloor := stoneAbove <= 1+surfaceDepth+surfaceSecondaryDepth(s, worldX, worldZ, 6)
-				veryDeepUnderFloor := stoneAbove <= 1+surfaceDepth+surfaceSecondaryDepth(s, worldX, worldZ, 30)
+				deepUnderFloor := stoneAbove <= 1+surfaceDepth+secondaryDepth
+				veryDeepUnderFloor := stoneAbove <= 1+surfaceDepth+deepSecondaryDepth
 				material := s.surfaceMaterial(biome, worldX, y, worldZ, stoneAbove, stoneBelow, surfaceDepth, notUnderwater, notUnderDeepWater, onFloor, underFloor, deepUnderFloor, veryDeepUnderFloor, gradientX, gradientZ)
 				if material != "" {
 					c.SetBlock(uint8(x), y16, uint8(z), 0, blocks.id(material))

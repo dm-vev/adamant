@@ -32,8 +32,7 @@ func featureRuleMatches(p featurePos, rule map[string]any, stateID uint32, rando
 		name, _ := javadata.BlockStateName(stateID)
 		return normalizeJavaResource(rule["block"].(string)) == normalizeJavaResource(name)
 	case "tag_match":
-		name, _ := javadata.BlockStateName(stateID)
-		return javaBlockTagContains(normalizeJavaResource(rule["tag"].(string)), normalizeJavaResource(name))
+		return featureBlockTagContainsID(rule["tag"].(string), stateID)
 	case "height_match":
 		return p.y >= int32(featureNumber(rule["min_inclusive"])) && p.y <= int32(featureNumber(rule["max_inclusive"]))
 	case "blockstate_match", "random_blockstate_match":
