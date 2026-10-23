@@ -270,7 +270,7 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 		speed: speed, attack: t.attack, kind: c.kind, baby: c.baby, canBreakDoors: c.canBreakDoors, canPickupLoot: c.canPickupLoot,
 		conversionTime: c.conversionTime, cureTicks: c.cureTicks, main: c.main, head: c.head, profession: c.profession, villagerType: c.villagerType,
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
-		patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget,
+		raiderState:  raiderState{patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget},
 		freezingTime: c.freezingTime, strayConversionTime: c.strayConversionTime, strayConverting: c.strayConverting,
 		johnny: c.johnny, spellTicks: c.spellTicks, vexLimitedLife: c.vexLimitedLife, vexLifeTicks: c.vexLifeTicks, vexBound: c.vexBound, vexHasBound: c.vexHasBound,
 		ravagerAttack: c.ravagerAttack, ravagerStun: c.ravagerStun, ravagerRoar: c.ravagerRoar,
@@ -326,38 +326,37 @@ func hostileTypeFor(id string) hostileMobType {
 }
 
 type hostileState struct {
-	health                                    *HealthManager
-	effects                                   *EffectManager
-	mc                                        *MovementComputer
-	random                                    vanilla.Random
-	speed, attack                             float64
-	cureTicks                                 int
-	dead                                      bool
-	kind                                      string
-	baby, canBreakDoors, canPickupLoot        bool
-	conversionTime                            int
-	main, head                                item.Stack
-	profession, villagerType                  string
-	villagerLevel, villagerXP, villagerAge    int
-	offers                                    []MerchantOffer
-	raidID                                    int64
-	raidWave                                  int
-	raidLeader, headDropGuaranteed            bool
-	patrolLeader, patrolling, hasPatrolTarget bool
-	patrolTarget                              cube.Pos
-	spawnData                                 map[string]any
-	ridingLinkPending                         bool
-	freezingTime, strayConversionTime         int
-	strayConverting                           bool
-	ai                                        MobAI
-	weaponGoal                                Goal
-	weaponSet, weaponBow, drawingBow          bool
-	useTicks                                  int
+	health                                 *HealthManager
+	effects                                *EffectManager
+	mc                                     *MovementComputer
+	random                                 vanilla.Random
+	speed, attack                          float64
+	cureTicks                              int
+	dead                                   bool
+	kind                                   string
+	baby, canBreakDoors, canPickupLoot     bool
+	conversionTime                         int
+	main, head                             item.Stack
+	profession, villagerType               string
+	villagerLevel, villagerXP, villagerAge int
+	offers                                 []MerchantOffer
+	raidID                                 int64
+	raidWave                               int
+	raidLeader, headDropGuaranteed         bool
+	raiderState
+	spawnData                         map[string]any
+	ridingLinkPending                 bool
+	freezingTime, strayConversionTime int
+	strayConverting                   bool
+	ai                                MobAI
+	weaponGoal                        Goal
+	weaponSet, weaponBow, drawingBow  bool
+	useTicks                          int
 
 	// The state of the Raider kinds: celebrating a won raid, the crossbow
 	// of a pillager, the spells of an evoker, the owner and life of a vex
 	// and the attacks of a ravager.
-	celebrating, johnny                      bool
+	johnny                                   bool
 	chargingCrossbow, crossbowCharged        bool
 	spellTicks                               int
 	spell                                    illagerSpell

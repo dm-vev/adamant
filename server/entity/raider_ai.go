@@ -16,6 +16,26 @@ import (
 // This file ports Java's Raider, PatrollingMonster and AbstractIllager: the
 // goals raiders share in patrols and raids.
 
+// raiderState is the state Java's PatrollingMonster and Raider keep: the
+// patrol of the raider and whether it celebrates a won raid.
+type raiderState struct {
+	patrolLeader, patrolling, hasPatrolTarget bool
+	patrolTarget                              cube.Pos
+	celebrating                               bool
+}
+
+func (r *raiderState) raider() *raiderState { return r }
+
+// raiderOf returns the raider state of a mob.
+func raiderOf(m *Mob) *raiderState {
+	return m.Behaviour().(interface{ raider() *raiderState }).raider()
+}
+
+// isRaiderEntity reports if an entity is one of Java's Raider.
+func isRaiderEntity(e world.Entity) bool {
+	return hostileRaidMob(e.H().Type().EncodeEntity()) || e.H().Type().EncodeEntity() == "minecraft:witch"
+}
+
 // hostileIllager reports if a kind is one of Java's AbstractIllager.
 func hostileIllager(kind string) bool {
 	switch kind {
@@ -26,12 +46,12 @@ func hostileIllager(kind string) bool {
 }
 
 // raid returns the raid the raider takes part in, if any.
-func (b *hostileState) raid(m *Mob) *world.Raid { return m.tx.RaidForRaider(m.Self) }
+func (r *raiderState) raid(m *Mob) *world.Raid { return m.tx.RaidForRaider(m.Self) }
 
 // activeRaid ports Raider.hasActiveRaid with the raid not over.
-func (b *hostileState) activeRaid(m *Mob) *world.Raid {
-	if r := b.raid(m); r != nil && r.Active() {
-		return r
+func (r *raiderState) activeRaid(m *Mob) *world.Raid {
+	if raid := r.raid(m); raid != nil && raid.Active() {
+		return raid
 	}
 	return nil
 }
@@ -42,7 +62,7 @@ func (b *hostileState) alliedTo(m *Mob, other world.Entity) bool {
 	if !hostileRaidMob(b.kind) {
 		return false
 	}
-	if hostileRaidMob(other.H().Type().EncodeEntity()) || entityTypeInTag(other, "minecraft:illager_friends") {
+	if isRaiderEntity(other) || entityTypeInTag(other, "minecraft:illager_friends") {
 		return true
 	}
 	if b.kind == "minecraft:evoker" {
@@ -90,7 +110,7 @@ func (b *hostileState) raiderTick(m *Mob) {
 
 // registerRaiderGoals ports PatrollingMonster.registerGoals and
 // Raider.registerGoals, which every raider runs before its own.
-func registerRaiderGoals(m *Mob, b *hostileState) {
+func registerRaiderGoals(m *Mob) {
 	ai := m.AI
 	ai.Goals.Add(4, &raiderPatrolGoal{goalFlags: goalFlags{GoalMove}})
 	ai.Goals.Add(3, &pathfindToRaidGoal{goalFlags: goalFlags{GoalMove}})
@@ -102,7 +122,7 @@ func registerRaiderGoals(m *Mob, b *hostileState) {
 // that alerts others: raiders ignore damage from other raiders.
 func raiderHurtByTarget() *HurtByTargetGoal {
 	g := NewHurtByTargetGoal()
-	g.IgnoreDamageFrom = func(e world.Entity) bool { return hostileRaidMob(e.H().Type().EncodeEntity()) }
+	g.IgnoreDamageFrom = isRaiderEntity
 	g.AlertOthers = true
 	return g
 }
@@ -116,12 +136,12 @@ type raiderPatrolGoal struct {
 }
 
 func (g *raiderPatrolGoal) CanUse(m *Mob) bool {
-	b := hostileOf(m)
+	b := raiderOf(m)
 	return b.patrolling && m.Target() == nil && !isVehicle(m.Self) && b.hasPatrolTarget && m.tx.CurrentTick() >= g.cooldownUntil
 }
 
 func (g *raiderPatrolGoal) Tick(m *Mob) {
-	b := hostileOf(m)
+	b := raiderOf(m)
 	if !m.AI.nav.IsDone() {
 		return
 	}
@@ -164,22 +184,23 @@ func (g *raiderPatrolGoal) Tick(m *Mob) {
 
 // findPatrolTarget ports PatrollingMonster.findPatrolTarget: a target up to
 // 500 blocks away on each horizontal axis.
-func (b *hostileState) findPatrolTarget(pos cube.Pos, r *vanilla.Random) {
+func (b *raiderState) findPatrolTarget(pos cube.Pos, r *vanilla.Random) {
 	b.patrolTarget = pos.Add(cube.Pos{-500 + int(r.NextInt(1000)), 0, -500 + int(r.NextInt(1000))})
 	b.hasPatrolTarget, b.patrolling = true, true
 }
 
 // raiderPatrolCompanions ports LongDistancePatrolGoal.findPatrolCompanions:
 // the raiders within 16 blocks that may join a patrol.
-func raiderPatrolCompanions(m *Mob) []*hostileState {
-	var out []*hostileState
+func raiderPatrolCompanions(m *Mob) []*raiderState {
+	var out []*raiderState
 	for e := range m.tx.EntitiesWithin(m.BBox().Grow(16)) {
-		h, ok := e.(interface{ state() *hostileState })
-		if !ok || e.H() == m.H() {
+		if e.H() == m.H() || !isRaiderEntity(e) || !entityAlive(e) || m.tx.RaidForRaider(e) != nil {
 			continue
 		}
-		if s := h.state(); hostileRaidMob(s.kind) && !s.dead && m.tx.RaidForRaider(e) == nil {
-			out = append(out, s)
+		if b, ok := e.(interface{ Behaviour() Behaviour }); ok {
+			if r, ok := b.Behaviour().(interface{ raider() *raiderState }); ok {
+				out = append(out, r.raider())
+			}
 		}
 	}
 	return out
@@ -197,18 +218,18 @@ func (g *pathfindToRaidGoal) CanUse(m *Mob) bool {
 }
 
 func (g *pathfindToRaidGoal) CanContinueToUse(m *Mob) bool {
-	return hostileOf(m).activeRaid(m) != nil && !m.tx.IsVillage(m.BlockPos())
+	return raiderOf(m).activeRaid(m) != nil && !m.tx.IsVillage(m.BlockPos())
 }
 
 func (g *pathfindToRaidGoal) Tick(m *Mob) {
-	raid := hostileOf(m).activeRaid(m)
+	raid := raiderOf(m).activeRaid(m)
 	if raid == nil {
 		return
 	}
 	if m.AI.tickCount > g.recruitmentTick {
 		g.recruitmentTick = m.AI.tickCount + 20
 		for e := range m.tx.EntitiesWithin(m.BBox().Grow(16)) {
-			if h, ok := e.(interface{ state() *hostileState }); ok && hostileRaidMob(h.state().kind) && e.H() != m.H() && m.tx.RaidForRaider(e) == nil {
+			if isRaiderEntity(e) && e.H() != m.H() && m.tx.RaidForRaider(e) == nil {
 				m.tx.RegisterRaider(raid.ID(), e)
 			}
 		}
@@ -234,7 +255,7 @@ func (g *raiderMoveThroughVillageGoal) CanUse(m *Mob) bool {
 	if len(g.visited) > 2 {
 		g.visited = g.visited[1:]
 	}
-	return hostileOf(m).activeRaid(m) != nil && g.findHome(m) && m.Target() == nil
+	return raiderOf(m).activeRaid(m) != nil && g.findHome(m) && m.Target() == nil
 }
 
 // findHome ports hasSuitablePoi: a random bed within 48 blocks the raider
@@ -304,13 +325,13 @@ func (g *raiderMoveThroughVillageGoal) Tick(m *Mob) {
 type raiderCelebrationGoal struct{ goalFlags }
 
 func (g *raiderCelebrationGoal) CanUse(m *Mob) bool {
-	raid := hostileOf(m).raid(m)
+	raid := raiderOf(m).raid(m)
 	return m.Alive() && m.Target() == nil && raid != nil && raid.Status() == world.RaidDefeat
 }
 
-func (g *raiderCelebrationGoal) Start(m *Mob) { hostileOf(m).setCelebrating(m, true) }
+func (g *raiderCelebrationGoal) Start(m *Mob) { raiderOf(m).setCelebrating(m, true) }
 
-func (g *raiderCelebrationGoal) Stop(m *Mob) { hostileOf(m).setCelebrating(m, false) }
+func (g *raiderCelebrationGoal) Stop(m *Mob) { raiderOf(m).setCelebrating(m, false) }
 
 func (g *raiderCelebrationGoal) Tick(m *Mob) {
 	r := m.Random()
@@ -322,7 +343,7 @@ func (g *raiderCelebrationGoal) Tick(m *Mob) {
 	}
 }
 
-func (b *hostileState) setCelebrating(m *Mob, celebrating bool) {
+func (b *raiderState) setCelebrating(m *Mob, celebrating bool) {
 	if b.celebrating != celebrating {
 		b.celebrating = celebrating
 		m.updateState()
@@ -338,7 +359,7 @@ type holdGroundAttackGoal struct {
 }
 
 func (g *holdGroundAttackGoal) CanUse(m *Mob) bool {
-	b := hostileOf(m)
+	b := raiderOf(m)
 	if b.raid(m) != nil || !b.patrolling || m.Target() == nil || m.Aggressive() {
 		return false
 	}
@@ -350,7 +371,7 @@ func (g *holdGroundAttackGoal) CanUse(m *Mob) bool {
 func nearbyRaiders(m *Mob) []*Mob {
 	var out []*Mob
 	for e := range m.tx.EntitiesWithin(m.BBox().Grow(8)) {
-		if e.H() == m.H() || !hostileRaidMob(e.H().Type().EncodeEntity()) || !entityAlive(e) || spectator(e) {
+		if e.H() == m.H() || !isRaiderEntity(e) || !entityAlive(e) || spectator(e) {
 			continue
 		}
 		if other, ok := mobOf(e); ok {
@@ -403,7 +424,7 @@ type openDoorGoal struct {
 }
 
 func (g *openDoorGoal) CanUse(m *Mob) bool {
-	if g.raidOnly && hostileOf(m).activeRaid(m) == nil {
+	if g.raidOnly && raiderOf(m).activeRaid(m) == nil {
 		return false
 	}
 	return g.door.find(m)
@@ -427,7 +448,7 @@ func (b *hostileState) holdingCrossbow() bool {
 // registerPillagerGoals ports Pillager.registerGoals.
 func registerPillagerGoals(m *Mob, b *hostileState) {
 	ai := m.AI
-	registerRaiderGoals(m, b)
+	registerRaiderGoals(m)
 	ai.Goals.Add(0, NewFloatGoal(m))
 	ai.Goals.Add(1, NewAvoidEntityGoal(entityIs("minecraft:creaking"), 8, 1, 1.2))
 	ai.Goals.Add(2, &holdGroundAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, hostileRadiusSqr: 100})
@@ -609,7 +630,7 @@ func (b *hostileState) performCrossbowAttack(m *Mob, target world.Entity) {
 // registerVindicatorGoals ports Vindicator.registerGoals.
 func registerVindicatorGoals(m *Mob, b *hostileState) {
 	ai := m.AI
-	registerRaiderGoals(m, b)
+	registerRaiderGoals(m)
 	ai.Goals.Add(0, NewFloatGoal(m))
 	ai.Goals.Add(1, NewAvoidEntityGoal(entityIs("minecraft:creaking"), 8, 1, 1.2))
 	breakDoor := NewBreakDoorGoal(func(d world.Difficulty) bool {
@@ -643,11 +664,11 @@ type vindicatorBreakDoorGoal struct{ *BreakDoorGoal }
 func (g *vindicatorBreakDoorGoal) Flags() GoalFlag { return GoalMove }
 
 func (g *vindicatorBreakDoorGoal) CanUse(m *Mob) bool {
-	return hostileOf(m).activeRaid(m) != nil && m.Random().NextInt(int32(reducedTickDelay(10))) == 0 && g.BreakDoorGoal.CanUse(m)
+	return raiderOf(m).activeRaid(m) != nil && m.Random().NextInt(int32(reducedTickDelay(10))) == 0 && g.BreakDoorGoal.CanUse(m)
 }
 
 func (g *vindicatorBreakDoorGoal) CanContinueToUse(m *Mob) bool {
-	return hostileOf(m).activeRaid(m) != nil && g.BreakDoorGoal.CanContinueToUse(m)
+	return raiderOf(m).activeRaid(m) != nil && g.BreakDoorGoal.CanContinueToUse(m)
 }
 
 func (g *vindicatorBreakDoorGoal) Start(m *Mob) {

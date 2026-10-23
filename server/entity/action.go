@@ -32,6 +32,10 @@ type EnchantedHitAction struct {
 // entity disappears from viewers watching it.
 type DeathAction struct{ action }
 
+// WitchMagicAction is a world.EntityAction that makes a witch display the
+// magic particles around its hat.
+type WitchMagicAction struct{ action }
+
 // SilverfishMergeAction is a world.EntityAction that makes a silverfish
 // display the particles of it hiding in a block.
 type SilverfishMergeAction struct{ action }

@@ -292,3 +292,78 @@ func (g *FleeSunGoal) CanContinueToUse(m *Mob) bool { return !m.AI.nav.IsDone() 
 func (g *FleeSunGoal) Start(m *Mob) {
 	m.AI.nav.MoveToPos(m, g.wanted[0], g.wanted[1], g.wanted[2], g.SpeedModifier)
 }
+
+// RangedAttackGoal makes a mob attack its target from a distance at an
+// interval, ported from Java's RangedAttackGoal.
+type RangedAttackGoal struct {
+	goalFlags
+	SpeedModifier                        float64
+	AttackIntervalMin, AttackIntervalMax int
+	AttackRadius                         float64
+	// Perform attacks the target with a power from 0.1 to 1 that grows with
+	// its distance.
+	Perform func(m *Mob, target world.Entity, power float64)
+
+	target     *world.EntityHandle
+	attackTime int
+	seeTime    int
+}
+
+// NewRangedAttackGoal returns a RangedAttackGoal attacking every interval
+// ticks within radius blocks.
+func NewRangedAttackGoal(speedModifier float64, interval int, radius float64, perform func(m *Mob, target world.Entity, power float64)) *RangedAttackGoal {
+	return &RangedAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, SpeedModifier: speedModifier, AttackIntervalMin: interval, AttackIntervalMax: interval,
+		AttackRadius: radius, Perform: perform, attackTime: -1}
+}
+
+func (g *RangedAttackGoal) CanUse(m *Mob) bool {
+	target := m.Target()
+	if target == nil || !entityAlive(target) {
+		return false
+	}
+	g.target = target.H()
+	return true
+}
+
+func (g *RangedAttackGoal) CanContinueToUse(m *Mob) bool {
+	if g.CanUse(m) {
+		return true
+	}
+	t, ok := g.target.Entity(m.tx)
+	return ok && entityAlive(t) && !m.AI.nav.IsDone()
+}
+
+func (g *RangedAttackGoal) Stop(*Mob) { g.target, g.seeTime, g.attackTime = nil, 0, -1 }
+
+func (g *RangedAttackGoal) RequiresUpdateEveryTick() bool { return true }
+
+func (g *RangedAttackGoal) Tick(m *Mob) {
+	target, ok := g.target.Entity(m.tx)
+	if !ok {
+		return
+	}
+	distSqr := m.DistanceToSqr(target)
+	sight := m.HasLineOfSight(target)
+	if sight {
+		g.seeTime++
+	} else {
+		g.seeTime = 0
+	}
+	if distSqr <= g.AttackRadius*g.AttackRadius && g.seeTime >= 5 {
+		m.AI.nav.Stop()
+	} else {
+		m.AI.nav.MoveToEntity(m, target, g.SpeedModifier)
+	}
+	m.AI.look.SetLookAtEntityWith(target, 30, 30)
+	span := float64(g.AttackIntervalMax - g.AttackIntervalMin)
+	if g.attackTime--; g.attackTime == 0 {
+		if !sight {
+			return
+		}
+		dist := math.Sqrt(distSqr) / g.AttackRadius
+		g.Perform(m, target, math.Max(.1, math.Min(dist, 1)))
+		g.attackTime = int(math.Floor(dist*span)) + g.AttackIntervalMin
+	} else if g.attackTime < 0 {
+		g.attackTime = int(math.Floor(float64(g.AttackIntervalMin) + math.Sqrt(distSqr)/g.AttackRadius*span))
+	}
+}

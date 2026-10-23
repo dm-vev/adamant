@@ -2,16 +2,28 @@ package entity
 
 import (
 	"hash/fnv"
-	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// UsingItem reports if the witch drinks a potion.
+func (w *Witch) UsingItem() bool { return w.behaviour().drinking }
+
+// HeldItems returns the potion the witch drinks, if any.
+func (w *Witch) HeldItems() (item.Stack, item.Stack) {
+	b := w.behaviour()
+	if !b.drinking {
+		return item.Stack{}, item.Stack{}
+	}
+	return item.NewStack(item.Potion{Type: b.drinkPotion}, 1), item.Stack{}
+}
 
 // WitchType is the Java witch entity type.
 var WitchType witchType
@@ -87,18 +99,26 @@ func (c WitchConfig) Apply(d *world.EntityData) {
 }
 
 type WitchBehaviour struct {
-	health                                    *HealthManager
-	effects                                   *EffectManager
-	mc                                        *MovementComputer
-	random                                    vanilla.Random
-	speed                                     float64
-	navigator                                 Navigator
-	nextWander, attackCooldown, potionUseTime int
-	drinking, dead                            bool
-	drinkPotion                               potion.Potion
-	raidID                                    int64
-	raidWave                                  int
-	raidLeader                                bool
+	health        *HealthManager
+	effects       *EffectManager
+	mc            *MovementComputer
+	random        vanilla.Random
+	speed         float64
+	potionUseTime int
+	drinking      bool
+	dead          bool
+	drinkPotion   potion.Potion
+	raidID        int64
+	raidWave      int
+	raidLeader    bool
+
+	raiderState
+	ai          MobAI
+	heal        *nearestHealableRaiderTargetGoal
+	attack      *NearestAttackableTargetGoal
+	attackAllow bool
+	// lastFireDamage is the world tick the witch last took fire damage.
+	lastFireDamage int64
 }
 type Witch struct{ *Ent }
 
@@ -131,131 +151,9 @@ func (b *WitchBehaviour) joinRaid(e *Ent, tx *world.Tx) {
 }
 func (b *WitchBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	b.joinRaid(e, tx)
-	if b.attackCooldown > 0 {
-		b.attackCooldown--
-	}
-	var target world.Entity
-	best := math.MaxFloat64
-	for player := range tx.Players() {
-		distance := player.Position().Sub(e.Position()).LenSqr()
-		if distance < best && distance < 64*64 {
-			target, best = player, distance
-		}
-	}
-	if b.drinking {
-		if b.potionUseTime <= 0 {
-			b.drinking = false
-			for _, eff := range b.drinkPotion.Effects() {
-				(&Witch{Ent: e}).AddEffect(eff)
-			}
-		} else {
-			b.potionUseTime--
-		}
-	} else {
-		b.tryDrinkPotion(e, tx, target, best)
-	}
-	if target == nil {
-		b.wander(e, tx)
-		return nil
-	}
-	delta := target.Position().Sub(e.Position())
-	distance := math.Hypot(delta[0], delta[2])
-	if !b.drinking && b.attackCooldown == 0 && best < 100 {
-		if living, ok := target.(Living); ok {
-			p := potion.Harming()
-			switch {
-			case distance >= 8 && !witchHasEffect(living.Effects(), effect.Slowness):
-				p = potion.Slowness()
-			case living.Health() >= 8 && !witchHasEffect(living.Effects(), effect.Poison):
-				p = potion.Poison()
-			case distance <= 3 && !witchHasEffect(living.Effects(), effect.Weakness) && b.random.NextFloat() < .25:
-				p = potion.Weakness()
-			}
-			aim := delta.Add(mgl64.Vec3{0, 1 + distance*.2, 0})
-			if aim.Len() > 0 {
-				speed := .75
-				if distance <= 2 {
-					speed = .45
-				}
-				opts := world.EntitySpawnOpts{Position: e.Position().Add(mgl64.Vec3{0, 1.4, 0}), Velocity: aim.Normalize().Mul(speed)}
-				tx.AddEntity(NewSplashPotion(opts, p, e))
-			}
-		}
-		b.attackCooldown = 60
-	}
-	if b.drinking || distance <= 8 {
-		b.stop(e, tx)
-	} else {
-		b.moveToward(e, tx, target.Position())
-	}
-	return nil
+	return b.aiTick(e, tx)
 }
 
-func (b *WitchBehaviour) tryDrinkPotion(e *Ent, tx *world.Tx, target world.Entity, targetDistance float64) {
-	var drink potion.Potion
-	pos := e.Position().Add(mgl64.Vec3{0, 1.6, 0})
-	_, inWater := tx.Liquid(cube.PosFromVec3(pos))
-	switch {
-	case b.random.NextFloat() < .15 && inWater && !witchHasEffect(b.effects.Effects(), effect.WaterBreathing):
-		drink = potion.WaterBreathing()
-	case b.random.NextFloat() < .15 && e.OnFireDuration() > 0 && !witchHasEffect(b.effects.Effects(), effect.FireResistance):
-		drink = potion.FireResistance()
-	case b.random.NextFloat() < .05 && b.health.Health() < b.health.MaxHealth():
-		drink = potion.Healing()
-	case b.random.NextFloat() < .5 && target != nil && !witchHasEffect(b.effects.Effects(), effect.Speed) && targetDistance > 121:
-		drink = potion.Swiftness()
-	}
-	if drink.Uint8() != 0 {
-		b.drinking, b.potionUseTime, b.drinkPotion = true, 32, drink
-	}
-}
-
-func witchHasEffect(effects []effect.Effect, t effect.Type) bool {
-	for _, active := range effects {
-		if active.Type() == t {
-			return true
-		}
-	}
-	return false
-}
-func (b *WitchBehaviour) moveToward(e *Ent, tx *world.Tx, p mgl64.Vec3) {
-	d := p.Sub(e.data.Pos)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.data.Vel
-	v[0], v[2] = d[0]*b.speed, d[2]*b.speed
-	r := e.data.Rot
-	r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-}
-func (b *WitchBehaviour) stop(e *Ent, tx *world.Tx) {
-	v := e.data.Vel
-	v[0], v[2] = 0, 0
-	m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-}
-func (b *WitchBehaviour) wander(e *Ent, tx *world.Tx) {
-	if b.nextWander > 0 {
-		b.nextWander--
-	}
-	if b.navigator.Index >= len(b.navigator.Path) && b.nextWander == 0 {
-		b.nextWander = 40
-		start := cube.PosFromVec3(e.Position())
-		b.navigator.MoveTo(tx, start, start.Add(cube.Pos{3, 0, -2}), GroundProfile{MaxVisitedNodes: 64}, navigatorTick(e))
-	}
-	if p, ok := b.navigator.Tick(e.Position(), navigatorTick(e), .6); ok {
-		if p.Sub(e.Position()).Len() < .4 {
-			b.navigator.Index++
-		} else {
-			b.moveToward(e, tx, p)
-		}
-	} else {
-		b.stop(e, tx)
-	}
-}
 func (w *Witch) Health() float64        { return w.behaviour().health.Health() }
 func (w *Witch) MaxHealth() float64     { return w.behaviour().health.MaxHealth() }
 func (w *Witch) SetMaxHealth(v float64) { w.behaviour().health.SetMaxHealth(v) }
@@ -265,10 +163,19 @@ func (w *Witch) Hurt(d float64, s world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b := w.behaviour()
+	d, ok := b.ai.DamageCooldown(w.tx, d)
+	if !ok {
+		return 0, false
+	}
 	if r, ok := b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
+	d = witchMagicAbsorb(w, d, s)
+	if s.Fire() {
+		b.lastFireDamage = w.tx.CurrentTick()
+	}
 	b.health.AddHealth(-d)
+	b.ai.Hurt(s)
 	onMobHurt(w.tx, w)
 	if w.Dead() {
 		b.dead = true

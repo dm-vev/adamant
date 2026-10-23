@@ -44,7 +44,7 @@ func (b *hostileState) setSpell(m *Mob, spell illagerSpell) {
 // registerEvokerGoals ports Evoker.registerGoals.
 func registerEvokerGoals(m *Mob, b *hostileState) {
 	ai := m.AI
-	registerRaiderGoals(m, b)
+	registerRaiderGoals(m)
 	ai.Goals.Add(0, NewFloatGoal(m))
 	ai.Goals.Add(1, &evokerCastingSpellGoal{goalFlags{GoalMove | GoalLook}})
 	ai.Goals.Add(2, NewAvoidEntityGoal(isPlayerEntity, 8, .6, 1))
@@ -470,7 +470,7 @@ func (g *vexRandomMoveGoal) Tick(m *Mob) {
 // registerRavagerGoals ports Ravager.registerGoals.
 func registerRavagerGoals(m *Mob, b *hostileState) {
 	ai := m.AI
-	registerRaiderGoals(m, b)
+	registerRaiderGoals(m)
 	ai.SetPathfindingMalus(PathLeaves, 0)
 	ai.Goals.Add(0, NewFloatGoal(m))
 	ai.Goals.Add(4, NewMeleeAttackGoal(1, true))

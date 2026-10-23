@@ -89,7 +89,7 @@ func (b *oceanBehaviour) registerDrownedGoals(m *Mob) {
 	ai.Goals.Add(8, NewLookAtPlayerGoal(8))
 	ai.Goals.Add(8, NewRandomLookAroundGoal())
 	ai.Goals.Add(1, &drownedGoToWaterGoal{goalFlags: goalFlags{GoalMove}})
-	ai.Goals.Add(2, &drownedTridentAttackGoal{goalFlags: goalFlags{GoalMove | GoalLook}, attackTime: -1})
+	ai.Goals.Add(2, newDrownedTridentAttackGoal())
 	attack := NewMeleeAttackGoal(1, false)
 	raiseArmTicks := 0
 	attack.OnTick = func(m *Mob, g *MeleeAttackGoal) {
@@ -354,31 +354,19 @@ func drownedCloseToNextPos(m *Mob) bool {
 // drownedTridentAttackGoal ports Drowned.DrownedTridentAttackGoal, a
 // RangedAttackGoal: a drowned holding a trident throws it every two seconds
 // at targets within ten blocks.
-type drownedTridentAttackGoal struct {
-	goalFlags
-	target     *world.EntityHandle
-	attackTime int
-	seeTime    int
+type drownedTridentAttackGoal struct{ *RangedAttackGoal }
+
+func newDrownedTridentAttackGoal() *drownedTridentAttackGoal {
+	return &drownedTridentAttackGoal{NewRangedAttackGoal(1, 40, 10, func(m *Mob, target world.Entity, _ float64) {
+		drownedOf(m).throwTrident(m, target)
+	})}
 }
 
 func (g *drownedTridentAttackGoal) CanUse(m *Mob) bool {
-	target := m.Target()
-	if target == nil || !entityAlive(target) {
-		return false
-	}
 	if _, ok := drownedOf(m).mainHand.Item().(item.Trident); !ok {
 		return false
 	}
-	g.target = target.H()
-	return true
-}
-
-func (g *drownedTridentAttackGoal) CanContinueToUse(m *Mob) bool {
-	if g.CanUse(m) {
-		return true
-	}
-	t, ok := g.target.Entity(m.tx)
-	return ok && entityAlive(t) && !m.AI.nav.IsDone()
+	return g.RangedAttackGoal.CanUse(m)
 }
 
 func (g *drownedTridentAttackGoal) Start(m *Mob) {
@@ -387,41 +375,9 @@ func (g *drownedTridentAttackGoal) Start(m *Mob) {
 }
 
 func (g *drownedTridentAttackGoal) Stop(m *Mob) {
-	g.target, g.seeTime, g.attackTime = nil, 0, -1
+	g.RangedAttackGoal.Stop(m)
 	drownedOf(m).setDrawing(m, false)
 	m.SetAggressive(false)
-}
-
-func (g *drownedTridentAttackGoal) RequiresUpdateEveryTick() bool { return true }
-
-func (g *drownedTridentAttackGoal) Tick(m *Mob) {
-	target, ok := g.target.Entity(m.tx)
-	if !ok {
-		return
-	}
-	const radius, interval = 10.0, 40
-	dist := m.DistanceToSqr(target)
-	sight := m.HasLineOfSight(target)
-	if sight {
-		g.seeTime++
-	} else {
-		g.seeTime = 0
-	}
-	if dist <= radius*radius && g.seeTime >= 5 {
-		m.AI.nav.Stop()
-	} else {
-		m.AI.nav.MoveToEntity(m, target, 1)
-	}
-	m.AI.look.SetLookAtEntityWith(target, 30, 30)
-	if g.attackTime--; g.attackTime == 0 {
-		if !sight {
-			return
-		}
-		drownedOf(m).throwTrident(m, target)
-		g.attackTime = interval
-	} else if g.attackTime < 0 {
-		g.attackTime = interval
-	}
 }
 
 // setDrawing sets whether the mob uses the item it holds, as clients show

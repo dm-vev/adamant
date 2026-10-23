@@ -3,6 +3,7 @@ package entity_test
 import (
 	"math"
 	"testing"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -857,5 +858,54 @@ func TestElderGuardianCursesPlayers(t *testing.T) {
 	}
 	if !cursed {
 		t.Fatal("elder guardian gave no mining fatigue")
+	}
+}
+
+// TestWitchThrowsPotionsAtPlayers checks a witch throws potions that slow
+// or poison a player.
+func TestWitchThrowsPotionsAtPlayers(t *testing.T) {
+	w := aiTestWorld(t)
+	p := addAITestPlayer(w, mgl64.Vec3{6.5, 65, .5}, world.GameModeSurvival)
+	addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	affected := false
+	lowestHealth(t, w, p, 300, func(tx *world.Tx) {
+		e, _ := p.Entity(tx)
+		for _, eff := range e.(*player.Player).Effects() {
+			affected = affected || eff.Type() == effect.Slowness || eff.Type() == effect.Poison
+		}
+	})
+	if !affected {
+		t.Fatal("witch potions did not affect the player")
+	}
+}
+
+// TestWitchDrinksAndResistsMagic checks a burning witch drinks fire
+// resistance, and magic hurts it little.
+func TestWitchDrinksAndResistsMagic(t *testing.T) {
+	w := aiTestWorld(t)
+	witch := addSpecies(w, entity.NewWitch(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 65, .5}}))
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := witch.Entity(tx)
+		l := e.(entity.Living)
+		if l.Hurt(10, effect.InstantDamageSource{}); l.Health() < 26-1.5-.01 {
+			t.Fatalf("witch health %v after 10 magic damage", l.Health())
+		}
+		e.(interface{ SetOnFire(time.Duration) }).SetOnFire(10 * time.Second)
+	})
+	resistant := false
+	for range 200 {
+		stepWorld(t, w, 1)
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := witch.Entity(tx)
+			for _, eff := range e.(entity.Living).Effects() {
+				resistant = resistant || eff.Type() == effect.FireResistance
+			}
+		})
+		if resistant {
+			break
+		}
+	}
+	if !resistant {
+		t.Fatal("burning witch drank no fire resistance")
 	}
 }
