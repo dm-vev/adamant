@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -202,6 +203,28 @@ func (e *Ent) SetOnFire(duration time.Duration) {
 	}
 }
 
+// tickFire ports the fire of Entity.baseTick: a mob on fire takes a point of
+// damage every second it is out of lava, until the fire burns out.
+func (e *Ent) tickFire(tx *world.Tx) {
+	if e.data.FireDuration <= 0 {
+		return
+	}
+	if ticks := int64(e.data.FireDuration / (time.Second / 20)); ticks%20 == 0 {
+		l, inLiquid := tx.Liquid(cube.PosFromVec3(e.data.Pos))
+		if living, ok := e.living().(Living); ok && !(inLiquid && l.LiquidType() == "lava") {
+			living.Hurt(1, block.FireDamageSource{})
+		}
+	}
+	e.SetOnFire(e.data.FireDuration - time.Second/20)
+}
+
+// inRain ports Entity.isInRain: rain falls on the feet or the top of the
+// entity.
+func (e *Ent) inRain(tx *world.Tx) bool {
+	top := e.data.Pos.Add(mgl64.Vec3{0, e.H().Type().BBox(e.living()).Height()})
+	return tx.RainingAt(cube.PosFromVec3(e.data.Pos)) || tx.RainingAt(cube.PosFromVec3(top))
+}
+
 // Riding returns the entity that this entity is riding, if any.
 func (e *Ent) Riding() *world.EntityHandle {
 	return e.data.Riding
@@ -308,7 +331,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		_ = e.CloseIn(tx)
 		return
 	}
-	e.SetOnFire(e.OnFireDuration() - time.Second/20)
+	if e.tickFire(tx); e.handle.Closed() {
+		return
+	}
 	if e.data.Riding != nil {
 		e.data.Vel = mgl64.Vec3{}
 	}
@@ -330,6 +355,10 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	// The blocks act on the concrete mob, whose Hurt and SetOnFire may
 	// differ from those of Ent, as a strider is immune to fire.
 	checkEntityInsiders(tx, e.living())
+	if e.data.FireDuration > 0 && e.inRain(tx) {
+		// Entity.move: rain puts out the fire of an entity.
+		e.SetOnFire(0)
+	}
 	if frozen := e.data.FrozenTicks; frozen > 0 || e.data.InPowderSnow || e.data.WasInPowderSnow {
 		TickFreezing(tx, e.living(), e.data)
 		if e.data.FrozenTicks != frozen {

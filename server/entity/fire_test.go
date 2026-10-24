@@ -63,3 +63,64 @@ func TestFireImmuneMobsIgnoreLava(t *testing.T) {
 		})
 	}
 }
+
+// TestBurningMobsTakeDamage checks the fire of Entity.baseTick: a mob on fire
+// takes a point of damage a second until the fire burns out.
+func TestBurningMobsTakeDamage(t *testing.T) {
+	w := wolfTestWorld(t)
+	var cow *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		cow = spawnAnimal(t, tx, "minecraft:cow", .5, nil)
+		e, _ := cow.Entity(tx)
+		e.(interface{ SetOnFire(time.Duration) }).SetOnFire(5 * time.Second)
+	})
+	stepWorld(t, w, 120)
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := cow.Entity(tx)
+		if h := e.(entity.Living).Health(); h != 5 {
+			t.Fatalf("cow on fire for five seconds has %.1f health, want 5", h)
+		}
+		if e.(interface{ OnFireDuration() time.Duration }).OnFireDuration() > 0 {
+			t.Fatal("cow still burns after its fire burnt out")
+		}
+	})
+}
+
+// TestRainPutsOutBurningMobs checks Entity.move: rain puts out a mob on fire.
+func TestRainPutsOutBurningMobs(t *testing.T) {
+	w := wolfTestWorld(t)
+	w.StartRaining(time.Hour)
+	var cow *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		cow = spawnAnimal(t, tx, "minecraft:cow", .5, nil)
+		e, _ := cow.Entity(tx)
+		e.(interface{ SetOnFire(time.Duration) }).SetOnFire(5 * time.Second)
+	})
+	stepWorld(t, w, 2)
+	<-w.Exec(func(tx *world.Tx) {
+		e, _ := cow.Entity(tx)
+		if e.(interface{ OnFireDuration() time.Duration }).OnFireDuration() > 0 {
+			t.Fatal("cow in the rain still burns")
+		}
+	})
+}
+
+// TestZombiesBurnInDaylight checks Mob.burnUndead with the fire of
+// Entity.baseTick: a zombie under the noon sun burns to death.
+func TestZombiesBurnInDaylight(t *testing.T) {
+	w := wolfTestWorld(t)
+	w.SetTime(6000)
+	var zombie *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		zombie = spawnAnimal(t, tx, "minecraft:zombie", .5, nil)
+	})
+	for range 1200 {
+		stepWorld(t, w, 1)
+		dead := false
+		<-w.Exec(func(tx *world.Tx) { _, alive := zombie.Entity(tx); dead = !alive })
+		if dead {
+			return
+		}
+	}
+	t.Fatal("zombie under the noon sun did not burn to death in a minute")
+}
