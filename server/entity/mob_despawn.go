@@ -219,7 +219,11 @@ func encodePersistence(data *world.EntityData) map[string]any {
 	if !ok {
 		return nil
 	}
-	return map[string]any{"Persistent": boolByte(b.mobAI().persistent)}
+	out := map[string]any{"Persistent": boolByte(b.mobAI().persistent)}
+	if b.mobAI().NoAI {
+		out["NoAI"] = byte(1)
+	}
+	return out
 }
 
 // decodePersistence reads the persistence of a mob from Bedrock's Persistent
@@ -235,6 +239,10 @@ func decodePersistence(data *world.EntityData, m map[string]any) {
 	}
 	if persistent {
 		b.mobAI().persistent = true
+	}
+	if nbtBool(m, "NoAI") {
+		// Mob.setNoAi: the mob neither thinks nor moves of its own accord.
+		b.mobAI().NoAI = true
 	}
 }
 

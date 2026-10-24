@@ -27,6 +27,7 @@ func (c javaNBTConfig) Apply(data *world.EntityData) {
 			decoded[key] = value
 		}
 		c.typeOf.DecodeNBT(decoded, data)
+		decodePersistence(data, decoded)
 		return
 	}
 	switch c.typeOf.EncodeEntity() {

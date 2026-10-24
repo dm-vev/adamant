@@ -19,6 +19,9 @@ type MobAI struct {
 	// persistent is Mob.persistenceRequired: the mob never leaves the world
 	// of its own accord.
 	persistent bool
+	// air is the air supply of the mob, full once airSet.
+	air    int
+	airSet bool
 
 	// Goals and Targets are the goal and target selectors of the mob.
 	Goals, Targets GoalSelector
