@@ -146,10 +146,10 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		m[protocol.EntityDataKeyVariant] = e.BedrockVariant()
 		writeTameMetadata(m, e.Tamed(), e.Sitting(), e.CollarColor())
 		if e.Angry() {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+			setActorFlag(m, protocol.EntityDataFlagAngry)
 		}
 		if e.Interested() {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagInterested)
+			setActorFlag(m, protocol.EntityDataFlagInterested)
 		}
 	case *entity.Rabbit:
 		// Bedrock has no killer bunny.
@@ -161,7 +161,7 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 	case *entity.Fox:
 		m[protocol.EntityDataKeyVariant] = int32(e.Variant())
 		if e.Sitting() {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSitting)
+			setActorFlag(m, protocol.EntityDataFlagSitting)
 		}
 		if e.Sleeping() {
 			setActorFlag(m, protocol.EntityDataFlagSleeping)
@@ -241,11 +241,11 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		writeVillagerMetadata(m, profession, villagerType)
 	case *entity.ZombifiedPiglin:
 		if e.Angry() {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+			setActorFlag(m, protocol.EntityDataFlagAngry)
 		}
 	case *entity.Bee:
 		if e.Angry() {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+			setActorFlag(m, protocol.EntityDataFlagAngry)
 		}
 	case *entity.Enderman:
 		carried, ok := e.CarriedBlock()
@@ -254,7 +254,7 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		}
 		m[protocol.EntityDataKeyCarryBlockRuntimeID] = int32(networkBlockID(s.br, carried))
 		if e.Angry() {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+			setActorFlag(m, protocol.EntityDataFlagAngry)
 		}
 	}
 }
@@ -263,11 +263,11 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 // a tamed one shows its collar.
 func writeTameMetadata(m protocol.EntityMetadata, tamed, sitting bool, collar uint8) {
 	if tamed {
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagTamed)
+		setActorFlag(m, protocol.EntityDataFlagTamed)
 		m[protocol.EntityDataKeyColorIndex] = collar
 	}
 	if sitting {
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagSitting)
+		setActorFlag(m, protocol.EntityDataFlagSitting)
 	}
 }
 
