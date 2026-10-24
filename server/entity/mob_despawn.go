@@ -213,21 +213,30 @@ func (e *Ent) SetPersistenceRequired(v bool) {
 }
 
 // encodePersistence writes the persistence of a mob as the Persistent flag
-// Bedrock saves actors with.
+// Bedrock saves actors with, its NoAI flag, and the Air it has left if it
+// breathes as LivingEntity does.
 func encodePersistence(data *world.EntityData) map[string]any {
 	b, ok := data.Data.(mobAIBehaviour)
 	if !ok {
 		return nil
 	}
-	out := map[string]any{"Persistent": boolByte(b.mobAI().persistent)}
-	if b.mobAI().NoAI {
+	ai := b.mobAI()
+	out := map[string]any{"Persistent": boolByte(ai.persistent)}
+	if ai.NoAI {
 		out["NoAI"] = byte(1)
+	}
+	if _, own := data.Data.(ownAirSupply); !own {
+		air := maxMobAirSupply
+		if ai.airSet {
+			air = ai.air
+		}
+		out["Air"] = int16(air)
 	}
 	return out
 }
 
 // decodePersistence reads the persistence of a mob from Bedrock's Persistent
-// flag or Java's PersistenceRequired.
+// flag or Java's PersistenceRequired, its NoAI flag and its Air.
 func decodePersistence(data *world.EntityData, m map[string]any) {
 	b, ok := data.Data.(mobAIBehaviour)
 	if !ok {
@@ -243,6 +252,11 @@ func decodePersistence(data *world.EntityData, m map[string]any) {
 	if nbtBool(m, "NoAI") {
 		// Mob.setNoAi: the mob neither thinks nor moves of its own accord.
 		b.mobAI().NoAI = true
+	}
+	if air, ok := m["Air"].(int16); ok {
+		if _, own := data.Data.(ownAirSupply); !own {
+			b.mobAI().air, b.mobAI().airSet = int(air), true
+		}
 	}
 }
 
