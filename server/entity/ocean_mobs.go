@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"time"
+
 	"encoding/json"
 	"math"
 
@@ -505,6 +507,13 @@ type oceanBehaviour struct {
 func (b *oceanBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	b.age++
 	b.ticks++
+	if b.kind == oceanZombieNautilus && b.bodyArmorMaterial < 0 && sunBurnTick(e, tx) {
+		// Mob.burnUndead: ZombieNautilus.sunProtectionSlot is its body,
+		// shaded by nautilus armour.
+		if e.OnFireDuration() < 8*time.Second {
+			e.SetOnFire(8 * time.Second)
+		}
+	}
 	if inWater := func() bool { _, ok := tx.Liquid(cube.PosFromVec3(e.Position())); return ok }(); inWater {
 		b.mc.Gravity = .005
 		b.mc.Drag = .04

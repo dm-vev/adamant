@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"time"
+
 	"github.com/df-mc/dragonfly/server/loot"
 	"math/rand/v2"
 
@@ -137,6 +139,13 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	b.effects.Tick(m, tx)
+	if b.kind == mountZombieHorse && sunBurnTick(e, tx) && b.armor.Empty() {
+		// Mob.burnUndead: the armour a zombie horse wears on its body,
+		// ZombieHorse.sunProtectionSlot, shades it.
+		if e.OnFireDuration() < 8*time.Second {
+			e.SetOnFire(8 * time.Second)
+		}
+	}
 	if b.kind == mountSkeletonHorse && b.trap {
 		// SkeletonHorse.aiStep: an unsprung trap leaves after 15 minutes.
 		if b.trapTime >= 18000 {

@@ -641,7 +641,8 @@ func (m *HostileMob) Tick(tx *world.Tx, n int64) {
 	}
 }
 func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.kind == "minecraft:zombie" || b.kind == "minecraft:zombie_villager" || b.kind == "minecraft:skeleton" || b.kind == "minecraft:stray" || b.kind == "minecraft:bogged" || b.kind == "minecraft:parched" {
+	// The burn_in_daylight tag: parched and husks do not burn.
+	if b.kind == "minecraft:zombie" || b.kind == "minecraft:zombie_villager" || b.kind == "minecraft:skeleton" || b.kind == "minecraft:stray" || b.kind == "minecraft:bogged" {
 		b.burnUndead(e, tx)
 	}
 	if b.kind == "minecraft:skeleton" && b.tickStrayConversion(e, tx) {
