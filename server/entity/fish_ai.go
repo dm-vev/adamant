@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -78,16 +79,88 @@ func (b *AquaticMobBehaviour) tickFish(e *Ent, tx *world.Tx) *Movement {
 	}
 	mv := ai.Tick(e, self, b.registerFishGoals)
 	if b.id == "minecraft:tadpole" {
+		// Tadpole.aiStep.
 		if !b.breeding.ageLocked {
-			b.age++
+			b.setTadpoleAge(e, tx, b.age+1)
 		}
-		if b.age >= 24000 {
-			opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot, Velocity: e.data.Vel}
-			tx.AddEntity(opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}))
-			_ = e.CloseIn(tx)
+		if t := &b.breeding.ageLockTimer; *t > 0 {
+			if *t%2 == 0 {
+				tx.AddParticle(e.data.Pos.Add(mgl64.Vec3{0, e.H().Type().BBox(self).Height() + .2}), particle.MobGrowth{Paused: b.breeding.ageLocked})
+			}
+			*t--
 		}
 	}
 	return mv
+}
+
+// tadpoleTicksToBeFrog is Tadpole.ticksToBeFrog.
+const tadpoleTicksToBeFrog = 24000
+
+// setTadpoleAge ports Tadpole.setAge: a tadpole old enough grows up into a
+// frog of the biome it is in.
+func (b *AquaticMobBehaviour) setTadpoleAge(e *Ent, tx *world.Tx, age int) {
+	b.age = age
+	if b.age < tadpoleTicksToBeFrog || b.dead {
+		return
+	}
+	b.dead = true
+	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot, Velocity: e.data.Vel}
+	tx.AddEntity(opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}))
+	tx.PlaySound(e.data.Pos, sound.Custom{Name: "mob.tadpole.convert_to_frog", Volume: .15, Pitch: 1})
+	_ = e.CloseIn(tx)
+}
+
+// feedTadpole ports Tadpole.mobInteract: frog food makes a tadpole grow up
+// sooner, and a golden dandelion stops or restarts its growth.
+func (b *AquaticMobBehaviour) feedTadpole(e *Ent, tx *world.Tx, held item.Stack, ctx *item.UseContext) bool {
+	switch {
+	case inItemTag(held, "frog_food") && !b.breeding.ageLocked:
+		ctx.SubtractFromCount(1)
+		// AgeableMob.getSpeedUpSecondsWhenFeeding.
+		seconds := int(float32(max(0, tadpoleTicksToBeFrog-b.age)/20) * .1)
+		b.setTadpoleAge(e, tx, b.age+seconds*20)
+		return true
+	case itemNamed(held, "minecraft:golden_dandelion") && b.breeding.ageLockTimer == 0 && !entityTypeInTag(aquaticWorldEntity(e), "cannot_be_age_locked"):
+		b.breeding.ageLocked, b.age, b.breeding.ageLockTimer = !b.breeding.ageLocked, 0, 40
+		ctx.SubtractFromCount(1)
+		tx.PlaySound(e.data.Pos, sound.MobGrowth{Paused: b.breeding.ageLocked})
+		return true
+	}
+	return false
+}
+
+// newTadpoleBrain ports TadpoleAi and the brain provider of Tadpole.
+func newTadpoleBrain() *Brain {
+	b := newBrain(nearestLivingEntitySensor{}, playerSensor{}, hurtBySensor{},
+		temptingSensor{items: func(_ *Mob, s item.Stack) bool { return inItemTag(s, "frog_food") }})
+	b.addActivity(activityCore, 0,
+		newAnimalPanic(2, nil, nil, nil),
+		newLookAtTargetSink(45, 90),
+		newMoveToTargetSink(150, 250, nil),
+		newCountDownCooldownTicks(memTemptationCooldownTicks),
+	)
+	b.addActivityWith(activityIdle, []prioritizedBehavior{
+		{0, newSetEntityLookTargetSometimes(isPlayerType, 6, uniformInt{30, 60})},
+		{1, newFollowTemptation(constSpeed(1.25), nil, false)},
+		{2, &gateBehavior{entry: []memoryCondition{{memWalkTarget, memAbsent}}, children: []weightedBehavior{
+			{newRandomSwim(.5), 2},
+			{newSetWalkTargetFromLookTarget(nil, constSpeed(.5), 3), 3},
+			{newOneShotIf(func(m *Mob) bool { return m.InWater() }), 5},
+		}}},
+	}, nil, nil)
+	return b
+}
+
+func (b *AquaticMobBehaviour) brain() *Brain { return b.br }
+
+// customServerAiStep ports Tadpole.customServerAiStep: a tadpole runs its
+// brain besides the goals of a fish.
+func (b *AquaticMobBehaviour) customServerAiStep(m *Mob) {
+	if b.br == nil {
+		return
+	}
+	b.br.tick(m)
+	b.br.setActiveToFirstValid(activityIdle)
 }
 
 // registerFishGoals ports AbstractFish.registerGoals and those of its
@@ -98,16 +171,16 @@ func (b *AquaticMobBehaviour) registerFishGoals(m *Mob) {
 	// WaterAnimal: water costs nothing.
 	ai.SetPathfindingMalus(PathWater, 0)
 	ai.moveOverride = fishMoveControl{}
+	if b.id == "minecraft:tadpole" {
+		ai.moveOverride = smoothSwimmingMoveControl{maxTurnX: 85, maxTurnY: 10, inWater: float64(float32(.02)), outsideWater: float64(float32(.1)), gravity: true}
+		ai.lookOverride = smoothSwimmingLookControl{maxYawFromCentre: 10}
+	}
 	b.panic = NewPanicGoal(1.25)
 	ai.Goals.Add(0, b.panic)
 	if b.id == "minecraft:pufferfish" {
 		ai.Goals.Add(1, &pufferfishPuffGoal{fish: b})
 	}
 	ai.Goals.Add(2, NewAvoidEntityGoal(func(e world.Entity) bool { return isPlayerEntity(e) && !spectator(e) }, 8, 1.6, 1.4))
-	if b.id == "minecraft:tadpole" {
-		// The brain of Tadpole follows players holding slime balls.
-		ai.Goals.Add(3, NewTemptGoal(1.25, func(s item.Stack) bool { _, ok := s.Item().(item.Slimeball); return ok }, false))
-	}
 	swim := NewRandomStrollGoal(1)
 	swim.Interval, swim.Position = 40, randomSwimmablePos
 	ai.Goals.Add(4, fishSwimGoal{swim, b})

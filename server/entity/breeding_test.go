@@ -367,7 +367,9 @@ func TestBredFrogLaysFrogspawnOnNearbyWater(t *testing.T) {
 			t.Fatal("frogs did not eat slime balls")
 		}
 	})
-	for range 600 {
+	// The frogs take up to six seconds to breed, and the pregnant one
+	// lays once it walks up to the water's edge.
+	for range 1200 {
 		w.AdvanceTick()
 	}
 	<-w.Exec(func(tx *world.Tx) {

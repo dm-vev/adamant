@@ -26,9 +26,17 @@ var tropicalFishPatterns = [...]int32{0, 0x100, 0x200, 0x300, 0x400, 0x500, 1, 0
 
 // AcceptItem ports Animal.mobInteract and Axolotl.usePlayerItem for
 // axolotls: a bucket of tropical fish feeds them and leaves a water bucket.
+// Tadpoles eat as Tadpole.mobInteract.
 func (b *AquaticMobBehaviour) AcceptItem(e *Ent, from world.Entity, _ *world.Tx, ctx *item.UseContext) bool {
 	user, ok := from.(item.User)
-	if b.id != "minecraft:axolotl" || ctx == nil || !ok {
+	if ctx == nil || !ok {
+		return false
+	}
+	if b.id == "minecraft:tadpole" {
+		held, _ := user.HeldItems()
+		return b.feedTadpole(e, e.tx, held, ctx)
+	}
+	if b.id != "minecraft:axolotl" {
 		return false
 	}
 	a := &Axolotl{&AquaticMob{Ent: e}}

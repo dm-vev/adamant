@@ -258,7 +258,11 @@ func (c AquaticMobConfig) New() *AquaticMobBehaviour {
 	if c.ID == "minecraft:axolotl" || c.ID == "minecraft:tadpole" {
 		speed = 1
 	}
-	return &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, speed: speed, schoolSize: 1, random: vanilla.NewLegacyRandom(int64(c.Variant))}
+	b := &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, speed: speed, schoolSize: 1, random: vanilla.NewLegacyRandom(int64(c.Variant))}
+	if c.ID == "minecraft:tadpole" {
+		b.br = newTadpoleBrain()
+	}
+	return b
 }
 
 type AquaticMobBehaviour struct {
@@ -274,7 +278,9 @@ type AquaticMobBehaviour struct {
 	breeding breeding
 	target   *world.EntityHandle
 	// ai is the MobAI fish swim with. Axolotls move by movement.
-	ai       MobAI
+	ai MobAI
+	// br is the brain a tadpole runs besides its goals.
+	br       *Brain
 	panic    *PanicGoal
 	movement *MovementComputer
 	speed    float64
