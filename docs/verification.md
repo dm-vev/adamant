@@ -20,6 +20,12 @@ This document records how Adamant's behaviour was checked against its references
 - **Gameplay correctness**: fixes for lightning height/offsets, grindstone XP ranges, crossbow quick-charge ticks, instant-break haste baseline, XP drop ranges, chest unpairing, and barrel/brewing NBT state.
 - **Query and persistence robustness**: token pruning, UUID validation, corruption guards for inventories, detached query player slices, and safer resource pack building.
 
+## Session packet bursts
+
+Outgoing packets retain FIFO order when chunk/entity publication exceeds the 256-packet channel. A bounded overflow queue absorbs bursts without dropping accepted packets or waiting for network I/O on the world owner. The total queued-packet limit is 16,384; exceeding it closes the connection asynchronously. Packet write errors also close the session, and closing releases queued payloads.
+
+`go test ./server/session -run '^TestSessionPacket'` covers a blocked writer followed by 4,096 item spawns and 4,096 movement packets, four concurrent producers, a full-channel/refill race, backlog exhaustion and write failure. The burst regression disconnects with the original implementation and passes with the overflow queue. These are controlled connection tests; the user also confirmed that the reported Bedrock 1.26.51 connection issue is resolved.
+
 ## Biome registry
 
 The registered 89 biome definitions match the pinned BDS's initial climate, water-colour, precipitation and tag metadata, including `dappled_forest` at persistent ID **195**. That ID was read from a saved BDS chunk after its biome was identified through the live Script API.

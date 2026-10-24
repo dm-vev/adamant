@@ -46,6 +46,11 @@ type Session struct {
 	bossBarIDs    map[string]int64
 	nextBossBarID int64
 	packets       chan packet.Packet
+	// packetsMu protects the overflow FIFO. The channel holds the first packets;
+	// bursts spill into pendingPackets without blocking the world owner.
+	packetsMu      sync.Mutex
+	pendingPackets []packet.Packet
+	pendingHead    int
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
@@ -128,9 +133,7 @@ type Session struct {
 	blockUpdateLastLog atomic.Int64
 	closeBackground    chan struct{}
 
-	overflowStreak  atomic.Uint32
-	lastActivity    atomic.Int64
-	overflowLastLog atomic.Int64
+	lastActivity atomic.Int64
 
 	inputLocksMu sync.RWMutex
 	inputLocks   uint32
@@ -276,18 +279,7 @@ func (conf Config) New(conn Conn) *Session {
 	s.sendRecipes()
 	s.sendArmourTrimData()
 	s.SendSpeed(0.1)
-	go func() {
-		for {
-			select {
-			case <-s.closeBackground:
-				return
-			case pk := <-s.packets:
-				s.connWriteMu.Lock()
-				_ = conn.WritePacket(pk)
-				s.connWriteMu.Unlock()
-			}
-		}
-	}()
+	go s.sendPackets()
 	return s
 }
 
@@ -431,6 +423,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 func (s *Session) CloseConnection() {
 	s.connOnce.Do(func() {
 		s.closing.Store(true)
+		s.clearPacketQueue()
 		s.abilityResendMu.Lock()
 		s.abilityResendGen++
 		resend := s.abilityResend
@@ -732,32 +725,6 @@ func (s *Session) registerHandlers() {
 		packet.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
 	}
 	s.handlers[packet.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
-}
-
-// writePacket writes a packet to the session's connection if it is not Nop.
-func (s *Session) writePacket(pk packet.Packet) {
-	if s == Nop {
-		return
-	}
-	select {
-	case s.packets <- pk:
-		s.overflowStreak.Store(0)
-		return
-	case <-s.closeBackground:
-		return
-	default:
-		const overflowDisconnectThreshold = 64
-		streak := s.overflowStreak.Add(1)
-		now := time.Now().UnixNano()
-		last := s.overflowLastLog.Load()
-		if now-last > int64(time.Second) && s.overflowLastLog.CompareAndSwap(last, now) {
-			s.conf.Log.Warn("session packet queue overflow, dropping packets", "packet", fmt.Sprintf("%T", pk), "streak", streak)
-		}
-		if streak >= overflowDisconnectThreshold {
-			s.conf.Log.Warn("closing session due to packet queue overflow", "streak", streak)
-			s.CloseConnection()
-		}
-	}
 }
 
 // actorIdentifier represents the structure of an actor identifier sent over the network.
