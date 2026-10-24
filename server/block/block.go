@@ -307,6 +307,13 @@ type livingEntity interface {
 	Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool)
 }
 
+// fireImmune reports if fire and lava neither burn nor hurt e, as
+// Entity.fireImmune.
+func fireImmune(e world.Entity) bool {
+	f, ok := e.(interface{ FireImmune() bool })
+	return ok && f.FireImmune()
+}
+
 // flammableEntity ...
 type flammableEntity interface {
 	// OnFireDuration returns duration of fire in ticks.

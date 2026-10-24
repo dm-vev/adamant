@@ -44,6 +44,10 @@ type PortalTravelComputer struct {
 	pending        *world.World
 	deniedDim      world.Dimension
 	deniedActive   bool
+	// deferred queues portal travel until the end of the tick of the entity.
+	// The computer keeps it rather than the Ent, as each wrapper of the
+	// entity the blocks it touches see opens an Ent of its own.
+	deferred bool
 }
 
 // NewPortalTravelComputer creates a PortalTravelComputer for instant portal travel.

@@ -53,6 +53,10 @@ func (l Lava) EntityInside(_ cube.Pos, _ *world.Tx, e world.Entity) {
 	if fallEntity, ok := e.(fallDistanceEntity); ok {
 		fallEntity.ResetFallDistance()
 	}
+	if fireImmune(e) {
+		// Entity.lavaHurt spares entities immune to fire.
+		return
+	}
 	if flammable, ok := e.(flammableEntity); ok {
 		if l, ok := e.(livingEntity); ok {
 			l.Hurt(4, LavaDamageSource{})

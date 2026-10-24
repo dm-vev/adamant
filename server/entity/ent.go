@@ -41,11 +41,10 @@ type dismounter interface {
 // share a lot of code. It is currently under development and is prone to
 // (breaking) changes.
 type Ent struct {
-	tx                *world.Tx
-	handle            *world.EntityHandle
-	data              *world.EntityData
-	deferPortalTravel bool
-	once              sync.Once
+	tx     *world.Tx
+	handle *world.EntityHandle
+	data   *world.EntityData
+	once   sync.Once
 }
 
 // Open converts a world.EntityHandle to an Ent in a world.Tx.
@@ -175,9 +174,26 @@ func (e *Ent) OnFireDuration() time.Duration {
 	return e.data.FireDuration
 }
 
-// SetOnFire ...
+// fireImmuneTypes are the entity types Java builds fireImmune.
+var fireImmuneTypes = map[string]bool{
+	"minecraft:area_effect_cloud": true, "minecraft:blaze": true, "minecraft:end_crystal": true,
+	"minecraft:ender_dragon": true, "minecraft:ghast": true, "minecraft:magma_cube": true,
+	"minecraft:shulker": true, "minecraft:strider": true, "minecraft:tnt": true, "minecraft:vex": true,
+	"minecraft:warden": true, "minecraft:wither": true, "minecraft:wither_skeleton": true,
+	"minecraft:zoglin": true, "minecraft:zombified_piglin": true,
+}
+
+// FireImmune reports if fire and lava neither burn nor hurt the entity, as
+// Entity.fireImmune.
+func (e *Ent) FireImmune() bool { return fireImmuneTypes[e.handle.Type().EncodeEntity()] }
+
+// SetOnFire sets the entity on fire for the duration passed, unless it is
+// immune to fire, which Entity.baseTick keeps from burning.
 func (e *Ent) SetOnFire(duration time.Duration) {
 	duration = max(duration, 0)
+	if e.FireImmune() {
+		duration = 0
+	}
 	stateChanged := (e.data.FireDuration > 0) != (duration > 0)
 
 	e.data.FireDuration = duration
@@ -280,10 +296,12 @@ func (e *Ent) Attack(attacker world.Entity, tx *world.Tx) {
 // in the void.
 func (e *Ent) Tick(tx *world.Tx, current int64) {
 	e.bindTx(tx)
-	e.deferPortalTravel = true
-	defer func() {
-		e.deferPortalTravel = false
-	}()
+	if tc := e.portalTravelComputer(); tc != nil {
+		tc.deferred = true
+		defer func() {
+			tc.deferred = false
+		}()
+	}
 
 	y := e.data.Pos[1]
 	if y < float64(tx.Range()[0]) && current%10 == 0 {
@@ -309,7 +327,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 		e.tickFall(tx, m)
 	}
 	tickLeash(e, tx, m)
-	checkEntityInsiders(tx, e)
+	// The blocks act on the concrete mob, whose Hurt and SetOnFire may
+	// differ from those of Ent, as a strider is immune to fire.
+	checkEntityInsiders(tx, e.living())
 	if frozen := e.data.FrozenTicks; frozen > 0 || e.data.InPowderSnow || e.data.WasInPowderSnow {
 		TickFreezing(tx, e.living(), e.data)
 		if e.data.FrozenTicks != frozen {
@@ -342,7 +362,7 @@ func (e *Ent) OnGround() bool {
 // TravelThroughPortal handles the entity touching a portal block.
 func (e *Ent) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
 	if tc := e.portalTravelComputer(); tc != nil {
-		if e.deferPortalTravel {
+		if tc.deferred {
 			tc.queuePortalTravel(tx, target)
 			return
 		}
