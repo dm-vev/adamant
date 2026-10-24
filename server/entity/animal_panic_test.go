@@ -73,7 +73,9 @@ func TestAnimalsPanicWhenHurt(t *testing.T) {
 		// than 0.06, before easing it an eighth of the way to its target
 		// of 0.3 every tick, which settles at 0.09.
 		{id: "minecraft:turtle", attribute: .09, modifier: 1},
-		{id: "minecraft:strider", attribute: .175, modifier: 1.65},
+		// A strider out of lava shivers, which Strider.SUFFOCATING_MODIFIER
+		// takes a third of its speed off for.
+		{id: "minecraft:strider", attribute: .175 * .66, modifier: 1.65},
 		{id: "minecraft:goat", attribute: .2, modifier: 2},
 		{id: "minecraft:sniffer", attribute: .1, modifier: 2},
 		// SmoothSwimmingMoveControl walks at a tenth of the frog's speed.

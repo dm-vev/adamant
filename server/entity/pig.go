@@ -113,10 +113,7 @@ type PigBehaviour struct {
 	lastLightningBolt string
 	breeding          breeding
 	animalAI
-	// The ItemBasedSteering of the pig: boostTime counts up to
-	// boostTimeTotal while boosting.
-	boosting                  bool
-	boostTime, boostTimeTotal int
+	steering itemBasedSteering
 }
 
 func (p *PigBehaviour) Variant() int32 { return int32(p.variant) }
@@ -178,33 +175,55 @@ func (b *PigBehaviour) travel(m *Mob, _ mgl64.Vec3) bool {
 	rot := c.Rotation()
 	m.data.Rot = cube.Rotation{rot.Yaw(), rot.Pitch() * .5}
 	m.AI.headYaw, m.AI.bodyYaw = rot.Yaw(), rot.Yaw()
-	if b.boosting {
-		if b.boostTime++; b.boostTime-1 > b.boostTimeTotal {
-			b.boosting = false
+	b.steering.tickBoost()
+	m.AI.travelRidden(m, mgl64.Vec3{0, 0, 1}, b.speed*.225*b.steering.boostFactor())
+	return true
+}
+
+// itemBasedSteering ports Java's ItemBasedSteering: the boost of a mob a
+// player steers with an item on a stick, boostTime counting up to
+// boostTimeTotal while it lasts.
+type itemBasedSteering struct {
+	boosting                  bool
+	boostTime, boostTimeTotal int
+}
+
+// boost ports ItemBasedSteering.boost: the mob boosts for 7 to 49 seconds,
+// unless it is boosted already.
+func (s *itemBasedSteering) boost(r *vanilla.Random) bool {
+	if s.boosting {
+		return false
+	}
+	s.boosting, s.boostTime = true, 0
+	s.boostTimeTotal = int(r.NextInt(841)) + 140
+	return true
+}
+
+// tickBoost ports ItemBasedSteering.tickBoost.
+func (s *itemBasedSteering) tickBoost() {
+	if s.boosting {
+		if s.boostTime++; s.boostTime-1 > s.boostTimeTotal {
+			s.boosting = false
 		}
 	}
-	m.AI.travelRidden(m, mgl64.Vec3{0, 0, 1}, b.speed*.225*b.boostFactor())
-	return true
 }
 
 // boostFactor ports ItemBasedSteering.boostFactor.
-func (b *PigBehaviour) boostFactor() float64 {
-	if !b.boosting {
+func (s *itemBasedSteering) boostFactor() float64 {
+	if !s.boosting {
 		return 1
 	}
-	return 1 + 1.15*float64(vanilla.Sin(float64(float32(b.boostTime)/float32(b.boostTimeTotal)*math.Pi)))
+	return 1 + 1.15*float64(vanilla.Sin(float64(float32(s.boostTime)/float32(s.boostTimeTotal)*math.Pi)))
 }
 
 // Boost ports Pig.boost: a carrot on a stick used by the player steering
-// the pig boosts it for 7 to 49 seconds, unless it is boosted already.
+// the pig boosts it, unless it is boosted already.
 func (p *Pig) Boost(_ *world.Tx, rider item.User) bool {
 	b := p.behaviour()
-	if b.boosting || p.controller(p.tx) == nil || p.controller(p.tx).H() != rider.H() {
+	if c := p.controller(p.tx); c == nil || c.H() != rider.H() {
 		return false
 	}
-	b.boosting, b.boostTime = true, 0
-	b.boostTimeTotal = int(b.ai.Mob(p.Ent, p).Random().NextInt(841)) + 140
-	return true
+	return b.steering.boost(b.ai.Mob(p.Ent, p).Random())
 }
 
 // controller ports Pig.getControllingPassenger: a player riding a saddled

@@ -7,7 +7,7 @@ func (p *Piglin) Baby() bool          { return p.p().baby }
 func (z *ZombifiedPiglin) Baby() bool { return z.z().baby }
 func (h *Hoglin) Baby() bool          { return h.beast().age < 0 }
 func (z *Zoglin) Baby() bool          { return z.beast().age < 0 }
-func (s *Strider) Baby() bool         { return s.beast().age < 0 }
+func (s *Strider) Baby() bool         { return s.b().age < 0 }
 func (m *Mount) Baby() bool           { return m.b().ageTicks < 0 }
 func (f *Fox) Baby() bool             { return f.b().age < 0 }
 func (g *Goat) Baby() bool            { return g.behaviour().age < 0 }

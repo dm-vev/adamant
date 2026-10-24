@@ -420,6 +420,9 @@ type moveToBlock struct {
 	// overriding acceptedDistance and shouldRecalculatePath change them.
 	acceptedDistance float64
 	recalcInterval   int
+	// targetBlock walks the mob into the block found rather than onto it,
+	// as goals overriding getMoveToTarget do.
+	targetBlock bool
 }
 
 // canUse ports MoveToBlockGoal.canUse with the search ranges of the goal.
@@ -449,6 +452,9 @@ func (g *moveToBlock) start(m *Mob, speed float64) {
 
 func (g *moveToBlock) tick(m *Mob, speed float64) {
 	target := g.pos.Side(cube.FaceUp)
+	if g.targetBlock {
+		target = g.pos
+	}
 	accepted, interval := g.acceptedDistance, g.recalcInterval
 	if accepted == 0 {
 		accepted = 1

@@ -47,6 +47,7 @@ func (b *SheepBehaviour) effectManager() *EffectManager           { return b.eff
 func (b *ShulkerBehaviour) effectManager() *EffectManager         { return b.effects }
 func (b *SnifferBehaviour) effectManager() *EffectManager         { return b.effects }
 func (b *speciesState) effectManager() *EffectManager             { return b.effects }
+func (b *striderState) effectManager() *EffectManager             { return b.effects }
 func (b *SulfurCubeBehaviour) effectManager() *EffectManager      { return b.effects }
 func (b *VillagerBehaviour) effectManager() *EffectManager        { return b.effects }
 func (b *wanderingTraderBehaviour) effectManager() *EffectManager { return b.effects }

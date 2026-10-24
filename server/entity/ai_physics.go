@@ -85,6 +85,18 @@ type mobAirMover interface {
 	omnidirectionalAirMover() bool
 }
 
+// mobFluidStander is implemented by behaviours of mobs that walk on a fluid,
+// as Entity.canStandOnFluid: striders on lava.
+type mobFluidStander interface {
+	canStandOnFluid(l world.Liquid) bool
+}
+
+// standsOnFluid reports if the mob may stand on the liquid l.
+func standsOnFluid(m *Mob, l world.Liquid) bool {
+	s, ok := m.Behaviour().(mobFluidStander)
+	return ok && s.canStandOnFluid(l)
+}
+
 // mobAfterAiStep is implemented by behaviours of mobs whose aiStep does more
 // after that of LivingEntity, such as Parrot.calculateFlapping.
 type mobAfterAiStep interface {
@@ -307,11 +319,22 @@ func (ai *MobAI) travel(m *Mob, input mgl64.Vec3) {
 	if t, ok := m.Behaviour().(mobTraveller); ok && t.travel(m, input) {
 		return
 	}
-	if m.InLiquid() {
+	if ai.travelsInFluid(m) {
 		ai.travelInFluid(m, input)
 		return
 	}
 	ai.travelInAir(m, input)
+}
+
+// travelsInFluid reports if the mob swims rather than walks, as
+// LivingEntity.travel decides: it touches water or lava, unless it stands
+// on the fluid it is in.
+func (ai *MobAI) travelsInFluid(m *Mob) bool {
+	if !m.InLiquid() {
+		return false
+	}
+	l, ok := m.tx.Liquid(m.BlockPos())
+	return !ok || !standsOnFluid(m, l)
 }
 
 // travelRidden ports the travel of LivingEntity.travelRidden: a mob a
@@ -319,7 +342,7 @@ func (ai *MobAI) travel(m *Mob, input mgl64.Vec3) {
 // it in the air.
 func (ai *MobAI) travelRidden(m *Mob, input mgl64.Vec3, speed float64) {
 	ai.speed, ai.ridden = speed, true
-	if m.InLiquid() {
+	if ai.travelsInFluid(m) {
 		ai.travelInFluid(m, input)
 	} else {
 		ai.travelInAir(m, input)
@@ -573,6 +596,9 @@ func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
 		step = math.Max(step, 1)
 	}
 	colliders := blockBBoxsAround(m.tx, box.Extend(movement).Extend(mgl64.Vec3{0, step}))
+	if _, ok := m.Behaviour().(mobFluidStander); ok {
+		colliders = fluidSurfaces(m, box.Extend(movement).Extend(mgl64.Vec3{0, step}), colliders)
+	}
 	defer func() {
 		if colliders != nil {
 			blockBBoxPool.Put(colliders[:0])
@@ -610,6 +636,34 @@ func (ai *MobAI) collide(m *Mob, movement mgl64.Vec3) mgl64.Vec3 {
 		}
 	}
 	return result
+}
+
+// fluidSurfaces adds to colliders the surfaces of the fluid sources within
+// box the mob stands on, as LiquidBlock.getCollisionShape gives a mob that
+// can stand on a fluid: the bottom half of a source with none of the fluid
+// above it, while the mob is above that half.
+func fluidSurfaces(m *Mob, box cube.BBox, colliders []cube.BBox) []cube.BBox {
+	grown := box.Grow(.25)
+	bottom := m.data.Pos[1]
+	for y := int(math.Floor(grown.Min()[1])); y < int(math.Ceil(grown.Max()[1])); y++ {
+		if bottom <= float64(y)+.5-1e-5 {
+			continue
+		}
+		for x := int(math.Floor(grown.Min()[0])); x < int(math.Ceil(grown.Max()[0])); x++ {
+			for z := int(math.Floor(grown.Min()[2])); z < int(math.Ceil(grown.Max()[2])); z++ {
+				pos := cube.Pos{x, y, z}
+				l, ok := m.tx.Liquid(pos)
+				if !ok || l.LiquidDepth() != 8 || l.LiquidFalling() || !standsOnFluid(m, l) {
+					continue
+				}
+				if above, ok := m.tx.Liquid(pos.Side(cube.FaceUp)); ok && above.LiquidType() == l.LiquidType() {
+					continue
+				}
+				colliders = append(colliders, cube.Box(float64(x), float64(y), float64(z), float64(x+1), float64(y)+.5, float64(z+1)))
+			}
+		}
+	}
+	return colliders
 }
 
 // collideWithBoxes ports Entity.collideWithShapes: the movement on the Y

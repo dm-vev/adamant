@@ -538,6 +538,12 @@ func (n *PathNavigation) IsStableDestination(tx *world.Tx, pos cube.Pos) bool {
 		b := pathBlockAt(tx, pos)
 		return !fullCollisionCube(tx, pos, b)
 	}
+	return n.groundStable(tx, pos)
+}
+
+// groundStable ports GroundPathNavigation.isStableDestination: a mob stands
+// on a block with a full top, or an amphibious mob on any block.
+func (n *PathNavigation) groundStable(tx *world.Tx, pos cube.Pos) bool {
 	below := pos.Side(cube.FaceDown)
 	b := pathBlockAt(tx, below)
 	if n.amphibious {
