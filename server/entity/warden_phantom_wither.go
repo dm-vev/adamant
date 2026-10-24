@@ -43,7 +43,14 @@ func trySpawnWitherPattern(tx *world.Tx, head cube.Pos) bool {
 		for _, pos := range []cube.Pos{head, head.Add(right), head.Sub(right), base, base.Add(up), base.Add(up).Add(right), base.Add(up).Sub(right)} {
 			tx.SetBlock(pos, nil, nil)
 		}
-		tx.AddEntity(world.EntitySpawnOpts{Position: base.Vec3Middle(), SpawnReason: "construction"}.New(WitherType, witherConfig{invulnerable: 220}))
+		// WitherSkullBlock.checkSpawn: the wither appears at the bottom of the
+		// pattern summoning, with a third of its health.
+		yaw := 90.0
+		if right[0] == 0 {
+			yaw = 0
+		}
+		opts := world.EntitySpawnOpts{Position: base.Vec3Middle().Add(mgl64.Vec3{0, .55}), Rotation: cube.Rotation{yaw, 0}, SpawnReason: "construction"}
+		tx.AddEntity(opts.New(WitherType, witherConfig{invulnerable: 220, health: 100}))
 		return true
 	})
 }
@@ -535,7 +542,7 @@ func (witherType) EncodeNBT(d *world.EntityData) map[string]any {
 		{Name: "minecraft:follow_range", Base: 40, Current: 40, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
 		{Name: "minecraft:attack_damage", Base: 8, Current: 8, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
 	}
-	return encodeBossNBT(d, attrs, map[string]any{"Invulnerability": int32(s.invulnerable), "Charge": int32(s.charge), "Death": int32(s.death), "Targets": s.targets})
+	return encodeBossNBT(d, attrs, map[string]any{"Invulnerability": int32(s.invulnerable), "Charge": int32(s.charge), "Death": int32(s.death)})
 }
 
 type witherConfig struct {
@@ -548,155 +555,38 @@ func (c witherConfig) Apply(d *world.EntityData) {
 	if h <= 0 {
 		h = 300
 	}
-	d.Data = &witherState{health: NewHealthManager(h, 300), effects: NewEffectManager(), speed: witherBaseMovementSpeed, mc: &MovementComputer{Gravity: 0, Drag: .02}, invulnerable: max(0, c.invulnerable), charge: max(0, c.charge), death: max(0, c.death), targets: make([]int64, 3), bar: bossbar.New("Wither"), random: vanilla.NewLegacyRandom(0), viewers: make(map[*world.EntityHandle]bool)}
+	d.Data = &witherState{health: NewHealthManager(h, 300), effects: NewEffectManager(), speed: witherBaseMovementSpeed, invulnerable: max(0, c.invulnerable), charge: max(0, c.charge), death: max(0, c.death), bar: bossbar.New("Wither"), random: vanilla.NewLegacyRandom(0), viewers: make(map[*world.EntityHandle]bool)}
 }
 
 type witherState struct {
 	health                      *HealthManager
 	effects                     *EffectManager
+	ai                          MobAI
 	speed                       float64
-	mc                          *MovementComputer
 	random                      vanilla.Random
 	invulnerable, charge, death int
-	targets                     []int64
-	heads                       [3]int
-	shoot                       int
-	dead, barShown              bool
-	bar                         bossbar.BossBar
-	destroyTicks                int
-	viewers                     map[*world.EntityHandle]bool
+	// heads are the targets of the middle and side heads, the alternative
+	// targets of WitherBoss.
+	heads                           [3]*world.EntityHandle
+	nextHeadUpdate, idleHeadUpdates [2]int
+	destroyBlocksTick               int
+	dead, barShown                  bool
+	bar                             bossbar.BossBar
+	viewers                         map[*world.EntityHandle]bool
 }
 type Wither struct{ *Ent }
 
 func NewWither(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(WitherType, witherConfig{}) }
 func (w *Wither) state() *witherState                       { return w.Behaviour().(*witherState) }
 func (w *Wither) Tick(tx *world.Tx, n int64)                { w.state().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
-func (s *witherState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if s.dead {
-		s.death++
-		if s.death >= 220 {
-			_ = e.CloseIn(tx)
-		}
-		return s.stop(e, tx)
-	}
-	w := &Wither{Ent: e}
-	w.updateBossBar()
-	if s.invulnerable > 0 {
-		s.invulnerable--
-		if s.invulnerable%10 == 0 {
-			s.health.AddHealth(10)
-		}
-		if s.invulnerable == 0 {
-			// WitherBoss.customServerAiStep: the summoning finishes with a
-			// power 7 mob explosion and the global wither spawn sound.
-			block.ExplosionConfig{NoBlockDamage: mobGriefingDisabled(tx)}.Explode(tx, world.NewEntityExplosionSource(e, 7))
-			tx.PlayGlobalSound(e.Position(), sound.Custom{Name: "mob.wither.spawn", Volume: 1, Pitch: 1})
-		}
-		return s.stop(e, tx)
-	}
-	if s.shoot > 0 {
-		s.shoot--
-	}
-	var targets [3]world.Entity
-	for i := range targets {
-		targets[i] = witherNearest(tx, e.Position(), e, targets[:i])
-		if targets[i] != nil {
-			id := targets[i].H().UUID()
-			s.targets[i] = int64(binary.LittleEndian.Uint64(id[8:]))
-		}
-	}
-	target := targets[0]
-	if target == nil {
-		return s.stop(e, tx)
-	}
-	d := target.Position().Sub(e.Position())
-	v := e.Velocity()
-	v[0] = v[0]*.8 + math.Copysign(.05, d[0])
-	v[1] = v[1]*.8 + math.Copysign(.03, d[1])
-	v[2] = v[2]*.8 + math.Copysign(.05, d[2])
-	m := s.mc.TickMovement(e, e.Position(), v, e.Rotation(), cube.Rotation{math.Atan2(-d[0], d[2]) * 180 / math.Pi, 0}, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	if s.shoot == 0 {
-		for i, t := range targets {
-			if t != nil {
-				s.fireSkull(e, tx, t, i > 0)
-			}
-		}
-		s.shoot = 40
-	}
-	s.destroyTicks++
-	if s.health.Health() <= s.health.MaxHealth()/2 {
-		if s.destroyTicks >= 20 {
-			s.destroyTicks = 0
-			s.destroyBlocks(tx, e.Position())
-		}
-		if tx.CurrentTick()%20 == 0 {
-			s.health.AddHealth(1)
-		}
-	}
-	return m
-}
-func (s *witherState) fireSkull(e *Ent, tx *world.Tx, target world.Entity, side bool) {
-	src := e.Position().Add(mgl64.Vec3{0, 2, 0})
-	delta := target.Position().Add(mgl64.Vec3{0, 1, 0}).Sub(src)
-	if delta.Len() == 0 {
-		return
-	}
-	charged := side && tx.World().Difficulty() == world.DifficultyHard && s.random.NextFloat() < .1
-	opts := world.EntitySpawnOpts{Position: src, Velocity: delta.Normalize().Mul(.9)}
-	tx.AddEntity(NewWitherSkull(opts, e, charged))
-	tx.PlaySound(src, sound.Custom{Name: "mob.wither.shoot", Volume: 1, Pitch: 1})
-}
-func witherNearest(tx *world.Tx, p mgl64.Vec3, exclude world.Entity, used []world.Entity) world.Entity {
-	var target world.Entity
-	best := math.MaxFloat64
-	for candidate := range tx.EntitiesWithin(cube.Box(-40, -24, -40, 40, 24, 40).Translate(p)) {
-		if candidate == exclude {
-			continue
-		}
-		id := candidate.H().Type().EncodeEntity()
-		if id != "minecraft:player" && id != "minecraft:iron_golem" {
-			continue
-		}
-		living, ok := candidate.(Living)
-		if !ok || living.Dead() {
-			continue
-		}
-		found := false
-		for _, previous := range used {
-			if previous.H() == candidate.H() {
-				found = true
-				break
-			}
-		}
-		if found {
-			continue
-		}
-		dist := candidate.Position().Sub(p).LenSqr()
-		if dist < best {
-			best, target = dist, candidate
-		}
-	}
-	return target
-}
-func (s *witherState) destroyBlocks(tx *world.Tx, p mgl64.Vec3) {
-	center := cube.PosFromVec3(p)
-	for x := -1; x <= 1; x++ {
-		for y := 0; y <= 2; y++ {
-			for z := -1; z <= 1; z++ {
-				pos := center.Add(cube.Pos{x, y, z})
-				breakable, ok := tx.Block(pos).(block.Breakable)
-				if !ok || breakable.BreakInfo().Hardness <= 0 {
-					continue
-				}
-				tx.SetBlock(pos, nil, nil)
-			}
-		}
-	}
-}
 func (w *Wither) updateBossBar() {
 	s := w.state()
-	bar := s.bar.WithHealthPercentage(max(0, min(1, w.Health()/w.MaxHealth())))
+	progress := w.Health() / w.MaxHealth()
+	if s.invulnerable > 0 {
+		// The bar fills up while the wither is summoned.
+		progress = 1 - float64(s.invulnerable)/220
+	}
+	bar := s.bar.WithHealthPercentage(max(0, min(1, progress)))
 	changed := !s.barShown || bar.HealthPercentage() != s.bar.HealthPercentage()
 	s.bar, s.barShown = bar, true
 	for handle := range s.viewers {
@@ -737,26 +627,57 @@ func (w *Wither) removeBossBar() {
 		delete(s.viewers, handle)
 	}
 }
-func (s *witherState) stop(e *Ent, tx *world.Tx) *Movement {
-	m := s.mc.TickMovement(e, e.Position(), mgl64.Vec3{}, e.Rotation(), e.Rotation(), tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
 func (w *Wither) Health() float64        { return w.state().health.Health() }
 func (w *Wither) MaxHealth() float64     { return w.state().health.MaxHealth() }
 func (w *Wither) SetMaxHealth(v float64) { w.state().health.SetMaxHealth(v) }
 func (w *Wither) Dead() bool             { return w.state().dead || w.state().death >= 220 }
+
+// Hurt ports WitherBoss.hurtServer: drowning, other withers and its undead
+// friends never hurt the wither, nor anything while it is summoned but the
+// void, nor arrows and wind charges once it is powered. A hit makes it break
+// the blocks around it a second later and its idle heads restless.
 func (w *Wither) Hurt(d float64, src world.DamageSource) (float64, bool) {
-	if w.Dead() || d <= 0 || w.state().invulnerable > 0 {
+	s := w.state()
+	if w.Dead() || d <= 0 {
 		return 0, false
 	}
-	s := w.state()
-	if s.health.Health() <= s.health.MaxHealth()/2 {
-		if _, ok := src.(ProjectileDamageSource); ok {
+	if _, drown := src.(DrowningDamageSource); drown {
+		return 0, false
+	}
+	killer := mobKiller(src)
+	if killer != nil && (killer.H().Type() == WitherType || witherFriend(killer)) {
+		return 0, false
+	}
+	if _, void := src.(VoidDamageSource); s.invulnerable > 0 && !void {
+		return 0, false
+	}
+	if w.Powered() {
+		if p, ok := src.(ProjectileDamageSource); ok && p.Projectile != nil {
+			switch p.Projectile.H().Type().EncodeEntity() {
+			case "minecraft:arrow", "minecraft:wind_charge_projectile", "minecraft:trident", "minecraft:spectral_arrow":
+				return 0, false
+			}
+		}
+		if _, ok := src.(WindChargeDamageSource); ok {
 			return 0, false
 		}
 	}
+	if s.destroyBlocksTick <= 0 {
+		s.destroyBlocksTick = 20
+	}
+	for i := range s.idleHeadUpdates {
+		s.idleHeadUpdates[i] += 3
+	}
+	d, ok := s.ai.DamageCooldown(w.tx, d)
+	if !ok {
+		return 0, false
+	}
+	if src.ReducedByArmour() {
+		// The 4 points of armour of the wither, as CombatRules.getDamageAfterAbsorb.
+		d *= 1 - math.Min(20, math.Max(4.0/5, 4-d/2))/25
+	}
 	s.health.AddHealth(-d)
+	s.ai.Hurt(src)
 	w.updateBossBar()
 	w.viewAction(HurtAction{})
 	onMobHurt(w.tx, w)
@@ -780,11 +701,9 @@ func (w *Wither) Heal(v float64, _ world.HealingSource) float64 {
 	return w.Health() - a
 }
 func (w *Wither) KnockBack(mgl64.Vec3, float64, float64) {}
-func (w *Wither) AddEffect(e effect.Effect) {
-	if e.Type() != effect.Poison && e.Type() != effect.FatalPoison {
-		w.state().effects.Add(e, w)
-	}
-}
+
+// AddEffect does nothing: WitherBoss.addEffect refuses every effect.
+func (w *Wither) AddEffect(effect.Effect)    {}
 func (w *Wither) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
 func (w *Wither) Effects() []effect.Effect   { return w.state().effects.Effects() }
 func (w *Wither) Speed() float64             { return w.state().speed }

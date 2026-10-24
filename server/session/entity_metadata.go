@@ -279,6 +279,18 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if r, ok := e.(rideTarget); ok {
 		m[protocol.EntityDataKeyCanRideTarget] = byte(boolByte(r.CanRideTarget()))
 	}
+	if w, ok := e.(witherMeta); ok {
+		// The heads of a wither turn to their targets, and it glows blue
+		// while it is summoned.
+		for i, h := range w.HeadTargets() {
+			var id int64
+			if h != nil {
+				id = int64(s.handleRuntimeID(h))
+			}
+			m[[3]uint32{protocol.EntityDataKeyTargetA, protocol.EntityDataKeyTargetB, protocol.EntityDataKeyTargetC}[i]] = id
+		}
+		m[protocol.EntityDataKeyInvulnerableTicks] = int32(w.InvulnerableTicks())
+	}
 	if ec, ok := e.(endCrystalMeta); ok {
 		if ec.ShowBase() {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShowBottom)
@@ -586,6 +598,12 @@ type hurtDuration interface {
 type endCrystalMeta interface {
 	ShowBase() bool
 	BeamTarget() (mgl64.Vec3, bool)
+}
+
+// witherMeta is implemented by withers, whose heads turn to their targets.
+type witherMeta interface {
+	HeadTargets() [3]*world.EntityHandle
+	InvulnerableTicks() int
 }
 
 type displayTile interface {

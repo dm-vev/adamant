@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
 // WitherSkullType is the Wither's native, destructible skull projectile.
@@ -30,21 +29,53 @@ func (witherSkullType) DecodeNBT(_ map[string]any, d *world.EntityData) {
 func (witherSkullType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
 func witherSkullConfig(owner *world.EntityHandle, charged bool) ProjectileBehaviourConfig {
-	return ProjectileBehaviourConfig{
-		Owner: owner, Gravity: 0, Drag: .01, Damage: 8,
+	conf := ProjectileBehaviourConfig{
+		Owner: owner, Acceleration: .1, Damage: -1,
 		Hit: func(e *Ent, tx *world.Tx, target trace.Result) {
 			if hit, ok := target.(trace.EntityResult); ok {
-				if living, ok := hit.Entity().(Living); ok {
-					duration := time.Second * 10
-					if charged {
-						duration = time.Second * 40
-					}
-					living.AddEffect(effect.New(effect.Wither, 1, duration))
-				}
+				witherSkullHitEntity(e, tx, owner, hit.Entity())
 			}
 			block.ExplosionConfig{SuppressUnderwaterImpact: true, NoBlockDamage: mobGriefingDisabled(tx)}.Explode(tx, world.NewEntityExplosionSource(e, 1))
-			tx.PlaySound(e.Position(), sound.Custom{Name: "mob.wither.break_block", Volume: 1, Pitch: 1})
 		},
+	}
+	if charged {
+		// A dangerous skull, WitherSkull.getInertia, flies slower.
+		conf.Inertia = .73
+	}
+	return conf
+}
+
+// witherSkullHitEntity ports WitherSkull.onHitEntity: the skull of a wither
+// hurts for 8, and the wither heals 5 when it kills; a skull without a
+// shooter hurts for 5 magic damage. On normal and hard difficulty what it
+// hurts withers for 10 and 40 seconds.
+func witherSkullHitEntity(e *Ent, tx *world.Tx, owner *world.EntityHandle, target world.Entity) {
+	living, ok := target.(Living)
+	if !ok {
+		return
+	}
+	var hurt bool
+	shooter, _ := owner.Entity(tx)
+	if l, ok := shooter.(Living); ok && owner != nil {
+		_, hurt = living.Hurt(8, ProjectileDamageSource{Projectile: e, Owner: shooter})
+		if hurt && living.Dead() {
+			l.Heal(5, nil)
+		}
+	} else {
+		_, hurt = living.Hurt(5, IndirectMagicDamageSource{Projectile: e})
+	}
+	if !hurt {
+		return
+	}
+	var seconds time.Duration
+	switch tx.World().Difficulty() {
+	case world.DifficultyNormal:
+		seconds = 10
+	case world.DifficultyHard:
+		seconds = 40
+	}
+	if seconds > 0 {
+		living.AddEffect(effect.New(effect.Wither, 2, seconds*time.Second))
 	}
 }
 

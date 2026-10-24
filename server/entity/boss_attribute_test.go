@@ -18,8 +18,13 @@ func TestBossSpeedEffectsAndZeroPersistence(t *testing.T) {
 			}}, &data)
 			mob := kind.Open(nil, nil, &data).(Living)
 			mob.AddEffect(effect.New(effect.Speed, 1, time.Second))
-			if got := mob.Speed(); math.Abs(got-.15) > 1e-12 {
-				t.Fatalf("Speed I on configured movement .125 = %g, want .15", got)
+			want := .15
+			if kind == WitherType {
+				// WitherBoss.addEffect refuses every effect.
+				want = .125
+			}
+			if got := mob.Speed(); math.Abs(got-want) > 1e-12 {
+				t.Fatalf("Speed I on configured movement .125 = %g, want %g", got, want)
 			}
 			mob.RemoveEffect(effect.Speed)
 			if got := mob.Speed(); math.Abs(got-.125) > 1e-12 {
