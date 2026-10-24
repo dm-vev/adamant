@@ -138,6 +138,9 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if j, ok := e.(interface{ JumpGoalJumping() bool }); ok && j.JumpGoalJumping() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagJumpGoal)
 	}
+	if p, ok := e.(interface{ PlayingDead() bool }); ok && p.PlayingDead() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagPlayingDead)
+	}
 	if c, ok := e.(interface{ Croaking() bool }); ok && c.Croaking() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCroaking)
 	}

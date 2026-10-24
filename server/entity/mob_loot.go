@@ -18,8 +18,10 @@ import (
 // by absorbing the mob's experience, the loot table rolled with the dying
 // entity, its killer and the killer's weapon, the experience orbs and the
 // Wither's wither rose. It also awards the killing player's totalKillCount
-// and runs the on-death behaviour of the mob's effects.
+// and runs the on-death behaviour of the mob's effects. Axolotls fighting the
+// mob support the player who killed it.
 func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
+	axolotlSupportKiller(tx, e, src)
 	killer, player := deathCredit(tx, src)
 	if player != nil && killer == player {
 		if named, ok := player.(interface{ Name() string }); ok {

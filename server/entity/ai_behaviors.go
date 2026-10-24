@@ -3,6 +3,7 @@ package entity
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -688,6 +689,99 @@ func newTryFindLandNearLiquid(r int, speed float64) *oneShot {
 		}); ok {
 			b.set(memLookTarget, newBlockPosTracker(p))
 			b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(p), speed: speed})
+		}
+		nextOK = time + 40
+		return true
+	})
+}
+
+// newEraseMemoryIf ports EraseMemoryIf: a mob forgets a memory once pred
+// holds.
+func newEraseMemoryIf(pred func(m *Mob) bool, mem memoryType) *oneShot {
+	return newOneShot([]memoryCondition{{mem, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		if !pred(m) {
+			return false
+		}
+		b.erase(mem)
+		return true
+	})
+}
+
+// isBreeding ports BehaviorUtils.isBreeding: the mob has a partner to breed
+// with.
+func isBreeding(m *Mob) bool { return m.Brain().has(memBreedTarget) }
+
+// newSetWalkTargetFromAttackTargetIfTargetOutOfReach ports the behaviour of
+// that name: a mob walks to its attack target until it is within reach and
+// in sight.
+func newSetWalkTargetFromAttackTargetIfTargetOutOfReach(speed func(m *Mob) float64) *oneShot {
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {memLookTarget, memRegistered}, {memAttackTarget, memPresent},
+		{memNearestVisibleLivingEntities, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		target := b.entity(m, memAttackTarget)
+		if target == nil {
+			return false
+		}
+		if v := visibleLiving(m); v != nil && v.contains(m, target) && m.WithinMeleeAttackRange(target) {
+			b.erase(memWalkTarget)
+			return true
+		}
+		b.set(memLookTarget, newEntityTracker(target, true))
+		b.set(memWalkTarget, walkTarget{target: newEntityTracker(target, false), speed: speed(m)})
+		return true
+	})
+}
+
+// newMeleeAttack ports MeleeAttack: a mob hits its attack target in reach
+// and in sight, and then waits cooldown ticks.
+func newMeleeAttack(cooldown int) *oneShot {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memAttackTarget, memPresent}, {memAttackCoolingDown, memAbsent},
+		{memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		target := b.entity(m, memAttackTarget)
+		if target == nil || !m.WithinMeleeAttackRange(target) || !visibleLiving(m).contains(m, target) {
+			return false
+		}
+		b.set(memLookTarget, newEntityTracker(target, true))
+		m.swing()
+		m.doHurtTarget(target)
+		b.setWithExpiry(memAttackCoolingDown, true, int64(cooldown))
+		return true
+	})
+}
+
+// newTryFindLiquid ports TryFindLiquid for water: a mob out of water walks,
+// every two seconds, to the nearest water within range, open to the sky if
+// it finds any.
+func newTryFindLiquid(r int, speed float64) *oneShot {
+	var nextOK int64
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+		at := m.BlockPos()
+		if pathWater(m.tx, at) {
+			return false
+		}
+		if time < nextOK {
+			nextOK = time + 22
+			return true
+		}
+		var found *cube.Pos
+		manhattanOrdered(at, r, r, r, 3*r, func(p cube.Pos) bool {
+			if p[0] == at[0] && p[2] == at[2] {
+				return true
+			}
+			if _, ok := m.tx.Block(p).(block.Water); !ok {
+				return true
+			}
+			if isAir(m.tx.Block(p.Side(cube.FaceUp))) {
+				found = &p
+				return false
+			}
+			if found == nil && p.Vec3Centre().Sub(m.data.Pos).LenSqr() >= 1.5*1.5 {
+				found = &p
+			}
+			return true
+		})
+		if found != nil {
+			b.set(memLookTarget, newBlockPosTracker(*found))
+			b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(*found), speed: speed})
 		}
 		nextOK = time + 40
 		return true

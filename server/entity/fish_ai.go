@@ -18,14 +18,8 @@ import (
 // Pufferfish, which cod, salmon, tropical fish, pufferfish and tadpoles swim
 // with.
 
-// mobAI returns the MobAI of a fish, or nil for an axolotl, which does not
-// run on one.
-func (b *AquaticMobBehaviour) mobAI() *MobAI {
-	if b.id == "minecraft:axolotl" {
-		return nil
-	}
-	return &b.ai
-}
+// mobAI returns the MobAI of the mob.
+func (b *AquaticMobBehaviour) mobAI() *MobAI { return &b.ai }
 
 // schooling reports if the fish extends Java's AbstractSchoolingFish.
 func (b *AquaticMobBehaviour) schooling() bool {
@@ -156,6 +150,10 @@ func (b *AquaticMobBehaviour) brain() *Brain { return b.br }
 // customServerAiStep ports Tadpole.customServerAiStep: a tadpole runs its
 // brain besides the goals of a fish.
 func (b *AquaticMobBehaviour) customServerAiStep(m *Mob) {
+	if b.id == "minecraft:axolotl" {
+		b.axolotlServerAiStep(m)
+		return
+	}
 	if b.br == nil {
 		return
 	}
@@ -192,6 +190,9 @@ func (b *AquaticMobBehaviour) registerFishGoals(m *Mob) {
 // travel ports AbstractFish.travelInWater: a fish swims slowly and sinks
 // unless it chases something.
 func (b *AquaticMobBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
+	if b.id == "minecraft:axolotl" {
+		return axolotlTravel(m, input)
+	}
 	if !m.InWater() {
 		return false
 	}

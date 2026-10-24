@@ -62,6 +62,12 @@ func (t aquaticMobType) Open(tx *world.Tx, h *world.EntityHandle, data *world.En
 }
 func (t aquaticMobType) BBox(e world.Entity) cube.BBox {
 	w, h := t.width, t.height
+	if t.id == "minecraft:axolotl" && e != nil {
+		if mob, ok := e.(interface{ behaviour() *AquaticMobBehaviour }); ok && mob.behaviour().age < 0 {
+			// Axolotl.BABY_DIMENSIONS.
+			w, h = .375, .21
+		}
+	}
 	if t.id == "minecraft:pufferfish" && e != nil {
 		if mob, ok := e.(interface{ behaviour() *AquaticMobBehaviour }); ok {
 			scale := .5
@@ -258,44 +264,42 @@ func (c AquaticMobConfig) New() *AquaticMobBehaviour {
 	if c.ID == "minecraft:axolotl" || c.ID == "minecraft:tadpole" {
 		speed = 1
 	}
-	b := &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, movement: &MovementComputer{Gravity: .08, Drag: .1, DragBeforeGravity: true}, speed: speed, schoolSize: 1, random: vanilla.NewLegacyRandom(int64(c.Variant))}
-	if c.ID == "minecraft:tadpole" {
+	b := &AquaticMobBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), id: c.ID, variant: c.Variant, bucketVariant: c.BucketVariant, age: c.Age, puffState: c.PuffState, breeding: breeding{ageLocked: c.AgeLocked}, fromBucket: c.fromBucket, speed: speed, schoolSize: 1, random: vanilla.NewLegacyRandom(int64(c.Variant))}
+	switch c.ID {
+	case "minecraft:tadpole":
 		b.br = newTadpoleBrain()
+	case "minecraft:axolotl":
+		b.br = newAxolotlBrain()
 	}
 	return b
 }
 
 type AquaticMobBehaviour struct {
-	health                                                *HealthManager
-	effects                                               *EffectManager
-	id                                                    string
-	variant, bucketVariant, age, puffState, airTicks      int
-	inflateCounter, deflateTimer                          int
-	playDeadTicks, attackCooldown, huntingCooldown, ticks int
-	fromBucket, dead                                      bool
+	health                                           *HealthManager
+	effects                                          *EffectManager
+	id                                               string
+	variant, bucketVariant, age, puffState, airTicks int
+	inflateCounter, deflateTimer                     int
+	fromBucket, dead                                 bool
+	// playingDead is Axolotl.DATA_PLAYING_DEAD.
+	playingDead bool
 	// breeding is the love and growth state of axolotls; tadpoles only use
 	// its age lock.
 	breeding breeding
-	target   *world.EntityHandle
-	// ai is the MobAI fish swim with. Axolotls move by movement.
+	// ai is the MobAI the mob moves with.
 	ai MobAI
-	// br is the brain a tadpole runs besides its goals.
-	br       *Brain
-	panic    *PanicGoal
-	movement *MovementComputer
-	speed    float64
-	random   vanilla.Random
+	// br is the brain of an axolotl, or the one a tadpole runs besides its
+	// goals.
+	br     *Brain
+	panic  *PanicGoal
+	speed  float64
+	random vanilla.Random
 	// leader, leaderState and schoolSize are those of Java's
 	// AbstractSchoolingFish: the fish followed and the size of the school a
 	// leader leads.
 	leader      *world.EntityHandle
 	leaderState *AquaticMobBehaviour
 	schoolSize  int
-	// The path an axolotl swims along.
-	navPath            []cube.Pos
-	navIndex, navTicks int
-	navGoal            cube.Pos
-	navGoalSet         bool
 }
 type AquaticMob struct{ *Ent }
 type Axolotl struct{ *AquaticMob }
@@ -322,35 +326,10 @@ func (b *AquaticMobBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.dead {
 		return nil
 	}
-	if b.id != "minecraft:axolotl" {
-		return b.tickFish(e, tx)
+	if b.id == "minecraft:axolotl" {
+		return b.tickAxolotl(e, tx)
 	}
-	pos := cube.PosFromVec3(e.Position())
-	_, inWater := tx.Liquid(pos)
-	if inWater {
-		b.airTicks = 0
-	} else {
-		b.airTicks++
-		if b.airTicks > 6000 && b.airTicks%20 == 0 {
-			(&AquaticMob{Ent: e}).Hurt(2, DrowningDamageSource{})
-			if b.dead {
-				return nil
-			}
-		}
-	}
-	partner, inLove := tickBreeding(&Axolotl{&AquaticMob{Ent: e}}, tx)
-	vel := b.tickAxolotl(e, tx, e.data.Vel, partner, inLove)
-	if inWater {
-		b.movement.Gravity = 0
-		vel = vel.Mul(.9)
-	} else {
-		b.movement.Gravity = .08
-	}
-	if b.playDeadTicks > 0 {
-		b.playDeadTicks--
-	}
-	b.ticks++
-	return b.movement.TickMovement(e, e.Position(), vel, e.data.Rot, e.data.Rot, tx).apply(e)
+	return b.tickFish(e, tx)
 }
 
 func (b *AquaticMobBehaviour) viewPuffState(e *Ent) {
@@ -369,21 +348,20 @@ func (a *AquaticMob) Hurt(d float64, src world.DamageSource) (float64, bool) {
 		return 0, false
 	}
 	b := a.behaviour()
-	if b.id != "minecraft:axolotl" {
-		var ok bool
-		if d, ok = b.ai.DamageCooldown(a.tx, d); !ok {
-			return 0, false
-		}
-		b.ai.Hurt(src)
-	}
 	old := a.Health()
-	if b.id == "minecraft:axolotl" && b.playDeadTicks == 0 {
-		_, inWater := a.tx.Liquid(cube.PosFromVec3(a.Position()))
-		if inWater && b.random.NextInt(3) == 0 && (float64(b.random.NextInt(3)) < d || old/a.MaxHealth() < .5) && d < old && aquaticDamageHasAttacker(src) {
-			b.playDeadTicks = 200
-			a.AddEffect(effect.New(effect.Regeneration, 1, 10*time.Second))
+	if b.id == "minecraft:axolotl" && !b.ai.NoAI && b.ai.started {
+		// Axolotl.hurtServer: a hurt axolotl in water may play dead.
+		m := b.ai.Mob(a.Ent, aquaticWorldEntity(a.Ent))
+		r := m.Random()
+		if r.NextInt(3) == 0 && (float64(r.NextInt(3)) < d || old/a.MaxHealth() < .5) && d < old && m.InWater() && aquaticDamageHasAttacker(src) && !b.playingDead {
+			b.br.set(memPlayDeadTicks, 200)
 		}
 	}
+	var ok bool
+	if d, ok = b.ai.DamageCooldown(a.tx, d); !ok {
+		return 0, false
+	}
+	b.ai.Hurt(src)
 	b.health.AddHealth(-d)
 	if b.id == "minecraft:axolotl" {
 		resetLove(&Axolotl{a})
@@ -475,6 +453,10 @@ func (a *AquaticMob) SaveToBucket(stack item.Stack) item.Stack {
 	if b.id == "minecraft:tadpole" || b.id == "minecraft:axolotl" {
 		data["AgeLocked"] = boolByte(b.breeding.ageLocked)
 	}
+	if b.id == "minecraft:axolotl" && b.br.has(memHasHuntingCooldown) {
+		// Axolotl.saveToBucketTag.
+		data["HuntingCooldown"] = b.br.timeUntilExpiry(memHasHuntingCooldown)
+	}
 	switch bucket := stack.Item().(type) {
 	case item.FishBucket:
 		bucket.Data = data
@@ -503,6 +485,14 @@ func (a *AquaticMob) LoadFromBucket(stack item.Stack) {
 	b.age = int(nbtconv.Int32(data, "Age"))
 	b.puffState = int(nbtconv.Int32(data, "PuffState"))
 	b.breeding.ageLocked = nbtconv.Bool(data, "AgeLocked")
+	if b.id == "minecraft:axolotl" {
+		// Axolotl.loadFromBucketTag.
+		if _, ok := data["HuntingCooldown"]; ok {
+			b.br.setWithExpiry(memHasHuntingCooldown, true, nbtconv.Int64(data, "HuntingCooldown"))
+		} else {
+			b.br.erase(memHasHuntingCooldown)
+		}
+	}
 	if _, ok := data["Health"]; ok {
 		b.health.AddHealth(float64(nbtconv.Float32(data, "Health")) - b.health.Health())
 	}

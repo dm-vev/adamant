@@ -9,13 +9,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-var axolotlAlwaysHostile = map[string]struct{}{
-	"minecraft:drowned": {}, "minecraft:guardian": {}, "minecraft:elder_guardian": {},
-}
-var axolotlHuntTargets = map[string]struct{}{
-	"minecraft:tropical_fish": {}, "minecraft:pufferfish": {}, "minecraft:salmon": {},
-	"minecraft:cod": {}, "minecraft:squid": {}, "minecraft:glow_squid": {}, "minecraft:tadpole": {},
-}
 var tropicalFishCommonVariants = [...]int32{
 	0x07010101, 0x07070001, 0x0b070001, 0x07000501, 0x070b0100, 0x00010000,
 	0x03060500, 0x040a0301, 0x0e000500, 0x04000500, 0x07000201, 0x01000501,
@@ -112,85 +105,6 @@ func (b *AquaticMobBehaviour) finalizeSchoolSpawn(e *AquaticMob) *aquaticSchoolG
 		b.startFollowing(school.leader, school.leaderState)
 	}
 	return school
-}
-
-// tickAxolotl ports aquatic target sensing, attack cadence, and breeding behavior.
-func (b *AquaticMobBehaviour) tickAxolotl(e *Ent, tx *world.Tx, velocity, partner mgl64.Vec3, inLove bool) mgl64.Vec3 {
-	if b.attackCooldown > 0 {
-		b.attackCooldown--
-	}
-	if b.huntingCooldown > 0 {
-		b.huntingCooldown--
-	}
-	if b.playDeadTicks > 0 {
-		return velocity
-	}
-
-	var target world.Entity
-	if b.target != nil {
-		if current, ok := b.target.Entity(tx); ok {
-			target = current
-		}
-	}
-	if living, ok := target.(Living); !ok || living.Dead() || !axolotlCanAttack(target, b.huntingCooldown == 0, tx) {
-		b.target = nil
-		target = nil
-	}
-	if target == nil {
-		box := cube.Box(-8, -8, -8, 8, 8, 8).Translate(e.Position())
-		best := 64.0
-		for candidate := range tx.EntitiesWithin(box) {
-			living, ok := candidate.(Living)
-			if !ok || living.Dead() || candidate.H() == e.handle || !axolotlCanAttack(candidate, b.huntingCooldown == 0, tx) {
-				continue
-			}
-			delta := candidate.Position().Sub(e.Position())
-			distance := delta.LenSqr()
-			if distance < best {
-				target, best = candidate, distance
-			}
-		}
-		if target != nil {
-			b.target = target.H()
-		}
-	}
-	if target == nil {
-		if inLove {
-			// AnimalMakeLove: the axolotl swims to its partner at a third
-			// of the speed it chases prey with.
-			return aquaticSteer(b, e, tx, partner, .1*.2/.6)
-		}
-		return velocity
-	}
-
-	delta := target.Position().Sub(e.Position())
-	distance := delta.Len()
-	if distance > 1.5 {
-		return aquaticSteer(b, e, tx, target.Position(), .1)
-	}
-	if b.attackCooldown == 0 {
-		living := target.(Living)
-		living.Hurt(2, AttackDamageSource{Attacker: &AquaticMob{Ent: e}})
-		b.attackCooldown = 20
-		if living.Dead() {
-			if _, hunts := axolotlHuntTargets[target.H().Type().EncodeEntity()]; hunts {
-				b.huntingCooldown = 2400
-			}
-			b.target = nil
-		}
-	}
-	return velocity
-}
-
-func axolotlCanAttack(target world.Entity, huntAllowed bool, tx *world.Tx) bool {
-	id := target.H().Type().EncodeEntity()
-	_, hostile := axolotlAlwaysHostile[id]
-	_, huntTarget := axolotlHuntTargets[id]
-	if !hostile && (!huntAllowed || !huntTarget) {
-		return false
-	}
-	_, inWater := tx.Liquid(cube.PosFromVec3(target.Position()))
-	return inWater
 }
 
 // frogVariantAt returns the Bedrock variant of a frog in the biome at pos:

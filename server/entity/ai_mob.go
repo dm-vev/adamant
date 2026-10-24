@@ -421,6 +421,10 @@ func canBeSeenAsEnemy(e world.Entity) bool {
 	if _, ok := e.(Living); !ok || !entityAlive(e) || spectator(e) {
 		return false
 	}
+	if p, ok := e.(interface{ PlayingDead() bool }); ok && p.PlayingDead() {
+		// Axolotl.canBeSeenAsEnemy.
+		return false
+	}
 	if p, ok := e.(interface{ GameMode() world.GameMode }); ok && !p.GameMode().AllowsTakingDamage() {
 		return false
 	}
