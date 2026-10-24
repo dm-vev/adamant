@@ -390,6 +390,10 @@ func (ai *MobAI) travelInAir(m *Mob, input mgl64.Vec3) {
 	} else {
 		v[1] -= ai.effectiveGravity(m)
 	}
+	if ai.DiscardFriction {
+		m.data.Vel = v
+		return
+	}
 	airDrag := modifiedFriction(.91, ai.AirDragModifier)
 	verticalFriction := ai.airDrag(m)
 	m.data.Vel = mgl64.Vec3{v[0] * friction * airDrag, v[1] * verticalFriction, v[2] * friction * airDrag}

@@ -132,6 +132,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if sh, ok := e.(interface{ Shaking() bool }); ok && sh.Shaking() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShaking)
 	}
+	if r, ok := e.(interface{ RamAttacking() bool }); ok && r.RamAttacking() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRamAttack)
+	}
+	if j, ok := e.(interface{ JumpGoalJumping() bool }); ok && j.JumpGoalJumping() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagJumpGoal)
+	}
 	if r, ok := e.(interface{ Resting() bool }); ok && r.Resting() {
 		// Bats hang upside down while resting.
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagResting)

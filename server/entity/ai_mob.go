@@ -36,6 +36,9 @@ type MobAI struct {
 	// AirDragModifier scale how much the ground and the air slow it, 1 if
 	// zero.
 	Bounciness, FrictionModifier, AirDragModifier float64
+	// DiscardFriction keeps the air and the ground from slowing the mob, as
+	// Entity.setDiscardFriction does for a long jump.
+	DiscardFriction bool
 	// NoAI stops the AI of the mob while it still moves.
 	NoAI bool
 	// NoGravity keeps the mob from falling, and NoPhysics moves it through
