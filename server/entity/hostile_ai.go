@@ -77,6 +77,11 @@ func (b *hostileState) aiTick(e *Ent) *Movement {
 			ai.EyeHeight = .93
 		}
 	}
+	if a, ok := b.attrs["minecraft:follow_range"]; ok {
+		// The follow range of the kind, raised by the bonus it spawned with.
+		a.Base = ai.FollowRange
+		ai.FollowRange = a.value(0, 2048)
+	}
 	self := hostileSelf(e, b.kind)
 	if hostileRaidMob(b.kind) {
 		b.raiderTick(ai.Mob(e, self))

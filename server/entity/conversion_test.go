@@ -77,9 +77,11 @@ func TestZombiesDrownIntoDrowned(t *testing.T) {
 // into a villager that keeps its profession and favours its curer.
 func TestZombieVillagersAreCured(t *testing.T) {
 	w := happyGhastWorld(t)
-	// It is night, so the zombie villager does not burn.
+	// It is night, so the zombie villager does not burn, and no monsters
+	// spawn to fight around it.
 	w.SetTime(18000)
 	w.StopTime()
+	w.SetSpawnMobs(false)
 	var h *world.EntityHandle
 	var curer world.Entity
 	<-w.Exec(func(tx *world.Tx) {

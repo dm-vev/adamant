@@ -166,6 +166,10 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		}
 	}
 	c.dropChances = readDropChances(n)
+	c.attrs = decodeJavaAttributes(n["attributes"])
+	if java := ReadNativeMobJavaState(n); java != nil && c.attrs == nil {
+		c.attrs = decodeJavaAttributes(java["attributes"])
+	}
 	if java := ReadNativeMobJavaState(n); java != nil && c.dropChances == nil {
 		c.dropChances = readDropChances(java)
 	}
@@ -226,6 +230,9 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 	if len(b.dropChances) != 0 {
 		javaState["drop_chances"] = encodeDropChances(b.dropChances)
 	}
+	if len(b.attrs) != 0 {
+		javaState["attributes"] = b.attrs.encode()
+	}
 	if b.hasPatrolTarget {
 		javaState["patrol_target"] = []int32{int32(b.patrolTarget[0]), int32(b.patrolTarget[1]), int32(b.patrolTarget[2])}
 	}
@@ -266,6 +273,7 @@ type hostileConfig struct {
 	drownedConverting                                       bool
 	main, off, feet, legs, chest, head                      item.Stack
 	dropChances                                             map[int]float32
+	attrs                                                   javaAttributes
 	profession, villagerType                                string
 	villagerLevel, villagerXP, villagerAge                  int
 	offers                                                  []MerchantOffer
@@ -300,10 +308,18 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 	if c.kind == "minecraft:vex" {
 		gravity = 0
 	}
+	maxHealth := t.health
+	if a, ok := c.attrs["minecraft:max_health"]; ok {
+		// A leader zombie keeps the health bonus it spawned with.
+		maxHealth = a.value(1, 1024)
+	}
+	if !c.healthSet && c.health <= 0 {
+		health = maxHealth
+	}
 	d.Data = &hostileState{
-		health: NewHealthManager(health, t.health), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0),
+		health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0),
 		speed: speed, attack: t.attack, kind: c.kind, baby: c.baby, canBreakDoors: c.canBreakDoors, canPickupLoot: c.canPickupLoot,
-		conversionTime: c.conversionTime, drownedConversionTime: c.drownedConversionTime, drownedConverting: c.drownedConverting, cureTicks: c.cureTicks, cureStarter: c.cureStarter, main: c.main, off: c.off, feet: c.feet, legs: c.legs, chest: c.chest, head: c.head, dropChances: maps.Clone(c.dropChances), profession: c.profession, villagerType: c.villagerType,
+		conversionTime: c.conversionTime, drownedConversionTime: c.drownedConversionTime, drownedConverting: c.drownedConverting, cureTicks: c.cureTicks, cureStarter: c.cureStarter, main: c.main, off: c.off, feet: c.feet, legs: c.legs, chest: c.chest, head: c.head, dropChances: maps.Clone(c.dropChances), attrs: c.attrs, profession: c.profession, villagerType: c.villagerType,
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
 		raiderState:  raiderState{patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget},
 		freezingTime: c.freezingTime, strayConversionTime: c.strayConversionTime, strayConverting: c.strayConverting,
@@ -376,6 +392,7 @@ type hostileState struct {
 	drownedConverting                      bool
 	main, off, feet, legs, chest, head     item.Stack
 	dropChances                            map[int]float32
+	attrs                                  javaAttributes
 	profession, villagerType               string
 	villagerLevel, villagerXP, villagerAge int
 	offers                                 []MerchantOffer
@@ -696,6 +713,9 @@ func (m *HostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b.ai.Hurt(s)
 	m.viewAction(HurtAction{})
 	onMobHurt(m.tx, m)
+	if !m.Dead() && zombieKind(b.kind) {
+		m.callReinforcements(s)
+	}
 	if m.Dead() {
 		b.dead = true
 		m.viewAction(DeathAction{})
@@ -725,9 +745,13 @@ func (m *HostileMob) Heal(h float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *HostileMob) KnockBack(src mgl64.Vec3, f, h float64) {
-	if m.state().kind == "minecraft:ravager" {
-		// KNOCKBACK_RESISTANCE of 0.75.
-		f, h = f*.25, h*.25
+	b := m.state()
+	base := 0.
+	if b.kind == "minecraft:ravager" {
+		base = .75
+	}
+	if res := b.attrs.get("minecraft:knockback_resistance", base).value(0, 1); res > 0 {
+		f, h = f*(1-res), h*(1-res)
 	}
 	d := m.Position().Sub(src)
 	d[1] = 0
@@ -1036,6 +1060,10 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 		difficulty = m.tx.LocalDifficulty(cube.PosFromVec3(m.Position()))
 	}
 	special, hard := difficulty.SpecialMultiplier(), difficulty.Base == world.DifficultyHard
+	// Mob.finalizeSpawn: a random bonus to the follow range.
+	b.attrs.get("minecraft:follow_range", 0).setModifier("minecraft:random_spawn_bonus", .11485*(r.NextDouble()-r.NextDouble()), "add_multiplied_base")
+	// Whether it is left-handed, which a hostile mob does not keep.
+	r.NextFloat()
 	switch b.kind {
 	case "minecraft:zombie", "minecraft:zombie_villager", "minecraft:husk":
 		if m.tx == nil {
@@ -1069,6 +1097,7 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 		if b.baby {
 			b.speed = hostileTypeFor(b.kind).speed * 1.5
 		}
+		b.handleZombieAttributes(m, special, r)
 		if b.kind == "minecraft:husk" {
 			if reason != "conversion" {
 				b.canPickupLoot = r.NextFloat() < .55*special
