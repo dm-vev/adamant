@@ -132,6 +132,10 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if sh, ok := e.(interface{ Shaking() bool }); ok && sh.Shaking() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagShaking)
 	}
+	if r, ok := e.(interface{ Resting() bool }); ok && r.Resting() {
+		// Bats hang upside down while resting.
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagResting)
+	}
 	if db, ok := e.(doorBreaker); ok && db.CanBreakDoors() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagDoorBreaker)
 	}

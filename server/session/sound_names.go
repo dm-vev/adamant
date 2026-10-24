@@ -32,6 +32,7 @@ var bedrockSoundNames = map[string]string{
 	"block.vault.insert_item_fail":              "vault.insert_item_fail",
 	"block.vault.open_shutter":                  "vault.open_shutter",
 	"block.vault.reject_rewarded_player":        "vault.reject_rewarded_player",
+	"entity.bat.takeoff":                        "mob.bat.takeoff",
 	"entity.bee.pollinate":                      "mob.bee.pollinate",
 	"entity.bee.sting":                          "mob.bee.sting",
 	"entity.blaze.shoot":                        "mob.blaze.shoot",

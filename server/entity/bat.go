@@ -1,11 +1,13 @@
 package entity
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -28,7 +30,8 @@ func (batType) DecodeNBT(m map[string]any, d *world.EntityData) {
 	if s == nil {
 		s = m
 	}
-	c.Resting = nbtconv.Bool(s, "Resting")
+	// Java keeps whether a bat rests in BatFlags.
+	c.Resting = nbtconv.Bool(s, "Resting") || nbtconv.Uint8(s, "BatFlags")&1 != 0
 	if _, ok := s["Health"]; ok {
 		c.Health = float64(nbtconv.Float32(s, "Health"))
 		c.healthSet = true
@@ -56,7 +59,7 @@ func (batType) EncodeNBT(d *world.EntityData) map[string]any {
 	h := b.health
 	attrs := EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: h.MaxHealth(), Current: h.Health(), DefaultMin: 0, DefaultMax: h.MaxHealth(), Min: 0, Max: h.MaxHealth()}, {Name: "minecraft:movement", Base: .6, Current: .6, DefaultMin: 0, DefaultMax: .6, Min: 0, Max: .6}})
 	m := MergeNativeMobNBT(d.NativeNBT, map[string]any{"Attributes": attrs, "Variant": int32(b.variant)})
-	return MergeNativeMobJavaState(m, map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Resting": byte(batBool(b.resting))})
+	return MergeNativeMobJavaState(m, map[string]any{"Health": float32(h.Health()), "MaxHealth": float32(h.MaxHealth()), "Resting": byte(batBool(b.resting)), "BatFlags": byte(batBool(b.resting))})
 }
 
 type batBehaviourConfig struct {
@@ -74,67 +77,127 @@ func (c batBehaviourConfig) New() *batBehaviour {
 	if !c.healthSet && c.Health <= 0 {
 		c.Health = c.MaxHealth
 	}
-	return &batBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .06, DragBeforeGravity: true}, resting: c.Resting, variant: c.Variant, speed: .6, random: vanilla.NewLegacyRandom(0), nextMove: 1}
+	return &batBehaviour{health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager(), resting: c.Resting, variant: c.Variant, speed: .6}
 }
 
 type batBehaviour struct {
-	health            *HealthManager
-	effects           *EffectManager
-	mc                *MovementComputer
-	resting, dead     bool
-	variant, nextMove int
-	speed             float64
-	random            vanilla.Random
-	target            mgl64.Vec3
-	hasTarget         bool
+	health        *HealthManager
+	effects       *EffectManager
+	ai            MobAI
+	resting, dead bool
+	variant       int
+	speed         float64
+	// targetPosition is the block the bat flies towards.
+	targetPosition *cube.Pos
 }
 type Bat struct{ *Ent }
 
+// NewBat creates a bat, which hangs resting until it ticks, as the
+// constructor of Java's Bat leaves it.
 func NewBat(opts world.EntitySpawnOpts) *world.EntityHandle {
-	return opts.New(BatType, batBehaviourConfig{})
+	return opts.New(BatType, batBehaviourConfig{Resting: true})
 }
 func (*Bat) SpeciesType() world.EntityType { return BatType }
 func (b *Bat) state() *batBehaviour        { return b.Behaviour().(*batBehaviour) }
 func (b *Bat) Tick(tx *world.Tx, n int64)  { b.state().effects.Tick(b, tx); b.Ent.Tick(tx, n) }
+
+func (b *batBehaviour) mobAI() *MobAI { return &b.ai }
+
+// Tick runs a tick of the bat on its MobAI. A bat has no goals: its
+// customServerAiStep flies it about and hangs it from blocks.
 func (b *batBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	p := cube.PosFromVec3(e.Position())
-	ceiling := p.Add(cube.Pos{0, 1, 0})
-	attached := tx.Block(ceiling).Model().FaceSolid(ceiling, cube.FaceDown, tx)
-	timeOfDay := tx.World().Time() % 24000
-	night := timeOfDay >= 13000 && timeOfDay < 23000
-	if !attached || night || e.data.Vel[1] > .05 {
-		b.resting = false
+	b.ai.EyeHeight, b.ai.MovementSpeed = .45, b.speed
+	return b.ai.Tick(e, &Bat{Ent: e}, nil)
+}
+
+// setResting changes whether the bat hangs resting and shows viewers.
+func (b *batBehaviour) setResting(e *Ent, resting bool) {
+	if b.resting != resting {
+		b.resting = resting
+		e.updateState()
 	}
-	if attached && !night && e.data.Vel.Len() < .04 {
-		b.resting = true
-		b.hasTarget = false
-	}
+}
+
+// batTakeOff plays the sound of a bat taking off, as level event 1025.
+func batTakeOff(m *Mob) {
+	r := m.Random()
+	m.tx.PlaySound(m.BlockPos().Vec3(), sound.Custom{Name: "entity.bat.takeoff", Volume: .05, Pitch: float64((r.NextFloat()-r.NextFloat())*.2 + 1)})
+}
+
+// customServerAiStep ports Bat.customServerAiStep: a resting bat hangs from
+// the solid block above it, now and then turning its head, until a player
+// comes within four blocks or the block is gone. A flying bat steers
+// towards a random air block nearby, picking another when it gets close,
+// at times or when that block fills, and now and then hangs from a solid
+// block it flies under.
+func (b *batBehaviour) customServerAiStep(m *Mob) {
+	pos := m.BlockPos()
+	above := pos.Side(cube.FaceUp)
+	r := m.Random()
 	if b.resting {
-		b.mc.Gravity = 0
-		return b.mc.TickMovement(e, e.data.Pos, mgl64.Vec3{}, e.data.Rot, e.data.Rot, tx).apply(e)
+		if !world.RedstoneFullPowerConductor(above, m.tx.Block(above), m.tx) {
+			b.setResting(m.Ent, false)
+			batTakeOff(m)
+			return
+		}
+		if r.NextInt(200) == 0 {
+			m.AI.headYaw = float64(r.NextInt(360))
+		}
+		c := forNonCombat()
+		c.rangeLimit = 4
+		if nearestPlayer(m, c) != nil {
+			b.setResting(m.Ent, false)
+			batTakeOff(m)
+		}
+		return
 	}
-	b.mc.Gravity = .08
-	if !b.hasTarget || b.nextMove <= 0 {
-		b.nextMove = 20 + int(b.random.NextInt(31))
-		b.target = e.Position().Add(mgl64.Vec3{float64(b.random.NextInt(17) - 8), float64(b.random.NextInt(9) - 4), float64(b.random.NextInt(17) - 8)})
-		b.hasTarget = true
+	if t := b.targetPosition; t != nil && (!isAir(m.tx.Block(*t)) || t[1] <= m.tx.Range()[0]) {
+		b.targetPosition = nil
 	}
-	if b.nextMove > 0 {
-		b.nextMove--
+	if t := b.targetPosition; t == nil || r.NextInt(30) == 0 || t.Vec3Centre().Sub(m.data.Pos).LenSqr() < 4 {
+		x := m.data.Pos[0] + float64(r.NextInt(7)) - float64(r.NextInt(7))
+		y := m.data.Pos[1] + float64(r.NextInt(6)) - 2
+		z := m.data.Pos[2] + float64(r.NextInt(7)) - float64(r.NextInt(7))
+		t := cube.PosFromVec3(mgl64.Vec3{x, y, z})
+		b.targetPosition = &t
 	}
-	d := b.target.Sub(e.Position())
-	v := e.Velocity()
-	speed := b.speed / 6
-	if d.Len() < .5 {
-		b.hasTarget = false
-		v[0], v[2] = 0, 0
-	} else {
-		d = d.Normalize()
-		v[0], v[1], v[2] = d[0]*speed, d[1]*speed, d[2]*speed
+	t := *b.targetPosition
+	dx := float64(t[0]) + .5 - m.data.Pos[0]
+	dy := float64(t[1]) + .1 - m.data.Pos[1]
+	dz := float64(t[2]) + .5 - m.data.Pos[2]
+	const tenth, upward = float64(float32(.1)), float64(float32(.7))
+	v := m.data.Vel
+	v = v.Add(mgl64.Vec3{(signum(dx)*.5 - v[0]) * tenth, (signum(dy)*upward - v[1]) * tenth, (signum(dz)*.5 - v[2]) * tenth})
+	m.data.Vel = v
+	yaw := float64(float32(math.Atan2(v[2], v[0])*180/math.Pi) - 90)
+	m.SetZza(.5)
+	m.SetYaw(m.Yaw() + wrapDegrees(yaw-m.Yaw()))
+	if r.NextInt(100) == 0 && world.RedstoneFullPowerConductor(above, m.tx.Block(above), m.tx) {
+		b.setResting(m.Ent, true)
 	}
-	m := b.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
+}
+
+// afterAiStep ports what Bat.tick does after the tick of a Mob: a resting
+// bat hangs still from the top of its block, and a flying one sinks and
+// rises slowly.
+func (b *batBehaviour) afterAiStep(m *Mob) {
+	if b.resting {
+		m.data.Vel = mgl64.Vec3{}
+		m.data.Pos[1] = math.Floor(m.data.Pos[1]) + 1 - .9
+		return
+	}
+	m.data.Vel[1] *= .6
+}
+
+// signum ports Math.signum.
+func signum(v float64) float64 {
+	switch {
+	case v > 0:
+		return 1
+	case v < 0:
+		return -1
+	}
+	return v
 }
 func (b *Bat) Health() float64        { return b.state().health.Health() }
 func (b *Bat) MaxHealth() float64     { return b.state().health.MaxHealth() }
@@ -148,15 +211,23 @@ func (b *Bat) Heal(h float64, _ world.HealingSource) float64 {
 	b.state().health.AddHealth(h)
 	return b.Health() - old
 }
+
+// Hurt ports Bat.hurtServer: a hurt bat stops resting.
 func (b *Bat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	st := b.state()
 	if b.Dead() || d <= 0 || (s.Fire() && b.hasEffect(effect.FireResistance)) {
+		return 0, false
+	}
+	st.setResting(b.Ent, false)
+	d, ok := st.ai.DamageCooldown(b.tx, d)
+	if !ok {
 		return 0, false
 	}
 	if r, ok := st.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
 	st.health.AddHealth(-d)
+	st.ai.Hurt(s)
 	onMobHurt(b.tx, b)
 	if b.Dead() {
 		st.dead = true
@@ -183,7 +254,7 @@ func (b *Bat) Speed() float64               { return b.state().speed }
 func (b *Bat) SetSpeed(v float64)           { b.state().speed = v }
 func (b *Bat) hasEffect(t effect.Type) bool { _, ok := b.state().effects.Effect(t); return ok }
 func (b *Bat) Resting() bool                { return b.state().resting }
-func (b *Bat) SetResting(v bool)            { b.state().resting = v; b.state().hasTarget = false }
+func (b *Bat) SetResting(v bool)            { b.state().setResting(b.Ent, v) }
 func (b *Bat) viewAction(a world.EntityAction) {
 	vs := b.tx.Viewers(b.Position())
 	for _, v := range vs {
