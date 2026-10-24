@@ -91,17 +91,17 @@ type fillBiomeReplaceCommand struct {
 
 func registerWorldTickCommands(srv serverAdapter) {
 	guard := worldOpCommand{srv: srv}
-	cmd.Register(cmd.New("tick", "Controls world ticking.", nil,
+	cmd.Register(newCommand("tick", nil,
 		tickQueryCommand{worldOpCommand: guard}, tickRateCommand{worldOpCommand: guard},
 		tickFreezeCommand{worldOpCommand: guard}, tickUnfreezeCommand{worldOpCommand: guard},
 		tickStepCommand{worldOpCommand: guard}, tickStepStopCommand{worldOpCommand: guard},
 		tickSprintCommand{worldOpCommand: guard}, tickSprintStopCommand{worldOpCommand: guard},
 	))
-	cmd.Register(cmd.New("forceload", "Keeps chunks loaded and ticking.", nil,
+	cmd.Register(newCommand("forceload", nil,
 		forceLoadAddCommand{worldOpCommand: guard}, forceLoadRemoveCommand{worldOpCommand: guard},
 		forceLoadRemoveAllCommand{worldOpCommand: guard}, forceLoadQueryCommand{worldOpCommand: guard},
 	))
-	cmd.Register(cmd.New("fillbiome", "Fills an area with a biome.", nil, fillBiomeCommand{worldOpCommand: guard}, fillBiomeReplaceCommand{fillBiomeCommand: fillBiomeCommand{worldOpCommand: guard}}))
+	cmd.Register(newCommand("fillbiome", nil, fillBiomeCommand{worldOpCommand: guard}, fillBiomeReplaceCommand{fillBiomeCommand: fillBiomeCommand{worldOpCommand: guard}}))
 }
 
 func (tickQueryCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {

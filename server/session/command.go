@@ -4,11 +4,13 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/sandertv/gophertunnel/minecraft/text"
 	"golang.org/x/text/language"
 )
 
@@ -112,6 +114,9 @@ func BuildAvailableCommands(
 				suffix := paramInfo.Suffix
 
 				opt := byte(0)
+				if options, ok := paramInfo.Value.(cmd.ParamOptioner); ok {
+					opt = options.ParamOptions()
+				}
 				if suffix != "" {
 					index, ok := suffixIndices[suffix]
 					if !ok {
@@ -158,7 +163,7 @@ func BuildAvailableCommands(
 		}
 		pk.Commands = append(pk.Commands, protocol.Command{
 			Name:            c.Name(),
-			Description:     c.Description(),
+			Description:     commandDescription(c, src),
 			AliasesOffset:   aliasesIndex,
 			PermissionLevel: protocol.CommandPermissionLevelAny,
 			Overloads:       overloads,
@@ -174,7 +179,7 @@ func BuildAvailableCommands(
 	pk.EnumValues = make([]string, 0, len(enumValueIndices))
 
 	pk.Enums = make([]protocol.CommandEnum, 0, len(enums))
-	for _, enum := range enums {
+	for enumIndex, enum := range enums {
 		protoEnum := protocol.CommandEnum{Type: enum.Type}
 		for _, opt := range enum.Options {
 			index, ok := enumValueIndices[opt]
@@ -184,10 +189,35 @@ func BuildAvailableCommands(
 				pk.EnumValues = append(pk.EnumValues, opt)
 			}
 			protoEnum.ValueIndices = append(protoEnum.ValueIndices, index)
+			if enum.Constraints != nil {
+				if constraints := enum.Constraints(opt); len(constraints) > 0 {
+					pk.Constraints = append(pk.Constraints, protocol.CommandEnumConstraint{
+						EnumValueIndex: index,
+						EnumIndex:      uint32(enumIndex),
+						Constraints:    constraints,
+					})
+				}
+			}
 		}
 		pk.Enums = append(pk.Enums, protoEnum)
 	}
 	return pk, m
+}
+
+// commandDescription resolves server translations for the source's locale.
+// Native translation keys are sent without the message translation marker,
+// matching BDS; the client translates these using its own language resources.
+func commandDescription(c cmd.Command, src cmd.Source) string {
+	description := c.DescriptionTranslation()
+	if description.Zero() {
+		return c.Description()
+	}
+	locale := language.English
+	if localized, ok := src.(interface{ Locale() language.Tag }); ok {
+		locale = localized.Locale()
+	}
+	resolved := strings.TrimPrefix(description.Resolve(locale), text.Reset)
+	return strings.TrimPrefix(resolved, "%")
 }
 
 // clientCommand identifies commands registered by ClientCommands::setupStandard
@@ -205,9 +235,10 @@ func (s *Session) sendAvailableCommands(co Controllable, softEnums map[string]st
 }
 
 type commandEnum struct {
-	Type    string
-	Options []string
-	Dynamic bool
+	Type        string
+	Options     []string
+	Dynamic     bool
+	Constraints func(string) []byte
 }
 
 // valueToParamType finds the command argument type of the value passed and returns it, in addition to creating
@@ -244,6 +275,9 @@ func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum comman
 		}
 		if dyn, ok := enum.(cmd.DynamicEnum); ok && dyn.Dynamic() {
 			ce.Dynamic = true
+		}
+		if constrained, ok := enum.(cmd.ConstrainedEnum); ok {
+			ce.Constraints = constrained.Constraints
 		}
 		return 0, ce
 	}

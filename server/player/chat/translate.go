@@ -139,7 +139,11 @@ func (t translation) Params(l language.Tag) []string {
 
 // String formats and returns the fallback value of the translation.
 func (t translation) String() string {
-	return fmt.Sprintf(text.Colourf(t.t.format, t.t.fallback), t.params...)
+	formatted := text.Colourf(t.t.format, t.t.fallback)
+	if len(t.params) == 0 {
+		return formatted
+	}
+	return fmt.Sprintf(formatted, t.params...)
 }
 
 // Error formats and returns the fallback value of the translation.

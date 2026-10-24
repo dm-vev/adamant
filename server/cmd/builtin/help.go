@@ -13,7 +13,7 @@ type helpCommand struct {
 }
 
 func newHelpCommand() cmd.Command {
-	return cmd.New("help", "Shows available commands and their usage.", []string{"?"}, helpCommand{})
+	return newCommand("help", []string{"?"}, helpCommand{})
 }
 
 func (h helpCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -25,7 +25,11 @@ func (h helpCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 			return
 		}
 		if desc := command.Description(); desc != "" {
-			o.Print(desc)
+			if translated := command.DescriptionTranslation(); !translated.Zero() {
+				o.Printt(translated)
+			} else {
+				o.Print(desc)
+			}
 		}
 		for _, line := range strings.Split(command.Usage(), "\n") {
 			o.Print(line)
@@ -55,6 +59,10 @@ func (h helpCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
 		command, _ := cmd.ByAlias(name)
 		line := "/" + name
 		if desc := command.Description(); desc != "" {
+			if translated := command.DescriptionTranslation(); !translated.Zero() {
+				o.Printt(translated.Enc(line + " - %v"))
+				continue
+			}
 			line += " - " + desc
 		}
 		o.Print(line)

@@ -38,7 +38,7 @@ type experienceUnit string
 func (experienceUnit) Type() string                { return "experienceunit" }
 func (experienceUnit) Options(cmd.Source) []string { return []string{"points", "levels"} }
 func newExperienceCommand() cmd.Command {
-	return cmd.New("experience", "Adds, sets, or queries player experience.", []string{"xp"}, experienceAddCommand{}, experienceSetCommand{}, experienceQueryCommand{})
+	return newCommand("experience", []string{"xp"}, experienceAddCommand{}, experienceSetCommand{}, experienceQueryCommand{})
 }
 func (c experienceAddCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	ps := playersFromTargets(c.Targets)
@@ -119,7 +119,7 @@ type recipeTakeCommand struct {
 }
 
 func newRecipeCommand() cmd.Command {
-	return cmd.New("recipe", "Gives or takes recipes.", nil, recipeGiveCommand{}, recipeTakeCommand{})
+	return newCommand("recipe", nil, recipeGiveCommand{}, recipeTakeCommand{})
 }
 func (c recipeGiveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	changeRecipes(c.Targets, c.Recipe, true, o)

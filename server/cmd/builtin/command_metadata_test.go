@@ -33,7 +33,8 @@ func TestBuiltinCommandRegistryKeepsNativeHelpLocal(t *testing.T) {
 	var wire bytes.Buffer
 	pk.Marshal(protocol.NewWriter(&wire, 0))
 	var decoded packet.AvailableCommands
-	decoded.Marshal(protocol.NewReader(&wire, 0, true))
+	// A server registry exceeds the client-to-server slice limit of 1024.
+	decoded.Marshal(protocol.NewReader(&wire, 0, false))
 	commands := make(map[string]protocol.Command)
 	for _, command := range decoded.Commands {
 		commands[command.Name] = command

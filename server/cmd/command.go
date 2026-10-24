@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -47,11 +48,12 @@ type Allower interface {
 // Command is a wrapper around a Runnable. It provides additional identity and utility methods for the actual
 // runnable command so that it may be identified more easily.
 type Command struct {
-	v           []reflect.Value
-	name        string
-	description string
-	usage       string
-	aliases     []string
+	v                      []reflect.Value
+	name                   string
+	description            string
+	descriptionTranslation chat.Translation
+	usage                  string
+	aliases                []string
 }
 
 // New returns a new Command using the name and description passed. Command
@@ -105,6 +107,24 @@ func (cmd Command) Name() string {
 // provides information on the functionality of a command.
 func (cmd Command) Description() string {
 	return cmd.description
+}
+
+// WithDescriptionTranslation returns a copy of the command with a translated
+// description. The translation must take no parameters. Description continues
+// to return the plain description supplied to New, for console output.
+// A zero translation clears the translated description.
+func (cmd Command) WithDescriptionTranslation(description chat.Translation) Command {
+	if !description.Zero() {
+		description.F()
+	}
+	cmd.descriptionTranslation = description
+	return cmd
+}
+
+// DescriptionTranslation returns the optional translation of the command's
+// description. A zero translation means Description should be used instead.
+func (cmd Command) DescriptionTranslation() chat.Translation {
+	return cmd.descriptionTranslation
 }
 
 // Usage returns the usage of the command. The usage will be roughly equal to the one showed by the client

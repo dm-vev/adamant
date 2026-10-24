@@ -88,43 +88,43 @@ func reasonArg(v cmd.Optional[cmd.Varargs]) string {
 	return ""
 }
 func newOpCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("op", "Grants operator status to a player.", nil, opCmd{adminPermission{srv}, srv, ""})
+	return newCommand("op", nil, opCmd{adminPermission{srv}, srv, ""})
 }
 func newDeopCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("deop", "Revokes operator status from a player.", nil, deopCmd{adminPermission{srv}, srv, ""})
+	return newCommand("deop", nil, deopCmd{adminPermission{srv}, srv, ""})
 }
 func newBanPlayerCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("ban", "Bans a player from the server.", nil, banCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("ban", nil, banCmd{adminPermission: adminPermission{srv}, srv: srv})
 }
 func newBanIPCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("ban-ip", "Bans an IP address from the server.", nil, banIPCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("ban-ip", nil, banIPCmd{adminPermission: adminPermission{srv}, srv: srv})
 }
 func newPardonCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("pardon", "Removes a player ban.", nil, pardonCmd{adminPermission{srv}, srv, ""})
+	return newCommand("pardon", nil, pardonCmd{adminPermission{srv}, srv, ""})
 }
 func newPardonIPCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("pardon-ip", "Removes an IP ban.", nil, pardonIPCmd{adminPermission{srv}, srv, ""})
+	return newCommand("pardon-ip", nil, pardonIPCmd{adminPermission{srv}, srv, ""})
 }
 func newBanListCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("banlist", "Lists banned players or IP addresses.", nil, banListCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("banlist", nil, banListCmd{adminPermission: adminPermission{srv}, srv: srv})
 }
 func newSaveAllCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("save-all", "Saves the world to disk.", nil, saveAllCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("save-all", nil, saveAllCmd{adminPermission: adminPermission{srv}, srv: srv})
 }
 func newSaveOffCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("save-off", "Disables automatic world saving.", nil, saveToggleCmd{adminPermission{srv}, srv, false})
+	return newCommand("save-off", nil, saveToggleCmd{adminPermission{srv}, srv, false})
 }
 func newSaveOnCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("save-on", "Enables automatic world saving.", nil, saveToggleCmd{adminPermission{srv}, srv, true})
+	return newCommand("save-on", nil, saveToggleCmd{adminPermission{srv}, srv, true})
 }
 func newIdleTimeoutCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("setidletimeout", "Sets the idle timeout in minutes.", nil, idleTimeoutCmd{adminPermission{srv}, srv, 0})
+	return newCommand("setidletimeout", nil, idleTimeoutCmd{adminPermission{srv}, srv, 0})
 }
 func newTransferCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("transfer", "Transfers a player to another server.", nil, transferCmd{adminPermission: adminPermission{srv}, srv: srv})
+	return newCommand("transfer", nil, transferCmd{adminPermission: adminPermission{srv}, srv: srv})
 }
 func newVersionCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("version", "Displays the server version.", nil, versionCmd{srv})
+	return newCommand("version", nil, versionCmd{srv})
 }
 
 func (c opCmd) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {

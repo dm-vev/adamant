@@ -10,8 +10,8 @@ import (
 )
 
 func registerPlayerTagCommands(_ serverAdapter) {
-	cmd.Register(cmd.New("tag", "Manages entity tags.", nil, tagAddCommand{}, tagRemoveCommand{}, tagListCommand{}))
-	cmd.Register(cmd.New("attribute", "Queries and changes entity attributes.", nil, attributeGetCommand{}, attributeBaseGetCommand{}, attributeBaseSetCommand{}, attributeBaseResetCommand{}, attributeModifierAddCommand{}, attributeModifierRemoveCommand{}, attributeModifierValueCommand{}))
+	cmd.Register(newCommand("tag", nil, tagAddCommand{}, tagRemoveCommand{}, tagListCommand{}))
+	cmd.Register(newCommand("attribute", nil, attributeGetCommand{}, attributeBaseGetCommand{}, attributeBaseSetCommand{}, attributeBaseResetCommand{}, attributeModifierAddCommand{}, attributeModifierRemoveCommand{}, attributeModifierValueCommand{}))
 }
 
 type tagTarget interface {

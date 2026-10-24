@@ -13,7 +13,7 @@ type stopCommand struct {
 }
 
 func newStopCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("stop", "Stops the server.", nil, stopCommand{srv: srv})
+	return newCommand("stop", nil, stopCommand{srv: srv})
 }
 
 func (s stopCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {

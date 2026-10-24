@@ -15,7 +15,7 @@ type spectateCommand struct {
 }
 
 func registerSpectateCommand(guard worldOpCommand) {
-	cmd.Register(cmd.New("spectate", "Makes a spectator watch through the eyes of an entity.", nil, spectateCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("spectate", nil, spectateCommand{worldOpCommand: guard}))
 }
 
 // Run ...

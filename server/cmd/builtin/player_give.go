@@ -9,12 +9,12 @@ import (
 type giveCommand struct {
 	opGate
 	Targets []cmd.Target      `cmd:"targets"`
-	Item    string            `cmd:"item"`
+	Item    itemArgument      `cmd:"item"`
 	Count   cmd.Optional[int] `cmd:"count"`
 }
 
 func newGiveCommand() cmd.Command {
-	return cmd.New("give", "Gives items to players.", nil, giveCommand{})
+	return newCommand("give", nil, giveCommand{})
 }
 func (g giveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	ps := playersFromTargets(g.Targets)
@@ -22,7 +22,7 @@ func (g giveCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 		o.Errort(cmd.MessageNoTargets)
 		return
 	}
-	it, ok := javaItemArgument(g.Item)
+	it, ok := javaItemArgument(string(g.Item))
 	if !ok {
 		o.Errort(cmd.MessageParameterInvalid, g.Item)
 		return

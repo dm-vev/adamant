@@ -24,4 +24,9 @@
 // Commands may be registered using the cmd.Register() method. By itself, this method will not ensure that the
 // client will be able to use the command: The user of the cmd package must handle commands itself and run the
 // appropriate one using the cmd.ByAlias function.
+//
+// Command descriptions may be localised using Command.WithDescriptionTranslation.
+// Native Bedrock translation keys are resolved by the client; server translations
+// may resolve text using the source's locale. New's plain description remains the
+// console fallback.
 package cmd

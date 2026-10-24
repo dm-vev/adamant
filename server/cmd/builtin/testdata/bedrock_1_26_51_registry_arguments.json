@@ -1,0 +1,73 @@
+{
+  "version": "1.26.51.1",
+  "packet_sha256": "a4c8bc714558528ad99337225fd4a1b9348b469c55099bda50c47f12de5df28e",
+  "parameters": {
+    "fill.tileName": {
+      "enum": "Block",
+      "options": 2,
+      "optional": false
+    },
+    "fill.replaceTileName": {
+      "enum": "Block",
+      "options": 2,
+      "optional": true
+    },
+    "give.itemName": {
+      "enum": "Item",
+      "options": 2,
+      "optional": false
+    },
+    "replaceitem.itemName": {
+      "enum": "Item",
+      "options": 2,
+      "optional": false
+    },
+    "setblock.tileName": {
+      "enum": "Block",
+      "options": 2,
+      "optional": false
+    }
+  },
+  "enums": {
+    "Item": {
+      "value_count": 3410,
+      "sorted_values_sha256": "9193d1ff189500895f0d45fbb81955363806ad1d5c7811088af9541b42008a25",
+      "examples": [
+        "minecraft:stone",
+        "stone",
+        "minecraft:diamond",
+        "diamond"
+      ],
+      "constraints": {
+        "minecraft:stone": [
+          3
+        ],
+        "stone": [],
+        "minecraft:diamond": [
+          3
+        ],
+        "diamond": []
+      }
+    },
+    "Block": {
+      "value_count": 2648,
+      "sorted_values_sha256": "6d0c58b9bd58a337a3b076c44bf1615779a0e4599c02ab87637dba608d667ae5",
+      "examples": [
+        "minecraft:stone",
+        "stone",
+        "minecraft:air",
+        "air"
+      ],
+      "constraints": {
+        "minecraft:stone": [
+          3
+        ],
+        "stone": [],
+        "minecraft:air": [
+          3
+        ],
+        "air": []
+      }
+    }
+  }
+}

@@ -14,8 +14,8 @@ import (
 
 func registerPlayerTextCommands(srv serverAdapter) {
 	cmd.Register(newTextCommand(srv))
-	cmd.Register(cmd.New("tellraw", "Sends a JSON message to players.", nil, tellRawCommand{}))
-	cmd.Register(cmd.New("msg", "Sends a private message.", []string{"tell", "w"}, msgCommand{}))
+	cmd.Register(newCommand("tellraw", nil, tellRawCommand{}))
+	cmd.Register(newCommand("msg", []string{"tell", "w"}, msgCommand{}))
 }
 
 type textCommand struct {
@@ -27,7 +27,7 @@ type textCommand struct {
 }
 
 func newTextCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("title", "Controls titles sent to players.", nil, textCommand{srv: srv})
+	return newCommand("title", nil, textCommand{srv: srv})
 }
 func (c textCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
 	players := playersFromTargets(c.Targets)

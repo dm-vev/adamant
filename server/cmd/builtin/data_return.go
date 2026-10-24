@@ -33,9 +33,8 @@ type returnRunCommand struct {
 }
 
 func newReturnCommand() cmd.Command {
-	return cmd.New(
+	return newCommand(
 		"return",
-		"Returns from the current function with a command result.",
 		nil,
 		returnValueCommand{},
 		returnFailCommand{},

@@ -366,7 +366,7 @@ func scoreboardModel(tx *world.Tx) *scoreboard.Model {
 
 func newScoreboardCommand(srv serverAdapter) cmd.Command {
 	permission := adminPermission{srv}
-	return cmd.New("scoreboard", "Manage objectives, scores and displays.", nil,
+	return newCommand("scoreboard", nil,
 		scoreboardObjectiveAdd{adminPermission: permission},
 		scoreboardObjectiveRemove{adminPermission: permission},
 		scoreboardObjectiveList{adminPermission: permission},

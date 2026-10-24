@@ -8,10 +8,81 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/cmd"
+	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/sandertv/gophertunnel/minecraft/text"
+	"golang.org/x/text/language"
 )
+
+func TestAvailableCommandsTranslatedDescriptions(t *testing.T) {
+	native := cmd.New("native", "Native fallback", nil, commandSoftEnumFixture{}).
+		WithDescriptionTranslation(chat.Translate(commandTestDescription{fallback: "%commands.gamemode.description"}, 0, "Native fallback"))
+	localized := cmd.New("localized", "English fallback", nil, commandSoftEnumFixture{}).
+		WithDescriptionTranslation(chat.Translate(commandTestDescription{russian: "Русское описание", fallback: "English fallback"}, 0, "English fallback"))
+	plain := cmd.New("plain", "%Plain description", nil, commandSoftEnumFixture{})
+	commands := map[string]cmd.Command{"native": native, "localized": localized, "plain": plain}
+	for _, tt := range []struct {
+		name string
+		src  cmd.Source
+		want string
+	}{
+		{"russian", commandLocaleSource{locale: language.Russian}, "Русское описание"},
+		{"english", commandLocaleSource{locale: language.AmericanEnglish}, "English fallback"},
+		{"unsupported", commandLocaleSource{locale: language.German}, "English fallback"},
+		{"console", nil, "English fallback"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			pk, _ := BuildAvailableCommands(commands, tt.src, make(map[string]struct{}))
+			var wire bytes.Buffer
+			pk.Marshal(protocol.NewWriter(&wire, 0))
+			var decoded packet.AvailableCommands
+			decoded.Marshal(protocol.NewReader(&wire, 0, true))
+			got := make(map[string]string)
+			for _, command := range decoded.Commands {
+				got[command.Name] = command.Description
+			}
+			if got["localized"] != tt.want || got["native"] != "commands.gamemode.description" || got["plain"] != "%Plain description" {
+				t.Fatalf("descriptions = %v", got)
+			}
+		})
+	}
+	// A translated copy must not change the original command's plain metadata.
+	if !plain.DescriptionTranslation().Zero() || localized.Description() != "English fallback" {
+		t.Fatal("translation changed plain command descriptions")
+	}
+	// CommandOutput uses the same translation, retaining the '%' marker for
+	// native message substitution and the English fallback for console logs.
+	s := testSession("command-descriptions")
+	output := &cmd.Output{}
+	output.Printt(native.DescriptionTranslation())
+	output.Printt(localized.DescriptionTranslation())
+	s.SendCommandOutput(output, language.Russian)
+	pk := (<-s.packets).(*packet.CommandOutput)
+	if text.Clean(pk.OutputMessages[0].Message) != "%commands.gamemode.description" || text.Clean(pk.OutputMessages[1].Message) != "Русское описание" {
+		t.Fatalf("translated output = %#v", pk.OutputMessages)
+	}
+	if text.Clean(output.Messages()[1].String()) != "English fallback" {
+		t.Fatal("console output lost its fallback")
+	}
+}
+
+type commandLocaleSource struct {
+	cmd.Source
+	locale language.Tag
+}
+
+func (s commandLocaleSource) Locale() language.Tag { return s.locale }
+
+type commandTestDescription struct{ russian, fallback string }
+
+func (d commandTestDescription) Resolve(locale language.Tag) string {
+	if locale == language.Russian && d.russian != "" {
+		return d.russian
+	}
+	return d.fallback
+}
 
 func TestAvailableCommandsStableWireRegistry(t *testing.T) {
 	alpha := cmd.New("alpha", "Enum and suffix arguments", []string{"a"}, commandRegistryFixture{})
