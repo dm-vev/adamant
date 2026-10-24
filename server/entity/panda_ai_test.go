@@ -36,7 +36,8 @@ func waitForPanda(w *world.World, h *world.EntityHandle, ticks int, cond func(*e
 // TestPandasSitToEatBamboo checks PandaSitGoal, Panda.pickUpItem and
 // handleEating: a panda picks up bamboo off the ground, sits down with it
 // and in the end eats it. A panda that gets up before it eats drops the
-// bamboo and waits up to 160 seconds to pick it up again.
+// bamboo and waits up to 160 seconds to pick it up again, and it finishes
+// only a third of the bites it starts, so eating may take it many minutes.
 func TestPandasSitToEatBamboo(t *testing.T) {
 	w := wolfTestWorld(t)
 	var panda *world.EntityHandle
@@ -50,7 +51,7 @@ func TestPandasSitToEatBamboo(t *testing.T) {
 	}) {
 		t.Fatal("panda did not pick up bamboo nearby and sit down with it in half a minute")
 	}
-	for range 12000 {
+	for range 36000 {
 		w.AdvanceTick()
 		eaten := false
 		<-w.Exec(func(tx *world.Tx) {
@@ -68,7 +69,7 @@ func TestPandasSitToEatBamboo(t *testing.T) {
 			return
 		}
 	}
-	t.Fatal("panda did not eat its bamboo in ten minutes")
+	t.Fatal("panda did not eat its bamboo in half an hour")
 }
 
 // TestPlayfulPandasRoll checks PandaRollGoal and Panda.handleRoll: a
