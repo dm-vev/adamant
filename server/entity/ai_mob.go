@@ -31,6 +31,11 @@ type MobAI struct {
 	// MaxHeadYaw and HeadRotSpeed are Mob.getMaxHeadYRot and getHeadRotSpeed,
 	// 75 and 10 if zero. MaxHeadPitch is getMaxHeadXRot, 40 if zero.
 	MaxHeadYaw, HeadRotSpeed, MaxHeadPitch float64
+	// Bounciness is the bounciness attribute, how much of its speed the mob
+	// keeps bouncing off blocks it runs into. FrictionModifier and
+	// AirDragModifier scale how much the ground and the air slow it, 1 if
+	// zero.
+	Bounciness, FrictionModifier, AirDragModifier float64
 	// NoAI stops the AI of the mob while it still moves.
 	NoAI bool
 	// NoGravity keeps the mob from falling, and NoPhysics moves it through
@@ -82,8 +87,10 @@ type MobAI struct {
 	onGround             bool
 	collidedHorizontally bool
 	collidedVertically   bool
-	waterHeight          float64
-	lavaHeight           float64
+	// collidedBelow is Entity.verticalCollisionBelow.
+	collidedBelow bool
+	waterHeight   float64
+	lavaHeight    float64
 }
 
 // Mob is a mob and its AI during a tick: what Java's goals and controls hold
@@ -119,6 +126,12 @@ func (ai *MobAI) start(m *Mob) {
 	}
 	if ai.Gravity == 0 {
 		ai.Gravity = .08
+	}
+	if ai.FrictionModifier == 0 {
+		ai.FrictionModifier = 1
+	}
+	if ai.AirDragModifier == 0 {
+		ai.AirDragModifier = 1
 	}
 	if ai.MaxHeadYaw == 0 {
 		ai.MaxHeadYaw = 75

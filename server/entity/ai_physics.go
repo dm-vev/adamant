@@ -369,7 +369,7 @@ func (ai *MobAI) travelFlying(m *Mob, input mgl64.Vec3, waterSpeed, lavaSpeed, a
 func (ai *MobAI) travelInAir(m *Mob, input mgl64.Vec3) {
 	friction := 1.0
 	if ai.onGround {
-		friction = blockFriction(m)
+		friction = modifiedFriction(blockFriction(m), ai.FrictionModifier)
 	}
 	speed := ai.flyingSpeed()
 	if ai.onGround {
@@ -390,11 +390,25 @@ func (ai *MobAI) travelInAir(m *Mob, input mgl64.Vec3) {
 	} else {
 		v[1] -= ai.effectiveGravity(m)
 	}
-	verticalFriction := .98
+	airDrag := modifiedFriction(.91, ai.AirDragModifier)
+	verticalFriction := ai.airDrag(m)
+	m.data.Vel = mgl64.Vec3{v[0] * friction * airDrag, v[1] * verticalFriction, v[2] * friction * airDrag}
+}
+
+// modifiedFriction ports LivingEntity.computeModifiedFriction: a modifier
+// scales how much of its speed friction takes.
+func modifiedFriction(friction, modifier float64) float64 {
+	return math.Max(0, math.Min(1, 1-(1-friction)*modifier))
+}
+
+// airDrag ports LivingEntity.getAirDrag: how much of its vertical speed the
+// air leaves the mob, as much as sideways for mobs that move alike in all
+// directions.
+func (ai *MobAI) airDrag(m *Mob) float64 {
 	if a, ok := m.Behaviour().(mobAirMover); ok && a.omnidirectionalAirMover() {
-		verticalFriction = .91
+		return modifiedFriction(.91, ai.AirDragModifier)
 	}
-	m.data.Vel = mgl64.Vec3{v[0] * friction * .91, v[1] * verticalFriction, v[2] * friction * .91}
+	return modifiedFriction(.98, ai.AirDragModifier)
 }
 
 // flyingSpeed ports LivingEntity.getFlyingSpeed: a mob a player steers
@@ -560,27 +574,67 @@ func (ai *MobAI) moveSelf(m *Mob, delta mgl64.Vec3) {
 	xCollision := !floatEqual(delta[0], movement[0])
 	zCollision := !floatEqual(delta[2], movement[2])
 	ai.collidedHorizontally = xCollision || zCollision
-	if math.Abs(delta[1]) > 0 {
+	movedVertically := math.Abs(delta[1]) > 0
+	if movedVertically {
 		ai.collidedVertically = delta[1] != movement[1]
-		ai.onGround = ai.collidedVertically && delta[1] < 0
+		ai.collidedBelow = ai.collidedVertically && delta[1] < 0
+		ai.onGround = ai.collidedBelow
+	}
+	if movedVertically && ai.collidedVertically || ai.collidedHorizontally {
+		ai.restituteMovement(m, xCollision, zCollision, movement)
 	}
 	v := m.data.Vel
-	if xCollision {
-		v[0] = 0
-	}
-	if zCollision {
-		v[2] = 0
-	}
-	if ai.collidedVertically {
-		if _, slime := m.tx.Block(blockPosBelowMovement(m)).(block.Slime); slime && delta[1] < 0 && v[1] < 0 {
-			v[1] = -v[1]
-		} else {
-			v[1] = 0
-		}
-	}
 	factor := blockSpeedFactor(m)
 	v[0], v[2] = v[0]*factor, v[2]*factor
 	m.data.Vel = v
+}
+
+// restituteMovement ports Entity.restituteMovementAfterCollisions: a mob
+// keeps as much of its speed against what it ran into as its bounciness,
+// and falling onto a bouncy block, such as slime or a bed, as much as the
+// bouncier of the two, less the gravity and drag of the part of the tick it
+// moved for.
+func (ai *MobAI) restituteMovement(m *Mob, xCollision, zCollision bool, movement mgl64.Vec3) {
+	restitution := ai.Bounciness
+	cur := m.data.Vel
+	after := cur
+	if xCollision {
+		after[0] = -cur[0] * restitution
+	}
+	if zCollision {
+		after[2] = -cur[2] * restitution
+	}
+	if ai.collidedVertically {
+		gravity := ai.effectiveGravity(m)
+		if ai.collidedBelow {
+			effect := m.tx.Block(cube.PosFromVec3(m.data.Pos.Sub(mgl64.Vec3{0, .2})))
+			if _, honey := effect.(block.HoneyBlock); -cur[1] <= gravity || honey {
+				restitution = 0
+			} else {
+				restitution = math.Max(restitution, blockBounceRestitution(effect))
+			}
+		}
+		gravityCompensation, drag := 0.0, 1.0
+		if restitution > 0 {
+			portion := movement[1] / cur[1]
+			gravityCompensation = portion * gravity
+			drag = 1 + (ai.airDrag(m)-1)*portion
+		}
+		after[1] = (gravityCompensation - cur[1]) * drag * restitution
+	}
+	m.data.Vel = after
+}
+
+// blockBounceRestitution ports Block.getBounceRestitution: slime bounces a
+// mob back as fast as it fell, beds and shelf mushrooms three quarters.
+func blockBounceRestitution(b world.Block) float64 {
+	switch b.(type) {
+	case block.Slime:
+		return 1
+	case block.Bed, block.ShelfMushroom:
+		return .75
+	}
+	return 0
 }
 
 // floatEqual ports Mth.equal.
