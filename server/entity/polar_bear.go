@@ -155,13 +155,7 @@ func (p *PolarBear) Effects() []effect.Effect   { return p.b().effects.Effects()
 func (p *PolarBear) Speed() float64             { return p.b().speed }
 func (p *PolarBear) SetSpeed(v float64)         { p.b().speed = v }
 func (p *PolarBear) KnockBack(src mgl64.Vec3, k, h float64) {
-	d := p.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(k)
-	}
-	d[1] = h
-	p.SetVelocity(d)
+	knockBack(p, src, k, h)
 }
 func (p *PolarBear) view(a world.EntityAction) {
 	v := p.tx.Viewers(p.Position())

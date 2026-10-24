@@ -452,13 +452,7 @@ func (m *speciesMob) Heal(h float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *speciesMob) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := m.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	m.SetVelocity(d)
+	knockBack(m, src, f, h)
 }
 func (m *speciesMob) AddEffect(e effect.Effect) {
 	if m.kind == spiderSpecies && (e.Type() == effect.Poison || e.Type() == effect.FatalPoison) {

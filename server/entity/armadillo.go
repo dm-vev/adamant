@@ -443,13 +443,7 @@ func (a *Armadillo) Heal(v float64, _ world.HealingSource) float64 {
 	return b.health - old
 }
 func (a *Armadillo) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := a.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	a.SetVelocity(d)
+	knockBack(a, src, f, h)
 }
 func (a *Armadillo) viewAction(x world.EntityAction) {
 	vs := a.tx.Viewers(a.Position())

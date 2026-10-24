@@ -169,13 +169,7 @@ func (m *Mooshroom) Heal(v float64, _ world.HealingSource) float64 {
 	return b.health - old
 }
 func (m *Mooshroom) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := m.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	m.SetVelocity(d)
+	knockBack(m, src, f, h)
 }
 func (m *Mooshroom) viewAction(a world.EntityAction) {
 	vs := m.tx.Viewers(m.Position())

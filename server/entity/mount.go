@@ -1268,17 +1268,13 @@ func (m *Mount) Heal(v float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *Mount) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := m.Position().Sub(src)
-	d[1] = 0
-	if d.LenSqr() == 0 {
-		return
-	}
-	// LivingEntity.knockback: knockback resistance, such as netherite horse
-	// armour's, weakens the push.
+	// Knockback resistance, such as netherite horse armour's, weakens the
+	// push.
+	resistance := 0.
 	if a, ok := m.b().armor.Item().(bodyArmour); ok && !m.b().armor.Empty() {
-		force, height = force*(1-a.KnockBackResistance()), height*(1-a.KnockBackResistance())
+		resistance = a.KnockBackResistance()
 	}
-	m.SetVelocity(m.Velocity().Add(d.Normalize().Mul(force).Add(mgl64.Vec3{0, height, 0})))
+	knockBackResisted(m, src, force, height, resistance)
 }
 func (m *Mount) Speed() float64             { return m.b().movementSpeed }
 func (m *Mount) SetSpeed(v float64)         { m.b().movementSpeed = v }

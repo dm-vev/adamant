@@ -210,13 +210,7 @@ func (s *Strider) Heal(v float64, _ world.HealingSource) float64 {
 }
 
 func (s *Strider) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := s.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	s.SetVelocity(d)
+	knockBack(s, src, f, h)
 }
 
 func (s *Strider) viewAction(a world.EntityAction) {

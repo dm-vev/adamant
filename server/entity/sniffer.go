@@ -519,13 +519,7 @@ func (s *Sniffer) Heal(v float64, _ world.HealingSource) float64 {
 	return b.health - old
 }
 func (s *Sniffer) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := s.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	s.SetVelocity(d)
+	knockBack(s, src, f, h)
 }
 func (s *Sniffer) viewAction(a world.EntityAction) {
 	vs := s.tx.Viewers(s.Position())

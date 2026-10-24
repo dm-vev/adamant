@@ -398,12 +398,7 @@ func (a *AquaticMob) Heal(h float64, _ world.HealingSource) float64 {
 	return a.Health() - old
 }
 func (a *AquaticMob) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := a.Position().Sub(src)
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	a.SetVelocity(d)
+	knockBack(a, src, force, height)
 }
 func (a *AquaticMob) AddEffect(e effect.Effect)  { a.behaviour().effects.Add(e, a) }
 func (a *AquaticMob) RemoveEffect(t effect.Type) { a.behaviour().effects.Remove(t, a) }

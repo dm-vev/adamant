@@ -751,16 +751,7 @@ func (m *HostileMob) KnockBack(src mgl64.Vec3, f, h float64) {
 	if b.kind == "minecraft:ravager" {
 		base = .75
 	}
-	if res := b.attrs.get("minecraft:knockback_resistance", base).value(0, 1); res > 0 {
-		f, h = f*(1-res), h*(1-res)
-	}
-	d := m.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	m.SetVelocity(d)
+	knockBackResisted(m, src, f, h, b.attrs.get("minecraft:knockback_resistance", base).value(0, 1))
 }
 func (m *HostileMob) AddEffect(e effect.Effect) {
 	b := m.state()

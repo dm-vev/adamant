@@ -743,13 +743,10 @@ func (d *EnderDragon) Heal(amount float64, _ world.HealingSource) float64 {
 
 // KnockBack ports EnderDragon.knockback: a flying dragon is knocked back as
 // any living entity in the air, and a sitting one not at all.
-func (d *EnderDragon) KnockBack(src mgl64.Vec3, force, _ float64) {
-	if dragonSitting(d.behaviour().phase) || force <= 0 {
-		return
+func (d *EnderDragon) KnockBack(src mgl64.Vec3, force, height float64) {
+	if !dragonSitting(d.behaviour().phase) {
+		knockBack(d, src, force, height)
 	}
-	away := javaNormalize(mgl64.Vec3{d.Position()[0] - src[0], 0, d.Position()[2] - src[2]}).Mul(force)
-	v := d.data.Vel
-	d.data.Vel = mgl64.Vec3{v[0]/2 + away[0], v[1], v[2]/2 + away[2]}
 }
 
 func (d *EnderDragon) AddEffect(e effect.Effect) {}

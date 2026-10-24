@@ -254,13 +254,7 @@ func (f *Fox) Effects() []effect.Effect   { return f.b().effects.Effects() }
 func (f *Fox) Speed() float64             { return f.b().speed }
 func (f *Fox) SetSpeed(v float64)         { f.b().speed = v }
 func (f *Fox) KnockBack(src mgl64.Vec3, k, h float64) {
-	d := f.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(k)
-	}
-	d[1] = h
-	f.SetVelocity(d)
+	knockBack(f, src, k, h)
 }
 func (f *Fox) view(a world.EntityAction) {
 	v := f.tx.Viewers(f.Position())

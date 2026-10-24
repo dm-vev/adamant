@@ -235,13 +235,7 @@ func (c *Cow) KnockBack(src mgl64.Vec3, force, height float64) {
 	if c.Dead() {
 		return
 	}
-	velocity := c.Position().Sub(src)
-	velocity[1] = 0
-	if velocity.Len() != 0 {
-		velocity = velocity.Normalize().Mul(force)
-	}
-	velocity[1] = height
-	c.SetVelocity(velocity)
+	knockBack(c, src, force, height)
 }
 
 // AddEffect adds an effect to the cow.

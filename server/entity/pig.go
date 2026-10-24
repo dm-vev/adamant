@@ -306,13 +306,7 @@ func (p *Pig) Heal(v float64, _ world.HealingSource) float64 {
 	return b.health - old
 }
 func (p *Pig) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := p.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	p.SetVelocity(d)
+	knockBack(p, src, f, h)
 }
 func (p *Pig) viewAction(a world.EntityAction) {
 	vs := p.tx.Viewers(p.Position())

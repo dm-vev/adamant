@@ -567,13 +567,7 @@ func (f *Frog) Heal(h float64, _ world.HealingSource) float64 {
 	return f.Health() - before
 }
 func (f *Frog) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := f.Position().Sub(src)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	f.SetVelocity(d)
+	knockBack(f, src, force, height)
 }
 func (f *Frog) AddEffect(e effect.Effect)  { f.behaviour().effects.Add(e, f) }
 func (f *Frog) RemoveEffect(t effect.Type) { f.behaviour().effects.Remove(t, f) }

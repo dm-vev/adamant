@@ -525,13 +525,7 @@ func (c *CopperGolem) Heal(h float64, _ world.HealingSource) float64 {
 	return c.Health() - old
 }
 func (c *CopperGolem) KnockBack(s mgl64.Vec3, f, h float64) {
-	d := c.Position().Sub(s)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	c.SetVelocity(d)
+	knockBack(c, s, f, h)
 }
 func (c *CopperGolem) AddEffect(e effect.Effect)    { c.b().effects.Add(e, c) }
 func (c *CopperGolem) RemoveEffect(t effect.Type)   { c.b().effects.Remove(t, c) }

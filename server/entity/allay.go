@@ -560,12 +560,7 @@ func (a *Allay) Heal(h float64, _ world.HealingSource) float64 {
 	return a.Health() - old
 }
 func (a *Allay) KnockBack(s mgl64.Vec3, f, h float64) {
-	d := a.Position().Sub(s)
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] += h
-	a.SetVelocity(d)
+	knockBack(a, s, f, h)
 }
 func (a *Allay) AddEffect(e effect.Effect)    { a.b().effects.Add(e, a) }
 func (a *Allay) RemoveEffect(t effect.Type)   { a.b().effects.Remove(t, a) }

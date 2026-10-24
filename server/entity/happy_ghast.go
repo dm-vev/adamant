@@ -748,11 +748,7 @@ func (h *HappyGhast) Hurt(v float64, src world.DamageSource) (float64, bool) {
 	return old - h.Health(), true
 }
 func (h *HappyGhast) KnockBack(src mgl64.Vec3, f, height float64) {
-	d := h.Position().Sub(src)
-	if d.LenSqr() == 0 {
-		return
-	}
-	h.SetVelocity(h.Velocity().Add(d.Normalize().Mul(f).Add(mgl64.Vec3{0, height, 0})))
+	knockBack(h, src, f, height)
 }
 func (h *HappyGhast) Speed() float64               { return h.state().speed }
 func (h *HappyGhast) SetSpeed(v float64)           { h.state().speed = v }

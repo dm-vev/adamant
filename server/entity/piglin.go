@@ -349,13 +349,7 @@ func (p *Piglin) Heal(h float64, _ world.HealingSource) float64 {
 	return p.Health() - old
 }
 func (p *Piglin) KnockBack(src mgl64.Vec3, f, k float64) {
-	d := p.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = k
-	p.SetVelocity(d)
+	knockBack(p, src, f, k)
 }
 func (p *Piglin) AddEffect(e effect.Effect)  { p.p().effects.Add(e, p) }
 func (p *Piglin) RemoveEffect(t effect.Type) { p.p().effects.Remove(t, p) }

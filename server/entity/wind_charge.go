@@ -118,7 +118,7 @@ func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
 				}
 			}
 
-			living.KnockBack(knockBackOrigin, force, height)
+			gustKnockBack(living, knockBackOrigin, force, height)
 
 			if owner == nil || owner.H() != other.H() {
 				living.Hurt(windChargeBaseDamage, WindChargeDamageSource{})

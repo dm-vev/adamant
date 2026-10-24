@@ -449,13 +449,7 @@ func (w *Wolf) Heal(h float64, _ world.HealingSource) float64 {
 	return w.Health() - old
 }
 func (w *Wolf) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := w.Position().Sub(src)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	w.SetVelocity(d)
+	knockBack(w, src, force, height)
 }
 func (w *Wolf) AddEffect(e effect.Effect)    { w.behaviour().effects.Add(e, w) }
 func (w *Wolf) RemoveEffect(t effect.Type)   { w.behaviour().effects.Remove(t, w) }

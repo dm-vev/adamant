@@ -233,13 +233,7 @@ func (p *Parrot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	return d, true
 }
 func (p *Parrot) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := p.Position().Sub(src)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	p.SetVelocity(d)
+	knockBack(p, src, f, h)
 }
 func (p *Parrot) AddEffect(e effect.Effect)  { p.b().effects.Add(e, p) }
 func (p *Parrot) RemoveEffect(t effect.Type) { p.b().effects.Remove(t, p) }

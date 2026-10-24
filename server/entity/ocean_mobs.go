@@ -754,14 +754,7 @@ func (m *oceanMob) Heal(h float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *oceanMob) KnockBack(src mgl64.Vec3, force, height float64) {
-	b := m.b()
-	force *= 1 - min(1, max(0, b.knockbackResistance))
-	d := m.Position().Sub(src)
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height * (1 - min(1, max(0, b.knockbackResistance)))
-	m.SetVelocity(d)
+	knockBackResisted(m, src, force, height, m.b().knockbackResistance)
 }
 func (m *oceanMob) AddEffect(e effect.Effect) {
 	if (m.b().kind == oceanNautilus || m.b().kind == oceanZombieNautilus) && e.Type() == effect.Poison {

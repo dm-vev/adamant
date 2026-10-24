@@ -376,12 +376,7 @@ func (m *Ghast) KnockBack(src mgl64.Vec3, f, h float64)     { netherKnock(m.Ent,
 func (m *Blaze) KnockBack(src mgl64.Vec3, f, h float64)     { netherKnock(m.Ent, src, f, h) }
 func (m *MagmaCube) KnockBack(src mgl64.Vec3, f, h float64) { netherKnock(m.Ent, src, f, h) }
 func netherKnock(e *Ent, src mgl64.Vec3, f, h float64) {
-	d := e.Position().Sub(src)
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	e.SetVelocity(d)
+	knockBack(e, src, f, h)
 }
 func (m *Ghast) AddEffect(e effect.Effect)      { m.n().effects.Add(e, m) }
 func (m *Blaze) AddEffect(e effect.Effect)      { m.n().effects.Add(e, m) }

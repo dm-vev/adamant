@@ -655,8 +655,8 @@ func beastHeal(b *netherBeastState, v float64) float64 {
 	b.health.AddHealth(v)
 	return b.health.Health() - old
 }
-func (h *Hoglin) KnockBack(p mgl64.Vec3, f, k float64) { beastKnock(h.Ent, p, f, k) }
-func (z *Zoglin) KnockBack(p mgl64.Vec3, f, k float64) { beastKnock(z.Ent, p, f, k) }
+func (h *Hoglin) KnockBack(p mgl64.Vec3, f, k float64) { knockBack(h, p, f, k) }
+func (z *Zoglin) KnockBack(p mgl64.Vec3, f, k float64) { knockBack(z, p, f, k) }
 func (h *Hoglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	return beastHurt(h.Ent, h, h.beast(), d, src)
 }
@@ -673,15 +673,6 @@ func (h *Hoglin) Speed() float64             { return h.beast().speed }
 func (z *Zoglin) Speed() float64             { return z.beast().speed }
 func (h *Hoglin) SetSpeed(v float64)         { h.beast().speed = v }
 func (z *Zoglin) SetSpeed(v float64)         { z.beast().speed = v }
-func beastKnock(e *Ent, p mgl64.Vec3, f, k float64) {
-	d := e.Position().Sub(p)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = k
-	e.SetVelocity(d)
-}
 func (h *Hoglin) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if r == nil {
 		return

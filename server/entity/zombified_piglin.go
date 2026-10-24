@@ -166,7 +166,7 @@ func (z *ZombifiedPiglin) Heal(h float64, _ world.HealingSource) float64 {
 	z.z().health.AddHealth(h)
 	return z.Health() - old
 }
-func (z *ZombifiedPiglin) KnockBack(src mgl64.Vec3, f, k float64) { piglinKnock(z.Ent, src, f, k) }
+func (z *ZombifiedPiglin) KnockBack(src mgl64.Vec3, f, k float64) { knockBack(z, src, f, k) }
 func (z *ZombifiedPiglin) AddEffect(e effect.Effect) {
 	if !hostileUndead("minecraft:zombified_piglin") || e.Type() != effect.Poison && e.Type() != effect.FatalPoison {
 		z.z().effects.Add(e, z)
@@ -221,15 +221,6 @@ func (z *ZombifiedPiglin) experienceEquipment() int {
 	return n
 }
 func (z *ZombifiedPiglin) hasEffect(t effect.Type) bool { _, ok := z.z().effects.Effect(t); return ok }
-func piglinKnock(e *Ent, p mgl64.Vec3, f, k float64) {
-	d := e.Position().Sub(p)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = k
-	e.SetVelocity(d)
-}
 
 var _ world.EntityType = ZombifiedPiglinType{}
 var _ Living = (*ZombifiedPiglin)(nil)
