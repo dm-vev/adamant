@@ -1,0 +1,23 @@
+{
+  "version": "1.26.51.1",
+  "protocol_version": 2193,
+  "build_id": 51061361,
+  "packet_bytes": 395698,
+  "packet_sha256": "a4c8bc714558528ad99337225fd4a1b9348b469c55099bda50c47f12de5df28e",
+  "command_names": [
+    "aimassist", "allowlist", "camera", "camerashake", "changesetting",
+    "clear", "clearspawnpoint", "clone", "controlscheme", "damage", "daylock",
+    "deop", "dialogue", "difficulty", "editor-allowlist", "effect", "enchant",
+    "event", "execute", "fill", "fog", "function", "gamemode", "gamerule",
+    "gametest", "give", "hud", "inputpermission", "kick", "kill", "list",
+    "locate", "loot", "me", "mobevent", "music", "op", "packstack", "particle",
+    "permission", "place", "playanimation", "playsound", "recipe", "reload",
+    "reloadconfig", "reloadpacketlimitconfig", "replaceitem", "ride", "save",
+    "say", "schedule", "scoreboard", "script", "scriptevent", "sendshowstoreoffer",
+    "serveridentity", "setblock", "setmaxplayers", "setworldspawn", "spawnpoint",
+    "spreadplayers", "stop", "stopsound", "structure", "summon", "tag",
+    "teleport", "tell", "tellraw", "testfor", "testforblock", "testforblocks",
+    "tickingarea", "time", "title", "titleraw", "toggledownfall", "transfer",
+    "weather", "wsserver", "xp"
+  ]
+}

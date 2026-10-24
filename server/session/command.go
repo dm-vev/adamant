@@ -1,7 +1,9 @@
 package session
 
 import (
+	"maps"
 	"math"
+	"slices"
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/go-gl/mathgl/mgl64"
@@ -79,9 +81,12 @@ func BuildAvailableCommands(
 
 	suffixIndices := map[string]uint32{}
 
-	for alias, c := range commands {
-		if c.Name() != alias {
-			// Don't add duplicate entries for aliases.
+	// Keep command and enum indices stable between logins and full updates.
+	for _, alias := range slices.Sorted(maps.Keys(commands)) {
+		c := commands[alias]
+		if c.Name() != alias || clientCommand(c.Name()) {
+			// Aliases are encoded with their canonical command. Client-local
+			// commands already have a grammar installed by the Bedrock client.
 			continue
 		}
 
@@ -96,7 +101,7 @@ func BuildAvailableCommands(
 
 		aliasesIndex := uint32(math.MaxUint32)
 		if len(c.Aliases()) > 0 {
-			aliasesIndex = uint32(len(enumIndices))
+			aliasesIndex = uint32(len(enums))
 			enumIndices[c.Name()+"Aliases"] = aliasesIndex
 			enums = append(enums, commandEnum{Type: c.Name() + "Aliases", Options: c.Aliases()})
 		}
@@ -185,6 +190,11 @@ func BuildAvailableCommands(
 	return pk, m
 }
 
+// clientCommand identifies commands registered by ClientCommands::setupStandard
+// with SyncLocal. BDS omits help from AvailableCommands; replacing the client's
+// help signature conflicts with its existing command-name grammar.
+func clientCommand(name string) bool { return name == "help" }
+
 // sendAvailableCommands sends all available commands of the server. Once sent, they will be visible in the
 // /help list and will be auto-completed.
 func (s *Session) sendAvailableCommands(co Controllable, softEnums map[string]struct{}) map[string]map[int]cmd.Runnable {
@@ -252,7 +262,7 @@ func (s *Session) resendCommands(
 	m := make(map[string]map[int]cmd.Runnable, len(commands))
 
 	for alias, c := range commands {
-		if c.Name() == alias {
+		if c.Name() == alias && !clientCommand(c.Name()) {
 			if run := c.Runnables(co); len(run) > 0 {
 				m[alias] = run
 			}
@@ -284,7 +294,7 @@ func (s *Session) resendCommands(
 func (s *Session) enums(co Controllable) (map[string]cmd.Enum, map[string][]string) {
 	enums, enumValues := make(map[string]cmd.Enum), make(map[string][]string)
 	for alias, c := range cmd.Commands() {
-		if c.Name() == alias {
+		if c.Name() == alias && !clientCommand(c.Name()) {
 			for _, params := range c.Params(co) {
 				for _, paramInfo := range params {
 					if enum, ok := paramInfo.Value.(cmd.Enum); ok {
