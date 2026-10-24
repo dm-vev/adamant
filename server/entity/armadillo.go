@@ -515,3 +515,8 @@ func (a *Armadillo) breedOffspring(_ *world.Tx, _ breeder) *world.EntityHandle {
 }
 
 var _ Interactable = (*Armadillo)(nil)
+
+// walkTargetValue ports Animal.getWalkTargetValue.
+func (b *ArmadilloBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+	return animalWalkTargetValue(m, pos)
+}

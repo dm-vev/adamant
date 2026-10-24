@@ -625,3 +625,8 @@ func uuidHashCode(id [16]byte) int32 {
 	hilo := most ^ least
 	return int32(hilo>>32) ^ int32(hilo)
 }
+
+// walkTargetValue ports Animal.getWalkTargetValue.
+func (b *GoatBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+	return animalWalkTargetValue(m, pos)
+}

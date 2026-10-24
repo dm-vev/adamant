@@ -636,3 +636,8 @@ func (f *Frog) spawnChildFromBreeding(tx *world.Tx, partner breeder) {
 	finishBreeding(f, partner, tx)
 	f.behaviour().br.set(memIsPregnant, true)
 }
+
+// walkTargetValue ports Animal.getWalkTargetValue.
+func (b *frogBehaviour) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+	return animalWalkTargetValue(m, pos)
+}
