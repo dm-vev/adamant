@@ -203,3 +203,34 @@ func TestPiglinsTurnIntoZombifiedPiglins(t *testing.T) {
 		}
 	})
 }
+
+// TestPiglinsChargeWithSpears checks SpearApproach, SpearAttack and
+// SpearRetreat: a piglin with a golden spear charges a player wearing no
+// gold and stabs them.
+func TestPiglinsChargeWithSpears(t *testing.T) {
+	w := wolfTestWorld(t)
+	var pig, p *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		pig = immunePiglin(t, tx, "minecraft:piglin", .5)
+		e, _ := pig.Entity(tx)
+		e.(*entity.Piglin).SetHeldItems(item.NewStack(item.Spear{Tier: item.ToolTierGold}, 1), item.Stack{})
+		p = addSurvivalPlayer(tx, mgl64.Vec3{12.5, 64, .5}).H()
+	})
+	lowered := false
+	for range 1200 {
+		w.AdvanceTick()
+		hurt := false
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := pig.Entity(tx)
+			lowered = lowered || e.(*entity.Piglin).UsingItem()
+			hurt = playerHurt(tx, p)
+		})
+		if hurt {
+			if !lowered {
+				t.Fatal("piglin hurt a player without lowering its spear")
+			}
+			return
+		}
+	}
+	t.Fatalf("piglin with a spear did not stab a player twelve blocks away in a minute (lowered %v)", lowered)
+}

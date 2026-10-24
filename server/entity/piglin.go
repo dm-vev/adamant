@@ -473,3 +473,6 @@ func (s *piglinState) movementSpeed() float64 {
 	}
 	return s.speed
 }
+
+// UsingItem reports if the piglin holds its spear out.
+func (p *Piglin) UsingItem() bool { return !p.p().ai.useItem.Empty() }

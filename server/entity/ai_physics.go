@@ -115,6 +115,10 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 		register(m)
 	}
 	prevPos, prevVel, prevRot, prevHead := e.data.Pos, e.data.Vel, e.data.Rot, ai.headYaw
+	if !first {
+		// Entity.lastKnownSpeed: how far the mob moved in the last tick.
+		ai.knownSpeed = prevPos.Sub(ai.prevPos)
+	}
 	ai.prevPos = prevPos
 	ai.tickCount++
 	ai.updateFluids(m)
@@ -122,6 +126,7 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 		ai.lastHurtBy = nil
 	}
 	ai.resetNoActionTimeNearPlayers(m)
+	ai.tickUsingItem(m)
 	if e.data.Riding != nil {
 		if !ai.NoAI && m.Alive() {
 			ai.serverAiStep(m)

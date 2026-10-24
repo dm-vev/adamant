@@ -152,6 +152,10 @@ func newPiglinBrain(s *piglinState) *Brain {
 	}}, hurtBySensor{}, piglinSpecificSensor{})
 	br.register(memUniversalAnger)
 	br.register(memAteRecently)
+	br.register(memSpearFleeingTime)
+	br.register(memSpearFleeingPosition)
+	br.register(memSpearChargePosition)
+	br.register(memSpearEngageTime)
 	adult := func(*Mob) bool { return !s.baby }
 	startAttacking := func() behaviorControl {
 		return newStartAttacking(adult, func(m *Mob) world.Entity { return piglinNearestValidAttackTarget(m) })
@@ -210,6 +214,9 @@ func newPiglinBrain(s *piglinState) *Brain {
 		}, nil, true),
 		newTriggerIf(func(*Mob) bool { _, ok := s.main.Item().(item.Crossbow); return ok }, newBackUpIfTooClose(5, .75)),
 		newSetWalkTargetFromAttackTargetIfTargetOutOfReach(constSpeed(1)),
+		newSpearApproach(1, 10),
+		newSpearAttack(1, 1, 2),
+		newSpearRetreat(1),
 		newMeleeAttack(20),
 		newCrossbowAttack(s),
 		newRememberIfHoglinWasKilled(),
@@ -1303,4 +1310,12 @@ func (piglinBruteSpecificSensor) doTick(m *Mob, b *Brain) {
 	}
 	b.setEntity(memNearestVisibleNemesis, nemesis)
 	b.set(memNearbyAdultPiglins, nearbyAdultPiglins(m))
+}
+
+// attackDamageBase returns the attack damage attribute of the piglin.
+func (s *piglinState) attackDamageBase() float64 {
+	if s.brute {
+		return 7
+	}
+	return 5
 }

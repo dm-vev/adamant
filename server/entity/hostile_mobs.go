@@ -452,7 +452,9 @@ func NewHostileWithNBT(opts world.EntitySpawnOpts, id string, spawnData map[stri
 func (m *HostileMob) state() *hostileState { return m.Behaviour().(*hostileState) }
 
 // UsingItem reports if the mob draws its bow.
-func (m *HostileMob) UsingItem() bool               { return m.state().drawingBow }
+func (m *HostileMob) UsingItem() bool {
+	return m.state().drawingBow || !m.state().ai.useItem.Empty()
+}
 func (m *HostileMob) SpeciesType() world.EntityType { return hostileTypeFor(m.state().kind) }
 
 func (m *HostileMob) RaidID() int64      { return m.state().raidID }

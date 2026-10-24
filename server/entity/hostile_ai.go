@@ -240,6 +240,7 @@ func registerZombieGoals(m *Mob, b *hostileState) {
 		raiseArmTicks++
 		m.SetAggressive(raiseArmTicks >= 5 && g.TicksUntilNextAttack() < g.AttackInterval()/2)
 	}
+	ai.Goals.Add(2, newSpearUseGoal(1, 1, 10, 2))
 	ai.Goals.Add(3, &zombieAttackGoal{MeleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks})
 	ai.Goals.Add(7, NewWaterAvoidingRandomStrollGoal(1))
 	if b.canBreakDoors {
@@ -510,3 +511,7 @@ func (g *BreakDoorGoal) Tick(m *Mob) {
 		m.tx.AddParticle(g.door.pos.Vec3Centre(), particle.BlockBreak{Block: door})
 	}
 }
+
+// attackDamageBase returns the attack damage attribute of the mob, without
+// its weapon.
+func (b *hostileState) attackDamageBase() float64 { return b.attack }

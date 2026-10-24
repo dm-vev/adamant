@@ -6,6 +6,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -94,6 +95,17 @@ type MobAI struct {
 	collidedBelow bool
 	waterHeight   float64
 	lavaHeight    float64
+
+	// useItem is the item the mob uses, as LivingEntity.useItem, and
+	// useTicks how long it has used it.
+	useItem  item.Stack
+	useTicks int
+	// knownSpeed is Entity.lastKnownSpeed, how far the mob moved in the
+	// last tick.
+	knownSpeed mgl64.Vec3
+	// stabbed are the entities a kinetic weapon of the mob last hit, as
+	// LivingEntity.recentKineticEnemies.
+	stabbed map[*world.EntityHandle]int64
 }
 
 // Mob is a mob and its AI during a tick: what Java's goals and controls hold

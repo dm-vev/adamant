@@ -40,6 +40,7 @@ func (s *zombifiedPiglinState) registerGoals(m *Mob) {
 		raiseArmTicks++
 		m.SetAggressive(raiseArmTicks >= 5 && g.TicksUntilNextAttack() < g.AttackInterval()/2)
 	}
+	ai.Goals.Add(1, newSpearUseGoal(1, 1, 10, 2))
 	ai.Goals.Add(2, &zombieAttackGoal{MeleeAttackGoal: attack, raiseArmTicks: &raiseArmTicks})
 	ai.Goals.Add(7, NewWaterAvoidingRandomStrollGoal(1))
 	hurt := NewHurtByTargetGoal()
@@ -126,3 +127,6 @@ func (s *zombifiedPiglinState) doHurtTarget(m *Mob, target world.Entity) bool {
 
 // Angry reports if the zombified piglin is angry.
 func (z *ZombifiedPiglin) Angry() bool { return z.z().angry() }
+
+// attackDamageBase returns the attack damage attribute of a zombified piglin.
+func (s *zombifiedPiglinState) attackDamageBase() float64 { return 5 }

@@ -183,3 +183,6 @@ func piglinKnock(e *Ent, p mgl64.Vec3, f, k float64) {
 
 var _ world.EntityType = ZombifiedPiglinType{}
 var _ Living = (*ZombifiedPiglin)(nil)
+
+// UsingItem reports if the zombified piglin holds its spear out.
+func (z *ZombifiedPiglin) UsingItem() bool { return !z.z().ai.useItem.Empty() }

@@ -158,6 +158,11 @@ const (
 	memLastHurtBy
 	memUnreachableTongueTargets
 	memDoorsToClose
+	memSpearStatus
+	memSpearEngageTime
+	memSpearChargePosition
+	memSpearFleeingTime
+	memSpearFleeingPosition
 	memMemoryTypeCount
 )
 
