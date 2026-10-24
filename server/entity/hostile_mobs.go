@@ -1166,7 +1166,7 @@ func (m *HostileMob) finalizeHuskCamel(reason string, r *vanilla.Random) {
 		return
 	}
 	pos := m.Position()
-	if !naturalCollisionFree(m.tx, CamelHuskType.BBox(nil).Translate(pos)) {
+	if !spawnNoCollision(m.tx, CamelHuskType.BBox(nil).Translate(pos)) {
 		return
 	}
 	data.triedToSpawnCamelHusk = true

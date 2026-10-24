@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/scoreboard"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/df-mc/goleveldb/leveldb"
@@ -72,21 +72,24 @@ type World struct {
 	border worldBorder
 	// tick is the per-world tick counter used by worlds that do not advance the
 	// shared Settings, such as the Nether, End and custom dimensions.
-	tick                      int64
-	tickFrozen                atomic.Bool
-	stepTicks                 atomic.Int64
-	sprintTicks               atomic.Int64
-	tickRate                  atomic.Uint64
-	forcedChunksMu            sync.RWMutex
-	forcedChunks              map[ChunkPos]struct{}
-	forcedChunksLoaded        bool
-	scoreboardOnce            sync.Once
-	scoreboardModel           *scoreboard.Model
+	tick               int64
+	tickFrozen         atomic.Bool
+	stepTicks          atomic.Int64
+	sprintTicks        atomic.Int64
+	tickRate           atomic.Uint64
+	forcedChunksMu     sync.RWMutex
+	forcedChunks       map[ChunkPos]struct{}
+	forcedChunksLoaded bool
+	scoreboardOnce     sync.Once
+	scoreboardModel    *scoreboard.Model
 	// gameRules caches persisted non-native Java gamerules.
-	gameRulesMu sync.Mutex
-	gameRules   map[string]any
+	gameRulesMu               sync.Mutex
+	gameRules                 map[string]any
 	handler                   atomic.Pointer[Handler]
 	structureReferenceQueryMu sync.Mutex
+	// spawnStructures caches the structures overriding natural spawns in
+	// each chunk.
+	spawnStructures           spawnStructureCache
 	structureReferenceMu      sync.Mutex
 	structureReferences       map[StructureReference]struct{}
 	structureReferencesLoaded bool
@@ -148,22 +151,22 @@ type World struct {
 	pois                map[cube.Pos]POI
 	// poiClasses classifies the POI of every block state by runtime ID. It is
 	// built on first use, once the block registry is final.
-	poiClasses          []poiClass
-	poiClassesOnce      sync.Once
-	raids               map[int64]*Raid
-	raidByRaider        map[uuid.UUID]int64
-	nextRaidID          int64
-	dragonFight         DragonFightController
-	dragonArena         *Loader
-	javaHeightmapTags   [2]map[uint32]bool
+	poiClasses        []poiClass
+	poiClassesOnce    sync.Once
+	raids             map[int64]*Raid
+	raidByRaider      map[uuid.UUID]int64
+	nextRaidID        int64
+	dragonFight       DragonFightController
+	dragonArena       *Loader
+	javaHeightmapTags [2]map[uint32]bool
 
-	scratchRandom                []cube.Pos
-	scratchBlockEntities         []cube.Pos
-	scratchLoaderAreas           []loaderActiveArea
-	scratchFocus                 []ChunkPos
+	scratchRandom        []cube.Pos
+	scratchBlockEntities []cube.Pos
+	scratchLoaderAreas   []loaderActiveArea
+	scratchFocus         []ChunkPos
 	// saver writes saved columns in the background; it is nil for
 	// synchronous and read-only worlds, which write them at once.
-	saver *chunkSaver
+	saver                        *chunkSaver
 	scratchInhabitedPlayers      []inhabitedTimePlayer
 	scratchPostProcessingColumns []columnRef
 

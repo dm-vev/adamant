@@ -127,33 +127,11 @@ func villagerFullLook() prioritizedBehavior {
 
 // entityMobCategory returns the MobCategory of the type of an entity.
 func entityMobCategory(e world.Entity) string {
-	switch id := e.H().Type().EncodeEntity(); id {
-	case "minecraft:player", "minecraft:villager", "minecraft:villager_v2", "minecraft:iron_golem", "minecraft:snow_golem", "minecraft:armor_stand",
-		"minecraft:copper_golem", "minecraft:mannequin":
-		return "misc"
-	case "minecraft:allay", "minecraft:happy_ghast", "minecraft:wandering_trader", "minecraft:ocelot", "minecraft:mule", "minecraft:skeleton_horse",
-		"minecraft:trader_llama", "minecraft:zombie_horse", "minecraft:camel_husk", "minecraft:nautilus":
-		return "creature"
-	default:
-		c, _ := naturalCategory(id)
-		switch c {
-		case spawnCreature:
-			return "creature"
-		case spawnAmbient:
-			return "ambient"
-		case spawnWaterCreature:
-			return "water_creature"
-		case spawnWaterAmbient:
-			return "water_ambient"
-		case spawnUndergroundWaterCreature:
-			return "underground_water_creature"
-		case spawnAxolotls:
-			return "axolotls"
-		case spawnMonster:
-			return "monster"
-		}
+	c, ok := mobCategories[loot.JavaEntityID(e)]
+	if !ok {
 		return "misc"
 	}
+	return spawnCategoryName(c)
 }
 
 func isVillagerMob(e world.Entity) bool { _, ok := e.(*Villager); return ok }

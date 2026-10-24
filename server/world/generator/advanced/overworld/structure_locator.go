@@ -184,3 +184,69 @@ func modernLocatePosition(placement map[string]any, chunkX, chunkZ int32) cube.P
 	}
 	return cube.Pos{int(chunkX*16 + x), int(y), int(chunkZ*16 + z)}
 }
+
+// spawnOverrideStructures are the structures whose spawn_overrides replace
+// the natural spawns within them.
+var spawnOverrideStructures = map[string]bool{
+	"minecraft:ancient_city": true, "minecraft:monument": true, "minecraft:pillager_outpost": true,
+	"minecraft:swamp_hut": true, "minecraft:trial_chambers": true,
+}
+
+// SpawnStructures returns the starts of the structures overriding natural
+// spawns whose bounding boxes overlap the chunk, with the bounds of their
+// pieces as they are now placed.
+func (g *Overworld) SpawnStructures(pos world.ChunkPos) []world.StructureArea {
+	s := g.modernStructures
+	if s == nil {
+		return nil
+	}
+	var areas []world.StructureArea
+	for _, set := range s.sets {
+		if !setContainsWanted(set, spawnOverrideStructures) {
+			continue
+		}
+		for dz := int32(-8); dz <= 8; dz++ {
+			for dx := int32(-8); dx <= 8; dx++ {
+				candidate, ok := s.candidate(set, int32(pos[0])+dx, int32(pos[1])+dz)
+				if !ok {
+					continue
+				}
+				start, ok := s.makeStart(set, candidate[0], candidate[1])
+				if !ok || !spawnOverrideStructures[start.name] || !intersectsChunk(start.box, pos) {
+					continue
+				}
+				areas = append(areas, g.structureArea(start))
+			}
+		}
+	}
+	return areas
+}
+
+// structureArea returns the area of a start, with the bounds pieces whose
+// height changes on placement have now.
+func (g *Overworld) structureArea(start modernStructureStart) world.StructureArea {
+	area := world.StructureArea{ID: start.name, Box: worldBox(start.box)}
+	var state *modernStructureStartState
+	if start.mutablePieces {
+		state = g.modernStructures.pieceStates.lookup(start.key)
+	}
+	if state != nil {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+		if err := state.prepare(start); err != nil {
+			state = nil
+		}
+	}
+	for i, piece := range start.pieces {
+		var flags *structure.StructurePieceState
+		if state != nil {
+			flags = &state.pieces[i]
+		}
+		area.Pieces = append(area.Pieces, worldBox(mutableStructurePieceBounds(piece, flags)))
+	}
+	return area
+}
+
+func worldBox(b structure.Box) [2]cube.Pos {
+	return [2]cube.Pos{{int(b.Min[0]), int(b.Min[1]), int(b.Min[2])}, {int(b.Max[0]), int(b.Max[1]), int(b.Max[2])}}
+}
