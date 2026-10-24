@@ -335,7 +335,21 @@ func (b *hostileState) setDropChance(slot int, chance float32) {
 // afterAiStep picks up loot as Mob.aiStep does for the zombies and
 // skeletons that may. Raiders pick up loot of their own accord.
 func (b *hostileState) afterAiStep(m *Mob) {
-	if !b.canPickupLoot || b.dead || hostileRaidMob(b.kind) || b.kind == "minecraft:vex" || b.kind == "minecraft:witch" {
+	if !b.canPickupLoot || b.dead || b.kind == "minecraft:vex" || b.kind == "minecraft:witch" {
+		return
+	}
+	if hostileRaidMob(b.kind) {
+		// Pillager.pickUpItem: a raider that may pick up loot takes the
+		// banners lying near, which make it captain of its wave.
+		if mobGriefingDisabled(m.tx) {
+			return
+		}
+		box := m.BBox().GrowVec3(mgl64.Vec3{1, 0, 1})
+		for e := range m.tx.EntitiesWithin(box.Grow(1)) {
+			if stack, ok := pickableItem(e); ok && ominousBanner(stack) && e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
+				raiderPickUpItem(m, e)
+			}
+		}
 		return
 	}
 	var wants, preferred func(item.Stack) bool
