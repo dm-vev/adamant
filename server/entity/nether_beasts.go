@@ -2,13 +2,16 @@ package entity
 
 import (
 	"math"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -21,36 +24,41 @@ const (
 )
 
 type netherBeastState struct {
-	health                          *HealthManager
-	kind                            netherBeastKind
-	effects                         *EffectManager
-	mc                              *MovementComputer
-	age, attackCooldown, conversion int
-	immune, dead                    bool
-	targetUUID                      string
-	speed                           float64
-	navigator                       Navigator
-	wander, repellentScan           int
-	repellent                       *cube.Pos
-	breeding                        breeding
-	// pacified counts down the ticks a hoglin stays peaceful after it saw a
-	// repellent, as BecomePassiveIfMemoryPresent remembers.
-	pacified int
+	health     *HealthManager
+	kind       netherBeastKind
+	effects    *EffectManager
+	ai         MobAI
+	br         *Brain
+	age        int
+	conversion int
+	// attackAnimation is HoglinBase.getAttackAnimationRemainingTicks.
+	attackAnimation int
+	immune, dead    bool
+	cannotBeHunted  bool
+	speed           float64
+	breeding        breeding
 }
 type netherBeastConfig struct {
-	kind                       netherBeastKind
-	health                     float64
-	age                        int
-	immune                     bool
-	attackCooldown, conversion int
+	kind           netherBeastKind
+	health         float64
+	age            int
+	immune         bool
+	cannotBeHunted bool
+	conversion     int
 }
 
 func (c netherBeastConfig) Apply(d *world.EntityData) {
-	h, speed := 40.0, .3
+	h := 40.0
 	if c.health > 0 {
 		h = c.health
 	}
-	d.Data = &netherBeastState{kind: c.kind, health: NewHealthManager(h, h), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, age: c.age, immune: c.immune, attackCooldown: c.attackCooldown, conversion: c.conversion, speed: speed}
+	s := &netherBeastState{kind: c.kind, health: NewHealthManager(h, 40), effects: NewEffectManager(), age: c.age, immune: c.immune, cannotBeHunted: c.cannotBeHunted, conversion: c.conversion, speed: .3}
+	if c.kind == hoglinKind {
+		s.br = newHoglinBrain(s)
+	} else {
+		s.br = newZoglinBrain()
+	}
+	d.Data = s
 }
 func (t netherBeastType) EncodeEntity() string { return t.id }
 func (t netherBeastType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
@@ -92,7 +100,7 @@ func (t netherBeastType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	if age == 0 && nbtconv.Bool(j, "IsBaby") {
 		age = -24000
 	}
-	c := netherBeastConfig{kind: t.kind, age: age, immune: nbtconv.Bool(n, "IsImmuneToZombification"), attackCooldown: int(nbtconv.Int32(j, "AttackCooldown")), conversion: int(nbtconv.Int32(n, "TimeInOverworld"))}
+	c := netherBeastConfig{kind: t.kind, age: age, immune: nbtconv.Bool(n, "IsImmuneToZombification"), cannotBeHunted: nbtconv.Bool(j, "CannotBeHunted"), conversion: int(nbtconv.Int32(n, "TimeInOverworld"))}
 	if x, ok := nativeMobAttribute(n, "minecraft:health"); ok {
 		c.health = x.Current
 	} else if _, ok := j["Health"]; ok {
@@ -117,7 +125,11 @@ func (t netherBeastType) EncodeNBT(d *world.EntityData) map[string]any {
 	if j == nil {
 		j = make(map[string]any)
 	}
-	j["Age"], j["AttackCooldown"] = int32(s.age), int32(s.attackCooldown)
+	j["Age"] = int32(s.age)
+	delete(j, "AttackCooldown")
+	if t.kind == hoglinKind {
+		j["CannotBeHunted"] = byte(boolByte(s.cannotBeHunted))
+	}
 	if t.kind != zoglinKind {
 		s.breeding.encodeNBT(j)
 	}
@@ -127,218 +139,453 @@ func (h *Hoglin) SpeciesType() world.EntityType { return HoglinType }
 func (z *Zoglin) SpeciesType() world.EntityType { return ZoglinType }
 func (h *Hoglin) Tick(tx *world.Tx, n int64)    { h.beast().effects.Tick(h, tx); h.Ent.Tick(tx, n) }
 func (z *Zoglin) Tick(tx *world.Tx, n int64)    { z.beast().effects.Tick(z, tx); z.Ent.Tick(tx, n) }
-func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
-	// Hoglins are animals that grow up and breed; zoglins stay as they
-	// were born.
-	var partner mgl64.Vec3
-	var inLove bool
-	if s.kind == hoglinKind {
-		partner, inLove = tickBreeding(&Hoglin{Ent: e}, tx)
+func (s *netherBeastState) mobAI() *MobAI       { return &s.ai }
+func (s *netherBeastState) brain() *Brain       { return s.br }
+
+// self returns the entity of the beast.
+func (s *netherBeastState) self(e *Ent) world.Entity {
+	if s.kind == zoglinKind {
+		return &Zoglin{e}
 	}
-	if s.attackCooldown > 0 {
-		s.attackCooldown--
-	}
-	if s.kind == hoglinKind {
-		if s.repellentScan > 0 {
-			s.repellentScan--
-		}
-		if s.repellentScan == 0 {
-			s.repellent = nearestHoglinRepellent(tx, e.Position(), 8, 4)
-			s.repellentScan = 10
-		}
-		if s.repellent != nil {
-			s.pacified = 200
-		} else if s.pacified > 0 {
-			s.pacified--
-		}
-	}
-	if s.kind == hoglinKind {
-		if !s.immune && tx.World().Dimension() == world.Overworld {
-			s.conversion++
-			if s.conversion > 300 {
-				new := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion"}.New(ZoglinType, netherBeastConfig{kind: zoglinKind, age: s.age})
-				tx.AddEntity(new)
-				_ = e.CloseIn(tx)
-				return nil
-			}
-		} else if tx.World().Dimension() != world.Overworld {
-			s.conversion = 0
-		}
-	}
-	repellent := s.repellent
-	target, dist := beastTarget(e, tx, s.kind)
-	if s.kind == hoglinKind && s.targetUUID != "" {
-		for candidate := range tx.Entities() {
-			if candidate.H().UUID().String() == s.targetUUID {
-				if l, ok := candidate.(Living); ok && !l.Dead() {
-					target = candidate
-					dist = candidate.Position().Sub(e.Position()).Len()
-				}
-				break
-			}
-		}
-	}
-	if s.kind == hoglinKind && target != nil && dist < 8 && repellent != nil {
-		target = nil
-	}
-	if s.kind == zoglinKind && target == nil {
-		target, dist = beastTarget(e, tx, s.kind)
-	}
-	if s.kind == hoglinKind && inLove {
-		// AnimalMakeLove: a breeding hoglin forgets its attack target and
-		// walks to its partner at 0.6 times its speed.
-		beastMoveAt(e, partner, groundSpeed(.3, .6))
-		return beastMoveFinish(s, e, tx)
-	}
-	if target != nil {
-		if dist < 2.25 && s.attackCooldown == 0 {
-			damage := 6.0
-			if s.age < 0 {
-				damage = 0.5
-			}
-			if l, ok := target.(Living); ok {
-				l.Hurt(damage, AttackDamageSource{Attacker: e})
-				s.attackCooldown = 20
-				if s.kind == hoglinKind {
-					if s.age < 0 {
-						s.attackCooldown = 15
-					} else {
-						s.attackCooldown = 40
-					}
-				}
-				if s.age >= 0 {
-					d := target.Position().Sub(e.Position())
-					d[1] = .5
-					if d.Len() > 0 {
-						d = d.Normalize().Mul(1.2)
-					}
-					if knock, ok := target.(interface{ SetVelocity(mgl64.Vec3) }); ok {
-						knock.SetVelocity(d)
-					}
-				}
-				if s.kind == hoglinKind {
-					hoglinAlert(e, tx, target)
-				}
-			}
-		} else {
-			beastMove(s, e, tx, target.Position())
-		}
-		return beastMoveFinish(s, e, tx)
-	}
-	if s.kind == hoglinKind && repellent != nil {
-		away := e.Position().Sub(repellent.Vec3().Add(mgl64.Vec3{.5, 0, .5}))
-		away[1] = 0
-		if away.Len() > 0 {
-			beastMove(s, e, tx, e.Position().Add(away.Normalize().Mul(8)))
-			return beastMoveFinish(s, e, tx)
-		}
-	}
-	return beastWander(s, e, tx)
-}
-func beastMove(s *netherBeastState, e *Ent, tx *world.Tx, p mgl64.Vec3) {
-	beastMoveAt(e, p, s.speed)
+	return &Hoglin{e}
 }
 
-func beastMoveAt(e *Ent, p mgl64.Vec3, speed float64) {
-	d := p.Sub(e.Position())
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize()
+// Tick runs a tick of the beast: the ageing and love of a hoglin, and its
+// MobAI with its brain.
+func (s *netherBeastState) Tick(e *Ent, tx *world.Tx) *Movement {
+	self := s.self(e)
+	s.ai.MovementSpeed = s.speed
+	if s.age < 0 {
+		// Hoglin.BABY_DIMENSIONS.
+		s.ai.EyeHeight = .625
+	} else {
+		s.ai.EyeHeight = 0
 	}
-	v := e.data.Vel
-	v[0], v[2] = d[0]*speed, d[2]*speed
-	r := e.data.Rot
-	if d.Len() > 0 {
-		r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
+	if s.kind == hoglinKind {
+		tickAgeing(self.(*Hoglin), tx)
 	}
-	e.data.Rot = r
-	e.data.Vel = v
+	return s.ai.Tick(e, self, nil)
 }
-func beastMoveFinish(s *netherBeastState, e *Ent, tx *world.Tx) *Movement {
-	m := s.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func beastWander(s *netherBeastState, e *Ent, tx *world.Tx) *Movement {
-	if s.wander > 0 {
-		s.wander--
-	}
-	if s.navigator.Index >= len(s.navigator.Path) && s.wander == 0 {
-		s.wander = 50
-		start := cube.PosFromVec3(e.Position())
-		for range 4 {
-			goal := start.Add(cube.Pos{int(s.mcRandom(e, tx, 13)) - 6, 0, int(s.mcRandom(e, tx, 13)) - 6})
-			if s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 96}, navigatorTick(e)) {
-				break
-			}
+
+// customServerAiStep ports Hoglin.customServerAiStep and Zoglin's.
+func (s *netherBeastState) customServerAiStep(m *Mob) {
+	old, _ := s.br.activeNonCore()
+	s.br.tick(m)
+	if s.kind == zoglinKind {
+		// Zoglin.updateActivity.
+		s.br.setActiveToFirstValid(activityFight, activityIdle)
+		if now, _ := s.br.activeNonCore(); now == activityFight && old != activityFight {
+			s.makeSound(m, "mob.zoglin.angry")
 		}
+		m.SetAggressive(s.br.has(memAttackTarget))
+		return
 	}
-	if p, ok := s.navigator.Tick(e.Position(), navigatorTick(e), .9); ok {
-		if p.Sub(e.Position()).Len() < .3 {
-			s.navigator.Index++
-		} else {
-			beastMove(s, e, tx, p)
+	// HoglinAi.updateActivity.
+	s.br.setActiveToFirstValid(activityFight, activityAvoid, activityIdle)
+	if now, _ := s.br.activeNonCore(); now != old {
+		s.makeSound(m, s.activitySound(m))
+	}
+	m.SetAggressive(s.br.has(memAttackTarget))
+	if s.converting(m) {
+		if s.conversion++; s.conversion > 300 {
+			s.makeSound(m, "mob.hoglin.converted_to_zombified")
+			s.finishConversion(m)
 		}
 	} else {
-		v := e.data.Vel
-		v[0], v[2] = 0, 0
-		e.data.Vel = v
-	}
-	return beastMoveFinish(s, e, tx)
-}
-func (s *netherBeastState) mcRandom(e *Ent, tx *world.Tx, n int) int {
-	return int((uint64(tx.CurrentTick()+int64(cube.PosFromVec3(e.Position()).X()*17+cube.PosFromVec3(e.Position()).Z()*31))%uint64(n) + uint64(n)) % uint64(n))
-}
-func beastTarget(e *Ent, tx *world.Tx, k netherBeastKind) (world.Entity, float64) {
-	r := 16.0
-	box := cube.Box(-r, -8, -r, r, 8, r).Translate(e.Position())
-	var target world.Entity
-	best := r
-	for other := range tx.EntitiesWithin(box) {
-		if other == e {
-			continue
-		}
-		id := other.H().Type().EncodeEntity()
-		if k == hoglinKind && (id == "minecraft:hoglin" || id == "minecraft:zoglin" || id == "minecraft:piglin" || id == "minecraft:piglin_brute" || id == "minecraft:zombified_piglin") {
-			continue
-		}
-		if k == zoglinKind && (id == "minecraft:zoglin" || id == "minecraft:creeper") {
-			continue
-		}
-		l, ok := other.(Living)
-		if !ok || l.Dead() {
-			continue
-		}
-		d := other.Position().Sub(e.Position()).Len()
-		if d < best {
-			target, best = other, d
-		}
-	}
-	return target, best
-}
-func hoglinAlert(e *Ent, tx *world.Tx, target world.Entity) {
-	for other := range tx.EntitiesWithin(cube.Box(-16, -8, -16, 16, 8, 16).Translate(e.Position())) {
-		if h, ok := other.(*Hoglin); ok && h.H() != e.handle && h.beast().age >= 0 {
-			h.beast().targetUUID = target.H().UUID().String()
-		}
+		s.conversion = 0
 	}
 }
-func nearestHoglinRepellent(tx *world.Tx, p mgl64.Vec3, h, v int) *cube.Pos {
-	start := cube.PosFromVec3(p)
-	for x := -h; x <= h; x++ {
-		for y := -v; y <= v; y++ {
-			for z := -h; z <= h; z++ {
-				q := start.Add(cube.Pos{x, y, z})
-				id, _ := tx.Block(q).EncodeBlock()
-				switch id {
-				case "minecraft:warped_fungus", "minecraft:nether_portal", "minecraft:respawn_anchor":
-					return &q
+
+// afterAiStep counts down the attack animation of the beast, as aiStep.
+func (s *netherBeastState) afterAiStep(*Mob) {
+	if s.attackAnimation > 0 {
+		s.attackAnimation--
+	}
+}
+
+// makeSound ports Mob.makeSound.
+func (s *netherBeastState) makeSound(m *Mob, name string) {
+	r := m.Random()
+	pitch := float64((r.NextFloat()-r.NextFloat())*.2 + 1)
+	if s.age < 0 {
+		pitch = float64((r.NextFloat()-r.NextFloat())*.2 + 1.5)
+	}
+	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: name, Volume: 1, Pitch: pitch})
+}
+
+// activitySound ports HoglinAi.getSoundForActivity.
+func (s *netherBeastState) activitySound(m *Mob) string {
+	act, _ := s.br.activeNonCore()
+	switch {
+	case act == activityAvoid || s.converting(m):
+		return "mob.hoglin.retreat"
+	case act == activityFight:
+		return "mob.hoglin.angry"
+	case s.br.has(memNearestRepellent):
+		return "mob.hoglin.retreat"
+	}
+	return "mob.hoglin.ambient"
+}
+
+// converting ports Hoglin.isConverting: a hoglin out of the nether turns
+// into a zoglin.
+func (s *netherBeastState) converting(m *Mob) bool {
+	return !s.immune && !m.AI.NoAI && m.tx.World().Dimension() == world.Overworld
+}
+
+// finishConversion ports Hoglin.finishConversion: the hoglin becomes a
+// zoglin, sick for ten seconds.
+func (s *netherBeastState) finishConversion(m *Mob) {
+	z := m.tx.AddEntity(world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion"}.New(ZoglinType, netherBeastConfig{kind: zoglinKind, age: min(s.age, 0)}))
+	z.(*Zoglin).AddEffect(effect.New(effect.Nausea, 1, 10*time.Second))
+	s.dead = true
+	_ = m.CloseIn(m.tx)
+}
+
+// walkTargetValue ports Hoglin.getWalkTargetValue: hoglins keep away from
+// repellents and like crimson nylium. Zoglins have no preference.
+func (s *netherBeastState) walkTargetValue(m *Mob, pos cube.Pos) float64 {
+	if s.kind == zoglinKind {
+		return 0
+	}
+	if v, ok := s.br.get(memNearestRepellent); ok && distSqrPos(v.(cube.Pos), pos) < 64 {
+		return -1
+	}
+	if name, _ := m.tx.Block(pos.Side(cube.FaceDown)).EncodeBlock(); name == "minecraft:crimson_nylium" {
+		return 10
+	}
+	return 0
+}
+
+// doHurtTarget ports Hoglin.doHurtTarget and Zoglin's: the beast gores its
+// target for half to one and a half times its attack damage and tosses it.
+func (s *netherBeastState) doHurtTarget(m *Mob, target world.Entity) bool {
+	l, ok := target.(Living)
+	if !ok {
+		return false
+	}
+	s.attackAnimation = 10
+	if s.kind == zoglinKind {
+		s.makeSound(m, "mob.zoglin.attack")
+	} else {
+		s.makeSound(m, "mob.hoglin.attack")
+		hoglinOnHitTarget(m, s, target)
+	}
+	damage := 6.0
+	if s.age < 0 {
+		damage = .5
+	} else {
+		damage = damage/2 + float64(m.Random().NextInt(int32(damage)))
+	}
+	if _, hurt := l.Hurt(damage, AttackDamageSource{Attacker: m.Self}); !hurt {
+		return false
+	}
+	if s.age >= 0 {
+		hoglinThrowTarget(m, target)
+	}
+	return true
+}
+
+// hoglinThrowTarget ports HoglinBase.throwTarget: an adult tosses what it
+// hits up and away, less so what resists knockback.
+func hoglinThrowTarget(m *Mob, target world.Entity) {
+	power := 1 - entityKnockbackResistance(target)
+	if power <= 0 {
+		return
+	}
+	v, ok := target.(interface {
+		Velocity() mgl64.Vec3
+		SetVelocity(mgl64.Vec3)
+	})
+	if !ok {
+		return
+	}
+	r := m.Random()
+	angle := float64(r.NextInt(21)-10) * math.Pi / 180
+	horizontal := power * float64(r.NextFloat()*.5+.2)
+	d := mgl64.Vec3{target.Position()[0] - m.data.Pos[0], 0, target.Position()[2] - m.data.Pos[2]}
+	if d.LenSqr() > 0 {
+		d = d.Normalize().Mul(horizontal)
+	}
+	// Vec3.yRot.
+	cos, sin := math.Cos(angle), math.Sin(angle)
+	push := mgl64.Vec3{d[0]*cos + d[2]*sin, power * float64(r.NextFloat()) * .5, d[2]*cos - d[0]*sin}
+	v.SetVelocity(v.Velocity().Add(push))
+}
+
+// entityKnockbackResistance returns the knockback resistance attribute of an
+// entity.
+func entityKnockbackResistance(e world.Entity) float64 {
+	if k, ok := e.(interface{ KnockbackResistance() float64 }); ok {
+		return k.KnockbackResistance()
+	}
+	if a, ok := e.(interface{ Armour() *inventory.Armour }); ok {
+		return a.Armour().KnockBackResistance()
+	}
+	return 0
+}
+
+// KnockbackResistance returns the knockback resistance of the hoglin.
+func (h *Hoglin) KnockbackResistance() float64 { return .6 }
+
+// KnockbackResistance returns the knockback resistance of the zoglin.
+func (z *Zoglin) KnockbackResistance() float64 { return .6 }
+
+// AttackAnimation returns the ticks left of the attack animation of the
+// hoglin.
+func (h *Hoglin) AttackAnimation() int { return h.beast().attackAnimation }
+
+// newHoglinBrain ports HoglinAi and the brain provider of Hoglin.
+func newHoglinBrain(s *netherBeastState) *Brain {
+	br := newBrain(nearestLivingEntitySensor{}, playerSensor{}, adultSensor{}, hoglinSpecificSensor{})
+	adult := func(*Mob) bool { return s.age >= 0 }
+	idleMovement := func() behaviorControl {
+		return newRunOne(nil,
+			weightedBehavior{newRandomStroll(.4, true), 2},
+			weightedBehavior{newSetWalkTargetFromLookTarget(nil, constSpeed(.4), 3), 2},
+			weightedBehavior{newDoNothing(30, 60), 1},
+		)
+	}
+	br.addActivity(activityCore, 0, newLookAtTargetSink(45, 90), newMoveToTargetSink(150, 250, nil))
+	br.addActivity(activityIdle, 10,
+		newBecomePassiveIfMemoryPresent(memNearestRepellent, 200),
+		newAnimalMakeLove(HoglinType, .6, 2),
+		newSetWalkTargetAwayFrom(memNearestRepellent, 1, 8, true, func(m *Mob, v any) mgl64.Vec3 {
+			return v.(cube.Pos).Vec3Middle()
+		}),
+		newStartAttacking(nil, func(m *Mob) world.Entity {
+			if br := m.Brain(); br.has(memPacified) || br.has(memBreedTarget) {
+				return nil
+			}
+			return m.Brain().entity(m, memNearestVisibleAttackablePlayer)
+		}),
+		newTriggerIf(adult, newSetWalkTargetAwayFrom(memNearestVisibleAdultPiglin, .4, 8, false, entityMemoryPos)),
+		newSetEntityLookTargetSometimes(nil, 8, uniformInt{30, 60}),
+		newBabyFollowAdult(uniformInt{5, 16}, constSpeed(.6), memNearestVisibleAdult, false),
+		idleMovement(),
+	)
+	br.addActivityWith(activityFight, prioritiesFrom(10,
+		newBecomePassiveIfMemoryPresent(memNearestRepellent, 200),
+		newAnimalMakeLove(HoglinType, .6, 2),
+		newSetWalkTargetFromAttackTargetIfTargetOutOfReach(constSpeed(1)),
+		newTriggerIf(adult, newMeleeAttack(40)),
+		newTriggerIf(func(*Mob) bool { return s.age < 0 }, newMeleeAttack(15)),
+		newStopAttackingIfTargetInvalid(nil, nil, true),
+		newEraseMemoryIf(isBreeding, memAttackTarget),
+	), []memoryCondition{{memAttackTarget, memPresent}}, []memoryType{memAttackTarget})
+	br.addActivityWith(activityAvoid, prioritiesFrom(10,
+		newSetWalkTargetAwayFrom(memAvoidTarget, 1.3, 15, false, entityMemoryPos),
+		idleMovement(),
+		newSetEntityLookTargetSometimes(nil, 8, uniformInt{30, 60}),
+		newEraseMemoryIf(func(m *Mob) bool { return s.age >= 0 && !hoglinPiglinsOutnumber(m, s) }, memAvoidTarget),
+	), []memoryCondition{{memAvoidTarget, memPresent}}, []memoryType{memAvoidTarget})
+	return br
+}
+
+// newZoglinBrain ports the brain of Zoglin.
+func newZoglinBrain() *Brain {
+	br := newBrain(nearestLivingEntitySensor{}, playerSensor{})
+	br.addActivity(activityCore, 0, newLookAtTargetSink(45, 90), newMoveToTargetSink(150, 250, nil))
+	br.addActivity(activityIdle, 10,
+		newStartAttacking(nil, func(m *Mob) world.Entity {
+			v := visibleLiving(m)
+			if v == nil {
+				return nil
+			}
+			return v.findClosest(m, func(e world.Entity) bool {
+				return e.H().Type() != ZoglinType && e.H().Type().EncodeEntity() != "minecraft:creeper" && sensorAttackable(m, e)
+			})
+		}),
+		newSetEntityLookTargetSometimes(nil, 8, uniformInt{30, 60}),
+		newRunOne(nil,
+			weightedBehavior{newRandomStroll(.4, true), 2},
+			weightedBehavior{newSetWalkTargetFromLookTarget(nil, constSpeed(.4), 3), 2},
+			weightedBehavior{newDoNothing(30, 60), 1},
+		),
+	)
+	br.addActivityWith(activityFight, prioritiesFrom(10,
+		newSetWalkTargetFromAttackTargetIfTargetOutOfReach(constSpeed(1)),
+		newTriggerIf(func(m *Mob) bool { return !mobBaby(m.Self) }, newMeleeAttack(40)),
+		newTriggerIf(func(m *Mob) bool { return mobBaby(m.Self) }, newMeleeAttack(15)),
+		newStopAttackingIfTargetInvalid(nil, nil, true),
+	), []memoryCondition{{memAttackTarget, memPresent}}, []memoryType{memAttackTarget})
+	return br
+}
+
+// prioritiesFrom pairs behaviours with priorities counting up from first,
+// as ActivityData.createPriorityPairs.
+func prioritiesFrom(first int, behaviors ...behaviorControl) []prioritizedBehavior {
+	pairs := make([]prioritizedBehavior, len(behaviors))
+	for i, b := range behaviors {
+		pairs[i] = prioritizedBehavior{first + i, b}
+	}
+	return pairs
+}
+
+// entityMemoryPos returns the position of the entity a memory holds.
+func entityMemoryPos(m *Mob, v any) mgl64.Vec3 {
+	if e, ok := v.(*world.EntityHandle).Entity(m.tx); ok {
+		return e.Position()
+	}
+	return m.data.Pos
+}
+
+// hoglinSpecificSensor ports HoglinSpecificSensor: the nearest repellent,
+// and the adult piglins and hoglins the hoglin sees.
+type hoglinSpecificSensor struct{}
+
+func (hoglinSpecificSensor) scanRate() int { return 0 }
+func (hoglinSpecificSensor) requires() []memoryType {
+	return []memoryType{memNearestVisibleLivingEntities, memNearestRepellent, memNearestVisibleAdultPiglin, memNearestVisibleAdultHoglins,
+		memVisibleAdultPiglinCount, memVisibleAdultHoglinCount}
+}
+
+func (hoglinSpecificSensor) doTick(m *Mob, b *Brain) {
+	if p, ok := findManhattanBox(m.BlockPos(), 8, 4, func(p cube.Pos) bool { return blockInTag(m.tx.Block(p), "hoglin_repellents") }); ok {
+		b.set(memNearestRepellent, p)
+	} else {
+		b.erase(memNearestRepellent)
+	}
+	var piglin world.Entity
+	piglins := 0
+	var hoglins []*world.EntityHandle
+	if v := visibleLiving(m); v != nil {
+		for _, e := range v.findAll(m, func(e world.Entity) bool { return !mobBaby(e) }) {
+			switch e.H().Type().EncodeEntity() {
+			case "minecraft:piglin":
+				piglins++
+				if piglin == nil {
+					piglin = e
 				}
+			case "minecraft:hoglin":
+				hoglins = append(hoglins, e.H())
 			}
 		}
 	}
-	return nil
+	b.setEntity(memNearestVisibleAdultPiglin, piglin)
+	b.set(memNearestVisibleAdultHoglins, hoglins)
+	b.set(memVisibleAdultPiglinCount, piglins)
+	b.set(memVisibleAdultHoglinCount, len(hoglins))
 }
+
+// hoglinPiglinsOutnumber ports HoglinAi.piglinsOutnumberHoglins.
+func hoglinPiglinsOutnumber(m *Mob, s *netherBeastState) bool {
+	if s.age < 0 {
+		return false
+	}
+	piglins, _ := m.Brain().int(memVisibleAdultPiglinCount)
+	hoglins, _ := m.Brain().int(memVisibleAdultHoglinCount)
+	return piglins > hoglins+1
+}
+
+// visibleAdultHoglins returns the adult hoglins the hoglin sees.
+func visibleAdultHoglins(m *Mob) []*Mob {
+	v, _ := m.Brain().get(memNearestVisibleAdultHoglins)
+	handles, _ := v.([]*world.EntityHandle)
+	var out []*Mob
+	for _, h := range handles {
+		if e, ok := h.Entity(m.tx); ok {
+			if hm, ok := brainMobOf(e); ok {
+				out = append(out, hm)
+			}
+		}
+	}
+	return out
+}
+
+// hoglinOnHitTarget ports HoglinAi.onHitTarget: an adult hoglin that hits a
+// piglin while piglins outnumber hoglins retreats with its herd, and
+// otherwise calls its herd to the fight.
+func hoglinOnHitTarget(m *Mob, s *netherBeastState, target world.Entity) {
+	if s.age < 0 {
+		return
+	}
+	if target.H().Type().EncodeEntity() == "minecraft:piglin" && hoglinPiglinsOutnumber(m, s) {
+		hoglinSetAvoidTarget(m, target)
+		for _, h := range visibleAdultHoglins(m) {
+			hoglinRetreatFrom(h, target)
+		}
+		return
+	}
+	hoglinBroadcastAttackTarget(m, target)
+}
+
+// hoglinRetreatFrom ports HoglinAi.retreatFromNearestTarget.
+func hoglinRetreatFrom(m *Mob, avoid world.Entity) {
+	b := m.Brain()
+	nearest := nearestOf(m, b.entity(m, memAvoidTarget), avoid)
+	nearest = nearestOf(m, b.entity(m, memAttackTarget), nearest)
+	hoglinSetAvoidTarget(m, nearest)
+}
+
+// nearestOf ports BehaviorUtils.getNearestTarget: of a possible target and
+// another, whichever is nearer.
+func nearestOf(m *Mob, current, other world.Entity) world.Entity {
+	if current == nil || m.DistanceToSqr(other) <= m.DistanceToSqr(current) {
+		return other
+	}
+	return current
+}
+
+// hoglinSetAvoidTarget ports HoglinAi.setAvoidTarget: the hoglin runs from
+// the target for five to twenty seconds.
+func hoglinSetAvoidTarget(m *Mob, avoid world.Entity) {
+	b := m.Brain()
+	b.erase(memAttackTarget)
+	b.erase(memWalkTarget)
+	b.setWithExpiry(memAvoidTarget, avoid.H(), int64(100+m.Random().NextInt(301)))
+}
+
+// hoglinSetAttackTarget ports HoglinAi.setAttackTarget.
+func hoglinSetAttackTarget(m *Mob, target world.Entity) {
+	b := m.Brain()
+	b.erase(memCantReachWalkTargetSince)
+	b.erase(memBreedTarget)
+	b.setWithExpiry(memAttackTarget, target.H(), 200)
+}
+
+// hoglinBroadcastAttackTarget ports HoglinAi.broadcastAttackTarget: each
+// adult hoglin in sight that is not pacified fights the nearer of its
+// target and this one.
+func hoglinBroadcastAttackTarget(m *Mob, target world.Entity) {
+	for _, h := range visibleAdultHoglins(m) {
+		if h.Brain().has(memPacified) {
+			continue
+		}
+		hoglinSetAttackTarget(h, nearestOf(h, h.Brain().entity(h, memAttackTarget), target))
+	}
+}
+
+// hoglinWasHurtBy ports HoglinAi.wasHurtBy: a hurt hoglin is no longer
+// pacified or in love, a piglet runs, and an adult fights back.
+func hoglinWasHurtBy(m *Mob, s *netherBeastState, attacker world.Entity) {
+	b := m.Brain()
+	b.erase(memPacified)
+	b.erase(memBreedTarget)
+	if s.age < 0 {
+		hoglinRetreatFrom(m, attacker)
+		return
+	}
+	if b.isActive(activityAvoid) && attacker.H().Type().EncodeEntity() == "minecraft:piglin" || attacker.H().Type() == HoglinType {
+		return
+	}
+	if otherTargetMuchFurther(m, attacker, 4) || !sensorAttackable(m, attacker) {
+		return
+	}
+	hoglinSetAttackTarget(m, attacker)
+	hoglinBroadcastAttackTarget(m, attacker)
+}
+
+// otherTargetMuchFurther ports
+// BehaviorUtils.isOtherTargetMuchFurtherAwayThanCurrentAttackTarget.
+func otherTargetMuchFurther(m *Mob, other world.Entity, by float64) bool {
+	current := m.Brain().entity(m, memAttackTarget)
+	if current == nil {
+		return false
+	}
+	return m.DistanceToSqr(other) > m.DistanceToSqr(current)+by*by
+}
+
 func (h *Hoglin) Health() float64        { return h.beast().health.Health() }
 func (z *Zoglin) Health() float64        { return z.beast().health.Health() }
 func (h *Hoglin) MaxHealth() float64     { return h.beast().health.MaxHealth() }
@@ -351,20 +598,18 @@ func beastHurt(e *Ent, self world.Entity, b *netherBeastState, d float64, src wo
 	if d <= 0 || b.dead {
 		return 0, false
 	}
-	if src.Fire() {
-		if _, ok := b.effects.Effect(effect.FireResistance); ok {
-			return 0, false
-		}
+	var ok bool
+	if d, ok = b.ai.DamageCooldown(e.tx, d); !ok {
+		return 0, false
 	}
-	if r, ok := b.effects.Effect(effect.Resistance); ok {
-		d *= effect.Resistance.Multiplier(src, r.Level())
+	if d, ok = mobEffectDamage(b.effects, d, src); !ok {
+		return 0, false
 	}
 	b.health.AddHealth(-d)
+	b.ai.Hurt(src)
 	if a, ok := self.(breeder); ok {
-		// Animal.hurtServer ends love mode, and Hoglin.wasHurtBy ends its
-		// peace with the attacker.
+		// Animal.hurtServer ends love mode.
 		resetLove(a)
-		b.pacified = 0
 	}
 	beastViewAction(e, HurtAction{})
 	onMobHurt(e.tx, self)
@@ -373,6 +618,17 @@ func beastHurt(e *Ent, self world.Entity, b *netherBeastState, d float64, src wo
 		beastViewAction(e, DeathAction{})
 		dropAllDeathLoot(e.tx, self, src)
 		_ = e.CloseIn(e.tx)
+		return d, true
+	}
+	if attacker, ok := mobKiller(src).(Living); ok && attacker != nil {
+		m := b.ai.Mob(e, self)
+		if b.kind == hoglinKind {
+			hoglinWasHurtBy(m, b, attacker)
+		} else if m.CanAttack(attacker) && !otherTargetMuchFurther(m, attacker, 4) {
+			// Zoglin.hurtServer.
+			m.Brain().erase(memCantReachWalkTargetSince)
+			m.Brain().setWithExpiry(memAttackTarget, attacker.H(), 200)
+		}
 	}
 	return d, true
 }
@@ -450,12 +706,16 @@ func (h *Hoglin) ageTicks() *int { return &h.beast().age }
 
 // breedingFood reports whether the stack is in #hoglin_food.
 func (h *Hoglin) breedingFood(stack item.Stack) bool {
-	return itemNamed(stack, "minecraft:crimson_fungus")
+	return blockItemInTag(stack, "hoglin_food") || inItemTag(stack, "hoglin_food")
 }
 
 // canFallInLove ports Hoglin.canFallInLove: a hoglin pacified by a
 // repellent will not fall in love.
-func (h *Hoglin) canFallInLove() bool { return h.beast().pacified == 0 }
+func (h *Hoglin) canFallInLove() bool { return !h.beast().br.has(memPacified) }
+
+// CanBeHunted ports Hoglin.canBeHunted: piglins hunt adult hoglins that were
+// not spawned as part of a piglin's hunt.
+func (h *Hoglin) CanBeHunted() bool { b := h.beast(); return b.age >= 0 && !b.cannotBeHunted }
 
 func (h *Hoglin) breedOffspring(*world.Tx, breeder) *world.EntityHandle {
 	return babyAt(h).New(HoglinType, netherBeastConfig{kind: hoglinKind, age: babyStartAge})

@@ -869,3 +869,62 @@ func newStayCloseToTarget(target func(m *Mob) (positionTracker, bool), shouldRun
 		return true
 	})
 }
+
+// newBecomePassiveIfMemoryPresent ports BecomePassiveIfMemoryPresent: a mob
+// that remembers what pacifies it stops attacking and stays pacified for a
+// while.
+func newBecomePassiveIfMemoryPresent(pacifying memoryType, duration int) *oneShot {
+	return newOneShot([]memoryCondition{{memAttackTarget, memRegistered}, {memPacified, memAbsent}, {pacifying, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		b.setWithExpiry(memPacified, true, int64(duration))
+		b.erase(memAttackTarget)
+		return true
+	})
+}
+
+// newSetWalkTargetAwayFrom ports SetWalkTargetAwayFrom: a mob within dist of
+// what a memory holds walks to a random spot away from it, breaking off what
+// it walks to only if interrupt. toPos returns where the memory value is.
+func newSetWalkTargetAwayFrom(mem memoryType, speed float64, dist int, interrupt bool, toPos func(m *Mob, v any) mgl64.Vec3) *oneShot {
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		wv, walking := b.get(memWalkTarget)
+		if walking && !interrupt {
+			return false
+		}
+		v, _ := b.get(mem)
+		avoid := toPos(m, v)
+		if m.data.Pos.Sub(avoid).LenSqr() >= float64(dist*dist) {
+			return false
+		}
+		if walking {
+			if w := wv.(walkTarget); w.speed == speed {
+				current := w.target.currentPosition(m.tx).Sub(m.data.Pos)
+				if current.Dot(avoid.Sub(m.data.Pos)) < 0 {
+					return false
+				}
+			}
+		}
+		for range 10 {
+			if to, ok := LandRandomPosAway(m, 16, 7, avoid); ok {
+				b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(to)), speed: speed})
+				break
+			}
+		}
+		return true
+	})
+}
+
+// findManhattanBox ports Level.findBlocksInBoxByManhattanDistance with a
+// filter: the first position within h blocks sideways and v up or down of
+// origin, nearest first, for which match returns true.
+func findManhattanBox(origin cube.Pos, h, v int, match func(cube.Pos) bool) (cube.Pos, bool) {
+	var found cube.Pos
+	ok := false
+	manhattanOrdered(origin, h, v, h, h+v+h, func(p cube.Pos) bool {
+		if match(p) {
+			found, ok = p, true
+			return false
+		}
+		return true
+	})
+	return found, ok
+}
