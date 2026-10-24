@@ -182,7 +182,9 @@ func (g *blazeAttackGoal) Tick(m *Mob) {
 				dir := mgl64.Vec3{xd + 2.297*spread*(r.NextDouble()-r.NextDouble()), yd, zd + 2.297*spread*(r.NextDouble()-r.NextDouble())}
 				if dir.Len() > 0 {
 					pos := mgl64.Vec3{m.data.Pos[0], m.data.Pos[1] + m.Height()*.5 + .5, m.data.Pos[2]}
-					opts := world.EntitySpawnOpts{Position: pos, Velocity: dir.Normalize().Mul(.5)}
+					// AbstractHurtingProjectile starts a fireball at its
+					// acceleration and speeds it up from there.
+					opts := world.EntitySpawnOpts{Position: pos, Velocity: dir.Normalize().Mul(.1)}
 					m.tx.AddEntity(m.tx.World().EntityRegistry().Config().SmallFireball(opts, m.Self))
 				}
 			}
@@ -353,7 +355,7 @@ func (g *ghastShootFireballGoal) Tick(m *Mob) {
 			r := m.Random()
 			m.tx.PlaySound(m.data.Pos, sound.Custom{Name: "entity.ghast.shoot", Volume: 10, Pitch: float64(r.NextFloat()-r.NextFloat())*.2 + 1})
 			if dir.Len() > 0 {
-				m.tx.AddEntity(NewGhastFireball(world.EntitySpawnOpts{Position: from, Velocity: dir.Normalize().Mul(.5)}, m.Self))
+				m.tx.AddEntity(NewGhastFireball(world.EntitySpawnOpts{Position: from, Velocity: dir.Normalize().Mul(.1)}, m.Self))
 			}
 			g.chargeTime = -40
 		}

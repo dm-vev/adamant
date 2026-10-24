@@ -442,13 +442,13 @@ func ghastFireballHit(e *Ent, tx *world.Tx, target trace.Result) {
 func (ghastFireballType) EncodeEntity() string { return "minecraft:fireball" }
 func (ghastFireballType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
-		d.Data = (&ghastFireballBehaviour{ProjectileBehaviour: (&ProjectileBehaviourConfig{Gravity: 0, Drag: .01, Damage: -1, Hit: ghastFireballHit}).New()})
+		d.Data = (&ghastFireballBehaviour{ProjectileBehaviour: (&ProjectileBehaviourConfig{Acceleration: .1, Damage: -1, Hit: ghastFireballHit}).New()})
 	}
 	return &Ent{tx: tx, handle: h, data: d}
 }
 func (ghastFireballType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0, -.25, .25, .5, .25) }
 func (ghastFireballType) DecodeNBT(_ map[string]any, d *world.EntityData) {
-	d.Data = &ghastFireballBehaviour{ProjectileBehaviour: (&ProjectileBehaviourConfig{Gravity: 0, Drag: .01, Damage: -1, Hit: ghastFireballHit}).New()}
+	d.Data = &ghastFireballBehaviour{ProjectileBehaviour: (&ProjectileBehaviourConfig{Acceleration: .1, Damage: -1, Hit: ghastFireballHit}).New()}
 }
 func (ghastFireballType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 func NewGhastFireball(o world.EntitySpawnOpts, owner world.Entity) *world.EntityHandle {
@@ -456,7 +456,7 @@ func NewGhastFireball(o world.EntitySpawnOpts, owner world.Entity) *world.Entity
 	if owner != nil {
 		ownerHandle = owner.H()
 	}
-	conf := ProjectileBehaviourConfig{Owner: ownerHandle, Gravity: 0, Drag: .01, Damage: -1, Hit: ghastFireballHit}
+	conf := ProjectileBehaviourConfig{Owner: ownerHandle, Acceleration: .1, Damage: -1, Hit: ghastFireballHit}
 	return o.New(GhastFireballType, &ghastFireballBehaviour{ProjectileBehaviour: conf.New()})
 }
 

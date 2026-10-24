@@ -27,6 +27,12 @@ type ProjectileBehaviourConfig struct {
 	// Drag is used to reduce all axes of the velocity every tick. Velocity is
 	// multiplied with (1-Drag) every tick.
 	Drag float64
+	// Acceleration, if positive, makes the projectile one that speeds itself
+	// up, as Java's AbstractHurtingProjectile: fireballs and wither skulls
+	// add Acceleration along their heading every tick and keep Inertia of
+	// their speed, 0.95 if zero, or LiquidInertia in water, 0.8 if zero,
+	// without gravity or drag.
+	Acceleration, Inertia, LiquidInertia float64
 	// Damage specifies the base damage dealt by the Projectile. If set to a
 	// negative number, entities hit are not hurt at all and are not knocked
 	// back. The base damage is multiplied with the velocity of the projectile
@@ -389,7 +395,11 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 	viewers := tx.Viewers(pos)
 
 	velBefore := vel
-	vel = lt.mc.applyHorizontalForces(tx, pos, lt.mc.applyVerticalForces(vel))
+	if lt.conf.Acceleration > 0 {
+		vel = lt.applyInertia(tx, pos, vel)
+	} else {
+		vel = lt.mc.applyHorizontalForces(tx, pos, lt.mc.applyVerticalForces(vel))
+	}
 	rot := cube.Rotation{
 		mgl64.RadToDeg(math.Atan2(vel[0], vel[2])),
 		mgl64.RadToDeg(math.Atan2(vel[1], math.Hypot(vel[0], vel[2]))),
@@ -420,6 +430,25 @@ func (lt *ProjectileBehaviour) tickMovement(e *Ent, tx *world.Tx) (*Movement, tr
 		}
 	}
 	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e, pos: end, vel: vel, dpos: end.Sub(pos), dvel: vel.Sub(velBefore), rot: rot}, hit
+}
+
+// applyInertia ports AbstractHurtingProjectile.applyInertia: the projectile
+// speeds up along its heading and keeps part of its speed, less in water.
+func (lt *ProjectileBehaviour) applyInertia(tx *world.Tx, pos, vel mgl64.Vec3) mgl64.Vec3 {
+	inertia := lt.conf.Inertia
+	if inertia == 0 {
+		inertia = .95
+	}
+	if l, ok := tx.Liquid(cube.PosFromVec3(pos)); ok && l.LiquidType() == "water" {
+		inertia = lt.conf.LiquidInertia
+		if inertia == 0 {
+			inertia = .8
+		}
+	}
+	if vel.LenSqr() > 0 {
+		vel = vel.Add(vel.Normalize().Mul(lt.conf.Acceleration))
+	}
+	return vel.Mul(inertia)
 }
 
 // checkLeftOwner keeps the launcher's vehicle/passengers out of the trace until

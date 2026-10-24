@@ -19,10 +19,9 @@ func NewSmallFireball(opts world.EntitySpawnOpts, owner world.Entity) *world.Ent
 }
 
 var smallFireballConf = ProjectileBehaviourConfig{
-	Gravity: 0,
-	Drag:    0.01,
-	Damage:  -1,
-	Hit:     smallFireballHit,
+	Acceleration: .1,
+	Damage:       -1,
+	Hit:          smallFireballHit,
 }
 
 func smallFireballHit(_ *Ent, tx *world.Tx, target trace.Result) {

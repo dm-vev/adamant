@@ -25,7 +25,7 @@ func (dragonFireballType) BBox(world.Entity) cube.BBox { return cube.Box(-.25, 0
 func (dragonFireballType) DecodeNBT(_ map[string]any, data *world.EntityData) { data.Data = dragonFireballConf.New() }
 func (dragonFireballType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
-var dragonFireballConf = ProjectileBehaviourConfig{Gravity: 0, Drag: .01, Damage: -1, Hit: dragonFireballHit}
+var dragonFireballConf = ProjectileBehaviourConfig{Acceleration: .1, Damage: -1, Hit: dragonFireballHit}
 
 func dragonFireballHit(e *Ent, tx *world.Tx, _ trace.Result) {
 	tx.AddEntity(NewAreaEffectCloudWith(world.EntitySpawnOpts{Position: e.Position()}, potion.Harming(), 10*time.Second, time.Second/2, 0, 4, -.5, -.005))
@@ -43,7 +43,7 @@ func spawnDragonFireballFrom(owner *Ent, pos, target mgl64.Vec3, tx *world.Tx) {
 	}
 	conf := dragonFireballConf
 	conf.Owner = owner.handle
-	tx.AddEntity(world.EntitySpawnOpts{Position: pos, Velocity: delta.Normalize().Mul(.75)}.New(DragonFireballType, conf))
+	tx.AddEntity(world.EntitySpawnOpts{Position: pos, Velocity: delta.Normalize().Mul(.1)}.New(DragonFireballType, conf))
 }
 
 var _ world.EntityType = dragonFireballType{}
