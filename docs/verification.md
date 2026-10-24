@@ -26,6 +26,20 @@ Outgoing packets retain FIFO order when chunk/entity publication exceeds the 256
 
 `go test ./server/session -run '^TestSessionPacket'` covers a blocked writer followed by 4,096 item spawns and 4,096 movement packets, four concurrent producers, a full-channel/refill race, backlog exhaustion and write failure. The burst regression disconnects with the original implementation and passes with the overflow queue. These are controlled connection tests; the user also confirmed that the reported Bedrock 1.26.51 connection issue is resolved.
 
+## Dropped-item network height
+
+The supplied `_decomp/dis.py` was used to inspect the local Bedrock 1.26.51 client (`Minecraft.Windows.exe`, SHA-256 `8bbe24d2cf7a3d7acdb3fc7f3f821a4f24518bdbe6a83ce3afd424ecfce988a5`). `ItemActor::ItemActor` at RVA `0x3347a40` sets a 0.25-block collision size and calls `ActorOffset::setHeightOffset` with half its height, **0.125**. `Actor::_refreshAABB` at `0x1a00060` subtracts that offset from the actor Y to obtain the collision bottom. `MoveActorAbsoluteData::MoveActorAbsoluteData` at `0x2ec3e90` copies the actor position unchanged; `AddItemActorPacketPayload` at `0x105fd10` reuses that movement position. `ItemRenderer::getRenderYOffset` at `0x55a9610` supplies visual bobbing separately on the client.
+
+Adamant now uses the native 0.125-block offset for dropped-item spawn, movement and teleport packets instead of 0.5, removing the extra **0.375 blocks** of height. The physical position and collision box are unchanged. Network-position tests use independently specified offsets, and a real item-physics regression drops an item onto a full block and both slab halves, then checks its feet against the surface and all three packet positions against the native origin. These checks failed with the old offset and pass with the correction; visual rendering on a connected Bedrock client remains unverified.
+
+## Dropped-item motion and stack updates
+
+The same 1.26.51 client disassembly shows `ItemActor::postNormalTick` applying gravity before `Actor::move` (call at VA `0x143348ac8`) and damping velocity afterwards (`0x143348ccb` onward). Adamant's item movement now follows that order, including applying ground friction on the landing tick. Other entity movement keeps its existing force order. Normal mob loot and equipment receive the upward 0.2-block/tick toss and horizontal spread already used for block drops.
+
+Native merging changes an existing stack and broadcasts actor event **69 / UpdateStackSize**; `ItemActor::handleEntityEvent` at RVA `0x3349d50` applies the supplied count without recreating the actor. Adamant now retains the larger stack's identity, position and velocity during merging, carries forward the younger age and longer pickup delay, and updates counts through that event. Partial pickup and hopper collection also retain the remaining actor. A pickup animation that removes an actor is only sent for full collection.
+
+Regressions cover independently specified scalar air trajectories, landing/sliding, full and partial merges without replacement actors, partial pickup, hopper capacity and mob loot's initial motion. A world/session integration test receives exactly two initial item spawns and one count-update event for the surviving runtime ID. The scalar trajectory checks establish force ordering with Adamant's numeric precision, not bitwise native physics or complete liquid behavior. The user also confirmed that the reported jerky loot-drop behavior is resolved in gameplay.
+
 ## Biome registry
 
 The registered 89 biome definitions match the pinned BDS's initial climate, water-colour, precipitation and tag metadata, including `dappled_forest` at persistent ID **195**. That ID was read from a saved BDS chunk after its biome was identified through the live Script API.

@@ -13,6 +13,9 @@ import (
 type MovementComputer struct {
 	Gravity, Drag     float64
 	DragBeforeGravity bool
+	// DragAfterMovement applies gravity, moves and resolves collisions, then
+	// damps the resulting velocity, as dropped items do on the client.
+	DragAfterMovement bool
 	NoBlockCollisions bool
 
 	onGround             bool
@@ -111,8 +114,16 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 	}
 
 	velBefore := vel
-	vel = c.applyHorizontalForces(tx, pos, c.applyVerticalForces(vel))
+	if c.DragAfterMovement {
+		vel[1] -= c.Gravity
+	} else {
+		vel = c.applyHorizontalForces(tx, pos, c.applyVerticalForces(vel))
+	}
 	dPos, vel := c.CheckCollision(tx, e, pos, vel)
+	if c.DragAfterMovement {
+		vel = c.applyHorizontalForces(tx, pos.Add(dPos), vel)
+		vel[1] *= 1 - c.Drag
+	}
 
 	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
 		pos: pos.Add(dPos), vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),

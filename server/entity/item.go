@@ -5,6 +5,8 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
+	"math/rand/v2"
 	"time"
 )
 
@@ -16,6 +18,13 @@ func NewItem(opts world.EntitySpawnOpts, i item.Stack) *world.EntityHandle {
 	conf := itemConf
 	conf.Item = i
 	return opts.New(ItemType, conf)
+}
+
+// NewItemDrop creates ordinary loot with the native upward toss and random
+// horizontal spread. NewItem preserves explicitly supplied motion instead.
+func NewItemDrop(opts world.EntitySpawnOpts, i item.Stack) *world.EntityHandle {
+	opts.Velocity = mgl64.Vec3{rand.Float64()*0.2 - 0.1, 0.2, rand.Float64()*0.2 - 0.1}
+	return NewItem(opts, i)
 }
 
 // NewItemPickupDelay creates a new item entity containing item stack i. A
@@ -42,8 +51,11 @@ func (t itemType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.Ent
 	return &Ent{tx: tx, handle: handle, data: data}
 }
 
-func (itemType) EncodeEntity() string   { return "minecraft:item" }
-func (itemType) NetworkOffset() float64 { return 0.5 }
+func (itemType) EncodeEntity() string { return "minecraft:item" }
+
+// NetworkOffset is the native ItemActor height offset: half its 0.25-block
+// collision height. The client adds visual bobbing independently of this origin.
+func (itemType) NetworkOffset() float64 { return 0.125 }
 func (itemType) BBox(world.Entity) cube.BBox {
 	return cube.Box(-0.125, 0, -0.125, 0.125, 0.25, 0.125)
 }

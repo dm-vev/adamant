@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"testing"
 	"time"
@@ -26,18 +27,21 @@ import (
 func TestEntityNetworkPositionConsistentAcrossPackets(t *testing.T) {
 	pos := mgl64.Vec3{29_999_999, 100, -29_999_999}
 	tests := []struct {
-		name  string
-		spawn func() *world.EntityHandle
+		name   string
+		offset float64
+		spawn  func() *world.EntityHandle
 	}{
-		{name: "player", spawn: func() *world.EntityHandle {
+		{name: "player", offset: 1.62001, spawn: func() *world.EntityHandle {
 			return world.EntitySpawnOpts{Position: pos, ID: uuid.New()}.New(player.Type, player.Config{
 				UUID: uuid.New(), Name: "player", Position: pos,
 			})
 		}},
-		{name: "item", spawn: func() *world.EntityHandle {
+		// Client 1.26.51 ItemActor's constructor sets height offset to
+		// 0.25 * 0.5, independently of ItemRenderer's visual bobbing.
+		{name: "item", offset: 0.125, spawn: func() *world.EntityHandle {
 			return entity.NewItem(world.EntitySpawnOpts{Position: pos}, item.NewStack(item.Diamond{}, 1))
 		}},
-		{name: "falling_block", spawn: func() *world.EntityHandle {
+		{name: "falling_block", offset: 0.5, spawn: func() *world.EntityHandle {
 			return entity.NewFallingBlock(world.EntitySpawnOpts{Position: pos}, block.Sand{})
 		}},
 	}
@@ -63,8 +67,7 @@ func TestEntityNetworkPositionConsistentAcrossPackets(t *testing.T) {
 				t.Fatalf("send entity packets: %v", err)
 			}
 
-			offset := handle.Type().(interface{ NetworkOffset() float64 }).NetworkOffset()
-			want := mgl32.Vec3{float32(pos[0]), float32(pos[1] + offset), float32(pos[2])}
+			want := mgl32.Vec3{float32(pos[0]), float32(pos[1] + test.offset), float32(pos[2])}
 			spawn, move, teleport := entityPacketPositions(t, conn.packets, test.name)
 			for name, got := range map[string]mgl32.Vec3{"spawn": spawn, "move": move, "teleport": teleport} {
 				if got != want {
@@ -72,6 +75,121 @@ func TestEntityNetworkPositionConsistentAcrossPackets(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDroppedItemNetworkHeightAboveSurface(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		floor   world.Block
+		surface float64
+	}{
+		{name: "full block", floor: block.Stone{}, surface: 1},
+		{name: "bottom slab", floor: block.Slab{Block: block.Stone{}}, surface: 0.5},
+		{name: "top slab", floor: block.Slab{Block: block.Stone{}, Top: true}, surface: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			conn := &packetConn{packets: make(chan packet.Packet, 64)}
+			viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
+			t.Cleanup(viewer.CloseConnection)
+			w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+			t.Cleanup(func() { _ = w.Close() })
+			var pos mgl64.Vec3
+			var onGround bool
+			if err := w.Do(func(tx *world.Tx) {
+				tx.SetBlock(cube.Pos{0, 0, 0}, test.floor, nil)
+				h := entity.NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 3, 0.5}}, item.NewStack(item.Diamond{}, 1))
+				e := tx.AddEntity(h).(*entity.Ent)
+				for tick := range 60 {
+					e.Tick(tx, int64(tick))
+				}
+				pos, onGround = e.Position(), e.OnGround()
+				viewer.ViewEntity(e)
+				viewer.ViewEntityMovement(e, pos, cube.Rotation{}, onGround)
+				viewer.ViewEntityTeleport(e, pos)
+			}).Wait(context.Background()); err != nil {
+				t.Fatalf("drop item: %v", err)
+			}
+			if !onGround || math.Abs(pos[1]-test.surface) > 1e-6 {
+				t.Fatalf("item feet = %v, on ground = %v, want surface Y=%v", pos, onGround, test.surface)
+			}
+			// Native packets carry the actor origin, 1/8 block above its feet.
+			// The client adds its own bobbing; no render offset belongs here.
+			want := mgl32.Vec3{0.5, float32(test.surface + 0.125), 0.5}
+			spawn, move, teleport := entityPacketPositions(t, conn.packets, "item")
+			for name, got := range map[string]mgl32.Vec3{"spawn": spawn, "move": move, "teleport": teleport} {
+				if got != want {
+					t.Errorf("%s position = %v, want %v", name, got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestDroppedItemMergeKeepsNetworkActor(t *testing.T) {
+	conn := &packetConn{packets: make(chan packet.Packet, 1024)}
+	viewer := session.Config{Log: slog.New(slog.DiscardHandler), MaxChunkRadius: 1}.New(conn)
+	t.Cleanup(viewer.CloseConnection)
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	var loader *world.Loader
+	if err := w.Do(func(tx *world.Tx) {
+		tx.SetBlock(cube.Pos{8, 0, 8}, block.Stone{}, nil)
+		loader = world.NewLoader(1, w, viewer)
+		loader.Move(tx, mgl64.Vec3{8.5, 1, 8.5})
+		loader.Load(tx, 1)
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	// Chunk publication is deferred until the loading transaction commits.
+	if err := w.Do(func(tx *world.Tx) {
+		defer loader.Close(tx)
+		first := tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{8.4, 1, 8.5}}, item.NewStack(item.Diamond{}, 1))).(*entity.Ent)
+		second := tx.AddEntity(entity.NewItem(world.EntitySpawnOpts{Position: mgl64.Vec3{8.6, 1, 8.5}}, item.NewStack(item.Diamond{}, 3))).(*entity.Ent)
+		for tick := range 20 {
+			for _, e := range []*entity.Ent{first, second} {
+				if !e.H().Closed() {
+					e.Tick(tx, int64(tick))
+				}
+			}
+		}
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	const marker = "item-merge-done"
+	viewer.SendMessage(marker)
+	var spawns, updates int
+	var survivorID, updatedID uint64
+	timer := time.NewTimer(5 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case raw := <-conn.packets:
+			switch pk := raw.(type) {
+			case *packet.AddItemActor:
+				spawns++
+				if pk.Item.Stack.Count == 3 {
+					survivorID = pk.EntityRuntimeID
+				}
+			case *packet.ActorEvent:
+				if pk.EventType == packet.ActorEventUpdateStackSize {
+					updates++
+					updatedID = pk.EntityRuntimeID
+					if pk.EventData != 4 {
+						t.Errorf("stack size event=%d, want 4", pk.EventData)
+					}
+				}
+			case *packet.Text:
+				if pk.Message == marker {
+					if spawns != 2 || updates != 1 || survivorID == 0 || updatedID != survivorID {
+						t.Fatalf("spawns=%d updates=%d updated actor=%d, want two spawns and one update of actor %d", spawns, updates, updatedID, survivorID)
+					}
+					return
+				}
+			}
+		case <-timer.C:
+			t.Fatal("timed out waiting for item merge packets")
+		}
 	}
 }
 

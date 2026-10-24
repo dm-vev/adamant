@@ -1504,6 +1504,12 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			ItemEntityRuntimeID:  s.entityRuntimeID(e),
 			TakerEntityRuntimeID: s.entityRuntimeID(act.Collector),
 		})
+	case entity.ItemStackSizeAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventUpdateStackSize,
+			EventData:       int32(act.Count),
+		})
 	case entity.WolfShakeAction:
 		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventShakeWetness})
 	case entity.VibrationDetectedAction:
