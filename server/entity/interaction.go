@@ -42,6 +42,12 @@ type VehicleInputWithRider interface {
 	SetVehicleInputFrom(passenger world.Entity, strafe, forward float64)
 }
 
+// VehicleJumpInput is an optional input extension for vehicles that react
+// to the controlling passenger jumping, such as a happy ghast flying up.
+type VehicleJumpInput interface {
+	SetVehicleJumping(jumping bool)
+}
+
 // VehicleController represents a vehicle that may decide which passenger controls it.
 type VehicleController interface {
 	ControlsVehicle(passenger world.Entity) bool

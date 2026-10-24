@@ -41,6 +41,13 @@ func mobImmobile(m *Mob) bool {
 	return ok && i.immobile()
 }
 
+// mobSteeredByPlayer reports if a player steers the mob, whose AI then
+// rests as Java leaves the AI of a mob to the client controlling it.
+func mobSteeredByPlayer(m *Mob) bool {
+	s, ok := m.Behaviour().(interface{ steeredByPlayer(m *Mob) bool })
+	return ok && s.steeredByPlayer(m)
+}
+
 // mobMoveControl is a move control that replaces the MoveControl of a mob,
 // such as the CubeMobMoveControl of slimes.
 type mobMoveControl interface {
@@ -176,7 +183,7 @@ func (ai *MobAI) aiStep(m *Mob) {
 	switch {
 	case !m.Alive() || mobImmobile(m):
 		ai.jumping, ai.xxa, ai.zza = false, 0, 0
-	case !ai.NoAI:
+	case !ai.NoAI && !mobSteeredByPlayer(m):
 		ai.serverAiStep(m)
 	}
 	if ai.jumping {

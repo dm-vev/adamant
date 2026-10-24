@@ -350,6 +350,15 @@ func (b *Brain) get(mem memoryType) (any, bool) {
 	return nil, false
 }
 
+// clearMemories forgets every memory, as Brain.clearMemories.
+func (b *Brain) clearMemories() {
+	for _, s := range b.memories {
+		if s != nil {
+			s.clear()
+		}
+	}
+}
+
 // erase forgets a memory.
 func (b *Brain) erase(mem memoryType) {
 	if s := b.memories[mem]; s != nil {

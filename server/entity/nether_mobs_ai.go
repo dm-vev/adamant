@@ -3,6 +3,7 @@ package entity
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -32,7 +33,7 @@ func (s *netherState) aiTickBlaze(e *Ent, tx *world.Tx) *Movement {
 // aiTickGhast runs the MobAI of a ghast.
 func (s *netherState) aiTickGhast(e *Ent, tx *world.Tx) *Movement {
 	ai := &s.ai
-	ai.FollowRange, ai.EyeHeight = 100, 2.6
+	ai.FollowRange, ai.EyeHeight, ai.FlyingSpeed = 100, 2.6, .06
 	return ai.Tick(e, &Ghast{e}, s.registerGhastGoals)
 }
 
@@ -59,7 +60,7 @@ func (s *netherState) registerBlazeGoals(m *Mob) {
 func (s *netherState) registerGhastGoals(m *Mob) {
 	ai := m.AI
 	ai.moveOverride = &s.ghastMove
-	ai.Goals.Add(5, &ghastRandomFloatAroundGoal{goalFlags{GoalMove}})
+	ai.Goals.Add(5, &ghastRandomFloatAroundGoal{goalFlags: goalFlags{GoalMove}})
 	ai.Goals.Add(7, &ghastLookGoal{goalFlags{GoalLook}})
 	ai.Goals.Add(7, &ghastShootFireballGoal{})
 	players := NewNearestAttackableTargetGoal(nil, true)
@@ -195,20 +196,24 @@ func (g *blazeAttackGoal) Tick(m *Mob) {
 	}
 }
 
-// ghastMoveControl pushes a ghast towards where it wants to be in bursts,
-// ported from Java's GhastMoveControl without care for blocks.
+// ghastMoveControl ports Ghast.GhastMoveControl: a ghast pushes itself
+// towards the position its move control wants every few ticks, and waits
+// once it would run into blocks on the way. A careful ghast, as the happy
+// ghast is, also keeps a block away from blocks and liquids and avoids
+// those that hurt it. stopped, if set, keeps the ghast in place.
 type ghastMoveControl struct {
-	wanted        mgl64.Vec3
-	hasWanted     bool
 	floatDuration int
-}
-
-func (c *ghastMoveControl) setWantedPosition(pos mgl64.Vec3) {
-	c.wanted, c.hasWanted = pos, true
+	careful       bool
+	stopped       func(m *Mob) bool
 }
 
 func (c *ghastMoveControl) tick(m *Mob) {
-	if !c.hasWanted {
+	mc := &m.AI.move
+	if c.stopped != nil && c.stopped(m) {
+		mc.operation = moveWait
+		m.StopInPlace()
+	}
+	if mc.operation != moveTo {
 		return
 	}
 	waited := c.floatDuration
@@ -217,58 +222,115 @@ func (c *ghastMoveControl) tick(m *Mob) {
 		return
 	}
 	c.floatDuration += int(m.Random().NextInt(5)) + 2
-	travel := c.wanted.Sub(m.data.Pos)
-	if !ghastCanReach(m, travel) {
-		c.hasWanted = false
+	travel := mgl64.Vec3(mc.wanted).Sub(m.data.Pos)
+	if !ghastCanReach(m, travel, c.careful) {
+		mc.operation = moveWait
 		return
 	}
-	// FLYING_SPEED of 0.06 times five thirds.
-	m.data.Vel = m.data.Vel.Add(travel.Normalize().Mul(.1))
+	m.data.Vel = m.data.Vel.Add(javaNormalize(travel).Mul(m.AI.FlyingSpeed * 5 / 3))
 }
 
-// ghastCanReach reports if the box of a ghast moves along a path without
-// running into blocks, checked a block at a time.
-func ghastCanReach(m *Mob, travel mgl64.Vec3) bool {
-	length := travel.Len()
-	if length < 1e-7 {
-		return true
-	}
-	steps := math.Ceil(length)
-	step := travel.Mul(1 / steps)
+// ghastCanReach ports GhastMoveControl.canReach: the box of the ghast moves
+// along travel through no blocks it may not pass, checked a block at a
+// time. A careful ghast also needs every block within a block of where it
+// ends up to be passable, and it passes liquids only if it is in them.
+func ghastCanReach(m *Mob, travel mgl64.Vec3, careful bool) bool {
 	box := m.BBox()
-	for i := 1; float64(i) < steps; i++ {
-		box = box.Translate(step)
-		if !boxFree(m.tx, box) {
+	dest := box.Translate(travel)
+	if careful {
+		ok := true
+		forBlocksIn(dest.Grow(1), func(pos cube.Pos) bool {
+			ok = ghastTraversable(m, pos, nil, true, false, false)
+			return ok
+		})
+		if !ok {
+			return false
+		}
+	}
+	inWater, inLava := m.InWater(), m.InLava()
+	steps := math.Max(1, math.Ceil(travel.Len()))
+	visited := make(map[cube.Pos]struct{})
+	for i := 1.0; i <= steps; i++ {
+		swept := box.Translate(travel.Mul(i / steps))
+		ok := true
+		forBlocksIn(swept, func(pos cube.Pos) bool {
+			if _, seen := visited[pos]; seen {
+				return true
+			}
+			visited[pos] = struct{}{}
+			if box.IntersectsWith(cube.Box(0, 0, 0, 1, 1, 1).Translate(pos.Vec3())) {
+				return true
+			}
+			ok = ghastTraversable(m, pos, &swept, careful, inWater, inLava)
+			return ok
+		})
+		if !ok {
 			return false
 		}
 	}
 	return true
 }
 
-// ghastRandomFloatAroundGoal ports Ghast.RandomFloatAroundGoal: a ghast
-// picks a new place to fly to when it got where it wanted or that is too
-// far.
-type ghastRandomFloatAroundGoal struct{ goalFlags }
-
-func (g *ghastRandomFloatAroundGoal) CanUse(m *Mob) bool {
-	c := &m.Behaviour().(*netherState).ghastMove
-	if !c.hasWanted {
+// ghastTraversable ports GhastMoveControl.blockTraversalPossible. With a
+// swept box, only collision boxes and liquids the box moves into count.
+func ghastTraversable(m *Mob, pos cube.Pos, swept *cube.BBox, careful, water, lava bool) bool {
+	b := pathBlockAt(m.tx, pos)
+	if _, air := b.(block.Air); air {
 		return true
 	}
-	dd := c.wanted.Sub(m.data.Pos).LenSqr()
+	collides := false
+	for _, bb := range b.Model().BBox(pos, m.tx) {
+		if swept == nil || bb.Translate(pos.Vec3()).IntersectsWith(*swept) {
+			collides = true
+			break
+		}
+	}
+	if !careful {
+		return !collides
+	}
+	if blockInTag(b, "happy_ghast_avoids") {
+		return false
+	}
+	if l, ok := m.tx.Liquid(pos); ok && (swept == nil || cube.Box(0, 0, 0, 1, liquidHeight(m.tx, pos, l), 1).Translate(pos.Vec3()).IntersectsWith(*swept)) {
+		switch l.(type) {
+		case block.Water:
+			return water
+		case block.Lava:
+			return lava
+		}
+	}
+	return !collides
+}
+
+// ghastRandomFloatAroundGoal ports Ghast.RandomFloatAroundGoal: a ghast
+// picks a new place to fly to when it got where it wanted or that is too
+// far. distanceToBlocks, if positive, makes it prefer places in the air
+// within that many blocks of a block.
+type ghastRandomFloatAroundGoal struct {
+	goalFlags
+	distanceToBlocks int
+}
+
+func (g *ghastRandomFloatAroundGoal) CanUse(m *Mob) bool {
+	mc := &m.AI.move
+	if !mc.HasWanted() {
+		return true
+	}
+	dd := mgl64.Vec3(mc.wanted).Sub(m.data.Pos).LenSqr()
 	return dd < 1 || dd > 3600
 }
 
 func (g *ghastRandomFloatAroundGoal) CanContinueToUse(*Mob) bool { return false }
 
 func (g *ghastRandomFloatAroundGoal) Start(m *Mob) {
-	m.Behaviour().(*netherState).ghastMove.setWantedPosition(ghastFlyToPosition(m))
+	pos := ghastFlyToPosition(m, g.distanceToBlocks)
+	m.AI.move.SetWantedPosition(pos[0], pos[1], pos[2], 1)
 }
 
 // ghastFlyToPosition ports RandomFloatAroundGoal.getSuitableFlyToPosition:
-// a random point within 16 blocks, below the ghast if the point is above
-// the ground.
-func ghastFlyToPosition(m *Mob) mgl64.Vec3 {
+// a random point within 16 blocks and the home of the ghast, below the
+// ghast if the point is above the ground.
+func ghastFlyToPosition(m *Mob, distanceToBlocks int) mgl64.Vec3 {
 	r := m.Random()
 	random := func() mgl64.Vec3 {
 		return m.data.Pos.Add(mgl64.Vec3{float64(r.NextFloat()*2-1) * 16, float64(r.NextFloat()*2-1) * 16, float64(r.NextFloat()*2-1) * 16})
@@ -276,10 +338,14 @@ func ghastFlyToPosition(m *Mob) mgl64.Vec3 {
 	var result mgl64.Vec3
 	found := false
 	for range 64 {
-		result = random()
-		if m.WithinHome(cube.PosFromVec3(result)) {
-			found = true
-			break
+		target := random()
+		if !m.withinHomeVec(target) {
+			found = false
+			continue
+		}
+		result, found = target, true
+		if ghastGoodTarget(m.tx, result, distanceToBlocks) {
+			return result
 		}
 	}
 	if !found {
@@ -292,15 +358,32 @@ func ghastFlyToPosition(m *Mob) mgl64.Vec3 {
 	return result
 }
 
-// ghastLookGoal ports Ghast.GhastLookGoal: a ghast faces the way it moves,
-// or its target within 64 blocks.
-type ghastLookGoal struct{ goalFlags }
+// ghastGoodTarget ports RandomFloatAroundGoal.isGoodTarget: a point in the
+// air with a block fewer than distanceToBlocks blocks away in any of the six
+// directions.
+func ghastGoodTarget(tx *world.Tx, target mgl64.Vec3, distanceToBlocks int) bool {
+	if distanceToBlocks <= 0 {
+		return true
+	}
+	pos := cube.PosFromVec3(target)
+	if _, air := pathBlockAt(tx, pos).(block.Air); !air {
+		return false
+	}
+	for _, face := range cube.Faces() {
+		offset := pos
+		for i := 1; i < distanceToBlocks; i++ {
+			offset = offset.Side(face)
+			if _, air := pathBlockAt(tx, offset).(block.Air); !air {
+				return true
+			}
+		}
+	}
+	return false
+}
 
-func (g *ghastLookGoal) CanUse(*Mob) bool { return true }
-
-func (g *ghastLookGoal) RequiresUpdateEveryTick() bool { return true }
-
-func (g *ghastLookGoal) Tick(m *Mob) {
+// ghastFaceMovement ports Ghast.faceMovementDirection: a ghast faces the way
+// it moves, or its target within 64 blocks.
+func ghastFaceMovement(m *Mob) {
 	target := m.Target()
 	var d mgl64.Vec3
 	switch {
@@ -315,6 +398,26 @@ func (g *ghastLookGoal) Tick(m *Mob) {
 	m.SetYaw(yaw)
 	m.AI.bodyYaw = yaw
 }
+
+// javaNormalize ports Vec3.normalize: a vector of length one, or none if it
+// is too short.
+func javaNormalize(v mgl64.Vec3) mgl64.Vec3 {
+	l := v.Len()
+	if l < 1e-5 {
+		return mgl64.Vec3{}
+	}
+	return v.Mul(1 / l)
+}
+
+// ghastLookGoal ports Ghast.GhastLookGoal: a ghast faces the way it moves,
+// or its target within 64 blocks.
+type ghastLookGoal struct{ goalFlags }
+
+func (g *ghastLookGoal) CanUse(*Mob) bool { return true }
+
+func (g *ghastLookGoal) RequiresUpdateEveryTick() bool { return true }
+
+func (g *ghastLookGoal) Tick(m *Mob) { ghastFaceMovement(m) }
 
 // ghastShootFireballGoal ports Ghast.GhastShootFireballGoal: a ghast that
 // sees its target within 64 blocks warns after half a second and shoots a

@@ -79,6 +79,9 @@ func (h PlayerAuthInputHandler) handleMovement(pk *packet.PlayerAuthInput, s *Se
 					} else {
 						input.SetVehicleInput(float64(pk.MoveVector[0]), float64(pk.MoveVector[1]))
 					}
+					if jump, ok := ridden.(entity.VehicleJumpInput); ok {
+						jump.SetVehicleJumping(pk.InputData.Load(packet.InputFlagJumping) || pk.InputData.Load(packet.InputFlagJumpDown))
+					}
 				}
 			}
 		}

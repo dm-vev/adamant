@@ -60,6 +60,9 @@ type PathNavigation struct {
 	// swim selects the navigation of Java's WaterBoundPathNavigation: the
 	// mob only swims.
 	swim *swimNodeEvaluator
+	// flyThroughLiquids lets a flying mob head straight past liquids, as
+	// HappyGhast.BabyFlyingPathNavigation does.
+	flyThroughLiquids bool
 }
 
 func (n *PathNavigation) init(m *Mob) {
@@ -89,6 +92,10 @@ func (n *PathNavigation) SetWaterBound(breaching bool) {
 // SetFlying makes the mob fly through the air, as Java's FlyingPathNavigation
 // moves it.
 func (n *PathNavigation) SetFlying() { n.eval.fly = true }
+
+// SetFlyThroughLiquids lets a flying mob head straight for nodes past
+// liquids.
+func (n *PathNavigation) SetFlyThroughLiquids() { n.flyThroughLiquids = true }
 
 // SetCanFloat sets whether paths go through water the mob swims across.
 func (n *PathNavigation) SetCanFloat(v bool) { n.eval.canFloat = v }
@@ -518,6 +525,9 @@ func (n *PathNavigation) canUpdatePath(m *Mob) bool {
 // amphibious mob heads straight for the next node it sees, and a flying mob
 // for one it sees past blocks and liquids.
 func (n *PathNavigation) canMoveDirectly(m *Mob, from, to mgl64.Vec3) bool {
+	if n.eval.fly && n.flyThroughLiquids {
+		return clipMiss(m.tx, from, mgl64.Vec3{to[0], to[1] + m.Height()*.5, to[2]})
+	}
 	if n.eval.fly {
 		return clipMissFluids(m.tx, from, mgl64.Vec3{to[0], to[1] + m.Height()*.5, to[2]})
 	}

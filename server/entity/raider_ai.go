@@ -712,6 +712,19 @@ func hostileOf(m *Mob) *hostileState { return m.Behaviour().(*hostileState) }
 // entityTypeInTag reports if the type of an entity is in a vanilla entity
 // type tag.
 func entityTypeInTag(e world.Entity, tag string) bool {
-	in, _ := gamedata.EntityTypeTagContains(tag, e.H().Type().EncodeEntity())
+	id := e.H().Type().EncodeEntity()
+	if java, ok := bedrockOnlyEntityIDs[id]; ok {
+		id = java
+	}
+	in, _ := gamedata.EntityTypeTagContains(tag, id)
 	return in
+}
+
+// bedrockOnlyEntityIDs are the Java identifiers of the entities Bedrock
+// names otherwise.
+var bedrockOnlyEntityIDs = map[string]string{
+	"minecraft:villager_v2":        "minecraft:villager",
+	"minecraft:zombie_villager_v2": "minecraft:zombie_villager",
+	"minecraft:zombie_pigman":      "minecraft:zombified_piglin",
+	"minecraft:evocation_illager":  "minecraft:evoker",
 }

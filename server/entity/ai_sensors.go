@@ -145,20 +145,24 @@ func animalTemptation(m *Mob, s item.Stack) bool {
 }
 
 // adultSensor ports AdultSensor: the nearest adult of the kind of the mob it
-// sees.
-type adultSensor struct{}
+// sees. With anyType it ports AdultSensorAnyType: the nearest adult of the
+// friendly mobs babies follow.
+type adultSensor struct{ anyType bool }
 
 func (adultSensor) scanRate() int { return 0 }
 func (adultSensor) requires() []memoryType {
 	return []memoryType{memNearestVisibleAdult, memNearestVisibleLivingEntities}
 }
 
-func (adultSensor) doTick(m *Mob, b *Brain) {
+func (s adultSensor) doTick(m *Mob, b *Brain) {
 	v := visibleLiving(m)
 	if v == nil {
 		return
 	}
 	b.setEntity(memNearestVisibleAdult, v.findClosest(m, func(e world.Entity) bool {
+		if s.anyType {
+			return entityTypeInTag(e, "followable_friendly_mobs") && !mobBaby(e)
+		}
 		return e.H().Type() == m.H().Type() && !mobBaby(e)
 	}))
 }
