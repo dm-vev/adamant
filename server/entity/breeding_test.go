@@ -21,9 +21,18 @@ import (
 func breedingTestWorld(t *testing.T) *world.World {
 	t.Helper()
 	w := newDeathTestWorld(t)
+	// Hoglins do not stay on peaceful.
+	w.SetDifficulty(world.DifficultyNormal)
 	<-w.Exec(func(tx *world.Tx) {
-		for x := -8; x <= 8; x++ {
-			for z := -8; z <= 8; z++ {
+		for x := -9; x <= 9; x++ {
+			for z := -9; z <= 9; z++ {
+				if x == -9 || x == 9 || z == -9 || z == 9 {
+					// A wall keeps the animals from wandering off into the
+					// void, where they would leave the world.
+					tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+					tx.SetBlock(cube.Pos{x, 65, z}, block.Stone{}, nil)
+					continue
+				}
 				tx.SetBlock(cube.Pos{x, 63, z}, block.Grass{}, nil)
 			}
 		}

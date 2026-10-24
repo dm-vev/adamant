@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math"
 	"strings"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
@@ -42,7 +41,6 @@ func NaturalSpawnTick(tx *world.Tx) {
 	// Java skips every spawning category and custom spawner without
 	// spawn_mobs, but still despawns.
 	if len(players) == 0 || !w.SpawnMobsEnabled() {
-		naturalDespawn(tx)
 		return
 	}
 	seed := w.Seed() ^ int64(uint64(tx.CurrentTick())*0x9e3779b97f4a7c15)
@@ -143,7 +141,6 @@ func NaturalSpawnTick(tx *world.Tx) {
 		}
 	}
 	phantomSpawnTick(tx, players, &random)
-	naturalDespawn(tx)
 }
 
 func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *vanilla.Random) {
@@ -327,48 +324,4 @@ func naturalCollisionFree(tx *world.Tx, box cube.BBox) bool {
 		}
 	}
 	return true
-}
-
-func naturalDespawn(tx *world.Tx) {
-	players := make([]world.Entity, 0, 4)
-	for p := range tx.Players() {
-		mode, ok := p.(interface{ GameMode() world.GameMode })
-		if !ok || mode.GameMode() != world.GameModeSpectator {
-			players = append(players, p)
-		}
-	}
-	random := vanilla.NewLegacyRandom(tx.World().Seed() ^ int64(uint64(tx.CurrentTick())*0xd1b54a32d192ed03))
-	for entity := range tx.Entities() {
-		if entity.H().SpawnReason() != "natural" {
-			continue
-		}
-		if persistent, ok := entity.(interface{ Tamed() bool }); ok && persistent.Tamed() {
-			continue
-		}
-		category, ok := naturalCategory(entity.H().Type().EncodeEntity())
-		if !ok {
-			continue
-		}
-		if tx.World().Difficulty() == world.DifficultyPeaceful && category == spawnMonster {
-			tx.RemoveEntity(entity)
-			continue
-		}
-		if len(players) == 0 {
-			continue
-		}
-		nearest := math.MaxFloat64
-		for _, player := range players {
-			distanceSq := player.Position().Sub(entity.Position()).LenSqr()
-			if distanceSq < nearest {
-				nearest = distanceSq
-			}
-		}
-		if nearest > 128*128 {
-			tx.RemoveEntity(entity)
-			continue
-		}
-		if age, ok := entity.(interface{ Age() time.Duration }); ok && age.Age() > 30*time.Second && nearest > 32*32 && random.NextInt(800) == 0 {
-			tx.RemoveEntity(entity)
-		}
-	}
 }

@@ -99,7 +99,10 @@ func (b *AquaticMobBehaviour) setTadpoleAge(e *Ent, tx *world.Tx, age int) {
 	}
 	b.dead = true
 	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot}
-	convertMob(tx, e.living(), opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}), conversion{})
+	frog := convertMob(tx, e.living(), opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}), conversion{})
+	if p, ok := frog.(interface{ SetPersistenceRequired(bool) }); ok {
+		p.SetPersistenceRequired(true)
+	}
 	tx.PlaySound(e.data.Pos, sound.Custom{Name: "mob.tadpole.convert_to_frog", Volume: .15, Pitch: 1})
 }
 

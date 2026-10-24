@@ -16,6 +16,10 @@ import (
 // jump and body controls, its navigation and the physics it moves with. A
 // species behaviour holds one and calls Tick from its Behaviour.Tick.
 type MobAI struct {
+	// persistent is Mob.persistenceRequired: the mob never leaves the world
+	// of its own accord.
+	persistent bool
+
 	// Goals and Targets are the goal and target selectors of the mob.
 	Goals, Targets GoalSelector
 

@@ -176,6 +176,7 @@ func equipItemIfPossible(m *Mob, h equipmentHolder, stack item.Stack, preferred 
 	toEquip := stack.Grow(1 - stack.Count())
 	*h.equipment(slot) = toEquip
 	h.setDropChance(slot, 2)
+	m.AI.persistent = true
 	viewEquipment(m.tx, m.Self)
 	return toEquip
 }

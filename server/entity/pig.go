@@ -269,7 +269,8 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 			// with a golden sword that stays.
 			b.lastLightningBolt = bolt.BoltUUID
 			opts := world.EntitySpawnOpts{Position: p.Position(), Rotation: p.Rotation()}
-			convertMob(p.tx, p, NewZombifiedPiglin(opts), conversion{preserveCanPickUpLoot: true})
+			z := convertMob(p.tx, p, NewZombifiedPiglin(opts), conversion{preserveCanPickUpLoot: true})
+			z.(*ZombifiedPiglin).SetPersistenceRequired(true)
 			b.dead = true
 			return 0, true
 		}

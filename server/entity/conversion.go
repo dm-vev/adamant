@@ -114,6 +114,7 @@ func convertCommon(tx *world.Tx, from, to world.Entity, c conversion) {
 	if fm, ok := mobOf(from); ok {
 		if tm, ok := mobOf(to); ok {
 			tm.AI.NoAI = fm.AI.NoAI
+			tm.AI.persistent = tm.AI.persistent || fm.AI.persistent
 		}
 	}
 	fromEnt, okFrom := entOf(from)

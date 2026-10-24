@@ -121,6 +121,10 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 	if first && register != nil {
 		register(m)
 	}
+	// ServerLevel.tick checks whether an entity despawns before it ticks.
+	if ai.checkDespawn(m) {
+		return nil
+	}
 	prevPos, prevVel, prevRot, prevHead := e.data.Pos, e.data.Vel, e.data.Rot, ai.headYaw
 	if !first {
 		// Entity.lastKnownSpeed: how far the mob moved in the last tick.
