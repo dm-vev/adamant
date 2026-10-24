@@ -15,6 +15,19 @@ type ContainerViewer interface {
 	ViewSlotChange(slot int, newItem item.Stack)
 }
 
+// MobContainerOpener is a mob that has a container open without viewing it,
+// as a copper golem sorting items does. Added as a viewer, it counts towards
+// the openers of the container, opening its lid and powering a trapped chest.
+// Mobs with the same handle are the same opener.
+type MobContainerOpener struct {
+	// Viewer is nil: the mob views nothing through the container.
+	world.Viewer
+	Handle *world.EntityHandle
+}
+
+// ViewSlotChange does nothing: the mob sees no window.
+func (MobContainerOpener) ViewSlotChange(int, item.Stack) {}
+
 // ContainerOpener represents an entity that is able to open a container.
 type ContainerOpener interface {
 	// OpenBlockContainer opens a block container at the position passed.

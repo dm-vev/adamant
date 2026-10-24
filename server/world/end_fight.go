@@ -92,6 +92,23 @@ func (tx *Tx) LoadDragonArena(active bool) bool {
 	return true
 }
 
+// LoadedBlockEntities visits the block entities of a chunk if it is loaded,
+// as LevelChunk.getBlockEntities of a chunk from ChunkSource.getChunkNow. It
+// neither loads nor generates the chunk.
+func (tx *Tx) LoadedBlockEntities(pos ChunkPos) iter.Seq2[cube.Pos, Block] {
+	return func(yield func(cube.Pos, Block) bool) {
+		col, ok := tx.World().loadedChunk(pos)
+		if !ok {
+			return
+		}
+		for at, actor := range col.BlockEntities {
+			if !yield(at, actor) {
+				return
+			}
+		}
+	}
+}
+
 // EndPortalPositions visits the loaded End arena's portal actors without
 // scanning empty cells or generating chunks outside the arena ticket.
 func (tx *Tx) EndPortalPositions() iter.Seq[cube.Pos] {

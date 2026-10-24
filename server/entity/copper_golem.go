@@ -2,7 +2,6 @@ package entity
 
 import (
 	"hash/fnv"
-	"math"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -10,7 +9,6 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -28,9 +26,7 @@ func (copperGolemType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entity
 	golem := &CopperGolem{Ent: &Ent{tx: tx, handle: h, data: d}}
 	hash := fnv.New64a()
 	_, _ = hash.Write([]byte(h.UUID().String()))
-	b := golem.b()
-	b.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
-	b.cooldown = 60 + b.randomInt(41)
+	golem.b().random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	return golem
 }
 func (copperGolemType) EncodeEntity() string        { return "minecraft:copper_golem" }
@@ -120,28 +116,26 @@ func (c CopperGolemBehaviourConfig) New() *CopperGolemBehaviour {
 	if !c.healthSet && health <= 0 {
 		health = maxHealth
 	}
-	return &CopperGolemBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: .2, weather: max(0, min(c.WeatherState, 3)), state: max(0, min(c.State, 4)), waxed: c.Waxed, nextWeatheringTick: c.NextWeatheringTick, antenna: c.Antenna, carried: c.Carried, cooldown: 60, nextWander: 1,
-		panic: panicState{brain: true}}
+	b := &CopperGolemBehaviour{health: NewHealthManager(health, maxHealth), effects: NewEffectManager(), speed: .2, weather: max(0, min(c.WeatherState, 3)), state: max(0, min(c.State, 4)), waxed: c.Waxed, nextWeatheringTick: c.NextWeatheringTick, antenna: c.Antenna, carried: c.Carried}
+	b.br = newCopperGolemBrain(b)
+	return b
 }
 
 type CopperGolemBehaviour struct {
-	health               *HealthManager
-	effects              *EffectManager
-	mc                   *MovementComputer
-	speed                float64
-	random               vanilla.Random
-	weather, state       int
-	waxed, dead          bool
-	nextWeatheringTick   int64
-	antenna              item.Stack
-	carried              item.Stack
-	lastLightningBolt    string
-	cooldown, nextWander int
-	navigator            Navigator
-	target               cube.Pos
-	targetSet            bool
-	interactTicks        int
-	panic                panicState
+	health             *HealthManager
+	effects            *EffectManager
+	ai                 MobAI
+	br                 *Brain
+	speed              float64
+	random             vanilla.Random
+	weather, state     int
+	waxed, dead        bool
+	nextWeatheringTick int64
+	antenna            item.Stack
+	carried            item.Stack
+	lastLightningBolt  string
+	// openedChest is the chest the golem has open, CopperGolem.openedChestPos.
+	openedChest *cube.Pos
 }
 
 // CopperGolem is a mobile item-sorting golem that oxidises over time.
@@ -151,32 +145,51 @@ func NewCopperGolem(opts world.EntitySpawnOpts) *world.EntityHandle {
 	return opts.New(CopperGolemType, CopperGolemBehaviourConfig{NextWeatheringTick: -1})
 }
 
-// TrySpawnCopperGolemPattern completes the copper golem's two-block pattern in
-// every orientation supported by Java's block-pattern matcher.
+// TrySpawnCopperGolemPattern ports the copper golem pattern of
+// CarvedPumpkinBlock.trySpawnGolem in every orientation supported by Java's
+// block-pattern matcher: a carved pumpkin on a copper block becomes a copper
+// golem of the oxidation of the block, standing on a copper chest that
+// replaces the block.
 func TrySpawnCopperGolemPattern(tx *world.Tx, pumpkinPos cube.Pos) bool {
+	var facing cube.Direction
 	switch head := tx.Block(pumpkinPos).(type) {
 	case block.Pumpkin:
 		if !head.Carved {
 			return false
 		}
+		facing = head.Facing
 	case block.LitPumpkin:
+		facing = head.Facing
 	default:
 		return false
 	}
 	var copperPos cube.Pos
+	var copper block.Copper
 	if !forEachGolemPatternOrientation(func(_, up, _ cube.Pos) bool {
 		candidate := pumpkinPos.Sub(up)
-		if _, ok := tx.Block(candidate).(block.Copper); !ok {
+		c, ok := tx.Block(candidate).(block.Copper)
+		if !ok || c.Type != block.NormalCopper() {
 			return false
 		}
-		copperPos = candidate
+		copperPos, copper = candidate, c
 		return true
 	}) {
 		return false
 	}
+	// CarvedPumpkinBlock.spawnGolemInWorld clears the pattern and spawns the
+	// golem where the pumpkin was.
 	tx.SetBlock(pumpkinPos, block.Air{}, nil)
 	tx.SetBlock(copperPos, block.Air{}, nil)
-	tx.AddEntity(NewCopperGolem(world.EntitySpawnOpts{Position: copperPos.Vec3Centre()}))
+	golem := tx.AddEntity(NewCopperGolem(world.EntitySpawnOpts{Position: pumpkinPos.Vec3().Add(mgl64.Vec3{.5, .05, .5})}))
+	// CarvedPumpkinBlock.replaceCopperBlockWithChest.
+	chest := block.NewCopperChest()
+	chest.Facing, chest.Oxidation, chest.Waxed = facing, copper.Oxidation, copper.Waxed
+	tx.SetBlock(copperPos, chest, nil)
+	// CopperGolem.spawn.
+	if g, ok := golem.(*CopperGolem); ok {
+		g.b().weather = int(copper.Oxidation.Uint8())
+		g.updateState()
+	}
 	return true
 }
 
@@ -215,203 +228,143 @@ func (c *CopperGolem) Tick(tx *world.Tx, n int64) {
 	c.updateWeathering(tx, n)
 	c.Ent.Tick(tx, n)
 }
+func (b *CopperGolemBehaviour) mobAI() *MobAI   { return &b.ai }
+func (b *CopperGolemBehaviour) brain() *Brain   { return b.br }
+func (b *CopperGolemBehaviour) panicking() bool { return b.br.has(memIsPanicking) }
+
+func (b *CopperGolemBehaviour) transportHeld() item.Stack     { return b.carried }
+func (b *CopperGolemBehaviour) setTransportHeld(s item.Stack) { b.carried = s }
+
+// Tick runs the MobAI of the copper golem with its brain.
 func (b *CopperGolemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	if b.cooldown > 0 {
-		b.cooldown--
-	}
-	speed := b.speed
-	if b.panic.run(e, tx, &b.navigator) {
-		// CopperGolemAi's AnimalPanic runs at 1.5 times its speed.
-		speed = groundSpeed(.2, 1.5)
-	} else if b.targetSet {
-		b.followTarget(e, tx)
-	} else if b.cooldown == 0 {
-		b.findContainer(e, tx)
-	} else {
-		b.wander(e, tx)
-	}
-	v, r := e.data.Vel, e.data.Rot
-	if p, ok := b.navigator.Tick(e.data.Pos, navigatorTick(e), .9); ok {
-		d := p.Sub(e.data.Pos)
-		d[1] = 0
-		if d.Len() < .3 {
-			b.navigator.Index++
-		} else {
-			d = d.Normalize()
-			v[0], v[2] = d[0]*speed, d[2]*speed
-			r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
+	// CopperGolem.createAttributes.
+	b.ai.MovementSpeed, b.ai.StepHeight = b.speed, 1
+	return b.ai.Tick(e, &CopperGolem{Ent: e}, func(m *Mob) {
+		m.AI.nav.SetRequiredPathLength(m, 48)
+		m.AI.nav.SetCanOpenDoors(true)
+		m.AI.SetPathfindingMalus(PathFireInNeighbour, 16)
+		m.AI.SetPathfindingMalus(PathDamagingInNeighbour, 16)
+		m.AI.SetPathfindingMalus(PathFire, -1)
+		if !b.br.has(memTransportItemsCooldownTicks) {
+			b.br.set(memTransportItemsCooldownTicks, 60+int(m.Random().NextInt(40)))
 		}
-	} else {
-		v[0], v[2] = 0, 0
-	}
-	return b.mc.TickMovement(e, e.data.Pos, v, r, e.data.Rot, tx).apply(e)
-}
-func (b *CopperGolemBehaviour) findContainer(e *Ent, tx *world.Tx) {
-	origin := cube.PosFromVec3(e.Position())
-	var source, dest cube.Pos
-	sourceFound, destFound := false, false
-	bestS, bestD := math.MaxFloat64, math.MaxFloat64
-	for y := origin[1] - 8; y <= origin[1]+8; y++ {
-		for x := origin[0] - 32; x <= origin[0]+32; x++ {
-			for z := origin[2] - 32; z <= origin[2]+32; z++ {
-				p := cube.Pos{x, y, z}
-				dist := origin.Vec3Middle().Sub(p.Vec3Middle()).LenSqr()
-				switch tx.Block(p).(type) {
-				case block.CopperChest:
-					if dist < bestS {
-						source, bestS, sourceFound = p, dist, true
-					}
-				case block.Chest:
-					if dist < bestD {
-						dest, bestD, destFound = p, dist, true
-					}
-				}
-			}
-		}
-	}
-	if b.carried.Empty() && sourceFound {
-		b.setPath(tx, origin, source)
-	} else if !b.carried.Empty() && destFound {
-		b.setPath(tx, origin, dest)
-	} else {
-		b.cooldown = 40
-		b.state = 0
-	}
-}
-func (b *CopperGolemBehaviour) setPath(tx *world.Tx, start, container cube.Pos) {
-	targets := [...]cube.Pos{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}
-	var best []cube.Pos
-	for _, delta := range targets {
-		path := FindGroundPath(tx, start, container.Add(delta), GroundProfile{MaxVisitedNodes: 2048})
-		if len(path) != 0 && (len(best) == 0 || len(path) < len(best)) {
-			best = path
-		}
-	}
-	if len(best) == 0 {
-		b.cooldown = 40
-		return
-	}
-	b.navigator = Navigator{Path: best, Target: container, HasTarget: true}
-	b.interactTicks = 0
-}
-func (b *CopperGolemBehaviour) followTarget(e *Ent, tx *world.Tx) {
-	if b.navigator.Index < len(b.navigator.Path) {
-		return
-	}
-	b.interactTicks++
-	container, ok := tx.Block(b.target).(interface {
-		Inventory(*world.Tx, cube.Pos) *inventory.Inventory
-		StartOpen(*world.Tx, cube.Pos)
-		StopOpen(*world.Tx, cube.Pos)
 	})
+}
+
+// customServerAiStep ports CopperGolem.customServerAiStep and
+// CopperGolemAi.updateActivity.
+func (b *CopperGolemBehaviour) customServerAiStep(m *Mob) {
+	b.br.tick(m)
+	b.br.setActiveToFirstValid(activityIdle)
+}
+
+// newCopperGolemBrain ports CopperGolemAi and the brain provider of
+// CopperGolem: a copper golem takes items out of copper chests and sorts
+// them into chests holding the same item.
+func newCopperGolemBrain(b *CopperGolemBehaviour) *Brain {
+	br := newBrain(nearestLivingEntitySensor{}, hurtBySensor{})
+	br.addActivity(activityCore, 0,
+		newAnimalPanic(1.5, nil, nil, nil),
+		newLookAtTargetSink(45, 90),
+		newMoveToTargetSink(150, 250, nil),
+		newInteractWithDoor(),
+		newCountDownCooldownTicks(memGazeCooldownTicks),
+		newCountDownCooldownTicks(memTransportItemsCooldownTicks),
+	)
+	transport := &transportItems{
+		speed: 1, horizontal: 32, vertical: 8,
+		source: func(bl world.Block) bool { _, ok := bl.(block.CopperChest); return ok },
+		destination: func(bl world.Block) bool {
+			switch bl.(type) {
+			case block.Chest, block.TrappedChest:
+				return true
+			}
+			return false
+		},
+		onReached: b.onReachedChest,
+		onSetOff: func(m *Mob) {
+			b.closeChest(m.tx, m.H())
+			b.setState(m.Ent, CopperGolemIdle)
+		},
+		// CopperGolemAi.shouldQueueForTarget: a chest somebody has open.
+		shouldQueue: func(_ *Mob, t transportTarget) bool { return t.chest.Opened() },
+	}
+	br.addActivityWith(activityIdle, []prioritizedBehavior{
+		{0, newTransportItemsBetweenContainers(transport)},
+		{1, newSetEntityLookTargetSometimes(isPlayerType, 6, uniformInt{40, 80})},
+		{2, newRunOne([]memoryCondition{{memWalkTarget, memAbsent}, {memTransportItemsCooldownTicks, memPresent}},
+			weightedBehavior{newRandomStrollWithin(1, 2, 2), 1},
+			weightedBehavior{newDoNothing(30, 60), 1},
+		)},
+	}, nil, nil)
+	return br
+}
+
+// copperGolemInteractions are the states and sounds of the interactions of
+// a copper golem with a chest it reached.
+var copperGolemInteractions = [...]struct {
+	state CopperGolemState
+	sound string
+}{
+	transportPickupItem:   {CopperGolemGettingItem, "entity.copper_golem.no_item_get"},
+	transportPickupNoItem: {CopperGolemGettingNoItem, "entity.copper_golem.no_item_no_get"},
+	transportPlaceItem:    {CopperGolemDroppingItem, "entity.copper_golem.item_drop"},
+	transportPlaceNoItem:  {CopperGolemDroppingNoItem, "entity.copper_golem.item_no_drop"},
+}
+
+// onReachedChest ports CopperGolemAi.onReachedTargetInteraction: the golem
+// opens the chest, plays the sound of what it does after nine ticks and
+// closes the chest after three seconds.
+func (b *CopperGolemBehaviour) onReachedChest(m *Mob, t transportTarget, interaction transportInteraction, ticks int) {
+	i := copperGolemInteractions[interaction]
+	switch ticks {
+	case 1:
+		b.openChest(m.tx, m.H(), t.pos)
+		b.setState(m.Ent, i.state)
+	case 9:
+		m.tx.PlaySound(m.data.Pos, sound.Custom{Name: i.sound, Volume: 1, Pitch: 1})
+	case 60:
+		b.closeChest(m.tx, m.H())
+	}
+}
+
+// openChest ports Container.startOpen for a copper golem: it counts as an
+// opener of the chest until it closes it.
+func (b *CopperGolemBehaviour) openChest(tx *world.Tx, h *world.EntityHandle, pos cube.Pos) {
+	b.closeChest(tx, h)
+	c, ok := tx.Block(pos).(block.Container)
 	if !ok {
-		b.targetSet = false
-		b.navigator.Path = nil
-		b.state = 0
 		return
 	}
-	if b.interactTicks == 1 {
-		container.StartOpen(tx, b.target)
-		inv := container.Inventory(tx, b.target)
-		if b.carried.Empty() {
-			b.state = int(CopperGolemGettingNoItem)
-			for _, stack := range inv.Slots() {
-				if !stack.Empty() {
-					b.state = int(CopperGolemGettingItem)
-					break
-				}
-			}
-		} else if inventoryAccepts(inv, b.carried) {
-			b.state = int(CopperGolemDroppingItem)
-		} else {
-			b.state = int(CopperGolemDroppingNoItem)
-		}
-	}
-	if b.interactTicks == 9 {
-		name := [...]string{"entity.copper_golem.no_item_get", "entity.copper_golem.no_item_get", "entity.copper_golem.no_item_no_get", "entity.copper_golem.item_drop", "entity.copper_golem.item_no_drop"}[b.state]
-		tx.PlaySound(e.Position(), sound.Custom{Name: name, Volume: 1, Pitch: 1})
-	}
-	if b.interactTicks == 20 {
-		inv := container.Inventory(tx, b.target)
-		if b.carried.Empty() {
-			b.carried = takeFirst(inv)
-			if b.carried.Empty() {
-				b.state = 2
-			}
-		} else {
-			before := b.carried
-			putSorted(inv, &b.carried)
-			if before.Count() == b.carried.Count() {
-				b.state = 4
-			}
-		}
-	}
-	if b.interactTicks >= 60 {
-		container.StopOpen(tx, b.target)
-		b.targetSet = false
-		b.navigator.Path, b.navigator.Index = nil, 0
-		b.interactTicks, b.state = 0, 0
-		b.cooldown = 60 + b.randomInt(41)
-	}
+	c.AddViewer(block.MobContainerOpener{Handle: h}, tx, pos)
+	b.openedChest = &pos
 }
-func inventoryAccepts(inv *inventory.Inventory, carried item.Stack) bool {
-	for _, stack := range inv.Slots() {
-		if stack.Empty() || stack.Comparable(carried) && stack.Count() < stack.MaxCount() {
-			return true
-		}
-	}
-	return false
-}
-func takeFirst(inv *inventory.Inventory) item.Stack {
-	for slot, stack := range inv.Slots() {
-		if !stack.Empty() {
-			one := stack.Grow(-stack.Count() + 1)
-			_ = inv.SetItem(slot, stack.Grow(-1))
-			return one
-		}
-	}
-	return item.Stack{}
-}
-func putSorted(inv *inventory.Inventory, carried *item.Stack) {
-	if carried.Empty() {
+
+// closeChest ports Container.stopOpen and CopperGolem.clearOpenedChestPos.
+func (b *CopperGolemBehaviour) closeChest(tx *world.Tx, h *world.EntityHandle) {
+	if b.openedChest == nil {
 		return
 	}
-	slots := inv.Slots()
-	for slot, stack := range slots {
-		if stack.Comparable(*carried) && stack.Count() < stack.MaxCount() {
-			count := min(carried.Count(), stack.MaxCount()-stack.Count())
-			_ = inv.SetItem(slot, stack.Grow(count))
-			*carried = carried.Grow(-count)
-			if carried.Empty() {
-				return
-			}
-		}
-	}
-	for slot, stack := range slots {
-		if stack.Empty() {
-			_ = inv.SetItem(slot, *carried)
-			*carried = item.Stack{}
-			return
-		}
+	pos := *b.openedChest
+	b.openedChest = nil
+	if c, ok := tx.Block(pos).(block.Container); ok {
+		c.RemoveViewer(block.MobContainerOpener{Handle: h}, tx, pos)
 	}
 }
+
+// setState ports CopperGolem.setState: viewers see the state of the golem.
+func (b *CopperGolemBehaviour) setState(e *Ent, state CopperGolemState) {
+	if b.state != int(state) {
+		b.state = int(state)
+		e.updateState()
+	}
+}
+
 func (b *CopperGolemBehaviour) randomInt(bound int) int { return int(b.random.NextInt(int32(bound))) }
-func (b *CopperGolemBehaviour) wander(e *Ent, tx *world.Tx) {
-	if b.nextWander > 0 {
-		b.nextWander--
-	}
-	if b.nextWander == 0 {
-		b.nextWander = 40 + b.randomInt(81)
-		start := cube.PosFromVec3(e.Position())
-		for range 4 {
-			goal := start.Add(cube.Pos{b.randomInt(13) - 6, 0, b.randomInt(13) - 6})
-			if p := FindGroundPath(tx, start, goal, GroundProfile{MaxVisitedNodes: 128}); len(p) > 0 {
-				b.navigator = Navigator{Path: p, Target: goal, HasTarget: true}
-				break
-			}
-		}
-	}
-}
+
+// updateWeathering ports CopperGolem.updateWeathering: an unwaxed copper
+// golem oxidises a stage every seven hours or so, and a fully oxidised one
+// may turn into a statue where it stands.
 func (c *CopperGolem) updateWeathering(tx *world.Tx, tick int64) {
 	b := c.b()
 	if b.waxed {
@@ -421,24 +374,29 @@ func (c *CopperGolem) updateWeathering(tx *world.Tx, tick int64) {
 		b.nextWeatheringTick = tick + int64(504000+b.randomInt(48001))
 		return
 	}
-	if b.weather < 3 && tick >= b.nextWeatheringTick {
+	oxidised := b.weather == 3
+	if tick >= b.nextWeatheringTick && !oxidised {
 		b.weather++
 		if b.weather == 3 {
 			b.nextWeatheringTick = 0
 		} else {
 			b.nextWeatheringTick += int64(504000 + b.randomInt(48001))
 		}
+		c.updateState()
 	}
-	if b.weather == 3 && float64(b.random.NextFloat()) <= .0058 {
-		p := cube.PosFromVec3(c.Position())
-		if replaceable, ok := tx.Block(p).(block.Replaceable); ok && replaceable.ReplaceableBy(block.CopperGolemStatue{}) {
-			poses := block.CopperGolemPoses()
-			tx.SetBlock(p, block.CopperGolemStatue{Pose: poses[b.randomInt(len(poses))], Oxidation: block.OxidisedOxidation(), Facing: c.Rotation().Direction()}, nil)
-			tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem_become_statue", Volume: 1, Pitch: 1})
-			c.dropEquipment(tx)
-			_ = c.CloseIn(tx)
-		}
+	if !oxidised {
+		return
 	}
+	p := cube.PosFromVec3(c.Position())
+	if _, air := tx.Block(p).(block.Air); !air || float64(b.random.NextFloat()) > .0058 {
+		return
+	}
+	poses := block.CopperGolemPoses()
+	tx.SetBlock(p, block.CopperGolemStatue{Pose: poses[b.randomInt(len(poses))], Oxidation: block.OxidisedOxidation(), Facing: c.Rotation().Direction()}, nil)
+	b.closeChest(tx, c.H())
+	c.dropEquipment(tx)
+	tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem_become_statue", Volume: 1, Pitch: 1})
+	_ = c.CloseIn(tx)
 }
 func (c *CopperGolem) dropEquipment(tx *world.Tx) {
 	b := c.b()
@@ -449,6 +407,10 @@ func (c *CopperGolem) dropEquipment(tx *world.Tx) {
 	}
 	b.antenna, b.carried = item.Stack{}, item.Stack{}
 }
+
+// Interact ports CopperGolem.mobInteract: an empty hand takes the item the
+// golem carries, shears take its flower, honeycomb waxes it and an axe
+// scrapes off the wax or a stage of oxidation.
 func (c *CopperGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	b := c.b()
 	if u == nil {
@@ -456,11 +418,21 @@ func (c *CopperGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) 
 	}
 	main, _ := u.HeldItems()
 	if main.Empty() && !b.carried.Empty() {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: u.Position().Add(mgl64.Vec3{0, 1, 0})}, b.carried))
+		// BehaviorUtils.throwItem towards the player.
+		m := b.ai.Mob(c.Ent, c)
+		throwItemTowards(m, b.carried, u.Position(), mgl64.Vec3{float64(float32(.3)), float64(float32(.3)), float64(float32(.3))}, float64(float32(.3)))
 		b.carried = item.Stack{}
 		return true
 	}
 	switch main.Item().(type) {
+	case item.Shears:
+		if !b.antenna.Empty() {
+			tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem.shear", Volume: 1, Pitch: 1})
+			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position().Add(mgl64.Vec3{0, 1.5, 0})}, b.antenna))
+			b.antenna = item.Stack{}
+			ctx.DamageItem(1)
+			return true
+		}
 	case item.Honeycomb:
 		if b.waxed {
 			return false
@@ -473,7 +445,7 @@ func (c *CopperGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) 
 		if b.waxed {
 			b.waxed, b.nextWeatheringTick = false, -1
 			ctx.DamageItem(1)
-			tx.PlaySound(c.Position(), sound.Custom{Name: "item.axe.wax_off", Volume: 1, Pitch: 1})
+			tx.PlaySound(c.Position(), sound.Custom{Name: "item.axe.scrape", Volume: 1, Pitch: 1})
 			return true
 		}
 		if b.weather > 0 {
@@ -481,14 +453,7 @@ func (c *CopperGolem) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) 
 			b.nextWeatheringTick = -1
 			ctx.DamageItem(1)
 			tx.PlaySound(c.Position(), sound.Custom{Name: "item.axe.scrape", Volume: 1, Pitch: 1})
-			return true
-		}
-	case item.Shears:
-		if !b.antenna.Empty() {
-			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: c.Position().Add(mgl64.Vec3{0, 1.5, 0})}, b.antenna))
-			b.antenna = item.Stack{}
-			ctx.DamageItem(1)
-			tx.PlaySound(c.Position(), sound.Custom{Name: "entity.copper_golem.shear", Volume: 1, Pitch: 1})
+			c.updateState()
 			return true
 		}
 	}
@@ -500,24 +465,33 @@ func (c *CopperGolem) SetMaxHealth(v float64) { c.b().health.SetMaxHealth(v) }
 func (c *CopperGolem) Dead() bool             { return c.b().dead || c.Health() <= 0 }
 
 // Panicking reports whether the copper golem runs from danger.
-func (c *CopperGolem) Panicking() bool { return c.b().panic.active }
+func (c *CopperGolem) Panicking() bool { return c.b().panicking() }
+
+// Hurt ports CopperGolem.actuallyHurt: a hurt copper golem stops what it
+// does with a chest.
 func (c *CopperGolem) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	b := c.b()
-	if c.Dead() || d <= 0 || s.Fire() && c.hasEffect(effect.FireResistance) {
+	if c.Dead() || d <= 0 {
 		return 0, false
 	}
 	if lightning, ok := s.(LightningDamageSource); ok {
 		c.thunderHit(lightning.BoltUUID)
 	}
-	if r, ok := b.effects.Effect(effect.Resistance); ok {
-		d *= effect.Resistance.Multiplier(s, r.Level())
+	var ok bool
+	if d, ok = b.ai.DamageCooldown(c.tx, d); !ok {
+		return 0, false
+	}
+	if d, ok = mobEffectDamage(b.effects, d, s); !ok {
+		return 0, false
 	}
 	b.health.AddHealth(-d)
-	b.panic.hurt(s, c.tx.CurrentTick())
+	b.ai.Hurt(s)
+	b.setState(c.Ent, CopperGolemIdle)
 	c.viewAction(HurtAction{})
 	onMobHurt(c.tx, c)
 	if c.Dead() {
 		b.dead = true
+		b.closeChest(c.tx, c.H())
 		c.viewAction(DeathAction{})
 		c.dropEquipment(c.tx)
 		dropAllDeathLoot(c.tx, c, s)
@@ -537,6 +511,9 @@ func (c *CopperGolem) thunderHit(boltUUID string) {
 	if b.weather > 0 {
 		b.weather--
 		b.nextWeatheringTick = -1
+		if c.tx != nil {
+			c.updateState()
+		}
 	}
 }
 func (c *CopperGolem) Heal(h float64, _ world.HealingSource) float64 {

@@ -163,6 +163,8 @@ const (
 	memSpearChargePosition
 	memSpearFleeingTime
 	memSpearFleeingPosition
+	memVisitedBlockPositions
+	memUnreachableTransportBlockPositions
 	memMemoryTypeCount
 )
 

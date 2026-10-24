@@ -91,6 +91,14 @@ type chestBlock interface {
 // ChestBlockEntity.getOpenCount is above zero.
 func (c Chest) Opened() bool { return len(c.viewers) > 0 }
 
+// OwnInventory returns the inventory of this half of the chest alone, which
+// identifies its block entity.
+func (c Chest) OwnInventory() *inventory.Inventory { return c.inventory }
+
+// PairedWith returns the position of the chest this chest is paired with,
+// and whether it is paired.
+func (c Chest) PairedWith(pos cube.Pos) (cube.Pos, bool) { return c.pairPos(pos), c.paired }
+
 func (c Chest) chestData() Chest                    { return c }
 func (c Chest) withChestData(data Chest) chestBlock { return data }
 func (Chest) canPairChest(other world.Block) bool   { _, ok := other.(Chest); return ok }
