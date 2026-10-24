@@ -147,7 +147,7 @@ func TestShulkerBulletHitAppliesLevitation(t *testing.T) {
 			Position: owner.Position().Add(mgl64.Vec3{0, .5, 0}),
 			Velocity: mgl64.Vec3{.15, 0, 0},
 		}, owner.H(), target.H())
-		bullet := tx.AddEntity(handle).(*Ent)
+		bullet := tx.AddEntity(handle).(*ShulkerBullet)
 		for tick := range 40 {
 			if _, loaded := handle.Entity(tx); !loaded {
 				break
@@ -196,7 +196,7 @@ func TestShulkerBulletCanHitOwnerAfterLeaving(t *testing.T) {
 			Position: mgl64.Vec3{12.5, 70.5, 8.5},
 			Velocity: mgl64.Vec3{.15, 0, 0},
 		}, owner.H(), nil)
-		bullet := tx.AddEntity(handle).(*Ent)
+		bullet := tx.AddEntity(handle).(*ShulkerBullet)
 		bullet.Tick(tx, 0)
 		bullet.SetVelocity(mgl64.Vec3{-1, 0, 0})
 		for tick := range 4 {

@@ -129,7 +129,8 @@ func TestShulkerClientStateSurvivesReloadAndReattachment(t *testing.T) {
 				if !ok {
 					t.Fatalf("attachment change sent %T, want SetActorData", pk)
 				}
-				assertMetadata(updated.EntityMetadata, pos, cube.FaceNorth, 4, 0)
+				// Shulker.findNewAttachment keeps the shell as open as it was.
+				assertMetadata(updated.EntityMetadata, pos, cube.FaceNorth, 4, 73)
 			default:
 				t.Fatal("attachment/peek changed without a client metadata update")
 			}
