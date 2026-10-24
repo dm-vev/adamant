@@ -752,12 +752,17 @@ func (d *EnderDragon) KnockBack(src mgl64.Vec3, force, _ float64) {
 	d.data.Vel = mgl64.Vec3{v[0]/2 + away[0], v[1], v[2]/2 + away[2]}
 }
 
-func (d *EnderDragon) AddEffect(e effect.Effect)              {}
-func (d *EnderDragon) RemoveEffect(effect.Type)               {}
-func (d *EnderDragon) Effects() []effect.Effect               { return nil }
-func (d *EnderDragon) Speed() float64                         { return 0.6 }
-func (d *EnderDragon) SetSpeed(float64)                       {}
-func (d *EnderDragon) EyeHeight() float64                     { return dragonEyeHeight }
+func (d *EnderDragon) AddEffect(e effect.Effect) {}
+func (d *EnderDragon) RemoveEffect(effect.Type)  {}
+func (d *EnderDragon) Effects() []effect.Effect  { return nil }
+func (d *EnderDragon) Speed() float64            { return 0.6 }
+func (d *EnderDragon) SetSpeed(float64)          {}
+func (d *EnderDragon) EyeHeight() float64        { return dragonEyeHeight }
+
+// CanUsePortal reports false: the dragon uses no portal or gateway, as
+// EnderDragon.canUsePortal.
+func (d *EnderDragon) CanUsePortal() bool { return false }
+
 func (d *EnderDragon) Phase() DragonPhase                     { return d.behaviour().phase }
 func (d *EnderDragon) SetPhase(p DragonPhase)                 { d.behaviour().setPhase(d.tx, p) }
 func (d *EnderDragon) SetDragonFight(fight world.DragonFight) { d.behaviour().fight = fight }

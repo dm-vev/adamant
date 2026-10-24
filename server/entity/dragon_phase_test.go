@@ -292,3 +292,16 @@ func TestDragonCirclesTheIsland(t *testing.T) {
 		}
 	})
 }
+
+// TestDragonUsesNoPortal checks End portals and gateways leave the dragon
+// be, as EnderDragon.canUsePortal.
+func TestDragonUsesNoPortal(t *testing.T) {
+	w := dragonTestWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		dragon := addTestDragon(tx, mgl64.Vec3{.5, 80, .5}, entity.DragonHovering, nil)
+		var traveller world.Entity = dragon
+		if p, ok := traveller.(interface{ CanUsePortal() bool }); !ok || p.CanUsePortal() {
+			t.Fatal("the dragon may use portals")
+		}
+	})
+}
