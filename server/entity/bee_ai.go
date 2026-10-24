@@ -272,7 +272,7 @@ func (b *beeBehaviour) pathfindRandomlyTowards(m *Mob, target cube.Pos) {
 		yAdjust = -4
 	}
 	xzDist, yDist := 6, 8
-	if dist := abs(beePos.X()-target.X()) + abs(beePos.Y()-target.Y()) + abs(beePos.Z()-target.Z()); dist < 15 {
+	if dist := absInt(beePos.X()-target.X()) + absInt(beePos.Y()-target.Y()) + absInt(beePos.Z()-target.Z()); dist < 15 {
 		xzDist, yDist = dist/2, dist/2
 	}
 	if next, ok := AirRandomPosTowards(m, xzDist, yDist, yAdjust, targetVec, math.Pi/10); ok {
@@ -803,9 +803,9 @@ func manhattanOrdered(origin cube.Pos, reachX, reachY, reachZ, maxDepth int, vis
 	for depth := 0; depth <= maxDepth; depth++ {
 		maxX := min(reachX, depth)
 		for x := -maxX; x <= maxX; x++ {
-			maxY := min(reachY, depth-abs(x))
+			maxY := min(reachY, depth-absInt(x))
 			for y := -maxY; y <= maxY; y++ {
-				z := depth - abs(x) - abs(y)
+				z := depth - absInt(x) - absInt(y)
 				if z > reachZ {
 					continue
 				}

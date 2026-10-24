@@ -565,3 +565,131 @@ func constSpeed(v float64) func(*Mob) float64 { return func(*Mob) float64 { retu
 func newOneShotIf(pred func(m *Mob) bool) *oneShot {
 	return newOneShot(nil, func(m *Mob, _ *Brain, _ int64) bool { return pred(m) })
 }
+
+// newStartAttacking ports StartAttacking: a mob that may attack starts
+// attacking the target the finder returns.
+func newStartAttacking(can func(m *Mob) bool, finder func(m *Mob) world.Entity) *oneShot {
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		if can != nil && !can(m) {
+			return false
+		}
+		target := finder(m)
+		if target == nil || !m.CanAttack(target) {
+			return false
+		}
+		b.setEntity(memAttackTarget, target)
+		b.erase(memCantReachWalkTargetSince)
+		return true
+	})
+}
+
+// newStopAttackingIfTargetInvalid ports StopAttackingIfTargetInvalid: a mob
+// forgets a target it may no longer attack, that died or left, that stop
+// picks out or, if it may grow tired, that it could not reach for ten
+// seconds. onErased runs when it does.
+func newStopAttackingIfTargetInvalid(stop func(m *Mob, target world.Entity) bool, onErased func(m *Mob, target world.Entity), canGrowTired bool) *oneShot {
+	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memCantReachWalkTargetSince, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+		target := b.entity(m, memAttackTarget)
+		tired := false
+		if canGrowTired {
+			if v, ok := b.get(memCantReachWalkTargetSince); ok {
+				tired = time-v.(int64) > 200
+			}
+		}
+		if target != nil && m.CanAttack(target) && !tired && entityAlive(target) && (stop == nil || !stop(m, target)) {
+			return true
+		}
+		if onErased != nil && target != nil {
+			onErased(m, target)
+		}
+		b.erase(memAttackTarget)
+		return true
+	})
+}
+
+// findManhattan ports Level.findBlocksInBoxByManhattanDistance with a
+// filter: the first position within r of origin, nearest first, for which
+// match returns true.
+func findManhattan(origin cube.Pos, r int, match func(cube.Pos) bool) (cube.Pos, bool) {
+	var found cube.Pos
+	ok := false
+	manhattanOrdered(origin, r, r, r, 3*r, func(p cube.Pos) bool {
+		if match(p) {
+			found, ok = p, true
+			return false
+		}
+		return true
+	})
+	return found, ok
+}
+
+// collisionEmpty reports if the block at pos has no collision shape.
+func collisionEmpty(tx *world.Tx, pos cube.Pos) bool {
+	return len(tx.Block(pos).Model().BBox(pos, tx)) == 0
+}
+
+// newTryFindLand ports TryFindLand: a mob in water walks, every three
+// seconds, to the nearest spot within range out of water above a sturdy
+// block.
+func newTryFindLand(r int, speed float64) *oneShot {
+	var nextOK int64
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+		at := m.BlockPos()
+		if !pathWater(m.tx, at) {
+			return false
+		}
+		if time < nextOK {
+			nextOK = time + 60
+			return true
+		}
+		if p, ok := findManhattan(at, r, func(p cube.Pos) bool {
+			if p[0] == at[0] && p[2] == at[2] {
+				return false
+			}
+			if _, liquid := m.tx.Liquid(p); liquid {
+				return false
+			}
+			below := p.Side(cube.FaceDown)
+			return collisionEmpty(m.tx, p) && m.tx.Block(below).Model().FaceSolid(below, cube.FaceUp, m.tx)
+		}); ok {
+			b.set(memLookTarget, newBlockPosTracker(p))
+			b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(p), speed: speed, closeEnough: 1})
+		}
+		nextOK = time + 60
+		return true
+	})
+}
+
+// newTryFindLandNearLiquid ports TryFindLandNearLiquid: a mob out of water
+// walks, every two seconds, to the nearest spot within range on a block
+// beside air over water.
+func newTryFindLandNearLiquid(r int, speed float64) *oneShot {
+	var nextOK int64
+	return newOneShot([]memoryCondition{{memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, time int64) bool {
+		at := m.BlockPos()
+		if pathWater(m.tx, at) {
+			return false
+		}
+		if time < nextOK {
+			nextOK = time + 40
+			return true
+		}
+		if p, ok := findManhattan(at, r, func(p cube.Pos) bool {
+			if p[0] == at[0] && p[2] == at[2] || !collisionEmpty(m.tx, p) || collisionEmpty(m.tx, p.Side(cube.FaceDown)) {
+				return false
+			}
+			for _, f := range cube.HorizontalFaces() {
+				side := p.Side(f)
+				if isAir(m.tx.Block(side)) && pathWater(m.tx, side.Side(cube.FaceDown)) {
+					return true
+				}
+			}
+			return false
+		}); ok {
+			b.set(memLookTarget, newBlockPosTracker(p))
+			b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(p), speed: speed})
+		}
+		nextOK = time + 40
+		return true
+	})
+}

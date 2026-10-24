@@ -156,6 +156,7 @@ const (
 	memVisibleVillagerBabies
 	memNearestVisibleAttackableHoglin
 	memLastHurtBy
+	memUnreachableTongueTargets
 	memMemoryTypeCount
 )
 

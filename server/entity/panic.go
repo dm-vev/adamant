@@ -122,14 +122,14 @@ func panicWater(tx *world.Tx, pos cube.Pos, xz int) (cube.Pos, bool) {
 	}
 	for distance := 0; distance <= xz+1; distance++ {
 		for dy := -1; dy <= 1; dy++ {
-			horizontal := distance - abs(dy)
+			horizontal := distance - absInt(dy)
 			if horizontal < 0 || horizontal > xz {
 				continue
 			}
 			for dx := -horizontal; dx <= horizontal; dx++ {
-				dz := horizontal - abs(dx)
+				dz := horizontal - absInt(dx)
 				for _, z := range [2]int{dz, -dz} {
-					if frogWater(tx, pos.Add(cube.Pos{dx, dy, z})) {
+					if pathWater(tx, pos.Add(cube.Pos{dx, dy, z})) {
 						return pos.Add(cube.Pos{dx, dy, z}), true
 					}
 					if dz == 0 {

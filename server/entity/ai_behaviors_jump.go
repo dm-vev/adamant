@@ -62,6 +62,13 @@ type possibleJump struct {
 // it for two seconds and leaps. acceptable decides where it may land,
 // defaultLongJumpLanding if nil.
 func newLongJumpToRandomPos(between uniformInt, maxHeight, maxWidth int, maxVelocityMultiplier float64, jumpSound func(m *Mob) string, acceptable func(m *Mob, pos cube.Pos) bool) *behavior {
+	return newLongJumpToPreferredBlock(between, maxHeight, maxWidth, maxVelocityMultiplier, jumpSound, nil, 0, acceptable)
+}
+
+// newLongJumpToPreferredBlock ports LongJumpToPreferredBlock: as
+// LongJumpToRandomPos, but with a chance of preferredChance a mob first tries
+// the spots above the blocks preferred picks out.
+func newLongJumpToPreferredBlock(between uniformInt, maxHeight, maxWidth int, maxVelocityMultiplier float64, jumpSound func(m *Mob) string, preferred func(world.Block) bool, preferredChance float64, acceptable func(m *Mob, pos cube.Pos) bool) *behavior {
 	if acceptable == nil {
 		acceptable = defaultLongJumpLanding
 	}
@@ -72,7 +79,30 @@ func newLongJumpToRandomPos(between uniformInt, maxHeight, maxWidth int, maxVelo
 		findTries     int
 		prepareStart  int64
 		allowedAngles = []int{65, 70, 75, 80}
+		notPreferred  []possibleJump
+		wanting       bool
 	)
+	pick := func(m *Mob) (possibleJump, bool) {
+		if !wanting {
+			if len(candidates) == 0 {
+				return possibleJump{}, false
+			}
+			return pickWeightedJump(m, &candidates), true
+		}
+		for len(candidates) > 0 {
+			c := pickWeightedJump(m, &candidates)
+			if preferred(m.tx.Block(c.pos.Side(cube.FaceDown))) {
+				return c, true
+			}
+			notPreferred = append(notPreferred, c)
+		}
+		if len(notPreferred) == 0 {
+			return possibleJump{}, false
+		}
+		c := notPreferred[0]
+		notPreferred = notPreferred[1:]
+		return c, true
+	}
 	cooldown := func(m *Mob) { m.Brain().set(memLongJumpCooldownTicks, between.sample(m)/2) }
 	return &behavior{
 		entry:       []memoryCondition{{memLookTarget, memRegistered}, {memLongJumpCooldownTicks, memAbsent}, {memLongJumpMidJump, memAbsent}},
@@ -95,6 +125,8 @@ func newLongJumpToRandomPos(between uniformInt, maxHeight, maxWidth int, maxVelo
 		},
 		start: func(m *Mob, _ int64) {
 			chosen, findTries = nil, 20
+			notPreferred = notPreferred[:0]
+			wanting = preferred != nil && float64(m.Random().NextFloat()) < preferredChance
 			pos := m.data.Pos
 			initial = &pos
 			at := m.BlockPos()
@@ -123,8 +155,13 @@ func newLongJumpToRandomPos(between uniformInt, maxHeight, maxWidth int, maxVelo
 				return
 			}
 			findTries--
+			// A mob wanting a preferred spot takes every candidate off the
+			// list at once, so it tries at most one it does not prefer.
 			for len(candidates) > 0 {
-				c := pickWeightedJump(m, &candidates)
+				c, ok := pick(m)
+				if !ok {
+					break
+				}
 				if c.pos[0] == m.BlockPos()[0] && c.pos[2] == m.BlockPos()[2] || !acceptable(m, c.pos) {
 					continue
 				}

@@ -178,7 +178,9 @@ func TestBrainPanicLastsFiveSeconds(t *testing.T) {
 			t.Fatal("goat calmed down before the panic's minimum duration")
 		}
 	})
-	for range 30 {
+	// HurtBySensor scans once a second, so the panic may start up to 20
+	// ticks after the hit.
+	for range 50 {
 		w.AdvanceTick()
 	}
 	<-w.Exec(func(tx *world.Tx) {

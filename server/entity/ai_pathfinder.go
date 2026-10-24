@@ -90,7 +90,7 @@ func (n *pathNodeData) distanceTo(o *pathNodeData) float32 {
 }
 
 func (n *pathNodeData) distanceManhattan(x, y, z int) float32 {
-	return float32(abs(x-n.x) + abs(y-n.y) + abs(z-n.z))
+	return float32(absInt(x-n.x) + absInt(y-n.y) + absInt(z-n.z))
 }
 
 func (n *pathNodeData) inOpenSet() bool { return n.heapIdx >= 0 }

@@ -24,26 +24,32 @@ func TestFrogEatsSmallMagmaCubeForFroglight(t *testing.T) {
 			w := newDeathTestWorld(t)
 			var cubeHandle *world.EntityHandle
 			<-w.Exec(func(tx *world.Tx) {
-				// A walled pen keeps the hopping magma cube within reach.
+				// A walled pen, higher than a magma cube hops, keeps it
+				// within reach.
 				for x := -4; x <= 4; x++ {
 					for z := -4; z <= 4; z++ {
 						tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
 						if x == -4 || x == 4 || z == -4 || z == 4 {
-							tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
-							tx.SetBlock(cube.Pos{x, 65, z}, block.Stone{}, nil)
+							for y := 64; y <= 67; y++ {
+								tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+							}
 						}
 					}
 				}
 				tx.AddEntity(entity.NewFrog(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 64, 0.5}}))
-				cubeHandle = tx.AddEntity(entity.NewMagmaCubeWithSize(world.EntitySpawnOpts{Position: mgl64.Vec3{3.5, 64, 0.5}}, c.size)).H()
+				// A size 2 cube is over a block wide, so it starts clear of
+				// the wall it would slip through.
+				cubeHandle = tx.AddEntity(entity.NewMagmaCubeWithSize(world.EntitySpawnOpts{Position: mgl64.Vec3{2.5, 64, 0.5}}, c.size)).H()
 			})
-			for range 200 {
+			// A croaking or leaping frog, or one that found the hopping cube out of
+			// reach, leaves it alone for a few seconds.
+			for range 600 {
 				w.AdvanceTick()
 			}
 			<-w.Exec(func(tx *world.Tx) {
 				_, alive := cubeHandle.Entity(tx)
 				if alive == c.eaten {
-					t.Fatalf("magma cube of size %d alive=%v after 200 ticks", c.size, alive)
+					t.Fatalf("magma cube of size %d alive=%v after 600 ticks", c.size, alive)
 				}
 				froglights := 0
 				_, items := deathDrops(tx)

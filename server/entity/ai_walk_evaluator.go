@@ -16,8 +16,13 @@ import (
 // Java's WalkNodeEvaluator and NodeEvaluator.
 type walkNodeEvaluator struct {
 	canPassDoors, canOpenDoors, canFloat, canWalkOverFences bool
-	// amphibious selects the evaluation of AmphibiousNodeEvaluator.
-	amphibious bool
+	// amphibious selects the evaluation of AmphibiousNodeEvaluator, which
+	// makes deep water cost more if prefersShallow.
+	amphibious, prefersShallow bool
+	// frog selects the evaluation of Frog.FrogNodeEvaluator: a frog starts
+	// at the bottom of its box in water, and finds open what stands on a
+	// block it likes to jump to.
+	frog bool
 	// fly gives blocks the path types of FlyNodeEvaluator.
 	fly bool
 
@@ -108,7 +113,11 @@ func (w *walkNodeEvaluator) start() *pathNodeData {
 	m := w.m
 	if w.amphibious && m.InWater() {
 		bb := m.BBox()
-		return w.startNode(int(math.Floor(bb.Min()[0])), int(math.Floor(bb.Min()[1]+.5)), int(math.Floor(bb.Min()[2])))
+		y := bb.Min()[1] + .5
+		if w.frog {
+			y = bb.Min()[1]
+		}
+		return w.startNode(int(math.Floor(bb.Min()[0])), int(math.Floor(y)), int(math.Floor(bb.Min()[2])))
 	}
 	pos := m.data.Pos
 	x, z := int(math.Floor(pos[0])), int(math.Floor(pos[2]))
@@ -200,6 +209,13 @@ func (w *walkNodeEvaluator) neighbours(out []*pathNodeData, pos *pathNodeData) i
 		if valid(down) && current != PathTrapdoor {
 			out[p] = down
 			p++
+		}
+		if w.prefersShallow {
+			for _, n := range out[:p] {
+				if n.typ == PathWater && n.y < seaLevel(w.m.tx)-10 {
+					n.costMalus++
+				}
+			}
 		}
 	}
 	return p
@@ -501,6 +517,9 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 func (w *walkNodeEvaluator) blockType(pos cube.Pos) PathType {
 	if w.fly {
 		return flyPathType(w.m, pos)
+	}
+	if w.frog && blockInTag(w.blockAt(pos.Side(cube.FaceDown)), "frog_prefer_jump_to") {
+		return PathOpen
 	}
 	if !w.amphibious || pathTypeFromState(w.m.tx, pos) != PathWater {
 		return pathTypeStatic(w.m.tx, pos)

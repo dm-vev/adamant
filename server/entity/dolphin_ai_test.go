@@ -71,11 +71,12 @@ func TestDolphinsPlayWithItems(t *testing.T) {
 	var original *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
 		// Walls keep the dolphin within eight blocks of the item, which
-		// swimming about would take it beyond.
+		// swimming about would take it beyond. They stand high enough out
+		// of the water that the dolphin cannot leap over them.
 		for x := -3; x <= 6; x++ {
 			for z := -3; z <= 4; z++ {
 				if x == -3 || x == 6 || z == -3 || z == 4 {
-					for y := 60; y <= 64; y++ {
+					for y := 60; y <= 68; y++ {
 						tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
 					}
 				}

@@ -138,6 +138,13 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if j, ok := e.(interface{ JumpGoalJumping() bool }); ok && j.JumpGoalJumping() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagJumpGoal)
 	}
+	if c, ok := e.(interface{ Croaking() bool }); ok && c.Croaking() {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCroaking)
+	}
+	if c, ok := e.(interface{ EatingMob() bool }); ok && c.EatingMob() {
+		// Bedrock's EAT_MOB flag shows a frog's tongue.
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagDigestMob)
+	}
 	if r, ok := e.(interface{ Resting() bool }); ok && r.Resting() {
 		// Bats hang upside down while resting.
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagResting)
@@ -229,6 +236,13 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	}
 	if g, ok := e.(interface{ BeamTargetHandle() *world.EntityHandle }); ok {
 		if h := g.BeamTargetHandle(); h != nil {
+			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
+		}
+	}
+	if f, ok := e.(interface{ TongueTargetHandle() *world.EntityHandle }); ok {
+		// The target is cleared once the tongue is back, as Frog.eraseTongueTarget.
+		m[protocol.EntityDataKeyTarget] = int64(0)
+		if h := f.TongueTargetHandle(); h != nil {
 			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
 		}
 	}

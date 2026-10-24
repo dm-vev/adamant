@@ -54,6 +54,9 @@ type PathNavigation struct {
 	// amphibious selects the navigation of Java's AmphibiousPathNavigation:
 	// the mob walks, and swims through water in every direction.
 	amphibious bool
+	// frog selects Frog.FrogPathNavigation: an amphibious navigation that
+	// does not cut corners along the water's edge.
+	frog bool
 	// swim selects the navigation of Java's WaterBoundPathNavigation: the
 	// mob only swims.
 	swim *swimNodeEvaluator
@@ -70,6 +73,12 @@ func (n *PathNavigation) init(m *Mob) {
 // SetAmphibious makes the mob walk and swim as Java's
 // AmphibiousPathNavigation moves it.
 func (n *PathNavigation) SetAmphibious(v bool) { n.amphibious, n.eval.amphibious = v, v }
+
+// SetFrog makes the mob walk and swim as Frog.FrogPathNavigation moves it.
+func (n *PathNavigation) SetFrog() {
+	n.SetAmphibious(true)
+	n.frog, n.eval.frog, n.eval.prefersShallow = true, true, true
+}
 
 // SetWaterBound makes the mob only swim, as Java's WaterBoundPathNavigation
 // moves it. A mob that breaches leaps out of the water.
@@ -359,10 +368,17 @@ func (n *PathNavigation) followThePath(m *Mob) {
 		maxYd = .5
 	}
 	close := xd < n.maxDistanceToWaypoint && zd < n.maxDistanceToWaypoint && yd < maxYd
-	if close || canCutCorner(n.path.nodes[n.path.next].typ) && n.shouldTargetNextNode(m, pos) {
+	if close || n.canCutCorner(n.path.nodes[n.path.next].typ) && n.shouldTargetNextNode(m, pos) {
 		n.path.Advance()
 	}
 	n.doStuckDetection(m, pos)
+}
+
+func (n *PathNavigation) canCutCorner(t PathType) bool {
+	if n.frog && t == PathWaterBorder {
+		return false
+	}
+	return canCutCorner(t)
 }
 
 func canCutCorner(t PathType) bool {

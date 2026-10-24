@@ -62,6 +62,18 @@ func nearestLiving(m *Mob) []world.Entity {
 	return out
 }
 
+// sensorAttackable ports Sensor.isEntityAttackable: the mob may attack the
+// entity within its follow range, seeing it unless it is its attack target
+// already.
+func sensorAttackable(m *Mob, e world.Entity) bool {
+	c := forCombat()
+	c.rangeLimit = m.AI.FollowRange
+	if v, ok := m.Brain().get(memAttackTarget); ok && v == e.H() {
+		c.ignoreInvis = true
+	}
+	return c.test(m, e)
+}
+
 // hurtBySensor ports HurtBySensor: what last hurt the mob and the living
 // entity that dealt it.
 type hurtBySensor struct{}
