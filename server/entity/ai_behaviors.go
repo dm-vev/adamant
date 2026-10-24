@@ -787,3 +787,11 @@ func newTryFindLiquid(r int, speed float64) *oneShot {
 		return true
 	})
 }
+
+// newTriggerIf ports BehaviorBuilder.triggerIf with a behaviour: inner runs
+// only while pred holds.
+func newTriggerIf(pred func(m *Mob) bool, inner *oneShot) *oneShot {
+	trigger := inner.trigger
+	inner.trigger = func(m *Mob, time int64) bool { return pred(m) && trigger(m, time) }
+	return inner
+}

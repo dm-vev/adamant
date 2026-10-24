@@ -80,6 +80,9 @@ func (c MountConfig) New() *MountBehaviour {
 	}
 	b := &MountBehaviour{kind: kind, tamed: c.Tamed || kind == mountCamel || kind == mountCamelHusk, saddled: c.Saddled, chested: c.Chested, trap: c.SkeletonTrap, strength: max(1, min(c.Strength, 5)), variant: c.Variant, ageTicks: c.AgeTicks,
 		jumpStrength: c.JumpStrength, movementSpeed: c.Speed, health: NewHealthManager(c.Health, c.MaxHealth), effects: NewEffectManager()}
+	if b.camel() {
+		b.br = newCamelBrain(b)
+	}
 	return b
 }
 
@@ -106,8 +109,8 @@ type MountBehaviour struct {
 	llamaState                       llamaState
 	breeding                         breeding
 	animalAI
-	// camelPanic is the CamelPanic of camels.
-	camelPanic *camelPanicGoal
+	// br is the brain of camels.
+	br *Brain
 	// temper, owner and bred are AbstractHorse's Temper, Owner and Bred.
 	temper int
 	owner  string
@@ -630,8 +633,8 @@ func (m *Mount) currentTx() *world.Tx     { return m.tx }
 func (m *Mount) breedingState() *breeding { return &m.b().breeding }
 func (m *Mount) ageTicks() *int           { return &m.b().ageTicks }
 func (m *Mount) Panicking() bool {
-	if b := m.b(); b.camelPanic != nil {
-		return b.camelPanic.running
+	if b := m.b(); b.br != nil {
+		return b.br.has(memIsPanicking)
 	}
 	return m.b().panicking()
 }

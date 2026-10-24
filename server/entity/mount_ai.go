@@ -108,26 +108,14 @@ func (b *MountBehaviour) registerLlamaGoals(m *Mob) {
 	}, true))
 }
 
-// registerCamelGoals ports the core and idle activities of CamelAi as
-// goals: CamelPanic, AnimalMakeLove, FollowTemptation, BabyFollowAdult,
-// looking at players and the idle RunOne.
+// registerCamelGoals ports the controls of the constructor of Camel, whose
+// brain stands in for goals.
 func (b *MountBehaviour) registerCamelGoals(m *Mob) {
 	ai := m.AI
 	ai.MaxHeadYaw = 30
 	ai.nav.SetCanWalkOverFences(true)
 	ai.moveOverride = camelMoveControl{b}
-	ai.Goals.Add(0, NewFloatGoal(m))
-	b.camelPanic = &camelPanicGoal{goalFlags: goalFlags{GoalMove}, mount: b}
-	ai.Goals.Add(1, b.camelPanic)
-	ai.Goals.Add(2, NewBreedGoal(1))
-	tempt := NewTemptGoal(2.5, (&Mount{Ent: m.Ent}).breedingFood, false)
-	ai.Goals.Add(3, camelTemptGoal{tempt, b})
-	follow := NewFollowParentGoal(2.5)
-	follow.MinDist, follow.MaxDist = 5, 17
-	ai.Goals.Add(3, camelFollowAdultGoal{follow, b})
-	ai.Goals.Add(4, NewLookAtPlayerGoal(6))
-	ai.Goals.Add(4, NewRandomLookAroundGoal())
-	ai.Goals.Add(5, &camelIdleGoal{goalFlags: goalFlags{GoalMove}, mount: b})
+	ai.lookOverride = camelLookControl{b}
 }
 
 // playerController ports AbstractHorse.getControllingPassenger: a saddled
@@ -434,167 +422,6 @@ func (g *traderLlamaDefendTraderGoal) Start(m *Mob) {
 func (g *traderLlamaDefendTraderGoal) CanContinueToUse(m *Mob) bool { return g.canContinue(m) }
 
 func (g *traderLlamaDefendTraderGoal) Stop(m *Mob) { g.stop(m) }
-
-// camelPanicGoal ports CamelAi.CamelPanic, an AnimalPanic at four times the
-// speed: a camel hurt in the last two seconds stands up at once and runs to
-// spots nearby for five to six seconds, or to water while it burns.
-type camelPanicGoal struct {
-	goalFlags
-	mount           *MountBehaviour
-	ticks, duration int
-	running         bool
-}
-
-func (g *camelPanicGoal) CanUse(m *Mob) bool {
-	src := m.LastDamage()
-	return src != nil && panicCause(src) && !g.mount.mobControlled()
-}
-
-func (g *camelPanicGoal) Start(m *Mob) {
-	g.mount.standUpInstantly(&Mount{Ent: m.Ent})
-	g.ticks, g.duration, g.running = 0, 100+int(m.Random().NextInt(21)), true
-	m.AI.nav.Stop()
-}
-
-func (g *camelPanicGoal) CanContinueToUse(*Mob) bool { return g.ticks < g.duration }
-
-func (g *camelPanicGoal) Stop(*Mob) { g.running = false }
-
-func (g *camelPanicGoal) RequiresUpdateEveryTick() bool { return true }
-
-func (g *camelPanicGoal) Tick(m *Mob) {
-	g.ticks++
-	if !m.AI.nav.IsDone() {
-		return
-	}
-	if m.OnFireDuration() > 0 {
-		if water, ok := panicWater(m.tx, m.BlockPos(), 5); ok {
-			m.AI.nav.MoveToPos(m, float64(water[0])+.5, float64(water[1]), float64(water[2])+.5, 4)
-			return
-		}
-	}
-	if pos, ok := LandRandomPos(m, 5, 4); ok {
-		m.AI.nav.MoveToPos(m, pos[0], pos[1], pos[2], 4)
-	}
-}
-
-// camelTemptGoal ports FollowTemptation for camels: a camel comes to within
-// 3.5 blocks, a calf to within 2.5, of a player holding cactus.
-type camelTemptGoal struct {
-	*TemptGoal
-	mount *MountBehaviour
-}
-
-func (g camelTemptGoal) CanUse(m *Mob) bool {
-	g.StopDistance = 3.5
-	if g.mount.ageTicks < 0 {
-		g.StopDistance = 2.5
-	}
-	return g.TemptGoal.CanUse(m)
-}
-
-// camelFollowAdultGoal ports BabyFollowAdult for camels, which a calf that
-// sits does not start.
-type camelFollowAdultGoal struct {
-	*FollowParentGoal
-	mount *MountBehaviour
-}
-
-func (g camelFollowAdultGoal) CanUse(m *Mob) bool {
-	return !g.mount.refuseToMove(m.tx) && g.FollowParentGoal.CanUse(m)
-}
-
-// camelIdleGoal ports the RunOne of the idle activity of CamelAi: each time
-// it has nowhere to walk, a camel strolls, walks up to a player it looks
-// at, sits down or stands up, or does nothing for a while, whichever of
-// these in random order it can.
-type camelIdleGoal struct {
-	goalFlags
-	mount   *MountBehaviour
-	idle    int
-	walking bool
-}
-
-func (g *camelIdleGoal) CanUse(*Mob) bool { return true }
-
-func (g *camelIdleGoal) RequiresUpdateEveryTick() bool { return true }
-
-func (g *camelIdleGoal) Stop(*Mob) { g.idle, g.walking = 0, false }
-
-func (g *camelIdleGoal) Tick(m *Mob) {
-	if g.walking {
-		if !m.AI.nav.IsDone() {
-			return
-		}
-		g.walking = false
-	}
-	if g.idle > 0 {
-		g.idle--
-		return
-	}
-	b := g.mount
-	refuse := b.refuseToMove(m.tx)
-	r := m.Random()
-	options := [4]int{0, 1, 2, 3}
-	for i := len(options) - 1; i > 0; i-- {
-		j := int(r.NextInt(int32(i + 1)))
-		options[i], options[j] = options[j], options[i]
-	}
-	for _, option := range options {
-		switch option {
-		case 0:
-			// RandomStroll.stroll(2).
-			if refuse {
-				continue
-			}
-			if pos, ok := LandRandomPos(m, 10, 7); ok && m.AI.nav.MoveToPos(m, pos[0], pos[1], pos[2], 2) {
-				g.walking = true
-				return
-			}
-		case 1:
-			// SetWalkTargetFromLookTarget(2, 3) with the player
-			// SetEntityLookTargetSometimes picks within six blocks.
-			if refuse {
-				continue
-			}
-			c := forNonCombat()
-			c.rangeLimit = 6
-			p := nearestPlayer(m, c)
-			if p == nil || m.DistanceToSqr(p) < 9 {
-				continue
-			}
-			pos := p.Position()
-			if m.AI.nav.MoveToPosReach(m, pos[0], pos[1], pos[2], 3, 2) {
-				g.walking = true
-				return
-			}
-		case 2:
-			if b.randomSitting(m) {
-				return
-			}
-		case 3:
-			// DoNothing(30, 60).
-			g.idle = 30 + int(r.NextInt(31))
-			return
-		}
-	}
-}
-
-// randomSitting ports CamelAi.RandomSitting: a camel on the ground that kept
-// its pose for 20 seconds sits down or stands up, unless it is in water, on
-// a lead, steered or panicking.
-func (b *MountBehaviour) randomSitting(m *Mob) bool {
-	if m.InWater() || b.poseTime(m.tx) < 400 || m.Ent.HolderLeashID() != 0 || !m.OnGround() || b.controlled() || b.mobControlled() {
-		return false
-	}
-	mount := &Mount{Ent: m.Ent}
-	if b.sitting {
-		b.standUp(mount)
-	} else if b.camelPanic == nil || !b.camelPanic.running {
-		b.sitDown(mount)
-	}
-	return true
-}
 
 // camelMoveControl ports CamelMoveControl: a sitting camel off its lead
 // that wants to walk somewhere stands up first.

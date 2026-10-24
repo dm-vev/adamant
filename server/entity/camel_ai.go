@@ -66,3 +66,88 @@ func (b *MountBehaviour) standUpInstantly(m *Mount) {
 		m.updateState()
 	}
 }
+
+func (b *MountBehaviour) brain() *Brain { return b.br }
+
+// customServerAiStep ports Camel.customServerAiStep and CamelAi.updateActivity.
+func (b *MountBehaviour) customServerAiStep(m *Mob) {
+	if b.br == nil {
+		return
+	}
+	b.br.tick(m)
+	b.br.setActiveToFirstValid(activityIdle)
+}
+
+// newCamelBrain ports CamelAi and the brain provider of Camel.
+func newCamelBrain(b *MountBehaviour) *Brain {
+	br := newBrain(nearestLivingEntitySensor{}, hurtBySensor{}, temptingSensor{items: animalTemptation}, adultSensor{})
+	moves := func(m *Mob) bool { return !b.refuseToMove(m.tx) }
+	br.addActivity(activityCore, 0,
+		newSwim(.8),
+		newCamelPanic(b),
+		newLookAtTargetSink(45, 90),
+		newMoveToTargetSink(150, 250, nil),
+		newCountDownCooldownTicks(memTemptationCooldownTicks),
+		newCountDownCooldownTicks(memGazeCooldownTicks),
+	)
+	br.addActivityWith(activityIdle, []prioritizedBehavior{
+		{0, newSetEntityLookTargetSometimes(isPlayerType, 6, uniformInt{30, 60})},
+		{1, newAnimalMakeLove(mountTypeFor(b.kind), 1, 2)},
+		{2, newRunOne(nil,
+			weightedBehavior{newFollowTemptation(constSpeed(2.5), func(m *Mob) float64 {
+				if b.ageTicks < 0 {
+					return 2.5
+				}
+				return 3.5
+			}, false), 1},
+			weightedBehavior{newTriggerIf(moves, newBabyFollowAdult(uniformInt{5, 16}, constSpeed(2.5), memNearestVisibleAdult, false)), 1},
+		)},
+		{3, newRandomLookAroundBehavior(uniformInt{150, 250}, 30, 0, 0)},
+		{4, newRunOne([]memoryCondition{{memWalkTarget, memAbsent}},
+			weightedBehavior{newTriggerIf(moves, newRandomStroll(2, true)), 1},
+			weightedBehavior{newTriggerIf(moves, newSetWalkTargetFromLookTarget(nil, constSpeed(2), 3)), 1},
+			weightedBehavior{newCamelRandomSitting(b, 20), 1},
+			weightedBehavior{newDoNothing(30, 60), 1},
+		)},
+	}, nil, nil)
+	return br
+}
+
+// newCamelPanic ports CamelAi.CamelPanic: an AnimalPanic at four times the
+// speed that stands the camel up at once, unless a mob rides it.
+func newCamelPanic(b *MountBehaviour) *behavior {
+	p := newAnimalPanic(4, nil, nil, func(m *Mob) { b.standUpInstantly(&Mount{Ent: m.Ent}) })
+	check := p.checkExtra
+	p.checkExtra = func(m *Mob) bool { return check(m) && !b.mobControlled() }
+	return p
+}
+
+// newCamelRandomSitting ports CamelAi.RandomSitting: a camel on the ground
+// that kept its pose for a while sits down or stands up, unless it is in
+// water, on a lead or ridden.
+func newCamelRandomSitting(b *MountBehaviour, minimalPoseSeconds int) *behavior {
+	return &behavior{
+		checkExtra: func(m *Mob) bool {
+			return !m.InWater() && b.poseTime(m.tx) >= int64(minimalPoseSeconds*20) && m.Ent.HolderLeashID() == 0 && m.OnGround() &&
+				!b.controlled() && !b.mobControlled()
+		},
+		start: func(m *Mob, _ int64) {
+			mount := &Mount{Ent: m.Ent}
+			if b.sitting {
+				b.standUp(mount)
+			} else if !m.Brain().has(memIsPanicking) {
+				b.sitDown(mount)
+			}
+		},
+	}
+}
+
+// camelLookControl ports Camel.CamelLookControl: a camel someone steers
+// does not look about.
+type camelLookControl struct{ mount *MountBehaviour }
+
+func (c camelLookControl) tick(m *Mob) {
+	if c.mount.playerController(m.tx) == nil && !c.mount.mobControlled() {
+		m.AI.look.tick(m)
+	}
+}

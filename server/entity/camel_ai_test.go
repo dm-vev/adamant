@@ -137,3 +137,27 @@ func TestCamelsIgnoreTheTimeOfDay(t *testing.T) {
 		t.Fatalf("camel came no closer than %.2f blocks to a player holding cactus after the time of day was set back", closest)
 	}
 }
+
+// TestCamelCalvesFollowAdults checks BabyFollowAdult for camels: a calf
+// walks back to an adult camel it strays from.
+func TestCamelCalvesFollowAdults(t *testing.T) {
+	w := traderTestWorld(t)
+	var calf *world.EntityHandle
+	adultPos := mgl64.Vec3{12.5, 64, .5}
+	<-w.Exec(func(tx *world.Tx) {
+		calf = spawnAnimal(t, tx, "minecraft:camel", .5, map[string]any{"Age": int32(-24000)})
+		adult := spawnAnimal(t, tx, "minecraft:camel", adultPos[0], nil)
+		e, _ := adult.Entity(tx)
+		// The adult sits, so it stays where it is.
+		e.(interface{ SetSitting(bool) }).SetSitting(true)
+	})
+	for range 1200 {
+		w.AdvanceTick()
+		near := false
+		<-w.Exec(func(tx *world.Tx) { near = horizontalDistance(entityPos(tx, calf), adultPos) < 7 })
+		if near {
+			return
+		}
+	}
+	t.Fatal("camel calf twelve blocks from an adult did not walk up to it in a minute")
+}
