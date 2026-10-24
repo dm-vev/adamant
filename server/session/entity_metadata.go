@@ -138,6 +138,11 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if j, ok := e.(interface{ JumpGoalJumping() bool }); ok && j.JumpGoalJumping() {
 		setActorFlag(m, protocol.EntityDataFlagJumpGoal)
 	}
+	if sn, ok := e.(interface{ SnifferState() string }); ok {
+		if flag, ok := snifferStateFlags[sn.SnifferState()]; ok {
+			setActorFlag(m, flag)
+		}
+	}
 	if p, ok := e.(interface{ PlayingDead() bool }); ok && p.PlayingDead() {
 		setActorFlag(m, protocol.EntityDataFlagPlayingDead)
 	}
@@ -685,4 +690,14 @@ func writeSeatMetadata(m protocol.EntityMetadata, seat world.RiderSeat) {
 	m[protocol.EntityDataKeySeatLockPassengerRotationDegrees] = float32(seat.LockRotationDegrees)
 	m[protocol.EntityDataKeySeatRotationOffset] = byte(boolByte(seat.RotateRider))
 	m[protocol.EntityDataKeySeatRotationOffsetDegrees] = float32(seat.RotateRiderDegrees)
+}
+
+// snifferStateFlags holds the flag Bedrock shows for each state of a sniffer.
+var snifferStateFlags = map[string]uint8{
+	"feeling_happy": protocol.EntityDataFlagFeelingHappy,
+	"scenting":      protocol.EntityDataFlagScenting,
+	"sniffing":      protocol.EntityDataFlagSniffing,
+	"searching":     protocol.EntityDataFlagSearching,
+	"digging":       protocol.EntityDataFlagDigging,
+	"rising":        protocol.EntityDataFlagRising,
 }

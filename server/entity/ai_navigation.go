@@ -200,6 +200,14 @@ func (n *PathNavigation) CreatePathToAny(m *Mob, targets []cube.Pos, reachRange 
 	return n.createPath(m, targets, reachRange, n.maxPathLength(m))
 }
 
+// mobPathfindingListener is implemented by behaviours of mobs that change
+// their path costs while they find a path, as overrides of
+// Mob.onPathfindingStart and onPathfindingDone.
+type mobPathfindingListener interface {
+	onPathfindingStart(m *Mob)
+	onPathfindingDone(m *Mob)
+}
+
 func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, maxPathLength float64) *mobPath {
 	if len(targets) == 0 || m.data.Pos[1] < float64(m.tx.Range().Min()) || !n.canUpdatePath(m) {
 		return nil
@@ -219,7 +227,14 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 	case n.eval.fly:
 		eval = flyNodeEvaluator{&n.eval}
 	}
+	l, listens := m.Behaviour().(mobPathfindingListener)
+	if listens {
+		l.onPathfindingStart(m)
+	}
 	path := findPath(m, eval, targets, float32(maxPathLength), reachRange, visited)
+	if listens {
+		l.onPathfindingDone(m)
+	}
 	if path != nil {
 		target := path.Target()
 		n.targetPos = &target
