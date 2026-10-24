@@ -138,7 +138,9 @@ func TestWeakCubsSneeze(t *testing.T) {
 	<-w.Exec(func(tx *world.Tx) {
 		panda = addPanda(tx, mgl64.Vec3{.5, 64, .5}, entity.PandaConfig{Age: -24000, Variant: 5, Gene: 5, HiddenGene: 5})
 	})
-	if !waitForPanda(w, panda, 2400, (*entity.Panda).Sneezing) {
-		t.Fatal("weak cub did not sneeze in two minutes")
+	// The goal runs every other tick with a chance of one in 250, so two
+	// minutes go by without a sneeze about once in 120 tries.
+	if !waitForPanda(w, panda, 6000, (*entity.Panda).Sneezing) {
+		t.Fatal("weak cub did not sneeze in five minutes")
 	}
 }
