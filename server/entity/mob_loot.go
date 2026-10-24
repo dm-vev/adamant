@@ -21,6 +21,7 @@ import (
 // and runs the on-death behaviour of the mob's effects. Axolotls fighting the
 // mob support the player who killed it.
 func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
+	recordDeath(tx, e)
 	axolotlSupportKiller(tx, e, src)
 	killer, player := deathCredit(tx, src)
 	if player != nil && killer == player {

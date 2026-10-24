@@ -121,8 +121,8 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	if brute.Health() != float64(nbtconv.Float32(bruteNBT, "Health")) {
 		t.Fatalf("brute health=%g, Source=%v", brute.Health(), bruteNBT["Health"])
 	}
-	if !brute.p().homeSet || brute.p().homeDimension != "minecraft:the_nether" || brute.p().home != (cube.Pos{12, 72, -9}) {
-		t.Fatalf("brute HOME=%+v dimension=%q set=%t", brute.p().home, brute.p().homeDimension, brute.p().homeSet)
+	if home, ok := brute.p().br.get(memHome); !ok || home != (globalPos{dim: world.Nether, pos: cube.Pos{12, 72, -9}}) {
+		t.Fatalf("brute HOME=%+v set=%t", home, ok)
 	}
 	if hoglin.beast().age != -24000 || hoglin.Health() != float64(nbtconv.Float32(hoglinNBT, "Health")) {
 		t.Fatalf("hoglin age/health=%d/%g, Source=%v/%v", hoglin.beast().age, hoglin.Health(), hoglinNBT["Age"], hoglinNBT["Health"])
@@ -166,8 +166,8 @@ func TestNetherTemplateActorsRetainSourceStateAcrossMCDB(t *testing.T) {
 	if _, ok := memories["minecraft:hunted_recently"]; !ok {
 		t.Fatalf("Piglin hunted_recently memory lost on MCDB reopen: %#v", brain)
 	}
-	if !brute.p().homeSet || brute.p().homeDimension != "minecraft:the_nether" || brute.p().home != (cube.Pos{12, 72, -9}) || brute.Health() != float64(nbtconv.Float32(bruteNBT, "Health")) {
-		t.Fatalf("Brute state changed on MCDB reopen: HOME=%+v/%q health=%g", brute.p().home, brute.p().homeDimension, brute.Health())
+	if home, ok := brute.p().br.get(memHome); !ok || home != (globalPos{dim: world.Nether, pos: cube.Pos{12, 72, -9}}) || brute.Health() != float64(nbtconv.Float32(bruteNBT, "Health")) {
+		t.Fatalf("Brute state changed on MCDB reopen: HOME=%+v health=%g", home, brute.Health())
 	}
 	if hoglin.beast().age != -24000 || hoglin.Health() != float64(nbtconv.Float32(hoglinNBT, "Health")) {
 		t.Fatalf("Hoglin state changed on MCDB reopen: age/health=%d/%g", hoglin.beast().age, hoglin.Health())

@@ -234,6 +234,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if c, ok := e.(interface{ Celebrating() bool }); ok && c.Celebrating() {
 		setActorFlag(m, protocol.EntityDataFlagCelebrating)
 	}
+	if c, ok := e.(interface{ CelebratingSpecial() bool }); ok && c.CelebratingSpecial() {
+		setActorFlag(m, protocol.EntityDataFlagCelebratingSpecial)
+	}
+	if a, ok := e.(interface{ Admiring() bool }); ok && a.Admiring() {
+		setActorFlag(m, protocol.EntityDataFlagAdmiring)
+	}
 	if c, ok := e.(interface {
 		Casting() bool
 		SpellColour() [3]float64

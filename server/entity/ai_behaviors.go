@@ -7,6 +7,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 // This file ports the behaviours of net.minecraft.world.entity.ai.behavior
@@ -737,6 +738,10 @@ func newMeleeAttack(cooldown int) *oneShot {
 	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memAttackTarget, memPresent}, {memAttackCoolingDown, memAbsent},
 		{memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
 		target := b.entity(m, memAttackTarget)
+		if n, ok := m.Behaviour().(interface{ nonMeleeWeapon() bool }); ok && n.nonMeleeWeapon() {
+			// MeleeAttack.isHoldingUsableNonMeleeWeapon.
+			return false
+		}
 		if target == nil || !m.WithinMeleeAttackRange(target) || !visibleLiving(m).contains(m, target) {
 			return false
 		}
@@ -927,4 +932,285 @@ func findManhattanBox(origin cube.Pos, h, v int, match func(cube.Pos) bool) (cub
 		return true
 	})
 	return found, ok
+}
+
+// newCopyMemoryWithExpiry ports CopyMemoryWithExpiry: while pred holds, a mob
+// copies what one memory holds into another it lacks, for a while.
+func newCopyMemoryWithExpiry(pred func(m *Mob) bool, source, target memoryType, duration uniformInt) *oneShot {
+	return newOneShot([]memoryCondition{{source, memPresent}, {target, memAbsent}}, func(m *Mob, b *Brain, _ int64) bool {
+		if !pred(m) {
+			return false
+		}
+		v, _ := b.get(source)
+		b.setWithExpiry(target, v, int64(duration.sample(m)))
+		return true
+	})
+}
+
+// newInteractWithDoor ports InteractWithDoor: a mob opens the wooden doors
+// along its path and closes those it opened or passed once it is through,
+// unless one of its kind is coming through behind it.
+func newInteractWithDoor() *oneShot {
+	var (
+		lastNode  *pathNodeData
+		cooldown  int
+		openDoor  = func(m *Mob, pos cube.Pos) { setDoorOpen(m.tx, pos, true) }
+		rememberD = func(b *Brain, pos cube.Pos) map[cube.Pos]struct{} {
+			v, _ := b.get(memDoorsToClose)
+			doors, _ := v.(map[cube.Pos]struct{})
+			if doors == nil {
+				doors = map[cube.Pos]struct{}{}
+				b.set(memDoorsToClose, doors)
+			}
+			doors[pos] = struct{}{}
+			return doors
+		}
+	)
+	return newOneShot([]memoryCondition{{memPath, memPresent}, {memDoorsToClose, memRegistered}, {memNearestLivingEntities, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		v, _ := b.get(memPath)
+		path, _ := v.(*mobPath)
+		if path == nil || path.next <= 0 || path.Done() {
+			return false
+		}
+		next := path.nodes[path.next]
+		if lastNode == next {
+			cooldown = 20
+		} else if cooldown--; cooldown > 0 {
+			return false
+		}
+		lastNode = next
+		from, to := path.nodes[path.next-1].Pos(), next.Pos()
+		dv, _ := b.get(memDoorsToClose)
+		doors, _ := dv.(map[cube.Pos]struct{})
+		if woodenDoor(m.tx, from) {
+			if open, _ := doorOpen(m.tx, from); !open {
+				openDoor(m, from)
+			}
+			doors = rememberD(b, from)
+		}
+		if woodenDoor(m.tx, to) {
+			if open, _ := doorOpen(m.tx, to); !open {
+				openDoor(m, to)
+				doors = rememberD(b, to)
+			}
+		}
+		if doors != nil {
+			closeDoorsPassedThrough(m, from, to, doors)
+		}
+		return true
+	})
+}
+
+// closeDoorsPassedThrough ports
+// InteractWithDoor.closeDoorsThatIHaveOpenedOrPassedThrough.
+func closeDoorsPassedThrough(m *Mob, from, to cube.Pos, doors map[cube.Pos]struct{}) {
+	for door := range doors {
+		if door == from || door == to {
+			continue
+		}
+		delete(doors, door)
+		if door.Vec3Centre().Sub(m.data.Pos).LenSqr() >= 9 || !woodenDoor(m.tx, door) {
+			continue
+		}
+		if open, _ := doorOpen(m.tx, door); !open || otherMobComingThroughDoor(m, door) {
+			continue
+		}
+		setDoorOpen(m.tx, door, false)
+	}
+}
+
+// otherMobComingThroughDoor ports InteractWithDoor.areOtherMobsComingThroughDoor.
+func otherMobComingThroughDoor(m *Mob, door cube.Pos) bool {
+	for _, e := range nearestLiving(m) {
+		if e.H().Type() != m.H().Type() || door.Vec3Centre().Sub(e.Position()).LenSqr() >= 4 {
+			continue
+		}
+		om, ok := brainMobOf(e)
+		if !ok {
+			continue
+		}
+		v, ok := om.Brain().get(memPath)
+		path, _ := v.(*mobPath)
+		if !ok || path == nil || path.Done() || path.next <= 0 {
+			continue
+		}
+		if path.nodes[path.next-1].Pos() == door || path.nodes[path.next].Pos() == door {
+			return true
+		}
+	}
+	return false
+}
+
+// newSetLookAndInteract ports SetLookAndInteract: a mob looks at and means to
+// interact with the nearest entity of the kind passed within range.
+func newSetLookAndInteract(isType func(world.Entity) bool, r int) *oneShot {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memInteractionTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		e := visibleLiving(m).findClosest(m, func(e world.Entity) bool { return m.DistanceToSqr(e) <= float64(r*r) && isType(e) })
+		if e == nil {
+			return false
+		}
+		b.setEntity(memInteractionTarget, e)
+		b.set(memLookTarget, newEntityTracker(e, true))
+		return true
+	})
+}
+
+// newInteractWith ports InteractWith: a mob walks up to the nearest entity of
+// the kind passed within range it sees.
+func newInteractWith(isType func(world.Entity) bool, r int, speed float64, stop int) *oneShot {
+	return newOneShot([]memoryCondition{{memInteractionTarget, memRegistered}, {memLookTarget, memRegistered}, {memWalkTarget, memAbsent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		v := visibleLiving(m)
+		if v.findClosest(m, isType) == nil {
+			return false
+		}
+		if e := v.findClosest(m, func(e world.Entity) bool { return m.DistanceToSqr(e) <= float64(r*r) && isType(e) }); e != nil {
+			b.setEntity(memInteractionTarget, e)
+			b.set(memLookTarget, newEntityTracker(e, true))
+			b.set(memWalkTarget, walkTarget{target: newEntityTracker(e, false), speed: speed, closeEnough: stop})
+		}
+		return true
+	})
+}
+
+// newGoToTargetLocation ports GoToTargetLocation: a mob walks to a spot
+// around the position a memory holds until within closeEnough of it.
+func newGoToTargetLocation(mem memoryType, closeEnough int, speed float64) *oneShot {
+	return newOneShot([]memoryCondition{{mem, memPresent}, {memAttackTarget, memAbsent}, {memWalkTarget, memAbsent}, {memLookTarget, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		v, _ := b.get(mem)
+		pos := v.(cube.Pos)
+		if distSqrPos(pos, m.BlockPos()) >= float64(closeEnough*closeEnough) {
+			r := m.Random()
+			near := pos.Add(cube.Pos{int(r.NextInt(3)) - 1, 0, int(r.NextInt(3)) - 1})
+			setWalkAndLookTarget(m, newBlockPosTracker(near), speed, closeEnough)
+		}
+		return true
+	})
+}
+
+// newRandomStrollWithinRange ports RandomStroll.stroll with distances: a mob
+// strolls to a random spot on land within the distances passed.
+func newRandomStrollWithinRange(speed float64, horizontal, vertical int) *oneShot {
+	return newStrollFlyOrSwim(speed, func(m *Mob) (mgl64.Vec3, bool) { return LandRandomPos(m, horizontal, vertical) }, nil)
+}
+
+// newStrollToPoi ports StrollToPoi: a mob within maxDist of the place a
+// memory holds walks back to it every four seconds.
+func newStrollToPoi(mem memoryType, speed float64, closeEnough, maxDist int) *oneShot {
+	var nextOK int64
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *Brain, time int64) bool {
+		v, _ := b.get(mem)
+		p := v.(globalPos)
+		if p.dim != m.tx.World().Dimension() || p.pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= float64(maxDist*maxDist) {
+			return false
+		}
+		if time <= nextOK {
+			return true
+		}
+		b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(p.pos), speed: speed, closeEnough: closeEnough})
+		nextOK = time + 80
+		return true
+	})
+}
+
+// newStrollAroundPoi ports StrollAroundPoi: a mob within maxDist of the place
+// a memory holds strolls about every nine seconds.
+func newStrollAroundPoi(mem memoryType, speed float64, maxDist int) *oneShot {
+	var nextOK int64
+	return newOneShot([]memoryCondition{{memWalkTarget, memRegistered}, {mem, memPresent}}, func(m *Mob, b *Brain, time int64) bool {
+		v, _ := b.get(mem)
+		p := v.(globalPos)
+		if p.dim != m.tx.World().Dimension() || p.pos.Vec3Centre().Sub(m.data.Pos).LenSqr() >= float64(maxDist*maxDist) {
+			return false
+		}
+		if time <= nextOK {
+			return true
+		}
+		if to, ok := LandRandomPos(m, 8, 6); ok {
+			b.set(memWalkTarget, walkTarget{target: newBlockPosTracker(cube.PosFromVec3(to)), speed: speed, closeEnough: 1})
+		} else {
+			b.erase(memWalkTarget)
+		}
+		nextOK = time + 180
+		return true
+	})
+}
+
+// globalPos ports GlobalPos: a position in a dimension.
+type globalPos struct {
+	dim world.Dimension
+	pos cube.Pos
+}
+
+// newBackUpIfTooClose ports BackUpIfTooClose: a mob with a target too close
+// that it sees strafes back from it.
+func newBackUpIfTooClose(tooClose int, speed float64) *oneShot {
+	return newOneShot([]memoryCondition{{memWalkTarget, memAbsent}, {memLookTarget, memRegistered}, {memAttackTarget, memPresent}, {memNearestVisibleLivingEntities, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		target := b.entity(m, memAttackTarget)
+		if target == nil || m.DistanceToSqr(target) >= float64(tooClose*tooClose) || !visibleLiving(m).contains(m, target) {
+			return false
+		}
+		b.set(memLookTarget, newEntityTracker(target, true))
+		m.AI.move.Strafe(-speed, 0)
+		m.SetYaw(rotateIfNecessary(m.Yaw(), m.AI.headYaw, 0))
+		return true
+	})
+}
+
+// newStopBeingAngryIfTargetDead ports StopBeingAngryIfTargetDead: a mob
+// forgets its anger at what died, at a player only if the game forgives
+// dead players.
+func newStopBeingAngryIfTargetDead() *oneShot {
+	return newOneShot([]memoryCondition{{memAngryAt, memPresent}}, func(m *Mob, b *Brain, _ int64) bool {
+		v, _ := b.get(memAngryAt)
+		id := v.(uuid.UUID)
+		dead, player := false, false
+		if e, ok := m.tx.EntityByUUID(id); ok {
+			dead, player = !entityAlive(e), isPlayerEntity(e)
+		} else if d, ok := recentDeath(m.tx, id); ok {
+			dead, player = true, d.player
+		}
+		if dead && (!player || m.tx.World().GameRuleBool("forgive_dead_players")) {
+			b.erase(memAngryAt)
+		}
+		return true
+	})
+}
+
+// newStartCelebratingIfTargetDead ports StartCelebratingIfTargetDead: a mob
+// whose attack target died celebrates where it fell, dancing if dance says
+// so, and stops being angry at it.
+func newStartCelebratingIfTargetDead(duration int, dance func(m *Mob, killed world.EntityType) bool) *oneShot {
+	return newOneShot([]memoryCondition{{memAttackTarget, memPresent}, {memAngryAt, memRegistered}, {memCelebrateLocation, memAbsent}, {memDancing, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		d, ok := attackTargetDeath(m)
+		if !ok {
+			return false
+		}
+		if dance(m, d.typ) {
+			b.setWithExpiry(memDancing, true, int64(duration))
+		}
+		b.setWithExpiry(memCelebrateLocation, cube.PosFromVec3(d.pos), int64(duration))
+		if !d.player || m.tx.World().GameRuleBool("forgive_dead_players") {
+			b.erase(memAttackTarget)
+			b.erase(memAngryAt)
+		}
+		return true
+	})
+}
+
+// attackTargetDeath returns how the attack target of a mob died, if it is
+// dead or dying, as LivingEntity.isDeadOrDying: a player stays in the world
+// dead, and a mob that left it dead is remembered for a second.
+func attackTargetDeath(m *Mob) (entityDeath, bool) {
+	v, ok := m.Brain().get(memAttackTarget)
+	if !ok {
+		return entityDeath{}, false
+	}
+	h := v.(*world.EntityHandle)
+	if e, ok := h.Entity(m.tx); ok {
+		if entityAlive(e) {
+			return entityDeath{}, false
+		}
+		return entityDeath{typ: e.H().Type(), pos: e.Position(), player: isPlayerEntity(e)}, true
+	}
+	return recentDeath(m.tx, h.UUID())
 }

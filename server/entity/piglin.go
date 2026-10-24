@@ -2,66 +2,60 @@ package entity
 
 import (
 	"hash/fnv"
-	"math"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/loot"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/google/uuid"
 )
 
 type PiglinType struct{}
+
+// piglinState is the state of Java's AbstractPiglin, of a Piglin or of a
+// PiglinBrute.
 type piglinState struct {
-	health                                                             *HealthManager
-	effects                                                            *EffectManager
-	mc                                                                 *MovementComputer
-	random                                                             vanilla.Random
-	randomInitialized                                                  bool
-	baby, admire, dancing, charging, cannotHunt, dead                  bool
-	conversion, attackCooldown, admireTicks, barterTicks, retreatTicks int
-	target                                                             string
-	home                                                               cube.Pos
-	homeSet                                                            bool
-	homeDimension                                                      string
-	navigator                                                          Navigator
-	wander                                                             int
-	main                                                               item.Stack
-	armor                                                              [4]item.Stack
-	speed                                                              float64
+	health  *HealthManager
+	effects *EffectManager
+	ai      MobAI
+	br      *Brain
+	brute   bool
+
+	baby, cannotHunt, immune, dead bool
+	// dancing and chargingCrossbow are Piglin.DATA_IS_DANCING and
+	// DATA_IS_CHARGING_CROSSBOW.
+	dancing, chargingCrossbow bool
+	conversion                int
+	main, off                 item.Stack
+	armor                     [4]item.Stack
+	// inventory is the SimpleContainer of eight slots of a piglin.
+	inventory [8]item.Stack
+	// guaranteedMain and guaranteedOff are set for items the piglin picked
+	// up, which it drops on death, as Mob.setGuaranteedDrop.
+	guaranteedMain, guaranteedOff bool
+	speed                         float64
 }
 type Piglin struct{ *Ent }
 type piglinConfig struct {
-	health, maxHealth                                    float64
-	baby, admire, dancing, cannotHunt                    bool
-	conversion, attackCooldown, admireTicks, barterTicks int
-	target                                               string
-	home                                                 cube.Pos
-	homeSet                                              bool
-	homeDimension                                        string
-	main                                                 item.Stack
-	armor                                                [4]item.Stack
+	health, maxHealth              float64
+	baby, cannotHunt, immune, brut bool
+	conversion                     int
+	angryAt                        uuid.UUID
+	home                           *globalPos
+	main, off                      item.Stack
+	armor                          [4]item.Stack
+	inventory                      []item.Stack
 }
 
 func (PiglinType) EncodeEntity() string { return "minecraft:piglin" }
 func (PiglinType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
 	if d.Data == nil {
 		(piglinConfig{}).Apply(d)
-	}
-	return openPiglin(tx, h, d)
-}
-
-// openPiglin seeds the shared piglin-family stream once, because an entity view
-// may be reopened many times while its behaviour state remains live.
-func openPiglin(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) *Piglin {
-	s := d.Data.(*piglinState)
-	if h != nil && !s.randomInitialized {
-		u := h.UUID()
-		s.random = vanilla.NewLegacyRandom(int64(fnv64(u[:])))
-		s.randomInitialized = true
 	}
 	return &Piglin{&Ent{tx: tx, handle: h, data: d}}
 }
@@ -72,15 +66,30 @@ func (PiglinType) BBox(e world.Entity) cube.BBox {
 	return cube.Box(-.3, 0, -.3, .3, 1.95, .3)
 }
 func (c piglinConfig) Apply(d *world.EntityData) {
-	hp := 16.
+	hp, maxHealth := 16., 16.
+	if c.brut {
+		hp, maxHealth = 50, 50
+	}
 	if c.health > 0 {
 		hp = c.health
 	}
-	maxHealth := c.maxHealth
-	if maxHealth <= 0 {
-		maxHealth = 16
+	if c.maxHealth > 0 {
+		maxHealth = c.maxHealth
 	}
-	d.Data = &piglinState{health: NewHealthManager(hp, maxHealth), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, baby: c.baby, admire: c.admire, dancing: c.dancing, cannotHunt: c.cannotHunt, conversion: c.conversion, attackCooldown: c.attackCooldown, admireTicks: c.admireTicks, barterTicks: c.barterTicks, target: c.target, home: c.home, homeSet: c.homeSet, homeDimension: c.homeDimension, main: c.main, armor: c.armor, speed: .35}
+	s := &piglinState{health: NewHealthManager(hp, maxHealth), effects: NewEffectManager(), brute: c.brut, baby: c.baby && !c.brut, cannotHunt: c.cannotHunt, immune: c.immune, conversion: c.conversion, main: c.main, off: c.off, armor: c.armor, speed: .35}
+	copy(s.inventory[:], c.inventory)
+	if c.brut {
+		s.br = newPiglinBruteBrain(s)
+		if c.home != nil {
+			s.br.set(memHome, *c.home)
+		}
+	} else {
+		s.br = newPiglinBrain(s)
+	}
+	if c.angryAt != uuid.Nil {
+		s.br.setWithExpiry(memAngryAt, c.angryAt, 600)
+	}
+	d.Data = s
 }
 func (PiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	j := ReadNativeMobJavaState(n)
@@ -88,11 +97,20 @@ func (PiglinType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		j = n
 	}
 	eq := ReadNativeMobEquipment(n)
-	c := piglinConfig{baby: nbtconv.Bool(j, "IsBaby"), admire: nbtconv.Bool(j, "Admiring"), dancing: nbtconv.Bool(j, "Dancing"), cannotHunt: nbtconv.Bool(j, "CannotHunt"), conversion: int(nbtconv.Int32(j, "TimeInOverworld")), attackCooldown: int(nbtconv.Int32(j, "AttackCooldown")), admireTicks: int(nbtconv.Int32(j, "AdmireTicks")), barterTicks: int(nbtconv.Int32(j, "BarterTicks")), target: nbtconv.String(j, "AngerTarget"), main: piglinStackFromNative(eq.Mainhand)}
-	if len(eq.Armor) > 0 {
-		for i := range c.armor {
-			if i < len(eq.Armor) {
-				c.armor[i] = piglinStackFromNative(eq.Armor[i : i+1])
+	c := piglinConfig{baby: nbtconv.Bool(j, "IsBaby"), cannotHunt: nbtconv.Bool(j, "CannotHunt"), immune: nbtconv.Bool(j, "IsImmuneToZombification"), conversion: int(nbtconv.Int32(j, "TimeInOverworld")),
+		main: piglinStackFromNative(eq.Mainhand), off: piglinStackFromNative(eq.Offhand)}
+	c.angryAt, _ = uuid.Parse(nbtconv.String(j, "AngerTarget"))
+	for i := range c.armor {
+		if i < len(eq.Armor) {
+			c.armor[i] = piglinStackFromNative(eq.Armor[i : i+1])
+		}
+	}
+	if inv, ok := j["Inventory"].([]any); ok {
+		for _, raw := range inv {
+			if tag, ok := raw.(map[string]any); ok {
+				if s, err := item.StackFromStructureNBT(tag); err == nil && !s.Empty() {
+					c.inventory = append(c.inventory, s)
+				}
 			}
 		}
 	}
@@ -121,11 +139,15 @@ func encodePiglinNBT(d *world.EntityData) map[string]any {
 	maxHealth := s.health.MaxHealth()
 	native := map[string]any{"Attributes": EncodeNativeMobAttributes(ReadNativeMobAttributes(d.NativeNBT), []NativeMobAttribute{{Name: "minecraft:health", Base: maxHealth, Current: s.health.Health(), DefaultMin: 0, DefaultMax: maxHealth, Min: 0, Max: maxHealth}})}
 	equipment := ReadNativeMobEquipment(d.NativeNBT)
-	var prev NativeMobItem
+	var prev, prevOff NativeMobItem
 	if len(equipment.Mainhand) > 0 {
 		prev = equipment.Mainhand[0]
 	}
+	if len(equipment.Offhand) > 0 {
+		prevOff = equipment.Offhand[0]
+	}
 	equipment.Mainhand = []NativeMobItem{piglinNativeStack(s.main, prev)}
+	equipment.Offhand = []NativeMobItem{piglinNativeStack(s.off, prevOff)}
 	if len(equipment.Armor) < len(s.armor) {
 		armor := make([]NativeMobItem, len(s.armor))
 		copy(armor, equipment.Armor)
@@ -157,6 +179,7 @@ func encodePiglinNBT(d *world.EntityData) map[string]any {
 		}
 	}
 	writeSourceStack("mainhand", s.main)
+	writeSourceStack("offhand", s.off)
 	for i, slot := range []string{"head", "chest", "legs", "feet"} {
 		writeSourceStack(slot, s.armor[i])
 	}
@@ -165,10 +188,50 @@ func encodePiglinNBT(d *world.EntityData) map[string]any {
 	} else {
 		j["equipment"] = sourceEquipment
 	}
-	j["IsBaby"], j["Admiring"], j["Dancing"], j["CannotHunt"] = byte(boolByte(s.baby)), byte(boolByte(s.admire)), byte(boolByte(s.dancing)), byte(boolByte(s.cannotHunt))
-	j["TimeInOverworld"], j["AttackCooldown"], j["AdmireTicks"], j["BarterTicks"], j["AngerTarget"] = int32(s.conversion), int32(s.attackCooldown), int32(s.admireTicks), int32(s.barterTicks), s.target
+	inv := make([]any, 0, len(s.inventory))
+	for _, st := range s.inventory {
+		if encoded, err := item.StackToStructureNBT(st); err == nil && !st.Empty() {
+			inv = append(inv, encoded)
+		}
+	}
+	for _, old := range []string{"Admiring", "Dancing", "AdmireTicks", "BarterTicks", "AttackCooldown"} {
+		delete(j, old)
+	}
+	j["IsBaby"], j["CannotHunt"], j["IsImmuneToZombification"] = byte(boolByte(s.baby)), byte(boolByte(s.cannotHunt)), byte(boolByte(s.immune))
+	j["TimeInOverworld"], j["Inventory"] = int32(s.conversion), inv
+	j["AngerTarget"] = ""
+	if v, ok := s.br.get(memAngryAt); ok {
+		j["AngerTarget"] = v.(uuid.UUID).String()
+	}
+	if v, ok := s.br.get(memHome); ok {
+		p := v.(globalPos)
+		j["Brain"] = map[string]any{"memories": map[string]any{"minecraft:home": map[string]any{"value": map[string]any{"dimension": dimensionName(p.dim), "pos": []int32{int32(p.pos[0]), int32(p.pos[1]), int32(p.pos[2])}}}}}
+	}
 	return MergeNativeMobJavaState(out, j)
 }
+
+// dimensionName returns the Java identifier of a dimension.
+func dimensionName(dim world.Dimension) string {
+	switch dim {
+	case world.Nether:
+		return "minecraft:the_nether"
+	case world.End:
+		return "minecraft:the_end"
+	}
+	return "minecraft:overworld"
+}
+
+// dimensionByName returns the dimension of a Java identifier.
+func dimensionByName(name string) world.Dimension {
+	switch name {
+	case "minecraft:the_nether":
+		return world.Nether
+	case "minecraft:the_end":
+		return world.End
+	}
+	return world.Overworld
+}
+
 func (PiglinType) EncodeNBT(d *world.EntityData) map[string]any { return encodePiglinNBT(d) }
 func fnv64(b []byte) uint64                                     { h := fnv.New64a(); _, _ = h.Write(b); return h.Sum64() }
 func NewPiglin(o world.EntitySpawnOpts) *world.EntityHandle {
@@ -184,209 +247,98 @@ func (p *Piglin) viewAction(a world.EntityAction) {
 	p.tx.ReleaseViewers(vs)
 }
 func (p *Piglin) Tick(tx *world.Tx, n int64) { p.p().effects.Tick(p, tx); p.Ent.Tick(tx, n) }
-func (s *piglinState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if s.attackCooldown > 0 {
-		s.attackCooldown--
+func (p *Piglin) Health() float64            { return p.p().health.Health() }
+func (p *Piglin) MaxHealth() float64         { return p.p().health.MaxHealth() }
+func (p *Piglin) SetMaxHealth(v float64)     { p.p().health.SetMaxHealth(v) }
+func (p *Piglin) Dead() bool                 { return p.p().dead || p.Health() <= 0 }
+
+// self returns the entity of the piglin: a *PiglinBrute for a brute.
+func (s *piglinState) self(e *Ent) world.Entity {
+	if s.brute {
+		return &PiglinBrute{&Piglin{e}}
 	}
-	if s.admireTicks > 0 {
-		s.admireTicks--
-	}
-	if s.barterTicks > 0 {
-		s.barterTicks--
-	}
-	if tx.World().Dimension() == world.Overworld {
-		if s.conversion < 300 {
-			s.conversion++
-		}
-		if s.conversion >= 300 {
-			opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion"}
-			z := opts.New(ZombifiedPiglinType{}, zombifiedPiglinConfig{health: s.health.Health(), baby: s.baby, main: s.main, anger: 600, target: s.target, angry: s.target != ""})
-			tx.AddEntity(z)
-			e.Close()
-			return nil
-		}
-	} else {
-		s.conversion = 0
-	}
-	if s.dancing {
-		s.dancing = false
-	}
-	if s.admireTicks == 0 {
-		s.admire = false
-	}
-	if target, dist := piglinTarget(e, tx, s); target != nil {
-		if dist < 1.8 && s.attackCooldown == 0 {
-			if l, ok := target.(Living); ok {
-				l.Hurt(5, AttackDamageSource{Attacker: e})
-			}
-			s.attackCooldown = 20
-			return piglinStop(s, e, tx)
-		}
-		return piglinMove(s, e, tx, target.Position())
-	}
-	if pos := nearbyGoldOrItem(tx, e.Position()); pos != nil {
-		return piglinMove(s, e, tx, pos.Vec3())
-	}
-	return piglinWander(s, e, tx)
+	return &Piglin{e}
 }
-func piglinTarget(e *Ent, tx *world.Tx, s *piglinState) (world.Entity, float64) {
-	r := 16.
-	var best world.Entity
-	d0 := r
-	for x := range tx.EntitiesWithin(cube.Box(-r, -8, -r, r, 8, r).Translate(e.Position())) {
-		if x == e {
-			continue
-		}
-		id := x.H().Type().EncodeEntity()
-		ok := id == "minecraft:player" || id == "minecraft:hoglin" || id == "minecraft:wither_skeleton"
-		if !ok {
-			continue
-		}
-		l, ok := x.(Living)
-		if !ok || l.Dead() {
-			continue
-		}
-		d := x.Position().Sub(e.Position()).Len()
-		if d < d0 {
-			d0, best = d, x
-		}
-	}
-	return best, d0
-}
-func nearbyGoldOrItem(tx *world.Tx, p mgl64.Vec3) *cube.Pos {
-	start := cube.PosFromVec3(p)
-	for x := -6; x <= 6; x++ {
-		for y := -3; y <= 3; y++ {
-			for z := -6; z <= 6; z++ {
-				q := start.Add(cube.Pos{x, y, z})
-				id, _ := tx.Block(q).EncodeBlock()
-				if id == "minecraft:gold_block" || id == "minecraft:raw_gold_block" || id == "minecraft:nether_gold_ore" {
-					v := q
-					return &v
-				}
-			}
-		}
-	}
-	return nil
-}
-func (p *Piglin) tryBarter(tx *world.Tx) {
-	s := p.p()
-	if s.baby || s.main.Empty() {
-		return
-	}
-	name, _ := s.main.Item().EncodeItem()
-	if name != "minecraft:gold_ingot" || s.barterTicks > 0 {
-		return
-	}
-	s.main = s.main.Grow(-1)
-	r := s.random
-	stacks, err := loot.Generate("minecraft:gameplay/piglin_bartering", 0, loot.Context{Random: &r, Entity: "minecraft:piglin", Origin: p.Position()})
-	if err != nil {
-		return
-	}
-	s.random = r
-	for _, stack := range stacks {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: p.Position()}, stack))
-	}
-	s.barterTicks = 120
-	s.admire = true
-	s.admireTicks = 120
-}
-func piglinMove(s *piglinState, e *Ent, tx *world.Tx, p mgl64.Vec3) *Movement {
-	d := p.Sub(e.Position())
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.data.Vel
-	speed := s.speed
-	if s.baby {
-		speed *= 1.2
-	}
-	v[0], v[2] = d[0]*speed, d[2]*speed
-	r := e.data.Rot
-	if d.Len() > 0 {
-		r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	}
-	m := s.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func piglinStop(s *piglinState, e *Ent, tx *world.Tx) *Movement {
-	v := e.data.Vel
-	v[0], v[2] = 0, 0
-	m := s.mc.TickMovement(e, e.data.Pos, v, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func piglinWander(s *piglinState, e *Ent, tx *world.Tx) *Movement {
-	if s.wander > 0 {
-		s.wander--
-	}
-	if s.navigator.Index >= len(s.navigator.Path) && s.wander == 0 {
-		s.wander = 50
-		start := cube.PosFromVec3(e.Position())
-		goal := start.Add(cube.Pos{int(s.random.NextInt(11)) - 5, 0, int(s.random.NextInt(11)) - 5})
-		s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 80}, navigatorTick(e))
-	}
-	if q, ok := s.navigator.Tick(e.Position(), navigatorTick(e), .6); ok {
-		if q.Sub(e.Position()).Len() < .4 {
-			s.navigator.Index++
-		} else {
-			return piglinMove(s, e, tx, q)
-		}
-	}
-	return piglinStop(s, e, tx)
-}
-func (p *Piglin) Health() float64        { return p.p().health.Health() }
-func (p *Piglin) MaxHealth() float64     { return p.p().health.MaxHealth() }
-func (p *Piglin) SetMaxHealth(v float64) { p.p().health.SetMaxHealth(v) }
-func (p *Piglin) Dead() bool             { return p.p().dead || p.Health() <= 0 }
+
+// Hurt ports AbstractPiglin.hurtServer and those of Piglin and PiglinBrute:
+// a piglin hurt by a living entity calls on its brain.
 func (p *Piglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	s := p.p()
 	if d <= 0 || p.Dead() {
 		return 0, false
 	}
-	if src.Fire() && p.hasEffect(effect.FireResistance) {
+	var ok bool
+	if d, ok = s.ai.DamageCooldown(p.tx, d); !ok {
 		return 0, false
 	}
-	if r, ok := s.effects.Effect(effect.Resistance); ok {
-		d *= effect.Resistance.Multiplier(src, r.Level())
+	if d, ok = mobEffectDamage(s.effects, d, src); !ok {
+		return 0, false
 	}
+	self := s.self(p.Ent)
 	s.health.AddHealth(-d)
+	s.ai.Hurt(src)
 	p.viewAction(HurtAction{})
-	onMobHurt(p.tx, p)
+	onMobHurt(p.tx, self)
 	if p.Dead() {
 		s.dead = true
 		p.viewAction(DeathAction{})
-		dropAllDeathLoot(p.tx, p, src)
+		dropAllDeathLoot(p.tx, self, src)
 		_ = p.CloseIn(p.tx)
+		return d, true
+	}
+	if attacker, ok := mobKiller(src).(Living); ok && attacker != nil {
+		m := s.ai.Mob(p.Ent, self)
+		if s.brute {
+			piglinBruteWasHurtBy(m, s, attacker)
+		} else {
+			piglinWasHurtBy(m, s, attacker)
+		}
 	}
 	return d, true
 }
+
+// dropCustomDeathLoot ports Mob.dropCustomDeathLoot and Piglin's: a piglin
+// drops what it carries and maybe what it holds and wears.
+func (p *Piglin) dropCustomDeathLoot(killedByPlayer bool, looting int) {
+	s := p.p()
+	chance := func(guaranteed bool) float32 {
+		if guaranteed {
+			return 2
+		}
+		return .085
+	}
+	dropMobEquipment(p.tx, p, s.main, chance(s.guaranteedMain), killedByPlayer, looting)
+	dropMobEquipment(p.tx, p, s.off, chance(s.guaranteedOff), killedByPlayer, looting)
+	for _, a := range s.armor {
+		dropMobEquipment(p.tx, p, a, .085, killedByPlayer, looting)
+	}
+	for i, st := range s.inventory {
+		if !st.Empty() {
+			p.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: p.Position()}, st))
+			s.inventory[i] = item.Stack{}
+		}
+	}
+}
+
+// Interact ports Piglin.mobInteract: an adult piglin takes a gold ingot from
+// a player to admire.
 func (p *Piglin) Interact(tx *world.Tx, u item.User, c *item.UseContext) bool {
-	if u == nil {
+	s := p.p()
+	if u == nil || s.brute {
 		return false
 	}
-	a, b := u.HeldItems()
-	for _, st := range []item.Stack{a, b} {
-		if st.Empty() {
-			continue
-		}
-		name, _ := st.Item().EncodeItem()
-		if name == "minecraft:gold_ingot" {
-			s := p.p()
-			s.admire = true
-			s.admireTicks = 120
-			s.main = item.NewStack(st.Item(), 1)
-			if c != nil {
-				c.SubtractFromCount(1)
-			}
-			p.tryBarter(tx)
-			return true
-		}
+	held, _ := u.HeldItems()
+	m := s.ai.Mob(p.Ent, p)
+	if !piglinCanAdmire(m, s, held) {
+		return false
 	}
-	return false
+	if c != nil {
+		c.SubtractFromCount(1)
+	}
+	piglinHoldInOffhand(m, s, held.Grow(1-held.Count()))
+	piglinAdmireGoldItem(m)
+	piglinStopWalking(m)
+	return true
 }
 func (p *Piglin) Heal(h float64, _ world.HealingSource) float64 {
 	if h <= 0 || p.Dead() {
@@ -410,28 +362,114 @@ func (p *Piglin) RemoveEffect(t effect.Type) { p.p().effects.Remove(t, p) }
 func (p *Piglin) Effects() []effect.Effect   { return p.p().effects.Effects() }
 func (p *Piglin) Speed() float64             { return p.p().speed }
 func (p *Piglin) SetSpeed(v float64)         { p.p().speed = v }
+
+// FinalizeSpawn ports Piglin.finalizeSpawn: one piglin in five is a baby,
+// and adults take up a crossbow, or a golden sword or now and then a golden
+// spear, and may wear golden armour. PiglinAi.initMemories puts off its
+// first hunt.
 func (p *Piglin) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if r == nil || reason == "conversion" {
 		return
 	}
 	s := p.p()
-	if r.NextFloat() < .2 {
-		s.baby = true
-	} else if r.NextBoolean() {
-		s.main = item.NewStack(item.Crossbow{}, 1)
-	} else {
-		s.main = item.NewStack(item.Sword{Tier: item.ToolTierGold}, 1)
+	if reason != "structure" {
+		if r.NextFloat() < .2 {
+			s.baby = true
+		} else if r.NextFloat() < .5 {
+			s.main = item.NewStack(item.Crossbow{}, 1)
+		} else if r.NextInt(10) == 0 {
+			s.main = item.NewStack(item.Spear{Tier: item.ToolTierGold}, 1)
+		} else {
+			s.main = item.NewStack(item.Sword{Tier: item.ToolTierGold}, 1)
+		}
+	}
+	s.br.setWithExpiry(memHuntedRecently, true, int64(600+r.NextInt(1801)))
+	if !s.baby {
+		for i, a := range []item.Stack{item.NewStack(item.Helmet{Tier: item.ArmourTierGold{}}, 1), item.NewStack(item.Chestplate{Tier: item.ArmourTierGold{}}, 1),
+			item.NewStack(item.Leggings{Tier: item.ArmourTierGold{}}, 1), item.NewStack(item.Boots{Tier: item.ArmourTierGold{}}, 1)} {
+			if r.NextFloat() < .1 {
+				s.armor[i] = a
+			}
+		}
 	}
 }
-func (p *Piglin) HeldItems() (item.Stack, item.Stack) { return p.p().main, item.Stack{} }
-func (p *Piglin) SetHeldItems(main, _ item.Stack)     { p.p().main = main }
+func (p *Piglin) HeldItems() (item.Stack, item.Stack) { return p.p().main, p.p().off }
+func (p *Piglin) SetHeldItems(main, off item.Stack) {
+	s := p.p()
+	s.main, s.off = main, off
+}
 func (p *Piglin) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
 	a := p.p().armor
 	return a[0], a[1], a[2], a[3]
 }
 
+// Admiring reports if the piglin admires the loved item in its off hand, as
+// Bedrock shows.
+func (p *Piglin) Admiring() bool { return piglinLovedItem(p.p().off) }
+
+// Celebrating reports if the piglin celebrates the death of what it fought.
+func (p *Piglin) Celebrating() bool { return p.p().br.has(memCelebrateLocation) }
+
+// CelebratingSpecial reports if the piglin dances, as Piglin.isDancing.
+func (p *Piglin) CelebratingSpecial() bool { return p.p().dancing }
+
+// Charging reports if the piglin loads its crossbow.
+func (p *Piglin) Charging() bool { return p.p().chargingCrossbow }
+
+// CrossbowCharged reports if the piglin holds a loaded crossbow.
+func (p *Piglin) CrossbowCharged() bool {
+	c, ok := p.p().main.Item().(item.Crossbow)
+	return ok && !c.Item.Empty()
+}
+
+// CanHunt ports AbstractPiglin.canHunt: piglins hunt hoglins unless they were
+// born of a hunt, brutes never.
+func (p *Piglin) CanHunt() bool { s := p.p(); return !s.brute && !s.cannotHunt }
+
+func (p *Piglin) hasEffect(t effect.Type) bool { _, ok := p.p().effects.Effect(t); return ok }
+
+// finishConversion ports AbstractPiglin.finishConversion and Piglin's: the
+// piglin drops what it carries and becomes a zombified piglin, sick for ten
+// seconds.
+func (s *piglinState) finishConversion(m *Mob) {
+	if !s.brute {
+		piglinCancelAdmiring(m, s)
+		for i, st := range s.inventory {
+			if !st.Empty() {
+				m.tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.data.Pos}, st))
+				s.inventory[i] = item.Stack{}
+			}
+		}
+	}
+	opts := world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion"}
+	z := m.tx.AddEntity(opts.New(ZombifiedPiglinType{}, zombifiedPiglinConfig{health: s.health.Health(), baby: s.baby, main: s.main}))
+	z.(*ZombifiedPiglin).AddEffect(effect.New(effect.Nausea, 1, 10*time.Second))
+	s.dead = true
+	_ = m.CloseIn(m.tx)
+}
+
+// makeSound ports Mob.makeSound for piglins.
+func (s *piglinState) makeSound(m *Mob, name string) {
+	r := m.Random()
+	pitch := float64((r.NextFloat()-r.NextFloat())*.2 + 1)
+	if s.baby {
+		pitch = float64((r.NextFloat()-r.NextFloat())*.2 + 1.5)
+	}
+	m.tx.PlaySound(m.data.Pos, sound.Custom{Name: name, Volume: 1, Pitch: pitch})
+}
+
+// piglinEyeHeight is the height of the eyes of an adult piglin.
+const piglinEyeHeight = 1.79
+
 var _ world.EntityType = PiglinType{}
 var _ Living = (*Piglin)(nil)
 var _ Interactable = (*Piglin)(nil)
 
-func (p *Piglin) hasEffect(t effect.Type) bool { _, ok := p.p().effects.Effect(t); return ok }
+// piglinSpeed returns the movement speed of a piglin: babies are a fifth
+// faster.
+func (s *piglinState) movementSpeed() float64 {
+	if s.baby {
+		return s.speed * 1.2
+	}
+	return s.speed
+}

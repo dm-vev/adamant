@@ -22,6 +22,7 @@ import (
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/event"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/txguard"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
@@ -3039,6 +3040,10 @@ func (p *Player) BreakBlock(pos cube.Pos) {
 	if destroyer, ok := b.(world.PlayerBlockDestroyer); ok {
 		destroyer.PlayerWillDestroy(pos, p.tx, entity.AttackDamageSource{Attacker: p})
 	}
+	if guardedByPiglins(b) {
+		// Block.playerWillDestroy: piglins guard their gold.
+		entity.AngerNearbyPiglins(p.tx, p, false)
+	}
 	p.tx.SetBlock(pos, nil, nil)
 	p.emitGameEvent(world.GameEventBlockDestroy, pos.Vec3Centre(), b)
 	p.tx.AddParticle(pos.Vec3Centre(), particle.BlockBreak{Block: b})
@@ -3557,6 +3562,12 @@ func (p *Player) DropItemAt(pos mgl64.Vec3, stack item.Stack, velocity mgl64.Vec
 // present at that location, OpenBlockContainer does nothing.
 // OpenBlockContainer will also do nothing if the player has no session connected to it.
 func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
+	switch tx.Block(pos).(type) {
+	case block.Chest, block.TrappedChest, block.CopperChest, block.EnderChest, block.Barrel, block.ShulkerBox:
+		// The blocks of these containers anger the piglins that see a
+		// player open them, as PiglinAi.angerNearbyPiglins.
+		entity.AngerNearbyPiglins(tx, p, true)
+	}
 	if p.session() != session.Nop {
 		p.session().OpenBlockContainer(pos, tx)
 	}
@@ -3564,6 +3575,10 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 
 // OpenEntityContainer opens an entity container, such as a chest minecart.
 func (p *Player) OpenEntityContainer(e world.Entity, inv *inventory.Inventory, containerType byte, tx *world.Tx) {
+	if _, mount := e.(*entity.Mount); !mount {
+		// ContainerEntity.interactWithContainerVehicle angers piglins.
+		entity.AngerNearbyPiglins(tx, p, true)
+	}
 	if p.session() != session.Nop {
 		p.session().OpenEntityContainer(e, inv, containerType, tx)
 	}
@@ -5082,4 +5097,14 @@ func (p *Player) resendNearbyBlock(pos cube.Pos) {
 // end, which is typically used for sending messages, popups and tips.
 func format(a []any) string {
 	return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintln(a...), "\n"), "\n")
+}
+
+// guardedByPiglins reports if a block is in #guarded_by_piglins.
+func guardedByPiglins(b world.Block) bool {
+	state, err := world.CanonicalStateOf(b)
+	if err != nil {
+		return false
+	}
+	in, _ := gamedata.BlockTagContains("guarded_by_piglins", state.Name)
+	return in
 }

@@ -157,6 +157,7 @@ const (
 	memNearestVisibleAttackableHoglin
 	memLastHurtBy
 	memUnreachableTongueTargets
+	memDoorsToClose
 	memMemoryTypeCount
 )
 
