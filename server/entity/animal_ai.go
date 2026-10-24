@@ -216,6 +216,13 @@ type TemptGoal struct {
 	Scares   func(m *Mob) bool
 	// StopDistance is how close the mob gets, 2.5 blocks by default.
 	StopDistance float64
+	// Range is the tempt range attribute, 10 blocks if zero.
+	Range float64
+	// StopNavigation and NavigateTowards, if set, replace stopping the
+	// navigation of the mob and walking it to the player, as goals for
+	// mobs that do not find paths override them.
+	StopNavigation  func(m *Mob)
+	NavigateTowards func(m *Mob, p world.Entity)
 
 	player                   *world.EntityHandle
 	calmDown                 int
@@ -248,8 +255,10 @@ func (g *TemptGoal) CanUse(m *Mob) bool {
 		return false
 	}
 	c := forNonCombat()
-	// TEMPT_RANGE of 10.
 	c.rangeLimit, c.ignoreSight, c.selector = 10, true, g.holdsItem
+	if g.Range > 0 {
+		c.rangeLimit = g.Range
+	}
 	p := nearestPlayer(m, c)
 	if p == nil {
 		g.player = nil
@@ -296,7 +305,7 @@ func (g *TemptGoal) Start(m *Mob) {
 
 func (g *TemptGoal) Stop(m *Mob) {
 	g.player = nil
-	m.AI.nav.Stop()
+	g.stopNavigation(m)
 	g.calmDown = reducedTickDelay(100)
 	g.running = false
 }
@@ -307,11 +316,22 @@ func (g *TemptGoal) Tick(m *Mob) {
 		return
 	}
 	m.AI.look.SetLookAtEntityWith(p, m.AI.MaxHeadYaw+20, m.AI.MaxHeadPitch)
-	if m.DistanceToSqr(p) < g.StopDistance*g.StopDistance {
-		m.AI.nav.Stop()
-	} else {
+	switch {
+	case m.DistanceToSqr(p) < g.StopDistance*g.StopDistance:
+		g.stopNavigation(m)
+	case g.NavigateTowards != nil:
+		g.NavigateTowards(m, p)
+	default:
 		m.AI.nav.MoveToEntity(m, p, g.SpeedModifier)
 	}
+}
+
+func (g *TemptGoal) stopNavigation(m *Mob) {
+	if g.StopNavigation != nil {
+		g.StopNavigation(m)
+		return
+	}
+	m.AI.nav.Stop()
 }
 
 // FollowParentGoal makes a baby animal follow the nearest adult of its kind

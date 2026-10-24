@@ -165,6 +165,8 @@ func actorPropertyValues(e any, values map[string]any) {
 		values["minecraft:chest_interaction"] = int32(e.State())
 		values["minecraft:has_flower"] = !e.Antenna().Empty()
 		values["minecraft:oxidation_level"] = int32(e.WeatherState())
+	case *entity.SulfurCube:
+		values["minecraft:sulfur_cube_archetype"] = e.Archetype()
 	case *entity.ZombieNautilus:
 		if e.Variant() == "warm" {
 			values["minecraft:variant"] = "coral"

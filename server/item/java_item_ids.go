@@ -47,6 +47,10 @@ var javaItemAliases = map[string]string{
 	"minecraft:waxed_copper_block":           "minecraft:waxed_copper",
 }
 
+// JavaItem resolves a namespaced Java item identifier to the registered
+// Bedrock item, as item tags and loot tables name items.
+func JavaItem(id string) (world.Item, bool) { return javaItem(id) }
+
 // javaItem resolves a namespaced Java item identifier to the registered
 // Bedrock item. Coloured beds and banners are one Bedrock item each, told
 // apart by metadata.

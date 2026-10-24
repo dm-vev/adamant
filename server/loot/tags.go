@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"slices"
 	"strings"
 )
 
@@ -132,6 +133,24 @@ func loadTags(kind string, registered map[string]struct{}, ordered map[string][]
 		}
 	}
 	return compiled, nil
+}
+
+// ItemTagMembers returns the Java identifiers of the items in the item tag
+// passed, sorted, or nil if there is no such tag.
+func ItemTagMembers(tagID string) []string {
+	if !strings.Contains(tagID, ":") {
+		tagID = "minecraft:" + tagID
+	}
+	members, ok := itemTags[tagID]
+	if !ok {
+		return nil
+	}
+	ids := make([]string, 0, len(members))
+	for id := range members {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+	return ids
 }
 
 func itemInTag(itemID, tagID string) bool {

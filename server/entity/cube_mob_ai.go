@@ -40,8 +40,13 @@ func cubeJumpDelay(m *Mob, c cubeMob) int {
 }
 
 // cubeCanDealDamage ports AbstractCubeMob.canDealDamage: the smallest slimes
-// are harmless.
-func cubeCanDealDamage(c cubeMob) bool { return c.cubeMagma() || c.cubeSize() > 1 }
+// are harmless, and cubes that override it, as sulfur cubes, decide it.
+func cubeCanDealDamage(c cubeMob) bool {
+	if d, ok := c.(interface{ cubeDealsDamage() bool }); ok {
+		return d.cubeDealsDamage()
+	}
+	return c.cubeMagma() || c.cubeSize() > 1
+}
 
 // cubeSoundPitch ports AbstractCubeMob.getSoundPitch.
 func cubeSoundPitch(m *Mob, c cubeMob) float64 {
@@ -54,6 +59,9 @@ func cubeSoundPitch(m *Mob, c cubeMob) float64 {
 }
 
 func cubeSound(c cubeMob, name string) string {
+	if n, ok := c.(interface{ cubeSoundName(string) string }); ok {
+		return n.cubeSoundName(name)
+	}
 	prefix := "entity.slime."
 	if c.cubeMagma() {
 		prefix = "entity.magma_cube."
