@@ -70,12 +70,23 @@ func (e *Ent) ProjectileOwner() *world.EntityHandle {
 	return nil
 }
 
-// Explode propagates the explosion behaviour of the underlying Behaviour.
+// Explode propagates the explosion behaviour of the underlying Behaviour. A
+// living entity without one is hurt and pushed away as
+// ServerExplosion.hurtEntities hurts and pushes it.
 func (e *Ent) Explode(src world.ExplosionSource, impact float64) {
 	if expl, ok := e.Behaviour().(interface {
 		Explode(e *Ent, src world.ExplosionSource, impact float64)
 	}); ok {
 		expl.Explode(e, src, impact)
+		return
+	}
+	living, ok := e.living().(Living)
+	if !ok {
+		return
+	}
+	living.Hurt((impact*impact+impact)/2*7*src.Size()*2+1, ExplosionDamageSource{Source: src})
+	if !e.handle.Closed() {
+		living.SetVelocity(living.Velocity().Add(ExplosionImpulse(living, src, impact)))
 	}
 }
 
