@@ -17,6 +17,7 @@ import (
 func NewEndCrystal(opts world.EntitySpawnOpts, conf EndCrystalBehaviourConfig) *world.EntityHandle {
 	return opts.New(EndCrystalType, conf)
 }
+
 var EndCrystalType endCrystalType
 
 type endCrystalType struct{}
@@ -43,26 +44,38 @@ func (endCrystalType) DecodeNBT(m map[string]any, data *world.EntityData) {
 	conf.ExplosionSize = nbtconv.Float64(m, "ExplosionSize")
 	conf.PermanentlyInvulnerable = nbtconv.Bool(m, "Invulnerable")
 	decodeTarget := func(prefix string) (mgl64.Vec3, bool) {
-		if _, ok := m[prefix+"X"]; !ok { return mgl64.Vec3{}, false }
-		if _, ok := m[prefix+"Y"]; !ok { return mgl64.Vec3{}, false }
-		if _, ok := m[prefix+"Z"]; !ok { return mgl64.Vec3{}, false }
-		return mgl64.Vec3{float64(nbtconv.Int32(m,prefix+"X")),float64(nbtconv.Int32(m,prefix+"Y")),float64(nbtconv.Int32(m,prefix+"Z"))},true
+		if _, ok := m[prefix+"X"]; !ok {
+			return mgl64.Vec3{}, false
+		}
+		if _, ok := m[prefix+"Y"]; !ok {
+			return mgl64.Vec3{}, false
+		}
+		if _, ok := m[prefix+"Z"]; !ok {
+			return mgl64.Vec3{}, false
+		}
+		return mgl64.Vec3{float64(nbtconv.Int32(m, prefix+"X")), float64(nbtconv.Int32(m, prefix+"Y")), float64(nbtconv.Int32(m, prefix+"Z"))}, true
 	}
 	target, ok := decodeTarget("BlockTarget")
-	if !ok { target, ok = decodeTarget("BeamTarget") }
-	if ok { conf.BeamTarget = &target }
+	if !ok {
+		target, ok = decodeTarget("BeamTarget")
+	}
+	if ok {
+		conf.BeamTarget = &target
+	}
 	data.Data = conf.New()
 }
 
 func (endCrystalType) EncodeNBT(data *world.EntityData) map[string]any {
 	behaviour := data.Data.(*EndCrystalBehaviour)
 	m := map[string]any{
-		"ShowBottom": boolByte(behaviour.ShowBase()),
+		"ShowBottom":    boolByte(behaviour.ShowBase()),
 		"ExplosionSize": behaviour.explosionSize,
-		"Invulnerable": boolByte(behaviour.permanentlyInvulnerable),
+		"Invulnerable":  boolByte(behaviour.permanentlyInvulnerable),
 	}
 	if target, ok := behaviour.beamTargetPos(); ok {
-		m["BlockTargetX"] = int32(target[0]); m["BlockTargetY"] = int32(target[1]); m["BlockTargetZ"] = int32(target[2])
+		m["BlockTargetX"] = int32(target[0])
+		m["BlockTargetY"] = int32(target[1])
+		m["BlockTargetZ"] = int32(target[2])
 	}
 	return m
 }
@@ -129,10 +142,10 @@ var endCrystalConf = EndCrystalBehaviourConfig{
 
 // EndCrystalBehaviourConfig holds configuration for the end crystal behaviour.
 type EndCrystalBehaviourConfig struct {
-	Stationary StationaryBehaviourConfig
-	ExplosionSize float64
-	ShowBase bool
-	BeamTarget *mgl64.Vec3
+	Stationary              StationaryBehaviourConfig
+	ExplosionSize           float64
+	ShowBase                bool
+	BeamTarget              *mgl64.Vec3
 	PermanentlyInvulnerable bool
 }
 
@@ -147,24 +160,27 @@ func (conf EndCrystalBehaviourConfig) New() *EndCrystalBehaviour {
 		conf.ExplosionSize = 6
 	}
 	behaviour := &EndCrystalBehaviour{
-		stationary: conf.Stationary.New(),
-		explosionSize: conf.ExplosionSize,
-		showBase: conf.ShowBase,
+		stationary:              conf.Stationary.New(),
+		explosionSize:           conf.ExplosionSize,
+		showBase:                conf.ShowBase,
 		permanentlyInvulnerable: conf.PermanentlyInvulnerable,
 	}
-	if conf.BeamTarget != nil { behaviour.beamTarget = cube.PosFromVec3(*conf.BeamTarget); behaviour.hasBeamTarget = true }
+	if conf.BeamTarget != nil {
+		behaviour.beamTarget = cube.PosFromVec3(*conf.BeamTarget)
+		behaviour.hasBeamTarget = true
+	}
 	return behaviour
 }
 
 // EndCrystalBehaviour implements the behaviour of an end crystal entity.
 type EndCrystalBehaviour struct {
-	stationary *StationaryBehaviour
-	explosionSize float64
-	showBase bool
+	stationary              *StationaryBehaviour
+	explosionSize           float64
+	showBase                bool
 	permanentlyInvulnerable bool
-	beamTarget cube.Pos
-	hasBeamTarget bool
-	exploded bool
+	beamTarget              cube.Pos
+	hasBeamTarget           bool
+	exploded                bool
 }
 
 // Tick creates the source fire block beneath End crystals while a fight exists.
@@ -182,15 +198,25 @@ func (b *EndCrystalBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 // Destroy destroys the end crystal if it hasn't been destroyed yet.
 func (b *EndCrystalBehaviour) Destroy(e *Ent, tx *world.Tx, src world.DamageSource) bool {
-	if b.exploded { return false }
-	if b.permanentlyInvulnerable {
-		if _, void := src.(VoidDamageSource); !void { return false }
+	if b.exploded {
+		return false
+	}
+	// Entity.isInvulnerableToBase: the void and creative players get
+	// through the invulnerability of the crystals of a respawn.
+	if b.permanentlyInvulnerable && !creativeDamage(src) {
+		if _, void := src.(VoidDamageSource); !void {
+			return false
+		}
 	}
 	switch source := src.(type) {
 	case AttackDamageSource:
-		if _, dragon := source.Attacker.(*EnderDragon); dragon { return false }
+		if _, dragon := source.Attacker.(*EnderDragon); dragon {
+			return false
+		}
 	case ProjectileDamageSource:
-		if _, dragon := source.Owner.(*EnderDragon); dragon { return false }
+		if _, dragon := source.Owner.(*EnderDragon); dragon {
+			return false
+		}
 	}
 	b.exploded = true
 	crystal := &EndCrystal{Ent: e}
@@ -232,4 +258,17 @@ func (b *EndCrystalBehaviour) beamTargetPos() (cube.Pos, bool) {
 // SetBeamTarget updates the beam target of the end crystal.
 func (b *EndCrystalBehaviour) SetBeamTarget(pos mgl64.Vec3) {
 	b.beamTarget, b.hasBeamTarget = cube.PosFromVec3(pos), true
+}
+
+// creativeDamage ports DamageSource.isCreativePlayer.
+func creativeDamage(src world.DamageSource) bool {
+	var attacker world.Entity
+	switch source := src.(type) {
+	case AttackDamageSource:
+		attacker = source.Attacker
+	case ProjectileDamageSource:
+		attacker = source.Owner
+	}
+	g, ok := attacker.(interface{ GameMode() world.GameMode })
+	return ok && g.GameMode() == world.GameModeCreative
 }

@@ -32,6 +32,10 @@ type EnchantedHitAction struct {
 // entity disappears from viewers watching it.
 type DeathAction struct{ action }
 
+// DragonDeathAction is a world.EntityAction that makes an ender dragon start
+// the beams of light of its death.
+type DragonDeathAction struct{ action }
+
 // WitchMagicAction is a world.EntityAction that makes a witch display the
 // magic particles around its hat.
 type WitchMagicAction struct{ action }

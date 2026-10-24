@@ -3,6 +3,7 @@ package item
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -42,6 +43,23 @@ func (g GlassBottle) UseOnBlock(pos cube.Pos, _ cube.Face, _ mgl64.Vec3, tx *wor
 			}
 			return true
 		}
+	}
+	return false
+}
+
+// Use fills the bottle with the dragon's breath of a cloud of it within two
+// blocks of the user, as BottleItem.use does.
+func (g GlassBottle) Use(tx *world.Tx, user User, ctx *UseContext) bool {
+	box := user.H().Type().BBox(user).Translate(user.Position()).Grow(2)
+	for e := range tx.EntitiesWithin(box) {
+		cloud, ok := e.(interface{ BottleDragonBreath(*world.Tx) bool })
+		if !ok || !box.IntersectsWith(e.H().Type().BBox(e).Translate(e.Position())) || !cloud.BottleDragonBreath(tx) {
+			continue
+		}
+		tx.PlaySound(user.Position(), sound.Custom{Name: "item.bottle.fill_dragonbreath", Volume: 1, Pitch: 1})
+		ctx.SubtractFromCount(1)
+		ctx.NewItem = NewStack(DragonBreath{}, 1)
+		return true
 	}
 	return false
 }

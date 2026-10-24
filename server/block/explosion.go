@@ -321,9 +321,17 @@ func explosionDropDecay(w *world.World, src world.ExplosionSource) bool {
 
 // exposure returns the exposure of an explosion to an entity, used to calculate the impact of an explosion.
 func (c ExplosionConfig) exposure(tx *world.Tx, origin mgl64.Vec3, e world.Entity) float64 {
-	pos := e.Position()
-	box := e.H().Type().BBox(e).Translate(pos)
+	return c.boxExposure(tx, origin, e.H().Type().BBox(e).Translate(e.Position()))
+}
 
+// ExplosionSeenPercent returns the share of a box an explosion at origin
+// sees, as ServerExplosion.getSeenPercent. Entities made of parts, as the
+// ender dragon, use it for each part.
+func ExplosionSeenPercent(tx *world.Tx, origin mgl64.Vec3, box cube.BBox) float64 {
+	return ExplosionConfig{}.boxExposure(tx, origin, box)
+}
+
+func (c ExplosionConfig) boxExposure(tx *world.Tx, origin mgl64.Vec3, box cube.BBox) float64 {
 	boxMin, boxMax := box.Min(), box.Max()
 	diff := boxMax.Sub(boxMin).Mul(2.0).Add(mgl64.Vec3{1, 1, 1})
 

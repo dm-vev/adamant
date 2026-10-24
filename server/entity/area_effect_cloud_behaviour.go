@@ -29,6 +29,12 @@ type AreaEffectCloudBehaviourConfig struct {
 	// ReapplicationDelay specifies the delay with which the effects from the
 	// cloud can be re-applied to users.
 	ReapplicationDelay time.Duration
+	// Owner is the entity the cloud came from, if any, as the ender dragon
+	// whose breath may be bottled.
+	Owner *world.EntityHandle
+	// Particle is the Bedrock particle type the cloud shows, or 0 for that
+	// of its potion.
+	Particle int32
 }
 
 func (conf AreaEffectCloudBehaviourConfig) Apply(data *world.EntityData) {
@@ -74,6 +80,26 @@ func (a *AreaEffectCloudBehaviour) PortalTravelComputer() *PortalTravelComputer 
 // Radius returns the current radius of the area effect cloud.
 func (a *AreaEffectCloudBehaviour) Radius() float64 {
 	return a.radius
+}
+
+// SetRadius sets the radius of the cloud, which disappears once it is under
+// one half.
+func (a *AreaEffectCloudBehaviour) SetRadius(r float64) {
+	a.radius = r
+	if a.radius < .5 {
+		a.stationary.close = true
+	}
+}
+
+// Owner returns the entity the cloud came from, or nil.
+func (a *AreaEffectCloudBehaviour) Owner() *world.EntityHandle {
+	return a.conf.Owner
+}
+
+// Particle returns the Bedrock particle type the cloud shows, or 0 for that
+// of its potion.
+func (a *AreaEffectCloudBehaviour) Particle() int32 {
+	return a.conf.Particle
 }
 
 // Effects returns the effects the area effect cloud provides.
