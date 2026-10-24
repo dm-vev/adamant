@@ -48,6 +48,8 @@ Sessions now remember which visible ordinary mobs received a death event, releas
 
 Regression tests reproduce the old death-event/instant-removal pair and check packet delivery after actual lethal damage to cows, zombies and blazes, bookkeeping cleanup, ordinary despawning, forced hiding and special death sequences. Nether elementals now pass their living wrapper with the death event so session handling recognises them as mobs. These are packet and native-code checks; rendered animation on a connected client remains unverified.
 
+The melee-hit regression also covers lethal and surviving critical/Fire Aspect hits through a real observing session. `Hurt` can remove a mob synchronously; the attack now stops target effects after that removal instead of emitting critical-hit animation or fire metadata with runtime ID zero and logging `entity runtime ID not found`. Successful lethal hits still consume weapon durability and exhaustion, and retain the death event. Surviving targets still receive critical particles and Fire Aspect. A separate slot-verification regression reproduces a client count of four beef against the authoritative five: the server resends five without rejecting the transaction or changing its inventory. That debug message alone does not establish item loss or its cause.
+
 ## Biome registry
 
 The registered 89 biome definitions match the pinned BDS's initial climate, water-colour, precipitation and tag metadata, including `dappled_forest` at persistent ID **195**. That ID was read from a saved BDS chunk after its biome was identified through the live Script API.
