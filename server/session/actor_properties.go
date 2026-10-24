@@ -160,7 +160,7 @@ func actorPropertyValues(e any, values map[string]any) {
 	case *entity.Bee:
 		values["minecraft:has_nectar"] = e.HasNectar()
 	case *entity.Armadillo:
-		values["minecraft:armadillo_state"] = armadilloStates[boolByte(e.Rolling())]
+		values["minecraft:armadillo_state"] = e.BedrockState()
 	case *entity.CopperGolem:
 		values["minecraft:chest_interaction"] = int32(e.State())
 		values["minecraft:has_flower"] = !e.Antenna().Empty()

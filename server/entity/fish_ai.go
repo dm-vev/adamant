@@ -134,10 +134,14 @@ func (b *AquaticMobBehaviour) travel(m *Mob, input mgl64.Vec3) bool {
 // randomSwimmablePos ports BehaviorUtils.getRandomSwimmablePos: a random
 // position within ten blocks sideways and seven up or down in water the mob
 // swims through, after at most ten more tries.
-func randomSwimmablePos(m *Mob) (mgl64.Vec3, bool) {
-	pos, ok := DefaultRandomPos(m, 10, 7)
+func randomSwimmablePos(m *Mob) (mgl64.Vec3, bool) { return randomSwimmablePosWithin(m, 10, 7) }
+
+// randomSwimmablePosWithin ports BehaviorUtils.getRandomSwimmablePos: a
+// random spot within the distances a mob may swim to.
+func randomSwimmablePosWithin(m *Mob, horizontal, vertical int) (mgl64.Vec3, bool) {
+	pos, ok := DefaultRandomPos(m, horizontal, vertical)
 	for count := 0; ok && !pathfindableWater(m, cube.PosFromVec3(pos)) && count < 10; count++ {
-		pos, ok = DefaultRandomPos(m, 10, 7)
+		pos, ok = DefaultRandomPos(m, horizontal, vertical)
 	}
 	return pos, ok
 }

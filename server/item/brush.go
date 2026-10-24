@@ -42,7 +42,8 @@ func (Brush) UseOnEntity(target world.Entity, _ *world.Tx, user User, ctx *UseCo
 		ctx.NewItem = drop
 		ctx.NewItemSurvivalOnly = true
 	}
-	ctx.DamageItem(1)
+	// Armadillo.mobInteract wears the brush down by 16.
+	ctx.DamageItem(16)
 	return true
 }
 
