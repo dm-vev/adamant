@@ -24,6 +24,11 @@ func (m *speciesMob) Mount(tx *world.Tx, passenger world.Entity) bool {
 	return true
 }
 
+// addMobPassenger seats a mob that starts riding the spider.
+func (m *speciesMob) addMobPassenger(tx *world.Tx, passenger world.Entity, _ bool) bool {
+	return m.Mount(tx, passenger)
+}
+
 func (m *speciesMob) Dismount(tx *world.Tx, passenger world.Entity) {
 	if passenger == nil || m.s().passenger != passenger.H() {
 		return
@@ -90,9 +95,13 @@ func (m *speciesMob) updateJockey(tx *world.Tx) {
 func (m *speciesMob) viewLink(tx *world.Tx, rider *world.EntityHandle, mounted bool) {
 	viewers := tx.Viewers(m.Position())
 	for _, viewer := range viewers {
-		if linkViewer, ok := viewer.(interface{ ViewEntityLinkType(*world.EntityHandle, *world.EntityHandle, LinkType, bool) }); ok {
+		if linkViewer, ok := viewer.(interface {
+			ViewEntityLinkType(*world.EntityHandle, *world.EntityHandle, LinkType, bool)
+		}); ok {
 			linkViewer.ViewEntityLinkType(m.H(), rider, LinkRider, mounted)
-		} else if linkViewer, ok := viewer.(interface{ ViewEntityLink(*world.EntityHandle, *world.EntityHandle, bool) }); ok {
+		} else if linkViewer, ok := viewer.(interface {
+			ViewEntityLink(*world.EntityHandle, *world.EntityHandle, bool)
+		}); ok {
 			linkViewer.ViewEntityLink(m.H(), rider, mounted)
 		}
 	}

@@ -664,7 +664,8 @@ func (m *oceanMob) FinalizeSpawn(reason string, random *vanilla.Random) {
 	if b.kind != oceanDrowned || random == nil {
 		return
 	}
-	baby, doors, pickup, _ := finalizeZombieSpawn(reason, m.tx.LocalDifficulty(cube.PosFromVec3(m.Position())), random, false, m.H().SpawnGroup())
+	baby, doors, pickup, _, jockey := finalizeZombieSpawn(reason, m.tx.LocalDifficulty(cube.PosFromVec3(m.Position())), random, false, m.H().SpawnGroup())
+	rideChickenJockey(m.tx, m, jockey)
 	b.canBreakDoors, b.canPickupLoot = doors, pickup
 	if baby {
 		b.baby = true
@@ -679,6 +680,20 @@ func (m *oceanMob) FinalizeSpawn(reason string, random *vanilla.Random) {
 	}
 	if b.offHand.Empty() && random.NextFloat() < .03 {
 		b.offHand = item.NewStack(item.NautilusShell{}, 1)
+	}
+	// Drowned.finalizeSpawn: half the grown drowned spawning with a trident
+	// away from rivers ride a zombie nautilus.
+	if _, trident := b.mainHand.Item().(item.Trident); (reason == "natural" || reason == "structure") && trident && random.NextFloat() < .5 && !b.baby {
+		frequent := false
+		for _, tag := range m.tx.Biome(cube.PosFromVec3(m.Position())).Tags() {
+			frequent = frequent || tag == "more_frequent_drowned_spawns"
+		}
+		if !frequent {
+			opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: cube.Rotation{m.Rotation().Yaw(), 0}, SpawnReason: reason}
+			if nautilus, ok := m.tx.AddEntity(NewZombieNautilus(opts)).(*ZombieNautilus); ok {
+				mobStartRiding(m.tx, m, nautilus, false)
+			}
+		}
 	}
 }
 

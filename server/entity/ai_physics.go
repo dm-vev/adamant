@@ -134,6 +134,9 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 	}
 	ai.resetNoActionTimeNearPlayers(m)
 	ai.tickUsingItem(m)
+	if ai.tickCount%5 == 0 {
+		ai.updateControlFlags(m)
+	}
 	if e.data.Riding != nil {
 		if !ai.NoAI && m.Alive() {
 			ai.serverAiStep(m)
@@ -212,6 +215,9 @@ func (ai *MobAI) aiStep(m *Mob) {
 func (ai *MobAI) serverAiStep(m *Mob) {
 	ai.noActionTime++
 	ai.sense.tick()
+	// The goals and brain of a mob steering its vehicle walk it instead.
+	vehicle, _ := m.controlledVehicle()
+	ai.steer(vehicle)
 	if (ai.tickCount+int(m.H().UniqueID()&0x7fffffff))%2 != 0 && ai.tickCount > 1 {
 		ai.Targets.TickRunning(m, false)
 		ai.Goals.TickRunning(m, false)
@@ -219,9 +225,12 @@ func (ai *MobAI) serverAiStep(m *Mob) {
 		ai.Targets.Tick(m)
 		ai.Goals.Tick(m)
 	}
+	ai.steer(nil)
 	ai.nav.tickNavigation(m)
 	if c, ok := m.Behaviour().(mobCustomStep); ok {
+		ai.steer(vehicle)
 		c.customServerAiStep(m)
+		ai.steer(nil)
 	}
 	if ai.moveOverride != nil {
 		ai.moveOverride.tick(m)
@@ -833,6 +842,12 @@ func (ai *MobAI) riderMovement(m *Mob, prevPos mgl64.Vec3, prevRot cube.Rotation
 		m.data.Riding = nil
 	} else if positioner, ok := vehicle.(passengerPositioner); ok {
 		m.data.Pos = positioner.PassengerPosition(m.Self)
+	} else if _, seats := vehicle.(interface {
+		Mount(*world.Tx, world.Entity) bool
+	}); !seats {
+		// Entity.positionRider, for vehicles that do not seat their riders
+		// themselves.
+		m.data.Pos = vehicle.Position().Add(passengerAttachment(vehicle)).Sub(vehicleAttachmentPoint(m.Self))
 	}
 	m.data.Vel = mgl64.Vec3{}
 	ai.onGround = false

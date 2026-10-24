@@ -63,6 +63,11 @@ type PathNavigation struct {
 	// flyThroughLiquids lets a flying mob head straight past liquids, as
 	// HappyGhast.BabyFlyingPathNavigation does.
 	flyThroughLiquids bool
+
+	// vehicle is the mob a rider steers while its goals tick: as
+	// Mob.getNavigation does, the navigation of the rider then hands each
+	// call to that of its vehicle.
+	vehicle *Mob
 }
 
 func (n *PathNavigation) init(m *Mob) {
@@ -119,17 +124,39 @@ func (n *PathNavigation) SetCanWalkOverFences(v bool) { n.eval.canWalkOverFences
 
 // SetMaxVisitedNodesMultiplier scales the nodes a path finder visits at
 // most, as PathNavigation.setMaxVisitedNodesMultiplier.
-func (n *PathNavigation) SetMaxVisitedNodesMultiplier(v float64) { n.maxVisitedNodesMultiplier = v }
+func (n *PathNavigation) SetMaxVisitedNodesMultiplier(v float64) {
+	if vm := n.vehicle; vm != nil {
+		vm.AI.nav.SetMaxVisitedNodesMultiplier(v)
+		return
+	}
+	n.maxVisitedNodesMultiplier = v
+}
 
 // ResetMaxVisitedNodesMultiplier ports
 // PathNavigation.resetMaxVisitedNodesMultiplier.
-func (n *PathNavigation) ResetMaxVisitedNodesMultiplier() { n.maxVisitedNodesMultiplier = 1 }
+func (n *PathNavigation) ResetMaxVisitedNodesMultiplier() {
+	if v := n.vehicle; v != nil {
+		v.AI.nav.ResetMaxVisitedNodesMultiplier()
+		return
+	}
+	n.maxVisitedNodesMultiplier = 1
+}
 
 // SetSpeedModifier sets the modifier of the speed the path is followed with.
-func (n *PathNavigation) SetSpeedModifier(v float64) { n.speedModifier = v }
+func (n *PathNavigation) SetSpeedModifier(v float64) {
+	if vm := n.vehicle; vm != nil {
+		vm.AI.nav.SetSpeedModifier(v)
+		return
+	}
+	n.speedModifier = v
+}
 
 // SetRequiredPathLength sets the least length paths may have.
 func (n *PathNavigation) SetRequiredPathLength(m *Mob, length float64) {
+	if v := n.vehicle; v != nil {
+		v.AI.nav.SetRequiredPathLength(v, length)
+		return
+	}
 	n.requiredPathLength = length
 	n.maxVisitedNodes = int(math.Floor(n.maxPathLength(m) * 16))
 }
@@ -139,10 +166,18 @@ func (n *PathNavigation) maxPathLength(m *Mob) float64 {
 }
 
 // Path returns the path the mob follows, or nil.
-func (n *PathNavigation) Path() *mobPath { return n.path }
+func (n *PathNavigation) Path() *mobPath {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.Path()
+	}
+	return n.path
+}
 
 // TargetPos returns the position the last path was found to.
 func (n *PathNavigation) TargetPos() (cube.Pos, bool) {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.TargetPos()
+	}
 	if n.targetPos == nil {
 		return cube.Pos{}, false
 	}
@@ -150,20 +185,45 @@ func (n *PathNavigation) TargetPos() (cube.Pos, bool) {
 }
 
 // IsDone reports if the mob follows no path.
-func (n *PathNavigation) IsDone() bool { return n.path == nil || n.path.Done() }
+func (n *PathNavigation) IsDone() bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.IsDone()
+	}
+	return n.path == nil || n.path.Done()
+}
 
 // InProgress reports if the mob follows a path.
-func (n *PathNavigation) InProgress() bool { return !n.IsDone() }
+func (n *PathNavigation) InProgress() bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.InProgress()
+	}
+	return !n.IsDone()
+}
 
 // IsStuck reports if the mob got stuck following its last path.
-func (n *PathNavigation) IsStuck() bool { return n.stuck }
+func (n *PathNavigation) IsStuck() bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.IsStuck()
+	}
+	return n.stuck
+}
 
 // Stop stops following the path.
-func (n *PathNavigation) Stop() { n.path = nil }
+func (n *PathNavigation) Stop() {
+	if v := n.vehicle; v != nil {
+		v.AI.nav.Stop()
+		return
+	}
+	n.path = nil
+}
 
 // RecomputePath finds the path to the last target again, at most once a
 // second.
 func (n *PathNavigation) RecomputePath(m *Mob) {
+	if v := n.vehicle; v != nil {
+		v.AI.nav.RecomputePath(v)
+		return
+	}
 	if m.GameTime()-n.timeLastRecompute <= 20 || !n.canUpdatePath(m) {
 		n.hasDelayedRecomputation = true
 		return
@@ -179,6 +239,9 @@ func (n *PathNavigation) RecomputePath(m *Mob) {
 // CreatePath finds a path to a position, ported from
 // GroundPathNavigation.createPath(BlockPos, int).
 func (n *PathNavigation) CreatePath(m *Mob, pos cube.Pos, reachRange int) *mobPath {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.CreatePath(v, pos, reachRange)
+	}
 	if n.wallClimber {
 		target := pos
 		n.pathToPosition = &target
@@ -199,16 +262,25 @@ func (n *PathNavigation) CreatePath(m *Mob, pos cube.Pos, reachRange int) *mobPa
 // CreatePathWithLength finds a path to a position no longer than
 // maxPathLength.
 func (n *PathNavigation) CreatePathWithLength(m *Mob, pos cube.Pos, reachRange int, maxPathLength float64) *mobPath {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.CreatePathWithLength(v, pos, reachRange, maxPathLength)
+	}
 	return n.createPath(m, []cube.Pos{pos}, reachRange, maxPathLength)
 }
 
 // CreatePathToEntity finds a path to the block an entity stands in.
 func (n *PathNavigation) CreatePathToEntity(m *Mob, e world.Entity, reachRange int) *mobPath {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.CreatePathToEntity(v, e, reachRange)
+	}
 	return n.CreatePath(m, cube.PosFromVec3(e.Position()), reachRange)
 }
 
 // CreatePathToAny finds a path to the nearest of positions.
 func (n *PathNavigation) CreatePathToAny(m *Mob, targets []cube.Pos, reachRange int) *mobPath {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.CreatePathToAny(v, targets, reachRange)
+	}
 	return n.createPath(m, targets, reachRange, n.maxPathLength(m))
 }
 
@@ -259,6 +331,9 @@ func (n *PathNavigation) createPath(m *Mob, targets []cube.Pos, reachRange int, 
 // MoveTo follows a path with the speed of the mob scaled by speedModifier
 // and reports if there is something left to follow.
 func (n *PathNavigation) MoveTo(m *Mob, path *mobPath, speedModifier float64) bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.MoveTo(v, path, speedModifier)
+	}
 	if path == nil {
 		n.path = nil
 		return false
@@ -281,17 +356,26 @@ func (n *PathNavigation) MoveTo(m *Mob, path *mobPath, speedModifier float64) bo
 
 // MoveToPos finds and follows a path to a position.
 func (n *PathNavigation) MoveToPos(m *Mob, x, y, z float64, speedModifier float64) bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.MoveToPos(v, x, y, z, speedModifier)
+	}
 	return n.MoveTo(m, n.CreatePath(m, cube.PosFromVec3(mgl64.Vec3{x, y, z}), 1), speedModifier)
 }
 
 // MoveToPosReach finds and follows a path to within reachRange of a
 // position.
 func (n *PathNavigation) MoveToPosReach(m *Mob, x, y, z float64, reachRange int, speedModifier float64) bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.MoveToPosReach(v, x, y, z, reachRange, speedModifier)
+	}
 	return n.MoveTo(m, n.CreatePath(m, cube.PosFromVec3(mgl64.Vec3{x, y, z}), reachRange), speedModifier)
 }
 
 // MoveToEntity finds and follows a path to an entity.
 func (n *PathNavigation) MoveToEntity(m *Mob, e world.Entity, speedModifier float64) bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.MoveToEntity(v, e, speedModifier)
+	}
 	if n.wallClimber {
 		if path := n.CreatePathToEntity(m, e, 0); path != nil {
 			return n.MoveTo(m, path, speedModifier)
@@ -306,6 +390,9 @@ func (n *PathNavigation) MoveToEntity(m *Mob, e world.Entity, speedModifier floa
 // MoveToEntityReach finds and follows a path to within reachRange of an
 // entity.
 func (n *PathNavigation) MoveToEntityReach(m *Mob, e world.Entity, reachRange int, speedModifier float64) bool {
+	if v := n.vehicle; v != nil {
+		return v.AI.nav.MoveToEntityReach(v, e, reachRange, speedModifier)
+	}
 	path := n.CreatePathToEntity(m, e, reachRange)
 	return path != nil && n.MoveTo(m, path, speedModifier)
 }

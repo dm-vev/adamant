@@ -155,6 +155,7 @@ var conf = world.EntityRegistryConfig{
 	DragonFight:        newDragonFight,
 	GolemPattern:       trySpawnConstructedGolem,
 	RaidSpawner:        NewRaidSpawner,
+	StartRiding:        StartRiding,
 	SpawnMob:           spawnMob,
 	NaturalSpawnTick:   NaturalSpawnTick,
 	SpawnMobFromNBT:    spawnMobFromNBT,

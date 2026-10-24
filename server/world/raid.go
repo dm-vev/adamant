@@ -366,7 +366,7 @@ func (tx *Tx) spawnRaidWave(r *Raid) bool {
 	}
 	wave := r.groupsSpawned + 1
 	members := raidWaveComposition(tx, wave, r.groupCount, r.omenLevel, tx.World().Difficulty(), tx.LocalDifficulty(spawn).Effective)
-	spawned := 0
+	spawned, ravagers := 0, 0
 	for _, member := range members {
 		for range member.count {
 			pos := mgl64.Vec3{float64(spawn[0]) + .5, float64(spawn[1]), float64(spawn[2]) + .5}
@@ -378,6 +378,10 @@ func (tx *Tx) spawnRaidWave(r *Raid) bool {
 			if tx.RegisterRaider(r.id, entity) {
 				spawned++
 			}
+			if member.id == "minecraft:ravager" {
+				tx.spawnRavagerRider(r, wave, ravagers, entity, pos, factory)
+				ravagers++
+			}
 		}
 	}
 	if spawned == 0 {
@@ -387,6 +391,32 @@ func (tx *Tx) spawnRaidWave(r *Raid) bool {
 	r.groupsSpawned++
 	r.cooldown = -1
 	return true
+}
+
+// spawnRavagerRider ports the riders Raid.spawnGroup puts on ravagers: a
+// pillager on those of the fifth wave, and from the seventh an evoker on the
+// first ravager and vindicators on the rest.
+func (tx *Tx) spawnRavagerRider(r *Raid, wave, ravagers int, ravager Entity, pos mgl64.Vec3, factory func(EntitySpawnOpts, string, int64, int, bool) *EntityHandle) {
+	var id string
+	switch {
+	case wave == 5:
+		id = "minecraft:pillager"
+	case wave >= 7 && ravagers == 0:
+		id = "minecraft:evoker"
+	case wave >= 7:
+		id = "minecraft:vindicator"
+	default:
+		return
+	}
+	handle := factory(EntitySpawnOpts{Position: pos, SpawnReason: "event", SpawnSeed: tx.World().r.Int64()}, id, r.id, wave, false)
+	if handle == nil {
+		return
+	}
+	rider := tx.AddEntity(handle)
+	tx.RegisterRaider(r.id, rider)
+	if mount := tx.World().EntityRegistry().Config().StartRiding; mount != nil {
+		mount(tx, rider, ravager)
+	}
 }
 
 type raidWaveMember struct {

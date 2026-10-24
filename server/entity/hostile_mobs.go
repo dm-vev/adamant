@@ -819,7 +819,19 @@ type zombieSpawnGroupData struct {
 	triedToSpawnCamelHusk bool
 }
 
-func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *vanilla.Random, withEquipment bool, group *world.EntitySpawnGroup) (baby, canBreakDoors, canPickupLoot bool, main item.Stack) {
+// chickenJockey is how Zombie.finalizeSpawn makes a baby zombie a chicken
+// jockey.
+type chickenJockey int
+
+const (
+	noChickenJockey chickenJockey = iota
+	// nearbyChickenJockey rides a chicken near that nothing rides.
+	nearbyChickenJockey
+	// newChickenJockey rides a chicken that spawns with it.
+	newChickenJockey
+)
+
+func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *vanilla.Random, withEquipment bool, group *world.EntitySpawnGroup) (baby, canBreakDoors, canPickupLoot bool, main item.Stack, jockey chickenJockey) {
 	if r == nil {
 		return
 	}
@@ -838,8 +850,10 @@ func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *van
 	}
 	baby = data.baby
 	if baby && data.canSpawnJockey {
-		if r.NextFloat() >= .05 {
-			_ = r.NextFloat()
+		if r.NextFloat() < .05 {
+			jockey = nearbyChickenJockey
+		} else if r.NextFloat() < .05 {
+			jockey = newChickenJockey
 		}
 	}
 	canBreakDoors = float64(r.NextFloat()) < float64(difficulty.SpecialMultiplier())*.1
@@ -902,8 +916,9 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 			return
 		}
 		difficulty := m.tx.LocalDifficulty(cube.PosFromVec3(m.Position()))
-		baby, doors, pickup, main := finalizeZombieSpawn(reason, difficulty, r, true, m.H().SpawnGroup())
+		baby, doors, pickup, main, jockey := finalizeZombieSpawn(reason, difficulty, r, true, m.H().SpawnGroup())
 		b.baby, b.canBreakDoors, b.canPickupLoot = baby, doors, pickup
+		rideChickenJockey(m.tx, m, jockey)
 		if !main.Empty() {
 			b.main = main
 		}
@@ -945,6 +960,31 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 		b.head = ominousBannerStack()
 		b.headDropGuaranteed = true
 	}
+}
+
+// rideChickenJockey makes a baby zombie a chicken jockey as
+// Zombie.finalizeSpawn does: it gets on the first chicken near that nothing
+// rides, or on one that spawns with it.
+func rideChickenJockey(tx *world.Tx, rider world.Entity, jockey chickenJockey) {
+	var chicken *Chicken
+	switch jockey {
+	case nearbyChickenJockey:
+		box := rider.H().Type().BBox(rider).Translate(rider.Position()).GrowVec3(mgl64.Vec3{5, 3, 5})
+		for e := range tx.EntitiesWithin(box) {
+			if c, ok := e.(*Chicken); ok && !c.Dead() && len(passengersOf(tx, c)) == 0 {
+				chicken = c
+				break
+			}
+		}
+	case newChickenJockey:
+		opts := world.EntitySpawnOpts{Position: rider.Position(), Rotation: cube.Rotation{rider.Rotation().Yaw(), 0}, SpawnReason: "jockey"}
+		chicken, _ = tx.AddEntity(NewChicken(opts, ChickenBehaviourConfig{})).(*Chicken)
+	}
+	if chicken == nil {
+		return
+	}
+	chicken.behaviour().jockey = true
+	mobStartRiding(tx, rider, chicken, false)
 }
 
 func (m *HostileMob) finalizeHuskCamel(reason string, r *vanilla.Random) {

@@ -29,20 +29,42 @@ type moveControl struct {
 	// position with, as subclasses of MoveControl override
 	// setWantedPosition.
 	adjustWanted func(speedModifier float64) float64
+	// vehicle is the move control of the mob a rider steers while its goals
+	// tick, which Mob.getMoveControl hands out instead.
+	vehicle *moveControl
 }
 
 // HasWanted reports if the control walks towards a position.
-func (c *moveControl) HasWanted() bool { return c.operation == moveTo }
+func (c *moveControl) HasWanted() bool {
+	if c.vehicle != nil {
+		return c.vehicle.HasWanted()
+	}
+	return c.operation == moveTo
+}
 
 // SpeedModifier returns the modifier of the speed the control walks with.
-func (c *moveControl) SpeedModifier() float64 { return c.speedModifier }
+func (c *moveControl) SpeedModifier() float64 {
+	if c.vehicle != nil {
+		return c.vehicle.SpeedModifier()
+	}
+	return c.speedModifier
+}
 
 // Wanted returns the position the control walks towards.
-func (c *moveControl) Wanted() [3]float64 { return c.wanted }
+func (c *moveControl) Wanted() [3]float64 {
+	if c.vehicle != nil {
+		return c.vehicle.Wanted()
+	}
+	return c.wanted
+}
 
 // SetWantedPosition walks the mob towards a position with its speed scaled
 // by speedModifier.
 func (c *moveControl) SetWantedPosition(x, y, z, speedModifier float64) {
+	if c.vehicle != nil {
+		c.vehicle.SetWantedPosition(x, y, z, speedModifier)
+		return
+	}
 	if c.adjustWanted != nil {
 		speedModifier = c.adjustWanted(speedModifier)
 	}
@@ -55,13 +77,23 @@ func (c *moveControl) SetWantedPosition(x, y, z, speedModifier float64) {
 
 // Strafe walks the mob forwards and to its right relative to where it looks.
 func (c *moveControl) Strafe(forwards, right float64) {
+	if c.vehicle != nil {
+		c.vehicle.Strafe(forwards, right)
+		return
+	}
 	c.operation = moveStrafe
 	c.strafeForwards, c.strafeRight = forwards, right
 	c.speedModifier = .25
 }
 
 // SetWait stops the control.
-func (c *moveControl) SetWait() { c.operation = moveWait }
+func (c *moveControl) SetWait() {
+	if c.vehicle != nil {
+		c.vehicle.SetWait()
+		return
+	}
+	c.operation = moveWait
+}
 
 // tick ports MoveControl.tick.
 func (c *moveControl) tick(m *Mob) {

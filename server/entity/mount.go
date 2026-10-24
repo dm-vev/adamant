@@ -406,6 +406,30 @@ func (m *Mount) Mount(tx *world.Tx, passenger world.Entity) bool {
 	return true
 }
 
+// addMobPassenger seats a mob that starts riding the mount, as
+// Entity.startRiding does without the player mounting a mount does.
+func (m *Mount) addMobPassenger(tx *world.Tx, passenger world.Entity, announce bool) bool {
+	b := m.b()
+	r, ok := passenger.(Rider)
+	if !ok {
+		return false
+	}
+	seat := 0
+	if b.passengers[0] != nil {
+		if !b.camel() || b.passengers[1] != nil {
+			return false
+		}
+		seat = 1
+	}
+	b.passengers[seat] = passenger.H()
+	seatRider(r, m)
+	if announce {
+		m.broadcastLink(tx, passenger.H(), true)
+	}
+	m.updateState()
+	return true
+}
+
 // RiderSeat returns the seat of the species' Bedrock rideable component:
 // camels seat their second rider behind the first.
 func (m *Mount) RiderSeat(rider world.Entity) world.RiderSeat {
@@ -1202,11 +1226,20 @@ type mountSpawnGroup struct {
 }
 
 // FinalizeSpawn ports finalizeSpawn of the horse species.
-func (m *Mount) FinalizeSpawn(_ string, random *vanilla.Random) {
+func (m *Mount) FinalizeSpawn(reason string, random *vanilla.Random) {
 	if random == nil {
 		return
 	}
 	b := m.b()
+	if b.kind == mountZombieHorse && reason == "natural" && m.tx != nil {
+		// ZombieHorse.finalizeSpawn: zombie horses spawn ridden by a zombie
+		// with an iron spear.
+		opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: cube.Rotation{m.Rotation().Yaw(), 0}, SpawnReason: reason}
+		if zombie, ok := m.tx.AddEntity(NewZombie(opts)).(*Zombie); ok {
+			zombie.state().main = item.NewStack(item.Spear{Tier: item.ToolTierIron}, 1)
+			m.addMobPassenger(m.tx, zombie, false)
+		}
+	}
 	b.randomizeHorse(m, random)
 	if b.camel() {
 		// Camel.resetLastPoseChangeTickToFullStand.

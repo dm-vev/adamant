@@ -318,6 +318,11 @@ func (s *Strider) Mount(tx *world.Tx, p world.Entity) bool {
 	return true
 }
 
+// addMobPassenger seats a mob that starts riding the strider.
+func (s *Strider) addMobPassenger(tx *world.Tx, p world.Entity, _ bool) bool {
+	return s.Mount(tx, p)
+}
+
 func (s *Strider) Dismount(tx *world.Tx, p world.Entity) {
 	b := s.b()
 	if p == nil || b.passenger != p.H() {

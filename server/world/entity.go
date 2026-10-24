@@ -788,6 +788,9 @@ type EntityRegistryConfig struct {
 	// RaidSpawner creates a registered raider with its raid wave metadata before
 	// the entity is published to world viewers.
 	RaidSpawner func(opts EntitySpawnOpts, entityID string, raidID int64, wave int, leader bool) *EntityHandle
+	// StartRiding makes an entity start riding a vehicle, as a raider gets on
+	// a ravager.
+	StartRiding func(tx *Tx, rider, vehicle Entity) bool
 	// MinecartCommandBlock creates a command block minecart.
 	MinecartCommandBlock func(opts EntitySpawnOpts) *EntityHandle
 }

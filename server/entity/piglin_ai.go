@@ -198,6 +198,7 @@ func newPiglinBrain(s *piglinState) *Brain {
 		startAttacking(),
 		newTriggerIf(func(*Mob) bool { return !s.cannotHunt }, newStartHuntingHoglin(s)),
 		avoidRepellent(),
+		piglinBabySometimesRideBabyHoglin(s),
 		idleLook(),
 		idleMovement(),
 		newSetLookAndInteract(isPlayerType, 4),
@@ -234,6 +235,13 @@ func newPiglinBrain(s *piglinState) *Brain {
 			weightedBehavior{newDoNothing(10, 20), 1},
 		),
 	), []memoryCondition{{memCelebrateLocation, memPresent}}, []memoryType{memCelebrateLocation})
+	br.addActivityWith(activityRide, prioritiesFrom(10,
+		newMount(.8),
+		lookAtLovedItem(8),
+		newTriggerIf(func(m *Mob) bool { return m.data.Riding != nil },
+			newTriggerOneShuffled(append(lookBehaviors(), weightedBehavior{newOneShot(nil, func(*Mob, *Brain, int64) bool { return true }), 1})...)),
+		newDismountOrSkipMounting(8, piglinWantsToStopRiding),
+	), []memoryCondition{{memRideTarget, memPresent}}, nil)
 	br.addActivityWith(activityAvoid, prioritiesFrom(10,
 		newSetWalkTargetAwayFrom(memAvoidTarget, 1, 12, true, entityMemoryPos),
 		idleLook(),
@@ -253,11 +261,14 @@ func isPiglinType(e world.Entity) bool { return e.H().Type() == PiglinType{} }
 func piglinUpdateActivity(m *Mob, s *piglinState) {
 	br := s.br
 	old, _ := br.activeNonCore()
-	br.setActiveToFirstValid(activityAdmireItem, activityFight, activityAvoid, activityCelebrate, activityIdle)
+	br.setActiveToFirstValid(activityAdmireItem, activityFight, activityAvoid, activityCelebrate, activityRide, activityIdle)
 	if now, _ := br.activeNonCore(); now != old {
 		s.makeSound(m, piglinActivitySound(m, s))
 	}
 	m.SetAggressive(br.has(memAttackTarget))
+	if !br.has(memRideTarget) && piglinBabyRidingBaby(m, s) {
+		mobStopRiding(m.tx, m.Self)
+	}
 	if !br.has(memCelebrateLocation) {
 		br.erase(memDancing)
 	}
@@ -265,6 +276,47 @@ func piglinUpdateActivity(m *Mob, s *piglinState) {
 		s.dancing = dancing
 		m.updateState()
 	}
+}
+
+// piglinBabySometimesRideBabyHoglin ports
+// PiglinAi.babySometimesRideBabyHoglin: every 10 to 40 seconds a baby
+// piglin sets out to ride the nearest baby hoglin it sees, for 10 to 30
+// seconds.
+func piglinBabySometimesRideBabyHoglin(s *piglinState) *oneShot {
+	ticker := &lookTicker{interval: uniformInt{200, 800}}
+	return newCopyMemoryWithExpiry(func(m *Mob) bool { return s.baby && ticker.tickDownAndCheck(m) },
+		memNearestVisibleBabyHoglin, memRideTarget, uniformInt{200, 600})
+}
+
+// piglinBabyRidingBaby ports PiglinAi.isBabyRidingBaby.
+func piglinBabyRidingBaby(m *Mob, s *piglinState) bool {
+	if !s.baby || m.data.Riding == nil {
+		return false
+	}
+	vehicle, ok := m.data.Riding.Entity(m.tx)
+	if !ok || !mobBaby(vehicle) {
+		return false
+	}
+	t := vehicle.H().Type()
+	return t == PiglinType{} || t == HoglinType
+}
+
+// piglinWantsToStopRiding ports PiglinAi.wantsToStopRiding: a piglin gets
+// off a mob that grew up or died, when either of them was hurt, or off a
+// piglin that rides nothing itself.
+func piglinWantsToStopRiding(m *Mob, vehicle world.Entity) bool {
+	if _, ok := mobOf(vehicle); !ok {
+		return false
+	}
+	hurt := func(e world.Entity) bool {
+		bm, ok := brainMobOf(e)
+		return ok && bm.Brain().has(memHurtBy)
+	}
+	if !mobBaby(vehicle) || !entityAlive(vehicle) || m.Brain().has(memHurtBy) || hurt(vehicle) {
+		return true
+	}
+	r, ok := vehicle.(Rider)
+	return vehicle.H().Type() == (PiglinType{}) && (!ok || r.Riding() == nil)
 }
 
 // piglinActivitySound ports PiglinAi.getSoundForActivity.
