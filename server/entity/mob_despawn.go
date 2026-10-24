@@ -271,3 +271,43 @@ func decodeSharedNBT(data *world.EntityData, m map[string]any) {
 	decodeMobEffects(data, m)
 	decodePersistence(data, m)
 }
+
+// removeWhenFarAway ports the overrides of the hostile mobs: zombie
+// villagers that are being cured or traded stay, and so do raiders in a raid
+// and patrols unless far beyond their patrol.
+func (b *hostileState) removeWhenFarAway(m *Mob, distSqr float64) bool {
+	switch {
+	case b.kind == "minecraft:zombie_villager":
+		return b.cureTicks <= 0 && b.villagerXP == 0
+	case hostileRaidMob(b.kind):
+		return raiderRemoveWhenFarAway(m, &b.raiderState, distSqr)
+	}
+	return true
+}
+
+// removeWhenFarAway ports Raider.removeWhenFarAway for a witch.
+func (b *WitchBehaviour) removeWhenFarAway(m *Mob, distSqr float64) bool {
+	return raiderRemoveWhenFarAway(m, &b.raiderState, distSqr)
+}
+
+// requiresCustomPersistence ports Raider.requiresCustomPersistence for a
+// witch.
+func (b *WitchBehaviour) requiresCustomPersistence(m *Mob) bool {
+	return m.tx.RaidForRaider(m.Self) != nil
+}
+
+// raiderRemoveWhenFarAway ports Raider.removeWhenFarAway and
+// PatrollingMonster's: a raider in a raid stays, and a patrol unless it is
+// beyond 128 blocks.
+func raiderRemoveWhenFarAway(m *Mob, r *raiderState, distSqr float64) bool {
+	if m.tx.RaidForRaider(m.Self) != nil {
+		return false
+	}
+	return !r.patrolling || distSqr > 16384
+}
+
+// requiresCustomPersistence ports Raider.requiresCustomPersistence: a
+// raider in a raid stays.
+func (b *hostileState) requiresCustomPersistence(m *Mob) bool {
+	return hostileRaidMob(b.kind) && m.tx.RaidForRaider(m.Self) != nil
+}
