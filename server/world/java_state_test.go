@@ -2,6 +2,28 @@ package world
 
 import "testing"
 
+func TestJavaDirtPathDoesNotInventSnowyProperty(t *testing.T) {
+	registry := NewBlockRegistry()
+	registry.Finalize()
+	rid, ok := registry.StateToRuntimeID("minecraft:grass_path", nil)
+	if !ok {
+		t.Fatal("native dirt path state is missing")
+	}
+	// Read a native-only write, as Tx.SetBlock or a loaded Bedrock chunk does,
+	// without a retained source ID that could mask an invalid inverse mapping.
+	native := NativeState{Block: rid, Liquid: registry.AirRuntimeID()}
+	source, err := CanonicalState(registry, native)
+	if err != nil || source.Name != "minecraft:dirt_path" {
+		t.Fatalf("native dirt path resolved to %+v, error %v", source, err)
+	}
+	if _, snowy := source.Properties["snowy"]; snowy {
+		t.Fatal("dirt paths have no Java snowy property")
+	}
+	if native.CanonicalID(registry) == 0 {
+		t.Fatal("dirt path lost its canonical source identity and support shape")
+	}
+}
+
 func TestJavaTorchAttachmentDirections(t *testing.T) {
 	registry := NewBlockRegistry()
 	registry.Finalize()

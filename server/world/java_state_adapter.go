@@ -2806,7 +2806,7 @@ func isRail(name string) bool {
 
 func isWall(name string) bool { return strings.HasSuffix(name, "_wall") }
 func isSnowyGroundBlock(name string) bool {
-	return name == "minecraft:grass_block" || name == "minecraft:podzol" || name == "minecraft:mycelium" || name == "minecraft:dirt_path"
+	return name == "minecraft:grass_block" || name == "minecraft:podzol" || name == "minecraft:mycelium"
 }
 func isRedstoneWire(name string) bool { return name == "minecraft:redstone_wire" }
 func isMushroomBlock(name string) bool {
