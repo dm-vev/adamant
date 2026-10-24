@@ -299,7 +299,7 @@ func (s *netherState) Hurt(e *Ent, self world.Entity, d float64, src world.Damag
 		s.dead = true
 		viewers = e.tx.Viewers(e.Position())
 		for _, viewer := range viewers {
-			viewer.ViewEntityAction(e, DeathAction{})
+			viewer.ViewEntityAction(self, DeathAction{})
 		}
 		e.tx.ReleaseViewers(viewers)
 		dropAllDeathLoot(e.tx, self, src)

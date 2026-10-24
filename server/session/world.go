@@ -73,6 +73,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		s.entityRuntimeIDs[e.H()] = runtimeID
 		s.entities[runtimeID] = e.H()
 	}
+	delete(s.deathAnimations, runtimeID)
 	s.entityMutex.Unlock()
 
 	yaw, pitch := e.Rotation().Elem()
@@ -293,6 +294,8 @@ func (s *Session) ViewEntityGameMode(e world.Entity) {
 func (s *Session) HideEntity(e world.Entity) {
 	s.entityMutex.Lock()
 	id, ok := s.entityRuntimeIDs[e.H()]
+	_, finishingDeath := s.deathAnimations[id]
+	_, forceHide := s.hiddenEntities[e.H().UUID()]
 	if ok && e.H() == s.ent && id == selfEntityRuntimeID {
 		s.entityMutex.Unlock()
 		return
@@ -300,10 +303,17 @@ func (s *Session) HideEntity(e world.Entity) {
 	if ok {
 		delete(s.entityRuntimeIDs, e.H())
 		delete(s.entities, id)
+		delete(s.deathAnimations, id)
 	}
 	s.entityMutex.Unlock()
 	if !ok {
 		// The entity was already removed some other way. We don't need to send a packet.
+		return
+	}
+	if finishingDeath && !forceHide {
+		// Bedrock handles ordinary mob death locally, including removing the
+		// actor and spawning death particles. RemoveActor here would erase the
+		// model before its death animation had a chance to render.
 		return
 	}
 	s.writePacket(&packet.RemoveActor{EntityUniqueID: s.handleUniqueID(e.H())})
@@ -1485,8 +1495,20 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			Data:            float32(act.Count),
 		})
 	case entity.DeathAction:
+		s.entityMutex.Lock()
+		id, visible := s.entityRuntimeIDs[e.H()]
+		if visible && clientRemovesDyingMob(e) {
+			if s.deathAnimations == nil {
+				s.deathAnimations = make(map[uint64]struct{})
+			}
+			s.deathAnimations[id] = struct{}{}
+		}
+		s.entityMutex.Unlock()
+		if !visible {
+			return
+		}
 		s.writePacket(&packet.ActorEvent{
-			EntityRuntimeID: s.entityRuntimeID(e),
+			EntityRuntimeID: id,
 			EventType:       packet.ActorEventDeath,
 		})
 	case entity.WitchMagicAction:
@@ -1597,6 +1619,17 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EventType:       packet.ActorEventInLoveHearts,
 		})
 	}
+}
+
+// clientRemovesDyingMob excludes players and entities with special death
+// sequences. Ordinary Bedrock mobs remove themselves at the end of tickDeath.
+func clientRemovesDyingMob(e world.Entity) bool {
+	switch e.H().Type().EncodeEntity() {
+	case "minecraft:player", "minecraft:ender_dragon", "minecraft:wither", "minecraft:creaking":
+		return false
+	}
+	_, living := e.(entity.Living)
+	return living
 }
 
 // ViewEntityState ...

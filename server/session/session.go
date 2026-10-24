@@ -81,6 +81,9 @@ type Session struct {
 	entityRuntimeIDs map[*world.EntityHandle]uint64
 	entities         map[uint64]*world.EntityHandle
 	hiddenEntities   map[uuid.UUID]struct{}
+	// deathAnimations records ordinary mobs whose death event lets the client
+	// finish the animation and remove the actor itself. Protected by entityMutex.
+	deathAnimations map[uint64]struct{}
 
 	// heldSlot points to the current hotbar slot index. It is stored in an atomic pointer so inventory callbacks can
 	// safely access the pointer while the session is still wiring up inventory state.
@@ -406,6 +409,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 				s.entityMutex.Lock()
 				clear(s.entityRuntimeIDs)
 				clear(s.entities)
+				clear(s.deathAnimations)
 				s.entityMutex.Unlock()
 			})
 		}

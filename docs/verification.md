@@ -40,6 +40,14 @@ Native merging changes an existing stack and broadcasts actor event **69 / Updat
 
 Regressions cover independently specified scalar air trajectories, landing/sliding, full and partial merges without replacement actors, partial pickup, hopper capacity and mob loot's initial motion. A world/session integration test receives exactly two initial item spawns and one count-update event for the surviving runtime ID. The scalar trajectory checks establish force ordering with Adamant's numeric precision, not bitwise native physics or complete liquid behavior. The user also confirmed that the reported jerky loot-drop behavior is resolved in gameplay.
 
+## Mob death animation
+
+The local Bedrock 1.26.51 client's `Mob::handleEntityEvent` (RVA `0x207e4f0`) routes death event **3** to the death branch and sets the health attribute to its minimum. `ClientMobTickDeathSystemImpl::_tick` (`0xc630570`) calls the ordinary-mob death routine at `0x798aaf0`: once the death counter reaches **21**, it calls `Actor::remove` through Mob's vtable slot `0x58` and spawns native death particles. An immediate `RemoveActor` packet bypasses that rendered death sequence.
+
+Sessions now remember which visible ordinary mobs received a death event, release their server-side runtime-ID mappings on removal, and leave the client to finish that native sequence. Ordinary hides/despawns still send `RemoveActor`, as does an explicit `StopShowingEntity`. Players, the dragon, wither and creaking retain their separate removal paths. This restores the network animation without changing Adamant's existing immediate server-side mob-death and loot lifecycle.
+
+Regression tests reproduce the old death-event/instant-removal pair and check packet delivery after actual lethal damage to cows, zombies and blazes, bookkeeping cleanup, ordinary despawning, forced hiding and special death sequences. Nether elementals now pass their living wrapper with the death event so session handling recognises them as mobs. These are packet and native-code checks; rendered animation on a connected client remains unverified.
+
 ## Biome registry
 
 The registered 89 biome definitions match the pinned BDS's initial climate, water-colour, precipitation and tag metadata, including `dappled_forest` at persistent ID **195**. That ID was read from a saved BDS chunk after its biome was identified through the live Script API.
