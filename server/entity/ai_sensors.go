@@ -216,7 +216,7 @@ type playerSensor struct{}
 
 func (playerSensor) scanRate() int { return 0 }
 func (playerSensor) requires() []memoryType {
-	return []memoryType{memNearestPlayers, memNearestVisiblePlayer, memNearestVisibleAttackablePlayer}
+	return []memoryType{memNearestPlayers, memNearestVisiblePlayer, memNearestVisibleAttackablePlayer, memNearestVisibleAttackablePlayers}
 }
 
 func (playerSensor) doTick(m *Mob, b *Brain) {
@@ -245,16 +245,21 @@ func (playerSensor) doTick(m *Mob, b *Brain) {
 	attackable := forCombat()
 	attackable.rangeLimit = r
 	var visible, attack world.Entity
+	var attackables []*world.EntityHandle
 	for _, p := range players {
 		if visible == nil && targetable.test(m, p.e) {
 			visible = p.e
 		}
-		if attack == nil && attackable.test(m, p.e) {
-			attack = p.e
+		if attackable.test(m, p.e) {
+			if attack == nil {
+				attack = p.e
+			}
+			attackables = append(attackables, p.e.H())
 		}
 	}
 	b.setEntity(memNearestVisiblePlayer, visible)
 	b.setEntity(memNearestVisibleAttackablePlayer, attack)
+	b.set(memNearestVisibleAttackablePlayers, attackables)
 }
 
 // nearestItemSensor ports NearestItemSensor: the nearest item entity within

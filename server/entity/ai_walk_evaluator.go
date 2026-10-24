@@ -25,6 +25,9 @@ type walkNodeEvaluator struct {
 	frog bool
 	// fly gives blocks the path types of FlyNodeEvaluator.
 	fly bool
+	// blocked, if set, blocks the positions it reports, as evaluators
+	// overriding getPathType to return BLOCKED do.
+	blocked func(m *Mob, pos cube.Pos) bool
 
 	// The maluses an amphibious evaluator changes while it finds a path.
 	oldMaluses map[PathType]float64
@@ -515,6 +518,9 @@ func (w *walkNodeEvaluator) pathTypeOfMob(x, y, z int) PathType {
 // and those of AmphibiousNodeEvaluator, to which water next to a solid block
 // is its border, and FlyNodeEvaluator.
 func (w *walkNodeEvaluator) blockType(pos cube.Pos) PathType {
+	if w.blocked != nil && w.blocked(w.m, pos) {
+		return PathBlocked
+	}
 	if w.fly {
 		return flyPathType(w.m, pos)
 	}

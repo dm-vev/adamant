@@ -97,6 +97,11 @@ func (n *PathNavigation) SetFlying() { n.eval.fly = true }
 // liquids.
 func (n *PathNavigation) SetFlyThroughLiquids() { n.flyThroughLiquids = true }
 
+// SetBlocked blocks the positions blocked reports to paths.
+func (n *PathNavigation) SetBlocked(blocked func(m *Mob, pos cube.Pos) bool) {
+	n.eval.blocked = blocked
+}
+
 // SetCanFloat sets whether paths go through water the mob swims across.
 func (n *PathNavigation) SetCanFloat(v bool) { n.eval.canFloat = v }
 

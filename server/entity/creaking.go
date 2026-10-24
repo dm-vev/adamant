@@ -2,17 +2,14 @@ package entity
 
 import (
 	"encoding/binary"
-	"hash/fnv"
 	"math"
 	"math/rand/v2"
-	"sort"
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
 	"github.com/df-mc/dragonfly/server/world/sound"
@@ -34,14 +31,6 @@ func (creakingType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.E
 		if id, ok := world.DimensionID(tx.World().Dimension()); ok {
 			state.homeDimension, state.homeDimensionSet = int32(id), true
 		}
-	}
-	if !state.randomInitialized && handle != nil {
-		hash := fnv.New64a()
-		uuid := handle.UUID()
-		_, _ = hash.Write(uuid[:])
-		state.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
-		state.randomInitialized = true
-		state.sensorDelay = int(state.random.NextInt(20))
 	}
 	return &Creaking{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
@@ -199,35 +188,33 @@ func (c creakingConfig) New() *creakingState {
 	}
 	speed := c.speed
 	if speed <= 0 {
-		speed = .4
+		speed = float64(float32(.4))
 	}
-	return &creakingState{health: NewHealthManager(health, 1), effects: NewEffectManager(), mc: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true}, speed: speed, home: c.home, homeDimension: c.homeDimension, homeDimensionSet: c.homeDimensionSet, bound: c.bound, canMove: true}
+	s := &creakingState{health: NewHealthManager(health, 1), effects: NewEffectManager(), speed: speed, home: c.home, homeDimension: c.homeDimension, homeDimensionSet: c.homeDimensionSet, bound: c.bound, canMove: true}
+	s.br = newCreakingBrain(s)
+	return s
 }
 
 type creakingState struct {
-	health                                                                      *HealthManager
-	effects                                                                     *EffectManager
-	mc                                                                          *MovementComputer
-	random                                                                      vanilla.Random
-	randomInitialized                                                           bool
-	speed                                                                       float64
-	home                                                                        cube.Pos
-	bound, active, tearingDown, dead                                            bool
-	homeDimension                                                               int32
-	homeDimensionSet                                                            bool
-	attackTicks                                                                 int
-	sensorDelay, stuckCounter, attackCooldown, swayTicks, deathTicks, idleTicks int
-	lookTarget                                                                  *world.EntityHandle
-	lookTicks                                                                   int
-	target                                                                      *world.EntityHandle
-	nearestPlayers                                                              []*world.EntityHandle
-	navigator                                                                   Navigator
-	pathGoal                                                                    cube.Pos
-	hasPathGoal                                                                 bool
-	canMove                                                                     bool
-	lastHurtByPlayer                                                            uuid.UUID
-	lastHurtByPlayerMemoryTime                                                  int
-	persistenceRequired                                                         bool
+	health           *HealthManager
+	effects          *EffectManager
+	ai               MobAI
+	br               *Brain
+	speed            float64
+	home             cube.Pos
+	bound, active    bool
+	tearingDown      bool
+	dead             bool
+	homeDimension    int32
+	homeDimensionSet bool
+	// attackTicks and swayTicks are Creaking.attackAnimationRemainingTicks
+	// and invulnerabilityAnimationRemainingTicks.
+	attackTicks, swayTicks     int
+	deathTicks, stuckCounter   int
+	canMove                    bool
+	lastHurtByPlayer           uuid.UUID
+	lastHurtByPlayerMemoryTime int
+	persistenceRequired        bool
 }
 type Creaking struct{ *Ent }
 
@@ -241,21 +228,17 @@ func (c *Creaking) Tick(tx *world.Tx, current int64) {
 	c.Ent.Tick(tx, current)
 }
 
+func (s *creakingState) mobAI() *MobAI { return &s.ai }
+func (s *creakingState) brain() *Brain { return s.br }
+
+// Tick ports Creaking.tick and aiStep: a creaking whose heart no longer
+// protects it dies, and one a player looks at freezes.
 func (s *creakingState) Tick(e *Ent, tx *world.Tx) *Movement {
+	c := &Creaking{Ent: e}
 	if s.lastHurtByPlayerMemoryTime > 0 {
 		s.lastHurtByPlayerMemoryTime--
 	} else {
 		s.lastHurtByPlayer = uuid.Nil
-	}
-	if s.swayTicks > 0 {
-		s.swayTicks--
-		e.updateState()
-	}
-	if s.attackCooldown > 0 {
-		s.attackCooldown--
-	}
-	if s.attackTicks > 0 {
-		s.attackTicks--
 	}
 	if s.bound && !s.tearingDown {
 		dimensionMatches := true
@@ -268,8 +251,9 @@ func (s *creakingState) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	if s.health.Health() <= 0 && !s.tearingDown {
+		// LivingEntity.tickDeath.
 		if s.deathTicks == 0 {
-			(&Creaking{Ent: e}).viewAction(DeathAction{})
+			c.viewAction(DeathAction{})
 		}
 		s.deathTicks++
 		if s.deathTicks >= 20 {
@@ -277,176 +261,249 @@ func (s *creakingState) Tick(e *Ent, tx *world.Tx) *Movement {
 			_ = e.CloseIn(tx)
 			return nil
 		}
-		e.SetVelocity(mgl64.Vec3{})
-		return s.move(e, tx, e.Rotation())
-	}
-	if s.tearingDown {
+	} else if s.tearingDown {
+		// Creaking.tickDeath.
 		s.deathTicks++
 		if s.deathTicks > 45 {
 			s.tearDown(e, tx)
 			return nil
 		}
-		e.SetVelocity(mgl64.Vec3{})
-		return s.move(e, tx, e.Rotation())
 	}
-	if s.sensorDelay > 0 {
-		s.sensorDelay--
-	}
-	if s.sensorDelay <= 0 {
-		s.refreshPlayers(e, tx)
-		s.sensorDelay = 20
-	}
-	s.checkCanMove(e, tx)
-	if s.target == nil {
-		s.tickIdle(e, tx)
-	} else {
-		s.tickFight(e, tx)
-	}
-	velocity := e.Velocity()
-	if !s.canMove {
-		velocity[0], velocity[2] = 0, 0
-	} else if waterDepth, inLava := creakingFluidState(e, tx); waterDepth > .4 || inLava {
-		if s.random.NextFloat() < .8 {
-			velocity[1] = .42
-		}
-	}
-	e.SetVelocity(velocity)
-	return s.move(e, tx, s.desiredRotation(e, tx))
-}
-func (s *creakingState) move(e *Ent, tx *world.Tx, rotation cube.Rotation) *Movement {
-	movement := s.mc.TickMovement(e, e.Position(), e.Velocity(), rotation, e.Rotation(), tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = movement.Position(), movement.Velocity(), movement.Rotation()
-	return movement
-}
-func (s *creakingState) desiredRotation(e *Ent, tx *world.Tx) cube.Rotation {
-	look := e.Velocity()
-	if look[0]*look[0]+look[2]*look[2] < 1e-8 {
-		var handle *world.EntityHandle
-		if s.active {
-			handle = s.target
-		} else {
-			handle = s.lookTarget
-		}
-		if handle != nil {
-			if target, ok := handle.Entity(tx); ok {
-				look = target.Position().Sub(e.Position())
-			}
-		}
-	}
-	rotation := e.Rotation()
-	if look.LenSqr() > 1e-8 {
-		yaw := math.Atan2(-look[0], look[2]) * 180 / math.Pi
-		horizontal := math.Sqrt(look[0]*look[0] + look[2]*look[2])
-		pitch := -math.Atan2(look[1], horizontal) * 180 / math.Pi
-		maxYaw := 45.0
-		if e.Velocity()[0]*e.Velocity()[0]+e.Velocity()[2]*e.Velocity()[2] >= 1e-8 {
-			maxYaw = 90
-		}
-		yawDelta := math.Mod(yaw-rotation.Yaw()+540, 360) - 180
-		rotation[0] += max(-maxYaw, min(maxYaw, yawDelta))
-		pitchDelta := pitch - rotation.Pitch()
-		rotation[1] += max(-90.0, min(90.0, pitchDelta))
-	}
-	return rotation
-}
-
-func (s *creakingState) refreshPlayers(e *Ent, tx *world.Tx) {
-	players := make([]world.Entity, 0, 4)
-	area := cube.Box(-32, -32, -32, 32, 32, 32).Translate(e.Position())
-	for candidate := range tx.EntitiesWithin(area) {
-		distance := candidate.Position().Sub(e.Position()).LenSqr()
-		if candidate.H() == e.H() || candidate.H().Type().EncodeEntity() != "minecraft:player" || distance >= 1024 {
-			continue
-		}
-		if living, ok := candidate.(Living); !ok || living.Dead() {
-			continue
-		}
-		if mode, ok := candidate.(interface{ GameMode() world.GameMode }); ok && mode.GameMode() == world.GameModeSpectator {
-			continue
-		}
-		players = append(players, candidate)
-	}
-	sort.Slice(players, func(i, j int) bool {
-		return players[i].Position().Sub(e.Position()).LenSqr() < players[j].Position().Sub(e.Position()).LenSqr()
-	})
-	s.nearestPlayers = s.nearestPlayers[:0]
-	for _, player := range players {
-		s.nearestPlayers = append(s.nearestPlayers, player.H())
-	}
-	if s.target != nil {
-		target, ok := s.target.Entity(tx)
-		if !ok || !creakingCanAttack(target) || target.H().Type().EncodeEntity() != "minecraft:player" || !creakingVisible(e, target, tx) {
-			s.target = nil
-			s.navigator.Path, s.navigator.Index = nil, 0
-			s.hasPathGoal = false
-		}
-	}
-	if s.active && s.target == nil {
-		for _, handle := range s.nearestPlayers {
-			target, ok := handle.Entity(tx)
-			if ok && creakingCanAttack(target) && creakingVisible(e, target, tx) {
-				s.target = handle
-				break
-			}
-		}
-	}
-}
-func (s *creakingState) checkCanMove(e *Ent, tx *world.Tx) {
-	before := s.canMove
-	defer func() {
-		if before != s.canMove {
+	// Creaking.createAttributes.
+	s.ai.MovementSpeed, s.ai.FollowRange, s.ai.StepHeight, s.ai.EyeHeight = s.speed, 32, 1.0625, float64(float32(2.3))
+	if s.swayTicks > 0 {
+		if s.swayTicks--; s.swayTicks == 0 {
 			e.updateState()
 		}
-	}()
-	if len(s.nearestPlayers) == 0 {
-		if s.active {
-			s.deactivate(e, tx)
+	}
+	if s.attackTicks > 0 {
+		s.attackTicks--
+	}
+	if s.ai.started && s.health.Health() > 0 {
+		s.updateCanMove(s.ai.Mob(e, c))
+	}
+	return s.ai.Tick(e, c, func(m *Mob) {
+		m.AI.nav.SetCanFloat(true)
+		m.AI.nav.SetCanPassDoors(true)
+		// Creaking.CreakingPathNavigation pauses while the creaking is
+		// frozen, and its HomeNodeEvaluator keeps it within 32 blocks of
+		// its heart.
+		m.AI.nav.Paused = func() bool { return !s.canMove }
+		m.AI.nav.SetBlocked(func(m *Mob, pos cube.Pos) bool {
+			if !s.bound {
+				return false
+			}
+			d := distSqrPos(s.home, pos)
+			return d > 1024 && d >= distSqrPos(s.home, m.BlockPos())
+		})
+		m.AI.moveOverride, m.AI.lookOverride = creakingMoveControl{s}, creakingLookControl{s}
+		if s.bound {
+			// Creaking.setTransient.
+			m.AI.SetPathfindingMalus(PathDamaging, 8)
+			m.AI.SetPathfindingMalus(PathPowderSnow, 8)
+			m.AI.SetPathfindingMalus(PathLava, 8)
+			m.AI.SetPathfindingMalus(PathFire, 0)
+			m.AI.SetPathfindingMalus(PathFireInNeighbour, 0)
 		}
-		s.target = nil
-		s.canMove = true
+	})
+}
+
+// updateCanMove ports the part of Creaking.aiStep that freezes a creaking a
+// player looks at and lets it move again once nobody does.
+func (s *creakingState) updateCanMove(m *Mob) {
+	now := s.checkCanMove(m)
+	if now == s.canMove {
 		return
 	}
-	hasPotential := false
-	for _, handle := range s.nearestPlayers {
-		p, ok := handle.Entity(tx)
-		if !ok || !creakingCanAttack(p) {
+	m.tx.EmitGameEvent(world.GameEventEntityAction, m.data.Pos, world.GameEventContext{Source: m.Self})
+	if now {
+		playCreakingSound(m.Ent, m.tx, "unfreeze")
+	} else {
+		m.StopInPlace()
+		playCreakingSound(m.Ent, m.tx, "freeze")
+	}
+	s.canMove = now
+	m.updateState()
+}
+
+// checkCanMove ports Creaking.checkCanMove: a creaking stays still while a
+// player it may attack looks at it, and wakes up when one looks at it within
+// twelve blocks.
+func (s *creakingState) checkCanMove(m *Mob) bool {
+	players := creakingNearestPlayers(m)
+	if len(players) == 0 {
+		if s.active {
+			s.deactivate(m)
+		}
+		return true
+	}
+	potential := false
+	for _, p := range players {
+		if !m.CanAttack(p) {
 			continue
 		}
-		hasPotential = true
-		if (!s.active || !creakingDisguise(p)) && creakingLookingAt(e, p, tx) {
+		potential = true
+		if (!s.active || !creakingDisguise(p)) && creakingLookingAt(m.Ent, p, m.tx) {
 			if s.active {
-				s.canMove = false
-				return
+				return false
 			}
-			if p.Position().Sub(e.Position()).LenSqr() < 144 {
-				s.activate(e, tx, p)
-				s.canMove = false
-				return
+			if p.Position().Sub(m.data.Pos).LenSqr() < 144 {
+				s.activate(m, p)
+				return false
 			}
 		}
 	}
-	if !hasPotential && s.active {
-		s.deactivate(e, tx)
-	}
-	s.canMove = true
-}
-func creakingCanAttack(p world.Entity) bool {
-	if l, ok := p.(Living); !ok || l.Dead() {
-		return false
-	}
-	if mode, ok := p.(interface{ GameMode() world.GameMode }); ok {
-		if mode.GameMode() == world.GameModeSpectator || mode.GameMode().CreativeInventory() {
-			return false
-		}
+	if !potential && s.active {
+		s.deactivate(m)
 	}
 	return true
 }
+
+// creakingNearestPlayers returns the players of the NEAREST_PLAYERS memory.
+func creakingNearestPlayers(m *Mob) []world.Entity {
+	v, _ := m.Brain().get(memNearestPlayers)
+	handles, _ := v.([]*world.EntityHandle)
+	players := make([]world.Entity, 0, len(handles))
+	for _, h := range handles {
+		if p, ok := h.Entity(m.tx); ok {
+			players = append(players, p)
+		}
+	}
+	return players
+}
+
+// activate ports Creaking.activate: the creaking attacks the player that
+// looked at it.
+func (s *creakingState) activate(m *Mob, p world.Entity) {
+	m.Brain().setEntity(memAttackTarget, p)
+	m.tx.EmitGameEvent(world.GameEventEntityAction, m.data.Pos, world.GameEventContext{Source: m.Self})
+	playCreakingSoundAt(m.Ent, m.tx, "mob.warning", m.data.Pos.Add(mgl64.Vec3{0, 2.295, 0}))
+	playCreakingSoundAt(m.Ent, m.tx, "stare", m.data.Pos.Add(mgl64.Vec3{0, 2.295, 0}))
+	playCreakingSound(m.Ent, m.tx, "activate")
+	s.setActive(m, true)
+}
+
+// deactivate ports Creaking.deactivate.
+func (s *creakingState) deactivate(m *Mob) {
+	m.Brain().erase(memAttackTarget)
+	m.tx.EmitGameEvent(world.GameEventEntityAction, m.data.Pos, world.GameEventContext{Source: m.Self})
+	playCreakingSound(m.Ent, m.tx, "deactivate")
+	s.setActive(m, false)
+}
+
+func (s *creakingState) setActive(m *Mob, active bool) {
+	if s.active != active {
+		s.active = active
+		m.updateState()
+	}
+}
+
+// customServerAiStep ports Creaking.customServerAiStep and
+// CreakingAi.updateActivity: a frozen creaking idles.
+func (s *creakingState) customServerAiStep(m *Mob) {
+	s.br.tick(m)
+	if !s.canMove {
+		s.br.useDefaultActivity()
+		return
+	}
+	s.br.setActiveToFirstValid(activityFight, activityIdle)
+}
+
+// doHurtTarget ports Creaking.doHurtTarget.
+func (s *creakingState) doHurtTarget(m *Mob, target world.Entity) bool {
+	l, ok := target.(Living)
+	if !ok {
+		return false
+	}
+	s.attackTicks = 15
+	playCreakingSound(m.Ent, m.tx, "attack")
+	_, hurt := l.Hurt(3, AttackDamageSource{Attacker: m.Self})
+	return hurt
+}
+
+// walkTargetValue ports Creaking.getWalkTargetValue: a creaking cares not
+// where it walks.
+func (s *creakingState) walkTargetValue(*Mob, cube.Pos) float64 { return 0 }
+
+// tickJumpControl ports Creaking.CreakingJumpControl: a frozen creaking does
+// not jump.
+func (s *creakingState) tickJumpControl(m *Mob) {
+	if s.canMove {
+		m.AI.jump.tick(m)
+		return
+	}
+	m.AI.jumping = false
+}
+
+// creakingMoveControl ports Creaking.CreakingMoveControl.
+type creakingMoveControl struct{ s *creakingState }
+
+func (c creakingMoveControl) tick(m *Mob) {
+	if c.s.canMove {
+		m.AI.move.tick(m)
+	}
+}
+
+// creakingLookControl ports Creaking.CreakingLookControl.
+type creakingLookControl struct{ s *creakingState }
+
+func (c creakingLookControl) tick(m *Mob) {
+	if c.s.canMove {
+		m.AI.look.tick(m)
+	}
+}
+
+// newCreakingBrain ports CreakingAi and the brain provider of Creaking.
+func newCreakingBrain(s *creakingState) *Brain {
+	br := newBrain(nearestLivingEntitySensor{}, playerSensor{})
+	swim := newSwim(.8)
+	swimExtra := swim.checkExtra
+	swim.checkExtra = func(m *Mob) bool { return s.canMove && (swimExtra == nil || swimExtra(m)) }
+	br.addActivity(activityCore, 0, swim, newLookAtTargetSink(45, 90), newMoveToTargetSink(150, 250, nil))
+	br.addActivity(activityIdle, 10,
+		newStartAttacking(func(*Mob) bool { return s.active }, func(m *Mob) world.Entity {
+			return m.Brain().entity(m, memNearestVisibleAttackablePlayer)
+		}),
+		newSetEntityLookTargetSometimes(nil, 8, uniformInt{30, 60}),
+		newRunOne(nil,
+			weightedBehavior{newRandomStroll(float64(float32(.3)), true), 2},
+			weightedBehavior{newSetWalkTargetFromLookTarget(nil, constSpeed(float64(float32(.3))), 3), 2},
+			weightedBehavior{newDoNothing(30, 60), 1},
+		),
+	)
+	br.addActivityWith(activityFight, []prioritizedBehavior{
+		{10, newSetWalkTargetFromAttackTargetIfTargetOutOfReach(constSpeed(1))},
+		{10, newTriggerIf(func(*Mob) bool { return s.canMove }, newMeleeAttack(40))},
+		{10, newStopAttackingIfTargetInvalid(func(m *Mob, t world.Entity) bool { return !creakingTargetReachable(m, t) }, nil, false)},
+	}, []memoryCondition{{memAttackTarget, memPresent}}, nil)
+	return br
+}
+
+// creakingTargetReachable ports CreakingAi.isAttackTargetStillReachable: the
+// target is one of the players the creaking sees and may attack.
+func creakingTargetReachable(m *Mob, t world.Entity) bool {
+	v, ok := m.Brain().get(memNearestVisibleAttackablePlayers)
+	if !ok || !isPlayerEntity(t) {
+		return false
+	}
+	for _, h := range v.([]*world.EntityHandle) {
+		if h == t.H() {
+			return true
+		}
+	}
+	return false
+}
+
 func creakingDisguise(p world.Entity) bool {
 	if disguise, ok := p.(interface{ WearingCreakingDisguise() bool }); ok {
 		return disguise.WearingCreakingDisguise()
 	}
 	return false
 }
+
+// creakingLookingAt ports LivingEntity.isLookingAtMe for Creaking.checkCanMove:
+// the player looks at the eyes, the feet or the middle of the creaking and
+// sees it.
 func creakingLookingAt(e *Ent, p world.Entity, tx *world.Tx) bool {
 	view, ok := p.(interface {
 		Rotation() cube.Rotation
@@ -473,201 +530,18 @@ func creakingLookingAt(e *Ent, p world.Entity, tx *world.Tx) bool {
 	}
 	return false
 }
-func creakingLookTarget(e *Ent, tx *world.Tx) world.Entity {
-	var nearest world.Entity
-	best := 64.0
-	area := cube.Box(-8, -8, -8, 8, 8, 8).Translate(e.Position())
-	for candidate := range tx.EntitiesWithin(area) {
-		if candidate.H() == e.H() {
-			continue
-		}
-		if living, ok := candidate.(Living); !ok || living.Dead() {
-			continue
-		}
-		distance := candidate.Position().Sub(e.Position()).LenSqr()
-		if distance < best && creakingVisible(e, candidate, tx) {
-			nearest, best = candidate, distance
-		}
-	}
-	return nearest
-}
-func creakingVisible(e *Ent, p world.Entity, tx *world.Tx) bool {
-	return dragonLineOfSight(tx, e.Position().Add(mgl64.Vec3{0, float64(float32(2.3)), 0}), p.Position().Add(mgl64.Vec3{0, playerEyeHeight(p), 0}))
-}
-func (s *creakingState) activate(e *Ent, tx *world.Tx, target world.Entity) {
-	s.active = true
-	s.target = target.H()
-	s.navigator.Path, s.navigator.Index = nil, 0
-	s.hasPathGoal = false
-	playCreakingSoundAt(e, tx, "mob.warning", e.Position().Add(mgl64.Vec3{0, 2.295, 0}))
-	playCreakingSoundAt(e, tx, "stare", e.Position().Add(mgl64.Vec3{0, 2.295, 0}))
-	playCreakingSound(e, tx, "activate")
-}
-func (s *creakingState) deactivate(e *Ent, tx *world.Tx) {
-	s.active = false
-	s.target = nil
-	s.navigator.Path, s.navigator.Index = nil, 0
-	s.hasPathGoal = false
-	playCreakingSound(e, tx, "deactivate")
-}
-func (s *creakingState) tickIdle(e *Ent, tx *world.Tx) {
-	if s.lookTicks > 0 {
-		s.lookTicks--
-		if s.lookTicks == 0 {
-			if target := creakingLookTarget(e, tx); target != nil {
-				s.lookTarget = target.H()
-			}
-		}
-	} else {
-		s.lookTicks = 29 + int(s.random.NextInt(31))
-	}
-	if s.lookTarget != nil {
-		target, ok := s.lookTarget.Entity(tx)
-		living, isLiving := target.(Living)
-		if !ok || !isLiving || living.Dead() || !creakingVisible(e, target, tx) {
-			s.lookTarget = nil
-		}
-	}
-	if s.idleTicks > 0 {
-		s.idleTicks--
-		return
-	}
-	if len(s.navigator.Path) == 0 || s.navigator.Index >= len(s.navigator.Path) {
-		keys := [3]float64{
-			-math.Pow(float64(s.random.NextFloat()), .5),
-			-math.Pow(float64(s.random.NextFloat()), .5),
-			-math.Pow(float64(s.random.NextFloat()), 1),
-		}
-		order := [3]int{0, 1, 2}
-		sort.Slice(order[:], func(i, j int) bool { return keys[order[i]] < keys[order[j]] })
-		for _, choice := range order {
-			switch choice {
-			case 0:
-				if s.setRandomPath(e, tx, 10, 7) {
-					return
-				}
-			case 1:
-				if s.lookTarget != nil {
-					if target, ok := s.lookTarget.Entity(tx); ok && target.Position().Sub(e.Position()).LenSqr() > 9 {
-						s.setPath(e, tx, cube.PosFromVec3(target.Position()))
-						if len(s.navigator.Path) > 0 {
-							return
-						}
-					}
-				}
-			case 2:
-				s.idleTicks = 30 + int(s.random.NextInt(31))
-				return
-			}
-		}
-	}
-	s.followPath(e, tx, .3)
-}
-func (s *creakingState) tickFight(e *Ent, tx *world.Tx) {
-	if s.target == nil {
-		return
-	}
-	target, ok := s.target.Entity(tx)
-	if !ok || !creakingCanAttack(target) || target.H().Type().EncodeEntity() != "minecraft:player" || !creakingVisible(e, target, tx) {
-		s.target = nil
-		s.navigator.Path, s.navigator.Index = nil, 0
-		s.hasPathGoal = false
-		return
-	}
-	if s.targetOutOfReach(e, target) {
-		s.setPath(e, tx, cube.PosFromVec3(target.Position()))
-		s.followPath(e, tx, 1)
-	} else {
-		s.navigator.Path, s.navigator.Index = nil, 0
-	}
-	if !s.canMove || s.attackCooldown > 0 || s.targetOutOfReach(e, target) || !creakingVisible(e, target, tx) {
-		return
-	}
-	living, ok := target.(Living)
-	if !ok {
-		return
-	}
-	living.Hurt(3, AttackDamageSource{Attacker: &Creaking{Ent: e}})
-	s.attackCooldown = 40
-	s.attackTicks = 15
-}
-func (s *creakingState) targetOutOfReach(e *Ent, target world.Entity) bool {
-	attacker := CreakingType.BBox(e).Translate(e.Position()).GrowVec3(mgl64.Vec3{math.Sqrt(2.04) - .6, 0, math.Sqrt(2.04) - .6})
-	targetBox := target.H().Type().BBox(target).Translate(target.Position())
-	return !attacker.IntersectsWith(targetBox)
-}
-func (s *creakingState) setRandomPath(e *Ent, tx *world.Tx, horizontal, vertical int) bool {
-	origin := e.Position()
-	var chosen cube.Pos
-	found := false
-	for range 10 {
-		x := float64(s.random.NextInt(int32(horizontal*2+1)) - int32(horizontal))
-		y := int(s.random.NextInt(int32(vertical*2+1))) - vertical
-		z := float64(s.random.NextInt(int32(horizontal*2+1)) - int32(horizontal))
-		if s.bound && horizontal > 1 {
-			if origin[0] > float64(s.home.X()) {
-				x -= s.random.NextDouble() * float64(horizontal) / 2
-			} else {
-				x += s.random.NextDouble() * float64(horizontal) / 2
-			}
-			if origin[2] > float64(s.home.Z()) {
-				z -= s.random.NextDouble() * float64(horizontal) / 2
-			} else {
-				z += s.random.NextDouble() * float64(horizontal) / 2
-			}
-		}
-		goal := cube.Pos{int(math.Floor(origin[0] + x)), int(math.Floor(origin[1] + float64(y))), int(math.Floor(origin[2] + z))}
-		for goal.Y() < tx.Range()[1] && !isPassable(tx, goal) {
-			goal = goal.Side(cube.FaceUp)
-		}
-		if !found && groundWalkable(tx, goal, GroundProfile{AllowDoors: true}) {
-			chosen, found = goal, true
-		}
-	}
-	if found {
-		s.setPath(e, tx, chosen)
-	}
-	return found
-}
-func (s *creakingState) setPath(e *Ent, tx *world.Tx, goal cube.Pos) {
-	if s.hasPathGoal && goal.Sub(s.pathGoal).Vec3().LenSqr() <= 4 {
-		return
-	}
-	s.pathGoal, s.hasPathGoal = goal, true
-	start := cube.PosFromVec3(e.Position())
-	profile := GroundProfile{MaxVisitedNodes: 512, AllowWater: true, AllowDoors: true}
-	if s.bound {
-		homeDistance := start.Sub(s.home).Vec3().LenSqr()
-		profile.Allowed = func(node cube.Pos) bool {
-			distance := node.Sub(s.home).Vec3().LenSqr()
-			return distance <= 1024 || distance < homeDistance
-		}
-	}
-	s.navigator.MoveTo(tx, start, goal, profile, navigatorTick(e))
-	s.navigator.Index = 0
-}
-func (s *creakingState) followPath(e *Ent, tx *world.Tx, speed float64) {
-	if s.navigator.Index >= len(s.navigator.Path) {
-		e.SetVelocity(mgl64.Vec3{})
-		return
-	}
-	target := s.navigator.Path[s.navigator.Index].Vec3Centre()
-	delta := target.Sub(e.Position())
-	delta[1] = 0
-	if delta.Len() < .25 {
-		s.navigator.Index++
-		return
-	}
-	if delta.Len() == 0 {
-		return
-	}
-	velocity := delta.Normalize().Mul(speed * .4)
-	velocity[1] = e.Velocity()[1]
-	e.SetVelocity(velocity)
-}
+
+// stuckInPlayer ports Creaking.playerIsStuckInYou: the eyes of a player
+// stayed inside the creaking for more than four checks.
 func (s *creakingState) stuckInPlayer(e *Ent, tx *world.Tx) bool {
+	v, _ := s.br.get(memNearestPlayers)
+	handles, _ := v.([]*world.EntityHandle)
+	if len(handles) == 0 {
+		s.stuckCounter = 0
+		return false
+	}
 	box := CreakingType.BBox(e).Translate(e.Position())
-	for _, handle := range s.nearestPlayers {
+	for _, handle := range handles {
 		player, ok := handle.Entity(tx)
 		if ok && box.Vec3Within(player.Position().Add(mgl64.Vec3{0, playerEyeHeight(player), 0})) {
 			s.stuckCounter++
@@ -682,35 +556,6 @@ func playerEyeHeight(p world.Entity) float64 {
 		return eye.EyeHeight()
 	}
 	return 1.62
-}
-
-func creakingFluidState(e *Ent, tx *world.Tx) (waterDepth float64, inLava bool) {
-	box := CreakingType.BBox(e).Translate(e.Position())
-	min, max := box.Min(), box.Max()
-	for x := int(math.Floor(min[0])); float64(x) < max[0]; x++ {
-		for y := int(math.Floor(min[1])); float64(y) < max[1]; y++ {
-			for z := int(math.Floor(min[2])); float64(z) < max[2]; z++ {
-				pos := cube.Pos{x, y, z}
-				liquid, ok := tx.Liquid(pos)
-				if !ok {
-					continue
-				}
-				switch liquid.LiquidType() {
-				case "lava", "water":
-					depth := float64(y) + liquidSurfaceHeight(liquid) - min[1]
-					if depth <= 0 {
-						continue
-					}
-					if liquid.LiquidType() == "lava" {
-						inLava = true
-					} else if depth > waterDepth {
-						waterDepth = depth
-					}
-				}
-			}
-		}
-	}
-	return
 }
 
 func (c *Creaking) PlayerIsStuck() bool {

@@ -165,6 +165,7 @@ const (
 	memSpearFleeingPosition
 	memVisitedBlockPositions
 	memUnreachableTransportBlockPositions
+	memNearestVisibleAttackablePlayers
 	memMemoryTypeCount
 )
 
