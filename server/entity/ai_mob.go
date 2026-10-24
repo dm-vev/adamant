@@ -233,6 +233,9 @@ func (m *Mob) InLiquid() bool { return m.InWater() || m.InLava() }
 // FluidJumpThreshold returns how deep a mob may stand in a fluid before it
 // swims up instead of jumping, as Entity.getFluidJumpThreshold.
 func (m *Mob) FluidJumpThreshold() float64 {
+	if f, ok := m.Behaviour().(interface{ fluidJumpThreshold(m *Mob) float64 }); ok {
+		return f.fluidJumpThreshold(m)
+	}
 	if m.EyeY()-m.data.Pos[1] < .4 {
 		return 0
 	}

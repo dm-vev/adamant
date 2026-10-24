@@ -135,6 +135,10 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if r, ok := e.(interface{ RamAttacking() bool }); ok && r.RamAttacking() {
 		setActorFlag(m, protocol.EntityDataFlagRamAttack)
 	}
+	if sh, ok := e.(interface{ Shooting() bool }); ok && sh.Shooting() {
+		// A breeze shooting faces its target to attack it from range.
+		setActorFlag(m, protocol.EntityDataFlagFacingTargetToRangeAttack)
+	}
 	if j, ok := e.(interface{ JumpGoalJumping() bool }); ok && j.JumpGoalJumping() {
 		setActorFlag(m, protocol.EntityDataFlagJumpGoal)
 	}
@@ -250,6 +254,12 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	}
 	if g, ok := e.(interface{ BeamTargetHandle() *world.EntityHandle }); ok {
 		if h := g.BeamTargetHandle(); h != nil {
+			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
+		}
+	}
+	if g, ok := e.(interface{ ShootTargetHandle() *world.EntityHandle }); ok {
+		m[protocol.EntityDataKeyTarget] = int64(0)
+		if h := g.ShootTargetHandle(); h != nil {
 			m[protocol.EntityDataKeyTarget] = s.handleUniqueID(h)
 		}
 	}

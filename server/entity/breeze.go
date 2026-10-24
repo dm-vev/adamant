@@ -1,13 +1,11 @@
 package entity
 
 import (
-	"hash/fnv"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
@@ -21,13 +19,6 @@ type breezeType struct{}
 func (breezeType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
 	if data.Data == nil {
 		breezeConfig{}.Apply(data)
-	}
-	state := data.Data.(*breezeState)
-	if handle != nil {
-		uuid := handle.UUID()
-		hash := fnv.New64a()
-		_, _ = hash.Write(uuid[:])
-		state.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
 	return &Breeze{Ent: &Ent{tx: tx, handle: handle, data: data}}
 }
@@ -51,13 +42,6 @@ func (breezeType) DecodeNBT(n map[string]any, data *world.EntityData) {
 			conf.health, conf.healthSet = float64(nbtconv.Float32(n, "Health")), true
 		}
 	}
-	if java := ReadNativeMobJavaState(n); java != nil {
-		conf.shootCooldown = int(nbtconv.Int32(java, "ShootCooldown"))
-		conf.chargeTicks = int(nbtconv.Int32(java, "ChargeTicks"))
-		conf.jumpCooldown = int(nbtconv.Int32(java, "JumpCooldown"))
-		conf.jumpCharge = int(nbtconv.Int32(java, "JumpCharge"))
-		conf.jumping = nbtconv.Bool(java, "Jumping")
-	}
 	data.Data = conf.New()
 }
 func (breezeType) EncodeNBT(data *world.EntityData) map[string]any {
@@ -73,18 +57,13 @@ func (breezeType) EncodeNBT(data *world.EntityData) map[string]any {
 		native = make(map[string]any)
 	}
 	native["Attributes"] = attrs
-	return MergeNativeMobJavaState(native, map[string]any{
-		"ShootCooldown": int32(b.shootCooldown), "ChargeTicks": int32(b.chargeTicks),
-		"JumpCooldown": int32(b.jumpCooldown), "JumpCharge": int32(b.jumpCharge), "Jumping": b.jumping,
-	})
+	return native
 }
 
 type breezeConfig struct {
-	health                                               float64
-	healthSet                                            bool
-	speed                                                float64
-	shootCooldown, chargeTicks, jumpCooldown, jumpCharge int
-	jumping                                              bool
+	health    float64
+	healthSet bool
+	speed     float64
 }
 
 func (c breezeConfig) Apply(data *world.EntityData) { data.Data = c.New() }
@@ -95,27 +74,32 @@ func (c breezeConfig) New() *breezeState {
 	}
 	speed := c.speed
 	if speed <= 0 {
-		speed = .63
+		speed = float64(float32(.63))
 	}
-	return &breezeState{
-		health: NewHealthManager(health, 30), effects: NewEffectManager(),
-		mc:     &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
-		random: vanilla.NewLegacyRandom(0), speed: speed,
-		shootCooldown: max(0, c.shootCooldown), chargeTicks: max(0, c.chargeTicks),
-		jumpCooldown: max(0, c.jumpCooldown), jumpCharge: max(0, c.jumpCharge), jumping: c.jumping,
-	}
+	s := &breezeState{health: NewHealthManager(health, 30), effects: NewEffectManager(), speed: speed}
+	s.br = newBreezeBrain(s)
+	return s
 }
 
+// breezePose is the pose of a breeze, from the Pose of Java.
+type breezePose uint8
+
+const (
+	breezeStanding breezePose = iota
+	breezeSliding
+	breezeShooting
+	breezeInhaling
+	breezeLongJumping
+)
+
 type breezeState struct {
-	health                                                          *HealthManager
-	effects                                                         *EffectManager
-	mc                                                              *MovementComputer
-	random                                                          vanilla.Random
-	speed                                                           float64
-	shootCooldown, chargeTicks, jumpCooldown, jumpCharge, soundTick int
-	wander                                                          int
-	navigator                                                       Navigator
-	jumping, dead                                                   bool
+	health  *HealthManager
+	effects *EffectManager
+	ai      MobAI
+	br      *Brain
+	speed   float64
+	dead    bool
+	pose    breezePose
 }
 
 type Breeze struct{ *Ent }
@@ -131,183 +115,86 @@ func (b *Breeze) Tick(tx *world.Tx, current int64) {
 	b.Ent.Tick(tx, current)
 }
 
+func (s *breezeState) mobAI() *MobAI { return &s.ai }
+func (s *breezeState) brain() *Brain { return s.br }
+
+// Tick runs the MobAI of the breeze with its brain.
 func (s *breezeState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if s.soundTick == 0 {
-		s.soundTick = 1 + int(s.random.NextInt(80))
-		tx.PlaySound(e.Position(), sound.Custom{Name: "entity.breeze.whirl", Volume: .8 + .2*float64(s.random.NextFloat()), Pitch: .7 + .4*float64(s.random.NextFloat())})
-	} else {
-		s.soundTick--
-	}
+	// Breeze.createAttributes, getMaxHeadYRot and getHeadRotSpeed.
+	s.ai.MovementSpeed, s.ai.FollowRange, s.ai.EyeHeight = s.speed, 24, float64(float32(1.3452))
+	s.ai.MaxHeadYaw, s.ai.HeadRotSpeed = 30, 25
+	return s.ai.Tick(e, &Breeze{Ent: e}, func(m *Mob) {
+		m.AI.SetPathfindingMalus(PathOnTopOfTrapdoor, -1)
+		m.AI.SetPathfindingMalus(PathFire, -1)
+	})
+}
 
-	if s.shootCooldown > 0 {
-		s.shootCooldown--
-	}
-	if s.jumpCooldown > 0 {
-		s.jumpCooldown--
-	}
-	if s.jumping {
-		return s.jumpTick(e, tx)
-	}
+// customServerAiStep ports Breeze.customServerAiStep and BreezeAi.updateActivity.
+func (s *breezeState) customServerAiStep(m *Mob) {
+	s.br.tick(m)
+	s.br.setActiveToFirstValid(activityFight, activityIdle)
+}
 
-	var target world.Entity
-	best := math.MaxFloat64
-	area := cube.Box(-24, -8, -24, 24, 8, 24).Translate(e.Position())
-	for candidate := range tx.EntitiesWithin(area) {
-		if candidate == e {
-			continue
-		}
-		id := candidate.H().Type().EncodeEntity()
-		if id != "minecraft:player" && id != "minecraft:iron_golem" {
-			continue
-		}
-		living, ok := candidate.(Living)
-		if !ok || living.Dead() {
-			continue
-		}
-		distance := candidate.Position().Sub(e.Position()).Len()
-		if distance < best && distance < 24 {
-			target, best = candidate, distance
-		}
+// canAttackEntity ports Breeze.canAttack: a breeze only attacks players and
+// iron golems.
+func (s *breezeState) canAttackEntity(_ *Mob, t world.Entity) bool {
+	return isPlayerEntity(t) || t.H().Type().EncodeEntity() == "minecraft:iron_golem"
+}
+
+// fluidJumpThreshold ports Breeze.getFluidJumpThreshold: a breeze swims up
+// from water as deep as its eyes are high.
+func (s *breezeState) fluidJumpThreshold(m *Mob) float64 { return m.AI.EyeHeight }
+
+// setPose sets the pose of the breeze, which viewers see.
+func (s *breezeState) setPose(m *Mob, pose breezePose) {
+	if s.pose != pose {
+		s.pose = pose
+		m.updateState()
 	}
-	if target == nil {
-		s.chargeTicks, s.jumpCharge = 0, 0
-		s.wanderTick(e, tx)
+}
+
+// Shooting reports if the breeze shoots at its target, which Bedrock shows
+// as facing its target to attack from range.
+func (b *Breeze) Shooting() bool { return b.state().pose == breezeShooting }
+
+// JumpGoalJumping reports if the breeze long jumps.
+func (b *Breeze) JumpGoalJumping() bool { return b.state().pose == breezeLongJumping }
+
+// ShootTargetHandle returns the target of the breeze while it shoots.
+func (b *Breeze) ShootTargetHandle() *world.EntityHandle {
+	s := b.state()
+	if s.pose != breezeShooting {
 		return nil
 	}
-	if best <= 16 && s.shootCooldown == 0 {
-		if s.chargeTicks == 0 {
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.breeze.inhale", Volume: 1, Pitch: 1})
-		}
-		s.chargeTicks++
-		if s.chargeTicks >= 15 {
-			s.shoot(e, tx, target)
-			s.chargeTicks, s.shootCooldown = 0, 14 // Four recovery ticks plus the ten-tick attack cooldown.
-		}
-		return s.move(e, tx, target.Position(), .6)
-	}
-	s.chargeTicks = 0
-	if best > 4 && best < 24 && s.jumpCooldown == 0 && s.mc.OnGround() {
-		if s.jumpCharge == 0 {
-			tx.PlaySound(e.Position(), sound.Custom{Name: "entity.breeze.inhale", Volume: 1, Pitch: 1})
-		}
-		s.jumpCharge++
-
-		if s.jumpCharge >= 10 {
-			direction := target.Position().Sub(e.Position())
-			direction[1] = 0
-			if direction.Len() > 0 {
-				direction = direction.Normalize()
-				e.SetVelocity(mgl64.Vec3{direction[0] * .9, .5, direction[2] * .9})
-				s.jumping, s.jumpCharge = true, 0
-				tx.PlaySound(e.Position(), sound.Custom{Name: "entity.breeze.jump", Volume: 1, Pitch: 1})
-				return s.jumpTick(e, tx)
-			}
-		}
-	} else {
-		s.jumpCharge = 0
-	}
-	if best > 2.5 {
-		return s.move(e, tx, target.Position(), .6)
-	}
-	return s.stop(e, tx)
-}
-
-func (s *breezeState) jumpTick(e *Ent, tx *world.Tx) *Movement {
-	movement := s.mc.TickMovement(e, e.Position(), e.Velocity(), e.Rotation(), e.Rotation(), tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = movement.Position(), movement.Velocity(), movement.Rotation()
-	if s.mc.OnGround() {
-		s.jumping = false
-		s.jumpCooldown = 10
-		s.shootCooldown = max(s.shootCooldown, 100)
-		tx.PlaySound(e.Position(), sound.Custom{Name: "entity.breeze.land", Volume: 1, Pitch: 1})
-	}
-	return movement
-}
-
-func (s *breezeState) shoot(e *Ent, tx *world.Tx, target world.Entity) {
-	origin := e.Position().Add(mgl64.Vec3{0, 1.185, 0})
-	direction := target.Position().Add(mgl64.Vec3{0, .3, 0}).Sub(origin)
-	if direction.Len() == 0 {
-		return
-	}
-	difficultyID, _ := world.DifficultyID(tx.LocalDifficulty(cube.PosFromVec3(e.Position())).Base)
-	uncertainty := 5 - difficultyID*4
-	spread := float64(uncertainty) * .0075
-	direction[0] += s.random.NextGaussian() * spread
-	direction[1] += s.random.NextGaussian() * spread
-	direction[2] += s.random.NextGaussian() * spread
-	velocity := direction.Normalize().Mul(.7)
-	tx.AddEntity(NewBreezeWindCharge(world.EntitySpawnOpts{Position: origin, Velocity: velocity}, e))
-	tx.PlaySound(e.Position(), sound.Custom{Name: "entity.breeze.shoot", Volume: 1.5, Pitch: 1})
-}
-
-func (s *breezeState) move(e *Ent, tx *world.Tx, target mgl64.Vec3, speed float64) *Movement {
-	direction := target.Sub(e.Position())
-	direction[1] = 0
-	if direction.Len() > 0 {
-		direction = direction.Normalize()
-	}
-	velocity := e.Velocity()
-	velocity[0], velocity[2] = direction[0]*speed, direction[2]*speed
-	rotation := e.Rotation()
-	if direction.Len() > 0 {
-		rotation[0] = math.Atan2(-direction[0], direction[2]) * 180 / math.Pi
-	}
-	movement := s.mc.TickMovement(e, e.Position(), velocity, e.Rotation(), rotation, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = movement.Position(), movement.Velocity(), movement.Rotation()
-	return movement
-}
-func (s *breezeState) stop(e *Ent, tx *world.Tx) *Movement {
-	velocity := e.Velocity()
-	velocity[0], velocity[2] = 0, 0
-	movement := s.mc.TickMovement(e, e.Position(), velocity, e.Rotation(), e.Rotation(), tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = movement.Position(), movement.Velocity(), movement.Rotation()
-	return movement
-}
-func (s *breezeState) wanderTick(e *Ent, tx *world.Tx) {
-	if s.wander > 0 {
-		s.wander--
-	}
-	if s.navigator.Index >= len(s.navigator.Path) && s.wander == 0 {
-		s.wander = 50
-		start := cube.PosFromVec3(e.Position())
-		goal := start.Add(cube.Pos{int(s.random.NextInt(11)) - 5, 0, int(s.random.NextInt(11)) - 5})
-		s.navigator.MoveTo(tx, start, goal, GroundProfile{MaxVisitedNodes: 100}, navigatorTick(e))
-	}
-	if goal, ok := s.navigator.Tick(e.Position(), navigatorTick(e), 1); ok {
-		if goal.Sub(e.Position()).Len() < .3 {
-			s.navigator.Index++
-			return
-		}
-		s.move(e, tx, goal, .6)
-	} else {
-		s.stop(e, tx)
-	}
+	v, _ := s.br.get(memAttackTarget)
+	h, _ := v.(*world.EntityHandle)
+	return h
 }
 
 func (b *Breeze) Health() float64        { return b.state().health.Health() }
 func (b *Breeze) MaxHealth() float64     { return b.state().health.MaxHealth() }
 func (b *Breeze) SetMaxHealth(v float64) { b.state().health.SetMaxHealth(v) }
 func (b *Breeze) Dead() bool             { return b.state().dead || b.Health() <= 0 }
+
+// Hurt ports Breeze.isInvulnerableTo: a breeze takes no damage from
+// breezes.
 func (b *Breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 	if b.Dead() || damage <= 0 {
 		return 0, false
 	}
-	switch source := src.(type) {
-	case AttackDamageSource:
-		if source.Attacker != nil && source.Attacker.H().Type().EncodeEntity() == "minecraft:breeze" {
-			return 0, false
-		}
-	case ProjectileDamageSource:
-		if source.Owner != nil && source.Owner.H().Type().EncodeEntity() == "minecraft:breeze" {
-			return 0, false
-		}
+	if killer := mobKiller(src); killer != nil && killer.H().Type() == BreezeType {
+		return 0, false
 	}
 	s := b.state()
-	if resistance, ok := s.effects.Effect(effect.Resistance); ok {
-		damage *= effect.Resistance.Multiplier(src, resistance.Level())
+	var ok bool
+	if damage, ok = s.ai.DamageCooldown(b.tx, damage); !ok {
+		return 0, false
+	}
+	if damage, ok = mobEffectDamage(s.effects, damage, src); !ok {
+		return 0, false
 	}
 	s.health.AddHealth(-damage)
+	s.ai.Hurt(src)
 	b.viewAction(HurtAction{})
 	onMobHurt(b.tx, b)
 	if b.Dead() {
@@ -317,20 +204,6 @@ func (b *Breeze) Hurt(damage float64, src world.DamageSource) (float64, bool) {
 		_ = b.CloseIn(b.tx)
 	}
 	return damage, true
-}
-
-func breezeDamageAttacker(src world.DamageSource) world.Entity {
-	switch source := src.(type) {
-	case AttackDamageSource:
-		return source.Attacker
-	case SpearDamageSource:
-		return source.Attacker
-	case MaceSmashDamageSource:
-		return source.Attacker
-	case ProjectileDamageSource:
-		return source.Owner
-	}
-	return nil
 }
 
 func (b *Breeze) Heal(amount float64, _ world.HealingSource) float64 {
