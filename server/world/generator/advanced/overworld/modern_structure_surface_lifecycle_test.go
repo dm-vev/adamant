@@ -118,7 +118,9 @@ func TestMutableSurfaceBoundsAndActorsSurviveNativeMCDBRestart(t *testing.T) {
 					ids := map[string]int{}
 					for e := range tx.Entities() {
 						ids[e.H().Type().EncodeEntity()]++
-						if v, ok := e.(*entity.Villager); ok && (v.Profession() != "minecraft:cleric" || v.Variant() != "minecraft:plains") {
+						// The cleric has no brewing stand, so ResetProfession may
+						// have made it unemployed while its chunk ticked.
+						if v, ok := e.(*entity.Villager); ok && (v.Profession() != "minecraft:cleric" && v.Profession() != "minecraft:none" || v.Variant() != "minecraft:plains") {
 							t.Errorf("reloaded prisoner profession/type=%s/%s", v.Profession(), v.Variant())
 						}
 					}

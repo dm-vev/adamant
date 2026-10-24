@@ -32,12 +32,15 @@ func TestVillagersRunFromZombies(t *testing.T) {
 		h = addVillager(t, tx, mgl64.Vec3{.5, 64, .5}).H()
 		addMob(t, tx, "minecraft:zombie", zombieAt)
 	})
-	w.AdvanceTick()
-	<-w.Exec(func(tx *world.Tx) {
-		if !villager(tx, h).Panicking() {
-			t.Fatal("villager does not panic with a zombie five blocks away")
-		}
-	})
+	// VillagerHostilesSensor notices the zombie within a second.
+	panicked := false
+	for range 30 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) { panicked = panicked || villager(tx, h).Panicking() })
+	}
+	if !panicked {
+		t.Fatal("villager does not panic with a zombie five blocks away")
+	}
 	farthest := 0.0
 	for range 60 {
 		w.AdvanceTick()
@@ -57,18 +60,23 @@ func TestHurtVillagersCalmDown(t *testing.T) {
 		h = addVillager(t, tx, mgl64.Vec3{.5, 64, .5}).H()
 		villager(tx, h).Hurt(1, entity.FallDamageSource{})
 	})
-	w.AdvanceTick()
-	<-w.Exec(func(tx *world.Tx) {
-		if !villager(tx, h).Panicking() {
-			t.Fatal("hurt villager does not panic")
-		}
-	})
-	for range 45 {
+	// HurtBySensor notices the damage within a second.
+	panicked := false
+	for range 30 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) { panicked = panicked || villager(tx, h).Panicking() })
+	}
+	if !panicked {
+		t.Fatal("hurt villager does not panic")
+	}
+	// The damage is forgotten two seconds after it, and the sensor forgets
+	// it within another second.
+	for range 50 {
 		w.AdvanceTick()
 	}
 	<-w.Exec(func(tx *world.Tx) {
 		if villager(tx, h).Panicking() {
-			t.Fatal("villager still panics two seconds after a fall")
+			t.Fatal("villager still panics four seconds after a fall")
 		}
 	})
 }

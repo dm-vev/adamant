@@ -9,11 +9,12 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
+	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/google/uuid"
 )
@@ -31,6 +32,10 @@ func (villagerType) Open(tx *world.Tx, h *world.EntityHandle, data *world.Entity
 }
 func (villagerType) EncodeEntity() string { return "minecraft:villager" }
 func (villagerType) BBox(e world.Entity) cube.BBox {
+	if v, ok := e.(*Villager); ok && v.behaviour().sleeping != nil {
+		// Entity.SLEEPING_DIMENSIONS.
+		return cube.Box(-.1, 0, -.1, .1, .2, .1)
+	}
 	if v, ok := e.(*Villager); ok && v.Baby() {
 		return cube.Box(-.245, 0, -.245, .245, .98, .245)
 	}
@@ -133,19 +138,20 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 		"Age": int32(b.age), "VillagerDataFinalized": boolByte(b.finalized), "OffersGenerated": boolByte(b.offersGenerated),
 		"VillagerData": map[string]any{"type": b.villagerType, "profession": b.profession, "level": int32(b.level)},
 		"Inventory":    inventoryRows, "Offers": rows, "Gossips": gossips, "LastGossipDecay": b.lastGossipDecay,
-		"LastRestock": b.lastRestock, "RestocksToday": int32(b.restocksToday), "VillagerLastSlept": b.lastSlept,
-		"VillagerHasSlept": boolByte(b.hasSlept), "VillagerGolemDetectedUntil": b.golemDetectedUntil}
-	if b.hasJobSite {
-		result["VillagerJobSite"] = villagerPosNBT(b.jobSite)
+		"LastRestock": b.lastRestock, "RestocksToday": int32(b.restocksToday)}
+	mem := b.savedMemories()
+	result["VillagerLastSlept"], result["VillagerHasSlept"], result["VillagerGolemDetectedUntil"] = mem.lastSlept, boolByte(mem.hasSlept), mem.golemDetectedUntil
+	if mem.hasJobSite {
+		result["VillagerJobSite"] = villagerPosNBT(mem.jobSite)
 	}
-	if b.hasHome {
-		result["VillagerHome"] = villagerPosNBT(b.home)
+	if mem.hasHome {
+		result["VillagerHome"] = villagerPosNBT(mem.home)
 	}
-	if b.hasPotentialJobSite {
-		result["VillagerPotentialJobSite"] = villagerPosNBT(b.potentialJobSite)
+	if mem.hasPotentialJobSite {
+		result["VillagerPotentialJobSite"] = villagerPosNBT(mem.potentialJobSite)
 	}
-	if b.hasMeetingPoint {
-		result["VillagerMeetingPoint"] = villagerPosNBT(b.meetingPoint)
+	if mem.hasMeetingPoint {
+		result["VillagerMeetingPoint"] = villagerPosNBT(mem.meetingPoint)
 	}
 	health := b.health
 	maxHealth := health.MaxHealth()
@@ -154,19 +160,40 @@ func (villagerType) EncodeNBT(data *world.EntityData) map[string]any {
 	})
 	native := MergeNativeMobNBT(data.NativeNBT, map[string]any{"Health": float32(health.Health()), "Attributes": attributes})
 	javaState := MergeNativeMobNBT(ReadNativeMobJavaState(data.NativeNBT), result)
-	if !b.hasJobSite {
-		delete(javaState, "VillagerJobSite")
-	}
-	if !b.hasHome {
-		delete(javaState, "VillagerHome")
-	}
-	if !b.hasPotentialJobSite {
-		delete(javaState, "VillagerPotentialJobSite")
-	}
-	if !b.hasMeetingPoint {
-		delete(javaState, "VillagerMeetingPoint")
+	for key, has := range map[string]bool{"VillagerJobSite": mem.hasJobSite, "VillagerHome": mem.hasHome,
+		"VillagerPotentialJobSite": mem.hasPotentialJobSite, "VillagerMeetingPoint": mem.hasMeetingPoint} {
+		if !has {
+			delete(javaState, key)
+		}
 	}
 	return MergeNativeMobJavaState(native, javaState)
+}
+
+// savedMemories returns the memories of the villager to save: those of its
+// brain once it started, or those read from NBT.
+func (b *VillagerBehaviour) savedMemories() villagerPendingMemories {
+	if !b.ai.started {
+		return b.pending
+	}
+	var p villagerPendingMemories
+	get := func(mem memoryType) (cube.Pos, bool) {
+		v, ok := b.br.get(mem)
+		if !ok {
+			return cube.Pos{}, false
+		}
+		return v.(globalPos).pos, true
+	}
+	p.jobSite, p.hasJobSite = get(memJobSite)
+	p.home, p.hasHome = get(memHome)
+	p.meetingPoint, p.hasMeetingPoint = get(memMeetingPoint)
+	p.potentialJobSite, p.hasPotentialJobSite = get(memPotentialJobSite)
+	if v, ok := b.br.get(memLastSlept); ok {
+		p.lastSlept, p.hasSlept = v.(int64), true
+	}
+	if b.br.has(memGolemDetectedRecently) {
+		p.golemDetectedUntil = b.lastTick + b.br.timeUntilExpiry(memGolemDetectedRecently)
+	}
+	return p
 }
 
 // readMerchantOffers decodes AbstractVillager's Offers compound. The tier is
@@ -353,32 +380,54 @@ func (c VillagerBehaviourConfig) New() *VillagerBehaviour {
 		}
 	}
 	age, finalized := c.Age, c.Finalized
-	return &VillagerBehaviour{health: NewHealthManager(health, 20), effects: NewEffectManager(), movement: &MovementComputer{Gravity: .08, Drag: .02, DragBeforeGravity: true},
-		speed:      .5,
+	b := &VillagerBehaviour{health: NewHealthManager(health, 20), effects: NewEffectManager(),
+		speed:      villagerSpeed,
 		profession: c.Profession, villagerType: c.Type, level: c.Level, xp: max(0, c.XP), foodLevel: max(0, c.FoodLevel), age: age, finalized: finalized, inventory: inv,
 		offers: append([]MerchantOffer(nil), c.Offers...), offersGenerated: c.OffersGenerated, gossips: gossips, lastGossipDecay: c.LastGossipDecay,
-		lastRestock: c.LastRestock, restocksToday: max(0, c.RestocksToday), lastSlept: c.LastSlept, hasSlept: c.HasSlept, golemDetectedUntil: c.GolemDetectedUntil,
-		jobSite: c.JobSite, home: c.Home, meetingPoint: c.MeetingPoint, hasJobSite: c.HasJobSite, hasHome: c.HasHome, hasMeetingPoint: c.HasMeetingPoint,
-		potentialJobSite: c.PotentialJobSite, hasPotentialJobSite: c.HasPotentialJobSite,
+		lastRestock: c.LastRestock, restocksToday: max(0, c.RestocksToday),
 	}
+	b.br = newVillagerBrain(b)
+	b.pending = villagerPendingMemories{jobSite: c.JobSite, home: c.Home, meetingPoint: c.MeetingPoint, potentialJobSite: c.PotentialJobSite,
+		hasJobSite: c.HasJobSite, hasHome: c.HasHome, hasMeetingPoint: c.HasMeetingPoint, hasPotentialJobSite: c.HasPotentialJobSite,
+		lastSlept: c.LastSlept, hasSlept: c.HasSlept, golemDetectedUntil: c.GolemDetectedUntil}
+	return b
+}
+
+// villagerPendingMemories are the memories of a villager read from NBT until
+// its brain starts in a world.
+type villagerPendingMemories struct {
+	jobSite, home, meetingPoint, potentialJobSite             cube.Pos
+	hasJobSite, hasHome, hasMeetingPoint, hasPotentialJobSite bool
+	lastSlept, golemDetectedUntil                             int64
+	hasSlept                                                  bool
 }
 
 type VillagerBehaviour struct {
-	health                                                                                                *HealthManager
-	effects                                                                                               *EffectManager
-	movement                                                                                              *MovementComputer
-	speed                                                                                                 float64
-	profession, villagerType                                                                              string
-	level, xp                                                                                             int
-	offers                                                                                                []MerchantOffer
-	inventory                                                                                             *inventory.Inventory
-	gossips                                                                                               map[string]map[string]int
-	lastGossipDecay, lastRestock, lastSlept, golemDetectedUntil, nextPOIScan                              int64
-	age, foodLevel, restocksToday                                                                         int
-	jobSite, potentialJobSite, home, meetingPoint                                                         cube.Pos
-	finalized, offersGenerated, hasSlept, hasJobSite, hasPotentialJobSite, hasHome, hasMeetingPoint, dead bool
-	trading                                                                                               tradingPlayer
-	panic                                                                                                 villagerPanicState
+	health                   *HealthManager
+	effects                  *EffectManager
+	ai                       MobAI
+	br                       *Brain
+	pending                  villagerPendingMemories
+	speed                    float64
+	profession, villagerType string
+	level, xp                int
+	offers                   []MerchantOffer
+	inventory                *inventory.Inventory
+	gossips                  map[string]map[string]int
+	lastGossipDecay          int64
+	lastRestock, lastGossip  int64
+	restockCheckDay          int64
+	age, foodLevel           int
+	restocksToday            int
+	finalized                bool
+	offersGenerated, dead    bool
+	trading                  tradingPlayer
+	// sleeping is the bed the villager sleeps in.
+	sleeping *cube.Pos
+	// held is the item the villager shows in its hand.
+	held item.Stack
+	// lastTick is the tick the villager last ticked at.
+	lastTick int64
 }
 
 func (b *VillagerBehaviour) Baby() bool { return b.age < 0 }
@@ -388,85 +437,159 @@ type Villager struct{ *Ent }
 func (v *Villager) behaviour() *VillagerBehaviour { return v.Behaviour().(*VillagerBehaviour) }
 func (v *Villager) Tick(tx *world.Tx, current int64) {
 	b := v.behaviour()
-	b.tickGossip(current)
-	v.senseGolems(tx, current)
-	if v.tickPanic(tx, current) {
-		// The PANIC activity replaces trading and work.
-		b.trading.user = nil
-	} else if customer, trading := b.trading.tick(tx, v.Position()); trading {
-		// While trading the villager stands still and faces its customer.
-		v.data.Vel[0], v.data.Vel[2] = 0, 0
-		v.data.Rot = faceTowards(v.data.Rot, v.Position(), customer.Position())
-	} else {
-		b.tickPOI(v, tx, current)
-	}
-	v.tickRestock(tx, current)
 	b.effects.Tick(v, tx)
 	v.Ent.Tick(tx, current)
+	if b.dead || v.tx == nil {
+		return
+	}
+	// Villager.tick.
+	b.lastTick = current
+	b.tickGossip(current)
+	wasBaby := b.age < 0
 	if b.age < 0 {
 		b.age = min(0, b.age+1)
 	} else if b.age > 0 {
 		b.age = max(0, b.age-1)
 	}
+	if wasBaby != (b.age < 0) && b.ai.started {
+		// Villager.ageBoundaryReached.
+		b.refreshBrain(b.ai.Mob(v.Ent, v))
+		v.updateState()
+	}
 }
 
 // StartTrading claims the villager for a trading player.
-func (v *Villager) StartTrading(user *world.EntityHandle) bool { return v.behaviour().trading.start(user) }
+func (v *Villager) StartTrading(user *world.EntityHandle) bool {
+	b := v.behaviour()
+	if b.sleeping != nil || v.Dead() {
+		return false
+	}
+	return b.trading.start(user)
+}
 
 // StopTrading ends a trade with user.
 func (v *Villager) StopTrading(user *world.EntityHandle) { v.behaviour().trading.stop(user) }
+
+func (b *VillagerBehaviour) mobAI() *MobAI { return &b.ai }
+func (b *VillagerBehaviour) brain() *Brain { return b.br }
+
+// Tick runs the MobAI of the villager with its brain.
 func (b *VillagerBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
-	m := b.movement.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
+	v := &Villager{Ent: e}
+	b.ai.MovementSpeed = b.speed
+	return b.ai.Tick(e, v, func(m *Mob) {
+		m.AI.nav.SetCanOpenDoors(true)
+		m.AI.nav.SetCanFloat(true)
+		m.AI.nav.SetRequiredPathLength(m, 48)
+		b.applyPendingMemories(m)
+		b.br.start(m)
+		b.updateActivityFromSchedule(m)
+	})
 }
+
+// applyPendingMemories puts the memories read from NBT into the brain.
+func (b *VillagerBehaviour) applyPendingMemories(m *Mob) {
+	p, dim := b.pending, m.tx.World().Dimension()
+	set := func(has bool, mem memoryType, pos cube.Pos) {
+		if has {
+			b.br.set(mem, globalPos{dim: dim, pos: pos})
+		}
+	}
+	set(p.hasJobSite, memJobSite, p.jobSite)
+	set(p.hasHome, memHome, p.home)
+	set(p.hasMeetingPoint, memMeetingPoint, p.meetingPoint)
+	set(p.hasPotentialJobSite, memPotentialJobSite, p.potentialJobSite)
+	if p.hasSlept {
+		b.br.set(memLastSlept, p.lastSlept)
+	}
+	if ttl := p.golemDetectedUntil - m.tx.CurrentTick(); ttl > 0 {
+		b.br.setWithExpiry(memGolemDetectedRecently, true, ttl)
+	}
+}
+
+// customServerAiStep ports Villager.customServerAiStep: a villager without
+// offers stops trading.
+func (b *VillagerBehaviour) customServerAiStep(m *Mob) {
+	b.br.tick(m)
+	if len(b.offers) == 0 && b.offersGenerated && b.trading.user != nil {
+		b.trading.user = nil
+	}
+	if _, ok := b.trading.tick(m.tx, m.data.Pos); !ok {
+		b.trading.user = nil
+	}
+}
+
+// afterAiStep ports Mob.aiStep picking up items for a villager.
+func (b *VillagerBehaviour) afterAiStep(m *Mob) { b.pickUpItems(m) }
+
+// HeldItems returns the item the villager shows in its hand.
+func (v *Villager) HeldItems() (item.Stack, item.Stack) { return v.behaviour().held, item.Stack{} }
+
+// Sleeping returns the bed the villager sleeps in.
+func (v *Villager) Sleeping() (cube.Pos, bool) {
+	if s := v.behaviour().sleeping; s != nil {
+		return *s, true
+	}
+	return cube.Pos{}, false
+}
+
+// HearBell ports BellBlockEntity.updateEntities: the villager remembers when
+// it heard a bell.
+func (v *Villager) HearBell(time int64) { v.behaviour().br.set(memHeardBellTime, time) }
+
 func (v *Villager) Health() float64        { return v.behaviour().health.Health() }
 func (v *Villager) MaxHealth() float64     { return v.behaviour().health.MaxHealth() }
 func (v *Villager) SetMaxHealth(h float64) { v.behaviour().health.SetMaxHealth(h) }
 func (v *Villager) Dead() bool             { return v.behaviour().dead || v.Health() <= 0 }
+
+// releasePOIs ports Villager.releaseAllPois.
 func (v *Villager) releasePOIs(tx *world.Tx) {
 	b := v.behaviour()
-	if tx == nil {
+	if tx == nil || !b.ai.started {
 		return
 	}
-	owner := v.H().UUID()
-	if b.hasJobSite {
-		tx.ReleasePOI(b.jobSite, owner)
-		b.hasJobSite = false
-	}
-	if b.hasPotentialJobSite {
-		tx.ReleasePOI(b.potentialJobSite, owner)
-		b.hasPotentialJobSite = false
-	}
-	if b.hasMeetingPoint {
-		tx.ReleasePOI(b.meetingPoint, owner)
-		b.hasMeetingPoint = false
-	}
-	if b.hasHome {
-		tx.ReleasePOI(b.home, owner)
-		b.hasHome = false
+	m := b.ai.Mob(v.Ent, v)
+	for _, mem := range []memoryType{memHome, memJobSite, memPotentialJobSite, memMeetingPoint} {
+		b.releasePoi(m, mem)
 	}
 }
+
+// Hurt ports Villager.setLastHurtByMob and die: villagers near hear when a
+// villager is hurt or killed, and think worse of the culprit.
 func (v *Villager) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	b := v.behaviour()
-	if v.Dead() || d <= 0 || (src.Fire() && v.hasEffect(effect.FireResistance)) {
+	if v.Dead() || d <= 0 {
 		return 0, false
 	}
-	if r, ok := b.effects.Effect(effect.Resistance); ok {
-		d *= effect.Resistance.Multiplier(src, r.Level())
+	var ok bool
+	if d, ok = b.ai.DamageCooldown(v.tx, d); !ok {
+		return 0, false
+	}
+	if d, ok = mobEffectDamage(b.effects, d, src); !ok {
+		return 0, false
 	}
 	b.health.AddHealth(-d)
-	// HurtBySensor remembers the damage and the living entity behind it.
-	b.panic.hurt.hurt(src, v.tx.CurrentTick())
-	if attacker := mobKiller(src); attacker != nil {
-		if _, living := attacker.(Living); living {
-			b.panic.hurtBy = attacker.H()
-		}
+	b.ai.Hurt(src)
+	killer := mobKiller(src)
+	if _, living := killer.(Living); living {
+		v.OnReputationEventFrom("villager_hurt", killer)
+	}
+	if b.sleeping != nil && b.ai.started {
+		b.stopSleeping(b.ai.Mob(v.Ent, v))
 	}
 	v.viewAction(HurtAction{})
 	onMobHurt(v.tx, v)
 	if v.Dead() {
 		b.dead = true
+		if killer != nil && b.ai.started {
+			// Villager.tellWitnessesThatIWasMurdered.
+			m := b.ai.Mob(v.Ent, v)
+			if seen := visibleLiving(m); seen != nil {
+				for _, e := range seen.findAll(m, isVillagerMob) {
+					e.(*Villager).OnReputationEventFrom("villager_killed", killer)
+				}
+			}
+		}
 		v.releasePOIs(v.tx)
 		v.viewAction(DeathAction{})
 		dropAllDeathLoot(v.tx, v, src)
@@ -482,12 +605,15 @@ func (v *Villager) Heal(h float64, _ world.HealingSource) float64 {
 	v.behaviour().health.AddHealth(h)
 	return v.Health() - old
 }
-func (v *Villager) Baby() bool   { return v.behaviour().age < 0 }
+func (v *Villager) Baby() bool     { return v.behaviour().age < 0 }
 func (v *Villager) Age() int       { return v.behaviour().age }
 func (v *Villager) SetAge(age int) { v.behaviour().age = age }
+
+// CanBreed ports Villager.canBreed: a grown, awake villager with enough
+// food.
 func (v *Villager) CanBreed() bool {
 	b := v.behaviour()
-	return b.age == 0 && b.foodLevel+b.foodPoints() >= 12
+	return b.age == 0 && b.sleeping == nil && b.foodLevel+b.foodPoints() >= 12
 }
 func (v *Villager) FoodLevel() int { return v.behaviour().foodLevel }
 func (v *Villager) AddFood(points int) {
@@ -496,16 +622,21 @@ func (v *Villager) AddFood(points int) {
 	}
 }
 
-// MarkSlept records Java's last-slept memory for golem spawning.
-func (v *Villager) MarkSlept(tick int64) { b := v.behaviour(); b.lastSlept = tick; b.hasSlept = true }
+// MarkSlept records the LAST_SLEPT memory, which golem summoning needs.
+func (v *Villager) MarkSlept(tick int64) { v.behaviour().br.set(memLastSlept, tick) }
 
-// MarkGolemDetected records the short-lived Java golem-detected brain memory.
-func (v *Villager) MarkGolemDetected(tick int64) { v.behaviour().golemDetectedUntil = tick + 599 }
+// MarkGolemDetected records the GOLEM_DETECTED_RECENTLY memory, as
+// GolemSensor.golemDetected.
+func (v *Villager) MarkGolemDetected(int64) {
+	v.behaviour().br.setWithExpiry(memGolemDetectedRecently, true, 599)
+}
 
-// WantsToSpawnGolem matches Java's recent-sleep and recent-golem sensor gates.
+// WantsToSpawnGolem ports Villager.wantsToSpawnGolem: a villager that slept
+// within a day and saw no golem recently.
 func (v *Villager) WantsToSpawnGolem(tick int64) bool {
-	b := v.behaviour()
-	return b.hasSlept && tick-b.lastSlept < 24000 && tick >= b.golemDetectedUntil
+	br := v.behaviour().br
+	slept, ok := br.get(memLastSlept)
+	return ok && tick-slept.(int64) < 24000 && !br.has(memGolemDetectedRecently)
 }
 
 // BreedWith creates a child with Java's 50/25/25 biome/parent variant selection.
@@ -652,6 +783,7 @@ func (v *Villager) Effects() []effect.Effect     { return v.behaviour().effects.
 func (v *Villager) Speed() float64               { return v.behaviour().speed }
 func (v *Villager) SetSpeed(speed float64)       { v.behaviour().speed = speed }
 func (v *Villager) hasEffect(t effect.Type) bool { _, ok := v.behaviour().effects.Effect(t); return ok }
+
 // MerchantName returns the Bedrock trade screen title of the profession.
 func (v *Villager) MerchantName() string {
 	name := strings.TrimPrefix(v.behaviour().profession, "minecraft:")
@@ -667,8 +799,8 @@ func (v *Villager) MerchantName() string {
 	}
 	return "entity.villager." + name
 }
-func (v *Villager) MerchantProfession() string   { return v.behaviour().profession }
-func (v *Villager) MerchantLevel() int           { return v.behaviour().level }
+func (v *Villager) MerchantProfession() string { return v.behaviour().profession }
+func (v *Villager) MerchantLevel() int         { return v.behaviour().level }
 func (v *Villager) MerchantOffers() ([]MerchantOffer, error) {
 	if err := v.ensureVillagerOffers(); err != nil {
 		return nil, err
@@ -820,134 +952,6 @@ func (b *VillagerBehaviour) tickGossip(current int64) {
 	}
 	b.lastGossipDecay = current
 }
-func (b *VillagerBehaviour) tickPOI(v *Villager, tx *world.Tx, current int64) {
-	owner := v.H().UUID()
-	if b.hasJobSite {
-		poi, ok := tx.POI(b.jobSite)
-		if !ok || poi.Kind != world.Workstation || !villagerPOIMatchesProfession(poi.Type, b.profession) || poi.HasOwner && !villagerOwnsPOI(poi, owner) {
-			if ok && villagerOwnsPOI(poi, owner) {
-				tx.ReleasePOI(b.jobSite, owner)
-			}
-			b.hasJobSite = false
-			if b.xp == 0 && b.level <= 1 {
-				v.SetProfession("minecraft:none")
-			}
-		} else if poi.Vacant() && !tx.ClaimPOI(b.jobSite, owner) {
-			b.hasJobSite = false
-		}
-	}
-	if b.hasPotentialJobSite {
-		poi, ok := tx.POI(b.potentialJobSite)
-		if !ok || poi.Kind != world.Workstation || poi.HasOwner && !villagerOwnsPOI(poi, owner) {
-			if ok && villagerOwnsPOI(poi, owner) {
-				tx.ReleasePOI(b.potentialJobSite, owner)
-			}
-			b.hasPotentialJobSite = false
-		}
-	}
-	if b.hasHome {
-		poi, ok := tx.POI(b.home)
-		if !ok || poi.Kind != world.Home || poi.HasOwner && !villagerOwnsPOI(poi, owner) {
-			if ok && villagerOwnsPOI(poi, owner) {
-				tx.ReleasePOI(b.home, owner)
-			}
-			b.hasHome = false
-		} else if poi.Vacant() && !tx.ClaimPOI(b.home, owner) {
-			b.hasHome = false
-		}
-	}
-	if b.hasMeetingPoint {
-		poi, ok := tx.POI(b.meetingPoint)
-		if !ok || poi.Kind != world.Meeting {
-			if ok && villagerOwnsPOI(poi, owner) {
-				tx.ReleasePOI(b.meetingPoint, owner)
-			}
-			b.hasMeetingPoint = false
-		} else if !villagerOwnsPOI(poi, owner) && !tx.ClaimPOI(b.meetingPoint, owner) {
-			b.hasMeetingPoint = false
-		}
-	}
-	if current >= b.nextPOIScan {
-		b.nextPOIScan = current + 20
-		if !b.hasHome {
-			if pos, _, found := tx.NearestPOI(cube.PosFromVec3(v.Position()), world.Home, 48, func(p world.POI) bool { return p.Vacant() }); found && tx.ClaimPOI(pos, owner) {
-				b.home, b.hasHome = pos, true
-			}
-		}
-		if !b.hasMeetingPoint {
-			if pos, _, found := tx.NearestPOI(cube.PosFromVec3(v.Position()), world.Meeting, 48, func(p world.POI) bool { return p.Vacant() }); found && tx.ClaimPOI(pos, owner) {
-				b.meetingPoint, b.hasMeetingPoint = pos, true
-			}
-		}
-		if !v.Baby() && !b.hasJobSite && !b.hasPotentialJobSite && b.profession != "minecraft:nitwit" {
-			pos, _, found := tx.NearestPOI(cube.PosFromVec3(v.Position()), world.Workstation, 48, func(p world.POI) bool {
-				profession := villagerProfessionForWorkstation(p.Type)
-				return p.Vacant() && profession != "" && (b.profession == "minecraft:none" || b.profession == profession)
-			})
-			if found && tx.ClaimPOI(pos, owner) {
-				b.potentialJobSite, b.hasPotentialJobSite = pos, true
-			}
-		}
-	}
-	if b.hasPotentialJobSite {
-		if villagerNearPOI(v.Position(), b.potentialJobSite, 2) {
-			poi, ok := tx.POI(b.potentialJobSite)
-			if ok && villagerOwnsPOI(poi, owner) {
-				b.jobSite, b.hasJobSite = b.potentialJobSite, true
-				b.hasPotentialJobSite = false
-				if b.profession == "minecraft:none" {
-					if profession := villagerProfessionForWorkstation(poi.Type); profession != "" {
-						v.SetProfession(profession)
-					}
-				}
-			}
-		} else {
-			v.walkTowardsPOI(b.potentialJobSite)
-		}
-	}
-	workTime := int(tx.World().Time()) % 24000
-	if workTime >= 2000 && workTime < 9000 && b.hasJobSite && !villagerNearPOI(v.Position(), b.jobSite, 2) {
-		v.walkTowardsPOI(b.jobSite)
-	}
-	if workTime >= 9000 && workTime < 11000 && b.hasMeetingPoint && !villagerNearPOI(v.Position(), b.meetingPoint, 2) {
-		v.walkTowardsPOI(b.meetingPoint)
-	}
-	night := workTime >= 12000 || workTime < 1000
-	if b.hasHome {
-		if night && villagerNearPOI(v.Position(), b.home, 2) {
-			if !b.hasSlept || current-b.lastSlept >= 24000 {
-				v.MarkSlept(current)
-			}
-		}
-		if night && !villagerNearPOI(v.Position(), b.home, 2) {
-			v.walkTowardsPOI(b.home)
-		}
-	}
-}
-
-func (v *Villager) walkTowardsPOI(pos cube.Pos) bool {
-	p := v.Position()
-	dx, dz := float64(pos[0])+.5-p[0], float64(pos[2])+.5-p[2]
-	distance := math.Sqrt(dx*dx + dz*dz)
-	velocity := v.Velocity()
-	if villagerNearPOI(p, pos, 2) {
-		velocity[0], velocity[2] = 0, 0
-		v.SetVelocity(velocity)
-		return true
-	}
-	if distance == 0 {
-		return false
-	}
-	velocity[0], velocity[2] = dx/distance*v.Speed()*.4, dz/distance*v.Speed()*.4
-	v.SetVelocity(velocity)
-	return false
-}
-
-func villagerNearPOI(position mgl64.Vec3, pos cube.Pos, radius float64) bool {
-	dx, dy, dz := float64(pos[0])+.5-position[0], float64(pos[1])-position[1], float64(pos[2])+.5-position[2]
-	return dx*dx+dy*dy+dz*dz < radius*radius
-}
-
 func villagerWorkstationForProfession(profession string) string {
 	switch profession {
 	case "minecraft:armorer":
@@ -1018,47 +1022,43 @@ func villagerPOIMatchesProfession(poi, profession string) bool {
 	return villagerWorkstationForProfession(profession) == poi
 }
 
-func (v *Villager) tickRestock(tx *world.Tx, current int64) {
+// shouldRestock ports Villager.shouldRestock: a villager restocks twice a
+// day at most, two minutes apart, when a trade was used.
+func (v *Villager) shouldRestock(tx *world.Tx) bool {
 	b := v.behaviour()
-	if current > b.lastRestock+12000 {
-		missedUpdates := 2 - b.restocksToday
-		if missedUpdates > 0 {
-			for i := range b.offers {
-				b.offers[i].Uses = 0
-			}
-			for range missedUpdates {
-				for i := range b.offers {
-					o := &b.offers[i]
-					o.Demand += o.Uses - (o.MaxUses - o.Uses)
-				}
-			}
-		}
+	now := tx.CurrentTick()
+	newDay := now > b.lastRestock+12000
+	day := int64(tx.World().Time() / 24000)
+	newDay = newDay || b.restockCheckDay > 0 && day > b.restockCheckDay
+	b.restockCheckDay = day
+	if newDay {
+		b.lastRestock = now
 		b.restocksToday = 0
-		b.lastRestock = current
 	}
-	if b.restocksToday >= 2 || b.restocksToday > 0 && current <= b.lastRestock+2400 || len(b.offers) == 0 || current%20 != 0 {
-		return
+	allowed := b.restocksToday == 0 || b.restocksToday < 2 && now > b.lastRestock+2400
+	if !allowed {
+		return false
 	}
-	workTime := int(tx.World().Time()) % 24000
-	if workTime < 2000 || workTime >= 9000 || !b.hasJobSite || !villagerHasWorkstation(tx, b.jobSite, b.profession, v.H().UUID()) || !villagerNearPOI(v.Position(), b.jobSite, 1.73) {
-		return
-	}
-	needsRestock := false
-	for i := range b.offers {
-		if b.offers[i].Uses > 0 {
-			needsRestock = true
-			break
+	for _, o := range b.offers {
+		if o.Uses > 0 {
+			return true
 		}
 	}
-	if !needsRestock {
-		return
-	}
+	return false
+}
+
+// restock ports Villager.restock: the demand of every trade updates and its
+// uses reset.
+func (v *Villager) restock() {
+	b := v.behaviour()
 	for i := range b.offers {
 		o := &b.offers[i]
-		o.Demand += o.Uses - (o.MaxUses - o.Uses)
+		o.Demand = max(0, o.Demand+o.Uses-(o.MaxUses-o.Uses))
 		o.Uses = 0
 	}
-	b.lastRestock = current
+	if v.tx != nil {
+		b.lastRestock = v.tx.CurrentTick()
+	}
 	b.restocksToday++
 }
 func villagerOwnsPOI(poi world.POI, owner uuid.UUID) bool {
@@ -1073,8 +1073,17 @@ func villagerHasWorkstation(tx *world.Tx, pos cube.Pos, profession string, owner
 	poi, ok := tx.POI(pos)
 	return ok && poi.Kind == world.Workstation && villagerOwnsPOI(poi, owner) && villagerPOIMatchesProfession(poi.Type, profession)
 }
+
+// Interact ports Villager.mobInteract: a player trades with a grown villager
+// that is awake and trades with nobody else.
 func (v *Villager) Interact(tx *world.Tx, user item.User, _ *item.UseContext) bool {
+	b := v.behaviour()
+	if v.Dead() || b.sleeping != nil || b.trading.user != nil && b.trading.user != user.H() {
+		return false
+	}
 	if v.Baby() {
+		// Villager.setUnhappy.
+		tx.PlaySound(v.Position(), sound.Custom{Name: "entity.villager.no", Volume: 1, Pitch: 1})
 		return true
 	}
 	v.bindTx(tx)

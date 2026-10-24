@@ -1,11 +1,8 @@
 package entity
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -17,109 +14,8 @@ var villagerHostileDistances = map[string]float64{
 	"minecraft:zoglin": 10, "minecraft:zombie": 8, "minecraft:zombie_villager": 8,
 }
 
-// villagerPanicState is a villager's PANIC activity: HurtBySensor's memory of
-// the last damage and its attacker.
-type villagerPanicState struct {
-	hurt      panicState
-	hurtBy    *world.EntityHandle
-	panicking bool
-	navigator Navigator
-}
-
-// nearestHostile ports VillagerHostilesSensor: the nearest visible mob the
-// villager is scared of.
-func (v *Villager) nearestHostile(tx *world.Tx) world.Entity {
-	var nearest world.Entity
-	best := 0.0
-	for other := range tx.EntitiesWithin(cube.Box(-15, -15, -15, 15, 15, 15).Translate(v.Position())) {
-		distance, ok := villagerHostileDistances[other.H().Type().EncodeEntity()]
-		if !ok {
-			continue
-		}
-		if l, living := other.(Living); living && l.Dead() {
-			continue
-		}
-		d := other.Position().Sub(v.Position()).LenSqr()
-		if d > distance*distance || nearest != nil && d >= best || !lineVisible(v.Ent, tx, other) {
-			continue
-		}
-		nearest, best = other, d
-	}
-	return nearest
-}
-
-// tickPanic runs VillagerPanicTrigger, VillagerCalmDown and the panic
-// package: a hurt villager or one near a hostile mob runs away from it at
-// 1.5 times its speed, and every five seconds panicking villagers that
-// slept recently summon an iron golem if three of them agree. It reports
-// whether the villager panics.
-func (v *Villager) tickPanic(tx *world.Tx, current int64) bool {
-	p := &v.behaviour().panic
-	hurt := p.hurt.source != nil && current-p.hurt.stamp <= 40
-	hostile := v.nearestHostile(tx)
-	var attacker world.Entity
-	if p.hurtBy != nil {
-		attacker, _ = p.hurtBy.Entity(tx)
-	}
-	if !p.panicking {
-		if !hurt && hostile == nil {
-			return false
-		}
-		p.panicking, p.navigator = true, Navigator{}
-	} else if !hurt && hostile == nil && (attacker == nil || attacker.Position().Sub(v.Position()).LenSqr() > 36) {
-		p.panicking, p.hurtBy = false, nil
-		return false
-	}
-	if current%100 == 0 {
-		v.spawnGolemIfNeeded(tx, current, 3)
-	}
-	if p.navigator.Index >= len(p.navigator.Path) {
-		v.choosePanicTarget(tx, hostile, attacker)
-	}
-	vel, rot, _ := steer(v.Ent, &p.navigator, groundSpeed(.5, .75), .6)
-	v.data.Vel, v.data.Rot = vel, rot
-	return true
-}
-
-// choosePanicTarget ports SetWalkTargetAwayFrom for the nearest hostile and
-// the attacker within six blocks, and VillageBoundRandomStroll otherwise.
-func (v *Villager) choosePanicTarget(tx *world.Tx, hostile, attacker world.Entity) {
-	random := vanilla.NewLegacyRandom(rand.Int64())
-	m := randomPosMob{tx: tx, pos: v.Position(), home: noHome, profile: GroundProfile{Width: .6, Height: 1.95}, random: &random}
-	var goal cube.Pos
-	ok := false
-	switch {
-	case hostile != nil && hostile.Position().Sub(v.Position()).LenSqr() < 36:
-		goal, ok = m.randomPosAway(16, 7, hostile.Position())
-	case attacker != nil && attacker.Position().Sub(v.Position()).LenSqr() < 36:
-		goal, ok = m.randomPosAway(16, 7, attacker.Position())
-	default:
-		goal, ok = m.randomPos(2, 2)
-	}
-	if !ok {
-		return
-	}
-	if path := FindGroundPath(tx, cube.PosFromVec3(v.Position()), goal, m.profile); len(path) != 0 {
-		v.behaviour().panic.navigator = Navigator{Path: path, Target: goal, HasTarget: true, LastComputeTick: navigatorTick(v.Ent)}
-	}
-}
-
 // Panicking reports whether the villager panics.
-func (v *Villager) Panicking() bool { return v.behaviour().panic.panicking }
-
-// senseGolems ports GolemSensor: every ten seconds a villager notices an iron
-// golem within 16 blocks and wants no new golem for 30 seconds.
-func (v *Villager) senseGolems(tx *world.Tx, current int64) {
-	if current%200 != 0 {
-		return
-	}
-	for e := range tx.EntitiesWithin(cube.Box(-16, -16, -16, 16, 16, 16).Translate(v.Position())) {
-		if e.H().Type() == IronGolemType {
-			v.MarkGolemDetected(current)
-			return
-		}
-	}
-}
+func (v *Villager) Panicking() bool { return v.behaviour().br.isActive(activityPanic) }
 
 // spawnGolemIfNeeded ports Villager.spawnGolemIfNeeded: if enough villagers
 // within ten blocks want a golem, one is summoned and they all notice it.

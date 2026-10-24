@@ -59,6 +59,23 @@ func (r *Raid) Center() cube.Pos { return r.center }
 // Active reports whether the raid is active and ongoing.
 func (r *Raid) Active() bool { return r != nil && r.active && r.status == RaidOngoing }
 
+// Victory reports if the village won the raid, as Raid.isVictory.
+func (r *Raid) Victory() bool { return r.status == RaidVictory }
+
+// Loss reports if the village lost the raid, as Raid.isLoss.
+func (r *Raid) Loss() bool { return r.status == RaidDefeat }
+
+// Stopped reports if the raid was stopped, as Raid.isStopped.
+func (r *Raid) Stopped() bool { return r.status == RaidStopped }
+
+// FirstWaveSpawned reports if a wave of raiders came, as
+// Raid.hasFirstWaveSpawned.
+func (r *Raid) FirstWaveSpawned() bool { return r.groupsSpawned > 0 }
+
+// BetweenWaves reports if the raid waits for its next wave, as
+// Raid.isBetweenWaves.
+func (r *Raid) BetweenWaves() bool { return r.groupsSpawned > 0 && r.cooldown > 0 }
+
 // Status returns the raid's terminal or ongoing state.
 func (r *Raid) Status() RaidStatus { return r.status }
 

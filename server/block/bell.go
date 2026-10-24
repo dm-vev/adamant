@@ -63,6 +63,14 @@ func (b Bell) ring(pos cube.Pos, tx *world.Tx, face cube.Face) {
 	b.ringDirection = face
 	tx.SetBlock(pos, b, &world.SetOpts{DisableBlockUpdates: true, DisableLiquidDisplacement: true})
 	tx.PlaySound(pos.Vec3Centre(), sound.BellRing{})
+	// BellBlockEntity.updateEntities: the mobs within 32 blocks remember
+	// hearing the bell.
+	centre := pos.Vec3Centre()
+	for e := range tx.EntitiesWithin(cube.Box(-48, -48, -48, 49, 49, 49).Translate(pos.Vec3())) {
+		if h, ok := e.(interface{ HearBell(time int64) }); ok && e.Position().Sub(centre).LenSqr() < 32*32 {
+			h.HearBell(tx.CurrentTick())
+		}
+	}
 }
 
 // UseOnBlock ...

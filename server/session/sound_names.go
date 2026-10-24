@@ -195,6 +195,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.turtle.egg_hatch":                   "mob.turtle_baby.born",
 	"entity.turtle.lay_egg":                     "block.turtle_egg.drop",
 	"entity.vex.charge":                         "mob.vex.charge",
+	"entity.villager.no":                        "mob.villager.no",
 	"entity.vindicator.celebrate":               "mob.vindicator.celebrate",
 	"entity.warden.listening_angry":             "mob.warden.listening_angry",
 	"entity.warden.nearby_close":                "mob.warden.nearby_close",
