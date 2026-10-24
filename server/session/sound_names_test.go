@@ -22,12 +22,14 @@ func TestJavaSoundsPlayTheirBedrockDefinitions(t *testing.T) {
 		// Bedrock parrots cannot imitate hoglins.
 		"entity.parrot.imitate.hoglin",
 		"item.spear.lunge_2",
+		"entity.panda.eat",
+		"entity.strider.happy",
 		// Bedrock definitions pass through as they are.
 		"random.glass",
 	} {
 		viewer.ViewSound(mgl64.Vec3{}, sound.Custom{Name: name, Volume: 1, Pitch: 1})
 	}
-	want := []string{"mob.cat.purr", "item.enchant.lunge2", "random.glass"}
+	want := []string{"mob.cat.purr", "item.enchant.lunge2", "mob.panda.eat", "mob.strider.tempt", "random.glass"}
 	var got []string
 	timeout := time.After(time.Second)
 	for len(got) < len(want)+1 {
