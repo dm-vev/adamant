@@ -109,6 +109,9 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		c.mainHand = decodeOceanStack(equipment, "mainhand")
 		c.offHand = decodeOceanStack(equipment, "offhand")
 		c.head = decodeOceanStack(equipment, "head")
+		c.chest = decodeOceanStack(equipment, "chest")
+		c.legs = decodeOceanStack(equipment, "legs")
+		c.feet = decodeOceanStack(equipment, "feet")
 		c.saddle = !decodeOceanStack(equipment, "saddle").Empty()
 		if armor := decodeOceanStack(equipment, "body"); !armor.Empty() {
 			if a, ok := armor.Item().(item.NautilusArmor); ok {
@@ -130,9 +133,11 @@ func (t oceanEntityType) DecodeNBT(m map[string]any, d *world.EntityData) {
 		}
 	}
 	if _, native := m["Armor"]; native {
-		c.head = item.Stack{}
-		if len(nativeEquipment.Armor) != 0 {
-			c.head = item.ReadNBT(nativeEquipment.Armor[0].Raw, nil)
+		for i, slot := range []*item.Stack{&c.head, &c.chest, &c.legs, &c.feet} {
+			*slot = item.Stack{}
+			if i < len(nativeEquipment.Armor) {
+				*slot = item.ReadNBT(nativeEquipment.Armor[i].Raw, nil)
+			}
 		}
 	}
 	if chances, ok := m["drop_chances"].(map[string]any); ok {
@@ -191,7 +196,9 @@ func (t oceanEntityType) EncodeNBT(d *world.EntityData) map[string]any {
 		copy(armor, equipment.Armor)
 		equipment.Armor = armor
 	}
-	equipment.Armor[0] = nativeMobItemFromStack(b.head)
+	for i, stack := range []item.Stack{b.head, b.chest, b.legs, b.feet} {
+		equipment.Armor[i] = nativeMobItemFromStack(stack)
+	}
 	encoded := MergeNativeMobNBT(d.NativeNBT, m)
 	for key, value := range EncodeNativeMobEquipment(equipment) {
 		encoded[key] = value
@@ -354,7 +361,7 @@ type oceanConfig struct {
 	variant                                                                                        string
 	healthSet, fromBucket, tamed, saddle, armorSet, canBreakDoors, canPickupLoot, baby, leftHanded bool
 	age, air, dashCooldown, beamTicks, bodyArmorMaterial                                           int
-	mainHand, offHand, head                                                                        item.Stack
+	mainHand, offHand, head, chest, legs, feet                                                     item.Stack
 	dropChances                                                                                    map[string]float64
 }
 
@@ -380,7 +387,7 @@ func (c oceanConfig) Apply(d *world.EntityData) {
 	b := c.New()
 	b.variant = oceanVariant(c.variant)
 	b.canBreakDoors, b.canPickupLoot, b.baby = c.canBreakDoors, c.canPickupLoot, c.baby
-	b.head, b.leftHanded, b.dropChances = c.head, c.leftHanded, c.dropChances
+	b.head, b.chest, b.legs, b.feet, b.leftHanded, b.dropChances = c.head, c.chest, c.legs, c.feet, c.leftHanded, c.dropChances
 	d.Data = b
 }
 func (c oceanConfig) New() *oceanBehaviour {
@@ -481,7 +488,7 @@ type oceanBehaviour struct {
 	age, air, dashCooldown, beamTicks, nextWander, ticks                            int
 	bodyArmorMaterial                                                               int
 	variant                                                                         string
-	mainHand, offHand, head                                                         item.Stack
+	mainHand, offHand, head, chest, legs, feet                                      item.Stack
 	dropChances                                                                     map[string]float64
 	beamTarget                                                                      *world.EntityHandle
 	vehicleStrafe, vehicleForward                                                   float64
@@ -664,19 +671,22 @@ func (m *oceanMob) FinalizeSpawn(reason string, random *vanilla.Random) {
 	if b.kind != oceanDrowned || random == nil {
 		return
 	}
-	baby, doors, pickup, _, jockey := finalizeZombieSpawn(reason, m.tx.LocalDifficulty(cube.PosFromVec3(m.Position())), random, false, m.H().SpawnGroup())
+	baby, doors, pickup, jockey := finalizeZombieSpawn(reason, m.tx.LocalDifficulty(cube.PosFromVec3(m.Position())), random, m.H().SpawnGroup(), b, func() {
+		// Drowned.populateDefaultEquipmentSlots: a tenth spawn with a
+		// trident or a fishing rod.
+		if random.NextFloat() > .9 {
+			if random.NextInt(16) < 10 {
+				b.mainHand = item.NewStack(item.Trident{}, 1)
+			} else {
+				b.mainHand = item.NewStack(item.FishingRod{}, 1)
+			}
+		}
+	})
 	rideChickenJockey(m.tx, m, jockey)
 	b.canBreakDoors, b.canPickupLoot = doors, pickup
 	if baby {
 		b.baby = true
 		b.speed *= 1.5
-	}
-	if b.mainHand.Empty() && random.NextFloat() > .9 {
-		if random.NextInt(16) < 10 {
-			b.mainHand = item.NewStack(item.Trident{}, 1)
-		} else {
-			b.mainHand = item.NewStack(item.FishingRod{}, 1)
-		}
 	}
 	if b.offHand.Empty() && random.NextFloat() < .03 {
 		b.offHand = item.NewStack(item.NautilusShell{}, 1)
@@ -780,9 +790,7 @@ func (m *oceanMob) die(src world.DamageSource) {
 // represented slots roll.
 func (m *oceanMob) dropCustomDeathLoot(killedByPlayer bool, looting int) {
 	b := m.b()
-	m.dropEquipment("mainhand", b.mainHand, killedByPlayer, looting)
-	m.dropEquipment("offhand", b.offHand, killedByPlayer, looting)
-	m.dropEquipment("head", b.head, killedByPlayer, looting)
+	dropEquipmentOnDeath(m.tx, m, b, killedByPlayer, looting)
 	m.dropEquipment("body", m.BodyArmor(), killedByPlayer, looting)
 	if b.saddle {
 		m.dropEquipment("saddle", item.NewStack(item.Saddle{}, 1), killedByPlayer, looting)
@@ -796,7 +804,7 @@ func (m *oceanMob) experienceEquipment() int {
 	for _, slot := range [...]struct {
 		name  string
 		stack item.Stack
-	}{{"mainhand", b.mainHand}, {"offhand", b.offHand}, {"head", b.head}} {
+	}{{"mainhand", b.mainHand}, {"offhand", b.offHand}, {"feet", b.feet}, {"legs", b.legs}, {"chest", b.chest}, {"head", b.head}} {
 		if !slot.stack.Empty() && m.dropChance(slot.name) <= 1 {
 			n++
 		}
@@ -1112,7 +1120,8 @@ func (m *oceanMob) Tame(user world.Entity) {
 func (m *oceanMob) HeldItems() (item.Stack, item.Stack) { return m.b().mainHand, m.b().offHand }
 func (m *oceanMob) SetHeldItems(main, off item.Stack)   { m.b().mainHand, m.b().offHand = main, off }
 func (m *oceanMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
-	return m.b().head, item.Stack{}, item.Stack{}, item.Stack{}
+	b := m.b()
+	return b.head, b.chest, b.legs, b.feet
 }
 func (m *oceanMob) BeamTicks() int { return m.b().beamTicks }
 func (m *oceanMob) Dashing() bool  { return m.b().dashCooldown > 35 }
@@ -1154,3 +1163,21 @@ func oceanVariant(variant string) string {
 }
 func (m *oceanMob) Variant() string           { return oceanVariant(m.b().variant) }
 func (m *oceanMob) SetVariant(variant string) { m.b().variant = oceanVariant(variant) }
+
+func (b *oceanBehaviour) equipment(slot int) *item.Stack {
+	return [...]*item.Stack{&b.mainHand, &b.offHand, &b.feet, &b.legs, &b.chest, &b.head}[slot]
+}
+
+func (b *oceanBehaviour) dropChance(slot int) float32 {
+	if chance, ok := b.dropChances[equipmentSlotNames[slot]]; ok {
+		return float32(chance)
+	}
+	return defaultDropChance
+}
+
+func (b *oceanBehaviour) setDropChance(slot int, chance float32) {
+	if b.dropChances == nil {
+		b.dropChances = make(map[string]float64)
+	}
+	b.dropChances[equipmentSlotNames[slot]] = float64(chance)
+}

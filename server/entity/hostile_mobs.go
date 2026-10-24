@@ -1,7 +1,9 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"hash/fnv"
+	"maps"
 	"math/rand/v2"
 	"time"
 
@@ -117,11 +119,10 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	}
 	c.cureTicks = int(nbtconv.Int32(n, "ConversionTime"))
 	if source, ok := n["equipment"].(map[string]any); ok {
-		if hand, ok := source["mainhand"].(map[string]any); ok {
-			c.main, _ = item.StackFromStructureNBT(hand)
-		}
-		if head, ok := source["head"].(map[string]any); ok {
-			c.head, _ = item.StackFromStructureNBT(head)
+		for slot, name := range equipmentSlotNames {
+			if raw, ok := source[name].(map[string]any); ok {
+				*c.equipment(slot), _ = item.StackFromStructureNBT(raw)
+			}
 		}
 	}
 	equipment := ReadNativeMobEquipment(n)
@@ -131,18 +132,33 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 			c.main = item.ReadNBT(equipment.Mainhand[0].Raw, nil)
 		}
 	}
-	if len(equipment.Armor) > 0 {
-		c.head = hostileStackFromNative(equipment.Armor[0])
+	if _, native := n["Offhand"]; native {
+		c.off = item.Stack{}
+		if len(equipment.Offhand) > 0 {
+			c.off = item.ReadNBT(equipment.Offhand[0].Raw, nil)
+		}
 	}
-	if c.head.Empty() {
-		// Pre-1.21.5 Java ArmorItems lists feet, legs, chest and head.
-		if armor, ok := n["ArmorItems"].([]any); ok && len(armor) == 4 {
-			if raw, ok := armor[3].(map[string]any); ok {
-				if stack, err := item.StackFromStructureNBT(raw); err == nil && !stack.Empty() {
-					c.head = stack
+	for i, native := range equipment.Armor {
+		if i < 4 {
+			*c.equipment(slotHead - i) = hostileStackFromNative(native)
+		}
+	}
+	// Pre-1.21.5 Java lists ArmorItems from the feet up and HandItems from
+	// the main hand.
+	for list, slots := range map[string][]int{"ArmorItems": {slotFeet, slotLegs, slotChest, slotHead}, "HandItems": {slotMainhand, slotOffhand}} {
+		if raw, ok := n[list].([]any); ok && len(raw) == len(slots) {
+			for i, slot := range slots {
+				if m, ok := raw[i].(map[string]any); ok && c.equipment(slot).Empty() {
+					if stack, err := item.StackFromStructureNBT(m); err == nil {
+						*c.equipment(slot) = stack
+					}
 				}
 			}
 		}
+	}
+	c.dropChances = readDropChances(n)
+	if java := ReadNativeMobJavaState(n); java != nil && c.dropChances == nil {
+		c.dropChances = readDropChances(java)
 	}
 	if c.raidLeader && !c.head.Empty() {
 		c.headDropGuaranteed = true
@@ -167,20 +183,17 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 	}
 	equipment := ReadNativeMobEquipment(d.NativeNBT)
 	equipment.Mainhand = []NativeMobItem{nativeMobItemFromStack(b.main)}
-	if !b.head.Empty() {
-		var previous NativeMobItem
-		if len(equipment.Armor) > 0 {
-			previous = equipment.Armor[0]
+	equipment.Offhand = []NativeMobItem{nativeMobItemFromStack(b.off)}
+	armor := make([]NativeMobItem, 4)
+	copy(armor, equipment.Armor)
+	for i := range armor {
+		if stack := *b.equipment(slotHead - i); stack.Empty() {
+			armor[i] = nativeMobItemFromStack(stack)
+		} else {
+			armor[i] = hostileNativeStack(stack, armor[i])
 		}
-		armor := equipment.Armor
-		if len(armor) < 4 {
-			extended := make([]NativeMobItem, 4)
-			copy(extended, armor)
-			armor = extended
-		}
-		armor[0] = hostileNativeStack(b.head, previous)
-		equipment.Armor = armor
 	}
+	equipment.Armor = armor
 	native := CloneNativeMobNBT(d.NativeNBT)
 	if native == nil {
 		native = make(map[string]any)
@@ -194,6 +207,9 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 		"PatrolLeader": b.patrolLeader, "Patrolling": b.patrolling, "FreezingTime": int32(b.freezingTime), "StrayConversionTime": int32(-1)}
 	if b.strayConverting {
 		javaState["StrayConversionTime"] = int32(b.strayConversionTime)
+	}
+	if len(b.dropChances) != 0 {
+		javaState["drop_chances"] = encodeDropChances(b.dropChances)
 	}
 	if b.hasPatrolTarget {
 		javaState["patrol_target"] = []int32{int32(b.patrolTarget[0]), int32(b.patrolTarget[1]), int32(b.patrolTarget[2])}
@@ -230,7 +246,8 @@ type hostileConfig struct {
 	health, speed                                           float64
 	healthSet, speedSet, baby, canBreakDoors, canPickupLoot bool
 	conversionTime, cureTicks                               int
-	main, head                                              item.Stack
+	main, off, feet, legs, chest, head                      item.Stack
+	dropChances                                             map[int]float32
 	profession, villagerType                                string
 	villagerLevel, villagerXP, villagerAge                  int
 	offers                                                  []MerchantOffer
@@ -268,7 +285,7 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 	d.Data = &hostileState{
 		health: NewHealthManager(health, t.health), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0),
 		speed: speed, attack: t.attack, kind: c.kind, baby: c.baby, canBreakDoors: c.canBreakDoors, canPickupLoot: c.canPickupLoot,
-		conversionTime: c.conversionTime, cureTicks: c.cureTicks, main: c.main, head: c.head, profession: c.profession, villagerType: c.villagerType,
+		conversionTime: c.conversionTime, cureTicks: c.cureTicks, main: c.main, off: c.off, feet: c.feet, legs: c.legs, chest: c.chest, head: c.head, dropChances: maps.Clone(c.dropChances), profession: c.profession, villagerType: c.villagerType,
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
 		raiderState:  raiderState{patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget},
 		freezingTime: c.freezingTime, strayConversionTime: c.strayConversionTime, strayConverting: c.strayConverting,
@@ -336,7 +353,8 @@ type hostileState struct {
 	kind                                   string
 	baby, canBreakDoors, canPickupLoot     bool
 	conversionTime                         int
-	main, head                             item.Stack
+	main, off, feet, legs, chest, head     item.Stack
+	dropChances                            map[int]float32
 	profession, villagerType               string
 	villagerLevel, villagerXP, villagerAge int
 	offers                                 []MerchantOffer
@@ -465,10 +483,11 @@ func (m *HostileMob) CloseIn(tx *world.Tx) error {
 	return m.Ent.CloseIn(tx)
 }
 func (m *HostileMob) HeldItems() (item.Stack, item.Stack) {
-	return m.state().main, item.Stack{}
+	return m.state().main, m.state().off
 }
 func (m *HostileMob) EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack) {
-	return m.state().head, item.Stack{}, item.Stack{}, item.Stack{}
+	b := m.state()
+	return b.head, b.chest, b.legs, b.feet
 }
 func (m *HostileMob) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseContext) bool {
 	b := m.state()
@@ -607,9 +626,11 @@ func (m *HostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	if !ok {
 		return 0, false
 	}
+	d = mobArmourAbsorb(b, hostileBaseArmour(b.kind), d, s)
 	if r, ok := b.effects.Effect(effect.Resistance); ok {
 		d *= effect.Resistance.Multiplier(s, r.Level())
 	}
+	d = mobProtectionAbsorb(b, d, s)
 	b.health.AddHealth(-d)
 	b.ai.Hurt(s)
 	m.viewAction(HurtAction{})
@@ -623,6 +644,17 @@ func (m *HostileMob) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	}
 	return d, true
 }
+
+// hostileBaseArmour is the armour attribute the kind has without equipment:
+// zombies have 2.
+func hostileBaseArmour(kind string) float64 {
+	switch kind {
+	case "minecraft:zombie", "minecraft:husk", "minecraft:zombie_villager":
+		return 2
+	}
+	return 0
+}
+
 func (m *HostileMob) Heal(h float64, _ world.HealingSource) float64 {
 	if h <= 0 || m.Dead() {
 		return 0
@@ -677,32 +709,20 @@ func (m *HostileMob) dropLoot(src world.DamageSource) {
 	dropAllDeathLoot(m.tx, m, src)
 }
 
-// headDropChance is the Java drop chance of the head slot: a raid banner is
-// preserved, other headgear uses the default 8.5%.
-func (m *HostileMob) headDropChance() float32 {
-	if m.state().headDropGuaranteed {
-		return 2
-	}
-	return .085
-}
-
-// dropCustomDeathLoot ports Mob.dropCustomDeathLoot for the mainhand and
-// head slots the hostile mob represents.
+// dropCustomDeathLoot ports Mob.dropCustomDeathLoot for the equipment of
+// the hostile mob.
 func (m *HostileMob) dropCustomDeathLoot(killedByPlayer bool, looting int) {
-	b := m.state()
-	dropMobEquipment(m.tx, m, b.main, .085, killedByPlayer, looting)
-	dropMobEquipment(m.tx, m, b.head, m.headDropChance(), killedByPlayer, looting)
+	dropEquipmentOnDeath(m.tx, m, m.state(), killedByPlayer, looting)
 }
 
 // experienceEquipment counts the worn items that may drop, which
 // Mob.getBaseExperienceReward rewards.
 func (m *HostileMob) experienceEquipment() int {
 	b, n := m.state(), 0
-	if !b.main.Empty() {
-		n++
-	}
-	if !b.head.Empty() && m.headDropChance() <= 1 {
-		n++
+	for slot := range equipmentSlots {
+		if !b.equipment(slot).Empty() && b.dropChance(slot) <= 1 {
+			n++
+		}
 	}
 	return n
 }
@@ -831,7 +851,11 @@ const (
 	newChickenJockey
 )
 
-func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *vanilla.Random, withEquipment bool, group *world.EntitySpawnGroup) (baby, canBreakDoors, canPickupLoot bool, main item.Stack, jockey chickenJockey) {
+// finalizeZombieSpawn ports what Zombie.finalizeSpawn decides for all
+// zombies. populate fills in the equipment of the kind, as its
+// populateDefaultEquipmentSlots does, before its spawn equipment may be
+// enchanted and, on Halloween, a pumpkin put on its head.
+func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *vanilla.Random, group *world.EntitySpawnGroup, h equipmentHolder, populate func()) (baby, canBreakDoors, canPickupLoot bool, jockey chickenJockey) {
 	if r == nil {
 		return
 	}
@@ -857,22 +881,11 @@ func finalizeZombieSpawn(reason string, difficulty world.LocalDifficulty, r *van
 		}
 	}
 	canBreakDoors = float64(r.NextFloat()) < float64(difficulty.SpecialMultiplier())*.1
-	if withEquipment && reason != "conversion" {
-		chance := .01
-		if difficulty.Base == world.DifficultyHard {
-			chance = .05
-		}
-		if float64(r.NextFloat()) < chance {
-			switch r.NextInt(6) {
-			case 0:
-				main = item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1)
-			case 1:
-				main = item.NewStack(item.Spear{Tier: item.ToolTierIron}, 1)
-			default:
-				main = item.NewStack(item.Shovel{Tier: item.ToolTierIron}, 1)
-			}
-		}
+	if reason != "conversion" {
+		populate()
+		populateDefaultEnchantments(h, r, difficulty.SpecialMultiplier())
 	}
+	halloweenHead(h, r)
 	return
 }
 func raidDamageAttacker(src world.DamageSource) world.Entity {
@@ -910,42 +923,76 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 		return
 	}
 	b := m.state()
+	var difficulty world.LocalDifficulty
+	if m.tx != nil {
+		difficulty = m.tx.LocalDifficulty(cube.PosFromVec3(m.Position()))
+	}
+	special, hard := difficulty.SpecialMultiplier(), difficulty.Base == world.DifficultyHard
 	switch b.kind {
 	case "minecraft:zombie", "minecraft:zombie_villager", "minecraft:husk":
 		if m.tx == nil {
 			return
 		}
-		difficulty := m.tx.LocalDifficulty(cube.PosFromVec3(m.Position()))
-		baby, doors, pickup, main, jockey := finalizeZombieSpawn(reason, difficulty, r, true, m.H().SpawnGroup())
+		baby, doors, pickup, jockey := finalizeZombieSpawn(reason, difficulty, r, m.H().SpawnGroup(), b, func() {
+			// Zombie.populateDefaultEquipmentSlots: armour, then now and
+			// then an iron weapon.
+			populateDefaultArmour(b, r, special, hard)
+			chance := float32(.01)
+			if hard {
+				chance = .05
+			}
+			if r.NextFloat() < chance {
+				switch r.NextInt(6) {
+				case 0:
+					b.main = item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1)
+				case 1:
+					b.main = item.NewStack(item.Spear{Tier: item.ToolTierIron}, 1)
+				default:
+					b.main = item.NewStack(item.Shovel{Tier: item.ToolTierIron}, 1)
+				}
+			}
+		})
 		b.baby, b.canBreakDoors, b.canPickupLoot = baby, doors, pickup
 		rideChickenJockey(m.tx, m, jockey)
-		if !main.Empty() {
-			b.main = main
-		}
 		if b.baby {
 			b.speed = hostileTypeFor(b.kind).speed * 1.5
 		}
 		if b.kind == "minecraft:husk" {
 			if reason != "conversion" {
-				b.canPickupLoot = float64(r.NextFloat()) < .55*float64(difficulty.SpecialMultiplier())
+				b.canPickupLoot = r.NextFloat() < .55*special
 			}
 			m.finalizeHuskCamel(reason, r)
 		}
 	case "minecraft:skeleton", "minecraft:stray", "minecraft:bogged", "minecraft:parched":
+		// AbstractSkeleton.finalizeSpawn.
 		if reason != "conversion" {
-			if m.tx != nil {
-				b.canPickupLoot = float64(r.NextFloat()) < .55*float64(m.tx.LocalDifficulty(cube.PosFromVec3(m.Position())).SpecialMultiplier())
-			}
+			populateDefaultArmour(b, r, special, hard)
 			b.main = item.NewStack(item.Bow{}, 1)
+			populateDefaultEnchantments(b, r, special)
+			b.canPickupLoot = r.NextFloat() < .55*special
+			halloweenHead(b, r)
+		}
+	case "minecraft:wither_skeleton":
+		// WitherSkeleton.populateDefaultEquipmentSlots gives it a stone
+		// sword and neither armour nor enchantments.
+		if reason != "conversion" {
+			b.main = item.NewStack(item.Sword{Tier: item.ToolTierStone}, 1)
+			b.canPickupLoot = r.NextFloat() < .55*special
+			halloweenHead(b, r)
 		}
 	case "minecraft:pillager":
 		b.main = item.NewStack(item.Crossbow{}, 1)
-	case "minecraft:wither_skeleton":
-		b.main = item.NewStack(item.Sword{Tier: item.ToolTierStone}, 1)
+		populateDefaultEnchantments(b, r, special)
+		// Pillager.enchantSpawnedWeapon: one in 300 crossbows pierce.
+		if r.NextInt(300) == 0 {
+			b.main = b.main.WithEnchantments(item.NewEnchantment(enchantment.Piercing, 1))
+		}
 	case "minecraft:vindicator":
 		b.main = item.NewStack(item.Axe{Tier: item.ToolTierIron}, 1)
 	case "minecraft:vex":
 		b.main = item.NewStack(item.Sword{Tier: item.ToolTierIron}, 1)
+		b.setDropChance(slotMainhand, 0)
+		populateDefaultEnchantments(b, r, special)
 	}
 	// PatrollingMonster.finalizeSpawn: outside patrols, events and
 	// structures, 6% of raiders that can lead become patrol leaders; patrol
@@ -955,6 +1002,10 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 	}
 	if reason == "patrol" {
 		b.patrolling = true
+	}
+	if b.kind == "minecraft:vindicator" {
+		// Vindicator.finalizeSpawn equips it after PatrollingMonster's.
+		populateDefaultEnchantments(b, r, special)
 	}
 	if b.raidLeader || b.patrolLeader {
 		b.head = ominousBannerStack()
