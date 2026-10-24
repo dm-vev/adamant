@@ -733,6 +733,9 @@ type EntityRegistryConfig struct {
 	NaturalSpawnTick func(*Tx)
 	// EntityCollisions pushes overlapping entities apart once per world tick.
 	EntityCollisions func(*Tx)
+	// SpawnOriginalMobs spawns the creatures of a newly generated chunk, as
+	// NaturalSpawner.spawnMobsForChunkGeneration.
+	SpawnOriginalMobs func(tx *Tx, pos ChunkPos)
 	// EncodeSharedNBT and DecodeSharedNBT persist state many entity types
 	// share beside each type's own codec, such as the status effects of mobs.
 	EncodeSharedNBT func(data *EntityData) map[string]any

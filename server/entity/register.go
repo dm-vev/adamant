@@ -148,6 +148,7 @@ var conf = world.EntityRegistryConfig{
 	TieLeashedEntities: TieLeashedEntities,
 	Painting:           CreatePainting,
 	EntityCollisions:   TickEntityCollisions,
+	SpawnOriginalMobs:  SpawnOriginalMobs,
 	EncodeSharedNBT:    encodeSharedNBT,
 	DecodeSharedNBT:    decodeSharedNBT,
 	NewFromBucket:      NewFromBucket,

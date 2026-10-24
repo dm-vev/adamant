@@ -2610,6 +2610,7 @@ func (w *World) runGenerationTask(task generationTask) {
 	// Perform the actual chunk generation.
 	// The generator implementation is responsible for populating the chunk’s data.
 	task.col.generation = w.conf.Generator.GenerateChunk(task.pos, task.col.Chunk, task.context)
+	task.col.generation.pos = task.pos
 
 	task.col.BlockEntities = w.generatedBlockEntities(task.pos, task.col.Chunk)
 	if task.col.BlockEntities == nil {
@@ -3448,6 +3449,9 @@ func (w *World) finishGeneration(tx *Tx, c *Column) {
 	}
 	for _, e := range result.Entities {
 		tx.AddEntity(e)
+	}
+	if spawn := w.conf.Entities.Config().SpawnOriginalMobs; result.SpawnOriginalMobs && spawn != nil {
+		spawn(tx, result.pos)
 	}
 }
 
