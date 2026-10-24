@@ -442,10 +442,10 @@ func (s *piglinState) finishConversion(m *Mob) {
 		}
 	}
 	opts := world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion"}
-	z := m.tx.AddEntity(opts.New(ZombifiedPiglinType{}, zombifiedPiglinConfig{health: s.health.Health(), baby: s.baby, main: s.main}))
+	opts.SpawnFinalized = true
+	z := convertMob(m.tx, m.Self, opts.New(ZombifiedPiglinType{}, zombifiedPiglinConfig{baby: s.baby}), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
 	z.(*ZombifiedPiglin).AddEffect(effect.New(effect.Nausea, 1, 10*time.Second))
 	s.dead = true
-	_ = m.CloseIn(m.tx)
 }
 
 // makeSound ports Mob.makeSound for piglins.

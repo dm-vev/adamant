@@ -208,6 +208,7 @@ var bedrockSoundNames = map[string]string{
 	"entity.zombie.attack_wooden_door":          "mob.zombie.wood",
 	"entity.zombie.break_wooden_door":           "mob.zombie.woodbreak",
 	"entity.zombie_villager.converted":          "mob.zombie.unfect",
+	"entity.zombie_villager.cure":               "mob.zombie.remedy",
 	"entity.zombified_piglin.angry":             "mob.zombiepig.zpigangry",
 	"item.armor.equip_nautilus":                 "armor.equip_generic",
 	"item.armor.equip_wolf":                     "armor.equip_wolf",

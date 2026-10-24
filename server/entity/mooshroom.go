@@ -236,8 +236,7 @@ func (m *Mooshroom) Shear(tx *world.Tx) item.Stack {
 	}
 	stacks, err := loot.Generate("minecraft:shearing/mooshroom/"+name, rand.Int64(), loot.Context{Entity: "minecraft:mooshroom", Origin: m.Position()})
 	opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: m.Rotation()}
-	tx.AddEntity(NewCow(opts))
-	_ = m.CloseIn(tx)
+	convertMob(tx, m, NewCow(opts), conversion{})
 	if err != nil || len(stacks) == 0 {
 		return item.Stack{}
 	}

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
@@ -360,3 +361,141 @@ func (b *oceanBehaviour) afterAiStep(m *Mob) {
 // notSpear ports the wantsToPickUp of AbstractSkeleton and Drowned, which
 // leave spears.
 func notSpear(s item.Stack) bool { return !inItemTag(s, "spears") }
+
+// mobGear holds Java's six equipment slots of a mob, their drop chances and
+// whether the mob may pick up loot, for mobs whose state embeds it.
+type mobGear struct {
+	items       [equipmentSlots]item.Stack
+	dropChances map[int]float32
+	pickUpLoot  bool
+}
+
+func (g *mobGear) equipment(slot int) *item.Stack { return &g.items[slot] }
+
+func (g *mobGear) dropChance(slot int) float32 {
+	if chance, ok := g.dropChances[slot]; ok {
+		return chance
+	}
+	return defaultDropChance
+}
+
+func (g *mobGear) setDropChance(slot int, chance float32) {
+	if g.dropChances == nil {
+		g.dropChances = make(map[int]float32)
+	}
+	g.dropChances[slot] = chance
+}
+
+func (g *mobGear) canPickUpLoot() bool     { return g.pickUpLoot }
+func (g *mobGear) setCanPickUpLoot(v bool) { g.pickUpLoot = v }
+
+// heldItems returns what the mob holds in its main and off hand.
+func (g *mobGear) heldItems() (item.Stack, item.Stack) {
+	return g.items[slotMainhand], g.items[slotOffhand]
+}
+
+// armour returns what the mob wears, head first.
+func (g *mobGear) armour() (item.Stack, item.Stack, item.Stack, item.Stack) {
+	return g.items[slotHead], g.items[slotChest], g.items[slotLegs], g.items[slotFeet]
+}
+
+// decodeGear reads the equipment of a mob from Java's equipment and
+// drop_chances, Bedrock's Mainhand, Offhand and Armor lists and the
+// CanPickUpLoot flag.
+func decodeGear(n map[string]any) mobGear {
+	var g mobGear
+	if source, ok := n["equipment"].(map[string]any); ok {
+		for slot, name := range equipmentSlotNames {
+			if raw, ok := source[name].(map[string]any); ok {
+				g.items[slot], _ = item.StackFromStructureNBT(raw)
+			}
+		}
+	}
+	equipment := ReadNativeMobEquipment(n)
+	if _, ok := n["Mainhand"]; ok && len(equipment.Mainhand) > 0 {
+		g.items[slotMainhand] = hostileStackFromNative(equipment.Mainhand[0])
+	}
+	if _, ok := n["Offhand"]; ok && len(equipment.Offhand) > 0 {
+		g.items[slotOffhand] = hostileStackFromNative(equipment.Offhand[0])
+	}
+	for i, native := range equipment.Armor {
+		if i < 4 {
+			g.items[slotHead-i] = hostileStackFromNative(native)
+		}
+	}
+	g.dropChances = readDropChances(n)
+	if java := ReadNativeMobJavaState(n); java != nil {
+		if g.dropChances == nil {
+			g.dropChances = readDropChances(java)
+		}
+		g.pickUpLoot = nbtconv.Bool(java, "CanPickUpLoot")
+	}
+	g.pickUpLoot = g.pickUpLoot || nbtconv.Bool(n, "CanPickUpLoot")
+	return g
+}
+
+// encodeGear writes the equipment of a mob into the native NBT out, keeping
+// what the previous native NBT knew of its items, and returns the Java state
+// to keep with it.
+func (g *mobGear) encodeGear(previous, out map[string]any) map[string]any {
+	equipment := ReadNativeMobEquipment(previous)
+	var prevMain, prevOff NativeMobItem
+	if len(equipment.Mainhand) > 0 {
+		prevMain = equipment.Mainhand[0]
+	}
+	if len(equipment.Offhand) > 0 {
+		prevOff = equipment.Offhand[0]
+	}
+	native := func(stack item.Stack, prev NativeMobItem) NativeMobItem {
+		if stack.Empty() {
+			return nativeMobItemFromStack(stack)
+		}
+		return hostileNativeStack(stack, prev)
+	}
+	equipment.Mainhand = []NativeMobItem{native(g.items[slotMainhand], prevMain)}
+	equipment.Offhand = []NativeMobItem{native(g.items[slotOffhand], prevOff)}
+	armor := make([]NativeMobItem, 4)
+	copy(armor, equipment.Armor)
+	for i := range armor {
+		armor[i] = native(g.items[slotHead-i], armor[i])
+	}
+	equipment.Armor = armor
+	for k, v := range EncodeNativeMobEquipment(equipment) {
+		out[k] = v
+	}
+	out["CanPickUpLoot"] = byte(boolByte(g.pickUpLoot))
+	java := map[string]any{}
+	if len(g.dropChances) != 0 {
+		java["drop_chances"] = encodeDropChances(g.dropChances)
+	}
+	return java
+}
+
+// afterAiStep picks up loot as Mob.aiStep does for zombified piglins that
+// may.
+func (s *zombifiedPiglinState) afterAiStep(m *Mob) {
+	if s.pickUpLoot && !s.dead {
+		pickUpLoot(m, s, nil, nil)
+	}
+}
+
+func (s *piglinState) equipment(slot int) *item.Stack {
+	return [...]*item.Stack{&s.main, &s.off, &s.armor[3], &s.armor[2], &s.armor[1], &s.armor[0]}[slot]
+}
+
+func (s *piglinState) dropChance(slot int) float32 {
+	switch {
+	case slot == slotMainhand && s.guaranteedMain, slot == slotOffhand && s.guaranteedOff:
+		return 2
+	}
+	return defaultDropChance
+}
+
+func (s *piglinState) setDropChance(slot int, chance float32) {
+	switch slot {
+	case slotMainhand:
+		s.guaranteedMain = chance > 1
+	case slotOffhand:
+		s.guaranteedOff = chance > 1
+	}
+}

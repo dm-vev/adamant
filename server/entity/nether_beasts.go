@@ -236,10 +236,10 @@ func (s *netherBeastState) converting(m *Mob) bool {
 // finishConversion ports Hoglin.finishConversion: the hoglin becomes a
 // zoglin, sick for ten seconds.
 func (s *netherBeastState) finishConversion(m *Mob) {
-	z := m.tx.AddEntity(world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion"}.New(ZoglinType, netherBeastConfig{kind: zoglinKind, age: min(s.age, 0)}))
+	opts := world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion", SpawnFinalized: true}
+	z := convertMob(m.tx, m.Self, opts.New(ZoglinType, netherBeastConfig{kind: zoglinKind, age: min(s.age, 0)}), conversion{keepEquipment: true})
 	z.(*Zoglin).AddEffect(effect.New(effect.Nausea, 1, 10*time.Second))
 	s.dead = true
-	_ = m.CloseIn(m.tx)
 }
 
 // walkTargetValue ports Hoglin.getWalkTargetValue: hoglins keep away from

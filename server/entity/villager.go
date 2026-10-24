@@ -561,6 +561,18 @@ func (v *Villager) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if v.Dead() || d <= 0 {
 		return 0, false
 	}
+	if _, bolt := src.(LightningDamageSource); bolt && v.tx.World().Difficulty() != world.DifficultyPeaceful {
+		// Villager.thunderHit: lightning turns a villager into a witch
+		// that stays.
+		v.releasePOIs(v.tx)
+		opts := world.EntitySpawnOpts{Position: v.Position(), Rotation: v.Rotation(), SpawnReason: "conversion"}
+		witch := convertMob(v.tx, v, opts.New(WitchType, WitchConfig{}), conversion{})
+		if p, ok := witch.(interface{ SetPersistenceRequired(bool) }); ok {
+			p.SetPersistenceRequired(true)
+		}
+		b.dead = true
+		return 0, true
+	}
 	var ok bool
 	if d, ok = b.ai.DamageCooldown(v.tx, d); !ok {
 		return 0, false

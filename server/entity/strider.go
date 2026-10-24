@@ -437,7 +437,9 @@ func (s *Strider) FinalizeSpawn(reason string, r *vanilla.Random) {
 	b.age = 0
 	if r.NextInt(30) == 0 {
 		opts := world.EntitySpawnOpts{Position: s.Position(), Rotation: s.Rotation(), SpawnReason: "jockey"}
-		jockey := opts.New(ZombifiedPiglinType{}, zombifiedPiglinConfig{main: item.NewStack(item.WarpedFungusOnAStick{}, 1)})
+		conf := zombifiedPiglinConfig{}
+		conf.gear.items[slotMainhand] = item.NewStack(item.WarpedFungusOnAStick{}, 1)
+		jockey := opts.New(ZombifiedPiglinType{}, conf)
 		b.saddled = true
 		if s.tx != nil {
 			s.Mount(s.tx, s.tx.AddEntity(jockey))

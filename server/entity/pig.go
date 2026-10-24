@@ -262,14 +262,15 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	if p.Dead() || v <= 0 {
 		return 0, false
 	}
-	if bolt, ok := s.(LightningDamageSource); ok {
+	if bolt, ok := s.(LightningDamageSource); ok && p.tx.World().Difficulty() != world.DifficultyPeaceful {
 		b := p.behaviour()
 		if bolt.BoltUUID == "" || bolt.BoltUUID != b.lastLightningBolt {
+			// Pig.thunderHit: lightning turns a pig into a zombified piglin
+			// with a golden sword that stays.
 			b.lastLightningBolt = bolt.BoltUUID
 			opts := world.EntitySpawnOpts{Position: p.Position(), Rotation: p.Rotation()}
-			p.tx.AddEntity(NewZombifiedPiglin(opts))
+			convertMob(p.tx, p, NewZombifiedPiglin(opts), conversion{preserveCanPickUpLoot: true})
 			b.dead = true
-			_ = p.CloseIn(p.tx)
 			return 0, true
 		}
 	}

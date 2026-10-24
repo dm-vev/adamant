@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/item/enchantment"
+	"github.com/google/uuid"
 	"hash/fnv"
 	"maps"
 	"math/rand/v2"
@@ -92,6 +93,11 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 	c.baby, c.canBreakDoors, c.canPickupLoot = nbtconv.Bool(n, "IsBaby"), nbtconv.Bool(n, "CanBreakDoors"), nbtconv.Bool(n, "CanPickUpLoot")
 	if java := ReadNativeMobJavaState(n); java != nil {
 		c.conversionTime = int(nbtconv.Int32(java, "InWaterTime"))
+		if _, ok := java["DrownedConversionTime"]; ok {
+			if n := nbtconv.Int32(java, "DrownedConversionTime"); n != -1 {
+				c.drownedConversionTime, c.drownedConverting = int(n), true
+			}
+		}
 		c.raidID, c.raidWave, c.raidLeader = nbtconv.Int64(java, "RaidID"), int(nbtconv.Int32(java, "RaidWave")), nbtconv.Bool(java, "RaidLeader")
 		c.headDropGuaranteed = nbtconv.Bool(java, "RaidBannerDrop")
 		c.patrolLeader, c.patrolling = nbtconv.Bool(java, "PatrolLeader"), nbtconv.Bool(java, "Patrolling")
@@ -118,6 +124,9 @@ func (t hostileMobType) DecodeNBT(n map[string]any, d *world.EntityData) {
 		}
 	}
 	c.cureTicks = int(nbtconv.Int32(n, "ConversionTime"))
+	if java := ReadNativeMobJavaState(n); java != nil {
+		c.cureStarter = nbtconv.String(java, "ConversionPlayer")
+	}
 	if source, ok := n["equipment"].(map[string]any); ok {
 		for slot, name := range equipmentSlotNames {
 			if raw, ok := source[name].(map[string]any); ok {
@@ -204,7 +213,13 @@ func (hostileMobType) EncodeNBT(d *world.EntityData) map[string]any {
 		native[key] = value
 	}
 	javaState := map[string]any{"InWaterTime": int32(b.conversionTime), "RaidID": b.raidID, "RaidWave": int32(b.raidWave), "RaidLeader": b.raidLeader, "RaidBannerDrop": b.headDropGuaranteed,
-		"PatrolLeader": b.patrolLeader, "Patrolling": b.patrolling, "FreezingTime": int32(b.freezingTime), "StrayConversionTime": int32(-1)}
+		"PatrolLeader": b.patrolLeader, "Patrolling": b.patrolling, "FreezingTime": int32(b.freezingTime), "StrayConversionTime": int32(-1), "DrownedConversionTime": int32(-1)}
+	if b.drownedConverting {
+		javaState["DrownedConversionTime"] = int32(b.drownedConversionTime)
+	}
+	if b.cureStarter != "" {
+		javaState["ConversionPlayer"] = b.cureStarter
+	}
 	if b.strayConverting {
 		javaState["StrayConversionTime"] = int32(b.strayConversionTime)
 	}
@@ -246,6 +261,9 @@ type hostileConfig struct {
 	health, speed                                           float64
 	healthSet, speedSet, baby, canBreakDoors, canPickupLoot bool
 	conversionTime, cureTicks                               int
+	cureStarter                                             string
+	drownedConversionTime                                   int
+	drownedConverting                                       bool
 	main, off, feet, legs, chest, head                      item.Stack
 	dropChances                                             map[int]float32
 	profession, villagerType                                string
@@ -285,7 +303,7 @@ func (c hostileConfig) Apply(d *world.EntityData) {
 	d.Data = &hostileState{
 		health: NewHealthManager(health, t.health), effects: NewEffectManager(), mc: &MovementComputer{Gravity: gravity, Drag: .02, DragBeforeGravity: true}, random: vanilla.NewLegacyRandom(0),
 		speed: speed, attack: t.attack, kind: c.kind, baby: c.baby, canBreakDoors: c.canBreakDoors, canPickupLoot: c.canPickupLoot,
-		conversionTime: c.conversionTime, cureTicks: c.cureTicks, main: c.main, off: c.off, feet: c.feet, legs: c.legs, chest: c.chest, head: c.head, dropChances: maps.Clone(c.dropChances), profession: c.profession, villagerType: c.villagerType,
+		conversionTime: c.conversionTime, drownedConversionTime: c.drownedConversionTime, drownedConverting: c.drownedConverting, cureTicks: c.cureTicks, cureStarter: c.cureStarter, main: c.main, off: c.off, feet: c.feet, legs: c.legs, chest: c.chest, head: c.head, dropChances: maps.Clone(c.dropChances), profession: c.profession, villagerType: c.villagerType,
 		raidID: c.raidID, raidWave: c.raidWave, raidLeader: c.raidLeader, headDropGuaranteed: c.headDropGuaranteed, spawnData: CloneNativeMobNBT(c.spawnData),
 		raiderState:  raiderState{patrolLeader: c.patrolLeader, patrolling: c.patrolling, patrolTarget: c.patrolTarget, hasPatrolTarget: c.hasPatrolTarget},
 		freezingTime: c.freezingTime, strayConversionTime: c.strayConversionTime, strayConverting: c.strayConverting,
@@ -349,10 +367,13 @@ type hostileState struct {
 	random                                 vanilla.Random
 	speed, attack                          float64
 	cureTicks                              int
+	cureStarter                            string
 	dead                                   bool
 	kind                                   string
 	baby, canBreakDoors, canPickupLoot     bool
 	conversionTime                         int
+	drownedConversionTime                  int
+	drownedConverting                      bool
 	main, off, feet, legs, chest, head     item.Stack
 	dropChances                            map[int]float32
 	profession, villagerType               string
@@ -506,29 +527,85 @@ func (m *HostileMob) AcceptItem(from world.Entity, tx *world.Tx, ctx *item.UseCo
 		return false
 	}
 	ctx.SubtractFromCount(1)
+	// ZombieVillager.startConverting: the cure takes three to five minutes,
+	// during which the zombie villager is strong.
+	b.cureTicks = 3600 + int(b.random.NextInt(2401))
+	b.cureStarter = from.H().UUID().String()
 	m.RemoveEffect(effect.Weakness)
-	b.cureTicks = 3600 + int(b.random.NextInt(2400))
+	m.AddEffect(effect.New(effect.Strength, 1, time.Duration(b.cureTicks)*time.Second/20))
+	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.zombie_villager.cure", Volume: 1 + float64(b.random.NextFloat()), Pitch: float64(b.random.NextFloat())*.7 + .3})
+	m.updateState()
 	return true
 }
 func (m *HostileMob) Interact(tx *world.Tx, u item.User, ctx *item.UseContext) bool {
 	return m.AcceptItem(u, tx, ctx)
 }
+
+// tickCure ports ZombieVillager.tick while it converts: the cure goes
+// faster near beds and iron bars, and turns the zombie villager into the
+// villager it was.
 func (m *HostileMob) tickCure(tx *world.Tx) bool {
 	b := m.state()
-	if b.kind != "minecraft:zombie_villager" || b.cureTicks <= 0 {
+	if b.kind != "minecraft:zombie_villager" || b.cureTicks <= 0 || m.Dead() {
 		return false
 	}
-	b.cureTicks--
-	if b.cureTicks > 0 {
+	if b.cureTicks -= m.cureProgress(tx); b.cureTicks > 0 {
 		return false
 	}
-	config := VillagerBehaviourConfig{Health: b.health.Health(), XP: b.villagerXP, Level: b.villagerLevel, Age: b.villagerAge, Profession: b.profession, Type: b.villagerType, Offers: append([]MerchantOffer(nil), b.offers...)}
-	opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: m.Rotation()}
-	tx.AddEntity(opts.New(VillagerType, config))
-	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.zombie_villager.converted", Volume: 1, Pitch: 1})
-	_ = m.CloseIn(tx)
+	m.finishCure(tx)
 	return true
 }
+
+// cureProgress ports ZombieVillager.getConversionProgress: now and then each
+// of up to 14 blocks near that speed curing up speeds it up.
+func (m *HostileMob) cureProgress(tx *world.Tx) int {
+	b, amount := m.state(), 1
+	if b.random.NextFloat() >= .01 {
+		return amount
+	}
+	p, special := m.Position(), 0
+	for x := int(p[0]) - 4; x < int(p[0])+4 && special < 14; x++ {
+		for y := int(p[1]) - 4; y < int(p[1])+4 && special < 14; y++ {
+			for z := int(p[2]) - 4; z < int(p[2])+4 && special < 14; z++ {
+				if blockInTag(tx.Block(cube.Pos{x, y, z}), "speeds_up_zombie_villager_curing") {
+					if b.random.NextFloat() < .3 {
+						amount++
+					}
+					special++
+				}
+			}
+		}
+	}
+	return amount
+}
+
+// finishCure ports ZombieVillager.finishConversion: the villager keeps the
+// data, trades and experience of the zombie villager, drops only the items
+// it picked up, and the player who cured it gains its favour.
+func (m *HostileMob) finishCure(tx *world.Tx) {
+	b := m.state()
+	for slot := range equipmentSlots {
+		if stack := *b.equipment(slot); !stack.Empty() && b.dropChance(slot) > 1 {
+			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: m.Position()}, stack))
+		}
+		*b.equipment(slot) = item.Stack{}
+	}
+	config := VillagerBehaviourConfig{XP: b.villagerXP, Level: b.villagerLevel, Age: b.villagerAge, Profession: b.profession, Type: b.villagerType, Offers: append([]MerchantOffer(nil), b.offers...)}
+	opts := world.EntitySpawnOpts{Position: m.Position(), Rotation: m.Rotation(), SpawnReason: "conversion"}
+	converted := convertMob(tx, m, opts.New(VillagerType, config), conversion{})
+	villager, ok := converted.(*Villager)
+	if !ok {
+		return
+	}
+	if id, err := uuid.Parse(b.cureStarter); err == nil {
+		if p, ok := tx.EntityByUUID(id); ok && isPlayerEntity(p) {
+			villager.OnReputationEventFrom("zombie_villager_cured", p)
+		}
+	}
+	villager.AddEffect(effect.New(effect.Nausea, 1, 10*time.Second))
+	tx.PlaySound(m.Position(), sound.Custom{Name: "entity.zombie_villager.converted", Volume: 1, Pitch: 1})
+}
+
 func (m *HostileMob) Tick(tx *world.Tx, n int64) {
 	b := m.state()
 	b.effects.Tick(m, tx)
@@ -553,24 +630,8 @@ func (b *hostileState) Tick(e *Ent, tx *world.Tx) *Movement {
 	if b.kind == "minecraft:skeleton" && b.tickStrayConversion(e, tx) {
 		return nil
 	}
-	if b.kind == "minecraft:zombie" || b.kind == "minecraft:husk" {
-		p := cube.PosFromVec3(e.Position())
-		liquid, wet := tx.Liquid(p)
-		if wet && liquid.LiquidType() == "water" {
-			b.conversionTime++
-			if b.conversionTime >= 600 {
-				opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion"}
-				if b.kind == "minecraft:husk" {
-					tx.AddEntity(NewZombie(opts))
-				} else {
-					tx.AddEntity(NewDrowned(opts))
-				}
-				_ = e.CloseIn(tx)
-				return nil
-			}
-		} else if b.conversionTime > 0 {
-			b.conversionTime = max(0, b.conversionTime-2)
-		}
+	if (b.kind == "minecraft:zombie" || b.kind == "minecraft:husk" || b.kind == "minecraft:zombie_villager") && b.tickDrowning(e, tx) {
+		return nil
 	}
 	b.joinRaid(e, tx)
 	return b.aiTick(e)
@@ -766,15 +827,59 @@ func (b *hostileState) tickStrayConversion(e *Ent, tx *world.Tx) bool {
 	if b.strayConversionTime--; b.strayConversionTime >= 0 {
 		return false
 	}
-	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion"}
-	tx.AddEntity(opts.New(StrayType, hostileConfig{kind: StrayType.id, main: b.main, head: b.head, canPickupLoot: b.canPickupLoot}))
+	// Mob.convertTo does not finalize the spawn of the mob it makes.
+	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion", SpawnFinalized: true}
+	convertMob(tx, hostileSelf(e, b.kind), opts.New(StrayType, hostileConfig{kind: StrayType.id}), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
 	tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "convert_to_stray", ExtraData: -1})
-	_ = e.CloseIn(tx)
 	return true
 }
 
-// Shaking reports whether the skeleton shakes while it converts to a stray.
-func (m *HostileMob) Shaking() bool { return m.state().strayConverting }
+// Shaking reports whether the mob shakes while it converts: a skeleton to a
+// stray, a zombie to a drowned, a zombie villager being cured.
+func (m *HostileMob) Shaking() bool {
+	b := m.state()
+	return b.strayConverting || b.drownedConverting || b.kind == "minecraft:zombie_villager" && b.cureTicks > 0
+}
+
+// tickDrowning ports the drowning ConversionTracker of Zombie: after 600
+// ticks with its eyes under water a zombie shakes for 300 ticks and then
+// becomes a drowned, or a husk a zombie, keeping its equipment. It reports
+// whether the zombie converted.
+func (b *hostileState) tickDrowning(e *Ent, tx *world.Tx) bool {
+	if b.ai.NoAI || b.dead || !b.ai.started {
+		return false
+	}
+	self := hostileSelf(e, b.kind)
+	m := b.ai.Mob(e, self)
+	if !eyeInWater(m) {
+		b.conversionTime = -1
+		if b.drownedConverting {
+			b.drownedConverting = false
+			e.updateState()
+		}
+		return false
+	}
+	if !b.drownedConverting {
+		if b.conversionTime++; b.conversionTime >= 600 {
+			b.drownedConversionTime, b.drownedConverting = 300, true
+			e.updateState()
+		}
+		return false
+	}
+	if b.drownedConversionTime--; b.drownedConversionTime >= 0 {
+		return false
+	}
+	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.Rotation(), SpawnReason: "conversion", SpawnFinalized: true}
+	c := conversion{keepEquipment: true, preserveCanPickUpLoot: true}
+	if b.kind == "minecraft:husk" {
+		convertMob(tx, self, opts.New(ZombieType, hostileConfig{kind: ZombieType.id, baby: b.baby}), c)
+		tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "mob.husk.convert_to_zombie", ExtraData: -1})
+		return true
+	}
+	convertMob(tx, self, opts.New(DrownedType, oceanConfig{kind: oceanDrowned, baby: b.baby}), c)
+	tx.PlaySound(e.Position(), sound.NativeEvent{SoundType: "convert_to_drowned", ExtraData: -1})
+	return true
+}
 
 // burnUndead ports Mob.burnUndead: in a sun burn tick a helmet takes the heat
 // and wears down, otherwise the mob catches fire for eight seconds.
@@ -828,9 +933,12 @@ func (m *HostileMob) convertVillager(tx *world.Tx, target world.Entity) {
 		return
 	}
 	v := villager.behaviour()
-	opts := world.EntitySpawnOpts{Position: target.Position(), Rotation: target.Rotation(), SpawnReason: "conversion"}
-	config := hostileConfig{kind: ZombieVillagerType.id, profession: v.profession, villagerType: v.villagerType, villagerLevel: v.level, villagerXP: v.xp, villagerAge: v.age, offers: append([]MerchantOffer(nil), v.offers...)}
-	tx.AddEntity(opts.New(ZombieVillagerType, config))
+	// Zombie.convertVillagerToZombieVillager finalizes the spawn of the
+	// zombie villager as a conversion that is no baby of its own accord.
+	opts := world.EntitySpawnOpts{Position: target.Position(), Rotation: target.Rotation(), SpawnReason: "conversion",
+		SpawnGroup: &world.EntitySpawnGroup{Data: &zombieSpawnGroupData{canSpawnJockey: true}}}
+	config := hostileConfig{kind: ZombieVillagerType.id, baby: v.age < 0, profession: v.profession, villagerType: v.villagerType, villagerLevel: v.level, villagerXP: v.xp, villagerAge: v.age, offers: append([]MerchantOffer(nil), v.offers...)}
+	convertMob(tx, target, opts.New(ZombieVillagerType, config), conversion{keepEquipment: true, preserveCanPickUpLoot: true})
 }
 
 type zombieSpawnGroupData struct {
@@ -952,7 +1060,11 @@ func (m *HostileMob) FinalizeSpawn(reason string, r *vanilla.Random) {
 				}
 			}
 		})
-		b.baby, b.canBreakDoors, b.canPickupLoot = baby, doors, pickup
+		// Zombie.finalizeSpawn only ever makes a zombie a baby.
+		b.baby, b.canBreakDoors = b.baby || baby, doors
+		if reason != "conversion" {
+			b.canPickupLoot = pickup
+		}
 		rideChickenJockey(m.tx, m, jockey)
 		if b.baby {
 			b.speed = hostileTypeFor(b.kind).speed * 1.5
