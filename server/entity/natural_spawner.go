@@ -46,6 +46,8 @@ func NaturalSpawnTick(tx *world.Tx) {
 	// ServerLevel.tickCustomSpawners after the chunks spawned their mobs.
 	phantomSpawnTick(tx, players, random)
 	patrolSpawnTick(tx, random)
+	catSpawnTick(tx, random)
+	villageSiegeTick(tx, w.Difficulty() != world.DifficultyPeaceful && w.MonsterSpawningEnabled(), random)
 }
 
 // levelRandoms are the Level.random streams of the worlds mobs spawn in.

@@ -69,6 +69,10 @@ func clampDifficulty(v, min, max float32) float32 {
 	return v
 }
 
+// MoonBrightness returns how bright the moon of the current night is, from 0
+// at a new moon to 1 at a full moon.
+func (w *World) MoonBrightness() float32 { return moonBrightness(int64(w.Time())) }
+
 func moonBrightness(dayTime int64) float32 {
 	const dayLength = int64(24000)
 	phase := dayTime / dayLength
