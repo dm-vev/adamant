@@ -121,6 +121,24 @@ type VibrationListener interface {
 	InitialiseVibrationListener() Block
 }
 
+// EntityVibrationListener is implemented by entities that receive game
+// events as vibrations through an EntityPositionSource, as the allay and the
+// warden do. They tick their vibrations with TickEntityVibrationSystem.
+type EntityVibrationListener interface {
+	Entity
+	// VibrationUser returns the user of the listener, nil while it does not
+	// listen.
+	VibrationUser() VibrationUser
+	VibrationData() *VibrationData
+	// VibrationListenerPosition returns where the entity hears from: its
+	// position raised by the offset of its position source.
+	VibrationListenerPosition() mgl64.Vec3
+}
+
+// entityVibrationReach is the furthest an entity listener hears from, the
+// radius of the warden and the allay, with room for the height of its ears.
+const entityVibrationReach = 16 + 4
+
 // VibrationSelector retains the best event received during a single game tick.
 type VibrationSelector struct {
 	Candidate    VibrationInfo
@@ -330,9 +348,45 @@ func (tx *Tx) EmitGameEvent(event GameEvent, position mgl64.Vec3, context GameEv
 			}
 		}
 	}
+	if !vibrationsFiltered {
+		w.scheduleEntityVibrations(tx, event, position, sourcePos, context)
+	}
 	slices.SortStableFunc(handlers, func(a, b handlerInfo) int { return cmp.Compare(a.distance, b.distance) })
 	for _, h := range handlers {
 		h.handler.HandleGameEvent(tx, h.pos, event, position, context)
+	}
+}
+
+// scheduleEntityVibrations offers a game event to the entity listeners in
+// reach, as VibrationSystem.Listener.handleGameEvent does for each.
+func (w *World) scheduleEntityVibrations(tx *Tx, event GameEvent, position mgl64.Vec3, sourcePos cube.Pos, context GameEventContext) {
+	reach := mgl64.Vec3{entityVibrationReach, entityVibrationReach, entityVibrationReach}
+	for e := range tx.EntitiesWithin(cube.Box(position[0]-reach[0], position[1]-reach[1], position[2]-reach[2], position[0]+reach[0], position[1]+reach[1], position[2]+reach[2])) {
+		listener, ok := e.(EntityVibrationListener)
+		if !ok {
+			continue
+		}
+		user, data := listener.VibrationUser(), listener.VibrationData()
+		if user == nil || data == nil || data.HasCurrent {
+			continue
+		}
+		listens := isVibrationEvent(event)
+		if filter, ok := user.(interface{ ListensToGameEvent(GameEvent) bool }); ok {
+			listens = filter.ListensToGameEvent(event)
+		}
+		if !listens {
+			continue
+		}
+		point := listener.VibrationListenerPosition()
+		distanceSquared := position.Sub(point).LenSqr()
+		radius := user.VibrationRadius()
+		if radius < 0 || distanceSquared > float64(radius)*float64(radius) {
+			continue
+		}
+		if !user.CanReceiveVibration(tx, cube.PosFromVec3(point), sourcePos, event, context) || vibrationOccluded(tx, position, point) {
+			continue
+		}
+		data.Selector.AddCandidate(makeVibrationInfo(tx, event, position, float32(math.Sqrt(distanceSquared)), context), w.CurrentTick())
 	}
 }
 
@@ -414,12 +468,31 @@ func (info VibrationInfo) ProjectileOwner(tx *Tx) (Entity, bool) {
 // TickVibrationSystem advances selection, particle reload, travel, and reception
 // in source order. A blocked arrival stays pending without repeatedly dirtying NBT.
 func (w *World) TickVibrationSystem(tx *Tx, pos cube.Pos, user VibrationUser, data *VibrationData) {
+	w.tickVibration(tx, pos, pos.Vec3Centre(), user, data, true)
+}
+
+// TickEntityVibrationSystem ticks the vibrations of an entity listener as
+// VibrationSystem.Ticker does: vibrations travel to where it hears from.
+func (w *World) TickEntityVibrationSystem(tx *Tx, l EntityVibrationListener) {
+	user, data := l.VibrationUser(), l.VibrationData()
+	if user == nil || data == nil {
+		return
+	}
+	point := l.VibrationListenerPosition()
+	w.tickVibration(tx, cube.PosFromVec3(point), point, user, data, false)
+}
+
+// tickVibration ticks the vibrations of a listener at pos that they travel
+// to destination, saving the block actor at pos as they change if persist.
+func (w *World) tickVibration(tx *Tx, pos cube.Pos, destination mgl64.Vec3, user VibrationUser, data *VibrationData, persist bool) {
 	if !data.HasCurrent {
 		if candidate, ok := data.Selector.Chosen(w.CurrentTick()); ok {
 			data.Current, data.HasCurrent = candidate, true
 			data.TravelTime = int(math.Floor(float64(candidate.Distance)))
-			w.sendVibrationParticle(tx, user, candidate.Position, pos.Vec3Centre(), data.TravelTime)
-			persistVibrationData(tx, pos)
+			w.sendVibrationParticle(tx, user, candidate.Position, destination, data.TravelTime)
+			if persist {
+				persistVibrationData(tx, pos)
+			}
 			data.Selector.StartOver()
 		}
 	}
@@ -430,7 +503,7 @@ func (w *World) TickVibrationSystem(tx *Tx, pos cube.Pos, user VibrationUser, da
 	if data.ReloadParticle {
 		initialTravel := int(math.Floor(float64(data.Current.Distance)))
 		alpha := 1 - float64(data.TravelTime)/float64(initialTravel)
-		origin, destination := data.Current.Position, pos.Vec3Centre()
+		origin := data.Current.Position
 		origin = origin.Add(destination.Sub(origin).Mul(alpha))
 		if w.sendVibrationParticle(tx, user, origin, destination, data.TravelTime) {
 			data.ReloadParticle = false
@@ -460,7 +533,7 @@ func (w *World) TickVibrationSystem(tx *Tx, pos cube.Pos, user VibrationUser, da
 			data.Current, data.HasCurrent = VibrationInfo{}, false
 		}
 	}
-	if changed {
+	if changed && persist {
 		persistVibrationData(tx, pos)
 	}
 }

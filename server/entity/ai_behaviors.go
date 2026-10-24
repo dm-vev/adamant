@@ -795,3 +795,77 @@ func newTriggerIf(pred func(m *Mob) bool, inner *oneShot) *oneShot {
 	inner.trigger = func(m *Mob, time int64) bool { return pred(m) && trigger(m, time) }
 	return inner
 }
+
+// newGoToWantedItem ports GoToWantedItem: a mob that may pick up loot goes
+// for the nearest item it wants within maxDist, breaking off what it walks
+// to if interrupt.
+func newGoToWantedItem(pred func(m *Mob) bool, speed float64, interrupt bool, maxDist float64, canPickUpLoot func() bool) *oneShot {
+	walk := memoryCondition{memWalkTarget, memAbsent}
+	if interrupt {
+		walk.status = memRegistered
+	}
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, walk, {memNearestVisibleWantedItem, memPresent}, {memItemPickupCooldownTicks, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		it := b.entity(m, memNearestVisibleWantedItem)
+		if it == nil || b.has(memItemPickupCooldownTicks) || pred != nil && !pred(m) {
+			return false
+		}
+		if it.Position().Sub(m.data.Pos).LenSqr() >= maxDist*maxDist || !m.tx.World().WithinBorder(cube.PosFromVec3(it.Position())) || !canPickUpLoot() {
+			return false
+		}
+		b.set(memLookTarget, newEntityTracker(it, true))
+		b.set(memWalkTarget, walkTarget{target: newEntityTracker(it, false), speed: speed})
+		return true
+	})
+}
+
+// newGoAndGiveItemsToTarget ports GoAndGiveItemsToTarget: a mob with items
+// to give walks to where it gives them and throws them once within three
+// blocks of its eyes, waiting a while before it picks up more.
+func newGoAndGiveItemsToTarget(target func(m *Mob) (positionTracker, bool), speed float64, timeout int, throw func(m *Mob, at mgl64.Vec3), cooldown memoryType, cooldownTicks int, hasItem func(m *Mob) bool) *behavior {
+	canThrow := func(m *Mob) bool {
+		if !hasItem(m) {
+			return false
+		}
+		_, ok := target(m)
+		return ok
+	}
+	return &behavior{
+		entry:       []memoryCondition{{memLookTarget, memRegistered}, {memWalkTarget, memRegistered}, {cooldown, memRegistered}},
+		minDuration: timeout, maxDuration: timeout,
+		checkExtra:  canThrow,
+		canStillUse: func(m *Mob, _ int64) bool { return canThrow(m) },
+		start: func(m *Mob, _ int64) {
+			if t, ok := target(m); ok {
+				setWalkAndLookTarget(m, t, speed, 3)
+			}
+		},
+		tick: func(m *Mob, _ int64) {
+			t, ok := target(m)
+			if !ok {
+				return
+			}
+			at := t.currentPosition(m.tx)
+			if at.Sub(mgl64.Vec3{m.data.Pos[0], m.EyeY(), m.data.Pos[2]}).Len() < 3 {
+				throw(m, at)
+				m.Brain().set(cooldown, cooldownTicks)
+			}
+		},
+	}
+}
+
+// newStayCloseToTarget ports StayCloseToTarget: a mob further than tooFar
+// from its target walks back to within closeEnough of it.
+func newStayCloseToTarget(target func(m *Mob) (positionTracker, bool), shouldRun func(m *Mob) bool, closeEnough, tooFar int, speed float64) *oneShot {
+	return newOneShot([]memoryCondition{{memLookTarget, memRegistered}, {memWalkTarget, memRegistered}}, func(m *Mob, b *Brain, _ int64) bool {
+		t, ok := target(m)
+		if !ok || !shouldRun(m) {
+			return false
+		}
+		if t.currentPosition(m.tx).Sub(m.data.Pos).LenSqr() < float64(tooFar*tooFar) {
+			return false
+		}
+		b.set(memLookTarget, t)
+		b.set(memWalkTarget, walkTarget{target: t, speed: speed, closeEnough: closeEnough})
+		return true
+	})
+}

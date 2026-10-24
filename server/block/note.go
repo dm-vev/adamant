@@ -22,10 +22,13 @@ type Note struct {
 	Powered bool
 }
 
-// playNote emits the configured note sound and particle at pos.
-func (n Note) playNote(pos cube.Pos, tx *world.Tx) {
+// playNote emits the configured note sound and particle at pos, and the
+// note_block_play game event allays listen for, as NoteBlock.playNote. The
+// source is the entity that played it, nil for redstone.
+func (n Note) playNote(pos cube.Pos, tx *world.Tx, source world.Entity) {
 	tx.PlaySound(pos.Vec3(), sound.Note{Instrument: n.instrument(pos, tx), Pitch: n.Pitch})
 	tx.AddParticle(pos.Vec3(), particle.Note{Instrument: n.Instrument(), Pitch: n.Pitch})
+	tx.EmitGameEvent(world.GameEventNoteBlockPlay, pos.Vec3Centre(), world.GameEventContext{Source: source})
 }
 
 // instrument returns the note block instrument selected by the block below it.
@@ -61,12 +64,12 @@ func javaActorState(data map[string]any) map[string]any {
 	return data
 }
 
-func (n Note) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
+func (n Note) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
 	if !n.canPlay(pos, tx) {
 		return false
 	}
 	n.Pitch = (n.Pitch + 1) % 25
-	n.playNote(pos, tx)
+	n.playNote(pos, tx, u)
 	tx.SetBlock(pos, n, &world.SetOpts{DisableBlockUpdates: true})
 	return true
 }
@@ -88,7 +91,7 @@ func (n Note) RedstonePowerPostUpdate(pos cube.Pos, tx *world.Tx, before, after 
 	if !beforeOK || !afterOK || beforeNote.Powered || !afterNote.Powered || !afterNote.canPlay(pos, tx) {
 		return
 	}
-	afterNote.playNote(pos, tx)
+	afterNote.playNote(pos, tx, nil)
 }
 
 // canPlay reports whether the block above the note block is air.
