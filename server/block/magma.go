@@ -27,7 +27,8 @@ func (Magma) LightEmissionLevel() uint8 {
 
 // EntityStepOn ...
 func (Magma) EntityStepOn(_ cube.Pos, _ *world.Tx, e world.Entity) {
-	if fireProof, ok := e.(interface{ FireProof() bool }); ok && fireProof.FireProof() {
+	if fireProof, ok := e.(interface{ FireProof() bool }); ok && fireProof.FireProof() || fireImmune(e) {
+		// hot_floor is fire damage, which fire-immune mobs ignore.
 		return
 	}
 	// Frost Walker should also suppress damage, but that enchantment is not implemented yet.

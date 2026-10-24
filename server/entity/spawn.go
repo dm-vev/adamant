@@ -181,6 +181,8 @@ func spawnMob(id string, opts world.EntitySpawnOpts) *world.EntityHandle {
 		return NewZombifiedPiglin(opts)
 	case "minecraft:happy_ghast":
 		return NewHappyGhast(opts)
+	case "minecraft:copper_golem":
+		return NewCopperGolem(opts)
 	default:
 		return nil
 	}

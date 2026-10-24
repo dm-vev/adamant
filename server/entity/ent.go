@@ -354,6 +354,9 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	tickLeash(e, tx, m)
 	// The blocks act on the concrete mob, whose Hurt and SetOnFire may
 	// differ from those of Ent, as a strider is immune to fire.
+	if e.data.OnGround && !e.handle.Closed() {
+		stepOnBlock(tx, e.living())
+	}
 	checkEntityInsiders(tx, e.living())
 	if e.data.FireDuration > 0 && e.inRain(tx) {
 		// Entity.move: rain puts out the fire of an entity.
