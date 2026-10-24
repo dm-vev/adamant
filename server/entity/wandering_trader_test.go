@@ -218,6 +218,8 @@ func TestWanderingTraderPanicsWhenHurt(t *testing.T) {
 
 func TestWanderingTraderFleesFromZombies(t *testing.T) {
 	w := traderTestWorld(t)
+	// At night the zombie does not burn and run about.
+	w.SetTime(18000)
 	var h *world.EntityHandle
 	zombieAt := mgl64.Vec3{5.5, 64, .5}
 	<-w.Exec(func(tx *world.Tx) {

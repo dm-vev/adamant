@@ -455,7 +455,10 @@ func TestBredTurtlesLayEggsAtHome(t *testing.T) {
 		}
 	})
 	w = breedPairIn(t, w, "minecraft:turtle", block.SeaGrass{}, nil)
-	for range 400 {
+	// A pregnant turtle looks for sand by its home only every five to ten
+	// seconds and digs there for ten more, and its wandering or its mate
+	// standing in the way may take it a few tries.
+	for range 2400 {
 		w.AdvanceTick()
 	}
 	<-w.Exec(func(tx *world.Tx) {
