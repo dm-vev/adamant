@@ -721,6 +721,38 @@ func (s *Session) resendAbilities(c Controllable) {
 
 // SendAbilities sends the abilities of the Controllable entity of the session to the client.
 func (s *Session) SendAbilities(c Controllable) {
+	if s == Nop {
+		return
+	}
+	if !c.GameMode().HasCollision() {
+		// Spectator mode needs a teleport before the ability update on the
+		// owning client, then flight may schedule a further ability resend.
+		defer c.StartFlying()
+		s.ViewEntityTeleport(c, c.Position())
+	}
+	data := s.abilityData(c, c.H().UniqueID())
+	s.abilities.Store(&data)
+	self := data
+	self.EntityUniqueID = selfEntityRuntimeID
+	s.writePacket(&packet.UpdateAbilities{AbilityData: self})
+}
+
+// SendPermissions refreshes abilities for this player and the other clients
+// that have the player in their player list, then refreshes command access.
+func (s *Session) SendPermissions(c Controllable) {
+	if s == Nop {
+		return
+	}
+	s.SendAbilities(c)
+	s.commandsDirty.Store(true)
+	data := s.abilityData(c, c.H().UniqueID())
+	s.abilities.Store(&data)
+	sessions.sendAbilities(s, data)
+}
+
+// abilityData builds abilities without changing player state, so the same
+// permissions can be included in AddPlayer and updates for other clients.
+func (s *Session) abilityData(c Controllable, uniqueID int64) protocol.AbilityData {
 	mode, abilities := c.GameMode(), uint32(0)
 	if mode.AllowsFlying() {
 		abilities |= protocol.AbilityMayFly
@@ -730,10 +762,6 @@ func (s *Session) SendAbilities(c Controllable) {
 	}
 	if !mode.HasCollision() {
 		abilities |= protocol.AbilityNoClip
-		defer c.StartFlying()
-		// If the client is currently on the ground and turned to spectator mode, it will be unable to sprint during
-		// flight. In order to allow this, we force the client to be flying through a MovePlayer packet.
-		s.ViewEntityTeleport(c, c.Position())
 	}
 	if !mode.AllowsTakingDamage() {
 		abilities |= protocol.AbilityInvulnerable
@@ -747,10 +775,15 @@ func (s *Session) SendAbilities(c Controllable) {
 	if mode.AllowsInteraction() {
 		abilities |= protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers | protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs
 	}
-	s.writePacket(&packet.UpdateAbilities{AbilityData: protocol.AbilityData{
-		EntityUniqueID:     selfEntityRuntimeID,
-		PlayerPermissions:  packet.PermissionLevelMember,
-		CommandPermissions: protocol.CommandPermissionLevelAny,
+	playerPermissions, commandPermissions := byte(packet.PermissionLevelMember), byte(protocol.CommandPermissionLevelAny)
+	if s.conf.IsOperator != nil && s.conf.IsOperator(c.Name()) {
+		playerPermissions, commandPermissions = packet.PermissionLevelOperator, protocol.CommandPermissionLevelGameDirectors
+		abilities |= protocol.AbilityOperatorCommands | protocol.AbilityTeleport
+	}
+	return protocol.AbilityData{
+		EntityUniqueID:     uniqueID,
+		PlayerPermissions:  playerPermissions,
+		CommandPermissions: commandPermissions,
 		Layers: []protocol.AbilityLayer{
 			{
 				Type:             protocol.AbilityLayerTypeBase,
@@ -761,7 +794,7 @@ func (s *Session) SendAbilities(c Controllable) {
 				WalkSpeed:        protocol.AbilityBaseWalkSpeed,
 			},
 		},
-	}})
+	}
 }
 
 // SendHealth sends the health and max health to the player.

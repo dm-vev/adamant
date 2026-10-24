@@ -26,13 +26,16 @@ func (srv *Server) Op(name string) (bool, error) {
 	}
 	o := srv.operators
 	o.mu.Lock()
-	defer o.mu.Unlock()
 	if _, ok := o.players[key]; ok {
+		o.mu.Unlock()
 		return false, nil
 	}
 	o.players[key] = struct{}{}
 	o.order = append(o.order, key)
-	return true, o.writeLocked()
+	err := o.writeLocked()
+	o.mu.Unlock()
+	srv.refreshPlayerPermissions(key)
+	return true, err
 }
 func (srv *Server) Deop(name string) (bool, error) {
 	if srv.operators == nil {
@@ -41,13 +44,34 @@ func (srv *Server) Deop(name string) (bool, error) {
 	key := normalizeName(name)
 	o := srv.operators
 	o.mu.Lock()
-	defer o.mu.Unlock()
 	if _, ok := o.players[key]; !ok {
+		o.mu.Unlock()
 		return false, nil
 	}
 	delete(o.players, key)
 	o.order = slices.DeleteFunc(o.order, func(v string) bool { return v == key })
-	return true, o.writeLocked()
+	err := o.writeLocked()
+	o.mu.Unlock()
+	srv.refreshPlayerPermissions(key)
+	return true, err
+}
+
+// refreshPlayerPermissions runs on the player's current owner after releasing
+// the operator lock. Read the latest status there so queued changes cannot
+// restore stale permissions after a subsequent op/deop or a world transfer.
+func (srv *Server) refreshPlayerPermissions(key string) {
+	srv.pmu.RLock()
+	var handle *world.EntityHandle
+	for _, p := range srv.p {
+		if normalizeName(p.name) == key {
+			handle = p.handle
+			break
+		}
+	}
+	srv.pmu.RUnlock()
+	if handle != nil {
+		go player.Do(handle, func(_ *world.Tx, p *player.Player) { p.RefreshPermissions() })
+	}
 }
 func (srv *Server) OperatorEntries() ([]string, error) {
 	if srv.operators == nil {

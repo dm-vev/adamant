@@ -107,13 +107,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 			Yaw:             float32(yaw),
 			EntityLinks:     links,
 			BuildPlatform:   int32(protocol.DeviceUnknown),
-			AbilityData: protocol.AbilityData{
-				EntityUniqueID: s.entityUniqueID(e),
-				Layers: []protocol.AbilityLayer{{
-					Type:      protocol.AbilityLayerTypeBase,
-					Abilities: protocol.AbilityCount - 1,
-				}},
-			},
+			AbilityData:     s.abilityData(v, s.entityUniqueID(e)),
 		})
 		if !actualPlayer {
 			s.writePacket(&packet.PlayerList{Entries: []protocol.PlayerListEntry{{

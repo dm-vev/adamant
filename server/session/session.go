@@ -60,6 +60,9 @@ type Session struct {
 
 	// commandOrigin holds the last command origin so output can match request metadata.
 	commandOrigin atomic.Pointer[protocol.CommandOrigin]
+	commandsDirty atomic.Bool
+	// abilities is an immutable snapshot for clients joining the player list.
+	abilities atomic.Pointer[protocol.AbilityData]
 
 	currentScoreboard atomic.Pointer[string]
 	currentLines      atomic.Pointer[[]string]
@@ -198,6 +201,9 @@ type Config struct {
 	MaxChunkRadius int
 
 	EmoteChatMuted bool
+	// IsOperator reports the current operator status of a player by name.
+	// If nil, players receive member permissions.
+	IsOperator func(name string) bool
 
 	JoinMessage, QuitMessage chat.Translation
 
@@ -320,6 +326,7 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	s.sendAvailableEntities(tx.World())
 
 	c.SetGameMode(c.GameMode())
+	s.SendPermissions(c)
 	for _, e := range c.Effects() {
 		s.SendEffect(e)
 	}
@@ -544,6 +551,7 @@ func (s *Session) background() {
 	if err := s.withControllable(context.Background(), func(_ *world.Tx, c Controllable) error {
 		r = s.sendAvailableCommands(c, softEnums)
 		enums, enumValues = s.enums(c)
+		s.commandsDirty.Store(false)
 		return nil
 	}); err != nil {
 		if !sessionOwnerStopped(err) {
@@ -563,8 +571,9 @@ func (s *Session) background() {
 					// command changes. Those are generally only related to permission changes, which doesn't happen often.
 					r = s.resendEnums(enums, enumValues, softEnums, r, c)
 				}
-				if i%100 == 0 {
-					// Try to resend commands only every 5 seconds.
+				if dirty := s.commandsDirty.Swap(false); dirty || i%100 == 0 {
+					// Permission changes refresh commands on the next tick;
+					// otherwise check for command changes every five seconds.
 					if r, ok = s.resendCommands(r, c, softEnums); ok {
 						enums, enumValues = s.enums(c)
 					}

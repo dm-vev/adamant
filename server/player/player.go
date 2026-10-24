@@ -1911,6 +1911,12 @@ func (p *Player) EnderChestInventory() *inventory.Inventory {
 	return p.enderChest
 }
 
+// RefreshPermissions updates the client's operator abilities and available
+// commands after the server's permission lookup changes.
+func (p *Player) RefreshPermissions() {
+	p.session().SendPermissions(p)
+}
+
 // SetGameMode sets the game mode of a player. The game mode specifies the way that the player can interact
 // with the world that it is in.
 func (p *Player) SetGameMode(mode world.GameMode) {
