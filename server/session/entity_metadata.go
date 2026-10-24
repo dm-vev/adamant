@@ -135,6 +135,21 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if r, ok := e.(interface{ RamAttacking() bool }); ok && r.RamAttacking() {
 		setActorFlag(m, protocol.EntityDataFlagRamAttack)
 	}
+	if w, ok := e.(interface {
+		WardenPose() (emerging, digging, roaring, sniffing, sonicBoom bool)
+		HeartbeatInterval() int32
+	}); ok {
+		emerging, digging, roaring, sniffing, sonicBoom := w.WardenPose()
+		for flag, set := range map[uint8]bool{protocol.EntityDataFlagEmerging: emerging, protocol.EntityDataFlagDigging: digging,
+			protocol.EntityDataFlagRoaring: roaring, protocol.EntityDataFlagSniffing: sniffing, protocol.EntityDataFlagSonicBoom: sonicBoom} {
+			if set {
+				setActorFlag(m, flag)
+			}
+		}
+		m[protocol.EntityDataKeyHeartbeatIntervalTicks] = w.HeartbeatInterval()
+		// LevelSoundEvent heartbeat.
+		m[protocol.EntityDataKeyHeartbeatSoundEvent] = int32(376)
+	}
 	if sh, ok := e.(interface{ Shooting() bool }); ok && sh.Shooting() {
 		// A breeze shooting faces its target to attack it from range.
 		setActorFlag(m, protocol.EntityDataFlagFacingTargetToRangeAttack)

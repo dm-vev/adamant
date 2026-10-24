@@ -586,6 +586,7 @@ const (
 	vibrationListenable uint8 = 1 << iota
 	vibrationSneakingIgnored
 	vibrationShriekerListenable
+	vibrationWardenListenable
 )
 
 const (
@@ -610,6 +611,7 @@ var gameEventTags = sync.OnceValue(func() struct {
 		{"vibrations", vibrationListenable},
 		{"ignore_vibrations_sneaking", vibrationSneakingIgnored},
 		{"shrieker_can_listen", vibrationShriekerListenable},
+		{"warden_can_listen", vibrationWardenListenable},
 	} {
 		names, err := gamedata.GameEventTagMembers(tag.name)
 		if err != nil {
@@ -653,6 +655,11 @@ func isVibrationEvent(event GameEvent) bool {
 // GameEventShriekerCanListen uses the source SHRIEKER_CAN_LISTEN tag.
 func GameEventShriekerCanListen(event GameEvent) bool {
 	return gameEventTags().events[event]&vibrationShriekerListenable != 0
+}
+
+// GameEventWardenCanListen uses the source WARDEN_CAN_LISTEN tag.
+func GameEventWardenCanListen(event GameEvent) bool {
+	return gameEventTags().events[event]&vibrationWardenListenable != 0
 }
 
 // MovementBlockProperties returns the source movement-emission properties:

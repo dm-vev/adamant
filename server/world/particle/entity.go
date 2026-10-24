@@ -14,6 +14,9 @@ type SnowballPoof struct{ particle }
 // EggSmash is a particle shown when an egg smashes on something.
 type EggSmash struct{ particle }
 
+// SonicExplosion is a particle of the blast of the sonic boom of a warden.
+type SonicExplosion struct{ particle }
+
 // WindBurst is a particle shown when a wind charge detonates.
 type WindBurst struct{ particle }
 

@@ -693,6 +693,11 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			EventType: packet.LevelEventParticleLegacyEvent | int32(t),
 			Position:  vec64To32(pos),
 		})
+	case particle.SonicExplosion:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventSonicExplosion,
+			Position:  vec64To32(pos),
+		})
 	case particle.WindBurst:
 		s.writePacket(&packet.LevelEvent{
 			EventType: packet.LevelEventParticlesWindExplosion,
@@ -1501,6 +1506,8 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		})
 	case entity.WolfShakeAction:
 		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventShakeWetness})
+	case entity.VibrationDetectedAction:
+		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventVibrationDetected})
 	case entity.SquidInkAction:
 		s.writePacket(&packet.ActorEvent{EntityRuntimeID: s.entityRuntimeID(e), EventType: packet.ActorEventSquidFleeing})
 	case entity.ArrowShakeAction:

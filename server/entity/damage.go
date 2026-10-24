@@ -27,6 +27,12 @@ type (
 		ArmourMultiplier float64
 	}
 
+	// SonicBoomDamageSource is used for the sonic boom of a warden, which
+	// passes through armour.
+	SonicBoomDamageSource struct {
+		Attacker world.Entity
+	}
+
 	// VoidDamageSource is used for damage caused by an entity being in the
 	// void.
 	VoidDamageSource struct{}
@@ -114,6 +120,10 @@ func (AttackDamageSource) ReducedByArmour() bool          { return true }
 func (AttackDamageSource) ReducedByResistance() bool      { return true }
 func (AttackDamageSource) Fire() bool                     { return false }
 func (AttackDamageSource) IgnoreTotem() bool              { return false }
+func (SonicBoomDamageSource) ReducedByArmour() bool       { return false }
+func (SonicBoomDamageSource) ReducedByResistance() bool   { return true }
+func (SonicBoomDamageSource) Fire() bool                  { return false }
+func (SonicBoomDamageSource) IgnoreTotem() bool           { return false }
 func (VoidDamageSource) ReducedByResistance() bool        { return false }
 func (VoidDamageSource) ReducedByArmour() bool            { return false }
 func (VoidDamageSource) Fire() bool                       { return false }

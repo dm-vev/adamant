@@ -1,11 +1,9 @@
 package entity
 
 import (
-	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"math"
-	"time"
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -18,7 +16,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// WardenType is the registered Java Warden type.
 // trySpawnWitherPattern recognises the Java T-shaped soul-sand and three-skull
 // construction in every orientation accepted by the shared 24-way matcher.
 func trySpawnWitherPattern(tx *world.Tx, head cube.Pos) bool {
@@ -68,280 +65,6 @@ const (
 	phantomBaseMovementSpeed = 0.7
 	witherBaseMovementSpeed  = float64(float32(0.6))
 )
-
-var WardenType wardenType
-
-type wardenType struct{}
-
-func (wardenType) EncodeEntity() string        { return "minecraft:warden" }
-func (wardenType) BBox(world.Entity) cube.BBox { return cube.Box(-.49, 0, -.49, .49, 2.9, .49) }
-func (wardenType) Open(tx *world.Tx, h *world.EntityHandle, d *world.EntityData) world.Entity {
-	if d.Data == nil {
-		wardenConfig{}.Apply(d)
-	}
-	s := d.Data.(*wardenState)
-	if h != nil {
-		hash := fnv.New64a()
-		id := h.UUID()
-		_, _ = hash.Write(id[:])
-		s.random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
-	}
-	return &Warden{Ent: &Ent{tx: tx, handle: h, data: d}}
-}
-func (wardenType) DecodeNBT(n map[string]any, d *world.EntityData) {
-	c := wardenConfig{health: nativeBossHealth(n, 500), anger: int(nbtconv.Int32(n, "Anger")), dig: int(nbtconv.Int32(n, "Digging")), emerging: int(nbtconv.Int32(n, "Emerging")), sniff: int(nbtconv.Int32(n, "Sniffing")), boom: int(nbtconv.Int32(n, "SonicBoom"))}
-	if java := ReadNativeMobJavaState(n); java != nil {
-		c.anger = int(nbtconv.Int32(java, "Anger"))
-		c.dig = int(nbtconv.Int32(java, "Digging"))
-		c.emerging = int(nbtconv.Int32(java, "Emerging"))
-		c.sniff = int(nbtconv.Int32(java, "Sniffing"))
-		c.boom = int(nbtconv.Int32(java, "SonicBoom"))
-		c.target = nbtconv.Int64(java, "Target")
-	}
-	c.Apply(d)
-	d.Data.(*wardenState).speed = nativeBossMovementSpeed(n, wardenBaseMovementSpeed)
-}
-func (wardenType) EncodeNBT(d *world.EntityData) map[string]any {
-	s := d.Data.(*wardenState)
-	attrs := []NativeMobAttribute{
-		{Name: "minecraft:health", Base: 500, Current: s.health.Health(), DefaultMin: 0, DefaultMax: 500, Min: 0, Max: 500},
-		{Name: "minecraft:movement", Base: wardenBaseMovementSpeed, Current: s.speed, DefaultMin: 0, DefaultMax: 1024, Min: 0, Max: 1024},
-		{Name: "minecraft:follow_range", Base: 16, Current: 16, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
-		{Name: "minecraft:attack_damage", Base: 30, Current: 30, DefaultMin: 0, DefaultMax: 2048, Min: 0, Max: 2048},
-	}
-	return encodeBossNBT(d, attrs, map[string]any{"Anger": int32(s.anger), "Digging": int32(s.dig), "Emerging": int32(s.emerging), "Sniffing": int32(s.sniff), "SonicBoom": int32(s.boom), "Target": s.target})
-}
-
-type wardenConfig struct {
-	health                            float64
-	anger, dig, emerging, sniff, boom int
-	target                            int64
-}
-
-func (c wardenConfig) Apply(d *world.EntityData) {
-	h := c.health
-	if h <= 0 {
-		h = 500
-	}
-	d.Data = &wardenState{health: NewHealthManager(h, 500), effects: NewEffectManager(), speed: wardenBaseMovementSpeed, mc: &MovementComputer{Gravity: .08, Drag: .02}, random: vanilla.NewLegacyRandom(0), anger: max(0, c.anger), dig: max(0, c.dig), emerging: max(0, c.emerging), sniff: max(0, c.sniff), boom: max(0, c.boom), target: c.target}
-}
-
-type wardenState struct {
-	health                            *HealthManager
-	effects                           *EffectManager
-	speed                             float64
-	mc                                *MovementComputer
-	random                            vanilla.Random
-	anger, dig, emerging, sniff, boom int
-	target                            int64
-	pulse                             int
-	sonicCooldown                     int
-	scent, lastSensed                 mgl64.Vec3
-	scentSet, sensed                  bool
-	dead                              bool
-}
-type Warden struct{ *Ent }
-
-func NewWarden(o world.EntitySpawnOpts) *world.EntityHandle { return o.New(WardenType, wardenConfig{}) }
-func (*Warden) SpeciesType() world.EntityType               { return WardenType }
-func (w *Warden) state() *wardenState                       { return w.Behaviour().(*wardenState) }
-func (w *Warden) Tick(tx *world.Tx, n int64)                { w.state().effects.Tick(w, tx); w.Ent.Tick(tx, n) }
-func (s *wardenState) Tick(e *Ent, tx *world.Tx) *Movement {
-	if s.sonicCooldown > 0 {
-		s.sonicCooldown--
-	}
-	if s.anger > 0 {
-		s.anger--
-	}
-	if s.dig > 0 {
-		s.dig--
-		if s.dig == 0 {
-			s.emerging, s.sniff = 0, 0
-			if !s.scentSet {
-				_ = e.CloseIn(tx)
-				return nil
-			}
-		}
-	}
-	if s.emerging > 0 {
-		s.emerging--
-	}
-	if s.sniff > 0 {
-		s.sniff--
-	}
-	if s.pulse > 0 {
-		s.pulse--
-	}
-	if s.pulse == 0 {
-		s.pulse = 10
-		box := cube.Box(-32, -16, -32, 32, 16, 32).Translate(e.Position())
-		for candidate := range tx.EntitiesWithin(box) {
-			if candidate == e {
-				continue
-			}
-			pos := candidate.Position()
-			if pos.Sub(e.Position()).LenSqr() >= 1024 {
-				continue
-			}
-			moved := !s.sensed || pos.Sub(s.lastSensed).LenSqr() > .01
-			s.lastSensed, s.sensed = pos, true
-			if moved {
-				id := candidate.H().UUID()
-				s.target = int64(binary.LittleEndian.Uint64(id[8:]))
-				s.scent, s.scentSet = pos, true
-				s.anger = min(150, s.anger+20)
-			}
-		}
-	}
-	if s.pulse%4 == 0 {
-		for player := range tx.EntitiesWithin(cube.Box(-20, -12, -20, 20, 12, 20).Translate(e.Position())) {
-			if player.H().Type().EncodeEntity() == "minecraft:player" {
-				if living, ok := player.(Living); ok {
-					living.AddEffect(effect.New(effect.Darkness, 1, time.Second*4))
-				}
-			}
-		}
-	}
-	if !s.scentSet {
-		s.sniff++
-		if s.sniff > 1200 {
-			s.dig = 120
-			s.sniff = 0
-		}
-		return s.stop(e, tx)
-	}
-	d := s.scent.Sub(e.Position())
-	dist := d.Len()
-	if dist < 1.8 {
-		for target := range tx.EntitiesWithin(cube.Box(-2, -2, -2, 2, 2, 2).Translate(e.Position())) {
-			if target.H().Type().EncodeEntity() == "minecraft:player" {
-				if living, ok := target.(Living); ok {
-					living.Hurt(30, AttackDamageSource{Attacker: &Warden{Ent: e}})
-				}
-			}
-		}
-		return s.stop(e, tx)
-	}
-	if dist > 48 {
-		s.scentSet = false
-		s.dig = 120
-		return s.stop(e, tx)
-	}
-	if dist < 15 && s.sonicCooldown == 0 {
-		s.boom = 34
-		s.sonicCooldown = 60
-		return s.sonic(e, tx, s.scent)
-	}
-	return s.move(e, tx, s.scent, s.speed)
-}
-func (s *wardenState) sonic(e *Ent, tx *world.Tx, target mgl64.Vec3) *Movement {
-	delta := target.Sub(e.Position().Add(mgl64.Vec3{0, 1.6, 0}))
-	if delta.Len() == 0 {
-		return s.stop(e, tx)
-	}
-	dir := delta.Normalize()
-	hit := make(map[*world.EntityHandle]struct{})
-	for i := range 15 {
-		p := e.Position().Add(mgl64.Vec3{0, 1.6, 0}).Add(dir.Mul(float64(i + 1)))
-		for victim := range tx.EntitiesWithin(cube.Box(-.7, -.7, -.7, .7, .7, .7).Translate(p)) {
-			if victim == e {
-				continue
-			}
-			if _, seen := hit[victim.H()]; seen {
-				continue
-			}
-			living, ok := victim.(Living)
-			if !ok || living.Dead() {
-				continue
-			}
-			hit[victim.H()] = struct{}{}
-			living.Hurt(10, AttackDamageSource{Attacker: &Warden{Ent: e}})
-		}
-	}
-	tx.PlaySound(e.Position(), sound.Custom{Name: "entity.warden.sonic_boom", Volume: 3, Pitch: 1})
-	return s.stop(e, tx)
-}
-func (s *wardenState) move(e *Ent, tx *world.Tx, p mgl64.Vec3, speed float64) *Movement {
-	d := p.Sub(e.Position())
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize()
-	}
-	v := e.Velocity()
-	v[0], v[2] = d[0]*speed, d[2]*speed
-	r := e.Rotation()
-	if d.Len() > 0 {
-		r[0] = math.Atan2(-d[0], d[2]) * 180 / math.Pi
-	}
-	m := s.mc.TickMovement(e, e.Position(), v, e.Rotation(), r, tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (s *wardenState) stop(e *Ent, tx *world.Tx) *Movement {
-	v := e.Velocity()
-	v[0], v[2] = 0, 0
-	m := s.mc.TickMovement(e, e.Position(), v, e.Rotation(), e.Rotation(), tx)
-	e.data.Pos, e.data.Vel, e.data.Rot = m.Position(), m.Velocity(), m.Rotation()
-	return m
-}
-func (w *Warden) Health() float64        { return w.state().health.Health() }
-func (w *Warden) MaxHealth() float64     { return w.state().health.MaxHealth() }
-func (w *Warden) SetMaxHealth(v float64) { w.state().health.SetMaxHealth(v) }
-func (w *Warden) Dead() bool             { return w.state().dead || w.Health() <= 0 }
-func (w *Warden) Hurt(d float64, src world.DamageSource) (float64, bool) {
-	if w.Dead() || d <= 0 {
-		return 0, false
-	}
-	s := w.state()
-	s.anger = min(150, s.anger+20)
-	s.scentSet = false
-	if r, ok := s.effects.Effect(effect.Resistance); ok {
-		d *= effect.Resistance.Multiplier(src, r.Level())
-	}
-	s.health.AddHealth(-d)
-	w.viewAction(HurtAction{})
-	onMobHurt(w.tx, w)
-	if w.Dead() {
-		s.dead = true
-		w.viewAction(DeathAction{})
-		w.dropSourceLoot(src)
-		_ = w.CloseIn(w.tx)
-	}
-	return d, true
-}
-func (w *Warden) Heal(v float64, _ world.HealingSource) float64 {
-	if v <= 0 || w.Dead() {
-		return 0
-	}
-	a := w.Health()
-	w.state().health.AddHealth(v)
-	return w.Health() - a
-}
-func (w *Warden) KnockBack(p mgl64.Vec3, f, h float64) {
-	d := w.Position().Sub(p)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	w.SetVelocity(d)
-}
-func (w *Warden) AddEffect(e effect.Effect) {
-	if e.Type() != effect.Poison && e.Type() != effect.FatalPoison {
-		w.state().effects.Add(e, w)
-	}
-}
-func (w *Warden) RemoveEffect(t effect.Type) { w.state().effects.Remove(t, w) }
-func (w *Warden) Effects() []effect.Effect   { return w.state().effects.Effects() }
-func (w *Warden) Speed() float64             { return w.state().speed }
-func (w *Warden) SetSpeed(v float64)         { w.state().speed = max(0, min(1024, v)) }
-func (w *Warden) viewAction(a world.EntityAction) {
-	v := w.tx.Viewers(w.Position())
-	for _, x := range v {
-		x.ViewEntityAction(w, a)
-	}
-	w.tx.ReleaseViewers(v)
-}
 
 // PhantomType is the insomnia-spawned Phantom.
 var PhantomType phantomType
@@ -716,7 +439,6 @@ func (w *Wither) viewAction(a world.EntityAction) {
 	w.tx.ReleaseViewers(v)
 }
 
-func (w *Warden) dropSourceLoot(src world.DamageSource)  { dropAllDeathLoot(w.tx, w, src) }
 func (p *Phantom) dropSourceLoot(src world.DamageSource) { dropAllDeathLoot(p.tx, p, src) }
 func (w *Wither) dropSourceLoot(src world.DamageSource)  { dropAllDeathLoot(w.tx, w, src) }
 
@@ -734,6 +456,8 @@ func mobKiller(src world.DamageSource) world.Entity {
 		return s.Attacker
 	case ProjectileDamageSource:
 		return s.Owner
+	case SonicBoomDamageSource:
+		return s.Attacker
 	}
 	return nil
 }
