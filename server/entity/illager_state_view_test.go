@@ -23,7 +23,10 @@ func (r *stateViewRecorder) ViewEntityState(e world.Entity) {
 	case *Pillager:
 		r.chargingPillager = r.chargingPillager || e.UsingItem() || e.CrossbowCharged()
 	case *Ent:
-		r.bare = true
+		// Arrows are bare entities; illagers must not be.
+		if t := e.H().Type(); t == VindicatorType || t == PillagerType {
+			r.bare = true
+		}
 	}
 }
 
@@ -62,6 +65,6 @@ func TestIllagerStateReachesViewers(t *testing.T) {
 		t.Error("viewers were never shown a pillager charging its crossbow")
 	}
 	if recorder.bare {
-		t.Error("a state update showed the bare entity instead of its species")
+		t.Error("a state update showed an illager as the bare entity instead of its species")
 	}
 }
