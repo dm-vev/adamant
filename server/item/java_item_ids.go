@@ -18,7 +18,11 @@ var javaItemAliases = map[string]string{
 	"minecraft:end_stone_bricks":             "minecraft:end_bricks",
 	"minecraft:end_stone_brick_stairs":       "minecraft:end_brick_stairs",
 	"minecraft:flowering_azalea_leaves":      "minecraft:azalea_leaves_flowered",
+	"minecraft:frogspawn":                    "minecraft:frog_spawn",
+	"minecraft:glow_item_frame":              "minecraft:glow_frame",
+	"minecraft:item_frame":                   "minecraft:frame",
 	"minecraft:jack_o_lantern":               "minecraft:lit_pumpkin",
+	"minecraft:knowledge_book":               "adamant:knowledge_book",
 	"minecraft:light_gray_glazed_terracotta": "minecraft:silver_glazed_terracotta",
 	"minecraft:lily_pad":                     "minecraft:waterlily",
 	"minecraft:magma_block":                  "minecraft:magma",
@@ -45,6 +49,7 @@ var javaItemAliases = map[string]string{
 	"minecraft:terracotta":                   "minecraft:hardened_clay",
 	"minecraft:tipped_arrow":                 "minecraft:arrow",
 	"minecraft:waxed_copper_block":           "minecraft:waxed_copper",
+	"minecraft:zombified_piglin_spawn_egg":   "minecraft:zombie_pigman_spawn_egg",
 }
 
 // JavaItem resolves a namespaced Java item identifier to the registered
@@ -60,6 +65,11 @@ func javaItem(id string) (world.Item, bool) {
 	}
 	if it, ok := world.ItemByName(id, 0); ok {
 		return it, true
+	}
+	if variant, ok := FilledMapVariantFromJavaItemID(id); ok && id != "minecraft:filled_map" {
+		// Explorer maps are their own Java items, and filled maps with a
+		// variant on Bedrock.
+		return FilledMap{Variant: variant}, true
 	}
 	for _, c := range Colours() {
 		switch strings.TrimPrefix(id, "minecraft:"+c.String()+"_") {

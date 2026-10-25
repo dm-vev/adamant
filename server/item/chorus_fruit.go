@@ -2,6 +2,7 @@ package item
 
 import (
 	"math/rand/v2"
+	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -13,6 +14,17 @@ import (
 // location on consumption.
 type ChorusFruit struct {
 	defaultFood
+}
+
+// AlwaysConsumable ports can_always_eat of the food component of chorus fruit.
+func (ChorusFruit) AlwaysConsumable() bool {
+	return true
+}
+
+// Cooldown ports the use_cooldown component of chorus fruit: one second
+// passes before another can be eaten.
+func (ChorusFruit) Cooldown() time.Duration {
+	return time.Second
 }
 
 // Consume ...

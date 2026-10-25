@@ -32,7 +32,7 @@ func (SweetBerries) ConsumeDuration() time.Duration {
 
 // Consume ...
 func (SweetBerries) Consume(_ *world.Tx, c item.Consumer) item.Stack {
-	c.Saturate(2, 1.2)
+	c.Saturate(2, 0.4)
 	return item.Stack{}
 }
 

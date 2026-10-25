@@ -2150,7 +2150,9 @@ func (p *Player) UseItem() {
 	it := i.Item()
 
 	if cd, ok := it.(item.Cooldown); ok {
-		p.SetCooldown(it, cd.Cooldown())
+		if _, consumable := it.(item.Consumable); !consumable {
+			p.SetCooldown(it, cd.Cooldown())
+		}
 	}
 
 	if _, ok := it.(item.Releasable); ok {
@@ -2341,6 +2343,10 @@ func (p *Player) tryConsumeItem(consumable item.Consumable, stack item.Stack) {
 	useCtx := p.useContext()
 	useCtx.CountSub, useCtx.NewItem = 1, consumable.Consume(p.tx, p)
 	p.handleUseContext(useCtx)
+	if cd, ok := stack.Item().(item.Cooldown); ok {
+		// The use_cooldown of a consumable starts once it is consumed.
+		p.SetCooldown(stack.Item(), cd.Cooldown())
+	}
 	gameEvent := world.GameEventEat
 	switch consumed := stack.Item().(type) {
 	case item.Potion:

@@ -7,12 +7,12 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // WeepingVines is a Nether vine that grows downwards.
 type WeepingVines struct {
 	empty
-	replaceable
 	transparent
 	Age int
 }
@@ -40,7 +40,6 @@ func (v WeepingVines) EncodeBlock() (string, map[string]any) {
 // TwistingVines is a Nether vine that grows upwards.
 type TwistingVines struct {
 	empty
-	replaceable
 	transparent
 	Age int
 }
@@ -106,7 +105,6 @@ func (v CaveVines) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User
 // CaveVines are the head and body blocks of cave vines.
 type CaveVines struct {
 	empty
-	replaceable
 	transparent
 	Age     int
 	Variant uint8
@@ -207,3 +205,58 @@ func (v CaveVines) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 
 // RandomlyTicks reports if the vines may still grow.
 func (v CaveVines) RandomlyTicks() bool { return v.Age < 25 }
+
+// placeGrowingPlant ports GrowingPlantBlock.getStateForPlacement and
+// canSurvive for vines growing in the direction grow: they hang from, or stand
+// on, vines of their kind or a sturdy face. Placed onto vines growing their
+// way they continue them; otherwise they are a new tip of a random age below
+// 25.
+func placeGrowingPlant(pos cube.Pos, face cube.Face, tx *world.Tx, user item.User, ctx *item.UseContext, b world.Block, grow cube.Face, same func(world.Block) bool, withAge func(int) world.Block) (cube.Pos, bool) {
+	pos, _, used := firstReplaceable(tx, pos, face, b)
+	if !used {
+		return pos, false
+	}
+	attach := pos.Side(grow.Opposite())
+	if attached := tx.Block(attach); !same(attached) && !attached.Model().FaceSolid(attach, grow, tx) {
+		return pos, false
+	}
+	placedBlock := withAge(rand.IntN(25))
+	if same(tx.Block(pos.Side(grow))) {
+		placedBlock = withAge(0)
+	}
+	place(tx, pos, placedBlock, user, ctx)
+	return pos, placed(ctx)
+}
+
+// UseOnBlock places weeping vines hanging from a block.
+func (v WeepingVines) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	_, ok := placeGrowingPlant(pos, face, tx, user, ctx, v, cube.FaceDown,
+		func(b world.Block) bool { _, ok := b.(WeepingVines); return ok },
+		func(age int) world.Block { return WeepingVines{Age: age} })
+	return ok
+}
+
+// UseOnBlock places twisting vines standing on a block.
+func (v TwistingVines) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	_, ok := placeGrowingPlant(pos, face, tx, user, ctx, v, cube.FaceUp,
+		func(b world.Block) bool { _, ok := b.(TwistingVines); return ok },
+		func(age int) world.Block { return TwistingVines{Age: age} })
+	return ok
+}
+
+// UseOnBlock places cave vines hanging from a block, as glow berries do. A
+// tip carrying a berry that the new vines continue becomes part of the vines,
+// keeping its berry.
+func (v CaveVines) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	isVines := func(b world.Block) bool { _, ok := b.(CaveVines); return ok }
+	placedPos, ok := placeGrowingPlant(pos, face, tx, user, ctx, v, cube.FaceDown, isVines, func(age int) world.Block { return CaveVines{Age: age} })
+	if !ok {
+		return false
+	}
+	above := placedPos.Side(cube.FaceUp)
+	if tip, ok := tx.Block(above).(CaveVines); ok && tip.Variant == caveVinesHeadWithBerries {
+		tip.Variant = caveVinesBodyWithBerries
+		tx.SetBlock(above, tip, nil)
+	}
+	return true
+}
