@@ -28,6 +28,12 @@ func TestEndFightNativeLifecycleAndMCDBRestart(t *testing.T) {
 			Provider: db, Dim: world.End, Seed: seed, Generator: endgen.New(seed),
 			Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1,
 		}.New()
+		// A dragon that perches a little below the top of the egg breaks it
+		// with its body, as EnderDragon.checkWalls does, so the fight runs
+		// without mob griefing to keep the egg this test follows.
+		if err := w.SetGameRule("mob_griefing", false); err != nil {
+			t.Fatal(err)
+		}
 		return w, db
 	}
 	closeWorld := func(w *world.World, db *mcdb.DB) {
