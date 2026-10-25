@@ -176,9 +176,25 @@ func (tx *Tx) HasScheduledBlockUpdate(pos cube.Pos, b Block) bool {
 	return pending
 }
 
+// CancelBlockUpdate removes pending updates of b's type at pos, including an
+// update collected for this tick that has not yet run. Native observer removal
+// uses this to keep a replacement observer from inheriting the old pulse.
+func (tx *Tx) CancelBlockUpdate(pos cube.Pos, b Block) {
+	w := tx.World()
+	queue := w.scheduledBlockTicks
+	typeName := scheduledTickType(w.conf.Blocks, b)
+	if liquid, ok := b.(Liquid); ok {
+		queue = w.scheduledFluidTicks
+		typeName = scheduledFluidTickType(liquid)
+	}
+	if queue.cancel(scheduledTickIndex{pos: pos, typeName: typeName}) {
+		w.markScheduledTickColumnModified(pos)
+	}
+}
+
 // DoBlockUpdatesAround triggers neighbour updates around the position passed.
 func (tx *Tx) DoBlockUpdatesAround(pos cube.Pos) {
-	tx.World().doBlockUpdatesAround(pos)
+	tx.doBlockUpdatesAround(pos)
 }
 
 // HighestLightBlocker gets the Y value of the highest fully light blocking

@@ -14,7 +14,61 @@ type RedstoneTransaction struct {
 
 // ScheduleUpdate marks pos and its neighbours for re-evaluation during the next redstone phase.
 func (r RedstoneTransaction) ScheduleUpdate(pos cube.Pos) {
-	r.tx.World().redstone.invalidateAround(pos, pos, RedstoneUpdateCauseScheduledTick, r.tx.Range())
+	b, _ := r.tx.BlockLoaded(pos)
+	r.tx.World().redstone.invalidateAroundBlockChange(pos, b, b, RedstoneUpdateCauseScheduledTick, r.tx.Range())
+}
+
+// RefreshCircuit applies an explicit component configuration change, such as
+// a player's repeater delay adjustment, while retaining the pulse pipeline.
+// Native setup callbacks for block identifier changes refresh automatically.
+func (r RedstoneTransaction) RefreshCircuit(pos cube.Pos) {
+	e := r.tx.World().redstone
+	state := e.circuits[pos]
+	if state == nil {
+		return
+	}
+	b, loaded := r.tx.BlockLoaded(pos)
+	if loaded {
+		e.circuits[pos] = state.Refresh(b, b)
+	}
+}
+
+// NotifyCircuitNeighbour delivers a synchronous native neighbour notification
+// to a component's transient state, independently of electrical evaluation.
+func (r RedstoneTransaction) NotifyCircuitNeighbour(pos, changed cube.Pos) {
+	e := r.tx.World().redstone
+	if state, ok := e.circuits[pos].(RedstoneCircuitNeighbourChange); ok {
+		e.circuits[pos] = state.CircuitNeighbourChange(pos, changed, r.tx)
+	}
+}
+
+// CircuitStrength returns a capacitor's published electrical output. This may
+// differ from the block's lit/powered bit during the circuit evaluation phase.
+func (r RedstoneTransaction) CircuitStrength(pos cube.Pos) int {
+	e := r.tx.World().redstone
+	if e.readingCircuitOutputs {
+		if power, pending := e.circuitPowerOutputs[pos]; pending {
+			return power
+		}
+	}
+	return r.tx.World().redstone.circuitPowers[pos]
+}
+
+// CircuitDirection returns a native component's configured direction, if it
+// maintains one independently of its current block permutation.
+func (r RedstoneTransaction) CircuitDirection(pos cube.Pos) (cube.Face, bool) {
+	if state, ok := r.tx.World().redstone.circuits[pos].(RedstoneCircuitDirection); ok {
+		return state.CircuitDirection(), true
+	}
+	return 0, false
+}
+
+// SetCircuitStrength changes a capacitor input for the next circuit step.
+func (r RedstoneTransaction) SetCircuitStrength(pos cube.Pos, power int) {
+	e := r.tx.World().redstone
+	if state, ok := e.circuits[pos].(RedstoneCircuitStrength); ok {
+		e.circuits[pos] = state.WithCircuitStrength(ClampRedstonePower(power))
+	}
 }
 
 // ObservedPower returns the input power the engine last observed at pos when
@@ -36,27 +90,17 @@ type RedstoneTorchTransaction struct {
 
 // BurnoutStatus returns the transient burnout state for the redstone torch.
 func (t RedstoneTorchTransaction) BurnoutStatus() (burnedOut, recoverable bool) {
-	return t.tx.World().redstone.torchBurnoutStatus(t.pos, t.tx.CurrentTick())
+	if state, ok := t.tx.World().redstone.circuits[t.pos].(RedstoneCircuitBurnout); ok {
+		return state.CircuitBurnoutStatus()
+	}
+	return false, true
 }
 
-// RecordTurnOff records that the redstone torch was forced off.
-func (t RedstoneTorchTransaction) RecordTurnOff() (burnsOut bool) {
-	return t.tx.World().redstone.recordTorchTurnOff(t.pos, t.tx.CurrentTick())
-}
-
-// MarkSelfTriggered records that the next turn-off was caused by the torch's own output.
-func (t RedstoneTorchTransaction) MarkSelfTriggered() {
-	t.tx.World().redstone.markTorchSelfTriggered(t.pos)
-}
-
-// ConsumeSelfTriggered reports and clears whether the next turn-off was self-triggered.
-func (t RedstoneTorchTransaction) ConsumeSelfTriggered() bool {
-	return t.tx.World().redstone.consumeTorchSelfTriggered(t.pos)
-}
-
-// ClearBurnout removes transient burnout state for the redstone torch.
+// ClearBurnout explicitly resets the world-owned native capacitor's counter.
 func (t RedstoneTorchTransaction) ClearBurnout() {
-	t.tx.World().redstone.clearTorchBurnout(t.pos)
+	if state, ok := t.tx.World().redstone.circuits[t.pos].(RedstoneCircuitBurnout); ok {
+		t.tx.World().redstone.circuits[t.pos] = state.ClearCircuitBurnout()
+	}
 }
 
 // RedstonePower returns the strongest redstone power currently applied to the position passed. Custom redstone block

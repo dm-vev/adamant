@@ -1361,7 +1361,7 @@ func (RedstoneBlock) Hash() (uint64, uint64) {
 }
 
 func (c RedstoneComparator) Hash() (uint64, uint64) {
-	return hashRedstoneComparator, uint64(c.Facing) | uint64(boolByte(c.Subtract))<<3 | uint64(boolByte(c.Powered))<<4
+	return hashRedstoneComparator, uint64(c.Facing) | uint64(boolByte(c.Subtract))<<3 | uint64(boolByte(c.Powered))<<4 | uint64(boolByte(c.Lit))<<5
 }
 
 func (l RedstoneLamp) Hash() (uint64, uint64) {

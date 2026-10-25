@@ -76,6 +76,6 @@ func (tx *Tx) javaShapeFromNeighbours(pos cube.Pos, state uint32) uint32 {
 func (tx *Tx) updateNeighboursOf(pos cube.Pos) {
 	w := tx.World()
 	pos.Neighbours(func(neighbour cube.Pos) {
-		w.updateNeighbour(neighbour, pos)
+		tx.updateNeighbour(neighbour, pos)
 	}, w.Range())
 }

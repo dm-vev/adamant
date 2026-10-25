@@ -170,6 +170,14 @@ type NeighbourUpdateTicker interface {
 	NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *Tx)
 }
 
+// NeighbourChangeListener receives a loaded neighbor's notification during the
+// notifying transaction. Components that must observe the state at that instant
+// (such as Bedrock observers) implement this instead of waiting for the deferred
+// neighbor queue. NeighbourUpdateTick is not queued for the same notification.
+type NeighbourChangeListener interface {
+	NeighbourChanged(pos, changedNeighbour cube.Pos, tx *Tx)
+}
+
 // PlacementHandler receives a foreground block replacement after its state
 // and viewer updates have been applied. Implementations may replace blocks
 // again, for example when completing a constructed mob.

@@ -35,6 +35,10 @@ type RedstoneUpdate struct {
 	Source cube.Pos
 	// HasSource reports whether Source is set.
 	HasSource bool
+	// SourceRedstoneRelevant reports whether Source was a redstone component
+	// before or after the original change. Unlike ChangedRedstoneRelevant,
+	// this remains tied to the root change when a wire relays the update.
+	SourceRedstoneRelevant bool
 	// Before is the block currently at Pos.
 	Before Block
 	// After is the block that will replace Before, if the update is a block-state update. After is nil for updates
@@ -117,17 +121,25 @@ type RedstoneNonConductive interface {
 	RedstoneNonConductive()
 }
 
-// redstoneEngine evaluates the immediate-power network for a world and caches transient power state. Neighbour updates
-// and scheduled block ticks remain the semantic model for block behaviour; the engine just resolves wire/relayer power
-// and lets consumers and actions schedule any delayed or directional changes themselves.
+// redstoneEngine evaluates the immediate-power network and owns transient
+// Bedrock circuit components. Stateful capacitors cache inputs and advance on
+// a shared clock; other consumers use neighbor updates and scheduled ticks.
 type redstoneEngine struct {
-	currentTick       int64
-	dirty             map[cube.Pos]redstoneDirty
-	power             map[cube.Pos]int
-	output            map[cube.Pos]int
-	evaluating        map[cube.Pos]struct{}
-	suppressedSources map[cube.Pos]int
-	torchBurnout      map[cube.Pos]redstoneTorchBurnout
+	currentTick           int64
+	dirty                 map[cube.Pos]redstoneDirty
+	power                 map[cube.Pos]int
+	output                map[cube.Pos]int
+	evaluating            map[cube.Pos]struct{}
+	suppressedSources     map[cube.Pos]int
+	circuits              map[cube.Pos]RedstoneCircuitState
+	circuitTraversal      circuitTraversal
+	circuitOutputs        map[cube.Pos]Block
+	circuitPowers         map[cube.Pos]int
+	circuitPowerOutputs   map[cube.Pos]int
+	circuitInputs         map[cube.Pos]int
+	readingCircuitOutputs bool
+	circuitCauses         map[cube.Pos]redstoneDirty
+	circuitOutputCauses   map[cube.Pos]redstoneDirty
 }
 
 // redstoneDirty records why a position needs redstone evaluation.
@@ -137,20 +149,9 @@ type redstoneDirty struct {
 	changedRedstoneRelevant bool
 	source                  cube.Pos
 	hasSource               bool
+	sourceRedstoneRelevant  bool
 	cause                   RedstoneUpdateCause
 }
-
-// redstoneTorchBurnout tracks a torch's recent turn-off history and whether it is currently burned out.
-type redstoneTorchBurnout struct {
-	offTicks             []int64
-	burnedOut            bool
-	pendingSelfTriggered bool
-}
-
-const (
-	redstoneTorchBurnoutThreshold   = 8
-	redstoneTorchBurnoutWindowTicks = 60
-)
 
 // redstoneGraph is the immediate-power network compiled for one engine tick. Edges are signal loss between relayers
 // only — never delay, direction locking, or mechanical state — so delayed or directional components stay as graph
@@ -195,6 +196,7 @@ func (e *redstoneEngine) invalidateAroundBlockChange(pos cube.Pos, before, after
 		changed:                 pos,
 		hasChanged:              true,
 		changedRedstoneRelevant: isRedstoneRelevant(before) || isRedstoneRelevant(after),
+		sourceRedstoneRelevant:  isRedstoneRelevant(before) || isRedstoneRelevant(after),
 		source:                  pos,
 		hasSource:               true,
 		cause:                   cause,
@@ -227,6 +229,10 @@ func (e *redstoneEngine) invalidate(pos cube.Pos, d redstoneDirty, r cube.Range)
 
 // mergeRedstoneDirty keeps the strongest cause when multiple invalidations touch the same position before evaluation.
 func mergeRedstoneDirty(a, b redstoneDirty) redstoneDirty {
+	if a.hasSource && b.hasSource && a.source == b.source {
+		a.sourceRedstoneRelevant = a.sourceRedstoneRelevant || b.sourceRedstoneRelevant
+		b.sourceRedstoneRelevant = a.sourceRedstoneRelevant
+	}
 	if redstoneDirtyPriority(b) >= redstoneDirtyPriority(a) {
 		b.changedRedstoneRelevant = a.changedRedstoneRelevant || b.changedRedstoneRelevant
 		return b
@@ -253,6 +259,7 @@ func (e *redstoneEngine) removeChunk(chunkPos ChunkPos) {
 	if e == nil {
 		return
 	}
+	e.circuitTraversal.removeChunk(chunkPos)
 	maps.DeleteFunc(e.dirty, func(pos cube.Pos, dirty redstoneDirty) bool {
 		return chunkPosFromBlockPos(pos) == chunkPos ||
 			(dirty.hasChanged && chunkPosFromBlockPos(dirty.changed) == chunkPos)
@@ -263,9 +270,16 @@ func (e *redstoneEngine) removeChunk(chunkPos ChunkPos) {
 	maps.DeleteFunc(e.output, func(pos cube.Pos, _ int) bool {
 		return chunkPosFromBlockPos(pos) == chunkPos
 	})
-	maps.DeleteFunc(e.torchBurnout, func(pos cube.Pos, _ redstoneTorchBurnout) bool {
+	maps.DeleteFunc(e.circuits, func(pos cube.Pos, _ RedstoneCircuitState) bool {
 		return chunkPosFromBlockPos(pos) == chunkPos
 	})
+	maps.DeleteFunc(e.circuitOutputs, func(pos cube.Pos, _ Block) bool {
+		return chunkPosFromBlockPos(pos) == chunkPos
+	})
+	maps.DeleteFunc(e.circuitPowers, func(pos cube.Pos, _ int) bool { return chunkPosFromBlockPos(pos) == chunkPos })
+	maps.DeleteFunc(e.circuitPowerOutputs, func(pos cube.Pos, _ int) bool { return chunkPosFromBlockPos(pos) == chunkPos })
+	maps.DeleteFunc(e.circuitCauses, func(pos cube.Pos, _ redstoneDirty) bool { return chunkPosFromBlockPos(pos) == chunkPos })
+	maps.DeleteFunc(e.circuitOutputCauses, func(pos cube.Pos, _ redstoneDirty) bool { return chunkPosFromBlockPos(pos) == chunkPos })
 }
 
 // forget clears cached redstone input and output power for pos.
@@ -280,10 +294,14 @@ func (e *redstoneEngine) forget(pos cube.Pos) {
 
 // tick evaluates all dirty redstone positions for the current world tick.
 func (e *redstoneEngine) tick(tx *Tx, tick int64) {
-	if e == nil || len(e.dirty) == 0 {
+	if e == nil {
 		return
 	}
 	e.currentTick = tick
+	e.tickCircuits(tx, tick)
+	if len(e.dirty) == 0 {
+		return
+	}
 	dirty := maps.Clone(e.dirty)
 	clear(e.dirty)
 
@@ -356,6 +374,7 @@ func (d redstoneDirty) redstoneUpdate(pos cube.Pos, before Block, oldPower, newP
 		ChangedRedstoneRelevant: d.changedRedstoneRelevant,
 		Source:                  d.source,
 		HasSource:               d.hasSource,
+		SourceRedstoneRelevant:  d.sourceRedstoneRelevant,
 		Before:                  before,
 		OldPower:                oldPower,
 		NewPower:                newPower,
@@ -483,6 +502,16 @@ func (e *redstoneEngine) compileRegion(tx *Tx, pos cube.Pos, seen map[cube.Pos]s
 func (e *redstoneEngine) update(tx *Tx, pos cube.Pos, d redstoneDirty, newPower int) {
 	b := tx.Block(pos)
 	oldPower, newPower := e.power[pos], ClampRedstonePower(newPower)
+	if _, circuit := b.(RedstoneCircuitComponent); circuit {
+		if oldPower != newPower {
+			if e.circuitCauses == nil {
+				e.circuitCauses = make(map[cube.Pos]redstoneDirty)
+			}
+			e.circuitCauses[pos] = d
+		}
+		storeRedstonePower(e.power, pos, newPower)
+		return
+	}
 
 	after, blockChanged := b, false
 	if consumer, ok := b.(RedstonePowerConsumer); ok {
@@ -845,6 +874,9 @@ func (e *redstoneEngine) graphPower(tx *Tx, graph redstoneGraph) []int {
 
 // powerTo returns the strongest redstone power currently reaching pos.
 func (e *redstoneEngine) powerTo(pos cube.Pos, tx *Tx) int {
+	if power, cached := e.circuitInputs[pos]; cached {
+		return power
+	}
 	power := 0
 	for _, face := range cube.Faces() {
 		power = max(power, e.powerFrom(pos, tx, face))
@@ -919,94 +951,13 @@ func (e *redstoneEngine) powerFrom(pos cube.Pos, tx *Tx, face cube.Face) int {
 	return ClampRedstonePower(power)
 }
 
-// torchBurnoutStatus returns whether the torch at pos is burned out and whether it can recover at currentTick.
-func (e *redstoneEngine) torchBurnoutStatus(pos cube.Pos, currentTick int64) (burnedOut, recoverable bool) {
-	data, ok := e.pruneTorchBurnout(pos, currentTick)
-	if !ok {
-		return false, true
-	}
-	if !data.burnedOut {
-		return false, true
-	}
-	return true, len(data.offTicks) < redstoneTorchBurnoutThreshold
-}
-
-// recordTorchTurnOff records a torch being forced off and reports whether that torch should burn out.
-func (e *redstoneEngine) recordTorchTurnOff(pos cube.Pos, currentTick int64) bool {
-	if e.torchBurnout == nil {
-		e.torchBurnout = make(map[cube.Pos]redstoneTorchBurnout)
-	}
-	data, _ := e.pruneTorchBurnout(pos, currentTick)
-	data.offTicks = append(data.offTicks, currentTick)
-	if len(data.offTicks) >= redstoneTorchBurnoutThreshold {
-		data.burnedOut = true
-	}
-	e.torchBurnout[pos] = data
-	return data.burnedOut
-}
-
-// clearTorchBurnout removes transient burnout state for a redstone torch.
-func (e *redstoneEngine) clearTorchBurnout(pos cube.Pos) {
-	if e == nil {
-		return
-	}
-	delete(e.torchBurnout, pos)
-}
-
-// markTorchSelfTriggered records that the next torch turn-off at pos was caused by that torch's own output loop.
-func (e *redstoneEngine) markTorchSelfTriggered(pos cube.Pos) {
-	if e == nil {
-		return
-	}
-	if e.torchBurnout == nil {
-		e.torchBurnout = make(map[cube.Pos]redstoneTorchBurnout)
-	}
-	data := e.torchBurnout[pos]
-	data.pendingSelfTriggered = true
-	e.torchBurnout[pos] = data
-}
-
-// consumeTorchSelfTriggered reports and clears whether the next torch turn-off at pos was self-triggered.
-func (e *redstoneEngine) consumeTorchSelfTriggered(pos cube.Pos) bool {
-	if e == nil || e.torchBurnout == nil {
-		return false
-	}
-	data, ok := e.torchBurnout[pos]
-	if !ok {
-		return false
-	}
-	selfTriggered := data.pendingSelfTriggered
-	data.pendingSelfTriggered = false
-	if len(data.offTicks) == 0 && !data.burnedOut {
-		delete(e.torchBurnout, pos)
-	} else {
-		e.torchBurnout[pos] = data
-	}
-	return selfTriggered
-}
-
-// pruneTorchBurnout removes expired turn-off entries and returns the remaining burnout data.
-func (e *redstoneEngine) pruneTorchBurnout(pos cube.Pos, currentTick int64) (redstoneTorchBurnout, bool) {
-	if e == nil || e.torchBurnout == nil {
-		return redstoneTorchBurnout{}, false
-	}
-	data, ok := e.torchBurnout[pos]
-	if !ok {
-		return redstoneTorchBurnout{}, false
-	}
-	data.offTicks = slices.DeleteFunc(data.offTicks, func(tick int64) bool {
-		return currentTick-tick >= redstoneTorchBurnoutWindowTicks
-	})
-	if len(data.offTicks) == 0 && !data.burnedOut && !data.pendingSelfTriggered {
-		delete(e.torchBurnout, pos)
-		return redstoneTorchBurnout{}, false
-	}
-	e.torchBurnout[pos] = data
-	return data, true
-}
-
 // redstonePower reads source power while guarding against recursive source evaluation.
 func (e *redstoneEngine) redstonePower(source RedstonePowerSource, pos cube.Pos, tx *Tx, face cube.Face) int {
+	if e.readingCircuitOutputs {
+		if pending, ok := e.circuitOutputs[pos].(RedstonePowerSource); ok {
+			source = pending
+		}
+	}
 	if power, ok := e.suppressedSources[pos]; ok {
 		return ClampRedstonePower(power)
 	}

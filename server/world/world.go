@@ -721,6 +721,9 @@ type SetOpts struct {
 	disableRemovalHandler   bool
 	disablePlacementHandler bool
 	disableViewUpdates      bool
+	// circuitPublication marks the engine's own output, rather than an
+	// external replacement that may recreate a native component.
+	circuitPublication bool
 }
 
 // setBlock writes a block to the position passed. If a chunk is not yet loaded
@@ -833,6 +836,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	if redstoneAfterRelevant || (needOldBlock && isRedstoneRelevant(oldBlock)) {
 		w.redstone.forget(pos)
 	}
+	w.redstone.replaceCircuit(pos, oldBlock, b, opts.circuitPublication)
 
 	if !opts.disableViewUpdates {
 		c.forEachViewer(func(viewer Viewer) {
@@ -844,7 +848,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	}
 
 	if !opts.DisableBlockUpdates {
-		w.doBlockUpdatesAround(pos)
+		tx.doBlockUpdatesAround(pos)
 	}
 	if !opts.DisableRedstoneUpdates {
 		w.redstone.invalidateAroundBlockChange(pos, oldBlock, b, RedstoneUpdateCauseBlockUpdate, w.Range())
@@ -986,6 +990,7 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 									c.invalidateBlockEntityPayloads()
 								}
 								w.updatePOI(nbtPos, b)
+								w.redstone.replaceCircuit(nbtPos, oldBlock, b, false)
 							}
 							if liq != nil {
 								sub.SetBlock(uint8(xOffset), uint8(yOffset), uint8(zOffset), 1, w.conf.Blocks.BlockRuntimeID(liq))
@@ -1056,7 +1061,7 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 	c := tx.chunk(chunkPos)
 	if b == nil {
 		w.removeLiquids(c, pos)
-		w.doBlockUpdatesAround(pos)
+		tx.doBlockUpdatesAround(pos)
 		w.redstone.invalidateAround(pos, pos, RedstoneUpdateCauseBlockUpdate, w.Range())
 		return
 	}
@@ -1083,7 +1088,7 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 	}
 	c.modified = true
 
-	w.doBlockUpdatesAround(pos)
+	tx.doBlockUpdatesAround(pos)
 	w.redstone.invalidateAround(pos, pos, RedstoneUpdateCauseBlockUpdate, w.Range())
 }
 
@@ -1789,16 +1794,27 @@ func (w *World) scheduleGeneratedTick(tick chunk.ScheduledTick) {
 
 // doBlockUpdatesAround schedules block updates directly around and on the
 // position passed.
-func (w *World) doBlockUpdatesAround(pos cube.Pos) {
+func (tx *Tx) doBlockUpdatesAround(pos cube.Pos) {
+	w := tx.World()
 	if w == nil || pos.OutOfBounds(w.Range()) {
 		return
 	}
 	changed := pos
 
-	w.updateNeighbour(pos, changed)
+	tx.updateNeighbour(pos, changed)
 	pos.Neighbours(func(pos cube.Pos) {
-		w.updateNeighbour(pos, changed)
+		tx.updateNeighbour(pos, changed)
 	}, w.Range())
+}
+
+func (tx *Tx) updateNeighbour(pos, changedNeighbour cube.Pos) {
+	if b, loaded := tx.BlockLoaded(pos); loaded {
+		if listener, ok := b.(NeighbourChangeListener); ok {
+			listener.NeighbourChanged(pos, changedNeighbour, tx)
+			return
+		}
+	}
+	tx.World().updateNeighbour(pos, changedNeighbour)
 }
 
 // neighbourUpdate represents a position that needs to be updated because of a
@@ -2380,6 +2396,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 		}
 		w.chunks[pos] = col
 		w.indexPOIChunk(pos, col)
+		w.indexCircuitChunk(pos, col)
 		w.reconcileMissingBlockStates(pos)
 
 		// Register all entities contained in this column into the world.
@@ -2510,6 +2527,9 @@ func (w *World) finishChunkRequest(tx *Tx, pos ChunkPos, c *Column) {
 	}
 	if !c.poisIndexed {
 		w.indexPOIChunk(pos, c)
+	}
+	if !c.circuitsIndexed {
+		w.indexCircuitChunk(pos, c)
 	}
 	w.finishGeneration(tx, c)
 	callbacks := w.chunkRequests[pos]
@@ -2832,6 +2852,9 @@ type Column struct {
 	// poisIndexed is set once the POIs of the column were indexed after it
 	// became ready. Block writes keep them current from then on.
 	poisIndexed bool
+	// circuitsIndexed records installation of transient circuit components
+	// from this column's stored or generated block permutations.
+	circuitsIndexed bool
 	// generation is written by the worker before markReady and consumed once
 	// by the world owner before the column is published or saved.
 	generation GenerationResult

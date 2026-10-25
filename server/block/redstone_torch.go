@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -14,6 +13,8 @@ var (
 	_ world.RedstonePowerSource        = RedstoneTorch{}
 	_ world.RedstonePowerContextAction = RedstoneTorch{}
 	_ world.ScheduledTicker            = RedstoneTorch{}
+	_ world.RedstoneCircuitComponent   = RedstoneTorch{}
+	_ world.NeighbourChangeListener    = RedstoneTorch{}
 )
 
 // RedstoneTorch is a non-solid block that emits light and provides a full-strength redstone signal when lit.
@@ -45,10 +46,17 @@ func (t RedstoneTorch) facing() cube.Face {
 	return t.Facing
 }
 
+func (t RedstoneTorch) circuitFacing(pos cube.Pos, tx *world.Tx) cube.Face {
+	if tx != nil {
+		if facing, ok := tx.Redstone().CircuitDirection(pos); ok {
+			return facing
+		}
+	}
+	return t.facing()
+}
+
 func (t RedstoneTorch) BreakInfo() BreakInfo {
-	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(t)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, _ item.User) {
-		tx.Redstone().Torch(pos).ClearBurnout()
-	})
+	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(t))
 }
 
 func (t RedstoneTorch) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
@@ -69,79 +77,41 @@ func (t RedstoneTorch) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 		face = fallbackFace
 	}
 	t.Facing = face.Opposite()
-	t.Lit = !t.attachmentPowered(pos, tx)
+	// TorchBlock::getPlacementBlock selects the item's lit default variant
+	// and changes only its facing. Inversion belongs to the next shared
+	// capacitor step, even when the attachment is already powered.
+	t.Lit = true
 
 	place(tx, pos, t, user, ctx)
-	ok := placed(ctx)
-	if ok {
-		tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
-	}
-	return ok
+	return placed(ctx)
 }
 
-// NeighbourUpdateTick breaks unsupported torches and otherwise schedules inverse-state refreshes.
+// NeighbourUpdateTick checks support; the world-owned capacitor handles inversion.
 func (t RedstoneTorch) NeighbourUpdateTick(pos, changed cube.Pos, tx *world.Tx) {
+	t.NeighbourChanged(pos, changed, tx)
+}
+
+// NeighbourChanged resets native burnout only once mCanReignite is set, then
+// checks support at the instant of the notification.
+func (t RedstoneTorch) NeighbourChanged(pos, changed cube.Pos, tx *world.Tx) {
+	tx.Redstone().NotifyCircuitNeighbour(pos, changed)
 	facing := t.facing()
 	if !tx.Block(pos.Side(facing)).Model().FaceSolid(pos.Side(facing), facing.Opposite(), tx) {
-		tx.Redstone().Torch(pos).ClearBurnout()
 		breakBlock(t, pos, tx)
-		return
-	}
-	torch := tx.Redstone().Torch(pos)
-	if burnedOut, recoverable := torch.BurnoutStatus(); burnedOut {
-		if t.recoverBurnout(pos, changed, tx, recoverable, false, t.attachmentPowered(pos, tx)) {
-			torch.ClearBurnout()
-			tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
-		}
-		return
-	}
-	tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
-}
-
-// ScheduledTick refreshes the lit state after the torch's one-redstone-tick inversion delay.
-func (t RedstoneTorch) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if tx == nil {
-		return
-	}
-	var ok bool
-	if t, ok = redstoneTorchAt(pos, tx); !ok {
-		return
-	}
-	redstone := tx.Redstone()
-	torch := redstone.Torch(pos)
-	selfTriggered := torch.ConsumeSelfTriggered()
-	if burnedOut, _ := torch.BurnoutStatus(); burnedOut {
-		return
-	}
-	attachmentPowered := t.attachmentPowered(pos, tx)
-	lit := !attachmentPowered
-	if t.Lit != lit {
-		if !lit && selfTriggered && torch.RecordTurnOff() {
-			t.Lit = false
-			tx.PlaySound(pos.Vec3Centre(), sound.Fizz{})
-			tx.SetBlock(pos, t, &world.SetOpts{DisableRedstoneUpdates: true})
-			redstone.ScheduleUpdate(pos)
-			return
-		}
-		t.Lit = lit
-		tx.SetBlock(pos, t, &world.SetOpts{DisableRedstoneUpdates: true})
-		redstone.ScheduleUpdate(pos)
 	}
 }
 
-// redstoneTorchAt returns the live redstone torch at pos. Scheduled tick callers may carry stale block state, so
-// mutation paths must reload the world block before writing torch state back.
-func redstoneTorchAt(pos cube.Pos, tx *world.Tx) (RedstoneTorch, bool) {
-	t, ok := tx.Block(pos).(RedstoneTorch)
-	if !ok {
-		tx.Redstone().Torch(pos).ClearBurnout()
+// ScheduledTick reconciles callbacks saved by older worlds. It does not start
+// an independent inversion clock or restore the receiver's stale permutation.
+func (RedstoneTorch) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	if tx != nil {
+		tx.Redstone().ScheduleUpdate(pos)
 	}
-	return t, ok
 }
 
 // RedstonePower emits power from every side except the attached block while lit.
-func (t RedstoneTorch) RedstonePower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
-	if t.Lit && face != t.facing() {
+func (t RedstoneTorch) RedstonePower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
+	if t.Lit && face != t.circuitFacing(pos, tx) {
 		return 15
 	}
 	return 0
@@ -155,29 +125,12 @@ func (t RedstoneTorch) RedstoneStrongPower(pos cube.Pos, tx *world.Tx, face cube
 	return 0
 }
 
-// RedstonePowerActionUpdate schedules torch refreshes and keeps burnout from self-recovering through its own loop.
-func (t RedstoneTorch) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, update world.RedstoneUpdate) {
-	if tx == nil {
-		return
+// RedstonePowerActionUpdate invalidates the capacitor after explicit callers'
+// input changes. Inversion itself runs on the shared circuit clock.
+func (RedstoneTorch) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, _ world.RedstoneUpdate) {
+	if tx != nil {
+		tx.Redstone().ScheduleUpdate(pos)
 	}
-	torch := tx.Redstone().Torch(pos)
-	if burnedOut, recoverable := torch.BurnoutStatus(); burnedOut {
-		attachmentPowered := update.NewPower > 0 && t.attachmentPowered(pos, tx)
-		if !update.HasChangedNeighbour || redstoneTorchSelfTriggered(pos, update) || !t.recoverBurnout(pos, update.ChangedNeighbour, tx, recoverable, update.ChangedRedstoneRelevant, attachmentPowered) {
-			return
-		}
-		torch.ClearBurnout()
-		tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
-		return
-	}
-	attachmentPowered := t.attachmentPowered(pos, tx)
-	if t.Lit == !attachmentPowered {
-		return
-	}
-	if attachmentPowered && redstoneTorchSelfTriggered(pos, update) {
-		torch.MarkSelfTriggered()
-	}
-	tx.ScheduleBlockUpdate(pos, t, gameTicks(2))
 }
 
 // attachmentPowered reports whether the block the torch is attached to is powered.
@@ -195,61 +148,6 @@ func (t RedstoneTorch) attachmentPowered(pos cube.Pos, tx *world.Tx) bool {
 		}
 	}
 	return world.RedstoneFullPowerConductor(attached, attachedBlock, tx) && tx.RedstoneConductivePower(attached) > 0
-}
-
-// recoverBurnout reports whether an update should relight a burned-out torch.
-func (t RedstoneTorch) recoverBurnout(pos, changed cube.Pos, tx *world.Tx, recoverable, changedRedstoneRelevant, attachmentPowered bool) bool {
-	if changed == pos || attachmentPowered {
-		return false
-	}
-	touchesRecoveryArea := t.changeTouchesRecoveryArea(pos, changed, tx)
-	if changedRedstoneRelevant {
-		return touchesRecoveryArea
-	}
-	if changed == pos.Side(t.facing()) {
-		return true
-	}
-	return recoverable && touchesRecoveryArea
-}
-
-// changeTouchesRecoveryArea reports whether changed is close enough to the torch, its input, or an output wire directly
-// beside it to count as a real neighbour update. A dust line extending straight away from the torch is not local.
-func (t RedstoneTorch) changeTouchesRecoveryArea(pos, changed cube.Pos, tx *world.Tx) bool {
-	inputPos := pos.Side(t.facing())
-	if changed == inputPos {
-		return true
-	}
-	for _, face := range cube.Faces() {
-		if changed == pos.Side(face) || changed == inputPos.Side(face) {
-			return true
-		}
-	}
-	for _, face := range cube.HorizontalFaces() {
-		neighbour := pos.Side(face)
-		if _, ok := tx.Block(neighbour).(RedstoneWire); !ok {
-			continue
-		}
-		for _, wireFace := range cube.HorizontalFaces() {
-			if wireFace == face || wireFace == face.Opposite() {
-				continue
-			}
-			if changed == neighbour.Side(wireFace) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// redstoneTorchSelfTriggered reports whether this update came from the torch's own scheduled output propagation.
-func redstoneTorchSelfTriggered(pos cube.Pos, update world.RedstoneUpdate) bool {
-	if update.Cause != world.RedstoneUpdateCauseScheduledTick {
-		return false
-	}
-	if update.HasSource {
-		return update.Source == pos
-	}
-	return update.HasChangedNeighbour && update.ChangedNeighbour == pos
 }
 
 func (RedstoneTorch) EncodeItem() (name string, meta int16) {
