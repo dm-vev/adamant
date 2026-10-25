@@ -84,6 +84,12 @@ Regression tests reproduce the old death-event/instant-removal pair and check pa
 
 The melee-hit regression also covers lethal and surviving critical/Fire Aspect hits through a real observing session. `Hurt` can remove a mob synchronously; the attack now stops target effects after that removal instead of emitting critical-hit animation or fire metadata with runtime ID zero and logging `entity runtime ID not found`. Successful lethal hits still consume weapon durability and exhaustion, and retain the death event. Surviving targets still receive critical particles and Fire Aspect. A separate slot-verification regression reproduces a client count of four beef against the authoritative five: the server resends five without rejecting the transaction or changing its inventory. That debug message alone does not establish item loss or its cause.
 
+## Mob state updates and vindicator anger
+
+BDS 1.26.52.3, captured by a bot next to a vindicator and a pillager that attack a villager, sets the vindicator's actor flag **25** (Angry) in `SetActorData` once it acquires a target, from the `minecraft:angry` component of its `vindicator_aggro` group, and clears it when it loses the target; the Bedrock client raises the vindicator's axe only while the flag is set. The pillager instead gets flag **4** (UsingItem) while it charges its crossbow and flag **27** (Charged) once it is charged.
+
+Adamant never set the flag, and its state updates did not carry species flags at all: `Ent.updateState` showed viewers the bare entity, so sessions wrote the metadata of no species, and every `SetActorData` after spawning dropped the pillager's charge flags, along with those of other species updated the same way. Updates now show viewers the entity the world keeps for the handle, the species wrapper its ticks run on, without opening a new view. Vindicators are angry while `Mob.isAggressive`, which melee attacks set, and a change of that state is sent at once. An entity regression records the updates of a vindicator and a pillager attacking a villager; it failed on all three checks before the change. A session regression checks the Angry flag of an idle and an attacking vindicator. Rendering on a connected client remains unverified.
+
 ## Leaf litter support
 
 The Bedrock 1.26.51.1 `LeafLitterBlock::canSurvive` (client RVA `0x66c7c60`) checks the block below and calls `BlockType::canProvideFullSupport` for **UP**, with a separate stair-support path. The existing Java `LeafLitterBlock` survival port likewise tests the lower block's full sturdy upper face. Adamant's item-placement and neighbour-update handlers instead called the generic `Soil.SoilFor` predicate, whose dirt/grass lists did not include `LeafLitter`. A valid block therefore broke on any nearby update and notified the next litter block, producing the reported cascade.
@@ -209,6 +215,23 @@ After the fixes, ring 0 matches in 99.92% and 99.84% of its blocks (seed 12345 a
 - Features crossing chunk borders depend on the order Java's chunk scheduler decorates neighbours in. A tree decorator such as `place_on_ground` draws random numbers only for blocks it can place, so whether a neighbour's trees are already there shifts the trees that follow. Even two decorations of one chunk by Adamant, with neighbours decorated in a different order, end with a different last tree.
 
 `go test ./server/world/generator/advanced/overworld -run TestChunksMatchTheJavaServer` checks blocks the Java server generated in the desert and mineshaft chunks, and `go test ./server/world/generator/advanced/internal/structure -run Legacy` the mineshaft starts of both worlds.
+
+### Structure starts against Java's locate command
+
+The same server answered `locate structure` for 29 structures from 16 origins on both seeds, 928 queries; Adamant's structure locator answered the same queries. At first 113 of 272 matched on seed 12345. The faults, now fixed:
+
+- Woodland mansions, ocean monuments, strongholds, mineshafts and ruined portals skipped the biome checks every Java structure applies: `couldValidBiomeExistInTerrainColumn` before the start and `isValidBiome` at the generation stub. Mansions started in any biome, the normal shaft was chosen in badlands so mesa mineshafts never started, and the first ruined portal of the weighted set always won, the Nether variant included. Mansions also took their height from the wrong corners of the 5×5 box and one block high.
+- Exclusion zones were not implemented: pillager outposts started within 10 chunks of village placement chunks.
+- Ruined portals drew their mirror the wrong way round and turned the pivot with the mirror, and the height `findSuitableY` chose was dropped: templates stood at y 0 to 11. The cold check used the biome at y 0 and the temperature without height cooling; `findSuitableY` treated water as open for land portals.
+- Locate took the nearest start on each ring of sectors. Java takes the first start in iteration order for each placement and the nearest of those, measured to the locate position.
+
+All 928 queries now match. Ruined portal post-processing was ported again from `RuinedPortalPiece`: netherrack now spreads (it never did), drip columns continue past blocks they cannot replace, vines need a full collision face, and the bounding box centre is `BoundingBox.getCenter`. As in Java, only the chunk holding the centre of the template places a portal, the whole template at once; its writes into the neighbouring chunks reach them through the origin record, as feature writes do. Four portal chunks of the second seed match Java but for netherrack drips under underground portals, whose replaceable checks see neighbour decorations Java may not have placed yet, and a tree on a chunk border. The whole-chunk figures above are unchanged.
+
+`go test ./server/world/generator/advanced/overworld -run 'TestStructureLocateMatchesJava|TestRuinedPortal'` checks 72 of the locate answers, four portal starts and portal blocks Java wrote into a neighbouring chunk.
+
+### Mineshaft cobwebs
+
+Cobwebs in the open air came from chunks generated before the cobweb fix above. Around twelve mineshafts of seed 12345, 1,452 chunks, the previous code left 256 cobwebs with nothing but air above them; the current code leaves none of 3,580. Cobwebs hanging in caves that cross a corridor are vanilla: `isInterior` only asks for a block above them in the ocean floor heightmap.
 
 ## Java 26.3 generation kernel
 
