@@ -52,13 +52,21 @@ func patrolSpawnTick(tx *world.Tx, random *vanilla.Random) {
 	dx := (24 + int(random.NextInt(24))) * sign()
 	dz := (24 + int(random.NextInt(24))) * sign()
 	pos := origin.Add(cube.Pos{dx, 0, dz})
+	// Level.hasChunksAt: the chunks within ten blocks are loaded.
+	for _, corner := range [4][2]int{{-10, -10}, {10, -10}, {-10, 10}, {10, 10}} {
+		if !tx.ChunkLoaded(world.ChunkPos{int32((pos[0] + corner[0]) >> 4), int32((pos[2] + corner[1]) >> 4)}) {
+			return
+		}
+	}
 	if !patrolBiomeAllowed(tx, pos) {
 		return
 	}
 	group := int(math.Ceil(float64(tx.LocalDifficulty(pos).Effective))) + 1
 	for i := range group {
-		pos[1] = tx.HighestBlock(pos[0], pos[2]) + 1
-		if !spawnPatrolMember(tx, pos, i == 0) && i == 0 {
+		// The MOTION_BLOCKING_NO_LEAVES height map: under leaves and on
+		// top of grass.
+		pos[1] = tx.JavaMotionBlockingHeight(pos[0], pos[2], true)
+		if !spawnPatrolMember(tx, pos, i == 0, random) && i == 0 {
 			break
 		}
 		pos[0] += int(random.NextInt(5)) - int(random.NextInt(5))
@@ -72,32 +80,26 @@ func patrolBiomeAllowed(tx *world.Tx, pos cube.Pos) bool {
 	return world.JavaBiomeName(tx.Biome(pos)) != "mushroom_fields"
 }
 
-// spawnPatrolMember ports PatrolSpawner.spawnPatrolMember with
-// checkPatrollingMonsterSpawnRules: an empty spawn space above a valid
-// surface with block light at most 8.
-func spawnPatrolMember(tx *world.Tx, pos cube.Pos, leader bool) bool {
-	if len(tx.Block(pos).Model().BBox(pos, tx)) > 0 || len(tx.Block(pos.Side(cube.FaceUp)).Model().BBox(pos.Side(cube.FaceUp), tx)) > 0 {
+// spawnPatrolMember ports PatrolSpawner.spawnPatrolMember: a pillager spawns
+// in an empty spawn block where checkPatrollingMonsterSpawnRules lets it,
+// leading the patrol if it is the first, and is then initialised once with
+// the patrol spawn reason.
+func spawnPatrolMember(tx *world.Tx, pos cube.Pos, leader bool, random *vanilla.Random) bool {
+	const id = "minecraft:pillager"
+	if !validEmptySpawnBlock(tx, pos, id) {
 		return false
 	}
-	if _, liquid := tx.Liquid(pos); liquid {
+	// PatrollingMonster.checkPatrollingMonsterSpawnRules.
+	if tx.BlockLight(pos) > 8 || !checkMobSpawnRules(tx, id, pos) {
 		return false
 	}
-	below := pos.Side(cube.FaceDown)
-	if !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) || int(tx.Light(pos))-int(tx.SkyLight(pos)) > 8 {
-		return false
-	}
-	h := NewPillager(world.EntitySpawnOpts{Position: pos.Vec3Middle(), SpawnReason: "patrol"})
-	e := tx.AddEntity(h)
-	m, ok := e.(*Pillager)
-	if !ok {
-		return false
-	}
-	s := m.state()
-	if leader {
+	h := NewPillager(world.EntitySpawnOpts{Position: pos.Vec3(), SpawnReason: "patrol", SpawnRandom: random})
+	if m, ok := h.WorldlessEntity(tx).(*Pillager); ok && leader {
+		s := m.state()
 		s.patrolLeader = true
-		s.findPatrolTarget(cube.PosFromVec3(m.Position()), &s.random)
+		s.findPatrolTarget(pos, &s.random)
 	}
-	m.FinalizeSpawn("patrol", &s.random)
+	tx.AddEntity(h)
 	return true
 }
 

@@ -71,6 +71,7 @@ type EntityHandle struct {
 	data           EntityData
 	spawnReason    string
 	spawnSeed      int64
+	spawnRandom    *vanilla.Random
 	spawnGroup     *EntitySpawnGroup
 	javaRandom     *vanilla.Random
 	pendingVehicle uuid.UUID
@@ -107,6 +108,10 @@ type EntitySpawnOpts struct {
 	// SpawnSeed supplies the independent spawn random stream. It is not the
 	// structure decoration stream used for processors and loot.
 	SpawnSeed int64
+	// SpawnRandom, if set, is the stream FinalizeSpawn draws from in place of
+	// one seeded with SpawnSeed, as Mob.finalizeSpawn draws from the random of
+	// the level the spawner shares with it.
+	SpawnRandom *vanilla.Random
 	// SpawnGroup carries species-specific cohort data between sequential spawns
 	// on the same world thread. It is not retained by a published entity.
 	SpawnGroup *EntitySpawnGroup
@@ -140,6 +145,7 @@ func (opts EntitySpawnOpts) New(t EntityType, conf EntityConfig) *EntityHandle {
 		data:        EntityData{AlwaysShowNameTag: true, SpawnReason: opts.SpawnReason},
 		spawnReason: opts.SpawnReason,
 		spawnSeed:   opts.SpawnSeed,
+		spawnRandom: opts.SpawnRandom,
 		spawnGroup:  opts.SpawnGroup,
 	}
 	handle.worldless.Store(true)
@@ -164,12 +170,16 @@ func (e *EntityHandle) finalizeSpawn(entity Entity) {
 		e.spawnGroup = nil
 		return
 	}
-	reason, seed := e.spawnReason, e.spawnSeed
-	e.spawnReason, e.spawnSeed = "", 0
+	reason, seed, shared := e.spawnReason, e.spawnSeed, e.spawnRandom
+	e.spawnReason, e.spawnSeed, e.spawnRandom = "", 0, nil
 	defer func() { e.spawnGroup = nil }()
 	if finalizer, ok := entity.(interface {
 		FinalizeSpawn(string, *vanilla.Random)
 	}); ok {
+		if shared != nil {
+			finalizer.FinalizeSpawn(reason, shared)
+			return
+		}
 		random := vanilla.NewXoroshiroRandom(seed)
 		finalizer.FinalizeSpawn(reason, &random)
 	}

@@ -186,12 +186,17 @@ func (f *TropicalFish) FinalizeSpawn(reason string, random *vanilla.Random) {
 			group.Data = &tropicalFishSchoolGroupData{school: school, variant: variant}
 		}
 	} else {
+		f.behaviour().lone = true
 		pattern := tropicalFishPatterns[random.NextInt(int32(len(tropicalFishPatterns)))]
 		base, colour := random.NextInt(16), random.NextInt(16)
 		variant = int(pattern | base<<16 | colour<<24)
 	}
 	f.behaviour().variant = variant
 }
+
+// maxGroupSizeReached ports TropicalFish.isMaxGroupSizeReached: a fish of a
+// rare variant spawns alone rather than in a school.
+func (f *TropicalFish) maxGroupSizeReached(int) bool { return f.behaviour().lone }
 
 func aquaticFlopSound(id string) string {
 	switch id {

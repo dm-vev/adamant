@@ -73,7 +73,7 @@ func SpawnOriginalMobs(tx *world.Tx, chunk world.ChunkPos) {
 						continue
 					}
 					handle := spawn(data.ID, world.EntitySpawnOpts{Position: at, Rotation: cube.Rotation{float64(r.NextFloat() * 360), 0},
-						SpawnReason: "chunk_generation", SpawnSeed: ruleRandom.NextLong(), SpawnGroup: group})
+						SpawnReason: "chunk_generation", SpawnRandom: &ruleRandom, SpawnGroup: group})
 					if handle == nil {
 						continue
 					}
@@ -114,9 +114,9 @@ func topNonCollidingPos(tx *world.Tx, id string, x, z int) cube.Pos {
 	}
 	if placement, _ := spawnPlacementOf(id); placement == placementOnGround {
 		// SpawnPlacementTypes.ON_GROUND.adjustSpawnPosition: into a block
-		// below that can be walked through, such as snow.
+		// below that can be walked through, such as thin snow.
 		below := pos.Side(cube.FaceDown)
-		if shape, ok := blockShape(tx, below); ok && !shape.CollisionFull {
+		if shape, ok := blockShape(tx, below); ok && shape.PathfindableLand {
 			return below
 		}
 	}

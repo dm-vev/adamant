@@ -70,8 +70,17 @@ type spawnState struct {
 // chunk within eight chunks of a player and 128 blocks of one spawns the
 // categories of mobs that are under their caps.
 func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
+	// DistanceManager.naturalSpawnChunkCounter: the chunks within eight of
+	// a player, spectators included while they generate chunks.
+	trackers := players
+	if tx.World().GameRuleBool("spectators_generate_chunks") {
+		trackers = nil
+		for p := range tx.Players() {
+			trackers = append(trackers, p)
+		}
+	}
 	spawnable := map[world.ChunkPos]struct{}{}
-	for _, p := range players {
+	for _, p := range trackers {
 		cx, cz := int32(math.Floor(p.Position()[0]))>>4, int32(math.Floor(p.Position()[2]))>>4
 		for dx := int32(-8); dx <= 8; dx++ {
 			for dz := int32(-8); dz <= 8; dz++ {
@@ -81,7 +90,10 @@ func spawnNaturally(tx *world.Tx, players []world.Entity, r *vanilla.Random) {
 	}
 	state := newSpawnState(tx, players, len(spawnable))
 	w := tx.World()
-	enemies := w.Difficulty() != world.DifficultyPeaceful && w.MonsterSpawningEnabled()
+	// ServerChunkCache.spawnEnemies follows the spawn_monsters rule alone:
+	// on peaceful the spawn rules of each kind turn monsters away, and
+	// hoglins and piglins still spawn.
+	enemies := w.MonsterSpawningEnabled()
 	persistent := tx.CurrentTick()%400 == 0
 	var categories []naturalSpawnCategory
 	for _, c := range spawningCategories {
@@ -142,7 +154,7 @@ func newSpawnState(tx *world.Tx, players []world.Entity, chunkCount int) *spawnS
 		if !tx.ChunkLoaded(chunk) {
 			continue
 		}
-		if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(tx.Biome(pos)))[id]; ok && cost.Charge != 0 {
+		if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(tx.Biome(pos)))[id]; ok {
 			s.charges = append(s.charges, pointCharge{pos: pos, charge: cost.Charge})
 		}
 		if isMob {
@@ -209,9 +221,6 @@ func (s *spawnState) canSpawn(id string, pos cube.Pos) bool {
 
 // potentialChange ports PotentialCalculator.getPotentialEnergyChange.
 func (s *spawnState) potentialChange(pos cube.Pos, charge float64) float64 {
-	if charge == 0 {
-		return 0
-	}
 	change := 0.
 	for _, c := range s.charges {
 		dx, dy, dz := float64(c.pos[0]-pos[0]), float64(c.pos[1]-pos[1]), float64(c.pos[2]-pos[2])
@@ -233,9 +242,9 @@ func (s *spawnState) afterSpawn(id string, pos cube.Pos) {
 	} else if cost, ok := world.JavaBiomeSpawnCosts(world.JavaBiomeName(s.tx.Biome(pos)))[id]; ok {
 		charge = cost.Charge
 	}
-	if charge != 0 {
-		s.charges = append(s.charges, pointCharge{pos: pos, charge: charge})
-	}
+	// A mob without a spawn cost adds a charge of zero, which still keeps
+	// mobs with a cost from spawning in its very block.
+	s.charges = append(s.charges, pointCharge{pos: pos, charge: charge})
 	c := mobCategories[id]
 	s.counts[c]++
 	s.addLocal(world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}, c)
@@ -247,7 +256,14 @@ func (s *spawnState) spawnCategoryForChunk(c naturalSpawnCategory, chunk world.C
 	tx := s.tx
 	x, z := int(chunk[0])*16+int(r.NextInt(16)), int(chunk[1])*16+int(r.NextInt(16))
 	minY := tx.Range()[0]
+	// The WORLD_SURFACE height map: the first empty block above the highest
+	// block, or the bottom of an empty column.
 	top := tx.HighestBlock(x, z) + 1
+	if top == minY+1 {
+		if _, air := tx.Block(cube.Pos{x, minY, z}).(block.Air); air {
+			top = minY
+		}
+	}
 	y := minY + int(r.NextInt(int32(top-minY+1)))
 	if y >= minY+1 {
 		s.spawnCategoryForPosition(c, chunk, cube.Pos{x, y, z}, r)
@@ -293,8 +309,10 @@ func (s *spawnState) spawnCategoryForPosition(c naturalSpawnCategory, chunk worl
 			if !s.validSpawnPositionForType(c, *data, pos, dist, r) || !s.canSpawn(data.ID, pos) {
 				continue
 			}
+			// Mob.finalizeSpawn draws from the level random the spawner
+			// draws from.
 			opts := world.EntitySpawnOpts{Position: mgl64.Vec3{xx, float64(start[1]), zz}, Rotation: cube.Rotation{float64(r.NextFloat() * 360), 0},
-				SpawnReason: "natural", SpawnSeed: r.NextLong(), SpawnGroup: group}
+				SpawnReason: "natural", SpawnRandom: r, SpawnGroup: group}
 			handle := spawn(data.ID, opts)
 			if handle == nil {
 				return
@@ -302,12 +320,15 @@ func (s *spawnState) spawnCategoryForPosition(c naturalSpawnCategory, chunk worl
 			if !validPositionForMob(tx, handle, data.ID, pos, dist) {
 				continue
 			}
-			tx.AddEntity(handle)
+			e := tx.AddEntity(handle)
 			clusterSize++
 			groupSize++
 			s.afterSpawn(data.ID, pos)
 			if clusterSize >= maxSpawnClusterSize(data.ID) {
 				return
+			}
+			if g, ok := e.(interface{ maxGroupSizeReached(int) bool }); ok && g.maxGroupSizeReached(groupSize) {
+				break
 			}
 		}
 	}
@@ -326,10 +347,7 @@ func sampleSpawnCount(e world.NaturalSpawnEntry, r *vanilla.Random) int {
 // that is not spectating.
 func (s *spawnState) nearestPlayerDistSqr(pos mgl64.Vec3) (float64, bool) {
 	best, found := 0., false
-	for p := range s.tx.Players() {
-		if spectator(p) {
-			continue
-		}
+	for _, p := range s.players {
 		if d := p.Position().Sub(pos).LenSqr(); !found || d < best {
 			best, found = d, true
 		}
@@ -344,8 +362,12 @@ func (s *spawnState) rightDistanceToPlayerAndSpawn(chunk world.ChunkPos, pos cub
 	if dist <= 576 {
 		return false
 	}
-	if spawn := s.tx.World().Spawn(); spawn.Vec3Centre().Sub(mgl64.Vec3{float64(pos[0]) + .5, float64(pos[1]), float64(pos[2]) + .5}).LenSqr() < 24*24 {
-		return false
+	// The world spawn keeps mobs away only in the dimension it lies in, the
+	// Overworld.
+	if w := s.tx.World(); w.Dimension() == world.Overworld {
+		if spawn := w.Spawn(); spawn.Vec3Centre().Sub(mgl64.Vec3{float64(pos[0]) + .5, float64(pos[1]), float64(pos[2]) + .5}).LenSqr() < 24*24 {
+			return false
+		}
 	}
 	at := world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)}
 	return at == chunk || s.tx.EntityTicking(at)

@@ -283,6 +283,9 @@ type AquaticMobBehaviour struct {
 	fromBucket, dead                                 bool
 	// playingDead is Axolotl.DATA_PLAYING_DEAD.
 	playingDead bool
+	// lone is the inverse of TropicalFish.isSchool: a fish of a rare variant
+	// that spawned outside a school.
+	lone bool
 	// breeding is the love and growth state of axolotls; tadpoles only use
 	// its age lock.
 	breeding breeding

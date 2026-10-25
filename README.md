@@ -62,7 +62,7 @@ These rules follow from that:
 | Blocks and items | 🟢 | All vanilla blocks but five Education Edition ones; some behaviour is incomplete |
 | Commands | 🟢 | Java 26.3 command system with selectors, `execute` and scoreboards |
 | Persistence | ✅ | Native LevelDB worlds, BDS NBT, background chunk saving |
-| Natural spawning and ecology | 🟡 | Spawn tables and patrols in place; the full spawn cycle is still being verified |
+| Natural spawning and ecology | 🟢 | `NaturalSpawner`, spawn rules, caps and despawning compared with Java |
 
 ✅ complete · 🟢 ported, gaps remain · 🟡 partial
 
@@ -145,7 +145,7 @@ These rules follow from that:
 Parity work is ongoing. These are the main known differences from vanilla:
 
 - Five Education Edition blocks (the chalkboard and the chemistry tables) are not implemented, and states vanilla never produces, such as invalid facings and Education bits, load as placeholders. Some implemented blocks still have incomplete behaviour.
-- The full natural-spawning cycle and long-run mob ecology have not been verified end to end.
+- Natural spawning has been compared line by line with Java and checked in synthetic worlds; long runs in generated terrain have not been measured against Java.
 - The ender dragon's fireball sound and the boss bar's sky fog are not sent; Bedrock has no matching sound name or protocol field.
 - How some features render on a real Bedrock client, such as the resource-pack knowledge book and the dragon's death beams, is unverified.
 

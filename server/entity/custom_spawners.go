@@ -138,7 +138,7 @@ func catsWithin(tx *world.Tx, pos cube.Pos, radius float64) int {
 
 // spawnCat ports CatSpawner.spawnCat.
 func spawnCat(tx *world.Tx, pos cube.Pos, persistent bool, r *vanilla.Random) {
-	opts := world.EntitySpawnOpts{Position: pos.Vec3Middle(), SpawnReason: "natural", SpawnSeed: r.NextLong()}
+	opts := world.EntitySpawnOpts{Position: pos.Vec3Middle(), SpawnReason: "natural", SpawnRandom: r}
 	cat := tx.AddEntity(opts.New(CatType, CatBehaviourConfig{}))
 	if persistent {
 		if c, ok := cat.(*Cat); ok {
@@ -181,7 +181,7 @@ func villageSiegeTick(tx *world.Tx, enemies bool, r *vanilla.Random) {
 	}
 	s.zombiesToSpawn--
 	if pos, ok := s.siegeSpawnPos(tx, cube.Pos{s.spawnX, s.spawnY, s.spawnZ}, r); ok {
-		opts := world.EntitySpawnOpts{Position: pos, Rotation: cube.Rotation{float64(r.NextFloat() * 360), 0}, SpawnReason: "event", SpawnSeed: r.NextLong()}
+		opts := world.EntitySpawnOpts{Position: pos, Rotation: cube.Rotation{float64(r.NextFloat() * 360), 0}, SpawnReason: "event", SpawnRandom: r}
 		tx.AddEntity(NewZombie(opts))
 	}
 }

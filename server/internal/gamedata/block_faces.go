@@ -47,6 +47,7 @@ type GenerationShape struct {
 	LightEmission       uint8 // BlockState.getLightEmission
 	LightDampening      uint8 // BlockState.getLightDampening
 	LightEmptyShape     bool  // LightEngine.isEmptyShape: the shape takes no part in light occlusion
+	PathfindableLand    bool  // BlockState.isPathfindable(PathComputationType.LAND)
 }
 
 func generationBlockIndex(name string) (int, error) {
@@ -97,7 +98,7 @@ func generationShape(block, stateIndex int) GenerationShape {
 		SolidRender:   mask&(1<<25) != 0,
 		OutlineFull:   mask&(1<<26) != 0,
 		LightEmission: uint8(mask >> 33 & 15), LightDampening: uint8(mask >> 37 & 15),
-		LightEmptyShape: mask&(1<<41) != 0,
+		LightEmptyShape: mask&(1<<41) != 0, PathfindableLand: mask&(1<<42) != 0,
 	}
 }
 

@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.FireBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -88,6 +89,8 @@ public final class JavaSolidExporter {
                 mask |= (long)state.getLightEmission() << 33;
                 mask |= (long)state.getLightDampening() << 37;
                 if (!state.canOcclude() || !state.useShapeForLightOcclusion()) mask |= 1L << 41;
+                // BlockState.isPathfindable(LAND), which spawn positions use.
+                if (state.isPathfindable(PathComputationType.LAND)) mask |= 1L << 42;
                 if (firstMask == -1) firstMask = mask;
                 else if (mask != firstMask) facesVary = true;
                 faces.add(new FaceRow(properties(state), mask));

@@ -105,7 +105,8 @@ func blockValidSpawn(tx *world.Tx, pos cube.Pos, id string) bool {
 		return id == "minecraft:polar_bear"
 	case block.Magma:
 		return fireImmuneTypes[world.BedrockEntityIdentifier(id)] || fireImmuneTypes[id]
-	case block.Leaves:
+	case block.Leaves, block.FireflyBush:
+		// Blocks.ocelotOrParrot.
 		return id == "minecraft:ocelot" || id == "minecraft:parrot"
 	}
 	if blockInTag(b, "leaves") {
@@ -171,6 +172,10 @@ func blockDangerous(b world.Block, id string) bool {
 		if blockInTag(b, "wither_skeleton_immune_to") {
 			return false
 		}
+	default:
+		if blockInTag(b, "default_immune_to") {
+			return false
+		}
 	}
 	if !fireImmuneTypes[world.BedrockEntityIdentifier(id)] && !fireImmuneTypes[id] && burningBlock(b) {
 		return true
@@ -191,6 +196,8 @@ func burningBlock(b world.Block) bool {
 		return true
 	case block.Campfire:
 		return !v.Extinguished
+	case block.Cauldron:
+		return v.FillLevel > 0 && v.Liquid == block.CauldronLava
 	}
 	return blockInTag(b, "fire")
 }

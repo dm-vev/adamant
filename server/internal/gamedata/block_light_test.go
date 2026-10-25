@@ -30,3 +30,27 @@ func TestBlockLightInputs(t *testing.T) {
 		}
 	}
 }
+
+// TestBlockPathfindableOnLand checks BlockState.isPathfindable(LAND) as
+// exported: thin snow can be walked into, slabs and stairs cannot.
+func TestBlockPathfindableOnLand(t *testing.T) {
+	for _, c := range []struct {
+		name       string
+		properties map[string]any
+		want       bool
+	}{
+		{"minecraft:snow", map[string]any{"layers": int32(1)}, true},
+		{"minecraft:snow", map[string]any{"layers": int32(5)}, false},
+		{"minecraft:oak_slab", map[string]any{"type": "bottom"}, false},
+		{"minecraft:oak_stairs", nil, false},
+		{"minecraft:stone", nil, false},
+	} {
+		shape, err := BlockGenerationShape(c.name, c.properties)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if shape.PathfindableLand != c.want {
+			t.Errorf("%s %v: pathfindable on land = %v, want %v", c.name, c.properties, shape.PathfindableLand, c.want)
+		}
+	}
+}

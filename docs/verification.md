@@ -92,6 +92,24 @@ Both handlers now use `Tx.BlockFaceSturdy` for the lower block's upper face. Thi
 
 A real neighbour-queue regression installs a 3x3 litter patch on dirt and grass, covering all eight native segment counts and four directions. Before the change, one adjacent stone placement removed all nine blocks and dropped 37 items. Afterward, both stone placement and removal preserve every state and produce no drops; removing the central support removes only its five-segment litter and drops five items. Placement and survival checks cover dirt, grass, stone, upper/double/lower slabs, farmland and dirt paths. A separate native-state decoding regression checks that dirt paths retain a valid canonical identity without an invented `snowy` property. These checks establish support/notification behaviour, not complete leaf-litter fluid or interaction parity.
 
+## Natural spawning
+
+`NaturalSpawner`, `ServerChunkCache.tickChunks`, `SpawnPlacements` and `Mob.checkDespawn` were compared line by line with the Java 26.3 sources. The category and `notInPeaceful` tables of every entity type match `EntityTypes` exactly (checked by parsing the source). Fixes from the comparison:
+
+- The monster category follows `spawn_monsters` alone, as `ServerChunkCache.spawnEnemies` does; on peaceful each kind's spawn rules turn monsters away, so piglins (and hoglins, before `notInPeaceful` despawns them) spawn as in Java.
+- The Nether and the End have no skylight (`DimensionType.hasSkyLight`); the light engine had lit them with skylight 15, which failed monster darkness checks and the walk-target check of piglins.
+- The respawn point keeps mobs away only in its own dimension; spectators widen the spawn chunk count while `spectators_generate_chunks` is on; empty columns use the bottom of the `WORLD_SURFACE` height map; mobs without a spawn cost add a zero charge; rare tropical fish end their group (`isMaxGroupSizeReached`); `finalizeSpawn` draws from the spawner's level random.
+- Lava cauldrons burn, firefly bushes take ocelots and parrots, and `default_immune_to` is honoured, as `EntityType.isBlockDangerous` and `Blocks.ocelotOrParrot` have them.
+- Patrol members pass `isValidEmptySpawnBlock` and `checkPatrollingMonsterSpawnRules` (block light, not combined light), stand on the `MOTION_BLOCKING_NO_LEAVES` height map, need the chunks within ten blocks loaded, and are initialised once with their leader set first.
+- Chunk-generation spawns step into blocks `isPathfindable(LAND)` reports, exported from Java with the solid data, rather than any block without a full collision box.
+- Finding the players no longer walks and copies every entity, which every despawn check and spawn attempt did.
+
+`go test ./server/entity -run 'Spawn|Patrol|Despawn|Peaceful|Monster|Animals|WaterMobs'` covers monsters only in block light 0 at night, none by day, animals only on lit grass, water mobs in the depths their rules allow, peaceful Nether piglins, a two-minute night staying under the monster cap, and despawning once the player leaves.
+
+## Light engine
+
+Light follows `LightEngine`, `BlockLightEngine`, `SkyLightEngine` and `ChunkSkyLightSources`: light entering a block loses `max(1, getLightDampening())`, faces block it where their occlusion shapes together cover the face (`Shapes.faceShapeOccludes`, from 16×16 coverage of partial faces exported from Java), and skylight falls undimmed until a block dampens it or a face occludes it. Emission, dampening, shape occlusion and face coverage come from the Java 26.3 block data through `cmd/vanilla-solid-export/generate.sh`. Nodes spread brightest first, as `LeveledPriorityQueue`. Block edits are relit incrementally (removal then refill), batched per tick; `go test ./server/world -run 'Light|Partial|Nether'` compares incremental results against light computed from scratch and checks water, leaves, slabs, glass and the dimensions without skylight.
+
 ## Biome registry
 
 The registered 89 biome definitions match the pinned BDS's initial climate, water-colour, precipitation and tag metadata, including `dappled_forest` at persistent ID **195**. That ID was read from a saved BDS chunk after its biome was identified through the live Script API.

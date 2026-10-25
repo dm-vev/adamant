@@ -119,7 +119,7 @@ func phantomSpawnTick(tx *world.Tx, players []world.Entity, random *vanilla.Rand
 		for range 1 + random.NextInt(int32(difficultyID(w.Difficulty())+1)) {
 			handle := spawn("minecraft:phantom", world.EntitySpawnOpts{
 				Position:    mgl64.Vec3{float64(spawnPos[0]) + .5, float64(spawnPos[1]), float64(spawnPos[2]) + .5},
-				SpawnReason: "natural", SpawnSeed: random.NextLong(), SpawnGroup: group,
+				SpawnReason: "natural", SpawnRandom: random, SpawnGroup: group,
 			})
 			if handle != nil {
 				tx.AddEntity(handle)

@@ -35,7 +35,7 @@ func TestPatrolLeaderIsCaptainAndDropsOminousBottle(t *testing.T) {
 	var leaderH, memberH *world.EntityHandle
 	<-w.Exec(func(tx *world.Tx) {
 		patrolGround(tx)
-		if !spawnPatrolMember(tx, cube.Pos{0, 64, 0}, true) || !spawnPatrolMember(tx, cube.Pos{2, 64, 0}, false) {
+		if !spawnPatrolMember(tx, cube.Pos{0, 64, 0}, true, levelRandom(w)) || !spawnPatrolMember(tx, cube.Pos{2, 64, 0}, false, levelRandom(w)) {
 			t.Fatal("patrol members did not spawn on open ground")
 		}
 		var leader, member *Pillager
