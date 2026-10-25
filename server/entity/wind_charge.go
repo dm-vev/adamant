@@ -70,7 +70,7 @@ func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
 		}
 	}
 
-	windChargeInteractBlocks(tx, target, origin, owner)
+	windChargeTriggerBlocks(tx, origin, windChargeRadius, owner)
 	windGust(tx, e.H(), origin, windChargeRadius, windChargeKnockback, false)
 }
 
@@ -96,48 +96,30 @@ func windChargeImpact(e *Ent, tx *world.Tx, target trace.Result) mgl64.Vec3 {
 	return target.Position()
 }
 
-func windChargeInteractBlocks(tx *world.Tx, target trace.Result, origin mgl64.Vec3, owner world.Entity) {
-	positions := make(map[cube.Pos]struct{}, 32)
-	base := cube.PosFromVec3(origin)
-	windChargeGatherNeighbours(positions, base)
-
-	if blockResult, ok := target.(trace.BlockResult); ok {
-		windChargeGatherNeighbours(positions, blockResult.BlockPosition())
-		windChargeGatherNeighbours(positions, blockResult.BlockPosition().Side(blockResult.Face()))
-	}
-
+// windChargeTriggerBlocks ports the TRIGGER block interaction of the
+// explosion of a wind charge: the blocks its rays reach react as their
+// onExplosionHit does when Explosion.canTriggerBlocks.
+func windChargeTriggerBlocks(tx *world.Tx, origin mgl64.Vec3, radius float64, owner world.Entity) {
 	var user item.User
 	if u, ok := owner.(item.User); ok {
 		user = u
 	}
-
-	for pos := range positions {
-		blk := tx.Block(pos)
-		switch b := blk.(type) {
+	for _, pos := range blockpkg.TriggerExplosionBlocks(tx, origin, radius) {
+		ctx := &item.UseContext{}
+		switch b := tx.Block(pos).(type) {
 		case blockpkg.WoodDoor:
-			if b.Top {
-				continue
+			if !b.Top {
+				b.Activate(pos, cube.FaceUp, tx, user, ctx)
 			}
-			ctx := &item.UseContext{}
-			b.Activate(pos, cube.FaceUp, tx, user, ctx)
 		case blockpkg.CopperDoor:
-			if b.Top {
-				continue
+			if !b.Top {
+				b.Activate(pos, cube.FaceUp, tx, user, ctx)
 			}
-			ctx := &item.UseContext{}
-			b.Activate(pos, cube.FaceUp, tx, user, ctx)
 		case blockpkg.WoodTrapdoor:
-			ctx := &item.UseContext{}
 			b.Activate(pos, cube.FaceUp, tx, user, ctx)
 		case blockpkg.CopperTrapdoor:
-			ctx := &item.UseContext{}
 			b.Activate(pos, cube.FaceUp, tx, user, ctx)
 		case blockpkg.WoodFenceGate:
-			if user != nil {
-				ctx := &item.UseContext{}
-				b.Activate(pos, cube.FaceUp, tx, user, ctx)
-				continue
-			}
 			b.Open = !b.Open
 			tx.SetBlock(pos, b, nil)
 			if b.Open {
@@ -145,28 +127,23 @@ func windChargeInteractBlocks(tx *world.Tx, target trace.Result, origin mgl64.Ve
 			} else {
 				tx.PlaySound(pos.Vec3Centre(), sound.FenceGateClose{Block: b})
 			}
-		case blockpkg.Candle:
-			if !b.Lit {
-				continue
+		case blockpkg.Button:
+			if !b.Pressed {
+				b.Activate(pos, cube.FaceUp, tx, user, ctx)
 			}
-			ctx := &item.UseContext{}
+		case blockpkg.Lever:
 			b.Activate(pos, cube.FaceUp, tx, user, ctx)
-		case blockpkg.CandleCake:
-			if !b.Lit {
-				continue
+		case blockpkg.Bell:
+			b.RingFacing(pos, tx)
+		case blockpkg.Candle:
+			if b.Lit {
+				b.Activate(pos, cube.FaceUp, tx, user, ctx)
 			}
-			b.Lit = false
-			tx.SetBlock(pos, b, nil)
-			tx.PlaySound(pos.Vec3Centre(), sound.FireExtinguish{})
-		}
-	}
-}
-
-func windChargeGatherNeighbours(set map[cube.Pos]struct{}, base cube.Pos) {
-	for x := base.X() - 1; x <= base.X()+1; x++ {
-		for y := base.Y() - 1; y <= base.Y()+1; y++ {
-			for z := base.Z() - 1; z <= base.Z()+1; z++ {
-				set[cube.Pos{x, y, z}] = struct{}{}
+		case blockpkg.CandleCake:
+			if b.Lit {
+				b.Lit = false
+				tx.SetBlock(pos, b, nil)
+				tx.PlaySound(pos.Vec3Centre(), sound.FireExtinguish{})
 			}
 		}
 	}

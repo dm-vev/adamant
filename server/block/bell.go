@@ -57,6 +57,12 @@ func (b Bell) Ring(pos cube.Pos, tx *world.Tx, face cube.Face) bool {
 	return true
 }
 
+// RingFacing rings the Bell towards the way it faces, as BellBlock.attemptToRing
+// does without a direction, for explosions that trigger it.
+func (b Bell) RingFacing(pos cube.Pos, tx *world.Tx) {
+	b.ring(pos, tx, b.Facing.Face())
+}
+
 // ring ports BellBlock.attemptToRing: the bell swings towards face.
 func (b Bell) ring(pos cube.Pos, tx *world.Tx, face cube.Face) {
 	b.ringing, b.ticks = true, 0

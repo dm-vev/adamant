@@ -55,7 +55,11 @@ func breezeWindChargeHit(projectile *Ent, tx *world.Tx, target trace.Result) {
 			owner, _ = handle.Entity(tx)
 		}
 	}
-	windChargeInteractBlocks(tx, target, origin, owner)
+	// ServerExplosion.canTriggerBlocks: a breeze's charge only triggers
+	// blocks while mobs may grief.
+	if !mobGriefingDisabled(tx) {
+		windChargeTriggerBlocks(tx, origin, breezeWindChargeRadius, owner)
+	}
 
 	windGust(tx, projectile.H(), origin, breezeWindChargeRadius, 1, false)
 }

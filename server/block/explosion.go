@@ -3,6 +3,7 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
 	"github.com/df-mc/dragonfly/server/internal/txguard"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -180,40 +181,7 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 			if _, ok := tx.Liquid(cube.PosFromVec3(explosionPos)); ok {
 				estimatedBlocks = 32
 			}
-			affectedBlocks = make([]cube.Pos, 0, estimatedBlocks)
-			blockCache := make(map[cube.Pos]explosionBlockInfo, estimatedBlocks)
-			for _, ray := range rays {
-				pos := explosionPos
-				for blastForce := size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
-					current := cube.PosFromVec3(pos)
-					info, ok := blockCache[current]
-					if !ok {
-						currentBlock := tx.Block(current)
-						if l, ok := tx.Liquid(current); ok {
-							info.resistance = l.BlastResistance()
-							info.flags = explosionBlockResists
-						} else if i, ok := currentBlock.(Breakable); ok {
-							info.resistance = i.BreakInfo().BlastResistance
-							info.flags = explosionBlockResists
-						} else if _, ok = currentBlock.(Air); !ok {
-							info.flags = explosionBlockStopsRay
-						}
-						blockCache[current] = info
-					}
-					if info.flags&explosionBlockStopsRay != 0 {
-						break
-					}
-					pos = pos.Add(ray)
-					if info.flags&explosionBlockResists != 0 {
-						blastForce -= (info.resistance + 0.3) * 0.3
-					}
-					if blastForce > 0 && info.flags&explosionBlockAffected == 0 {
-						info.flags |= explosionBlockAffected
-						blockCache[current] = info
-						affectedBlocks = append(affectedBlocks, current)
-					}
-				}
-			}
+			affectedBlocks = explosionRayBlocks(tx, explosionPos, size, r, make([]cube.Pos, 0, estimatedBlocks), nil)
 		}
 
 		ctx := tx.Event()
@@ -293,6 +261,65 @@ func (c ExplosionConfig) Explode(tx *world.Tx, src world.ExplosionSource) {
 	}) {
 		return
 	}
+}
+
+// explosionRayBlocks ports ServerExplosion.calculateExplodedPositions: the
+// blocks the rays of an explosion of the size passed reach before the blocks
+// on their way take their force. immune, if set, reports blocks no explosion
+// passes, as the immune blocks of SimpleExplosionDamageCalculator.
+func explosionRayBlocks(tx *world.Tx, explosionPos mgl64.Vec3, size float64, r *rand.Rand, affected []cube.Pos, immune func(world.Block) bool) []cube.Pos {
+	blockCache := make(map[cube.Pos]explosionBlockInfo, cap(affected))
+	for _, ray := range rays {
+		pos := explosionPos
+		for blastForce := size * (0.7 + r.Float64()*0.6); blastForce > 0.0; blastForce -= 0.225 {
+			current := cube.PosFromVec3(pos)
+			info, ok := blockCache[current]
+			if !ok {
+				currentBlock := tx.Block(current)
+				if l, ok := tx.Liquid(current); ok {
+					info.resistance = l.BlastResistance()
+					info.flags = explosionBlockResists
+				} else if i, ok := currentBlock.(Breakable); ok {
+					info.resistance = i.BreakInfo().BlastResistance
+					info.flags = explosionBlockResists
+				} else if _, ok = currentBlock.(Air); !ok {
+					info.flags = explosionBlockStopsRay
+				}
+				if immune != nil && immune(currentBlock) {
+					info.resistance, info.flags = 3600000, explosionBlockResists
+				}
+				blockCache[current] = info
+			}
+			if info.flags&explosionBlockStopsRay != 0 {
+				break
+			}
+			pos = pos.Add(ray)
+			if info.flags&explosionBlockResists != 0 {
+				blastForce -= (info.resistance + 0.3) * 0.3
+			}
+			if blastForce > 0 && info.flags&explosionBlockAffected == 0 {
+				info.flags |= explosionBlockAffected
+				blockCache[current] = info
+				affected = append(affected, current)
+			}
+		}
+	}
+	return affected
+}
+
+// TriggerExplosionBlocks returns the blocks an explosion of the radius passed
+// at center reaches, for explosions with the TRIGGER interaction such as
+// those of wind charges, which pass no block of blocks_wind_charge_explosions.
+func TriggerExplosionBlocks(tx *world.Tx, center mgl64.Vec3, radius float64) []cube.Pos {
+	t := uint64(time.Now().UnixNano())
+	return explosionRayBlocks(tx, center, radius, rand.New(rand.NewPCG(t, t)), nil, func(b world.Block) bool {
+		state, err := world.CanonicalStateOf(b)
+		if err != nil {
+			return false
+		}
+		in, _ := gamedata.BlockTagContains("minecraft:blocks_wind_charge_explosions", state.Name)
+		return in
+	})
 }
 
 // explosionDropDecay ports ServerLevel.explode's interaction mapping: TNT and

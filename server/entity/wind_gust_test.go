@@ -53,3 +53,32 @@ func TestBlastProtectionResistsGusts(t *testing.T) {
 		t.Fatal("float32 levels drifted")
 	}
 }
+
+// TestWindChargesTriggerBlocksAlongTheirRays checks the TRIGGER interaction
+// of a wind charge: a wooden door its rays reach opens, an iron door does
+// not.
+func TestWindChargesTriggerBlocksAlongTheirRays(t *testing.T) {
+	w := world.Config{Entities: DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -4; x <= 8; x++ {
+			for z := -4; z <= 4; z++ {
+				tx.SetBlock(cube.Pos{x, 63, z}, block.Stone{}, nil)
+			}
+		}
+		wood, iron := cube.Pos{0, 64, 0}, cube.Pos{6, 64, 0}
+		tx.SetBlock(wood, block.WoodDoor{Facing: cube.North}, nil)
+		tx.SetBlock(wood.Side(cube.FaceUp), block.WoodDoor{Facing: cube.North, Top: true}, nil)
+		tx.SetBlock(iron, block.IronDoor{Facing: cube.North}, nil)
+		tx.SetBlock(iron.Side(cube.FaceUp), block.IronDoor{Facing: cube.North, Top: true}, nil)
+
+		windChargeTriggerBlocks(tx, mgl64.Vec3{.5, 64.5, -.25}, windChargeRadius, nil)
+		if door := tx.Block(wood).(block.WoodDoor); !door.Open {
+			t.Fatal("a wind charge bursting at a wooden door did not open it")
+		}
+		windChargeTriggerBlocks(tx, mgl64.Vec3{6.5, 64.5, -.25}, windChargeRadius, nil)
+		if door, ok := tx.Block(iron).(block.IronDoor); !ok || door.Open {
+			t.Fatal("a wind charge opened an iron door")
+		}
+	})
+}
