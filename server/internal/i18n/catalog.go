@@ -109,7 +109,11 @@ func decodeMessages(data []byte) (map[string]string, error) {
 		messages[key] = message
 	}
 	if _, err := decoder.Token(); err != nil {
-		return nil, err
+		if err == io.EOF {
+			// The stream ended before the closing brace.
+			err = io.ErrUnexpectedEOF
+		}
+		return nil, fmt.Errorf("unexpected end of JSON input: %w", err)
 	}
 	if _, err := decoder.Token(); err != io.EOF {
 		return nil, fmt.Errorf("unexpected data after the message catalog")
