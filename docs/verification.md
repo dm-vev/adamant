@@ -106,6 +106,8 @@ A real neighbour-queue regression installs a 3x3 litter patch on dirt and grass,
 
 `go test ./server/entity -run 'Spawn|Patrol|Despawn|Peaceful|Monster|Animals|WaterMobs'` covers monsters only in block light 0 at night, none by day, animals only on lit grass, water mobs in the depths their rules allow, peaceful Nether piglins, a two-minute night staying under the monster cap, and despawning once the player leaves.
 
+Natural spawning was also run in generated terrain: six places of the seed-12345 Overworld, each with a 6-chunk view, 1,200 ticks by day and 1,200 by night (local tool, not committed). Every spawned species belongs to the spawn list of its biome, or to a structure (village, ocean ruin, mansion) or to the chunk-generation spawns of the biome at the chunk corner, as Java takes it. Water categories keep to water (salmon and squids in rivers, cod, nautili and dolphins in oceans, glow squids in aquifers, axolotls in lush caves). In snowy biomes no strays spawned while skeletons did; a controlled night on open snowy plains, with and without a snow layer, gave 11–12 strays against 2–6 skeletons. The strays are missing in the terrain run because nearly every monster there spawned in caves, where strays need the sky. This is a sanity check of the spawn tables in real terrain, not a count against the Java server.
+
 ## Light engine
 
 Light follows `LightEngine`, `BlockLightEngine`, `SkyLightEngine` and `ChunkSkyLightSources`: light entering a block loses `max(1, getLightDampening())`, faces block it where their occlusion shapes together cover the face (`Shapes.faceShapeOccludes`, from 16×16 coverage of partial faces exported from Java), and skylight falls undimmed until a block dampens it or a face occludes it. Emission, dampening, shape occlusion and face coverage come from the Java 26.3 block data through `cmd/vanilla-solid-export/generate.sh`. Nodes spread brightest first, as `LeveledPriorityQueue`. Block edits are relit incrementally (removal then refill), batched per tick; `go test ./server/world -run 'Light|Partial|Nether'` compares incremental results against light computed from scratch and checks water, leaves, slabs, glass and the dimensions without skylight.
@@ -188,6 +190,25 @@ Pending updates use the captured BDS record: `currentTick` (int32), `tickList`, 
 Generated beds, banners, dragon heads and copper-golem statues were checked through native chunk installation and LevelDB reopening. Rotated/mirrored placements retain bed colour and occupancy, banner pattern layers, head rotation and powered state, statue pose/facing, and the separate water layer. Four consecutive-tick bed occupancy transitions converge on both halves without stale neighbour updates reversing the head state; chained updates retain the existing per-tick budget and unloaded-chunk safeguards.
 
 A separate capture from BDS **1.26.52.3 / build 51798919** verified powered and unpowered dragon-head NBT: the native flag is `DoingAnimation`, not `MouthMoving`. The decoder and encoder retain `MouthTickCount` as well. This checks actor persistence, not Bedrock-client animation rendering.
+
+## Whole Overworld chunks against the Java server
+
+The mapped Java 26.3 dedicated server (`net.minecraft.server.Main` from the MCP-Reborn jar) generated two worlds: seed 12345 with four forceloaded areas (plains and frozen rivers, a desert with a trial chamber, forests, dripstone caves) and seed `-7406315911040434051` with five. Their region files were read block for block, palette and property defaults resolved through the Java block data, against Adamant's Overworld generator for the same seeds (local tool, not committed). Compared were the forceloaded chunks (ring 0), the chunks around them (ring 1) and the ring beyond (ring 2), 225 chunks and 22.1 million blocks in all.
+
+The comparison found four faults, now fixed:
+
+- `legacy_type_3` frequency reduction (mineshafts) seeded its random with the salted large feature seed instead of `setLargeFeatureSeed`; almost every mineshaft stood where Java has none. Eight mineshaft starts the Java worlds reference now pass.
+- Structures were indexed within their decoration step by a hand-written registry order. The server loads the structure registry from the vanilla data pack sorted by identifier, which seeds the placement of every structure piece; mineshafts had the wrong random for every corridor block, rail and cobweb.
+- Deserts lacked sand under their top layer: the sand rule of `SurfaceRuleData` applies under the floor as well.
+- Cobwebs of spider corridors were placed outside the interior, where `generateMaybeBox` with `hasToBeInside` skips them.
+
+After the fixes, ring 0 matches in 99.92% and 99.84% of its blocks (seed 12345 and the second seed), ring 1 in 99.86% and 99.79%, ring 2 in 99.90% and 99.76%. What differs is Java's doing rather than the generator's:
+
+- Ring 0 and 1 chunks tick on the server: lava flows, bubble columns form and leaves recompute their distance.
+- Ring 2 chunks have neighbours Java never decorated, while Adamant decorates every chunk as if its neighbours were; their differences lie at the chunk edges (ores, trees, dripstone clusters).
+- Features crossing chunk borders depend on the order Java's chunk scheduler decorates neighbours in. A tree decorator such as `place_on_ground` draws random numbers only for blocks it can place, so whether a neighbour's trees are already there shifts the trees that follow. Even two decorations of one chunk by Adamant, with neighbours decorated in a different order, end with a different last tree.
+
+`go test ./server/world/generator/advanced/overworld -run TestChunksMatchTheJavaServer` checks blocks the Java server generated in the desert and mineshaft chunks, and `go test ./server/world/generator/advanced/internal/structure -run Legacy` the mineshaft starts of both worlds.
 
 ## Java 26.3 generation kernel
 
@@ -461,6 +482,14 @@ Feature pool elements execute their held placed feature through the structure de
 A strict live-world generation smoke generated seeds `0`, `1` and `-1` at `(0,0)`, `(-1,-17)` and `(1024,1024)` in all three dimensions: **27 sampled columns** without generation error logs. This exercises the integrated placement pipeline, contextual rule-based state providers, nested placed-feature holders and layered/heightmap placement; it is not a source chunk-layout comparison.
 
 Reference executables, decompiled sources and temporary oracle programs are not committed. A PDB may only supply RVAs for an executable with the matching CodeView GUID and age; the supplied 26.51.1 symbols do not match the pinned 1.26.52.3 executable.
+
+## Block and item audits against Java's classes
+
+A local tool lists, for every Java 26.3 block and item, the behaviour methods its class overrides and, for items, its food, consumable and `use_cooldown` components, and maps each to the Go interface it needs. Each remaining gap was checked by hand against the Java source; many are handled another way in Go (redstone through edge updates, skull animation through ticks, self neighbour updates instead of `onPlace`). Combat is left as Bedrock has it.
+
+Ported from the block audit: random ticks of cut copper slabs and stairs, ice, grass and mycelium spreading, nylium, the three growing vines, nether portals and leaves (decay by distance to `prevents_nearby_leaf_decay`); the shelf in full (slot by hit column, hotbar swaps of powered chains of up to three, comparators from behind only, hoppers); `TripWireHookBlock.calculateState` (hand-broken string trips its hooks until they recheck, shears disarm it); comparator outputs of container minecarts on detector rails, dispensers, droppers, decorated pots, beehives, copper bulbs and copper golem statues; arrow-pressed wooden buttons; projectile ignition of campfires and candles and amethyst chimes; the cartography table's interface and recipes; note blocks played by punching; ravagers trampling crops, boats breaking lily pads, eyeblossoms poisoning bees, turtle eggs broken by falls, slime slowing mobs; pots cracking under tools; beehives keeping their bees only under silk touch; creative drops of shulker boxes and hives with contents. Regression tests: `go test ./server/block -run 'Shelf|Tripwire|RandomTick|GrowingPlants'`, `go test ./server/session -run Cartography`.
+
+From the item audit: water bottles turn dirt into mud; glow berries are food and plant cave vines; placed vines need support and take a random age; sweet berries, dried kelp and chorus fruit have Java's food values, and chorus fruit its cooldown, applied once eaten; Java item identifiers resolve for item frames, frogspawn, the zombified piglin spawn egg, the knowledge book and explorer maps. Consume durations stay at Bedrock's 1.61 s rather than Java's 1.6 s. `go test ./server/item -run 'Mud|JavaItems|Chorus'`.
 
 ## Tick-stall audit
 
