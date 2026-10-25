@@ -352,15 +352,18 @@ func (c ExplosionConfig) boxExposure(tx *world.Tx, origin mgl64.Vec3, box cube.B
 					lerp(y, boxMin[1], boxMax[1]),
 					lerp(z, boxMin[2], boxMax[2]) + zOffset,
 				}
+				// The ray is cast from the point to the explosion, as Level.clip
+				// in getSeenPercent, so that a point resting on a block
+				// does not see that block.
 				var collided bool
-				trace.TraverseBlocks(origin, point, func(pos cube.Pos) (cont bool) {
+				trace.TraverseBlocks(point, origin, func(pos cube.Pos) (cont bool) {
 					if c.SuppressUnderwaterImpact {
 						if _, liquid := tx.Liquid(pos); liquid {
 							collided = true
 							return false
 						}
 					}
-					_, collided = trace.BlockIntercept(pos, tx, tx.Block(pos), origin, point, trace.CollisionShape)
+					_, collided = trace.BlockIntercept(pos, tx, tx.Block(pos), point, origin, trace.CollisionShape)
 					return !collided
 				})
 

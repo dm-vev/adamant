@@ -73,36 +73,15 @@ func onMobKilled(tx *world.Tx, e world.Entity) {
 	}
 }
 
-// burstWindOnDeath ports WindChargedMobEffect: a gust of strength 3 to 5
-// from the middle of the entity, with the sound and particles of a breeze
-// wind charge.
+// burstWindOnDeath ports WindChargedMobEffect.onMobRemoved: a gust of
+// strength 3 to 5 from the middle of the entity, with the sound and particles
+// of a breeze wind charge. It pushes items only if mobs may grief, as the
+// explosion of a mob with the TRIGGER interaction.
 func burstWindOnDeath(tx *world.Tx, e world.Entity, pos mgl64.Vec3) {
-	origin := pos.Add(mgl64.Vec3{0, e.H().Type().BBox(e).Height() / 2})
+	origin := pos.Add(mgl64.Vec3{0, float64(float32(e.H().Type().BBox(e).Height()) / 2)})
 	tx.AddParticle(origin, particle.WindBurst{})
 	tx.PlaySound(origin, sound.BreezeWindChargeBurst{})
-	windBurstKnockback(tx, origin, 3+rand.Float64()*2, e.H())
-}
-
-// windBurstKnockback knocks living entities within radius of origin away from
-// it, harder the closer they are. The entity with the handle passed is left
-// alone.
-func windBurstKnockback(tx *world.Tx, origin mgl64.Vec3, radius float64, exclude *world.EntityHandle) {
-	area := cube.Box(
-		math.Floor(origin[0]-radius), math.Floor(origin[1]-radius), math.Floor(origin[2]-radius),
-		math.Ceil(origin[0]+radius), math.Ceil(origin[1]+radius), math.Ceil(origin[2]+radius),
-	)
-	for other := range tx.EntitiesWithin(area.Grow(1)) {
-		if other.H() == exclude {
-			continue
-		}
-		distance := other.Position().Sub(origin).Len()
-		living, ok := other.(Living)
-		if !ok || distance >= radius {
-			continue
-		}
-		strength := 1 - distance/radius
-		gustKnockBack(living, origin, .65*strength, .6*strength)
-	}
+	windGust(tx, e.H(), origin, 3+rand.Float32()*2, 1, !mobGriefingDisabled(tx))
 }
 
 // spreadCobwebs ports WeavingMobEffect.spawnCobwebsRandomlyAround: of 15

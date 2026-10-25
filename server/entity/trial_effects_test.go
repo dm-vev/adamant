@@ -136,8 +136,10 @@ func TestWindChargedDeathBlowsNearbyMobsAway(t *testing.T) {
 	killWith(t, w, effect.WindCharged)
 	<-w.Exec(func(tx *world.Tx) {
 		e, _ := bystander.Entity(tx)
-		if vel := e.(interface{ Velocity() mgl64.Vec3 }).Velocity(); vel[0] <= 0 || vel[1] <= 0 {
-			t.Fatalf("pig next to the gust has velocity %v, want away and up", vel)
+		// The gust bursts from the middle of the zombie, above the eyes of
+		// the pig, so it pushes the pig away and a little down.
+		if vel := e.(interface{ Velocity() mgl64.Vec3 }).Velocity(); vel[0] <= .1 || vel[1] >= 0 {
+			t.Fatalf("pig next to the gust has velocity %v, want away and a little down", vel)
 		}
 	})
 }

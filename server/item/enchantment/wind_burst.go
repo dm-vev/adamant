@@ -31,14 +31,6 @@ func (windBurst) Rarity() item.EnchantmentRarity {
 	return item.EnchantmentRarityRare
 }
 
-// LaunchHeight returns the desired vertical height gain in blocks granted by the enchantment.
-func (windBurst) LaunchHeight(level int) float64 {
-	if level <= 0 {
-		return 0
-	}
-	return float64(level) * 8
-}
-
 // CompatibleWithEnchantment ...
 func (windBurst) CompatibleWithEnchantment(item.EnchantmentType) bool {
 	return true

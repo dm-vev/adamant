@@ -744,6 +744,9 @@ func (b *MountBehaviour) springSkeletonTrap(m *Mob) {
 		}
 		horse.b().tamed, horse.b().ageTicks = true, 0
 		horse.SetPersistenceRequired(true)
+		if ai, _ := horse.Ent.mobAI(); ai != nil {
+			ai.setInvulnerableTime(tx, 60)
+		}
 		rider := trapSkeleton(tx, difficulty, pos)
 		if rider == nil {
 			continue
@@ -763,6 +766,9 @@ func trapSkeleton(tx *world.Tx, difficulty world.LocalDifficulty, pos mgl64.Vec3
 		return nil
 	}
 	skeleton.SetPersistenceRequired(true)
+	if ai, _ := skeleton.Ent.mobAI(); ai != nil {
+		ai.setInvulnerableTime(tx, 60)
+	}
 	s := skeleton.state()
 	if s.head.Empty() {
 		s.head = item.NewStack(item.Helmet{Tier: item.ArmourTierIron{}}, 1)

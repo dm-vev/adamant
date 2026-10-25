@@ -248,6 +248,8 @@ func directDamageEntity(src world.DamageSource) world.Entity {
 	switch s := src.(type) {
 	case ProjectileDamageSource:
 		return s.Projectile
+	case WindChargeDamageSource:
+		return s.Projectile
 	case AttackDamageSource:
 		return s.Attacker
 	case SpearDamageSource:

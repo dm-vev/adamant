@@ -31,7 +31,10 @@ func (Magma) EntityStepOn(_ cube.Pos, _ *world.Tx, e world.Entity) {
 		// hot_floor is fire damage, which fire-immune mobs ignore.
 		return
 	}
-	// Frost Walker should also suppress damage, but that enchantment is not implemented yet.
+	if FrostWalkerLevel(e) > 0 {
+		// Frost Walker grants immunity to burn_from_stepping damage.
+		return
+	}
 	if sneaking, ok := e.(interface{ Sneaking() bool }); ok && sneaking.Sneaking() {
 		return
 	}

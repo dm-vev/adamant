@@ -2,7 +2,6 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -79,16 +78,7 @@ func CanFreeze(e world.Entity) bool {
 	if s, ok := e.(*SulfurCube); ok && !s.b().bodyItem.Empty() {
 		return false
 	}
-	var armour []item.Stack
-	switch a := e.(type) {
-	case interface{ Armour() *inventory.Armour }:
-		armour = a.Armour().Items()
-	case interface {
-		EquipmentArmour() (item.Stack, item.Stack, item.Stack, item.Stack)
-	}:
-		head, chest, legs, feet := a.EquipmentArmour()
-		armour = []item.Stack{head, chest, legs, feet}
-	}
+	armour := wornArmour(e)
 	if body, ok := e.(interface{ BodyArmor() item.Stack }); ok {
 		armour = append(armour, body.BodyArmor())
 	}

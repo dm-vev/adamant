@@ -621,11 +621,7 @@ func (s *SulfurCube) KnockBack(src mgl64.Vec3, force, height float64) {
 		s.tx.PlaySound(s.Position(), sound.Custom{Name: b.archetype.hitSound(), Volume: 1, Pitch: 1})
 		return
 	}
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force * (1 - resistance))
-	}
-	d[1] = height * (1 - resistance)
-	s.SetVelocity(d)
+	knockBackResisted(s, src, force, height, resistance)
 }
 
 var _ world.EntityType = sulfurCubeType{}

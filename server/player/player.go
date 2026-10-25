@@ -47,6 +47,9 @@ import (
 )
 
 type playerData struct {
+	// frostWalkPos is the block Frost Walker last ran in.
+	frostWalkPos                cube.Pos
+	frostWalkPosSet             bool
 	unlockedRecipes             map[string]struct{}
 	raidOmenPosition            *cube.Pos
 	shoulderLeft, shoulderRight map[string]any
@@ -2686,7 +2689,8 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 			windLevel = w.Level()
 		}
 		effective := mace.EffectiveFallDistance(fallDistance)
-		if effective >= mace.SmashThreshold() {
+		// MaceItem.canSmashAttack: falling more than 1.5 blocks, not gliding.
+		if effective > mace.SmashThreshold() && !p.Gliding() {
 			smashDistance = effective
 			smashBonus = mace.SmashBonus(smashDistance)
 			if dens, ok := i.Enchantment(enchantment.Density); ok {
@@ -2744,18 +2748,18 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	}
 
 	p.tx.PlaySound(entity.EyePosition(e), sound.Attack{Damage: !mgl64.FloatEqual(n, 0)})
-	if smashReady && vulnerable && !mgl64.FloatEqual(n, 0) {
-		p.ResetFallDistance()
+	if smashReady && vulnerable {
+		// MaceItem.hurtEnemy: the attacker stops falling and the entities
+		// around its target are thrown away, then Wind Burst launches the
+		// attacker back up before MaceItem.postHurtEnemy resets its fall.
 		velocity := p.Velocity()
-		velocity[1] = 0
-		if windLevel > 0 {
-			const gravity = 0.08
-			heightGain := enchantment.WindBurst.LaunchHeight(windLevel)
-			if heightGain > 0 {
-				velocity[1] = math.Sqrt(2 * gravity * heightGain)
-			}
-		}
+		velocity[1] = float64(float32(.01))
 		p.SetVelocity(velocity)
+		entity.MaceSmashKnockback(p.tx, p, e, fallDistance)
+		if windLevel > 0 {
+			entity.WindBurst(p.tx, p, windLevel)
+		}
+		p.ResetFallDistance()
 	}
 	if !vulnerable {
 		return true

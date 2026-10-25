@@ -67,8 +67,13 @@ type (
 		// Source is the source of the explosion that dealt the damage.
 		Source world.ExplosionSource
 	}
-	// WindChargeDamageSource is used for damage caused by a wind charge burst.
-	WindChargeDamageSource struct{}
+	// WindChargeDamageSource is used for damage caused by a wind charge
+	// hitting an entity.
+	WindChargeDamageSource struct {
+		// Projectile and Owner are the wind charge and the entity that shot
+		// it, if any.
+		Projectile, Owner world.Entity
+	}
 	// StarvationDamageSource is the damage of an empty food bar, which a vex
 	// also takes once its life runs out.
 	StarvationDamageSource struct{}

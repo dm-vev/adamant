@@ -129,6 +129,7 @@ func (ai *MobAI) Tick(e *Ent, self world.Entity, register func(m *Mob)) *Movemen
 	if !m.Alive() {
 		return nil
 	}
+	ai.tickChangedBlock(m)
 	prevPos, prevVel, prevRot, prevHead := e.data.Pos, e.data.Vel, e.data.Rot, ai.headYaw
 	if !first {
 		// Entity.lastKnownSpeed: how far the mob moved in the last tick.
@@ -783,6 +784,20 @@ func collideWithBoxes(movement mgl64.Vec3, box cube.BBox, boxes []cube.BBox) mgl
 		resolved[axis] = d
 	}
 	return resolved
+}
+
+// tickChangedBlock ports the end of LivingEntity.baseTick: a mob that moved
+// into another block runs the LOCATION_CHANGED effects of its enchantments,
+// of which Frost Walker freezes water while it stands on the ground.
+func (ai *MobAI) tickChangedBlock(m *Mob) {
+	pos := cube.PosFromVec3(m.data.Pos)
+	if ai.lastBlockPosSet && pos == ai.lastBlockPos {
+		return
+	}
+	ai.lastBlockPos, ai.lastBlockPosSet = pos, true
+	if ai.onGround && m.data.Riding == nil {
+		FrostWalk(m.tx, m.Self, m.data.Pos)
+	}
 }
 
 // mobFluidPusher is implemented by behaviours of mobs that override

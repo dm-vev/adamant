@@ -418,7 +418,11 @@ func (w *Wither) Heal(v float64, _ world.HealingSource) float64 {
 	w.updateBossBar()
 	return w.Health() - a
 }
-func (w *Wither) KnockBack(mgl64.Vec3, float64, float64) {}
+
+// KnockBack ports LivingEntity.knockback, which WitherBoss leaves as it is.
+func (w *Wither) KnockBack(src mgl64.Vec3, force, height float64) {
+	knockBack(w, src, force, height)
+}
 
 // AddEffect does nothing: WitherBoss.addEffect refuses every effect.
 func (w *Wither) AddEffect(effect.Effect)    {}
@@ -450,6 +454,8 @@ func mobKiller(src world.DamageSource) world.Entity {
 	case MaceSmashDamageSource:
 		return s.Attacker
 	case ProjectileDamageSource:
+		return s.Owner
+	case WindChargeDamageSource:
 		return s.Owner
 	case SonicBoomDamageSource:
 		return s.Attacker

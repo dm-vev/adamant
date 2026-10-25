@@ -102,6 +102,9 @@ type MobAI struct {
 	collidedBelow bool
 	waterHeight   float64
 	lavaHeight    float64
+	// lastBlockPos is LivingEntity.lastPos, the block the mob was last in.
+	lastBlockPos    cube.Pos
+	lastBlockPosSet bool
 
 	// useItem is the item the mob uses, as LivingEntity.useItem, and
 	// useTicks how long it has used it.
@@ -491,6 +494,12 @@ func (ai *MobAI) DamageCooldown(tx *world.Tx, d float64) (float64, bool) {
 	}
 	ai.hurtCooldown, ai.hurtTick, ai.lastHurt = true, now, d
 	return d, true
+}
+
+// setInvulnerableTime ports Entity.setInvulnerableTime for a mob not yet
+// hurt: for ticks-10 ticks only damage beyond what it last took hurts it.
+func (ai *MobAI) setInvulnerableTime(tx *world.Tx, ticks int64) {
+	ai.hurtCooldown, ai.hurtTick, ai.lastHurt = true, tx.CurrentTick()+ticks-20, 0
 }
 
 // Hurt records the attacker of damage the mob took, as LivingEntity.hurt

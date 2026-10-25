@@ -8,7 +8,8 @@ import (
 	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
-const breezeWindChargeRadius = 3.0
+// breezeWindChargeRadius is BreezeWindCharge.RADIUS.
+const breezeWindChargeRadius = 3
 
 // BreezeWindChargeType identifies the non-item wind charge fired by a Breeze.
 var BreezeWindChargeType breezeWindChargeType
@@ -39,11 +40,11 @@ func NewBreezeWindCharge(opts world.EntitySpawnOpts, owner world.Entity) *world.
 }
 
 func breezeWindChargeConfig(owner *world.EntityHandle) ProjectileBehaviourConfig {
-	return ProjectileBehaviourConfig{Owner: owner, Gravity: 0, Drag: 0, Damage: 1.4, Hit: breezeWindChargeHit}
+	return ProjectileBehaviourConfig{Owner: owner, Gravity: 0, Drag: 0, Damage: -1, Hit: breezeWindChargeHit}
 }
 
 func breezeWindChargeHit(projectile *Ent, tx *world.Tx, target trace.Result) {
-	origin := target.Position()
+	origin := windChargeImpact(projectile, tx, target)
 	tx.AddParticle(origin, particle.WindBurst{})
 	tx.PlaySound(origin, sound.BreezeWindChargeBurst{})
 
@@ -56,7 +57,7 @@ func breezeWindChargeHit(projectile *Ent, tx *world.Tx, target trace.Result) {
 	}
 	windChargeInteractBlocks(tx, target, origin, owner)
 
-	windBurstKnockback(tx, origin, breezeWindChargeRadius, projectile.H())
+	windGust(tx, projectile.H(), origin, breezeWindChargeRadius, 1, false)
 }
 
 var _ world.EntityType = breezeWindChargeType{}

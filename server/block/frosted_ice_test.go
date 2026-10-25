@@ -7,17 +7,37 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-func TestFrostedIceDecay(t *testing.T) {
-	for age := 0; age < 3; age++ {
-		next, melted := decayFrostedIce(FrostedIce{Age: age})
-		if melted || next != (FrostedIce{Age: age + 1}) {
-			t.Fatalf("age %d decayed to %#v, melted %t", age, next, melted)
+// TestFrostedIceMeltsInStages checks frosted ice ages a stage at a time
+// and melts into water once it is three stages old, and that ice next to
+// it with fewer than two frosted neighbours melts with it.
+func TestFrostedIceMeltsInStages(t *testing.T) {
+	w := world.Config{Synchronous: true, Generator: world.NopGenerator{}, Provider: world.NopProvider{}}.New()
+	defer w.Close()
+
+	<-w.Exec(func(tx *world.Tx) {
+		pos := cube.Pos{0, 64, 0}
+		tx.SetBlock(pos, FrostedIce{}, nil)
+		for age := 0; age < 3; age++ {
+			if (FrostedIce{Age: age}).slightlyMelt(pos, tx) {
+				t.Fatalf("ice of age %d melted, want it to age", age)
+			}
+			if got := tx.Block(pos); got != (FrostedIce{Age: age + 1}) {
+				t.Fatalf("ice of age %d became %#v", age, got)
+			}
 		}
-	}
-	next, melted := decayFrostedIce(FrostedIce{Age: 3})
-	if !melted || next != (Water{Depth: 8, Still: true}) {
-		t.Fatalf("age 3 decayed to %#v, melted %t", next, melted)
-	}
+		lone := pos.Side(cube.FaceEast)
+		tx.SetBlock(lone, FrostedIce{}, nil)
+		if !(FrostedIce{Age: 3}).slightlyMelt(pos, tx) {
+			t.Fatal("ice of age 3 did not melt")
+		}
+		if got := tx.Block(pos); got != (Water{Depth: 8, Still: true}) {
+			t.Fatalf("melted ice became %#v, want still water", got)
+		}
+		FrostedIce{}.NeighbourUpdateTick(lone, pos, tx)
+		if got := tx.Block(lone); got != (Water{Depth: 8, Still: true}) {
+			t.Fatalf("ice left without frosted neighbours became %#v, want it melted", got)
+		}
+	})
 }
 
 func TestFrostedIceInterfacesAndEncoding(t *testing.T) {

@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"math"
-
 	blockpkg "github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/cube/trace"
@@ -14,12 +12,10 @@ import (
 )
 
 const (
-	windChargeRadius         = 4.0
-	windChargeBaseForce      = 0.65
-	windChargeBaseHeight     = 0.6
-	windChargeBaseDamage     = 1
-	selfBoostHorizontalLimit = 0.75
-	selfBoostMinHeight       = 1.0
+	// windChargeRadius is WindCharge.RADIUS, and windChargeKnockback the
+	// knockback multiplier of its explosion.
+	windChargeRadius    = 1.2
+	windChargeKnockback = 1.22
 )
 
 // NewWindCharge spawns a wind charge projectile owned by the entity passed.
@@ -62,7 +58,7 @@ func (windChargeType) DecodeNBT(_ map[string]any, data *world.EntityData) {
 func (windChargeType) EncodeNBT(*world.EntityData) map[string]any { return nil }
 
 func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
-	origin := target.Position()
+	origin := windChargeImpact(e, tx, target)
 	tx.AddParticle(origin, particle.WindBurst{})
 	tx.PlaySound(origin, sound.WindChargeImpact{})
 
@@ -75,57 +71,29 @@ func windChargeHit(e *Ent, tx *world.Tx, target trace.Result) {
 	}
 
 	windChargeInteractBlocks(tx, target, origin, owner)
+	windGust(tx, e.H(), origin, windChargeRadius, windChargeKnockback, false)
+}
 
-	area := cube.Box(
-		math.Floor(origin[0]-windChargeRadius),
-		math.Floor(origin[1]-windChargeRadius),
-		math.Floor(origin[2]-windChargeRadius),
-		math.Ceil(origin[0]+windChargeRadius),
-		math.Ceil(origin[1]+windChargeRadius),
-		math.Ceil(origin[2]+windChargeRadius),
-	)
-
-	for other := range tx.EntitiesWithin(area.Grow(1)) {
-		if other == nil || other.H() == e.H() {
-			continue
+// windChargeImpact ports AbstractWindCharge.onHitEntity and onHitBlock: an
+// entity hit takes 1 damage and the charge bursts where it is, or a quarter
+// of a block off the face of a block hit.
+func windChargeImpact(e *Ent, tx *world.Tx, target trace.Result) mgl64.Vec3 {
+	switch r := target.(type) {
+	case trace.EntityResult:
+		var owner world.Entity
+		if behaviour, ok := e.Behaviour().(*ProjectileBehaviour); ok {
+			owner = behaviour.owner(tx)
 		}
-
-		pos := other.Position()
-		dist := pos.Sub(origin).Len()
-		if dist > windChargeRadius {
-			continue
+		if l, ok := r.Entity().(Living); ok {
+			if _, vulnerable := l.Hurt(1, WindChargeDamageSource{Projectile: e, Owner: owner}); vulnerable {
+				recordLastHurtMob(owner, l)
+			}
 		}
-
-		if living, ok := other.(Living); ok {
-			scale := 1 - dist/windChargeRadius
-			if scale <= 0 {
-				continue
-			}
-
-			force := windChargeBaseForce * scale
-			height := windChargeBaseHeight * scale
-
-			knockBackOrigin := origin
-
-			if owner != nil && owner.H() == other.H() {
-				horizontalOffset := pos.Sub(origin)
-				horizontalOffset[1] = 0
-				if horizontalOffset.Len() < selfBoostHorizontalLimit {
-					knockBackOrigin = mgl64.Vec3{pos[0], origin[1], pos[2]}
-					if height < selfBoostMinHeight {
-						height = selfBoostMinHeight
-					}
-				}
-			}
-
-			gustKnockBack(living, knockBackOrigin, force, height)
-
-			if owner == nil || owner.H() != other.H() {
-				living.Hurt(windChargeBaseDamage, WindChargeDamageSource{})
-			}
-			continue
-		}
+		return e.Position()
+	case trace.BlockResult:
+		return r.Position().Add(cube.Pos{}.Side(r.Face()).Vec3().Mul(.25))
 	}
+	return target.Position()
 }
 
 func windChargeInteractBlocks(tx *world.Tx, target trace.Result, origin mgl64.Vec3, owner world.Entity) {

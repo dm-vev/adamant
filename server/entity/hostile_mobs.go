@@ -1022,6 +1022,8 @@ func raidDamageAttacker(src world.DamageSource) world.Entity {
 		return source.Attacker
 	case ProjectileDamageSource:
 		return source.Owner
+	case WindChargeDamageSource:
+		return source.Owner
 	case *AttackDamageSource:
 		if source != nil {
 			return source.Attacker

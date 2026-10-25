@@ -233,7 +233,8 @@ func (c Campfire) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
 			tx.PlaySound(pos.Vec3(), sound.Ignite{})
 			tx.SetBlock(pos, c, nil)
 		}
-		if !c.Extinguished && !fireImmune(e) {
+		// Campfire damage burns from stepping, which Frost Walker is immune to.
+		if !c.Extinguished && !fireImmune(e) && FrostWalkerLevel(e) == 0 {
 			if l, ok := e.(livingEntity); ok {
 				l.Hurt(c.Type.Damage(), FireDamageSource{})
 			}

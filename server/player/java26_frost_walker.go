@@ -1,10 +1,9 @@
 package player
 
 import (
-	"math"
-
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/world"
 )
@@ -34,38 +33,16 @@ func (p *Player) frostWalkerProtectsFrom(src world.DamageSource) bool {
 	}
 }
 
+// tickFrostWalker runs the LOCATION_CHANGED effect of Frost Walker once the
+// player moves into another block while on the ground and riding nothing.
 func (p *Player) tickFrostWalker() {
-	if !p.onGround {
+	pos := cube.PosFromVec3(p.Position())
+	if p.frostWalkPosSet && pos == p.frostWalkPos {
 		return
 	}
-	level := p.frostWalkerLevel()
-	if level == 0 {
+	p.frostWalkPos, p.frostWalkPosSet = pos, true
+	if !p.onGround || p.Riding() != nil || !p.movementChunkReady(pos.Side(cube.FaceDown)) {
 		return
 	}
-	centre := cube.PosFromVec3(p.Position())
-	radius := min(2+level, 4)
-	for x := -radius; x <= radius; x++ {
-		for z := -radius; z <= radius; z++ {
-			pos := cube.Pos{centre[0] + x, centre[1] - 1, centre[2] + z}
-			if !p.movementChunkReady(pos) {
-				continue
-			}
-			liquid, ok := p.tx.Liquid(pos)
-			if !ok || liquid.LiquidType() != "water" || liquid.LiquidDepth() != 8 {
-				continue
-			}
-			above, loaded := p.tx.BlockLoaded(pos.Side(cube.FaceUp))
-			if !loaded {
-				continue
-			}
-			if _, air := above.(block.Air); !air {
-				continue
-			}
-			if math.Hypot(float64(x), float64(z)) > float64(radius)+0.5 {
-				continue
-			}
-			p.tx.SetLiquid(pos, nil)
-			p.tx.SetBlock(pos, block.FrostedIce{}, nil)
-		}
-	}
+	entity.FrostWalk(p.tx, p, p.Position())
 }

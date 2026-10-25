@@ -915,6 +915,8 @@ func oceanDamageSourceAttacker(src world.DamageSource) world.Entity {
 		return source.Attacker
 	case ProjectileDamageSource:
 		return source.Owner
+	case WindChargeDamageSource:
+		return source.Owner
 	case ExplosionDamageSource:
 		if source, ok := source.Source.(world.EntityExplosionSource); ok {
 			return source.Entity

@@ -95,38 +95,75 @@ func (f FrostedIce) ScheduledTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 	f.tick(pos, tx, r)
 }
 
+// tick ports FrostedIceBlock.tick: ice with few frosted neighbours, or one
+// in three, melts a stage once it is bright enough, and its frosted
+// neighbours with it.
 func (f FrostedIce) tick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
-	if (r.IntN(3) != 0 && !fewerFrostedIceNeighbours(pos, tx, 4)) || tx.Light(pos) <= uint8(11-f.Age) {
-		tx.ScheduleBlockUpdate(pos, f, time.Duration(20+r.IntN(21))*time.Second/20)
-		return
-	}
-	next, melted := decayFrostedIce(f)
-	if !melted {
-		tx.SetBlock(pos, next, nil)
-		tx.ScheduleBlockUpdate(pos, next, time.Duration(20+r.IntN(21))*time.Second/20)
-		return
-	}
-	tx.SetBlock(pos, next, nil)
-	for _, face := range cube.Faces() {
-		neighbour := pos.Side(face)
-		ice, ok := tx.Block(neighbour).(FrostedIce)
-		if !ok {
-			continue
+	if r.IntN(3) == 0 || fewerFrostedIceNeighbours(pos, tx, 4) {
+		brightness := tx.RawBrightness(pos)
+		if tx.World().Dimension() == world.End {
+			brightness = int(tx.BlockLight(pos))
 		}
-		next, melted := decayFrostedIce(ice)
-		tx.SetBlock(neighbour, next, nil)
-		if !melted {
-			tx.ScheduleBlockUpdate(neighbour, next, time.Duration(20+r.IntN(21))*time.Second/20)
+		// Frosted ice dampens light by one.
+		if brightness > 11-f.Age-1 && f.slightlyMelt(pos, tx) {
+			for _, face := range cube.Faces() {
+				neighbour := pos.Side(face)
+				if ice, ok := tx.Block(neighbour).(FrostedIce); ok && !ice.slightlyMelt(neighbour, tx) {
+					tx.ScheduleBlockUpdate(neighbour, ice, time.Duration(20+r.IntN(21))*time.Second/20)
+				}
+			}
+			return
 		}
 	}
+	tx.ScheduleBlockUpdate(pos, f, time.Duration(20+r.IntN(21))*time.Second/20)
 }
 
-func decayFrostedIce(f FrostedIce) (world.Block, bool) {
+// slightlyMelt ports FrostedIceBlock.slightlyMelt: the ice ages a stage, or
+// melts once it is as old as it gets. It reports if the ice melted.
+func (f FrostedIce) slightlyMelt(pos cube.Pos, tx *world.Tx) bool {
 	if f.Age < 3 {
 		f.Age++
-		return f, false
+		tx.SetBlock(pos, f, &world.SetOpts{DisableBlockUpdates: true})
+		return false
 	}
-	return Water{Depth: 8, Still: true}, true
+	f.melt(pos, tx)
+	return true
+}
+
+// melt ports IceBlock.melt: frosted ice turns into water, or vanishes where
+// water evaporates.
+func (FrostedIce) melt(pos cube.Pos, tx *world.Tx) {
+	if tx.World().Dimension().WaterEvaporates() {
+		tx.SetBlock(pos, nil, nil)
+		return
+	}
+	tx.SetBlock(pos, Water{Depth: 8, Still: true}, nil)
+}
+
+// Placed ports FrostedIceBlock.onPlace: placed ice first ticks after three to
+// six seconds.
+func (f FrostedIce) Placed(pos cube.Pos, tx *world.Tx, _ world.Block) {
+	tx.ScheduleBlockUpdate(pos, f, time.Duration(60+rand.IntN(61))*time.Second/20)
+}
+
+// NeighbourUpdateTick ports FrostedIceBlock.neighborChanged: once frosted ice
+// next to it melts, ice with fewer than two frosted neighbours melts too.
+func (f FrostedIce) NeighbourUpdateTick(pos, changedNeighbour cube.Pos, tx *world.Tx) {
+	switch b := tx.Block(changedNeighbour).(type) {
+	case Water:
+		if b.Depth != 8 || b.Falling {
+			return
+		}
+	case Air:
+		if !tx.World().Dimension().WaterEvaporates() {
+			return
+		}
+	default:
+		return
+	}
+	if fewerFrostedIceNeighbours(pos, tx, 2) {
+		f.melt(pos, tx)
+	}
 }
 
 func fewerFrostedIceNeighbours(pos cube.Pos, tx *world.Tx, limit int) bool {
