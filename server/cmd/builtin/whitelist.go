@@ -48,9 +48,8 @@ type whitelistListCommand struct {
 }
 
 func newWhitelistCommand(srv serverAdapter) cmd.Command {
-	return cmd.New(
+	return newCommand(
 		"whitelist",
-		"Manages the whitelist.",
 		[]string{"allowlist"},
 		whitelistAddCommand{adminPermission: adminPermission{srv}, srv: srv},
 		whitelistOnCommand{adminPermission: adminPermission{srv}, srv: srv},

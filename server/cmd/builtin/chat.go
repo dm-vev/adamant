@@ -29,11 +29,11 @@ type meCommand struct {
 }
 
 func newSayCommand() cmd.Command {
-	return cmd.New("say", "Broadcasts a message to all players.", nil, sayCommand{})
+	return newCommand("say", nil, sayCommand{})
 }
 
 func newMeCommand() cmd.Command {
-	return cmd.New("me", "Performs an action in chat.", nil, meCommand{})
+	return newCommand("me", nil, meCommand{})
 }
 
 func (c meCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {

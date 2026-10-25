@@ -47,23 +47,23 @@ func operatorAllowed(srv serverAdapter, src cmd.Source) bool {
 type setBlockCommand struct {
 	worldOpCommand
 	Position mgl64.Vec3                 `cmd:"pos"`
-	Block    string                     `cmd:"block"`
+	Block    blockArgument              `cmd:"block"`
 	Mode     cmd.Optional[setBlockMode] `cmd:"mode"`
 }
 type fillCommand struct {
 	worldOpCommand
 	From  mgl64.Vec3             `cmd:"from"`
 	To    mgl64.Vec3             `cmd:"to"`
-	Block string                 `cmd:"block"`
+	Block blockArgument          `cmd:"block"`
 	Mode  cmd.Optional[fillMode] `cmd:"mode"`
 }
 type fillReplaceCommand struct {
 	worldOpCommand
-	From    mgl64.Vec3           `cmd:"from"`
-	To      mgl64.Vec3           `cmd:"to"`
-	Block   string               `cmd:"block"`
-	Replace cmd.SubCommand       `cmd:"replace"`
-	Filter  cmd.Optional[string] `cmd:"filter"`
+	From    mgl64.Vec3                  `cmd:"from"`
+	To      mgl64.Vec3                  `cmd:"to"`
+	Block   blockArgument               `cmd:"block"`
+	Replace cmd.SubCommand              `cmd:"replace"`
+	Filter  cmd.Optional[blockArgument] `cmd:"filter"`
 }
 type cloneCommand struct {
 	worldOpCommand
@@ -114,18 +114,18 @@ type locateCommand struct {
 
 func registerWorldCoreCommands(srv serverAdapter) {
 	guard := worldOpCommand{srv: srv}
-	cmd.Register(cmd.New("setblock", "Sets a block at a position.", nil, setBlockCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("fill", "Fills a region with a block.", nil, fillCommand{worldOpCommand: guard}, fillReplaceCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("clone", "Copies blocks from one region to another.", nil, cloneCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("weather", "Changes the weather.", nil, weatherCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("difficulty", "Changes or queries the world difficulty.", nil, difficultyCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("worldborder", "Changes world border settings.", nil, borderCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("gamerule", "Changes or queries a world game rule.", nil, gameruleCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("seed", "Shows the world seed.", nil, seedCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("summon", "Summons an entity.", nil, summonCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("setworldspawn", "Sets the world spawn position.", nil, setWorldSpawnCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("defaultgamemode", "Sets the default game mode.", nil, defaultGameModeCommand{worldOpCommand: guard}))
-	cmd.Register(cmd.New("locate", "Finds a nearby structure, biome, or point of interest.", nil, locateCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("setblock", nil, setBlockCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("fill", nil, fillCommand{worldOpCommand: guard}, fillReplaceCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("clone", nil, cloneCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("weather", nil, weatherCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("difficulty", nil, difficultyCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("worldborder", nil, borderCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("gamerule", nil, gameruleCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("seed", nil, seedCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("summon", nil, summonCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("setworldspawn", nil, setWorldSpawnCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("defaultgamemode", nil, defaultGameModeCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("locate", nil, locateCommand{worldOpCommand: guard}))
 	registerPlaceCommand(guard)
 	registerRotateCommand(guard)
 	registerSpectateCommand(guard)
@@ -180,7 +180,7 @@ func destroyCommandBlock(tx *world.Tx, pos cube.Pos) {
 }
 
 func (s setBlockCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	b, source, err := commandBlock(tx.World(), s.Block)
+	b, source, err := commandBlock(tx.World(), string(s.Block))
 	if err != nil {
 		o.Error(err.Error())
 		return
@@ -208,11 +208,11 @@ func (s setBlockCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
 }
 
 func (f fillCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	fillBlocks(tx, o, f.From, f.To, f.Block, string(f.Mode.LoadOr("replace")), "")
+	fillBlocks(tx, o, f.From, f.To, string(f.Block), string(f.Mode.LoadOr("replace")), "")
 }
 
 func (f fillReplaceCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {
-	fillBlocks(tx, o, f.From, f.To, f.Block, "replace", f.Filter.LoadOr(""))
+	fillBlocks(tx, o, f.From, f.To, string(f.Block), "replace", string(f.Filter.LoadOr("")))
 }
 
 // fillBlocks ports FillCommand's modes: outline/hollow touch only the shell

@@ -11,7 +11,7 @@ type itemReplaceEntityCommand struct {
 	opGate
 	Targets []cmd.Target      `cmd:"targets"`
 	Slot    int               `cmd:"slot"`
-	Item    string            `cmd:"item"`
+	Item    itemArgument      `cmd:"item"`
 	Count   cmd.Optional[int] `cmd:"count"`
 }
 
@@ -23,7 +23,7 @@ type itemModifyEntityCommand struct {
 }
 
 func newItemCommand() cmd.Command {
-	return cmd.New("item", "Replaces or modifies items in inventories.", nil, itemReplaceEntityCommand{}, itemModifyEntityCommand{})
+	return newCommand("item", nil, itemReplaceEntityCommand{}, itemModifyEntityCommand{})
 }
 
 func (c itemReplaceEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -31,7 +31,7 @@ func (c itemReplaceEntityCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) 
 		o.Errort(cmd.MessageParameterInvalid, c.Slot)
 		return
 	}
-	it, ok := javaItemArgument(c.Item)
+	it, ok := javaItemArgument(string(c.Item))
 	if !ok {
 		o.Errort(cmd.MessageParameterInvalid, c.Item)
 		return

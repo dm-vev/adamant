@@ -14,10 +14,10 @@ import (
 
 // registerPlayerTeleportCommands registers Java 26.3 teleport, spawnpoint and ride commands.
 func registerPlayerTeleportCommands(srv serverAdapter) {
-	cmd.Register(cmd.New("tp", "Teleports entities.", []string{"teleport"}, teleportCommand{srv: srv}, teleportSelfCommand{srv: srv}, teleportPositionCommand{srv: srv}, teleportSelfPositionCommand{srv: srv}, teleportRotationCommand{srv: srv}, teleportFacingPositionCommand{srv: srv}, teleportFacingEntityCommand{srv: srv}))
-	cmd.Register(cmd.New("spawnpoint", "Sets a player's respawn point.", nil, spawnpointCommand{srv: srv}))
-	cmd.Register(cmd.New("ride", "Makes an entity ride another entity.", nil, rideCommand{srv: srv}, dismountCommand{srv: srv}))
-	cmd.Register(cmd.New("spreadplayers", "Spreads players around a center position.", nil, spreadPlayersCommand{srv: srv}, spreadPlayersUnderCommand{srv: srv}))
+	cmd.Register(newCommand("tp", []string{"teleport"}, teleportCommand{srv: srv}, teleportSelfCommand{srv: srv}, teleportPositionCommand{srv: srv}, teleportSelfPositionCommand{srv: srv}, teleportRotationCommand{srv: srv}, teleportFacingPositionCommand{srv: srv}, teleportFacingEntityCommand{srv: srv}))
+	cmd.Register(newCommand("spawnpoint", nil, spawnpointCommand{srv: srv}))
+	cmd.Register(newCommand("ride", nil, rideCommand{srv: srv}, dismountCommand{srv: srv}))
+	cmd.Register(newCommand("spreadplayers", nil, spreadPlayersCommand{srv: srv}, spreadPlayersUnderCommand{srv: srv}))
 }
 
 // teleportCommand moves targets to a single destination entity.

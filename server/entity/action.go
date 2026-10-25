@@ -65,6 +65,13 @@ type PickedUpAction struct {
 	action
 }
 
+// ItemStackSizeAction updates a dropped item's count while preserving its actor
+// identity and animation, for example after merging or partial collection.
+type ItemStackSizeAction struct {
+	action
+	Count int
+}
+
 // FireworkExplosionAction is a world.EntityAction that makes a Firework rocket display an explosion particle.
 type FireworkExplosionAction struct{ action }
 

@@ -13,7 +13,7 @@ type clearCommand struct {
 }
 
 func newClearCommand() cmd.Command {
-	return cmd.New("clear", "Clears items from a player's inventory.", nil, clearCommand{})
+	return newCommand("clear", nil, clearCommand{})
 }
 
 func (c clearCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {

@@ -37,8 +37,8 @@ type enchantCommand struct {
 }
 
 func registerPlayerEffectCommands(srv serverAdapter) {
-	cmd.Register(cmd.New("effect", "Applies or clears effects.", nil, effectCommand{}, clearEffectCommand{}))
-	cmd.Register(cmd.New("enchant", "Adds an enchantment to the held item.", nil, enchantCommand{worldOpCommand: worldOpCommand{srv}}))
+	cmd.Register(newCommand("effect", nil, effectCommand{}, clearEffectCommand{}))
+	cmd.Register(newCommand("enchant", nil, enchantCommand{worldOpCommand: worldOpCommand{srv}}))
 }
 
 func effectType(name string) effect.Type {

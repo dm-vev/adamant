@@ -42,7 +42,7 @@ func (templateStrictOption) Type() string                { return "Strict" }
 func (templateStrictOption) Options(cmd.Source) []string { return []string{"strict"} }
 
 func registerPlaceCommand(guard worldOpCommand) {
-	cmd.Register(cmd.New("place", "Places a structure template.", nil, placeTemplateCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("place", nil, placeTemplateCommand{worldOpCommand: guard}))
 }
 
 // Run ...

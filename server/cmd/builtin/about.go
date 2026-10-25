@@ -15,7 +15,7 @@ type aboutCommand struct {
 }
 
 func newAboutCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("about", "Displays Adamant core and build information.", nil, aboutCommand{srv: srv})
+	return newCommand("about", nil, aboutCommand{srv: srv})
 }
 
 func (a aboutCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {

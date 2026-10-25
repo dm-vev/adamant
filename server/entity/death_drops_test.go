@@ -76,6 +76,15 @@ func TestMobExperienceRequiresPlayerKillAndFollowsJavaRewards(t *testing.T) {
 					t.Fatal("mob survived lethal damage")
 				}
 				xp, items := deathDrops(tx)
+				for dropped := range tx.Entities() {
+					if dropped.H().Type() != entity.ItemType {
+						continue
+					}
+					v := dropped.(*entity.Ent).Velocity()
+					if v[1] != 0.2 || v[0] < -0.1 || v[0] >= 0.1 || v[2] < -0.1 || v[2] >= 0.1 {
+						t.Errorf("death drop motion=%v, want upward toss and horizontal spread", v)
+					}
+				}
 				if xp < c.minXP || xp > c.maxXP {
 					t.Fatalf("experience = %d, want %d..%d", xp, c.minXP, c.maxXP)
 				}

@@ -852,7 +852,7 @@ func dropMobEquipment(tx *world.Tx, e world.Entity, stack item.Stack, chance flo
 			}
 		}
 	}
-	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, stack))
+	tx.AddEntity(NewItemDrop(world.EntitySpawnOpts{Position: e.Position()}, stack))
 }
 func oceanEquipmentDropChance(chance float32, looting int) float32 {
 	if looting > 0 {

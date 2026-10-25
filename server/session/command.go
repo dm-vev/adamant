@@ -1,12 +1,16 @@
 package session
 
 import (
+	"maps"
 	"math"
+	"slices"
+	"strings"
 
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/sandertv/gophertunnel/minecraft/text"
 	"golang.org/x/text/language"
 )
 
@@ -79,9 +83,12 @@ func BuildAvailableCommands(
 
 	suffixIndices := map[string]uint32{}
 
-	for alias, c := range commands {
-		if c.Name() != alias {
-			// Don't add duplicate entries for aliases.
+	// Keep command and enum indices stable between logins and full updates.
+	for _, alias := range slices.Sorted(maps.Keys(commands)) {
+		c := commands[alias]
+		if c.Name() != alias || clientCommand(c.Name()) {
+			// Aliases are encoded with their canonical command. Client-local
+			// commands already have a grammar installed by the Bedrock client.
 			continue
 		}
 
@@ -96,7 +103,7 @@ func BuildAvailableCommands(
 
 		aliasesIndex := uint32(math.MaxUint32)
 		if len(c.Aliases()) > 0 {
-			aliasesIndex = uint32(len(enumIndices))
+			aliasesIndex = uint32(len(enums))
 			enumIndices[c.Name()+"Aliases"] = aliasesIndex
 			enums = append(enums, commandEnum{Type: c.Name() + "Aliases", Options: c.Aliases()})
 		}
@@ -107,6 +114,9 @@ func BuildAvailableCommands(
 				suffix := paramInfo.Suffix
 
 				opt := byte(0)
+				if options, ok := paramInfo.Value.(cmd.ParamOptioner); ok {
+					opt = options.ParamOptions()
+				}
 				if suffix != "" {
 					index, ok := suffixIndices[suffix]
 					if !ok {
@@ -153,7 +163,7 @@ func BuildAvailableCommands(
 		}
 		pk.Commands = append(pk.Commands, protocol.Command{
 			Name:            c.Name(),
-			Description:     c.Description(),
+			Description:     commandDescription(c, src),
 			AliasesOffset:   aliasesIndex,
 			PermissionLevel: protocol.CommandPermissionLevelAny,
 			Overloads:       overloads,
@@ -169,7 +179,7 @@ func BuildAvailableCommands(
 	pk.EnumValues = make([]string, 0, len(enumValueIndices))
 
 	pk.Enums = make([]protocol.CommandEnum, 0, len(enums))
-	for _, enum := range enums {
+	for enumIndex, enum := range enums {
 		protoEnum := protocol.CommandEnum{Type: enum.Type}
 		for _, opt := range enum.Options {
 			index, ok := enumValueIndices[opt]
@@ -179,11 +189,41 @@ func BuildAvailableCommands(
 				pk.EnumValues = append(pk.EnumValues, opt)
 			}
 			protoEnum.ValueIndices = append(protoEnum.ValueIndices, index)
+			if enum.Constraints != nil {
+				if constraints := enum.Constraints(opt); len(constraints) > 0 {
+					pk.Constraints = append(pk.Constraints, protocol.CommandEnumConstraint{
+						EnumValueIndex: index,
+						EnumIndex:      uint32(enumIndex),
+						Constraints:    constraints,
+					})
+				}
+			}
 		}
 		pk.Enums = append(pk.Enums, protoEnum)
 	}
 	return pk, m
 }
+
+// commandDescription resolves server translations for the source's locale.
+// Native translation keys are sent without the message translation marker,
+// matching BDS; the client translates these using its own language resources.
+func commandDescription(c cmd.Command, src cmd.Source) string {
+	description := c.DescriptionTranslation()
+	if description.Zero() {
+		return c.Description()
+	}
+	locale := language.English
+	if localized, ok := src.(interface{ Locale() language.Tag }); ok {
+		locale = localized.Locale()
+	}
+	resolved := strings.TrimPrefix(description.Resolve(locale), text.Reset)
+	return strings.TrimPrefix(resolved, "%")
+}
+
+// clientCommand identifies commands registered by ClientCommands::setupStandard
+// with SyncLocal. BDS omits help from AvailableCommands; replacing the client's
+// help signature conflicts with its existing command-name grammar.
+func clientCommand(name string) bool { return name == "help" }
 
 // sendAvailableCommands sends all available commands of the server. Once sent, they will be visible in the
 // /help list and will be auto-completed.
@@ -195,9 +235,10 @@ func (s *Session) sendAvailableCommands(co Controllable, softEnums map[string]st
 }
 
 type commandEnum struct {
-	Type    string
-	Options []string
-	Dynamic bool
+	Type        string
+	Options     []string
+	Dynamic     bool
+	Constraints func(string) []byte
 }
 
 // valueToParamType finds the command argument type of the value passed and returns it, in addition to creating
@@ -235,6 +276,9 @@ func valueToParamType(i cmd.ParamInfo, source cmd.Source) (t uint32, enum comman
 		if dyn, ok := enum.(cmd.DynamicEnum); ok && dyn.Dynamic() {
 			ce.Dynamic = true
 		}
+		if constrained, ok := enum.(cmd.ConstrainedEnum); ok {
+			ce.Constraints = constrained.Constraints
+		}
 		return 0, ce
 	}
 	return protocol.CommandArgTypeRValue, enum
@@ -252,7 +296,7 @@ func (s *Session) resendCommands(
 	m := make(map[string]map[int]cmd.Runnable, len(commands))
 
 	for alias, c := range commands {
-		if c.Name() == alias {
+		if c.Name() == alias && !clientCommand(c.Name()) {
 			if run := c.Runnables(co); len(run) > 0 {
 				m[alias] = run
 			}
@@ -284,7 +328,7 @@ func (s *Session) resendCommands(
 func (s *Session) enums(co Controllable) (map[string]cmd.Enum, map[string][]string) {
 	enums, enumValues := make(map[string]cmd.Enum), make(map[string][]string)
 	for alias, c := range cmd.Commands() {
-		if c.Name() == alias {
+		if c.Name() == alias && !clientCommand(c.Name()) {
 			for _, params := range c.Params(co) {
 				for _, paramInfo := range params {
 					if enum, ok := paramInfo.Value.(cmd.Enum); ok {

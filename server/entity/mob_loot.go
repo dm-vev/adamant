@@ -49,7 +49,7 @@ func dropAllDeathLoot(tx *world.Tx, e world.Entity, src world.DamageSource) {
 			panic(err)
 		}
 		for _, stack := range drops {
-			tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: e.Position()}, stack))
+			tx.AddEntity(NewItemDrop(world.EntitySpawnOpts{Position: e.Position()}, stack))
 		}
 		if custom, ok := e.(interface {
 			dropCustomDeathLoot(killedByPlayer bool, looting int)

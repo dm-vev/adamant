@@ -28,7 +28,7 @@ type killCommand struct {
 }
 
 func newKillCommand() cmd.Command {
-	return cmd.New("kill", "Kills entities.", nil, killCommand{})
+	return newCommand("kill", nil, killCommand{})
 }
 
 func (k killCommand) Run(src cmd.Source, o *cmd.Output, _ *world.Tx) {
@@ -144,7 +144,7 @@ func damageSource(name string, attacker world.Entity) (world.DamageSource, bool)
 }
 
 func newDamageCommand() cmd.Command {
-	return cmd.New("damage", "Inflicts damage on entities.", nil, damageCommand{}, damageAtCommand{}, damageByCommand{}, damageByFromCommand{})
+	return newCommand("damage", nil, damageCommand{}, damageAtCommand{}, damageByCommand{}, damageByFromCommand{})
 }
 
 func (d damageCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {

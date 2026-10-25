@@ -16,7 +16,7 @@ type statusCommand struct {
 }
 
 func newStatusCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("status", "Displays server performance statistics.", nil, statusCommand{srv: srv})
+	return newCommand("status", nil, statusCommand{srv: srv})
 }
 
 func (s statusCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {

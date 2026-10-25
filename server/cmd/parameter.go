@@ -46,6 +46,21 @@ type ParamDescriber interface {
 	DescribeParams(src Source) []ParamInfo
 }
 
+// ParamOptioner may be implemented by a parameter to supply additional Bedrock
+// command parameter options (the protocol.ParamOption constants). These options
+// affect client metadata only; parsing still uses Parameter or Enum.
+type ParamOptioner interface {
+	ParamOptions() byte
+}
+
+// ConstrainedEnum may be implemented by a hard enum to attach client-side
+// constraints to individual completion values. Constraint IDs are the protocol's
+// CommandEnumConstraint constants. These do not change server-side validation.
+type ConstrainedEnum interface {
+	Enum
+	Constraints(option string) []byte
+}
+
 // DynamicEnum is an optional extension of Enum that marks an enum as dynamic, meaning it should be encoded as a
 // soft enum so that its values may change after the initial AvailableCommands packet. If not implemented, enums
 // are treated as static, mirroring the behaviour of vanilla command metadata.

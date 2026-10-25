@@ -46,6 +46,11 @@ type Session struct {
 	bossBarIDs    map[string]int64
 	nextBossBarID int64
 	packets       chan packet.Packet
+	// packetsMu protects the overflow FIFO. The channel holds the first packets;
+	// bursts spill into pendingPackets without blocking the world owner.
+	packetsMu      sync.Mutex
+	pendingPackets []packet.Packet
+	pendingHead    int
 	// abilityResend is the delayed ability update queued after a game mode change.
 	abilityResendMu    sync.Mutex
 	abilityResend      *world.Task
@@ -55,6 +60,9 @@ type Session struct {
 
 	// commandOrigin holds the last command origin so output can match request metadata.
 	commandOrigin atomic.Pointer[protocol.CommandOrigin]
+	commandsDirty atomic.Bool
+	// abilities is an immutable snapshot for clients joining the player list.
+	abilities atomic.Pointer[protocol.AbilityData]
 
 	currentScoreboard atomic.Pointer[string]
 	currentLines      atomic.Pointer[[]string]
@@ -76,6 +84,9 @@ type Session struct {
 	entityRuntimeIDs map[*world.EntityHandle]uint64
 	entities         map[uint64]*world.EntityHandle
 	hiddenEntities   map[uuid.UUID]struct{}
+	// deathAnimations records ordinary mobs whose death event lets the client
+	// finish the animation and remove the actor itself. Protected by entityMutex.
+	deathAnimations map[uint64]struct{}
 
 	// heldSlot points to the current hotbar slot index. It is stored in an atomic pointer so inventory callbacks can
 	// safely access the pointer while the session is still wiring up inventory state.
@@ -128,9 +139,7 @@ type Session struct {
 	blockUpdateLastLog atomic.Int64
 	closeBackground    chan struct{}
 
-	overflowStreak  atomic.Uint32
-	lastActivity    atomic.Int64
-	overflowLastLog atomic.Int64
+	lastActivity atomic.Int64
 
 	inputLocksMu sync.RWMutex
 	inputLocks   uint32
@@ -192,6 +201,9 @@ type Config struct {
 	MaxChunkRadius int
 
 	EmoteChatMuted bool
+	// IsOperator reports the current operator status of a player by name.
+	// If nil, players receive member permissions.
+	IsOperator func(name string) bool
 
 	JoinMessage, QuitMessage chat.Translation
 
@@ -276,18 +288,7 @@ func (conf Config) New(conn Conn) *Session {
 	s.sendRecipes()
 	s.sendArmourTrimData()
 	s.SendSpeed(0.1)
-	go func() {
-		for {
-			select {
-			case <-s.closeBackground:
-				return
-			case pk := <-s.packets:
-				s.connWriteMu.Lock()
-				_ = conn.WritePacket(pk)
-				s.connWriteMu.Unlock()
-			}
-		}
-	}()
+	go s.sendPackets()
 	return s
 }
 
@@ -325,6 +326,7 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	s.sendAvailableEntities(tx.World())
 
 	c.SetGameMode(c.GameMode())
+	s.SendPermissions(c)
 	for _, e := range c.Effects() {
 		s.SendEffect(e)
 	}
@@ -414,6 +416,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 				s.entityMutex.Lock()
 				clear(s.entityRuntimeIDs)
 				clear(s.entities)
+				clear(s.deathAnimations)
 				s.entityMutex.Unlock()
 			})
 		}
@@ -431,6 +434,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 func (s *Session) CloseConnection() {
 	s.connOnce.Do(func() {
 		s.closing.Store(true)
+		s.clearPacketQueue()
 		s.abilityResendMu.Lock()
 		s.abilityResendGen++
 		resend := s.abilityResend
@@ -547,6 +551,7 @@ func (s *Session) background() {
 	if err := s.withControllable(context.Background(), func(_ *world.Tx, c Controllable) error {
 		r = s.sendAvailableCommands(c, softEnums)
 		enums, enumValues = s.enums(c)
+		s.commandsDirty.Store(false)
 		return nil
 	}); err != nil {
 		if !sessionOwnerStopped(err) {
@@ -566,8 +571,9 @@ func (s *Session) background() {
 					// command changes. Those are generally only related to permission changes, which doesn't happen often.
 					r = s.resendEnums(enums, enumValues, softEnums, r, c)
 				}
-				if i%100 == 0 {
-					// Try to resend commands only every 5 seconds.
+				if dirty := s.commandsDirty.Swap(false); dirty || i%100 == 0 {
+					// Permission changes refresh commands on the next tick;
+					// otherwise check for command changes every five seconds.
 					if r, ok = s.resendCommands(r, c, softEnums); ok {
 						enums, enumValues = s.enums(c)
 					}
@@ -732,32 +738,6 @@ func (s *Session) registerHandlers() {
 		packet.IDServerBoundDiagnostics:         &ServerBoundDiagnosticsHandler{},
 	}
 	s.handlers[packet.IDPositionTrackingDBClientRequest] = &PositionTrackingDBHandler{}
-}
-
-// writePacket writes a packet to the session's connection if it is not Nop.
-func (s *Session) writePacket(pk packet.Packet) {
-	if s == Nop {
-		return
-	}
-	select {
-	case s.packets <- pk:
-		s.overflowStreak.Store(0)
-		return
-	case <-s.closeBackground:
-		return
-	default:
-		const overflowDisconnectThreshold = 64
-		streak := s.overflowStreak.Add(1)
-		now := time.Now().UnixNano()
-		last := s.overflowLastLog.Load()
-		if now-last > int64(time.Second) && s.overflowLastLog.CompareAndSwap(last, now) {
-			s.conf.Log.Warn("session packet queue overflow, dropping packets", "packet", fmt.Sprintf("%T", pk), "streak", streak)
-		}
-		if streak >= overflowDisconnectThreshold {
-			s.conf.Log.Warn("closing session due to packet queue overflow", "streak", streak)
-			s.CloseConnection()
-		}
-	}
 }
 
 // actorIdentifier represents the structure of an actor identifier sent over the network.

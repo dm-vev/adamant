@@ -1911,6 +1911,12 @@ func (p *Player) EnderChestInventory() *inventory.Inventory {
 	return p.enderChest
 }
 
+// RefreshPermissions updates the client's operator abilities and available
+// commands after the server's permission lookup changes.
+func (p *Player) RefreshPermissions() {
+	p.session().SendPermissions(p)
+}
+
 // SetGameMode sets the game mode of a player. The game mode specifies the way that the player can interact
 // with the world that it is in.
 func (p *Player) SetGameMode(mode world.GameMode) {
@@ -2754,6 +2760,12 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 	if !vulnerable {
 		return true
 	}
+	p.Exhaust(0.1)
+	if living.H().Closed() {
+		// Hurt may synchronously kill and remove the mob. Its viewers no
+		// longer have a runtime ID for subsequent hit effects or metadata.
+		return true
+	}
 	if _, ok := i.Enchantment(enchantment.BaneOfArthropods); ok && arthropodEntity(target) {
 		if slowed, ok := living.(interface{ AddEffect(effect.Effect) }); ok {
 			duration := time.Duration((1.5 + rand.Float64()*2) * float64(time.Second))
@@ -2769,8 +2781,6 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 		}
 		releaseBorrowedViewers(p.tx, viewers, release)
 	}
-
-	p.Exhaust(0.1)
 
 	living.KnockBack(p.Position(), force, height)
 

@@ -15,7 +15,7 @@ type gamemodeCommand struct {
 }
 
 func newGamemodeCommand() cmd.Command {
-	return cmd.New("gamemode", "Changes a player's game mode.", []string{"gm"}, gamemodeCommand{})
+	return newCommand("gamemode", []string{"gm"}, gamemodeCommand{})
 }
 
 func (g gamemodeCommand) Run(src cmd.Source, o *cmd.Output, tx *world.Tx) {

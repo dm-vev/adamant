@@ -40,9 +40,8 @@ func (timeQueryType) Options(cmd.Source) []string {
 }
 
 func newTimeCommand() cmd.Command {
-	return cmd.New(
+	return newCommand(
 		"time",
-		"Adjusts or queries the world time.",
 		nil,
 		timeSetValueCommand{},
 		timeSetPresetCommand{},

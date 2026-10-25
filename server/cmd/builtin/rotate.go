@@ -85,7 +85,7 @@ type rotateFacingEntityCommand struct {
 }
 
 func registerRotateCommand(guard worldOpCommand) {
-	cmd.Register(cmd.New("rotate", "Rotates an entity.", nil, rotateCommand{worldOpCommand: guard}, rotateFacingCommand{worldOpCommand: guard}, rotateFacingEntityCommand{worldOpCommand: guard}))
+	cmd.Register(newCommand("rotate", nil, rotateCommand{worldOpCommand: guard}, rotateFacingCommand{worldOpCommand: guard}, rotateFacingEntityCommand{worldOpCommand: guard}))
 }
 
 // Run ...

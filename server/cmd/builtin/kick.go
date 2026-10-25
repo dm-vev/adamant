@@ -16,7 +16,7 @@ type kickCommand struct {
 }
 
 func newKickCommand() cmd.Command {
-	return cmd.New("kick", "Removes one or more players from the server.", nil, kickCommand{})
+	return newCommand("kick", nil, kickCommand{})
 }
 
 func (k kickCommand) Run(_ cmd.Source, o *cmd.Output, _ *world.Tx) {

@@ -64,7 +64,7 @@ type lootReplaceEntityCommand struct {
 }
 
 func newLootCommand() cmd.Command {
-	return cmd.New("loot", "Generates loot from a loot table.", nil, lootGiveCommand{}, lootSpawnCommand{}, lootInsertCommand{}, lootReplaceBlockCommand{}, lootReplaceEntityCommand{})
+	return newCommand("loot", nil, lootGiveCommand{}, lootSpawnCommand{}, lootInsertCommand{}, lootReplaceBlockCommand{}, lootReplaceEntityCommand{})
 }
 
 // generateCommandLoot rolls a table with a fresh seed, as Java's command loot

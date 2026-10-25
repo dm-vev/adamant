@@ -563,7 +563,7 @@ type LeafLitter struct {
 // UseOnBlock ...
 func (l LeafLitter) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	if existing, ok := tx.Block(pos).(LeafLitter); ok {
-		if existing.AdditionalCount >= 7 {
+		if existing.AdditionalCount >= 7 || !tx.BlockFaceSturdy(pos.Side(cube.FaceDown), cube.FaceUp) {
 			return false
 		}
 		existing.AdditionalCount++
@@ -575,7 +575,7 @@ func (l LeafLitter) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *w
 	if !used {
 		return false
 	}
-	if !supportsVegetation(l, tx.Block(pos.Side(cube.FaceDown))) {
+	if !tx.BlockFaceSturdy(pos.Side(cube.FaceDown), cube.FaceUp) {
 		return false
 	}
 	l.Facing = user.Rotation().Direction().Opposite()
@@ -585,7 +585,7 @@ func (l LeafLitter) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *w
 
 // NeighbourUpdateTick ...
 func (l LeafLitter) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if !supportsVegetation(l, tx.Block(pos.Side(cube.FaceDown))) {
+	if !tx.BlockFaceSturdy(pos.Side(cube.FaceDown), cube.FaceUp) {
 		breakBlock(l, pos, tx)
 	}
 }

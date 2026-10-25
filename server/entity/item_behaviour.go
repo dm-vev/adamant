@@ -55,6 +55,7 @@ func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBeha
 		ExistenceDuration: conf.ExistenceDuration,
 		Tick:              b.tick,
 	}.New()
+	b.passive.mc.DragAfterMovement = true
 	return b
 }
 
@@ -97,21 +98,18 @@ func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 
 	bl, ok := tx.Block(blockPos).(block.Hopper)
 	if ok && !bl.Powered && bl.CollectCooldown <= 0 {
-		addedCount, err := bl.Inventory(tx, blockPos).AddItem(i.i)
-		if err != nil {
-			if addedCount == 0 {
-				return i.passive.Tick(e, tx)
-			}
-
-			// This is only reached if part of the item stack was collected into the hopper.
-			opts := world.EntitySpawnOpts{Position: pos.Vec3Centre()}
-			tx.AddEntity(NewItem(opts, i.Item().Grow(-addedCount)))
+		addedCount, _ := bl.Inventory(tx, blockPos).AddItem(i.i)
+		if addedCount == 0 {
+			return i.passive.Tick(e, tx)
 		}
-
-		_ = e.CloseIn(tx)
 		bl.CollectCooldown = 8
 		tx.SetBlock(blockPos, bl, nil)
-		return nil
+		if addedCount == i.i.Count() {
+			_ = e.CloseIn(tx)
+			return nil
+		}
+		i.setCount(e, i.i.Count()-addedCount, tx)
+		return i.passive.Tick(e, tx)
 	}
 	return i.passive.Tick(e, tx)
 }
@@ -175,48 +173,61 @@ func (i *ItemBehaviour) checkNearby(e *Ent, tx *world.Tx) {
 
 // merge merges the item entity with another item entity.
 func (i *ItemBehaviour) merge(e *Ent, other *Ent, tx *world.Tx) bool {
-	pos := e.Position()
 	otherBehaviour := other.Behaviour().(*ItemBehaviour)
 	if otherBehaviour.i.Count() == otherBehaviour.i.MaxCount() || i.i.Count() == i.i.MaxCount() || !i.i.Comparable(otherBehaviour.i) {
 		// Either stack is already filled up to the maximum, meaning we can't
 		// change anything any way, other the stack types weren't comparable.
 		return false
 	}
-	a, b := otherBehaviour.i.AddStack(i.i)
-
-	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: other.Position(), Velocity: other.Velocity()}, a))
-	if !b.Empty() {
-		tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos, Velocity: e.Velocity()}, b))
+	// Keep the larger stack's actor, position, motion and client animation.
+	// Replacing both actors restarts bobbing and makes airborne loot snap.
+	source, target := e, other
+	sourceBehaviour, targetBehaviour := i, otherBehaviour
+	if i.i.Count() > otherBehaviour.i.Count() {
+		source, target = other, e
+		sourceBehaviour, targetBehaviour = otherBehaviour, i
 	}
-	_ = e.CloseIn(tx)
-	_ = other.CloseIn(tx)
+	count := min(sourceBehaviour.i.Count(), targetBehaviour.i.MaxCount()-targetBehaviour.i.Count())
+	targetBehaviour.pickupDelay = max(targetBehaviour.pickupDelay, sourceBehaviour.pickupDelay)
+	target.data.Age = min(target.data.Age, source.data.Age)
+	targetBehaviour.setCount(target, targetBehaviour.i.Count()+count, tx)
+	if count == sourceBehaviour.i.Count() {
+		_ = source.CloseIn(tx)
+	} else {
+		sourceBehaviour.setCount(source, sourceBehaviour.i.Count()-count, tx)
+	}
 	return true
+}
+
+// setCount updates the existing item actor rather than despawning it. Bedrock's
+// UpdateStackSize event changes the client stack without resetting its motion.
+func (i *ItemBehaviour) setCount(e *Ent, count int, tx *world.Tx) {
+	i.i = i.i.Grow(count - i.i.Count())
+	viewers := tx.Viewers(e.Position())
+	for _, v := range viewers {
+		v.ViewEntityAction(e, ItemStackSizeAction{Count: count})
+	}
+	tx.ReleaseViewers(viewers)
 }
 
 // collect makes a collector collect the item (or at least part of it).
 func (i *ItemBehaviour) collect(e *Ent, collector Collector, tx *world.Tx) {
-	pos := e.Position()
 	n, _ := collector.Collect(i.i)
 	if n == 0 {
 		return
 	}
-	viewers := tx.Viewers(pos)
-	// Broadcast pickup feedback using the pooled viewer slice to avoid per-orb allocations when many items are
-	// collected in rapid succession.
-	for _, viewer := range viewers {
-		viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
-	}
-	tx.ReleaseViewers(viewers)
-
 	if n == i.i.Count() {
-		// The collector picked up the entire stack.
+		// TakeItemActor removes the client actor, so only send it when the
+		// whole stack was collected. A partial pickup updates its count.
+		viewers := tx.Viewers(e.Position())
+		for _, viewer := range viewers {
+			viewer.ViewEntityAction(e, PickedUpAction{Collector: collector})
+		}
+		tx.ReleaseViewers(viewers)
 		_ = e.CloseIn(tx)
 		return
 	}
-	// Create a new item entity and shrink it by the amount of items that the
-	// collector collected.
-	tx.AddEntity(NewItem(world.EntitySpawnOpts{Position: pos}, i.i.Grow(-n)))
-	_ = e.CloseIn(tx)
+	i.setCount(e, i.i.Count()-n, tx)
 }
 
 func (i *ItemBehaviour) burnsInHazard(e *Ent, tx *world.Tx, positions ...cube.Pos) bool {

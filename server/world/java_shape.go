@@ -34,6 +34,17 @@ func (tx *Tx) JavaBlockCanSurvive(pos cube.Pos) (survives, hasSourceState bool) 
 	return context.canSurvive(state, pos), true
 }
 
+// BlockFaceSturdy reports whether the face at pos provides full support. Vanilla
+// blocks use their Java support shapes, including partial block states. Blocks
+// without a Java identity fall back to their native model's solid-face rule.
+func (tx *Tx) BlockFaceSturdy(pos cube.Pos, face cube.Face) bool {
+	if state := tx.javaBlockStateID(pos); state != 0 {
+		context := javaShapeContext{tx: tx, pos: pos}
+		return context.sturdy(state, face, javaSupportFull)
+	}
+	return tx.Block(pos).Model().FaceSolid(pos, face, tx)
+}
+
 // JavaPlacement returns the state a Java block state takes from its
 // neighbours when placed at a position, as Block.updateFromNeighbourShapes,
 // and reports if it survives there, as BlockState.canSurvive. It changes

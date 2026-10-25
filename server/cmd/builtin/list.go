@@ -13,7 +13,7 @@ type listCommand struct {
 }
 
 func newListCommand(srv serverAdapter) cmd.Command {
-	return cmd.New("list", "Lists players currently online.", []string{"players"}, listCommand{srv: srv})
+	return newCommand("list", []string{"players"}, listCommand{srv: srv})
 }
 
 func (l listCommand) Run(_ cmd.Source, o *cmd.Output, tx *world.Tx) {

@@ -592,6 +592,9 @@ func (srv *Server) finaliseConn(ctx context.Context, conn session.Conn, l Listen
 	data.Yaw, data.Pitch = float32(d.Rotation.Yaw()), float32(d.Rotation.Pitch())
 
 	data.EmoteChatMuted = srv.conf.MuteEmoteChat
+	if srv.IsOperator(conn.IdentityData().DisplayName) {
+		data.PlayerPermissions = packet.PermissionLevelOperator
+	}
 
 	if handle, ok := srv.Player(id); ok {
 		if !srv.handleReconnect(l, conn, id, handle) {
@@ -735,6 +738,7 @@ func (srv *Server) createPlayer(id uuid.UUID, conn session.Conn, conf player.Con
 		QuitMessage:    srv.conf.QuitMessage,
 		HandleStop:     srv.handleSessionClose,
 		BlockRegistry:  w.BlockRegistry(),
+		IsOperator:     srv.IsOperator,
 	}.New(conn)
 
 	conf.Name = conn.IdentityData().DisplayName

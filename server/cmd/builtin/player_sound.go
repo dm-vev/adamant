@@ -11,9 +11,9 @@ import (
 )
 
 func registerPlayerSoundCommands(_ serverAdapter) {
-	cmd.Register(cmd.New("playsound", "Plays a sound.", nil, playSoundCommand{}))
-	cmd.Register(cmd.New("stopsound", "Stops a sound.", nil, stopSoundCommand{}))
-	cmd.Register(cmd.New("particle", "Spawns particles.", nil, spawnParticleCommand{}))
+	cmd.Register(newCommand("playsound", nil, playSoundCommand{}))
+	cmd.Register(newCommand("stopsound", nil, stopSoundCommand{}))
+	cmd.Register(newCommand("particle", nil, spawnParticleCommand{}))
 }
 
 type playSoundCommand struct {

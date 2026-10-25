@@ -86,6 +86,21 @@ func (l *sessionList) Lookup(id uuid.UUID) (*Session, bool) {
 	return nil, false
 }
 
+// sendAbilities updates player-list permissions even for clients in another
+// dimension. The payload was built on the target player's world owner.
+func (l *sessionList) sendAbilities(from *Session, data protocol.AbilityData) {
+	l.opMu.Lock()
+	defer l.opMu.Unlock()
+	l.mu.Lock()
+	others := slices.Clone(l.s)
+	l.mu.Unlock()
+	for _, other := range others {
+		if other != from {
+			other.writePacket(&packet.UpdateAbilities{AbilityData: data})
+		}
+	}
+}
+
 func (l *sessionList) sendSessionTo(s, to *Session) {
 
 	to.writePacket(&packet.PlayerList{
@@ -99,6 +114,9 @@ func (l *sessionList) sendSessionTo(s, to *Session) {
 			Skin:           skinToProtocol(s.joinSkin),
 		}},
 	})
+	if data := s.abilities.Load(); data != nil && s != to {
+		to.writePacket(&packet.UpdateAbilities{AbilityData: *data})
+	}
 }
 
 func (*sessionList) runtimeID(s, to *Session) uint64 {
