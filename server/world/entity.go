@@ -236,6 +236,19 @@ func (e *EntityHandle) Entity(tx *Tx) (Entity, bool) {
 	return e.t.Open(tx, e, &e.data), true
 }
 
+// WorldEntity returns the entity the world keeps for the handle while it is
+// in the world of tx, the same value its ticks run on. Unlike Entity, it does
+// not open a new view of the handle once the world has one.
+func (e *EntityHandle) WorldEntity(tx *Tx) (Entity, bool) {
+	if e == nil || e.w != tx.World() {
+		return nil, false
+	}
+	if e.state == nil {
+		return e.Entity(tx)
+	}
+	return e.state.entity(tx, e), true
+}
+
 // World returns the world currently owning the entity, or nil if the entity is worldless or closed.
 func (e *EntityHandle) World() *World {
 	if e == nil {

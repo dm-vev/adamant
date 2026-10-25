@@ -308,8 +308,14 @@ func entityAlive(e world.Entity) bool {
 // Aggressive reports if the mob is aggressive, Mob.isAggressive.
 func (m *Mob) Aggressive() bool { return m.AI.aggressive }
 
-// SetAggressive sets whether the mob is aggressive.
-func (m *Mob) SetAggressive(v bool) { m.AI.aggressive = v }
+// SetAggressive sets whether the mob is aggressive, Mob.setAggressive, and
+// shows a change to viewers: a vindicator only raises its axe while it is.
+func (m *Mob) SetAggressive(v bool) {
+	if m.AI.aggressive != v {
+		m.AI.aggressive = v
+		m.updateState()
+	}
+}
 
 // NoActionTime returns the ticks since the mob last had a player near or
 // was hurt, LivingEntity.getNoActionTime.

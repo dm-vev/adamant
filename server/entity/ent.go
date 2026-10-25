@@ -292,10 +292,16 @@ func (e *Ent) SetAlwaysShowNameTag(alwaysShow bool) {
 }
 
 // updateState updates the state of the entity for all viewers of the entity.
+// Viewers get the entity of its species, such as a *Vindicator, since its type
+// decides the metadata they show.
 func (e *Ent) updateState() {
+	var self world.Entity = e
+	if ent, ok := e.handle.WorldEntity(e.tx); ok {
+		self = ent
+	}
 	viewers := e.tx.Viewers(e.data.Pos)
 	for _, v := range viewers {
-		v.ViewEntityState(e)
+		v.ViewEntityState(self)
 	}
 	e.tx.ReleaseViewers(viewers)
 }

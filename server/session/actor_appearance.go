@@ -232,6 +232,11 @@ func (s *Session) writeActorAppearance(e world.Entity, m protocol.EntityMetadata
 		m[protocol.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
 	case *entity.Vindicator:
 		m[protocol.EntityDataKeyVariant] = int32(boolByte(e.IsCaptain()))
+		// Bedrock vindicators are angry while they have a target, and only
+		// then raise their axe.
+		if e.Aggressive() {
+			setActorFlag(m, protocol.EntityDataFlagAngry)
+		}
 	case *entity.Villager:
 		writeVillagerMetadata(m, e.Profession(), e.Variant())
 		m[protocol.EntityDataKeyTradeTier] = int32(max(e.MerchantLevel()-1, 0))

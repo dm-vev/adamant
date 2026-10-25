@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -115,4 +116,45 @@ func TestEndermanCarriesBlockOnClient(t *testing.T) {
 			t.Fatalf("enderman carries %v, want grass %v", got, want)
 		}
 	})
+}
+
+// TestVindicatorAngryWhileAttacking checks that a vindicator is angry on the
+// client only while it attacks, as BDS flags it when it acquires a target:
+// Bedrock vindicators raise their axe only then.
+func TestVindicatorAngryWhileAttacking(t *testing.T) {
+	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
+	defer func() { _ = w.Close() }()
+	w.SetDifficulty(world.DifficultyNormal)
+	viewer := testSession("vindicator-metadata")
+	viewer.br = world.DefaultBlockRegistry
+	var vindicator *world.EntityHandle
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -16; x <= 16; x++ {
+			for z := -16; z <= 16; z++ {
+				tx.SetBlock(cube.Pos{x, 64, z}, block.Stone{}, nil)
+			}
+		}
+		e := tx.AddEntity(entity.NewVindicator(world.EntitySpawnOpts{Position: mgl64.Vec3{6.5, 65, 0.5}}))
+		vindicator = e.H()
+		if viewer.parseEntityMetadata(e).Flag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry) {
+			t.Error("idle vindicator is angry")
+		}
+		tx.AddEntity(entity.NewVillager(world.EntitySpawnOpts{Position: mgl64.Vec3{0.5, 65, 0.5}}))
+	})
+	angry := false
+	for range 200 {
+		w.AdvanceTick()
+		<-w.Exec(func(tx *world.Tx) {
+			e, _ := vindicator.Entity(tx)
+			if v := e.(*entity.Vindicator); v.Aggressive() {
+				angry = viewer.parseEntityMetadata(v).Flag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagAngry)
+			}
+		})
+		if angry {
+			break
+		}
+	}
+	if !angry {
+		t.Fatal("attacking vindicator is not angry on the client")
+	}
 }

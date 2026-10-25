@@ -36,7 +36,12 @@ func (t hostileMobType) Open(tx *world.Tx, h *world.EntityHandle, d *world.Entit
 		_, _ = hash.Write(id[:])
 		d.Data.(*hostileState).random = vanilla.NewLegacyRandom(int64(hash.Sum64()))
 	}
-	switch t.id {
+	return hostileSpecies(m, t.id)
+}
+
+// hostileSpecies wraps a hostile mob in the type of its species.
+func hostileSpecies(m *HostileMob, kind string) world.Entity {
+	switch kind {
 	case "minecraft:zombie":
 		return &Zombie{m}
 	case "minecraft:zombie_villager":
@@ -512,6 +517,9 @@ func (m *HostileMob) UsingItem() bool {
 	return m.state().drawingBow || !m.state().ai.useItem.Empty()
 }
 func (m *HostileMob) SpeciesType() world.EntityType { return hostileTypeFor(m.state().kind) }
+
+// Aggressive reports if the mob attacks, as Mob.isAggressive.
+func (m *HostileMob) Aggressive() bool { return m.state().ai.aggressive }
 
 func (m *HostileMob) RaidID() int64      { return m.state().raidID }
 func (m *HostileMob) RaidWave() int      { return m.state().raidWave }

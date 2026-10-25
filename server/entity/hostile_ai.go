@@ -31,26 +31,7 @@ func hostileSkeleton(kind string) bool {
 
 // hostileSelf returns the entity of a hostile mob for the species of kind.
 func hostileSelf(e *Ent, kind string) world.Entity {
-	m := &HostileMob{Ent: e}
-	switch kind {
-	case "minecraft:zombie":
-		return &Zombie{m}
-	case "minecraft:zombie_villager":
-		return &ZombieVillager{m}
-	case "minecraft:husk":
-		return &Husk{m}
-	case "minecraft:skeleton":
-		return &Skeleton{m}
-	case "minecraft:stray":
-		return &Stray{m}
-	case "minecraft:bogged":
-		return &Bogged{m}
-	case "minecraft:parched":
-		return &Parched{m}
-	case "minecraft:wither_skeleton":
-		return &WitherSkeleton{m}
-	}
-	return m
+	return hostileSpecies(&HostileMob{Ent: e}, kind)
 }
 
 // aiTick runs the MobAI of a hostile mob.
