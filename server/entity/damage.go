@@ -28,7 +28,7 @@ type (
 	}
 
 	// SonicBoomDamageSource is used for the sonic boom of a warden, which
-	// passes through armour.
+	// passes through armour and its enchantments.
 	SonicBoomDamageSource struct {
 		Attacker world.Entity
 	}
@@ -107,23 +107,26 @@ func (FallDamageSource) Fire() bool                   { return false }
 func (FallDamageSource) AffectedByEnchantment(e item.EnchantmentType) bool {
 	return e == enchantment.FeatherFalling
 }
-func (FallDamageSource) IgnoreTotem() bool                { return false }
-func (GlideDamageSource) ReducedByArmour() bool           { return false }
-func (GlideDamageSource) ReducedByResistance() bool       { return true }
-func (GlideDamageSource) Fire() bool                      { return false }
-func (GlideDamageSource) IgnoreTotem() bool               { return false }
-func (LightningDamageSource) ReducedByArmour() bool       { return true }
-func (LightningDamageSource) ReducedByResistance() bool   { return true }
-func (LightningDamageSource) Fire() bool                  { return false }
-func (LightningDamageSource) IgnoreTotem() bool           { return false }
-func (AttackDamageSource) ReducedByArmour() bool          { return true }
-func (AttackDamageSource) ReducedByResistance() bool      { return true }
-func (AttackDamageSource) Fire() bool                     { return false }
-func (AttackDamageSource) IgnoreTotem() bool              { return false }
-func (SonicBoomDamageSource) ReducedByArmour() bool       { return false }
-func (SonicBoomDamageSource) ReducedByResistance() bool   { return true }
-func (SonicBoomDamageSource) Fire() bool                  { return false }
-func (SonicBoomDamageSource) IgnoreTotem() bool           { return false }
+func (FallDamageSource) IgnoreTotem() bool              { return false }
+func (GlideDamageSource) ReducedByArmour() bool         { return false }
+func (GlideDamageSource) ReducedByResistance() bool     { return true }
+func (GlideDamageSource) Fire() bool                    { return false }
+func (GlideDamageSource) IgnoreTotem() bool             { return false }
+func (LightningDamageSource) ReducedByArmour() bool     { return true }
+func (LightningDamageSource) ReducedByResistance() bool { return true }
+func (LightningDamageSource) Fire() bool                { return false }
+func (LightningDamageSource) IgnoreTotem() bool         { return false }
+func (AttackDamageSource) ReducedByArmour() bool        { return true }
+func (AttackDamageSource) ReducedByResistance() bool    { return true }
+func (AttackDamageSource) Fire() bool                   { return false }
+func (AttackDamageSource) IgnoreTotem() bool            { return false }
+func (SonicBoomDamageSource) ReducedByArmour() bool     { return false }
+func (SonicBoomDamageSource) ReducedByResistance() bool { return true }
+func (SonicBoomDamageSource) Fire() bool                { return false }
+func (SonicBoomDamageSource) IgnoreTotem() bool         { return false }
+
+// BypassesEnchantments reports that no enchantment reduces a sonic boom.
+func (SonicBoomDamageSource) BypassesEnchantments() bool  { return true }
 func (VoidDamageSource) ReducedByResistance() bool        { return false }
 func (VoidDamageSource) ReducedByArmour() bool            { return false }
 func (VoidDamageSource) Fire() bool                       { return false }

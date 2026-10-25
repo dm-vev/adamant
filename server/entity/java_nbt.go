@@ -20,9 +20,14 @@ func (c javaNBTConfig) Apply(data *world.EntityData) {
 		data.NativeNBT = c.native
 		data.NativeNBT["adamant:java"] = source
 		decoded := make(map[string]any, len(source)+len(c.native))
-		for key, value := range source { decoded[key] = value }
-		for key, value := range c.native { decoded[key] = value }
+		for key, value := range source {
+			decoded[key] = value
+		}
+		for key, value := range c.native {
+			decoded[key] = value
+		}
 		c.typeOf.DecodeNBT(decoded, data)
+		decodePersistence(data, decoded)
 		return
 	}
 	switch c.typeOf.EncodeEntity() {
@@ -34,6 +39,7 @@ func (c javaNBTConfig) Apply(data *world.EntityData) {
 		data.NativeNBT = source
 	}
 	c.typeOf.DecodeNBT(c.data, data)
+	decodePersistence(data, c.data)
 }
 
 // NewFromStructureNBT constructs a worldless entity handle from Java entity NBT.
@@ -58,7 +64,9 @@ func NewFromStructureNBT(data map[string]any, opts world.EntitySpawnOpts) (*worl
 		return nil, fmt.Errorf("unsupported Java entity type %q", id)
 	}
 	native, err := projectTemplateMobNBT(data)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	if native != nil {
 		if err := applyTrialEquipment(opts, native, id); err != nil {
 			return nil, err

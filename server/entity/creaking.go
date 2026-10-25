@@ -771,12 +771,7 @@ func (c *Creaking) KnockBack(src mgl64.Vec3, force, height float64) {
 	if !c.state().canMove {
 		return
 	}
-	d := c.Position().Sub(src)
-	d[1] = height
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	c.SetVelocity(d)
+	knockBack(c, src, force, height)
 }
 func (c *Creaking) AddEffect(v effect.Effect)  { c.state().effects.Add(v, c) }
 func (c *Creaking) RemoveEffect(v effect.Type) { c.state().effects.Remove(v, c) }

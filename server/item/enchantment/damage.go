@@ -23,11 +23,21 @@ type DamageModifier interface {
 	Modifier() float64
 }
 
+// EnchantmentBypasser is implemented by a world.DamageSource that no
+// enchantment reduces, as Java's bypasses_enchantments damage type tag
+// holds the sonic boom of a warden.
+type EnchantmentBypasser interface {
+	BypassesEnchantments() bool
+}
+
 // ProtectionFactor calculates the combined protection factor for a slice of
 // item.Enchantment. The factor depends on the world.DamageSource passed and is
 // in a range of [0, 0.8], where 0.8 means incoming damage would be reduced by
 // 80%.
 func ProtectionFactor(src world.DamageSource, enchantments []item.Enchantment) float64 {
+	if b, ok := src.(EnchantmentBypasser); ok && b.BypassesEnchantments() {
+		return 0
+	}
 	f := 0.0
 	for _, e := range enchantments {
 		t := e.Type()

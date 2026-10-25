@@ -98,10 +98,12 @@ func (b *AquaticMobBehaviour) setTadpoleAge(e *Ent, tx *world.Tx, age int) {
 		return
 	}
 	b.dead = true
-	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot, Velocity: e.data.Vel}
-	tx.AddEntity(opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}))
+	opts := world.EntitySpawnOpts{Position: e.Position(), Rotation: e.data.Rot}
+	frog := convertMob(tx, e.living(), opts.New(FrogType, frogConfig{variant: frogVariantAt(tx, e.Position())}), conversion{})
+	if p, ok := frog.(interface{ SetPersistenceRequired(bool) }); ok {
+		p.SetPersistenceRequired(true)
+	}
 	tx.PlaySound(e.data.Pos, sound.Custom{Name: "mob.tadpole.convert_to_frog", Volume: .15, Pitch: 1})
-	_ = e.CloseIn(tx)
 }
 
 // feedTadpole ports Tadpole.mobInteract: frog food makes a tadpole grow up

@@ -644,6 +644,11 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			Position:  vec64To32(pos),
 			EventData: int32(networkBlockID(s.br, pa.Block)) | (int32(pa.Face) << 24),
 		})
+	case particle.DragonDestroyBlock:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeDragonDestroyBlock,
+			Position:  vec64To32(pos),
+		})
 	case particle.EndermanTeleport:
 		s.writePacket(&packet.LevelEvent{
 			EventType: packet.LevelEventParticlesTeleport,
@@ -1487,6 +1492,11 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			ActionType:      packet.AnimateActionMagicCriticalHit,
 			EntityRuntimeID: s.entityRuntimeID(e),
 			Data:            float32(act.Count),
+		})
+	case entity.DragonDeathAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventDragonStartDeathAnim,
 		})
 	case entity.DeathAction:
 		s.entityMutex.Lock()

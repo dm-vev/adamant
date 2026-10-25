@@ -561,6 +561,18 @@ func (v *Villager) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	if v.Dead() || d <= 0 {
 		return 0, false
 	}
+	if _, bolt := src.(LightningDamageSource); bolt && v.tx.World().Difficulty() != world.DifficultyPeaceful {
+		// Villager.thunderHit: lightning turns a villager into a witch
+		// that stays.
+		v.releasePOIs(v.tx)
+		opts := world.EntitySpawnOpts{Position: v.Position(), Rotation: v.Rotation(), SpawnReason: "conversion"}
+		witch := convertMob(v.tx, v, opts.New(WitchType, WitchConfig{}), conversion{})
+		if p, ok := witch.(interface{ SetPersistenceRequired(bool) }); ok {
+			p.SetPersistenceRequired(true)
+		}
+		b.dead = true
+		return 0, true
+	}
 	var ok bool
 	if d, ok = b.ai.DamageCooldown(v.tx, d); !ok {
 		return 0, false
@@ -769,13 +781,7 @@ func (v *Villager) SetOffers(offers []MerchantOffer) {
 func (v *Villager) Profession() string { return v.behaviour().profession }
 func (v *Villager) Variant() string    { return v.behaviour().villagerType }
 func (v *Villager) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := v.Position().Sub(src)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	v.SetVelocity(d)
+	knockBack(v, src, force, height)
 }
 func (v *Villager) AddEffect(e effect.Effect)    { v.behaviour().effects.Add(e, v) }
 func (v *Villager) RemoveEffect(t effect.Type)   { v.behaviour().effects.Remove(t, v) }

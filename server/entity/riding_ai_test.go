@@ -136,3 +136,41 @@ func TestRavagerRidersStayOnTop(t *testing.T) {
 		}
 	})
 }
+
+// TestSkeletonTrapsSpring checks SkeletonTrapGoal: a trap horse a player
+// comes near turns into four skeleton horsemen in iron helmets.
+func TestSkeletonTrapsSpring(t *testing.T) {
+	w := happyGhastWorld(t)
+	<-w.Exec(func(tx *world.Tx) {
+		horse := tx.AddEntity(entity.NewSkeletonHorse(world.EntitySpawnOpts{Position: mgl64.Vec3{.5, 64, .5}}))
+		horse.(*entity.SkeletonHorse).SetTrap(true)
+		addSurvivalPlayer(tx, mgl64.Vec3{5.5, 64, .5})
+	})
+	for range 10 {
+		w.AdvanceTick()
+	}
+	<-w.Exec(func(tx *world.Tx) {
+		horses, riders := 0, 0
+		for e := range tx.Entities() {
+			switch v := e.(type) {
+			case *entity.SkeletonHorse:
+				horses++
+				if v.Trap() || !v.Tamed() {
+					t.Fatal("sprung skeleton horse is still a trap or untamed")
+				}
+			case *entity.Skeleton:
+				vehicle := v.Riding()
+				if vehicle == nil || vehicle.Type() != entity.SkeletonHorseType {
+					t.Fatal("trap skeleton does not ride a skeleton horse")
+				}
+				if head, _, _, _ := v.EquipmentArmour(); head.Empty() {
+					t.Fatal("trap skeleton wears no helmet")
+				}
+				riders++
+			}
+		}
+		if horses != 4 || riders != 4 {
+			t.Fatalf("sprung trap left %d skeleton horses and %d riders, want 4 and 4", horses, riders)
+		}
+	})
+}

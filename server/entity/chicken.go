@@ -187,13 +187,7 @@ func (c *Chicken) Heal(h float64, _ world.HealingSource) float64 {
 	return c.Health() - old
 }
 func (c *Chicken) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := c.Position().Sub(src)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	c.SetVelocity(d)
+	knockBack(c, src, force, height)
 }
 func (c *Chicken) AddEffect(e effect.Effect)    { c.behaviour().effects.Add(e, c) }
 func (c *Chicken) RemoveEffect(t effect.Type)   { c.behaviour().effects.Remove(t, c) }

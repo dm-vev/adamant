@@ -112,6 +112,7 @@ func (b *hostileState) raiderTick(m *Mob) {
 // Raider.registerGoals, which every raider runs before its own.
 func registerRaiderGoals(m *Mob) {
 	ai := m.AI
+	ai.Goals.Add(1, &obtainRaidLeaderBannerGoal{goalFlags: goalFlags{GoalMove}})
 	ai.Goals.Add(4, &raiderPatrolGoal{goalFlags: goalFlags{GoalMove}})
 	ai.Goals.Add(3, &pathfindToRaidGoal{goalFlags: goalFlags{GoalMove}})
 	ai.Goals.Add(4, &raiderMoveThroughVillageGoal{goalFlags: goalFlags{GoalMove}})

@@ -197,13 +197,7 @@ func (w *Witch) Heal(h float64, _ world.HealingSource) float64 {
 	return w.Health() - old
 }
 func (w *Witch) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := w.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	w.SetVelocity(d)
+	knockBack(w, src, f, h)
 }
 func (w *Witch) AddEffect(e effect.Effect) {
 	if e.Type() == effect.Poison || e.Type() == effect.FatalPoison {

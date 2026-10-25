@@ -1,6 +1,9 @@
 package entity
 
 import (
+	"time"
+
+	"github.com/df-mc/dragonfly/server/loot"
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -136,15 +139,20 @@ func (b *MountBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		}
 	}
 	b.effects.Tick(m, tx)
-	if b.kind == mountSkeletonHorse && b.trap {
-		b.trapTime++
-		if b.triggerSkeletonTrap(e, tx) {
-			return nil
+	if b.kind == mountZombieHorse && sunBurnTick(e, tx) && b.armor.Empty() {
+		// Mob.burnUndead: the armour a zombie horse wears on its body,
+		// ZombieHorse.sunProtectionSlot, shades it.
+		if e.OnFireDuration() < 8*time.Second {
+			e.SetOnFire(8 * time.Second)
 		}
+	}
+	if b.kind == mountSkeletonHorse && b.trap {
+		// SkeletonHorse.aiStep: an unsprung trap leaves after 15 minutes.
 		if b.trapTime >= 18000 {
 			_ = e.CloseIn(tx)
 			return nil
 		}
+		b.trapTime++
 	}
 	if b.kind == mountTraderLlama && b.traderLlamaDespawn(e, tx) {
 		return nil
@@ -690,40 +698,100 @@ func mountFromEntity(e world.Entity) *Mount {
 	}
 	return nil
 }
-func (b *MountBehaviour) triggerSkeletonTrap(e *Ent, tx *world.Tx) bool {
-	for player := range tx.Players() {
-		if player.Position().Sub(e.Position()).LenSqr() > 100 {
-			continue
+
+// skeletonTrapGoal ports SkeletonTrapGoal: a skeleton trap horse springs
+// once a living player comes within ten blocks.
+type skeletonTrapGoal struct {
+	goalFlags
+	mount *MountBehaviour
+}
+
+func (g *skeletonTrapGoal) CanUse(m *Mob) bool {
+	return g.mount.trap && nearbyAlivePlayer(m.tx, m.data.Pos, 10)
+}
+
+func (g *skeletonTrapGoal) Tick(m *Mob) { g.mount.springSkeletonTrap(m) }
+
+// nearbyAlivePlayer ports Level.hasNearbyAlivePlayer.
+func nearbyAlivePlayer(tx *world.Tx, pos mgl64.Vec3, dist float64) bool {
+	for p := range tx.Players() {
+		if !spectator(p) && entityAlive(p) && p.Position().Sub(pos).LenSqr() < dist*dist {
+			return true
 		}
-		b.trap = false
-		b.tamed = true
-		b.ageTicks = 0
-		spawnPair := func(horse *Mount) {
-			riderEntity := tx.AddEntity(NewSkeleton(world.EntitySpawnOpts{Position: horse.Position(), SpawnReason: "TRIGGERED"}))
-			rider, ok := riderEntity.(Rider)
-			if !ok {
-				return
-			}
-			horse.b().passengers[0] = riderEntity.H()
-			seatRider(rider, horse)
-			horse.broadcastLink(tx, riderEntity.H(), true)
-		}
-		spawnPair(&Mount{Ent: e})
-		for i := range 3 {
-			pos := e.Position().Add(mgl64.Vec3{float64(i+1) * 1.2, 0, float64(i%2) * 1.2})
-			entity := tx.AddEntity(NewSkeletonHorse(world.EntitySpawnOpts{Position: pos, SpawnReason: "TRIGGERED"}))
-			horse := mountFromEntity(entity)
-			if horse == nil {
-				continue
-			}
-			horse.b().tamed = true
-			horse.b().ageTicks = 0
-			spawnPair(horse)
-		}
-		return true
 	}
 	return false
 }
+
+// springSkeletonTrap ports SkeletonTrapGoal.tick: the horse is tamed and,
+// under a lightning bolt that only flashes, it and three more skeleton
+// horses spawn ridden by armoured skeletons with enchanted gear.
+func (b *MountBehaviour) springSkeletonTrap(m *Mob) {
+	tx := m.tx
+	difficulty := tx.LocalDifficulty(m.BlockPos())
+	b.trap, b.tamed, b.ageTicks = false, true, 0
+	pos := m.data.Pos
+	tx.AddEntity(NewVisualLightning(world.EntitySpawnOpts{Position: pos}))
+	skeleton := trapSkeleton(tx, difficulty, pos)
+	if skeleton == nil {
+		return
+	}
+	mobStartRiding(tx, skeleton, m.Self, true)
+	r := m.Random()
+	for range 3 {
+		horse, ok := tx.AddEntity(NewSkeletonHorse(world.EntitySpawnOpts{Position: pos, SpawnReason: "triggered"})).(*SkeletonHorse)
+		if !ok {
+			continue
+		}
+		horse.b().tamed, horse.b().ageTicks = true, 0
+		horse.SetPersistenceRequired(true)
+		rider := trapSkeleton(tx, difficulty, pos)
+		if rider == nil {
+			continue
+		}
+		mobStartRiding(tx, rider, horse, true)
+		// RandomSource.triangle(0, 1.1485) on both axes.
+		horse.SetVelocity(horse.Velocity().Add(mgl64.Vec3{1.1485 * (r.NextDouble() - r.NextDouble()), 0, 1.1485 * (r.NextDouble() - r.NextDouble())}))
+	}
+}
+
+// trapSkeleton ports SkeletonTrapGoal.createSkeleton: a skeleton in an iron
+// helmet unless it wears another, whose weapon and helmet are enchanted as
+// mob spawn equipment.
+func trapSkeleton(tx *world.Tx, difficulty world.LocalDifficulty, pos mgl64.Vec3) *Skeleton {
+	skeleton, ok := tx.AddEntity(NewSkeleton(world.EntitySpawnOpts{Position: pos, SpawnReason: "triggered"})).(*Skeleton)
+	if !ok {
+		return nil
+	}
+	skeleton.SetPersistenceRequired(true)
+	s := skeleton.state()
+	if s.head.Empty() {
+		s.head = item.NewStack(item.Helmet{Tier: item.ArmourTierIron{}}, 1)
+	}
+	m, _ := mobOf(skeleton)
+	enchant := func(stack item.Stack) item.Stack {
+		if stack.Empty() || m == nil {
+			return stack
+		}
+		var types []item.EnchantmentType
+		for _, e := range stack.Enchantments() {
+			types = append(types, e.Type())
+		}
+		enchanted, err := loot.EnchantMobSpawnEquipment(stack.WithoutEnchantments(types...), difficulty.SpecialMultiplier(), m.Random())
+		if err != nil {
+			return stack
+		}
+		return enchanted
+	}
+	s.main, s.head = enchant(s.main), enchant(s.head)
+	viewers := tx.Viewers(pos)
+	for _, v := range viewers {
+		v.ViewEntityItems(skeleton)
+		v.ViewEntityArmour(skeleton)
+	}
+	tx.ReleaseViewers(viewers)
+	return skeleton
+}
+
 func mountArmor(s item.Stack) bool {
 	if s.Empty() {
 		return false
@@ -1200,17 +1268,13 @@ func (m *Mount) Heal(v float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *Mount) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := m.Position().Sub(src)
-	d[1] = 0
-	if d.LenSqr() == 0 {
-		return
-	}
-	// LivingEntity.knockback: knockback resistance, such as netherite horse
-	// armour's, weakens the push.
+	// Knockback resistance, such as netherite horse armour's, weakens the
+	// push.
+	resistance := 0.
 	if a, ok := m.b().armor.Item().(bodyArmour); ok && !m.b().armor.Empty() {
-		force, height = force*(1-a.KnockBackResistance()), height*(1-a.KnockBackResistance())
+		resistance = a.KnockBackResistance()
 	}
-	m.SetVelocity(m.Velocity().Add(d.Normalize().Mul(force).Add(mgl64.Vec3{0, height, 0})))
+	knockBackResisted(m, src, force, height, resistance)
 }
 func (m *Mount) Speed() float64             { return m.b().movementSpeed }
 func (m *Mount) SetSpeed(v float64)         { m.b().movementSpeed = v }

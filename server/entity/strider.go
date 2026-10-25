@@ -210,13 +210,7 @@ func (s *Strider) Heal(v float64, _ world.HealingSource) float64 {
 }
 
 func (s *Strider) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := s.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	s.SetVelocity(d)
+	knockBack(s, src, f, h)
 }
 
 func (s *Strider) viewAction(a world.EntityAction) {
@@ -437,7 +431,9 @@ func (s *Strider) FinalizeSpawn(reason string, r *vanilla.Random) {
 	b.age = 0
 	if r.NextInt(30) == 0 {
 		opts := world.EntitySpawnOpts{Position: s.Position(), Rotation: s.Rotation(), SpawnReason: "jockey"}
-		jockey := opts.New(ZombifiedPiglinType{}, zombifiedPiglinConfig{main: item.NewStack(item.WarpedFungusOnAStick{}, 1)})
+		conf := zombifiedPiglinConfig{}
+		conf.gear.items[slotMainhand] = item.NewStack(item.WarpedFungusOnAStick{}, 1)
+		jockey := opts.New(ZombifiedPiglinType{}, conf)
 		b.saddled = true
 		if s.tx != nil {
 			s.Mount(s.tx, s.tx.AddEntity(jockey))

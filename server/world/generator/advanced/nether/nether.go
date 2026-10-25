@@ -146,6 +146,8 @@ func (g *Nether) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context world
 	result.BlockEntities = append(result.BlockEntities, decoration.BlockEntities...)
 	result.ScheduledTicks = append(result.ScheduledTicks, decoration.ScheduledTicks...)
 	result.PostProcessing = decoration.PostProcessing
+	// NoiseGeneratorSettings.nether does not disable mob generation.
+	result.SpawnOriginalMobs = true
 	return result
 }
 

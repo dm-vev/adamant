@@ -5,6 +5,10 @@ import "image/color"
 // HugeExplosion is a particle shown when TNT or a creeper explodes.
 type HugeExplosion struct{ particle }
 
+// DragonDestroyBlock is the explosion shown where an ender dragon flies
+// through blocks.
+type DragonDestroyBlock struct{ particle }
+
 // EndermanTeleport is a particle that shows up when an enderman teleports.
 type EndermanTeleport struct{ particle }
 

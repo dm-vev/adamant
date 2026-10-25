@@ -733,6 +733,9 @@ type EntityRegistryConfig struct {
 	NaturalSpawnTick func(*Tx)
 	// EntityCollisions pushes overlapping entities apart once per world tick.
 	EntityCollisions func(*Tx)
+	// SpawnOriginalMobs spawns the creatures of a newly generated chunk, as
+	// NaturalSpawner.spawnMobsForChunkGeneration.
+	SpawnOriginalMobs func(tx *Tx, pos ChunkPos)
 	// EncodeSharedNBT and DecodeSharedNBT persist state many entity types
 	// share beside each type's own codec, such as the status effects of mobs.
 	EncodeSharedNBT func(data *EntityData) map[string]any
@@ -846,9 +849,23 @@ func (reg EntityRegistry) Lookup(name string) (EntityType, bool) {
 	if !ok {
 		if registered, alias := registeredEntityNames[name]; alias {
 			t, ok = reg.ent[registered]
+		} else if registered, alias := javaEntityNames[name]; alias {
+			t, ok = reg.ent[registered]
 		}
 	}
 	return t, ok
+}
+
+// javaEntityNames maps the Java identifiers of the entity types registered
+// by their Bedrock identifiers to those, so that Java NBT and spawners find
+// them.
+var javaEntityNames = map[string]string{
+	"minecraft:zombified_piglin": "minecraft:zombie_pigman",
+	"minecraft:end_crystal":      "minecraft:ender_crystal",
+	"minecraft:experience_orb":   "minecraft:xp_orb",
+	"minecraft:eye_of_ender":     "minecraft:eye_of_ender_signal",
+	"minecraft:firework_rocket":  "minecraft:fireworks_rocket",
+	"minecraft:wind_charge":      "minecraft:wind_charge_projectile",
 }
 
 // bedrockEntityIdentifiers maps the names entity types are registered and

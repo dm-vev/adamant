@@ -77,6 +77,13 @@ func (s Shears) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 // UseOnEntity shears a harness from a compatible rideable mob.
 func (s Shears) UseOnEntity(target world.Entity, tx *world.Tx, user User, ctx *UseContext) bool {
 	if mob, ok := target.(interface {
+		ShearEquipment(*world.Tx, world.Entity) bool
+	}); ok && !userSneaking(user) && mob.ShearEquipment(tx, user) {
+		// Mob.attemptToShearEquipment.
+		ctx.DamageItem(1)
+		return true
+	}
+	if mob, ok := target.(interface {
 		ShearHarness(*world.Tx, world.Entity) bool
 	}); ok && mob.ShearHarness(tx, user) {
 		ctx.DamageItem(1)
@@ -157,4 +164,11 @@ func (s Shears) MaxCount() int {
 // EncodeItem ...
 func (s Shears) EncodeItem() (name string, meta int16) {
 	return "minecraft:shears", 0
+}
+
+// userSneaking reports whether the user is sneaking, which keeps shears
+// from shearing the equipment of a mob.
+func userSneaking(user User) bool {
+	s, ok := user.(interface{ Sneaking() bool })
+	return ok && s.Sneaking()
 }

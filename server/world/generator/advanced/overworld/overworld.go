@@ -189,6 +189,7 @@ func (g *Overworld) GenerateChunk(pos world.ChunkPos, c *chunk.Chunk, context wo
 	result.PostProcessing = nil
 	appendPostProcessing(&result, base.postProcessing)
 	appendPostProcessing(&result, decorationMarkers)
+	result.SpawnOriginalMobs = true
 	return result
 }
 

@@ -37,6 +37,9 @@ func newDeathTestWorld(t *testing.T) *world.World {
 }
 
 func addDeathTestPlayer(tx *world.Tx) *player.Player {
+	// The player stands on a block rather than falling out of the world,
+	// which would leave the mobs near it far from any player.
+	tx.SetBlock(cube.Pos{0, 64, 30}, block.Stone{}, nil)
 	return tx.AddEntity((world.EntitySpawnOpts{}).New(player.Type, player.Config{Position: mgl64.Vec3{0.5, 65, 30.5}, GameMode: world.GameModeCreative})).(*player.Player)
 }
 

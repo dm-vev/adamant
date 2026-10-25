@@ -383,6 +383,9 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 		m[protocol.EntityDataKeyDataDuration] = int32(math.MaxInt32)
 		m[protocol.EntityDataKeyDataChangeOnPickup] = float32(math.SmallestNonzeroFloat32)
 		m[protocol.EntityDataKeyDataChangeRate] = float32(math.SmallestNonzeroFloat32)
+		if p, ok := e.(interface{ Particle() int32 }); ok && p.Particle() != 0 {
+			m[protocol.EntityDataKeyDataParticle] = p.Particle()
+		}
 
 		colour, am := effect.ResultingColour(c.Effects())
 		m[protocol.EntityDataKeyEffectColor] = nbtconv.Int32FromRGBA(colour)

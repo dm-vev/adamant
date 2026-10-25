@@ -236,10 +236,10 @@ func (s *netherBeastState) converting(m *Mob) bool {
 // finishConversion ports Hoglin.finishConversion: the hoglin becomes a
 // zoglin, sick for ten seconds.
 func (s *netherBeastState) finishConversion(m *Mob) {
-	z := m.tx.AddEntity(world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion"}.New(ZoglinType, netherBeastConfig{kind: zoglinKind, age: min(s.age, 0)}))
+	opts := world.EntitySpawnOpts{Position: m.data.Pos, Rotation: m.data.Rot, SpawnReason: "conversion", SpawnFinalized: true}
+	z := convertMob(m.tx, m.Self, opts.New(ZoglinType, netherBeastConfig{kind: zoglinKind, age: min(s.age, 0)}), conversion{keepEquipment: true})
 	z.(*Zoglin).AddEffect(effect.New(effect.Nausea, 1, 10*time.Second))
 	s.dead = true
-	_ = m.CloseIn(m.tx)
 }
 
 // walkTargetValue ports Hoglin.getWalkTargetValue: hoglins keep away from
@@ -655,8 +655,8 @@ func beastHeal(b *netherBeastState, v float64) float64 {
 	b.health.AddHealth(v)
 	return b.health.Health() - old
 }
-func (h *Hoglin) KnockBack(p mgl64.Vec3, f, k float64) { beastKnock(h.Ent, p, f, k) }
-func (z *Zoglin) KnockBack(p mgl64.Vec3, f, k float64) { beastKnock(z.Ent, p, f, k) }
+func (h *Hoglin) KnockBack(p mgl64.Vec3, f, k float64) { knockBack(h, p, f, k) }
+func (z *Zoglin) KnockBack(p mgl64.Vec3, f, k float64) { knockBack(z, p, f, k) }
 func (h *Hoglin) Hurt(d float64, src world.DamageSource) (float64, bool) {
 	return beastHurt(h.Ent, h, h.beast(), d, src)
 }
@@ -673,15 +673,6 @@ func (h *Hoglin) Speed() float64             { return h.beast().speed }
 func (z *Zoglin) Speed() float64             { return z.beast().speed }
 func (h *Hoglin) SetSpeed(v float64)         { h.beast().speed = v }
 func (z *Zoglin) SetSpeed(v float64)         { z.beast().speed = v }
-func beastKnock(e *Ent, p mgl64.Vec3, f, k float64) {
-	d := e.Position().Sub(p)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = k
-	e.SetVelocity(d)
-}
 func (h *Hoglin) FinalizeSpawn(reason string, r *vanilla.Random) {
 	if r == nil {
 		return

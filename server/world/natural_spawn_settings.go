@@ -22,11 +22,38 @@ type NaturalSpawnEntry struct {
 	MaxCount int
 }
 
+// NaturalSpawnCost is a MobSpawnSettings.MobSpawnCost: the charge a mob of
+// a type carries for the spawn potential and the energy its spawning may
+// add.
+type NaturalSpawnCost struct {
+	Charge, EnergyBudget float64
+}
+
 var (
 	javaSpawnSettingsOnce sync.Once
 	javaSpawnSettings     map[string][]NaturalSpawnEntry
+	javaSpawnCosts        map[string]map[string]NaturalSpawnCost
+	javaBiomeFloats       map[string]map[string]float32
 	javaSpawnSettingsErr  error
 )
+
+// JavaBiomeSpawnCosts returns the spawn costs of the biome named, keyed by
+// entity type.
+func JavaBiomeSpawnCosts(biome string) map[string]NaturalSpawnCost {
+	javaSpawnSettingsOnce.Do(loadJavaBiomeSpawnSettings)
+	return javaSpawnCosts[strings.TrimPrefix(biome, "minecraft:")]
+}
+
+// JavaBiomeAttribute returns a float environment attribute of the biome
+// named, such as minecraft:gameplay/surface_slime_spawn_chance, or def if
+// the biome does not set it.
+func JavaBiomeAttribute(biome, attribute string, def float32) float32 {
+	javaSpawnSettingsOnce.Do(loadJavaBiomeSpawnSettings)
+	if v, ok := javaBiomeFloats[strings.TrimPrefix(biome, "minecraft:")][attribute]; ok {
+		return v
+	}
+	return def
+}
 
 var ErrJavaBiomeNaturalSpawnsUnavailable = errors.New("Java biome natural spawn settings unavailable")
 
@@ -51,6 +78,8 @@ func loadJavaBiomeSpawnSettings() {
 		return
 	}
 	javaSpawnSettings = make(map[string][]NaturalSpawnEntry, len(files))
+	javaSpawnCosts = make(map[string]map[string]NaturalSpawnCost, len(files))
+	javaBiomeFloats = make(map[string]map[string]float32, len(files))
 	for _, name := range files {
 		data, err := gamedata.Assets().ReadFile(name)
 		if err != nil {
@@ -69,9 +98,23 @@ func loadJavaBiomeSpawnSettings() {
 			javaSpawnSettingsErr = fmt.Errorf("Java biome %s has no natural mob spawn settings", filepath.Base(name))
 			return
 		}
+		biome := strings.TrimSuffix(filepath.Base(name), ".json")
+		for key, raw := range root.Attributes {
+			var v float32
+			if json.Unmarshal(raw, &v) == nil {
+				if javaBiomeFloats[biome] == nil {
+					javaBiomeFloats[biome] = map[string]float32{}
+				}
+				javaBiomeFloats[biome][key] = v
+			}
+		}
 		var settings struct {
 			Argument struct {
 				Spawns json.RawMessage `json:"spawns_by_category"`
+				Costs  map[string]struct {
+					Charge       float64 `json:"charge"`
+					EnergyBudget float64 `json:"energy_budget"`
+				} `json:"spawn_costs"`
 			} `json:"argument"`
 		}
 		if err := json.Unmarshal(attribute, &settings); err != nil {
@@ -83,7 +126,14 @@ func loadJavaBiomeSpawnSettings() {
 			javaSpawnSettingsErr = err
 			return
 		}
-		javaSpawnSettings[strings.TrimSuffix(filepath.Base(name), ".json")] = entries
+		javaSpawnSettings[biome] = entries
+		if len(settings.Argument.Costs) != 0 {
+			costs := make(map[string]NaturalSpawnCost, len(settings.Argument.Costs))
+			for id, c := range settings.Argument.Costs {
+				costs[id] = NaturalSpawnCost{Charge: c.Charge, EnergyBudget: c.EnergyBudget}
+			}
+			javaSpawnCosts[biome] = costs
+		}
 	}
 }
 
@@ -156,10 +206,10 @@ func decodeJavaSpawnCount(raw json.RawMessage) (int, int, error) {
 		return 0, 0, errors.New("count must be an integer or provider object")
 	}
 	var provider struct {
-		Type        *string `json:"type"`
+		Type         *string `json:"type"`
 		MinInclusive *int    `json:"min_inclusive"`
 		MaxInclusive *int    `json:"max_inclusive"`
-		Value       *int    `json:"value"`
+		Value        *int    `json:"value"`
 	}
 	if err := json.Unmarshal(trimmed, &provider); err != nil {
 		return 0, 0, err

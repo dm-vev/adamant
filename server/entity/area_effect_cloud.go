@@ -6,6 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/internal/nbtconv"
 	"github.com/df-mc/dragonfly/server/item/potion"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 	"math"
 	"time"
 )
@@ -67,12 +69,13 @@ func (areaEffectCloudType) DecodeNBT(m map[string]any, data *world.EntityData) {
 		Duration:           nbtconv.TickDuration[int32](m, "Duration"),
 		DurationUseGrowth:  nbtconv.TickDuration[int32](m, "DurationOnUse"),
 		ReapplicationDelay: nbtconv.TickDuration[int32](m, "ReapplicationDelay"),
+		Particle:           nbtconv.Int32(m, "ParticleId"),
 	}.New()
 }
 
 func (areaEffectCloudType) EncodeNBT(data *world.EntityData) map[string]any {
 	a := data.Data.(*AreaEffectCloudBehaviour)
-	return map[string]any{
+	m := map[string]any{
 		"PotionId":           int32(a.conf.Potion.Uint8()),
 		"ReapplicationDelay": durationToTicks(a.conf.ReapplicationDelay),
 		"RadiusPerTick":      float32(a.conf.RadiusTickGrowth),
@@ -81,6 +84,29 @@ func (areaEffectCloudType) EncodeNBT(data *world.EntityData) map[string]any {
 		"Radius":             float32(a.radius),
 		"Duration":           durationToTicks(a.duration),
 	}
+	if a.conf.Particle != 0 {
+		m["ParticleId"] = a.conf.Particle
+	}
+	return m
+}
+
+// newDragonBreathCloud returns a cloud of dragon's breath, as the ender
+// dragon breathes and its fireballs leave: Instant Damage of the amplifier,
+// lasting the ticks given, that a glass bottle may collect.
+func newDragonBreathCloud(pos mgl64.Vec3, owner *world.EntityHandle, radius float64, ticks int, radiusPerTick float64, amplifier int) *world.EntityHandle {
+	p := potion.Harming()
+	if amplifier > 0 {
+		p = potion.StrongHarming()
+	}
+	return world.EntitySpawnOpts{Position: pos}.New(AreaEffectCloudType, AreaEffectCloudBehaviourConfig{
+		Potion:             p,
+		Radius:             radius,
+		RadiusTickGrowth:   radiusPerTick,
+		Duration:           time.Duration(ticks) * time.Second / 20,
+		ReapplicationDelay: time.Second,
+		Owner:              owner,
+		Particle:           packet.ParticleTypeDragonBreath,
+	})
 }
 
 // durationToTicks converts a duration to the tick units used in NBT payloads.
@@ -93,4 +119,25 @@ func durationToTicks(d time.Duration) int32 {
 		return math.MaxInt32
 	}
 	return int32(ticks)
+}
+
+// BottleDragonBreath lets a glass bottle take a half block of the radius of
+// a cloud of dragon's breath whose dragon is still there, as BottleItem.use
+// does. It reports if the cloud was one.
+func (e *Ent) BottleDragonBreath(tx *world.Tx) bool {
+	a, ok := e.Behaviour().(*AreaEffectCloudBehaviour)
+	if !ok || a.stationary.close || a.conf.Owner == nil {
+		return false
+	}
+	owner, ok := a.conf.Owner.Entity(tx)
+	if _, dragon := owner.(*EnderDragon); !ok || !dragon {
+		return false
+	}
+	a.SetRadius(a.radius - .5)
+	viewers := tx.Viewers(e.Position())
+	for _, v := range viewers {
+		v.ViewEntityState(e)
+	}
+	tx.ReleaseViewers(viewers)
+	return true
 }

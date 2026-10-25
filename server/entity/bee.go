@@ -197,13 +197,7 @@ func (b *Bee) Heal(v float64, _ world.HealingSource) float64 {
 	return b.Health() - old
 }
 func (b *Bee) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := b.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	b.SetVelocity(d)
+	knockBack(b, src, f, h)
 }
 func (b *Bee) AddEffect(e effect.Effect)  { b.state().effects.Add(e, b) }
 func (b *Bee) RemoveEffect(t effect.Type) { b.state().effects.Remove(t, b) }

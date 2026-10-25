@@ -172,13 +172,7 @@ func (s *Sheep) Heal(v float64, _ world.HealingSource) float64 {
 	return b.health - old
 }
 func (s *Sheep) KnockBack(src mgl64.Vec3, force, height float64) {
-	v := s.Position().Sub(src)
-	v[1] = 0
-	if v.Len() > 0 {
-		v = v.Normalize().Mul(force)
-	}
-	v[1] = height
-	s.SetVelocity(v)
+	knockBack(s, src, force, height)
 }
 func (s *Sheep) viewAction(a world.EntityAction) {
 	vs := s.tx.Viewers(s.Position())

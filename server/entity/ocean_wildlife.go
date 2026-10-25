@@ -240,12 +240,7 @@ func (m *oceanWildlife) Heal(h float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m *oceanWildlife) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := m.Position().Sub(src)
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	m.SetVelocity(d)
+	knockBack(m, src, force, height)
 }
 func (m *oceanWildlife) viewAction(action world.EntityAction) {
 	viewers := m.tx.Viewers(m.Position())

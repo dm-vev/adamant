@@ -48,6 +48,33 @@ type Raid struct {
 	totalHealth      float64
 	members          map[uuid.UUID]struct{}
 	heroes           map[uuid.UUID]struct{}
+	// leaders are the captains of the waves, as Raid.groupToLeaderMap.
+	leaders map[int]uuid.UUID
+}
+
+// RaidLeader returns the captain of a wave of the raid, if it has one in the
+// world, as Raid.getLeader.
+func (tx *Tx) RaidLeader(r *Raid, wave int) (Entity, bool) {
+	if r == nil {
+		return nil, false
+	}
+	id, ok := r.leaders[wave]
+	if !ok {
+		return nil, false
+	}
+	return tx.EntityByUUID(id)
+}
+
+// SetRaidLeader makes a raider the captain of a wave of the raid, as
+// Raid.setLeader. The caller gives it the ominous banner.
+func (tx *Tx) SetRaidLeader(r *Raid, wave int, e Entity) {
+	if r == nil || e == nil {
+		return
+	}
+	if r.leaders == nil {
+		r.leaders = make(map[int]uuid.UUID)
+	}
+	r.leaders[wave] = e.H().UUID()
 }
 
 // ID returns the persistent raid identifier.
@@ -162,6 +189,12 @@ func (tx *Tx) RaiderDied(e Entity) {
 			raid.totalHealth = max(0.0, raid.totalHealth-remaining)
 		}
 		delete(raid.members, id)
+		for wave, leader := range raid.leaders {
+			// Raider.die: the raid loses the captain of the wave.
+			if leader == id {
+				delete(raid.leaders, wave)
+			}
+		}
 	}
 }
 func (tx *Tx) RaiderKilled(raider, killer Entity) {
@@ -374,9 +407,13 @@ func (tx *Tx) spawnRaidWave(r *Raid) bool {
 			if handle == nil {
 				continue
 			}
+			leader := member.leader && spawned == 0
 			entity := tx.AddEntity(handle)
 			if tx.RegisterRaider(r.id, entity) {
 				spawned++
+			}
+			if leader {
+				tx.SetRaidLeader(r, wave, entity)
 			}
 			if member.id == "minecraft:ravager" {
 				tx.spawnRavagerRider(r, wave, ravagers, entity, pos, factory)

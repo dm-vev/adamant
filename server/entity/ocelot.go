@@ -171,13 +171,7 @@ func (o *Ocelot) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	return d, true
 }
 func (o *Ocelot) KnockBack(s mgl64.Vec3, f, h float64) {
-	d := o.Position().Sub(s)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	o.SetVelocity(d)
+	knockBack(o, s, f, h)
 }
 func (o *Ocelot) AddEffect(e effect.Effect)  { o.b().effects.Add(e, o) }
 func (o *Ocelot) RemoveEffect(t effect.Type) { o.b().effects.Remove(t, o) }

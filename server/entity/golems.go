@@ -290,13 +290,7 @@ func (m golemLiving) Heal(h float64, _ world.HealingSource) float64 {
 	return m.Health() - old
 }
 func (m golemLiving) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := m.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	m.SetVelocity(d)
+	knockBack(m, src, f, h)
 }
 func (m golemLiving) AddEffect(e effect.Effect)  { m.b.effects.Add(e, &m) }
 func (m golemLiving) RemoveEffect(t effect.Type) { m.b.effects.Remove(t, &m) }

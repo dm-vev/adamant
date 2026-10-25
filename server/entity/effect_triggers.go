@@ -101,7 +101,7 @@ func windBurstKnockback(tx *world.Tx, origin mgl64.Vec3, radius float64, exclude
 			continue
 		}
 		strength := 1 - distance/radius
-		living.KnockBack(origin, .65*strength, .6*strength)
+		gustKnockBack(living, origin, .65*strength, .6*strength)
 	}
 }
 

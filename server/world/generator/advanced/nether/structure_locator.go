@@ -186,3 +186,45 @@ func boxContains(box structure.Box, position cube.Pos) bool {
 	x, y, z := int32(position[0]), int32(position[1]), int32(position[2])
 	return x >= box.Min[0] && x <= box.Max[0] && y >= box.Min[1] && y <= box.Max[1] && z >= box.Min[2] && z <= box.Max[2]
 }
+
+// SpawnStructures returns the nether fortresses whose bounding boxes overlap
+// the chunk, the only Nether structure overriding natural spawns.
+func (g *Nether) SpawnStructures(pos world.ChunkPos) []world.StructureArea {
+	const spacing = 27
+	sectorX, sectorZ := floorDiv(int32(pos[0]), spacing), floorDiv(int32(pos[1]), spacing)
+	var areas []world.StructureArea
+	for dz := int32(-1); dz <= 1; dz++ {
+		for dx := int32(-1); dx <= 1; dx++ {
+			location, valid, err := g.netherLocateCandidate("minecraft:fortress", (sectorX+dx)*spacing, (sectorZ+dz)*spacing)
+			if err != nil || !valid {
+				continue
+			}
+			complex, err := g.cachedComplexStart(int32(location.StartChunk[0]), int32(location.StartChunk[1]))
+			if err != nil || complex == nil || complex.fortress == nil {
+				continue
+			}
+			minX, minZ := int32(pos[0])*16, int32(pos[1])*16
+			if complex.box.Max[0] < minX || complex.box.Min[0] > minX+15 || complex.box.Max[2] < minZ || complex.box.Min[2] > minZ+15 {
+				continue
+			}
+			area := world.StructureArea{ID: "minecraft:fortress", Box: [2]cube.Pos{
+				{int(complex.box.Min[0]), int(complex.box.Min[1]), int(complex.box.Min[2])},
+				{int(complex.box.Max[0]), int(complex.box.Max[1]), int(complex.box.Max[2])},
+			}}
+			for _, piece := range complex.fortress.pieces {
+				bb := piece.pieceBase().bb
+				area.Pieces = append(area.Pieces, [2]cube.Pos{{bb.minX, bb.minY, bb.minZ}, {bb.maxX, bb.maxY, bb.maxZ}})
+			}
+			areas = append(areas, area)
+		}
+	}
+	return areas
+}
+
+func floorDiv(a, b int32) int32 {
+	q := a / b
+	if (a%b != 0) && (a < 0) != (b < 0) {
+		q--
+	}
+	return q
+}

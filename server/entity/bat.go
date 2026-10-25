@@ -240,12 +240,7 @@ func (b *Bat) Hurt(d float64, s world.DamageSource) (float64, bool) {
 	return d, true
 }
 func (b *Bat) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := b.Position().Sub(src)
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	b.SetVelocity(d)
+	knockBack(b, src, f, h)
 }
 func (b *Bat) AddEffect(e effect.Effect)    { b.state().effects.Add(e, b) }
 func (b *Bat) RemoveEffect(t effect.Type)   { b.state().effects.Remove(t, b) }

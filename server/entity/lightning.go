@@ -34,6 +34,15 @@ func NewLightningWithDamage(opts world.EntitySpawnOpts, dmg float64, blockFire b
 	return opts.New(LightningType, conf)
 }
 
+// NewVisualLightning creates a lightning bolt that neither hurts nor sets
+// anything on fire, as LightningBolt.setVisualOnly makes the one that
+// springs a skeleton trap.
+func NewVisualLightning(opts world.EntitySpawnOpts) *world.EntityHandle {
+	conf := lightningConf
+	conf.Tick = (&lightningState{visualOnly: true, state: 2, lifetime: rand.IntN(3) + 1}).tick
+	return opts.New(LightningType, conf)
+}
+
 var lightningConf = StationaryBehaviourConfig{SpawnSounds: []world.Sound{sound.Explosion{}, sound.Thunder{}}, ExistenceDuration: time.Second}
 
 // lightningState holds the state of a lightning entity. state is Java's
@@ -43,6 +52,7 @@ type lightningState struct {
 	EntityFireDuration time.Duration
 	BlockFire          bool
 	state, lifetime    int
+	visualOnly         bool
 }
 
 // tick ports LightningBolt.tick: the strike lights fires, powers a struck
@@ -51,7 +61,7 @@ type lightningState struct {
 func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 	pos := e.Position()
 	if s.state == 2 {
-		if d := tx.World().Difficulty(); s.BlockFire && (d == world.DifficultyNormal || d == world.DifficultyHard) {
+		if d := tx.World().Difficulty(); s.BlockFire && !s.visualOnly && (d == world.DifficultyNormal || d == world.DifficultyHard) {
 			s.spawnFire(tx, cube.PosFromVec3(pos), 4)
 		}
 		strike := cube.PosFromVec3(pos.Sub(mgl64.Vec3{0, 1e-6}))
@@ -68,12 +78,12 @@ func (s *lightningState) tick(e *Ent, tx *world.Tx) {
 		} else if s.state < -rand.IntN(10) {
 			s.lifetime--
 			s.state = 1
-			if s.BlockFire {
+			if s.BlockFire && !s.visualOnly {
 				s.spawnFire(tx, cube.PosFromVec3(pos), 0)
 			}
 		}
 	}
-	if s.state >= 0 {
+	if s.state >= 0 && !s.visualOnly {
 		s.dealDamage(e, tx)
 	}
 }

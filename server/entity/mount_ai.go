@@ -44,6 +44,7 @@ func (b *MountBehaviour) registerHorseGoals(m *Mob) {
 	}
 	switch b.kind {
 	case mountSkeletonHorse:
+		ai.Goals.Add(1, &skeletonTrapGoal{mount: b})
 	case mountZombieHorse:
 		ai.Goals.Add(0, NewFloatGoal(m))
 		ai.Goals.Add(3, NewTemptGoal(1.25, (&Mount{Ent: m.Ent}).breedingFood, false))

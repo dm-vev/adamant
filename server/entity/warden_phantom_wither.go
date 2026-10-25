@@ -175,12 +175,7 @@ func (p *Phantom) Heal(v float64, _ world.HealingSource) float64 {
 	return p.Health() - old
 }
 func (p *Phantom) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := p.Position().Sub(src)
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	p.SetVelocity(d)
+	knockBack(p, src, f, h)
 }
 func (p *Phantom) AddEffect(e effect.Effect) {
 	if e.Type() != effect.Poison && e.Type() != effect.FatalPoison {

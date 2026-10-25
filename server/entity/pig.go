@@ -262,14 +262,16 @@ func (p *Pig) Hurt(v float64, s world.DamageSource) (float64, bool) {
 	if p.Dead() || v <= 0 {
 		return 0, false
 	}
-	if bolt, ok := s.(LightningDamageSource); ok {
+	if bolt, ok := s.(LightningDamageSource); ok && p.tx.World().Difficulty() != world.DifficultyPeaceful {
 		b := p.behaviour()
 		if bolt.BoltUUID == "" || bolt.BoltUUID != b.lastLightningBolt {
+			// Pig.thunderHit: lightning turns a pig into a zombified piglin
+			// with a golden sword that stays.
 			b.lastLightningBolt = bolt.BoltUUID
 			opts := world.EntitySpawnOpts{Position: p.Position(), Rotation: p.Rotation()}
-			p.tx.AddEntity(NewZombifiedPiglin(opts))
+			z := convertMob(p.tx, p, NewZombifiedPiglin(opts), conversion{preserveCanPickUpLoot: true})
+			z.(*ZombifiedPiglin).SetPersistenceRequired(true)
 			b.dead = true
-			_ = p.CloseIn(p.tx)
 			return 0, true
 		}
 	}
@@ -304,13 +306,7 @@ func (p *Pig) Heal(v float64, _ world.HealingSource) float64 {
 	return b.health - old
 }
 func (p *Pig) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := p.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	p.SetVelocity(d)
+	knockBack(p, src, f, h)
 }
 func (p *Pig) viewAction(a world.EntityAction) {
 	vs := p.tx.Viewers(p.Position())

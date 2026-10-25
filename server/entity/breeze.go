@@ -215,13 +215,7 @@ func (b *Breeze) Heal(amount float64, _ world.HealingSource) float64 {
 	return b.Health() - old
 }
 func (b *Breeze) KnockBack(source mgl64.Vec3, force, height float64) {
-	direction := b.Position().Sub(source)
-	direction[1] = 0
-	if direction.Len() > 0 {
-		direction = direction.Normalize().Mul(force)
-	}
-	direction[1] = height
-	b.SetVelocity(direction)
+	knockBack(b, source, force, height)
 }
 func (b *Breeze) AddEffect(e effect.Effect)  { b.state().effects.Add(e, b) }
 func (b *Breeze) RemoveEffect(t effect.Type) { b.state().effects.Remove(t, b) }

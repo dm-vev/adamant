@@ -534,13 +534,7 @@ func (g *Goat) Heal(v float64, _ world.HealingSource) float64 {
 	return b.health - old
 }
 func (g *Goat) KnockBack(src mgl64.Vec3, f, h float64) {
-	d := g.Position().Sub(src)
-	d[1] = 0
-	if d.Len() > 0 {
-		d = d.Normalize().Mul(f)
-	}
-	d[1] = h
-	g.SetVelocity(d)
+	knockBack(g, src, f, h)
 }
 func (g *Goat) viewAction(a world.EntityAction) {
 	vs := g.tx.Viewers(g.Position())

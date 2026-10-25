@@ -115,7 +115,7 @@ func (s *zombifiedPiglinState) doHurtTarget(m *Mob, target world.Entity) bool {
 		return false
 	}
 	damage := 5.0
-	if w, ok := s.main.Item().(item.Weapon); ok {
+	if w, ok := s.items[slotMainhand].Item().(item.Weapon); ok {
 		damage += w.AttackDamage() - 1
 	}
 	if _, hurt := l.Hurt(damage, AttackDamageSource{Attacker: m.Self}); !hurt {

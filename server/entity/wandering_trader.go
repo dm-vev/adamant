@@ -444,13 +444,7 @@ func (t *WanderingTrader) Hurt(d float64, src world.DamageSource) (float64, bool
 }
 
 func (t *WanderingTrader) KnockBack(src mgl64.Vec3, force, height float64) {
-	d := t.Position().Sub(src)
-	d[1] = 0
-	if d.Len() != 0 {
-		d = d.Normalize().Mul(force)
-	}
-	d[1] = height
-	t.SetVelocity(d)
+	knockBack(t, src, force, height)
 }
 
 func (t *WanderingTrader) AddEffect(e effect.Effect)    { t.b().effects.Add(e, t) }

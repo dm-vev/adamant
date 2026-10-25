@@ -43,7 +43,12 @@ type GenerationResult struct {
 	// starting at the dimension's minimum section. Duplicates and insertion
 	// order within each section are significant.
 	PostProcessing [][]uint16
+	// SpawnOriginalMobs spawns the creatures of the biome once the chunk is
+	// in the world, as NoiseBasedChunkGenerator.spawnOriginalMobs does for
+	// generators that do not disable mob generation.
+	SpawnOriginalMobs bool
 
+	pos                  ChunkPos
 	scheduledTickIndices map[generatedTickIndex]struct{}
 	scheduledTickCount   int
 }

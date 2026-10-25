@@ -203,6 +203,19 @@ func (tx *Tx) Light(pos cube.Pos) uint8 {
 	return tx.light(pos)
 }
 
+// BlockLight returns the light blocks emit at pos. It does not load chunks:
+// 0 is returned for positions in chunks that are not loaded.
+func (tx *Tx) BlockLight(pos cube.Pos) uint8 {
+	return tx.blockLight(pos)
+}
+
+// EntityTicking reports whether the entities of the loaded chunk at pos tick,
+// as Java's ServerLevel.canSpawnEntitiesInChunk asks of a chunk mobs spawn
+// in.
+func (tx *Tx) EntityTicking(pos ChunkPos) bool {
+	return tx.ChunkLoaded(pos) && tx.World().entityTickingReady(pos)
+}
+
 // SkyLight returns the skylight level at the position passed. This light level
 // is not influenced by blocks that emit light, such as torches. The light
 // value, similarly to Light, is a value in the range 0-15, where 0 means no
