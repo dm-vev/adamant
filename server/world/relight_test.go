@@ -228,3 +228,25 @@ func TestPartialFacesOccludeTogether(t *testing.T) {
 		}
 	})
 }
+
+// TestNetherAndEndHaveNoSkyLight checks DimensionType.hasSkyLight: the
+// Nether and the End have no sky, so only blocks light them.
+func TestNetherAndEndHaveNoSkyLight(t *testing.T) {
+	for _, dim := range []world.Dimension{world.Nether, world.End} {
+		w := world.Config{Dim: dim, Synchronous: true, RandomTickSpeed: -1}.New()
+		<-w.Exec(func(tx *world.Tx) {
+			pos := cube.Pos{0, 64, 0}
+			if got := tx.SkyLight(pos); got != 0 {
+				t.Errorf("%v: skylight in open air = %d, want 0", dim, got)
+			}
+			tx.SetBlock(pos.Side(cube.FaceEast), block.Glowstone{}, nil)
+			if got := tx.Light(pos); got != 14 {
+				t.Errorf("%v: light next to glowstone = %d, want 14", dim, got)
+			}
+			if got := tx.RawBrightness(pos.Add(cube.Pos{0, 0, 20})); got != 0 {
+				t.Errorf("%v: brightness away from light = %d, want 0", dim, got)
+			}
+		})
+		_ = w.Close()
+	}
+}

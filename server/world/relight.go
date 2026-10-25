@@ -1,6 +1,8 @@
 package world
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 )
@@ -42,9 +44,52 @@ func (w *World) flushLight() {
 	}
 	pending := w.pendingLight
 	w.pendingLight = nil
+	if len(pending) > 1 && w.relightTogether(pending) {
+		return
+	}
 	for centre, changed := range pending {
 		w.relight(centre, changed)
 	}
+}
+
+// maxRelightArea is the most chunks across the changes of several chunks
+// may span to be relit as one area.
+const maxRelightArea = 8
+
+// relightTogether relights the changes of several chunks in one area that
+// spans them and the chunks around them, so that light removed by the
+// change of one chunk is not spread back and removed again by that of its
+// neighbour. It reports false, relighting nothing, if the changes span too
+// many chunks or the area is not all lit.
+func (w *World) relightTogether(pending map[ChunkPos][]cube.Pos) bool {
+	minX, minZ, maxX, maxZ := int32(math.MaxInt32), int32(math.MaxInt32), int32(math.MinInt32), int32(math.MinInt32)
+	for pos := range pending {
+		minX, minZ = min(minX, pos[0]), min(minZ, pos[1])
+		maxX, maxZ = max(maxX, pos[0]), max(maxZ, pos[1])
+	}
+	size := max(maxX-minX, maxZ-minZ) + 1
+	if size > maxRelightArea {
+		return false
+	}
+	// A square area with a margin of a chunk, which light changes reach.
+	width := size + 2
+	baseX, baseZ := minX-1, minZ-1
+	area := make([]*chunk.Chunk, 0, width*width)
+	for z := int32(0); z < width; z++ {
+		for x := int32(0); x < width; x++ {
+			col, ok := w.chunks[ChunkPos{baseX + x, baseZ + z}]
+			if !ok || !col.Ready() || !col.lightReady.Load() {
+				return false
+			}
+			area = append(area, col.Chunk)
+		}
+	}
+	var changed []cube.Pos
+	for _, positions := range pending {
+		changed = append(changed, positions...)
+	}
+	chunk.LightArea(area, int(baseX), int(baseZ)).Relight(changed)
+	return true
 }
 
 // relight updates the light around positions in the chunk at centre whose

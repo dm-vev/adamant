@@ -83,6 +83,49 @@ func (q *lightQueue) grow() {
 	q.nodes = nodes
 }
 
+// levelQueue holds light nodes by level and hands out the brightest first,
+// as LightEngine's LeveledPriorityQueue does, so that a block is lit by the
+// brightest light reaching it before that light spreads on, rather than lit
+// again and again by brighter light arriving later.
+type levelQueue struct {
+	buckets [16]*lightQueue
+	top     int
+	size    int
+}
+
+// newLevelQueue creates an empty levelQueue.
+func newLevelQueue() *levelQueue {
+	q := &levelQueue{}
+	for i := range q.buckets {
+		q.buckets[i] = newLightQueue(64)
+	}
+	return q
+}
+
+// push adds a node to the bucket of its level.
+func (q *levelQueue) push(n lightNode) {
+	q.buckets[n.level&15].push(n)
+	q.top = max(q.top, int(n.level&15))
+	q.size++
+}
+
+// pop removes a node of the highest level queued.
+func (q *levelQueue) pop() (lightNode, bool) {
+	for q.size > 0 {
+		if n, ok := q.buckets[q.top].pop(); ok {
+			q.size--
+			return n, true
+		}
+		q.top--
+	}
+	return lightNode{}, false
+}
+
+// empty returns true when no nodes are queued.
+func (q *levelQueue) empty() bool {
+	return q.size == 0
+}
+
 // LightArea creates a lightArea with the lower corner of the lightArea at baseX and baseZ. The length of the Chunk
 // slice must be a square of a number, so 1, 4, 9 etc.
 func LightArea(c []*Chunk, baseX, baseZ int) *lightArea {
@@ -111,7 +154,7 @@ func LightArea(c []*Chunk, baseX, baseZ int) *lightArea {
 // individual chunks within the lightArea itself, without light crossing chunk borders.
 func (a *lightArea) Fill() {
 	a.initialiseLightSlices()
-	queue := newLightQueue(initialLightQueueCapacity)
+	queue := newLevelQueue()
 	a.insertBlockLightNodes(queue)
 	a.insertSkyLightNodes(queue)
 
@@ -124,7 +167,7 @@ func (a *lightArea) Fill() {
 // neighbouring chunks. The neighbouring chunks must have passed the light 'filling' stage before this
 // function is called for an lightArea that includes them.
 func (a *lightArea) Spread() {
-	queue := newLightQueue(initialLightQueueCapacity)
+	queue := newLevelQueue()
 	a.insertLightSpreadingNodes(queue, BlockLight)
 	a.insertLightSpreadingNodes(queue, SkyLight)
 
@@ -297,6 +340,19 @@ func (a *lightArea) chunkIndex(x, z int) int {
 // that the result is the light Fill and Spread would compute. The positions
 // must lie in the centre chunk of the lightArea.
 func (a *lightArea) Relight(changed []cube.Pos) {
+	// A block changed many times since the light was last brought up to
+	// date is relit once.
+	if len(changed) > 1 {
+		seen := make(map[cube.Pos]struct{}, len(changed))
+		unique := changed[:0:0]
+		for _, pos := range changed {
+			if _, ok := seen[pos]; !ok {
+				seen[pos] = struct{}{}
+				unique = append(unique, pos)
+			}
+		}
+		changed = unique
+	}
 	a.relight(changed, BlockLight, func(pos cube.Pos) uint8 {
 		return a.props(pos).Emission
 	})
@@ -326,7 +382,12 @@ func (a *lightArea) Relight(changed []cube.Pos) {
 	// changed columns that became or stopped being part of that are changed
 	// as well: no other block holds skylight of 15.
 	skyChanged := slices.Clone(changed)
+	columns := make(map[[2]int]struct{}, 1)
 	for _, pos := range changed {
+		if _, scanned := columns[[2]int{pos[0], pos[2]}]; scanned {
+			continue
+		}
+		columns[[2]int{pos[0], pos[2]}] = struct{}{}
 		h := height(pos[0], pos[2])
 		for y := max(h, a.r.Min()); y <= a.r.Max() && a.light(cube.Pos{pos[0], y, pos[2]}, SkyLight) < 15; y++ {
 			skyChanged = append(skyChanged, cube.Pos{pos[0], y, pos[2]})
@@ -342,10 +403,10 @@ func (a *lightArea) Relight(changed []cube.Pos) {
 // blocks they lit, then spreads light back from the sources found and the
 // lit blocks around what was removed.
 func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.Pos) uint8) {
-	removal, refill, spread := relightQueues.Get().(*lightQueue), relightQueues.Get().(*lightQueue), relightQueues.Get().(*lightQueue)
+	removal, refill, spread := relightQueues.Get().(*lightQueue), relightQueues.Get().(*lightQueue), relightLevelQueues.Get().(*levelQueue)
 	defer relightQueues.Put(removal)
 	defer relightQueues.Put(refill)
-	defer relightQueues.Put(spread)
+	defer relightLevelQueues.Put(spread)
 	for _, pos := range changed {
 		if !a.inside(pos) {
 			continue
@@ -388,6 +449,9 @@ func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.P
 // relightQueues holds the queues relight empties, so that relighting after
 // every block change does not allocate them anew.
 var relightQueues = sync.Pool{New: func() any { return newLightQueue(initialLightQueueCapacity) }}
+
+// relightLevelQueues holds the level queues relight empties.
+var relightLevelQueues = sync.Pool{New: func() any { return newLevelQueue() }}
 
 // inside reports if pos lies within the lightArea.
 func (a *lightArea) inside(pos cube.Pos) bool {

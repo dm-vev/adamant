@@ -7,7 +7,7 @@ import (
 
 // insertBlockLightNodes iterates over the chunk and looks for blocks that have a light level of at least 1.
 // If one is found, a node is added for it to the node queue.
-func (a *lightArea) insertBlockLightNodes(queue *lightQueue) {
+func (a *lightArea) insertBlockLightNodes(queue *levelQueue) {
 	a.iterSubChunks(a.anyLightBlocks, func(pos cube.Pos) {
 		if level := a.props(pos).Emission; level > 0 {
 			queue.push(node(pos, level, BlockLight))
@@ -31,7 +31,7 @@ func (a *lightArea) anyLightBlocks(sub *SubChunk) bool {
 // from its lowest sky source up, as ChunkSkyLightSources finds it, and
 // inserts nodes for the sources whose light spreads into the column itself
 // or into neighbouring columns with lower sources.
-func (a *lightArea) insertSkyLightNodes(queue *lightQueue) {
+func (a *lightArea) insertSkyLightNodes(queue *levelQueue) {
 	c := a.c[0]
 	highestY := c.Range().Min()
 	for index := range c.sub {
@@ -111,7 +111,7 @@ func facesOcclude(from, to LightProperties, face cube.Face) bool {
 
 // insertLightSpreadingNodes inserts light nodes into the node queue passed which, when propagated, will
 // spread into the neighbouring chunks.
-func (a *lightArea) insertLightSpreadingNodes(queue *lightQueue, lt light) {
+func (a *lightArea) insertLightSpreadingNodes(queue *levelQueue, lt light) {
 	a.iterEdges(a.nodesNeeded(lt), func(pa, pb cube.Pos) {
 		la, lb := a.light(pa, lt), a.light(pb, lt)
 		if la == lb || la-1 == lb || lb-1 == la {
@@ -181,7 +181,7 @@ func faceTowards(from, to cube.Pos) cube.Face {
 
 // propagate spreads the next light node in the node queue passed through the lightArea a. propagate adds the neighbours
 // of the node to the queue for as long as it is able to spread.
-func (a *lightArea) propagate(queue *lightQueue) {
+func (a *lightArea) propagate(queue *levelQueue) {
 	n, ok := queue.pop()
 	if !ok {
 		return
@@ -195,7 +195,7 @@ func (a *lightArea) propagate(queue *lightQueue) {
 
 // spreadFrom queues the neighbours of pos that the light of the level passed
 // lights brighter than they are.
-func (a *lightArea) spreadFrom(queue *lightQueue, pos cube.Pos, lt light, level uint8) {
+func (a *lightArea) spreadFrom(queue *levelQueue, pos cube.Pos, lt light, level uint8) {
 	if level <= 1 {
 		return
 	}

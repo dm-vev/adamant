@@ -120,7 +120,10 @@ type World struct {
 	// to reuse the same Go object across ticks instead of re-opening it each
 	// iteration, which significantly reduces pressure on the garbage collector
 	// and CPU usage during the entity pipeline.
-	entities           map[*EntityHandle]*entityState
+	entities map[*EntityHandle]*entityState
+	// players holds the handles in entities that are players, so that
+	// finding the players does not walk every entity.
+	players            map[*EntityHandle]struct{}
 	entitiesByUUID     map[uuid.UUID]*EntityHandle
 	entitiesByUniqueID map[int64]*EntityHandle
 	pendingRiders      map[uuid.UUID][]*EntityHandle
@@ -1174,6 +1177,10 @@ func (tx *Tx) light(pos cube.Pos) uint8 {
 		// Fast way out.
 		return 0
 	}
+	if !hasSkyLight(w.conf.Dim) {
+		// Without a sky, only blocks light the world.
+		return tx.blockLight(pos)
+	}
 	if pos[1] > w.ra[1] {
 		// Above the rest of the world, so full skylight.
 		return 15
@@ -1192,7 +1199,7 @@ func (tx *Tx) light(pos cube.Pos) uint8 {
 func (tx *Tx) skyLight(pos cube.Pos) uint8 {
 	w := tx.World()
 	w.flushLight()
-	if pos[1] < w.ra[0] {
+	if pos[1] < w.ra[0] || !hasSkyLight(w.conf.Dim) {
 		// Fast way out.
 		return 0
 	}
@@ -1341,6 +1348,7 @@ func (w *World) addEntity(tx *Tx, handle *EntityHandle) Entity {
 		w.entityCount.Add(1)
 	}
 	w.entities[handle] = state
+	w.trackPlayer(handle)
 	w.entitiesByUUID[handle.id] = handle
 	w.entitiesByUniqueID[handle.UniqueID()] = handle
 	handle.state = state
@@ -1411,6 +1419,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 	}
 	w.removePendingRider(handle)
 	delete(w.entities, handle)
+	delete(w.players, handle)
 	delete(w.entitiesByUUID, handle.id)
 	delete(w.entitiesByUniqueID, handle.UniqueID())
 	w.entityCount.Add(-1)
@@ -1482,15 +1491,29 @@ func (w *World) allEntities(tx *Tx) iter.Seq[Entity] {
 // allPlayers returns an iterator that yields all player entities in the World.
 func (w *World) allPlayers(tx *Tx) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
-		for handle, state := range maps.Clone(w.entities) {
-			if handle.t.EncodeEntity() == "minecraft:player" {
-				if ent := state.entity(tx, handle); ent != nil {
-					if !yield(ent) {
-						return
-					}
+		// A snapshot of the players, as yielding may add or remove some.
+		handles := make([]*EntityHandle, 0, len(w.players))
+		for handle := range w.players {
+			handles = append(handles, handle)
+		}
+		for _, handle := range handles {
+			state, ok := w.entities[handle]
+			if !ok {
+				continue
+			}
+			if ent := state.entity(tx, handle); ent != nil {
+				if !yield(ent) {
+					return
 				}
 			}
 		}
+	}
+}
+
+// trackPlayer records a handle just put in entities if it is a player.
+func (w *World) trackPlayer(handle *EntityHandle) {
+	if handle.t.EncodeEntity() == "minecraft:player" {
+		w.players[handle] = struct{}{}
 	}
 }
 
@@ -2068,6 +2091,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 			if _, ok := w.entities[e]; ok {
 				w.removePendingRider(e)
 				delete(w.entities, e)
+				delete(w.players, e)
 				delete(w.entitiesByUUID, e.id)
 				delete(w.entitiesByUniqueID, e.UniqueID())
 				w.entityCount.Add(-1)
@@ -2110,6 +2134,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 		if _, ok := w.entities[e]; ok {
 			w.removePendingRider(e)
 			delete(w.entities, e)
+			delete(w.players, e)
 			delete(w.entitiesByUUID, e.id)
 			delete(w.entitiesByUniqueID, e.UniqueID())
 			w.entityCount.Add(-1)
@@ -2412,6 +2437,7 @@ func (w *World) loadChunk(pos ChunkPos) (*Column, error) {
 				isItem:            e.t.EncodeEntity() == "minecraft:item",
 			}
 			w.entities[e] = state
+			w.trackPlayer(e)
 			w.entitiesByUUID[e.id] = e
 			w.entitiesByUniqueID[e.UniqueID()] = e
 			e.state = state

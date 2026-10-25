@@ -225,6 +225,7 @@ func (conf Config) New() *World {
 		scheduledFluidTicks: newScheduledFluidTickQueue(currentTick),
 		redstone:            newRedstoneEngine(currentTick),
 		entities:            make(map[*EntityHandle]*entityState),
+		players:             make(map[*EntityHandle]struct{}),
 		entitiesByUUID:      make(map[uuid.UUID]*EntityHandle),
 		entitiesByUniqueID:  make(map[int64]*EntityHandle),
 		lootSequences:       make(map[string]*vanilla.Random),

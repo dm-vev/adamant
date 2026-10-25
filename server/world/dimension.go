@@ -158,6 +158,15 @@ func (reg *dimensionRegistry) CustomDimensions() []DimensionRegistration {
 	return slices.Clone(reg.custom)
 }
 
+// hasSkyLight ports DimensionType.hasSkyLight: the Nether and the End have
+// no sky to light them, while other dimensions do unless they say so.
+func hasSkyLight(d Dimension) bool {
+	if s, ok := d.(interface{ HasSkyLight() bool }); ok {
+		return s.HasSkyLight()
+	}
+	return true
+}
+
 type (
 	// Dimension is a dimension of a World. It influences a variety of
 	// properties of a World such as the building range, the sky colour and the
@@ -182,6 +191,7 @@ func (overworld) LavaSpreadDuration() time.Duration { return time.Second * 3 / 2
 func (overworld) WeatherCycle() bool                { return true }
 func (overworld) TimeCycle() bool                   { return true }
 func (overworld) String() string                    { return "Overworld" }
+func (overworld) HasSkyLight() bool                 { return true }
 
 func (nether) Range() cube.Range                 { return cube.Range{0, 127} }
 func (nether) WaterEvaporates() bool             { return true }
@@ -189,6 +199,7 @@ func (nether) LavaSpreadDuration() time.Duration { return time.Second / 4 }
 func (nether) WeatherCycle() bool                { return false }
 func (nether) TimeCycle() bool                   { return false }
 func (nether) String() string                    { return "Nether" }
+func (nether) HasSkyLight() bool                 { return false }
 
 func (end) Range() cube.Range                 { return cube.Range{0, 255} }
 func (end) WaterEvaporates() bool             { return false }
@@ -196,3 +207,4 @@ func (end) LavaSpreadDuration() time.Duration { return time.Second * 3 / 2 }
 func (end) WeatherCycle() bool                { return false }
 func (end) TimeCycle() bool                   { return false }
 func (end) String() string                    { return "End" }
+func (end) HasSkyLight() bool                 { return false }
