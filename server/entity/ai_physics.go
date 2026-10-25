@@ -785,33 +785,23 @@ func collideWithBoxes(movement mgl64.Vec3, box cube.BBox, boxes []cube.BBox) mgl
 	return resolved
 }
 
-// updateFluids measures how deep the mob stands in water and lava, as
-// Entity.updateFluidHeightAndDoFluidPushing measures it.
+// mobFluidPusher is implemented by behaviours of mobs that override
+// Entity.isPushedByFluid.
+type mobFluidPusher interface {
+	pushedByFluid(m *Mob) bool
+}
+
+// updateFluids measures how deep the mob stands in water and lava and pushes
+// it along their currents, as Entity.updateFluidInteraction does.
 func (ai *MobAI) updateFluids(m *Mob) {
-	ai.waterHeight, ai.lavaHeight = 0, 0
-	box := m.BBox().Grow(-.001)
-	minX, minY, minZ := int(math.Floor(box.Min()[0])), int(math.Floor(box.Min()[1])), int(math.Floor(box.Min()[2]))
-	maxX, maxY, maxZ := int(math.Ceil(box.Max()[0])), int(math.Ceil(box.Max()[1])), int(math.Ceil(box.Max()[2]))
-	for x := minX; x < maxX; x++ {
-		for y := minY; y < maxY; y++ {
-			for z := minZ; z < maxZ; z++ {
-				pos := cube.Pos{x, y, z}
-				l, ok := m.tx.Liquid(pos)
-				if !ok {
-					continue
-				}
-				height := float64(y) + liquidHeight(m.tx, pos, l)
-				if height < box.Min()[1] {
-					continue
-				}
-				switch l.LiquidType() {
-				case "water":
-					ai.waterHeight = math.Max(ai.waterHeight, height-box.Min()[1])
-				case "lava":
-					ai.lavaHeight = math.Max(ai.lavaHeight, height-box.Min()[1])
-				}
-			}
-		}
+	pushed := true
+	if p, ok := m.Behaviour().(mobFluidPusher); ok {
+		pushed = p.pushedByFluid(m)
+	}
+	c := measureFluids(m.tx, m.BBox(), pushed)
+	ai.waterHeight, ai.lavaHeight = c.waterHeight, c.lavaHeight
+	if pushed {
+		m.data.Vel = c.push(m.tx, m.data.Vel)
 	}
 }
 

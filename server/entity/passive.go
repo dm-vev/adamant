@@ -24,6 +24,9 @@ type PassiveBehaviourConfig struct {
 	// Tick is called for every tick that the entity is alive. Tick is called
 	// after the entity moves on a tick.
 	Tick func(e *Ent, tx *world.Tx)
+	// Move, if set, moves the entity over a tick in place of the Gravity and
+	// Drag. It may use mc to collide with blocks.
+	Move func(e *Ent, tx *world.Tx, mc *MovementComputer) *Movement
 }
 
 func (conf PassiveBehaviourConfig) Apply(data *world.EntityData) {
@@ -84,7 +87,12 @@ func (p *PassiveBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return nil
 	}
 
-	m := p.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
+	var m *Movement
+	if p.conf.Move != nil {
+		m = p.conf.Move(e, tx, p.mc)
+	} else {
+		m = p.mc.TickMovement(e, e.data.Pos, e.data.Vel, e.data.Rot, e.data.Rot, tx)
+	}
 	e.data.Pos, e.data.Vel = m.pos, m.vel
 	p.fallDistance = math.Max(p.fallDistance-m.dpos[1], 0)
 

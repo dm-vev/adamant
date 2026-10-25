@@ -54,6 +54,7 @@ func (conf ItemBehaviourConfig) New(registries ...world.BlockRegistry) *ItemBeha
 		Drag:              conf.Drag,
 		ExistenceDuration: conf.ExistenceDuration,
 		Tick:              b.tick,
+		Move:              b.move,
 	}.New()
 	b.passive.mc.DragAfterMovement = true
 	return b
@@ -112,6 +113,60 @@ func (i *ItemBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return i.passive.Tick(e, tx)
 	}
 	return i.passive.Tick(e, tx)
+}
+
+// move ports the movement of ItemEntity.tick: an item floats up in water
+// and lava, is carried by their currents and bounces when it lands.
+func (i *ItemBehaviour) move(e *Ent, tx *world.Tx, mc *MovementComputer) *Movement {
+	pos, vel := e.data.Pos, e.data.Vel
+	velBefore := vel
+	bbox := e.H().Type().BBox(e)
+	// Entity.baseTick updates the fluids the item is in before it moves.
+	fluids := measureFluids(tx, bbox.Translate(pos), true)
+	vel = fluids.push(tx, vel)
+	switch {
+	case fluids.waterHeight > float64(float32(.1)):
+		vel = itemFluidMovement(vel, float64(float32(.99)))
+	case fluids.lavaHeight > float64(float32(.1)):
+		vel = itemFluidMovement(vel, float64(float32(.95)))
+	default:
+		vel[1] -= i.conf.Gravity
+	}
+	var dPos mgl64.Vec3
+	ticks := int64(e.Age() / (time.Second / 20))
+	if !mc.OnGround() || vel[0]*vel[0]+vel[2]*vel[2] > float64(float32(1e-5)) || (ticks+int64(e.H().UUID()[15]))%4 == 0 {
+		dPos, vel = mc.CheckCollision(tx, e, pos, vel)
+		airDrag := float32(1 - i.conf.Drag)
+		groundFriction := airDrag
+		if mc.OnGround() {
+			below := cube.PosFromVec3(pos.Add(dPos).Sub(mgl64.Vec3{0, float64(float32(.999999))}))
+			friction := float32(.6)
+			if f, ok := tx.Block(below).(interface{ Friction() float64 }); ok {
+				friction = float32(f.Friction())
+			}
+			groundFriction *= friction
+		}
+		vel = mgl64.Vec3{vel[0] * float64(groundFriction), vel[1] * float64(airDrag), vel[2] * float64(groundFriction)}
+		if mc.OnGround() && vel[1] < 0 {
+			vel[1] *= -.5
+		}
+	}
+	pos = pos.Add(dPos)
+	// ItemEntity.tick updates the fluids once more after the item moved.
+	vel = measureFluids(tx, bbox.Translate(pos), true).push(tx, vel)
+
+	viewers := tx.Viewers(e.data.Pos)
+	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+		pos: pos, vel: vel, dpos: dPos, dvel: vel.Sub(velBefore), rot: e.data.Rot, onGround: mc.OnGround()}
+}
+
+// itemFluidMovement ports ItemEntity.setFluidMovement: an item rises slowly
+// in a liquid and loses speed.
+func itemFluidMovement(vel mgl64.Vec3, multiplier float64) mgl64.Vec3 {
+	if vel[1] < float64(float32(.06)) {
+		vel[1] += float64(float32(5e-4))
+	}
+	return mgl64.Vec3{vel[0] * multiplier, vel[1], vel[2] * multiplier}
 }
 
 // Explode reacts to explosions. The item entity is destroyed, unless the item

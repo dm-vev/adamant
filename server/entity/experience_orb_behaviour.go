@@ -1,11 +1,13 @@
 package entity
 
 import (
+	"math"
+	"math/rand/v2"
+	"time"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
-	"time"
 )
 
 // experienceOrbSearchInterval defines how many world ticks we wait between target acquisition scans. Using the world
@@ -45,6 +47,7 @@ func (conf ExperienceOrbBehaviourConfig) New() *ExperienceOrbBehaviour {
 		Drag:              conf.Drag,
 		ExistenceDuration: conf.ExistenceDuration,
 		Tick:              b.tick,
+		Move:              b.move,
 	}.New()
 	return b
 }
@@ -75,6 +78,87 @@ func (exp *ExperienceOrbBehaviour) Experience() int {
 // Tick finds a target for the experience orb and moves the orb towards it.
 func (exp *ExperienceOrbBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 	return exp.passive.Tick(e, tx)
+}
+
+// move ports the movement of ExperienceOrb.tick: an orb rises in water, is
+// tossed about in lava, follows its collector and bounces when it lands.
+func (exp *ExperienceOrbBehaviour) move(e *Ent, tx *world.Tx, mc *MovementComputer) *Movement {
+	pos, vel := e.data.Pos, e.data.Vel
+	velBefore := vel
+	bbox := e.H().Type().BBox(e)
+	box := bbox.Translate(pos)
+	vel = measureFluids(tx, box, true).push(tx, vel)
+	colliding := boxCollides(tx, box)
+	if orbEyeInWater(tx, pos, bbox) {
+		vel = mgl64.Vec3{vel[0] * float64(float32(.99)), math.Min(vel[1]+float64(float32(5e-4)), float64(float32(.06))), vel[2] * float64(float32(.99))}
+	} else if !colliding {
+		vel[1] -= exp.conf.Gravity
+	}
+	if l, ok := tx.Liquid(cube.PosFromVec3(pos)); ok && l.LiquidType() == "lava" {
+		vel = mgl64.Vec3{float64((rand.Float32() - rand.Float32()) * .2), float64(float32(.2)), float64((rand.Float32() - rand.Float32()) * .2)}
+	}
+	vel = exp.follow(e, tx, vel)
+
+	fallSpeed := vel[1]
+	dPos, vel := mc.CheckCollision(tx, e, pos, vel)
+	friction := float32(1 - exp.conf.Drag)
+	if mc.OnGround() {
+		below := cube.PosFromVec3(pos.Add(dPos).Sub(mgl64.Vec3{0, float64(float32(.999999))}))
+		blockFriction := float32(.6)
+		if f, ok := tx.Block(below).(interface{ Friction() float64 }); ok {
+			blockFriction = float32(f.Friction())
+		}
+		friction *= blockFriction
+	}
+	vel = vel.Mul(float64(friction))
+	if mc.CollidedVertically() && fallSpeed < 0 && fallSpeed < -exp.conf.Gravity {
+		vel[1] = -fallSpeed * .4
+	}
+	pos = pos.Add(dPos)
+
+	viewers := tx.Viewers(e.data.Pos)
+	return &Movement{v: viewers, release: func() { tx.ReleaseViewers(viewers) }, e: e,
+		pos: pos, vel: vel, dpos: dPos, dvel: vel.Sub(velBefore), rot: e.data.Rot, onGround: mc.OnGround()}
+}
+
+// orbEyeInWater reports if the eyes of an orb at pos are in water, as
+// Entity.isEyeInFluid.
+func orbEyeInWater(tx *world.Tx, pos mgl64.Vec3, bbox cube.BBox) bool {
+	eyeY := pos[1] + bbox.Height()*.85
+	eye := cube.PosFromVec3(mgl64.Vec3{pos[0], eyeY, pos[2]})
+	l, ok := tx.Liquid(eye)
+	return ok && l.LiquidType() == "water" && eyeY <= float64(eye[1])+liquidHeight(tx, eye, l)
+}
+
+// boxCollides reports if box overlaps a collision box of a block, as
+// Level.noCollision reports the opposite.
+func boxCollides(tx *world.Tx, box cube.BBox) bool {
+	for _, b := range blockBBoxsAround(tx, box) {
+		if b.IntersectsWith(box) {
+			return true
+		}
+	}
+	return false
+}
+
+// follow ports ExperienceOrb.followNearbyPlayer: an orb is pulled towards
+// the collector it follows, harder the closer it is.
+func (exp *ExperienceOrbBehaviour) follow(e *Ent, tx *world.Tx, vel mgl64.Vec3) mgl64.Vec3 {
+	targetEnt, ok := exp.target.Entity(tx)
+	target, _ := targetEnt.(experienceCollector)
+	if !ok || target == nil || target.Dead() {
+		return vel
+	}
+	dst := target.Position()
+	if o, ok := target.(Eyed); ok {
+		dst[1] += o.EyeHeight() / 2
+	}
+	delta := dst.Sub(e.Position())
+	if delta.LenSqr() > 64 {
+		return vel
+	}
+	power := 1 - delta.Len()/8
+	return vel.Add(javaNormalize(delta).Mul(power * power * .1))
 }
 
 // followBox is the bounding box used to search for collectors to follow for experience orbs.
@@ -111,19 +195,9 @@ func (exp *ExperienceOrbBehaviour) findTarget(tx *world.Tx, pos mgl64.Vec3, curr
 	exp.lastSearchTick = currentTick
 }
 
-// moveToTarget applies velocity to the experience orb so that it moves towards
-// its current target. If it intersects with the target, the orb is collected.
+// moveToTarget collects the experience orb once it touches its target.
 func (exp *ExperienceOrbBehaviour) moveToTarget(e *Ent, target experienceCollector, tx *world.Tx) {
-	pos, dst := e.Position(), target.Position()
-	if o, ok := target.(Eyed); ok {
-		dst[1] += o.EyeHeight() / 2
-	}
-	diff := dst.Sub(pos).Mul(0.125)
-	if dist := diff.LenSqr(); dist > 0 && dist < 1 {
-		// Guard against zero-length vectors that would produce NaNs on normalization.
-		e.SetVelocity(e.Velocity().Add(diff.Normalize().Mul(0.2 * math.Pow(1-math.Sqrt(dist), 2))))
-	}
-
+	pos := e.Position()
 	if e.H().Type().BBox(e).Translate(pos).IntersectsWith(target.H().Type().BBox(target).Translate(target.Position())) && target.CollectExperience(exp.conf.Experience) {
 		_ = e.CloseIn(tx)
 	}

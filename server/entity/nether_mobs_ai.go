@@ -403,7 +403,7 @@ func ghastFaceMovement(m *Mob) {
 // is too short.
 func javaNormalize(v mgl64.Vec3) mgl64.Vec3 {
 	l := v.Len()
-	if l < 1e-5 {
+	if l < float64(float32(1e-5)) {
 		return mgl64.Vec3{}
 	}
 	return v.Mul(1 / l)

@@ -37,7 +37,8 @@ func NewExperienceOrb(opts world.EntitySpawnOpts, xp int) *world.EntityHandle {
 }
 
 var experienceOrbConf = ExperienceOrbBehaviourConfig{
-	Gravity: 0.04,
+	// ExperienceOrb.getDefaultGravity.
+	Gravity: 0.03,
 	Drag:    0.02,
 }
 
