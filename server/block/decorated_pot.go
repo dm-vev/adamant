@@ -73,14 +73,36 @@ func (p DecoratedPot) ProjectileHit(pos cube.Pos, tx *world.Tx, projectile world
 	if !projectileMayInteract(tx, projectile) || !projectileMayBreak(tx, projectile) {
 		return
 	}
-	for _, d := range p.Decorations {
-		if d == nil {
-			dropItem(tx, item.NewStack(item.Brick{}, 1), pos.Vec3Centre())
-			continue
-		}
-		dropItem(tx, item.NewStack(d, 1), pos.Vec3Centre())
+	for _, sherd := range p.sherds() {
+		dropItem(tx, sherd, pos.Vec3Centre())
 	}
 	breakBlockNoDrops(p, pos, tx)
+}
+
+// sherds returns the drops of a cracked pot, the sherds or bricks of its
+// four sides.
+func (p DecoratedPot) sherds() []item.Stack {
+	drops := make([]item.Stack, 0, len(p.Decorations))
+	for _, d := range p.Decorations {
+		if d == nil {
+			drops = append(drops, item.NewStack(item.Brick{}, 1))
+			continue
+		}
+		drops = append(drops, item.NewStack(d, 1))
+	}
+	return drops
+}
+
+// potShatteredBy ports DecoratedPotBlock.playerWillDestroy: a pot broken with
+// an item of breaks_decorated_pots cracks into its sherds, unless enchanted
+// with Silk Touch.
+func potShatteredBy(t item.Tool, enchantments []item.Enchantment) bool {
+	it, ok := t.(world.Item)
+	if !ok {
+		return false
+	}
+	name, _ := it.EncodeItem()
+	return loot.ItemInTag(name, "minecraft:breaks_decorated_pots") && !hasSilkTouch(enchantments)
 }
 
 // Pick ...
@@ -158,7 +180,12 @@ func (p DecoratedPot) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.U
 
 // BreakInfo ...
 func (p DecoratedPot) BreakInfo() BreakInfo {
-	return newBreakInfo(0, alwaysHarvestable, nothingEffective, oneOf(DecoratedPot{Decorations: p.Decorations})).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
+	return newBreakInfo(0, alwaysHarvestable, nothingEffective, func(t item.Tool, enchantments []item.Enchantment) []item.Stack {
+		if potShatteredBy(t, enchantments) {
+			return p.sherds()
+		}
+		return []item.Stack{item.NewStack(DecoratedPot{Decorations: p.Decorations}, 1)}
+	}).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
 		if p := p.withLoot(pos, tx); !p.Item.Empty() {
 			dropItem(tx, p.Item, pos.Vec3Centre())
 		}
@@ -256,4 +283,15 @@ func allDecoratedPots() (pots []world.Block) {
 		pots = append(pots, DecoratedPot{Facing: f})
 	}
 	return
+}
+
+// ComparatorOutput ports DecoratedPotBlock.getAnalogOutputSignal: how full
+// the single slot of the pot is.
+func (p DecoratedPot) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	if p.Item.Empty() {
+		return 0
+	}
+	inv := inventory.New(1, nil)
+	_ = inv.SetItem(0, p.Item)
+	return comparatorSignalFromInventory(inv)
 }

@@ -151,3 +151,7 @@ func allCopperGolemStatues() (golems []world.Block) {
 	f(false)
 	return
 }
+
+// ComparatorOutput ports CopperGolemStatueBlock.getAnalogOutputSignal: one
+// more than the pose the statue stands in.
+func (c CopperGolemStatue) ComparatorOutput(*world.Tx, cube.Pos) uint8 { return c.Pose.Uint8() + 1 }

@@ -468,3 +468,11 @@ func (e *Ent) CloseIn(tx *world.Tx) error {
 	})
 	return nil
 }
+
+// SetPortalCooldown ports Entity.setPortalCooldown for an entity that may
+// travel through portals.
+func (e *Ent) SetPortalCooldown() {
+	if tc := e.portalTravelComputer(); tc != nil {
+		tc.SetPortalCooldown()
+	}
+}

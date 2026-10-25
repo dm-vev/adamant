@@ -1,8 +1,11 @@
 package block
 
 import (
+	"math"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // Slime is a storage block equivalent to nine slimeballs. It has both sticky and bouncy properties,
@@ -29,6 +32,24 @@ func (Slime) EntityLand(_ cube.Pos, _ *world.Tx, e world.Entity, distance *float
 			}
 			v.SetVelocity(vel)
 		}
+	}
+}
+
+// EntityStepOn ports SlimeBlock.stepOn: an entity walking on slime, not
+// sneaking and barely moving up or down, is slowed to 0.4 of its speed.
+func (Slime) EntityStepOn(_ cube.Pos, _ *world.Tx, e world.Entity) {
+	v, ok := e.(velocityEntity)
+	if _, player := e.(interface{ GameMode() world.GameMode }); !ok || player {
+		// Players move themselves, slime slowing them on their side.
+		return
+	}
+	if sneaky, ok := e.(interface{ Sneaking() bool }); ok && sneaky.Sneaking() {
+		return
+	}
+	vel := v.Velocity()
+	if dy := math.Abs(vel[1]); dy < 0.1 {
+		scale := 0.4 + dy*0.2
+		v.SetVelocity(mgl64.Vec3{vel[0] * scale, vel[1], vel[2] * scale})
 	}
 }
 

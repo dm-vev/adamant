@@ -806,7 +806,6 @@ func mapCraftingWorld(t *testing.T, source world.MapData) (*world.World, *mapCra
 	return w, provider
 }
 
-
 func craftMapValidMulti(t *testing.T, w *world.World, s *Session, id string, expected item.Stack, input []item.Stack) item.Stack {
 	t.Helper()
 	if len(input) == 9 {
@@ -943,7 +942,7 @@ func (p *mapCraftingProvider) AllocateMapID() (int64, error) {
 	return p.nextID, nil
 }
 
-func (p *mapCraftingProvider) JavaMapID(id int64) (int32, error) { return int32(id), nil }
+func (p *mapCraftingProvider) JavaMapID(id int64) (int32, error)   { return int32(id), nil }
 func (p *mapCraftingProvider) NativeMapID(id int32) (int64, error) { return int64(id), nil }
 
 func craftingMapStack() item.Stack {
@@ -1057,5 +1056,57 @@ func craftingSlot(slot int, stackID int32) protocol.StackRequestSlotInfo {
 		Container:      protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
 		Slot:           byte(slot),
 		StackNetworkID: stackID,
+	}
+}
+
+// TestCartographyTableLocksMapsInItsOwnSlots checks the cartography table:
+// the client crafts its map recipes from the table's input and additional
+// slots, not from the crafting grid.
+func TestCartographyTableLocksMapsInItsOwnSlots(t *testing.T) {
+	w, _ := mapCraftingWorld(t, world.MapData{ID: 42, Scale: 1, Colors: make([]byte, 128*128)})
+	s := craftingTestSession()
+	pos := cube.Pos{0, 64, 0}
+	s.containerOpened.Store(true)
+	s.openedPos.Store(&pos)
+	s.openedContainerID.Store(uint32(protocol.ContainerTypeCartography))
+	glass := item.NewStack(craftingNamedItem("minecraft:glass_pane"), 1)
+	if err := s.ui.SetItem(cartographyInputSlot, craftingMapStack()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ui.SetItem(cartographyInputSlot+1, glass); err != nil {
+		t.Fatal(err)
+	}
+	s.recipes[1] = recipe.NewMulti(uuid.MustParse(mapLockingMultiRecipe))
+	consume := func(container byte, slot int) protocol.StackRequestAction {
+		stack, _ := s.ui.Item(slot)
+		return &protocol.ConsumeStackRequestAction{DestroyStackRequestAction: protocol.DestroyStackRequestAction{
+			Count: 1,
+			Source: protocol.StackRequestSlotInfo{
+				Container: protocol.FullContainerName{ContainerID: container}, Slot: byte(slot), StackNetworkID: item_id(stack),
+			},
+		}}
+	}
+	req := protocol.ItemStackRequest{RequestID: -1, Actions: []protocol.StackRequestAction{
+		&protocol.CraftRecipeStackRequestAction{RecipeNetworkID: 1, NumberOfCrafts: 1},
+		&protocol.CraftResultsDeprecatedStackRequestAction{TimesCrafted: 1, ResultItems: []protocol.StackRequestItem{multiResultItem(craftingMapStack())}},
+		consume(protocol.ContainerCartographyInput, cartographyInputSlot),
+		consume(protocol.ContainerCartographyAdditional, cartographyInputSlot+1),
+	}}
+	var craftErr error
+	if err := w.Do(func(tx *world.Tx) {
+		tx.SetBlock(pos, block.CartographyTable{}, nil)
+		craftErr = craftingTestHandler().handleRequest(req, s, tx, nil)
+	}).Wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if craftErr != nil {
+		t.Fatal(craftErr)
+	}
+	result, _ := s.ui.Item(craftingResult)
+	requireMapTransition(t, result, 43)
+	for slot := cartographyInputSlot; slot <= cartographyInputSlot+1; slot++ {
+		if left, _ := s.ui.Item(slot); !left.Empty() {
+			t.Fatalf("cartography slot %d kept %v after the craft", slot, left)
+		}
 	}
 }

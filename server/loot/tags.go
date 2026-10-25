@@ -153,6 +153,12 @@ func ItemTagMembers(tagID string) []string {
 	return ids
 }
 
+// ItemInTag reports if the item with the Java identifier passed is in the
+// item tag passed.
+func ItemInTag(itemID, tagID string) bool {
+	return itemInTag(itemID, tagID)
+}
+
 func itemInTag(itemID, tagID string) bool {
 	if itemTags == nil {
 		return false

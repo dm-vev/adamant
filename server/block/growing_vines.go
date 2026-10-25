@@ -159,3 +159,51 @@ func allGrowingVines() (blocks []world.Block) {
 	}
 	return blocks
 }
+
+// RandomTick ports GrowingPlantHeadBlock.randomTick for weeping vines: the
+// tip grows a block down a tenth of the time, until it is 25 old.
+func (v WeepingVines) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	growPos := pos.Side(cube.FaceDown)
+	if v.Age < 25 && r.Float64() < .1 && isAir(tx.Block(growPos)) {
+		v.Age++
+		tx.SetBlock(growPos, v, nil)
+	}
+}
+
+// RandomlyTicks reports if the vines may still grow.
+func (v WeepingVines) RandomlyTicks() bool { return v.Age < 25 }
+
+// RandomTick ports GrowingPlantHeadBlock.randomTick for twisting vines: the
+// tip grows a block up a tenth of the time, until it is 25 old.
+func (v TwistingVines) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	growPos := pos.Side(cube.FaceUp)
+	if v.Age < 25 && r.Float64() < .1 && isAir(tx.Block(growPos)) {
+		v.Age++
+		tx.SetBlock(growPos, v, nil)
+	}
+}
+
+// RandomlyTicks reports if the vines may still grow.
+func (v TwistingVines) RandomlyTicks() bool { return v.Age < 25 }
+
+// RandomTick ports CaveVinesBlock.randomTick: the tip of the vines grows a
+// block down a tenth of the time, until it is 25 old, carrying a glow berry
+// 11% of the time. The old tip becomes part of the vines.
+func (v CaveVines) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
+	growPos := pos.Side(cube.FaceDown)
+	if v.Age >= 25 || r.Float64() >= .1 || !isAir(tx.Block(growPos)) {
+		return
+	}
+	grown := CaveVines{Age: v.Age + 1}
+	if r.Float32() < .11 {
+		grown.Variant = caveVinesHeadWithBerries
+	}
+	tx.SetBlock(growPos, grown, nil)
+	if v.Variant == caveVinesHeadWithBerries {
+		v.Variant = caveVinesBodyWithBerries
+		tx.SetBlock(pos, v, nil)
+	}
+}
+
+// RandomlyTicks reports if the vines may still grow.
+func (v CaveVines) RandomlyTicks() bool { return v.Age < 25 }

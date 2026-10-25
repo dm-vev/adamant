@@ -176,12 +176,12 @@ func (c RedstoneComparator) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {
 func (c RedstoneComparator) inputPower(pos cube.Pos, tx *world.Tx) int {
 	inputFace := c.Facing.Face()
 	inputPos := pos.Side(inputFace)
-	if output, ok := comparatorOverride(tx, inputPos); ok {
+	if output, ok := comparatorOverride(tx, inputPos, inputFace.Opposite()); ok {
 		return int(output)
 	}
 	power := tx.RedstonePowerFrom(pos, inputFace)
 	if power < 15 && redstoneNormalBlock(inputPos, tx) {
-		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace)); ok {
+		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace), inputFace.Opposite()); ok {
 			return int(output)
 		}
 	}
@@ -196,8 +196,21 @@ type comparatorOutputer interface {
 	ComparatorOutput(tx *world.Tx, pos cube.Pos) uint8
 }
 
-func comparatorOverride(tx *world.Tx, pos cube.Pos) (uint8, bool) {
+// directionalComparatorOutputer is a block whose comparator output depends on
+// the side the comparator reads it from.
+type directionalComparatorOutputer interface {
+	// ComparatorOutputTowards returns the output read by a comparator on the
+	// face towards of the block.
+	ComparatorOutputTowards(tx *world.Tx, pos cube.Pos, towards cube.Face) uint8
+}
+
+// comparatorOverride returns the output a comparator on the face towards of
+// the block at pos reads from it, if the block has one.
+func comparatorOverride(tx *world.Tx, pos cube.Pos, towards cube.Face) (uint8, bool) {
 	b := tx.Block(pos)
+	if out, ok := b.(directionalComparatorOutputer); ok {
+		return out.ComparatorOutputTowards(tx, pos, towards), true
+	}
 	if out, ok := b.(comparatorOutputer); ok {
 		return out.ComparatorOutput(tx, pos), true
 	}
@@ -215,28 +228,21 @@ func comparatorSignalFromInventory(inv *inventory.Inventory) uint8 {
 	if len(slots) == 0 {
 		return 0
 	}
-	filled := 0
-	fraction := 0.0
+	// AbstractContainerMenu.getRedstoneSignalFromContainer, in float.
+	var fraction float32
 	for _, it := range slots {
 		if it.Empty() {
 			continue
 		}
-		filled++
-		maxCount := it.MaxCount()
-		if maxCount <= 0 {
-			maxCount = 1
-		}
-		fraction += float64(it.Count()) / float64(maxCount)
+		fraction += float32(it.Count()) / float32(max(it.MaxCount(), 1))
 	}
-	if filled == 0 {
-		return 0
+	fraction /= float32(len(slots))
+	// Mth.lerpDiscrete(fraction, 0, 15).
+	signal := int(math.Floor(float64(fraction * 14)))
+	if fraction > 0 {
+		signal++
 	}
-	fraction /= float64(len(slots))
-	signal := int(math.Floor(fraction*14.0)) + 1
-	if signal > 15 {
-		signal = 15
-	}
-	return uint8(signal)
+	return uint8(min(signal, 15))
 }
 
 func allRedstoneComparators() (comparators []world.Block) {

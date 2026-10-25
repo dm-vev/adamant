@@ -354,3 +354,6 @@ func allDispensers() (dispensers []world.Block) {
 	}
 	return
 }
+
+// ContainerSize returns the nine slots of a dispenser.
+func (Dispenser) ContainerSize() int { return 9 }

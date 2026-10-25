@@ -203,3 +203,6 @@ func allDroppers() (droppers []world.Block) {
 	}
 	return
 }
+
+// ContainerSize returns the nine slots of a dropper.
+func (Dropper) ContainerSize() int { return 9 }

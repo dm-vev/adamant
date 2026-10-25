@@ -7,7 +7,10 @@ package session
 // missing from the table, such as Bedrock definitions themselves, are sent
 // as they are.
 var bedrockSoundNames = map[string]string{
-	"block.amethyst_block.resonate":             "resonate.amethyst_block",
+	"block.amethyst_block.resonate": "resonate.amethyst_block",
+	"block.amethyst_block.chime":    "chime.amethyst_block",
+	// Bedrock's shelf has one sound for placing and taking an item.
+	"block.shelf.take_item":                     "block.shelf.place_item",
 	"block.cave_vines.pick_berries":             "pick_berries.cave_vines",
 	"block.chiseled_bookshelf.insert":           "insert.chiseled_bookshelf",
 	"block.chiseled_bookshelf.insert.enchanted": "insert_enchanted.chiseled_bookshelf",

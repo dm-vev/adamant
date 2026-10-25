@@ -1,6 +1,7 @@
 package entity_test
 
 import (
+	"math/rand/v2"
 	"testing"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -241,6 +242,37 @@ func TestMonsterPopulationStaysCappedAndLeaves(t *testing.T) {
 	<-w.Exec(func(tx *world.Tx) {
 		if n := countMonsters(tx); n != 0 {
 			t.Fatalf("%d monsters stayed after the player went 1000 blocks away", n)
+		}
+	})
+}
+
+// TestNetherPortalsLetZombifiedPiglinsThrough checks NetherPortalBlock's
+// random tick: in the Overworld near a player, a portal now and then lets a
+// zombified piglin through onto the obsidian beneath it.
+func TestNetherPortalsLetZombifiedPiglinsThrough(t *testing.T) {
+	w := world.Config{Entities: entity.DefaultRegistry, Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	w.SetDifficulty(world.DifficultyNormal)
+	<-w.Exec(func(tx *world.Tx) {
+		tx.SetBlock(cube.Pos{0, 63, 0}, block.Obsidian{}, nil)
+		tx.SetBlock(cube.Pos{0, 64, 0}, block.Portal{Axis: cube.X}, nil)
+		tx.SetBlock(cube.Pos{0, 65, 0}, block.Portal{Axis: cube.X}, nil)
+		addSurvivalPlayer(tx, mgl64.Vec3{20.5, 64, .5})
+		r := rand.New(rand.NewPCG(1, 2))
+		for range 20000 {
+			block.Portal{Axis: cube.X}.RandomTick(cube.Pos{0, 65, 0}, tx, r)
+		}
+		piglins := 0
+		for e := range tx.Entities() {
+			if e.H().Type().EncodeEntity() == "minecraft:zombie_pigman" || e.H().Type().EncodeEntity() == "minecraft:zombified_piglin" {
+				piglins++
+				if y := e.Position()[1]; y != 64 {
+					t.Errorf("zombified piglin came through at y %v, want on the obsidian at 64", y)
+				}
+			}
+		}
+		if piglins == 0 {
+			t.Fatal("no zombified piglin came through a portal in 20000 random ticks")
 		}
 	})
 }

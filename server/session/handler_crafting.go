@@ -31,12 +31,22 @@ const (
 )
 
 type multiCraft struct {
-	recipe   recipe.Multi
-	input    []item.Stack
-	times    int
-	consumed map[byte]int
-	result   *protocol.StackRequestItem
+	recipe recipe.Multi
+	input  []item.Stack
+	// offset is the UI slot of the first input, and containers the container
+	// each input slot belongs to.
+	offset     int
+	containers []byte
+	times      int
+	consumed   map[byte]int
+	result     *protocol.StackRequestItem
 }
+
+const (
+	// cartographyInputSlot is the UI slot of the map in a cartography table,
+	// followed by that of the item added to it.
+	cartographyInputSlot = 0x0c
+)
 
 // handleCraft handles the CraftRecipe request action.
 func (h *ItemStackRequestHandler) handleCraft(a *protocol.CraftRecipeStackRequestAction, s *Session, tx *world.Tx) error {
@@ -145,23 +155,39 @@ func (h *ItemStackRequestHandler) beginMultiCraft(craft recipe.Multi, timesCraft
 	if h.multiCraft != nil {
 		return fmt.Errorf("another multi recipe is already being crafted")
 	}
+	if s.openedContainerID.Load() == uint32(protocol.ContainerTypeCartography) {
+		switch craft.UUID().String() {
+		case mapCloningCartographyMultiRecipe, mapExtendingCartographyMultiRecipe, mapLockingMultiRecipe:
+		default:
+			return fmt.Errorf("multi recipe is not a cartography table recipe")
+		}
+		input := make([]item.Stack, 2)
+		for slot := range input {
+			input[slot], _ = s.ui.Item(cartographyInputSlot + slot)
+		}
+		h.multiCraft = &multiCraft{recipe: craft, input: input, offset: cartographyInputSlot,
+			containers: []byte{protocol.ContainerCartographyInput, protocol.ContainerCartographyAdditional},
+			times:      timesCrafted, consumed: make(map[byte]int)}
+		return nil
+	}
 	size, offset := s.craftingSize(), s.craftingOffset()
 	input := make([]item.Stack, size)
+	containers := make([]byte, size)
 	for slot := uint32(0); slot < size; slot++ {
 		input[slot], _ = s.ui.Item(int(offset + slot))
+		containers[slot] = protocol.ContainerCraftingInput
 	}
-	h.multiCraft = &multiCraft{recipe: craft, input: input, times: timesCrafted, consumed: make(map[byte]int)}
+	h.multiCraft = &multiCraft{recipe: craft, input: input, offset: int(offset), containers: containers, times: timesCrafted, consumed: make(map[byte]int)}
 	return nil
 }
 
 func (h *ItemStackRequestHandler) handleMultiConsume(a *protocol.ConsumeStackRequestAction, s *Session, tx *world.Tx) error {
-	if a.Source.Container.ContainerID != protocol.ContainerCraftingInput || a.Count == 0 {
-		return fmt.Errorf("multi recipe consumed invalid crafting input")
-	}
-	offset := int(s.craftingOffset())
-	inputSlot := int(a.Source.Slot) - offset
+	inputSlot := int(a.Source.Slot) - h.multiCraft.offset
 	if inputSlot < 0 || inputSlot >= len(h.multiCraft.input) {
 		return fmt.Errorf("multi recipe consumed slot outside the crafting grid")
+	}
+	if a.Source.Container.ContainerID != h.multiCraft.containers[inputSlot] || a.Count == 0 {
+		return fmt.Errorf("multi recipe consumed invalid crafting input")
 	}
 	if _, ok := h.multiCraft.consumed[a.Source.Slot]; ok {
 		return fmt.Errorf("multi recipe consumed crafting slot %v more than once", a.Source.Slot)
@@ -206,7 +232,7 @@ func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) err
 		return fmt.Errorf("multi recipe requires one result and all consumed inputs")
 	}
 	for slot, snapshot := range craft.input {
-		count, consumed := craft.consumed[byte(int(s.craftingOffset())+slot)]
+		count, consumed := craft.consumed[byte(craft.offset+slot)]
 		if snapshot.Empty() {
 			if consumed {
 				return fmt.Errorf("multi recipe consumed an empty crafting slot")
@@ -228,7 +254,7 @@ func (h *ItemStackRequestHandler) finishMultiCraft(s *Session, tx *world.Tx) err
 			return err
 		}
 		if err := h.setItemInSlot(protocol.StackRequestSlotInfo{
-			Container: protocol.FullContainerName{ContainerID: protocol.ContainerCraftingInput},
+			Container: protocol.FullContainerName{ContainerID: craft.containers[int(slot)-craft.offset]},
 			Slot:      slot,
 		}, has.Grow(-count), s, tx); err != nil {
 			return err
@@ -533,7 +559,6 @@ func changedMapResult(source item.Stack, operation string, tx *world.Tx) (item.S
 	}
 	return source.WithItem(result).Grow(1 - source.Count()), nil
 }
-
 
 func validBannerDuplicateGrid(grid []item.Stack) bool {
 	width := 0

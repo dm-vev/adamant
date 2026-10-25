@@ -153,3 +153,20 @@ func (w *World) relightChunks(changed []ChunkPos) {
 		}
 	}
 }
+
+// LightBlockedInto ports LightEngine.getLightBlockInto for light passing
+// from the block at pos into its neighbour on the face passed: 16 where the
+// faces of the two blocks occlude it, or else the dampening of the
+// neighbour.
+func (tx *Tx) LightBlockedInto(pos cube.Pos, face cube.Face) int {
+	w := tx.World()
+	to := pos.Side(face)
+	if to.OutOfBounds(w.Range()) || pos.OutOfBounds(w.Range()) {
+		return 0
+	}
+	from, into := w.cellLightAt(tx.chunk(chunkPosFromBlockPos(pos)), pos), w.cellLightAt(tx.chunk(chunkPosFromBlockPos(to)), to)
+	if chunk.FacesOcclude(from, into, face) {
+		return 16
+	}
+	return int(into.Dampening)
+}

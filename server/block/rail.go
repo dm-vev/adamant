@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -890,15 +891,7 @@ func (r DetectorRail) updatePowered(pos cube.Pos, tx *world.Tx, powered bool) {
 }
 
 func detectorRailHasMinecart(pos cube.Pos, tx *world.Tx) bool {
-	box := cube.Box(
-		float64(pos[0])+0.125,
-		float64(pos[1]),
-		float64(pos[2])+0.125,
-		float64(pos[0])+0.875,
-		float64(pos[1])+0.75,
-		float64(pos[2])+0.875,
-	)
-	for e := range tx.EntitiesWithin(box) {
+	for e := range tx.EntitiesWithin(detectorRailSearchBox(pos)) {
 		if isMinecartEntity(e) {
 			return true
 		}
@@ -906,9 +899,29 @@ func detectorRailHasMinecart(pos cube.Pos, tx *world.Tx) bool {
 	return false
 }
 
+// detectorRailSearchBox ports DetectorRailBlock.getSearchBB: the minecarts a
+// detector rail notices.
+func detectorRailSearchBox(pos cube.Pos) cube.BBox {
+	return cube.Box(float64(pos[0])+.2, float64(pos[1]), float64(pos[2])+.2, float64(pos[0])+1-.2, float64(pos[1])+1-.2, float64(pos[2])+1-.2)
+}
+
+// ComparatorOutput ports DetectorRailBlock.getAnalogOutputSignal: a powered
+// detector rail measures how full a minecart with a container on it is.
+func (r DetectorRail) ComparatorOutput(tx *world.Tx, pos cube.Pos) uint8 {
+	if !r.Powered {
+		return 0
+	}
+	for e := range tx.EntitiesWithin(detectorRailSearchBox(pos)) {
+		if c, ok := e.(interface{ Inventory() *inventory.Inventory }); ok && isMinecartEntity(e) {
+			return comparatorSignalFromInventory(c.Inventory())
+		}
+	}
+	return 0
+}
+
 func isMinecartEntity(e world.Entity) bool {
 	switch e.H().Type().EncodeEntity() {
-	case "minecraft:minecart", "minecraft:chest_minecart", "minecraft:hopper_minecart", "minecraft:tnt_minecart":
+	case "minecraft:minecart", "minecraft:chest_minecart", "minecraft:hopper_minecart", "minecraft:tnt_minecart", "minecraft:command_block_minecart":
 		return true
 	}
 	return false

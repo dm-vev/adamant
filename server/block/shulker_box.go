@@ -195,6 +195,15 @@ func (s ShulkerBox) BreakInfo() BreakInfo {
 	})
 }
 
+// CreativeDrops ports ShulkerBoxBlock.playerWillDestroy: a shulker box a
+// creative player breaks drops with its contents, unless it is empty.
+func (s ShulkerBox) CreativeDrops() []item.Stack {
+	if s.inventory == nil || s.inventory.Empty() {
+		return nil
+	}
+	return []item.Stack{s.itemStackForDrop()}
+}
+
 // itemStackForDrop returns an item stack representing the shulker box when it is
 // dropped. The inventory contents are copied so that the resulting stack does not
 // share the same inventory instance as the block in the world.

@@ -397,3 +397,23 @@ func allSnifferPlants() (b []world.Block) {
 	}
 	return
 }
+
+// EntityInside ports CropBlock.entityInside.
+func (c WheatSeeds) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
+	trampledByRavager(c, pos, tx, e)
+}
+
+// EntityInside ports CropBlock.entityInside.
+func (c Carrot) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
+	trampledByRavager(c, pos, tx, e)
+}
+
+// EntityInside ports CropBlock.entityInside.
+func (c Potato) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
+	trampledByRavager(c, pos, tx, e)
+}
+
+// EntityInside ports CropBlock.entityInside.
+func (c BeetrootSeeds) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
+	trampledByRavager(c, pos, tx, e)
+}

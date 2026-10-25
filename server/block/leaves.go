@@ -36,28 +36,34 @@ func (l Leaves) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 	return placed(ctx)
 }
 
-// findLog ...
-func findLog(pos cube.Pos, tx *world.Tx, visited *[]cube.Pos, distance int) bool {
-	for _, v := range *visited {
-		if v == pos {
-			return false
+// leavesNearLog ports the DISTANCE of LeavesBlock: a leaf stays while a
+// block of prevents_nearby_leaf_decay, a log of any kind, lies within six
+// steps of it through leaves.
+func leavesNearLog(pos cube.Pos, tx *world.Tx) bool {
+	type step struct {
+		pos      cube.Pos
+		distance int
+	}
+	visited := map[cube.Pos]struct{}{pos: {}}
+	queue := []step{{pos, 0}}
+	for len(queue) > 0 {
+		n := queue[0]
+		queue = queue[1:]
+		for _, face := range cube.Faces() {
+			next := n.pos.Side(face)
+			if _, seen := visited[next]; seen || next.OutOfBounds(tx.Range()) {
+				continue
+			}
+			visited[next] = struct{}{}
+			if javaBlockTag(tx, next, "minecraft:prevents_nearby_leaf_decay") {
+				return true
+			}
+			if _, leaves := tx.Block(next).(Leaves); leaves && n.distance+1 < 6 {
+				queue = append(queue, step{next, n.distance + 1})
+			}
 		}
 	}
-	*visited = append(*visited, pos)
-
-	if log, ok := tx.Block(pos).(Log); ok && !log.Stripped {
-		return true
-	}
-	if _, ok := tx.Block(pos).(Leaves); !ok || distance > 6 {
-		return false
-	}
-	logFound := false
-	pos.Neighbours(func(neighbour cube.Pos) {
-		if !logFound && findLog(neighbour, tx, visited, distance+1) {
-			logFound = true
-		}
-	}, tx.Range())
-	return logFound
+	return false
 }
 
 // leavesUpdateBitOpts sets only a leaf's update_bit. Like BDS, flagging or
@@ -69,7 +75,7 @@ var leavesUpdateBitOpts = &world.SetOpts{DisableBlockUpdates: true}
 // loot and is removed, as LeavesBlock.randomTick does.
 func (l Leaves) RandomTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if !l.Persistent && l.ShouldUpdate {
-		if findLog(pos, tx, &[]cube.Pos{}, 0) {
+		if leavesNearLog(pos, tx) {
 			l.ShouldUpdate = false
 			tx.SetBlock(pos, l, leavesUpdateBitOpts)
 			return

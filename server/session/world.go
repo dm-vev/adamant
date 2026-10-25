@@ -1733,6 +1733,8 @@ func (s *Session) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 		containerType = protocol.ContainerTypeLoom
 	case block.Grindstone:
 		containerType = protocol.ContainerTypeGrindstone
+	case block.CartographyTable:
+		containerType = protocol.ContainerTypeCartography
 	case block.Stonecutter:
 		containerType = protocol.ContainerTypeStonecutter
 	case block.SmithingTable:

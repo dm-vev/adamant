@@ -105,13 +105,31 @@ func (e TurtleEgg) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
 		}
 	}
 }
+
+// EntityStepOn ports TurtleEggBlock.stepOn: an entity walking on eggs
+// without sneaking breaks one now and then.
 func (e TurtleEgg) EntityStepOn(pos cube.Pos, tx *world.Tx, entity world.Entity) {
-	if entity == nil || entity.H().Type().EncodeEntity() == "minecraft:turtle" || entity.H().Type().EncodeEntity() == "minecraft:bat" {
+	if sneaky, ok := entity.(interface{ Sneaking() bool }); ok && sneaky.Sneaking() {
 		return
 	}
-	// TurtleEggBlock.canDestroyEgg: players and, with mob griefing on, other
-	// living entities trample eggs.
-	if sneaky, ok := entity.(interface{ Sneaking() bool }); ok && sneaky.Sneaking() {
+	e.destroyEgg(pos, tx, entity, 100)
+}
+
+// EntityLand ports TurtleEggBlock.fallOn: an entity landing on eggs breaks
+// one in three times, unless it is a zombie, which seeks them out.
+func (e TurtleEgg) EntityLand(pos cube.Pos, tx *world.Tx, entity world.Entity, _ *float64) {
+	switch entity.H().Type().EncodeEntity() {
+	case "minecraft:zombie", "minecraft:husk", "minecraft:drowned", "minecraft:zombie_villager", "minecraft:zombie_villager_v2", "minecraft:zombie_pigman":
+		return
+	}
+	e.destroyEgg(pos, tx, entity, 3)
+}
+
+// destroyEgg ports TurtleEggBlock.destroyEgg: players and, with mob griefing
+// on, other living entities but turtles and bats break an egg one in chance
+// times.
+func (e TurtleEgg) destroyEgg(pos cube.Pos, tx *world.Tx, entity world.Entity, chance int) {
+	if entity == nil || entity.H().Type().EncodeEntity() == "minecraft:turtle" || entity.H().Type().EncodeEntity() == "minecraft:bat" {
 		return
 	}
 	if _, living := entity.(livingEntity); !living {
@@ -120,7 +138,7 @@ func (e TurtleEgg) EntityStepOn(pos cube.Pos, tx *world.Tx, entity world.Entity)
 	if entity.H().Type().EncodeEntity() != "minecraft:player" && !tx.World().GameRuleBool("mob_griefing") {
 		return
 	}
-	if rand.IntN(100) != 0 {
+	if rand.IntN(chance) != 0 {
 		return
 	}
 	e = e.normalized()
@@ -132,6 +150,7 @@ func (e TurtleEgg) EntityStepOn(pos cube.Pos, tx *world.Tx, entity world.Entity)
 	}
 	tx.PlaySound(pos.Vec3Centre(), sound.Custom{Name: "block.turtle_egg.break", Volume: .7, Pitch: .9 + rand.Float64()*.2})
 }
+
 func (TurtleEgg) ReplaceableBy(b world.Block) bool { return false }
 
 // turtleEggHatchChance is the overworld day-timeline value for

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
@@ -19,6 +20,27 @@ type Eyeblossom struct {
 	transparent
 
 	Open bool
+}
+
+// EntityInside ports EyeblossomBlock.entityInside: an open eyeblossom, which
+// attracts bees, poisons a bee in it for 25 ticks, but not on peaceful.
+func (e Eyeblossom) EntityInside(_ cube.Pos, tx *world.Tx, ent world.Entity) {
+	if !e.Open || tx.World().Difficulty() == world.DifficultyPeaceful || ent.H().Type().EncodeEntity() != "minecraft:bee" {
+		return
+	}
+	bee, ok := ent.(interface {
+		AddEffect(effect.Effect)
+		Effects() []effect.Effect
+	})
+	if !ok {
+		return
+	}
+	for _, e := range bee.Effects() {
+		if e.Type() == effect.Poison {
+			return
+		}
+	}
+	bee.AddEffect(effect.New(effect.Poison, 1, 25*time.Second/20))
 }
 
 // RandomTick ports EyeblossomBlock.randomTick: the flower switches to the

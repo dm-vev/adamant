@@ -19,6 +19,9 @@ type UseContext struct {
 	NewItemSurvivalOnly bool
 	// ReplaceHeldItem replaces the item stack held after the action is complete.
 	ReplaceHeldItem bool
+	// HeldItemSet reports that the action set the held item itself, which is
+	// then left as it is.
+	HeldItemSet bool
 
 	// FirstFunc returns the first item in the context holder's inventory if found. The second return value describes
 	// whether the item was found. The comparable function is used to compare the item to the given item.

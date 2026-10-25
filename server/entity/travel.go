@@ -505,3 +505,11 @@ func (t *PortalTravelComputer) clearDenied() {
 	t.deniedActive = false
 	t.mu.Unlock()
 }
+
+// SetPortalCooldown ports Entity.setPortalCooldown: the entity may not travel
+// through a portal again until its cooldown has passed.
+func (t *PortalTravelComputer) SetPortalCooldown() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.cooldownUntil = time.Now().Add(t.Cooldown)
+}

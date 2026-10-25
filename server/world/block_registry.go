@@ -402,7 +402,11 @@ func (br *BasicBlockRegistry) Finalize() {
 			info.set(blockFlagNBT)
 		}
 		if _, ok := b.(RandomTicker); ok {
-			info.set(blockFlagRandomTick)
+			// BlockState.isRandomlyTicking: a block may tick only in some
+			// of its states.
+			if r, ok := b.(interface{ RandomlyTicks() bool }); !ok || r.RandomlyTicks() {
+				info.set(blockFlagRandomTick)
+			}
 		}
 		if _, ok := b.(Liquid); ok {
 			info.set(blockFlagLiquid)

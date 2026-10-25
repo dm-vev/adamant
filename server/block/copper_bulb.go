@@ -148,3 +148,12 @@ func allCopperBulbs() (bulbs []world.Block) {
 	}
 	return
 }
+
+// ComparatorOutput ports CopperBulbBlock.getAnalogOutputSignal: 15 while the
+// bulb is lit.
+func (b CopperBulb) ComparatorOutput(*world.Tx, cube.Pos) uint8 {
+	if b.Lit {
+		return 15
+	}
+	return 0
+}

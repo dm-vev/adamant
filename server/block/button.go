@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -43,12 +44,58 @@ func (b Button) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _
 	if b.Pressed {
 		return false
 	}
+	b.press(pos, tx)
+	return true
+}
+
+// press ports ButtonBlock.press: the button powers its neighbours and the
+// block it hangs on until it springs back.
+func (b Button) press(pos cube.Pos, tx *world.Tx) {
 	b.Pressed = true
 	tx.SetBlock(pos, b, nil)
 	tx.ScheduleBlockUpdate(pos, b, gameTicks(b.Type.pressTicks()))
 	tx.DoBlockUpdatesAround(pos)
 	tx.DoBlockUpdatesAround(pos.Side(b.Facing.Opposite()))
-	return true
+	b.playClick(pos, tx, true)
+}
+
+// playClick plays the click of the button as it is pressed or springs back.
+func (b Button) playClick(pos cube.Pos, tx *world.Tx, on bool) {
+	name := "button.click_off"
+	if on {
+		name = "button.click_on"
+	}
+	tx.PlaySound(pos.Vec3Centre(), sound.NativeEvent{SoundType: name, ExtraData: int32(world.BlockRuntimeID(b))})
+}
+
+// arrowsPress reports if arrows press the button, as wooden buttons are,
+// BlockSetType.canButtonBeActivatedByArrows.
+func (b Button) arrowsPress() bool {
+	return b.Type.button != buttonStone && b.Type.button != buttonPolishedBlackstone
+}
+
+// arrowInside reports if an arrow or trident sticks in the button.
+func (b Button) arrowInside(pos cube.Pos, tx *world.Tx) bool {
+	for _, box := range b.Model().BBox(pos, tx) {
+		box = box.Translate(pos.Vec3())
+		for e := range tx.EntitiesWithin(box) {
+			switch e.H().Type().EncodeEntity() {
+			case "minecraft:arrow", "minecraft:thrown_trident":
+				if e.H().Type().BBox(e).Translate(e.Position()).IntersectsWith(box) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// EntityInside ports ButtonBlock.entityInside: an arrow stuck in a wooden
+// button presses it.
+func (b Button) EntityInside(pos cube.Pos, tx *world.Tx, _ world.Entity) {
+	if !b.Pressed && b.arrowsPress() && b.arrowInside(pos, tx) {
+		b.press(pos, tx)
+	}
 }
 
 // NeighbourUpdateTick ...
@@ -63,6 +110,13 @@ func (b Button) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	if !b.Pressed {
 		return
 	}
+	// ButtonBlock.checkPressed: an arrow still in a wooden button keeps it
+	// pressed.
+	if b.arrowsPress() && b.arrowInside(pos, tx) {
+		tx.ScheduleBlockUpdate(pos, b, gameTicks(b.Type.pressTicks()))
+		return
+	}
+	defer b.playClick(pos, tx, false)
 	b.Pressed = false
 	tx.SetBlock(pos, b, nil)
 	tx.DoBlockUpdatesAround(pos)

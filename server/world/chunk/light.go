@@ -238,3 +238,10 @@ type lightNode struct {
 func node(pos cube.Pos, level uint8, lt light) lightNode {
 	return lightNode{pos: pos, level: level, lt: lt}
 }
+
+// FacesOcclude reports if light going from a cell with the properties from
+// to its neighbour on the face passed is blocked by their faces, as
+// LightEngine.shapeOccludes.
+func FacesOcclude(from, to LightProperties, face cube.Face) bool {
+	return facesOcclude(from, to, face)
+}

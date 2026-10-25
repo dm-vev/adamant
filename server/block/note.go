@@ -74,6 +74,13 @@ func (n Note) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *
 	return true
 }
 
+// Punch ports NoteBlock.attack: a note block plays its note when hit.
+func (n Note) Punch(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User) {
+	if n.canPlay(pos, tx) {
+		n.playNote(pos, tx, u)
+	}
+}
+
 // RedstonePowerUpdate records power changes; sound is deferred to post-update so cancellation can suppress it.
 func (n Note) RedstonePowerUpdate(pos cube.Pos, tx *world.Tx, power int) (world.Block, bool) {
 	powered := power > 0

@@ -95,26 +95,67 @@ func allBeehives() []world.Block {
 	}
 	return blocks
 }
+
+// BreakInfo ports the loot of a beehive: it keeps its bees and honey only
+// when mined with silk touch.
 func (h Beehive) BreakInfo() BreakInfo {
-	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, oneOf(h)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) { breakBeehive(pos, h.Occupants, tx, u) })
+	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, func(_ item.Tool, enchantments []item.Enchantment) []item.Stack {
+		if hasSilkTouch(enchantments) {
+			return []item.Stack{item.NewStack(h.withContents(), 1)}
+		}
+		return []item.Stack{item.NewStack(Beehive{}, 1)}
+	}).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) { breakBeehive(pos, h.Occupants, tx, u) })
+}
+
+// withContents returns the hive as an item keeping its bees and honey.
+func (h Beehive) withContents() Beehive {
+	return Beehive{HoneyLevel: h.HoneyLevel, Occupants: h.Occupants}
+}
+
+// CreativeDrops ports BeehiveBlock.playerWillDestroy: a hive with bees or
+// honey a creative player breaks drops with them.
+func (h Beehive) CreativeDrops() []item.Stack {
+	if len(h.Occupants) == 0 && h.HoneyLevel == 0 {
+		return nil
+	}
+	return []item.Stack{item.NewStack(h.withContents(), 1)}
 }
 
 // breakBeehive ports BeehiveBlock.playerDestroy: the bees of a hive broken
-// without silk touch burst out at the player, and the bees around attack.
+// without silk touch burst out at the player, and the bees around attack. A
+// creative player keeps them in the hive it drops.
 func breakBeehive(pos cube.Pos, occupants []any, tx *world.Tx, u item.User) {
 	if u != nil {
+		if mode, ok := u.(interface{ GameMode() world.GameMode }); ok && mode.GameMode().CreativeInventory() {
+			return
+		}
 		if held, _ := u.HeldItems(); hasSilkTouch(held.Enchantments()) {
-			releaseHiveOccupants(pos, occupants, tx, true)
 			return
 		}
 	}
 	releaseHiveOccupantsAt(pos, occupants, tx, u, true)
 	angerNearbyBees(pos, tx)
 }
+
+// BreakInfo ports the loot of a bee nest: it drops only to silk touch,
+// keeping its bees and honey.
 func (h BeeNest) BreakInfo() BreakInfo {
-	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, oneOf(h)).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
+	return newBreakInfo(0.6, alwaysHarvestable, axeEffective, func(_ item.Tool, enchantments []item.Enchantment) []item.Stack {
+		if hasSilkTouch(enchantments) {
+			return []item.Stack{item.NewStack(BeeNest{h.withContents()}, 1)}
+		}
+		return nil
+	}).withBreakHandler(func(pos cube.Pos, tx *world.Tx, u item.User) {
 		breakBeehive(pos, h.Occupants, tx, u)
 	})
+}
+
+// CreativeDrops ...
+func (h BeeNest) CreativeDrops() []item.Stack {
+	if len(h.Occupants) == 0 && h.HoneyLevel == 0 {
+		return nil
+	}
+	return []item.Stack{item.NewStack(BeeNest{h.withContents()}, 1)}
 }
 func (h Beehive) AddBeeOccupant(n map[string]any) (world.Block, bool) {
 	if len(h.Occupants) >= maxBeehiveOccupants {
@@ -534,3 +575,7 @@ var _ interface {
 var _ interface {
 	JavaEmergencyRelease(cube.Pos, *world.Tx)
 } = BeeNest{}
+
+// ComparatorOutput ports BeehiveBlock.getAnalogOutputSignal: the honey level
+// of the hive.
+func (h Beehive) ComparatorOutput(*world.Tx, cube.Pos) uint8 { return uint8(h.HoneyLevel) }

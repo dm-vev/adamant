@@ -1,8 +1,11 @@
 package block
 
 import (
-	"github.com/df-mc/dragonfly/server/item"
 	"time"
+
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/world"
 )
 
 // CartographyTable is a job site block for cartographer villagers.
@@ -14,6 +17,16 @@ type CartographyTable struct {
 // BreakInfo ...
 func (c CartographyTable) BreakInfo() BreakInfo {
 	return newBreakInfo(2.5, alwaysHarvestable, axeEffective, oneOf(c))
+}
+
+// Activate opens the cartography table, where maps are copied, extended and
+// locked.
+func (c CartographyTable) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, u item.User, _ *item.UseContext) bool {
+	if opener, ok := u.(ContainerOpener); ok {
+		opener.OpenBlockContainer(pos, tx)
+		return true
+	}
+	return false
 }
 
 // FuelInfo ...

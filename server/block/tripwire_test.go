@@ -51,57 +51,83 @@ func TestTripwireConnectionsTrackNeighboursAndPreserveState(t *testing.T) {
 	})
 }
 
-func TestTripwireLineTransitionsPreserveConnections(t *testing.T) {
+// tripwireLine sets up hooks at x 0 and 3 facing each other, with string at
+// x 1 and 2 between them, and returns the positions of the hooks and string.
+func tripwireLine(tx *world.Tx) (hooks, wires [2]cube.Pos) {
+	hooks = [2]cube.Pos{{0, 64, 0}, {3, 64, 0}}
+	wires = [2]cube.Pos{{1, 64, 0}, {2, 64, 0}}
+	tx.SetBlock(hooks[0].Side(cube.FaceWest), Stone{}, nil)
+	tx.SetBlock(hooks[1].Side(cube.FaceEast), Stone{}, nil)
+	tx.SetBlock(hooks[0], TripwireHook{Facing: cube.East}, nil)
+	tx.SetBlock(hooks[1], TripwireHook{Facing: cube.West}, nil)
+	for _, pos := range wires {
+		tx.SetBlock(pos, Tripwire{Suspended: true}, nil)
+	}
+	calculateTripwireHook(hooks[0], tx.Block(hooks[0]).(TripwireHook), false, false, -1, nil, tx)
+	return hooks, wires
+}
+
+// TestTripwireLineAttachesAndPowers checks TripWireHookBlock.calculateState:
+// hooks facing each other over whole string attach it, and string pressed
+// powers both hooks.
+func TestTripwireLineAttachesAndPowers(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
-	hookPos := cube.Pos{0, 64, 0}
-	wirePos := hookPos.Side(cube.FaceEast)
-	otherHookPos := wirePos.Side(cube.FaceEast)
-
 	runWorld(w, func(tx *world.Tx) {
-		leftHook := TripwireHook{Facing: cube.East}
-		tx.SetBlock(hookPos, leftHook, nil)
-		tx.SetBlock(wirePos, Tripwire{
-			Powered: true, Disarmed: true,
-			EastConnection: true, WestConnection: true,
-		}, nil)
-		tx.SetBlock(otherHookPos, TripwireHook{Facing: cube.West}, nil)
-		updateTripwireConnections(wirePos, tx)
-		updateTripwireLine(hookPos, leftHook, tx)
-
-		got := tx.Block(wirePos).(Tripwire)
-		if !got.Attached || !got.Powered || !got.Disarmed || !got.EastConnection || !got.WestConnection {
-			t.Fatalf("attached/powered line transition lost state: %#v", got)
+		hooks, wires := tripwireLine(tx)
+		for _, pos := range hooks {
+			if hook := tx.Block(pos).(TripwireHook); !hook.Attached || hook.Powered {
+				t.Fatalf("hook at %v = %#v, want attached and unpowered", pos, hook)
+			}
 		}
-		if !tx.Block(hookPos).(TripwireHook).Powered || !tx.Block(otherHookPos).(TripwireHook).Powered {
-			t.Fatal("powered wire did not power both hooks")
+		for _, pos := range wires {
+			if wire := tx.Block(pos).(Tripwire); !wire.Attached || !wire.Suspended {
+				t.Fatalf("string at %v = %#v, want attached", pos, wire)
+			}
 		}
-
-		tx.SetBlock(otherHookPos, nil, nil)
-		updateTripwireLine(hookPos, tx.Block(hookPos).(TripwireHook), tx)
-		got = tx.Block(wirePos).(Tripwire)
-		if got.Attached || !got.Powered || !got.Disarmed || got.EastConnection || !got.WestConnection {
-			t.Fatalf("detached line transition lost wire state: %#v", got)
+		tx.Block(wires[0]).(Tripwire).checkPressed(wires[0], tx, true)
+		for _, pos := range hooks {
+			if hook := tx.Block(pos).(TripwireHook); !hook.Powered {
+				t.Fatalf("pressed string left hook at %v unpowered", pos)
+			}
 		}
 	})
 }
 
-func TestTripwirePowerTransitionPreservesConnections(t *testing.T) {
+// TestBrokenTripwireTripsItsHooks checks TripWireBlock.affectNeighborsAfter
+// Removal: string broken by hand powers its hooks as if pressed, until they
+// recheck their line ten ticks later and detach, while string cut with shears
+// is disarmed and detaches them at once.
+func TestBrokenTripwireTripsItsHooks(t *testing.T) {
 	w := world.Config{Synchronous: true}.New()
 	t.Cleanup(func() { _ = w.Close() })
-	pos := cube.Pos{0, 64, 0}
-
 	runWorld(w, func(tx *world.Tx) {
-		wire := Tripwire{
-			Powered: true, Attached: true, Disarmed: true, Suspended: true,
-			NorthConnection: true, EastConnection: true, SouthConnection: true, WestConnection: true,
+		hooks, wires := tripwireLine(tx)
+		wire := tx.Block(wires[0]).(Tripwire)
+		tx.SetBlock(wires[0], nil, nil)
+		wire.BreakInfo().BreakHandler(wires[0], tx, &chiseledBookshelfUser{})
+		for _, pos := range hooks {
+			if hook := tx.Block(pos).(TripwireHook); !hook.Powered || !hook.Attached {
+				t.Fatalf("breaking string left hook at %v = %#v, want it tripped", pos, hook)
+			}
 		}
-		tx.SetBlock(pos, wire, nil)
-		wire.updatePowered(pos, tx)
-		got := tx.Block(pos).(Tripwire)
-		if got.Powered || !got.Attached || !got.Disarmed || !got.Suspended ||
-			!got.NorthConnection || !got.EastConnection || !got.SouthConnection || !got.WestConnection {
-			t.Fatalf("power transition lost tripwire state: %#v", got)
+		hook := tx.Block(hooks[0]).(TripwireHook)
+		hook.ScheduledTick(hooks[0], tx, nil)
+		for _, pos := range hooks {
+			if hook := tx.Block(pos).(TripwireHook); hook.Powered || hook.Attached {
+				t.Fatalf("hook at %v = %#v after rechecking the broken line, want detached", pos, hook)
+			}
+		}
+	})
+	runWorld(w, func(tx *world.Tx) {
+		hooks, wires := tripwireLine(tx)
+		wire := tx.Block(wires[0]).(Tripwire)
+		tx.SetBlock(wires[0], nil, nil)
+		wire.BreakInfo().BreakHandler(wires[0], tx, &chiseledBookshelfUser{held: item.NewStack(item.Shears{}, 1)})
+		for _, pos := range hooks {
+			if hook := tx.Block(pos).(TripwireHook); hook.Powered || hook.Attached {
+				t.Fatalf("cutting string with shears left hook at %v = %#v, want detached and unpowered", pos, hook)
+			}
 		}
 	})
 }

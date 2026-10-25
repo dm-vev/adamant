@@ -30,7 +30,9 @@ func (t TNT) RedstonePowerAction(pos cube.Pos, tx *world.Tx, oldPower, newPower 
 
 // ProjectileHit ...
 func (t TNT) ProjectileHit(pos cube.Pos, tx *world.Tx, e world.Entity, _ cube.Face) {
-	if f, ok := e.(flammableEntity); ok && f.OnFireDuration() > 0 {
+	// TntBlock.onProjectileHit: a burning projectile that may change
+	// blocks primes it.
+	if projectileOnFire(e) && projectileMayInteract(tx, e) {
 		t.Ignite(pos, tx, e)
 	}
 }

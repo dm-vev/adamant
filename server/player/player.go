@@ -2491,6 +2491,9 @@ func (p *Player) UseItemOnBlock(pos cube.Pos, face cube.Face, clickPos mgl64.Vec
 		}
 		if activated {
 			p.SwingArm()
+			if useCtx.HeldItemSet {
+				return
+			}
 			if useCtx.ReplaceHeldItem && !useCtx.NewItem.Empty() {
 				p.SetHeldItems(useCtx.NewItem, left)
 				return
@@ -3094,8 +3097,13 @@ func (p *Player) drops(pos cube.Pos, held item.Stack, b world.Block) []item.Stac
 		t = item.ToolNone{}
 	}
 	var drops []item.Stack
+	if creative, ok := b.(interface{ CreativeDrops() []item.Stack }); ok && p.GameMode().CreativeInventory() {
+		// Block.playerWillDestroy: some blocks drop with their contents for
+		// creative players.
+		return creative.CreativeDrops()
+	}
 	if breakable, ok := b.(block.Breakable); ok && breakable.BreakInfo().Harvestable(t) {
-		if !p.GameMode().CreativeInventory() || dropsInCreative(b) {
+		if !p.GameMode().CreativeInventory() {
 			if source, ok := b.(interface {
 				SourceDrops(cube.Pos, *world.Tx, item.Stack, world.Entity, float64) []item.Stack
 			}); ok {
@@ -3108,15 +3116,6 @@ func (p *Player) drops(pos cube.Pos, held item.Stack, b world.Block) []item.Stac
 		drops = []item.Stack{item.NewStack(it, 1)}
 	}
 	return drops
-}
-
-func dropsInCreative(b world.Block) bool {
-	switch b.(type) {
-	case block.ShulkerBox:
-		return true
-	default:
-		return false
-	}
 }
 
 // PickBlock makes the player pick a block in the world at a position passed. If the player is unable to

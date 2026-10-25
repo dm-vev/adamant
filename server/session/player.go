@@ -431,6 +431,10 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 			if _, loom := tx.Block(*s.openedPos.Load()).(block.Loom); loom {
 				return s.ui, true
 			}
+		case protocol.ContainerCartographyInput, protocol.ContainerCartographyAdditional:
+			if _, ok := tx.Block(*s.openedPos.Load()).(block.CartographyTable); ok {
+				return s.ui, true
+			}
 		case protocol.ContainerStonecutterInput:
 			if _, ok := tx.Block(*s.openedPos.Load()).(block.Stonecutter); ok {
 				return s.ui, true

@@ -24,6 +24,15 @@ func (LilyPad) CompostChance() float64 {
 	return 0.65
 }
 
+// EntityInside ports LilyPadBlock.entityInside: boats break lily pads they
+// run into.
+func (l LilyPad) EntityInside(pos cube.Pos, tx *world.Tx, e world.Entity) {
+	switch e.H().Type().EncodeEntity() {
+	case "minecraft:boat", "minecraft:chest_boat":
+		breakBlock(l, pos, tx)
+	}
+}
+
 // NeighbourUpdateTick ...
 func (l LilyPad) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	if liq, ok := tx.Liquid(pos.Side(cube.FaceDown)); !ok || liq.LiquidType() != "water" || liq.LiquidDepth() < 8 {
