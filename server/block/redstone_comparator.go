@@ -19,8 +19,12 @@ type RedstoneComparator struct {
 
 	Facing   cube.Direction
 	Subtract bool
-	Powered  bool
-	Output   uint8
+
+	// Powered selects the powered/unpowered block identifier. Lit is the
+	// independent output_lit_bit; commands may leave the two out of sync.
+	Powered bool
+	Lit     bool
+	Output  uint8
 }
 
 // BreakInfo ...
@@ -46,6 +50,7 @@ func (c RedstoneComparator) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec
 func (c RedstoneComparator) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	c.Subtract = !c.Subtract
 	tx.SetBlock(pos, c, nil)
+	tx.Redstone().RefreshCircuit(pos)
 	c.updateOutput(pos, tx)
 	return true
 }
@@ -59,25 +64,29 @@ func (c RedstoneComparator) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	c.updateOutput(pos, tx)
 }
 
-// ScheduledTick ...
-func (c RedstoneComparator) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	target := c.targetOutput(pos, tx)
-	shouldPower := c.shouldBePowered(pos, tx)
-	if target == c.Output && c.Powered == shouldPower {
-		return
+// ScheduledTick reconciles legacy saved callbacks. Evaluation runs on the
+// world's shared circuit clock rather than starting a private input timer.
+func (RedstoneComparator) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
+	if tx != nil {
+		tx.Redstone().ScheduleUpdate(pos)
 	}
-	c.Output = target
-	c.Powered = shouldPower
-	tx.SetBlock(pos, c, &world.SetOpts{DisableBlockUpdates: true})
-	notifyComparatorUpdate(pos, tx)
 }
 
 // RedstonePower returns the comparator output through its front face.
-func (c RedstoneComparator) RedstonePower(_ cube.Pos, _ *world.Tx, face cube.Face) int {
-	if face == c.Facing.Opposite().Face() {
+func (c RedstoneComparator) RedstonePower(pos cube.Pos, tx *world.Tx, face cube.Face) int {
+	if face == c.circuitFacing(pos, tx).Opposite() {
 		return int(c.Output)
 	}
 	return 0
+}
+
+func (c RedstoneComparator) circuitFacing(pos cube.Pos, tx *world.Tx) cube.Face {
+	if tx != nil {
+		if facing, ok := tx.Redstone().CircuitDirection(pos); ok {
+			return facing
+		}
+	}
+	return c.Facing.Face()
 }
 
 // RedstoneStrongPower returns the comparator's directional strong output.
@@ -125,24 +134,19 @@ func (c RedstoneComparator) EncodeBlock() (string, map[string]any) {
 	}
 	return name, map[string]any{
 		"minecraft:cardinal_direction": c.Facing.String(),
-		"output_lit_bit":               boolByte(c.Powered),
+		"output_lit_bit":               boolByte(c.Lit),
 		"output_subtract_bit":          boolByte(c.Subtract),
 	}
 }
 
-func (c RedstoneComparator) updateOutput(pos cube.Pos, tx *world.Tx) {
-	target := c.targetOutput(pos, tx)
-	shouldPower := c.shouldBePowered(pos, tx)
-	if target == c.Output && c.Powered == shouldPower {
-		return
-	}
-	tx.ScheduleBlockUpdate(pos, c, gameTicks(2))
+func (RedstoneComparator) updateOutput(pos cube.Pos, tx *world.Tx) {
+	tx.Redstone().ScheduleUpdate(pos)
 }
 
-func (c RedstoneComparator) targetOutput(pos cube.Pos, tx *world.Tx) uint8 {
-	input := c.inputPower(pos, tx)
-	side := c.sidePower(pos, tx)
-	if c.Subtract {
+// comparatorTargetOutput follows ComparatorCapacitor::evaluate. Zero crossings
+// of this strength control lit transitions, including subtract/equal output zero.
+func comparatorTargetOutput(input, side int, subtract bool) uint8 {
+	if subtract {
 		output := input - side
 		if output <= 0 {
 			return 0
@@ -161,35 +165,20 @@ func (c RedstoneComparator) targetOutput(pos cube.Pos, tx *world.Tx) uint8 {
 	return 0
 }
 
-func (c RedstoneComparator) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {
-	input := c.inputPower(pos, tx)
-	if input >= 15 {
-		return true
-	}
-	if input == 0 {
-		return false
-	}
-	side := c.sidePower(pos, tx)
-	return side == 0 || input >= side
-}
-
-func (c RedstoneComparator) inputPower(pos cube.Pos, tx *world.Tx) int {
+func (c RedstoneComparator) analogInputPower(pos cube.Pos, tx *world.Tx) (uint8, bool) {
 	inputFace := c.Facing.Face()
 	inputPos := pos.Side(inputFace)
 	if output, ok := comparatorOverride(tx, inputPos, inputFace.Opposite()); ok {
-		return int(output)
+		return output, true
 	}
-	power := tx.RedstonePowerFrom(pos, inputFace)
-	if power < 15 && redstoneNormalBlock(inputPos, tx) {
+	// Bedrock's block actor installs a readable analog rear override even
+	// when the intervening conductor has a direct strength of 15.
+	if b, loaded := tx.BlockLoaded(inputPos); loaded && world.RedstoneFullPowerConductor(inputPos, b, tx) {
 		if output, ok := comparatorOverride(tx, inputPos.Side(inputFace), inputFace.Opposite()); ok {
-			return int(output)
+			return output, true
 		}
 	}
-	return power
-}
-
-func (c RedstoneComparator) sidePower(pos cube.Pos, tx *world.Tx) int {
-	return diodeSideInputPower(pos, c.Facing, tx)
+	return 0, false
 }
 
 type comparatorOutputer interface {
@@ -205,9 +194,12 @@ type directionalComparatorOutputer interface {
 }
 
 // comparatorOverride returns the output a comparator on the face towards of
-// the block at pos reads from it, if the block has one.
+// the block at pos reads from it, if the block is loaded and has one.
 func comparatorOverride(tx *world.Tx, pos cube.Pos, towards cube.Face) (uint8, bool) {
-	b := tx.Block(pos)
+	b, loaded := tx.BlockLoaded(pos)
+	if !loaded {
+		return 0, false
+	}
 	if out, ok := b.(directionalComparatorOutputer); ok {
 		return out.ComparatorOutputTowards(tx, pos, towards), true
 	}
@@ -249,7 +241,9 @@ func allRedstoneComparators() (comparators []world.Block) {
 	for _, facing := range cube.Directions() {
 		for _, subtract := range []bool{false, true} {
 			for _, powered := range []bool{false, true} {
-				comparators = append(comparators, RedstoneComparator{Facing: facing, Subtract: subtract, Powered: powered})
+				for _, lit := range []bool{false, true} {
+					comparators = append(comparators, RedstoneComparator{Facing: facing, Subtract: subtract, Powered: powered, Lit: lit})
+				}
 			}
 		}
 	}

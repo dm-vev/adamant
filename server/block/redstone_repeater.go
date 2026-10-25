@@ -1,8 +1,6 @@
 package block
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
@@ -42,6 +40,7 @@ func (r RedstoneRepeater) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3,
 func (r RedstoneRepeater) Activate(pos cube.Pos, _ cube.Face, tx *world.Tx, _ item.User, _ *item.UseContext) bool {
 	r.Delay = (r.Delay + 1) % 4
 	tx.SetBlock(pos, r, nil)
+	tx.Redstone().RefreshCircuit(pos)
 	return true
 }
 
@@ -51,41 +50,7 @@ func (r RedstoneRepeater) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 		breakBlock(r, pos, tx)
 		return
 	}
-	r.updateState(pos, tx)
-}
-
-// ScheduledTick ...
-func (r RedstoneRepeater) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
-	if r.isLocked(pos, tx) {
-		return
-	}
-	outputPos := pos.Side(r.Facing.Opposite().Face())
-	shouldPower := r.shouldBePowered(pos, tx)
-	if r.Powered && !shouldPower {
-		r.Powered = false
-		tx.SetBlock(pos, r, &world.SetOpts{DisableBlockUpdates: true})
-		tx.DoBlockUpdatesAround(outputPos)
-		return
-	}
-	if !r.Powered && shouldPower {
-		r.Powered = true
-		tx.SetBlock(pos, r, &world.SetOpts{DisableBlockUpdates: true})
-		tx.DoBlockUpdatesAround(outputPos)
-		if !r.shouldBePowered(pos, tx) {
-			tx.ScheduleBlockUpdate(pos, r, gameTicks(r.delayTicks()))
-		}
-	}
-}
-
-func (r RedstoneRepeater) updateState(pos cube.Pos, tx *world.Tx) {
-	if r.isLocked(pos, tx) {
-		return
-	}
-	shouldPower := r.shouldBePowered(pos, tx)
-	if r.Powered == shouldPower {
-		return
-	}
-	tx.ScheduleBlockUpdate(pos, r, gameTicks(r.delayTicks()))
+	tx.Redstone().ScheduleUpdate(pos)
 }
 
 func (r RedstoneRepeater) shouldBePowered(pos cube.Pos, tx *world.Tx) bool {
@@ -98,11 +63,22 @@ func (r RedstoneRepeater) inputPower(pos cube.Pos, tx *world.Tx) int {
 }
 
 func (r RedstoneRepeater) isLocked(pos cube.Pos, tx *world.Tx) bool {
-	return diodeSideInputPower(pos, r.Facing, tx) > 0
-}
-
-func (r RedstoneRepeater) delayTicks() int {
-	return (1 + r.Delay) * 2
+	// Bedrock's RepeaterCapacitor accepts only diodes as side-lock sources.
+	// A wire can supply a comparator's side input, but cannot lock a repeater.
+	for _, face := range []cube.Face{r.Facing.RotateLeft().Face(), r.Facing.RotateRight().Face()} {
+		sidePos := pos.Side(face)
+		b, loaded := tx.BlockLoaded(sidePos)
+		if !loaded {
+			continue
+		}
+		switch b.(type) {
+		case RedstoneRepeater, RedstoneComparator:
+			if diodeSidePower(sidePos, face, tx) > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // RedstonePower returns the repeater output through its front face.

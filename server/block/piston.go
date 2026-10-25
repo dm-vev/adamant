@@ -74,7 +74,7 @@ func (p Piston) ScheduledTick(pos cube.Pos, tx *world.Tx, _ *rand.Rand) {
 	tx.Redstone().ScheduleUpdate(pos)
 }
 
-// RedstonePowerActionUpdate applies directional and quasi-connectivity rules after the update event is accepted.
+// RedstonePowerActionUpdate applies Bedrock's directional power rules after the update event is accepted.
 func (p Piston) RedstonePowerActionUpdate(pos cube.Pos, tx *world.Tx, _ world.RedstoneUpdate) {
 	p.handleState(pos, tx)
 }
@@ -149,15 +149,6 @@ func (p Piston) shouldExtend(pos cube.Pos, tx *world.Tx) bool {
 			continue
 		}
 		if tx.RedstonePowerFrom(pos, face) > 0 {
-			return true
-		}
-	}
-	above := pos.Side(cube.FaceUp)
-	for _, face := range cube.Faces() {
-		if face == cube.FaceDown {
-			continue
-		}
-		if tx.RedstonePowerFrom(above, face) > 0 {
 			return true
 		}
 	}
@@ -263,6 +254,9 @@ func (p *Piston) finishMove(pos cube.Pos, tx *world.Tx) {
 			}
 		}
 		tx.SetBlock(movingPos, moved, nil)
+		if handler, ok := moved.(interface{ MovedByPiston(cube.Pos, *world.Tx) }); ok {
+			handler.MovedByPiston(movingPos, tx)
+		}
 	}
 
 	if !p.Extending {

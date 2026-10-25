@@ -932,6 +932,9 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 
 	queue.processing = true
 	for _, t := range queue.run {
+		if t.btype == "" {
+			continue
+		} // cancelled by an earlier callback in this batch
 		if queue.fluid {
 			liquid, ok := tx.Liquid(t.pos)
 			if !ok || !scheduledFluidTickMatches(liquid, t.btype) {
@@ -985,6 +988,47 @@ func (queue *scheduledTickQueue) tick(tx *Tx, tick int64, loaders ...*Loader) {
 	queue.groups = queue.groups[:0]
 	queue.groupHeap = queue.groupHeap[:0]
 	w.scratchLoaderAreas = areas[:0]
+}
+
+// cancel removes one type/position identity without disturbing other queued
+// types or newly scheduled ticks at that position.
+func (queue *scheduledTickQueue) cancel(index scheduledTickIndex) bool {
+	_, removed := queue.scheduledTicks[index]
+	delete(queue.scheduledTicks, index)
+	chunkPos := chunkPosFromBlockPos(index.pos)
+	match := func(t scheduledTick) bool { return t.pos == index.pos && t.btype == index.typeName }
+	drop := func(t scheduledTick) bool {
+		if !match(t) {
+			return false
+		}
+		removed = true
+		if t.deferred {
+			if queue.deferredChunks[chunkPos] <= 1 {
+				delete(queue.deferredChunks, chunkPos)
+			} else {
+				queue.deferredChunks[chunkPos]--
+			}
+		}
+		return true
+	}
+	if list := queue.chunks[chunkPos]; list != nil {
+		list.ticks = slices.DeleteFunc(list.ticks, drop)
+		if len(list.ticks) == 0 {
+			delete(queue.chunks, chunkPos)
+		} else {
+			list.updateDue()
+		}
+	}
+	queue.pendingTicks = slices.DeleteFunc(queue.pendingTicks, drop)
+	if queue.processing {
+		for i, t := range queue.run {
+			if match(t) {
+				queue.run[i] = scheduledTick{}
+				removed = true
+			}
+		}
+	}
+	return removed
 }
 
 // removeSelected removes the ticks collected to run from their chunks,

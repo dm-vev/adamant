@@ -10,12 +10,25 @@ func diodeSidePower(sidePos cube.Pos, side cube.Face, tx *world.Tx) int {
 }
 
 func diodeSideInputPower(pos cube.Pos, facing cube.Direction, tx *world.Tx) int {
-	left := facing.RotateLeft().Face()
-	right := facing.RotateRight().Face()
-	leftPower := diodeSidePower(pos.Side(left), left, tx)
-	rightPower := diodeSidePower(pos.Side(right), right, tx)
-	if leftPower > rightPower {
-		return leftPower
+	// ComparatorCapacitor::addSource (0x66d8420) only admits transporters,
+	// repeaters and comparators on the sides. A direct producer such as a
+	// lever, torch or redstone block is not a comparator side input.
+	power := 0
+	for _, face := range [...]cube.Face{facing.RotateLeft().Face(), facing.RotateRight().Face()} {
+		sidePos := pos.Side(face)
+		b, loaded := tx.BlockLoaded(sidePos)
+		if !loaded {
+			continue
+		}
+		switch b.(type) {
+		case RedstoneWire:
+			// Native wire sources are flattened into the capacitor's source
+			// list. Read the current cached graph, not the wire permutation
+			// that will be published after this circuit evaluation.
+			power = max(power, tx.RedstonePowerFrom(pos, face))
+		case RedstoneRepeater, RedstoneComparator:
+			power = max(power, diodeSidePower(sidePos, face, tx))
+		}
 	}
-	return rightPower
+	return power
 }

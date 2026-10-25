@@ -78,26 +78,6 @@ func TestRedstoneStepFace(t *testing.T) {
 	}
 }
 
-func TestRedstoneTorchBurnoutRecoveryUsesRollingWindow(t *testing.T) {
-	e := newRedstoneEngine(0)
-	pos := cube.Pos{1, 64, 1}
-	for tick := int64(0); tick < redstoneTorchBurnoutThreshold; tick++ {
-		burnedOut := e.recordTorchTurnOff(pos, tick)
-		if burnedOut != (tick == redstoneTorchBurnoutThreshold-1) {
-			t.Fatalf("recordTorchTurnOff after %d turn-offs burnedOut=%t", tick+1, burnedOut)
-		}
-	}
-
-	burnedOut, recoverable := e.torchBurnoutStatus(pos, redstoneTorchBurnoutWindowTicks-1)
-	if !burnedOut || recoverable {
-		t.Fatalf("burnout status with all eight turn-offs still inside the rolling window = burnedOut:%t recoverable:%t, want burnedOut:true recoverable:false", burnedOut, recoverable)
-	}
-	burnedOut, recoverable = e.torchBurnoutStatus(pos, redstoneTorchBurnoutWindowTicks)
-	if !burnedOut || !recoverable {
-		t.Fatalf("burnout status after earliest turn-off has aged out of the rolling window = burnedOut:%t recoverable:%t, want burnedOut:true recoverable:true", burnedOut, recoverable)
-	}
-}
-
 func TestCompareBlockPosSortOrder(t *testing.T) {
 	positions := []cube.Pos{
 		{3, 2, 1},
@@ -247,7 +227,7 @@ func TestRedstoneEngineRemoveChunkClearsTransientStateInChunk(t *testing.T) {
 
 	engine.power[unloadedPos] = 15
 	engine.output[unloadedPos] = 14
-	engine.torchBurnout = map[cube.Pos]redstoneTorchBurnout{unloadedPos: {burnedOut: true}, keptPos: {burnedOut: true}}
+	engine.circuits = map[cube.Pos]RedstoneCircuitState{unloadedPos: nil, keptPos: nil}
 
 	engine.power[keptPos] = 13
 	engine.output[keptPos] = 12
@@ -259,8 +239,8 @@ func TestRedstoneEngineRemoveChunkClearsTransientStateInChunk(t *testing.T) {
 	if _, ok := engine.output[unloadedPos]; ok {
 		t.Fatalf("output for unloaded position %v was not cleared", unloadedPos)
 	}
-	if _, ok := engine.torchBurnout[unloadedPos]; ok {
-		t.Fatalf("torch burnout state for unloaded position %v was not cleared", unloadedPos)
+	if _, ok := engine.circuits[unloadedPos]; ok {
+		t.Fatalf("capacitor state for unloaded position %v was not cleared", unloadedPos)
 	}
 	if got := engine.power[keptPos]; got != 13 {
 		t.Fatalf("power for kept position = %d, want 13", got)
@@ -268,8 +248,8 @@ func TestRedstoneEngineRemoveChunkClearsTransientStateInChunk(t *testing.T) {
 	if got := engine.output[keptPos]; got != 12 {
 		t.Fatalf("output for kept position = %d, want 12", got)
 	}
-	if burnout, ok := engine.torchBurnout[keptPos]; !ok || !burnout.burnedOut {
-		t.Fatalf("torch burnout state for kept position = %v, %t; want burned out state", burnout, ok)
+	if _, ok := engine.circuits[keptPos]; !ok {
+		t.Fatal("circuit for kept position was cleared")
 	}
 }
 
@@ -393,6 +373,9 @@ func TestRedstoneUpdateIncludesContextMetadata(t *testing.T) {
 	}
 	if !update.ChangedRedstoneRelevant {
 		t.Fatal("update did not mark changed neighbour as redstone relevant")
+	}
+	if !update.SourceRedstoneRelevant {
+		t.Fatal("update did not preserve the original source's redstone relevance")
 	}
 	if !update.HasSource || update.Source != sourcePos {
 		t.Fatalf("update source = %v, %t; want %v, true", update.Source, update.HasSource, sourcePos)

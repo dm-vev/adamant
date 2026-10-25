@@ -1,0 +1,2037 @@
+{
+  "reference": "unmodified Windows BDS",
+  "binary_sha256": "76d547f82e02c18d0986c30b47132c9cc4171d0f2df1c00649e50ff35788b321",
+  "complete": true,
+  "scenarios": [
+    {
+      "kind": "piston_power",
+      "name": "0/direct_0",
+      "facing_direction": 0,
+      "power": [
+        0,
+        64,
+        0
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "0/direct_1",
+      "facing_direction": 0,
+      "power": [
+        0,
+        66,
+        0
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "0/direct_2",
+      "facing_direction": 0,
+      "power": [
+        0,
+        65,
+        1
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "0/direct_3",
+      "facing_direction": 0,
+      "power": [
+        0,
+        65,
+        -1
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "0/direct_4",
+      "facing_direction": 0,
+      "power": [
+        1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "0/direct_5",
+      "facing_direction": 0,
+      "power": [
+        -1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "0/two_above",
+      "facing_direction": 0,
+      "power": [
+        0,
+        67,
+        0
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "0/above_side",
+      "facing_direction": 0,
+      "power": [
+        0,
+        66,
+        1
+      ],
+      "head": [
+        0,
+        64,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/direct_0",
+      "facing_direction": 1,
+      "power": [
+        0,
+        64,
+        0
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/direct_1",
+      "facing_direction": 1,
+      "power": [
+        0,
+        66,
+        0
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/direct_2",
+      "facing_direction": 1,
+      "power": [
+        0,
+        65,
+        1
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/direct_3",
+      "facing_direction": 1,
+      "power": [
+        0,
+        65,
+        -1
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/direct_4",
+      "facing_direction": 1,
+      "power": [
+        1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/direct_5",
+      "facing_direction": 1,
+      "power": [
+        -1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/two_above",
+      "facing_direction": 1,
+      "power": [
+        0,
+        67,
+        0
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "1/above_side",
+      "facing_direction": 1,
+      "power": [
+        0,
+        66,
+        1
+      ],
+      "head": [
+        0,
+        66,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/direct_0",
+      "facing_direction": 2,
+      "power": [
+        0,
+        64,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/direct_1",
+      "facing_direction": 2,
+      "power": [
+        0,
+        66,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/direct_2",
+      "facing_direction": 2,
+      "power": [
+        0,
+        65,
+        1
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/direct_3",
+      "facing_direction": 2,
+      "power": [
+        0,
+        65,
+        -1
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/direct_4",
+      "facing_direction": 2,
+      "power": [
+        1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/direct_5",
+      "facing_direction": 2,
+      "power": [
+        -1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/two_above",
+      "facing_direction": 2,
+      "power": [
+        0,
+        67,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "2/above_side",
+      "facing_direction": 2,
+      "power": [
+        0,
+        66,
+        1
+      ],
+      "head": [
+        0,
+        65,
+        1
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/direct_0",
+      "facing_direction": 3,
+      "power": [
+        0,
+        64,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/direct_1",
+      "facing_direction": 3,
+      "power": [
+        0,
+        66,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/direct_2",
+      "facing_direction": 3,
+      "power": [
+        0,
+        65,
+        1
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/direct_3",
+      "facing_direction": 3,
+      "power": [
+        0,
+        65,
+        -1
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/direct_4",
+      "facing_direction": 3,
+      "power": [
+        1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/direct_5",
+      "facing_direction": 3,
+      "power": [
+        -1,
+        65,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/two_above",
+      "facing_direction": 3,
+      "power": [
+        0,
+        67,
+        0
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "3/above_side",
+      "facing_direction": 3,
+      "power": [
+        0,
+        66,
+        1
+      ],
+      "head": [
+        0,
+        65,
+        -1
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/direct_0",
+      "facing_direction": 4,
+      "power": [
+        0,
+        64,
+        0
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/direct_1",
+      "facing_direction": 4,
+      "power": [
+        0,
+        66,
+        0
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/direct_2",
+      "facing_direction": 4,
+      "power": [
+        0,
+        65,
+        1
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/direct_3",
+      "facing_direction": 4,
+      "power": [
+        0,
+        65,
+        -1
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/direct_4",
+      "facing_direction": 4,
+      "power": [
+        1,
+        65,
+        0
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/direct_5",
+      "facing_direction": 4,
+      "power": [
+        -1,
+        65,
+        0
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/two_above",
+      "facing_direction": 4,
+      "power": [
+        0,
+        67,
+        0
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "4/above_side",
+      "facing_direction": 4,
+      "power": [
+        0,
+        66,
+        1
+      ],
+      "head": [
+        1,
+        65,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/direct_0",
+      "facing_direction": 5,
+      "power": [
+        0,
+        64,
+        0
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/direct_1",
+      "facing_direction": 5,
+      "power": [
+        0,
+        66,
+        0
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/direct_2",
+      "facing_direction": 5,
+      "power": [
+        0,
+        65,
+        1
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/direct_3",
+      "facing_direction": 5,
+      "power": [
+        0,
+        65,
+        -1
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/direct_4",
+      "facing_direction": 5,
+      "power": [
+        1,
+        65,
+        0
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": true
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/direct_5",
+      "facing_direction": 5,
+      "power": [
+        -1,
+        65,
+        0
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/two_above",
+      "facing_direction": 5,
+      "power": [
+        0,
+        67,
+        0
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "piston_power",
+      "name": "5/above_side",
+      "facing_direction": 5,
+      "power": [
+        0,
+        66,
+        1
+      ],
+      "head": [
+        -1,
+        65,
+        0
+      ],
+      "extended": false
+    },
+    {
+      "kind": "comparator_subtract_equal",
+      "rear": 15,
+      "side": 15,
+      "block": "unpowered_comparator",
+      "lit": false
+    }
+  ],
+  "commands": [
+    {
+      "command": "tickingarea add -16 0 -16 16 100 16 redstone_audit true",
+      "response": [
+        "[2026-10-25 11:20:59:401 ERROR] ================ TRANSPORT TYPE ERROR  ===================",
+        "[2026-10-25 11:20:59:401 ERROR] Your current connection type is not set to NetherNet. In this release, NetherNet is the only supported transport type.",
+        "[2026-10-25 11:20:59:401 ERROR] Players will not be able to connect to your game without NetherNet.",
+        "[2026-10-25 11:20:59:401 ERROR]",
+        "[2026-10-25 11:20:59:401 ERROR] To switch, set 'transport=nethernet' in server.properties.",
+        "[2026-10-25 11:20:59:402 ERROR]",
+        "[2026-10-25 11:20:59:402 ERROR] For more information, please reference the included bedrock_server_how_to.html file.",
+        "[2026-10-25 11:20:59:402 ERROR] =======================================================",
+        "[2026-10-25 11:20:59:402 INFO] ================ TELEMETRY MESSAGE ===================",
+        "[2026-10-25 11:20:59:402 INFO] Server Telemetry is currently not enabled.",
+        "[2026-10-25 11:20:59:402 INFO] Enabling this telemetry helps us improve the game.",
+        "[2026-10-25 11:20:59:402 INFO]",
+        "[2026-10-25 11:20:59:402 INFO] To enable this feature, add the line 'emit-server-telemetry=true'",
+        "[2026-10-25 11:20:59:402 INFO] to the server.properties file in the handheld/src-server directory",
+        "[2026-10-25 11:20:59:402 INFO] ======================================================",
+        "[2026-10-25 11:20:59:488 INFO] IPv4 supported, port: 19132 used for LAN discovery",
+        "[2026-10-25 11:20:59:488 INFO] IPv6 supported, port: 19133",
+        "[2026-10-25 11:20:59:657 INFO] Added ticking area from -16, 0, -16 to 31, 0, 31 marked for preload.",
+        "1/10 ticking areas in use."
+      ]
+    },
+    {
+      "command": "gamerule randomtickspeed 0",
+      "response": [
+        "[2026-10-25 11:20:59:727 INFO] Game rule randomtickspeed has been updated to 0"
+      ]
+    },
+    {
+      "command": "gamerule dodaylightcycle false",
+      "response": [
+        "[2026-10-25 11:20:59:839 INFO] Game rule dodaylightcycle has been updated to false"
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:20:59:966 ERROR] 0 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:00:108 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 64 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:00:219 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:00:919 ERROR] The block at 0,64,0 is Block of Redstone (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:01:045 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:01:188 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:01:302 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:02:035 INFO] Successfully found the block at 0,64,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:02:146 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:02:274 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:02:401 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:03:118 INFO] Successfully found the block at 0,64,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:03:246 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:03:356 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 -1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:03:500 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:04:200 INFO] Successfully found the block at 0,64,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:04:327 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:04:454 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:04:580 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:05:295 INFO] Successfully found the block at 0,64,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:05:422 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:05:548 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:05:660 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:06:358 INFO] Successfully found the block at 0,64,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:06:500 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:06:627 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 67 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:06:767 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:07:467 ERROR] The block at 0,64,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:07:594 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=0]",
+      "response": [
+        "[2026-10-25 11:21:07:721 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:07:831 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 64 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:08:530 ERROR] The block at 0,64,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:08:674 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:08:801 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 64 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:08:913 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:09:613 INFO] Successfully found the block at 0,66,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:09:741 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:09:885 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:10:013 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:10:742 ERROR] The block at 0,66,0 is Block of Redstone (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:10:823 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:10:963 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:11:089 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:11:800 INFO] Successfully found the block at 0,66,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:11:910 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:12:036 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 -1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:12:164 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:12:872 INFO] Successfully found the block at 0,66,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:12:982 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:13:108 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:13:251 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:13:960 INFO] Successfully found the block at 0,66,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:14:070 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:14:195 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:14:322 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:15:022 INFO] Successfully found the block at 0,66,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:15:158 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:15:265 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 67 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:15:406 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:16:100 ERROR] The block at 0,66,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:16:211 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=1]",
+      "response": [
+        "[2026-10-25 11:21:16:337 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:16:464 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 66 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:17:251 ERROR] The block at 0,66,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:17:360 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:17:502 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 64 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:17:628 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:18:321 INFO] Successfully found the block at 0,65,1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:18:447 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:18:572 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:18:698 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:19:398 INFO] Successfully found the block at 0,65,1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:19:526 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:19:637 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:19:768 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:20:461 ERROR] The block at 0,65,1 is Block of Redstone (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:20:604 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:20:714 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 -1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:20:842 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:21:546 INFO] Successfully found the block at 0,65,1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:21:658 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:21:783 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:21:909 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:22:617 INFO] Successfully found the block at 0,65,1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:22:728 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:22:873 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:23:001 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:23:707 INFO] Successfully found the block at 0,65,1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:23:821 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:23:948 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 67 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:24:091 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:24:779 ERROR] The block at 0,65,1 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:24:907 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=2]",
+      "response": [
+        "[2026-10-25 11:21:25:034 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:25:177 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:25:884 ERROR] The block at 0,65,1 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:26:011 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:26:124 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 64 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:26:268 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:26:958 INFO] Successfully found the block at 0,65,-1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:27:102 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:27:244 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:27:359 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:28:079 INFO] Successfully found the block at 0,65,-1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:28:207 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:28:319 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:28:464 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:29:169 INFO] Successfully found the block at 0,65,-1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:29:296 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:29:408 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 -1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:29:553 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:30:258 ERROR] The block at 0,65,-1 is Block of Redstone (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:30:371 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:30:515 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:30:643 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:31:332 INFO] Successfully found the block at 0,65,-1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:31:460 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:31:605 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:31:718 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:32:423 INFO] Successfully found the block at 0,65,-1."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:32:550 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:32:695 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 67 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:32:823 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:33:528 ERROR] The block at 0,65,-1 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:33:639 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=3]",
+      "response": [
+        "[2026-10-25 11:21:33:784 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:33:944 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 -1 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:34:650 ERROR] The block at 0,65,-1 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:34:778 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:34:890 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 64 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:35:033 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:35:740 INFO] Successfully found the block at 1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:35:869 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:35:998 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:36:110 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:36:831 INFO] Successfully found the block at 1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:36:943 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:37:087 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:37:222 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:37:922 INFO] Successfully found the block at 1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:38:066 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:38:195 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 -1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:38:323 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:39:014 INFO] Successfully found the block at 1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:39:140 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:39:285 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:39:397 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:40:101 ERROR] The block at 1,65,0 is Block of Redstone (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:40:245 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:40:375 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:40:487 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:41:189 INFO] Successfully found the block at 1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:41:317 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:41:446 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 67 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:41:589 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:42:277 ERROR] The block at 1,65,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:42:405 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=4]",
+      "response": [
+        "[2026-10-25 11:21:42:549 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:42:661 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:43:378 ERROR] The block at 1,65,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:43:488 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:43:615 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 64 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:43:741 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:44:448 INFO] Successfully found the block at -1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:44:553 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:44:666 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:44:810 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:45:500 INFO] Successfully found the block at -1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:45:642 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:45:755 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:45:899 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:46:588 INFO] Successfully found the block at -1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:46:711 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:46:814 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 -1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:46:932 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:47:622 INFO] Successfully found the block at -1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:47:763 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:47:877 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:48:020 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:48:709 INFO] Successfully found the block at -1,65,0."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:48:853 INFO] 3 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:48:965 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:49:108 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:49:812 ERROR] The block at -1,65,0 is Block of Redstone (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:49:927 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:50:053 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 67 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:50:184 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:50:900 ERROR] The block at -1,65,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 63 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:51:044 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 piston [\"facing_direction\"=5]",
+      "response": [
+        "[2026-10-25 11:21:51:159 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 66 1 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:51:301 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock -1 65 0 piston_arm_collision",
+      "response": [
+        "[2026-10-25 11:21:52:006 ERROR] The block at -1,65,0 is Air (expected: Piston Arm Collision)."
+      ]
+    },
+    {
+      "command": "fill -3 64 -3 3 69 3 air",
+      "response": [
+        "[2026-10-25 11:21:52:118 INFO] 2 blocks filled"
+      ]
+    },
+    {
+      "command": "fill -2 64 -2 2 64 3 stone",
+      "response": [
+        "[2026-10-25 11:21:52:263 INFO] 30 blocks filled"
+      ]
+    },
+    {
+      "command": "setblock 0 65 0 unpowered_comparator [\"minecraft:cardinal_direction\"=\"west\",\"output_subtract_bit\"=true]",
+      "response": [
+        "[2026-10-25 11:21:52:375 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 1 unpowered_repeater [\"minecraft:cardinal_direction\"=\"south\"]",
+      "response": [
+        "[2026-10-25 11:21:52:504 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock -1 65 0 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:52:631 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "setblock 0 65 2 redstone_block",
+      "response": [
+        "[2026-10-25 11:21:52:775 INFO] Block placed"
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_comparator [\"output_lit_bit\"=false]",
+      "response": [
+        "[2026-10-25 11:21:53:864 INFO] Successfully found the block at 0,65,0."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 unpowered_comparator [\"output_lit_bit\"=true]",
+      "response": [
+        "[2026-10-25 11:21:54:008 ERROR] The block at 0,65,0 did not match the expected block state."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_comparator [\"output_lit_bit\"=false]",
+      "response": [
+        "[2026-10-25 11:21:54:136 ERROR] The block at 0,65,0 is Unpowered Comparator (expected: Powered Comparator)."
+      ]
+    },
+    {
+      "command": "testforblock 0 65 0 powered_comparator [\"output_lit_bit\"=true]",
+      "response": [
+        "[2026-10-25 11:21:54:281 ERROR] The block at 0,65,0 is Unpowered Comparator (expected: Powered Comparator)."
+      ]
+    }
+  ],
+  "log_directory": "C:\\Users\\Andrey\\AppData\\Local\\Temp\\adamant-redstone-bds-hw9r_001",
+  "build_log": [
+    "[2026-10-25 11:20:57:733 INFO] Version: 1.26.51.1",
+    "[2026-10-25 11:20:57:733 INFO] Build ID: 51061361"
+  ]
+}

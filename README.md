@@ -58,7 +58,7 @@ These rules follow from that:
 | Terrain generation | 🟢 | Java 26.3 noise, climate, biomes and aquifers in the Overworld, Nether and End |
 | Features and structures | 🟢 | Configured features and nearly all structures; see [World generation](#world-generation) |
 | Mob AI | 🟢 | Java's goal and brain AI drives every mob species; mobs ride and steer mobs |
-| Redstone | 🟢 | Component timing matched against BDS captures |
+| Redstone | 🟢 | Shared circuit timing checked against BDS; [audit coverage and remaining gaps](docs/redstone-audit.md) |
 | Blocks and items | 🟢 | All vanilla blocks but five Education Edition ones; some behaviour is incomplete |
 | Commands | 🟢 | Java 26.3 command system with selectors, `execute` and scoreboards |
 | Persistence | ✅ | Native LevelDB worlds, BDS NBT, background chunk saving |
@@ -109,7 +109,7 @@ These rules follow from that:
 
 ### Blocks and mechanics
 
-- **Redstone:** repeaters, comparators, observers, pistons, droppers, dispensers, the crafter, rails, buttons, plates, tripwires, bells, lamps, doors and trapdoors. Timings match BDS captures.
+- **Redstone:** repeaters, comparators, observers, pistons, droppers, dispensers, the crafter, rails, buttons, plates, tripwires, bells, lamps, doors and trapdoors. Native Bedrock timing checks and remaining differences are recorded in the [redstone audit](docs/redstone-audit.md).
 - **Sculk:** sensors (including calibrated sensors), shriekers and catalysts, with vibration selection, occlusion and persistence.
 - **Other blocks:** conduits, cauldrons, powder snow and freezing, pointed dripstone, amethyst and dripleaves, lightning rods, suspicious sand and gravel, scaffolding, plant and crop growth.
 - **Structure tools:** structure blocks, jigsaws and Bedrock `.mcstructure` templates.
@@ -164,7 +164,7 @@ cd adamant
 go run .
 ```
 
-Stop the server with `Ctrl+C`. Use `go run . -headless` to run without the interactive console; termination signals still shut the server down cleanly.
+Run from the repository root; `config.toml` is read from the current working directory. Stop the server with `Ctrl+C` or the console command `stop`. Use `go run . -headless` to run without the interactive console; termination signals still shut the server down cleanly.
 
 Connect with Bedrock 1.26.52 to the address in `config.toml` (`:19132` by default).
 
