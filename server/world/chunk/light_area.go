@@ -3,6 +3,8 @@ package chunk
 import (
 	"bytes"
 	"math"
+	"slices"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 )
@@ -285,4 +287,107 @@ func (a *lightArea) chunk(pos cube.Pos) *Chunk {
 // chunkIndex finds the index in the chunk slice of an lightArea for a Chunk at a specific x and z.
 func (a *lightArea) chunkIndex(x, z int) int {
 	return x + (z * a.w)
+}
+
+// Relight updates the light of the lightArea after the blocks at the
+// positions passed changed in the light they emit or filter. Light that no
+// longer reaches is removed and light is spread to where it now reaches, so
+// that the result is the light Fill and Spread would compute. The positions
+// must lie in the centre chunk of the lightArea.
+func (a *lightArea) Relight(changed []cube.Pos) {
+	a.relight(changed, BlockLight, func(pos cube.Pos) uint8 {
+		return a.highest(pos, a.br.LightBlock)
+	})
+	heights := make(map[[2]int]int, 1)
+	height := func(x, z int) int {
+		h, ok := heights[[2]int{x, z}]
+		if !ok {
+			h = int(a.chunk(cube.Pos{x, 0, z}).highestLightBlocker(uint8(x&0xf), uint8(z&0xf), true))
+			heights[[2]int{x, z}] = h
+		}
+		return h
+	}
+	sky := func(pos cube.Pos) uint8 {
+		if pos[1] >= height(pos[0], pos[2]) {
+			return 15
+		}
+		return 0
+	}
+	// Skylight of 15 fills every block from the height map up. Blocks of the
+	// changed columns that became or stopped being part of that are changed
+	// as well: no other block holds skylight of 15.
+	skyChanged := slices.Clone(changed)
+	for _, pos := range changed {
+		h := height(pos[0], pos[2])
+		for y := max(h, a.r.Min()); y <= a.r.Max() && a.light(cube.Pos{pos[0], y, pos[2]}, SkyLight) < 15; y++ {
+			skyChanged = append(skyChanged, cube.Pos{pos[0], y, pos[2]})
+		}
+		for y := min(h, a.r.Max()+1) - 1; y >= a.r.Min() && a.light(cube.Pos{pos[0], y, pos[2]}, SkyLight) == 15; y-- {
+			skyChanged = append(skyChanged, cube.Pos{pos[0], y, pos[2]})
+		}
+	}
+	a.relight(skyChanged, SkyLight, sky)
+}
+
+// relight removes the light of type lt from the positions changed and the
+// blocks they lit, then spreads light back from the sources found and the
+// lit blocks around what was removed.
+func (a *lightArea) relight(changed []cube.Pos, lt light, source func(pos cube.Pos) uint8) {
+	removal, refill, spread := relightQueues.Get().(*lightQueue), relightQueues.Get().(*lightQueue), relightQueues.Get().(*lightQueue)
+	defer relightQueues.Put(removal)
+	defer relightQueues.Put(refill)
+	defer relightQueues.Put(spread)
+	for _, pos := range changed {
+		if !a.inside(pos) {
+			continue
+		}
+		removal.push(node(pos, a.light(pos, lt), lt))
+		a.setLight(pos, lt, 0)
+	}
+	for !removal.empty() {
+		n, _ := removal.pop()
+		if level := source(n.pos); level > 0 {
+			spread.push(node(n.pos, level, lt))
+		}
+		for _, face := range cube.Faces() {
+			pos := n.pos.Side(face)
+			if !a.inside(pos) {
+				continue
+			}
+			level := a.light(pos, lt)
+			if level == 0 {
+				continue
+			}
+			if level < n.level {
+				// The block may have been lit by the one removed.
+				a.setLight(pos, lt, 0)
+				removal.push(node(pos, level, lt))
+			} else {
+				refill.push(node(pos, level, lt))
+			}
+		}
+	}
+	for !refill.empty() {
+		n, _ := refill.pop()
+		level := a.light(n.pos, lt)
+		x, y, z := n.pos[0], n.pos[1], n.pos[2]
+		a.propagateNeighbour(spread, lt, level, x+1, y, z)
+		a.propagateNeighbour(spread, lt, level, x-1, y, z)
+		a.propagateNeighbour(spread, lt, level, x, y+1, z)
+		a.propagateNeighbour(spread, lt, level, x, y-1, z)
+		a.propagateNeighbour(spread, lt, level, x, y, z+1)
+		a.propagateNeighbour(spread, lt, level, x, y, z-1)
+	}
+	for !spread.empty() {
+		a.propagate(spread)
+	}
+}
+
+// relightQueues holds the queues relight empties, so that relighting after
+// every block change does not allocate them anew.
+var relightQueues = sync.Pool{New: func() any { return newLightQueue(initialLightQueueCapacity) }}
+
+// inside reports if pos lies within the lightArea.
+func (a *lightArea) inside(pos cube.Pos) bool {
+	return pos[1] >= a.r.Min() && pos[1] <= a.r.Max() && pos[0] >= a.baseX && pos[2] >= a.baseZ && pos[0] < a.baseX+a.w*16 && pos[2] < a.baseZ+a.w*16
 }

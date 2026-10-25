@@ -43,6 +43,10 @@ type World struct {
 	conf Config
 	ra   cube.Range
 
+	// pendingLight holds, per chunk, the positions whose blocks changed in
+	// how they affect light since the light was last brought up to date.
+	pendingLight map[ChunkPos][]cube.Pos
+
 	queue         chan transaction
 	queueClosing  chan struct{}
 	queueMu       sync.Mutex
@@ -774,6 +778,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 	if rid != w.conf.Blocks.AirRuntimeID() && !opts.DisableLiquidDisplacement {
 		before = oldRID
 	}
+	lightBefore := w.cellLightAt(c, pos)
 
 	c.modified = true
 	if opts.nativeState == nil {
@@ -830,6 +835,7 @@ func (tx *Tx) setBlock(pos cube.Pos, b Block, opts *SetOpts) {
 			})
 		}
 	}
+	w.relightIfChanged(c, pos, lightBefore)
 	if redstoneAfterRelevant || (needOldBlock && isRedstoneRelevant(oldBlock)) {
 		w.redstone.forget(pos)
 	}
@@ -922,6 +928,8 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 	// in memory at a time while not needing to acquire a new chunk lock for
 	// every block. This also allows us not to send block updates, but instead
 	// send a single chunk update once.
+	var touched []ChunkPos
+	defer func() { w.relightChunks(touched) }()
 	for chunkX := pos[0] >> 4; chunkX <= maxX>>4; chunkX++ {
 		for chunkZ := pos[2] >> 4; chunkZ <= maxZ>>4; chunkZ++ {
 			chunkPos := ChunkPos{int32(chunkX), int32(chunkZ)}
@@ -998,6 +1006,7 @@ func (tx *Tx) buildStructure(pos cube.Pos, s Structure) {
 			}
 			c.SetBlock(0, 0, 0, 0, c.Block(0, 0, 0, 0)) // Make sure the heightmap is recalculated.
 			c.modified = true
+			touched = append(touched, chunkPos)
 
 			// After setting all blocks of the structure within a single chunk,
 			// we show the new chunk to all viewers once.
@@ -1054,6 +1063,8 @@ func (tx *Tx) setLiquid(pos cube.Pos, b Liquid) {
 	}
 	chunkPos := chunkPosFromBlockPos(pos)
 	c := tx.chunk(chunkPos)
+	lightBefore := w.cellLightAt(c, pos)
+	defer w.relightIfChanged(c, pos, lightBefore)
 	if b == nil {
 		w.removeLiquids(c, pos)
 		w.doBlockUpdatesAround(pos)
@@ -1158,6 +1169,7 @@ func (tx *Tx) additionalLiquid(pos cube.Pos) (Liquid, bool) {
 // fully lit.
 func (tx *Tx) light(pos cube.Pos) uint8 {
 	w := tx.World()
+	w.flushLight()
 	if pos[1] < w.ra[0] {
 		// Fast way out.
 		return 0
@@ -1179,6 +1191,7 @@ func (tx *Tx) light(pos cube.Pos) uint8 {
 // light is present.
 func (tx *Tx) skyLight(pos cube.Pos) uint8 {
 	w := tx.World()
+	w.flushLight()
 	if pos[1] < w.ra[0] {
 		// Fast way out.
 		return 0
@@ -2108,6 +2121,7 @@ func (w *World) closeChunk(tx *Tx, pos ChunkPos, c *Column) {
 	c.resetEntities()
 	if _, ok := w.chunks[pos]; ok {
 		delete(w.chunks, pos)
+		delete(w.pendingLight, pos)
 		w.chunkCount.Add(-1)
 	}
 }

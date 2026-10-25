@@ -125,6 +125,7 @@ func (w *World) AdvanceTick() {
 func (t ticker) tick(tx *Tx) {
 	viewers, loaders := tx.World().allViewers()
 	w := tx.World()
+	defer w.flushLight()
 	defer w.releaseViewers(viewers)
 	w.focusGeneration(loaders)
 	w.loadForcedChunks()
