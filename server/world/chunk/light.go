@@ -1,6 +1,9 @@
 package chunk
 
-import "github.com/df-mc/dragonfly/server/block/cube"
+import (
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/internal/gamedata"
+)
 
 // insertBlockLightNodes iterates over the chunk and looks for blocks that have a light level of at least 1.
 // If one is found, a node is added for it to the node queue.
@@ -87,9 +90,23 @@ func skyEdgeOccluded(top, bottom LightProperties) bool {
 
 // facesOcclude ports LightEngine.shapeOccludes for light going from a cell
 // to its neighbour on the face passed: the face of the first and the
-// opposite face of the second block it if either is full.
+// opposite face of the second block it if together they cover the face.
 func facesOcclude(from, to LightProperties, face cube.Face) bool {
-	return from.Occlusion&(1<<face) != 0 || to.Occlusion&(1<<face.Opposite()) != 0
+	opposite := face.Opposite()
+	if from.Occlusion&(1<<face) != 0 || to.Occlusion&(1<<opposite) != 0 {
+		return true
+	}
+	if from.Partial&(1<<face) == 0 || to.Partial&(1<<opposite) == 0 {
+		return false
+	}
+	a, _ := gamedata.BlockLightOcclusionFace(from.State, int(face))
+	b, _ := gamedata.BlockLightOcclusionFace(to.State, int(opposite))
+	for i := range a {
+		if a[i]|b[i] != ^uint64(0) {
+			return false
+		}
+	}
+	return true
 }
 
 // insertLightSpreadingNodes inserts light nodes into the node queue passed which, when propagated, will

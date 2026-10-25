@@ -188,3 +188,43 @@ func TestLightFollowsJavaRules(t *testing.T) {
 		}
 	})
 }
+
+// TestPartialFacesOccludeTogether checks two partial faces block light where
+// together they cover a face, as Shapes.faceShapeOccludes: the half faces of
+// a bottom and a top slab side by side shut light out, while those of two
+// bottom slabs leave the upper half open.
+func TestPartialFacesOccludeTogether(t *testing.T) {
+	w := world.Config{Synchronous: true, RandomTickSpeed: -1}.New()
+	t.Cleanup(func() { _ = w.Close() })
+	<-w.Exec(func(tx *world.Tx) {
+		for x := -48; x <= 48; x += 16 {
+			for z := -48; z <= 48; z += 16 {
+				tx.Block(cube.Pos{x, 64, z})
+			}
+		}
+		for x := -2; x <= 3; x++ {
+			for y := 63; y <= 65; y++ {
+				for z := -1; z <= 1; z++ {
+					tx.SetBlock(cube.Pos{x, y, z}, block.Stone{}, nil)
+				}
+			}
+		}
+		slab := block.Slab{Block: block.Planks{Wood: block.OakWood()}}
+		tx.SetBlock(cube.Pos{-1, 64, 0}, block.Glowstone{}, nil)
+		tx.SetBlock(cube.Pos{0, 64, 0}, slab, nil)
+		tx.SetBlock(cube.Pos{1, 64, 0}, block.Slab{Block: slab.Block, Top: true}, nil)
+		tx.SetBlock(cube.Pos{2, 64, 0}, nil, nil)
+		checkFreshLight(t, tx, "a bottom and a top slab", cube.Pos{0, 64, 0})
+		if got := tx.BlockLight(cube.Pos{0, 64, 0}); got != 14 {
+			t.Fatalf("light in the bottom slab next to glowstone = %d, want 14", got)
+		}
+		if got := tx.BlockLight(cube.Pos{1, 64, 0}); got != 0 {
+			t.Fatalf("light past a bottom and a top slab = %d, want 0", got)
+		}
+		tx.SetBlock(cube.Pos{1, 64, 0}, slab, nil)
+		checkFreshLight(t, tx, "two bottom slabs", cube.Pos{0, 64, 0})
+		if got := tx.BlockLight(cube.Pos{2, 64, 0}); got != 12 {
+			t.Fatalf("light past two bottom slabs = %d, want 12", got)
+		}
+	})
+}

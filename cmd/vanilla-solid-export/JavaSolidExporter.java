@@ -25,7 +25,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /** Exports Java 26.3 block defaults, property domains and fresh-generation support/collision geometry. */
 public final class JavaSolidExporter {
-    private record BlockRow(String name, boolean defaultSolid, String defaultProperties, List<String> propertyDomains, List<StateRow> varyingStates, List<FaceRow> faces, List<GeometryRow> geometry, String updateShapeOwner, String canSurviveOwner, String conductorPredicateOwner, String instrument) {}
+    private record BlockRow(String name, boolean defaultSolid, String defaultProperties, List<String> propertyDomains, List<StateRow> varyingStates, List<FaceRow> faces, List<GeometryRow> geometry, String updateShapeOwner, String canSurviveOwner, String conductorPredicateOwner, String instrument, List<OcclusionRow> occlusion) {}
+    private record OcclusionRow(String properties, String faces) {}
     private record StateRow(String properties, boolean solid) {}
     private record FaceRow(String properties, long mask) {}
     private record GeometryRow(String properties, int rigidMask, String faces) {}
@@ -55,6 +56,7 @@ public final class JavaSolidExporter {
             boolean varies = false;
             List<FaceRow> faces = new ArrayList<>();
             List<GeometryRow> geometry = new ArrayList<>();
+            List<OcclusionRow> occlusion = new ArrayList<>();
             long firstMask = -1;
             boolean facesVary = false;
             for (BlockState state : block.getStateDefinition().getPossibleStates()) {
@@ -90,11 +92,14 @@ public final class JavaSolidExporter {
                 else if (mask != firstMask) facesVary = true;
                 faces.add(new FaceRow(properties(state), mask));
                 geometry.add(new GeometryRow(properties(state), rigidMask, collisionFaces(collision)));
+                String partialFaces = partialOcclusionFaces(state);
+                if (partialFaces != null) occlusion.add(new OcclusionRow(properties(state), partialFaces));
             }
             rows.sort(Comparator.comparing(StateRow::properties));
             faces.sort(Comparator.comparing(FaceRow::properties));
             geometry.sort(Comparator.comparing(GeometryRow::properties));
-            blocks.add(new BlockRow(name, defaultSolid, defaultProperties, propertyDomains, varies ? rows : List.of(), faces, geometry, updateShapeOwner(block), canSurviveOwner(block), conductorPredicateOwner(defaultState), defaultState.instrument().getSerializedName()));
+            occlusion.sort(Comparator.comparing(OcclusionRow::properties));
+            blocks.add(new BlockRow(name, defaultSolid, defaultProperties, propertyDomains, varies ? rows : List.of(), faces, geometry, updateShapeOwner(block), canSurviveOwner(block), conductorPredicateOwner(defaultState), defaultState.instrument().getSerializedName(), occlusion));
         }
         blocks.sort(Comparator.comparing(BlockRow::name));
 
@@ -110,7 +115,52 @@ public final class JavaSolidExporter {
             out.println("C\t" + block.name() + "\t" + block.conductorPredicateOwner());
             out.println("I\t" + block.name() + "\t" + block.instrument());
             for (GeometryRow row : block.geometry()) out.println("G\t" + block.name() + "\t" + row.properties() + "\t" + row.rigidMask() + "\t" + row.faces());
+            for (OcclusionRow row : block.occlusion()) out.println("L\t" + block.name() + "\t" + row.properties() + "\t" + row.faces());
         }
+    }
+
+    /**
+     * Returns, for a state whose shape takes part in light occlusion and has a
+     * face only partly covered, the coverage of every face's occlusion shape on
+     * the 16x16 pixel grid as four hex longs, or "-" for empty and full faces.
+     * Returns null for states without partial faces.
+     */
+    private static String partialOcclusionFaces(BlockState state) {
+        if (!state.canOcclude() || !state.useShapeForLightOcclusion()) return null;
+        StringBuilder result = new StringBuilder();
+        boolean partial = false;
+        for (Direction face : Direction.values()) {
+            if (face.ordinal() > 0) result.append('/');
+            VoxelShape shape = state.getFaceOcclusionShape(face);
+            if (shape.isEmpty() || Block.isShapeFullBlock(shape)) {
+                result.append('-');
+                continue;
+            }
+            partial = true;
+            long[] bits = new long[4];
+            for (AABB box : shape.toAabbs()) {
+                double minU, minV, maxU, maxV;
+                switch (face.getAxis()) {
+                    case X -> { minU = box.minY; minV = box.minZ; maxU = box.maxY; maxV = box.maxZ; }
+                    case Y -> { minU = box.minX; minV = box.minZ; maxU = box.maxX; maxV = box.maxZ; }
+                    default -> { minU = box.minX; minV = box.minY; maxU = box.maxX; maxV = box.maxY; }
+                }
+                for (int v = 0; v < 16; v++) {
+                    for (int u = 0; u < 16; u++) {
+                        double cu = (u + 0.5) / 16.0, cv = (v + 0.5) / 16.0;
+                        if (cu > minU && cu < maxU && cv > minV && cv < maxV) {
+                            int bit = v * 16 + u;
+                            bits[bit >> 6] |= 1L << (bit & 63);
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < 4; i++) {
+                if (i > 0) result.append(',');
+                result.append(Long.toHexString(bits[i]));
+            }
+        }
+        return partial ? result.toString() : null;
     }
 
     private static String collisionFaces(VoxelShape shape) {

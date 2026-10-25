@@ -36,11 +36,12 @@ func main() {
 	defaultsOutput := flag.String("defaults-output", "", "generated Go block defaults source path")
 	facesOutput := flag.String("faces-output", "", "generated Go generation-face source path")
 	propertiesOutput := flag.String("properties-output", "", "generated Go Java property domains source path")
+	occlusionOutput := flag.String("occlusion-output", "", "generated Go partial light occlusion faces source path")
 	flag.Parse()
-	if *input == "" || *output == "" || *defaultsOutput == "" || *facesOutput == "" || *propertiesOutput == "" || flag.NArg() != 0 {
-		fatal(errors.New("usage: go run ./cmd/vanilla-solid-export -input report.tsv -output solidity.go -defaults-output defaults.go -faces-output faces.go -properties-output properties.go"))
+	if *input == "" || *output == "" || *defaultsOutput == "" || *facesOutput == "" || *propertiesOutput == "" || *occlusionOutput == "" || flag.NArg() != 0 {
+		fatal(errors.New("usage: go run ./cmd/vanilla-solid-export -input report.tsv -output solidity.go -defaults-output defaults.go -faces-output faces.go -properties-output properties.go -occlusion-output occlusion.go"))
 	}
-	if err := generate(*input, *output, *defaultsOutput, *facesOutput, *propertiesOutput); err != nil {
+	if err := generate(*input, *output, *defaultsOutput, *facesOutput, *propertiesOutput, *occlusionOutput); err != nil {
 		fatal(err)
 	}
 }
@@ -50,7 +51,7 @@ func fatal(err error) {
 	os.Exit(1)
 }
 
-func generate(input, output, defaultsOutput, facesOutput, propertiesOutput string) error {
+func generate(input, output, defaultsOutput, facesOutput, propertiesOutput, occlusionOutput string) error {
 	file, err := os.Open(input)
 	if err != nil {
 		return err
@@ -71,6 +72,7 @@ func generate(input, output, defaultsOutput, facesOutput, propertiesOutput strin
 	var canSurviveOwners []string
 	var conductorOwners []string
 	var instruments []string
+	var occlusion []occlusionRow
 	blockIndex := -1
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -164,6 +166,15 @@ func generate(input, output, defaultsOutput, facesOutput, propertiesOutput strin
 				return fmt.Errorf("malformed or misplaced conductor predicate owner row %q", line)
 			}
 			conductorOwners[blockIndex] = fields[2]
+		case len(fields) == 4 && fields[0] == "L":
+			if blockIndex < 0 || fields[1] != "minecraft:"+names[blockIndex] {
+				return fmt.Errorf("misplaced light occlusion row %q", line)
+			}
+			row, err := parseOcclusionRow(fields)
+			if err != nil {
+				return fmt.Errorf("malformed light occlusion row %q: %w", line, err)
+			}
+			occlusion = append(occlusion, row)
 		case len(fields) == 3 && fields[0] == "I":
 			if blockIndex < 0 || fields[1] != "minecraft:"+names[blockIndex] || instruments[blockIndex] != "" {
 				return fmt.Errorf("malformed or misplaced block instrument row %q", line)
@@ -273,6 +284,9 @@ func generate(input, output, defaultsOutput, facesOutput, propertiesOutput strin
 		return err
 	}
 	if err := generatePropertyDomains(propertiesOutput, domains); err != nil {
+		return err
+	}
+	if err := writeOcclusion(occlusionOutput, occlusion); err != nil {
 		return err
 	}
 	return generateFaces(facesOutput, names, faces)

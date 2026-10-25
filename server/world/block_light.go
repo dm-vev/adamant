@@ -13,18 +13,18 @@ import (
 type blockLightCache struct {
 	table     []chunk.LightProperties
 	tableOnce sync.Once
-	dry       atomic.Pointer[[]atomic.Uint32]
+	dry       atomic.Pointer[[]atomic.Uint64]
 	wet       sync.Map // Native layer pair -> packed properties.
 	state     sync.Map // Java state ID -> packed properties.
 }
 
-func packLight(p chunk.LightProperties) uint32 {
-	return (uint32(p.Emission) | uint32(p.Dampening)<<4 | uint32(p.Occlusion)<<8) + 1
+func packLight(p chunk.LightProperties) uint64 {
+	return (uint64(p.Emission) | uint64(p.Dampening)<<4 | uint64(p.Occlusion)<<8 | uint64(p.Partial)<<14 | uint64(p.State)<<20) + 1
 }
 
-func unpackLight(v uint32) chunk.LightProperties {
+func unpackLight(v uint64) chunk.LightProperties {
 	v--
-	return chunk.LightProperties{Emission: uint8(v & 15), Dampening: uint8(v >> 4 & 15), Occlusion: uint8(v >> 8 & 63)}
+	return chunk.LightProperties{Emission: uint8(v & 15), Dampening: uint8(v >> 4 & 15), Occlusion: uint8(v >> 8 & 63), Partial: uint8(v >> 14 & 63), State: uint32(v >> 20)}
 }
 
 // LightProperties returns the light properties Java's light engine reads of
@@ -33,7 +33,7 @@ func unpackLight(v uint32) chunk.LightProperties {
 func (br *BasicBlockRegistry) LightProperties(state, fg, bg uint32) chunk.LightProperties {
 	if state != 0 {
 		if v, ok := br.light.state.Load(state); ok {
-			return unpackLight(v.(uint32))
+			return unpackLight(v.(uint64))
 		}
 		p := br.javaLightProperties(state, fg, bg)
 		br.light.state.Store(state, packLight(p))
@@ -42,7 +42,7 @@ func (br *BasicBlockRegistry) LightProperties(state, fg, bg uint32) chunk.LightP
 	if bg == br.airRID {
 		slots := br.light.dry.Load()
 		if slots == nil {
-			fresh := make([]atomic.Uint32, br.BlockCount())
+			fresh := make([]atomic.Uint64, br.BlockCount())
 			br.light.dry.CompareAndSwap(nil, &fresh)
 			slots = br.light.dry.Load()
 		}
@@ -58,7 +58,7 @@ func (br *BasicBlockRegistry) LightProperties(state, fg, bg uint32) chunk.LightP
 	}
 	key := uint64(fg)<<32 | uint64(bg)
 	if v, ok := br.light.wet.Load(key); ok {
-		return unpackLight(v.(uint32))
+		return unpackLight(v.(uint64))
 	}
 	p := br.javaLightProperties(nativeJavaStateID(br, NativeState{Block: fg, Liquid: bg}), fg, bg)
 	br.light.wet.Store(key, packLight(p))
@@ -86,6 +86,14 @@ func (br *BasicBlockRegistry) javaLightProperties(state, fg, bg uint32) chunk.Li
 			p := chunk.LightProperties{Emission: shape.LightEmission, Dampening: shape.LightDampening}
 			if !shape.LightEmptyShape {
 				p.Occlusion = shape.Occlusion
+				for face := range 6 {
+					if _, partial := gamedata.BlockLightOcclusionFace(state, face); partial {
+						p.Partial |= 1 << face
+					}
+				}
+				if p.Partial != 0 {
+					p.State = state
+				}
 			}
 			return p
 		}

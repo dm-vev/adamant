@@ -64,6 +64,11 @@ type LightProperties struct {
 	// shape is full. It is zero for shapes LightEngine.isEmptyShape leaves
 	// out of occlusion.
 	Occlusion uint8
+	// Partial holds a bit, by cube.Face, for every face its occlusion shape
+	// only partly covers. Two partial faces occlude light where together
+	// they cover the face, which State, the Java state, tells.
+	Partial uint8
+	State   uint32
 }
 
 // LightRegistry is implemented by block registries that know the light

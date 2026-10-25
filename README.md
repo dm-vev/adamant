@@ -146,7 +146,6 @@ Parity work is ongoing. These are the main known differences from vanilla:
 
 - Five Education Edition blocks (the chalkboard and the chemistry tables) are not implemented, and states vanilla never produces, such as invalid facings and Education bits, load as placeholders. Some implemented blocks still have incomplete behaviour.
 - The full natural-spawning cycle and long-run mob ecology have not been verified end to end.
-- The light engine treats two partial faces as open even where together they cover a whole face, as stairs against stairs can; Java's light engine shuts light out there.
 - The ender dragon's fireball sound and the boss bar's sky fog are not sent; Bedrock has no matching sound name or protocol field.
 - How some features render on a real Bedrock client, such as the resource-pack knowledge book and the dragon's death beams, is unverified.
 

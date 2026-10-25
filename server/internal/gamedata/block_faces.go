@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type generationFaceProperty struct {
@@ -476,4 +477,50 @@ func BlockCanSurviveOwnerID(id uint32) (string, error) {
 		return "", fmt.Errorf("generation faces: invalid source state ID %d", id)
 	}
 	return blockCanSurviveOwners[block], nil
+}
+
+// lightOcclusionState names a state with partial light occlusion faces and
+// the indexes of their bitmaps in lightOcclusionBitmaps, zero for none.
+type lightOcclusionState struct {
+	name, properties string
+	faces            [6]uint16
+}
+
+var (
+	lightOcclusionOnce sync.Once
+	lightOcclusionByID map[uint32][6]uint16
+)
+
+// BlockLightOcclusionFace returns the coverage on the 16x16 pixel grid of a
+// face of the occlusion shape of a state, as BlockState.getFaceOcclusionShape,
+// for faces that are neither empty nor full. Rows are V and columns U of
+// the face plane: Y and Z for faces along X, X and Z along Y, X and Y along
+// Z. ok is false for faces that are not partial.
+func BlockLightOcclusionFace(id uint32, face int) (bits [4]uint64, ok bool) {
+	lightOcclusionOnce.Do(func() {
+		lightOcclusionByID = make(map[uint32][6]uint16, len(lightOcclusionStates))
+		for _, state := range lightOcclusionStates {
+			properties := map[string]any{}
+			if state.properties != "" {
+				for _, pair := range strings.Split(state.properties, ",") {
+					// Values carry the kind of their property: s:, b: or i:.
+					name, value, _ := strings.Cut(pair, "=")
+					if len(value) > 2 && value[1] == ':' {
+						value = value[2:]
+					}
+					properties[name] = value
+				}
+			}
+			stateID, err := BlockStateID(state.name, properties)
+			if err != nil {
+				panic(fmt.Sprintf("light occlusion state %s[%s]: %v", state.name, state.properties, err))
+			}
+			lightOcclusionByID[stateID] = state.faces
+		}
+	})
+	faces, ok := lightOcclusionByID[id]
+	if !ok || face < 0 || face >= 6 || faces[face] == 0 {
+		return bits, false
+	}
+	return lightOcclusionBitmaps[faces[face]], true
 }
