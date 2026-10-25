@@ -31,7 +31,14 @@ type featureRegion struct {
 	// recording collects the writes and side outputs of the origin step that
 	// runs while it is set.
 	recording *originStep
-	result    *world.GenerationResult
+	// recordBeyondOrigin limits recording to positions outside the origin
+	// chunk: those of a piece placed beyond its chunk, whose origin chunk
+	// places it itself.
+	recordBeyondOrigin bool
+	// structureRecording is the step the structures placed beyond their
+	// chunk record into while an origin record is computed.
+	structureRecording *originStep
+	result             *world.GenerationResult
 	// overlay holds the states written to the region.
 	overlay featureOverlay
 	// columns holds the overlay tops and heightmap heights of the columns,
@@ -96,36 +103,47 @@ func (r *featureRegion) inTarget(p featurePos) bool {
 // recordsAt reports whether side outputs at p are kept: those of the target
 // chunk, or any of the origin being recorded.
 func (r *featureRegion) recordsAt(p featurePos) bool {
-	return r.inTarget(p) || r.recording != nil
+	return r.inTarget(p) || r.recordingAt(p) != nil
+}
+
+// recordingAt returns the step recording what is written at p, if any.
+func (r *featureRegion) recordingAt(p featurePos) *originStep {
+	if r.recordBeyondOrigin && p.x>>4 == r.writeOriginX && p.z>>4 == r.writeOriginZ {
+		return nil
+	}
+	return r.recording
 }
 
 // markPostProcessing marks pos for post-processing in the target chunk or in
 // the record of the running origin.
 func (r *featureRegion) markPostProcessing(pos cube.Pos) {
-	if r.inTarget(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+	p := featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	if r.inTarget(p) {
 		r.result.MarkForPostProcessing(pos, r.c.Range())
-	} else if r.recording != nil {
-		r.recording.markers = append(r.recording.markers, pos)
+	} else if recording := r.recordingAt(p); recording != nil {
+		recording.markers = append(recording.markers, pos)
 	}
 }
 
 // addEntity adds an entity spawned at pos to the target chunk or to the
 // record of the running origin, which spawns it for the chunk it lands in.
 func (r *featureRegion) addEntity(pos cube.Pos, spawn func() *world.EntityHandle) {
-	if r.inTarget(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}) {
+	p := featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
+	if r.inTarget(p) {
 		r.result.Entities = append(r.result.Entities, spawn())
-	} else if r.recording != nil {
-		r.recording.entities = append(r.recording.entities, recordedEntity{pos: pos, spawn: spawn})
+	} else if recording := r.recordingAt(p); recording != nil {
+		recording.entities = append(recording.entities, recordedEntity{pos: pos, spawn: spawn})
 	}
 }
 
 // scheduleTick schedules a generated tick in the target chunk or in the
 // record of the running origin.
 func (r *featureRegion) scheduleTick(tick chunk.ScheduledTick) {
-	if r.inTarget(featurePos{int32(tick.Pos[0]), int32(tick.Pos[1]), int32(tick.Pos[2])}) {
+	p := featurePos{int32(tick.Pos[0]), int32(tick.Pos[1]), int32(tick.Pos[2])}
+	if r.inTarget(p) {
 		r.result.ScheduleTick(tick)
-	} else if r.recording != nil {
-		r.recording.ticks = append(r.recording.ticks, tick)
+	} else if recording := r.recordingAt(p); recording != nil {
+		recording.ticks = append(recording.ticks, tick)
 	}
 }
 
@@ -262,8 +280,8 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 		x, z := uint8(p.x&15), uint8(p.z&15)
 		world.SetNativeState(r.c, x, int16(p.y), z, state)
 	}
-	if r.recording != nil {
-		r.recording.write(p, previous, state)
+	if recording := r.recordingAt(p); recording != nil {
+		recording.write(p, previous, state)
 	}
 	if r.recordsAt(p) && flags&16 == 0 {
 		r.markBlockPostProcessing(p, state)
@@ -283,8 +301,8 @@ func (r *featureRegion) setWithFlags(p featurePos, state world.NativeState, flag
 func (r *featureRegion) removeBlockEntityPayloads(pos cube.Pos) {
 	delete(r.blockActorRecords, pos)
 	delete(r.blockActorData, pos)
-	if r.recording != nil {
-		delete(r.recording.actors, pos)
+	if recording := r.recordingAt(featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}); recording != nil {
+		delete(recording.actors, pos)
 	}
 	entities := r.result.BlockEntities
 	kept := entities[:0]

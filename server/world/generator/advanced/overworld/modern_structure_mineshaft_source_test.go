@@ -64,7 +64,7 @@ func TestMineshaftGraphsMatchReference(t *testing.T) {
 			random := largeFeatureRandom(fixture.Seed, fixture.Chunk[0], fixture.Chunk[1])
 			start, valid, err := buildModernMineshaft(modernStructureBuildInput{
 				seed: fixture.Seed, name: "minecraft:mineshaft", chunkX: fixture.Chunk[0], chunkZ: fixture.Chunk[1],
-				config: map[string]any{"mineshaft_type": wood}, source: modernTerrainSource{generator: generator, raw: true}, random: &random,
+				config: map[string]any{"mineshaft_type": wood, "biomes": "#minecraft:is_overworld"}, source: modernTerrainSource{generator: generator, raw: true}, random: &random,
 			})
 			if err != nil {
 				t.Fatal(err)

@@ -346,7 +346,11 @@ func (f *ModernFeatures) decorateOrigin(region *featureRegion, origin world.Chun
 	region.SetOrigin(origin[0], origin[1])
 	possible := f.possibleBiomes(region, origin)
 	for step := range f.generationSteps() {
+		if record != nil {
+			region.structureRecording = &record.steps[step]
+		}
 		f.placeStructures(region, origin, step, context, transient)
+		region.structureRecording = nil
 		if record != nil {
 			region.recording = &record.steps[step]
 		}
@@ -1038,6 +1042,12 @@ func featureBound(v any, worldMinY, worldMaxY, seaLevel int32) float64 {
 
 // applyStructurePlacement adapts Java descriptors, applies allowed blocks, and publishes target metadata.
 func (f *ModernFeatures) applyStructurePlacement(region *featureRegion, placement structure.Placement) {
+	// The writes of a piece its origin chunk places beyond itself reach the
+	// chunks around through the origin's record, as feature writes do.
+	if placement.BeyondChunk && region.structureRecording != nil && region.recording == nil {
+		region.recording, region.recordBeyondOrigin = region.structureRecording, true
+		defer func() { region.recording, region.recordBeyondOrigin = nil, false }()
+	}
 	sourceBlockCount := len(placement.Blocks)
 	// List pool elements share a descriptor slice, but each source template
 	// completes its own fluid pass before the next one replaces any blocks.

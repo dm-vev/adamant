@@ -15,12 +15,13 @@ import (
 
 type structureStateTerrain struct{ ModernFeatureSource }
 
-func (structureStateTerrain) SeaLevel() int32 { return 63 }
+func (structureStateTerrain) SeaLevel() int32                   { return 63 }
+func (structureStateTerrain) NoiseBiomeAt(_, _, _ int32) string { return "minecraft:plains" }
 
 func statefulMineshaftStart(t *testing.T) modernStructureStart {
 	t.Helper()
 	random := largeFeatureRandom(0, 0, 0)
-	start, valid, err := buildModernMineshaft(modernStructureBuildInput{seed: 0, name: "minecraft:mineshaft", config: map[string]any{"mineshaft_type": "normal"}, source: structureStateTerrain{}, random: &random})
+	start, valid, err := buildModernMineshaft(modernStructureBuildInput{seed: 0, name: "minecraft:mineshaft", config: map[string]any{"mineshaft_type": "normal", "biomes": "#minecraft:has_structure/mineshaft"}, source: structureStateTerrain{}, random: &random})
 	if err != nil {
 		t.Fatal(err)
 	}

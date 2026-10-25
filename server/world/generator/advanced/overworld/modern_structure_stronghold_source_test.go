@@ -45,7 +45,7 @@ func TestStrongholdPieceGraphsMatchReference(t *testing.T) {
 		fixture := fixture
 		t.Run(fmt.Sprintf("seed_%d_chunk_%d_%d", fixture.Seed, fixture.Chunk[0], fixture.Chunk[1]), func(t *testing.T) {
 			random := vanilla.NewLegacyRandom(fixture.Seed)
-			start, valid, err := buildModernStronghold(modernStructureBuildInput{seed: fixture.Seed, name: "stronghold", chunkX: fixture.Chunk[0], chunkZ: fixture.Chunk[1], random: &random})
+			start, valid, err := buildModernStronghold(modernStructureBuildInput{seed: fixture.Seed, name: "stronghold", chunkX: fixture.Chunk[0], chunkZ: fixture.Chunk[1], config: map[string]any{"biomes": "#minecraft:has_structure/stronghold"}, source: structureStateTerrain{}, random: &random})
 			if err != nil {
 				t.Fatal(err)
 			}

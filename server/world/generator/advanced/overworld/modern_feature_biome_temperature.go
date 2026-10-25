@@ -25,25 +25,27 @@ func (r *featureRegion) biomeTemperature(p featurePos) float32 {
 
 func (r *featureRegion) biomeTemperatureFor(biome string, p featurePos) float32 {
 	biome = normalizeResource(biome)
-	base := float32(r.f.temperatures[biome])
-	if r.f.biomes[biome].frozenTemperature {
+	return heightAdjustedTemperature(float32(r.f.temperatures[biome]), r.f.biomes[biome].frozenTemperature, p.x, p.y, p.z, r.f.source.SeaLevel())
+}
+
+// heightAdjustedTemperature ports Biome.getHeightAdjustedTemperature: the
+// frozen modifier's ice patches, then cooling above 17 blocks over sea level.
+func heightAdjustedTemperature(base float32, frozen bool, x, y, z, seaLevel int32) float32 {
+	if frozen {
 		large := float32(0)
-		large += float32(float32(0.14285715) * float32(biomeFrozenTemperatureLayers[0].Sample2D(float64(p.x)*0.05, float64(p.z)*0.05)))
-		large += float32(float32(0.2857143) * float32(biomeFrozenTemperatureLayers[1].Sample2D(float64(p.x)*0.025, float64(p.z)*0.025)))
-		large += float32(float32(0.5714286) * float32(biomeFrozenTemperatureLayers[2].Sample2D(float64(p.x)*0.0125, float64(p.z)*0.0125)))
+		large += float32(float32(0.14285715) * float32(biomeFrozenTemperatureLayers[0].Sample2D(float64(x)*0.05, float64(z)*0.05)))
+		large += float32(float32(0.2857143) * float32(biomeFrozenTemperatureLayers[1].Sample2D(float64(x)*0.025, float64(z)*0.025)))
+		large += float32(float32(0.5714286) * float32(biomeFrozenTemperatureLayers[2].Sample2D(float64(x)*0.0125, float64(z)*0.0125)))
 		largeVariation := float32(large * 7)
-		icePatches := float64(largeVariation) + float64(float32(biomeInfoNoise.Sample2D(float64(p.x)*0.2, float64(p.z)*0.2)))
-		if icePatches < 0.3 && float32(biomeInfoNoise.Sample2D(float64(p.x)*0.09, float64(p.z)*0.09)) < 0.8 {
+		icePatches := float64(largeVariation) + float64(float32(biomeInfoNoise.Sample2D(float64(x)*0.2, float64(z)*0.2)))
+		if icePatches < 0.3 && float32(biomeInfoNoise.Sample2D(float64(x)*0.09, float64(z)*0.09)) < 0.8 {
 			base = 0.2
 		}
 	}
-	seaLevel := r.f.source.SeaLevel()
 	snowLevel := seaLevel + 17
-	if p.y > snowLevel {
-		x := float64(float32(p.x) / 8)
-		z := float64(float32(p.z) / 8)
-		v := float32(biomeTemperatureNoise.Sample2D(x, z)) * float32(8)
-		heightVariation := (v + float32(p.y) - float32(snowLevel)) * float32(0.05)
+	if y > snowLevel {
+		v := float32(biomeTemperatureNoise.Sample2D(float64(float32(x)/8), float64(float32(z)/8))) * float32(8)
+		heightVariation := (v + float32(y) - float32(snowLevel)) * float32(0.05)
 		base -= heightVariation / 40
 	}
 	return base

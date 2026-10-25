@@ -34,15 +34,26 @@ func (g *Overworld) FindNearestMapFeature(tag string, origin cube.Pos, searchRad
 	if s == nil {
 		return world.StructureLocation{}, false, fmt.Errorf("overworld structure planner is unavailable")
 	}
-	chunkX, chunkZ := int32(origin[0]>>4), int32(origin[2]>>4)
-
-	var ringBest world.StructureLocation
-	var ringDistance float64 = math.MaxFloat64
+	// Java's ChunkGenerator.findNearestMapStructure: each ring placement gives
+	// its nearest start, each random spread placement the first start found on
+	// the square of sectors at a radius, and the nearest of these wins once a
+	// radius finds anything. Distances are measured to the locate position.
+	distanceTo := func(p cube.Pos) float64 {
+		dx, dy, dz := float64(p[0]-origin[0]), float64(p[1]-origin[1]), float64(p[2]-origin[2])
+		return dx*dx + dy*dy + dz*dz
+	}
+	nearest := math.MaxFloat64
 	for _, set := range s.sets {
 		if normalizeResource(stringValue(set.placement["type"])) != "concentric_rings" || !setContainsWanted(set, wanted) {
 			continue
 		}
-		for candidate := range s.rings[set.name] {
+		var closest world.StructureLocation
+		closestDistance, closestFound := math.MaxFloat64, false
+		for _, candidate := range s.ringOrder[set.name] {
+			distance := distanceTo(cube.Pos{int(candidate[0])*16 + 8, 32, int(candidate[1])*16 + 8})
+			if closestFound && distance >= closestDistance {
+				continue
+			}
 			start, ok := s.makeStart(set, candidate[0], candidate[1])
 			if !ok || !wanted[start.name] {
 				continue
@@ -51,63 +62,64 @@ func (g *Overworld) FindNearestMapFeature(tag string, origin cube.Pos, searchRad
 			if isReferenced != nil && isReferenced(loc) {
 				continue
 			}
-			dx, dy, dz := float64(origin[0]-int(candidate[0]*16+8)), float64(origin[1]-32), float64(origin[2]-int(candidate[1]*16+8))
-			distance := dx*dx + dy*dy + dz*dz
-			if distance < ringDistance {
-				ringDistance, ringBest = distance, loc
+			closest, closestDistance, closestFound = loc, distance, true
+		}
+		if closestFound {
+			if d := distanceTo(closest.Position); d < nearest {
+				nearest, location, found = d, closest, true
 			}
 		}
 	}
-	if ringDistance != math.MaxFloat64 {
-		location, found = ringBest, true
-	}
 
+	chunkX, chunkZ := int32(origin[0]>>4), int32(origin[2]>>4)
 	for radius := 0; radius <= searchRadius; radius++ {
 		radiusFound := false
-		bestDistance := math.MaxFloat64
-		var best world.StructureLocation
 		for _, set := range s.sets {
-			placement := set.placement
-			if normalizeResource(stringValue(placement["type"])) != "random_spread" || !setContainsWanted(set, wanted) {
+			if normalizeResource(stringValue(set.placement["type"])) != "random_spread" || !setContainsWanted(set, wanted) {
 				continue
 			}
-			spacing := int32(number(placement["spacing"]))
-			for x := -radius; x <= radius; x++ {
-				xEdge := x == -radius || x == radius
-				for z := -radius; z <= radius; z++ {
-					if !xEdge && z != -radius && z != radius {
-						continue
-					}
-					sectorX, sectorZ := chunkX+spacing*int32(x), chunkZ+spacing*int32(z)
-					candidate := s.randomSpreadChunk(set, sectorX, sectorZ)
-					if !s.frequencyAllows(set, candidate[0], candidate[1]) {
-						continue
-					}
-					start, ok := s.makeStart(set, candidate[0], candidate[1])
-					if !ok || !wanted[start.name] {
-						continue
-					}
-					loc := world.StructureLocation{ID: start.name, StartChunk: world.ChunkPos{candidate[0], candidate[1]}, Position: modernLocatePosition(placement, candidate[0], candidate[1])}
-					if isReferenced != nil && isReferenced(loc) {
-						continue
-					}
-					radiusFound = true
-					dx, dy, dz := float64(origin[0]-loc.Position[0]), float64(origin[1]-loc.Position[1]), float64(origin[2]-loc.Position[2])
-					distance := dx*dx + dy*dy + dz*dz
-					if distance < bestDistance {
-						bestDistance, best = distance, loc
-					}
-				}
+			loc, ok := s.firstStartOnRadius(set, wanted, chunkX, chunkZ, radius, isReferenced)
+			if !ok {
+				continue
+			}
+			radiusFound = true
+			if d := distanceTo(loc.Position); d < nearest {
+				nearest, location, found = d, loc, true
 			}
 		}
 		if radiusFound {
-			if !found || bestDistance < ringDistance {
-				location = best
-			}
 			return location, true, nil
 		}
 	}
 	return location, found, nil
+}
+
+// firstStartOnRadius returns the first wanted start on the square of sectors
+// at radius around the origin chunk, in Java's iteration order.
+func (s *modernStructures) firstStartOnRadius(set modernStructureSet, wanted map[string]bool, chunkX, chunkZ int32, radius int, isReferenced func(world.StructureLocation) bool) (world.StructureLocation, bool) {
+	spacing := int32(number(set.placement["spacing"]))
+	for x := -radius; x <= radius; x++ {
+		xEdge := x == -radius || x == radius
+		for z := -radius; z <= radius; z++ {
+			if !xEdge && z != -radius && z != radius {
+				continue
+			}
+			candidate := s.randomSpreadChunk(set, chunkX+spacing*int32(x), chunkZ+spacing*int32(z))
+			if !s.isStructureChunk(set, candidate[0], candidate[1]) {
+				continue
+			}
+			start, ok := s.makeStart(set, candidate[0], candidate[1])
+			if !ok || !wanted[start.name] {
+				continue
+			}
+			loc := world.StructureLocation{ID: start.name, StartChunk: world.ChunkPos{candidate[0], candidate[1]}, Position: modernLocatePosition(set.placement, candidate[0], candidate[1])}
+			if isReferenced != nil && isReferenced(loc) {
+				continue
+			}
+			return loc, true
+		}
+	}
+	return world.StructureLocation{}, false
 }
 
 func (g *Overworld) FindStructureAt(tag string, position cube.Pos) (location world.StructureLocation, found bool, err error) {
@@ -135,7 +147,7 @@ func (g *Overworld) FindStructureAt(tag string, position cube.Pos) (location wor
 			continue
 		}
 		if normalizeResource(stringValue(set.placement["type"])) == "concentric_rings" {
-			for candidate := range s.rings[set.name] {
+			for _, candidate := range s.ringOrder[set.name] {
 				start, ok := s.makeStart(set, candidate[0], candidate[1])
 				if ok && wanted[start.name] && structureStartContains(start, position) {
 					return world.StructureLocation{ID: start.name, StartChunk: world.ChunkPos{candidate[0], candidate[1]}, Position: modernLocatePosition(set.placement, candidate[0], candidate[1])}, true, nil

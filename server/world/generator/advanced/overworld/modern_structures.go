@@ -24,6 +24,7 @@ type modernStructures struct {
 	source         ModernFeatureSource
 	sets           []modernStructureSet
 	rings          map[string]map[[2]int32]struct{}
+	ringOrder      map[string][][2]int32
 	structureSteps map[int][]modernStructureStepEntry
 	startCache     map[modernStructureStartKey]modernStructureStartResult
 	startFlights   map[modernStructureStartKey]*modernStructureStartFlight
@@ -112,6 +113,7 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 		seed:           seed,
 		source:         source,
 		rings:          make(map[string]map[[2]int32]struct{}),
+		ringOrder:      make(map[string][][2]int32),
 		structureSteps: make(map[int][]modernStructureStepEntry),
 		startCache:     make(map[modernStructureStartKey]modernStructureStartResult),
 		startFlights:   make(map[modernStructureStartKey]*modernStructureStartFlight),
@@ -157,7 +159,12 @@ func newModernStructures(seed int64, source ModernFeatureSource) *modernStructur
 		}
 		s.sets = append(s.sets, set)
 		if normalizeResource(stringValue(placement["type"])) == "concentric_rings" {
-			s.rings[name] = s.concentricRingChunks(placement)
+			order := s.concentricRingChunks(placement)
+			s.ringOrder[name] = order
+			s.rings[name] = make(map[[2]int32]struct{}, len(order))
+			for _, chunk := range order {
+				s.rings[name][chunk] = struct{}{}
+			}
 		}
 	}
 	s.loadStructureSteps()
@@ -190,11 +197,12 @@ func (s *modernStructures) loadStructureSteps() {
 	}
 }
 
-func (s *modernStructures) concentricRingChunks(placement map[string]any) map[[2]int32]struct{} {
+// concentricRingChunks returns the ring chunks in Java's index order.
+func (s *modernStructures) concentricRingChunks(placement map[string]any) [][2]int32 {
 	count := int(number(placement["count"]))
 	distance := int(number(placement["distance"]))
 	spread := int(number(placement["spread"]))
-	out := make(map[[2]int32]struct{}, count)
+	out := make([][2]int32, 0, max(count, 0))
 	if count <= 0 {
 		return out
 	}
@@ -212,7 +220,7 @@ func (s *modernStructures) concentricRingChunks(placement map[string]any) map[[2
 				x, z = located[0], located[1]
 			}
 		}
-		out[[2]int32{x, z}] = struct{}{}
+		out = append(out, [2]int32{x, z})
 		angle += 2 * math.Pi / float64(spread)
 		positionInCircle++
 		if positionInCircle == spread {
@@ -305,7 +313,46 @@ func (s *modernStructures) candidate(set modernStructureSet, x, z int32) ([2]int
 	if candidate != [2]int32{x, z} {
 		return [2]int32{}, false
 	}
-	return candidate, s.frequencyAllows(set, x, z)
+	return candidate, s.frequencyAllows(set, x, z) && !s.exclusionForbids(set, x, z)
+}
+
+// isStructureChunk ports StructurePlacement.isStructureChunk.
+func (s *modernStructures) isStructureChunk(set modernStructureSet, x, z int32) bool {
+	_, ok := s.candidate(set, x, z)
+	return ok
+}
+
+// exclusionForbids ports ExclusionZone.isPlacementForbidden: a placement
+// chunk of the other set within chunk_count chunks forbids this one, whether
+// or not a structure starts there.
+func (s *modernStructures) exclusionForbids(set modernStructureSet, x, z int32) bool {
+	zone, ok := set.placement["exclusion_zone"].(map[string]any)
+	if !ok {
+		return false
+	}
+	other, ok := s.setByName(stringValue(zone["other_set"]))
+	if !ok {
+		panic(fmt.Sprintf("overworld: structure set %s excludes unknown set %v", set.name, zone["other_set"]))
+	}
+	count := int32(number(zone["chunk_count"]))
+	for testX := x - count; testX <= x+count; testX++ {
+		for testZ := z - count; testZ <= z+count; testZ++ {
+			if s.isStructureChunk(other, testX, testZ) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (s *modernStructures) setByName(name string) (modernStructureSet, bool) {
+	name = normalizeResource(name)
+	for _, set := range s.sets {
+		if normalizeResource(set.name) == name {
+			return set, true
+		}
+	}
+	return modernStructureSet{}, false
 }
 
 // randomSpreadChunk projects any chunk in a placement region onto its candidate.

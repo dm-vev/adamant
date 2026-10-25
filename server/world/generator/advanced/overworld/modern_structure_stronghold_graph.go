@@ -279,8 +279,12 @@ func (g *strongholdGraph) attach(d strongholdDoor, parentDepth int) {
 	}
 }
 func buildModernStronghold(in modernStructureBuildInput) (modernStructureStart, bool, error) {
-	if in.random == nil {
-		return modernStructureStart{}, false, fmt.Errorf("stronghold requires structure random")
+	if in.random == nil || in.source == nil {
+		return modernStructureStart{}, false, fmt.Errorf("stronghold requires structure random and world source")
+	}
+	// StrongholdStructure's stub is the chunk's world position at y 0.
+	if allowed, err := structureStubBiomeAllowed(in.source, in.config, in.chunkX*16, 0, in.chunkZ*16); err != nil || !allowed {
+		return modernStructureStart{}, false, err
 	}
 	x, z := in.chunkX*16+2, in.chunkZ*16+2
 	r := in.random

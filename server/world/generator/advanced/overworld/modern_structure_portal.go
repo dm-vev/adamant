@@ -3,6 +3,7 @@ package overworld
 import (
 	"fmt"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/internal/vanilla"
 	"github.com/df-mc/dragonfly/server/internal/gamedata"
@@ -26,14 +27,26 @@ type modernRuinedPortal struct {
 
 func (p modernRuinedPortal) Bounds() structure.Box { return p.box }
 
+// Place ports RuinedPortalPiece.postProcess. Only the chunk holding the
+// centre of the template places the portal, the whole template at once, and
+// spreads its netherrack, drips and plants with one random stream.
 func (p modernRuinedPortal) Place(clip structure.Bounds, env structure.ProcessorEnvironment) (structure.Placement, error) {
 	if env.Random == nil {
 		return structure.Placement{}, fmt.Errorf("ruined portal placement requires the shared structure random stream")
 	}
-	if env.BaseBlock == nil || env.BaseHeight == nil {
+	if env.BlockStateID == nil || env.BaseHeight == nil {
 		return structure.Placement{}, fmt.Errorf("ruined portal placement requires mutable world queries")
 	}
-	pivot := structure.TransformPosition(p.pivot, p.mirror, p.rotation)
+	cx, cy, cz := boxCenter(p.box.Min[0], p.box.Max[0]), boxCenter(p.box.Min[1], p.box.Max[1]), boxCenter(p.box.Min[2], p.box.Max[2])
+	if cx < clip.Min[0] || cx > clip.Max[0] || cy < clip.Min[1] || cy > clip.Max[1] || cz < clip.Min[2] || cz > clip.Max[2] {
+		return structure.Placement{}, nil
+	}
+	for axis := range 3 {
+		clip.Min[axis] = min(clip.Min[axis], p.box.Min[axis])
+		clip.Max[axis] = max(clip.Max[axis], p.box.Max[axis])
+	}
+	// The template turns about the pivot, which the mirror leaves in place.
+	pivot := structure.TransformPosition(p.pivot, structure.NoMirror, p.rotation)
 	placeOrigin := [3]int32{
 		p.origin[0] + p.pivot[0] - pivot[0],
 		p.origin[1] + p.pivot[1] - pivot[1],
@@ -51,13 +64,14 @@ func (p modernRuinedPortal) Place(clip structure.Bounds, env structure.Processor
 	if err != nil {
 		return structure.Placement{}, err
 	}
-	random := env.Random
-	overlay := make(map[[3]int32]string, len(placement.Blocks))
-	for i := range placement.Blocks {
-		overlay[placement.Blocks[i].Pos] = placement.Blocks[i].State.Name
+	placement.BeyondChunk = true
+	w := &portalWorld{env: env, out: &placement, overlay: make(map[[3]int32]world.BlockState, len(placement.Blocks))}
+	for _, b := range placement.Blocks {
+		w.overlay[b.Pos] = b.State
 	}
-	cx := (p.box.Min[0] + p.box.Max[0]) / 2
-	cz := (p.box.Min[2] + p.box.Max[2]) / 2
+	random := env.Random
+
+	// spreadNetherrack
 	follow := p.vertical == "on_land_surface" || p.vertical == "on_ocean_floor"
 	avgWidth := (p.box.Max[0] - p.box.Min[0] + 1 + p.box.Max[2] - p.box.Min[2] + 1) / 2
 	adjust := int32(random.NextInt(maxInt32(1, 8-avgWidth/2)))
@@ -68,37 +82,24 @@ func (p modernRuinedPortal) Place(clip structure.Bounds, env structure.Processor
 				continue
 			}
 			y := env.BaseHeight(x, z, p.vertical == "on_ocean_floor") - 1
-			if !follow && p.box.Min[1] < y {
-				y = p.box.Min[1]
+			if !follow {
+				y = min(p.box.Min[1], y)
 			}
-			if abs32(y-p.box.Min[1]) > 3 {
+			if abs32(y-p.box.Min[1]) > 3 || !p.replaceable(w.state(x, y, z)) {
 				continue
 			}
-			ok, err := p.canSpreadAt(env, overlay, x, y, z)
-			if err != nil {
-				return structure.Placement{}, err
-			}
-			if !ok {
-				continue
-			}
+			p.placeNetherrackOrMagma(w, random, x, y, z)
 			if p.overgrown {
-				if err := p.tryLeaves(env, overlay, &placement, clip, x, y, z, random); err != nil {
-					return structure.Placement{}, err
-				}
+				p.maybeAddLeavesAbove(w, random, x, y, z)
 			}
+			p.addDripColumn(w, random, x, y-1, z)
 		}
 	}
+	// addNetherrackDripColumnsBelowPortal
 	for x := p.box.Min[0] + 1; x < p.box.Max[0]; x++ {
 		for z := p.box.Min[2] + 1; z < p.box.Max[2]; z++ {
-			pos := [3]int32{x, p.box.Min[1], z}
-			name, err := portalBlockName(env, overlay, pos)
-			if err != nil {
-				return structure.Placement{}, err
-			}
-			if name == "minecraft:netherrack" {
-				if err := p.drip(env, overlay, &placement, clip, x, p.box.Min[1]-1, z, random); err != nil {
-					return structure.Placement{}, err
-				}
+			if w.state(x, p.box.Min[1], z).Name == "minecraft:netherrack" {
+				p.addDripColumn(w, random, x, p.box.Min[1]-1, z)
 			}
 		}
 	}
@@ -106,16 +107,13 @@ func (p modernRuinedPortal) Place(clip structure.Bounds, env structure.Processor
 		for x := p.box.Min[0]; x <= p.box.Max[0]; x++ {
 			for y := p.box.Min[1]; y <= p.box.Max[1]; y++ {
 				for z := p.box.Min[2]; z <= p.box.Max[2]; z++ {
-					pos := [3]int32{x, y, z}
 					if p.vines {
-						if err := p.tryVine(env, overlay, &placement, clip, pos, random); err != nil {
+						if err := p.maybeAddVines(w, random, x, y, z); err != nil {
 							return structure.Placement{}, err
 						}
 					}
 					if p.overgrown {
-						if err := p.tryLeaves(env, overlay, &placement, clip, x, y, z, random); err != nil {
-							return structure.Placement{}, err
-						}
+						p.maybeAddLeavesAbove(w, random, x, y, z)
 					}
 				}
 			}
@@ -124,107 +122,113 @@ func (p modernRuinedPortal) Place(clip structure.Bounds, env structure.Processor
 	return placement, nil
 }
 
-func portalBlockName(env structure.ProcessorEnvironment, overlay map[[3]int32]string, pos [3]int32) (string, error) {
-	if name, ok := overlay[pos]; ok {
-		return name, nil
-	}
-	name, _ := env.BaseBlock(pos[0], pos[1], pos[2]).EncodeBlock()
-	return name, nil
+// boxCenter is BoundingBox.getCenter along one axis.
+func boxCenter(min, max int32) int32 { return min + (max-min+1)/2 }
+
+// portalWorld reads the level a ruined portal decorates, including its own
+// writes, and drops writes outside the region as WorldGenRegion does.
+type portalWorld struct {
+	env     structure.ProcessorEnvironment
+	out     *structure.Placement
+	overlay map[[3]int32]world.BlockState
 }
 
-func (p modernRuinedPortal) replaceable(env structure.ProcessorEnvironment, overlay map[[3]int32]string, x, y, z int32) (bool, error) {
-	name, err := portalBlockName(env, overlay, [3]int32{x, y, z})
+func (w *portalWorld) state(x, y, z int32) world.BlockState {
+	if state, ok := w.overlay[[3]int32{x, y, z}]; ok {
+		return state
+	}
+	id, err := w.env.BlockStateID(x, y, z)
 	if err != nil {
-		return false, err
+		panic(err)
 	}
-	if name == "minecraft:air" || name == "minecraft:obsidian" || name == "minecraft:lava" && p.vertical != "in_nether" {
-		return false, nil
+	name, properties, ok := gamedata.BlockStateFromID(id)
+	if !ok {
+		panic(fmt.Sprintf("overworld: unknown block state %d at %d,%d,%d", id, x, y, z))
 	}
-	blocked, err := gamedata.BlockTagContains("#minecraft:features_cannot_replace", name)
-	return !blocked, err
+	return world.BlockState{Name: name, Properties: properties}
 }
 
-func (p modernRuinedPortal) canSpreadAt(env structure.ProcessorEnvironment, overlay map[[3]int32]string, x, y, z int32) (bool, error) {
-	return p.replaceable(env, overlay, x, y, z)
+func (w *portalWorld) set(x, y, z int32, state world.BlockState) {
+	if y < int32(w.env.Range.Min()) || y > int32(w.env.Range.Max()) || (w.env.CanWriteBlock != nil && !w.env.CanWriteBlock(x, y, z)) {
+		return
+	}
+	pos := [3]int32{x, y, z}
+	w.out.Blocks = append(w.out.Blocks, structure.Block{Pos: pos, State: state})
+	w.overlay[pos] = state
 }
 
-func (p modernRuinedPortal) spreadMaterial(random *vanilla.Random) string {
+func portalAir(name string) bool {
+	return name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air"
+}
+
+// replaceable is canBlockBeReplacedByNetherrackOrMagma.
+func (p modernRuinedPortal) replaceable(state world.BlockState) bool {
+	if state.Name == "minecraft:air" || state.Name == "minecraft:obsidian" || state.Name == "minecraft:lava" && p.vertical != "in_nether" {
+		return false
+	}
+	blocked, err := gamedata.BlockTagContains("#minecraft:features_cannot_replace", state.Name)
+	if err != nil {
+		panic(err)
+	}
+	return !blocked
+}
+
+func (p modernRuinedPortal) placeNetherrackOrMagma(w *portalWorld, random *vanilla.Random, x, y, z int32) {
+	if !p.replaceable(w.state(x, y, z)) {
+		return
+	}
+	name := "minecraft:netherrack"
 	if !p.cold && random.NextFloat() < 0.07 {
-		return "magma_block"
+		name = "minecraft:magma_block"
 	}
-	return "netherrack"
+	w.set(x, y, z, world.BlockState{Name: name})
 }
 
-func (p modernRuinedPortal) drip(env structure.ProcessorEnvironment, overlay map[[3]int32]string, out *structure.Placement, clip structure.Bounds, x, y, z int32, random *vanilla.Random) error {
-	for i := 0; i < 9; i++ {
-		ok, err := p.canSpreadAt(env, overlay, x, y, z)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return nil
-		}
-		p.putIfClip(out, overlay, clip, x, y, z, p.spreadMaterial(random))
-		if i == 8 || random.NextFloat() >= 0.5 {
-			break
-		}
+// addDripColumn is addNetherrackDripColumn: up to eight more blocks below,
+// each with half the chance of the one above.
+func (p modernRuinedPortal) addDripColumn(w *portalWorld, random *vanilla.Random, x, y, z int32) {
+	p.placeNetherrackOrMagma(w, random, x, y, z)
+	for remaining := 8; remaining > 0 && random.NextFloat() < 0.5; remaining-- {
 		y--
+		p.placeNetherrackOrMagma(w, random, x, y, z)
 	}
+}
+
+func (p modernRuinedPortal) maybeAddLeavesAbove(w *portalWorld, random *vanilla.Random, x, y, z int32) {
+	if random.NextFloat() < 0.5 && w.state(x, y, z).Name == "minecraft:netherrack" && portalAir(w.state(x, y+1, z).Name) {
+		w.set(x, y+1, z, world.BlockState{Name: "minecraft:jungle_leaves", Properties: map[string]any{"persistent": true}})
+	}
+}
+
+// maybeAddVines hangs a vine on a random side of a block whose collision
+// face on that side is full.
+func (p modernRuinedPortal) maybeAddVines(w *portalWorld, random *vanilla.Random, x, y, z int32) error {
+	state := w.state(x, y, z)
+	if portalAir(state.Name) || state.Name == "minecraft:vine" {
+		return nil
+	}
+	sides := [4]struct {
+		offset [3]int32
+		face   cube.Face
+		vine   string
+	}{{[3]int32{0, 0, -1}, cube.FaceNorth, "south"}, {[3]int32{1, 0, 0}, cube.FaceEast, "west"}, {[3]int32{0, 0, 1}, cube.FaceSouth, "north"}, {[3]int32{-1, 0, 0}, cube.FaceWest, "east"}}
+	side := sides[random.NextInt(4)]
+	nx, ny, nz := x+side.offset[0], y+side.offset[1], z+side.offset[2]
+	if !portalAir(w.state(nx, ny, nz).Name) {
+		return nil
+	}
+	id, err := gamedata.BlockStateID(state.Name, state.Properties)
+	if err != nil {
+		return err
+	}
+	full, err := gamedata.GenerationCollisionFaceCoversRectangleID(id, int(side.face), 0, 0, 1, 1)
+	if err != nil || !full {
+		return err
+	}
+	w.set(nx, ny, nz, world.BlockState{Name: "minecraft:vine", Properties: map[string]any{side.vine: true}})
 	return nil
 }
 
-func (p modernRuinedPortal) tryLeaves(env structure.ProcessorEnvironment, overlay map[[3]int32]string, out *structure.Placement, clip structure.Bounds, x, y, z int32, random *vanilla.Random) error {
-	if random.NextFloat() >= 0.5 {
-		return nil
-	}
-	name, err := portalBlockName(env, overlay, [3]int32{x, y, z})
-	if err != nil {
-		return err
-	}
-	if name != "minecraft:netherrack" {
-		return nil
-	}
-	above, err := portalBlockName(env, overlay, [3]int32{x, y + 1, z})
-	if err != nil {
-		return err
-	}
-	if above == "minecraft:air" {
-		p.putIfClip(out, overlay, clip, x, y+1, z, "jungle_leaves")
-	}
-	return nil
-}
-
-func (p modernRuinedPortal) tryVine(env structure.ProcessorEnvironment, overlay map[[3]int32]string, out *structure.Placement, clip structure.Bounds, pos [3]int32, random *vanilla.Random) error {
-	name, err := portalBlockName(env, overlay, pos)
-	if err != nil {
-		return err
-	}
-	if name == "minecraft:air" || name == "minecraft:vine" {
-		return nil
-	}
-	directions := [4][3]int32{{0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}}
-	direction := directions[random.NextInt(4)]
-	x, y, z := pos[0]+direction[0], pos[1]+direction[1], pos[2]+direction[2]
-	neighbor, err := portalBlockName(env, overlay, [3]int32{x, y, z})
-	if err != nil {
-		return err
-	}
-	if neighbor != "minecraft:air" || x < clip.Min[0] || x > clip.Max[0] || y < clip.Min[1] || y > clip.Max[1] || z < clip.Min[2] || z > clip.Max[2] {
-		return nil
-	}
-	side := "south"
-	switch direction {
-	case [3]int32{1, 0, 0}:
-		side = "west"
-	case [3]int32{0, 0, 1}:
-		side = "north"
-	case [3]int32{-1, 0, 0}:
-		side = "east"
-	}
-	p.putIfClip(out, overlay, clip, x, y, z, "vine")
-	out.Blocks[len(out.Blocks)-1].State.Properties = map[string]any{side: true}
-	return nil
-}
 func buildModernRuinedPortal(in modernStructureBuildInput)(modernStructureStart,bool,error){
  if in.random==nil||in.source==nil{return modernStructureStart{},false,fmt.Errorf("ruined portal requires structure random and world source")}
  setups,ok:=in.config["setups"].([]any);if !ok||len(setups)==0{return modernStructureStart{},false,fmt.Errorf("ruined portal has no setup variants")}
@@ -232,13 +236,43 @@ func buildModernRuinedPortal(in modernStructureBuildInput)(modernStructureStart,
  airProbability:=portalFloat32(chosen["air_pocket_probability"]);airPocket:=airProbability==1||(airProbability>0&&in.random.NextFloat()<airProbability)
  giant:=in.random.NextFloat()<.05
  templates:=[]string{"ruined_portal/portal_1","ruined_portal/portal_2","ruined_portal/portal_3","ruined_portal/portal_4","ruined_portal/portal_5","ruined_portal/portal_6","ruined_portal/portal_7","ruined_portal/portal_8","ruined_portal/portal_9","ruined_portal/portal_10"};if giant{templates=[]string{"ruined_portal/giant_portal_1","ruined_portal/giant_portal_2","ruined_portal/giant_portal_3"}}
- t,err:=structure.Load(templates[in.random.NextInt(int32(len(templates))) ]);if err!=nil{return modernStructureStart{},false,err};rotation:=structure.Rotation(in.random.NextInt(4));mirror:=structure.NoMirror;if in.random.NextFloat()<0.5{mirror=structure.FrontBack}
- pivot:=[3]int32{t.Size[0]/2,0,t.Size[2]/2};base:=[3]int32{in.chunkX*16,0,in.chunkZ*16};rotPivot:=structure.TransformPosition(pivot,mirror,rotation);placeOrigin:=[3]int32{base[0]+pivot[0]-rotPivot[0],0,base[2]+pivot[2]-rotPivot[2]};box:=modernTemplateBounds(t,placeOrigin,rotation);centerX,centerZ:=(box.Min[0]+box.Max[0])/2,(box.Min[2]+box.Max[2])/2
+ t,err:=structure.Load(templates[in.random.NextInt(int32(len(templates))) ]);if err!=nil{return modernStructureStart{},false,err};rotation:=structure.Rotation(in.random.NextInt(4));mirror:=structure.FrontBack;if in.random.NextFloat()<0.5{mirror=structure.NoMirror}
+ pivot:=[3]int32{t.Size[0]/2,0,t.Size[2]/2};base:=[3]int32{in.chunkX*16,0,in.chunkZ*16};rotPivot:=structure.TransformPosition(pivot,structure.NoMirror,rotation);placeOrigin:=[3]int32{base[0]+pivot[0]-rotPivot[0],0,base[2]+pivot[2]-rotPivot[2]};box:=modernMirroredTemplateBounds(t,placeOrigin,mirror,rotation);centerX,centerZ:=boxCenter(box.Min[0],box.Max[0]),boxCenter(box.Min[2],box.Max[2])
  vertical:=stringValue(chosen["placement"]);height:=in.source.BaseHeight(centerX,centerZ,vertical=="on_ocean_floor")-1;newY:=height;span:=box.Max[1]-box.Min[1]+1;switch vertical{case "in_nether":if airPocket{newY=32+int32(in.random.NextInt(69))}else if in.random.NextFloat()<.5{newY=27+int32(in.random.NextInt(3))}else{newY=29+int32(in.random.NextInt(72))};case "in_mountain":newY=portalRandomInterval(in.random,70,height-span);case "underground":newY=portalRandomInterval(in.random,-49,height-span);case "partly_buried":newY=height-span+2+int32(in.random.NextInt(7))}
-	minY:=int32(-49);for newY>minY{corners:=0;for _,xz:=range [][2]int32{{box.Min[0],box.Min[2]},{box.Max[0],box.Min[2]},{box.Min[0],box.Max[2]},{box.Max[0],box.Max[2]}}{n,_:=in.source.BaseBlock(xz[0],newY,xz[1]).EncodeBlock();if n!="minecraft:air"&&n!="minecraft:water"&&n!="minecraft:lava"{corners++;if corners==3{break}}};if corners>=3{break};newY--}
-	biome:=normalizeResource(in.source.BiomeAt(base[0],base[1],base[2]))
-	cold:=false
-	if boolPortal(chosen["can_be_cold"]) { data,e:=gamedata.LoadJSON("biome",biome);if e!=nil{return modernStructureStart{},false,e};if attrs,ok:=data["temperature"].(float64);ok{cold=attrs<=0.15} }
+	// findSuitableY: walk down until three bottom corners of the box stand on
+	// blocks the placement's heightmap counts as occupied. The template goes
+	// to that height, where the stub's biome is checked.
+	oceanFloor := vertical == "on_ocean_floor"
+	minY := int32(-49)
+	for ; newY > minY; newY-- {
+		corners := 0
+		for _, xz := range [][2]int32{{box.Min[0], box.Min[2]}, {box.Max[0], box.Min[2]}, {box.Min[0], box.Max[2]}, {box.Max[0], box.Max[2]}} {
+			name, _ := in.source.BaseBlock(xz[0], newY, xz[1]).EncodeBlock()
+			if name != "minecraft:air" && name != "minecraft:cave_air" && name != "minecraft:void_air" && (!oceanFloor || name != "minecraft:water" && name != "minecraft:lava") {
+				corners++
+			}
+		}
+		if corners >= 3 {
+			break
+		}
+	}
+	base[1] = newY
+	box.Min[1] += newY
+	box.Max[1] += newY
+	if allowed, err := structureStubBiomeAllowed(in.source, in.config, base[0], base[1], base[2]); err != nil || !allowed {
+		return modernStructureStart{}, false, err
+	}
+	cold := false
+	if boolPortal(chosen["can_be_cold"]) {
+		biome := normalizeResource(in.source.NoiseBiomeAt(base[0]>>2, base[1]>>2, base[2]>>2))
+		data, err := gamedata.LoadJSON("biome", biome)
+		if err != nil {
+			return modernStructureStart{}, false, err
+		}
+		temperature, _ := data["temperature"].(float64)
+		// Biome.coldEnoughToSnow at the stub.
+		cold = heightAdjustedTemperature(float32(temperature), data["temperature_modifier"] == "frozen", base[0], base[1], base[2], in.source.SeaLevel()) < 0.15
+	}
 	specs := portalProcessorSpecs(chosen, airPocket, cold, vertical)
 	piece := modernRuinedPortal{
 		template: t, box: box, origin: base, pivot: pivot, rotation: rotation, mirror: mirror,
@@ -353,16 +387,3 @@ func boolPortal(value any) bool {
 
 var portalSpreadChance = [...]float64{1, 1, 1, 1, 1, 1, 1, 0.9, 0.9, 0.8, 0.7, 0.6, 0.4, 0.2}
 
-func (p modernRuinedPortal) putIfClip(out *structure.Placement, overlay map[[3]int32]string, clip structure.Bounds, x, y, z int32, name string) {
-	pos := [3]int32{x, y, z}
-	if pos[0] < clip.Min[0] || pos[0] > clip.Max[0] || pos[1] < clip.Min[1] || pos[1] > clip.Max[1] || pos[2] < clip.Min[2] || pos[2] > clip.Max[2] {
-		return
-	}
-	properties := map[string]any(nil)
-	if name == "jungle_leaves" {
-		properties = map[string]any{"persistent": true}
-	}
-	state := world.BlockState{Name: "minecraft:" + name, Properties: properties}
-	out.Blocks = append(out.Blocks, structure.Block{Pos: pos, State: state})
-	overlay[pos] = state.Name
-}

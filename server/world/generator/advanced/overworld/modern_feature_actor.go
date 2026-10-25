@@ -106,8 +106,8 @@ func (r *featureRegion) refreshTemplateActor(pos cube.Pos) {
 	p := featurePos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
 	if r.inTarget(p) {
 		r.replaceBlockEntityPayload(pos, payloads)
-	} else if r.recording != nil {
-		r.recording.actor(entry, r.nativeState(p))
+	} else if recording := r.recordingAt(p); recording != nil {
+		recording.actor(entry, r.nativeState(p))
 	}
 }
 

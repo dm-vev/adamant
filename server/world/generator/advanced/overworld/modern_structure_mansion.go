@@ -489,8 +489,11 @@ func buildModernWoodlandMansion(in modernStructureBuildInput) (modernStructureSt
 	if in.random == nil || in.source == nil {
 		return modernStructureStart{}, false, fmt.Errorf("woodland mansion requires structure random and world source")
 	}
-	rotation := structure.Rotation(in.random.NextInt(4))
 	x, z := in.chunkX*16+7, in.chunkZ*16+7
+	if allowed, err := structureColumnBiomeAllowed(in.source, in.config, x, z); err != nil || !allowed {
+		return modernStructureStart{}, false, err
+	}
+	rotation := structure.Rotation(in.random.NextInt(4))
 	dx, dz := int32(5), int32(5)
 	switch rotation {
 	case structure.Clockwise90:
@@ -500,14 +503,19 @@ func buildModernWoodlandMansion(in modernStructureBuildInput) (modernStructureSt
 	case structure.CounterClockwise90:
 		dz = -5
 	}
+	// Structure.getLowestYIn5by5Box: the lowest first occupied height of the
+	// corners of the box spanning dx, dz from the chunk's 7, 7.
 	low := int32(1 << 30)
-	for _, p := range [][2]int32{{x + dx, z + dz}, {x + dx + 5, z + dz}, {x + dx, z + dz + 5}, {x + dx + 5, z + dz + 5}} {
-		if y := in.source.BaseHeight(p[0], p[1], false); y < low {
+	for _, p := range [][2]int32{{x, z}, {x, z + dz}, {x + dx, z}, {x + dx, z + dz}} {
+		if y := in.source.BaseHeight(p[0], p[1], false) - 1; y < low {
 			low = y
 		}
 	}
 	if low < 60 {
 		return modernStructureStart{}, false, nil
+	}
+	if allowed, err := structureStubBiomeAllowed(in.source, in.config, x, low, z); err != nil || !allowed {
+		return modernStructureStart{}, false, err
 	}
 	origin := [3]int32{x, low, z}
 	plan := newMansionPlan(in.random)

@@ -307,11 +307,17 @@ func buildModernOceanRuin(input modernStructureBuildInput) (modernStructureStart
 }
 
 func modernTemplateBounds(t *structure.Template, origin [3]int32, rotation structure.Rotation) structure.Box {
+	return modernMirroredTemplateBounds(t, origin, structure.NoMirror, rotation)
+}
+
+// modernMirroredTemplateBounds is StructureTemplate.getBoundingBox of a
+// template placed at origin with mirror and rotation.
+func modernMirroredTemplateBounds(t *structure.Template, origin [3]int32, mirror structure.Mirror, rotation structure.Rotation) structure.Box {
 	box := structure.Box{Min: [3]int32{math.MaxInt32, math.MaxInt32, math.MaxInt32}, Max: [3]int32{math.MinInt32, math.MinInt32, math.MinInt32}}
 	for _, x := range [2]int32{0, t.Size[0] - 1} {
 		for _, y := range [2]int32{0, t.Size[1] - 1} {
 			for _, z := range [2]int32{0, t.Size[2] - 1} {
-				pos := structure.TransformPosition([3]int32{x, y, z}, structure.NoMirror, rotation)
+				pos := structure.TransformPosition([3]int32{x, y, z}, mirror, rotation)
 				for axis := range 3 {
 					pos[axis] += origin[axis]
 					box.Min[axis] = min(box.Min[axis], pos[axis])

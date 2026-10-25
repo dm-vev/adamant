@@ -848,8 +848,8 @@ func max32(a,b int32)int32{if a>b{return a};return b}
 func min32(a,b int32)int32{if a<b{return a};return b}
 
 func buildModernMineshaft(in modernStructureBuildInput) (modernStructureStart, bool, error) {
-	if in.random == nil {
-		return modernStructureStart{}, false, fmt.Errorf("mineshaft requires structure random")
+	if in.random == nil || in.source == nil {
+		return modernStructureStart{}, false, fmt.Errorf("mineshaft requires structure random and world source")
 	}
 	in.random.NextDouble() // Java MineshaftStructure consumes this before room generation.
 	wood, _ := in.config["mineshaft_type"].(string)
@@ -885,6 +885,11 @@ func buildModernMineshaft(in modernStructureBuildInput) (modernStructureStart, b
 			y1 += in.random.NextInt(maxY - y1)
 		}
 		shift = y1 - center.Max[1]
+	}
+	// MineshaftStructure's stub sits at the chunk's middle X and minimum Z,
+	// 50 plus the shift; its biome decides between the normal and mesa shafts.
+	if allowed, err := structureStubBiomeAllowed(in.source, in.config, in.chunkX*16+8, 50+shift, in.chunkZ*16); err != nil || !allowed {
+		return modernStructureStart{}, false, err
 	}
 	for i := range g.pieces {
 		g.pieces[i].box.Min[1] += shift

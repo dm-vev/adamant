@@ -218,22 +218,9 @@ func sourceHeightmapStructureAllowed(source ModernFeatureSource, kind string, co
 	default:
 		return true, nil
 	}
-	biomeTag := stringValue(config["biomes"])
 	x, z := chunkX*16+8, chunkZ*16+8
-	bounds := world.Overworld.Range()
-	columnAllowed := false
-	for quartY := int32(bounds[0]-1) >> 2; quartY <= int32(bounds[1])>>2; quartY++ {
-		allowed, err := gamedata.BiomeTagContains(biomeTag, source.NoiseBiomeAt(x>>2, quartY, z>>2))
-		if err != nil {
-			return false, err
-		}
-		if allowed {
-			columnAllowed = true
-			break
-		}
-	}
-	if !columnAllowed {
-		return false, nil
+	if allowed, err := structureColumnBiomeAllowed(source, config, x, z); err != nil || !allowed {
+		return false, err
 	}
 	if width != 0 {
 		minX, minZ := chunkX*16, chunkZ*16
@@ -244,6 +231,31 @@ func sourceHeightmapStructureAllowed(source ModernFeatureSource, kind string, co
 		}
 	}
 	oceanFloor := kind == "ocean_ruin" || kind == "shipwreck" && config["is_beached"] != true
-	height := source.BaseHeight(x, z, oceanFloor) - 1
-	return gamedata.BiomeTagContains(biomeTag, source.NoiseBiomeAt(x>>2, height>>2, z>>2))
+	return structureStubBiomeAllowed(source, config, x, source.BaseHeight(x, z, oceanFloor)-1, z)
+}
+
+// structureColumnBiomeAllowed ports GenerationContext.couldValidBiomeExistInTerrainColumn:
+// whether any biome in the column at x, z is one the structure may start in.
+func structureColumnBiomeAllowed(source ModernFeatureSource, config map[string]any, x, z int32) (bool, error) {
+	bounds := world.Overworld.Range()
+	for quartY := int32(bounds[0]-1) >> 2; quartY <= int32(bounds[1])>>2; quartY++ {
+		if allowed, err := structureBiomeAllowed(source, config, x>>2, quartY, z>>2); err != nil || allowed {
+			return allowed, err
+		}
+	}
+	return false, nil
+}
+
+// structureStubBiomeAllowed ports GenerationContext.isValidBiome, which every
+// structure applies to the position of its generation stub.
+func structureStubBiomeAllowed(source ModernFeatureSource, config map[string]any, x, y, z int32) (bool, error) {
+	return structureBiomeAllowed(source, config, x>>2, y>>2, z>>2)
+}
+
+func structureBiomeAllowed(source ModernFeatureSource, config map[string]any, quartX, quartY, quartZ int32) (bool, error) {
+	biome := normalizeResource(source.NoiseBiomeAt(quartX, quartY, quartZ))
+	if !strings.Contains(biome, ":") {
+		biome = "minecraft:" + biome
+	}
+	return gamedata.BiomeTagContains(stringValue(config["biomes"]), biome)
 }

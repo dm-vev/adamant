@@ -96,6 +96,9 @@ type Placement struct {
 	// only after a TemplateStructurePiece's immediate shape phase.
 	PostShapeBlocks   []Block
 	PostShapeEntities []Entity
+	// BeyondChunk marks a piece that only the chunk holding its centre
+	// places, writing into the chunks around it, as RuinedPortalPiece does.
+	BeyondChunk bool
 }
 
 // Place selects one palette, transforms block positions, processes records in order,

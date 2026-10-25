@@ -177,6 +177,15 @@ func buildModernOceanMonument(input modernStructureBuildInput) (modernStructureS
 	if !allowed {
 		return modernStructureStart{}, false, nil
 	}
+	// onTopOfChunkCenter on OCEAN_FLOOR_WG, then the stub's own biome check:
+	// the surroundings admit rivers and shallow oceans, the monument does not.
+	x, z := input.chunkX*16+8, input.chunkZ*16+8
+	if allowed, err = structureColumnBiomeAllowed(input.source, input.config, x, z); err != nil || !allowed {
+		return modernStructureStart{}, false, err
+	}
+	if allowed, err = structureStubBiomeAllowed(input.source, input.config, x, input.source.BaseHeight(x, z, true)-1, z); err != nil || !allowed {
+		return modernStructureStart{}, false, err
+	}
 	orientation := int(input.random.NextInt(4))
 	piece := modernOceanMonumentPiece{west: input.chunkX*16 - 29, north: input.chunkZ*16 - 29, orientation: orientation, seed: input.seed}
 	if err := buildModernMonumentRoomGraph(&piece, input.random); err != nil {
