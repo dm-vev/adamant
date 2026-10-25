@@ -187,11 +187,22 @@ func (i ItemFrame) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	}
 }
 
-// allItemFrames ...
+var hashFrame = NextHash()
+
+// Hash ...
+func (i ItemFrame) Hash() (uint64, uint64) {
+	_, isMap := i.Item.Item().(item.FilledMap)
+	return hashFrame, uint64(i.Facing) | uint64(boolByte(i.Glowing))<<3 | uint64(boolByte(isMap))<<4
+}
+
+// allItemFrames returns the states of frames, empty and holding a map, as
+// Bedrock keeps item_frame_map_bit for a frame showing a map.
 func allItemFrames() (frames []world.Block) {
 	for _, f := range cube.Faces() {
-		frames = append(frames, ItemFrame{Facing: f, Glowing: true})
-		frames = append(frames, ItemFrame{Facing: f, Glowing: false})
+		for _, glowing := range []bool{true, false} {
+			frames = append(frames, ItemFrame{Facing: f, Glowing: glowing})
+			frames = append(frames, ItemFrame{Facing: f, Glowing: glowing, Item: item.NewStack(item.FilledMap{}, 1)})
+		}
 	}
 	return
 }

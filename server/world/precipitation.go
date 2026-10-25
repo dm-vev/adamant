@@ -145,7 +145,7 @@ func (tx *Tx) shouldSnow(pos cube.Pos) bool {
 	switch belowName {
 	case "minecraft:ice", "minecraft:packed_ice", "minecraft:barrier":
 		return false
-	case "minecraft:honey_block", "minecraft:soul_sand":
+	case "minecraft:honey_block", "minecraft:soul_sand", "minecraft:mud":
 		return true
 	case "minecraft:snow_layer":
 		height, _ := props["height"].(int32)

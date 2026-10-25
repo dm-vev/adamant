@@ -20,7 +20,12 @@ func (s SnowLayer) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	if layers > 8 {
 		layers = 8
 	}
-	height := float64(layers) / 8.0
+	// SnowLayerBlock.getCollisionShape: a layer lower than the snow looks,
+	// so that a single layer does not collide at all.
+	if layers == 1 {
+		return nil
+	}
+	height := float64(layers-1) / 8.0
 	return []cube.BBox{cube.Box(0, 0, 0, 1, height, 1)}
 }
 
@@ -35,4 +40,3 @@ func (s SnowLayer) FaceSolid(_ cube.Pos, face cube.Face, _ world.BlockSource) bo
 	// Snow layers only have a solid bottom face.
 	return face == cube.FaceDown
 }
-

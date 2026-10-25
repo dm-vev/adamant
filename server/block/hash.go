@@ -175,7 +175,6 @@ const (
 	hashIronBars
 	hashIronChain
 	hashIronOre
-	hashItemFrame
 	hashJukebox
 	hashKelp
 	hashLadder
@@ -1030,10 +1029,6 @@ func (c IronChain) Hash() (uint64, uint64) {
 
 func (i IronOre) Hash() (uint64, uint64) {
 	return hashIronOre, uint64(i.Type.Uint8())
-}
-
-func (i ItemFrame) Hash() (uint64, uint64) {
-	return hashItemFrame, uint64(i.Facing) | uint64(boolByte(i.Glowing))<<3
 }
 
 func (Jukebox) Hash() (uint64, uint64) {

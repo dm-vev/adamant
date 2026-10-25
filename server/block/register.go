@@ -96,6 +96,9 @@ func init() {
 	world.RegisterBlock(Honeycomb{})
 	world.RegisterBlock(InfestedStone{})
 	world.RegisterBlock(InfestedCobblestone{})
+	for _, b := range allSnowLayers() {
+		world.RegisterBlock(b)
+	}
 	for _, b := range allInfestedStoneBricks() {
 		world.RegisterBlock(b)
 	}
@@ -169,7 +172,6 @@ func init() {
 	world.RegisterBlock(Slime{})
 	world.RegisterBlock(SmithingTable{})
 	world.RegisterBlock(Snow{})
-	world.RegisterBlock(SnowLayer{})
 	world.RegisterBlock(SoulSand{})
 	world.RegisterBlock(SoulSoil{})
 	world.RegisterBlock(Sponge{Wet: true})
@@ -675,6 +677,7 @@ func init() {
 	world.RegisterItem(Smoker{})
 	world.RegisterItem(SmoothBasalt{})
 	world.RegisterItem(Snow{})
+	world.RegisterItem(SnowLayer{Layers: 1})
 	world.RegisterItem(SoulSand{})
 	world.RegisterItem(SoulSoil{})
 	world.RegisterItem(Sponge{Wet: true})
